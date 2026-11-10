@@ -163,6 +163,14 @@ assert.ok(cases >= 248, `${cases} country x era x shape cases`);
   const plan = pickNationalSides({ rows, alliedHumans: [ww2], alliedSeats: 6, enemySeats: 7, seed: 3, rivalBlocWeight: 3 });
   assert.ok(plan.allies.every((s) => s.id === ww2.id && s.repeat), 'six clones of the player\'s own type');
 }
+// WW2 takes no ally fill (271 ruling, countries.ts ERAS_WITHOUT_ALLY_FILL): a lone US WW2 hull gets no German allies either
+{
+  const us = rows.find((row) => row.era === 'ww2' && row.country === 'usa');
+  assert.ok(us, 'a US WW2 hull is in the index');
+  const plan = pickNationalSides({ rows, alliedHumans: [us], alliedSeats: 6, enemySeats: 7, seed: 3, rivalBlocWeight: 3 });
+  const country = (id) => rows.find((row) => row.id === id).country;
+  assert.ok(plan.allies.every((s) => country(s.id) === 'usa'), `a lone US WW2 hull's allies are US hulls (${plan.allies.map((s) => s.id)})`);
+}
 // the flags the loading screen draws
 assert.deepEqual(teamNationsFlags({ teamNations: 'mono', allied: 'usa', enemy: 'russia', notes: [{ side: 'alpha', country: 'uk', count: 2, reason: 'ally' }] }),
   { allied: 'USA', enemy: 'Russia', alliedFills: ['UK'], enemyFills: [] });

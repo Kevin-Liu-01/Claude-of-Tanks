@@ -11,6 +11,7 @@
 import './afvFamily.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, frontPlate, leftSidePlate, moduleBox, plate, rearPlate, rightSidePlate, roofPlate, shell,
   type ArmorPlate, type PlateOptions } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
@@ -213,4 +214,8 @@ pgz09.visual = { ...pgz09.visual, scheme: 'digital', base: '#49593f', weather: '
   patches: ['#707d58', '#695f48', '#29372d'], camoScale: .36, digitalCellK: 2.4, marking: 'number', number: '091',
   trackWidthM: PGZ09_LAYOUT.gear.trackW };
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds; the PGZ-95's four QW-2 fire as one salvo, three loads.
+applyAirDefenseFirepower(pgz95, { rounds: 4, intervalS: 0.15 });
+applyAirDefenseFirepower(pgz09);
 registerFleetSpecs(registries, ['pgz95', 'pgz09'], { pgz95, pgz09 });

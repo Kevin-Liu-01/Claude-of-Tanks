@@ -237,7 +237,7 @@ function addHullBody(P: TankBuilderPort): void {
  * with a down-turned outer lip and three pressed ribs) and short rear flaps behind the sprockets. Release 264 (envelope
  * honesty): sheet metal, not the hull's armour (in `hull` the shelves set the anatomy's armour envelope 0.585 m out from
  * the hull sides a side); painted bodywork, its silhouette and paint kept. */
-function addFenders(P: TankBuilderPort): void {
+function addFenders(P: TankBuilderPort, o: T54FamilyHullOptions = {}): void {
   const { box } = KIT;
   const shelfZ0 = -2.94, shelfZ1 = 2.58;
   for (const side of [-1, 1]) {
@@ -258,8 +258,8 @@ function addFenders(P: TankBuilderPort): void {
     // the scoop's outer lip turns down along its curve, shallow over the idler's wrap and 0.10 m at the nose (262
     // track-clip gate: a uniform 0.12 m lip dropped into the track's outer edge over the idler)
     P.add('hullFixedPaintedBodywork', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
-    // pressed stiffening ribs along the scoop
-    for (const f of [0.25, 0.5, 0.75]) {
+    // pressed stiffening ribs along the scoop (a hull with smooth mudguards leaves them off)
+    for (const f of o.smoothMudguards ? [] : [0.25, 0.5, 0.75]) {
       const x = side * (HULL_HALF_W + (FENDER_OUT - HULL_HALF_W) * f);
       P.add('hullDetail', bentPlateX(scoop.slice(0, 5).map(([z, y]) => [z, y + 0.012] as [number, number]), x - 0.012, x + 0.012, 0.012));
     }
@@ -610,15 +610,69 @@ function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.topY = 1.00;
 }
 
-function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
+/** What a vehicle on the family's hull draws its own way (every option off by default: the T-55A and the Type 59). */
+interface T54FamilyHullOptions {
+  /** The front mudguards without their three pressed ribs (Finland's ItPsv 90, photo 01: smooth curved scoops). */
+  readonly smoothMudguards?: boolean;
+  /** Light flexible skirts hung from the fenders' outer edge over the top track run and the top third of the wheels,
+   * draping the front mudguards (Finland's ItPsv 90, photo 01). */
+  readonly flexibleSkirts?: boolean;
+}
+
+/**
+ * The flexible skirts (Finland's ItPsv 90, photo 01): seven thin pale flaps a side hung edge to edge, a 2 cm seam between
+ * them, from a hem strip along the fender shelf's turned-down lip to 0.50-0.54 m over the ground, so about 60 % of each
+ * road wheel shows under them (the wheels' tops 0.855 m); each flares 3-5 cm outboard at its foot. Outboard of the track's
+ * outer edge (1.623 m) everywhere; the front mudguards stay bare sheet metal (photo 01).
+ */
+function addFlexibleSkirts(P: TankBuilderPort): void {
+  const { box } = KIT;
+  const shelfZ0 = -2.94, shelfZ1 = 2.58, flaps = 7, seam = 0.02, topY = FENDER_Y + 0.005, t = 0.006;
+  for (const side of [-1, 1]) {
+    // the hem strip the flaps hang from, on the lip's outer face
+    P.addEquipment('hullCanvasPale', box(0.014, 0.035, shelfZ1 - shelfZ0), side * (FENDER_OUT + 0.005), FENDER_Y - 0.01,
+      (shelfZ0 + shelfZ1) / 2);
+    const step = (shelfZ1 - shelfZ0 + seam) / flaps;
+    for (let k = 0; k < flaps; k++) {
+      const z0 = shelfZ0 + k * step, z1 = z0 + step - seam;
+      const foot = 0.50 + (k % 3) * 0.02, flare = 0.03 + (k % 2) * 0.02, inX = FENDER_OUT + 0.010;
+      // top edge seated 2 mm into the hem strip; corner order (-x,+z), (+x,+z), (+x,-z), (-x,-z) by actual x
+      const xs = (x: number): number => side * x;
+      const pair = (x0: number, x1: number): [number, number] => (side > 0 ? [xs(x0), xs(x1)] : [xs(x1), xs(x0)]);
+      const [tl, tr] = pair(inX, inX + t), [bl, br] = pair(inX + flare, inX + flare + t);
+      P.addEquipment('hullCanvasPale', KIT.slab([bl, foot, z1], [br, foot, z1], [br, foot, z0], [bl, foot, z0],
+        [tl, topY, z1], [tr, topY, z1], [tr, topY, z0], [tl, topY, z0]));
+    }
+  }
+}
+
+/** The family's hull and running gear, in their build order (the turret follows). */
+function addT54FamilyHull(P: TankBuilderPort, o: T54FamilyHullOptions = {}): void {
   addHullBody(P);
-  addFenders(P);
+  addFenders(P, o);
   addRunningGear(P);
   addHullFront(P);
   addFenderStowage(P);
   addHullRear(P);
+  if (o.flexibleSkirts) addFlexibleSkirts(P);
+}
+
+function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
+  addT54FamilyHull(P);
   buildFamilyTurret(P, v);
-  P.hullG.userData.t54FamilyReceipt = Object.freeze({
+  P.hullG.userData.t54FamilyReceipt = t54FamilyHullReceipt(v);
+  P.turretG.userData.t54FamilyReceipt = Object.freeze({
+    variant: v.id, revision: v.revision,
+    dome: Object.freeze({ widthM: DOME.side * 2, lengthM: DOME.front + DOME.rear, heightM: DOME.H, apexZ: DOME.cz }),
+    pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
+    muzzleLocalZ: MUZZLE_Z, evacuatorLengthM: EVACUATOR_LEN, evacuatorAtMuzzle: true, muzzleCounterweight: false,
+    commanderCupolaSide: 'left', loaderHatchSide: 'right', searchlightSide: 'right', coaxSide: 'right',
+    searchlightDiameterM: v.searchlightR * 2, ventilatorDome: v.ventDome, roofMachineGuns: Object.freeze(v.dshk ? [v.dshkLabel] : []),
+  });
+}
+
+function t54FamilyHullReceipt(v: T54Variant): Readonly<Record<string, unknown>> {
+  return Object.freeze({
     variant: v.id, revision: v.revision, oracleScale: 1.15,
     hullBodyM: Object.freeze({ rearZ: REAR_Z, noseZ: NOSE_Z, fenderTipZ: 3.05, halfWidth: HULL_HALF_W, tubHalfWidth: TUB_HALF_W,
       roofY: ROOF_Y, bellyY: BELLY_Y }),
@@ -628,14 +682,6 @@ function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
     roadWheelPitchM: WHEEL_ZS[2] - WHEEL_ZS[3], firstGapM: WHEEL_ZS[0] - WHEEL_ZS[1],
     trackWidthM: TRACK_W, trackGaugeM: TRACK_XC * 2, returnRollers: 0,
     rearFuelDrums: 2, externalFuelTanksRight: 4, exhaustSide: 'left', driverSide: 'left',
-  });
-  P.turretG.userData.t54FamilyReceipt = Object.freeze({
-    variant: v.id, revision: v.revision,
-    dome: Object.freeze({ widthM: DOME.side * 2, lengthM: DOME.front + DOME.rear, heightM: DOME.H, apexZ: DOME.cz }),
-    pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
-    muzzleLocalZ: MUZZLE_Z, evacuatorLengthM: EVACUATOR_LEN, evacuatorAtMuzzle: true, muzzleCounterweight: false,
-    commanderCupolaSide: 'left', loaderHatchSide: 'right', searchlightSide: 'right', coaxSide: 'right',
-    searchlightDiameterM: v.searchlightR * 2, ventilatorDome: v.ventDome, roofMachineGuns: Object.freeze(v.dshk ? [v.dshkLabel] : []),
   });
 }
 
@@ -647,4 +693,24 @@ export function buildType59(P: TankBuilderPort): void {
 /** The T-55A (1963): the family construction as the owner-supplied model draws it. */
 export function buildT55A(P: TankBuilderPort): void {
   buildT54Family(P, VARIANTS.t55a);
+}
+
+/** The T-55A hull's turret station for a turret of another build (hull frame). */
+interface T55AHullStation {
+  /** The hull roof, the turret-ring plane (m). */
+  readonly roofY: number;
+  /** The ring's centre on the roof (the T-55A's turret pivot). */
+  readonly ringPivot: readonly [number, number, number];
+}
+
+/**
+ * The T-55A's hull and running gear alone, exactly as the T-55A builds them (its own options off by default), for a
+ * vehicle that seats a turret of its own on the T-55's ring (release 269: Finland's ItPsv 90, the Marconi Marksman turret
+ * on the T-55, profiles/marksman.ts, with the flexible skirts and smooth mudguards of its photograph). The T-55A and the
+ * Type 59 build as before (buildT54Family).
+ */
+export function buildT55AHull(P: TankBuilderPort, o: T54FamilyHullOptions = {}): T55AHullStation {
+  addT54FamilyHull(P, o);
+  P.hullG.userData.t54FamilyReceipt = t54FamilyHullReceipt(VARIANTS.t55a);
+  return Object.freeze({ roofY: ROOF_Y, ringPivot: Object.freeze([...TURRET_PIVOT] as [number, number, number]) });
 }

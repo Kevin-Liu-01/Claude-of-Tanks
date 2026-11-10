@@ -4,6 +4,8 @@
 // on Verdant (a desktop page, and a phone-tier page at a phone's landscape viewport); the hold only stages and shoots.
 //
 //   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft]
+//     [--gauntlet --locale=en-US [--sizes=WxH,WxH]]
+//     [--gauntlet] [--locale=en-US|zh-CN]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
 // each strike from a camera over its mark (the recon jet's pass, the barrage, the strafing jet's run, the bomb, the AC-130
@@ -14,7 +16,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { runWarmHold, warmPage } from './capture-hold.mjs';
+import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture-hold.mjs';
+import { datumProblems } from './datum-census.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
@@ -26,9 +29,22 @@ const only = arg('only');
 const perf = !argv.includes('--no-perf');
 // --aircraft: the desktop page films the aircraft (shootAircraft) in place of the strip, views and strikes
 const aircraft = argv.includes('--aircraft');
+// --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
+const gauntlet = argv.includes('--gauntlet');
+const locale = arg('locale', 'en-US');
+const GAUNTLET_SIZES = {
+  desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
+  phone: [[844, 390], [390, 844]],
+};
+// --sizes=1920x1080,900x700: a re-capture of only the frames a change touches
+const sizesArg = arg('sizes');
+if (sizesArg) {
+  const keep = new Set(sizesArg.split(','));
+  for (const page of Object.keys(GAUNTLET_SIZES)) GAUNTLET_SIZES[page] = GAUNTLET_SIZES[page].filter(([w, h]) => keep.has(`${w}x${h}`));
+}
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
-const receipt = { map: mapId, shots: [], calls: [], errors: {}, perf: {} };
+const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {} };
 
 const VIEWPORTS = {
   desktop: { width: 1600, height: 900 },
@@ -234,6 +250,123 @@ async function shootAircraft(page, signal, tag) {
   }
 }
 
+/** In the page: Air Support's surfaces cut or spilling off the screen, and any of their plates over another opaque HUD
+ *  plate or control (ancestors, descendants and full-screen layers aside). */
+const surfaceCheck = () => {
+  const vw = innerWidth, vh = innerHeight;
+  const shown = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width >= 1;
+  const name = (el) => `${el.tagName.toLowerCase()}${el.classList.length ? `.${[...el.classList].join('.')}` : ''}`;
+  const mine = [...document.querySelectorAll('.cot-strike-rack, .strike-support, .cot-binoculars .binocular-readout, '
+    + '.cot-binoculars .binocular-hint, .cot-strike-warning, .binocular-call, .binocular-close')].filter(shown);
+  const clipped = [], off = [], overlaps = [];
+  for (const root of mine) {
+    const r = root.getBoundingClientRect();
+    if (r.left < -0.5 || r.top < -0.5 || r.right > vw + 0.5 || r.bottom > vh + 0.5) off.push(name(root));
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      if (!shown(el) || !el.textContent.trim() || el.closest('.tip')) continue;
+      if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible') clipped.push(`${name(el)} "${el.textContent.trim()}"`);
+    }
+  }
+  const opaque = (el) => {
+    const cs = getComputedStyle(el);
+    return el.tagName === 'BUTTON' || cs.backgroundImage !== 'none' || !/rgba\([^)]*,\s*0\)|transparent/.test(cs.backgroundColor);
+  };
+  const others = [...document.querySelectorAll('body *')].filter((el) => {
+    if (!shown(el) || mine.some((m) => m.contains(el) || el.contains(m))) return false;
+    if (el.closest('.cot-binoculars, .tip, canvas') || el.tagName === 'CANVAS') return false;
+    const r = el.getBoundingClientRect();
+    return r.width < vw * 0.9 && r.height < vh * 0.9 && r.width * r.height >= 300 && opaque(el);
+  });
+  for (const m of mine) {
+    const a = m.getBoundingClientRect();
+    for (const o of others) {
+      const b = o.getBoundingClientRect();
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      if (w > 1 && h > 1) overlaps.push(`${name(m)} x ${name(o)} (${Math.round(w)}x${Math.round(h)})`);
+    }
+  }
+  for (const a of mine) for (const b of mine) {
+    if (a === b || a.contains(b) || b.contains(a) || a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING) continue;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+    if (w > 1 && h > 1) overlaps.push(`${name(a)} x ${name(b)} (${Math.round(w)}x${Math.round(h)})`);
+  }
+  return { clipped, off, overlaps: [...new Set(overlaps)].slice(0, 40) };
+};
+
+/**
+ * The UI gauntlet (UI-GAUNTLET.md; Main 2026-11-07): Support at rest, the binoculars with an enemy bomb coming in on
+ * the crew (the call-in row, the readout, the keys and INCOMING), and the binoculars short of points with a barrage
+ * reloading (the disabled states), at each of the page's sizes. Every frame carries the datum census and the surfaces'
+ * own clip and overlap check. The enemy's bomb is struck off again before it lands.
+ */
+async function shootGauntlet(page, tag) {
+  const spot = await page.evaluate(stage);
+  await page.evaluate(() => {
+    const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    window.__gx = {
+      reset(points, cooling) {
+        const s = air.capture();
+        s.strikes = [];
+        s.points = s.points.filter(([id]) => id !== game.player.id).concat([[game.player.id, points]]);
+        s.cooldowns = s.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`))
+          .concat(cooling.map((kind) => [`${game.player.id}:${kind}`, game.timeS + air.rules[kind].cooldownS * 0.6]));
+        air.restore(s);
+        const c = game.player.combat;
+        if (!c.destroyed) c.hp = c.maxHp;
+      },
+      // (g5: the first live foe could stand out of its call-in's range; every live foe is asked in turn)
+      incoming() {
+        return game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).some((foe) => this.ask(foe));
+      },
+      ask(foe) {
+        const s = air.capture();
+        s.points = s.points.filter(([id]) => id !== foe.id).concat([[foe.id, air.rules.points.cap]]);
+        // (g1: the first size's call left the foe's bomb cooling, so every later size had nothing incoming)
+        s.cooldowns = s.cooldowns.filter(([key]) => !key.startsWith(`${foe.id}:`));
+        air.restore(s);
+        const p = game.player.state.pos;
+        return air.requestStrike(foe.id, 'bomb', p.x, p.z, game.timeS);
+      },
+    };
+  });
+  const frame = async (name) => {
+    const file = `${tag}-${locale}-${name}`;
+    // (g4: the battle went on around the frames and once destroyed the crew; the hull is topped up at every frame)
+    const crew = await page.evaluate(() => { const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; return c.destroyed ? ['destroyed'] : []; });
+    // (g3: a focus loss on a loaded machine raised the pause veil over one frame; the veil is not this surface)
+    if (await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); return !!go; })) await sleep(600);
+    await shot(page, file);
+    receipt.gauntlet[file] = { ...(await page.evaluate(surfaceCheck)), datum: await datumProblems(page), crew };
+  };
+  const aim = () => page.evaluate((spot) => {
+    const D = window.__DEBUG, p = D.game.player.state.pos, hf = D.world.heightField;
+    D.rig.snapSniper(4, Math.atan2(spot.x - p.x, spot.z - p.z), Math.atan2(hf.getHeightAt(spot.x, spot.z) - (p.y + 2.6), 260));
+  }, spot);
+  for (const [width, height] of GAUNTLET_SIZES[tag]) {
+    await page.setViewport({ ...VIEWPORTS[tag], width, height });
+    await sleep(1500);
+    const size = `${width}x${height}`;
+    await page.evaluate(() => { window.__gx.reset(window.__DEBUG.game.matchModeController.airSupport.rules.points.cap, []); window.__DEBUG.bus.emit('ui:strikeViewClose', {}); });
+    await sleep(900);
+    await frame(`${size}-rest`);
+    await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikePick', { kind: 'strafe' }));
+    await sleep(900);
+    await aim();
+    // (g3: one size's request was refused under load; ask once more before the frame)
+    const incoming = await page.evaluate(() => window.__gx.incoming()) || (await sleep(400), await page.evaluate(() => window.__gx.incoming()));
+    receipt.calls.push({ size, kind: 'bomb', incoming });
+    await sleep(700);
+    await frame(`${size}-view`);
+    await page.evaluate(() => { window.__gx.reset(350, ['artillery']); window.__DEBUG.bus.emit('ui:strikePick', { kind: 'bomb' }); });
+    await sleep(700);
+    await aim();
+    await sleep(300);
+    await frame(`${size}-view-short`);
+    await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikeViewClose', {}));
+  }
+}
+
 /**
  * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
  * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
@@ -300,10 +433,16 @@ await runWarmHold({
     for (const tag of Object.keys(VIEWPORTS)) {
       if (only && only !== tag) continue;
       const errors = receipt.errors[tag] = [];
-      const page = await warmPage(browser, `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, {
-        ready: 'window.__GAME_READY === true', viewport: VIEWPORTS[tag],
+      // warmPage's own load, with the locale stored before the first document (i18n reads it once, at boot)
+      const page = await browser.newPage();
+      await page.setViewport(VIEWPORTS[tag]);
+      await stubViteSocket(page);
+      if (locale !== 'en-US') await page.evaluateOnNewDocument((value) => { try { localStorage.setItem('cot.locale', value); } catch {} }, locale);
+      rememberWarm(page, {
+        url: `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, ready: 'window.__GAME_READY === true',
         after: (page) => beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500, timeoutMs: 900_000 }),
       });
+      await rewarmPage(page);
       page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
       page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });
       pages[tag] = page;
@@ -311,6 +450,10 @@ await runWarmHold({
     return { pages: Object.values(pages), byTag: pages, close: async () => { await browser.close(); await server.close(); } };
   },
   shoot: async ({ byTag, signal }) => {
+    if (gauntlet) {
+      for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootGauntlet(byTag[tag], tag);
+      return;
+    }
     if (byTag.desktop && aircraft) {
       await shootAircraft(byTag.desktop, signal, 'aircraft');
     } else if (byTag.desktop) {
@@ -330,5 +473,5 @@ await runWarmHold({
     }
   },
 });
-writeFileSync(path.join(out, `air-support-shots${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+writeFileSync(path.join(out, `air-support-shots${gauntlet ? `-gauntlet-${locale}` : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
 console.log(JSON.stringify({ shots: receipt.shots.length, calls: receipt.calls, perf: receipt.perf, errors: Object.fromEntries(Object.entries(receipt.errors).map(([k, v]) => [k, v.length])) }));

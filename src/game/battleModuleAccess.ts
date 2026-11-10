@@ -1,4 +1,4 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 type PlayMenuModule = typeof import('../ui/playMenu.ts');
 
 interface BattleModuleLoaders {
@@ -13,17 +13,11 @@ const DEFAULT_LOADERS: BattleModuleLoaders = {
   playMenu: async () => await import('../ui/playMenu.ts'),
 };
 
+// (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy (at
+// once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
 function retryable<T>(load: () => Promise<T>): () => Promise<T> {
-  let pending: Promise<T> | null = null;
-  return () => {
-    if (pending) return pending;
-    const request = load().catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
-    });
-    pending = request;
-    return request;
-  };
+  const chunk = createLazyChunk(load);
+  return () => chunk.load();
 }
 
 /**

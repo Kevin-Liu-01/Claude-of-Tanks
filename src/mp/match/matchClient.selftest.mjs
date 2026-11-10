@@ -315,6 +315,30 @@ function mulberry(seed) {
   assert.deepEqual([...player.client.retainedMigration().fallen].sort((a, b) => a - b), [7, 11], 'a reset clears the event queue, never the falls the client was told of');
 }
 
+// ------------------------------------------------------------ every revive is retained with its tick for a migration boot
+// (audit M1, review round 2): a hull a mode revived after the keyframe lives a life the keyframe's extras never saw, and a
+// hull revived while alive leaves its rows alive on both sides, so only the `mode_respawn` names it (migrationState.ts)
+{
+  const world = createWorld({ link: { latencyMs: 30, jitterMs: 0, loss: 0 }, botList: [] });
+  const player = world.addClient({ token: 'tok-1', seed: 78 });
+  player.client.connect();
+  player.driver.run(1_500);
+  assert.equal(player.client.phase, 'live');
+  assert.deepEqual(player.client.retainedMigration().respawns, [], 'no revive yet');
+  const before = player.client.retainedMigration().latestFrame.tick;
+  world.server.respawn(2, 60, 40, Math.PI);
+  player.driver.run(300);
+  const told = player.client.retainedMigration();
+  assert.equal(told.respawns.length, 1, 'the client retains the revive it was told of');
+  const [id, tick] = told.respawns[0];
+  assert.ok(id === 'p2' && tick > before && tick <= told.latestFrame.tick, `the revive's id and its tick (${JSON.stringify(told.respawns)}, frames ${before}..${told.latestFrame.tick})`);
+  player.driver.run(500);
+  world.server.respawn(2, 60, 40, Math.PI);
+  player.driver.run(300);
+  const again = player.client.retainedMigration().respawns;
+  assert.ok(again.length === 1 && again[0][0] === 'p2' && again[0][1] > tick, 'one entry per hull: its newest revive');
+}
+
 // ------------------------------------------------------------ input edges survive loss; a wrong token spectates; rates reject
 {
   const world = createWorld({ link: { latencyMs: 60, jitterMs: 20, loss: 0.15, lossFilter }, botList: [] });

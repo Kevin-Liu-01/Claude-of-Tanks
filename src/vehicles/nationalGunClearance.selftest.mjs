@@ -27,6 +27,8 @@ const CURVES = {
   t72b3_bastion_m: [],
   type96b: [],
   gepard_1a2: [], // 268: its published curve lifts the guns at most 1 deg over the stern deck's outlet covers (yaw 140-180)
+  marksman_t55: [], // 269: the Marksman turret's measured stern curves (marksmanSpecs.ts), on the T-55A deck
+  itpsv_leopard2: [], // 269: and on the Leopard 2A4 deck
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],
@@ -72,6 +74,11 @@ const CURVES = {
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
+  // release 269: the Russian 152 mm line on their measured curves (russia152Specs.ts): the Object 292 on the T-80U X hull
+  // and casting, its LP-83 inside the X's trunnion block; the Molot's 2A73 over its high hull; the T-14 152's 2A83
+  object292: [],
+  object477_molot: [],
+  t14_152: [],
   // release 231: the C1 Ariete pre-series, its hull under the turret's sweep and its mantlet raked (profiles/misc.ts)
   c1_ariete_preserie: [],
   // release 231: the Ariete prototypes, their turrets' undersides at the hull slab and the roof ahead of the turret at the

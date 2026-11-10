@@ -24,6 +24,7 @@ import { preloadEveryKit } from '../../kitRegistryNode.ts';
 import { climateOf, surfaceOf, variationOf, wearOf } from '../buildingStyleTable.ts';
 import { pickLook, withPaint, type AppearanceLedger } from './appearance.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
+import { assertNoBuildScopeOpen, openBuildScopes } from '../buildScopes.ts';
 
 export type { ArchitectureStyle } from './types.ts';
 
@@ -229,6 +230,9 @@ function* buildRegionalPartsSteps(
   const climate = climateOf(ctx.mapId, style.id);
   const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
+  // (2026-11-02 audit R1) the scopes a caller holds open around this build (a nested build drained in one go); every scope
+  // this build opens is closed at its checkpoints (buildScopes.ts)
+  const outerScopes = openBuildScopes();
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
@@ -251,6 +255,7 @@ function* buildRegionalPartsSteps(
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
   const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => withPaint(look?.dress.paint, () => builder(look ? { ...ctx, dress: look.dress } : ctx))))));
+  assertNoBuildScopeOpen(`${style.id}/${ctx.structureId}`, outerScopes);
   yield REGIONAL_SLICE;
   // (the map-revival lane, 2026-10-07: a kit that folds its third plaster paint into its second's bucket,
   // ArchitectureStyle.foldThirdPlaster, by the colour of its own two paints)
@@ -260,6 +265,7 @@ function* buildRegionalPartsSteps(
     ...(style.foldThirdPlaster ? { plaster3Fold: foldOf(style) } : {}) }));
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info,
     ...(ruinWalls.length ? { ruinWalls } : {}), ...(lattices.length ? { lattices } : {}) });
+  assertNoBuildScopeOpen(`${style.id}/${ctx.structureId}`, outerScopes);
   yield REGIONAL_SLICE;
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was

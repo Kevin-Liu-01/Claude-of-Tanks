@@ -17,6 +17,7 @@ import {
   type TouchControlsOptions,
   type TouchControlsRuntime,
 } from '../ui/touchControlsAccess.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface MobileBattleInputTank extends MobileAutoAimCandidate {
   aerial?: {active:boolean;kind:string};
@@ -122,23 +123,23 @@ export function createMobileBattleInputAccess<
     getFlightKind: () => {const flight=getPlayer()?.aerial;return flight?.active?flight.kind:undefined;},
   });
 
-  const ensureAutoAim = async (): Promise<MobileAutoAimRuntime> => {
-    if (autoAim) return autoAim;
-    const module = await loadAutoAim();
-    autoAim = module.createMobileAutoAimRuntime({
-      bus,
-      input,
-      camera,
-      getPhase,
-      getTanks,
-      getPlayer,
-      getTankById,
-      isVisible,
-      pickTarget,
-      targetCenter,
-    });
-    return autoAim;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: the auto-aim had no memo (two preloads in flight each
+  // made a runtime) and every call asked a failed chunk again at once; now the one policy (at once after one failure, then
+  // past its backoff; a removed chunk shows the reload action). The touch controls' access is on it too, and the join below
+  // only shares the two loads' one wait.
+  const autoAimChunk = createLazyChunk(() => loadAutoAim().then((module) => (autoAim = module.createMobileAutoAimRuntime({
+    bus,
+    input,
+    camera,
+    getPhase,
+    getTanks,
+    getPlayer,
+    getTankById,
+    isVisible,
+    pickTarget,
+    targetCenter,
+  }))));
+  const ensureAutoAim = (): Promise<MobileAutoAimRuntime> => autoAimChunk.load();
 
   const preload = (): Promise<TouchControlsRuntime | null> => {
     // round 30: the auto-aim lock serves the desktop T key as well, so the runtime loads on every layout;

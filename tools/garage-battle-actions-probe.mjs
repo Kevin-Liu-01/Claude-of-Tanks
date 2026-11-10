@@ -34,7 +34,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { checkGarageBattleActions, checkGarageActionAudio, checkGarageActionWarmReadiness } from './garage-battle-actions-contract.mjs';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile,
@@ -43,6 +43,7 @@ import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
 import { installSourcedTextureReadiness, checkSourcedTextureReadiness } from './sourced-texture-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath, requestAutomationPath } from './game-readiness.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -108,9 +109,9 @@ const report = { schemaVersion: 2,
     ...(sourceReadinessGate ? [readFile(new URL('./sourced-texture-readiness.mjs', import.meta.url))] : []),
   ])).concat(retryCatalogs).join('\n')),
   startedAt: new Date().toISOString(), actions: [], errors: [], cleanupErrors: [], failures: [] };
-const lock = createCaptureLock();
+let hold;
 const startTrace = traceActions ? (await import('./multiplayer-frame-trace.mjs')).startMultiplayerFrameTrace : null;
-let browser, page, cdp, refresher;
+let browser, page, cdp;
 let leaseAcquired = false, interruptedBy = null, closingBrowser, activeActionTrace;
 
 function assertProbeActive() {
@@ -218,13 +219,13 @@ async function finishFixtureBattle() {
 }
 
 try {
-  await lock.acquire(15 * 60 * 1000);
+  hold = await openCaptureHold({ label: 'garage-battle-actions-probe', timeoutMs: 15 * 60 * 1000, signals: [] /* its own signal handler stops the run */ });
   leaseAcquired = true;
   assertProbeActive();
-  refresher = setInterval(() => lock.refresh(), 30_000);
-  refresher.unref();
+  // (2026-11-02 audit S3) the --url build may predate src/app/automationPath.ts, which ignores the player's request and
+  // takes the harness path under navigator.webdriver: the driver is hidden so either build takes the player's path
   browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'] });
   assertProbeActive();
   report.browserVersion = await browser.version();
   page = await browser.newPage();
@@ -234,10 +235,9 @@ try {
   if (cpuRate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   page.on('pageerror', error => report.errors.push(String(error)));
   page.on('console', entry => { if (entry.type() === 'error') report.errors.push(entry.text()); });
-  await page.evaluateOnNewDocument(() => {
-    // Match player fades. No quality, simulation, renderer or readiness overrides.
-    Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
-  });
+  // Match player fades: the player's path (src/app/automationPath.ts). No quality, simulation, renderer or readiness
+  // overrides.
+  await requestAutomationPath(page, 'player');
   await page.evaluateOnNewDocument(installGarageActionTiming, { canvasActions });
   if (sourceReadinessGate) await page.evaluateOnNewDocument(installSourcedTextureReadiness);
   if (garageGestureAudioGate || bootAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);
@@ -245,7 +245,8 @@ try {
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   if (!navigation?.ok()) throw new Error(`Navigation failed: ${navigation?.status()}`);
   report.buildIndexHash = hash(await navigation.text());
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.garage);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.garage`);
+  report.automation = await assertAutomationPath(page, 'player', { label: 'garage-battle-actions-probe' });
   if (bootAudioGate) {
     await page.waitForSelector('#cot-boot-gate.on', { visible: true });
     report.bootAudioIntent = { before: await page.evaluate(readGarageAudioIntent) };
@@ -307,8 +308,7 @@ try {
   }
   if (page && !page.isClosed()) await page.evaluate(() => window.__ACTION_TRACE?.stop()).catch(() => {});
   await closeOwnedBrowser();
-  clearInterval(refresher);
-  if (leaseAcquired) lock.release();
+  if (leaseAcquired) await hold?.release();
   process.removeListener('SIGINT', onSigint);
   process.removeListener('SIGTERM', onSigterm);
   if (interruptedBy) {

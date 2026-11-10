@@ -1,3 +1,5 @@
+import { createLazyChunk } from '../app/lazyChunk.ts';
+
 type MaybePromise<T> = T | PromiseLike<T>;
 
 interface FxRuntimeAccessOptions<TModule, TRuntime extends object> {
@@ -37,18 +39,13 @@ export function createFxRuntimeAccess<TModule, TRuntime extends object>({
   let runtime: TRuntime | null = null;
   let active = false;
   let activationRequested = false;
-  let modulePromise: Promise<TModule> | null = null;
   let runtimePromise: Promise<TRuntime> | null = null;
 
-  const preloadModule = (): Promise<TModule> => {
-    if (modulePromise) return modulePromise;
-    const request = Promise.resolve().then(loadModule);
-    modulePromise = request;
-    request.catch(() => {
-      if (modulePromise === request) modulePromise = null;
-    });
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) the module is one app/lazyChunk.ts chunk: a failed one is asked again under the one
+  // policy (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every
+  // call. The runtime below is an initialization over the loaded module, not a chunk: a failed one is made again next time.
+  const moduleChunk = createLazyChunk(() => Promise.resolve().then(loadModule));
+  const preloadModule = (): Promise<TModule> => moduleChunk.load();
 
   const ensureRuntime = (): Promise<TRuntime> => {
     activationRequested = true;

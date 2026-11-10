@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
+import {pageLoadBudget} from './tool-page-load.mjs';
 const modulePath=process.argv.find(a=>a.startsWith('--playwright-module='))?.slice(20)||'playwright';
 const {chromium}=await import(modulePath);
 // Page load under machine load: COT_NAV_TIMEOUT_MS / COT_READY_TIMEOUT_MS raise the fixture's navigation and HUD-ready
-// waits (30 s each by default) and COT_NAV_RETRIES retries a load that timed out.
-const NAV_TIMEOUT_MS=Number(process.env.COT_NAV_TIMEOUT_MS)||30000, READY_TIMEOUT_MS=Number(process.env.COT_READY_TIMEOUT_MS)||30000;
-const NAV_RETRIES=Math.max(0,Math.floor(Number(process.env.COT_NAV_RETRIES)||0));
+// waits (30 s each by default) and COT_NAV_RETRIES retries a load that timed out (none by default), read through the
+// tools' one page budget (tool-page-load.mjs pageLoadBudget, with this fixture's own defaults).
+const {navTimeoutMs:NAV_TIMEOUT_MS,readyTimeoutMs:READY_TIMEOUT_MS,retries:NAV_RETRIES}=pageLoadBudget({navTimeoutMs:30000,readyTimeoutMs:30000,retries:0});
 const server=await createServer({server:{host:'127.0.0.1',port:5378,hmr:false},logLevel:'error'});
 const out=resolve('.qa-dev/weapon-readout');await mkdir(out,{recursive:true});
 let browser;

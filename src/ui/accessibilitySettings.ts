@@ -13,6 +13,7 @@
  */
 import { readAccessibilityRoot } from './accessibilityPreferences.ts';
 import { checkCustomTeamColours, type CustomTeamCheck } from './colorVision.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 export const ACCESSIBILITY_KEY = 'cot.accessibility.v1';
 /** Dispatched on window (detail: the applied preferences) whenever they change. */
@@ -121,6 +122,7 @@ function setVar(root: Root, name: string, value: number | string | null): void {
 }
 
 let motionTouched = false;
+const motionRules = createLazyChunk(() => import('./accessibilityMotion.ts'));
 
 /**
  * Write the record on :root (exactly what the head seed in index.html writes at boot, pinned by the selftest), read it
@@ -146,8 +148,9 @@ export function applyAccessibility(prefs: AccessibilityPreferences, root: Root |
   // System with nothing overridden is the document as authored; any choice (or a return from one) syncs every rule.
   if (prefs.motion !== 'system' || motionTouched) {
     motionTouched = true;
-    // (a chunk the network dropped keeps the motion rules the page has; the next change of the setting loads them again)
-    void import('./accessibilityMotion.ts').then((m) => m.syncMotionRules(globalThis.document)).catch(() => { motionTouched = false; });
+    // (a chunk the network dropped keeps the motion rules the page has; the next change of the setting asks again, under
+    // the one lazy-chunk policy, app/lazyChunk.ts: 2026-11-02 audit R6)
+    void motionRules.load().then((m) => m.syncMotionRules(globalThis.document)).catch(() => { motionTouched = false; });
   }
 }
 

@@ -124,6 +124,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/pdfs/pdf_6184.pdf',
     kind: 'manufacturer',
   }),
+  apukhtinBoxer: Object.freeze({
+    title: 'Yu. Apukhtin — How the last Soviet tank Boxer/Molot (Object 477) was made, part 2',
+    url: 'https://web.archive.org/web/2019/https://topwar.ru/145828-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-2-vooruzhenie-podvizhnost-zaschita.html',
+    kind: 'manufacturer-history',
+  }),
   rostecArmataOptics: Object.freeze({
     title: 'Rostec — T-14 electro-optical observation and aiming systems',
     url: 'https://elements.rostec.ru/media/news/uralvagonzavod-pokazhet-na-armii-2023-vozmozhnosti-modernizatsii-bronetekhniki-/',
@@ -305,6 +310,20 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://en.wikipedia.org/wiki/Type_95_SPAAA', kind: 'encyclopedia' }),
   wikiPgz09: Object.freeze({ title: 'Wikipedia, "PGZ-09"',
     url: 'https://en.wikipedia.org/wiki/PGZ-09', kind: 'encyclopedia' }),
+  // 269: the second air-defence round (published crew and weapon configurations; no interior drawings)
+  wikiType87: Object.freeze({ title: 'Wikipedia, "Type 87 self-propelled anti-aircraft gun"',
+    url: 'https://en.wikipedia.org/wiki/Type_87_self-propelled_anti-aircraft_gun', kind: 'encyclopedia' }),
+  wikiMarksman: Object.freeze({ title: 'Wikipedia, "Marksman anti-aircraft system" (the T-55AM and Leopard 2A4 hulls)',
+    url: 'https://en.wikipedia.org/wiki/Marksman_anti-aircraft_system', kind: 'encyclopedia' }),
+  wikiCv90Lvkv: Object.freeze({ title: 'Wikipedia, "Combat Vehicle 90" (the Lvkv 90 variant and its table column)',
+    url: 'https://en.wikipedia.org/wiki/Combat_Vehicle_90', kind: 'encyclopedia' }),
+  wikiK30: Object.freeze({ title: 'Wikipedia, "K30 Biho"',
+    url: 'https://en.wikipedia.org/wiki/K30_Biho', kind: 'encyclopedia' }),
+  wikiLoara: Object.freeze({ title: 'Wikipedia, "PZA Loara"',
+    url: 'https://en.wikipedia.org/wiki/PZA_Loara', kind: 'encyclopedia' }),
+  // 269: the M163 VADS (the crew of four, the linkless drum, the stowed rounds)
+  wikiM163: Object.freeze({ title: 'Wikipedia, "M163 VADS"',
+    url: 'https://en.wikipedia.org/wiki/M163_VADS', kind: 'encyclopedia' }),
 } satisfies Record<string, InternalLayoutSource>);
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
@@ -468,6 +487,12 @@ const LAYOUTS = Object.freeze({
   armata: { confidence: 'platform-inferred', sources: ['rostecArmataOptics'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ optics: { placement: 'turretPerimeter', form: 'distributedElectroOpticalSuite' }, ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
+  // release 269: the Object 477 Molot (Yu. Apukhtin, its project leader): the driver forward, the gunner and commander low
+  // under the turret either side of the gun's breech, 8 ready rounds on a belt in the turret's rear niche fed from two
+  // hull conveyors of 32
+  molot: { confidence: 'documented', sources: ['apukhtinBoxer'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'mixed', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   kf51_evo: { confidence: 'documented', sources: ['rheinmetallKf51'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   // 268: the Eurosatory 2024 KF51-U carries its uncrewed turret over three crew side by side in the hull front, under the
   // three hull hatches its model draws (leopard.ts kf51uCrewStationsReceipt), the AbramsX arrangement
@@ -546,6 +571,41 @@ const LAYOUTS = Object.freeze({
   spaaPgz09: { confidence: 'platform-inferred', sources: ['wikiPgz09'], crew: IFV_TWO_MAN_TURRET,
     systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
       ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  // 269: the second air-defence round. Belt-fed twin guns and their ready rounds in the turret (the Lvkv 9040's single
+  // Bofors from its 24-round clips); the driver where the base hull seats him, the gunner (+x) and the commander side by
+  // side in the turret, the fourth seat (the Lvkv's and the K30's radar operator) behind the gunner; the CV90 and the
+  // K200 carry the power pack at the front
+  spaaType87: { confidence: 'platform-inferred', sources: ['wikiType87'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaMarksmanT55: { confidence: 'platform-inferred', sources: ['wikiMarksman'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaMarksmanLeopard2: { confidence: 'platform-inferred', sources: ['wikiMarksman'], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaLvkv9040: { confidence: 'platform-inferred', sources: ['wikiCv90Lvkv'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+    ['radioOperator', 'turret', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'clipFeed' } }) },
+  spaaK30: { confidence: 'platform-inferred', sources: ['wikiK30'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+    ['radioOperator', 'turret', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaLoara: { confidence: 'platform-inferred', sources: ['wikiLoara'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  // 269: the M163 VADS on the M741 (an M113A1): the driver at the front left beside the 6V53, the gunner alone in his
+  // column at the open mount's rear right, the Vulcan on its left front and the radar on its right, the commander under
+  // his hatch at the right rear and the loader opposite him; the linkless drum in the hull under the turret, its chute up
+  // through the inboard trunnion
+  spaaM163: { confidence: 'platform-inferred', sources: ['wikiM163'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'midRight'], ['commander', 'hull', 'rearRight'],
+    ['loader', 'hull', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'hull', form: 'hullBins' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' } }) },
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
@@ -601,7 +661,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptRocketBattery: ['tos1a_tagil'],
   conceptViper: ['griffin_viper'],
   heavyWw2Six: ['kv2'],
-  casemateFour: ['jpz_e100'],
+  casemateFour: ['jpz_e100', 't95'],
   pershingFive: ['m46_patton', 'm47_patton'],
   westernManualHullAmmo: ['olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'sabra_mk2', 'magach6b', 'magach7c', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'semel', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'type74', 'amx40_proto', 'type59', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super', 'vickers_mk1', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'm60a3', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49', 'm113a1_fsv', 'm113a1_mrv'],
   starship: ['m60a2'],
@@ -627,13 +687,14 @@ const IDS_BY_LAYOUT = Object.freeze({
   // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader
   sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
   sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik'],
-  bustleAuto: ['type90', 'type90b', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
+  bustleAuto: ['object292', 'type90', 'type90b', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
   stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
-  armata: ['object148_proto', 't14_armata'],
+  armata: ['object148_proto', 't14_armata', 'object195', 't14_152'],
+  molot: ['object477_molot'],
   kf51_evo: ['kf51_evo', 'kf51_panther'],
   kf51U: ['kf51_u'],
   abramsX: ['abramsx'],
@@ -657,6 +718,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   spaaGepard: ['gepard_1a2'],
   spaaPgz95: ['pgz95'],
   spaaPgz09: ['pgz09'],
+  spaaType87: ['type87_aw'],
+  spaaMarksmanT55: ['marksman_t55'],
+  spaaMarksmanLeopard2: ['itpsv_leopard2'],
+  spaaLvkv9040: ['lvkv9040'],
+  spaaK30: ['k30_biho'],
+  spaaLoara: ['pza_loara'],
+  spaaM163: ['m163_vads'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
   suppliedWarriorMilan: ['warrior_tes_h'],

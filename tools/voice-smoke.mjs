@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // voice-smoke.mjs — play-path smoke for the national crew radio
 // (src/audio/crewRadio.ts, packs in public/audio/voice/<lang>/).
 //
@@ -31,6 +31,7 @@ import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
 import { pageLoadBudget } from './tool-page-load.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const LANGUAGES = CREW_LANGUAGES;
 const outDir = resolve('shots/voice-smoke');
@@ -64,10 +65,7 @@ function analyze(i16, sampleRate) {
   return { rms, rmsDb: rms > 0 ? 20 * Math.log10(rms) : -Infinity, highShare, lowShare };
 }
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'voice-smoke', timeoutMs: 20 * 60 * 1000 });
 
 const port = 7600 + Math.floor(Math.random() * 300);
 // A private dep cache: node_modules (and its .vite) can be shared between checkouts.
@@ -108,16 +106,16 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
-  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS): its cold private vite cache took
-  // past 90 s on a loaded machine, twice, before any line was heard
-  const { navTimeoutMs, readyTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; one retry of a failed load,
+  // COT_NAV_RETRIES): its cold private vite cache took past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs, retries } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });
+      await waitForBootLoaded(page, { timeout: readyTimeoutMs });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= retries) throw err;
       console.warn(`[voice-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }
@@ -289,8 +287,15 @@ try {
     .catch(() => {});
   // Checked now: the radio log keeps its last 64 calls, and the sweep adds 38 and the battle's own.
   const envelope = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));
+  // The battle behind can still end inside that window (a run on 11-08 heard the player's crew go down, then its own
+  // defeat presented over the smoke's victory): that is staging, named as such, not a radio that dropped the line.
+  const after = await page.evaluate(() => ({ result: window.__DEBUG.game.result ?? null,
+    timeS: +(window.__DEBUG.game.timeS ?? 0).toFixed(1) }));
+  report.battleBehindAfter = after;
   for (const id of ['battle_start', 'victory']) {
-    if (!envelope.includes(id)) fail(`bus event never played voice line: ${id}`);
+    if (envelope.includes(id)) continue;
+    if (id === 'victory' && after.result) fail(`the battle behind the smoke ended (${after.result} at ${after.timeS} s) inside the result window: staging, rerun`);
+    else fail(`bus event never played voice line: ${id}`);
   }
 
   // 5) every pack through the radio chain, isolated from the rest of the mix.
@@ -364,8 +369,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify({ ...report, errors }, null, 2));
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 if (errors.length) {

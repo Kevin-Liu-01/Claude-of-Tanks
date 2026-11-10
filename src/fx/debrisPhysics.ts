@@ -68,6 +68,12 @@ export interface DebrisPhysics {
   setHulls(tanks: readonly (WreckTurretTank | null | undefined)[]): void;
   /** Advance by the caller's clock delta (s): fixed steps; returns the interpolation alpha for framePoseAt. */
   advance(dtS: number): number;
+  /**
+   * (2026-11-02 audit R7) The clock delta the pool has given up since its reset (s): past MAX_STEPS_PER_ADVANCE steps an
+   * advance (under ~15 fps) and beyond a 0.25 s delta. Whatever ages pieces on the caller's clock subtracts it, so the
+   * pieces and their bodies keep one time.
+   */
+  droppedS(): number;
   /** A piece's authoring-frame pose interpolated to this frame; false for an unknown handle. */
   framePoseAt(handle: number, out: Float64Array | number[]): boolean;
   /** Whether a piece's body sleeps: come to rest, or a resting piece still waiting for its release (a waiting piece
@@ -114,6 +120,7 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
   let handles = 0;
   let timeS = 0;
   let accumulator = 0;
+  let dropped = 0;
   /**
    * (destruction-slabs 227 round 4; the engineering critic's badlands #0 slab thrown to y = 212 m, saltwind #0's hip ends
    * launched 15 m over the roof at 17-42 m/s in one step, no hit reported) what the solver gives a body in one step is never
@@ -305,7 +312,9 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     },
     advance(dtS) {
       if (!(dtS > 0)) return alpha;
-      accumulator += Math.min(dtS, 0.25);
+      const taken = Math.min(dtS, 0.25);
+      dropped += dtS - taken;
+      accumulator += taken;
       let steps = 0;
       while (accumulator >= RIGID_STEP_S && steps < MAX_STEPS_PER_ADVANCE) {
         releaseDue();
@@ -322,7 +331,10 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
         accumulator -= RIGID_STEP_S;
         steps++;
       }
-      if (steps === MAX_STEPS_PER_ADVANCE && accumulator > RIGID_STEP_S) accumulator = RIGID_STEP_S * 0.5;
+      if (steps === MAX_STEPS_PER_ADVANCE && accumulator > RIGID_STEP_S) {
+        dropped += accumulator - RIGID_STEP_S * 0.5;
+        accumulator = RIGID_STEP_S * 0.5;
+      }
       alpha = Math.min(1, accumulator / RIGID_STEP_S);
       return alpha;
     },
@@ -373,8 +385,9 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       handleSlot.fill(HANDLE_NONE);
       slotHandle.fill(HANDLE_NONE);
       handleShape.fill(null);
-      waiting = 0; handles = 0; nextHandle = 0; timeS = 0; accumulator = 0; alpha = 1;
+      waiting = 0; handles = 0; nextHandle = 0; timeS = 0; accumulator = 0; alpha = 1; dropped = 0;
     },
+    droppedS() { return dropped; },
     stats() {
       return { bodies: world.count, awake: world.awakeCount, waiting, handles, timeS };
     },

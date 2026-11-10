@@ -41,12 +41,22 @@ const LOBBY_CSS = `
 export interface CouchLobbyRequest {
   /** The Deploy screen's mode (its sides follow it). */
   gameMode: string;
-  /** Deploy the seats (the Deploy screen's vehicle and map). */
-  start(couch: CouchBattle): void;
+  /** The Garage open span the press began in (src/app/couchOpener.ts opens the lobby only while it holds). */
+  ticket: { current(): boolean };
+  /** The Couch button: the modal's trigger (its focus comes back there, and the Garage's hide takes the modal with it). */
+  trigger: HTMLElement | null;
+  /** Deploy the seats (the Deploy screen's vehicle and map): false when the Garage refused the start. */
+  start(couch: CouchBattle): boolean;
 }
 
 let modal: ModalController | null = null;
 let detach: (() => void) | null = null;
+
+/** Reopen (Let Phones Join) is offered only on a closed lobby: not while it opens, is open, has ended, or is away
+ *  reconnecting (round 8 Y5 s3-08: away looked closed, and a press then reached no host). */
+export function reopenOffered(view: Pick<PadLobbyView, 'state'>): boolean {
+  return view.state === 'closed';
+}
 
 function button(parent: HTMLElement, variant: 'primary' | 'secondary' | 'quiet', label: string): HTMLButtonElement {
   const control = parent.appendChild(document.createElement('button'));
@@ -71,7 +81,7 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     const note = body.appendChild(document.createElement('p'));
     note.className = 'cot-couch-note';
     note.textContent = t('couch.unavailable');
-    modal.open();
+    modal.open({ trigger: request.trigger });
     return;
   }
 
@@ -91,6 +101,12 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const seats = side.appendChild(document.createElement('ol'));
   seats.className = 'cot-couch-seats';
   seats.setAttribute('aria-label', t('couch.seats'));
+  // while the lobby's link reconnects it says so (its QR dims as a closed lobby's does, and Reopen waits)
+  const reconnecting = side.appendChild(document.createElement('p'));
+  reconnecting.className = 'cot-couch-note';
+  reconnecting.setAttribute('role', 'status');
+  reconnecting.textContent = t('pad.state.connecting');
+  reconnecting.hidden = true;
   const seatCells: HTMLLIElement[] = [];
   for (let seat = 1; seat <= PAD_LOBBY_SEATS; seat++) {
     const cell = seats.appendChild(document.createElement('li'));
@@ -109,11 +125,12 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const start = button(footer, 'primary', t('couch.start'));
   end.addEventListener('click', () => { runtime.close(); modal?.close(); });
   reopen.addEventListener('click', () => lobby.setOpen(true));
+  // (round 8 Y4 s3-09) the runtime's start edge: the join window closes, then the seats here deploy
   start.addEventListener('click', () => {
-    const inPlay = runtime.seatsInPlay();
-    if (!inPlay.length) return;
-    modal?.close();
-    request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+    runtime.startBattle((inPlay) => {
+      modal?.close();
+      return request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
+    });
   });
 
   let shownCode = '';
@@ -133,7 +150,8 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     }
     const open = view.state === 'open';
     qr.dataset.state = open ? 'on' : 'off';
-    reopen.hidden = open || view.state === 'ended' || view.state === 'connecting';
+    reopen.hidden = !reopenOffered(view);
+    reconnecting.hidden = view.state !== 'away';
     const inPlay = view.seats.filter((seat) => seat.presence === 'here').map((seat) => seat.seat);
     const sideOf = new Map(inPlay.map((seat, index) => [seat, (sides === 'teams' && !togetherOnly && index % 2 === 1) ? 'bravo' : 'alpha']));
     for (const cell of seatCells) {
@@ -147,5 +165,5 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   }
   paint(lobby.view);
   detach = lobby.subscribe(paint);
-  modal.open();
+  modal.open({ trigger: request.trigger });
 }

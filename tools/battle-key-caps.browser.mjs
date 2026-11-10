@@ -18,6 +18,7 @@ import net from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { readinessExpression } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -84,7 +85,7 @@ try {
   await page.waitForSelector('#cot-battle-menu.open [data-battle-launch]', { visible: true, timeout: 60_000 });
   await sleep(800);
   await page.click('#cot-battle-menu.open [data-battle-launch]');
-  await page.waitForFunction(() => window.__DEBUG?.frameInfo?.player?.combat && !document.querySelector('.cot-bl.on'), { timeout: 600_000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('battleRevealed')} && !!window.__DEBUG?.frameInfo?.player?.combat`, { timeout: 600_000, polling: 250 });
   await page.waitForFunction(() => (window.__DEBUG.frameInfo.timeS ?? 0) > 0.5, { timeout: 120_000, polling: 250 });
   await sleep(1500);
   const read = (pad) => page.evaluate((onPad) => {

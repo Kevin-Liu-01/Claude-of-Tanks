@@ -121,6 +121,11 @@ const ATTRS = ['aPB', 'aVL', 'aDY', 'aSZ', 'aCA', 'aCB', 'aFB', 'aHT'] as const;
  *   target = wind * windK + up * rise
  *   x(t) = x0 + target t + (v0 - target)(1 - e^-kt)/k + up * grav t^2 / 2
  */
+/** (dust-orient-271) a wide card's body: its short horizontal axis this share of the way from the card's height to its
+ *  length (seeded per body, uniform between min and max), so from above no two bodies have one shape or one bearing. */
+export const VOLUME_FLAT_SHORT = Object.freeze({ min: 0.3, max: 0.75 });
+/** (dust-orient-271) the least a body's opacity thins when its silhouette outgrows the old card (seen across its flat side). */
+export const VOLUME_FLAT_THIN_MIN = 0.7;
 /** Wind shear (1/m): the wind a puff takes grows with its height over its birth (a column leans over as it climbs). */
 export const VOLUME_SHEAR_K = 0.03;
 /** Eddies: a puff wanders by this share of its size per second of age (up to 4 s), on slow seeded cycles. */
@@ -259,8 +264,35 @@ void main() {
   vec3 camBack  = vec3( viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2] );
   // aFB.y: the card's aspect (width / height), negative when the card is mirrored
   float aspect = max( abs( aFB.y ), 0.25 );
-  float px = position.x * aspect;
-  vec2 corner = vec2( px * ca - position.y * sa, px * sa + position.y * ca ) * size;
+  // (dust-orient-271, the owner 2026-11-09 looking down on a track's dust: "theyre all like parallel with each other") the
+  // aspect is the BODY's shape, never the screen's: a card stretched along camRight lay every skirt and surge the same way
+  // across the frame from above. A wide card is a flat body of dust on the ground — its long axis on its own seeded
+  // bearing, its short axis a seeded share of the way from its height to its length, the pair scaled so a level view
+  // sees the old width on average — and a tall card a column standing up; the card is that ellipsoid's silhouette from
+  // this camera (its covariance projected on the card plane, the symmetric square root for the stretch, so the flipbook
+  // turns only by the card's own rotation). A round puff is a sphere: its card is unchanged.
+  vec3 bh = fract( ( aPB.xyz + aVL.xyz * 1.7 + vec3( aVL.w * 3.1 ) ) * 0.1031 );
+  bh += dot( bh, bh.yzx + 33.33 );
+  float bYaw = fract( ( bh.x + bh.y ) * bh.z ) * 6.2832;
+  float wideB = step( 1.0, aspect );
+  float rS = mix( 1.0, aspect, mix( ${VOLUME_FLAT_SHORT.min.toFixed(2)}, ${VOLUME_FLAT_SHORT.max.toFixed(2)}, fract( ( bh.x + bh.z ) * bh.y ) ) );
+  float rK = wideB > 0.5 ? aspect * inversesqrt( 0.5 * ( aspect * aspect + rS * rS ) ) : 1.0;
+  float rL = wideB > 0.5 ? aspect * rK : aspect;
+  rS = wideB > 0.5 ? rS * rK : aspect;
+  vec2 bAx = vec2( cos( bYaw ), sin( bYaw ) );
+  vec2 pL = vec2( camRight.x * bAx.x + camRight.z * bAx.y, camUp.x * bAx.x + camUp.z * bAx.y ) * rL;
+  vec2 pS = vec2( camRight.z * bAx.x - camRight.x * bAx.y, camUp.z * bAx.x - camUp.x * bAx.y ) * rS;
+  vec2 pV = vec2( camRight.y, camUp.y );
+  float sxx = pL.x * pL.x + pS.x * pS.x + pV.x * pV.x;
+  float sxy = pL.x * pL.y + pS.x * pS.y + pV.x * pV.y;
+  float syy = pL.y * pL.y + pS.y * pS.y + pV.y * pV.y;
+  float sDet = sqrt( max( sxx * syy - sxy * sxy, 1e-6 ) );
+  float sNorm = inversesqrt( max( sxx + syy + 2.0 * sDet, 1e-6 ) );
+  vec2 bodyC = mat2( sxx + sDet, sxy, sxy, syy + sDet ) * position.xy * sNorm;
+  vec2 corner = vec2( bodyC.x * ca - bodyC.y * sa, bodyC.x * sa + bodyC.y * ca ) * size;
+  // a silhouette larger than the old card (aspect x 1) thins by the square root of its growth — from above a skirt is a
+  // lighter veil than edge-on, still a trail (r2: the whole growth, floored at half, left Oasis a faint haze) — never thicker
+  float bodyThin = clamp( sqrt( aspect / sDet ), ${VOLUME_FLAT_THIN_MIN.toFixed(2)}, 1.0 );
   // (233) the card at the body's near side (VOLUME_FRONT_K), its footprint on the screen kept
   float camD = distance( center, cameraPosition );
   float pull = min( min( ${VOLUME_FRONT_K.toFixed(2)} * size, ${VOLUME_FRONT_MAX_M.toFixed(1)} ), max( 0.0, 0.5 * ( camD - 1.5 ) ) );
@@ -312,7 +344,7 @@ void main() {
   vec4 mvC = viewMatrix * vec4( center, 1.0 );
   float scr = 0.5 * size * projectionMatrix[1][1] / max( -mvC.z, 0.5 );
   float big = lowB * smoothstep( 0.15, 0.45, scr ) * ( 1.0 - smoothstep( 12.0, 18.0, distance( center, cameraPosition ) ) );
-  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) );
+  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) * bodyThin );
   vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * uHeatCool * age ) : 0.0;
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
   // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
@@ -1029,7 +1061,14 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       if (rec[ob + 7] > 0) rec[ob + 3] += delta;
     }
     if (Number.isFinite(liveUntil)) liveUntil += delta;
+    // (round 3 B5) the instance copies' births too: the drawn ones are right before the next sort rewrites them, and the
+    // ones past the drawn count (last drawn earlier) keep no pre-rebase time
+    const pb = gpu[ATTRS.indexOf('aPB')];
+    for (let i = 3; i < pb.length; i += 4) pb[i] += delta;
+    attrs[ATTRS.indexOf('aPB')].needsUpdate = true;
     for (const g of glowP) if (g.w > -1e8) g.w += delta;
+    // (2026-11-02 audit R7) the embers' births are fx-clock stamps too (a forward rebase expired them at once)
+    for (const e of emberP) if (e.w > -1e8) e.w += delta;
   }
 
   function reset(): void {

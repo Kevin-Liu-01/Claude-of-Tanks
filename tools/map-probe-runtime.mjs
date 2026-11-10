@@ -5,10 +5,11 @@
 // writes next to its captures. Owner approval to commit the round 41–47 QA probes as tools: 2026-09-23.
 //
 // The probe mutex is the CALLER's business. A run owns a vite dev server and a GPU browser for a minute or more, so
-// agents hold the shared scratch mutex around the whole process and run it at low priority:
-//   until mkdir "$SP/probe.lock" 2>/dev/null; do sleep 5; done
-//   nice -n 19 node tools/map-view-probe.mjs --root=<worktree> --out=<dir> --maps=badlands --views=sw-corner-close
-//   rmdir "$SP/probe.lock"
+// agents hold the shared scratch mutex around the whole process and run it at low priority (2026-11-02 audit S4: through
+// tools/with-session-mutex.mjs, an owned mutex reaped once its holder is dead; the old `until mkdir …; rmdir` loop left a
+// killed agent's mutex held for good):
+//   node tools/with-session-mutex.mjs "$SP/probe.lock" -- \
+//     nice -n 19 node tools/map-view-probe.mjs --root=<worktree> --out=<dir> --maps=badlands --views=sw-corner-close
 // These tools take neither that mutex nor the /tmp/cot-shots FIFO of the release harnesses (tools/capture-lock.mjs):
 // never run one beside `npm test` or `tank:release:check`. The server binds 127.0.0.1 on 5300 + (pid % 90) and
 // walks upward when busy (owner rule: probe servers live in 5300–5399, never on 5197–5199); vite serves the tree
@@ -21,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { i18nStudioCatalog } from './viteI18nStudioCatalog.ts';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 // 266: the launcher (and the capture lock it imports) loads only when a session opens its browser. The world steps import
 // this module for isMainModule and --headless and never open one, so neither file loads on their path (steps.mjs modeOnly).
@@ -273,14 +275,14 @@ export async function openGamePage(browser, { port, viewport, query = MAP_PROBE_
   // three's own warning when a second copy loads (reportOptimizerReloads): every later capture of the page is suspect
   page.on('console', (message) => { if (message.text().includes('Multiple instances of Three.js')) errors.push(message.text()); });
   await page.goto(`http://127.0.0.1:${port}/?${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });
+  await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: readyTimeoutMs });
   return { page, errors };
 }
 
 /** Enter a solo battle the way the rounds did and wait until the pre-battle clock has run out. */
 export async function beginSoloBattle(page, { specId, mapId, gameMode = 'standard', timeoutMs = 300000, settleMs = MAP_PROBE_SETTLE_MS.battle }) {
   await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId, mapId, gameMode });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: timeoutMs, polling: 250 });
+  await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: timeoutMs, polling: 250 });
   await sleep(settleMs);
 }
 

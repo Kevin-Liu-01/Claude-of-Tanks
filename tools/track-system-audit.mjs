@@ -15,6 +15,7 @@ import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
@@ -119,7 +120,7 @@ async function auditChunk(browser, entries) {
     let pageError = null;
     battlePage.on('pageerror', (error) => { pageError = String(error?.message || error); });
     await battlePage.goto(`http://localhost:${port}/?nosplash=1`, { waitUntil: 'domcontentloaded' });
-    await battlePage.waitForFunction('window.__GAME_READY === true', { polling: 100 });
+    await waitForBootLoaded(battlePage, { polling: 100 });
     await battlePage.evaluate(() => {
       window.__DEBUG.flags.rosterExact = true;
       // every audited battle held alive and still (src/dev/battleHold.ts): the bots stand off the inspection camera and

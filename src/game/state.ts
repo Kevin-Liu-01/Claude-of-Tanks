@@ -5,7 +5,7 @@ import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, type CannonMuzzleCursor } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
  * (ARCHITECTURE.md §1.5, §2.4, §4 step 2). The typed session shell/event bus
@@ -57,8 +57,8 @@ import {
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
 // the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
-import { battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
-import { createJevCommander, createJevFetchTransport, type JevBattleView, type JevCommander } from './jevCommander.ts';
+import { battleHeld, holdRevivedBrain, stepBattleHold, undoHeldDamage } from './devBattleHold.ts';
+import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -72,8 +72,9 @@ import {
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, ramAggression, ramShares, resolveHullImpact,
-  type HullImpactKind, type HullImpactResult,
+  exchangeRamMomentum, fallAttitudeFactor, normalizeRamContact, resetHullCrashMemory, resolveHullImpact,
+  resolveRamPairDamage,
+  type HullImpactKind, type HullImpactResult, type RamModuleHit,
 } from '../sim/impact.ts';
 import {
   resolveTankBodyContacts,
@@ -87,7 +88,7 @@ import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../si
 import {
   createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
+  selectedWeaponModuleState, mainWeaponModuleState,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import * as detMath from '../sim/detMath.ts';
@@ -110,7 +111,7 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
-import type { AiOrder } from './ai.ts';
+import { applyPendingBotNews, type AiOrder } from './ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks,
   type NavigationWreck,
@@ -126,10 +127,11 @@ import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { camoSelectionBonus } from '../sim/camoPaint.ts';
 import { hullReachM, shellMayReachHull } from '../sim/shellHullReach.ts';
-import { applyLethalRamModuleDamage, type RamModuleHit } from '../sim/ramModuleDamage.ts';
 import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import type { BotCamo } from '../sim/camoPaint.ts';
 import { createMatchSpotting } from '../sim/matchSpotting.ts';
+import { createCrushPressLedger, type CrushPressLedger } from '../sim/crushPress.ts';
+import { botShotClear, deliverShellHit, deliverShotFired } from '../sim/botEvents.ts';
 import { getMultiplayerCamoSelection, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -171,7 +173,7 @@ import {
 import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, 
 } from './soloConsumables.ts';
-import { assignCouchSeats, type CouchBattle, type CouchSession } from './couchSeats.ts';
+import { beginCouchSession, endCouchSession, type CouchBattle, type CouchSession } from './couchSeats.ts';
 import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from '../sim/airSupportFire.ts';
 import type { AirStrike } from '../sim/airSupport.ts';
@@ -215,9 +217,7 @@ type SoloSpec = FleetTankSpec & Omit<MovementSpec, 'gun' | 'armor'> &
     armor: SoloArmorSpec;
   };
 
-interface SoloCombatState extends CombatState {
-  muzzleCursor?: number;
-}
+interface SoloCombatState extends CombatState, CannonMuzzleCursor {}
 
 interface SoloInput extends MovementInput {
   throttle: number;
@@ -260,6 +260,10 @@ interface SoloAiController {
   readonly targetId?: string | null;
   readonly state?: string;
   setOrder?(order: AiOrder | null): void;
+  /** Apply what reached the brain since its last update (ai.ts applyPendingBotNews; audit M7). */
+  applyPendingNews?(): void;
+  /** Hand the hull back (a revive's new life; Watch mode's Leave through watchSeat.ts): ai.ts resume (round 2 U18). */
+  resume?(timeS?: number, firstShellId?: number): void;
 }
 
 interface ReloadPresentationEvent {
@@ -402,11 +406,15 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   jev?: JevCommander | null;
   _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
+  /** The crush press this battle's hulls have put on the records they turn or drive into (sim/crushPress.ts). */
+  _crushPress?: CrushPressLedger | null;
   /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
   _botNavigation?: Readonly<BotNavigationGrid> | null;
   /** The battle's obstacle query for its step (simObstacleQuery) and the world it was made for (stepObstacleQuery). */
   _obstacleQuery?: SoloWorld['queryObstacles'] | null;
   _obstacleWorld?: SoloWorld | null;
+  /** The hulls' support field on that world for this battle: its kernels' or the TypeScript's, chosen at setup. */
+  _supportField?: StructureSupportField | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
@@ -458,10 +466,8 @@ interface SoloWorldHit {
   record?: SoloObstacle | null;
 }
 
-interface SoloObstacle extends CollisionRecord {
-  _pressT?: number;
-  _pressS?: number;
-}
+// (the crush press is the battle's, never the record's: sim/crushPress.ts; 2026-11-02 audit M6)
+type SoloObstacle = CollisionRecord;
 
 interface SoloWorld {
   spawnPoints: { player: SpawnPoint; enemies: SpawnPoint[] };
@@ -478,6 +484,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** (map.ts) Stand every prop, tree and canopy the last battle brought down: the world's own destruction reset. */
+  resetDestructibles?(): void;
   /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   /** DST-04: the map's pre-placed craters (world/mapCraters.ts). */
@@ -490,9 +498,6 @@ interface SoloWorld {
     cause?: 'ram' | 'shell',
   ): boolean;
 }
-
-/** The tanks a couch battle named after their seats (setupBattle gives them their own names back next battle). */
-const couchNamed = new Set<SoloEntity>();
 
 interface SetupBattleOptions {
   random?: boolean;
@@ -554,6 +559,10 @@ interface RamResolution {
   a: SoloEntity;
   b: SoloEntity;
   bWasWreck: boolean;
+  /** A teammate contact: reported (the crunch, the crew's call, the cab's jolt), never damage or a kill. */
+  friendly: boolean;
+  /** The contact as the player's cab feels it (sim/impact.ts RamPairDamage joltA/joltB; 0 when no player is in it). */
+  playerJolt: number;
   event: SoloRamEvent;
 }
 
@@ -736,6 +745,10 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   for (const entity of game.allTanks) entity.spec = getSpec(entity.specId);
   game.nextShellId = 1;
   game.timeS = 0;
+  // the clock restarts: no press or ram cooldown of the last battle survives into this one (sim/crushPress.ts; the
+  // authority's are its match's; 2026-11-02 audit M6)
+  game._crushPress?.clear();
+  game._ramPairT?.clear();
   game.auxiliarySmokeScreens = [];
   auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
@@ -753,7 +766,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
   else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
   game.watch = null;
-  game.couch = null;
+  // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
+  endCouchSession(game);
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -923,8 +937,7 @@ function initializeBattleEntity(
   entity._destroyedAnnounced = false;
   entity._openingRoute = null;
   entity._lastImpactT = -1;
-  entity._impactAccumMps = 0;
-  entity._impactAccumT = -1e9;
+  resetHullCrashMemory(entity);
   entity.ai = null;
   entity._provingMark = null;
   entity._provingPatrol = null;
@@ -983,7 +996,8 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
-    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot
+    // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
+    // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
     else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }
     else if (!isPlayer) createBattleBot(context, entity, index, spawn);
     else if (game.ruleset.watch) {
@@ -1001,8 +1015,11 @@ function jevEndpointUrl(): string {
   return typeof configured === 'string' && configured.trim() ? configured.trim() : '/api/jev';
 }
 
-/** One browser transport per page: the proxy budgets the session, not the battle. */
-let jevTransport: ReturnType<typeof createJevFetchTransport> | null = null;
+/**
+ * The page's one Jev session (jevCommander.ts createJevSession): the transport the proxy budgets per page load, and the
+ * owner of its halt — a halted session hands no transport, so the next battle runs the classic brain.
+ */
+const jevSession = createJevSession(() => createJevFetchTransport({ url: jevEndpointUrl() }));
 
 function createJevBattleView(game: SoloGameState): JevBattleView {
   return {
@@ -1027,10 +1044,10 @@ function attachBattleCommander(game: SoloGameState): void {
   // the proving ground's targets have no brain to command
   const teams: TeamId[] = game.ruleset.provingGround ? []
     : brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
-  // a transport Jev halted this session (out of credit, a TypeSafe 429, the budget spent) leaves the classic brain
-  if (teams.length && !jevTransport?.halted) {
-    jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
-    game.jev = createJevCommander({ transport: jevTransport, teams });
+  // a session Jev halted (out of credit, a TypeSafe 429, the budget spent) hands no transport: the classic brain commands
+  const transport = teams.length ? jevSession.transport() : null;
+  if (transport) {
+    game.jev = createJevCommander({ transport, teams });
     game._jevView = createJevBattleView(game);
   }
   for (const entity of game.tanks) entity.brain = game.jev?.commands(entity) ? 'jev' : 'classic';
@@ -1064,7 +1081,10 @@ export function setupBattle(
   const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
   game._provingRange = provingLayout;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
-  restoreConcealers(world.getConcealment ? world.getConcealment() : null);
+  // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
+  // with them in its resetDestructibles, before the battle (soloBattleStartRuntime.ts); a bare collision world has no
+  // such owner and its canopies are restored here
+  if (!world.resetDestructibles) restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
     rules: game.ruleset.destruction, obstacles: world.getObstacles(), colliders: worldColliders,
@@ -1154,7 +1174,12 @@ export function setupBattle(
   // world (raycast for hard cover, vegetation discs for bush concealment).
   game.spotting = createBattleSpotting(game, world);
 
-  const obstacleQuery = game._obstacleQuery = simObstacleQuery(world);
+  // (2026-11-02 audit S2) the battle's world kernels, chosen once here before its first step: the kernels when they had
+  // loaded by now and the world can ride them, for the hulls' support and the obstacle query alike; else the TypeScript
+  // for this battle (kernels that land later carry the next battle)
+  const battleKernels = soloWorldKernels;
+  game._supportField = structureSupportFor(world, battleKernels);
+  const obstacleQuery = game._obstacleQuery = simObstacleQuery(world, battleKernels);
   game._obstacleWorld = world;
   // One immutable terrain/ground/cover scan is shared by every local bot.
   // Opening doctrine still authors the tactical points below; A* only expands
@@ -1225,20 +1250,10 @@ export function setupBattle(
     world.getConcealment?.() || [],
   );
 
-  // couch mode: the phones take tanks of this roster, side by side as the lobby asked (game/couchSeats.ts); each seat's
-  // tank wears its seat's name, and a tank that wore one last battle goes back to its own
-  for (const entity of couchNamed) (entity as { displayName?: string | null }).displayName = null;
-  couchNamed.clear();
+  // couch mode: the phones take tanks of this roster, side by side as the lobby asked; each seat's tank wears its seat's
+  // name while the session lasts (game/couchSeats.ts beginCouchSession, the session's one owner, which ends the last one)
   if (game.ruleset.couch && opts.couch) {
-    const sides = couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length);
-    game.couch = { sides: opts.couch.sides, seats: assignCouchSeats(game.tanks, allySet, opts.couch.seats, sides) };
-    const ordered = [...opts.couch.seats].sort((a, b) => a - b);
-    for (const { seat, entity } of game.couch.seats) {
-      const name = opts.couch.names?.[ordered.indexOf(seat)];
-      if (!name) continue;
-      (entity as { displayName?: string | null }).displayName = name;
-      couchNamed.add(entity);
-    }
+    beginCouchSession(game, opts.couch, game.tanks, allySet, couchSeatSides(game.gameMode, opts.couch.sides, opts.couch.seats.length));
   }
   const spawnContext: BattleSpawnContext = {
     game,
@@ -1313,6 +1328,8 @@ export function setupBattle(
       ent.input.aimLocked = false;
       ent.input.aimPoint.copy(ent.state.aimPoint);
       ent._destroyedAnnounced = false;
+      // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the authority's revive too)
+      resetHullCrashMemory(ent);
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);
@@ -1320,6 +1337,11 @@ export function setupBattle(
         updateTank(ent, world.heightField, SIM_DT);
       }
       ent.visual?.syncFromState?.(ent.state);
+      // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn (ai.ts
+      // resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
+      ent.aiCtl?.resume?.(game.timeS);
+      // a held battle keeps the revived brain parked until the release (devBattleHold.ts; round 8 merge review r1)
+      holdRevivedBrain(game, ent);
     },
   });
   for (const entity of game.tanks) {
@@ -1343,6 +1365,21 @@ export function prepareNextOpeningRoute(game: SoloGameState): boolean {
   if (!job) return false;
   if (job.next().done) game.openingRouteJobs.shift();
   return true;
+}
+
+/**
+ * Every opening route still pending, planned now (round 8 Y1 s2-02). The queue's states per bot: pending (its legs in
+ * game.openingRouteJobs) -> whole (the last leg sets its waypoints). The warm advances it a leg a step during the
+ * countdown; the first live step drains the rest here (simStep), as the authority plans every leg at its creation
+ * (authoritativeMatch initializeBot), so no route lands on a live bot on a tick the frame rate chose (a bot whose route
+ * was pending drove an auto-patrol from its controller's stream until then) and a warm that stopped before its route stage
+ * leaves no bot without one. A device whose warm kept up pays nothing; one that fell behind pays the rest once, here.
+ * @returns the legs it planned
+ */
+export function drainOpeningRoutes(game: SoloGameState): number {
+  let legs = 0;
+  while (prepareNextOpeningRoute(game)) legs++;
+  return legs;
 }
 
 // ---------------------------------------------------------------------------
@@ -1400,8 +1437,6 @@ const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 // slow-speed tree behind it for 4+ s, because a wedged tank can never reach
 // 6 km/h again; WoT tanks push saplings over from a standstill). A parked
 // nudge (no throttle) still never fells anything.
-const CRUSH_PRESS_S = 0.45;      // s of contact under throttle or steer (DST-02) that fells a trunk
-const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 
 function shouldCrushObstacle(
   game: SoloGameState,
@@ -1429,12 +1464,8 @@ function shouldCrushObstacle(
   // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never crushing
   // them)
   if (Math.abs(self.input.throttle || 0) <= 0.35 && Math.abs(self.input.steer || 0) <= 0.35) return false;
-  if (game.timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
-    obstacle._pressS = 0;
-  }
-  obstacle._pressT = game.timeS;
-  obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-  return obstacle._pressS >= CRUSH_PRESS_S;
+  // this battle's press of this hull on this record (sim/crushPress.ts, the authority's ledger; 2026-11-02 audit M6)
+  return (game._crushPress ??= createCrushPressLedger()).press(obstacle, self.id, game.timeS, SIM_DT);
 }
 
 function queueCrush(
@@ -1659,25 +1690,6 @@ function emitHitStateEvents(bus: EventBus, event: SoloHitEvent): void {
   }
 }
 
-function notifyTeamUnderFire(
-  game: SoloGameState,
-  shooter: SoloPooledEntity | undefined,
-  target: SoloPooledEntity | null,
-  event: SoloHitEvent,
-): void {
-  if (!isActiveSoloEntity(shooter) || !isActiveSoloEntity(target) ||
-      shooter.team === target.team || isGunship(shooter)) return;
-  for (const entity of game.tanks) {
-    if (entity.team !== target.team || !entity.aiCtl || entity.combat.destroyed) continue;
-    if (entity !== target &&
-        entity.state.pos.distanceToSquared(target.state.pos) > 200 * 200) continue;
-    // bot philosophy r1: the struck hull learns it was ITS hull (reaction picker), and whether the shell bit
-    entity.aiCtl.notifyUnderFire?.(shooter, {
-      selfHit: entity === target, damaging: (event.damage || 0) > 0, kind: event.kind,
-    });
-  }
-}
-
 /** Emit the derived bus events flagged inside one HitEvent. */
 function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
   shellSpec: KillSourceShell | null = null): void {
@@ -1694,9 +1706,10 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
     announceDestroyed(game, bus, target, event.attackerId,
       event.ammoRacked ? 'ammorack' : 'shot', event.attackerSource ?? null);
   }
+  // the shooter's controller hears the result, then the struck side's under fire (bot philosophy r1: the struck hull learns
+  // it was ITS hull, and whether the shell bit) — sim/botEvents.ts, the authority's delivery (2026-11-02 audit M6)
   const shooter = game.tankById.get(event.attackerId);
-  shooter?.aiCtl?.notifyShellResult(event);
-  notifyTeamUnderFire(game, shooter, target, event);
+  deliverShellHit(game.tanks, isActiveSoloEntity(shooter) ? shooter : null, isActiveSoloEntity(target) ? target : null, event);
 }
 
 function announceDestroyed(
@@ -1775,14 +1788,14 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   if (!visual) return null;
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
     ? entity.spec.gun.launcherMuzzles : null;
-  const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
   if (launchers) {
     muzzleIndex = launcherMuzzleIndex(entity.spec.gun, shell, entity.combat.launcherCursor ?? 0);
     entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
-  } else if (Array.isArray(muzzles) && muzzles.length > 1) {
-    muzzleIndex = (entity.combat.muzzleCursor || 0) % muzzles.length;
-    entity.combat.muzzleCursor = muzzleIndex + 1;
+  } else {
+    // the gun's own mouths (a twin cannon's bores): the barrel owner both drivers share (sim/launcherPolicy.ts); launcher
+    // tubes, aft10's canisters among them, took the branch above
+    muzzleIndex = nextCannonMuzzle(entity.spec.gun, shell, entity.combat);
   }
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
   visual.gunMuzzleWorld(_muzzle, selectedMuzzle, usesLauncherMuzzles(entity.spec.gun, shell));
@@ -1844,16 +1857,6 @@ function emitShellFired(
   bus.emit('shell:fired', _firedEv);
 }
 
-function notifyEnemyShot(game: SoloGameState, shooter: SoloEntity): void {
-  if(isGunship(shooter))return;
-  for (const entity of game.tanks) {
-    if (entity.team === shooter.team || !entity.aiCtl || entity.combat.destroyed) continue;
-    if (entity.state.pos.distanceToSquared(shooter.state.pos) <= 500 * 500) {
-      entity.aiCtl.notifyEnemyFired?.(shooter);
-    }
-  }
-}
-
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
 function tryFire(
   game: SoloGameState,
@@ -1863,6 +1866,9 @@ function tryFire(
 ): void {
   const shellSpec = readyShellForFire(entity, bus);
   if (!shellSpec) return;
+  // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the authority's gate;
+  // 2026-11-02 audit M6: the solo step fired it)
+  if (!botShotClear(entity, entity.input.aimPoint, shellSpec, game.tanks)) return;
   const muzzleIndex = prepareMuzzleDirection(entity, shellSpec);
   if (muzzleIndex == null) return;
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -1895,9 +1901,10 @@ function tryFire(
       bus.emit('ammo:depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
     }
   }
-  // the shot's own calibre lifts the bloom, as the authority's (268: the page read the gun's)
+  // the shot's own calibre lifts the bloom, as the authority's (2026-11-02 audit M6; 268: the page read the gun's)
   game.spotting?.notifyFired(entity.id, game.timeS, shellSpec.caliberMm);
-  notifyEnemyShot(game, entity);
+  // the other side's brains within earshot hear it (sim/botEvents.ts, the authority's delivery)
+  deliverShotFired(game.tanks, entity);
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   const shooter = game.tankById.get(shell.shooterId);
@@ -2057,8 +2064,8 @@ function crushWorldPropFromShell(
     shell.spec.velocityMps,
     'shell',
   );
+  // (round 2 U28) the world's crush felled the tree's canopy with its trunk (felledTrees.ts; the headless world's)
   if (!crushed || record.treeIdx == null) return;
-  if (record.shape2 && world.getConcealment) fellConcealersAt(world.getConcealment(), record.shape2.cx, record.shape2.cz);
   bus.emit('prop:crushed', {
     shooterId: shell.shooterId,
     cause: 'shell',
@@ -2255,6 +2262,10 @@ function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void 
     if (!shell.dead) stepLiveShell(game, bus, world, shell);
   }
   recycleDeadShells(game.shells);
+  // the fire-and-shells phase's news (shots heard, shell results, hits) reaches the bots here, in one declared order,
+  // where the callbacks always ran: before spotting and the mode step read the field (audit M7; the authority's
+  // advanceWeapons ends the same way)
+  applyPendingBotNews(game.tanks);
 }
 
 
@@ -2293,9 +2304,12 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
  * player's presses go through its UI (game/playerBattleActions.ts).
  */
 function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
-  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
-  const held = battleHeld(game);
-  if (held) holdBattleStep(game);
+  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned; the hold's edges
+  // park and resume the bots' brains (devBattleHold.ts stepBattleHold, the held step's one owner)
+  const held = stepBattleHold(game);
+  // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7);
+  // the flush writes brain state only (never entity.input), and it drains while the battle is held too
+  applyPendingBotNews(game.tanks);
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
@@ -2465,13 +2479,21 @@ function resolveTankImpacts(
   }
 }
 
-const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
+/** A world's support fields: the TypeScript's, and its kernels' (null: the world cannot ride them), each made once. */
+interface SoloWorldSupport {
+  typescript?: StructureSupportField;
+  kernels?: StructureSupportField | null;
+  /** The provider `kernels` came from. */
+  provider?: SoloWorldKernels;
+}
+const structureSupportByWorld = new WeakMap<SoloWorld, SoloWorldSupport>();
 
 /**
- * The world kernels for solo battles (on unless ?simKernels=ts; world/soloWorldKernels.ts, docs/RUST-KERNELS.md): a world whose
- * hulls first need their support while they are set rides them for its lifetime — its ground mirrored onto them (the
- * stamps laid so far, then every change) and its hulls' support answered there, the same values as the TypeScript's —
- * and any other world stays on the TypeScript.
+ * The world kernels for solo battles (on unless ?simKernels=ts; world/soloWorldKernels.ts, docs/RUST-KERNELS.md). Each
+ * battle chooses once, at its setup (setupBattle, 2026-11-02 audit S2): a battle set up once they have loaded rides them
+ * on a world that can — its ground mirrored onto them once for the world's life (the stamps laid so far, then every
+ * change) and its hulls' support and obstacle query answered there, the same values as the TypeScript's — and a battle
+ * set up before they land stays on the TypeScript, both its support and its query, to its end.
  */
 interface SoloWorldKernels {
   /** Mirror this world's ground onto its own kernels; false when the world cannot ride them. */
@@ -2482,28 +2504,27 @@ interface SoloWorldKernels {
   supportField(world: SoloWorld, terrain: SoloHeightField): StructureSupportField;
 }
 let soloWorldKernels: SoloWorldKernels | null = null;
-/** Set (or clear) the solo world kernels: worlds whose support field is made from now on ride them. */
+/** Set (or clear) the solo world kernels: battles set up from now on ride them. */
 export function setSoloWorldKernels(kernels: SoloWorldKernels | null): void {
   soloWorldKernels = kernels;
 }
 
 /**
- * (local-fps-265) The obstacle query a battle's step reads: the world's grid on its kernels when they are loaded (the
+ * (local-fps-265) The obstacle query a battle's step reads: the world's grid on its kernels when the battle rides them (the
  * authority's own query: headlessCollisionWorld builds it on the same kernel grid), else the world's TypeScript grid.
  * The kernel grid holds the world grid's records in the same slots and answers bit for bit (docs/RUST-KERNELS.md); its
- * clearance scan takes the bots' solid sweeps (ai.ts solidAhead, avoidObstacles) off the TypeScript fallback. Mirroring
- * the ground here, at the battle's setup, makes the grid before the bots are built; without the kernels the support
- * field stays lazy, so kernels that arrive before the first step still carry it.
+ * clearance scan takes the bots' solid sweeps (ai.ts solidAhead, avoidObstacles) off the TypeScript fallback. The
+ * battle's setup mirrors the ground first (structureSupportFor), which makes the grid before the bots are built.
  */
 /** The obstacle query a step reads on `world`: the battle's (setupBattle) when it was made for this world. */
 function stepObstacleQuery(game: SoloGameState, world: SoloWorld | null | undefined): SoloWorld['queryObstacles'] {
   return world && game._obstacleWorld === world ? game._obstacleQuery ?? world.queryObstacles : world?.queryObstacles;
 }
 
-function simObstacleQuery(world: SoloWorld): SoloWorld['queryObstacles'] {
-  if (!soloWorldKernels?.obstacleQuery) return world.queryObstacles;
-  structureSupportFor(world);
-  return soloWorldKernels.obstacleQuery(world) ?? world.queryObstacles;
+function simObstacleQuery(world: SoloWorld, kernels: SoloWorldKernels | null): SoloWorld['queryObstacles'] {
+  if (!kernels?.obstacleQuery) return world.queryObstacles;
+  structureSupportFor(world, kernels);
+  return kernels.obstacleQuery(world) ?? world.queryObstacles;
 }
 
 const wreckEnvironmentByWorld = new WeakMap<SoloWorld, RigidEnvironment>();
@@ -2532,16 +2553,25 @@ function groundFor(world: SoloWorld): SoloGround {
   return ground;
 }
 
-/** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on. */
-function structureSupportFor(world: SoloWorld): StructureSupportField {
-  let field = structureSupportByWorld.get(world);
-  if (!field) {
-    const ground = groundFor(world);
-    field = soloWorldKernels?.mirrorGround(world, ground.overlay)
-      ? soloWorldKernels.supportField(world, ground.field) : createStructureSupportField(ground.field, world);
-    structureSupportByWorld.set(world, field);
+/** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on — on `kernels`
+ * when the world can ride them, else the TypeScript's. */
+function structureSupportFor(world: SoloWorld, kernels: SoloWorldKernels | null): StructureSupportField {
+  let support = structureSupportByWorld.get(world);
+  if (!support) structureSupportByWorld.set(world, support = {});
+  if (kernels) {
+    if (support.provider !== kernels) {
+      const ground = groundFor(world);
+      support.provider = kernels;
+      support.kernels = kernels.mirrorGround(world, ground.overlay) ? kernels.supportField(world, ground.field) : null;
+    }
+    if (support.kernels) return support.kernels;
   }
-  return field;
+  return support.typescript ??= createStructureSupportField(groundFor(world).field, world);
+}
+
+/** The support field a step reads on `world`: the battle's (setupBattle chose it) when it was made for this world. */
+function stepSupportField(game: SoloGameState, world: SoloWorld): StructureSupportField {
+  return game._obstacleWorld === world && game._supportField ? game._supportField : structureSupportFor(world, null);
 }
 
 function stepTankMovement(
@@ -2551,7 +2581,7 @@ function stepTankMovement(
   rig: CameraRig | null,
   collider: CollisionBundle,
 ): void {
-  const support = structureSupportFor(world);
+  const support = stepSupportField(game, world);
   for (const entity of game.tanks) {
     // wrecks stay in the step (2026-09-19): readDebuffs marks them immobile / skidding, so a destroyed hull
     // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
@@ -2592,15 +2622,18 @@ function resolveCrushContacts(
     const directionX = detMath.sin(entity.state.yaw) * directionSign;
     const directionZ = detMath.cos(entity.state.yaw) * directionSign;
     const overrunMps = Math.abs(entity.state.speed);
-    // (268) the world first, as the authority crushes (destroyObstacle): a prop the world refuses stands and slows nothing.
-    // Marking it crushed first made the headless world (the authority's) refuse every crush, so it never fell for the rays.
-    if (world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps) === false) continue;
-    obstacle.crushed = true;
-    entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
-    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
-    if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+    // (round 2 U28; 268) the world's crush first, on a record still standing, as the authority crushes (destroyObstacle):
+    // a prop the world refuses stands and slows nothing (marked crushed first, the headless world refused every crush and
+    // left the prop's other records and the tree's canopy up). The world's crush fells a felled tree's canopy with its
+    // trunk (felledTrees.ts, the headless world's crushObstacle; destruction, docs/DESTRUCTION.md §6): only a world that
+    // crushes nothing leaves the canopy to the step
+    if (world.crushObstacle) {
+      if (world.crushObstacle(obstacle, directionX, directionZ, overrunMps) === false) continue;
+    } else if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
       fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
     }
+    obstacle.crushed = true;
+    entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
     bus.emit('prop:crushed', {
       id: entity.id,
       specId: entity.specId,
@@ -2625,15 +2658,6 @@ function ramPairKey(contact: RamContact): string {
     : `${contact.b.id}|${contact.a.id}`;
 }
 
-function normalizeRamContact(contact: RamContact): void {
-  if (contact.nx * contact.nx + contact.nz * contact.nz >= 1e-6) return;
-  contact.nx = contact.b.state.pos.x - contact.a.state.pos.x;
-  contact.nz = contact.b.state.pos.z - contact.a.state.pos.z;
-  const inverseLength = 1 / Math.max(1e-6, Math.hypot(contact.nx, contact.nz));
-  contact.nx *= inverseLength;
-  contact.nz *= inverseLength;
-}
-
 function emitRamModuleHits(
   bus: EventBus,
   entity: SoloEntity,
@@ -2656,36 +2680,19 @@ function resolveRamDamage(
   if (previousContactS !== undefined && game.timeS >= previousContactS &&
       game.timeS - previousContactS < RAM_PAIR_COOLDOWN_S) return null;
   const { a, b } = contact;
-  // (268, item 8) as the authority gates it (ramPairCanDamage): teammates still part physically, but contact never becomes
-  // friendly-fire damage or a kill credit
-  if (a.combat.destroyed || a.team === b.team) return null;
-  normalizeRamContact(contact);
-  // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-  const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
-  const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
-  const damage = ramShares(
-    game.ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
-    ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
-    contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
-    contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
-  );
-  if (damage.total <= 0) return null;
+  // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
+  // lethal ram reddens the struck track and the drivetrain — the authority's one rule (sim/impact.ts resolveRamPairDamage;
+  // a wreck rams nothing, and a teammate contact is reported with no damage or kill credit: 2026-11-02 audit M6)
+  const dealt = resolveRamPairDamage(game.ruleset.physics, contact);
+  if (!dealt) return null;
   cooldowns.set(key, game.timeS);
-  const bWasWreck = b.combat.destroyed;
-  const damageA = hullDamageTaken(a.combat, damage.toA);
-  const damageB = bWasWreck ? 0 : hullDamageTaken(b.combat, damage.toB);
-  a.combat.hp = Math.max(0, a.combat.hp - damageA);
-  if (!bWasWreck) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-  a.combat.destroyed ||= a.combat.hp <= 0;
-  if (!bWasWreck) b.combat.destroyed ||= b.combat.hp <= 0;
-  const aModulesHit = a.combat.destroyed
-    ? applyLethalRamModuleDamage(a, contact.nx, contact.nz) : [];
-  const bModulesHit = b.combat.destroyed && !bWasWreck
-    ? applyLethalRamModuleDamage(b, -contact.nx, -contact.nz) : [];
+  const { damageA, damageB, bWasDestroyed: bWasWreck, aModulesHit, bModulesHit } = dealt;
   return {
     a,
     b,
     bWasWreck,
+    friendly: dealt.friendly,
+    playerJolt: a.isPlayer ? dealt.joltA : (b.isPlayer ? dealt.joltB : 0),
     event: {
     aId: a.id,
     bId: b.id,
@@ -2715,8 +2722,9 @@ function publishRamDamage(
   rig: CameraRig | null,
   resolution: RamResolution,
 ): void {
-  const { a, b, bWasWreck, event } = resolution;
-  if (game.killcam && (a.combat.destroyed || b.combat.destroyed)) {
+  const { a, b, bWasWreck, friendly, playerJolt, event } = resolution;
+  // a teammate contact kills nothing (a shoved friendly wreck is no lethal ram to replay)
+  if (game.killcam && !friendly && (a.combat.destroyed || b.combat.destroyed)) {
     game.killcam.onRam(event, a, b);
   }
   emitRamModuleHits(bus, a, event.aModulesHit);
@@ -2727,9 +2735,9 @@ function publishRamDamage(
   if (a.combat.destroyed && !a._destroyedAnnounced) {
     announceDestroyed(game, bus, a, bWasWreck ? null : b.id, 'ram');
   }
-  const playerDamage = a.isPlayer ? event.dmgA : (b.isPlayer ? event.dmgB : 0);
-  if (rig && playerDamage > 0) {
-    rig.addTrauma(Math.min(0.55, 0.12 + playerDamage * 0.0009));
+  // the cab's jolt follows what the contact priced on the player's hull, a teammate's shove included (it deals nothing)
+  if (rig && playerJolt > 0) {
+    rig.addTrauma(Math.min(0.55, 0.12 + playerJolt * 0.0009));
   }
   bus.emit('tank:ram', event);
 }
@@ -2907,9 +2915,11 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 }
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
-  // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
-  if (battleHeld(game)) undoHeldDamage(game);
-  const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
+  // a held step's losses to the player are undone before the mode and the verdict read them, and the mode's own bot
+  // calls (Air Support's call-ins) wait with its bots (devBattleHold.ts; round 8 merge review r1)
+  const held = battleHeld(game);
+  if (held) undoHeldDamage(game, bus);
+  const outcome = game.matchModeController?.step(SIM_DT, game.timeS, held) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
   if (game.matchModeState && perspective) {
@@ -3028,6 +3038,12 @@ function settleBattleResult(
   } else {
     applyTimedModeResult(game);
   }
+  // a verdict the mode did not reach latches as the mode controller's own (audit M3, as the authority's finishMatch
+  // tells it): through the ending hold the mode scores, respawns and starts waves no more, and names no other winner
+  if (game.result !== null && !modeOutcome) {
+    const winner = game.result === 'draw' ? 'draw' : (game.result === 'victory') === (playerTeam === 'alpha') ? 'alpha' : 'bravo';
+    game.matchModeController?.matchEnded(winner, game.resultReason ?? '');
+  }
   if (game.result !== null) {
     game.resultTimeS = game.timeS;
     game.jev?.stop();
@@ -3064,9 +3080,11 @@ function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['
 }
 
 /**
- * One fixed simulation step. Ordering is authoritative: sensing and AI write
- * input before movement; contacts resolve before weapons; projectiles resolve
- * before damage timers; objective state settles before the match verdict.
+ * One fixed simulation step. Ordering is authoritative: AI writes input before
+ * movement (from the sensing the previous step ended with); contacts resolve
+ * before weapons; projectiles resolve before damage timers; spotting senses the
+ * settled world before the mode reads it; objective state settles before the
+ * match verdict. The authority's stepPlaying keeps the same order.
  */
 /** The solo battle's side of Air Support's rounds: its tanks, its spotting (the mode's sides mapped to its teams), its
  *  ground, its shell ids, and the round announced to the presentation as the authority announces it (mode:strike_round). */
@@ -3105,6 +3123,9 @@ export function simStep(
   // structure's heap rises over RUBBLE_GROW_S with its fall (terrainDeformation). With no clock set, every heap of the
   // page's own battle stood up whole the instant its building came down, under the falling pieces (2026-10-29)
   groundFor(world).overlay.setTime(game.timeS);
+  // the bots' opening routes are whole before any live step reads them (drainOpeningRoutes; empty after the first step),
+  // planned on the clocked ground, as the authority refreshes its routes after its ground.setTime
+  if (game.openingRouteJobs.length) drainOpeningRoutes(game);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
   // (268) the mode route push, one for both drivers (sim/modeRoutePush.ts)
@@ -3147,8 +3168,8 @@ export function simStep(
   tickRepairs(game, bus, SIM_DT);
   stages?.stage(FRAME_STAGE.destruction);
   stepDestruction(game, bus, world);
-  // (268) sensing once the hulls, shells and structures have settled, where the authority senses (updateVisibility):
-  // the next step's bots read it on either driver
+  // spotting once the hulls, shells and structures have settled, before the mode reads it: the authority's place
+  // (stepPlaying updateVisibility), on the tick's clock; the next step's bots read it (2026-11-02 audit M6; 268)
   stages?.stage(FRAME_STAGE.spotting);
   stepSpotting(game, bus);
   stages?.stage(FRAME_STAGE.mode);
@@ -3190,13 +3211,11 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
       const obstacle = _blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
       const length = detMath.hypot(dx, dz) || 1;
-      // (268, item 8) the world first, as the authority fells (destroyObstacle): a prop the world refuses stands. Marked
-      // crushed first, the headless world refused the fell and kept the tree's shell bands, so a later round struck it
+      // (round 2 U28; 268, item 8) the world first, as the authority fells (destroyObstacle): a prop the world refuses stands.
+      // Marked crushed first, the headless world refused the fell and kept the tree's shell bands, so a later round struck
+      // it. The world fells a tree's canopy with it (resolveCrushContacts)
       if (world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell') === false) continue;
       obstacle.crushed = true;
-      if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
-        fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
-      }
       bus.emit('prop:crushed', {
         cause: 'blast', speedMps: 6, kind: obstacle.kind || 'prop', h: obstacle.max[1] - obstacle.min[1],
         pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],

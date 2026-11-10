@@ -152,6 +152,7 @@ The deployment owner releases a gated commit with the versioned tool instead of 
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
     node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
+    node tools/release.mjs workers <sha> --record-only=rooms   # record a Worker that deployed but failed to record (no deploy)
     node tools/release.mjs <command> ... --dry-run   # print every command; run nothing (no Vercel, wrangler or network)
 
 - `build` deletes the pulled `.vercel/.env*.local` files in a `finally` block, whatever happens. The
@@ -302,8 +303,49 @@ only:
 - **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
   every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
   frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
-  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
-  before the release. A signal releases the lock, closes the browser and exits.
+  before the release. The lock's 20-minute cap applies (`holdMinutes`, when given, is a budget of its own): past it with
+  anyone waiting a `checkpoint()` yields, a shoot that never checkpoints has its signal aborted, and past `graceSeconds`
+  the browser is closed before the release. A signal releases the lock, closes the browser and exits.
+- **One hold wrapper (2026-11-02 audit S4, round 2 U38).** `withCaptureHold(work, options)` owns every hold: refresh, the
+  cap and its yield, signals, the release at exit, and the teardown before the release. A script tool holds through its
+  open form: `const hold = await openCaptureHold({ label, timeoutMs, ... })`, then `await hold.release()` once it has
+  closed its browser; a stop past the cap's grace or a signal stops every guarded browser of the process
+  (`browser-launch.mjs` `stopGuardedBrowsers`). A stop is enforced: a stopped hold refuses the process's browser
+  launches until it is released, and a work still running two minutes after its teardown began loses the lock. A tool
+  that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
+  `hold.between()` between synchronous steps. On a signal (SIGTERM, SIGINT or SIGHUP) the open form lets the tool's way
+  out run: its signal aborts, its browsers stop, its finally reaches `release()`, which resolves, and the process exits
+  128 + n once that is done (30 s at most). That code stands however the tool then ends (its own
+  `process.exit(failed ? 1 : 0)` after the release, or an uncaught rejection such as a queued open's): the signal owner's
+  exit listener keeps it. Puppeteer's own SIGINT handler exits the process inside itself, so
+  `launchGuardedBrowser` hands it `handleSIGINT: false` unless the caller sets it, and answers SIGINT itself (exit 130,
+  the browser killed) only where nothing else in the process does. A tool waiting in a cap yield's re-queue leaves the
+  queue: its `checkpoint()` (or `between()`) rejects with the signal's error. A tool with its own SIGINT/SIGTERM handler
+  passes `signals: []`: one owner of a signal per process. A tool whose run can outlast the cap runs each item through
+  `tools/held-items.mjs` `runHeldItem` (the hold's `checkpoint()` first; the item is done, failed or left), with nothing
+  drawing through the yield (an idle page, or one that `onYield` freezes and `onResume` thaws) and a `graceSeconds`
+  that lets an item in flight finish; a stop ends its run with the items left named, and `heldRunExitCode` exits 3:
+  turret-parent-audit, marketing-shots/shoot, studio-example-videos (tools/long-hold-users.selftest.mjs runs each on a
+  stand-in lock and browser). A failed item is each tool's own: shoot exits 1 for a FAILED scene, studio-example-videos
+  rethrows a failed take (exit 1), and turret-parent-audit's ERROR rows do not fail the run (0, or 3 with ids left). Each
+  opens its hold through `openHeldRun`: a signal while it waits in the queue ends the run with nothing done, and says so.
+  A signal's 128 + n stands over all of these. The finishing run a stop names: for studio-example-videos and shoot, the
+  same options with the selection appended (`--only <left>`, `--match <left>`). Their options take a flag's last value,
+  so the appended selection replaces the run's own, and a flag after an npm script's baked ones overrides that flag
+  (`npm run reels:render -- --out shots/x` writes to shots/x); an npm script runs either tool as its last command, so
+  the flags after `npm run <script> --` reach it (long-hold-users checks both). turret-parent-audit's one option is
+  `--ids=`, and it reads the first: its finishing run is `--ids=<left>` alone, in place of its own. It rewrites its
+  output, and a stop before any id writes nothing. A tool that cannot yield without losing its take (a frame-stepped
+  film) declares `atCap: 'keep'`. `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex,
+  for that probe, time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO
+  through the open form too, and hands its callers the hold's `signal`. A unit the hold's stop comes before or cuts (a
+  slot, a scenario, a battle, a map, a build) is left for the next run, never a failure (`runProbeUnit`): the run exits
+  3 and says how to finish. These are held-items' rules too (`heldItemOutcome`, `heldRunExitCode`): a failure exits 1
+  over the 3 of units left, and never over a signal's 128 + n. A shell holds one normal ticket across several steps
+  with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it
+  that takes the lock nests in that hold (its token), and a wait that runs out exits 77.
+  `tools/capture-hold-census.selftest.mjs` lists the few tools that still acquire the lock themselves (under whatever
+  name they import its acquire), each with its reason, and refuses a new one.
 - **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
   serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
   expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir
@@ -333,11 +375,13 @@ only:
   an unstubbed page at the thaw; the check caught it and the re-warm restored it. A stubbed page did not reload.
 - **Cinema leases.** `tools/media-production/cinema.mjs` holds every lease to the 18-minute cap unless `--lease-min`
   asks for less: 0, and longer values such as site50-finals' 45, become the cap. A take still running two minutes past
-  the cap stops at its next frame and exits 75, so a resumed batch renders it again. One cinema hold had run 44
+  the cap stops at its next frame and exits 76 (its own code since 2026-11-02; 75 is a selftest's STARVED), so a
+  resumed batch renders it again. One cinema hold had run 44
   minutes.
 - **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
   renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
-  while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
+  while queued and releases once the browser closes (a `withCaptureHold` hold since 2026-11-02, so a signal closes the
+  browser and releases too). `tank-standard-check` and `track-clip-audit` use it, and the
   standard check's contiguity stage, which is CPU-only, now runs after the release.
 
 A second concurrent capture lane for stills (parked 2026-10-15) is not the lever. Holds were long because of
@@ -527,7 +571,9 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   budgets), `fleet` (the fleet passes and every other build-the-whole-fleet sweep, then `tank:anatomy:check`'s other
   steps), `tanks` (per-tank and per-family pins, id-scoped), `world` (every map built: scenery, structure collision,
   buildings, the wreck bake, the collision shards, civic areas, horizons), `ui` and `browser` (the strenuous real-battle
-  GPU receipts). `npm run test:heavy` alone lists them with their size; `all` names every suite. A new receipt lands
+  GPU receipts), `media` (the media lane's fleet backlog, run where its local dumps are) and `fx` (the fx-clock stamp
+  census whole, two houses brought down before the rebase; the default census leaves out what only they stamp or
+  reach). `npm run test:heavy` alone lists them with their size; `all` names every suite. A new receipt lands
   in the default tier; one that builds the fleet or every map joins a suite (the tiers selftest fails on a default
   receipt the snapshot times at a minute or more unless it is a must-keep invariant).
 - **Who runs them**: neither `npm test`, the release gate, a hook nor CI runs a manual suite, and `test:heavy` refuses a
@@ -1366,7 +1412,7 @@ Rendered shadow and temporal-stability release audit:
     npm run build
     npx vite preview --host 127.0.0.1 --port 5173 --strictPort
     agent-browser --session cot-shadow-audit open \
-      'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1'
+      'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1&automation=harness'
     node tools/render-stability-audit.mjs cot-shadow-audit
     node tools/map-shadow-audit.mjs cot-shadow-audit
     agent-browser --session cot-shadow-audit close

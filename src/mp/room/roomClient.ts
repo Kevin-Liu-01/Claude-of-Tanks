@@ -25,7 +25,9 @@ import type {
 /** A relayed `room_signal` as this seat receives it (P1's validated fields plus `from`). */
 export type RoomRelayedSignal = RoomSignalPayload & { from: string };
 
-export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
+/** (2026-11-02 audit S3) a runtime list: the multiplayer harnesses import it (tools/mp-states.mjs) */
+export const ROOM_CLIENT_PHASES = Object.freeze(['idle', 'connecting', 'joined', 'reconnecting', 'closed'] as const);
+export type RoomClientPhase = typeof ROOM_CLIENT_PHASES[number];
 
 /**
  * The room host could not be reached: the socket closed (or timed out) before the room admitted the client. The Play
@@ -41,6 +43,25 @@ export class RoomConnectError extends Error {
     this.name = 'RoomConnectError';
     this.transportReason = transportReason;
   }
+}
+
+/**
+ * A request this client never put on the wire (no open socket): the room never saw it. Still a RoomError `internal`
+ * ('not connected') for every caller that reads only the code; roomCommandNeverApplied tells it apart.
+ */
+class RoomRequestUnsent extends RoomError {
+  constructor() { super('internal', 'not connected'); }
+}
+
+/**
+ * Whether a failed `host_decline` (a command the room applies in one write after its checks) certainly left the room's
+ * record as it was (round 2 Q4 review): the room refused it with a code of its own (roomPolicy's checks throw before the
+ * write; `internal` is a fault that may come after it), or this client never sent it (not joined, no open socket). A
+ * timeout, a lost or closed socket or a disposed client is not certain: the room may have applied the command without
+ * answering in time (a slow room, a stalled tab), and its echo can still come.
+ */
+export function roomCommandNeverApplied(error: unknown): boolean {
+  return error instanceof RoomError && (error.code !== 'internal' || error instanceof RoomRequestUnsent);
 }
 
 /** A phase change; `reconnecting` repeats per attempt with the attempt ordinal and the delay before it. */
@@ -192,6 +213,8 @@ export class RoomClient {
   private pingTimer: unknown = null;
   private disposed = false;
   private closedReason: string | null = null;
+  /** An explicit leave waits for a resumed socket to say it: the match the room re-sends meanwhile is not for this seat. */
+  private leaving = false;
 
   constructor({
     endpoint,
@@ -518,7 +541,7 @@ export class RoomClient {
       if (!this.sendEnvelope({ type, requestId, payload })) {
         this.clearTimer(timer);
         this.pending.delete(requestId);
-        reject(new RoomError('internal', 'not connected'));
+        reject(new RoomRequestUnsent());
       }
     });
   }
@@ -579,7 +602,7 @@ export class RoomClient {
           const parsed = parseP2pMatchUrl(payload.matchUrl);
           if (this.lastMatchStart?.matchId !== payload.matchId || (parsed !== null && this.lastHostChange !== null && parsed.generation > this.lastHostChange.generation)) this.lastHostChange = null;
           this.lastMatchStart = payload;
-          this.matchStartListeners.emit(payload);
+          if (!this.leaving) this.matchStartListeners.emit(payload);
         }
         break;
       case ROOM_SERVER_MESSAGE.MATCH_STATUS:
@@ -607,7 +630,7 @@ export class RoomClient {
         // Generations only move forward: an election older than the one this seat knows is ignored (the reason never decides).
         if (isRoomHostChangedPayload(payload) && payload.generation >= this.generation) {
           this.lastHostChange = payload;
-          this.hostChangedListeners.emit(payload);
+          if (!this.leaving) this.hostChangedListeners.emit(payload);
         }
         break;
       case ROOM_SERVER_MESSAGE.PONG:
@@ -668,6 +691,9 @@ export class RoomClient {
   private async connectAndAdmit(kind: 'create' | 'join', code: string, payload: Record<string, unknown>): Promise<RoomSnapshot> {
     if (this.disposed) throw new RoomError('internal', 'room client disposed');
     this.closedReason = null;
+    // a fresh create or join is a new seat, never the one a past leave() was leaving (round 2 U8: the flag was never
+    // reset, so a client reused after a leave dropped every match_start and host_changed); a resume runs through admit()
+    this.leaving = false;
     this.roomCode = code;
     this.setPhase('connecting', kind);
     this.openTransport(code);
@@ -752,13 +778,39 @@ export class RoomClient {
     await this.request(ROOM_CLIENT_MESSAGE.CHAT, { text });
   }
 
-  /** Explicit leave: the seat goes (an admin migrates at once) and the capability is forgotten. */
+  /**
+   * Explicit leave: the seat goes (an admin migrates at once) and the capability is forgotten. A leave while the socket
+   * is down (reconnecting, or resuming) waits for the resume — bounded by the request timeout — and leaves on it (audit
+   * M2, 2026-11-02): it used to forget the capability at once and send nothing, leaving a ghost seat in the room (reaped
+   * after minutes while waiting, kept for a running match, a host lease if it hosted).
+   */
   async leave(): Promise<void> {
+    this.leaving = true;
+    if (this.currentPhase === 'reconnecting' || (this.currentPhase === 'connecting' && this.admission)) {
+      await this.waitForPhase(['joined', 'closed', 'idle'], this.requestTimeoutMs);
+    }
     if (this.currentPhase === 'joined') {
       try { await this.request(ROOM_CLIENT_MESSAGE.LEAVE, {}); } catch { /* the socket may already be gone */ }
     }
     this.writeResume(this.roomCode, null);
     this.finish('left_room');
+  }
+
+  /** Resolve when the client reaches one of `phases`, or after `timeoutMs`. */
+  private waitForPhase(phases: readonly RoomClientPhase[], timeoutMs: number): Promise<void> {
+    return new Promise((resolve) => {
+      let timer: unknown = null;
+      let done = false;
+      const settle = (): void => {
+        if (done) return;
+        done = true;
+        if (timer !== null) this.clearTimer(timer);
+        off();
+        resolve();
+      };
+      const off = this.phaseListeners.add(({ phase }) => { if (phases.includes(phase)) settle(); });
+      if (timeoutMs > 0 && Number.isFinite(timeoutMs)) timer = this.setTimer(settle, timeoutMs);
+    });
   }
 
   /** End the connection and its reconnect attempts as `reason` (the room service is at its daily limit): closed, not idle. */
@@ -770,6 +822,12 @@ export class RoomClient {
   disconnect(reason = 'client'): void {
     this.admission = null;
     this.closeTransport();
+    // nothing of the dropped connection stays readable as current (audit M2, 2026-11-02: hostId and isHost read the old
+    // election, match_start and room record in `idle`); a reconnect's admission brings them back
+    this.roomSnapshot = null;
+    this.lastMatchStart = null;
+    this.lastHostChange = null;
+    this.recentOfferBuffer.length = 0;
     this.setPhase('idle', reason);
   }
 

@@ -71,6 +71,48 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
   assert.equal(attempt, 2, 'the next mode state tries again');
 }
 
+{
+  // (2026-11-02 audit R6, round 2 U35) a mode's state arrives every frame (mainFrameRuntime.ts): a module that keeps
+  // failing was asked again, and warned, by every frame's state; now under the one lazy-chunk policy (app/lazyChunk.ts) the
+  // next state asks at once after one failure, then past the backoff, the kept failure in between
+  const now = performance.now;
+  let clock = 0;
+  performance.now = () => clock;
+  try {
+    const scene = new THREE.Scene();
+    let attempts = 0;
+    let down = true;
+    const errors = [];
+    const lazy = createLazyMatchModeWorldPresentation(scene, {}, {
+      whenIdle: () => {},
+      load: async () => {
+        attempts++;
+        if (down) throw new TypeError('Failed to fetch dynamically imported module: ./matchModeWorldPresentation.ts');
+        return { createMatchModeWorldPresentation: () => ({ root: new THREE.Group(), update() {}, dispose() {} }) };
+      },
+      onError: (error) => errors.push(String(error)),
+    });
+    for (let frame = 0; frame < 60; frame++) {
+      clock += 1000 / 60;
+      lazy.update({ mode: 'ctf' }, frame / 60);
+      await flush();
+    }
+    assert.equal(attempts, 2, `a second of frames asks twice (at once, then the kept failure inside the 2 s backoff), not every frame: ${attempts}`);
+    assert.equal(errors.length, 2, `one warning per ask (${errors.length})`);
+    down = false;
+    clock += 2_000;
+    lazy.update({ mode: 'ctf' }, 3);
+    await flush();
+    assert.equal(attempts, 3, 'past the backoff the next state asks and the module lands');
+    await lazy.ready();
+    lazy.update({ mode: 'ctf' }, 4);
+    await flush();
+    assert.equal(attempts, 3, 'and a landed module is never asked again');
+  } finally {
+    performance.now = now;
+  }
+}
+
 // the wiring: main.ts builds the lazy presentation, and nothing on the boot graph imports the module itself
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /const matchModeWorld = createLazyMatchModeWorldPresentation\(scene, \{/);

@@ -206,6 +206,19 @@ assert.equal(monotoneHermite(3, 5, 3, -5, 0.4, 1), 3, 'a flat segment stays flat
   assert.ok(sample.meta.battleTimeMs > 0 && sample.meta.battleTimeMs < Math.round(2 * 1000 / 60), 'the battle clock interpolates');
   assert.equal(sample.meta.phase, PHASE.PLAYING);
   assert.equal(interp.push(frame(1, [row(1)]), 5, 50), false, 'an older tick is refused');
+  assert.deepEqual(sample.unseenShells, [], 'no round left the view: none named');
+  // wire 11 (round 2, U31): the sample names the rounds its newer frame names as out of view, the frame whose shell list
+  // the sample presents (a round gone from it on this sample is named on this sample)
+  interp.push(frame(4, [row(1, { y: 1000 }), row(2, { y: 1000, flags: ENTITY_FLAGS.AIRBORNE })], { shells: [], unseenShells: [7] }),
+    2 * INTERVAL, 2 * INTERVAL + 40);
+  interp.push(frame(6, [row(1, { y: 1000 }), row(2, { y: 1000, flags: ENTITY_FLAGS.AIRBORNE })], { shells: [] }), 3 * INTERVAL, 3 * INTERVAL + 40);
+  const left = interp.sample(3.5 * INTERVAL); // renders between the frames at INTERVAL and 2 * INTERVAL (two of delay)
+  assert.equal(left.tick, 4, 'the sample\'s newer frame is the first without the round');
+  assert.equal(left.shells.length, 0, 'the round is gone from the sample');
+  assert.deepEqual(left.unseenShells, [7], 'and the sample names it out of view: the newer frame\'s list');
+  const after = interp.sample(4.5 * INTERVAL);
+  assert.equal(after.tick, 6);
+  assert.deepEqual(after.unseenShells, [], 'a newer frame that names none: none');
   interp.clear();
   assert.equal(interp.sample(0), null, 'cleared: nothing to sample');
   assert.equal(interp.bufferedFrames, 0);
@@ -288,6 +301,36 @@ assert.equal(monotoneHermite(3, 5, 3, -5, 0.4, 1), 3, 'a flat segment stays flat
     previous = entity.x;
   }
   console.log('mp interpolation: mixed cadences — a far entity refreshed every third snapshot and a middle one every second present at v·dt like the near one, continue from their own samples on a dry buffer, and a long-held resting row blends into motion');
+}
+
+// ------------------------------------------------------------ the rigid phase keeps no angular continuation (round 2, U14)
+// A remote hull in the rigid phase is extrapolated without continuing its angles: wire 10's TUMBLING alone (a plain
+// tumble: a stack kick, a landing on its side) as OVERTURNED or AUTO_RIGHTING (its sub-states) always were. Before, the
+// interpolator read the phase as OVERTURNED|AUTO_RIGHTING only, so a plain tumble was continued as short-arc ground motion,
+// and a TUMBLING change between two rows did not end the continuation either.
+{
+  const yawStep = 0.12; // rad a frame: a rolling hull
+  const continuedYaw = (flagsOf) => {
+    const interp = new RemoteInterpolator();
+    for (let n = 0; n < 4; n++) {
+      interp.push(frame(n * 2, [row(1, { z: n * 500, speed: 1500, yaw: quantizeAngle(n * yawStep), flags: flagsOf(n) })]),
+        n * INTERVAL, n * INTERVAL + 40);
+    }
+    // past the newest frame by half an interval: the continuation's own branch (continueRow)
+    const sample = interp.sample(3 * INTERVAL + 2 * INTERVAL + INTERVAL / 2);
+    assert.ok(sample.extrapolatedMs > 0, 'the sample is past the newest frame');
+    return sample.entities[0].yaw - 3 * yawStep;
+  };
+  const ground = continuedYaw(() => 0);
+  assert.ok(ground > yawStep * 0.3, `a supported hull continues its turn (${ground.toFixed(4)} rad past its newest yaw)`);
+  for (const [name, bits] of [['OVERTURNED', ENTITY_FLAGS.OVERTURNED], ['AUTO_RIGHTING', ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.AUTO_RIGHTING],
+    ['TUMBLING alone (a plain tumble)', ENTITY_FLAGS.TUMBLING]]) {
+    const extra = continuedYaw(() => bits);
+    assert.ok(Math.abs(extra) < 1e-3, `a hull in the rigid phase (${name}) keeps its newest yaw (${extra.toFixed(4)} rad past it)`);
+  }
+  const entering = continuedYaw((n) => (n === 3 ? 0 : ENTITY_FLAGS.TUMBLING));
+  assert.ok(Math.abs(entering) < 1e-3, `a hull that just left the tumble is not continued from its tumbling row (${entering.toFixed(4)} rad)`);
+  console.log('mp interpolation: the rigid phase, a plain tumble (TUMBLING alone) included, keeps no angular continuation');
 }
 
 console.log('mp interpolation: v·dt steps at two intervals of delay, jitter/loss adaptation bounded at four, one-interval extrapolation cap, shortest-arc angles, teleports snap, hidden entities leave, monotone ground / ballistic air, shells + meta pass');

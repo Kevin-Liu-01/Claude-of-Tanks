@@ -59,6 +59,7 @@ function setup() {
   const seats = [];
   const virtualHeld = new Set();
   let newSeats = 0;
+  let leftSeats = 0;
   const controller = createWatchController({
     game, camera, watchCamera, rig, bus, killcam, cameraInput: camInput,
     input: {
@@ -70,13 +71,14 @@ function setup() {
       getPadSnapshot: (out) => Object.assign(out, { connected: false, leftX: 0, leftY: 0, rightX: 0, rightY: 0, leftTrigger: 0, rightTrigger: 0, buttons: 0 }),
       isLocked: () => true,
     },
-    resultPresentation: { newSeat: () => { newSeats++; } },
+    resultPresentation: { newSeat: () => { newSeats++; }, leaveSeat: () => { leftSeats++; } },
     onSeat: (entity) => seats.push(entity?.id ?? null),
     isInputHeld: () => false,
     pickSurface: () => true,
     openingFrame: (out) => { out.position.set(0, 60, -250); out.yaw = 0; out.pitch = -0.35; return true; },
   });
-  return { game, tanks, camera, watchCamera, bus, rig, rigCalls, killcam, controller, seats, virtualHeld, newSeats: () => newSeats };
+  return { game, tanks, camera, watchCamera, bus, rig, rigCalls, killcam, controller, seats, virtualHeld, newSeats: () => newSeats,
+    leftSeats: () => leftSeats };
 }
 const run = (controller, seconds) => { for (let t = 0; t < seconds; t += DT) controller.frame(DT); };
 const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
@@ -209,7 +211,7 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
 
 // --- Take control and Leave -------------------------------------------------------------------------------------------
 {
-  const { game, tanks, rigCalls, killcam, controller, seats, newSeats } = setup();
+  const { game, tanks, rigCalls, killcam, controller, seats, newSeats, leftSeats } = setup();
   controller.prepareReveal();
   controller.open();
   controller.rideId('foe');
@@ -231,6 +233,8 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   assert.equal(controller.view, 'drone', 'Enter again leaves the tank to the drone');
   assert.equal(byId(tanks, 'foe').aiCtl, brain, 'the bot drives it again');
   assert.equal(game.player, null);
+  // (round 5 U4 review r2; deathFlowExits case 10 drives the real runtime) the seat's death flow ends with the seat
+  assert.equal(leftSeats(), 1, 'the player\'s death flow is told the seat was left');
 
   // the driven hull destroyed: the death flow (a replay) plays out, then the drone
   controller.rideId('foe2');

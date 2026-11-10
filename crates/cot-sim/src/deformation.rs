@@ -35,6 +35,10 @@ const CROWN_LEAN: f64 = 0.55;
 const CROWN_WAVE_M: f64 = 4.5;
 /// How long a heap takes to rise (s).
 pub const RUBBLE_GROW_S: f64 = 2.0;
+/// The clock unset (`CLOCK_UNSET`): a fresh or reset overlay's, until `set_time` gives it the match's time.
+pub const CLOCK_UNSET: f64 = f64::NAN;
+/// A heap reads whole this long past its rise, whatever `t0 + grow_s` rounded to (`SETTLED_SLACK_S`).
+const SETTLED_SLACK_S: f64 = 1.0;
 
 /// One stamp (the TypeScript's `TerrainStamp` with its precomputed fields).
 #[derive(Clone, Debug)]
@@ -204,9 +208,12 @@ pub struct TerrainDeformation {
     revision: u32,
     max_raise: f64,
     course_raise: f64,
+    /// The clock: [`CLOCK_UNSET`] (a fresh or reset overlay: nothing grows until `set_time`) or the match's time.
     now: f64,
     rising: Vec<usize>,
-    timed_heaps: u32,
+    /// When the last heap on the clock is fully risen (`t0 + grow_s`; −∞ with none): a clock step at or past it moves
+    /// no ground (`clock_moves_ground`).
+    rising_until: f64,
     lattice_keys: Vec<i32>,
     lattice_epochs: Vec<u32>,
     lattice_values: Vec<f64>,
@@ -229,9 +236,9 @@ impl TerrainDeformation {
             revision: 0,
             max_raise: 0.0,
             course_raise: 0.0,
-            now: f64::NAN,
+            now: CLOCK_UNSET,
             rising: Vec::new(),
-            timed_heaps: 0,
+            rising_until: f64::NEG_INFINITY,
             lattice_keys: vec![-1; LATTICE_CACHE_SLOTS],
             lattice_epochs: vec![0; LATTICE_CACHE_SLOTS],
             lattice_values: vec![0.0; LATTICE_CACHE_SLOTS],
@@ -252,6 +259,18 @@ impl TerrainDeformation {
     /// The highest the overlay can raise the ground.
     pub fn max_raise_m(&self) -> f64 {
         self.max_raise + self.course_raise
+    }
+
+    /// The overlay's clock (`clockS`): NaN while unset.
+    pub fn time(&self) -> f64 {
+        self.now
+    }
+
+    /// Whether the ground at time `t` can read otherwise than with every heap risen (`clockMovesGround`): a heap on the
+    /// clock still rising at `t`, or not yet begun. Past `rising_until` (and its slack against the sum's rounding) every
+    /// heap stands whole, as with no clock.
+    fn clock_moves_ground(&self, t: f64) -> bool {
+        t.is_finite() && t < self.rising_until + SETTLED_SLACK_S
     }
 
     fn invalidate_lattice(&mut self) {
@@ -427,8 +446,8 @@ impl TerrainDeformation {
         if start.is_finite() && self.growth_of(&stamp) < 1.0 {
             self.rising.push(self.stamps.len());
         }
-        if start.is_finite() {
-            self.timed_heaps += 1;
+        if start.is_finite() && start + RUBBLE_GROW_S > self.rising_until {
+            self.rising_until = start + RUBBLE_GROW_S;
         }
         let ex = s.abs() * hd + c.abs() * hw + falloff;
         let ez = c.abs() * hd + s.abs() * hw + falloff;
@@ -463,13 +482,16 @@ impl TerrainDeformation {
         self.max_raise = 0.0;
         self.course_raise = 0.0;
         self.rising.clear();
-        self.timed_heaps = 0;
+        self.rising_until = f64::NEG_INFINITY;
+        // (2026-11-02 audit S2) the clock with the stamps: the next battle's first heap never starts on this one's last time
+        self.now = CLOCK_UNSET;
         self.invalidate_lattice();
     }
 
-    /// `setTime`: the overlay's clock (s).
+    /// `setTime`: the overlay's clock (s); a time that is not finite unsets it.
     pub fn set_time(&mut self, time_s: f64) {
-        if self.timed_heaps > 0 && !same_value(time_s, self.now) {
+        let time_s = if time_s.is_finite() { time_s } else { CLOCK_UNSET };
+        if !same_value(time_s, self.now) && (self.clock_moves_ground(self.now) || self.clock_moves_ground(time_s)) {
             self.invalidate_lattice();
         }
         self.now = time_s;
@@ -515,5 +537,46 @@ mod tests {
         let half = overlay.offset_at(40.0, 40.0);
         overlay.set_time(13.0);
         assert!(half > 0.0 && overlay.offset_at(40.0, 40.0) > half);
+    }
+
+    /// 2026-11-02 audit S2: a reset unsets the clock, so a heap laid before the next battle's first clock step stands
+    /// whole at once, as on a fresh overlay, and never waits out the last battle's time.
+    #[test]
+    fn a_reset_unsets_the_clock() {
+        let mut whole = TerrainDeformation::new();
+        whole.add_rubble(40.0, 40.0, 6.0, 8.0, 0.3, 1.5, None);
+        let mut overlay = TerrainDeformation::new();
+        overlay.set_time(310.0);
+        overlay.add_rubble(-40.0, 40.0, 6.0, 8.0, 0.3, 1.5, None);
+        overlay.reset();
+        assert!(overlay.time().is_nan(), "the clock is unset");
+        overlay.add_rubble(40.0, 40.0, 6.0, 8.0, 0.3, 1.5, None);
+        assert!(overlay.offset_at(40.0, 40.0) > 0.0);
+        assert_eq!(overlay.offset_at(40.0, 40.0).to_bits(), whole.offset_at(40.0, 40.0).to_bits(), "risen at once, as with no clock");
+        overlay.set_time(f64::INFINITY);
+        assert!(overlay.time().is_nan(), "a time that is not finite is no clock");
+    }
+
+    /// 2026-11-02 audit S2: once every heap on the clock has risen, a clock step keeps the lattice offsets' cache; a
+    /// step back into a rise drops it again.
+    #[test]
+    fn a_risen_ground_keeps_its_cache_while_the_clock_runs() {
+        let mut overlay = TerrainDeformation::new();
+        overlay.set_time(10.0);
+        overlay.add_rubble(40.0, 40.0, 6.0, 8.0, 0.3, 1.5, None);
+        let mut epoch = overlay.lattice_epoch;
+        overlay.set_time(11.0);
+        assert_ne!(overlay.lattice_epoch, epoch, "a rising heap moves the ground with the clock");
+        overlay.set_time(13.5);
+        epoch = overlay.lattice_epoch;
+        let risen = overlay.contact_offset_at(40.0, 40.0, false);
+        for t in [14.0, 20.0, 400.0] {
+            overlay.set_time(t);
+            assert_eq!(overlay.lattice_epoch, epoch, "every heap risen: the clock at {t} moves nothing");
+            assert_eq!(overlay.contact_offset_at(40.0, 40.0, false).to_bits(), risen.to_bits());
+        }
+        overlay.set_time(11.0);
+        assert_ne!(overlay.lattice_epoch, epoch, "a clock stepped back into the rise moves the ground");
+        assert!(overlay.contact_offset_at(40.0, 40.0, false) < risen);
     }
 }

@@ -116,7 +116,8 @@ export interface AirSupport {
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
   revealed(id: string, side: ObjectiveTeam): boolean;
   evadeTarget(entity: AirSupportEntity, timeS: number): { x: number; z: number; mission: 'evade' } | null;
-  step(timeS: number): void;
+  /** One step of the ledger and the strikes; `botsHeld` (the solo dev battle hold): the bots call nothing this step. */
+  step(timeS: number, botsHeld?: boolean): void;
   view(viewerId: string | null): AirSupportView;
   pointsOf(id: string): number;
   capture(): AirSupportCheckpoint;
@@ -519,7 +520,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
 
   // ---------------------------------------------------------------- the step
 
-  function step(timeS: number): void {
+  function step(timeS: number, botsHeld = false): void {
     nowS = timeS;
     const trickle = Math.floor(timeS / rules.points.trickleS);
     if (trickle > trickles) {
@@ -529,7 +530,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     }
     if (timeS >= decideAt) {
       decideAt = timeS + rules.bots.decideEveryS;
-      for (const entity of entities) if (botDriven(entity) && living(entity)) botCall(entity, timeS);
+      // a held battle's bots stand (round 8 merge review r1): their crews call in nothing until the release
+      if (!botsHeld) for (const entity of entities) if (botDriven(entity) && living(entity)) botCall(entity, timeS);
     }
     // a recon pass reveals, as its jet passes the mark, every enemy within its reach of the track (unless it fell first)
     for (const strike of strikes) {

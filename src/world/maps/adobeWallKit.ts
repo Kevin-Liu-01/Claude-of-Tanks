@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ADOBE_UV_PER_M, type DestructiblePropType } from './inhabitKit.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { builtValue } from './buildLatch.ts';
 
 export type AdobeCrown = 'pinnacles' | 'kershef' | 'brush' | 'ridge' | 'worn';
 const CROWNS: Readonly<Record<string, AdobeCrown>> = Object.freeze({
@@ -225,11 +226,13 @@ export function adobeWallType(architectureId: string | null | undefined, legacy:
     },
     broken: (rng) => {
       legacy.broken!(rng).dispose();
-      return buildAdobeWall(kind, env ?? { x0: -0.27, x1: 0.27, y0: 0, y1: 1.0, z0: -1.5, z1: 1.5 }, true);
+      // (2026-11-02 audit R2) the intact build's envelope, never a stand-in: a broken build before the intact one throws
+      return buildAdobeWall(kind, builtValue(env, 'walladobe', 'envelope'), true);
     },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
+  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'walladobe', 'contactBand') });
+  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'walladobe', 'fitGeometry') });
   return entry;
 }

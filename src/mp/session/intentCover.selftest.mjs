@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createIntentCover } from './intentCover.ts';
 
 const calls = [];
-const game = { result: 'victory', resultReason: 'elimination', timeS: 91, preBattleS: 0 };
+const game = { result: 'victory', resultReason: 'elimination', resultTimeS: 83, timeS: 91, preBattleS: 0 };
 const cover = createIntentCover({
   game,
   battleLoad: {
@@ -36,8 +36,8 @@ cover.show({
 });
 
 assert.deepEqual(game, {
-  result: null, resultReason: null, timeS: 0, preBattleS: Infinity,
-}, 'cold network intent clears the previous verdict and clock before any import or await');
+  result: null, resultReason: null, resultTimeS: null, timeS: 0, preBattleS: Infinity,
+}, 'cold network intent clears the previous verdict, its time and the clock before any import or await');
 assert.equal(calls[0][0], 'cover', 'render cover is acquired synchronously');
 assert.equal(calls[1][0], 'show', 'the opaque room briefing follows in the same turn');
 assert.equal(calls[1][1].mapName, 'Map verdant');

@@ -3,8 +3,8 @@
  * time of day and weather beyond the slab; moved here from cloudPresets.ts on 2026-10-02, the boot weight).
  *
  * Only a battlefield authors a cloudscape: the Garage's open destinations read the deck derivation alone. So this
- * resolves behind the battle entry: cloudPresets.ts loadCloudscapeLayers (the battle atmosphere's acquisition and the
- * capture staging await it) hands it the derivation's rules and helpers, and it imports nothing at runtime, so its
+ * resolves behind the battle entry: cloudPresets.ts cloudscapeChunk (the battle atmosphere's prepare and the capture
+ * staging await it) hands it the derivation's rules and helpers, and it imports nothing at runtime, so its
  * chunk shares no module with the boot closure.
  */
 import type { CloudscapeConfig, CloudscapeRegime } from './cloudscapes.ts';

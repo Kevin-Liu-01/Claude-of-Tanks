@@ -40,6 +40,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -279,7 +280,7 @@ export default {
     sandbagLines: 22, hedgehogs: 26,
     // the map-vehicles lane (2026-10-06, the period ruling): Kyushu: the Ground Self-Defense Force's Types 10, 90
     // and 74 and the Type 89 IFV
-    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['type10_tk_x', 'type90_kyumaru', 'type74', 'hayate_ifv'] },
+    tankWrecks: WRECK_CASTS.caldera,
     inhabit: {
       stalls: 0, benches: 1, coreClutter: 30, drums: 16,
       trucks: 8, jeeps: 5, drumClusters: 9, camps: 3, modernClutter: 34,

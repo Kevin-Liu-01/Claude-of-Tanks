@@ -37,12 +37,11 @@
 // Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
 // (tools/changed-only/childPriority.mjs, 267). A CPU child's limit is a budget of its process tree's CPU, not of wall
 // time, with a 30-minute no-progress cap for a hang (tools/changed-only/childBudget.mjs, 267).
-import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged,
-  stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, readRowsAsync, recordStep, refreshComponents,
+  resolveChanged, stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { cpuChildCommand } from './changed-only/childPriority.mjs';
 import { watchChild } from './changed-only/childBudget.mjs';
@@ -51,6 +50,8 @@ import { expandGlobs } from './changed-only/globs.mjs';
 import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { createChildGroups, isChainStop, runInCaptureHold, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
+import { releaseAllCaptureHolds } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -114,29 +115,46 @@ for (const step of [...STEPS, ...WORLD_STEPS]) if (step.flags.some((flag) => /^-
   throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);
 }
 
-// One chain per tree.
-const lockPath = join(qaDir, 'chain.lock');
-if (existsSync(lockPath)) {
-  const pid = Number(readFileSync(lockPath, 'utf8'));
-  let alive = false;
-  try { process.kill(pid, 0); alive = true; } catch (error) { alive = error.code === 'EPERM'; }
-  if (alive) { console.error(`[regen] another chain (pid ${pid}) holds ${lockPath}`); process.exit(2); }
-}
-writeFileSync(lockPath, String(process.pid));
-const unlock = () => { try { if (readFileSync(lockPath, 'utf8') === String(process.pid)) renameSync(lockPath, `${lockPath}.done`); } catch {} };
+// One chain per tree (2026-11-02 audit S5, tools/chain-lifecycle.mjs): an owned lock directory, so two chains launched
+// together cannot both pass (the old check-then-write pid file let them), and only a dead owner's lock is reaped. An older
+// chain's pid file at chain.lock is honoured while its pid lives.
+const lockPath = join(qaDir, 'chain.lock.d');
+const chainLock = takeChainLock(lockPath, { legacyFile: join(qaDir, 'chain.lock'), log: (line) => console.error(line) });
+if (!chainLock.held) { console.error(`[regen] another chain (pid ${chainLock.owner.pid ?? 'unknown'}) holds ${lockPath}`); process.exit(2); }
+const unlock = () => chainLock.release();
 process.on('exit', unlock);
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { unlock(); process.exit(130); });
+// Every child of the chain (its steps, its rows reads, its headroom probes) leads its own process group: a stop signals
+// them all, waits for them, SIGKILLs what is left, then releases the GPU step's capture hold and the chain lock, so
+// nothing of this chain writes once the lock is free. From the signal on the groups refuse to start a child
+// (chain-lifecycle 'stopping').
+const children = createChildGroups();
+stopOnSignal(children, { log: (line) => console.error(`[regen] ${line}`),
+  cleanup: (signal) => {
+    summary.ok = false; summary.stopped = signal;
+    try { saveSummary(); } catch { /* the stop goes on */ }
+    releaseAllCaptureHolds(`regen chain stopped by ${signal}`); unlock();
+  } });
 
 const childEnv = { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' };
 
+/**
+ * Whether headroom lets a `gb` GB child start (`headroom can-start`, exit 0). The probe is a child of the chain like its
+ * steps (round 8 Y10 fix-up r1): it starts through the chain's groups and is awaited, so the stop handler never waits on
+ * it and no probe starts once the stop began (the spawn throws the stop marker). No headroom CLI on this machine: yes.
+ */
 function headroomReady(gb) {
-  const probe = spawnSync('headroom', ['can-start', '--gb', String(gb)], { encoding: 'utf8' });
-  if (probe.error?.code === 'ENOENT') return true; // no headroom on this machine
-  return probe.status === 0;
+  return new Promise((done, fail) => {
+    const probe = children.spawn('headroom', ['can-start', '--gb', String(gb)], { stdio: 'ignore' });
+    probe.once('error', (error) => { if (!probe.pid) done(error.code === 'ENOENT'); });
+    probe.once('close', (code, signal) => {
+      if (children.stopping) fail(children.stopMarker(`the headroom probe ended (${signal ?? `exit ${code}`})`));
+      else done(code === 0);
+    });
+  });
 }
 async function gate(gb) {
   const started = Date.now();
-  while (!headroomReady(gb)) {
+  while (!(await headroomReady(gb))) {
     if (Date.now() - started > 4 * 3600_000) throw new Error(`headroom never allowed ${gb} GB in 4 h`);
     log(`[regen] waiting for headroom (${gb} GB)`);
     await new Promise((done) => setTimeout(done, 30_000));
@@ -149,12 +167,12 @@ async function gate(gb) {
  * its budget or makes no CPU progress for HANG_S is stopped by exact pids, the reason named. A GPU child (never niced:
  * it runs inside a capture hold) keeps a wall-clock limit, which bounds the hold (TERM, then KILL after 15 s).
  */
-function runChild(argv, { niced, timeoutS, label }) {
+function runChild(argv, { niced, timeoutS, label, env = childEnv }) {
   return new Promise((done) => {
     const { command, args: fullArgs, prefix } = cpuChildCommand(process.execPath, argv, { niced });
     log(`[regen] ${label}: ${prefix}node ${argv.join(' ').slice(0, 400)}`);
     const out = join(qaDir, `${stamp}-${label.replace(/[^\w.-]+/g, '_')}.out`);
-    const child = spawn(command, fullArgs, { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = children.spawn(command, fullArgs, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     const sink = (chunk) => appendFileSync(out, chunk);
     child.stdout.on('data', sink); child.stderr.on('data', sink);
     let killed = false, timer = null, watch = null;
@@ -256,27 +274,25 @@ async function runParts(step, ids, state, scopedArgs, extra) {
 
 /** Run a GPU step on `ids` in capture-lock holds, each one browser within the step's time and renderer caps (gpuChunks). */
 async function runGpuStep(step, ids, state) {
-  const { createCaptureLock } = await import('./capture-lock.mjs');
   const list = ids ?? state.ids;
   const skipped = {};
   // A whole-fleet run larger than one hold is chunked too; the chunks together cover every id, written by the tool's
   // own --ids merge.
   const chunks = gpuChunks(step, list);
   for (const [index, chunk] of chunks.entries()) {
-    const lock = createCaptureLock();
     log(`[regen] ${step.name}: waiting for the capture lock (chunk ${index + 1}/${chunks.length}, ${chunk.length} ids)`);
-    await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
-    const refresh = setInterval(() => lock.refresh(), 60_000);
-    try {
+    // the GPU child runs inside this hold: a tool of it that takes the lock itself nests in it (runInCaptureHold's env)
+    const run = await runInCaptureHold(async (env) => {
       await gate(step.gb);
       // A whole-fleet run that fits one hold runs the tool's own whole-fleet mode (no --ids), exactly as a full regen.
       const scope = !ids && chunks.length === 1 ? step.full : step.scoped(chunk);
       const skippedFile = skipFile(step, index + 1);
-      const run = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
-        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}` });
-      if (run.code !== 0) return run;
-      Object.assign(skipped, readSkipped(skippedFile));
-    } finally { clearInterval(refresh); lock.release(); }
+      const result = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
+        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}`, env });
+      if (result.code === 0) Object.assign(skipped, readSkipped(skippedFile));
+      return result;
+    }, { label: `regen ${step.name}-${index + 1}`, baseEnv: childEnv, log });
+    if (run.code !== 0) return run;
   }
   return { code: 0, skipped };
 }
@@ -285,9 +301,14 @@ let manifest = readManifest(root) ?? emptyManifest();
 /** Write the table after a step ran (268): that step's own component lines move; the shared ones only in a chain that
  *  selects every step, so a partial chain leaves every step it did not run as its keys were taken. */
 const persist = (state, ran) => { refreshComponents(manifest, state, { ran, shared: !PARTIAL }); writeManifest(root, manifest); };
-const fresh = () => {
+/** The tree's fingerprint state. (round 8 Y10 s6-06) Its rows are read by a child of the chain's groups, awaited
+ *  (readRowsAsync): the synchronous read held the event loop, so a stop waited for the whole read, and zero-change steps
+ *  chained their reads through microtasks without a turn of the loop between them. Every call is a real yield now; a
+ *  stop during the read rejects with a stop marker. The rest (the graph, the keys) is still synchronous. */
+const fresh = async () => {
   const started = Date.now();
-  const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path });
+  const rows = await readRowsAsync(root, childEnv, table.path, { groups: children });
+  const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path, rows });
   summary.resolveSeconds.push(Math.round((Date.now() - started) / 100) / 10);
   return state;
 };
@@ -314,7 +335,7 @@ function idsResolve(definition, fullState, state) {
  */
 async function step(name, { forceFull = false, restrict = false } = {}) {
   const definition = stepByName(name);
-  const fullState = fresh();
+  const fullState = await fresh();
   const state = viewOf(definition, fullState);
   if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
   const resolved = IDS ? (restrict && TABLE_CURRENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
@@ -351,7 +372,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
   if (IDS && !TABLE_CURRENT) { log(`[regen] ${name}: done in ${seconds} s (rows not recorded: ${UNRECORDED})`); return true; }
-  const after = fresh();
+  const after = await fresh();
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
@@ -427,7 +448,7 @@ async function cpuFixpoint(firstPassFull) {
     }
     if (!moved) return;
   }
-  const state = fresh();
+  const state = await fresh();
   const left = resolveChanged(state, readManifest(root), { steps: CPU_FIXPOINT_STEPS.filter(selected) });
   const moving = Object.entries(left).filter(([, entry]) => entry.mode !== 'none');
   if (moving.length && !DRY) {
@@ -442,12 +463,8 @@ async function runCheck(definition, ids) {
   const runArgs = [definition.checkTool ?? definition.tool, ...flags, ...scope];
   const label = `${definition.name}-check${ids ? '-ids' : ''}`;
   if (definition.device === 'gpu') {
-    const { createCaptureLock } = await import('./capture-lock.mjs');
-    const lock = createCaptureLock();
-    await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
-    const refresh = setInterval(() => lock.refresh(), 60_000);
-    try { return await runChild(runArgs, { niced: false, timeoutS: 1200, label }); }
-    finally { clearInterval(refresh); lock.release(); }
+    // (round 2 U38) the check child carries the hold's token too, as runGpuStep's children do
+    return runInCaptureHold((env) => runChild(runArgs, { niced: false, timeoutS: 1200, label, env }), { label: `regen ${label}`, baseEnv: childEnv, log });
   }
   await gate(definition.gb);
   return runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, ids?.length ?? (definition.universe === 'maps' ? 40 : 220)), label });
@@ -488,7 +505,7 @@ async function checkAll() {
     summary.dependents.push({ step: dependent.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
     log(`[regen] ${dependent.name} check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
   }
-  const state = fresh();
+  const state = await fresh();
   summary.final = { ...resolveChanged(state, readManifest(root)),
     ...(state.world && !NO_WORLD ? resolveChanged(state.world, readManifest(root), { steps: WORLD_NAMES.filter(selected) }) : {}) };
   const failed = [...summary.runs, ...summary.dependents].filter((run) => run.check === 'fail');
@@ -505,7 +522,8 @@ async function afterSteps(forceFull) {
 const started = Date.now();
 try {
   if (IDS) {
-    const unknown = IDS.filter((id) => !fresh().ids.includes(id));
+    const roster = (await fresh()).ids; // one read, not one per id
+    const unknown = IDS.filter((id) => !roster.includes(id));
     if (unknown.length) throw Object.assign(new Error(`--ids names ids the roster does not hold: ${unknown.join(', ')}`), { refusal: true });
     if (TABLE_PRESENT && !TABLE_CURRENT) log(`[regen] --ids: ${UNRECORDED}; these ids run and no rows are recorded`);
   }
@@ -530,8 +548,12 @@ try {
       for (const name of GPU_STEPS.filter(selected)) {
         if (!await step(name, { forceFull: ALL && round === 1, restrict: round > 1 })) continue;
         ran = true;
-        // --ids: the CPU steps run again only after a GPU step whose tables a build reads (centering's anchors)
-        if (IDS && !stepByName(name).outputs.some((output) => fresh().buildReadTables.includes(output))) continue;
+        // --ids: the CPU steps run again only after a GPU step whose tables a build reads (centering's anchors); one read
+        // per GPU step that ran, not one per output
+        if (IDS) {
+          const { buildReadTables } = await fresh();
+          if (!stepByName(name).outputs.some((output) => buildReadTables.includes(output))) continue;
+        }
         await cpuFixpoint(false);
         await afterSteps(false);
       }
@@ -545,7 +567,7 @@ try {
       for (const name of WORLD_NAMES.filter(selected)) if (await step(name, { forceFull: ALL && pass === 1, restrict: pass > 1 })) moved = true;
       if (!moved || DRY || IDS) break;
     }
-    const state = fresh();
+    const state = await fresh();
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
     const worldNames = NO_WORLD ? [] : WORLD_NAMES.filter(selected);
     if (worldNames.length && !state.world) throw new Error(`this tree has no world rows (${state.errors.join('; ') || 'no map registry'})`);
@@ -594,8 +616,15 @@ try {
 } catch (error) {
   summary.seconds = Math.round((Date.now() - started) / 1000);
   summary.ok = false; summary.error = String(error.message ?? error);
-  log(`[regen] FAILED: ${summary.error}`);
-  process.exitCode = error.refusal ? 2 : 1; // a refusal ran nothing
+  if (children.stopping || isChainStop(error)) {
+    // (round 8 Y10 s6-06) the stop ended what was in flight (a step's child, a rows read) or refused what came next: no
+    // failure; stopOnSignal exits 128 + the signal's number once the child groups have closed
+    summary.stopped = children.stopping ?? error.signal;
+    log(`[regen] stopped by ${summary.stopped}: ${summary.error}`);
+  } else {
+    log(`[regen] FAILED: ${summary.error}`);
+    process.exitCode = error.refusal ? 2 : 1; // a refusal ran nothing
+  }
 } finally {
   saveSummary();
 }

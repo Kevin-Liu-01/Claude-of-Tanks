@@ -1947,6 +1947,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': rosterHeights[0],
       'roster-right-height': rosterHeights[1],
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
+      // the ammo rack's centre line: the binoculars' call-in row stands on it (airSupportHud.css, gauntlet g7: centred on
+      // the window, the row stood 140 px off the keys and the rack below it at 1024x600)
+      'tray-x': ammo ? ammo.left + ammo.width / 2 : width / 2,
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
       'ribbon-top': ribbonTop,

@@ -129,7 +129,9 @@ const battles = SWEEPS.flatMap((sweep) => sweep.seeds.map((seed) => ({ ...sweep,
 // ticks are the Chieftain Mk 3's on medium ground, and T_REV covers its soft-ground reversal too. Two planted stands are
 // the positive controls (a standard battle, seed 1 from 30 s: the engaged bravo bot farthest from the alpha side held at
 // zero throttle, then driven off; a Horde zombie, 0.15 of its hull, dies braking before its stand begins): 3 s and
-// 1.5 x T_REV each count every slow sample they hold. The negative controls are deals of the sweep:
+// 1.5 x T_REV each count every engaged sample whose tick lies in the stand; (round 8 Y10 s6-07) the first sample past its
+// end (the pull-away) is a moving sample and is not counted, the control reports after that sample, and a control that
+// cannot finish prints a PLANT 'unproven' line naming why, a miss here. The negative controls are deals of the sweep:
 // seed 19's Puma reversals and seed 18's one-sample jolt read clean in the still asks.
 const harnessSource = readFileSync(HARNESS, 'utf8');
 const pinned = /const STAND_MIN_TICKS = (\d+) \+ SAMPLE_TICKS;/.exec(harnessSource);
@@ -162,7 +164,7 @@ const plantRun = (standS) => new Promise((resolve, reject) => {
   child.stderr.on('data', (d) => { err += d; });
   child.on('close', (code) => {
     if (code !== 0) { reject(new Error(`the planted ${standS} s stand exited ${code}: ${err.slice(-2000)}`)); return; }
-    resolve({ standS, line: err.split('\n').findLast((line) => line.startsWith('PLANT ') && line.includes(' stood ')) ?? '' });
+    resolve({ standS, line: err.split('\n').findLast((line) => line.startsWith('PLANT ') && (line.includes(' stood ') || line.includes(' unproven: '))) ?? '' });
   });
 });
 
@@ -223,7 +225,7 @@ const results = finished.slice(0, battles.length);
 // a control that fails is reported with the sweep's misses, never before the sweep is judged
 const controlMisses = [];
 const plants = finished.slice(battles.length).map(({ standS, line }) => {
-  const m = /stood ([\d.]+) s .*, (under way|destroyed): slow engaged samples (\d+), counted (\d+)/.exec(line);
+  const m = /stood ([\d.]+) s .*, (under way|destroyed): engaged samples in the stand (\d+), counted (\d+)/.exec(line);
   if (!m) { controlMisses.push(`the planted ${standS} s stand did not run: ${line || 'no PLANT line'}`); return `${standS} s none`; }
   const [, stoodS, end, slow, counted] = m;
   if (end !== 'under way') controlMisses.push(`the planted hull did not drive off its ${standS} s stand: ${line}`);

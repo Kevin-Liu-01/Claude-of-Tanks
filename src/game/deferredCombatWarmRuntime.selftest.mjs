@@ -83,6 +83,12 @@ assert.equal(globalThis.__BATTLE_DEFERRED_WARM.stages.rarePrograms, 7,
 pending = true;
 await owner.schedule(Number.NaN);
 assert.equal(pending, false, 'invalid/stale generations cannot hold rollout');
+// (round 2 U20) a stale generation holds nothing, so it releases nothing either: the current battle keeps its hold
+pending = true;
+await owner.schedule(2);
+assert.equal(pending, true, "a stale schedule never releases the current battle's hold");
+assert.equal(owner.isActive(), false, 'and starts no warm');
+pending = false;
 
 const frameResolvers = [];
 generation = 10;

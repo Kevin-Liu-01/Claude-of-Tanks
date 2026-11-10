@@ -11,6 +11,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { GRAVITY_SCALE } from '../src/sim/ballistics.ts';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const screenshotAt = args.indexOf('--screenshot');
@@ -64,7 +65,7 @@ try {
     } catch (_) { /* private mode */ }
   });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+  await waitForBootLoaded(page, { timeout: 180000 });
 
   await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await sleep(500);

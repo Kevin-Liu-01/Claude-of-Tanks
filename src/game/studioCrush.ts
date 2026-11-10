@@ -67,6 +67,14 @@ interface StudioCrushWorld {
   crushProp(index: number, dx: number, dz: number, speedMps?: number): boolean;
   resetDestructibles(): void;
   advanceDestruction(dt: number): void;
+  /** Whether a crush event this side never pressed sweeps a hull across the prop (the battle: yes; the Studio: no). */
+  setCrushSweeps?(on: boolean): void;
+  /**
+   * (round 2 U28) Who advances the felled trees' falls: the world's own update, or this timeline (map.ts). The Studio
+   * declares 'timeline' at setPlan and 'frame' at restore; every battle start declares 'frame' too, with the sweeps on
+   * (round 3 A7/M4: world/battleWorldReset.ts), so a Studio that never gave the world back holds no battle's falls.
+   */
+  setFallDriver?(driver: 'frame' | 'timeline'): void;
 }
 
 /**
@@ -148,7 +156,7 @@ interface StudioCrushes {
   advanceTo(world: StudioCrushWorld, tMs: number, onProp?: (event: StudioCrushEvent) => void): number;
   /** A seek to `tMs`: every event up to it lies at its final pose and nothing after it is crushed. */
   settleTo(world: StudioCrushWorld, tMs: number): void;
-  /** Leave the battlefield as the Studio found it. */
+  /** Leave the battlefield as the Studio found it: its crushes stood up and its crush sweeps on again (a battle's). */
   restore(world: StudioCrushWorld | null): void;
   /** The time of the next event not yet applied (Infinity when none). */
   nextTime(): number;
@@ -165,7 +173,9 @@ export function createStudioCrushes(): StudioCrushes {
     applied = 0; live = false; touched = false;
   };
   return {
-    setPlan(world, next) { reset(world); events = next; },
+    // (round 2 U28) the Studio's timeline drives the felled trees' falls on the world it plans on (advanceDestruction,
+    // advanceToppledVegetation): the world's own update stands still for them, paused or playing, from the first frame
+    setPlan(world, next) { world?.setFallDriver?.('timeline'); reset(world); events = next; },
     advanceTo(world, tMs, onProp) {
       const start = applied;
       while (applied < events.length && events[applied].tMs <= tMs) {
@@ -188,7 +198,9 @@ export function createStudioCrushes(): StudioCrushes {
       // settled records write their final poses on the next step; the crushables' falls run to their end
       world.advanceDestruction(felled ? SETTLE_S : 0);
     },
-    restore(world) { reset(world); },
+    // (2026-11-02 audit R2) the Studio turns a world's sweeps off while it plans on it (studio.ts syncCrushPlan); a world it
+    // left for another kept them off into a later battle, where a remote or late crush of a car stood drawn intact
+    restore(world) { world?.setCrushSweeps?.(true); world?.setFallDriver?.('frame'); reset(world); },
     nextTime: () => (applied < events.length ? events[applied].tMs : Infinity),
     get events() { return events; },
   };

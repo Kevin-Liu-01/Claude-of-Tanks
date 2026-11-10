@@ -161,9 +161,9 @@ for (const mapId of ['verdant', 'urban']) {
     const margin = [0, 0.4, 1.2, 2.95, 4.5][i % 5], skip = i % 4;
     ts.queryObstacles(x - margin, z - margin, x + margin, z + margin, candidates);
     const within = candidates.filter((r) => keeps(r, skip) && collisionClearanceContainsPoint(r, x, z, margin)).map((r) => obstaclesTs.indexOf(r));
-    scan.begin(x - margin, z - margin, x + margin, z + margin);
-    if (i % 11 === 0) { scan.point(x, z, margin, skip); scan.begin(x - margin, z - margin, x + margin, z + margin); }
-    assert.deepEqual(walk(() => scan.point(x, z, margin, skip)), within, `${mapId}: clearance point ${i} at (${x}, ${z}) margin ${margin}`);
+    let pointWalk = scan.begin(x - margin, z - margin, x + margin, z + margin);
+    if (i % 11 === 0) { scan.point(pointWalk, x, z, margin, skip); pointWalk = scan.begin(x - margin, z - margin, x + margin, z + margin); }
+    assert.deepEqual(walk(() => scan.point(pointWalk, x, z, margin, skip)), within, `${mapId}: clearance point ${i} at (${x}, ${z}) margin ${margin}`);
     inside += within.length;
     const angle = random() * Math.PI * 2, reach = 2 + random() * 40, dx = Math.sin(angle) * (i % 7 ? 1 : 2.5), dz = Math.cos(angle) * (i % 7 ? 1 : 2.5);
     const ex = x + dx * reach, ez = z + dz * reach;
@@ -175,9 +175,9 @@ for (const mapId of ['verdant', 'urban']) {
       const entry = rayCollisionClearanceEntry2(record, x, z, dx, dz, reach, margin);
       if (entry != null) lane.push([obstaclesTs.indexOf(record), entry]);
     }
-    scan.begin(...box);
+    const laneWalk = scan.begin(...box);
     const walked = [];
-    for (let r = scan.lane(x, z, dx, dz, reach, margin, skip); r; r = scan.lane(x, z, dx, dz, reach, margin, skip)) walked.push([obstaclesWasm.indexOf(r), scan.entry]);
+    for (let r = scan.lane(laneWalk, x, z, dx, dz, reach, margin, skip); r; r = scan.lane(laneWalk, x, z, dx, dz, reach, margin, skip)) walked.push([obstaclesWasm.indexOf(r), scan.entry(laneWalk)]);
     assert.deepEqual(walked, lane, `${mapId}: clearance lane ${i} from (${x}, ${z})`);
     entered += lane.length;
   }

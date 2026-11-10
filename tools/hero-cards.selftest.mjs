@@ -154,14 +154,23 @@ for (const gunSide of ['left', 'right']) {
   assert.match(layerCss, /\.cot-hc \.hc-flag\[data-pending\]\{opacity:0;\}/, 'a pending flag stays transparent, then fades on the flag\'s own transition');
   assert.match(cardTs, /\.catch\(\(\) => \{ manifestRequest = null; return null; \}\)/, 'a manifest request the network dropped is forgotten');
   // Every surface that shows cards loads the card module and its stylesheet together, lazily (no static CSS import
-  // in a graph, and no extra static chunk on the game page: the boundary is inline at each surface).
+  // in a graph, and no extra static chunk on the game page). (2026-11-02 audit R6) The boundary is one load for the
+  // document, ui/heroCardChunk.ts (Vite's preload keeps one `seen` map of stylesheets, so a sheet that failed at one
+  // surface's own boundary loaded "successfully" without it at the next: an unstyled card); the small module rides the
+  // boot leaf group the game and the Gallery already load (vite.config.ts turretSeatPlane), and the card module stays lazy.
   assert.doesNotMatch(cardTs, /^import ['"][^'"]+\.css['"]/m, 'heroCard.ts imports no stylesheet statically');
   assert.match(cardTs, /img\.loading = priority \? 'eager' : 'lazy';/,
     'the selected card\'s layers load eagerly (a lazy LCP waits for layout); the rest stay lazy until drainHeroCards');
-  for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
+  const chunkTs = readFileSync(new URL('../src/ui/heroCardChunk.ts', import.meta.url), 'utf8');
+  assert.match(chunkTs, /createLazyChunk\(\(\) => importAll\(\[import\('\.\/heroCard\.ts'\), import\('\.\/heroCard\.css'\)\]\)/,
+    'the one hero card load holds the card module with its stylesheet');
+  assert.match(readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8'), /ui\[\\\\\/\]\(\?:uiCanvas\|heroCardChunk\)/,
+    'and rides the boot leaf group (no new boot request)');
+  assert.doesNotMatch(chunkTs, /^import (?!type )[^;]*heroCard\.ts['"];/m, 'heroCardChunk.ts never imports the card module statically');
+  for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts', '../src/ui/battleLoad.ts', '../src/ui/studioPanel.ts']) {
     const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
-    // (the Gallery's grid also loads its class glyphs in the same batch: owner 10-26, b15a149f64)
-    assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)(?:, import\('[^']+'\))*\]\)/, `${surface} loads the card module with its stylesheet`);
+    assert.match(source, /heroCardChunk\.load\(\)/, `${surface} loads the card module with its stylesheet through the one hero card load`);
+    assert.doesNotMatch(source, /(?<!typeof )import\('(?:\.\/|\.\.\/ui\/)heroCard\.(?:ts|css)'\)/, `${surface} has no hero card boundary of its own`);
     assert.doesNotMatch(source, /^import (?!type )[^;]*heroCard\.ts['"];/m, `${surface} never imports the card module statically (type imports are erased)`);
   }
   assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');

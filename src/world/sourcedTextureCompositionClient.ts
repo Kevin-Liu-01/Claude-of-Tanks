@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
+import { createWorkerClientHealth } from '../workerClientHealth.ts';
 import type { SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import {
   SOURCED_TEXTURE_COMPOSITION_PROTOCOL,
@@ -84,7 +85,10 @@ function usedImages(input: SourcedCompositionInput): SourcedCompositionImages {
 
 /** One serial worker and one bitmap preparation at a time. A joined consumer's
  * cancellation never interrupts another consumer. No textures or canvas cache
- * entries belong to this service; returned buffers belong to the caller. */
+ * entries belong to this service; returned buffers belong to the caller.
+ * (2026-11-02 audit R6) The worker-client pattern (src/workerClientHealth.ts): a failure closes the worker and settles
+ * what it held with the main-thread fallback, and the next set starts a fresh worker; three in a row leave the client
+ * unavailable. Before, one 15 s timeout sent every later composition in the session to the main thread. */
 export function createSourcedCompositionClient(
   ports: SourcedCompositionClientPorts,
   { timeoutMs = 15_000, idleMs = 5_000, maxPending = 8 } = {},
@@ -96,7 +100,8 @@ export function createSourcedCompositionClient(
   const imageIds = new WeakMap<HTMLImageElement, number>();
   let nextImageId = 0, nextRequestId = 0;
   let worker: SourcedCompositionWorkerPort | null = null;
-  let ready = false, unavailable = false;
+  let ready = false;
+  const health = createWorkerClientHealth();
   let active: CompositionJob | null = null;
   let cancelIdle: (() => void) | null = null;
   let idleRevision = 0;
@@ -134,12 +139,22 @@ export function createSourcedCompositionClient(
     job.consumers.clear();
   }
 
-  function fail(): void {
-    unavailable = true;
+  function drain(): void {
     closeWorker();
     const current = active; active = null;
     if (current) settle(current, null);
     for (const job of queue.splice(0)) settle(job, null);
+  }
+
+  /** The worker failed: what it held takes the fallback; the next set starts a fresh worker, unless that was the last. */
+  function fail(): void {
+    health.failed();
+    drain();
+  }
+
+  function dispose(): void {
+    health.close();
+    drain();
   }
 
   function finishActive(job: CompositionJob, result: SourcedTextureCompositionComplete | null): void {
@@ -150,7 +165,7 @@ export function createSourcedCompositionClient(
   }
 
   function receive(owned: SourcedCompositionWorkerPort, data: RuntimeValue): void {
-    if (worker !== owned || unavailable) return;
+    if (worker !== owned || health.state === 'unavailable') return;
     if (isSourcedTextureCompositionReady(data)) {
       if (ready) { fail(); return; }
       ready = true;
@@ -168,6 +183,7 @@ export function createSourcedCompositionClient(
       // A reported Canvas/cleanup failure may have closed the worker realm.
       // Do not assume an error reply proves it can service the next request.
       if (reply.type === 'error') closeWorker();
+      else health.succeeded();
       finishActive(job, reply.type === 'complete' ? reply : null);
     } catch { fail(); }
   }
@@ -244,17 +260,17 @@ export function createSourcedCompositionClient(
   }
 
   function advance(): void {
-    if (unavailable) return;
+    if (health.state === 'unavailable') return;
     try {
       if (!active) {
         if (!queue.length) { idle(); return; }
-        active = queue.shift()!;
+        const job = active = queue.shift()!;
         // (260, the rooms census: a map's sets queue behind the one serial worker, and on a loaded machine the last
         // timed out while it waited its turn — the client then failed for the session and every later set composed on
         // the main thread) a job's deadline runs from its turn, not from its request
-        active.cancelTimer = ports.schedule(fail, timeoutMs);
+        job.cancelTimer = ports.schedule(() => { if (active === job) fail(); }, timeoutMs);
       }
-      if (!acquireWorker()) { fail(); return; }
+      if (!acquireWorker()) { dispose(); return; }
       if (ready && !active.preparing) void prepare(active).catch(fail);
     } catch { fail(); }
   }
@@ -303,7 +319,7 @@ export function createSourcedCompositionClient(
   }
 
   function compose(input: SourcedCompositionInput, signal?: AbortSignal): Promise<SourcedTextureCompositionComplete | null> {
-    if (unavailable || signal?.aborted) return Promise.resolve(null);
+    if (health.state === 'unavailable' || signal?.aborted) return Promise.resolve(null);
     let copy: ReturnType<typeof snapshot>;
     try { copy = snapshot(input); } catch { return Promise.resolve(null); }
     const existing = pending.get(copy.key);
@@ -321,7 +337,7 @@ export function createSourcedCompositionClient(
     return result;
   }
 
-  return { compose, available: () => !unavailable, dispose: fail };
+  return { compose, available: () => health.state === 'available', dispose };
 }
 
 let sharedClient: SourcedCompositionClient | null = null;

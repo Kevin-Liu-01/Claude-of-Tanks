@@ -4,6 +4,7 @@ import {
   type BufferGeometry, type Camera, type Scene, type WebGLRenderer,
 } from 'three';
 import { markShadowOnly, SHADOW_ONLY_LAYER } from './renderLayers.ts';
+import { holdCastShadowOff, releaseCastShadowHold } from './castShadowHolds.ts';
 
 const sourceOwners = new WeakMap<Mesh, BatchedMesh>();
 const beforeCompile = Material.prototype.onBeforeCompile;
@@ -165,7 +166,8 @@ class ArticulatedShadowBatch extends BatchedMesh {
     this.root.add(this);
     for (const { source } of this.records) {
       sourceOwners.set(source, this);
-      source.castShadow = false;
+      // (2026-11-02 audit R4) a named hold (castShadowHolds.ts): the dispose gives back only this batch's hold
+      holdCastShadowOff(source, this);
     }
   }
 
@@ -245,9 +247,9 @@ class ArticulatedShadowBatch extends BatchedMesh {
     this.visible = false;
     this.castShadow = false;
     for (const { source } of this.records) {
-      if (sourceOwners.get(source) !== this) continue;
-      sourceOwners.delete(source);
-      if (!source.castShadow) source.castShadow = true;
+      if (sourceOwners.get(source) === this) sourceOwners.delete(source);
+      // only this batch's own hold: a newer owner's hold (if any) keeps the source off
+      releaseCastShadowHold(source, this);
     }
     // Three container disposal is invoked from root.traverse(). Detaching
     // here would shift that traversal's child array and skip later owners.

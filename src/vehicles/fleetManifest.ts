@@ -40,6 +40,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   // 269: the Australian line's own builds
   australia: Object.freeze(['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'm113a3']),
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
+  t95: Object.freeze(['t95']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
@@ -61,6 +62,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   k2X: Object.freeze(['k2_black_panther']),
   kf51X: Object.freeze(['kf51_panther']),
   t14X: Object.freeze(['t14_armata']),
+  // release 269: the Russian 152 mm line (profiles/russia152.ts)
+  russia152: Object.freeze(['object292', 'object477_molot', 'object195', 't14_152']),
   kurganetsX: Object.freeze(['kurganets25']),
   fv510MilanX: Object.freeze(['warrior_tes_h']),
   griffin50X: Object.freeze(['griffin50mm']),
@@ -139,6 +142,15 @@ export const FLEET_GROUP_IDS = Object.freeze({
   gm352AirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
   gepard: Object.freeze(['gepard_1a2']),
   chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
+  // 269: the second air-defence round, one self-contained group per base vehicle (the 268 round's pattern); the two
+  // Marksmen share one turret module on two hulls
+  type87: Object.freeze(['type87_aw']),
+  marksman: Object.freeze(['marksman_t55', 'itpsv_leopard2']),
+  lvkv9040: Object.freeze(['lvkv9040']),
+  k30Biho: Object.freeze(['k30_biho']),
+  loara: Object.freeze(['pza_loara']),
+  // 269: the M163 VADS, its Vulcan turret on the M113 builder's M741 hull
+  m163: Object.freeze(['m163_vads']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

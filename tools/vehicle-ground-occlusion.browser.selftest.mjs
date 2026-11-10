@@ -7,7 +7,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { evaluateVehicleGroundGlsl } from './vehicle-ground-occlusion.browser.fixture.mjs';
 import { vehicleGroundGlslCases } from '../src/engine/vehicleGroundOcclusion.test-support.mjs';
@@ -25,12 +25,11 @@ async function bounded(promise, timeoutMs, label) {
 }
 
 const { labels, cases, glsl } = await vehicleGroundGlslCases();
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'vehicle-ground-occlusion-glsl-v1', ok: false, renderer: null, cases: [], errors: [], browserClosed: false, lockReleased: false };
-let browser, refresh;
+let browser;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'vehicle-ground-occlusion.browser.selftest', timeoutMs: 45 * 60_000 });
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 60_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);
@@ -54,7 +53,7 @@ try {
     try { await bounded(browser.close(), 15_000, 'browser close'); report.browserClosed = true; }
     catch (error) { report.errors.push(String(error)); const child = browser.process(); if (child && child.exitCode === null) child.kill('SIGKILL'); }
   }
-  clearInterval(refresh); lock.release(); report.lockReleased = true;
+  await hold?.release(); report.lockReleased = true;
 }
 report.ok = report.errors.length === 0 && report.cases.length === cases.length && report.browserClosed && report.lockReleased;
 console.log(JSON.stringify({ ...report, cases: report.cases.map((c) => ({ name: c.name, worst: c.worst })) }, null, 2));

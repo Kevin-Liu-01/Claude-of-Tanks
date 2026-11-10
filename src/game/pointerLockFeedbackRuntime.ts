@@ -1,3 +1,4 @@
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { t } from '../ui/i18n.ts';
 import type { BattleNoticePort } from '../ui/battleNotices.ts';
 import type { EventBus } from './stateCore.ts';
@@ -32,14 +33,16 @@ interface PointerLockFeedbackRuntime {
 
 // (the battle's region loads with the first notice: imported here, battleNotices.ts was a chunk of its own on the game
 // page's boot requests)
-let regionPort: Promise<BattleNoticePort> | null = null;
+// (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts), as the HUD's aim notices: `??=` kept a
+// failed import, so after one failed chunk the pointer lock's notice never showed again; the next one asks again, and a
+// dismiss never fetches
+const regionPort = createLazyChunk(() => import('../ui/battleNotices.ts').then((module) => module.battleNotices));
 const lazyBattleNotices: BattleNoticePort = {
   show(options) {
-    regionPort ??= import('../ui/battleNotices.ts').then((module) => module.battleNotices);
-    void regionPort.then((port) => { port.show(options); }, () => {});
+    void regionPort.load().then((port) => { port.show(options); }, () => {});
   },
   dismiss(id) {
-    if (regionPort) void regionPort.then((port) => { port.dismiss(id); }, () => {});
+    if (regionPort.state === 'ready' || regionPort.state === 'loading') void regionPort.load().then((port) => { port.dismiss(id); }, () => {});
   },
 };
 

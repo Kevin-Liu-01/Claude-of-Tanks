@@ -8,15 +8,15 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { withDistProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
 
 const out = resolve('.qa-dev/gunship-fx'); mkdirSync(out, { recursive: true });
 const dist = resolve(process.argv.find((a) => a.startsWith('--dist='))?.slice(7) ?? 'dist');
 const GROUPS = ['gunship-cannon', 'gunship-howitzer', 'gunship-missile'];
-const lock = createCaptureLock(); let heartbeat; const results = [];
+let hold; const results = [];
 try {
-  await lock.acquire(); heartbeat = setInterval(() => lock.refresh(), 30000); console.log('gunship-fx: acquired GPU slot');
+  hold = await openCaptureHold({ label: 'gunship-fx', timeoutMs: 10 * 60 * 1000 }); console.log('gunship-fx: acquired GPU slot');
   await withDistProbeSession({ root: process.cwd(), dist, launch: { executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' } }, async ({ browser, port }) => {
     for (const viewport of [{ width: 1280, height: 800 }, { width: 480, height: 270, isMobile: true, hasTouch: true }]) {
       const { page, errors } = await openGamePage(browser, { port, viewport });
@@ -76,4 +76,4 @@ try {
   });
   writeFileSync(resolve(out, 'report.json'), JSON.stringify({ pass: true, results }, null, 2));
   console.log('gunship-fx: the AC-130 on the October tracers, the hellfire, snapshots, desktop/touch and reset passed');
-} finally { clearInterval(heartbeat); lock.release(); }
+} finally { await hold?.release(); }

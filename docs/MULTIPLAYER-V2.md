@@ -168,7 +168,7 @@ own team at full rate, and nothing for hidden enemies (as v1: hidden coordinates
 server). Rows are delta-coded against the last acknowledged snapshot; a keyframe goes every 2 s
 or on a missing baseline.
 
-**Budget (28 players, 30 Hz).** Full row ≈ 44 B (quantized: position 3×i32 mm, velocity 3×i16
+**Budget (28 players, 30 Hz).** Full row ≈ 43 B (quantized: position 3×i32 mm, velocity 3×i16
 cm/s, five angles u16, hp u16, reload/magazine/ammo u8–u16, flags u8, sparse ERA list); typical
 delta row ≈ 12–20 B. Per client: keyframe ≈ 1.3 KB, delta snapshot ≈ 0.4–0.6 KB → 12–18 KB/s down,
 < 3 KB/s up. Server egress for a full room ≈ 0.4–0.5 MB/s. Authority CPU: measured in phase 1
@@ -382,8 +382,8 @@ prediction section, mode state JSON), EVENT (kind byte + bounded JSON payload), 
 ERROR. Rows: `u8` entity id, a varint group mask, then only the present groups — position
 `3 × i32` mm (or `3 × i16` relative), speed + vertical speed `i16` cm/s, five angles `u16` turns
 (tilt also as `i8` deltas), hp/maxHp `u16`, reload channels `u16` in 2 ms steps, magazine
-`u8 × 2`, ammo varints, a `u16` status word (reload kinds, slot, gun-reload mirror bit, nine
-flags), ERA cassettes as gap-coded spec-order plate indices. Entity ids are 1..64, seats 0..63.
+`u8 × 2`, ammo varints, a status word (reload kinds, slot, gun-reload mirror bit, nine
+flags; since wire 10 a varint with eleven, TUMBLING and STACKED added: src/mp/wire/README.md), ERA cassettes as gap-coded spec-order plate indices. Entity ids are 1..64, seats 0..63.
 
 ### Lag-compensation rule
 
@@ -404,10 +404,10 @@ after the shooter looked is missed live and hit rewound.
 
 | What | Number |
 |---|---|
-| Full entity row (keyframe, typical tank) | 44 B mean; worst distinct gun channel + 3 ERA cassettes 53 B |
+| Full entity row (keyframe, typical tank) | 43 B mean (wire 11); worst distinct gun channel + 3 ERA cassettes 52 B |
 | Typical moving delta row (pos rel, velocity, yaw, tilt rel, turret) | 16 B |
-| 28-entity keyframe incl. viewer section | 1473 B; delta snapshot 489 B; snapshot header 41 B |
-| Input frame (3 controls) | 57 B (1.7 KB/s at 30 frames/s, 3.4 KB/s at 60) |
+| 28-entity keyframe incl. viewer section | 1458 B; delta snapshot 491 B; snapshot header 43 B |
+| Input frame (3 controls) | 60 B (1.8 KB/s at 30 frames/s, 3.6 KB/s at 60) |
 | Tick p95, 28 bots, dedicated shards, headless | winter 1.53 · mars 1.82 · alpine 3.99 · badlands 2.03 · delta 3.11 · steppe 2.79 · monsoon 2.68 ms |
 | Tick p95, 28 bots + 28 acknowledging viewers | 3.79 · 2.48 · 3.76 · 3.79 · 3.70 · 2.27 · 4.17 ms (budget 6) |
 | Egress per spectator viewer (all 28 rows, deltas) | 26–29 KB/s |
@@ -712,8 +712,8 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   finished match is `invalid_command`; a malformed report `invalid_payload`). `playing` moves the room to `playing`;
   `ended` with a verdict records it (`match_status ended`, the room back to `waiting`); `ended` without a verdict records
   the match as lost with reason `host_ended`. `tick` (default 0) is the authority tick the host has reached: the last
-  reported one is the `resumeTick` a successor receives. The host reports every `ROOM_MATCH_REPORT_INTERVAL_MS` (10 s)
-  and on every phase change; silence for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (3 × the poll interval, 30 s — counted from
+  reported one is the `resumeTick` a successor receives. The host reports every `ROOM_MATCH_REPORT_INTERVAL_MS` (30 s)
+  and on every phase change; silence for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (3 × the poll interval, 90 s — counted from
   the election until the first report) is a dropped host. The ack is `room_ack { revision }`; a report that changes
   nothing broadcasts nothing.
 - **`host_decline`**: `room_command { command: { type: 'host_decline', declined: boolean } }` from any seat in any
@@ -776,7 +776,7 @@ with `src/mp/room/p2pMatchHost.ts`, shared by the Durable Object and the local r
   constants `ROOM_MATCH_REPORT_INTERVAL_MS`, `ROOM_MATCH_REPORT_STALE_AFTER_MS`, `ROOM_MAX_VERDICT_REASON_CHARS`, and the
   types `RoomMatchReportCommand`, `RoomMatchReport`, `RoomHostDeclineCommand`, `RoomMatchReportPhase`.
 - **Requests to the client lane (P2)** — nothing on the room side depends on them, they are what the room expects: the
-  host sends `match_report` (`loading` as soon as it boots, `countdown`, `playing` with its tick, then every 10 s with the
+  host sends `match_report` (`loading` as soon as it boots, `countdown`, `playing` with its tick, then every 30 s with the
   current tick, `ended` with the verdict); a `host_only` on a report means the seat is no longer the host and should
   keep the last keyframe as a peer; a `host_changed` with a new generation is the migration (compare the generation,
   never the reason); the mobile tier and the "never host" switch send `host_decline { declined: true }` before the start
@@ -892,7 +892,7 @@ imports P1's helpers, defines none of its own). Every module is Node-runnable an
 | `WebRtcTransport` | `src/mp/transport/webRtcTransport.ts` | the Transport contract over one reliable ordered RTCDataChannel `match`: offers to the signaler's current host with its generation through the room relay, trickle ICE both ways, `bufferedAmount` as backpressure under the shared policy, `reconnect()` = a fresh offer with the shared backoff, `retarget()` = an immediate offer to a newly elected host, stale-generation / wrong-sender signals ignored, close reasons on `TRANSPORT_CLOSE`, the selected candidate pair's types (host / srflx / prflx / relay → TURN) from the stats, ICE from v1's `loadIceConfiguration` resolved per connection with a host-candidates fallback |
 | `MigratingTransport` | `src/mp/transport/migratingTransport.ts` | swaps a running client's link (peer ↔ host loopback) as `reconnecting` → `open { resumed }`, so the MatchClient re-runs its handshake and keeps its prediction, events and retained state |
 | `rtcClientLink` | `src/mp/match/rtcClientLink.ts` | the actor's `ClientLink` over a data channel (the wire CLOSE before the channel closes; `abandon()` drops a channel silently) and the host acceptor: one peer connection per offer of the current generation, answered through the room, the opened channel handed over labelled by ordinal; re-offers replace (REPLACED), stale / over-capacity offers refused, a channel that never opens dropped after 15 s |
-| the browser host | `src/mp/host/` | `matchHost` (main thread: the Worker port and the acceptor up from construction, channels bridged as numbered links with transferred frames and pressure, the host's own seat through the loopback pair, reports forwarded, uplink and peers sampled), `matchHostCore` (in the Worker: the unchanged `server/match/matchActor.ts` on a manifest world, a HELLO gate verifying seat tokens with the per-match host secret through Web Crypto, `match_report` at `loading` / every phase / every `ROOM_MATCH_POLL_MS` and one `ended` report carrying the verdict, nothing after it (the room closes the match on that report and refuses anything later as `invalid_command`), a sealed keyframe of every entity every `ROOM_MATCH_KEYFRAME_INTERVAL_MS` and the boot configuration every 10 s, links opened before the boot held), `migrationState` (AES-GCM under SHA-256(hostSecret ':migration'); the keyframe codec + extras; chunking under the event limit; the actor restore), `hostPlan` (the roster as `planStart` froze it, the WELCOME roster as the migration fallback), `seatTokenWeb`, `worldCollision` (below), `browserHostPort` (the Worker chunk), `inProcessHost` (Node) |
+| the browser host | `src/mp/host/` | `matchHost` (main thread: the Worker port and the acceptor up from construction, channels bridged as numbered links with transferred frames and pressure, the host's own seat through the loopback pair, reports forwarded, uplink and peers sampled), `matchHostCore` (in the Worker: the unchanged `server/match/matchActor.ts` on a manifest world, a HELLO gate verifying seat tokens with the per-match host secret through Web Crypto, `match_report` at `loading` / every phase / every `ROOM_MATCH_POLL_MS` and one `ended` report carrying the verdict, nothing after it (the room closes the match on that report and refuses anything later as `invalid_command`), a sealed keyframe of every entity every `ROOM_MATCH_KEYFRAME_INTERVAL_MS` and the boot configuration, sealed once at the boot, to each seat right after its WELCOME and to every seat every 10 s from the seal (an elected seat boots from the roster, `planFromRoster`, only when it cannot read that blob), links opened before the boot held), `migrationState` (AES-GCM under SHA-256(hostSecret ':migration'); the keyframe codec + extras; chunking under the event limit; the actor restore), `hostPlan` (the roster as `planStart` froze it, the WELCOME roster as the migration fallback), `seatTokenWeb`, `worldCollision` (below), `browserHostPort` (the Worker chunk), `inProcessHost` (Node) |
 | the session | `src/mp/session/matchSession.ts` | an `rtc://` `match_start` opens no socket: the named host boots the browser host and plays through its loopback, every other seat opens a `WebRtcTransport`, both behind a `MigratingTransport`; a `host_changed` with a NEWER generation is the migration (the start election and older ones are no-ops, the reason never decides); seats that cannot host (no Worker, the mobile tier, the never-host switch) send `host_decline` on join; a leaving host declines so the room elects the next; `host_only` on a report steps a stale host down to a peer; `ws(s)://` keeps the WebSocket path unchanged |
 | status + surface | `networkStatus.ts`, `src/ui/multiplayerStatus.ts` | role, generation, host, candidate type, TURN, host uplink (kbit/s), peers served, migration in progress; the HOST badge, four rows behind the role, the migration banner ("New host: X · resuming…"); 18 keys in both catalogs; telemetry kinds `mp_host` / `mp_migrate` fold into the exit note as `:h<n>:m<n>` |
 
@@ -1177,7 +1177,7 @@ on the tip); offers 83 → 82, answers 55 → 54, `match_report` 38 → 38, `set
 `host_decline` 25 → 25, create / team / start 1 each; `room_state` 1,728 → 543 (the 28 sequential joins, instant by the rule,
 still fan out to every seat already present — 378 of the 543; the readies and declines that used to fan out 28 times each
 now ride one broadcast per 300 ms window); `room_ack` 93 → 93, `host_changed` 55 → 55, `match_start` 29 → 29. The steady
-state of a running match is now the host's report every 10 s and nothing else: a 30-minute 14v14 costs ≈ 220 handled
+state of a running match is now the host's report every 10 s (every 30 s since §13.29: 60 reports, not 180) and nothing else: a 30-minute 14v14 costs ≈ 220 handled
 messages at the start and per migration plus 180 reports ≈ 400 requests on the conservative rule — **≈ 250 matches a day of
 headroom (the certification's figure was 26), ≈ 2,000 on the published rule** — and a keepalive that is free at any cadence.
 Nothing else moved: 7v7 snapshot rate 30 Hz (min 29.5), host tick p50 0.4 / p95 1.1 ms, uplink 1,596 kbit/s median, 0 lost
@@ -1220,7 +1220,7 @@ only as the last resort), keeps a running host that declines without a willing s
 (`reportStaleMs`) and broadcasts the room after a decline. `tools/mp-p2p-decline.selftest.mjs` proves the client under that
 rule on the REAL actor (`server/rooms` with `matchTransport: 'p2p'`, its deadlines on a fake clock) and on the double: the hosting
 admin's Garage return with every other commander declined keeps it as host (no election), the peers wait on a lost link, the
-report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS` = 30 s) migrates with `timeout` to the last resort, which resumes from its sealed
+report budget (`ROOM_MATCH_REPORT_STALE_AFTER_MS`, 30 s then, 90 s since §13.29) migrates with `timeout` to the last resort, which resumes from its sealed
 keyframe at the continued tick; the other peer follows; the old host re-enters as a peer. The cost of P1's rule is that stall:
 30 s instead of the 8 s grace. What P1 should add: treat a decline from the RUNNING host as `left` (the client only declines
 while hosting when it is leaving the match — its actor is already gone), so the last resort is elected at once. **Done in
@@ -1232,7 +1232,7 @@ the deployed site (stamp `de5322e7d`, 2026-09-28 22:48): PASS in 87 s — A host
 over 364 snapshots in 12 s, A closed → B elected after 8,337 ms (generation 2), C live on B with +120 snapshots in 4 s, B's hull
 2.12 m from where C saw it, A back as a peer on the auto path in one attempt (compile 2,572 ms), 0 browser errors. The
 `host_only` step-down and the report cadence: the deployed run's reports are not observable from outside the Worker; the
-cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every 10 s; one
+cadence is receipted against the real actor's rules (`matchSessionP2p.selftest`: `loading`, every phase, every `ROOM_MATCH_REPORT_INTERVAL_MS`; one
 `ended`), and the step-down is proven end to end on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — which found a
 client bug first: a host whose ROOM socket dropped past the grace (its tab and actor alive) came back to a re-sent
 `match_start` naming the successor at generation 2, but `RoomClient.generation` / `hostId` answered from the stale start
@@ -1403,8 +1403,13 @@ and the actor ignores it). The elected host's actor (`receiveResumeHint`) applie
 resumed a migration, the entity was restored from the migration state (`applyResumeState` names each restored row's
 tick and position through `MatchActor.noteRestoredRow`), no hint was taken for it yet, the row is newer than the
 restored one and older than the resume tick, and it lies within the distance the hull could have driven since the
-restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields only,
-never combat state. A client never places itself: a claim outside those bounds is refused and counted
+restored row — (ticks between) × top speed × 1.25 + 3 m, the fleet's fastest hull as the floor — pose fields and the
+row's body bits only (protocol 12, round 3 A14: the hint seats its ground contact and body mode as a row does,
+`authorityRow.ts applyAuthorityRow`, never from its height over the terrain), never combat state. The bits widen no trust
+the pose did not carry: a hint's pitch and roll already decided the rigid phase on the actor's next step (`movement.ts`
+settles a grounded tumbling hull whose fit is upright; a forged upright hint over a restored overturned row was supported
+after one step before protocol 12), so the bits seat at the hint what the step would have, and both stay bounded by the
+tick, distance and once-only checks above. A client never places itself: a claim outside those bounds is refused and counted
 (`ResumeHintStats.reasons`). Bots, disconnected seats and hulls nobody re-offers still resume from the sealed keyframe
 (≤ 2 s old); the seed covers every hull whose own seat comes back, which is what the certification's own-hull gate
 measures. Receipts: `matchActorResume.selftest` (older / future / too far / unrestored / spectator / repeated refused, one
@@ -1620,7 +1625,7 @@ the deployed Worker with the site Origin header, rooms created and left, nothing
 seat's state at that moment; a wrong outcome is a FAIL; the table prints the time to resolution and the room messages
 (client→room / room→client, keepalive frames included) per scenario, and the exit code is non-zero on any hang or failure.
 The receipt `tools/mp-room-lifecycle.selftest.mjs` (core group, ≈ 40 s) runs the fast set on the real actor;
-`npm run test:net:v2:rooms:lifecycle` adds the slow budgets (b2 the 30 s admin grace, c3 the 30 s report budget, c4 the
+`npm run test:net:v2:rooms:lifecycle` adds the slow budgets (b2 the 30 s admin grace, c3 the 90 s report budget, c4 the
 60 s link window, d4 the admin lease after every seat dropped).
 
 **The contract, where the brief left a choice.** (a) A room every seat has left keeps its code for the 24 h idle TTL
@@ -2148,7 +2153,7 @@ restored falls within the old host's.
 
 ### 13.17 A loading host keeps the match (MP stream, plan step 8, 2026-10-13)
 
-**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s), counted from its
+**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s then, 90 s since §13.29), counted from its
 election, and an elected host's actor boots only after its presentation has built the world (`MatchSession.enterMatch`:
 `createPresentation`, then `openPeerToPeer`). A slow entry (a cold program compile, a busy machine) cost the match its
 host before it began, and the peers a migration onto a seat that was loading too (MP-SINCE-0930 MP-S03; the rooms Worker

@@ -147,6 +147,12 @@ export const ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Objec
 });
 
 /**
+ * Eras whose sides take no ally fill (271 ruling): COUNTRY_ALLIES is the post-war alliance map, so in WW2 a side's
+ * bots come from its own nation only (a German hull never fields a US one beside it); with none left they repeat.
+ */
+export const ERAS_WITHOUT_ALLY_FILL: ReadonlySet<string> = new Set(['ww2']);
+
+/**
  * The country each campaign operation's formation is drawn from (gameplay-modes-228): the one table the solo campaign
  * (game/campaignOperations.ts builds its ladder from it) and the multiplayer bot planner (src/mp/room/roomBots.ts, which
  * the rooms Worker reaches and which may not import src/game) both read. The story fixes it under both TEAM NATIONS

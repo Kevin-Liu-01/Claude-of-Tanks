@@ -229,12 +229,28 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ['src/ui/garage.ts', 'the custom camo studio', /reloadsForFailure\(option, /, /customCamoStudioFailed = true;\s+reportLoadFailure\(/],
     ['src/ui/garage.ts', 'the tech tree', /reloadsForFailure\(techTreeTrigger, /, /reportLoadFailure\('cot-techtree-load'/],
     ['src/ui/garage.ts', 'the Service Record', /reloadsForFailure\(recordTrigger, /, /reportLoadFailure\('cot-record-load'/],
-    ['src/ui/garage.ts', 'a battle (every launch)', /if \(pressFailed\(battleBtn\)\) return;/, /markLoadFailed\(\[battleBtn\]/],
+    // (round 8 Y4 s3-04) launchBattle reports whether it handed a start on: a failed press starts nothing (false)
+    ['src/ui/garage.ts', 'a battle (every launch)', /if \(pressFailed\(battleBtn\)\) return false;/, /markLoadFailed\(\[battleBtn\]/],
     ['src/main.ts', "a battle's entry", /if \(reload\) garage\.noteBattleLoadFailed\(\);/, /showSoloEntryFailure\(error, reload \? null : retry\)/],
-    ['src/ui/settingsAccess.ts', 'Settings', /if \(pressFailed\(gear\) \|\| !canOpen\(\)\) return;/, /markLoadFailed\(\[gear\]\)/],
+    // (round 2 U35) the gear reloads unless a later load (a battle entry's preload) built the panel, which it then opens
+    ['src/ui/settingsAccess.ts', 'Settings', /if \(\(!current && pressFailed\(gear\)\) \|\| !canOpen\(\)\) return;/, /markLoadFailed\(\[gear\]\)/],
     ['src/ui/settings.ts', 'the HUD editor', /if \(pressFailed\(editHud\)\) return;/, /markLoadFailed\(\[editHud\]/],
     ['src/gallery/gallery.ts', "the Gallery's anatomy layers", /if \(!pressFailed\(modeButtons\.find/, /markLoadFailed\(modeButtons\.filter/],
     ['src/main.ts', 'the Studio (its links and F8)', /pressFailed: \(\) => pressFailed\(\.\.\.studioLinks\(\)\)/, /markLoadFailed\(studioLinks\(\)\)/],
+    // 2026-11-02 audit R6: the Garage openers that asked a failed chunk again in the page (the styled photo, facet and
+    // hotspot chunks among them: asked again, a chunk runs unstyled) hold it in app/lazyChunk.ts as openers
+    ['src/ui/garage.ts', 'the photo mode', /reloadsForFailure\(photoButton, /, /reportLoadFailure\('cot-photo-load'/],
+    ['src/ui/garage.ts', 'the roster facets', /reloadsForFailure\(facetToggle, /, /reportLoadFailure\('cot-facets-load'/],
+    ['src/ui/garage.ts', 'the hotspot callouts', /reloadsForFailure\(calloutsButton, /, /reportLoadFailure\('cot-hotspots-load'/],
+    ['src/ui/garage.ts', "Deploy's battlefield picker", /reloadsForFailure\(fieldTrigger, /, /reportLoadFailure\('cot-deploy-field-load'/],
+    ['src/ui/garage.ts', "the battle card's quick menus", /reloadsForFailure\(quickBtn, /, /reportLoadFailure\('cot-quick-load'/],
+    // (audit R6) the Gallery's 1-5 keys open a layer as its press does, so they reload as it does
+    ['src/gallery/gallery.ts', "the Gallery's layer keys", /const mode = GALLERY_MODES\[Number\(event\.key\) - 1\];[^]{0,200}?if \(!pressFailed\(modeButtons\.find\(/, /markLoadFailed\(modeButtons\.filter/],
+    // (audit, 16-audio-gallery item 8) a fleet row whose vehicle did not load: every way to it (a click, the [ ] keys,
+    // the history) goes through loadTank, which reloads once it failed
+    ['src/gallery/gallery.ts', "the Gallery's fleet rows", /async function loadTank\([^]{0,200}?\{\n\s*if \(pressFailed\(rowFor\(requestedId/, /if \(row\) markLoadFailed\(\[row\], /],
+    // (round 3 X9) the Studio's field-frames archive, whose stylesheet is an opener's chunk (studioArchiveOpener.selftest)
+    ['src/ui/studioPanel.ts', "the Studio's field-frames archive", /function openArchive\(\): void \{[^]{0,300}?if \(pressFailed\(archiveBtn\)\) \{/, /markLoadFailed\(\[archiveBtn\]\);/],
   ];
   for (const [file, name, press, mark] of OPENERS) {
     const source = blankComments(readFileSync(join(ROOT, file), 'utf8'));

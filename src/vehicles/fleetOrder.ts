@@ -31,6 +31,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   sheridan: Object.freeze([
     'm551_sheridan', 'm551a1_tts',
   ]),
+  // release 269: the 152 mm line in its design order
+  russia152: Object.freeze(['object292', 'object477_molot', 'object195', 't14_152']),
   soviet_modern_mbt: Object.freeze([
     't55a', 't62_1975', 't64bv1', 't64bv',
     ...NATIVE_VARIANT_FAMILIES.t72,
@@ -85,11 +87,15 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   // 269: the Australian Army line
   australia: Object.freeze(['m113a1_fsv', 'm113a1_mrv', 'leopard_as1', 'm113as4', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus',
     'redback', 'm113a3']),
+  // 270: the T95 superheavy tank destroyer
+  t95: Object.freeze(['t95']),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   // 268: the twin-cannon air defence, each pair in service order
   russianAirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
   chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
+  // 269: the two Marksmen, the T-55 first (registered after every earlier id, so no roster place moves)
+  marksman: Object.freeze(['marksman_t55', 'itpsv_leopard2']),
   poland: Object.freeze([
     't72m1_jaguar', 't72_rys', 'pt91a_twardy', 'pl01', 'borsuk',
   ]),

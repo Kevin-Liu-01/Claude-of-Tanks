@@ -157,10 +157,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     bed = source;
   }
 
-  /** A keyed element of the net (key-up, release) into the headset speaker; its length, or 0 while it decodes. */
-  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): number {
+  /** A keyed element of the net (key-up, release) into the headset speaker; null while it decodes. */
+  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): AudioBufferSourceNode | null {
     const buffer = library.pick(id, random);
-    if (!buffer) return 0;
+    if (!buffer) return null;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const g = ctx.createGain();
@@ -169,7 +169,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     g.connect(speaker);
     src.start(when);
     src.onended = () => { try { g.disconnect(); } catch { /* detached */ } };
-    return buffer.duration;
+    return src;
   }
 
   const lastPlay = new Map<string, number>();
@@ -184,6 +184,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   let currentGroup: string | null = null;
   let currentSrc: AudioBufferSourceNode | null = null;
   let currentGate: GainNode | null = null;
+  // What the current line scheduled beside its speech (2026-11-02 audit F11): its release click and its damaged set's
+  // crackle. A line cut short takes them with it, with its static swell (stopCurrent).
+  let currentKeyOut: AudioBufferSourceNode | null = null;
+  let currentCrackle: AudioBufferSourceNode | null = null;
 
   function applyDamage(): void {
     const t = ctx.currentTime;
@@ -205,18 +209,29 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   function stopCurrent(): void {
     const src = currentSrc;
     currentSrc = null;
+    const t = ctx.currentTime;
     if (src) {
-      const t = ctx.currentTime;
       try {
+        // the gate's own dropouts scheduled ahead must not reopen it under the fade
+        currentGate?.gain.cancelScheduledValues(t);
         currentGate?.gain.setTargetAtTime(0, t, 0.015);
         src.stop(t + 0.06);
       } catch { /* stopped */ }
     }
-    currentEnd = ctx.currentTime;
+    // its release click and crackle, scheduled for later, never play (one already sounding is cut with the line)
+    for (const pending of [currentKeyOut, currentCrackle]) {
+      if (!pending) continue;
+      try { pending.stop(t + 0.02); } catch { /* stopped */ }
+    }
+    currentKeyOut = null;
+    currentCrackle = null;
+    currentEnd = t;
     currentPri = -1;
     currentYields = false;
     currentGroup = null;
-    bedGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    // and its static swell-down at its old end, which would drop the bed in the middle of the next line
+    bedGain.gain.cancelScheduledValues(t);
+    bedGain.gain.setTargetAtTime(0, t, 0.05);
     mixer.duckForVoice(false);
   }
 
@@ -226,7 +241,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     const now = ctx.currentTime;
     ensureBed();
     // Levels re the synthesized squelch they replaced (2026-10-03), matched on RMS.
-    const keyS = key('radio_key_in', now + 0.005, damage === 2 ? 0.14 : 0.1);
+    const keyS = key('radio_key_in', now + 0.005, damage === 2 ? 0.14 : 0.1)?.buffer?.duration ?? 0;
     const startAt = now + 0.005 + Math.max(0.04, keyS * 0.7);
     const src = ctx.createBufferSource();
     src.buffer = chosen.buffer;
@@ -252,7 +267,9 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     const bedLevel = damage === 2 ? 0.175 : damage === 1 ? 0.112 : 0.07;
     bedGain.gain.setTargetAtTime(bedLevel, startAt - 0.02, 0.02);
     bedGain.gain.setTargetAtTime(0, startAt + dur + 0.05, 0.04);
-    const outS = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
+    const keyOut = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
+    const outS = keyOut?.buffer?.duration ?? 0;
+    let crackleSrc: AudioBufferSourceNode | null = null;
     if (damage >= 1 && library.has('radio_interference') && random() < 0.6) {
       const crackle = library.pick('radio_interference', random);
       if (crackle) {
@@ -264,6 +281,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
         cg.connect(input);
         c.start(startAt + random() * dur * 0.7);
         c.onended = () => { try { cg.disconnect(); } catch { /* detached */ } };
+        crackleSrc = c;
       }
     }
     mixer.duckForVoice(true);
@@ -279,6 +297,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     };
     currentSrc = src;
     currentGate = gate;
+    currentKeyOut = keyOut;
+    currentCrackle = crackleSrc;
     currentEnd = startAt + dur + 0.02 + Math.max(0.12, Math.min(0.35, outS));
     currentPri = line.pri;
     currentYields = !!line.yields;

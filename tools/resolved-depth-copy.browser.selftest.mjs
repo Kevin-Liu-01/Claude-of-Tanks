@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 function sourceHash() {
@@ -52,13 +52,12 @@ async function runFixture(page, report) {
   assert.equal(report.fixture.lost && report.fixture.restored, true);
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'resolved-depth-copy-native-v1', ok: false, sourceHash: sourceHash(),
   fixture: null, errors: [], browserClosed: false, serverClosed: false, lockReleased: false };
-let server, browser, page, refresh;
+let server, browser, page;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'resolved-depth-copy.browser.selftest', timeoutMs: 45 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     // Serve the owned fixture before application route rewriting can turn this
@@ -110,7 +109,7 @@ try {
     try { await bounded(server.close(), 10_000, 'owned Vite close'); report.serverClosed = true; }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh); lock.release(); report.lockReleased = true;
+  await hold?.release(); report.lockReleased = true;
 }
 report.ok = report.errors.length === 0 && report.fixture?.disposed === true
   && report.browserClosed && report.serverClosed && report.lockReleased;

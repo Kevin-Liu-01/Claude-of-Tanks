@@ -1,5 +1,6 @@
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
+import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import type { ManualRecord } from '../docs/searchIndex.ts';
 import { localeRouteChanged } from './publicNav.ts';
 import { revealStills } from './revealStills.ts';
@@ -51,8 +52,30 @@ function mountSearch(form: HTMLFormElement): void {
     manual: form.querySelector<HTMLTemplateElement>('template[data-nf-hit="manual"]'),
   };
   if (!input || !list || !empty || !rows.vehicle || !rows.manual) return;
+  // (2026-11-02 audit R6, round 2 U35) the indexes are asked for once, never while offline (Chrome 151 keeps a failed
+  // import for the document): a search that did not arrive is not asked for again, so the field keeps the kit's error
+  // state and its next press reloads the page once online (components/loadFailure.ts), the docs' search rule (docs.ts,
+  // topics.ts). The page does not boot app/lazyChunk.ts (it rides the game, cn and Gallery boot chunk), so it takes the
+  // kit's opener rule directly. Before, `search ??=` kept the rejection with no sign on the field, and every keystroke
+  // after it raised an unhandled rejection.
+  const field = input.closest('label') ?? form;
   let search: Promise<Search> | null = null;
-  const load = (): Promise<Search> => (search ??= loadSearch());
+  // (round 2 review) asked by the field's first focus or its first keystroke, whichever comes first, and at mount when
+  // the field already holds the focus (a press before this deferred module ran fires no focus event for it). The latch
+  // makes the ask once: offline it waits for one `online` event, never one per keystroke.
+  let requested = false;
+  const load = (): void => {
+    if (requested) return;
+    requested = true;
+    importWhenOnline(() => {
+      search = loadSearch();
+      // what was typed while the indexes loaded (or while the page waited to be online) shows once they are in
+      return search.then((find) => { if (input.value.trim()) render(find(input.value), input.value); });
+    }, () => {
+      markLoadFailed([field]);
+      field.addEventListener('pointerdown', () => pressFailed(field));
+    });
+  };
   const render = (hits: readonly Hit[], query: string): void => {
     list.replaceChildren(...hits.map((hit) => {
       const row = (rows[hit.kind] as HTMLTemplateElement).content.firstElementChild!.cloneNode(true) as HTMLLIElement;
@@ -65,10 +88,11 @@ function mountSearch(form: HTMLFormElement): void {
     list.hidden = !hits.length;
     empty.hidden = !!hits.length || !query.trim();
   };
-  input.addEventListener('focus', () => void load(), { once: true });
+  input.addEventListener('focus', load, { once: true });
   input.addEventListener('input', () => {
+    load();
     const query = input.value;
-    void load().then((find) => { if (input.value === query) render(find(query), query); });
+    void search?.then((find) => { if (input.value === query) render(find(query), query); }, () => {});
   });
   // the hits are the field's list: they close when the search loses the focus or on Esc (back to the field), reopen when
   // the field takes it again, and the arrows walk them (Down from the field enters them, Up from the first leaves them)
@@ -105,6 +129,7 @@ function mountSearch(form: HTMLFormElement): void {
     const first = list.querySelector<HTMLAnchorElement>('a');
     if (first && !list.hidden) location.assign(first.href);
   });
+  if (document.activeElement === input) load();
 }
 
 document.querySelectorAll<HTMLFormElement>('form[data-nf-search]').forEach(mountSearch);

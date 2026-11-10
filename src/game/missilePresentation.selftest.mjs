@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { Vector3 } from 'three';
 import * as THREE from 'three';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
+import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle } from '../sim/launcherPolicy.ts';
 import { addInternalModuleModel } from '../vehicles/internalAnatomyVisuals.ts';
 
 // Execute the actual private entry points without booting Studio/solo's DOM,
@@ -26,7 +26,8 @@ function privateFunction(file, name, dependencies) {
 }
 
 const muzzle = new Vector3(), direction = new Vector3(), origins = [];
-const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex, isGunship });
+// (round 8 Y1 s5-01) the cannons' turn is the shared barrel owner's (sim/launcherPolicy.ts nextCannonMuzzle, the authority's too)
+const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex, nextCannonMuzzle, isGunship });
 // The AC-130 fires from its orbit toward the aim point, with no muzzle rotation.
 const gunship = { aerial: { kind: 'gunship' }, state: { pos: new Vector3(0, 240, 180) }, input: { aimPoint: new Vector3(0, 0, 0) } };
 assert.equal(prepare(gunship, { guided: false }), -1);

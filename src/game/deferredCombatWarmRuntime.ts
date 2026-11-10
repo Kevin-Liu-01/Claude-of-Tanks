@@ -34,7 +34,17 @@ interface WarmableWorld {
   warmTerrainLookahead?(cameraPosition: RuntimeValue, bandCount: number): number;
 }
 
+/**
+ * (2026-11-02 audit S3) The deferred warm receipt's declared state. `done` used to be the only settle flag and it was
+ * set on failure and cancellation too (tools/garage-battle-actions-contract.mjs had to cross-read `error` and
+ * `cancelled` to know), and a battle left before the first frame never settled at all (`done` false for good, its
+ * waiters timing out). The receipt now says which: running until it settles once as finished, failed or cancelled.
+ */
+export type DeferredWarmState = 'running' | 'finished' | 'failed' | 'cancelled';
+
 interface WarmTrace {
+  state: DeferredWarmState;
+  /** Settled (finished, failed or cancelled): the flag the waiters poll. `state` says which. */
   done: boolean;
   generation: number;
   stages: Record<string, number>;
@@ -80,7 +90,8 @@ interface DeferredCombatWarmRuntimeOptions<
   warmBattleTerrainTiles(yieldForBudget: WorkYielder): Promise<RuntimeValue>;
   getWorld(): World | null;
   getGeneration(): number;
-  setPending(pending: boolean): void;
+  /** The countdown's warm hold: `setPending(false, generation)` releases that generation's hold, and only it. */
+  setPending(pending: boolean, generation?: number): void;
   prepareNextOpeningRoute(): boolean;
   devTrace?: TraceSink | null;
   now?: () => number;
@@ -206,28 +217,49 @@ export function createDeferredCombatWarmRuntime<
 }: DeferredCombatWarmRuntimeOptions<Game, Entity, World>): DeferredCombatWarmRuntime {
   const host = globalThis as DeferredWarmHost;
   let pendingPromise: Promise<void> | null = null;
+  // the generation the slot's warm belongs to (2026-11-02 audit F2)
+  let pendingGeneration: number | null = null;
 
   const cancel = (): void => {
     combatWarm.cancelRare();
     pendingPromise = null;
+    pendingGeneration = null;
   };
 
   const schedule = (generation: number): Promise<void> => {
-    if (!Number.isFinite(generation) || generation !== getGeneration()) {
+    // a call with no generation to scope never holds the count (the release falls to the current battle's)
+    if (!Number.isFinite(generation)) {
       setPending(false);
       return Promise.resolve();
     }
-    if (pendingPromise) return pendingPromise;
+    // (round 2 U20) a stale generation holds nothing (its successor's arm or an invalidation superseded its hold), so it
+    // releases nothing: its setPending(false) here lifted the successor's hold through main's adapter, which released the
+    // current generation whatever the caller's
+    if (generation !== getGeneration()) return Promise.resolve();
+    if (pendingPromise) {
+      if (pendingGeneration === generation) return pendingPromise;
+      // (audit F2) a successor scheduled before anyone cancelled the stale warm: the slot is the successor's now. The
+      // stale run stops at its next guarded yield; returning its promise left the successor's hold unreleased (the
+      // count frozen on PREPARING).
+      cancel();
+    }
 
-    const trace: WarmTrace = { done: false, generation, stages: {} };
+    const trace: WarmTrace = { state: 'running', done: false, generation, stages: {} };
     host.__BATTLE_DEFERRED_WARM = trace;
+    // (audit S3) the receipt settles once, from running
+    const settle = (state: Exclude<DeferredWarmState, 'running'>): void => {
+      if (trace.state !== 'running') return;
+      trace.state = state;
+      trace.done = true;
+      if (state === 'cancelled') trace.cancelled = true;
+    };
     const startedAt = now();
     // the countdown's hold, released once: before the vision programs, or at the end (a failure, a cancellation)
     let released = false;
     const releaseHold = (): void => {
       if (released || generation !== getGeneration()) return;
       released = true;
-      setPending(false);
+      setPending(false, generation);
     };
     let pending!: Promise<void>;
     pending = (async () => {
@@ -236,7 +268,8 @@ export function createDeferredCombatWarmRuntime<
       // post-frame task boundary; an rAF alone would append their work to
       // the visible render and hold up the countdown's paint.
       await yieldFrame();
-      if (generation !== getGeneration() || game.phase !== 'battle') return;
+      // (audit S3) the battle was left (or replaced) before the first frame: a cancelled warm, never a receipt that waits
+      if (generation !== getGeneration() || game.phase !== 'battle') { settle('cancelled'); trace.doneBeforeRollout = false; return; }
 
       const visibleYield = createYielder(6);
       const guardedYield: WorkYielder = async (force = false) => {
@@ -293,10 +326,12 @@ export function createDeferredCombatWarmRuntime<
       // slice a frame (a real frame at each of their program checkpoints: combatWarmCoordinator
       // COMBAT_WARM_PROGRAM_CHECKPOINT); the vision programs one bounded step a real frame (a compile slice of at most
       // 8 ms, one link poll, or one actor's private first-bind render), every material restored before each yield
-      // (thermalVehicles.warmSteps). Whatever a battle reaches before its warm does the work at that first use — a bot
-      // plans its route, a tile streams, a kill or a sight compiles its variant at that draw (nothing drains the rare
-      // warm on a kill: combatWarm.drain runs only at a non-deferred battle start and in shot mode) — a one-time cost,
-      // as before these warms existed, never a stall.
+      // (thermalVehicles.warmSteps). Whatever a battle reaches before its warm does the work at that first use — a tile
+      // streams, a kill or a sight compiles its variant at that draw (nothing drains the rare warm on a kill:
+      // combatWarm.drain runs only at a non-deferred battle start and in shot mode) — a one-time cost, as before these
+      // warms existed, never a stall. The routes are the exception (round 8 Y1 s2-02): the battle's first live step plans
+      // every leg still pending (game/state.ts drainOpeningRoutes, as the authority plans them at its creation), so no
+      // bot drives a stopgap patrol while its route is pending, and this loop finds the queue empty from then on.
       trace.releasedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
       trace.releasedBeforeRollout = game.phase === 'battle' && typeof game.preBattleS === 'number' && game.preBattleS > 0;
       releaseHold();
@@ -341,7 +376,7 @@ export function createDeferredCombatWarmRuntime<
         if (warmVisionSteps) for (const _ of warmVisionSteps()) { trace.visionSteps = (trace.visionSteps ?? 0) + 1; await guardedYield(true); }
       });
       trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
-      trace.done = true;
+      settle('finished');
       trace.totalMs = Math.round(now() - startedAt);
       trace.finishedAtPreBattleS = Number.isFinite(game.preBattleS)
         ? game.preBattleS ?? null : null;
@@ -354,22 +389,23 @@ export function createDeferredCombatWarmRuntime<
       if (code !== 'combat_warm_cancelled') {
         trace.error = String(error);
         console.warn('[warm] deferred deployment warm failed (continuing):', error);
+        settle('failed');
       } else {
-        trace.cancelled = true;
+        settle('cancelled');
       }
-      trace.done = true;
       trace.doneBeforeRollout = false;
       if (generation !== getGeneration() && pendingPromise === pending) cancel();
     }).finally(() => {
       releaseHold();
       const ownsSlot = pendingPromise === pending;
-      if (ownsSlot) pendingPromise = null;
+      if (ownsSlot) { pendingPromise = null; pendingGeneration = null; }
       if (generation === getGeneration()
           && (ownsSlot || host.__BATTLE_DEFERRED_WARM === trace)) {
         host.__BATTLE_DEFERRED_WARM = trace;
       }
     });
     pendingPromise = pending;
+    pendingGeneration = generation;
     return pending;
   };
 

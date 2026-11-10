@@ -1163,6 +1163,7 @@
     "src/vehicles/roundedBoxGeometryCache.selftest.mjs": 42000,
     "src/vehicles/runningGearCadence.selftest.mjs": 33000,
     "src/vehicles/runningGearFinish.selftest.mjs": 73000,
+    "src/vehicles/wheelDressing.selftest.mjs": 30000,
     "src/vehicles/runningGearGroundRun.selftest.mjs": 31000,
     "src/vehicles/scalarHypot.selftest.mjs": 2000,
     "src/vehicles/shadowCasterWork.selftest.mjs": 1000,

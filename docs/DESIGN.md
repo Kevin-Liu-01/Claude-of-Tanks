@@ -121,9 +121,14 @@ assets, and source-loader behavior is not a gameplay fallback.
 All instruments launch their own vite (74xx-77xx; owner plays on 5001) and drive
 headless Chromium. The browser-render tools serialize on the /tmp/cot-shots.lock FIFO —
 dir-lock + 15-digit zero-padded tickets in /tmp/cot-shots.queue, 5-min lock staleness,
-30-min acquire timeout, ENOTDIR fallback for foreign plain-file locks (the shared
-acquireLock block, e.g. visual-evaluator.mjs:21-66). Official rigs SELF-TICKET — never
-wrap them (§F.1).
+ENOTDIR fallback for foreign plain-file locks — held through tools/capture-hold.mjs
+withCaptureHold (script tools through its open form openCaptureHold, warm-while-queued
+tools through runWarmHold, wrapped commands through capture-command.mjs
+runCapturedCommand): the ticket, its refresh, the 20-min cap and its yield, signals and
+the release. Every render tool holds that way except the few direct acquirers
+tools/capture-hold-census.selftest.mjs lists, each with its reason. The acquire timeout
+is the caller's (e.g. visual-evaluator.mjs:24, 30 min) or the wrapper's default
+(withCaptureHold 45 min, runWarmHold 4 h). Official rigs SELF-TICKET — never wrap them (§F.1).
 
 | Instrument | What it measures |
 |---|---|

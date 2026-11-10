@@ -35,7 +35,16 @@ export interface HostBootBot {
   camo?: 'auto' | 'factory';
 }
 
-/** What the old host serialized beside the wire keyframe: the parts of an entity a row does not carry. */
+/** A reload channel as the old host left it: [remaining s, total s, kind]. */
+export type MigrationReload = [t: number, totalS: number, kind: string];
+
+/**
+ * What the old host serialized beside the wire keyframe: the parts of an entity a row does not carry. The optional
+ * fields are the fight's combat counters (audit M1, 2026-11-02): without them a migration swapped a selected
+ * launcher's cycle onto the cannon, left damaged modules at full hp, put fires out on their first tick and refilled
+ * magazines, salvos, consumables and smoke. Times are seconds from the keyframe: the new host's authority clock
+ * starts at 0. An extras entry without them (an older build's) restores what it carries.
+ */
 export interface MigrationEntityExtras {
   entityId: number;
   kills: number;
@@ -43,17 +52,63 @@ export interface MigrationEntityExtras {
   modules: Record<string, string>;
   crew: Record<string, boolean>;
   burning: boolean;
+  /** Every module below full hp: [hp, red repair progress s]. */
+  moduleHp?: Record<string, [hp: number, repairT: number]>;
+  /** A burning fire's budget: [ticks left, tick timer]. */
+  fire?: [ticksLeft: number, tickTimer: number];
+  /**
+   * Each shell slot's reload channel (slots sharing a channel carry the same values), and the cannon channel. Round 2
+   * (U2): a channel at rest is null, a list or cannon channel all at rest absent, as a full magazine is: the fresh host's
+   * own are that already.
+   */
+  reloads?: (MigrationReload | null)[];
+  gunReload?: MigrationReload;
+  magazineRounds?: number;
+  launcherSalvoShots?: number;
+  launcherCursor?: number;
+  /** Each slot's charges, its cooldown left and every timed item still active (seconds left), by item; no cooldown, no item: absent. */
+  consumables?: { readyIn?: number[]; charges: (number | null)[]; activeFor?: Record<string, number> };
+  /** Lights, the roof gun's switch and rounds, the smoke kit's charges and cooldown left; absent while the kit is as a fresh host builds it. */
+  auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
 }
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
 export interface HostResumeState {
   modeCheckpoint?: NewModeCheckpoint | null;
+  /**
+   * The battle the state belongs to (round 3 A3; WelcomeMessage.battleId): the sealed keyframe's, which a resume keeps, or a
+   * fallback restart's new one (migrationState.ts migrationFallback). Absent: 0, a match's first battle.
+   */
+  battleId?: number;
   /** The authority tick the keyframe describes. */
   tick: number;
   battleTimeMs: number;
   phase: 'countdown' | 'playing' | 'ended';
   frame: SnapshotFrame;
   entities: MigrationEntityExtras[];
+  /**
+   * The tick the extras (`entities`) were captured at: the keyframe's, when a newer frame's rows overlay its rows and move
+   * `tick` on (migrationState.ts resumeStateFromRetained). Absent: `tick`.
+   */
+  keyframeTick?: number;
+  /**
+   * The battle clock (ms) the extras were captured at (round 2 U2): the keyframe's, while `battleTimeMs` moves on with a
+   * newer frame's. The sim time between the two ages the extras (migrationState.ts resumeFrameGapS); a tick gap overstates
+   * it when the old host dropped ticks. Absent: the tick gap.
+   */
+  keyframeBattleTimeMs?: number;
+  /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
+  timeS?: number;
+  /**
+   * The hulls a mode revived between the keyframe and their newer rows, by wire id (audit M1, review round 2): the
+   * keyframe's row has them destroyed, the newer row alive. Their extras describe the life they left.
+   */
+  revivedEntityIds?: number[];
+  /**
+   * The tick of each entity's newest `mode_respawn` this seat was told of after the keyframe, by authoritative id: a revive
+   * of a hull that was alive (a Turbo Ball goal's kick-off) leaves both its rows alive.
+   */
+  respawnTicks?: [id: string, tick: number][];
 }
 
 export interface HostBootConfig {
@@ -208,3 +263,15 @@ export { MIGRATION_EVENT_KIND } from '../match/migrationStore.ts';
 
 /** The host's own loopback link number. */
 export const HOST_LOOPBACK_PEER = 0;
+
+/**
+ * The most a HELLO that arrives during a host's boot waits for its WELCOME, as the host tells the seat (wire HOLD, round 3
+ * B1/X6): what is left of the boot's bound, then the resume hold when the boot may await seats (one not yet configured may).
+ * Its one teller is the host runtime, to every link before its actor runs (matchHost.ts bootHoldNotice, from its own boot
+ * timer's bound and RESUME_HOLD_MS; round 4 F0: the core told its peers, once its Worker had evaluated). Rounded up to
+ * whole milliseconds, within the wire's u32.
+ */
+export function bootHoldNoticeMs(bootLeftMs: number, holdMs: number, config: Pick<HostBootConfig, 'resume'> | null): number {
+  const awaitsSeats = holdMs > 0 && (config === null || (config.resume?.holdForSeats?.length ?? 0) > 0);
+  return Math.min(0xffffffff, Math.ceil(Math.max(0, bootLeftMs) + (awaitsSeats ? holdMs : 0)));
+}

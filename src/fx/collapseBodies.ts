@@ -139,7 +139,9 @@ export interface CollapseBodies {
   /** What its collapses left lying and standing still (their baked heaps, their remnants), world drawings. */
   bakedOf(structureIdx: number): THREE.Mesh[];
   reset(): void;
-  stats(): { collapses: number; pieces: number; meshes: number; vertices: number; baked: number; prepared: number };
+  stats(): { collapses: number; pieces: number; meshes: number; vertices: number; baked: number; prepared: number;
+    /** (2026-11-02 audit R7) the pieces' clock (s): the pool's time, the remainder it has yet to step aside */
+    clockS: number };
 }
 
 /** A material's vertex layout: position, normal, then its other attributes in order (sizes). */
@@ -2267,7 +2269,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (hulls) for (const t of hulls) if (t && (t as WreckTurretTank).state && (t as WreckTurretTank).spec) hullList.push(t as WreckTurretTank);
       pool.setHulls(hullList);
       const tAdv = profStart();
+      const droppedBefore = pool.droppedS();
       pool.advance(dtS);
+      // (2026-11-02 audit R7) one clock for a piece and its body: what the pool could not step (under ~15 fps) the pieces
+      // do not age by either, or a piece still waiting for its release in the pool's time reads "outside the world past
+      // its release" on this one and bursts
+      clockS -= pool.droppedS() - droppedBefore;
       profEnd('cb.poolAdvance', tAdv);
       // the panels that landed hard crack now (outside the pool's report), a couple an update
       const tBrk = profStart();
@@ -2318,7 +2325,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         }
         for (const m of [...c.remnant, ...c.baked]) { meshes++; vertices += m.geometry.getAttribute('position').count; }
       }
-      return { collapses: live.length, pieces, meshes, vertices, baked: bakedCount, prepared: prepared.size };
+      return { collapses: live.length, pieces, meshes, vertices, baked: bakedCount, prepared: prepared.size, clockS };
     },
   };
 }

@@ -32,12 +32,19 @@ const angle = html.slice(html.indexOf("if (wants('angle'))"), html.indexOf('retu
 assert.ok(angle.length > 0, 'the angle block is found');
 assert.doesNotMatch(angle, /id ===|id !==|\[id\]/, 'the angle block frames no id by name');
 assert.match(angle, /const dist = \(radius \* MARGIN\) \//, 'one camera margin for every tank');
-assert.match(angle, /for \(const ratio of portraitSideRatios\(\)\) \{\s*const dir = new THREE\.Vector3\(ratio, 0\.34, 1\.0\)/);
-assert.match(angle, /angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[^]*?angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);\s*thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\);\s*portraitAudit = auditPortraitCanvas\(thumbCanvas\);/,
+assert.match(angle, /const azimuthCamera = \(ratio\) => \{\s*const dir = new THREE\.Vector3\(ratio, 0\.34, 1\.0\)/);
+assert.match(angle, /const ladder = portraitSideRatios\(\);[^]*?for \(const ratio of ladder\) \{\s*const angleCam = azimuthCamera\(ratio\);/);
+assert.match(angle, /angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[^]*?angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);\s*thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\);\s*frame = whips \? whipFreeFrame\(whips, angleCam, angleSource\) : null;\s*portraitAudit = auditPortraitCanvas\(thumbCanvas, frame\);/,
   'each candidate draws both sizes in the shipped order (512 px first: a thumbnail drawn first resamples differently) and is judged by the shared audit on the card it would ship');
 assert.match(angle, /if \(portraitAudit\.passes\) break;/, 'the first passing azimuth is kept');
 assert.match(angle, /if \(!portraitAudit\.passes\) \{\s*throw new Error/, 'actual raster framing gate remains mandatory');
 assert.match(angle, /normalizeAnglePortrait\(angleSource, BASE\)/);
 assert.doesNotMatch(angle, /\.visible\s*=|\.scale\.set|\.geometry\s*=|\.rotation\./, 'no geometry hiding, scaling or pose change to pass the portrait gate');
+// 270 (Main 2026-11-06): thin whip antennas never set a card's frame. The card ships whole, whips and all; only its frame is
+// measured on a twin drawn without the build's antenna fittings and spans (tools/body-height-parts.mjs), placed by the card's
+// own core, and the card must still be whole on the canvas (portraitFraming.ts auditPortraitPixels `frame`)
+assert.match(html, /function portraitWhips\(root\) \{[^]*?roofFittingParts\(root,[^]*?isAntennaTag\(tag\)/, 'the whips are the antenna-tagged parts only');
+assert.match(html, /function whipFreeFrame\(whips, camera, cardSource\) \{\s*const source = withoutWhips\(whips, \(\) => capture\(camera, BASE \* 2, BASE \* 2\)\);\s*const thumb = normalizeAnglePortrait\(source, BASE \/ 2, cardSource\);/,
+  'the whip-free twin is a separate capture, placed by the shipped card');
 assert.equal((html.match(/portraitSideRatios\(\)/g) || []).length, 1, 'azimuth applies only to angle portrait, not orthographic/technical captures');
 console.log(`portrait-camera: the azimuth is derived from the card (${ratios.length} ladder azimuths from ${PORTRAIT_SIDE_RATIO}), no per-id rows, pixel limits preserved`);

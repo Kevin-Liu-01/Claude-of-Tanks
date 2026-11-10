@@ -1,6 +1,8 @@
 # Couch mode — up to eight phones, one big screen
 
-Design note, not built. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
+Phase 1 is built (deploy 268): the lobby and its seats, each phone driving its own tank, one shared camera; "The couch
+session on the page" below says how it runs. Panes (phase 2) and the phone as each player's HUD (phase 3) are still
+design. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
 qr code from their phones to a host of a computer for claude of tanks? i think that will be so much faster and easier.
 sort of like a console split screen, up to 8 people that you can share on a big screen?"
 
@@ -55,7 +57,8 @@ second service.
   receives its own resume token. A code open for joins lives 10 minutes and is redrawn on request; a full lobby answers
   `full` (a holder of the code learns nothing a guesser could use).
 - The host closes the lobby when the battle starts and may reopen it between battles. A phone that drops keeps its
-  seat and comes back with its token, as today.
+  seat and comes back with its token, as today. (Built: Start closes the join window before the seats deploy; Let
+  Phones Join reopens it, the way in for a late arrival. See "The couch session on the page".)
 - Signals carry the seat, so the desktop keeps one `RTCPeerConnection` per phone and phones never talk to each other.
   The rate limits, the ICE grant and the relay budget become per seat.
 - Socket cap: one desktop, eight phones, two pending. Signalling is about 10 to 20 messages per phone, so a full lobby
@@ -63,6 +66,39 @@ second service.
 - The host can remove a seat from the big screen. A removed phone's token is forgotten.
 - Offline LAN parties: the LAN helper (`server/rooms/serve.ts`) already hosts the same actor, so the lobby works on a
   network with no internet once the game is loaded.
+
+## The couch session on the page
+
+`src/app/couchRuntime.ts` is the session's one page owner (its chunk loads with the lobby; nothing of it is on the boot
+graph). Its edges, round 8 (2026-11-09):
+
+- **Start** (`startBattle`): the lobby's Start closes the join window (`setOpen(false)`) and then deploys the seats with a
+  phone here, in the Deploy screen's mode, map and vehicle. With no phone here nothing is sent. A phone that has the code
+  cannot take a seat mid-battle; the host's Let Phones Join (the lobby's Reopen) lets late arrivals in between battles.
+- **Each battle's init** is keyed by its session's identity: `setupBattle` seats a new `game.couch` object every battle
+  (`src/game/couchSeats.ts`), and the runtime's first step or frame of a new one aims each seat's sight along its own
+  gun and sets the shared camera's bearing from seat 1's hull. Nothing of the last battle's aim carries over.
+- **The couch view**: the shared screen shows the field, not seat 1's tank (`body.cot-spectating` hides the own-tank
+  furniture, and the HUD's couch view reads no tank as its own). The runtime asks for it on every frame it runs, never
+  latched, under its own reason of `src/ui/bodyFlags.ts` ('couch'), so the spectate bar dropping its reason never strips
+  it; it drops the reason when the phase leaves the battle and when the lobby closes, and the HUD's battle end clears its
+  couch view, so a Watch battle after a couch one rides its own tank.
+- **A seat's Pause** opens and closes the desktop's menu (with no pointer relock) only while a couch battle's phones drive
+  (`src/game/stateCore.ts` `couchSeatsActive`: the session, its couch rules, the battle phase; a dead seat 1 takes it
+  from no one). The lobby outlives its battles, so a phone still seated over a network round (the session ended at its
+  activation) or a keyboard battle pauses nothing (round 8 merge review, 2026-11-09).
+- **Battle Again** after a couch battle starts a couch battle again: the entry's intent records the couch and its sides
+  (`src/game/battleEntryIntent.ts`), the Garage return keeps them, and the replay re-reads the seats with a phone here
+  now through the same start edge (the join window closes first). With no phone here it opens the lobby over the Garage
+  instead of a keyboard battle, and the return settles there with no failure notice.
+- **The lobby's opener** is one of the Garage's lazy openers: the Couch press takes the Garage's ticket, and the lobby
+  opens only if that Garage still shows, and no press has handed the player on (a battle start, the play menu), when its
+  chunks land (`src/app/couchOpener.ts`, `src/ui/garageScreen.ts` `handOff`). A Couch press while they load asks for
+  nothing more: it is the press the lobby opens for (its ticket, its Deploy selection; `createLazyOpener`), so the press
+  after a refused BATTLE or Launch is not lost. While a start the Garage handed on is in flight, or a battle's loader
+  covers it, the Garage is not the player's (`enter`, `covered`): its keys do nothing and a press there opens nothing. A chunk that did not arrive marks the Couch button (its next press
+  reloads the page); a lobby that failed to open once loaded is logged and the button stays a press.
+- **End** (`close`): every phone goes, every seat's controls release, the couch view drops.
 
 ## Seats in the battle
 
@@ -86,8 +122,10 @@ checks it).
   A trigger tapped down and up inside one tick still fires once (the seat latches the pull until the tick carries it).
 - Each seat's phone feels its own tank (`docs/PHONE-CONTROLLER.md` "Haptics"): the couch runtime hands every seat's
   receiver the battle's bus, and the receiver sends the cues for that seat's tank only. The events that name no tank
-  (the sixth sense, the refusals, the sight's lock) are the page's player's, so no seat gets them, and a seat has no
-  lock key (its sight is its own bearing).
+  (the sixth sense, the page's refusals, the sight's lock) are the page's player's, so no seat gets them, and a seat has
+  no lock key (its sight is its own bearing). A seat's own refused shell pick names its tank (the input stage's
+  `ammo_selection_denied`), so that seat's phone feels `denied`; the shared screen shows no alert for it (round 8 merge
+  review, 2026-11-09).
 - Phase 1 seats take the mode's own roster (`assignCouchSeats`): the first seat present drives the battle's first tank,
   every other seat the next tank on its side in roster order, and the rest stay bots, so a seat's tank has no bot
   (`spawnBattleEntities`). The roster holds one tank per vehicle, so no two seats share an id; the phone's own vehicle

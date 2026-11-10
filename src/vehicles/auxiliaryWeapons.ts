@@ -114,6 +114,9 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t90a:b32Heavy,t90a_vladimir:b32Heavy,t90m:b32Heavy,
   t90sm:b32Heavy,t90ms_tagil:b32Heavy,
   t14_armata:b32Rifle,object148_proto:ubr6,
+  // release 269: the 152 mm line's 30 mm cannons (the Object 195's 2A42, the Molot's GSh-30), the T-14 152's Kord tower and
+  // the Object 292's NSVT on the T-80U's cupola (owner 2026-11-05: "add a machine gun tto the object 292")
+  object195:ubr6,object477_molot:ubr6,t14_152:b32Heavy,object292:b32Nsvt,
   vt4a1:type54,ztz100:type54,ztz20:type54,
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
@@ -131,11 +134,17 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
 // arrangmenet,s like 2 machine guns"): the second, 7.62 mm roof guns (the AM II's gunner's PKT, the AM's twin PKT mount)
 // fire the PK family's 7.62×54R cartridge, not the generic rifle profile's NATO round (game numbers unchanged).
 const vehicleRifleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {t90am:b32Rifle,t90m_proryv:b32Rifle};
+// 2026-11-07 (lane russia-152; the owner: "add ... a machine gun to [the molot]"): the Molot's commander's remote
+// 12.7 mm station beside its GSh-30 (the row above is the 30 mm) fires the B-32's 12.7×108 mm cartridge, not the generic
+// 12.7×99 mm (game numbers unchanged).
+const vehicleHeavyAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {object477_molot:b32Heavy};
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {
   const specific=vehicleAmmunition[vehicleId];
   if(specific?.shell.caliberMm===caliberMm)return specific;
   const ownRifle=vehicleRifleAmmunition[vehicleId];
   if(ownRifle?.shell.caliberMm===caliberMm)return ownRifle;
+  const ownHeavy=vehicleHeavyAmmunition[vehicleId];
+  if(ownHeavy?.shell.caliberMm===caliberMm)return ownHeavy;
   return caliberMm >= 20 ? cannon : caliberMm < 10 ? rifle : heavy;
 }

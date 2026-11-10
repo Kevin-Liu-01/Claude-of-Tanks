@@ -21,7 +21,8 @@ assert.deepEqual(valueImportOf(source('./tankFactoryCore.ts'), /wreckTurretDrive
   'the tank factory loads no wreck physics statically');
 assert.deepEqual(valueImportOf(source('./tankFactory.ts'), /wreckTurretDriver\.ts$|rigidBody\.ts$|wreckTurrets\.ts$/), [],
   'the tank factory facade loads no wreck physics statically');
-assert.deepEqual(valueImportOf(source('./wreckTurretDriverLoader.ts'), /./), [], 'the loader imports nothing but types');
+// (2026-11-02 audit R6, round 2 U35) beside the one lazy-chunk policy (app/lazyChunk.ts, a leaf of the boot chunk)
+assert.deepEqual(valueImportOf(source('./wreckTurretDriverLoader.ts'), /^(?!\.\.\/app\/lazyChunk\.ts$)/), [], 'the loader imports nothing but types and the lazy-chunk policy');
 assert.match(source('./wreckTurretDriverLoader.ts'), /import\('\.\/wreckTurretDriver\.ts'\)/, 'the loader imports the driver lazily');
 
 assert.equal(wreckTurretDriverReady(), false, 'loading the tank factory does not load the wreck physics');

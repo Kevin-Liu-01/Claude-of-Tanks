@@ -67,11 +67,16 @@ export const SELFTEST_SCANS = Object.freeze({
   'server/collisionManifestRoutes.selftest.mjs': lists('server/world-collision-manifests-228/*.json', 'src/**/*.{ts,mjs,js}',
     'server/**/*.{ts,mjs,js}'),
   'server/dedicatedWorldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
+  // 2026-11-02 audit R6 (loaders-workers): the lazy-chunk ratchet walks every source module and every site page
+  'src/app/lazyChunkSites.selftest.mjs': lists('src/**/*.ts', 'site/*.html'),
   'src/audio/audioEngine.selftest.mjs': lists('src/mp/**/*.{ts,mjs}', 'src/sim/**/*.{ts,mjs}', 'server/**/*.{ts,mjs}'),
   'src/audio/soundAssets.selftest.mjs': lists('src/audio/*.ts'),
   'src/audio/voiceTriggers.selftest.mjs': lists('src/audio/*.ts'),
   'src/docs/filming.selftest.mjs': lists('public/media/filming-r1/*'),
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
+  // (round 4 F7) the fx-clock census: every src/fx module with a clock read must be one its scenario loads (round 5 U12:
+  // its harness lists, for the default receipt and the manual fx suite's whole one)
+  'src/fx/fxClockStampCensus.test-support.mjs': lists('src/fx/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
@@ -83,6 +88,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
   'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  // round 5 S2: every source, for a new listener of the two bus events a teammate ram raises (tank:ram, tank:impact)
+  'src/sim/teammateRamListeners.selftest.mjs': lists('src/**/*.ts'),
   'src/techTree/techTree.selftest.mjs': lists('src/techTree/*.ts', 'src/techTree/nations/*'),
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // item 259: every source, for a Settings category hue written outside the token files
@@ -148,6 +155,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-r5/films/restore.selftest.mjs': lists('tools/media-r5/films/**'),
   'tools/media-r5/fleet-media.selftest.mjs': lists('public/media/site50-r14/fleet/*'),
   'tools/media-r5/motion-type.selftest.mjs': lists('tools/media-r5/**/*.{mjs,json,md}'),
+  // round 8 Y9 s6-08: every card on disk has its provenance record (and a fixture card folder under tmpdir)
+  'tools/media-r5/tank-share.selftest.mjs': lists('public/brand/og-r2/tanks/*'),
   'tools/native-interior-fill-policy.selftest.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   'tools/spare-track-placement-check.mjs': lists('src/vehicles/profiles/*.ts'),
   // the tank asset manifest (266): the store lists its row files, and its layout check the whole directory
@@ -184,6 +193,27 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
 
+  // 2026-11-02 audit S3 (tools-lifecycle): the automation-path, readiness and MP-vocabulary censuses
+  // no module under src reads navigator.webdriver but the two bot exclusions
+  'src/app/automationPath.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
+  // no product module under src reads the harness flag
+  'src/app/bootReadiness.selftest.mjs': lists('src/**/*.{ts,tsx,mjs,js}'),
+  // toolCensusFiles: every source under tools, and of the selftests those that launch a browser
+  'tools/code-text.mjs': lists('tools/**/*.{mjs,js,cjs,ts}'),
+  // the MP harnesses spell no protocol state word
+  'tools/mp-states.selftest.mjs': lists('tools/mp-*.mjs'),
+  // (round 2 U40) every documented agent-browser session a session tool reads asks for the path it checks
+  'tools/game-readiness.selftest.mjs': lists('docs/*.md', 'tools/*.md'),
+  // 2026-11-02 audit F1 (app-flow): the one-writer censuses
+  // nothing under src writes game.phase but the lifecycle's transitionAppPhase
+  'src/game/appLifecycle.selftest.mjs': lists('src/**/*.ts'),
+  // nothing under src writes preBattleS but the countdown owner
+  'src/game/battleCountdownEdges.selftest.mjs': lists('src/**/*.{ts,js,mjs}'),
+  // (round 8 Y1 s2-01) nothing under src writes game.couch but couchSeats.ts, the couch session's owner
+  'src/game/couchSessionLifecycle.selftest.mjs': lists('src/**/*.ts'),
+  // (round 8 Y1 s5-01) nothing under src moves a hull's barrel cursor but launcherPolicy.ts (a network screen mirrors it)
+  'src/sim/twinMuzzleParity.selftest.mjs': lists('src/**/*.ts'),
+
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
   'src/game/studioSceneShare.selftest.mjs': tracked('**/*.scene.json', 'src/game/studio*.ts', 'src/ui/studio*.ts'),
@@ -196,6 +226,10 @@ export const SELFTEST_SCANS = Object.freeze({
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  // 2026-11-02 audit S4: the capture-hold census reads every source (tracked and new) for its hold rules
+  'tools/capture-hold-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  // round 2 U39: no source exits a named status (STARVED, lease over, lock wait timeout, browser guard) as a bare number
+  'tools/media-production/lease-exit.selftest.mjs': tracked('{api,scripts,server,src,tools}/**', '**/*.md'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),
@@ -205,8 +239,6 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/worker-generated-types.selftest.mjs': tracked('cloudflare/*/worker-configuration.d.ts'),
   // every release handler in the shell is a hold action or a named non-hold (git grep)
   'src/game/inputHoldToggle.selftest.mjs': tracked('src/ui/**', 'src/game/**', 'src/app/**', 'src/main.ts'),
-  // every assignment of the battle phase emits its phase:change (git grep), so the audio engine sees every entry
-  'src/audio/battleEntryAmbience.selftest.mjs': tracked('src/**/*.ts'),
   // element colour resets outside @layer base (git ls-files of the tracked sheets)
   'tools/surface-element-resets.selftest.mjs': tracked('src/**/*.css'),
 
@@ -219,6 +251,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
   'tools/changed-only/balance-keys.selftest.mjs': lists('src/**', 'tools/**', 'package.json', 'package-lock.json'),
+  // round 8 Y10 s6-06: every tools module, for a second mover of a chain's stop (groups.beginStop); and its fixture's
+  // .qa-dev/changed-only summaries under tmpdir
+  'tools/changed-only/rowsReadStop.selftest.mjs': lists('tools/**/*.{ts,mts,mjs,js}'),
 
   // this table's census: every module a registered receipt runs (and the fixture repository it writes under tmpdir)
   'tools/selftest-scans.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,cjs}', 'tools/**/*.{ts,mts,mjs,js,cjs}',
@@ -237,6 +272,13 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/selftest-cache.mjs': caller("closureOf: the directories a receipt's closure names, its declared fixture patterns " +
     'and the patterns of this table, under the root its caller gives'),
   'tools/shared-main-preflight.mjs': caller('git diff --name-only between the two commits its caller names'),
+  'tools/media-r5/atomic-output.mjs': caller('sweepPartials(dir): the output folder its caller passes'),
+  'tools/media-r5/tank-share.mjs': caller('renderDue({ root }): the card folder under the root its caller passes (round 8 Y9 s6-08)'),
+  // round 8 Y9 s1-11: the sound-effect bank transaction
+  'tools/audio/sfxBank.mjs': caller('commitBank/removeBank({ dir, stageRoot }) and sweepStages(stageRoot): the bank and stage folders its caller passes'),
+  // round 4 F12: the marketing pass as a function, run by its receipt on a fixture scene folder
+  'tools/marketing-shots/shoot.mjs': caller('shootMarketing(args): the scene folder its --scenes names ' +
+    '(tools/marketing-shots/scenes by default)'),
 
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
@@ -257,6 +299,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/vercel-output-immutable.mjs': outside('the .vercel/output tree (or a tmpdir fixture) its caller names'),
   'tools/visual-census-lock.mjs': outside('the visual-census queue directory its caller names'),
   'tools/visual-census.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/audio/sfxBank.selftest.mjs': outside('its own bank and stage fixture under tmpdir (round 8 Y9 s1-11)'),
   'tools/viteSharedWorkers.selftest.mjs': outside('the build it writes into its tmpdir fixture'),
   'tools/contentSecurityPolicy.selftest.mjs': outside('dist/, a finished build, when this checkout has one'),
   'tools/mode-aggression-harness.mjs': outside('the run directories its report and compare commands name (--dir, --base): ' +
@@ -264,6 +307,23 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/battle-spike-census.mjs': outside('the census folder its CLI writes (--out, under .qa-dev) and the tmpdir fixtures its receipts judge'),
   'tools/battle-spike-budget.mjs': outside('the census folder it judges (--out under .qa-dev, or the selftest\'s tmpdir fixture)'),
   'tools/vercel-static-preview.mjs': outside('the build output it serves (dist/, or the fixture dist its caller passes)'),
+  // 2026-11-02 audit S4/S5 (tools-chains): its receipts, and the holders the capture-hold census names
+  'tools/capture-lock-reentry.selftest.mjs': outside('its own queue and lock directories under tmpdir'),
+  // round 2 U39: the SIGTERM case's private root (its cache directory, lock and markers) under tmpdir
+  'tools/isolated-capture-browser.selftest.mjs': outside('its signal case\'s private root under tmpdir'),
+  // round 2 U38 review: the queued-at-a-signal case's private queue directory under tmpdir
+  'tools/capture-hold-phases.selftest.mjs': outside('its queued case\'s private queue directory under tmpdir'),
+  // round 3 A5: the probe callers' fixture output folders under tmpdir
+  'tools/probe-unit-stop.selftest.mjs': outside('the fixture output folders it runs each probe into, under tmpdir'),
+  // round 4 F12: the fixture scene folder it hands marketing-shots/shoot.mjs
+  'tools/long-hold-users.selftest.mjs': outside('the fixture scene folder it passes marketing-shots/shoot.mjs (--scenes), ' +
+    'under tmpdir'),
+  'tools/media-r5/priority-yield.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR, or the queueDir its caller passes)'),
+  'tools/media-r5/site-loops.mjs': outside('the renders and deliver folders its CLI names (shots/site50 by default, media output), ' +
+    'or the receipt\'s tmpdir fixture'),
+  'tools/media-r5/site-loops-resume.selftest.mjs': outside('its fixture take, renders and deliver folders under tmpdir'),
+  'tools/ground-banding-shots.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR), for its band ticket stamp'),
+  'tools/media-production/cinema.mjs': outside('the frame folders of its own job output (job.out, shots/cinema by default)'),
 
   // ---- source digests for provenance records: no verdict depends on what they list
   'tools/appVersion.ts': identity("git status --porcelain: the version string's dirty mark"),
@@ -299,6 +359,14 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tank-regen-changed.mjs': cli('npm run tank:regen:changed fingerprints this checkout; the chain receipt runs it on its ' +
     'declared fixture repository'),
   'tools/pr-census.mjs': cli('report() lists the record directory --report names; its receipt imports the census helpers'),
+  // 2026-11-02 audit S4: tools the capture-hold census only names (it reads their source, never runs them)
+  'tools/media-r5/lab.mjs': cli('lists the --scenes directories its CLI names'),
+  // round 2 U38 review: tools the capture-hold census names (their signal handlers are on the unlocked path), never runs
+  'tools/click-timeline.mjs': cli('report() lists the run folders --report names'),
+  'tools/nav-timeline.mjs': cli('report() lists the run folders --report names'),
+  // round 2 U39: tools lease-exit.selftest reads (their exit statuses), never runs
+  'tools/media-r5/site50-finals.mjs': cli('lists the render and scene folders its CLI names'),
+  'tools/media-r5/cinema-jobs.mjs': cli('lists the resolved-scene folder its CLI names'),
 
   // ---- import a caller-directed lister for a constant
   'tools/gate.selftest.mjs': none('REPO_ROOT from selftest-cache.mjs; its gate runs list through tools/gate.mjs (above)'),

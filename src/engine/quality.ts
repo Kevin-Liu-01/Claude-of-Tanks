@@ -290,8 +290,7 @@ export function noteGraphicsContextLoss(): void {
 }
 /** Apply relief only once the context is usable; loss handlers must not upload. */
 export function applyGraphicsRecovery(): void {
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 /**
@@ -572,6 +571,48 @@ export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-ultralo
 const listeners = new Set<PresetListener>();
 
 // ---------------------------------------------------------------------------
+// (2026-11-02 audit R3) THE PRESET BROADCAST'S ONE OWNER. The effective preset resolves by a declared priority
+// (resolvePresetName): (1) the device tier picks the ladder (a phone resolves from its mobile choice, never a desktop
+// one); (2) the desired preset is the stored explicit choice, or on Auto min(hardware cap, session auto tier); (3) a
+// context loss in this tab caps it one rung below what was running. The recovery cap is one-way for the tab session by
+// decision: a device reset is stronger evidence than frame rate, so only an explicit choice or ?gfxreset clears it.
+// Writers (setPresetName, setMobilePresetName, reportSustainedOverload/Recovery, applyGraphicsRecovery) publish only
+// through broadcastPreset, which
+//  - runs synchronously: every listener has seen the new preset when the writer returns (post.ts relies on it: its
+//    own listener resets the governor inside the governor's tier step, with the carried raster set);
+//  - isolates listeners: one that throws is reported and the rest still run, so no module is left on the old preset;
+//  - never nests: a listener that changes the preset again restarts the pass with the newest preset, so every
+//    listener ends on the same one, in registration order.
+// ---------------------------------------------------------------------------
+const MAX_PRESET_PASSES = 4;
+let broadcasting = false;
+let rebroadcast = false;
+
+function reportListenerFailure(error: unknown): void {
+  try { console.error('[quality] a preset listener failed; the others still ran', error); } catch (_) { /* consoleless */ }
+}
+
+function broadcastPreset(): void {
+  if (broadcasting) { rebroadcast = true; return; }
+  broadcasting = true;
+  try {
+    for (let pass = 0; pass < MAX_PRESET_PASSES; pass++) {
+      rebroadcast = false;
+      const preset = getPreset();
+      for (const fn of listeners) {
+        try { fn(preset); } catch (error) { reportListenerFailure(error); }
+        if (rebroadcast) break;
+      }
+      if (!rebroadcast) return;
+    }
+    reportListenerFailure(new Error(`preset listeners kept changing the preset for ${MAX_PRESET_PASSES} passes`));
+  } finally {
+    broadcasting = false;
+    rebroadcast = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // ADAPTIVE AUTO TIER (perf-r2e, owner report: "someone with a weaker laptop
 // didn't get the mobile version but it's still laggy"). 'auto' used to
 // resolve to 'high' on EVERY desktop; the dynamic-resolution governor only
@@ -679,8 +720,11 @@ export function resolveAutoTier(): AutoTier {
 export function reportSustainedOverload(): boolean {
   if (getDeviceTier() === 'mobile') return false;
   if (getStoredChoice() !== 'auto') return false;
-  const cur = resolveAutoTier();
-  const i = AUTO_ORDER.indexOf(cur);
+  // (2026-11-02 audit R3) the step is one rung below the preset actually running: with a recovery cap binding, a step
+  // of the auto tier alone left the running preset unchanged, yet reported a cut (the governor then measured a tier
+  // trial of nothing and every listener rebuilt for the same preset)
+  const cur = resolvePresetName();
+  const i = AUTO_ORDER.indexOf(cur as AutoTier);
   if (i <= 0) return false;
   const next = AUTO_ORDER[i - 1];
   if (!next) return false;
@@ -688,8 +732,7 @@ export function reportSustainedOverload(): boolean {
   try {
     console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
   } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
   return true;
 }
 
@@ -698,7 +741,12 @@ export function canRecoverAutoTier(): boolean {
   if (getDeviceTier() === 'mobile' || getStoredChoice() !== 'auto') return false;
   const currentIndex = AUTO_ORDER.indexOf(resolveAutoTier());
   const ceilingIndex = AUTO_ORDER.indexOf(heuristicAutoCap() ?? 'high');
-  return currentIndex >= 0 && currentIndex < ceilingIndex;
+  if (!(currentIndex >= 0 && currentIndex < ceilingIndex)) return false;
+  // (2026-11-02 audit R3) a recovery cap at or below the current auto tier binds: raising the auto tier would change
+  // nothing that runs (the cap is one-way for the tab session; see broadcastPreset)
+  const recovery = graphicsRecoveryPreset();
+  return !(recovery && PRESET_ORDER.includes(recovery as DesktopPresetName)
+    && PRESET_ORDER.indexOf(recovery as DesktopPresetName) <= PRESET_ORDER.indexOf(AUTO_ORDER[currentIndex]));
 }
 
 /**
@@ -715,8 +763,7 @@ export function reportSustainedRecovery(): boolean {
   try {
     console.info(`[quality] sustained stability at '${current}' — auto tier restored to '${next}'`);
   } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
   return true;
 }
 
@@ -771,8 +818,7 @@ export function setMobilePresetName(name: string): void {
   if (!MOBILE_PRESET_ORDER.includes(name as MobilePresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 const autoVariants = new Map<PresetName, QualityPreset>();
@@ -810,12 +856,12 @@ export function setPresetName(name: string): void {
   // live governor to re-evaluate instead of resurrecting an earlier dip.
   _sessionAutoTier = null;
   try { window.localStorage.removeItem(LS_AUTO_TIER); } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 /**
- * Subscribe to live preset changes. Returns an unsubscribe function.
+ * Subscribe to live preset changes (through broadcastPreset, the broadcast's one owner). Returns an unsubscribe
+ * function; a module with a shorter life than the page calls it on dispose.
  * @param {(preset: object) => void} fn
  * @returns {() => void}
  */

@@ -74,11 +74,11 @@ try {
     let control, candidate;
     try {
       forceDefault = true;
-      control = bakeTankWreck(null, 't90am', { seed: 2526, pop });
+      control = bakeTankWreck(null, 't90am', { seed: 2526, state: (pop ? 'turret_blown_off' : 'burnt_out') });
       assert.ok(control, 'forced-default real wreck control succeeds');
       const controlObservation = observation;
       forceDefault = false;
-      candidate = bakeTankWreck(null, 't90am', { seed: 2526, pop });
+      candidate = bakeTankWreck(null, 't90am', { seed: 2526, state: (pop ? 'turret_blown_off' : 'burnt_out') });
       assert.ok(candidate, 'production receipt-free wreck succeeds');
       assert.equal(controlObservation.receiptPresent, true);
       assert.equal(observation.receiptPresent, false);

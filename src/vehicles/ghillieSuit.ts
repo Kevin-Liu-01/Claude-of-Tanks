@@ -17,7 +17,7 @@ import {
   FIELD_NET_PALETTES, STRAW_FIELD_NET_PALETTE, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
   type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
-import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
+import { castThroughAlphaCut, createPaintAttempts, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -2335,6 +2335,7 @@ const srgbLin = (c: number): number => { const v = c / 255; return v <= 0.04045 
 /** Metres of cover per texture repeat (the paint's own patch scale). */
 const COVER_TILE_M = 1.6;
 const coverCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
+const settlesCover = createPaintAttempts();
 
 /** The cover's colours: the scheme's base and patches (sRGB), from the vehicle's active camouflage. */
 interface CoverPalette { readonly base: readonly [number, number, number]; readonly patches: ReadonlyArray<readonly [number, number, number]> }
@@ -2475,7 +2476,8 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Tex
       out = null;
     }
   }
-  if (typeof document !== 'undefined') coverCache.set(key, out);
+  // (2026-11-02 audit R6) a failed paint is counted, not kept as the no-DOM null (alphaCutTexture.ts createPaintAttempts)
+  if (typeof document !== 'undefined' && settlesCover(key, !!out)) coverCache.set(key, out);
   return out;
 }
 
@@ -6222,11 +6224,26 @@ function freezeConfig(cfg: GhillieConfig): GhillieConfig {
   return { ...cfg, ...owners };
 }
 
-/** The builds already dressed (a family builder and a variant step may both ask; one suit per build). */
+/** The builds already dressed (a family builder and a variant step may both ask; one suit per build: the first claim
+ *  wins, so a variant built on a donor's build claims its own before the donor's runs, profiles/donorBuild.ts). */
 const SUITED = new WeakSet<GhillieBuilderPort>();
 
+/** Rows a selftest stands in front of the authored tables (empty in every product build). */
+const TEST_ROWS = new Map<string, GhillieConfig>();
+
+/**
+ * Test seam (2026-11-08 round 8 s5-05; variantIdentity.selftest): give an id a suit row the frozen tables do not have
+ * (a donor mark's, to prove a variant built on it still wears its own), and clear them again. Product code never calls it.
+ */
+export function ghillieSuitTestHooks(): { setRow(id: string, config: GhillieConfig): void; reset(): void } {
+  return {
+    setRow(id, config) { TEST_ROWS.set(id, config); },
+    reset() { TEST_ROWS.clear(); },
+  };
+}
+
 export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieConfig): boolean {
-  const authored = config ?? GHILLIE_CONFIG_INDEX[P.spec.id];
+  const authored = config ?? TEST_ROWS.get(P.spec.id) ?? GHILLIE_CONFIG_INDEX[P.spec.id];
   if (!authored || authored.disabled) return false;
   if (SUITED.has(P)) return false;
   SUITED.add(P);

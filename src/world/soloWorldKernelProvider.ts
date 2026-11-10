@@ -34,6 +34,13 @@ export function createSoloWorldKernels(module: WorldKernelModule, check: boolean
   const queries = new WeakMap<object, ObstacleQuery>();
   return {
     mirrorGround(world: KernelWorld, overlay: TerrainDeformation): boolean {
+      // (2026-11-02 audit S2) one instance a world for its life: asked again, its ground binding takes the overlay (the one
+      // it mirrors already: no change)
+      const bound = byWorld.get(world);
+      if (bound) {
+        bound.mirrorOverlay(overlay);
+        return true;
+      }
       // the world's own grid, in its canonical order (createObstacleGrid's slots): the kernels' grid over the same records
       const order = world.queryObstacles?.rayOrder;
       if (!order || typeof world.heightField.getContactHeightAt !== 'function') return false;

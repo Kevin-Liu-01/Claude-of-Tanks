@@ -20,7 +20,7 @@ import * as garageEquipment from './equipment.ts';
 const { EQUIP_CATEGORIES, equipModifiedStats, equipmentPicker } = garageEquipment;
 import { matchRulesetFor, rulesetAllowsEquipment, rulesetLoadout } from '../sim/matchRuleset.ts';
 import {
-  createCombatState, startReload, tickFire, resolveShellHit,
+  createCombatState, startReload, tickFire, resolveShellHit, strainModule, repairAllModules,
 } from '../sim/damage.ts';
 import { createShell } from '../sim/ballistics.ts';
 import {
@@ -155,6 +155,42 @@ console.log('[4] combat-state attachment + module durability');
   near(c.modules.trackL.maxHp, baseTrack * 1.5, 1e-9, 'track maxHp ×1.5');
   assert(Array.isArray(c.equip) && c.equipMults && typeof c.equipMults.reload === 'number',
     'equip ids + equipMults attached to the combat state');
+}
+
+console.log('[4b] live re-equip: module HP follows the new kit (round 4 E7)');
+// A second applyEquipmentToCombat on the same state (a live re-equip) multiplied each module's maxHp and hp by the new
+// kit's factors on top of the old kit's, and never took the old factor off: the same kit again took a x1.5 ammo rack to
+// x2.25, and dropping the kit kept it. Now the old kit's factor comes off first and hp keeps its share of maxHp.
+{
+  const kitted = (ids) => {
+    const fresh = createCombatState(ww2Spec);
+    applyEquipmentToCombat(fresh, ids, ww2Spec);
+    return fresh;
+  };
+  const bare = createCombatState(ww2Spec);
+  const c = kitted(['wet_rack', 'drivetrain']);
+  // a Governor Override's strain through damage.ts's own law: the engine at 45 % of its kitted maxHp, yellow
+  assert(strainModule(c, 'engine', 0.45) && c.modules.engine.state === 'yellow', 're-equip: the strained engine reads yellow');
+  applyEquipmentToCombat(c, ['wet_rack', 'drivetrain'], ww2Spec); // the same kit again
+  near(c.modules.ammoRack.maxHp, bare.modules.ammoRack.maxHp * 1.5, 1e-9,
+    're-equip, same kit: the ammo rack stays x1.5 (not x2.25)');
+  near(c.modules.ammoRack.hp, c.modules.ammoRack.maxHp, 1e-9, 're-equip, same kit: the ammo rack at full hp');
+  near(c.modules.engine.maxHp, bare.modules.engine.maxHp * 1.4, 1e-9, 're-equip, same kit: the engine stays x1.4');
+  near(c.modules.engine.hp / c.modules.engine.maxHp, 0.45, 1e-9, 're-equip, same kit: the strained engine keeps its 45 %');
+  applyEquipmentToCombat(c, ['susp'], ww2Spec); // another kit: the wet rack and the drivetrain off, the suspension on
+  const susp = kitted(['susp']);
+  for (const name of Object.keys(bare.modules)) {
+    near(c.modules[name].maxHp, susp.modules[name].maxHp, 1e-9, `re-equip, new kit: ${name} maxHp is a fresh spawn's with it`);
+  }
+  near(c.modules.engine.hp / c.modules.engine.maxHp, 0.45, 1e-9, 're-equip, new kit: the engine keeps its 45 %');
+  assert(c.modules.engine.state === 'yellow' && c.modules.ammoRack.state === 'ok' && c.modules.trackL.hp === c.modules.trackL.maxHp,
+    're-equip, new kit: each module\'s state still reads its hp');
+  applyEquipmentToCombat(c, [], ww2Spec); // no kit
+  for (const name of Object.keys(bare.modules)) {
+    near(c.modules[name].maxHp, bare.modules[name].maxHp, 1e-9, `re-equip, no kit: ${name} maxHp is its own`);
+  }
+  repairAllModules(c); // a repair kit after the swaps fills each module to the maxHp it has now
+  near(c.modules.engine.hp, bare.modules.engine.maxHp, 1e-9, 're-equip, then a repair: the engine is full at its own maxHp');
 }
 
 console.log('[5] LIVE hook: reload (damage.ts startReload)');

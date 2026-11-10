@@ -1,11 +1,13 @@
 // Recovered from the owner-preserved Studio packet da7e96085; current TypeScript
 // runtime and shared FIFO own execution. Capture/encode must not overlap probes.
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
-await acquireCaptureLock(45 * 60 * 1000);
-process.once('exit', releaseCaptureLock);
-const captureLeaseRefresh = setInterval(refreshCaptureLock, 30000);
-captureLeaseRefresh.unref();
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
+import { BOOT_LOADED_EXPRESSION, readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+hold = await openCaptureHold({ label: 'feature-promo-capture', timeoutMs: 45 * 60 * 1000 });
+
+
+
 
 // Record the live application surfaces used by the 35-second feature promo.
 //
@@ -57,7 +59,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 function normalizeContainer(path) {
   const remuxed = `${path}.remux.webm`;
-  refreshCaptureLock();
+  hold?.refresh();
   const result = spawnSync('ffmpeg', [
     '-hide_banner', '-loglevel', 'error', '-y', '-i', path,
     '-map', '0:v:0', '-c', 'copy', remuxed,
@@ -70,7 +72,7 @@ function normalizeContainer(path) {
 }
 
 async function waitForGame(page) {
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180_000 });
+  await waitForBootLoaded(page, { timeout: 180_000 });
   await delay(1_200);
 }
 
@@ -386,7 +388,7 @@ try {
   // Battle HUD: request 60 fps directly from the WebGL canvas. The DOM HUD is
   // captured as a transparent overlay and recombined by the promo compositor.
   await page.waitForFunction(
-    "window.__DEBUG?.game?.phase === 'battle'",
+    readinessExpression('battleRevealed'),
     { timeout: 180_000 },
   );
   await delay(2_000);
@@ -685,7 +687,7 @@ try {
   // pullback—using M1A2 SEPv2 as the hero tank.
   await goto(page, '/?studio=1&map=coastal&nogate=1');
   await page.waitForFunction(
-    "window.__GAME_READY === true && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'coastal'",
+    `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'coastal'`,
     { timeout: 180_000 },
   );
   // Keep Studio on the same 540p capture budget as the live battle. The

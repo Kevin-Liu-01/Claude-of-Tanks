@@ -10,6 +10,7 @@ import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderL
 import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.ts';
 // floating-decor-259: the merge's fine-cell bucket sets are geometry.ts's own (props.ts imports them)
 import { DESKTOP_FINE_CELLED_BUCKETS, FINE_CELLED_BUCKETS } from './maps/regional/geometry.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const owned = new Set();
@@ -172,9 +173,10 @@ assert.ok(wrapperStart > 0 && wrapperEnd > wrapperStart);
 const wrapperCode = stripTypeScriptTypes(propsSource.slice(wrapperStart, wrapperEnd)).replace('export ', '');
 function composeAsync(materials) {
   function* build() { yield* materials.prepare(); return { group: materials.group }; }
-  return new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient',
+  // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
+  return new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'assertNoBuildScopeOpen',
     `${wrapperCode}\nreturn createPropsAsync;`)(build, () => assert.fail('no tank builder'), undefined,
-    () => assert.fail('no worker in the Node fixture'));
+    () => assert.fail('no worker in the Node fixture'), assertNoBuildScopeOpen);
 }
 
 // Round 79: every merged bucket registers a profile — one sphere per 96 m cell of piece centres bounding those

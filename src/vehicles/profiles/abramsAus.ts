@@ -7,7 +7,7 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { ABRAMS_PROFILES } from './abrams.ts';
 import { KIT } from './kit.ts';
-import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { buildOnDonor } from './donorBuild.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
 
@@ -77,21 +77,14 @@ function callSignPlate(P: TankBuilderPort): void {
 }
 
 export function buildM1A1AimSaAus(P: TankBuilderPort): void {
-  // buildTejasFamily branches on the source family id: present the plain M1A1's id for the base build only (the
-  // Ukrainian M1A1's pattern, ukraine.ts), then restore the Australian identity before the kit
-  const id = P.spec.id;
-  P.spec.id = 'm1a1';
-  try {
-    ABRAMS_PROFILES.m1a1.build(P);
-  } finally {
-    P.spec.id = id;
-  }
+  // the plain M1A1's build under its id (donorBuild.ts, as the Ukrainian M1A1 builds on the HA's), the Australian
+  // identity back for the kit; its own suit claimed first, laid after the build (the owner, 2026-11-02: "a lot of ghillie
+  // on them and on their barrels", ghillieFleetSuits.ts m1a1_aim_sa_aus)
+  buildOnDonor(P, 'm1a1', (port) => ABRAMS_PROFILES.m1a1.build(port));
   rackExtension(P);
   tmapu(P);
   rackLoad(P);
   callSignPlate(P);
   P.turretG.userData.ausAbramsReceipt = { base: 'm1a1', tmapu: 'rack-left-rear', rackExtensionM: RACK.front - RACK.rear,
     rackTiers: 2, callSignPlate: true };
-  // the owner, 2026-11-02: "a lot of ghillie on them and on their barrels" (ghillieFleetSuits.ts m1a1_aim_sa_aus)
-  addVehicleGhillieSuit(P);
 }

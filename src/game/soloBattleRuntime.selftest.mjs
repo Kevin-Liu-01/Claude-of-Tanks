@@ -21,7 +21,8 @@ assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
 // guards the rest: no local-driver module reaches src/mp).
 assert.match(main, /\n {2}preloadSoloBattle: \(\) => preloadSoloBattleRuntime\(\),\n/, "the Battle intent warms the page's own simulation alone");
 assert.doesNotMatch(main, /soloAuthority|SOLO_AUTHORITY_PARAM|soloSim|soloHost|prepareSoloHost/, 'no solo authority switch, solo sim Worker or solo host is left');
-assert.match(main, /\nfunction beginLocalBattleEntry\([\s\S]*?\n {2}return soloBattleEntry\.begin\(specId, mapId, options\);\n\}/,
+// (round 4 F1: with the press's announcement, which the entry runs once it accepts the start)
+assert.match(main, /\nfunction beginLocalBattleEntry\([\s\S]*?\n {2}return soloBattleEntry\.begin\(specId, mapId, options, announcePress\);\n\}/,
   "the Garage's Battle press is a local battle: the solo entry's own begin");
 assert.match(intent, /const preload = \([\s\S]{0,700}ignoreFailure\(preloadSoloBattle\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');

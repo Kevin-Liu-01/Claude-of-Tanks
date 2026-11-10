@@ -25,7 +25,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const ids = uniqueIds(arg('ids', 'm1a2_abrams').split(',').filter(Boolean), 'marking-flicker-probe --ids');
@@ -445,7 +446,7 @@ const plan = variants.length
   : labels.map((label, index) => ({ index, label, lever: null }));
 const RSS_LIMIT_KB = 6 * 1024 * 1024;
 const servers = [];
-let browser = null, refresher = null, guard = null, overLimit = null;
+let browser = null, guard = null, overLimit = null;
 const report = { startedAt: new Date().toISOString(), roots, labels, ids, views, zooms, slowFrames, fastFrames,
   slowStepDeg, fastStepDeg, variants, runs: Object.fromEntries(plan.map(({ label }) => [label, {}])) };
 
@@ -520,8 +521,7 @@ async function openGallery(index, id) {
 
 try {
   if (swiftshader) await warm();
-  else await acquireCaptureLock(60 * 60 * 1000, { prepare: warm, place: `marking-flicker-243-${labels.join('-')}` });
-  if (!swiftshader) { refresher = setInterval(refreshCaptureLock, 60_000); refresher.unref(); }
+  else hold = await openCaptureHold({ label: 'marking-flicker-probe', timeoutMs: 60 * 60 * 1000, prepare: warm, place: `marking-flicker-243-${labels.join('-')}` });
   for (const id of ids) {
     for (const { index, label, lever } of plan) {
       const page = await openGallery(index, id);
@@ -568,8 +568,7 @@ try {
   report.finishedAt = new Date().toISOString();
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
 } finally {
-  if (refresher) clearInterval(refresher);
   await closeBrowser().catch((error) => { console.error(String(error)); process.exitCode = 3; });
   for (const server of servers) await server.close().catch(() => {});
-  if (!swiftshader) releaseCaptureLock();
+  if (!swiftshader) await hold?.release();
 }

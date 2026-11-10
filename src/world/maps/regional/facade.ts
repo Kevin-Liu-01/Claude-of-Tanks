@@ -16,6 +16,7 @@ import {
 } from './geometry.ts';
 import { masonryLayout } from '../../regionalSurfaces.ts';
 import type { RegionalGround, StoneSurfaceKind } from './types.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 /** The facade craft's slot for the building being built (index.ts sets it around a kit build, like the wear slot). */
 export interface FacadeContext {
@@ -35,6 +36,7 @@ export interface FacadeContext {
   grime?: number;
 }
 let facadeContext: FacadeContext | null = null;
+registerBuildScope('facade', () => facadeContext !== null); // (2026-11-02 audit R1: buildScopes.ts)
 
 /** Build `build` with the facade slot set (builders are synchronous: the slot never leaks between buildings). */
 export function withFacade<T>(context: FacadeContext | null, build: () => T): T {
@@ -53,10 +55,16 @@ export function facadeSurfaced(): boolean {
   return facadeContext?.grime !== undefined;
 }
 
-/** The craft's switch: on in the game; the receipts turn it off to hold a desktop build to the kits' own (facade.selftest). */
+/**
+ * The craft's switch: on in the game; the receipts turn it off to hold a desktop build to the kits' own (facade.selftest).
+ * (2026-11-02 audit R1) Scoped, as the facade slot is: it was a process-global setter with no restore, so a receipt that
+ * forgot to turn it back on (or threw first) changed every later build in its process.
+ */
 let craftEnabled = true;
-export function setFacadeCraft(on: boolean): void {
+export function withFacadeCraft<T>(on: boolean, build: () => T): T {
+  const prior = craftEnabled;
   craftEnabled = on;
+  try { return build(); } finally { craftEnabled = prior; }
 }
 
 /** True on a desktop kit build: the facade craft is built. A phone, or a build outside a kit, keeps the plain parts. */

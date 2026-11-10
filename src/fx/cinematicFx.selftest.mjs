@@ -27,6 +27,7 @@ function fakePort() {
     setLightTintShading: (on) => { log.tinted = on; },
     setMuzzleExposure: (light, cards) => { log.muzzle = [light, cards]; },
     stampTrackPrint: () => { log.prints++; },
+    setClockShift: () => {},
   };
   return { port, log, sharing };
 }

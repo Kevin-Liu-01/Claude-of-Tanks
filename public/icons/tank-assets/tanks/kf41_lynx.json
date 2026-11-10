@@ -855,15 +855,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24750,
-      "sha256": "d5dad0a2028ccc6153bdb28bd2695300517a7ede0b3d6fe8d2464f7f593d9df8",
+      "bytes": 26278,
+      "sha256": "3adae23454acac8279fd7e06ca663024093bff31cf00cbb23f375eb8cfc92ca4",
       "thumbnail": {
         "file": "thumbs/kf41_lynx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10586,
-        "sha256": "b6f99bbb9fddf77ffb5e84cf8235807068edb61471dd0a832a8e7d6b54f5db13"
+        "bytes": 11118,
+        "sha256": "25ee37693ab64a9b94c9564860e38054feeedc02d4721a60a7217d1998e642ff",
+        "frame": [25,87,227,250]
       }
     },
     "top": {
