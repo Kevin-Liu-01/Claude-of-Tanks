@@ -41,8 +41,8 @@ function cast(setting: string, era: WreckCast['era'], nations: readonly string[]
 }
 
 /** A map reverted whole to base: main's row, its hulks burnt out or cooked off. */
-function baseCast(setting: string, era: WreckCast['era'], nations: readonly string[], ids: readonly string[], count = 5): WreckCast {
-  return Object.freeze({ ...cast(setting, era, nations, count, ids, ['burnt_out', 'turret_blown_off']), base: true as const });
+function baseCast(setting: string, era: WreckCast['era'], nations: readonly string[], ids: readonly string[]): WreckCast {
+  return Object.freeze({ ...cast(setting, era, nations, 5, ids, ['burnt_out', 'turret_blown_off']), base: true as const });
 }
 
 /** The desert's states: the sand takes a hulk over the years; nothing overturns on the flat erg. */
@@ -113,11 +113,8 @@ export const WRECK_CASTS = {
     ['t72m1_jaguar', 't55a', 'bmp2', 'bwp1', 'm47_patton'], STREETS),
   saltwind: cast('the Dalmatian coast, the Croatian War of Independence, 1991-95', 'cold-war',
     ['Croatia', 'Yugoslav People\'s Army'], 10, ['t72m1_jaguar', 't55a', 'bmp2', 'bwp1', 'm47_patton']),
-  // (Main, 2026-11-10) the overlap fix moved three judged hulks here; round 7's base-against-base control never held 0 px
-  // in three shoots (299 px, then 1.07 M px twice), so the map went unjudged and reverts whole to main's row: eight hulks
-  // of its first four donors
-  skybridge: baseCast('Glen Canyon above Lake Powell: a US Army range of the 1960s and 1970s', 'cold-war', ['USA'],
-    ['m48a5_patton', 'm60a1', 'm47_patton', 'm551_sheridan'], 8),
+  skybridge: cast('Glen Canyon above Lake Powell: a US Army range of the 1960s and 1970s', 'cold-war', ['USA'], 11,
+    ['m48a5_patton', 'm60a1', 'm47_patton', 'm551_sheridan', 'm41a3', 'm60a2']),
   steppe: cast('the Sary-Arka grain steppe, Kazakhstan: a Soviet tank range of the Cold War', 'cold-war', ['USSR'], 10,
     ['t55a', 't62_1975', 't64bv1', 't80', 'bmp2']),
   titan_gorge: cast('Monument Valley on the Colorado Plateau: a US Army range of the 1950s to the 1980s', 'cold-war', ['USA'], 11,
