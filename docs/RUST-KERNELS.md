@@ -23,9 +23,10 @@ function, `env.terrain_height`, the map's height function.
 
 ## Turning them off
 
-- **Dedicated server:** on unless `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). The server compiles
-  `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once per process, so the deploy image must carry that file; one it lacks,
-  or that does not compile, logs `world kernels did not load` and the server plays on the TypeScript.
+- **LAN helper** (the one Node authority since the container left the tree, docs/MULTIPLAYER-V2.md §13.10): on unless
+  `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). It compiles `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once
+  per process, so its checkout must carry that file; one it lacks, or that does not compile, logs `world kernels did
+  not load` and it plays on the TypeScript.
 - **Browser host and solo battles:** on unless `?simKernels=ts`. The lazy chunks read the flag and carry the asset URL;
   nothing loads at boot. A module that does not arrive or compile leaves that host or battle on the TypeScript.
   - A multiplayer host's Worker fetches and compiles the module. The choice stays with the host: it is never sealed into
@@ -49,7 +50,7 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
   - sets `window.__SIM_KERNELS`'s `mode`, `source` (`solo` / `host`) and `reason`;
   - on a fallback, sends one telemetry note a session, `kernels:<source>:<reason>` (the entry telemetry's `sim_kernels`);
   - in development, writes one `console.info` line. A production build writes nothing to the console.
-- **Dedicated server:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
+- **LAN helper:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
   and serves it in `/metrics` as `kernels`.
 
 ## Receipts
@@ -58,6 +59,7 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 |---|---|
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
+| `node tools/sim-kernel-manifest.selftest.mjs` (default tier) | The committed binary and every Rust source, Cargo file and toolchain pin match its manifest |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30 --base=scans` | The clearance scans' own share: A on the kernels less the scans |
