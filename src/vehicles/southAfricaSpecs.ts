@@ -95,15 +95,16 @@ olifant_mk1b.gun = {
 };
 // The SANDF's three-colour camouflage of 1994 as the Tempe tank wears it (272; the SA Armour Museum's Mk 1B in TE's
 // DSCF4690-4692, Dewald Venter; Hataka's South African Army set: "the new 3-colour camouflage of Military Dark Earth, MRG
-// Stone and Buffalo Green was introduced to AFVs" in 1994): MRG Stone under Buffalo Green and Military Dark Earth in broad
-// soft patches (the blotch painter). The darkest colour is a brown, not a green: the 269 coat's sand under two greens read
+// Stone and Buffalo Green was introduced to AFVs" in 1994): MRG Stone under the Military Dark Earth's broad soft masses
+// and Buffalo Green's smaller ones (the blotch painter at the fleet's reference size, 0.5, its patches 2.6x: the museum
+// tank's patches are 1.5-2 m across with about a third of the stone showing). The darkest colour is a brown, not a green: the 269 coat's sand under two greens read
 // woodland, with no brown (blind critics, 2026-11-04). The 1991-94 tanks probably left the works in plain BS 381C 450 Dark
 // Earth, the SADF's armour colour of 1975-94, but no photograph of a Mk 1B in it is known, and the owner rules out plain
 // coats (2026-11-03). The Mk 2 wears the same three colours in the woodland painter's smaller patches (olifantMk2Specs.ts).
 olifant_mk1b.visual = {
   ...olifant_mk1b.visual,
-  scheme: 'blotch', base: '#a8957c', weather: '#b3a28a', patches: ['#626850', '#4e3f30'],
-  marking: 'number', number: '31B', camoScale: 0.72, patchK: 2.0,
+  scheme: 'blotch', base: '#a8957c', weather: '#b3a28a', patches: ['#4e3f30', '#626850'],
+  marking: 'number', number: '31B', camoScale: 0.5, patchK: 2.6,
 };
 
 // ------------------------------------------------------------------------------------------------- Olifant TTD --
