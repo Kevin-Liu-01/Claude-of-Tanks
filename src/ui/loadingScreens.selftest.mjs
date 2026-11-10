@@ -760,7 +760,8 @@ assert.match(playerFrameInputSource,
 assert.doesNotMatch(battleRolloutSource, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(soloBattleEntrySource,
-  /enterGarage\(\);\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
+  // (improve-271 plan 034) the same order, with the cover and the loader released even when the Garage return rejects
+  /await enterGarage\(\);\s*\} catch \(returnError\) \{[^}]*\} finally \{\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 // A room start mounts its opaque cover synchronously (the intent cover) before the composition chunk's first await.
 assert.match(intentCoverSource, /coverRendering\(\);\s*resetRoundState\(game\);\s*battleLoad\.show\(\{/,
