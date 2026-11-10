@@ -2,41 +2,46 @@
 // (tankFactoryCore.ts DecorPlanner) is made in decorPlanWorker.ts over a replica of the tank, and this attaches nothing:
 // it posts the request and rebuilds the reply's plan. The worker starts with the first request and serves every later
 // one; a worker that fails to start or dies rejects what it holds, and those tanks plan in-line.
+// (improve-271, plan 038) Through src/workerCalls.ts: a worker silent past its deadline, or whose reply cannot be read,
+// rejects what it holds too (the stepped build waits on nothing else); after it had answered, one fresh worker may start,
+// and the next failure leaves every later tank to the in-line plan.
 import type { DecorationAttachmentArgs, DecorPlan } from './decorations.ts';
 import { decorPlanFrom, decorPlanRequest, type DecorPlanReply } from './decorPlanWire.ts';
 import type { DecorPlanMessage, DecorPlanResult } from './decorPlanWorker.ts';
+import { createWorkerCalls, type WorkerCalls, type WorkerCallTimers } from '../workerCalls.ts';
 
-let worker: Worker | null = null;
-let broken = false;
+/** How long the worker may stay silent while it holds a plan (ms): the page's single-job workers' 15 s
+ *  (materialPainterWorkerClient.ts), and twice that before its first answer, while it loads the decoration's chunks. */
+const DECOR_SILENCE_MS = 15_000;
+const DECOR_FIRST_SILENCE_MS = 30_000;
+
+let calls: WorkerCalls<DecorPlanResult> | null = null;
+let timers: WorkerCallTimers | undefined;
 let nextId = 0;
-const pending = new Map<number, { resolve(reply: DecorPlanReply | null): void; reject(error: Error): void }>();
 
-function failAll(error: Error): void {
-  broken = true;
-  worker?.terminate();
-  worker = null;
-  for (const { reject } of pending.values()) reject(error);
-  pending.clear();
+function decorCalls(): WorkerCalls<DecorPlanResult> {
+  calls ??= createWorkerCalls<DecorPlanResult>({
+    name: 'decor worker',
+    spawn: () => new Worker(new URL('./decorPlanWorker.ts', import.meta.url), { type: 'module', name: 'cot-decor-plan' }),
+    idOf: (result) => result?.id,
+    silenceMs: DECOR_SILENCE_MS,
+    firstSilenceMs: DECOR_FIRST_SILENCE_MS,
+    starts: 2,
+    timers,
+  });
+  return calls;
 }
 
-function decorWorker(): Worker {
-  if (worker) return worker;
-  if (broken) throw new Error('decor worker unavailable');
-  worker = new Worker(new URL('./decorPlanWorker.ts', import.meta.url), { type: 'module', name: 'cot-decor-plan' });
-  worker.onmessage = (event: MessageEvent<DecorPlanResult>) => {
-    const result = event.data, waiter = pending.get(result.id);
-    if (!waiter) return;
-    pending.delete(result.id);
-    if ('error' in result) waiter.reject(new Error(result.error));
-    else waiter.resolve(result.reply);
-  };
-  worker.onerror = (event) => failAll(new Error(`decor worker failed: ${event.message || 'error'}`));
-  return worker;
+/** Receipts: drop the client (its worker terminated, what it holds rejected) and start the next on this clock. */
+export function resetDecorWorker(clock?: WorkerCallTimers): void {
+  calls?.dispose(new Error('decor worker reset'));
+  calls = null;
+  timers = clock;
 }
 
 /** Start the worker ahead of its first request (it loads the decoration's chunks in its own realm); never throws. */
 export function startDecorWorker(): void {
-  try { decorWorker(); } catch { /* the first plan reports it */ }
+  decorCalls().warm();
 }
 
 /** The decoration's plan for this tank, made off the main thread (null: the tank takes no decoration). */
@@ -44,13 +49,15 @@ export function planDecoration(args: DecorationAttachmentArgs): Promise<DecorPla
   const { request, transfer } = decorPlanRequest(args);
   const id = ++nextId;
   return new Promise<DecorPlanReply | null>((resolve, reject) => {
-    pending.set(id, { resolve, reject });
     const message: DecorPlanMessage = { id, request };
-    try {
-      decorWorker().postMessage(message, transfer);
-    } catch (error) {
-      pending.delete(id);
-      reject(error instanceof Error ? error : new Error(String(error)));
-    }
+    const posted = decorCalls().post(id, message, transfer, {
+      reply: (result) => {
+        if ('error' in result) reject(new Error(result.error));
+        else resolve(result.reply);
+        return true;
+      },
+      fail: reject,
+    });
+    if (!posted) reject(new Error('decor worker unavailable'));
   }).then((reply) => (reply ? decorPlanFrom(reply, args) : null));
 }

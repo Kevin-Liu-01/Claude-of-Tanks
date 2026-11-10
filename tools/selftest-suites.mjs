@@ -2716,6 +2716,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/decorPlanWire.selftest.mjs',
+    'src/vehicles/decorPlanClient.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
