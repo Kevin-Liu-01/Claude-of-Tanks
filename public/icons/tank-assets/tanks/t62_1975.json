@@ -567,7 +567,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10626,
-        "sha256": "4f99fe1e6fc9b76b8b2a17aaf3dd071ad2e0323a66224642420250858c58ca5e"
+        "sha256": "4f99fe1e6fc9b76b8b2a17aaf3dd071ad2e0323a66224642420250858c58ca5e",
+        "frame": [21,101,224,249]
       }
     },
     "top": {
