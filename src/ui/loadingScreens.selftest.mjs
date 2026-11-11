@@ -61,8 +61,9 @@ for (const { mapId, asset } of minimapAssets) {
 
 // Since round 14 (2026-10-12) the Garage gallery's featured stills are the site fifty's (owner: "replace the old media
 // with all my new ones"), picked in tools/media-r5/site-media/picks.json `featured`. Since 2026-11-11 the loading screens
-// rotate the boot pick and then picks.json `loading`: the owner's loading-screen gallery, its close-ups and then its
-// elevated stills (owner 2026-11-04: "for loading screens we need to use these elevated scenes"), each a 1920x1080 webp
+// rotate the boot pick and then picks.json `loading`: the stills the owner picked from his loading-screen gallery (its
+// close-ups, then any elevated stills; 2026-11-04: "for loading screens we need to use these elevated scenes"), each a
+// 1920x1080 webp
 // in public/media/loading-r1 (tools/media-r5/loading-media.mjs) with its battlefield and its caption in both catalogs.
 const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
 const siteStills = `/media/${sitePicks.collection}/stills/`;
@@ -80,11 +81,12 @@ assert.equal(sitePicks.featured[0], bootPicks[0], 'the boot pick leads the Garag
 assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garage still carries the boot derivative');
-// the loading picks: the gallery as the owner reviewed it (26 close-ups, 52 elevated stills, all kept); a still he
+// the loading picks: the first sixteen close-ups of the gallery (owner 2026-11-11, on the full rotation sheet: "only need
+// 1-16 for the loading screen"), no elevated still; a still he
 // drops leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
 const loadingPicks = [...sitePicks.loading.close, ...sitePicks.loading.elevated];
-assert.equal(sitePicks.loading.close.length, 26, 'the gallery\'s close-ups');
-assert.equal(sitePicks.loading.elevated.length, 52, 'the gallery\'s elevated stills');
+assert.equal(sitePicks.loading.close.length, 16, 'the gallery\'s first sixteen close-ups');
+assert.equal(sitePicks.loading.elevated.length, 0, 'no elevated still');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
 const loadingDir = new URL(`../../public/media/${sitePicks.loading.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));

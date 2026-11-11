@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The loading-screen collection, public/media/loading-r1 (owner 2026-11-04: "for loading screens we need to use these
-// elevated scenes"; 2026-11-11, the loading-screen gallery: every still he kept). tools/media-r5/site-media/picks.json
-// `loading` names the stills in the gallery's order, its close-ups and then its elevated stills. Each ships as one
+// elevated scenes"; 2026-11-11, on the gallery's full rotation sheet: "only need 1-16 for the loading screen").
+// tools/media-r5/site-media/picks.json `loading` names the stills in the gallery's order, its close-ups and then any
+// elevated stills. Each ships as one
 // 1920x1080 webp of at most 600 KB, encoded at q90 (a busy scene steps down to q86, then q82) from its 4K render,
 // <masters>/<id>/stills/<one>.png, through the master filter (master-filter.mjs); the render's cinema-receipt.json holds
 // its scene. manifest.json records, per still, its map and hour, its caption in English and Chinese (the battlefield's catalog name, then the hero and the tank its scene pairs
@@ -188,7 +189,7 @@ const manifest = {
   author: PROJECT_CREATOR,
   copyright: PROJECT_COPYRIGHT,
   license: FIRST_PARTY_LICENSE,
-  description: 'The loading-screen stills: the owner\'s loading-screen gallery, its close-ups and then its elevated stills, each a scene staged in the Scene Studio and rendered at 4K by the game engine; after the boot pick they are the loading screens\' rotation (src/ui/featuredShots.ts LOADING_SHOTS).',
+  description: 'The loading-screen stills: the ones the owner picked from his loading-screen gallery, its close-ups and then any elevated stills, each a scene staged in the Scene Studio and rendered at 4K by the game engine; after the boot pick they are the loading screens\' rotation (src/ui/featuredShots.ts LOADING_SHOTS).',
   generatedBy: relative(ROOT, fileURLToPath(import.meta.url)),
   sources: `the 4K stills of the Scene Studio renders under ${PICKS.masters} (each item's source names its file, its revision the commit it was rendered on)`,
   dimensions: { width: WIDTH, height: HEIGHT },
