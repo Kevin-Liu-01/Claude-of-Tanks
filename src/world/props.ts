@@ -1613,7 +1613,8 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
     { kind: 'structureDetail', detail: 'steel', noiseSeed },
     { kind: 'rockDetail', lithology: rockLithologyFor(mapId), noiseSeed },
   ];
-  if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
+  // (buildings-272: a lava wall is laid on the field print, on a brick-print map too: Caldera)
+  if (wallStyle === 'lava' || !(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
     requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
   }
   // (battle-spikes-253) and a mud-walled map's mud render (makeFieldMud), after the field stone as the build reaches it
@@ -4213,7 +4214,9 @@ function* propsBuildSteps(
   // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
   // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
-  const fieldWallBucket = P.wallStyle === 'adobe' || sourcedStoneIsBrick(mapId) ? 'stone' : 'fieldStone';
+  // (buildings-272) a lava wall is never the coursed brick module, though its map's stone print is brick (Caldera's is)
+  const brickWalls = sourcedStoneIsBrick(mapId) && P.wallStyle !== 'lava';
+  const fieldWallBucket = P.wallStyle === 'adobe' || brickWalls ? 'stone' : 'fieldStone';
   const fieldStone = fieldWallBucket === 'fieldStone'
     ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
     : stone;
@@ -4796,9 +4799,10 @@ ${snowCap ? `
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
     // top, so a breached module loses it with its stones)
     // (props lane A #6: the coursed module in its region's build, maps/coursedWallKit.ts: the legacy collision and fit)
-    ...(sourcedStoneIsBrick(mapId) ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
-      // (buildings-272: Caldera's knee-high lava-stone bank on the dry module's envelope and draws: coursedWallKit.ts)
-      : P.wallStyle === 'lava' ? { wallstone: lavaWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, () => mulberry32(0x0f0f7)) }
+    // (buildings-272: Caldera's knee-high lava-stone bank on the dry module's envelope and draws — the coursed module's
+    // too, as Caldera's print is brick: coursedWallKit.ts)
+    ...(P.wallStyle === 'lava' ? { wallstone: lavaWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, () => mulberry32(0x0f0f7)) }
+      : brickWalls ? { wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7)) }
       // (props lane A, r2 sweep: the drawn module's top stones crowned, the legacy's collision and fit: coursedWallKit.ts)
       : { wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7)) }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
@@ -6928,7 +6932,7 @@ ${snowCap ? `
   // foot") the soil and turf banked against the dry-stone walls' feet (fieldWallDressing buildWallTurf), for the
   // ground's own material beside the boulders' beds — not on a snow map (its drifts), a sandy one (its dust), a
   // brick-print one (its coursed module), nor the phones
-  const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !sourcedStoneIsBrick(mapId);
+  const wallTurfOn = !mobileProps && !snowCap && rockDressing.dust < 0.5 && !brickWalls;
   const turfFoldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt ?? null;
   // (sealed lane 2026-10-11: a Sirocco Wadi hand cart stood in a wall breach's rubble) a breach's stubs and blocks carry no
   // record: each stands in the parked vehicles' and carts' seat passes as drawn (crushableFootprints)
@@ -6976,7 +6980,7 @@ ${snowCap ? `
     // the island's place; the props stream draws exactly what it drew.
     let islandFrom = 0;
     function dressIsland(ta: number, tb: number): void {
-      if (retired || (style !== 'adobe' && sourcedStoneIsBrick(mapId))) return;
+      if (retired || (style !== 'adobe' && brickWalls)) return;
       const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : footHalf);
       for (const part of dressed.wall) buckets[wallB].push(part);
     }
@@ -6993,7 +6997,7 @@ ${snowCap ? `
       // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
       // wall in an eroded pier, each from a stream named by its place; a square post capped with a slab stays for the
       // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
-      if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
+      if (style === 'adobe' || !brickWalls) {
         const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
         // (gauntlet wave 52, Verdant's village walls: "the field wall abruptly changes from tan stone to dark … with a hard
         // vertical seam" — two runs meeting at a corner, one face in the sun and one in shade, and nothing between them):
@@ -7027,7 +7031,7 @@ ${snowCap ? `
     function addBrokenBreach(t0: number, t1: number): void {
       // (props lane A #6: the boxes are the seat proxies and keep the draws; the breach draws the wall's own stepped
       // section and its spilled units — fieldWallDressing.ts breach, breachTumble)
-      const breachKind = style === 'adobe' ? 'adobe' : sourcedStoneIsBrick(mapId) ? 'brick' : 'drystone';
+      const breachKind = style === 'adobe' ? 'adobe' : brickWalls ? 'brick' : 'drystone';
       for (const breachT of [0.18, 0.82]) {
         const x = x0 + tx * (t0 + breachT * (t1 - t0));
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
