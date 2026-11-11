@@ -49,7 +49,8 @@ Pass rule:
   page's address. With `src/pad/padCues.ts` (which events are cues) the phone's page never imports it: a module both
   sides import rides whole to the phone, so each export lives on the side that runs it
   (`src/pad/padPhoneHalf.selftest.mjs`).
-- `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk behind `src/pad/padAccess.ts`.
+- `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk that the Settings panel
+  imports on demand (`src/ui/settings.ts`).
 - `site/pad.html` + `src/pad/padPage.ts` + `src/pad/pad.css`: the phone page.
 - `src/pad/qr.ts`: a small QR encoder (byte mode, level M), drawn as SVG.
 
@@ -70,8 +71,9 @@ Pass rule:
    at most 6 hours.
 
 Limits: the Worker rate-limits every `/pad` upgrade per client IP (`PAD_CONNECT_LIMITER`, 30 a minute, separate from the
-rooms limiter); signals ≤ 8 KB and ≤ 60 a minute per side; ICE grants ≤ 3 per side per 10 minutes; at most 2 live
-sockets plus 1 pending per pair.
+rooms limiter); signals ≤ 8 KB and ≤ 60 a minute per side; ICE grants only once a phone has joined, ≤ 3 per side per
+10 minutes, counted per side across its sockets and kept in the stored pairing (a resume or a Worker restart does not
+reset it; `src/pad/padActor.ts`); at most 2 live sockets plus 1 pending per pair.
 
 ## Transport: measured, then picked
 
@@ -149,9 +151,10 @@ hands the moment they happen:
   pairing and by the couch runtime for each seat) and sends a `cue` on `ctl` for its own tank's events
   (`src/pad/padCues.ts` `padCueOf`): `shot` (its gun, harder for a heavier gun), `hit` and `deflect` (a hit it gave that
   hurt or glanced off), `hurt` (stronger for more damage) and `glance` (a hit taken), `module` (a module knocked out,
-  never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`; and for the
-  page's player alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the
-  battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
+  never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`, and `denied`
+  for a couch seat's shell pick the core's input stage refused (its event names the tank); and for the page's player
+  alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the battle
+  refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
   a billed request and counts against the pairing's relay budget, a cue waits 500 ms after the last (a kill and a
   death never wait). No Worker change: the relay carries `ctl` text without reading it.
 - The phone plays each one's pattern (`padBuzz.ts` `padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration
@@ -159,7 +162,9 @@ hands the moment they happen:
   pattern (`padBuzzTicks`: one tick per pulse, a long pulse ticks on every 50 ms, six at most).
 - The phone's own buzzes: a tick per press; at the trigger, the shot's kick at once when the gun is loaded (the
   battle's cue for that one shot then adds none), a refusal while it loads; and the gun loaded (a load of 1.5 s or
-  more), timed from the status's reload, never with the trigger held (the shot's own kick follows).
+  more), timed from the status's reload, never with the trigger held (the shot's own kick follows). A paused battle or a
+  hidden desktop tab freezes the reload: the load waits (`padReadyBuzz.ts`, idle, loading or paused) and is announced
+  once at the resume or the load's end; a link that leaves live drops it.
 - A press never cuts a buzz still playing short. Options has a Vibration switch.
 - Unverified on hardware: whether iOS ticks outside a touch's own handler (a cue that arrives off the link). The
   simulator has no haptics; the owner's phone settles it.
@@ -187,13 +192,17 @@ the phone"), because the big screen is where the player looks:
   ctl message past that limit, so no message can end a pairing that way again.
 - The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
   the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own (kept inside
-  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the ten
-  seconds running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
+  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the
+  phone's time left running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
   over Settings, where a phone pairs, and over the couch lobby. It takes no input but Skip, and it stays off the
   surface stack: opened there it would replace the Settings panel or the couch lobby it stands over
   (`transientSurfaceRegistry.selftest.mjs` names it an exempt).
 - Skip on either side, or the ten seconds, ends it on both (`tour` with `on: false`; an ending is never echoed). A couch
   lobby shows one at a time: a newer phone's guide replaces the one showing.
+- The phone owns the guide; the game screen's copy is a bounded mirror with no clock of its own (round 8). The phone's
+  `tour` with `on: true` carries the time its guide has left (`ms`), and the copy closes on the phone's `on: false`, on
+  its own Skip, when its link leaves live (a closed tab or a dropped link sends no ending), or when that time runs out,
+  whichever comes first (`padReceiver.ts`; `padTour.selftest.mjs`).
 
 ### Locked landscape
 

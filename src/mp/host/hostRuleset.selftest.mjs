@@ -81,7 +81,7 @@ const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: 
     const hostileSeats = [{ ...seats[0], equipment: hostile }, seats[1]];
     pair.main.post({ type: 'boot', config: { roomId, matchId: `m-${roomId}`, generation: 1, mapId: 'verdant', mode, seed: 7, seats: hostileSeats, bots: [], countdownS: 1, battleLimitS: null, hostSecret: 'host-secret-0123456789abcdef', manifestBase: null, resume: null, arrangement: null, campaignOperationId: null } });
     await ready;
-    const equip = core.actor?.authority.entities.find((entity) => entity.specId === 'm1a1_abrams_hc')?.equip;
+    const equip = core.actor?.authority.entities.find((entity) => entity.specId === 'm1a1_abrams_hc')?.combat.equip;
     core.dispose();
     pair.main.close();
     return equip;
@@ -95,7 +95,8 @@ const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: 
 // ---- the LAN helper's in-process match (matchTransport 'service') takes the same table
 {
   const created = [];
-  const matchService = { actors: new Map(), removeActor() {}, createActor(options) { created.push(options); return { stopped: false, ended: false }; } };
+  // (audit M3, 2026-11-02: the host reads a room's match through matchStatusSource, the actor or its final reading)
+  const matchService = { actors: new Map(), matchStatusSource: () => null, removeActor() {}, createActor(options) { created.push(options); return { stopped: false, ended: false }; } };
   const host = createInProcessMatchHost({ matchService, world: 'terrain' });
   await host.start({ roomId: 'ROOM03', matchId: 'm-3', round: 1, mapId: 'verdant', mode: 'zone_control', seed: 1, seats: seats.map((seat) => ({ ...seat, camo: 'factory' })), bots: [], countdownS: 1, arrangement, campaignOperationId: null });
   assert.equal(created.length, 1);

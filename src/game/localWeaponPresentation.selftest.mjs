@@ -29,7 +29,8 @@ const fxCallback = (event) => (node) => ts.isArrowFunction(node)
   && node.parent.arguments[1]?.text === event;
 const calls = [];
 const audioBindings = {
-  ctx: {}, phase: 'battle', battleOver: false, listenerOwnerId: 'player', listenerScoped: false,
+  // the engine's battle mode (src/audio/battleMode.ts): in a battle, before its verdict
+  ctx: {}, battleMode: { phase: 'battle', over: false }, listenerOwnerId: 'player', listenerScoped: false,
   fireWeapon: (...args) => calls.push(['report', ...args]),
   shellFlyby: () => calls.push(['whizz']),
   say: () => calls.push(['radio']),
@@ -65,7 +66,7 @@ assert.equal(calls.filter(([kind]) => kind === 'report').length, 3, 'ordinary ow
 assert.equal(calls.filter(([kind]) => kind === 'whizz').length, 1, 'only remote confirmed shot schedules a whizz');
 assert.deepEqual(calls.filter(([kind]) => kind === 'caption'), [['caption', 'gunfire']], 'and only it is captioned (our own shots are not)');
 const reportCount = calls.length;
-for (const change of [{ ctx: null }, { phase: 'garage' }, { battleOver: true }, { listenerOwnerId: null }]) {
+for (const change of [{ ctx: null }, { battleMode: { phase: 'garage', over: false } }, { battleMode: { phase: 'battle', over: true } }, { listenerOwnerId: null }]) {
   const denied = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), { ...audioBindings, ...change });
   denied(shot);
 }

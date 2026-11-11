@@ -14,6 +14,7 @@
  */
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
+import { restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
 import type {
   MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
   TankState,
@@ -21,10 +22,12 @@ import type {
 import type { RulesetPhysics } from '../../sim/matchRuleset.ts';
 import {
   ENTITY_FLAGS, HELD_INPUT_LEASE_TICKS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
-  dequantizeMultiplier, dequantizePosition, dequantizeVelocity, wrapAngle,
+  dequantizeMultiplier, dequantizeVelocity, wrapAngle,
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
 import { applyMovementCheckpoint } from './movementCheckpoint.ts';
+import { BODY_PHASE_ROW_FLAGS } from './hullBodyRow.ts';
+import { applyAuthorityRow } from './authorityRow.ts';
 import { publishedTrackContact } from '../../sim/trackContact.ts';
 import { lerpAngle } from './interpolation.ts';
 import type { PredictionControl } from './inputStream.ts';
@@ -156,7 +159,8 @@ const REST_HORIZONTAL_DEADZONE_M = 0.03;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_ANGLE_DEADZONE_RAD = 0.0035;
 const REST_YAW_RATE_RAD_S = 0.0035;
-const ACTIVE_BODY_FLAGS = ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING;
+/** The authority hull is in flight or in its rigid phase (wire 10 names a plain tumble too, as simAtRest reads it). */
+const ACTIVE_BODY_FLAGS = BODY_PHASE_ROW_FLAGS;
 /** Tick poses kept for the display blend (the replay window is 24 ticks). */
 const POSE_RING = 32;
 
@@ -223,33 +227,6 @@ function authorityAtRest(row: EntityRow): boolean {
   return !(row.flags & ACTIVE_BODY_FLAGS) &&
     Math.abs(dequantizeVelocity(row.speed)) <= REST_SPEED_MPS &&
     Math.abs(dequantizeVelocity(row.verticalSpeed)) <= REST_SPEED_MPS;
-}
-
-/** The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). */
-function applyAuthorityRow(state: TankState, row: EntityRow): void {
-  state.pos.set(dequantizePosition(row.x), dequantizePosition(row.y), dequantizePosition(row.z));
-  state.yaw = dequantizeAngle(row.yaw);
-  state.speed = dequantizeVelocity(row.speed);
-  state.verticalSpeed = dequantizeVelocity(row.verticalSpeed);
-  state.visualPitch = dequantizeAngle(row.pitch);
-  state.visualRoll = dequantizeAngle(row.roll);
-  state.turretYaw = dequantizeAngle(row.turretYaw);
-  state.gunPitch = dequantizeAngle(row.gunPitch);
-  state.grounded = !(row.flags & ENTITY_FLAGS.AIRBORNE);
-  state.overturned = !!(row.flags & ENTITY_FLAGS.OVERTURNED);
-  state._body.autoRighting = !!(row.flags & ENTITY_FLAGS.AUTO_RIGHTING);
-  state._body.tumbling = state.overturned || state._body.autoRighting;
-  state._prevSpeed = state.speed;
-  // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
-  // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's
-  state._spring.pitch = state.visualPitch - (state._hold?.p ?? 0) - (state._holdSeat?.p ?? 0);
-  state._spring.roll = state.visualRoll - (state._hold?.r ?? 0) - (state._holdSeat?.r ?? 0);
-  state._ride.y = state.pos.y;
-  state._ride.v = state.verticalSpeed;
-  state._ride.grounded = state.grounded;
-  state._ride.airTime = 0;
-  // The first replay tick re-establishes terrain support at the authority pose.
-  state._ride.supportY = NaN;
 }
 
 export class LocalPredictor {
@@ -503,8 +480,7 @@ export class LocalPredictor {
   private initialize(authority: PredictionAuthority): void {
     const state = createTankState(this.spec, this.sim.state.pos, dequantizeAngle(authority.row.yaw));
     this.sim.state = state;
-    applyAuthorityRow(state, authority.row);
-    this.restoreCheckpoint(authority.viewer);
+    this.applyAuthority(authority);
     this.world.anchor?.(state);
     this.clearCorrection();
     this.holdingRest = false;
@@ -519,9 +495,19 @@ export class LocalPredictor {
   }
 
   private rewind(authority: PredictionAuthority): void {
+    this.applyAuthority(authority);
+    this.world.anchor?.(this.sim.state);
+  }
+
+  /**
+   * The authority's tick onto the simulation state, in the one order that is right: the row's pose and flags (with the
+   * integrator they imply), then the viewer checkpoint over them. The checkpoint restores the integrator, both copies of
+   * ground contact and the body mode against the row's overturn (hullBodyMode.ts); without one the row's projection
+   * stands. Every reseed goes through here, so no caller can apply them the other way round.
+   */
+  private applyAuthority(authority: PredictionAuthority): void {
     applyAuthorityRow(this.sim.state, authority.row);
     this.restoreCheckpoint(authority.viewer);
-    this.world.anchor?.(this.sim.state);
   }
 
   /** Replay the unacknowledged ticks; true when the newest tick was stepped (its predecessor pose captured). */
@@ -697,10 +683,15 @@ export class LocalPredictor {
     target.trackScroll.r = live.trackR;
     target.speed = source.speed;
     target.verticalSpeed = source.verticalSpeed;
-    target.grounded = source.grounded;
-    target.overturned = source.overturned;
-    target._body.tumbling = source._body.tumbling;
-    target._body.autoRighting = source._body.autoRighting;
+    setHullGrounded(target, source.grounded);
+    restoreHullBodyMode(target, source.overturned, source._body.tumbling, source._body.autoRighting);
+    // the tank contacts' support terms (tankBodyContacts.ts hullBearsOnBody): the battle's prediction world judges the own
+    // hull's stacks on this copy, whose own support cache was never filled (audit M8: it read the origin's, so the own
+    // hull counted as stacked anywhere above 0.5 m of world height)
+    target._sup.y = source._sup.y;
+    target._sup.top = source._sup.top;
+    target._body.dynamicSupport = source._body.dynamicSupport;
+    target._body.restSupportY = source._body.restSupportY;
     target.landingImpactMps = source.landingImpactMps;
     target.slopeBlocked = source.slopeBlocked;
     target.yawRate = source.yawRate;

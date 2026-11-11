@@ -107,8 +107,8 @@ function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
 // as rotation.set(-(visualPitch + suspP·SUSP_VIS_P) + flinchP, yaw,
 // visualRoll + suspR·SUSP_VIS_R + sway·SWAY_VIS + flinchR, 'YXZ') with root at
 // state.pos (tankFactory syncFromState: sim attitude plus the VISIBILITY-
-// AMPLIFIED susp-rock spring and turn-lean sway, plus the hit-flinch rock —
-// all mirrored by the sim in state._susp/_swayEst/_flinch; amplification
+// AMPLIFIED susp-rock spring and turn-lean sway — mirrored by the sim in
+// state._susp/_swayEst (the hit-flinch rock is the visual's own, audit M9); amplification
 // constants in lockstep with tankFactory SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS) and
 // the track contact plane at hull-local y = 0 — so a contact point at
 // hull-local (x, 0, z) renders at:
@@ -131,10 +131,9 @@ const SWAY_VIS = 3.2;
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
-  const fl = state._flinch || { p: 0, r: 0 };
   const seat = state._holdSeat || { p: 0, r: 0 };
-  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
-  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P;
+  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);
@@ -1202,12 +1201,15 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(Number.isFinite(fallbackBody.state.pos.y) && fallbackBody.state.overturned,
     'fallback closed-shell support seats an overturned tank without anatomy points');
 
+  // the hit/recoil flinch is the visual's own spring (audit M9): a stray one on a state neither moves nor rings the sim
   const flinching = makeEntity(field);
+  const unflinched = makeEntity(field);
   flinching.state._flinch = { p: 0.04, r: -0.03, pv: 0.1, rv: -0.1 };
-  const before = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
   run(flinching, field, 180);
-  const after = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
-  assert(after < before * 0.01, 'impact flinch decays through the bounded attitude spring');
+  run(unflinched, field, 180);
+  assert(flinching.state.pos.y === unflinched.state.pos.y && flinching.state.visualPitch === unflinched.state.visualPitch,
+    'the sim never folds a hull flinch into its support solve');
+  assert(flinching.state._flinch.p === 0.04 && flinching.state._flinch.pv === 0.1, 'nor integrates one');
 }
 
 // ------------------------------------------------ touchdown step (round 8) --

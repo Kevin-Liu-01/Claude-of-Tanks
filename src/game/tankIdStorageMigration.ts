@@ -1,9 +1,9 @@
 // Saved tank ids follow the id renames (SSOT 2.19, ID.03).
 //
 // Browser storage written before a rename holds that schema's ids: the last
-// tank, the per-nation garage choice, per-tank camouflage, custom paint and
-// loadouts (their keys carry the id), the profile's last battle and the
-// Service Record. One pass at boot, before any reader, rewrites them into this
+// tank, the per-nation garage choice, per-tank camouflage, custom paint,
+// loadouts, consumables and the camo picker's memory (their keys carry the id),
+// the profile's last and recent battles, the favourites and the Service Record. One pass at boot, before any reader, rewrites them into this
 // build's ids and stamps `cot.tankIds.schema`. The stamp is written even when a
 // write fails, so no value is ever renamed twice (a swap would turn it back).
 // Studio slots carry their own `tankIdSchema` and resolve when loaded.
@@ -12,13 +12,15 @@ import { TANK_IDS, type TankIdResolver } from '../vehicles/tankIdAliases.ts';
 
 export const TANK_ID_STORAGE_SCHEMA_KEY = 'cot.tankIds.schema';
 
-/** Keys whose suffix is a tank id. */
-const ID_KEYED_PREFIXES = Object.freeze(['cot.camo.', 'cot.camoCustom.v1.', 'cot.equip.']);
+/** Keys whose suffix is a tank id (tankIdBoundaries.selftest.mjs fails on a spec-keyed store missing here). */
+const ID_KEYED_PREFIXES = Object.freeze(['cot.camo.', 'cot.camoCustom.v1.', 'cot.equip.', 'cot.cons.', 'cot.picker.camo.']);
 /** Where the Garage remembers the tank last selected (selectedVehicleSelection; the Studio Director offers its take). */
 export const LAST_TANK_STORAGE_KEY = 'cot.lastTank.v1';
 const NATION_TANK_KEY = 'cot.garage.nationTank.v1';
 const PROFILE_KEY = 'cot.profile.v2';
 const SERVICE_KEY = 'cot.service.v1';
+/** The Gallery's stored preferences, whose `favourites` the Garage shares (game/favouriteTanks.ts). */
+const GALLERY_KEY = 'cot.gallery.v2';
 
 interface MigrationStorage {
   readonly length: number;
@@ -78,10 +80,20 @@ export function planTankIdStorageMigration(
   }
 
   const profile = parse(storage.getItem(PROFILE_KEY));
-  if (isRecord(profile) && isRecord(profile.lastBattle)) {
+  if (isRecord(profile)) {
     const before = JSON.stringify(profile);
-    profile.lastBattle.vehicleId = id(profile.lastBattle.vehicleId);
+    if (isRecord(profile.lastBattle)) profile.lastBattle.vehicleId = id(profile.lastBattle.vehicleId);
+    if (Array.isArray(profile.recentBattles)) {
+      for (const battle of profile.recentBattles) if (isRecord(battle)) battle.vehicleId = id(battle.vehicleId);
+    }
     if (JSON.stringify(profile) !== before) writes.set(PROFILE_KEY, JSON.stringify(profile));
+  }
+
+  const gallery = parse(storage.getItem(GALLERY_KEY));
+  if (isRecord(gallery) && Array.isArray(gallery.favourites)) {
+    const before = JSON.stringify(gallery);
+    gallery.favourites = gallery.favourites.map(id);
+    if (JSON.stringify(gallery) !== before) writes.set(GALLERY_KEY, JSON.stringify(gallery));
   }
 
   const service = parse(storage.getItem(SERVICE_KEY));

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m2a2_bradley": {
+      "name": "M2A2 Bradley",
+      "authority": "Release 269 (owner 2026-11-05, \"the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2 bradley\"): the M2A2 is the shared Bradley hull (modern3.ts buildBradleyHull, measured from the owner's supplied model) under the classic turret (modern3.ts buildM2A2Bradley, profiles/bradleyClassicTurret.ts), rebuilt by builder T2 as an M2A2 ODS turret from the photographs below (commit 0f0c4793f7: welded body to a flat roof, cheeks to the gun bay, the ISU's armoured head, the stowed TOW launcher flush on the turret's left wall, the right-hand bin, the bustle basket, two whips at the rear corners). Release 270 (Main 2026-11-06: \"The comparison registration follows the owner's swap. m3a2_bradley takes the source turret's model ... m2a2_bradley, now the classic turret, gets a classic-turret reference: a registered model if one exists, otherwise the photo-class route with a cited packet. Never score a build against a turret it no longer carries.\"): the 42manako print (m2_bradley_ifv.glb) is the source turret's model and is registered to the M3A2; no registered or owner-supplied model shows this turret (the owner's other Bradley models are M2A3/M3A3s), so the M2A2 proves this packet. docs/references/tanks/m2a2_bradley.md records the build and its sources.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:M2A2_ODS-SA_Bradley_Fighting_Vehicle.JPG",
+        "https://commons.wikimedia.org/wiki/File:M2A2_Bradley.jpg",
+        "https://commons.wikimedia.org/wiki/File:Mechanized_infantry_syria.jpg",
+        "https://commons.wikimedia.org/wiki/File:M2A2_Bradley_Infantry_Fighting_Vehicle.jpg",
+        "https://commons.wikimedia.org/wiki/File:Bradley_M2A2_ODS_of_the_Croatian_Armed_Forces.jpg",
+        "https://www.armyrecognition.com/military-products/army/infantry-fighting-vehicles/tracked-vehicles/bradley-m2a2-ods",
+        "https://en.wikipedia.org/wiki/M2_Bradley"
+      ],
+      "widthM": 3.502,
+      "overallLengthM": 6.618,
+      "tallestM": 3.46,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule; 270, the 269 ODS classic turret). Width over the skirt course's grab handles (published 3.28 m over the base A2 hull, 3.6 m over the appliqué). Length from the ramp's tail-lamp guards to the bow's tow shackles (published 6.55 m hull). Tallest is the top of the two antenna whips on the turret's rear corners, as built rather than published; the turret roof stands at 2.98 m (published 2.97-2.98 m).",
+      "caliberMm": 25,
+      "launcherTubes": 2,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/m3a2Bradley.selftest.mjs"
+    }
+  }
+}

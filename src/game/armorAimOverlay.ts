@@ -434,7 +434,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
   /** Bakes under way, oldest first. */
-  const bakes: Array<{ root: THREE.Object3D; work: Generator<void, PanelBakeStats, void> }> = [];
+  const bakes: Array<{ root: THREE.Object3D; stats: PanelBakeStats; work: Generator<void, PanelBakeStats, void> }> = [];
   /**
    * (265; the world-reds lane, Main) Primed vehicles whose panels wait: a battle with the overlay off never pays for them.
    * They bake when asked (bakePanels: the streamer's staging, the overlay on) or in the frames' share once it is on.
@@ -487,7 +487,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     root.userData.armorPaintPanels = stats;
     // the authority's pose for the spaced parts' inward rays (the streamer has synced the visual to the same state)
     const authority = entry.target.state ? { pose: tankPoseFromState(entry.target.state) } : null;
-    bakes.push({ root, work: bakePaintPanelSteps(root, entry.template, entry.paint, armor, stats, authority) });
+    bakes.push({ root, stats, work: bakePaintPanelSteps(root, entry.template, entry.paint, armor, stats, authority) });
   }
 
   async function bakePanels(target: ArmorOverlayTarget | null | undefined, pause: () => Promise<void>): Promise<void> {
@@ -809,6 +809,15 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     entries.clear();
     visibleEntries.length = 0;
     sampleCursor = 0;
+    // (2026-11-02 audit, 01-game-1 item 11) a bake cut off here never finished: its vehicle forgets it. The latch is set
+    // at the queue, so a cut-off root (a pooled hull kept across battles, battleVisualPool.ts) was refused for the
+    // session, and the scope painted the parts the bake never reached without their zones; its next prime bakes it
+    // again, keeping the geometries it reached (armorPaintPanels.ts bakedBy)
+    for (const bake of bakes) {
+      bake.work.return(bake.stats);
+      if (panelBakes.get(bake.root) === bake.stats) panelBakes.delete(bake.root);
+      if (bake.root.userData.armorPaintPanels === bake.stats) delete bake.root.userData.armorPaintPanels;
+    }
     bakes.length = 0;
     unbaked.clear();
   }

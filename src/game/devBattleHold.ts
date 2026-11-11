@@ -6,6 +6,17 @@
  * verdict until the hold is released. Only the page's own step (game/state.ts simStep) reads it, so a network battle is
  * never held; a watched battle (no player seat) neither. Off, nothing here runs or draws a random number: the step is the
  * step, byte for byte (devBattleHold.selftest.mjs).
+ *
+ * (round 8 Y1 s2-05) The hold has edges, read in the step (stepBattleHold; the switch is set between steps, and armed
+ * before a battle exists by both tools): free -> held parks every bot's brain on the battle's clock (game/ai.ts park, as
+ * Watch's taken seat does), held -> free resumes it (ai.ts resume), so the hull a bot lost and the time that passed while
+ * it stood are no burst, no stale window and no queued news at the release. A battle begun armed parks at its first step.
+ * A couch battle's phone seats stand like the bots (their inputs go neutral), and their damage is not undone: only the
+ * player's is.
+ *
+ * (round 8 merge review r1) The mode's own bot decisions stand with the bots: the step hands its held to the mode
+ * controller (state.ts stepMatchMode), so a held Air Support battle's bots call in no strike or recon pass
+ * (sim/airSupport.ts step); a strike called before the hold still flies, as a round in flight still lands.
  */
 import type { CombatState, ModuleStateName } from '../sim/damage.ts';
 
@@ -22,20 +33,79 @@ interface HeldInput {
   auxiliaryBits?: number;
 }
 
+/** A bot's brain as the hold's edges see it (game/ai.ts AiController park and resume). */
+interface HeldBrain {
+  park?(timeS?: number): void;
+  resume?(timeS?: number, firstShellId?: number): void;
+}
+
 interface HeldEntity {
+  id: string;
   input: HeldInput;
   combat: CombatState;
+  aiCtl?: HeldBrain | null;
 }
 
 interface HeldGame<Entity extends HeldEntity> {
   devBattleHold?: boolean;
   player: Entity | null;
   tanks: Entity[];
+  /** The battle's clock and next shell id (the brains' park and resume read them). */
+  timeS?: number;
+  nextShellId?: number;
+  /** The battle's ordinal (setupBattle counts it): a new battle starts free whatever the last one ended in. */
+  battleCount?: number;
+}
+
+/** The page's bus, as the undo answers what the step announced. */
+interface HeldBus {
+  emit(event: string, payload: { id: string; module?: string; state?: ModuleStateName; source?: string; burning?: boolean }): void;
 }
 
 /** Whether this step is held: armed on a battle with a player seat, outside a public build. */
 export function battleHeld<Entity extends HeldEntity>(game: HeldGame<Entity>): boolean {
   return DEV_BATTLE_HOLD && game.devBattleHold === true && game.player !== null;
+}
+
+/** The hold's state at the end of each game's last step: free or held, and the battle it was read in. */
+const holdEdges = new WeakMap<object, { battle: number; held: boolean }>();
+
+/**
+ * The held step's one owner (round 8 Y1 s2-05), at the top of the step's controls (game/state.ts stepHullControls): this
+ * step's held, its edge against the last step of the same battle (free -> held parks every bot's brain, held -> free
+ * resumes each, before any of them is updated), then the held step's start (holdBattleStep). Returns this step's held.
+ */
+export function stepBattleHold<Entity extends HeldEntity>(game: HeldGame<Entity>): boolean {
+  const held = battleHeld(game);
+  const battle = game.battleCount ?? 0;
+  let edge = holdEdges.get(game);
+  if (!edge) { edge = { battle, held: false }; holdEdges.set(game, edge); }
+  const was = edge.battle === battle && edge.held;
+  edge.battle = battle;
+  edge.held = held;
+  if (held !== was) {
+    for (const entity of game.tanks) {
+      if (entity === game.player || !entity.aiCtl) continue;
+      if (held) entity.aiCtl.park?.(game.timeS);
+      else entity.aiCtl.resume?.(game.timeS, game.nextShellId);
+    }
+  }
+  if (held) holdBattleStep(game);
+  return held;
+}
+
+/**
+ * The hold's answer to a revive (round 8 merge review r1), right after the mode's revive hook resumes the revived bot's
+ * brain on the battle's clock (game/state.ts; round 2 U18). While the edge holds (its record says this battle's brains
+ * are parked), that resume ended the park the free -> held edge began, so the release's resume found none and the bot's
+ * record clocks never moved over the held time after the revive (a stalemate push, a search gate and a passive press read
+ * it as the bot's own silence): the brain is parked again at once, on the revive's clock. A free battle's revive, the
+ * player and a seat with no brain are left as they are.
+ */
+export function holdRevivedBrain<Entity extends HeldEntity>(game: HeldGame<Entity>, entity: Entity): void {
+  if (entity === game.player || !entity.aiCtl) return;
+  const edge = holdEdges.get(game);
+  if (edge?.held && edge.battle === (game.battleCount ?? 0)) entity.aiCtl.park?.(game.timeS);
 }
 
 interface ModulePin { hp: number; state: ModuleStateName; repairT: number }
@@ -98,8 +168,11 @@ export function holdBattleStep<Entity extends HeldEntity>(game: HeldGame<Entity>
 /**
  * A held step's losses undone, before the mode and the verdict: hit points, modules, crew, a fire the step lit and ERA the
  * step spent come back to the pin. Gains stand (a repair, a heal, a fire burning out), so a held hull only ever mends.
+ * (round 8 Y1 s2-05) The undo answers what the step announced, so the presentation agrees with the hull: each module it
+ * restores says its state again (module:state, source 'hold': never `repaired`, which plays a crew's repair line), and a
+ * fire it puts out says so (tank:fire burning false: the alarm loop stops, the crew says the fire is out).
  */
-export function undoHeldDamage<Entity extends HeldEntity>(game: HeldGame<Entity>): void {
+export function undoHeldDamage<Entity extends HeldEntity>(game: HeldGame<Entity>, bus: HeldBus): void {
   const player = game.player, pin = pins.get(game);
   if (!player || !pin || pin.combat !== player.combat) return;
   const combat = player.combat;
@@ -109,14 +182,17 @@ export function undoHeldDamage<Entity extends HeldEntity>(game: HeldGame<Entity>
     const module = combat.modules[name as keyof CombatState['modules']];
     if (!module || !(module.hp < kept.hp)) continue;
     module.hp = kept.hp;
+    const announced = module.state !== kept.state;
     module.state = kept.state;
     module.repairT = kept.repairT;
+    if (announced) bus.emit('module:state', { id: player.id, module: name, state: kept.state, source: 'hold' });
   }
   for (const [name, alive] of pin.crew) if (alive && !combat.crew[name]) combat.crew[name] = true;
   if (combat.fire.burning && !pin.burning) {
     combat.fire.burning = false;
     combat.fire.tickTimer = pin.tickTimer;
     combat.fire.ticksLeft = pin.ticksLeft;
+    bus.emit('tank:fire', { id: player.id, burning: false });
   }
   if (combat.eraSpent.size > pin.era.length) {
     for (const key of [...combat.eraSpent]) if (!pin.era.includes(key)) combat.eraSpent.delete(key);

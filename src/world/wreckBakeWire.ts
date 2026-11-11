@@ -42,6 +42,8 @@ export interface WreckBakeWire {
   placeHx?: number;
   placeHz?: number;
   contact?: [number, number, number, number];
+  buried?: number;
+  thrownSide?: number;
 }
 
 function packAttribute(
@@ -118,6 +120,8 @@ export function packWreckBake(baked: WreckBake): { wire: WreckBakeWire; transfer
     ...(baked.budgetTris !== undefined ? { budgetTris: baked.budgetTris } : {}),
     ...(baked.placeHx !== undefined ? { placeHx: baked.placeHx, placeHz: baked.placeHz } : {}),
     ...(baked.contact ? { contact: baked.contact } : {}),
+    ...(baked.buried !== undefined ? { buried: baked.buried } : {}),
+    ...(baked.thrownSide ? { thrownSide: baked.thrownSide } : {}),
   };
   return { wire, transfer: [...buffers] };
 }
@@ -177,6 +181,8 @@ export function unpackWreckBake(wire: WreckBakeWire): WreckBake {
       ...(wire.budgetTris !== undefined ? { budgetTris: wire.budgetTris } : {}),
       ...(wire.placeHx !== undefined ? { placeHx: wire.placeHx, placeHz: wire.placeHz } : {}),
       ...(wire.contact ? { contact: wire.contact } : {}),
+      ...(wire.buried !== undefined ? { buried: wire.buried } : {}),
+      ...(wire.thrownSide ? { thrownSide: wire.thrownSide } : {}),
     };
   } catch (error) {
     geo.dispose();

@@ -45,10 +45,14 @@ export interface AirStrike {
   /** Brought down: when and by whom (null while it flies). */
   downedS: number | null;
   downedBy: string | null;
+  /** Rounds of its stream that have left (the gunship's 30 mm), and of the gunship's 152 mm (improve-271 plan 007: each
+   *  round fires once). Absent in a strike an older host sealed: sim/airSupportFire.ts counts what was due by then. */
+  fired?: number;
+  firedAux?: number;
 }
 
 /** A strike as anyone may see it: its record without its caller (the flight, the footprint and the rounds need no more). */
-export type PublicStrike = Omit<AirStrike, 'callerId'>;
+export type PublicStrike = Omit<AirStrike, 'callerId' | 'fired' | 'firedAux'>;
 
 /** What the HUD, the minimap, the world and the sounds read of the strikes, per viewer. */
 export interface AirSupportView {
@@ -116,7 +120,8 @@ export interface AirSupport {
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
   revealed(id: string, side: ObjectiveTeam): boolean;
   evadeTarget(entity: AirSupportEntity, timeS: number): { x: number; z: number; mission: 'evade' } | null;
-  step(timeS: number): void;
+  /** One step of the ledger and the strikes; `botsHeld` (the solo dev battle hold): the bots call nothing this step. */
+  step(timeS: number, botsHeld?: boolean): void;
   view(viewerId: string | null): AirSupportView;
   pointsOf(id: string): number;
   capture(): AirSupportCheckpoint;
@@ -315,7 +320,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const record: AirStrike = {
       id: nextId++, kind, team: teamOf(entity), callerId: entityId,
       x, y: terrainHeight(x, z), z, heading, calledS: timeS, landsS, endS: strikeEndS(rules, kind, landsS),
-      hp: strike.hp, maxHp: strike.hp, downedS: null, downedBy: null,
+      hp: strike.hp, maxHp: strike.hp, downedS: null, downedBy: null, fired: 0, firedAux: 0,
     };
     strikes.push(record);
     emit('mode_strike_called', { strikeId: record.id, kind, team: record.team, x: record.x, y: record.y, z: record.z,
@@ -519,7 +524,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
 
   // ---------------------------------------------------------------- the step
 
-  function step(timeS: number): void {
+  function step(timeS: number, botsHeld = false): void {
     nowS = timeS;
     const trickle = Math.floor(timeS / rules.points.trickleS);
     if (trickle > trickles) {
@@ -529,7 +534,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     }
     if (timeS >= decideAt) {
       decideAt = timeS + rules.bots.decideEveryS;
-      for (const entity of entities) if (botDriven(entity) && living(entity)) botCall(entity, timeS);
+      // a held battle's bots stand (round 8 merge review r1): their crews call in nothing until the release
+      if (!botsHeld) for (const entity of entities) if (botDriven(entity) && living(entity)) botCall(entity, timeS);
     }
     // a recon pass reveals, as its jet passes the mark, every enemy within its reach of the track (unless it fell first)
     for (const strike of strikes) {
@@ -550,7 +556,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const viewer = viewerId ? byId.get(viewerId) : undefined;
     const out: AirSupportView = {
       nowS,
-      strikes: strikes.map(({ callerId, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
+      // the round counters are the host's bookkeeping: the view stays the record it always was
+      strikes: strikes.map(({ callerId, fired: _fired, firedAux: _firedAux, ...rest }) => ({ ...rest, mine: !!viewer && callerId === viewer.id })),
     };
     if (viewer) {
       out.points = Math.floor(points.get(viewer.id) ?? 0);

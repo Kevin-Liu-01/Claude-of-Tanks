@@ -80,8 +80,15 @@ const body = (name) => {
 for (const name of ['function removeFromGroup(', 'function addToGroup(']) {
   assert.match(body(name), /if \(key === 'slot'\) nearTierHeightVersion\+\+;/, `${name} bumps for a near slot`);
 }
-for (const name of ['function clearPartitionSlots(', 'function updateTreeCrush(', 'function resetToppled(', 'const writeCraterTree = ']) {
+for (const name of ['function clearPartitionSlots(', 'const writeCraterTree = ']) {
   assert.match(body(name), /nearTierHeightVersion\+\+;/, `${name} bumps`);
+}
+// (2026-11-02 audit M9) a fall's tick and the reset of the felled trees bump through their owner's host (felledTrees.ts)
+assert.match(source, /poseChanged: \(\) => \{ nearTierHeightVersion\+\+; \},/, 'the felled trees\' pose changes bump');
+{
+  const felled = readFileSync(new URL('./felledTrees.ts', import.meta.url), 'utf8');
+  const fn = (name) => felled.slice(felled.indexOf(name), felled.indexOf('\n  }\n', felled.indexOf(name)));
+  for (const name of ['function step(', 'function restoreAll(']) assert.match(fn(name), /host\.poseChanged\(\);/, `felledTrees ${name} bumps`);
 }
 assert.match(body('function seedTreePartition('), /if \(tree\.near\) \{\n\s*nearTierHeightVersion\+\+;/, 'a near seed bumps');
 // near slots are only ever filled or emptied by those writers

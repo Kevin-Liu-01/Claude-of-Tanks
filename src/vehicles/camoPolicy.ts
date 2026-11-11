@@ -162,10 +162,15 @@ const AUTHORED_PAINT_IDS_PLAIN_269 = Object.freeze(['paint_magach3', 'paint_maga
  * South African ids first in merge order. Appended after 267's saved catalog indices. */
 const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1',
   'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
+/** Release 270: the Tunguska-M's 2008 Moscow parade three-tone and the Pantsir-S1's tri-colour blotch
+ * (gm352AirDefenseSpecs.ts; owner 2026-11-05: "tunguska and pantsir need camos"). Appended after 269's saved catalog
+ * indices (269 is live, so its order holds). */
+const AUTHORED_PAINT_IDS_AFTER_269 = Object.freeze(['paint_tunguska_m', 'paint_pantsir_s1'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
-  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number];
+  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_269[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
@@ -174,7 +179,8 @@ const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_269 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -218,6 +224,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_266,
   ...AUTHORED_PAINT_IDS_PLAIN_269,
   ...AUTHORED_PAINT_IDS_AFTER_268,
+  ...AUTHORED_PAINT_IDS_AFTER_269,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -954,12 +961,13 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_tk_x: 'paint_type10',
   // release 267: the original BMPT Terminator in the Engineering Technologies 2012 vehicle's three-tone desert
   bmpt_terminator: 'paint_bmpt_terminator',
-  // release 268: the twin-cannon air defence in existing coats (no new paint; saved catalog indices hold): the Russian pair
-  // in Russia's plain service green (the photographs' solid coat), the PGZ-95 in the PLA green-and-sand organic coat (the
-  // Type 59's Signature recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature,
-  // the ZTZ-20's stock; the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5.
-  tunguska_m: 'national_ru',
-  pantsir_s1: 'national_ru',
+  // release 268: the twin-cannon air defence: the PGZ-95 in the PLA green-and-sand organic coat (the Type 59's Signature
+  // recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature, the ZTZ-20's stock;
+  // the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5. Release 270 (owner
+  // 2026-11-05: "tunguska and pantsir need camos"): the Russian pair leave the plain service green, each in a coat of its
+  // own: the Tunguska-M the 2008 Moscow parade's grey-buff and black bands, the Pantsir-S1 a tri-colour blotch.
+  tunguska_m: 'paint_tunguska_m',
+  pantsir_s1: 'paint_pantsir_s1',
   pgz95: 'sig_type59',
   pgz09: 'sig_ztz100_x',
   // release 269, the plain-coat pass (owner 2026-11-03): the Magachs off the Merkava 2D's plain service grey, each in a
@@ -976,6 +984,16 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   olifant_mk1a: 'paint_olifant_mk1a',
   olifant_mk1b: 'paint_olifant_mk1b',
   ttd: 'paint_olifant_mk1b',
+  // release 270: the second air-defence round in existing coats (no new paint; saved catalog indices hold): both Marksmen
+  // in Finland's three-tone's closest coat, the CV90 Mk IV's Swedish splinter woodland (paint_cv90_mkiv: green, black and a
+  // grey-green, as the photographs); the K30 Biho in the ROK woodland of the K2 (sig_k2, the photographs' four-colour
+  // coat); the PZA Loara in the PT-91 Twardy's Polish green, sand and black (sig_pt91_twardy). The Type 87 wears Japan's
+  // Factory coat with the Type 74 and the Type 90 (the JGSDF two-tone), the Lvkv 9040 Sweden's (the M90 splinter) with the
+  // CV90.
+  marksman_t55: 'paint_cv90_mkiv',
+  itpsv_leopard2: 'paint_cv90_mkiv',
+  k30_biho: 'sig_k2',
+  pza_loara: 'sig_pt91_twardy',
   // release 269: the Australia line: the RAAC's olive drab under field disruption on the M113A1 FSV (bands) and MRV
   // (three-tone), the disruptive three-tone from the Leopard AS1 on
   m113a1_fsv: 'paint_m113a1_fsv',
@@ -985,6 +1003,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m1a1_aim_sa_aus: 'paint_leopard_as1',
   m1a2_sepv3_aus: 'paint_leopard_as1',
   redback: 'paint_leopard_as1',
+  // the 152 mm line: the Object 292 in the plain green Kubinka shows it in, and the Molot, the 152 mm line's other Soviet prototype, in
+  // the same: the national Russian plain (the service presets are a cold-war amoeba and the T-90M's digital)
+  object292: 'national_ru',
+  object477_molot: 'national_ru',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

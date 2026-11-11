@@ -5,19 +5,20 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/smoke-live');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let server,browser,refresh;
+let hold;let server,browser;
 const report={pass:false,garage:[],battle:null,errors:[]};
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'smoke-launchers', timeoutMs: 45*60*1000 });
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5218,strictPort:true,hmr:false,watch:{ignored:['**/*']}}});await server.listen();
  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
  const page=await browser.newPage();page.on('pageerror',e=>report.errors.push(e.message));
  await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
  await page.goto('http://127.0.0.1:5218/?qa=1&nosplash=1',{waitUntil:'domcontentloaded',timeout:180000});
- await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG?.pedestalOnStage,{timeout:240000});
+ await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,{timeout:240000});
  await page.waitForSelector('#cot-boot',{hidden:true,timeout:60000});
  for(const id of ['kf41_lynx','kf51_panther','c1_ariete','kf41_lynx','t14_armata','c2_ariete','griffin_viper','t90a_burlak_proto','challenger2','stb1','leo1a5','object148_proto']){
   // Use the Garage's actual selection transaction and cached pedestal, with its engine context.
@@ -34,7 +35,7 @@ try{
  assert.equal(report.garage[0].uuid,report.garage[3].uuid,'cached return retains the working visual');
  console.log('Live Garage smoke banks and cached return passed');
  await page.evaluate(()=>window.__DEBUG.startBattle('kf41_lynx','verdant',{randomRoster:false}));
- await page.waitForFunction(()=>{const d=window.__DEBUG;return d.game.phase==='battle'&&!d.rig.cinematicActive&&!(d.game.preBattleS>0);},{timeout:240000});
+ await page.waitForFunction(`${readinessExpression('controlsReleased')} && !window.__DEBUG.rig.cinematicActive`,{timeout:240000});
  await page.waitForFunction(()=>[...document.querySelectorAll('button.cot-auxiliary')].some(b=>!b.hidden&&!b.disabled&&b.querySelector('.sl')?.textContent==='Smoke'),{timeout:60000});
  await page.evaluate(()=>[...document.querySelectorAll('button.cot-auxiliary')].find(b=>!b.hidden&&b.querySelector('.sl')?.textContent==='Smoke').click());
  await page.waitForFunction(()=>window.__DEBUG.game.player?.combat?.auxiliary?.smoke?.canisters?.length>0,{timeout:30000});
@@ -45,5 +46,5 @@ try{
  assert.deepEqual(report.errors,[]);report.pass=true;console.log('KF41 live Smoke control launched all 12 canisters');
 }finally{
  writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));
- clearInterval(refresh);await browser?.close();await server?.close();lock.release();
+ await browser?.close();await server?.close();await hold?.release();
 }

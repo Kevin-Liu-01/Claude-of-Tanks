@@ -1,7 +1,9 @@
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/studioLight.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
+import { createSessionHolder, type StudioBusy as StudioPanelBusy, type StudioSessionToken as StudioPanelSessionToken } from '../game/studioSession.ts';
 import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, shotRuns, type WorkspaceId } from './studioProductionPanel.ts';
 import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
 import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
@@ -18,6 +20,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { noticeRegion, notify } from './components/notice.ts';
+import { loadFailed, markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -26,6 +29,7 @@ import { createPickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 import { createGarageCamoPicker } from './camoPicker.ts';
 import { camoTagNation } from '../vehicles/camoPolicy.ts';
 import { mapRegionTags } from './regionTags.ts';
@@ -39,6 +43,13 @@ import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 import { coverImage, createUiCanvas, drawImageFit } from './uiCanvas.ts';
+
+// (2026-11-02 audit R6, review round 2) the production archive's stylesheet under the one lazy-chunk policy
+// (app/lazyChunk.ts): asked on every press of the archive button, a sheet that failed once was skipped by Vite's preload
+// on the next press and the archive mounted unstyled; a failed sheet is now kept. (round 3 X9) It is an opener's chunk:
+// its failure closes the archive, says so once and marks the archive's button (components/loadFailure.ts), whose next
+// press reloads the page once online. Each press opened an empty archive and said Vite's raw error again.
+const archiveSheet = createLazyChunk(() => import('../presentation/mediaArchive.css'), { opener: true });
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -208,6 +219,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly CAMO_PATTERN_IDS: readonly string[];
   readonly ACTOR_STATES: readonly string[];
   readonly mapId: string | null;
+  /** The Studio owns the frame (its session's entry shell to its exit's teardown). */
+  readonly active: boolean;
   readonly timeOfDay: StudioTimeOfDay;
   setTimeOfDay(time: StudioTimeOfDay): Promise<RuntimeValue>;
   setLight(patch: StudioLight | null): Promise<RuntimeValue>;
@@ -296,7 +309,12 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
   getFilm(): StudioFilmSettings | null;
   setFilm(patch: Readonly<Record<string, RuntimeValue>> | null): RuntimeValue;
-  load(state: RuntimeValue): Promise<RuntimeValue>;
+  /** `owner`: the session the load was asked for in (sessionToken()); after its exit the load is refused (audit F9). */
+  load(state: RuntimeValue, options?: { readonly owner?: StudioPanelSessionToken | null }): Promise<RuntimeValue>;
+  /** The live Studio session's token, stale once that session ends (audit F9). */
+  sessionToken(): StudioPanelSessionToken;
+  /** What holds the Studio (a recording, a film or its export, a session not open, a scene, a map, an undo, a light), or null. */
+  busy(): StudioPanelBusy | null;
   updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeEffect(id: string): RuntimeValue;
   selectEffect(id: string): RuntimeValue;
@@ -364,6 +382,11 @@ interface StudioPanelRuntime {
   tick(dt: number): void;
   /** The header's undo, redo and saved state after a step or an autosave. */
   refreshHistory(): void;
+  /**
+   * (round 2 Q18) The panel's one reading (panelBusy): the Studio's holders and the panel's own (a queue run, a time or sun
+   * change, the Director's staging or take fetch). The Studio's keyboard undo and redo ask it as the header's buttons do.
+   */
+  busy(): boolean;
   /** The command palette (Ctrl/Cmd+K). */
   openCommands(): void;
   /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
@@ -521,17 +544,27 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   savedState.append(el('i'), el('span'));
   const restoreBtn = chipButton(t('studio.ws.restore'), 'undo');
   restoreBtn.hidden = true;
+  // (round 2 Q18) the saved scene, an undo and a redo replace the scene: never while anything holds the panel (an undo
+  // between a queued still's captures was taken under the old shot's name)
+  // (round 2 U36, review r2) the restore in flight holds its button for the session it began in: one an exit outlived (its
+  // cold build still going) leaves Restore free in the Studio entered again (refreshLocks)
+  const restores = createSessionHolder();
   restoreBtn.addEventListener('click', () => {
+    if (panelBusy()) return;
+    const release = restores.take(S.sessionToken());
     restoreBtn.disabled = true;
-    void S.restoreAutosave().finally(() => { restoreBtn.disabled = false; api.refreshHistory(); });
+    // (round 2 U36) a restore the exit took back resolves false; one that failed says so instead of an unhandled rejection
+    void S.restoreAutosave()
+      .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })))
+      .finally(() => { release(); restoreBtn.disabled = restores.held; api.refreshHistory(); });
   });
   const undoBtn = iconButton(t('studio.ws.undoTitle'));
   undoBtn.innerHTML = uiIconSVG('undo', 16);
-  undoBtn.addEventListener('click', () => { void S.undo(); });
+  undoBtn.addEventListener('click', () => { if (!panelBusy()) void S.undo(); });
   const redoBtn = iconButton(t('studio.ws.redoTitle'));
   redoBtn.classList.add('redo');
   redoBtn.innerHTML = uiIconSVG('undo', 16);
-  redoBtn.addEventListener('click', () => { void S.redo(); });
+  redoBtn.addEventListener('click', () => { if (!panelBusy()) void S.redo(); });
   const historyTools = el('span', 'hist');
   historyTools.append(savedState, restoreBtn, undoBtn, redoBtn);
   /** "2 minutes ago" in the page's language, empty under a minute. */
@@ -822,18 +855,23 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the times of day: the kit's picker menu (261 census: seven times, some a battlefield lacks), the battlefield's own
   // times choosable; the change lights the scene before the menu takes another
   const timeHost = el('div', 'timeMenu');
-  let timeBusy = false;
+  // (round 2 U36, review r2) the panel's own holders (a time change, a sun move, a battlefield pick, a restore, a queue run)
+  // belong to the session they began in, as the Studio's do: the panel is built once per page, and a plain flag that an
+  // exit outlived (a covered preparation or a cold build still going) held the Studio entered again until it settled
+  const timeChanges = createSessionHolder();
   /** The times the scene's battlefield has (all seven until its light is read). */
   let timesOpen: readonly StudioTimeOfDay[] = STUDIO_TIMES;
   const timeItems = (): PickerItem[] => STUDIO_TIMES.map((time) => ({ id: time, name: t(`atmosphere.${time}`),
     ...(timesOpen.includes(time) ? {} : { disabled: t('studioPanel.light.timeUnavailable') }) }));
   function chooseTime(time: StudioTimeOfDay): void {
-    if (timeBusy || time === S.timeOfDay || !timesOpen.includes(time)) return;
-    timeBusy = true;
+    if (panelBusy() || time === S.timeOfDay || !timesOpen.includes(time)) return; // (audit F9; panelBusy holds timeChanges)
+    const owner = S.sessionToken();
+    const release = timeChanges.take(owner);
     timeMenu.setDisabled(true);
     S.setTimeOfDay(time)
-      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
-      .finally(() => { timeBusy = false; timeMenu.setDisabled(S.recordingStatus().active); api.refreshMap(); });
+      // (round 2 U36) a closed session's change ends quietly: its cancel, or a build the next session superseded
+      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(errorMessage(error)); })
+      .finally(() => { release(); timeMenu.setDisabled(panelBusy()); api.refreshMap(); });
   }
   const timeMenu = createPickerMenu(timeHost, {
     id: 'studio-hour', label: t('studioPanel.timeOfDay'), items: timeItems(), value: S.timeOfDay ?? 'day', layout: 'list', text: pickerText(),
@@ -907,20 +945,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   lampRow.append(lampBtn, elevationReset);
   secLight.append(sunBlock, elevation.row, lampRow, sunNote);
 
-  // one apply in flight; the latest request waits behind it (a dragged dial never queues a backlog)
-  let lightInFlight: Promise<void> | null = null;
-  let lightPending: Record<string, number | boolean | null> | null = null;
+  // one apply in flight; the latest request waits behind it (a dragged dial never queues a backlog). (round 2 U36) The pump
+  // and its waiting patch are its session's: one an exit outlived holds no Studio entered again and takes none of its moves
+  let lightPump: { readonly owner: StudioPanelSessionToken; pending: Record<string, number | boolean | null> | null } | null = null;
+  /** The live session's light pump, if one runs. */
+  function livePump(): typeof lightPump {
+    return lightPump && lightPump.owner.current() ? lightPump : null;
+  }
   function queueLight(patch: Record<string, number | boolean | null>): void {
-    lightPending = { ...(lightPending ?? {}), ...patch };
-    if (lightInFlight) return;
+    // (audit F9) a sun change begun while the Studio is held is refused, the dial back on the light as rendered; once its
+    // own pump runs, the latest patch waits behind that pump's apply
+    const running = livePump();
+    if (running) { running.pending = { ...(running.pending ?? {}), ...patch }; return; }
+    if (panelBusy()) { refreshSun(); return; }
+    const mine: NonNullable<typeof lightPump> = { owner: S.sessionToken(), pending: patch };
+    lightPump = mine;
     const pump = async (): Promise<void> => {
-      while (lightPending) {
-        const next = lightPending;
-        lightPending = null;
-        try { await S.setLight(next as StudioLight); } catch (error) { flashBusy(errorMessage(error as RuntimeValue)); }
+      while (mine.pending && mine.owner.current()) {
+        const next = mine.pending;
+        mine.pending = null;
+        try { await S.setLight(next as StudioLight); } catch (error) { if (mine.owner.current()) flashBusy(errorMessage(error as RuntimeValue)); }
       }
     };
-    lightInFlight = pump().finally(() => { lightInFlight = null; refreshSun(); });
+    void pump().finally(() => { if (lightPump === mine) lightPump = null; refreshSun(); });
   }
   const bearingFromPointer = (event: PointerEvent): number => {
     const box = dial.getBoundingClientRect();
@@ -1088,18 +1135,26 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     mapPicker.focus();
   }
-  function setMapLoading(loading: boolean): void {
+  // (round 2 U36) the battlefield pick in flight, for the session it began in: its button waits for that pick only
+  const mapPicks = createSessionHolder();
+  /** The battlefield button, from the live pick (the panel's tick keeps it current: refreshLocks). */
+  function setMapLoading(): void {
+    const loading = mapPicks.held;
+    if (mapBtn.disabled === loading) return;
     mapBtn.disabled = loading;
     mapPick.setAttribute('aria-busy', String(loading));
   }
   function chooseMap(id: string): void {
     toggleMapPick(false);
-    if (!id || id === S.mapId) return;
-    setMapLoading(true);
+    if (!id || id === S.mapId || panelBusy()) return; // (audit F9) a battlefield change replaces the scene
+    const owner = S.sessionToken();
+    const release = mapPicks.take(owner);
+    setMapLoading();
     Promise.resolve(S.setMap(id))
-      .catch((error: RuntimeValue) => flashBusy(t('studio.mapFailed', { error: errorMessage(error) })))
+      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.mapFailed', { error: errorMessage(error) })); })
       .finally(() => {
-        setMapLoading(false);
+        release();
+        setMapLoading();
         api.refreshMap();
       });
   }
@@ -1185,16 +1240,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const inheritBtn = kitButton(t('studioPanel.selected.camoInherit'), 'ghost', 'undo');
   inheritBtn.addEventListener('click', () => patchSel({ camo: null }));
   // the swatches paint a few a frame, the painter and the fleet's specs loading with the first
-  let swatchPainter: Promise<SwatchPainter> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk (unhandled), so
+  // no swatch painted for the session; the next swatch asked for asks again
+  const swatchPainter = createLazyChunk(() => importAll([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
+    .then(([painter, specs]): SwatchPainter => ({ paint: painter.paintCamoSwatch, auto: painter.paintAutoCamoSwatch, spec: specs.getSpec })));
   const swatchQueue: Array<readonly [HTMLCanvasElement, string, string]> = [];
   let swatchFrame = 0;
   function pumpSwatches(): void {
     if (swatchFrame || !swatchQueue.length) return;
-    swatchPainter ??= Promise.all([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
-      .then(([painter, specs]) => ({ paint: painter.paintCamoSwatch, auto: painter.paintAutoCamoSwatch, spec: specs.getSpec }));
+    const painting = swatchPainter.load();
     swatchFrame = requestAnimationFrame(() => {
       swatchFrame = 0;
-      void swatchPainter?.then((painter) => {
+      void painting.then((painter) => {
         for (const [canvas, specId, patternId] of swatchQueue.splice(0, SWATCHES_PER_FRAME)) {
           const spec = painter.spec(specId) as unknown as Parameters<SwatchPainter['paint']>[1] | undefined;
           if (!spec || !canvas.isConnected) continue;
@@ -1202,7 +1259,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
           else painter.paint(canvas, spec, patternId);
         }
         pumpSwatches();
-      });
+      }, () => { /* the queued swatches stay blank until the next one asks again */ });
     });
   }
   const camoLabel = (id: string): string => {
@@ -1529,6 +1586,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   let duelVariant = 0;
   duelBtn.dataset.tip = t('studio.directDuelTitle');
   duelBtn.addEventListener('click', () => {
+    if (panelBusy()) return; // (audit F9) the duel replaces the storyboard and the tracks
     try {
       S.directDuel({ variant: duelVariant });
       duelVariant = (duelVariant + 1) % 4;
@@ -1688,8 +1746,41 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
   }
   const aborted = (error: RuntimeValue): boolean => error instanceof Error && error.name === 'AbortError';
+  /**
+   * (2026-11-02 audit F9, 07-ui-4 item 7) What holds the Studio: the one reading every control that replaces the scene,
+   * relights it or starts an output asks (the map picker and the palette's maps, Load JSON and the slots, the duel, the
+   * time and the sun, Export film, the queue's Start, Record, the palette's sequences, and, through the Director's
+   * hosts.busy, its Stage, takes and templates). The Studio's own holders (S.busy(): a recording, a film or its export, a
+   * session not open, a scene load or staging, a battlefield change, an undo, a light change) and the panel's: the render
+   * queue's run (its still at every shot selects a shot and captures it a frame later, so a scene replaced in between was
+   * captured under the old shot's file name), a time or sun change it has in flight, the Director's staging or take fetch.
+   * (round 2 U36) Each of the panel's own counts only for the session it began in, as the Studio's do: one an exit outlived
+   * holds no Studio entered again (the panel lives as long as the page).
+   */
+  function panelBusy(): boolean {
+    return hostBusy() || productionPanel.busy();
+  }
+  /** The holders the Director's own reading adds its staging and its take fetch to (its hosts.busy). */
+  function hostBusy(): boolean {
+    return queueRuns.held || timeChanges.held || livePump() !== null || S.busy() !== null;
+  }
+  /**
+   * (audit F9) The controls panelBusy() holds, kept current by the panel's tick (a holder starts and ends between edits).
+   * (round 2 U36) And the two its own change holds, the battlefield button and Restore: a pick or a restore an exit outlived
+   * leaves them free in the Studio entered again (show() refreshes everything).
+   */
+  function refreshLocks(): void {
+    const held = panelBusy();
+    setMapLoading();
+    restoreBtn.disabled = restores.held;
+    exportBtn.disabled = held || !S.filmExportStatus().supported;
+    for (const control of [filmSize.seg, filmFps.seg, filmBlur.seg, filmShake.seg]) control.disabled = held;
+    queueStart.disabled = held || !queueJobs.some((job) => job.state === 'waiting');
+    recordBtn.disabled = held && !S.recordingStatus().active; // a recording's own button stops it
+    timeMenu.setDisabled(held);
+  }
   function startFilmExport(): void {
-    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+    if (panelBusy() || !S.filmExportStatus().supported) return;
     renderFilm({
       resolution: Number(filmSize.seg.value),
       fps: Number(filmFps.seg.value),
@@ -1714,9 +1805,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }
     }
     const status = S.filmExportStatus();
-    const busyOutput = status.active || S.recordingStatus().active;
-    exportBtn.disabled = busyOutput || !status.supported;
-    for (const control of [filmSize.seg, filmFps.seg, filmBlur.seg, filmShake.seg]) control.disabled = busyOutput;
+    refreshLocks();
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
     try {
       const format = S.productionFormat;
@@ -1743,6 +1832,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       S.stopRecording();
       return;
     }
+    if (panelBusy()) return; // (audit F9) a take records over nothing else in flight
     S.recordVideo({ fps: Number(fpsSel.seg.value), download: true })
       .then((result) => flashBusy(t('studio.videoSaved', { size: (result.size / 1048576).toFixed(1) })))
       .catch((error: RuntimeValue) => flashBusy(t('studio.recordFailed', { error: errorMessage(error) })));
@@ -1775,9 +1865,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   fileIn.hidden = true;
   fileIn.addEventListener('change', () => {
     const f = fileIn.files && fileIn.files[0];
-    if (!f) return;
-    f.text().then((txt) => S.load(JSON.parse(txt)))
-      .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })));
+    // (audit F9) a scene file replaces the scene: never while the Studio is held, nor once its read lands in a held one
+    if (!f || panelBusy()) { fileIn.value = ''; return; }
+    const owner = S.sessionToken(); // (audit F9) a file read that lands after an exit never re-enters the Studio
+    f.text().then((txt) => (panelBusy() ? undefined : S.load(JSON.parse(txt), { owner })))
+      // (round 2 U36) a load its session's exit took back ends quietly, in a Studio entered again too
+      .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.loadFailed', { error: errorMessage(error) })); });
     fileIn.value = '';
   });
   loadBtn.addEventListener('click', () => fileIn.click());
@@ -1807,8 +1900,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
           flashBusy(t('studio.slotEmpty', { n: i }));
           return;
         }
+        if (panelBusy()) return; // (audit F9) a slot replaces the scene
+        const owner = S.sessionToken();
         S.load(JSON.parse(txt))
-          .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })));
+          .catch((error: RuntimeValue) => { if (owner.current()) flashBusy(t('studio.loadFailed', { error: errorMessage(error) })); });
       }
     });
     slotRow.appendChild(b);
@@ -1816,7 +1911,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secScene2.append(svRow, slotRow, fileIn);
   outputGroup.body.append(secCap, secLive, secScene2);
 
+  // (round 3 X9) once its sheet did not arrive in this document, a press reloads the page once online (offline a reload is
+  // the browser's error page, so the press says so again and waits). (review r1) Never over the Studio's running work (a
+  // recording, a film or its export, a queue run, a load, a light change): the reload would end it, so the press asks for
+  // it to finish first. The last edit reaches the autosave on the reload's pagehide (studio.ts commitHistory). This comment
+  // sits above the function: loadFailure.selftest's OPENERS row looks for pressFailed within 300 characters of its head.
   function openArchive(): void {
+    if (loadFailed(archiveBtn) && panelBusy()) {
+      flashBusy(t('studio.error.busy'));
+      return;
+    }
+    if (pressFailed(archiveBtn)) {
+      if (navigator.onLine === false) flashBusy(t('loadFailed.generic'));
+      return;
+    }
     let dialog = document.querySelector<HTMLDialogElement>('.cot-studio-archive');
     if (!dialog) {
       dialog = document.createElement('dialog');
@@ -1841,8 +1949,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
     if (!archiveRoot) throw new Error('[studio] missing production archive root');
     // The archive's stylesheet loads at this boundary, its one host in the game (the game boot does not carry it).
-    import('../presentation/mediaArchive.css')
-      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }))
+    const shown = dialog;
+    archiveSheet.load()
+      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }), (error: RuntimeValue) => {
+        // (round 3 X9) the sheet did not arrive: no archive over it in this document (archiveSheet, an opener's chunk)
+        console.warn('[studio] the field frames archive\'s stylesheet did not load', error);
+        shown.close();
+        markLoadFailed([archiveBtn]);
+        flashBusy(t('loadFailed.generic'));
+      })
+      // the archive's own data (its manifest) is asked again by the next press (mediaArchive.ts unmarks a failed mount)
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   }
 
@@ -1975,7 +2091,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
 
   // --- the production panel: the Director, and the outliner's heads, the shelf, the toggle and the frame ------------
+  // the render queue's run (its jobs below), held for the session it began in (round 2 U36): declared before the Director
+  // mounts, whose first refresh asks hostBusy()
+  const queueRuns = createSessionHolder();
   const productionPanel = mountStudioProductionPanel(S, root, dock, () => api.refreshAll(), {
+    busy: hostBusy, // (audit F9) its Stage, takes and templates read the panel's holders with its own
     head(id, button) {
       const glyph = OUTLINE.find(([outlineId]) => outlineId === id)?.[1] ?? 'studio';
       const label = button.textContent ?? '';
@@ -2055,7 +2175,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     progress: number;
   }
   const queueJobs: QueueJob[] = [];
-  let queueRunning = false;
   const queuePop = el('div', 'st-queue');
   queuePop.hidden = true;
   queuePop.setAttribute('role', 'dialog');
@@ -2141,27 +2260,31 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       return row;
     }));
     queueEmpty.hidden = queueJobs.length > 0;
-    const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
-    queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
+    queueStart.disabled = panelBusy() || !queueJobs.some((job) => job.state === 'waiting');
     queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
     // an empty queue shows no actions at all (the kit's disabled ink still read as live beside "Nothing queued")
     queueFoot.hidden = !queueJobs.length;
   }
   const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
+  /**
+   * Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. (audit F9) Each turn takes
+   * the first job still waiting: Clear (or a row's remove) during a run splices the list, and an iterator over it skipped
+   * the job after the removed rows, leaving it waiting.
+   */
   async function runQueue(): Promise<void> {
-    if (queueRunning) return;
-    queueRunning = true;
+    if (panelBusy()) return; // (audit F9) a run starts over nothing else in flight (panelBusy holds queueRuns)
+    const owner = S.sessionToken();
+    const release = queueRuns.take(owner);
     let files = 0;
     refreshQueue();
     try {
-      for (const job of queueJobs) {
-        if (job.state !== 'waiting') continue;
+      // (round 2 U36) a run takes no job once its session ended: the rest wait for a run of the Studio entered again
+      for (let job = queueJobs.find((entry) => entry.state === 'waiting'); job && owner.current(); job = queueJobs.find((entry) => entry.state === 'waiting')) {
         job.state = 'running';
         job.progress = 0;
         refreshQueue();
         try {
-          files += await runJob(job);
+          files += await runJob(job, owner);
           job.state = 'done';
         } catch (error) {
           job.state = aborted(error) ? 'cancelled' : 'failed';
@@ -2171,12 +2294,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         if (job.state === 'cancelled') break;
       }
     } finally {
-      queueRunning = false;
+      release();
       refreshQueue();
-      if (files) api.notice(t('studio.ws.queue.done', { count: files }), 'info');
+      if (files && owner.current()) api.notice(t('studio.ws.queue.done', { count: files }), 'info');
     }
   }
-  async function runJob(job: QueueJob): Promise<number> {
+  async function runJob(job: QueueJob, owner: StudioPanelSessionToken): Promise<number> {
     const map = S.mapId ?? 'studio';
     const ratio = formatRatio(S.productionFormat);
     const report = (fraction: number): void => { job.progress = fraction; refreshQueue(); };
@@ -2200,6 +2323,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     for (const [index, { first: shot }] of runs.entries()) {
       S.selectCameraShot(shot.id);
       await nextFrame();
+      // (audit F9) the Studio closed between shots: the rest would capture the Garage (round 2 U36: or the next session)
+      if (!S.active || !owner.current()) throw new DOMException(t('studio.film.cancelled'), 'AbortError');
       S.capture({ width, height, download: true,
         name: queueFileName(map, `shot-${String(index + 1).padStart(2, '0')}-${shotLabel(shot.label)}`, ratio, 'png') });
       made++;
@@ -2208,6 +2333,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (shotBefore) S.selectCameraShot(shotBefore);
     S.seek(playhead);
     return made;
+  }
+
+  /** The palette's sequences: staged as the Director stages one, over nothing else in flight (audit F9). */
+  function stagePreset(presetId: string): void {
+    if (panelBusy()) return;
+    const owner = S.sessionToken();
+    S.directProduction({ presetId, format: S.productionFormat })
+      .then(() => api.refreshAll())
+      .catch((error: RuntimeValue) => { if (!aborted(error) && owner.current()) api.notice(errorMessage(error), 'error'); });
   }
 
   // --- the command palette (Ctrl/Cmd+K): every action, run through the control that does it -------------------------
@@ -2249,15 +2383,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     for (const option of snapButtons) {
       add(`snap-${option.dataset.value}`, t('studio.ws.cmd.snap', { name: text(option) }), via(option), { keywords: `snap ${option.dataset.value}` });
     }
-    if (!timeBusy && !S.recordingStatus().active) {
+    // (audit F9) the commands that relight or replace the scene are offered while nothing holds the Studio, and each asks
+    // again when it runs (a queue run can start while the palette is open)
+    const held = panelBusy();
+    if (!held) {
       for (const time of timesOpen) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), () => chooseTime(time), { keywords: `light time ${time}` });
-    }
-    for (const preset of PRODUCTION_PRESETS) {
-      add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => {
-        S.directProduction({ presetId: preset.id, format: S.productionFormat })
-          .then(() => api.refreshAll())
-          .catch((error: RuntimeValue) => api.notice(errorMessage(error), 'error'));
-      }, { searchOnly: true, keywords: `stage sequence template director ${preset.id}` });
+      for (const preset of PRODUCTION_PRESETS) {
+        add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => stagePreset(preset.id),
+          { searchOnly: true, keywords: `stage sequence template director ${preset.id}` });
+      }
     }
     add('templates', t('studio.director.ui.templates'), () => productionPanel.openTemplates(),
       { keywords: 'templates presets sequences takes scenes browse library' });
@@ -2267,7 +2401,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     add('gallery', t('studioPanel.tankGallery'), via(galleryBtn), { keywords: 'tank gallery' });
     add('exit', t('studio.ws.exit'), via(exitBtn), { hint: 'F8', keywords: 'exit close garage' });
     // named only: the battlefields and the fleet
-    for (const id of S.MAP_IDS) {
+    for (const id of held ? [] : S.MAP_IDS) {
       add(`map-${id}`, t('studio.ws.cmd.map', { name: S.getMapInfo(id).name }), () => chooseMap(id), { searchOnly: true, keywords: `battlefield map ${id}` });
     }
     for (const id of S.TANK_IDS) {
@@ -2753,7 +2887,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   async function drawSound(): Promise<void> {
     soundTimer = 0;
     const key = soundKey;
-    const result = root.style.display === 'block' ? await S.soundPreview(SOUND_BUCKETS).catch(() => null) : null;
+    // (audit F9) a hidden panel draws nothing and stops asking: it re-armed every 1.5 s for as long as the page lived after
+    // an exit. The next show's timeline rebuild schedules the draw again (the key is forgotten).
+    if (root.style.display !== 'block') { soundKey = ''; return; }
+    const result = await S.soundPreview(SOUND_BUCKETS).catch(() => null);
     if (!result) { soundTimer = setTimeout(drawSound, 1500); return; } // busy or playing: again once it settles
     if (key !== soundKey) return; // the scene moved on while it mixed; its own redraw is queued
     let peak = 0;
@@ -2892,8 +3029,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
-        void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-          .then(([cards]) => (hero.dataset.spec === specId
+        // (2026-11-02 audit R6) the document's one hero card load (heroCardChunk.ts): a sheet that failed at any surface
+        // keeps the silhouette here, never an unstyled card, and a failed module is asked again past the policy's backoff
+        void heroCardChunk.load()
+          .then((cards) => (hero.dataset.spec === specId
             ? cards.decorateHeroTile(hero, specId, { tankSizes: '340px', flagSizes: '340px', priority: true }) : false))
           .catch(() => false);
       }
@@ -2960,6 +3099,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
           ? t('studio.recordReady')
           : t('studio.recordUnsupported'));
       if (recStatus.textContent !== recText) recStatus.textContent = recText;
+      refreshLocks();
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
@@ -2977,7 +3117,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clearTrackBtn.disabled = isRecording || !S._internal.selected;
       duelBtn.disabled = isRecording || S._internal.actors.length < 2;
       railBtn.disabled = isRecording;
-      timeMenu.setDisabled(isRecording || timeBusy);
+      timeMenu.setDisabled(isRecording || panelBusy());
       rebuildStoryboard();
       updateFilmSummary();
       const board = S.getStoryboard();
@@ -3031,6 +3171,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     drawSelection,
     openCommands() { commandPalette.open(); },
+    busy: () => panelBusy(),
     refreshHistory() {
       const history = S.history;
       undoBtn.disabled = !history.undo;

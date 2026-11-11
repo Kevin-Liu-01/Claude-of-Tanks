@@ -52,6 +52,7 @@ import type { CampaignDebrief } from '../game/campaignDebrief.ts';
 import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
 import { ACHIEVEMENTS, MEDALS, type BattleAwards } from '../game/serviceRecord.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 import type { LobbyPlayer, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
@@ -213,9 +214,10 @@ const COL = {
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
 function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement, name: string): void {
-  // the card module with its stylesheet (the one boundary every card surface keeps), the name's policy beside them
-  Promise.all([Promise.all([import('./heroCard.ts'), import('./heroCard.css')]), import('./heroCardPolicy.ts')])
-    .then(([[hero], policy]) => {
+  // the card module with its stylesheet (the document's one hero card load, heroCardChunk.ts: a sheet that failed at any
+  // surface keeps the icon here too, never an unstyled card), the name's policy beside them
+  Promise.all([heroCardChunk.load(), import('./heroCardPolicy.ts')])
+    .then(([hero, policy]) => {
       nameVehicleCard(card, name, policy.nameParts);
       return hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true });
     })
@@ -938,6 +940,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderRematchPanel(panel: HTMLElement): void {
+    // (improve-271 plan 028) a room update rebuilds the panel: the focused action (Ready, Start) keeps the focus
+    const focused = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.esAction ?? null : null;
     panel.textContent = '';
     const context = roomContext;
     if (!context?.state) {
@@ -954,6 +958,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     renderRoomHeading(info, state, nextRound);
     renderRoomPlayers(info, state, playerId);
     renderRoomActions(panel, context, me, active.length, readyCount, nextRound);
+    if (focused) panel.querySelector<HTMLElement>(`[data-es-action="${focused}"]`)?.focus({ preventScroll: true });
   }
 
   function renderTeamRosterRow(

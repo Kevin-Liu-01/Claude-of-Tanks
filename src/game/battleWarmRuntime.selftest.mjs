@@ -544,12 +544,14 @@ try {
       const frustum = new Frustum().setFromProjectionMatrix(
         new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
       );
-      const rings = fx.group.children.filter((mesh) =>
+      // (round 2 U31) the runtime's visuals are made under its replay veil; the lights stay on the root
+      const visuals = fx.group.getObjectByName('fx-replay-veil').children;
+      const rings = visuals.filter((mesh) =>
         mesh.geometry?.type === 'PlaneGeometry' && mesh.renderOrder === 23);
       assert.ok(rings.some((mesh) => mesh.visible && frustum.intersectsObject(mesh)),
         'a real muzzle ring passes BOTH the angle gate and production camera frustum');
       // (ac130-fx-228) the composer's frozen round is the projectile tracers' static (the pre-October ribbon is retired)
-      stagedTracer = fx.group.children.find((mesh) => mesh.name === 'Projectile tracers');
+      stagedTracer = visuals.find((mesh) => mesh.name === 'Projectile tracers');
       assert.ok(stagedTracer.geometry.instanceCount > 0,
         'the real tracer issues a nonzero instanced draw, not compile-only zero instances');
       assert.equal(flarePool.count, bodyPools.length, 'the warm stages one flare per airframe');

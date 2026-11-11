@@ -74,6 +74,9 @@ interface TracerOptions {
    *  out.rangeM) over which the drawn round joins its flight line; false when no gun is drawn there */
   lens?(heavy: boolean, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, out: LensRound): boolean;
   capacity?: number;
+  /** (round 2 of the 2026-11-02 audit, U31) a round the network view reports out of view, still in flight: held, undrawn,
+   *  past the absence grace (effects.ts unseenRounds), so seen again it keeps its record and its belt's tracer choice */
+  held?(id: ShellKey): boolean;
 }
 /** (ac130-barrels-230) a lens gun's muzzle off its round's origin (world m) and the range (m) the drawn round joins in */
 export interface LensRound { x: number; y: number; z: number; rangeM: number }
@@ -157,6 +160,13 @@ const EXPOSURE_DAY_S = 1 / 60, EXPOSURE_NIGHT_S = 1 / 36;
 const STREAK_MAX_M = 42;
 /** a burnt-out tracer dims over this long (s), flickering */
 const BURNOUT_S = 0.14;
+/**
+ * (2026-11-02 audit F10, review r2) A round missing from the frames this long (s, on the tracers' clock) with no strike
+ * reported has ended; a shorter absence is no end. A network peer's shell list is its newer snapshot's, so one dropped
+ * or spotting-filtered row hides a round for a whole snapshot interval (50 ms at 20 Hz: 3 frames at 60 Hz, 7 at 144).
+ * The grace a guided round (effects.ts MISSILE_ABSENCE_GRACE_S) and a drone (droneArrival DRONE_RETURN.graceS) take.
+ */
+export const TRACER_ABSENCE_GRACE_S = 0.12;
 
 // Colours (linear): the core is the hot compound (whitish through the tone curve), the halo its saturated light.
 // (fx 8, the critics after atmos r2: "neon-green T-90M") as cameras record them: strontium burns an orange-red with a
@@ -246,6 +256,10 @@ interface RoundRecord {
   halo: readonly number[];
   seed: number;
   seen: boolean;
+  /** (2026-11-02 audit F10) how long (s, the tracers' clock) it has been missing (0: seen this frame); its strike reported
+   *  (an explicit end) */
+  missedS: number;
+  ended: boolean;
   /** last frame's head and streak tail (drawn once more after the round ends, so a short life still shows) */
   hx: number; hy: number; hz: number; tx: number; ty: number; tz: number; k: number;
   /** last frame's speed (m/s) */
@@ -400,7 +414,8 @@ interface ProjectileTracers {
   begin(eye?: { x: number; y: number; z: number } | null): void;
   /** one round in flight this frame (non-guided, non-aerial): its tracer when it carries one */
   write(shell: TracerShell): void;
-  /** close the frame: rounds not seen draw their last streak once more, then go */
+  /** close the frame: struck rounds not seen draw their last streak once more, then go; a round missing with no strike
+   *  waits TRACER_ABSENCE_GRACE_S, undrawn, before it goes (2026-11-02 audit F10) */
   end(): void;
   /** (fx 9a) a raw capsule this frame (call between begin and end): a missile's motor and its plume (head the motor, tail
    *  the plume's end), core and halo radiance as given by day and night; a negative bead draws an untapered line (a
@@ -486,6 +501,9 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   let eyeX = 0, eyeY = 0, eyeZ = 0, eyeSet = false;
   const lensOut: LensRound = { x: 0, y: 0, z: 0, rangeM: 1 };
   let drawnLast = 0;
+  /** (2026-11-02 audit F10) the clock at the last frame's end, and the step since it (what a missing round's absence grows
+   *  by this frame; 0 for the first frame, a frozen clock or one set back) */
+  let lastEndS = Number.NaN, absentStepS = 0;
 
   function lightLevel(): number {
     const model = (o.scene?.userData?.lightModel ?? null) as { night?: number; exposure?: number } | null;
@@ -499,7 +517,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     let r = records.get(shell.id);
     if (r) return r;
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
-      seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0, lens: 0, lx: 0, ly: 0, lz: 0, lr: 1 };
+      seen: false, missedS: 0, ended: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0, lens: 0, lx: 0, ly: 0,
+      lz: 0, lr: 1 };
     const who = o.shooter(shell.shooterId);
     const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true, _roundClass);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
@@ -519,6 +538,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;
+    r.missedS = 0;
+    r.ended = false;
     r.k = 0;
     r.lens = 0;
     records.set(shell.id, r);
@@ -654,10 +675,19 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   // hoisted Map callbacks: the per-frame walks allocate nothing
   const unsee = (r: RoundRecord): void => { r.seen = false; };
   const release = (r: RoundRecord): void => { r.k = 0; free.push(r); };
+  /**
+   * (2026-11-02 audit F10) A round not seen this frame. Struck (its strike reported): its last dash once more, moved into
+   * its strike, then the record is reused. Missing with no strike: held, undrawn, through TRACER_ABSENCE_GRACE_S of the
+   * clock (a dropped row, a spotting blink), so seen again it keeps its record and its belt's tracer choice (it was
+   * re-rolled: a tracer switching on or off mid-flight) and leaves no stale dash; a strike reported meanwhile still ends
+   * it in its strike; past the grace it has ended (its last dash would be stale: none).
+   */
   const retire = (r: RoundRecord, id: ShellKey): void => {
     if (r.seen) return;
-    // its last dash once more (moved into its strike when one was reported), then the record is reused
-    if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
+    if (!r.ended) {
+      r.missedS += absentStepS;
+      if (r.missedS < TRACER_ABSENCE_GRACE_S || o.held?.(id) === true) return;
+    } else if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
     records.delete(id);
     release(r);
   };
@@ -677,6 +707,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       if (shell.dead) return;
       const r = record(shell);
       r.seen = true;
+      r.missedS = 0;
       if (!r.lit) return;
       const v = shell.vel;
       const speed = Math.hypot(v.x, v.y, v.z);
@@ -756,6 +787,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     strike(id, pos, water = false) {
       if (id == null) return;
       const r = records.get(id);
+      if (r) r.ended = true;
       if (!r || !r.lit || !(r.k > 0)) return;
       const x = pos[0] ?? r.hx, y = pos[1] ?? r.hy, z = pos[2] ?? r.hz;
       if (!Number.isFinite(x + y + z)) return;
@@ -766,8 +798,11 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       if (!water) strikeSpray(r, x, y, z);
     },
     end() {
-      // a round that ended since the last frame draws its last streak once more (a fast round born and gone between
-      // two frames still leaves its line), then its record is reused
+      // a round struck since the last frame draws its last streak once more (a fast round born and gone between two
+      // frames still leaves its line), then its record is reused; one missing with no strike waits out the grace
+      const t = o.now();
+      absentStepS = t > lastEndS ? t - lastEndS : 0;
+      lastEndS = t;
       records.forEach(retire);
       drawStatics();
       drawSparks();
@@ -785,6 +820,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       for (const st of statics) st.live = false;
       staticCursor = 0; staticsLive = 0;
       n = 0; drawnLast = 0;
+      lastEndS = Number.NaN; absentStepS = 0;
       geo.instanceCount = 0;
       mesh.visible = false;
     },
@@ -810,7 +846,10 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     shiftTime(delta) {
       if (!Number.isFinite(delta) || delta === 0) return;
       for (const st of statics) if (st.live) st.born += delta;
-      for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
+      // (round 4 F7) every spark of the pool, a spent one too (its life zeroed by drawSparks, its t0 kept): the census
+      // walks the whole pool, and a spent spark left at its pre-rebase time was the stamp it named
+      for (const sp of sparks) sp.t0 += delta;
+      lastEndS += delta;
     },
     ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) {
       // (ac130-fx-228 r3, the blind critic: the backdrop's AA rounds read "like confetti" over a day sky) the front's guns

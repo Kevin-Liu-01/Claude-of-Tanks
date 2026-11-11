@@ -37,6 +37,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully, talusFan } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 // The Biały Dunajec frozen in its bed (map revival lane 2, round 3; gauntlet wave 110b: "a chain of ponds"): one ice
@@ -385,7 +386,7 @@ export default {
     // snow-cap shader dusts them like every prop), frozen supply columns
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.winter,
     sandbagLines: 10,
     hedgehogs: 8,
     // world-dressing r1: winter inhabitants — sleds on the snowfield, firewood

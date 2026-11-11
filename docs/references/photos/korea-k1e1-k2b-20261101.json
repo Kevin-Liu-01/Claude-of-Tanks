@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "k1e1": {
+      "name": "K1E1",
+      "authority": "The owner, 2026-11-01: \"now update the ... k1e1 ...\". Release 268 (item/italy-korea-bmp-267, profiles/k1e1.ts and the K1 section of modern3.ts) rebuilds the K1E1 turret and gun from 2013-2024 photographs of ROK Army K1-series tanks (every 105 mm K1 in ROK service is a K1E1 by now): the low welded turret with chamfered roof edges, the cheek blocks either side of the gun slot, the commander's K6 and the gunner's sight on the right, the loader's M60 on the left. Its registered oracle k1a1_kojf.glb shows the K1A1 (fleet id k1a1), another variant, and is unregistered (Main's ruling 2026-10-28). It won its blind A/B against the previous build in two rounds, 2-0 each (korear1 and korear2). Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:A_tank_crew_operating_a_K1_tank_cross_a_newly_constructed_improved_ribbon_bridge_during_a_wet_gap_crossing_training_for_Freedom_Shield_24.jpg",
+        "https://commons.wikimedia.org/wiki/File:5th_ANGLICO_KMEP_Force_on_Force_-_20_of_30.jpg",
+        "https://commons.wikimedia.org/wiki/File:5th_ANGLICO_KMEP_Force_on_Force_-_21_of_30.jpg",
+        "https://commons.wikimedia.org/wiki/File:Korean_K1_Tank.JPEG",
+        "https://commons.wikimedia.org/wiki/File:The_U_S_and_Republic_of_Korea_army_conduct_combined_wet_gap_crossing_training_(8927779).jpg",
+        "https://commons.wikimedia.org/wiki/File:War_Memorial_of_Korea_(summer_2013)_026.JPG",
+        "https://en.wikipedia.org/wiki/K1_88-Tank"
+      ],
+      "widthM": 3.6,
+      "overallLengthM": 9.67,
+      "tallestM": 4.141,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the hull sides (the published K1's 3.60 m). Length from the stern to the muzzle with the gun forward (the published K1's 9.67 m). Tallest is the tips of the two whip antennas; the turret roof stands 2.16 m, the sight head 2.41 m and the K6 about 2.72 m. The spec keeps the game's 120 mm gun row; the drawn gun is the K1E1's sleeved 105 mm KM68A1 at the spec's barrel radius.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 2,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    },
+    "k2b": {
+      "name": "K2B",
+      "authority": "The owner, 2026-11-01: \"now update the ... K2B ...\" (and 2026-10-25: \"give the k2b a proper mantlet and turret front that aligns with what a prototype of a k2 would look like\"). Release 268 (item/italy-korea-bmp-267, profiles/korea.ts and buildK2's addOnFront/k2bBow options) rebuilds the K2B as a K2 Black Panther development carrying a bolted turret-front add-on package (three stepped modules a cheek in an arrowhead), matched armoured lamp housings at the front corners and a raked lower front, from photographs of K2s in ROK and Polish service and on Hyundai Rotem's MSPO 2026 stand, with no 3D model to follow. It won its blind A/B against the previous build 2-0 in round korear3 (Opus medium, Sonnet medium) after losing korear1 and splitting korear2. Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified: no owner model exists for this configuration.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:K2_tank_at_the_Hyundai_Rotem_stand_at_MSPO_2026_in_Kielce.jpg",
+        "https://commons.wikimedia.org/wiki/File:Polish_Army_K2_left_side_Radom-2023.jpg",
+        "https://commons.wikimedia.org/wiki/File:Polish_Army_K2_right_turret_Radom-2023.jpg",
+        "https://commons.wikimedia.org/wiki/File:K2_black_panther3.jpg",
+        "https://commons.wikimedia.org/wiki/File:K2_Black_Panther_(15373704976)_(cropped).jpg",
+        "https://commons.wikimedia.org/wiki/File:%EC%9C%A1%EA%B5%B0_K2%EC%A0%84%EC%B0%A8_(7445555272).jpg",
+        "https://en.wikipedia.org/wiki/K2_Black_Panther"
+      ],
+      "widthM": 3.834,
+      "overallLengthM": 10.747,
+      "tallestM": 4.62,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule), on the spec's gameplay dimensions (hull 7.00 m, width 3.80 m: the K2B row's own, not the published K2's 3.60 m). Width over the hull skirts. Length from the stern to the 120 mm muzzle with the gun forward. Tallest is the turret's sensor mast; the whip antennas stand 3.29 m and the remote weapon station 3.09 m.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    }
+  }
+}

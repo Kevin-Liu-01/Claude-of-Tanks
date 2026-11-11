@@ -105,7 +105,8 @@ for (const [name, text] of [['solo', solo], ['studio', studioSim]]) {
   assert.match(text, /if \(!obstacle\.crushable \|\| obstacle\.crushed \|\| obstacle\.min\[1\] > y \+ radius \|\| isFortifiedCoverRecord\(obstacle\)\) continue;/,
     `${name}: crushable, standing, within reach of the burst's height, not fortified cover (a pillbox's ledger breaks it)`);
   assert.match(text, /const fell = Math\.min\((_blastFelled|felled)\.length, PROP_FELL_PER_BLAST, budget\);/, `${name}: at most a burst's share`);
-  // (268, item 8) the world first, as the authority fells: marked crushed first, a headless world refused the fell
+  // (round 2 U28; 268, item 8) the world first, as the authority fells: marked crushed first, a headless world refused the
+  // fell; a prop the world refuses stands
   assert.match(text, /if \(world\.crushObstacle\(obstacle, dx \/ length, dz \/ length, 6, 'shell'\) === false\) continue;\s*obstacle\.crushed = true;/,
     `${name}: the world's crush first`);
 }

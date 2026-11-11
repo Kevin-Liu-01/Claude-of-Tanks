@@ -12,7 +12,7 @@
  */
 
 import {
-  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryNation, type CountryId,
+  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, ERAS_WITHOUT_ALLY_FILL, countryBloc, countryNation, type CountryId,
 } from './countries.ts';
 
 export {
@@ -153,7 +153,7 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
   };
   // the fills a side would need: its own contemporaries short of its seats, the closest allies in order
   const plannedFills = (c: CountryId | null, seats: number, skip: ReadonlySet<CountryId>): CountryId[] => {
-    if (!c) return [];
+    if (!c || ERAS_WITHOUT_ALLY_FILL.has(leadEra)) return [];
     let short = seats - contemporaries(c).length;
     const fills: CountryId[] = [];
     for (const ally of COUNTRY_ALLIES[c]) {
@@ -216,7 +216,7 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
     if (c) used[side].add(c);
     const own = c ? contemporaries(c) : [];
     const groups: { rows: NationRow[]; country: CountryId | null; reason: NationNote['reason'] | null }[] = [{ rows: own, country: c, reason: null }];
-    if (c) for (const ally of COUNTRY_ALLIES[c]) if (!other.has(ally) && ally !== c) groups.push({ rows: contemporaries(ally), country: ally, reason: 'ally' });
+    if (c && !ERAS_WITHOUT_ALLY_FILL.has(leadEra)) for (const ally of COUNTRY_ALLIES[c]) if (!other.has(ally) && ally !== c) groups.push({ rows: contemporaries(ally), country: ally, reason: 'ally' });
     const pickFrom = (rows: NationRow[], k: number): NationRow | null => {
       let best: NationRow | null = null, bestScore = Infinity;
       const target = targetTiers && targetTiers.length ? targetTiers[k % targetTiers.length]! : null;

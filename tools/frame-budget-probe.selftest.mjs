@@ -277,7 +277,7 @@ assert.equal(stats([]).med, null);
   let attempts = 0;
   const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexWaitMs: 5, pause: async () => {},
     tryMutex: () => (++attempts > 3 ? (events.push('mutex'), true) : false), releaseMutex: () => events.push('mutex-release') });
-  held.release();
+  await held.release();
   assert.equal(events[0], 'fifo');
   assert.ok(events.indexOf('mutex') > events.indexOf('fifo'), 'the mutex is only ever taken while the FIFO is ours');
   assert.deepEqual(events.slice(-2), ['mutex-release', 'fifo-release']);
@@ -297,6 +297,76 @@ assert.equal(stats([]).med, null);
   assert.equal(held.round, 2);
   assert.deepEqual(calls, ['new', 'release', 'T1'], 'given back without waiting, then the original ticket');
   assert.match(logs[0], /queued behind us/);
+  await held.release();
+}
+{
+  // (2026-11-02 audit S4) COT_LANE_HOLD=1 skipped both locks with nothing checking that a hold backed it: the probe no
+  // longer reads it (capture-lock's acquire nests on it only in an ancestor's live hold: capture-lock-reentry.selftest),
+  // so with a lock that holds nothing it takes both; a mutex an ancestor holds is nested (neither taken nor released here)
+  const saved = process.env.COT_LANE_HOLD;
+  process.env.COT_LANE_HOLD = '1';
+  try {
+    const events = [];
+    const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
+    const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: () => false,
+      tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
+    await held.release();
+    assert.deepEqual(events, ['fifo', 'mutex', 'mutex-release', 'fifo-release'], 'a leftover COT_LANE_HOLD=1 takes the FIFO and the mutex');
+  } finally {
+    if (saved === undefined) delete process.env.COT_LANE_HOLD; else process.env.COT_LANE_HOLD = saved;
+  }
+  const events = [];
+  const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
+  const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: (dir) => dir === '/m',
+    tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
+  await held.release();
+  assert.deepEqual(events, ['fifo', 'fifo-release'], 'an ancestor\'s mutex is nested in, never taken or released');
+}
+{
+  // (round 2 Q20) nested in an ancestor's FIFO hold, the turn given back frees nothing: a busy mutex looped for good in
+  // 45-minute rounds. Now a holder queued behind that hold is refused at once, and any other gets one bounded wait.
+  const nestedLock = () => {
+    const lock = { nested: true, acquires: 0, acquire: async () => { lock.acquires++; }, release: () => {}, refresh: () => {} };
+    return lock;
+  };
+  const bounded = (promise) => Promise.race([promise, new Promise((done) => setTimeout(() => done('looping'), 2_000))]);
+  const queuedLock = nestedLock();
+  const queued = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: queuedLock, mutexWaitMs: 5, pause: () => new Promise((done) => setTimeout(done, 5)),
+    tryMutex: () => false, releaseMutex: () => {}, mutexBusy: () => true, holderQueued: () => true, mutexNested: () => false }).catch((error) => error));
+  assert.ok(queued instanceof Error && /queued behind the FIFO hold this probe is nested in/.test(queued.message),
+    `a mutex holder queued behind the ancestor's hold is refused, not waited on (${queued?.message ?? queued}; ${queuedLock.acquires} acquires)`);
+  const busyLock = nestedLock();
+  const busy = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: busyLock, mutexWaitMs: 5, mutexIdleWaitMs: 40,
+    pause: () => new Promise((done) => setTimeout(done, 5)), tryMutex: () => false, releaseMutex: () => {}, mutexBusy: () => true,
+    holderQueued: () => false, mutexNested: () => false }).catch((error) => error));
+  assert.ok(busy instanceof Error && /still busy after/.test(busy.message), `one bounded wait, then a named failure (${busy?.message ?? busy})`);
+  assert.equal(busyLock.acquires, 1, 'the nested FIFO is never re-entered in rounds');
+  let tries = 0;
+  const freed = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: nestedLock(), mutexWaitMs: 5, mutexIdleWaitMs: 2_000,
+    pause: () => new Promise((done) => setTimeout(done, 5)), tryMutex: () => ++tries > 4, releaseMutex: () => {}, mutexBusy: () => true,
+    holderQueued: () => false, mutexNested: () => false }));
+  assert.equal(typeof freed?.release, 'function', `a mutex that frees during the wait is taken (${freed})`);
+  await freed.release();
+}
+{
+  // (round 2 U38 review) the pair's FIFO holds through the one wrapper (capture-hold openCaptureHold). Its five callers (this
+  // probe, time-to-battle-probe, battle-spike-census, battle-memory-probe, shadow-cache-truth) held the lock with their own
+  // refresh timers and no cap: past the 20-min cap each kept it however many waited. Now past the cap with a waiter the
+  // handle's signal aborts and the hold's teardown runs (by default the guarded browsers stop); the release lets the mutex
+  // go, then the FIFO.
+  const events = [];
+  let fifoHeld = false;
+  const lock = { nested: false, acquire: async () => { fifoHeld = true; events.push('fifo'); },
+    release: () => { if (fifoHeld) events.push('fifo-release'); fifoHeld = false; return true; }, refresh: () => fifoHeld,
+    waiting: () => 1, get heldCapMs() { return fifoHeld ? 30 : null; } };
+  const pair = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: () => false, holderQueued: () => false,
+    tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release'),
+    hold: { capCheckMs: 10, graceSeconds: 0.05, log: () => {}, teardown: async () => { events.push('teardown'); } } });
+  for (let i = 0; i < 200 && !events.includes('teardown'); i++) await new Promise((done) => setTimeout(done, 10));
+  assert.equal(pair.signal?.aborted, true, `past the cap with a waiter, the pair's hold is stopped (${events.join(' ')})`);
+  assert.ok(events.includes('teardown'), 'and its teardown ran');
+  await pair.release();
+  assert.deepEqual(events, ['fifo', 'mutex', 'teardown', 'mutex-release', 'fifo-release'], 'the mutex goes, then the FIFO');
 }
 {
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',
@@ -454,7 +524,7 @@ assert.equal(stats([]).med, null);
   assert.equal(streamedDuring({ terrainStreamed: null }, { terrainStreamed: 44 }), null, 'a build without the stream count reads null, not 0');
   assert.equal(streamedDuring(null, { terrainStreamed: 1 }), null);
   const tool = readFileSync(new URL('./frame-budget-probe.mjs', import.meta.url), 'utf8');
-  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('async function run('));
+  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('export async function runFrameProbe('));
   const settles = [...body.matchAll(/await settleTerrainStream\(page\)/g)].map((m) => m.index);
   const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await sampleView\(page/g)].map((m) => m.index);
   assert.equal(settles.length, 2, 'the gate\'s staging pose and every measured pose settle the stream');

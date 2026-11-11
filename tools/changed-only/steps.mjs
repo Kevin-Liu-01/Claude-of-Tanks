@@ -242,7 +242,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   },
   'tools/capture-lock.mjs': {
     // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
-    pin: '8d9ee43203067ad3',
+    // 2026-11-04 re-pin (sm-fix tools-chains, audit S4): the owned lock directory and its tomb, the session mutex and its
+    // pid file, a holder's ppid walk and start time, the place stamps: lock state and process state (scheduling)
+    pin: '7ef9007a34037252',
     reads: [],
     note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
   },
@@ -303,6 +305,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/isolated-capture-browser.mjs': {
     pin: 'e3b0c44298fc1c14',
     reads: [],
+    // 2026-11-04 (sm-fix tools-chains, audit S4): the capture hold it takes (withCaptureHold: refresh, signals, the
+    // release after the browser) only schedules; its own prepare starts this server, so the hold's Vite child never runs
+    scheduleOnly: ['tools/capture-hold.mjs'],
     note: 'starts the Vite server and guarded browser the gate measures in and removes its own temporary Vite cache: process state and a scratch directory, never a file the step keys',
   },
   // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses
@@ -702,7 +707,7 @@ export const FLEET_API_USERS = Object.freeze({
     pin: '66cf7cb4dfa326ac', note: 'ensureTankBuilder for the wreck bakes it requests (the plan\'s donors, from resolveWreckRoster)',
   },
   'src/world/wrecks.ts': {
-    pin: 'ab764aa7907f5207', note: 'createTank(specId) for a requested wreck bake; resolveWreckRoster(era) is the era cast',
+    pin: 'ab764aa7907f5207', note: 'createTank(specId) for a requested wreck bake; the casts are maps/wreckCasts.ts (resolveWreckRoster)',
   },
   'src/world/wreckRoster.ts': {
     pin: '73d4ac94e11adcd2', note: 'PRODUCTION_TANK_IDS filters the casts: spec data, in every map\'s key through the fleet core',
@@ -715,7 +720,7 @@ const maps = (list) => `--maps=${list.join(',')}`;
  * The world steps, in chain order, run after the tank steps (a wreck donor's build reads the fleet's generated rows).
  * The wreck plan comes first: its rows name the donors the collision builds bake. `donors` is the step's donor rule:
  * 'plan' = the map's wreck plan rows (every variant) plus the roster ids its config names; a map that asks for wrecks but
- * has no plan rows takes its whole wreck cast (resolveWreckRoster).
+ * has no plan rows takes its whole wreck cast (maps/wreckCasts.ts through resolveWreckRoster).
  */
 export const WORLD_STEPS = Object.freeze([
   {

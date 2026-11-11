@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreckSteps } from './wrecks.ts';
-import { isPublicWreckDonor, WRECK_ROSTER_POOLS } from './wreckRoster.ts';
+import { isPublicWreckDonor, WRECK_DONOR_IDS } from './wreckRoster.ts';
 
 // Admission smoke, not a fidelity/performance or original-painter parity gate.
 // Existing wrecks/wreckPaintDedup tests own independent old-output goldens.
@@ -19,10 +19,10 @@ const RGB_MIN = [0.015, 0.015, 0.012];
 const RGB_MAX = [(0.085 + 0.075) * 1.75, (0.085 + 0.075) * 0.9,
   (0.046 + 0.022 + 0.017 + 0.020) * 0.93];
 const REPEATS = [
-  { specId: 'leo2_improved', seed: 2401, pop: false },
-  { specId: 'm551_sheridan', seed: 2402, pop: true },
-  { specId: 'marder1a3', seed: 2403, pop: false },
-  { specId: 'bmpt_t90', seed: 2404, pop: true },
+  { specId: 'leo2_improved', seed: 2401, state: 'burnt_out' },
+  { specId: 'm551_sheridan', seed: 2402, state: 'turret_blown_off' },
+  { specId: 'marder1a3', seed: 2403, state: 'burnt_out' },
+  { specId: 't90a', seed: 2404, state: 'turret_blown_off' },
 ];
 
 function requireAttribute(attribute, count, label) {
@@ -186,11 +186,11 @@ try {
   assert.equal(validateBake(zeroNormal, 'authored-zero-control').zeroNormals, 1);
 } finally { dispose(zeroNormal); }
 
-const donorIds = [...new Set(Object.values(WRECK_ROSTER_POOLS).flat())];
+const donorIds = [...WRECK_DONOR_IDS];
 assert.ok(donorIds.length > 0);
 for (const fixture of REPEATS) assert.ok(donorIds.includes(fixture.specId), `${fixture.specId}: new-family representative is eligible`);
 const fixtures = donorIds.map((specId, index) => REPEATS.find(fixture => fixture.specId === specId)
-  ?? { specId, seed: 9000 + index * 131, pop: index % 2 === 1 });
+  ?? { specId, seed: 9000 + index * 131, state: index % 2 === 1 ? 'turret_blown_off' : 'burnt_out' });
 const receipts = [], failures = [];
 for (const fixture of fixtures) {
   try {

@@ -2,10 +2,11 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/garage-mode-preview');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let heartbeat;const timings=[];
+let hold;const timings=[];
 async function selectMode(page,mode){
  await page.click('.cot-battle-mode');
  const selector=`.cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`;
@@ -19,7 +20,7 @@ function previewState(){
  return {programs:window.__DEBUG.renderer?.info.programs?.length??null,pending:window.__DEBUG.garageModePreviewPending,materials:[...materials].sort(),shield,carrier,infected,drone:!!root.getObjectByName('Docked FPV mission payload'),flag:!!root.getObjectByName('Capture flag assembly')};
 }
 try{
- await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'garage-mode-preview', timeoutMs: 10 * 60 * 1000 });
  console.log('garage-mode-preview: acquired native capture slot');
  await withMapProbeSession({root:process.cwd(),launch:{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}},async({browser,port})=>{
   for(const viewport of [{width:1280,height:800},{width:568,height:320,isMobile:true,hasTouch:true}]){
@@ -64,7 +65,7 @@ try{
     await page.waitForFunction(start=>window.__DEBUG.game.timeS>start+1,{timeout:30000},battleTime);
     assert.deepEqual(errors,[],'SEP v3 Juggernaut advances without render exceptions');
     await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
-    await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage'&&window.__GARAGE_ENTRY?.presentationUnready===false,{timeout:180000});
+    await page.waitForFunction(readinessExpression('garage'),{timeout:180000});
     await page.waitForFunction(fn=>{const s=(0,eval)(`(${fn})`)();return s&&!s.pending&&s.shield>0;},{timeout:30000},previewState.toString());
     const returned=await page.evaluate(previewState);
     await page.evaluate(()=>new Promise(resolve=>{let frames=0;function sample(){if(++frames===60)resolve();else requestAnimationFrame(sample);}requestAnimationFrame(sample);}));
@@ -78,4 +79,4 @@ try{
  });
  writeFileSync(resolve(out,'timings.json'),JSON.stringify(timings,null,2));
  console.log('garage-mode-preview: desktop, phone landscape, tank swaps, mode removal and selected Juggernaut return passed');
-}finally{clearInterval(heartbeat);await lock.release();}
+}finally{await hold?.release();}

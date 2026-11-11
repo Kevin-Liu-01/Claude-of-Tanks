@@ -44,6 +44,9 @@ const valid = [
   encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 2, events: [{ kind: 'shell_hit', payload: { damage: 3 } }] }),
   encodeMessage({ type: MESSAGE_TYPE.PONG, clientTimeMs: 1, serverTimeMs: 2, serverTick: 3 }),
   encodeMessage({ type: MESSAGE_TYPE.ERROR, reason: 7, detail: 'malformed' }),
+  // round 3: the resume hint with its body bits (A14) and the held seat's notice (B1/X6)
+  encodeMessage({ type: MESSAGE_TYPE.RESUME_HINT, tick: 900, x: 1, y: 2, z: 3, speed: 4, verticalSpeed: 5, yaw: 6, pitch: 7, roll: 8, turretYaw: 9, gunPitch: 10, flags: 0x240 }),
+  encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: 3000 }),
 ];
 
 let accepted = 0;
@@ -69,7 +72,7 @@ for (let n = 0; n < 10_000; n++) {
   const length = int(0, 300);
   const bytes = new Uint8Array(length);
   for (let index = 0; index < length; index++) bytes[index] = int(0, 255);
-  if (length > 1 && rng() < 0.5) { bytes[0] = WIRE_VERSION; bytes[1] = [1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21][int(0, 12)]; }
+  if (length > 1 && rng() < 0.5) { bytes[0] = WIRE_VERSION; bytes[1] = [1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22][int(0, 13)]; }
   observe(bytes);
 }
 for (let n = 0; n < 10_000; n++) {

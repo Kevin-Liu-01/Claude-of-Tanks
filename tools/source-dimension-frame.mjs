@@ -14,6 +14,9 @@ const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1
   // 267 (Main 2026-11-01): the Burlak prototype is measured on the composite it follows (the T-90A X source's hull under
   // the Burlak X source's turret, source-world-registration.mjs); its gun's declared departure lifts no height
   't90a_burlak_proto',
+  // 271 (Main on italy-korea-bmp-267): the Chieftain Mk 3 is built on the Mk 5 X castings and measured on their source's
+  // ruler, as chieftain5 is (its old print lay on its nose; the family's real-length reconcile is Main's own item)
+  'chieftain3',
   ...SUPPLIED_SOURCE_COMPARISON_IDS]);
 
 export function usesSourceDimensionFrame(id,registration) {

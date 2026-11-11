@@ -377,6 +377,11 @@ interface BootCapabilityVerdict {
   verdict: CapabilityVerdict;
   /** 'probe': the throwaway context ran; 'cache': a confirmed record stood in for it; 'context': re-read from the real renderer. */
   source: CapabilitySource;
+  /**
+   * (2026-11-02 audit R3) a real worker refused this boot. The probe's `worker: false` is then this boot's answer only:
+   * no record is written from it, so the next boot answers again instead of carrying the notice for the cache's 14 days.
+   */
+  workerRefused?: boolean;
 }
 
 interface BootCapabilityGateResult extends BootCapabilityVerdict {
@@ -420,6 +425,7 @@ export function runBootCapabilityGate(options: BootCapabilityGateOptions): Promi
     // confirm may have replaced it with the real context's)
     host.watchWorkerRefusal(() => {
       if (!result.probe.worker) return;
+      result.workerRefused = true;
       result.probe.worker = false;
       result.verdict = evaluateCapabilityGate(result.probe, options.translate, options.requiredTextureUnits);
       presentCapabilityVerdict(result.verdict, options.screen, options.reload);
@@ -447,7 +453,7 @@ export function confirmBootCapability(
     && live.maxTextureSize === result.probe.maxTextureSize && live.vertexTextureUnits === result.probe.vertexTextureUnits
     && live.colorBufferFloat === result.probe.colorBufferFloat;
   if (matches) {
-    if (result.source !== 'cache') writeCachedCapability(host, result.probe, options.requiredTextureUnits);
+    if (result.source !== 'cache' && !result.workerRefused) writeCachedCapability(host, result.probe, options.requiredTextureUnits);
     return Promise.resolve(result);
   }
   clearCachedCapability(host.storage);
@@ -457,8 +463,8 @@ export function confirmBootCapability(
   const verdict = evaluateCapabilityGate(probe, options.translate, options.requiredTextureUnits);
   presentCapabilityVerdict(verdict, options.screen, options.reload);
   if (verdict.kind === 'stop') return stopBoot(options, probe, verdict);
-  writeCachedCapability(host, probe, options.requiredTextureUnits);
-  return Promise.resolve({ probe, verdict, source: 'context' });
+  if (!result.workerRefused) writeCachedCapability(host, probe, options.requiredTextureUnits);
+  return Promise.resolve({ probe, verdict, source: 'context', ...(result.workerRefused ? { workerRefused: true } : {}) });
 }
 
 /**

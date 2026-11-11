@@ -52,6 +52,7 @@ import net from 'node:net';
 import os from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readinessExpression } from '../game-readiness.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 process.chdir(ROOT);
@@ -521,7 +522,7 @@ async function openPlayer(context, label, specId, errors) {
 
 async function bootGarage(page, origin, label) {
   await page.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 480_000);
+  await waitFor(page, readinessExpression('garage'), `${label} garage ready`, 480_000);
 }
 
 async function openLanMenu(page, label) {
@@ -655,21 +656,18 @@ function authorityPose(actor, playerId) {
 }
 
 async function capture({ options, plan, seedInfo }) {
-  const { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } = await import('../capture-lock.mjs');
+  // round 2 U38: the hold is capture-hold.mjs openCaptureHold's (refresh, the cap, signals, the release at exit)
+  const { openCaptureHold } = await import('../capture-hold.mjs');
   log(`waiting for the capture lock (up to ${options.lockTimeoutMin} min; other lanes queue on it too)`);
   const waitStarted = Date.now();
-  await acquireCaptureLock(options.lockTimeoutMin * 60_000);
+  const hold = await openCaptureHold({ label: 'capture-multiplayer-dual-screen', timeoutMs: options.lockTimeoutMin * 60_000 });
   const lock = { waitedMs: Date.now() - waitStarted, heldMs: null };
   const heldFrom = Date.now();
-  process.on('exit', releaseCaptureLock);
-  const refresher = setInterval(() => refreshCaptureLock(), 60_000);
-  refresher.unref();
   let released = false;
-  const releaseLock = () => {
+  const releaseLock = async () => {
     if (released) return;
     released = true;
-    clearInterval(refresher);
-    releaseCaptureLock();
+    await hold.release();
     lock.heldMs = Date.now() - heldFrom;
     log(`capture lock released after ${(lock.heldMs / 1000).toFixed(1)} s`);
   };
@@ -797,17 +795,16 @@ async function capture({ options, plan, seedInfo }) {
     log(`match ${roomOf()?.match?.id ?? '?'} seed ${staged.start.seed} on ${staged.start.mapId}: ${staged.start.seats.map((seat) => `${seat.team} ${seat.specId} @ ${seat.spawn ? `${seat.spawn.x},${seat.spawn.z}` : 'deployment'}`).join(' vs ')}, ${staged.start.bots} bots`);
     if (staged.start.seed !== seedInfo.seed) throw new Error(`the room drew seed ${staged.start.seed}, not ${seedInfo.seed}`);
 
-    const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
-      && getComputedStyle(document.querySelector('.cot-bl')).display === 'none'
-      && !document.querySelector('.cot-play')?.classList.contains('show');
+    const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true
+      && !document.querySelector('.cot-play')?.classList.contains('show')`;
     await Promise.all([waitFor(pageA, inBattle, 'A battle revealed', 480_000), waitFor(pageB, inBattle, 'B battle revealed', 480_000)]);
     log('both battles revealed');
 
     // ---- the moment: each camera on its own hull's shoulder, both turrets on the other, the countdown over
     const firstFraming = FRAMINGS[options.framings[0]];
     await Promise.all([installCamera(pageA, bravoId, firstFraming), installCamera(pageB, alphaId, firstFraming)]);
-    const facing = () => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.preBattleS <= 0 && !window.__DEBUG.game.result
-      && !!window.__DEBUG.game.tankById?.get(window.__COT_DUAL?.opponentId)?.networkVisible;
+    const facing = `${readinessExpression('battleLive')}
+      && !!window.__DEBUG.game.tankById?.get(window.__COT_DUAL?.opponentId)?.networkVisible`;
     await Promise.all([waitFor(pageA, facing, 'A sees player two', 60_000), waitFor(pageB, facing, 'B sees player one', 60_000)]);
     await until(() => { const turrets = turretErrors(staged.actor, alphaId, bravoId); return turrets && turrets.alpha < 0.035 && turrets.bravo < 0.035; },
       'both turrets on target (authority)', 45_000);
@@ -868,7 +865,7 @@ async function capture({ options, plan, seedInfo }) {
       try { await rooms?.close(); } catch { /* already gone */ }
     };
     await Promise.race([teardown(), sleep(30_000)]);
-    releaseLock();
+    await releaseLock();
   }
 }
 
@@ -1140,8 +1137,9 @@ async function main() {
   }, null, 2));
 }
 
-// an interrupted run still leaves the capture lock through the exit handler
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => process.exit(signal === 'SIGINT' ? 130 : 143));
+// (round 2 U38) a signal during the capture is the hold's (openCaptureHold's one signal owner): the browser stops, the
+// capture's finally closes Vite and the rooms and releases, then the process exits 128 + n. Outside the hold the default
+// action ends the process (a second handler here exited at once, before that finally).
 
 try {
   await main();

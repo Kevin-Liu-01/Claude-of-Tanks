@@ -38,4 +38,47 @@ for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
  if(pilot.aerial){assert.deepEqual(restored.aerial,pilot.aerial);second.authority.onMatchReady();second.authority.step({dt:1/60,inputs});assert.equal(restored.aerial.active,true,`${mode}: flight continues`);assert.ok(Math.hypot(restored.aerial.x-pilot.aerial.x,restored.aerial.y-pilot.aerial.y,restored.aerial.z-pilot.aerial.z)<2,`${mode}: no orbit or flight reset`);}
  first.stop();second.stop();
 }
-console.log('sixModesMigration: weapon progression, infection, scores, FPV flight and gunship orbit survive a serialized host handoff');
+// (272, improve-271 plan 010) ONE clock after a migration: the newest frame's battle time (resume.battleTimeMs, the
+// HUD's clock), which runs up to ROOM_MATCH_KEYFRAME_INTERVAL_MS (2 s) ahead of the sealed keyframe's mode clock
+// (its checkpoint's elapsedS). A migrated timed match ends at the HUD's 0:00 with the mode's own verdict, never the
+// generic time_limit two seconds early; Standard (no checkpoint) still ends by time_limit at the same battle time; an
+// explicit battleLimitS of exactly 900 s is a limit, not "absent".
+const LEAD_MS=2000,LEFT_MS=3000; // the keyframe trails the newest frame by LEAD_MS; LEFT_MS of the clock remain
+const endAfterResume=(mode,{ruleset=matchRulesetFor(mode),battleLimitS,setup=()=>{}}={})=>{
+ const limitMs=(battleLimitS??ruleset.timeLimitS)*1000,frameMs=limitMs-LEFT_MS,keyMs=frameMs-LEAD_MS;
+ const make=resume=>createMatchActor({roomId:'clock-migration',mapId:'verdant',mode,seed:33,seats,bots:[],ruleset,world:world(),countdownS:0,autoStart:false,now:()=>0,schedule:()=>()=>{},resume,...(battleLimitS!=null?{battleLimitS}:{})});
+ const first=make(null),sim=first.authority;sim.onMatchReady();
+ const input={throttle:0,steer:0,fire:false,brake:false,aimYaw:0,aimPitch:0,shellSlot:0,actionBits:0};const inputs=new Map([['pilot',input]]);
+ setup(sim,inputs);
+ const checkpoint=sim.captureModeCheckpoint();
+ if(checkpoint)checkpoint.mode.elapsedS=keyMs/1000; // the keyframe sealed LEAD_MS before the newest frame
+ const tick=Math.round(sim.timeS*60),era=createEraIndexer();
+ const snapshot=sim.snapshot({tick,serverTimeMs:keyMs,viewerId:'migration',ackInputSeq:null});
+ const keyframe={tick,battleTimeMs:keyMs,phase:'playing',modeCheckpoint:checkpoint,entities:captureEntityExtras(first),frame:{tick,serverTimeMs:keyMs,ackedInputTick:0xffffffff,ackedFireSeq:0,ackedActionSeq:0,inputMarginTicks:127,meta:captureMeta({...snapshot.meta,battleTimeMs:keyMs},false),destroyed:[],entities:sim.entities.map(e=>captureEntityRow(e,first.wireIdOf(e.id),era,tick)),shells:[],viewer:null,modeStateJson:null}};
+ const second=make({tick:tick+Math.round(LEAD_MS*60/1000),battleTimeMs:frameMs});applyResumeState(second,decodeMigrationKeyframe(encodeMigrationKeyframe(keyframe)));
+ const auth=second.authority;auth.onMatchReady();
+ for(let n=0;n<(LEFT_MS+LEAD_MS+1000)*60/1000&&!auth.result;n++)auth.step({dt:1/60,inputs});
+ const hudMs=auth.resultTimeS==null?null:Math.round(auth.resultTimeS*1000)+second.resumedBattleTimeMs;
+ first.stop();second.stop();
+ return {reason:auth.resultReason,result:auth.result,hudMs,limitMs};
+};
+const atZero=({hudMs,limitMs},label)=>assert.ok(hudMs!=null&&hudMs>=limitMs&&hudMs<=limitMs+20,`${label}: the verdict falls at the HUD's 0:00 (${hudMs} ms for a ${limitMs} ms clock)`);
+{
+ const end=endAfterResume('infected',{setup:(sim,inputs)=>{sim.entityById.get('pilot').combat.destroyed=true;sim.step({dt:1/60,inputs});}});
+ assert.equal(end.reason,'survivors_extracted',`infected: a migrated match ends by the mode's verdict, not ${end.reason}`);
+ assert.equal(end.result,'alpha');atZero(end,'infected');
+}
+{
+ const end=endAfterResume('juggernaut');
+ assert.equal(end.reason,'juggernaut_survived',`juggernaut: a migrated match ends by the mode's verdict, not ${end.reason}`);atZero(end,'juggernaut');
+}
+{
+ const end=endAfterResume('standard');
+ assert.equal(end.reason,'time_limit','standard: a migrated match still ends by time_limit');atZero(end,'standard');
+}
+{
+ // a ruleset clock of 600 s and an explicit 900 s limit: the explicit one decides (it used to read as "not given")
+ const end=endAfterResume('standard',{ruleset:{...matchRulesetFor('standard'),timeLimitS:600},battleLimitS:900});
+ assert.equal(end.reason,'time_limit');atZero(end,'explicit battleLimitS 900');
+}
+console.log('sixModesMigration: weapon progression, infection, scores, FPV flight and gunship orbit survive a serialized host handoff; a migrated timed match ends at the HUD\'s 0:00 by its own verdict');

@@ -25,6 +25,7 @@
 import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // The inland road is grid road 0 (x = -90, the village's west lane): its vertex at z, by the grid's own jitter law
@@ -347,7 +348,7 @@ export default {
     // M47 Pattons
     // the present-day coast (the coordinator, 2026-10-08: its civilians the Breton coast's today): a present-day cast,
     // the French Leclerc and a CV90 beside a T-90M, a BMP-3 and a Leopard 2A7V
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['leclerc_s2', 't90am', 'cv90', 'bmp3', 'leo2_improved'] },
+    tankWrecks: WRECK_CASTS.coastal,
     sandbagLines: 10,
     hedgehogs: 7,
     // world-dressing r1: harbor-village inhabitants — fish-crate/barrel

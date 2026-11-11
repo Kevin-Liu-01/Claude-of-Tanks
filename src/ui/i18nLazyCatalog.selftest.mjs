@@ -204,8 +204,9 @@ for (const module of ['src/game/studio.ts', 'src/ui/studioPanel.ts', 'src/ui/stu
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.match(readFileSync(resolve(ROOT, 'src/main.ts'), 'utf8'),
-  // (247) its panel's sheet loads in the same Promise.all (runtimeStyles: a lazy surface's CSS at its boundary)
-  /loadModule: \(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioPanel\.css'\),\s*import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)/,
+  // (247) its panel's sheet loads in the same Promise.all (runtimeStyles: a lazy surface's CSS at its boundary); (2026-11-02
+  // audit R6) held in one opener's lazy chunk, the Studio's loadModule
+  /createLazyChunk\(\(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioPanel\.css'\),\s*import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)[^;]*\{ opener: true \}\);[\s\S]*?loadModule: \(\) => studioModule\.load\(\)/,
   'the Studio opens once its strings are resident');
 // Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 3's
 // switch, Chinese); a failed slice merges nothing.
@@ -276,7 +277,8 @@ assert.ok(!gameClosure.has('src/ui/fleetStrings.ts'), 'the game loads the fleet 
   assert.deepEqual([...new Set(reads)], ['vehicleClassForId'], 'the hero tiles read only a vehicle\'s class from the facet tables (its glyph, no words)');
 }
 assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
-  /facetPanel \?\?= Promise\.all\(\[import\('\.\/garageFacetPanel\.ts'\), import\('\.\/garageFacetPanel\.css'\),\s*import\('\.\/fleetStrings\.ts'\)\.then\(\(strings\) => strings\.ensureFleetStrings\(\)\)\]\)\s*\.then\(\(\[\{ mountGarageFacetPanel \}\]\) => mountGarageFacetPanel\(/,
+  // (2026-11-02 audit R6) held in an opener's lazy chunk (app/lazyChunk.ts)
+  /facetPanel = createLazyChunk\(\(\): Promise<GarageFacetPanel> => Promise\.all\(\[import\('\.\/garageFacetPanel\.ts'\), import\('\.\/garageFacetPanel\.css'\),\s*import\('\.\/fleetStrings\.ts'\)\.then\(\(strings\) => strings\.ensureFleetStrings\(\)\)\]\)\s*\.then\(\(\[\{ mountGarageFacetPanel \}\]\) => mountGarageFacetPanel\(/,
   'the Filter panel mounts once its strings are resident');
 
 // 7. The tech-tree screen's strings (src/ui/i18nTechTreeKeys.ts, 252) load with the screen: only its module shows them,
@@ -297,7 +299,8 @@ for (const module of ['src/ui/techTree.ts', 'src/ui/techTreeStrings.ts', 'src/te
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
-  /import\('\.\/techTree\.ts'\), import\('\.\/techTree\.css'\), import\('\.\/heroCard\.css'\),\s*import\('\.\/techTreeStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTechTreeStrings\(\)\)/,
+  // (2026-11-02 audit R6) the hero cards' sheet through the document's one hero card load (heroCardChunk.ts)
+  /import\('\.\/techTree\.ts'\), import\('\.\/techTree\.css'\), heroCardChunk\.load\(\),\s*import\('\.\/techTreeStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTechTreeStrings\(\)\)/,
   'the tech tree opens once its strings are resident');
 
 // Runtime: outside Vite the loaders resolve at once (the full catalogs are resident); inside, one request per slice.

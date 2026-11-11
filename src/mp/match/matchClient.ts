@@ -15,8 +15,8 @@ import { TRANSPORT_CLOSE } from '../transport/transport.ts';
 import { matchRefusalCodeOf, matchRefusalMessage } from '../wire/matchBuild.ts';
 import type { Transport, TransportStateChange, TransportStats } from '../transport/transport.ts';
 import {
-  CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ,
-  TICK_HZ, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
+  CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PHASE, PROTOCOL_VERSION, SNAPSHOT_HZ,
+  TICK_HZ, VERDICT, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
 } from '../wire/index.ts';
 import type {
   CloseReasonId, EntityRow, ErrorMessage, EventMessage, PhaseId, PongMessage, RosterEntry, SnapshotFrame,
@@ -31,9 +31,10 @@ import { RemoteInterpolator } from './interpolation.ts';
 import type { EntitySample, FrameMetaSample, InterpolatorOptions, ShellSample } from './interpolation.ts';
 import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
-import { ConnectionRecovery } from './recovery.ts';
+import { ConnectionRecovery, HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
+import { HULL_BODY_ROW_FLAGS } from './hullBodyRow.ts';
 import type { RetainedBlob } from './migrationStore.ts';
 import { SnapshotStream } from './snapshotStream.ts';
 import type { TankState } from '../../sim/movement.ts';
@@ -103,10 +104,14 @@ export interface MatchFrame {
   renderTimeMs: number;
   entities: EntitySample[];
   shells: ShellSample[];
+  /** Rounds gone from `shells` that left this view in flight (wire 11): out of view, not ended (FrameSample.unseenShells). */
+  unseenShells: readonly number[];
   meta: FrameMetaSample;
   modeStateJson: string | null;
   /** Persistent destroyed obstacle indices and their revision (from the newest frame). */
   destroyed: readonly number[];
+  /** Each `destroyed` index's fall in its order (wire 11, sim/obstacleFall.ts); empty: none for every one. */
+  destroyedFalls: readonly number[];
   destructibleRevision: number;
   /**
    * Whether a `world_prop_destroyed` for this obstacle index is still on its way to the presentation (queued behind the
@@ -127,6 +132,12 @@ export interface MatchFrame {
   ownShots: OwnShotEvent[];
   extrapolatedMs: number;
   phase: ConnectionPhase;
+  /**
+   * How many times a link's host restarted the battle under this client (MatchClientStats.battleRestarts). What the
+   * presentation laid down as settled state before a restart (fallen props, the destruction log) is of a battle no longer
+   * played: the restarted host has it standing (round 2 U1).
+   */
+  battleRestarts: number;
 }
 
 /** What this client holds for a host migration (P2 client lane): the sealed blobs and the newest assembled frame. */
@@ -146,6 +157,12 @@ export interface RetainedMigrationState {
   /** Every destruction entry a `structure_stage` (later a breach or a crater) named this round: like `fallen`, a link
    * reset clears the queue, never this. */
   destruction?: readonly DestructionLogEntry[];
+  /**
+   * The tick of each entity's newest `mode_respawn` this client was told of, by authoritative id (audit M1, review round
+   * 2): a hull a mode revived after the keyframe lives a life its extras never saw (migrationState.ts
+   * resumeStateFromRetained). Every viewer receives mode events.
+   */
+  respawns?: readonly (readonly [id: string, tick: number])[];
 }
 
 export interface MatchClientStats {
@@ -202,10 +219,20 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
+  /** HOLD notices taken before a WELCOME (round 3 B1/X6: a host holding this seat's HELLO said how long; receiveHold). */
+  holdNotices: number;
   /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
   helloRetries: number;
   /** Episodes where this tab's own tasks were starved past TASK_STARVED_MS (the stall clock rested; taskProbe). */
   taskStarvations: number;
+  /** New links whose host ran on another timeline than this client's clocks (followTimeline): the clocks re-anchored. */
+  timelineRestarts: number;
+  /**
+   * Links whose host plays another battle than the one this client followed (a battle id of its own at the WELCOME,
+   * receiveWelcome; or a battle this client saw begin shown as not begun at the first snapshot, followTimeline): what was
+   * retained of the battle before it went.
+   */
+  battleRestarts: number;
 }
 
 /**
@@ -221,6 +248,7 @@ interface PendingPing {
   sentAtMs: number;
 }
 
+const NO_FALLS: readonly number[] = Object.freeze([]);
 const MAX_PENDING_PINGS = 8;
 const MAX_TICKS_PER_FRAME = 4;
 /** A posted task waiting this long means this tab's own tasks are starved (taskProbe). */
@@ -234,6 +262,11 @@ const VIEWER_GUN_INDEX = VIEWER_MODULES.indexOf('gun');
 const VIEWER_GUN_MOUNT_INDEX = VIEWER_MODULES.indexOf('gunMount');
 
 function u32(value: number): number { return Math.round(value) >>> 0; }
+
+/** Whether a frame's battle had begun: playing, ended or decided (null: no frame yet). */
+function battleBegun(phase: PhaseId | null, verdict: VerdictId | null): boolean {
+  return phase === PHASE.PLAYING || phase === PHASE.ENDED || (verdict !== null && verdict !== VERDICT.NONE);
+}
 
 /**
  * The words a player sees when the host runs another build: what happened and what to do (refresh). One vocabulary
@@ -291,6 +324,12 @@ export class MatchClient {
   private ownAuthorityAtMs: number | null = null;
   private lastAuthorityAtMs: number | null = null;
   private openedAtMs: number | null = null;
+  /** When the current socket's WELCOME was accepted (a held seat's comes when its new host's resume hold ends). */
+  private welcomedAtMs: number | null = null;
+  /** The host generation of the newest WELCOME: a socket opened under a newer one is a link to a newly elected host. */
+  private welcomedGeneration = 0;
+  /** The current socket's pre-WELCOME allowance (RecoveryInput.holdAllowanceMs). */
+  private holdAllowanceMs = 0;
   private lastPingAtMs = -Infinity;
   private pingsSent = 0;
   private pingKey = 0;
@@ -303,11 +342,8 @@ export class MatchClient {
   private closeDetail = '';
   private disposed = false;
   private latestDestroyed: readonly number[] = [];
+  private latestDestroyedFalls: readonly number[] = NO_FALLS;
   private latestRevision = 0;
-  /** Every obstacle a `world_prop_destroyed` named this round (RetainedMigrationState.fallen). */
-  private readonly fallenObstacles = new Set<number>();
-  /** Every stage a `structure_stage` named this round (RetainedMigrationState.destruction). */
-  private readonly retainedDestruction: DestructionLogEntry[] = [];
   private latestDestruction: readonly DestructionLogEntry[] = [];
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
@@ -316,6 +352,13 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private holdNotices = 0;
+  private timelineRestarts = 0;
+  private battleRestarts = 0;
+  /** The battle id of the newest WELCOME (WelcomeMessage.battleId; null before the first): the battle this client follows. */
+  private followedBattleId: number | null = null;
+  /** The first snapshot after a WELCOME still has to be read against this client's clocks (followTimeline). */
+  private timelineCheckPending = false;
   private helloRetries = 0;
   private helloRetriesLeft = MAX_HELLO_RETRIES;
   private snapshotsAccepted = 0;
@@ -376,9 +419,9 @@ export class MatchClient {
     this.ownShots = new OwnShotPredictor();
     this.recovery = new ConnectionRecovery(recovery);
     this.frame = {
-      tick: 0, renderTimeMs: 0, entities: [], shells: [],
+      tick: 0, renderTimeMs: 0, entities: [], shells: [], unseenShells: [],
       meta: { phase: 0, countdownMs: 0, battleTimeMs: 0, verdict: 0, verdictReason: '', destructibleRevision: 0 },
-      modeStateJson: null, destroyed: [], destructibleRevision: 0,
+      modeStateJson: null, destroyed: [], destroyedFalls: NO_FALLS, destructibleRevision: 0,
       destroyedPending: (index) => this.events.isObstaclePending(index),
       destruction: [],
       destructionPending: (structureId) => this.events.isStructurePending(structureId),
@@ -387,7 +430,7 @@ export class MatchClient {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,
       },
-      events: [], ownShots: [], extrapolatedMs: 0, phase: 'idle',
+      events: [], ownShots: [], extrapolatedMs: 0, phase: 'idle', battleRestarts: 0,
     };
     this.unsubscribe.push(transport.onFrame((bytes) => this.receive(bytes)));
     this.unsubscribe.push(transport.onState((change) => this.transportChanged(change)));
@@ -424,8 +467,9 @@ export class MatchClient {
   retainedMigration(): RetainedMigrationState {
     return {
       keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
-      fallen: [...this.fallenObstacles],
-      destruction: this.retainedDestruction.slice(),
+      fallen: this.migration.fallen,
+      destruction: this.migration.destruction,
+      respawns: this.migration.respawns,
     };
   }
 
@@ -510,13 +554,16 @@ export class MatchClient {
     frame.renderTimeMs = sample.renderTimeMs;
     frame.entities = sample.entities;
     frame.shells = sample.shells;
+    frame.unseenShells = sample.unseenShells;
     frame.meta = sample.meta;
     frame.modeStateJson = sample.modeStateJson;
     frame.extrapolatedMs = sample.extrapolatedMs;
     frame.destroyed = this.latestDestroyed;
+    frame.destroyedFalls = this.latestDestroyedFalls;
     frame.destructibleRevision = this.latestRevision;
     frame.destruction = this.latestDestruction;
     frame.phase = this.recovery.current;
+    frame.battleRestarts = this.battleRestarts;
     if (this.predictor) this.predictor.present(elapsedS, this.displayTick);
     const viewer = frame.viewer;
     viewer.entityId = this.ownEntityId;
@@ -596,8 +643,11 @@ export class MatchClient {
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
+      holdNotices: this.holdNotices,
       helloRetries: this.helloRetries,
       taskStarvations: this.starvations,
+      timelineRestarts: this.timelineRestarts,
+      battleRestarts: this.battleRestarts,
     };
   }
 
@@ -607,6 +657,11 @@ export class MatchClient {
     if (this.disposed) return;
     if (change.state === 'open') {
       this.openedAtMs = this.clock();
+      // a link to the host the room just elected (the session followed its host_changed: migration.setGeneration): that
+      // host's boot and resume hold may keep this seat's HELLO unanswered, so the stall clock allows both (audit M1,
+      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS) until the host
+      // says how long it holds it (round 3 B1/X6: receiveHold, which any host that holds a HELLO sends, a kept one too)
+      this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? MIGRATION_WELCOME_ALLOWANCE_MS : 0;
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
       // The hint is dated by the row's capture tick (the last time the authority captured the pose fresh), never the
@@ -618,6 +673,7 @@ export class MatchClient {
       if (hint) this.sendResumeHint(hint.tick, hint);
     } else if (change.state === 'reconnecting') {
       this.welcomeMessage = null;
+      this.welcomedAtMs = null;
       this.inputStream.clearPendingEdges();
       this.ownShots.cancel();
       this.pendingPings.length = 0;
@@ -651,6 +707,7 @@ export class MatchClient {
     this.ownAuthorityTick = -1;
     this.ownAuthorityAtMs = null;
     this.lastAuthorityAtMs = null;
+    this.welcomedAtMs = null;
     this.keyframeRequestedForGap = false;
     this.pendingSpectatorAck = NO_TICK;
   }
@@ -670,11 +727,12 @@ export class MatchClient {
     return this.transport.send(bytes);
   }
 
-  /** The own row as of its capture tick `tick`. */
+  /** The own row as of its capture tick `tick`, its body bits with it (round 3 A14: the new host seats them as a row's). */
   private sendResumeHint(tick: number, row: EntityRow): void {
     const sent = this.send(encodeMessage({
       type: MESSAGE_TYPE.RESUME_HINT, tick, x: row.x, y: row.y, z: row.z, speed: row.speed, verticalSpeed: row.verticalSpeed,
       yaw: row.yaw, pitch: row.pitch, roll: row.roll, turretYaw: row.turretYaw, gunPitch: row.gunPitch,
+      flags: row.flags & HULL_BODY_ROW_FLAGS,
     }));
     if (sent) this.resumeHintsSent++;
   }
@@ -697,6 +755,7 @@ export class MatchClient {
       case MESSAGE_TYPE.SNAPSHOT: this.receiveSnapshot(message, nowMs); break;
       case MESSAGE_TYPE.EVENT: this.receiveEvents(message); break;
       case MESSAGE_TYPE.PONG: this.receivePong(message, nowMs); break;
+      case MESSAGE_TYPE.HOLD: this.receiveHold(message.holdMs, nowMs); break;
       case MESSAGE_TYPE.ERROR:
         this.serverErrors++;
         this.errors.push(message);
@@ -771,10 +830,28 @@ export class MatchClient {
       this.snapshots.setTicksPerSnapshot(TICK_HZ / welcome.snapshotHz);
     }
     this.welcomeMessage = welcome;
+    this.welcomedAtMs = nowMs;
+    this.welcomedGeneration = this.migration.hostGeneration;
     this.helloRetriesLeft = MAX_HELLO_RETRIES;
     this.timeUnwrap.reset();
     const serverTimeMs = this.timeUnwrap.unwrap(welcome.serverTimeMs);
+    // the link's host maps its own ticks to its time: an earlier host's anchor says nothing of a new one (observe ignores
+    // older ticks, so a host whose ticks run behind the old one's was never followed). A host on the same timeline gives
+    // the same mapping. The server clock's offset is judged at the first snapshot (followTimeline): a migrated host
+    // welcomes its held seats at the resume tick, before its loop skips the ticks it stood still.
+    this.tickClock.reset();
     this.tickClock.observe(welcome.serverTick, serverTimeMs);
+    this.timelineCheckPending = true;
+    // what this link brings is dated by it: the snapshot that tells a restarted battle may come after some of its events
+    this.migration.beginLink();
+    // A host that plays another battle than the one this client followed restarted it (round 3 A3): the battle's id is the
+    // host's own word, kept by every resume and new at every fallback restart (migrationState.ts migrationFallback), so
+    // neither the restart's tick nor its phase against this client's clocks decides it. Before, a plain reconnect whose
+    // first snapshot came more than 2 s late read as a restart (the off-clock test), and a restart on the clock seen
+    // after its countdown read as none.
+    const battleId = welcome.battleId ?? 0;
+    if (this.followedBattleId !== null && battleId !== this.followedBattleId) this.restartBattle();
+    this.followedBattleId = battleId;
     // HELLO -> WELCOME is a round trip with a server stamp: the first clock sample.
     if (this.helloSentAtMs !== null) this.serverClock.observePong(this.helloSentAtMs, nowMs, serverTimeMs);
     if (!this.serverClock.isSeeded) this.serverClock.seed(serverTimeMs, nowMs);
@@ -788,6 +865,58 @@ export class MatchClient {
     this.lastPingAtMs = -Infinity;
     this.pingsSent = 0;
     for (const listener of this.welcomeListeners) listener(welcome);
+  }
+
+  /**
+   * The battle went: what was retained of it for the next election (MigrationStore.abandonBattle: the keyframe, whose
+   * higher tick outranked the restarted battle's, and the falls, destruction and revives the next host merges into its
+   * resume) and the phase this client saw it in (the first snapshot's phase test reads the restarted battle alone). The
+   * presentation's settled world is told by MatchFrame.battleRestarts.
+   */
+  private restartBattle(): void {
+    this.battleRestarts++;
+    this.migration.abandonBattle();
+    this.matchPhase = null;
+    this.verdict = null;
+  }
+
+  /**
+   * The first snapshot on a link, against what this client followed before it (review rounds 1 and 2, U1; round 3 A3).
+   * - The battle. A host that shows a battle this client saw begin (playing, ended or decided) as not begun went back to
+   *   its countdown: a resume from a seat whose newest frame was still in it (one host's phase only moves forward;
+   *   migrationState.ts resumePhaseOf). What this client retained of the battle since goes (restartBattle), as the
+   *   resumed host has none of it. A battle restart from the spawns is told at the WELCOME by its battle id
+   *   (receiveWelcome); its distance from the clock no longer decides it (round 3 A3): a plain reconnect whose first
+   *   snapshot came more than 2 s late read as one, and a restart on the clock after its countdown as none.
+   * - The clocks. A host whose loop runs further from the clock than the clock's own hard resync bound, which no link
+   *   delay explains, runs another timeline, and the clocks re-anchor on it at once. Kept, the old host's samples held the
+   *   offset until the window turned over, and the input stream, started at the WELCOME on the old timeline, sent every
+   *   INPUT far ahead of the new host (refused), then none at all until the new timeline caught up with it. A host on the
+   *   same timeline (a reconnect, a migration that skipped its boot's ticks) is left as it is. The snapshot's stamp seeds
+   *   the clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME. A first
+   *   snapshot merely late re-anchors the clocks on its stamp, and the burst corrects them; it drops nothing.
+   */
+  private followTimeline(frame: SnapshotFrame, serverTimeMs: number, nowMs: number): void {
+    const tick = frame.tick;
+    const offTimelineMs = serverTimeMs - this.serverClock.serverNow(nowMs);
+    const hardResyncMs = this.serverClock.hardResyncMs;
+    // this.matchPhase and this.verdict are still the newest frame's before this link (receiveSnapshot sets them after;
+    // restartBattle cleared them for a battle of another id)
+    if (battleBegun(this.matchPhase, this.verdict) && !battleBegun(frame.meta.phase, frame.meta.verdict)) this.restartBattle();
+    if (Math.abs(offTimelineMs) <= hardResyncMs) return;
+    this.timelineRestarts++;
+    this.serverClock.reset();
+    this.serverClock.seed(serverTimeMs, nowMs);
+    this.tickClock.reset();
+    this.tickClock.observe(tick, serverTimeMs);
+    this.pendingPings.length = 0;
+    this.lastPingAtMs = -Infinity;
+    this.pingsSent = 0;
+    if (this.isSeated) {
+      // the controls sampled for the old timeline's ticks are no one's now
+      this.predictor?.reset();
+      this.inputStream.start(Math.max(tick, Math.floor(this.tickClock.tickAt(this.serverClock.serverNow(nowMs))) + this.inputStream.lead + 1));
+    }
   }
 
   private ensurePredictor(): void {
@@ -811,6 +940,22 @@ export class MatchClient {
     this.pingsSent++;
     this.pendingPings.push({ key, sentAtMs: nowMs });
     if (this.pendingPings.length > MAX_PENDING_PINGS) this.pendingPings.shift();
+  }
+
+  /**
+   * The host holds this seat's HELLO for at most `holdMs` more (wire HOLD, round 3 B1/X6: through its boot, matchHost.ts
+   * bootHoldNotice, or a migrated host's resume hold, matchHostCore.ts noticeHeld): the stall clock's handshake allowance
+   * runs to then, and its stall counts from there. The host's own word replaces whatever the link opened with: a newly
+   * elected host's whole boot and hold bound (MIGRATION_WELCOME_ALLOWANCE_MS, all a seat could allow before), and a kept
+   * host's nothing (matchSession.ts bootKeptHost holds its seats at the room's same generation, which the opening allowance
+   * never read). So a seat waits through a slow boot or a long hold on any link, and asks for a fresh one once its host
+   * overruns what it announced (by more than HOLD_RELEASE_MARGIN_MS, the WELCOME's way out through the host's main thread),
+   * not 33 s after the link opened. Capped at that bound; after the WELCOME it means nothing.
+   */
+  private receiveHold(holdMs: number, nowMs: number): void {
+    if (this.welcomeMessage || this.openedAtMs === null) return;
+    this.holdAllowanceMs = Math.max(0, nowMs - this.openedAtMs) + Math.min(Math.max(0, holdMs) + HOLD_RELEASE_MARGIN_MS, MIGRATION_WELCOME_ALLOWANCE_MS);
+    this.holdNotices++;
   }
 
   private receivePong(pong: PongMessage, nowMs: number): void {
@@ -839,12 +984,14 @@ export class MatchClient {
     const frame = accepted.frame;
     if (accepted.keyframe) this.keyframeRequestedForGap = false;
     const serverTimeMs = this.timeUnwrap.unwrap(frame.serverTimeMs);
+    if (this.timelineCheckPending) { this.timelineCheckPending = false; this.followTimeline(frame, serverTimeMs, nowMs); }
     this.tickClock.observe(frame.tick, serverTimeMs);
     this.lastAuthorityAtMs = nowMs;
     this.snapshotsAccepted++;
     this.inputStream.acknowledge(frame, nowMs);
     this.interpolator.push(frame, serverTimeMs, nowMs, this.snapshots.lastGapTick === frame.tick);
     this.latestDestroyed = frame.destroyed;
+    this.latestDestroyedFalls = frame.destroyedFalls && frame.destroyedFalls.length === frame.destroyed.length ? frame.destroyedFalls : NO_FALLS;
     this.latestRevision = frame.meta.destructibleRevision;
     this.latestDestruction = frame.destruction ?? [];
     this.matchPhase = frame.meta.phase;
@@ -917,13 +1064,15 @@ export class MatchClient {
       (game ??= []).push(event);
       if (event.kind === 'world_prop_destroyed') {
         const index = Number(event.payload.obstacleIndex);
-        if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+        if (Number.isSafeInteger(index) && index >= 0) this.migration.retainFallen(index);
+      } else if (event.kind === 'mode_respawn') {
+        if (typeof event.payload.id === 'string') this.migration.retainRespawn(event.payload.id, message.tick);
       } else if (event.kind === 'structure_stage') {
         const structureId = Number(event.payload.structureId), stage = event.payload.stage;
         if (Number.isSafeInteger(structureId) && structureId >= 0
           && (stage === 'damaged' || stage === 'breached' || stage === 'collapsed')) {
           const cx = Number(event.payload.cx), cz = Number(event.payload.cz);
-          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz)
+          this.migration.retainDestruction(Number.isFinite(cx) && Number.isFinite(cz)
             ? { kind: 'stage', structureId, stage, cx, cz } : { kind: 'stage', structureId, stage });
         }
       } else if (event.kind === 'structure_breach') {
@@ -935,7 +1084,7 @@ export class MatchClient {
           && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(radiusM)) {
           const cx = Number(p.cx), cz = Number(p.cz);
           const entry = { kind: 'breach' as const, structureId, section, hole, x, y, z, radiusM, sectionDown: p.sectionDown === true };
-          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
+          this.migration.retainDestruction(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
         }
       }
     }
@@ -1038,6 +1187,8 @@ export class MatchClient {
       welcomed: this.welcomeMessage !== null,
       lastAuthorityAtMs: this.lastAuthorityAtMs,
       openedAtMs: this.openedAtMs,
+      welcomedAtMs: this.welcomedAtMs,
+      holdAllowanceMs: this.holdAllowanceMs,
       starvedAtMs: this.starvedAtMs,
     });
     if (step.requestReconnect) {

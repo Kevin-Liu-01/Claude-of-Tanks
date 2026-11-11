@@ -168,10 +168,10 @@ async function wholeWorld(seed) {
   } });
   const { createProps, preloadPropModels } = await import('./props.ts');
   const { ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
-  const { wreckPool } = await import('./wrecks.ts');
+  const { wreckDonorsFor } = await import('./wreckRoster.ts');
   globalThis.fetch = async url => new Response(readFileSync(url));
   await preloadPropModels();
-  await Promise.all(wreckPool('modern').map(id => ensureTankBuilder(id)));
+  await Promise.all(wreckDonorsFor('reservoir').map(id => ensureTankBuilder(id)));
   installFixtureCanvas();
   async function build() {
     globalThis.__waterworksRng = [];

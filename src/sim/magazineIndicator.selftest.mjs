@@ -91,7 +91,7 @@ for (const id of ALL_TANK_IDS) {
         settle(combat);
         startPostShotReload(combat, spec);
         shots++;
-        assert.ok(shots <= 64, `${id}[${slot}]: a group ends`);
+        assert.ok(shots <= rest.capacity, `${id}[${slot}]: a group ends`); // the air-defence bursts run to 300 (2026-11-06)
       }
       assert.equal(shots, rest.capacity, `${id}[${slot}]: the group holds exactly its indicated capacity`);
       const spent = magazineIndicator(combat, spec);

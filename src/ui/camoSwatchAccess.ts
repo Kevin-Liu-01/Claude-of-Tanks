@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 interface CamoSwatchAccessOptions<T> {
   load: () => Promise<T>;
   isPlayable: () => boolean;
@@ -30,25 +31,14 @@ export function createCamoSwatchAccess<T>({
     throw new TypeError('camo swatch access requires load and playable ports');
   }
 
-  let module: T | null = null;
-  let pending: Promise<T> | null = null;
+  // (2026-11-02 audit R6) the painter's chunk under the one lazy-chunk policy (app/lazyChunk.ts): a failed module is
+  // asked again by the next request, a failed stylesheet never
+  const chunk = createLazyChunk(load);
   let scheduled: Promise<T> | null = null;
   let timer: RuntimeValue = null;
   let promote: (() => void) | null = null;
 
-  const begin = (): Promise<T> => {
-    if (module) return Promise.resolve(module);
-    if (pending) return pending;
-    const request = load().then((loaded) => {
-      module = loaded;
-      return loaded;
-    });
-    pending = request;
-    request.catch(() => {
-      if (pending === request) pending = null;
-    });
-    return request;
-  };
+  const begin = (): Promise<T> => chunk.load();
 
   const arm = (): Promise<T> => {
     if (scheduled) return scheduled;
@@ -82,11 +72,11 @@ export function createCamoSwatchAccess<T>({
 
   return {
     preload({ immediate = false } = {}) {
-      if (module || pending) return begin();
+      if (chunk.state === 'ready' || chunk.state === 'loading') return begin();
       const request = arm();
       if (immediate) promote?.();
       return request;
     },
-    isReady: () => module !== null,
+    isReady: () => chunk.state === 'ready',
   };
 }

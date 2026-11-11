@@ -4,11 +4,10 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import {createServer} from 'vite';
-import {createCaptureLock} from './capture-lock.mjs';
-const lock=createCaptureLock();
+import { openCaptureHold } from './capture-hold.mjs';
+let hold;
 let server,browser;
-await lock.acquire(45*60*1000);
-const refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
+hold = await openCaptureHold({ label: 'source-dimension-frame.browser.selftest', timeoutMs: 45*60*1000 });
 try {
   // enforce 'pre' (2026-10-19): the fixture answers before vite.config's cot-routes middleware rewrites an unknown text/html path to /404.html
   server=await createServer({root:process.cwd(),logLevel:'error',server:{port:0,hmr:false,watch:null},
@@ -80,5 +79,5 @@ try {
   assert.ok(result.missingThinTop.find(r=>r.name==='physicalHeightM').pct>3);
   console.log('source-dimension-frame GPU:8 actual raster/camera invariance cases, union-frame negative controls, source self-match and full-envelope guards PASS');
 } finally {
-  await browser?.close();await server?.close();clearInterval(refresh);lock.release();
+  await browser?.close();await server?.close();await hold?.release();
 }

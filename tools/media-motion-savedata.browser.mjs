@@ -20,7 +20,7 @@ import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { stillRungs } from '../src/presentation/responsivePicture.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -53,10 +53,9 @@ if (!base) {
   }
 }
 
-// (a driver that already holds the capture lock for a longer session passes COT_CAPTURE_LOCK_HELD=1)
-const lock = process.env.COT_CAPTURE_LOCK_HELD === '1' ? { acquire: async () => {}, refresh() {}, release() {} } : createCaptureLock();
-await lock.acquire(20 * 60 * 1000);
-const keepLock = setInterval(() => lock.refresh(), 30_000);
+// (a driver that already holds the capture lock for a longer session passes COT_CAPTURE_LOCK_HELD=1: checked since round 2
+// U38, the hold nests only in an ancestor's live hold and otherwise queues; it used to skip the lock unchecked)
+const hold = await openCaptureHold({ label: 'media-motion-savedata', timeoutMs: 20 * 60 * 1000, ancestorHeld: process.env.COT_CAPTURE_LOCK_HELD === '1' });
 const report = { base, flags: [], handoff: null, prefetch: null };
 let browser;
 try {
@@ -205,9 +204,8 @@ try {
     await context.close();
   }
 } finally {
-  clearInterval(keepLock);
   await browser?.close().catch(() => {});
-  lock.release();
+  await hold.release();
   preview?.kill('SIGTERM');
   writeFileSync(join(OUT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }

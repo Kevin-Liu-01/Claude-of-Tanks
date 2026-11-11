@@ -7,6 +7,7 @@
 // the v2 client folds into a session note the shared validator accepts. A new tank cancels a pending retry and
 // ignores late callbacks from the old build.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createDamagePanel, DAMAGE_PANEL_MASK_RETRY } from './damagePanel.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { createEntryTelemetry } from '../entry/telemetry.ts';
@@ -293,6 +294,134 @@ try {
     assert.deepEqual(h.telemetry.events, []);
   }
 
+  // 2026-11-02 audit (04-ui-1 #7): the battle's end clears the panel. A retry pending for the last battle's tank
+  // never runs its build in the Garage, a late callback is inert, and the battle's visual is let go.
+  {
+    const h = harness();
+    const visual = { root: {}, dispose() {} };
+    let lateReady = null;
+    h.masks.plan((call) => {
+      lateReady = call.onReady;
+      queueMicrotask(() => call.onReady(false, failure('top_mask_program_timeout', 0)));
+      return null;
+    });
+    h.panel.setTank(spec, visual);
+    await flush();
+    assert.equal(h.clock.list.length, 1, 'attempt 2 is pending');
+    h.panel.clear();
+    assert.equal(h.clock.list[0].cancelled, true, 'the clear cancels it');
+    h.clock.list[0].callback();
+    lateReady(true);
+    await flush();
+    assert.equal(h.masks.calls.length, 1, 'no mask build after the battle');
+    assert.equal(h.panel.debugState().specId, null, 'the panel holds no tank');
+    assert.equal(h.panel.debugState().masksReady, false);
+    h.masks.plan(cached(maskEntry()));
+    h.panel.setTank(spec, null);
+    assert.equal(h.panel.debugState().masksReady, true, 'the next battle sets its tank as before');
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(h.telemetry.events, []);
+  }
+  {
+    const source = readFileSync(new URL('./battleHudAccess.ts', import.meta.url), 'utf8');
+    assert.match(source, /bus\.on\('phase:change', \(payload\) => \{\n\s+if \(\(payload as \{ phase\?: string \} \| null\)\?\.phase === 'garage'\) damagePanel\.clear\(\);/,
+      'the return to the Garage clears the battle HUD\'s panel');
+  }
+  // 2026-11-02 audit (04-ui-1 item 7): the battle ends (the Garage return's clearBattle) while a retry waits. The
+  // pending retry is cancelled, a build still in flight is inert when it lands, and the battle's visual is let go: the
+  // panel had no teardown, so the retry fired for the last battle's tank in the Garage (a 700-1,000 ms mask build) and
+  // the visual stayed referenced until the next battle.
+  {
+    const h = harness();
+    const live = { root: {}, dispose() {} };
+    let lateReady = null;
+    h.masks.plan(failing(failure('top_mask_program_timeout', 0)));
+    h.panel.setTank(spec, live);
+    await flush();
+    assert.equal(h.clock.list.length, 1, 'a retry waits');
+    assert.equal(h.panel.debugState().holdsSourceVisual, true);
+    h.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h.panel.clear();
+    assert.equal(h.clock.list[0].cancelled, true, 'the battle teardown cancels the pending retry');
+    assert.equal(h.panel.debugState().holdsSourceVisual, false, "and lets the battle's tank visual go");
+    h.clock.list[0].callback(); // a timer that fired anyway
+    await flush();
+    assert.equal(h.masks.calls.length, 1, 'no mask build runs for the last battle in the Garage');
+    // a build in flight at the teardown lands after it: inert
+    const h2 = harness();
+    h2.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h2.panel.setTank(spec, live);
+    h2.panel.clear();
+    lateReady(false, failure('top_mask_program_timeout', 0));
+    await flush();
+    assert.deepEqual(h2.clock.list, [], 'a failure that lands after the teardown schedules no retry');
+    lateReady(true);
+    assert.equal(h2.panel.debugState().masksReady, false);
+    // the next battle starts afresh
+    h2.masks.plan(cached(maskEntry()));
+    h2.panel.setTank(spec, live);
+    assert.equal(h2.panel.debugState().masksReady, true);
+    assert.deepEqual(warnings, []);
+  }
+
+  // (integration review r1) a teardown that keeps the screens up (a mid-battle Leave, a report preparing the Garage
+  // behind it: main.ts clearBattle with keepScreens) releases the panel: the pending retry is cancelled, a build in
+  // flight is inert when it lands, and the battle's visual is let go while the Garage pedestal adopts it, but the plan
+  // stays (no empty repaint before the veil); clear() under the veil then drops it.
+  {
+    const h = harness();
+    const live = { root: {}, dispose() {} };
+    h.masks.plan(cached(maskEntry()));
+    h.panel.setTank(spec, live);
+    assert.equal(h.panel.debugState().masksReady, true, 'setup: the plan is painted');
+    // a retry waits for a tank whose masks did not build
+    const h2 = harness();
+    let lateReady = null;
+    h2.masks.plan(failing(failure('top_mask_program_timeout', 0)));
+    h2.panel.setTank(spec, live);
+    await flush();
+    assert.equal(h2.clock.list.length, 1, 'a retry waits');
+    h2.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h2.panel.release();
+    assert.equal(h2.clock.list[0].cancelled, true, 'the release cancels the pending retry');
+    assert.equal(h2.panel.debugState().holdsSourceVisual, false, "and lets the battle's tank visual go");
+    assert.equal(h2.panel.debugState().specId, spec.id, 'the panel keeps its tank');
+    h2.clock.list[0].callback(); // a timer that fired anyway
+    await flush();
+    assert.equal(h2.masks.calls.length, 1, 'no mask build runs behind the report');
+    // the painted panel keeps its plan through the release
+    h.panel.release();
+    assert.equal(h.masks.calls.length, 1, 'the release asks for no mask build');
+    assert.equal(h.panel.debugState().masksReady, true, 'the release keeps the plan painted');
+    assert.equal(h.panel.debugState().specId, spec.id);
+    assert.equal(h.panel.debugState().holdsSourceVisual, false);
+    h.panel.update({ hp: 600, maxHp: 1000, destroyed: false, modules: {}, crew: {}, fire: { burning: false, tickTimer: 0, ticksLeft: 0 } });
+    assert.equal(h.panel.debugState().masksReady, true, 'and the HUD frame still paints it');
+    // a build in flight at the release lands after it: inert
+    const h3 = harness();
+    h3.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h3.panel.setTank(spec, live);
+    h3.panel.release();
+    lateReady(false, failure('top_mask_program_timeout', 0));
+    await flush();
+    assert.deepEqual(h3.clock.list, [], 'a failure that lands after the release schedules no retry');
+    lateReady(true);
+    assert.equal(h3.panel.debugState().masksReady, false, 'nor does a late success adopt');
+    // under the veil the clear drops the rest; the next battle starts afresh
+    h.panel.clear();
+    assert.equal(h.panel.debugState().specId, null);
+    assert.equal(h.panel.debugState().masksReady, false);
+    h.masks.plan(cached(maskEntry()));
+    h.panel.setTank(spec, live);
+    assert.equal(h.panel.debugState().masksReady, true);
+    assert.deepEqual(warnings, []);
+  }
+  {
+    const source = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+    assert.match(source, /watchOwner\.current\?\.stop\(\);\n\s+currentDamagePanel\(\)\?\.release\(\);\n\s+if \(keepScreens\) return;\n\s+currentDamagePanel\(\)\?\.clear\(\);/,
+      'main.ts clearBattle releases the panel at every teardown, keepScreens included, and clears it under the veil');
+  }
+
   // Without an injected sink (Node has no page beacon) the terminal failure
   // still warns and never throws.
   {
@@ -314,4 +443,4 @@ try {
 }
 
 console.log('damagePanelMaskRetry.selftest: race retry without the borrowed visual, 1.5 s / 8 s backoff, '
-  + 'one warning + one accepted hud_mask_failed beacon, and tank-switch cancellation pass');
+  + 'one warning + one accepted hud_mask_failed beacon, tank-switch cancellation, the release that keeps the plan and the battle teardown pass');

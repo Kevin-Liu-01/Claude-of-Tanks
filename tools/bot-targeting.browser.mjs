@@ -3,13 +3,13 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession,openGamePage,beginSoloBattle,applyGroundPose} from './map-probe-runtime.mjs';
 const out=resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6)??'.qa-dev/bot-targeting');mkdirSync(out,{recursive:true});
 const cases=[{size:3,map:'verdant'},{size:7,map:'desert'},{size:15,map:'verdant'},{size:15,map:'winter'},{size:21,map:'cliffbridge'}];
-const reports=[];const lock=createCaptureLock();let refresh;
+const reports=[];let hold;
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'bot-targeting', timeoutMs: 45*60*1000 });
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/targeting-vite-cache')},async({browser,port})=>{
   for(const scenario of cases){
    const {page,errors}=await openGamePage(browser,{port,viewport:{width:1440,height:900}});
@@ -58,4 +58,4 @@ try{
    assert.deepEqual(errors,[]);await page.close();
   }
  });
-}finally{clearInterval(refresh);lock.release();}
+}finally{await hold?.release();}

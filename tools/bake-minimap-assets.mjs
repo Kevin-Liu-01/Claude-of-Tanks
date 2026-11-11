@@ -18,7 +18,9 @@ import puppeteer from 'puppeteer';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { requireMinimapCapture } from './map-art-guards.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -40,10 +42,10 @@ await mkdir(outDir, { recursive: true });
 const referenceOption = option('reference', '');
 const referenceDir = referenceOption ? resolve(referenceOption) : null;
 if (referenceDir) await mkdir(referenceDir, { recursive: true });
-await acquireCaptureLock(30 * 60 * 1000);
-process.on('exit', releaseCaptureLock);
-const lockRefresher = setInterval(refreshCaptureLock, 60_000);
-lockRefresher.unref();
+hold = await openCaptureHold({ label: 'bake-minimap-assets', timeoutMs: 30 * 60 * 1000 });
+
+
+
 
 const cacheDir = resolve('/tmp', `cot-minimap-vite-${process.pid}`);
 const server = await createServer({
@@ -95,7 +97,7 @@ async function openPage() {
     if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
   });
   await fresh.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await fresh.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(fresh, { timeout: 120000 });
 }
 async function bakeMap(mapId) {
   try {
@@ -158,7 +160,7 @@ try {
       await writeFile(resolve(referenceDir, `${id}-world.webp`), referenceBytes);
       console.log(`[minimap-assets] ${id}: reference ${referenceBytes.length} bytes (${reference.strips} water and ground layers left off)`);
     }
-    refreshCaptureLock();
+    hold?.refresh();
   }
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 } catch (error) {
@@ -167,8 +169,7 @@ try {
 } finally {
   await browser.close();
   await server.close();
-  clearInterval(lockRefresher);
-  releaseCaptureLock();
+  await hold?.release();
 }
 
 if (failed) process.exitCode = 1;

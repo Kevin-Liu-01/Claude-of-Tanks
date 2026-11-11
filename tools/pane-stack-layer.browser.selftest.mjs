@@ -22,12 +22,12 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import * as THREE from 'three';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { PartSink, streamFrom } from '../src/world/maps/regional/geometry.ts';
 import { holedPolygon } from '../src/world/maps/regional/house.ts';
 import { windowUnit } from '../src/world/maps/regional/openings.ts';
-import { setFacadeCraft, withFacade } from '../src/world/maps/regional/facade.ts';
+import { withFacade } from '../src/world/maps/regional/facade.ts';
 import { PANE_STACK_UNITS_PER_LAYER } from '../src/world/paneStack.ts';
 
 async function bounded(promise, timeoutMs, label) {
@@ -39,8 +39,7 @@ async function bounded(promise, timeoutMs, label) {
   } finally { clearTimeout(timer); }
 }
 
-// ---- the wall, built as a kit builds it
-setFacadeCraft(true);
+// ---- the wall, built as a kit builds it (the facade craft is on outside a receipt's withFacadeCraft(false) scope)
 const face = { origin: [0, 0, 0], u: [1, 0, 0], out: [0, 0, 1], width: 6 };
 const holes = [-2, 0, 2].map((u) => ({ u0: u - 0.45, u1: u + 0.45, y0: 1, y1: 2.3 }));
 const style = { frame: [0.9, 0.9, 0.88], frameWidth: 0.06, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null };
@@ -202,13 +201,12 @@ function renderStacks({ draws, views, width, height }) {
   return { renderer, rows };
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'pane-stack-layer-v1', ok: false, unitsPerLayer: PANE_STACK_UNITS_PER_LAYER,
   draws: framed.map((d) => `${d.name} ${d.pos.length / 9}`), renderer: null, craft: null, rows: [], errors: [], browserClosed: false, lockReleased: false };
-let browser, refresh;
+let browser;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'pane-stack-layer.browser.selftest', timeoutMs: 45 * 60_000 });
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 300_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);
@@ -240,7 +238,7 @@ try {
     try { await bounded(browser.close(), 15_000, 'browser close'); report.browserClosed = true; }
     catch (error) { report.errors.push(String(error)); const child = browser.process(); if (child && child.exitCode === null) child.kill('SIGKILL'); }
   }
-  clearInterval(refresh); lock.release(); report.lockReleased = true;
+  await hold?.release(); report.lockReleased = true;
 }
 report.ok = report.errors.length === 0 && report.rows.length === views.length && report.browserClosed && report.lockReleased;
 console.log(JSON.stringify(report, null, 1));

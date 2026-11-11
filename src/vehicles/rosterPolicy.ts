@@ -57,6 +57,8 @@ export const RETAINED_WW2_IDS = Object.freeze([
   // Explicitly requested independent reconstruction of the archived original.
   'jpz_e100',
   'kv2',
+  // 270: the T95 with its fictional 152 mm (owner 2026-11-05)
+  't95',
 ]);
 
 // The former garage Cold War catalog boundary. Variants intentionally treated

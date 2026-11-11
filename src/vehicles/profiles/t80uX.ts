@@ -220,7 +220,7 @@ function roofEquipment(P:TankBuilderPort):void {
  * head at the source's width, depth and top with its upper edges chamfered, the dark window on its face 2 mm proud and an
  * armoured brow over it. The traced NSVT post the 264 pass replaced stood at x -0.955 (machineGun); this was never part
  * of it. Body (turret buckets), not a roof fitting. */
-function commanderSightHead(P:TankBuilderPort):void {
+export function commanderSightHead(P:TankBuilderPort):void {
   const x0=-.7111,x1=-.5333,xm=(x0+x1)/2;
   const neck=[[.004,2.241],[.0823,2.241],[.0823,2.318],[.034,2.318]] as const;
   const head=[[.030,2.3109],[.1266,2.3109],[.1266,2.381],[.108,2.3999],[.048,2.3999],[.030,2.386]] as const;
@@ -239,7 +239,7 @@ function smoke(P:TankBuilderPort):void {
   }
 }
 
-function machineGun(P:TankBuilderPort):void {
+export function machineGun(P:TankBuilderPort):void {
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
   // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its own pintle standing
   // where the traced post stood ahead of the cupola, in place of the post, boxes and rods.
@@ -298,9 +298,20 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT80UXHull(P:TankBuilderPort):void {
-  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);glacisEra(P);
+/** The hull, running gear and engine deck without the glacis Kontakt-5 (release 269: the Object 292's T-80BV-pattern
+ * glacis carries its own Kontakt-1 studs, profiles/object292X.ts). */
+export function buildT80UXHullBase(P:TankBuilderPort):void {
+  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);
 }
+
+export function buildT80UXHull(P:TankBuilderPort):void {
+  buildT80UXHullBase(P);glacisEra(P);
+}
+
+/** The cast turret alone, authored against the yaw datum (release 269: under the Object 292's welded box). */
+export function buildT80UXCasting(P:TankBuilderPort):void { casting(P); }
+/** The source's yaw datum and trunnion (hull frame, before the ring raise). */
+export const T80U_X_YAW=YAW,T80U_X_TRUNNION=GUN;
 
 export function buildT80UX(P:TankBuilderPort):void {
   // release 231 (t80uXArmor.ts T80U_X_RING_RAISE_M): the casting rides above the source's yaw datum on a stationary machined

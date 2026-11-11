@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
+import { createStudioSession } from './studioSession.ts';
 
 const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);
@@ -55,11 +56,13 @@ function studio() {
     actorSupport: () => null, invalidate: () => {}, SIM_DT: 1 / 60, DEG,
     THREE: { InstancedMesh: class {}, Matrix4: class {}, Vector3: class {} },
     r2: (v) => Math.round(v * 100) / 100,
+    // (2026-11-02 audit F9) an open Studio session: the build checks its token between tanks
+    session: (() => { const session = createStudioSession(); session.open(session.beginEntry()); return session; })(),
   };
   const code = stripTypeScriptTypes(`
     function make(ports, calls) {
       const { sceneMeta, clearActors, resetFx, addActor, findActor, actorRootPosition, updateTank, actorSupport, invalidate,
-        SIM_DT, DEG, THREE, r2, ensureTankBuilders, DEFAULT_ACTOR_ID } = ports;
+        SIM_DT, DEG, THREE, r2, ensureTankBuilders, DEFAULT_ACTOR_ID, session } = ports;
       let timeScale = 1;
       const _v3 = { x: 0, y: 0, z: 0 };
       ${functions.join('\n')}

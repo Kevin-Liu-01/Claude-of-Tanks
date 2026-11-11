@@ -50,6 +50,10 @@ const coordinator = {
   async prefetch(mapId) { return this.cache.get(mapId) ?? null; },
   cancelledTo: undefined,
   cancelBackgroundExcept(mapId) { this.cancelledTo = mapId; },
+  // (2026-11-02 audit R1) an activation holds the world it warms against eviction
+  retain() { return () => {}; },
+  // (audit R1) and reads a cached world only if it was built for the quality preset in effect
+  cached(id) { return this.cache.get(id) ?? null; },
 };
 
 const events = [];
@@ -441,8 +445,11 @@ for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume
   assert.equal(h.activity.length, 0, 'invalid early warm intent cannot change sky or scene ownership');
 }
 
-// (2026-10-19, black-screen-228 RC5) the activation's one hidden frame: only a world nobody presents sits it out, and it
-// comes back on every exit, a rejected frame wait included (the cache hands that world object to the next entry)
+// (2026-10-19, black-screen-228 RC5) the activation's one hidden frame: only a world nobody presents sits it out, and the
+// presented world is never left hidden. (2026-11-02 audit R1 review) A request that ends without presenting (a rejected
+// frame wait here) leaves a world nobody presents hidden, as the coordinator built it: this receipt pinned it visible,
+// which drew a superseded or failed world beside the battlefield on screen. The next entry the cache hands it to lifts
+// it again in its own warm and presents it (asserted below), so RC5's black battlefield stays closed.
 {
   const hiddenAtFrame = [];
   let failNext = false;
@@ -459,14 +466,18 @@ for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume
   failNext = true;
   await assert.rejects(instance.ensure('built', null), /frame wait rejected/);
   assert.equal(hiddenAtFrame[0], true, 'a world nobody presents sits out its one frame');
-  assert.equal(target.group.visible, true, 'a rejected frame wait leaves the world visible');
+  assert.equal(target.group.visible, false, 'a rejected frame wait leaves a world nobody presents hidden (never drawn)');
   await instance.ensure('built', null);
   assert.equal(instance.current, target);
+  assert.equal(target.group.visible, true, 'the next entry handed the cached world presents it visible');
   hiddenAtFrame.length = 0;
   await instance.ensure('built', null);
   assert.ok(hiddenAtFrame.length > 0 && hiddenAtFrame.every((hidden) => hidden === false),
     'the active, presented world is never hidden by a repeated activation');
   assert.equal(target.group.visible, true);
+  failNext = true;
+  await assert.rejects(instance.ensure('built', null), /frame wait rejected/);
+  assert.equal(target.group.visible, true, 'a rejected frame wait never hides the presented world');
 }
 
 // (battle-spikes-253, the memory lockdown) a dormant battlefield is released once another one is asked for — a battle

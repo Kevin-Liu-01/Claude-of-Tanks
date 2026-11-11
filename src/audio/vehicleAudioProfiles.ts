@@ -174,6 +174,12 @@ export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId
   // 268: the GM-352 pair's V-46 is the T-72 family's V12; the Gepard runs the Leopard 1's MTU MB 838
   if (/tunguska|pantsir/.test(id)) return 'diesel_v12_soviet';
   if (/gepard/.test(id)) return 'diesel_v12_modern';
+  // 269: the second air-defence round sounds like its base hulls: the Type 87 the Type 74's two-stroke 10ZF, the ItPsv 90
+  // the T-55's V-55 V12, the Loara the PT-91's S-12U, the ItPsv Leopard 2 the Leopard 2's MTU MB 873 (the Lvkv 9040's
+  // Scania and the K30's D2840L fall to the IFV family below)
+  if (/type87/.test(id)) return 'diesel_two_stroke';
+  if (/marksman_t55|loara/.test(id)) return 'diesel_v12_soviet';
+  if (/itpsv_leopard2/.test(id)) return 'diesel_v12_modern';
   if (role === 'ifv' || role === 'light' || mass < 30) return 'diesel_ifv';
   if (/t72|t90|t62|t55|t14|type59|ztz85|type96_72|pt91|jaguar|t72_rys|zubr/.test(id)) return 'diesel_v12_soviet';
   if (era === 'ww2') return 'gasoline_v12';

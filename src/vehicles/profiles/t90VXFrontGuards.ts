@@ -55,7 +55,8 @@ function skin(side: number, rows: readonly Crown[]): ReturnType<typeof sectionSo
       ...top.map(([x, y]) => [x, y - depth] as const), ...[...top].reverse(),
     ];
     return { z, ring: side > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse() };
-  }));
+  // (269) the end caps keep the crown's collinear stations in real faces, never in zero-area ones (33 zero normals)
+  }), { preserveCapBoundary: true });
 }
 
 /** V-only source crown: retained native roof/rails are owned by t90X.ts. */

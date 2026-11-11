@@ -5,34 +5,76 @@
  * the tank factory: the gallery and the garage carried about 30 KB gzip of wreck physics they never run (218's bundle
  * budget). The factory imports only this module, which holds the physics behind a dynamic import(). The battle's combat
  * warm path and the Studio start that import; a turret that pops before it lands keeps the factory's scripted arc and
- * settle pose for that one kill, and the frame never waits.
+ * settle pose for that one kill, and the frame never waits. (2026-11-02 audit F10) A wreck whose authority sends its
+ * turret's pose before the physics has landed asks for it again (tankFactoryCore requestTurretDriver) and hands its
+ * turret to the body once it lands; a failed load is a declared state, reported once per attempt, never swallowed.
  */
 import type { WreckTurretDriver, WreckTurretDriverOptions } from './wreckTurretDriver.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type DriverModule = typeof import('./wreckTurretDriver.ts');
 
-let loaded: DriverModule | null = null;
-let loading: Promise<DriverModule> | null = null;
+/** The physics' load as one declared state: never asked, in flight, landed, or the last attempt failed (retryable). */
+export type WreckTurretDriverLoadState = 'idle' | 'loading' | 'loaded' | 'failed';
+
+export interface WreckTurretDriverLoader {
+  preload(): Promise<void>;
+  readonly state: WreckTurretDriverLoadState;
+  /** The last attempt's failure (null unless failed). */
+  readonly error: unknown;
+  create(options: WreckTurretDriverOptions): WreckTurretDriver | null;
+}
 
 /**
- * Start loading the wreck turret's physics (the battle's combat warm path, the Studio). Idempotent: concurrent calls
- * share one request, and a failed load can be retried by the next call. Resolves once a pop can use it.
+ * The loader over an importer (the page's: the driver's own chunk; a selftest's: one that fails). Concurrent preloads
+ * share one request; a failure moves to 'failed', is reported through `report` once, and the next preload retries.
+ */
+export function createWreckTurretDriverLoader(
+  importer: () => Promise<DriverModule>,
+  report: (message: string, error: unknown) => void = (message, error) => console.warn(message, error),
+): WreckTurretDriverLoader {
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed load was asked again at once by every preload;
+  // now under the one policy (at once after one failure, then past its backoff; a removed chunk shows the reload action),
+  // reported once per attempt that asked
+  const chunk = createLazyChunk(() => importer().catch((failure: unknown) => {
+    report('[wreck turret] the turret physics failed to load: turrets keep the scripted pop until a retry lands', failure);
+    throw failure;
+  }));
+  return {
+    get state() { return chunk.state === 'ready' ? 'loaded' : chunk.state; },
+    get error() { return chunk.error; },
+    preload() {
+      if (chunk.value) return Promise.resolve();
+      return chunk.load().then(() => undefined);
+    },
+    create(options) {
+      return chunk.value ? chunk.value.createWreckTurretDriver(options) : null;
+    },
+  };
+}
+
+const pageLoader = createWreckTurretDriverLoader(() => import('./wreckTurretDriver.ts'));
+
+/**
+ * Start loading the wreck turret's physics (the battle's combat warm path, the Studio, a wreck whose authority's pose
+ * arrived first). Idempotent: concurrent calls share one request, and a failed load can be retried by the next call.
+ * Resolves once a pop can use it.
  */
 export function preloadWreckTurretDriver(): Promise<void> {
-  if (loaded) return Promise.resolve();
-  loading ??= import('./wreckTurretDriver.ts').then(
-    (module) => { loaded = module; return module; },
-    (error: unknown) => { loading = null; throw error; },
-  );
-  return loading.then(() => undefined);
+  return pageLoader.preload();
 }
 
 /** Whether a pop now would follow its body (the physics has loaded). */
 export function wreckTurretDriverReady(): boolean {
-  return loaded !== null;
+  return pageLoader.state === 'loaded';
+}
+
+/** The physics' load state (a failure is 'failed' until a retry lands). */
+export function wreckTurretDriverLoadState(): WreckTurretDriverLoadState {
+  return pageLoader.state;
 }
 
 /** A turret's driver if the physics has loaded, else null (the caller keeps its scripted arc for this kill). */
 export function createWreckTurretDriverIfLoaded(options: WreckTurretDriverOptions): WreckTurretDriver | null {
-  return loaded ? loaded.createWreckTurretDriver(options) : null;
+  return pageLoader.create(options);
 }

@@ -280,6 +280,19 @@ const COLLAR_BINS = 64;
 const COLLAR_GUN_CLEAR_M = 0.015;
 const COLLAR_GUN_SWEEP = [0, 1 / 3, 2 / 3, 1] as const;
 
+/** The pitches the gun's sweep is read at: by default the fractions of COLLAR_GUN_SWEEP; a turret that names a step
+ *  (userData.turretSeatCollarGunStepDeg) reads every step through its depression and its elevation, both ends included. */
+function collarGunPitches(depression: number, elevation: number, stepDeg: number): number[] {
+  if (!(stepDeg > 0)) return [...COLLAR_GUN_SWEEP.map((f) => -f * depression), ...COLLAR_GUN_SWEEP.slice(1).map((f) => f * elevation)];
+  const side = (limit: number, sign: number): number[] => {
+    const out: number[] = [];
+    for (let deg = stepDeg; deg < limit; deg += stepDeg) out.push(sign * deg);
+    if (limit > 0) out.push(sign * limit);
+    return out;
+  };
+  return [0, ...side(depression, -1), ...side(elevation, 1)];
+}
+
 const _pivotInverse = new THREE.Matrix4(), _gunRest = new THREE.Matrix4(), _gunPosed = new THREE.Matrix4();
 const _g = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 const _box = new THREE.Box3();
@@ -399,6 +412,9 @@ interface SeatCollarOptions {
  * it stands no higher than COLLAR_GUN_CLEAR_M below the gun's lowest surface through its whole depression and
  * elevation, so the ring stays closed under the mantlet and the gun still sweeps clear. A turret may opt out with
  * userData.turretSeatCollar === false.
+ * 270 (the K30 Biho, default off): a turret may keep the collar further under the gun (userData.turretSeatCollarGunClearM,
+ * never under COLLAR_GUN_CLEAR_M) and read the sweep at a fixed step (userData.turretSeatCollarGunStepDeg): a gun that
+ * elevates to 85 deg swings 28 deg between the default sweep's samples, and its breech dips under the collar between them.
  */
 function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, disposables }: SeatCollarOptions): void {
   if (turretG.userData.turretSeatCollar === false) return;
@@ -461,6 +477,7 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
   // and its elevation: the gun rig turns by -pitch about x), read on half bearings too: a wall between two bearings runs
   // straight from top to top, so each bearing keeps under the gun half way to its neighbours too
   const gunLow = new Float64Array(COLLAR_BINS * 2).fill(Infinity);
+  const gunClearM = Math.max(COLLAR_GUN_CLEAR_M, Number(turretG.userData.turretSeatCollarGunClearM) || 0);
   let reach = -Infinity;
   for (let k = 0; k < COLLAR_BINS; k++) if (lowest[k] <= roofY) reach = Math.max(reach, lowest[k] + COLLAR_TOP_BITE_M);
   if (gunG && reach > footY) {
@@ -471,7 +488,7 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
         && mesh.geometry?.getAttribute('position')) gunMeshes.push(mesh);
     });
     const rest = gunG.rotation.x, [depression, elevation] = gunPitchDeg ?? [10, 20];
-    const pitches = [...COLLAR_GUN_SWEEP.map((f) => -f * depression), ...COLLAR_GUN_SWEEP.slice(1).map((f) => f * elevation)];
+    const pitches = collarGunPitches(depression, elevation, Number(turretG.userData.turretSeatCollarGunStepDeg) || 0);
     // its triangles that can come over the collar's circle, under the wall's reach, anywhere in that swing, once, in the
     // pivot's frame: a corner swings about the pivot's x axis no further than its distance from it by the chord
     // (generously: the rigs' scales between)
@@ -482,7 +499,7 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
     const gunTris = gatherTriangles(gunMeshes, (mesh) => _toHull.multiplyMatrices(_pivotInverse, mesh.matrixWorld), (a, b, c) => {
       const d = chord * Math.max(Math.hypot(a.y, a.z), Math.hypot(b.y, b.z), Math.hypot(c.y, c.z)) + 0.01;
       _g[0].copy(a).applyMatrix4(_gunRest); _g[1].copy(b).applyMatrix4(_gunRest); _g[2].copy(c).applyMatrix4(_gunRest);
-      if (Math.min(_g[0].y, _g[1].y, _g[2].y) - d > reach + COLLAR_GUN_CLEAR_M) return false;
+      if (Math.min(_g[0].y, _g[1].y, _g[2].y) - d > reach + gunClearM) return false;
       const { near, far } = planReach(_g, cx, cz);
       return near - d <= rOut && far + d >= rOut;
     });
@@ -514,7 +531,7 @@ function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, dis
     // on a neighbour): the wall rises into the turret's roof behind the skirt, so no ray under the skirt passes through
     const hollow = seam <= COLLAR_HOLLOW_MAX_M && Math.min(skirt[prev], skirt[k], skirt[next]) <= skirtY;
     const gunCap = Math.min(gunLow[2 * k], gunLow[(2 * k + 1) % (2 * COLLAR_BINS)],
-      gunLow[(2 * k + 2 * COLLAR_BINS - 1) % (2 * COLLAR_BINS)]) - COLLAR_GUN_CLEAR_M;
+      gunLow[(2 * k + 2 * COLLAR_BINS - 1) % (2 * COLLAR_BINS)]) - gunClearM;
     const top = Math.min(lowest[k] + COLLAR_TOP_BITE_M, gunCap);
     tops[k] = seam > COLLAR_MIN_SEAM_M && (seam <= COLLAR_MAX_M || hollow) && top > raceTopY + COLLAR_MIN_SEAM_M ? top : footY;
     if (tops[k] > footY) any = true;

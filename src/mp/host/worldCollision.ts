@@ -99,17 +99,34 @@ export async function loadObstacleIdentities(mapId: string, base: string, option
 }
 
 /**
- * The world kernels' module, fetched and compiled once per thread and URL (a failed fetch is retried by the next world):
- * the browser host's and the solo sim's authority worlds step on it (docs/RUST-KERNELS.md).
+ * How long the host's fetch of the world kernels' module may take, its answer and its bytes, from its start (round 5 Q1,
+ * review r2): past it the request is aborted, a DOMException named TimeoutError (reported 'timeout',
+ * world/simKernelsStatus.ts), and the world is built on the TypeScript, the same match. Before, the fetch had no bound, and
+ * the boot (matchHostCore.ts buildWorld, a standby's preparation too) awaited a request that never answered until the
+ * host's boot timer failed it (matchHost.ts, ELECTED_HOST_BOOT_MS, 30 s) and the room elected another seat, whose Worker
+ * fetched the same asset. The solo load's request has the same figure (game/soloBattleRuntime.ts
+ * SOLO_KERNELS_LOAD_DEADLINE_MS) but ends at the answer: a solo entry never waits past its own bound, and a late solo load
+ * serves the next battle, while this boot waits for the bytes. 15 s leaves an unprepared boot (3.4-4.3 s) its manifest
+ * and world inside the boot timer's 30 s.
+ */
+export const HOST_KERNELS_FETCH_MS = 15_000;
+
+/**
+ * The world kernels' module, fetched and compiled once per thread and URL (a failed fetch, a timed-out one included, is
+ * retried by the next world): the browser host's authority worlds step on it (docs/RUST-KERNELS.md).
  */
 const kernelModules = new Map<string, Promise<WorldKernelModule>>();
 export function loadWorldKernels(url: string): Promise<WorldKernelModule> {
   let module = kernelModules.get(url);
   if (!module) {
-    module = fetch(url).then((response) => {
+    const abort = new AbortController();
+    const due = setTimeout(() => {
+      abort.abort(new DOMException(`world kernels: no module in ${HOST_KERNELS_FETCH_MS} ms`, 'TimeoutError'));
+    }, HOST_KERNELS_FETCH_MS);
+    module = fetch(url, { signal: abort.signal }).then((response) => {
       if (!response.ok) throw new Error(`world kernels: HTTP ${response.status}`);
       return response.arrayBuffer();
-    }).then(compileWorldKernels);
+    }).finally(() => { clearTimeout(due); }).then(compileWorldKernels);
     module.catch(() => kernelModules.delete(url));
     kernelModules.set(url, module);
   }

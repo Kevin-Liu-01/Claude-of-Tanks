@@ -21,14 +21,18 @@ function caseSolid(width: number, height: number, depth: number): THREE.BufferGe
   })));
 }
 
-function equipmentCases(add: Add): void {
-  for (const [x, y, z, w, h, d] of [
+/** The Mk 5's turret cases: its full-width NBC pack, the right side's stowage box, the searchlight box on the left and
+ * the two rear corner boxes. The early marks (`early`, the Mk 3: chieftainMk3X.ts) carry the searchlight box only: their
+ * own smaller NBC pack, an open rear basket and jerry cans stand where the others are. */
+function equipmentCases(add: Add, early: boolean): void {
+  for (const [i, [x, y, z, w, h, d]] of [
     [.000448, 2.0032815, -1.899756, 1.444872, .482221, .481326],
     [-1.2127245, 2.0503385, -.199880, .447265, .423961, .627426],
     [1.3480695, 2.0113485, -.0053775, .791453, .575439, .485807],
     [-1.1065, 2.014485, -1.843735, .3962, .42397, .28503],
     [1.14505, 2.014035, -1.8451, .4409, .42487, .3522],
-  ]) {
+  ].entries()) {
+    if (early && i !== 2) continue;
     add('turretDetail', caseSolid(w, h, d), x, y, z);
     add('turretDetail', box(w + .008, .013, d + .008), x, y + h / 2, z);
     for (const dx of [-w * .29, w * .29]) {
@@ -156,15 +160,17 @@ function antennae(add: Add): void {
   }
 }
 
-export function addChieftain5XSourceTurretEquipment(P: TankBuilderPort, pivot: Point): void {
+/** `early`: the Mk 3's turret (chieftain5X.ts): the Mk 5's NBC pack, side and corner boxes and its antenna tuning boxes
+ * give way to the Mk 3's own early fittings (chieftainMk3X.ts). */
+export function addChieftain5XSourceTurretEquipment(P: TankBuilderPort, pivot: Point, early = false): void {
   const add: Add = (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) =>
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
-  equipmentCases(add);
+  equipmentCases(add, early);
   stowage(add);
   cupolaWindows(add);
   projector(add);
   sightsAndHatch(add);
-  antennae(add);
+  if (!early) antennae(add);
   commanderMachineGun(P, pivot);
 }
 

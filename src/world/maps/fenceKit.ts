@@ -39,6 +39,7 @@ import { FENCE_SEG, bFenceIronR2, type DestructiblePropType } from './inhabitKit
 import { gateStyleFor, type GateStyle } from './gateKit.ts';
 import { Mesh, WOOD_UV_PER_M, X, Y, Z, hexLin, member, mix, mul, norm, pole, stream, type Rgb, type UvMode, type V3 } from './craftMesh.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { builtValue } from './buildLatch.ts';
 
 export const FENCE_KINDS = ['fenceplank', 'fencepicket', 'fencewattle', 'fencerail'] as const;
 type FenceKind = typeof FENCE_KINDS[number];
@@ -694,9 +695,10 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
       ownBroken: true,
       footprintBuild: () => legacy.build(footprintRng()),
     };
+    // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
     out[kind] = Object.defineProperties(entry, {
-      contactBand: { enumerable: true, get: () => band },
-      colliderBand: { enumerable: true, get: () => sight },
+      contactBand: { enumerable: true, get: () => builtValue(band, kind, 'contactBand') },
+      colliderBand: { enumerable: true, get: () => builtValue(sight, kind, 'colliderBand') },
     });
   }
   return out;
@@ -719,5 +721,6 @@ export function ironRailingType(legacy: DestructiblePropType, footprintRng: () =
     },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  return Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, it throws rather than leave the reader its fallback
+  return Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'fenceiron', 'contactBand') });
 }

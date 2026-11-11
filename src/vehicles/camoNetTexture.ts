@@ -3,7 +3,7 @@
 // and the decor's rolled and draped nets (decorations.ts); three.js only, so the decor can use it without importing the
 // fleet.
 import * as THREE from 'three';
-import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
+import { createPaintAttempts, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Theatre (round 5, 2026-10-08; wave 253: "the desert Abrams wears green nets, green leaves ... against sand paint";
@@ -121,6 +121,7 @@ const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
 const gapToneOf = (pal: NetPalette): [number, number, number] =>
   [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
 const netCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
+const settlesNet = createPaintAttempts();
 
 /** The painter's own seeded stream (mulberry32). */
 function garnishStreamOf(seed: number): () => number {
@@ -317,7 +318,8 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
     }
   }
   // without a DOM nothing is painted, and nothing is remembered (a later build with a canvas paints it)
-  if (typeof document !== 'undefined') netCache.set(key, out);
+  // (2026-11-02 audit R6) and a failed paint is counted, not kept as that null (alphaCutTexture.ts createPaintAttempts)
+  if (typeof document !== 'undefined' && settlesNet(key, !!out)) netCache.set(key, out);
   return out;
 }
 

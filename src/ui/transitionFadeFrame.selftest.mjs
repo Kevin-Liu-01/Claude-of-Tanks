@@ -5,6 +5,7 @@ import { createMainFrameRuntime } from '../app/mainFrameRuntime.ts';
 import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 import { createGarageReturnRuntime } from '../game/garageReturnRuntime.ts';
 import { createGameState } from '../game/stateCore.ts';
+import { createAppLifecycle } from '../game/appLifecycle.ts';
 import { createTransition } from './transition.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
@@ -154,6 +155,10 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
   let reportVisible = true;
   const lifecycle = name => () => lifecycleCalls.push(name);
   const frame = name => () => frameCalls.push(name);
+  // (2026-11-02 audit F1) the session's lifecycle announces the Garage phase; (F3) Battle Again waits on the entry
+  // lifecycle's edges under one cancellable deadline
+  createAppLifecycle({ game, announce: ({ phase }) => { if (phase === 'garage') lifecycleCalls.push('garage-phase'); } });
+  const settledWaiters = [];
   const garageReturn = createGarageReturnRuntime({
     game,
     getSelectedSpecId: () => 'm1a1_abrams_hc',
@@ -207,7 +212,6 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     ui: {
       setGarageSpots: lifecycle('garage-spots'),
       setGarageSunTrim: lifecycle('garage-sun'),
-      emitGaragePhase: lifecycle('garage-phase'),
       hideEndOverlay: () => { lifecycleCalls.push('hide-report'); reportVisible = false; },
       exitPointerLock: lifecycle('exit-pointer-lock'),
       hideHud: lifecycle('hide-hud'),
@@ -220,7 +224,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
         scene.add(newBattle);
         game.phase = 'battle';
         nextEntryCovering = true;
-        return true;
+        return 'started';
       },
     },
     audio: { ambientOn: lifecycle('ambient'), playGarageSting: lifecycle('garage-sting') },
@@ -231,10 +235,16 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     },
     isBattleEntryPending: () => previousEntryPending,
     isBattleEntryCovering: () => nextEntryCovering,
+    whenBattleEntrySettled: () => (previousEntryPending
+      ? new Promise(resolve => settledWaiters.push(resolve)) : Promise.resolve()),
+    whenBattleEntryCovering: () => Promise.resolve(),
     nowMs: host.now,
-    sleep: milliseconds => {
+    sleep: (milliseconds, signal) => {
       lifecycleCalls.push(`entry-wait:${milliseconds}`);
-      return new Promise(resolve => setTimeout(resolve, milliseconds));
+      return new Promise(resolve => {
+        const timer = setTimeout(resolve, milliseconds);
+        signal?.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+      });
     },
   });
   const frameRuntime = createMainFrameRuntime({
@@ -294,7 +304,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
   return {
     transition, root, garageReturn, game, scene, oldBattle, lifecycleCalls, paints,
     get reportVisible() { return reportVisible; },
-    finishPreviousEntry() { previousEntryPending = false; },
+    finishPreviousEntry() { previousEntryPending = false; for (const resolve of settledWaiters.splice(0)) resolve(); },
     finishNextEntry() { nextEntryCovering = false; },
     tick() {
       frameCalls.length = 0;
@@ -355,7 +365,7 @@ function assertHeld(fixture, label) {
     await host.task();
     assert.equal(fixture.transition.holdingSceneForFadeIn, false,
       'the real post-opacity task releases the hold before covered work');
-    assert.deepEqual(fixture.lifecycleCalls, ['entry-wait:150'],
+    assert.deepEqual(fixture.lifecycleCalls, ['entry-wait:15000'],
       'the actual rematch work is now waiting on the previous entry, not tearing it down');
     assert.equal(fixture.transition.visible, true);
     assert.ok(fixture.tick().includes('post'),

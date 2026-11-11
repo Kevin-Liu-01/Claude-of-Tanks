@@ -8,7 +8,7 @@
 
 <p align="center">
 <!-- product-summary:start -->
-A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 299 vehicles, 33 destructible battlefields, and 14 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
+A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 311 vehicles, 33 destructible battlefields, and 14 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
 <!-- product-summary:end -->
 </p>
 
@@ -74,7 +74,7 @@ Language selection lives under **Settings → Language → Language**. See the
 [localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
 the General Translation workflow, and release gates.
 
-The provenance gate currently reports **299 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
+The provenance gate currently reports **303 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage
 
@@ -171,7 +171,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/site50-r14/stills/s26-minaret-fire.webp" alt="A Merkava Mk 3D fires at Sunscar Oasis"><br><sub><b>Thirty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s26-minaret-fire.webp" alt="A Merkava Mk 3D fires at Sunscar Oasis"><br><sub><b>Thirty-three worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
 <td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>

@@ -117,8 +117,8 @@ for (const [specId, seed, pop] of [['t90am', 2526, false], ['m1a1_abrams_hc', 20
     assert.ok(checked >= 3, `${specId}: hull, turret and gun checked`);
   } finally { visual.dispose(); }
   // the bake carries it: deterministic, and its collision is the posed hierarchy's
-  const baked = bakeTankWreck(null, specId, { seed, pop });
-  const again = bakeTankWreck(null, specId, { seed, pop });
+  const baked = bakeTankWreck(null, specId, { seed, state: (pop ? 'turret_blown_off' : 'burnt_out') });
+  const again = bakeTankWreck(null, specId, { seed, state: (pop ? 'turret_blown_off' : 'burnt_out') });
   assert.deepEqual(Array.from(baked.geo.attributes.position.array.slice(0, 3000)), Array.from(again.geo.attributes.position.array.slice(0, 3000)),
     `${specId}: the crumpled bake rebuilds byte-identical`);
   finiteUnit(baked.geo.attributes.normal, `${specId} bake`);

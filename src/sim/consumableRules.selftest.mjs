@@ -11,6 +11,7 @@ import {
   useConsumableSlot,
 } from './consumableRules.ts';
 import { CONSUMABLE_TIMING, consumableTiming, matchRulesetFor, rulesetAllowsConsumable, rulesetConsumableGate } from './matchRuleset.ts';
+import { applyEquipmentToCombat } from './equipmentRules.ts';
 
 // ---- the catalog and its timing
 assert.equal(CONSUMABLE_CATALOG.length, 13, 'thirteen consumables');
@@ -201,6 +202,19 @@ const state = (items, c) => createConsumableState(items, consumableTiming, c);
   useConsumableSlot(s, 1, c, host(10), consumableTiming);
   assert.deepEqual(consumableSpottingIds(s, c.equip, 20), ['optics', CONSUMABLE_FOLIAGE_EQUIPMENT]);
   assert.deepEqual(consumableSpottingIds(s, c.equip, 70), ['optics'], 'sixty seconds of foliage');
+  // round 3 B7 review: a live re-equip (applyEquipmentToCombat replaces combat.equip) under Fresh Foliage. The foliage
+  // ids were built once from the kit the consumables were made with and kept it for the life: spotting read the old kit.
+  const live = combat();
+  const f = state(['foliage', 'repair', 'first_aid'], live);
+  useConsumableSlot(f, 0, live, host(100), consumableTiming);
+  const before = consumableSpottingIds(f, live.equip, 101);
+  assert.deepEqual(before, ['optics', CONSUMABLE_FOLIAGE_EQUIPMENT]);
+  applyEquipmentToCombat(live, ['binoculars', 'camo_net']);
+  const after = consumableSpottingIds(f, live.equip, 102);
+  assert.deepEqual(after, ['binoculars', 'camo_net', CONSUMABLE_FOLIAGE_EQUIPMENT], 'foliage reports the new kit, not the old');
+  assert.equal(after, before, 'rebuilt in the same array: a spotting pass allocates nothing');
+  assert.equal(consumableSpottingIds(f, live.equip, 103), after, 'and the next pass reads it as it is');
+  assert.deepEqual(consumableSpottingIds(f, live.equip, 170), ['binoculars', 'camo_net'], 'foliage over: the new kit alone');
   // APS: the hull faces +Z (yaw 0); a round travelling -Z comes from the front
   const missile = { guided: true, type: 'HEAT' };
   assert.equal(apsIntercepts(s, 5, missile, 0, 0, -1), false, 'not armed');

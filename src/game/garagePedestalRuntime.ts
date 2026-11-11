@@ -165,6 +165,25 @@ interface GaragePedestalRuntimeOptions {
   invalidatePresentation?(): void;
 }
 
+/**
+ * 2026-11-02 audit R5: a pedestal visual's one declared residency, replacing the state the runtime used to read back
+ * from its transform. staging: in the scene at the park offset while its programs link. onStage: the podium hero.
+ * parked: detached and hidden in the warm cache. lent: handed to a battle (only the return's adoption brings it back).
+ * released: a lend the battle kept or let go without an adoption; no longer the Garage's. retired: disposed.
+ */
+export type GarageHeroResidency = 'staging' | 'onStage' | 'parked' | 'lent' | 'released' | 'retired';
+
+const HERO_RESIDENCY_MOVES: Readonly<Record<GarageHeroResidency | 'unknown', readonly GarageHeroResidency[]>> = {
+  // 'unknown' -> onStage: the return adopts a visual the battle built itself
+  unknown: ['staging', 'onStage', 'retired'],
+  staging: ['onStage', 'parked', 'retired'],
+  onStage: ['onStage', 'parked', 'lent', 'retired'],
+  parked: ['onStage', 'parked', 'retired'],
+  lent: ['onStage', 'parked', 'released', 'retired'],
+  released: ['onStage', 'retired'],
+  retired: [],
+};
+
 export interface GaragePedestalRuntime {
   readonly current: GaragePedestalVisual | null;
   readonly cacheIds: readonly string[];
@@ -177,6 +196,7 @@ export interface GaragePedestalRuntime {
   trim(maxEntries?: number): void;
   hasCached(specId: string): boolean;
   isOnStage(visual?: GaragePedestalVisual | null): boolean;
+  residencyOf(visual: GaragePedestalVisual | null | undefined): GarageHeroResidency | null;
   poseCurrent(): void;
   adoptBattlePlayer(specId: string): boolean;
   lendToBattle(specId: string, useTank?: boolean): boolean;
@@ -260,9 +280,31 @@ export function createGaragePedestalRuntime({
   let pendingSince = 0;
   let disposed = false;
   const cache = new Map<string, GaragePedestalVisual>();
-  const parked = new WeakMap<GaragePedestalVisual, number>();
   const trackedDisposal = new WeakSet<GaragePedestalVisual>();
-  const retired = new WeakSet<GaragePedestalVisual>();
+  const residency = new WeakMap<GaragePedestalVisual, GarageHeroResidency>();
+  // When the watchdog first saw the lent hero still held by the battle in the Garage phase (the return's yields).
+  let lentReturnSeenAt: number | null = null;
+  const residencyOf = (visual: GaragePedestalVisual | null | undefined): GarageHeroResidency | null => (
+    visual ? residency.get(visual) ?? null : null);
+  // The one writer of a visual's residency: a move the table does not allow is refused and traced.
+  const moveResidency = (visual: GaragePedestalVisual, next: GarageHeroResidency): boolean => {
+    const from = residency.get(visual) ?? 'unknown';
+    if (!HERO_RESIDENCY_MOVES[from].includes(next)) {
+      trace('residency-refused', { id: visual.specId, from, to: next });
+      return false;
+    }
+    residency.set(visual, next);
+    return true;
+  };
+  const heldByBattle = (visual: GaragePedestalVisual) => getBattlePlayer()?.visual === visual
+    || getBattleEntity(visual.specId)?.visual === visual;
+  // A lend that ended without an adoption: the battle kept or let the visual go, so the pedestal forgets it.
+  const releaseLent = (visual: GaragePedestalVisual) => {
+    if (!moveResidency(visual, 'released')) return;
+    if (cache.get(visual.specId) === visual) cache.delete(visual.specId);
+    if (current === visual) current = null;
+    trace('lent-released', { id: visual.specId });
+  };
 
   // A parked root is deliberately parentless, so parent presence alone can
   // no longer distinguish it from an externally disposed visual. Preserve
@@ -272,9 +314,8 @@ export function createGaragePedestalRuntime({
     trackedDisposal.add(visual);
     const originalDispose = visual.dispose;
     visual.dispose = () => {
-      if (retired.has(visual)) return;
-      retired.add(visual);
-      parked.delete(visual);
+      if (residency.get(visual) === 'retired') return;
+      moveResidency(visual, 'retired');
       if (cache.get(visual.specId) === visual) cache.delete(visual.specId);
       if (current === visual) current = null;
       originalDispose.call(visual);
@@ -285,10 +326,12 @@ export function createGaragePedestalRuntime({
     && (getBattlePlayer()?.visual === visual
       || getBattleEntity(visual.specId)?.visual === visual);
 
-  const reusable = (visual: GaragePedestalVisual) => !retired.has(visual)
-    && (visual.root.parent === scene || (parked.has(visual)
-      && visual.root.parent === null && visual.root.visible === false
-      && visual.root.position.y === parked.get(visual)));
+  // Reusable by declared state; the parent check only catches a graph detached behind the runtime's back.
+  const reusable = (visual: GaragePedestalVisual) => {
+    const state = residency.get(visual);
+    if (state === 'staging' || state === 'onStage') return visual.root.parent === scene;
+    return state === 'parked' && visual.root.parent === null;
+  };
 
   // Direct Studio boot intentionally warms its future Garage hero while idle.
   const canStage = () => !disposed && (getPhase() === 'garage' || getPhase() === 'studio');
@@ -365,18 +408,13 @@ export function createGaragePedestalRuntime({
   const visualState = (visual: GaragePedestalVisual | null) => {
     if (!visual) return null;
     const root = visual.root;
-    return `${visual.specId}${root.parent ? '' : '/detached'}`
-      + `${root.visible === false ? '/hidden' : ''}`
-      + `${root.position.y < garagePosition.y - 50 ? '/parked' : ''}`;
+    return `${visual.specId}/${residency.get(visual) ?? 'unknown'}${root.parent ? '' : '/detached'}`
+      + `${root.visible === false ? '/hidden' : ''}`;
   };
 
   const isOnStage = (visual: GaragePedestalVisual | null = current) => {
-    if (!visual?.root) return false;
-    const root = visual.root;
-    return !!root.parent && root.visible !== false
-      && Math.abs(root.position.x - garagePosition.x) < 4
-      && Math.abs(root.position.z - garagePosition.z) < 4
-      && root.position.y > garagePosition.y - 50;
+    if (!visual?.root || residency.get(visual) !== 'onStage') return false;
+    return !!visual.root.parent && visual.root.visible !== false;
   };
 
   const switchPending = () => pollToken !== shownToken
@@ -403,8 +441,17 @@ export function createGaragePedestalRuntime({
     }
   };
 
+  const hideAtParkOffset = (visual: GaragePedestalVisual) => {
+    visual.setVisible?.(false);
+    visual.root.visible = false;
+    visual.root.position.y = garagePosition.y + PARK_OFFSET_Y;
+    visual.root.removeFromParent();
+  };
+
   const park = (visual: GaragePedestalVisual | null, leavingGarage = false) => {
     if (!visual || (visual === current && !leavingGarage) || fielded(visual)) return;
+    // A lent hero is the battle's until the return adopts it (or the watchdog reclaims it): never park it.
+    if (residency.get(visual) === 'lent') return;
     if (visual.root.parent !== scene) return;
     // Never strip the last visible cover while a replacement is compiling.
     if (isOnStage(visual) && !isOnStage(current)) {
@@ -412,11 +459,8 @@ export function createGaragePedestalRuntime({
       return;
     }
     trace('park', { id: visual.specId });
-    visual.setVisible?.(false);
-    visual.root.visible = false;
-    visual.root.position.y = garagePosition.y + PARK_OFFSET_Y;
-    visual.root.removeFromParent();
-    parked.set(visual, visual.root.position.y);
+    hideAtParkOffset(visual);
+    moveResidency(visual, 'parked');
   };
 
   const evict = (specId: string, visual: GaragePedestalVisual) => {
@@ -678,6 +722,7 @@ export function createGaragePedestalRuntime({
     pose(incoming);
     incoming.root.position.y = garagePosition.y + PARK_OFFSET_Y;
     scene.add(incoming.root);
+    moveResidency(incoming, 'staging');
     incoming.__pedestalCompiling = true;
     touch(specId, incoming);
     const compileAt = now();
@@ -689,7 +734,7 @@ export function createGaragePedestalRuntime({
     });
     await incoming.__pedestalCompileP;
     closeStage(record, 'compile', compileAt);
-    if (cache.get(specId) !== incoming || retired.has(incoming)) return false;
+    if (cache.get(specId) !== incoming || residency.get(incoming) === 'retired') return false;
     // A selection made during the wait reveals through the cached path; an
     // unselected hero waits parked, hidden and detached, like any warm entry.
     if (current !== incoming && !isOnStage(incoming)) park(incoming);
@@ -723,9 +768,17 @@ export function createGaragePedestalRuntime({
     };
 
     let cached = cache.get(specId);
+    if (cached && residency.get(cached) === 'lent') {
+      // The return's adoption brings a lent hero back; while the battle still holds it, nothing else re-stages it.
+      if (heldByBattle(cached)) {
+        trace('lent-defer', { id: specId, tok: pollToken });
+        return Promise.resolve();
+      }
+      releaseLent(cached);
+      cached = undefined;
+    }
     if (cached && !reusable(cached)) {
       trace('purge-detached', { id: specId });
-      parked.delete(cached);
       cache.delete(specId);
       cached = undefined;
     }
@@ -739,8 +792,8 @@ export function createGaragePedestalRuntime({
         prepareVisual?.(cached, getSpec(specId));
         current = cached;
         touch(specId, cached);
-        parked.delete(cached);
         if (!cached.root.parent) scene.add(cached.root);
+        moveResidency(cached, 'onStage');
         pose(cached);
         cached.setVisible?.(true);
         cached.root.visible = true;
@@ -796,6 +849,7 @@ export function createGaragePedestalRuntime({
       pose(incoming);
       incoming.root.position.y = garagePosition.y + PARK_OFFSET_Y;
       scene.add(incoming.root);
+      moveResidency(incoming, 'staging');
       touch(specId, incoming);
       phases.buildMs += now() - phaseAt;
       closeStage(record, 'stage', phaseAt);
@@ -834,6 +888,7 @@ export function createGaragePedestalRuntime({
         return;
       }
       current = incoming;
+      moveResidency(incoming, 'onStage');
       pose(incoming);
       incoming.setVisible?.(true);
       incoming.root.visible = true;
@@ -858,7 +913,8 @@ export function createGaragePedestalRuntime({
   const adoptBattlePlayer = (specId: string) => {
     if (disposed || getPhase() !== 'garage') return false;
     const incoming = getBattlePlayer()?.visual;
-    if (!incoming || incoming.root.userData?.aircraftOnly || incoming.specId !== specId || retired.has(incoming)) return false;
+    if (!incoming || incoming.root.userData?.aircraftOnly || incoming.specId !== specId
+      || residency.get(incoming) === 'retired') return false;
     const cached = cache.get(specId);
     if (cached && reusable(cached) && cached !== incoming) return false;
     const outgoing = current;
@@ -866,13 +922,18 @@ export function createGaragePedestalRuntime({
     prepareVisual?.(incoming, incoming.spec);
     if (!incoming.root.parent) scene.add(incoming.root);
     current = incoming;
-    parked.delete(incoming);
+    lentReturnSeenAt = null;
+    moveResidency(incoming, 'onStage');
     pose(incoming);
     incoming.setVisible?.(true);
     incoming.root.visible = true;
     incoming.__everShown = true;
     touch(specId, incoming);
-    if (outgoing && outgoing !== incoming) park(outgoing);
+    if (outgoing && outgoing !== incoming) {
+      // a lent hero the battle replaced stays the battle's to dispose; anything else parks
+      if (residency.get(outgoing) === 'lent') releaseLent(outgoing);
+      else park(outgoing);
+    }
     pollToken += 1;
     shownToken = pollToken;
     trace('adopt-battle', { id: specId, pv: visualState(incoming) });
@@ -910,9 +971,15 @@ export function createGaragePedestalRuntime({
     }
     releaseVisual?.(visual);
     entity.visual = visual;
+    // `current` keeps naming the lent visual (battle code reads it as the player's pedestal visual); its residency
+    // says it is the battle's now.
+    moveResidency(visual, 'lent');
+    lentReturnSeenAt = null;
     // A slow Garage selection must not finish after the current hero has
     // been handed to simulation and move that actor back onto the podium.
+    // The selection is settled: the hero is the battle's.
     pollToken += 1;
+    shownToken = pollToken;
     preloader.invalidate();
     visual.setGroundSampler?.(groundSampler);
     trace('lend-battle', { id: specId });
@@ -921,6 +988,19 @@ export function createGaragePedestalRuntime({
 
   const watchdog = scheduleWatchdog(() => {
     if (disposed || !isBootComplete() || getPhase() !== 'garage') return;
+    if (current && residency.get(current) === 'lent') {
+      if (!heldByBattle(current)) releaseLent(current);
+      else {
+        // The return adopts its player's visual after its own yields: leave the lent hero to that edge. Past the
+        // grace no return adopted it, so the watchdog takes it back as the Garage hero (the battle is over).
+        lentReturnSeenAt ??= now();
+        if (now() - lentReturnSeenAt < PENDING_GRACE_MS) return;
+        trace('lent-reclaim', { id: current.specId });
+        lentReturnSeenAt = null;
+        hideAtParkOffset(current);
+        moveResidency(current, 'parked');
+      }
+    }
     const wanted = getSelectedId();
     if (!wanted || switchPending()) return;
     if (current?.specId === wanted && isOnStage(current)) return;
@@ -942,7 +1022,8 @@ export function createGaragePedestalRuntime({
     isOnStage,
     // Environment activation precedes reveal/adoption on Garage return. Keep
     // a parked root's owned sentinel intact until that reveal reattaches it.
-    poseCurrent: () => { if (current && !parked.has(current)) pose(current); },
+    poseCurrent: () => { if (current && residency.get(current) !== 'parked') pose(current); },
+    residencyOf,
     adoptBattlePlayer,
     lendToBattle,
     buildSpeculative,
@@ -952,6 +1033,19 @@ export function createGaragePedestalRuntime({
       pollToken += 1;
       preloader.invalidate();
       cancelWatchdog(watchdog);
+      // (2026-11-02 audit R5, round 2) the cached heroes go with the pedestal: each is retired (the tracked dispose takes
+      // it out of the cache) with its root out of the scene, except one the battle holds, which stays the battle's to
+      // dispose (a lent hero is released; production never disposes the pedestal, its page does)
+      const owned = new Set(cache.values());
+      if (current) owned.add(current);
+      for (const visual of owned) {
+        if (residency.get(visual) === 'lent') { releaseLent(visual); continue; }
+        if (heldByBattle(visual)) continue;
+        scene.remove(visual.root);
+        visual.dispose();
+      }
+      cache.clear();
+      current = null;
     },
   };
 }

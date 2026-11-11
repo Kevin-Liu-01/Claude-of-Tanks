@@ -36,10 +36,10 @@ try {
   const { bakeTankWreck } = await import('./wrecks.ts');
   assert.equal(hooks, 1);
   const fixtures = [
-    { specId: 't90am', seed: 2526, pop: false },
-    { specId: 'xk2_black_panther', seed: 2002, pop: true },
-    { specId: 'm1a1', seed: 2002, pop: true },
-    { specId: 'type10_tk_x', seed: 2133, pop: true },
+    { specId: 't90am', seed: 2526, state: 'burnt_out' },
+    { specId: 'xk2_black_panther', seed: 2002, state: 'turret_blown_off' },
+    { specId: 'm1a1', seed: 2002, state: 'turret_blown_off' },
+    { specId: 'type10_tk_x', seed: 2133, state: 'turret_blown_off' },
   ];
   const receipts = [];
   for (const fixture of fixtures) {

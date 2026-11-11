@@ -29,7 +29,6 @@ import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDron
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { cloneRehookedVehicleMaterial } from '../materials.ts';
-import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import {
   loftHull,
@@ -43,6 +42,7 @@ import {
   widthAnchor,
 } from './russia.ts';
 import { ABRAMS_PROFILES } from './abrams.ts';
+import { buildOnDonor } from './donorBuild.ts';
 import type { ProfileBuilderPort, VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as seat } from './fittingMount.ts';
 
@@ -72,6 +72,8 @@ interface UkraineBuilderPort {
   };
   readonly spec: { id: string; readonly visual: { readonly number?: string } };
   readonly disposables: DisposableResource[];
+  /** The factory port's deferred stage (a suit is laid there after the build; donorBuild.ts claims the UA M1A1's). */
+  readonly afterAssemble: TankBuilderPort['afterAssemble'];
   /** false on the low geometry tier (the factory's `geometryQuality: 'low'`). */
   readonly q?: boolean;
   muzzleZ?: number;
@@ -1347,22 +1349,13 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
 }
 
 function buildUAM1A1(P: UkraineBuilderPort): void {
-  // buildTejasFamily branches on the source family id.  Present the exact
-  // M1A1HA id only for the base build, then restore the Ukrainian identity
-  // before attaching the first-party cage and decals.
-  const id = P.spec.id;
-  P.spec.id = 'm1a1ha';
+  // buildTejasFamily branches on the source family id: the exact M1A1HA id for the base build only (donorBuild.ts), the
+  // Ukrainian identity back before the first-party cage and decals; the Ukrainian suit claimed first, laid after the build.
   // Release 268: the HA base lends its shell, not its Desert Storm kit. The host id tells buildTejasFamily and the
   // M1A1 identity kits that this is a Ukrainian M1A1 SA: no track-width mine plow, no 1991 rack stowage, no gun
   // searchlight (research/ua_m1a1/photos).
-  P.hullG.userData.m1a1BaseHost = id;
-  try {
-    ABRAMS_PROFILES.m1a1ha.build(P);
-  } finally {
-    P.spec.id = id;
-  }
+  buildOnDonor(P, 'm1a1ha', (port) => ABRAMS_PROFILES.m1a1ha.build(port));
   addAbramsDroneCage(P);
-  addVehicleGhillieSuit(P);
   addMissionAttachmentReceiver(P, 'ua_m1a1');
 }
 

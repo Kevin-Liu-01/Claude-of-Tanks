@@ -136,6 +136,24 @@ try {
   await hidden;
   assert.equal(screen.covering, false);
 
+  // 2026-11-02 audit F8: hide -> show -> hide inside one fade. The first fade's timer must not uncover the second fade
+  // (input was unmasked under a cut fade), and a hide that a later show superseded settles at once with the cover up.
+  {
+    screen.show(info);
+    const first = screen.hide();
+    screen.show(info);
+    const second = screen.hide();
+    await first;
+    assert.equal(screen.covering, true, 'a hide that a later show superseded settles at once, the cover up (its caller reads covering)');
+    timers.shift()(); // the first fade's timer fires during the second fade
+    assert.equal(screen.covering, true, 'the first fade\'s timer does not uncover the second fade');
+    assert.equal(screen.root.classList.contains('leaving'), true, 'nor cut its fade');
+    timers.shift()();
+    await second;
+    assert.equal(screen.covering, false, 'the hide that ran to the end leaves the cover down');
+    assert.equal(screen.root.classList.contains('leaving'), false);
+  }
+
   // 2026-10-12 (the perf stream; owner: "loading into some maps still shows a black screen at first"): the screen shows the
   // map's gradient at once and its art only once decoded — the card first while the 1.5 MB hero is still on its way, the
   // hero over it — never an undecoded background over a near-black surface; a later show supersedes a load in flight.

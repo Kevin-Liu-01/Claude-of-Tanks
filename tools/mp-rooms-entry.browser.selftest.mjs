@@ -15,8 +15,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { openRooms } from './mp-rooms-entry.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 import { machineLoad, SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -28,9 +30,7 @@ const SIZES = option('sizes', '1024x640,1440x900').split(',').map((text) => {
 // the tool's own boot (tools/mp-p2p-e2e.mjs BOOT_QUERY)
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1&telemetry=off';
 
-await acquireCaptureLock(60 * 60 * 1000, { lockClass: 'render', holdCapMinutes: 18 });
-const refresh = setInterval(() => refreshCaptureLock(), 30_000);
-refresh.unref();
+hold = await openCaptureHold({ label: 'mp-rooms-entry.browser.selftest', timeoutMs: 60 * 60 * 1000, lockClass: 'render', holdCapMinutes: 18 });
 // no --url: this checkout on its own server and optimizer cache (a shared cache hangs beside another dev server)
 let server = null, cacheDir = null;
 if (!base) {
@@ -61,7 +61,7 @@ try {
     try {
       await page.setViewport(size);
       await page.goto(`${base}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 600_000 });
-      await wait(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${size.name}: the Garage`, 600_000);
+      await wait(page, readinessExpression('garage'), `${size.name}: the Garage`, 600_000);
       const oldEntryShown = await page.evaluate(() => {
         const node = document.querySelector('.cot-multiplayer-entry');
         return !!node && node.getClientRects().length > 0 && node.checkVisibility({ visibilityProperty: true });
@@ -79,8 +79,7 @@ try {
   }
 } finally {
   await browser.close();
-  clearInterval(refresh);
-  releaseCaptureLock();
+  await hold?.release();
   await server?.close();
   if (cacheDir) rmSync(cacheDir, { recursive: true, force: true });
 }

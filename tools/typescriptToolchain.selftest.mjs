@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config as middlewareConfig } from '../middleware.ts';
-import { typecheckVerdict } from './typecheck.mjs';
+import { linterOf, typecheckVerdict } from './typecheck.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
@@ -50,6 +50,17 @@ assert.equal(manifest.scripts.lint, 'oxlint', 'npm run lint runs oxlint with .ox
   assert.equal(verdict('', null).kind, 'compiler', 'a killed compiler fails');
   assert.equal(verdict(`${unusedTool}\npanic: runtime error: index out of range\n\ngoroutine 1 [running]:\n`).kind, 'compiler',
     'a crash after part of the output fails');
+}
+
+// A checkout without Oxlint fails the typecheck (272): the gate has no other lint step.
+{
+  const present = linterOf('/repo', (path) => path === '/repo/node_modules/oxlint/bin/oxlint');
+  assert.deepEqual(present, { oxlint: '/repo/node_modules/oxlint/bin/oxlint', missing: null });
+  const absent = linterOf('/repo', () => false);
+  assert.equal(absent.oxlint, null);
+  assert.match(absent.missing, /oxlint is not installed.*typecheck fails \(run npm ci\)/);
+  assert.match(typecheckSource, /if \(!lint\) \{\n\s+process\.stderr\.write\(`\$\{linter\.missing\}\\n`\);\n\s+process\.exitCode = 1;/,
+    'the missing linter sets a failing exit code');
 }
 
 const require = createRequire(import.meta.url);

@@ -4,6 +4,7 @@ import { TREE_ARCHETYPES } from './treeSpecies.ts';
 import { treeRootDecalRadius } from './treeGrounding.ts';
 import { overlapsStructureClearance, type StructureClearance } from './vegetationClearance.ts';
 import type { CollisionRecord } from './collision.ts';
+import { moveConcealerDisc } from './concealerIndex.ts';
 
 export interface AuthoredTreeFeature {
   id: string;
@@ -211,7 +212,7 @@ function relocate(tree: AuthoredTreeRecord, obstacle: CollisionRecord, concealer
   obstacle.min[0] += dx; obstacle.max[0] += dx; obstacle.min[1] += dy; obstacle.max[1] += dy;
   obstacle.min[2] += dz; obstacle.max[2] += dz;
   obstacle.shape2.cx = x; obstacle.shape2.cz = z;
-  concealer.x = x; concealer.z = z;
+  moveConcealerDisc(concealer, x, z); // (round 2 Q13) the canopy index learns of the move
 }
 
 /**

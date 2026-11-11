@@ -27,9 +27,11 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
-import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
+import { acquireProbeLocks, markUnitsLeft, openPreview, pinnedOpponents, runProbeUnit } from './frame-budget-probe.mjs';
+import { heldRunExitCode } from './held-items.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const TOOL = 'battle-memory-probe';
 const BUDGET_FILE = fileURLToPath(new URL('./battle-memory-budget.json', import.meta.url));
@@ -292,7 +294,7 @@ async function probeScenario(options, scenario) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument(installCensusObservers, { preset: options.preset, allies, enemies });
     await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+    await waitForBootLoaded(page, { timeout: 300000 });
     await page.evaluate(() => { const P = window.__DEBUG.post; P.setAdaptiveSuspended?.(true); P.pinDynScale?.(1); });
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
     await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, pinnedOpponents(catalog, options.spec, allies + enemies));
@@ -315,7 +317,7 @@ async function probeScenario(options, scenario) {
       // the entry's covered first-battle warm (once a session; window.__BATTLE_FIRST_WARM) and its load stages
       const entry = await page.evaluate(() => ({ firstWarm: window.__BATTLE_FIRST_WARM ?? null,
         loadStages: window.__BATTLE_LOAD?.stages ?? null }));
-      await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+      await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 420000, polling: 250 });
       const inBattle = rssByKind(pid);
       await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
@@ -334,7 +336,7 @@ async function probeScenario(options, scenario) {
       }, `${battle}_${battleMap}`, battle);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-      await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
+      await page.waitForFunction(readinessExpression('garage'), { timeout: 180000, polling: 250 });
       await sleep(5000);
       const row = { label: `garage after battle ${battle} (${battleMap})`, map: battleMap, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
       if (options.leakCheck) {
@@ -425,19 +427,29 @@ export function judgeMemory(record, budget) {
   });
 }
 
-if (isMainModule(import.meta.url)) {
-  const options = parseMemoryArgs(process.argv.slice(2));
-  mkdirSync(options.out, { recursive: true });
-  if (!existsSync(path.join(options.root, 'dist', 'index.html'))) throw new Error(`${options.root} has no dist`);
-  const locks = await acquireProbeLocks({ log });
+/** The probe's scenarios under the pair's hold. `deps` (round 3 A5) are its outside world, for a receipt that drives it
+ *  without a browser: the locks, the preview server and one scenario's run. */
+export async function runMemoryProbe(options, { acquireLocks = acquireProbeLocks, openServer = openPreview, probe = probeScenario } = {}) {
+  const locks = await acquireLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
-  const server = await openPreview(options.root, options.port);
+  const server = await openServer(options.root, options.port);
   let failed = 0;
   try {
     const budget = options.gate ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : null;
-    for (const scenario of options.scenarios) {
-      const record = await probeScenario(options, scenario);
+    for (const [index, scenario] of options.scenarios.entries()) {
+      // the hold's stop (the lock's cap with a waiter, a signal) before a scenario, or (round 3 A5) during one (its browser
+      // stopped under it): it and the scenarios after it wait for the next run, never a gate's pass and no uncaught crash.
+      // (round 3 A5 review) The log names the run that finishes them: this probe keeps no list of what it measured.
+      const unit = await runProbeUnit(locks, () => probe(options, scenario));
+      if (unit.outcome === 'left') {
+        const left = options.scenarios.slice(index);
+        log(`the capture hold was stopped (${unit.why}): ${left.join(', ')} left for the next run; finish with the same options and --scenarios=${left.join(',')}`);
+        markUnitsLeft();
+        break;
+      }
+      if (unit.outcome === 'failed') throw unit.error;
+      const record = unit.value;
       writeFileSync(path.join(options.out, `${keyOf(scenario, options.size)}.json`), JSON.stringify(record, null, 1));
       log(`${keyOf(scenario, options.size)}: growth ${JSON.stringify(record.growth)}; peak ${JSON.stringify(record.peakRss)}`);
       if (record.retained) for (const site of record.retained.sites.slice(0, 12)) log(`  retained ${site.mb} MB ${site.chunk} ${site.fn} ${site.source ?? site.at}`);
@@ -450,7 +462,15 @@ if (isMainModule(import.meta.url)) {
   } finally {
     await server.close().catch(() => {});
     clearInterval(refresh);
-    locks.release();
+    await locks.release();
   }
-  if (options.gate && failed) { log(`${failed} limit(s) FAILED`); process.exitCode = 1; }
+  // (round 4 review) a failed limit exits 1 over the 3 of scenarios left, never over a signal's 128 + n (heldRunExitCode)
+  if (options.gate && failed) { log(`${failed} limit(s) FAILED`); heldRunExitCode({ failed: true }); }
+}
+
+if (isMainModule(import.meta.url)) {
+  const options = parseMemoryArgs(process.argv.slice(2));
+  mkdirSync(options.out, { recursive: true });
+  if (!existsSync(path.join(options.root, 'dist', 'index.html'))) throw new Error(`${options.root} has no dist`);
+  await runMemoryProbe(options);
 }

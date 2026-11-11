@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RECIPES, parseArgs, schedule, stageCategory, outputIdentity, measureSteps,
@@ -151,6 +151,18 @@ assert.match((await cancelledOwner.done).error, /Interrupted/);
 assert.equal(cancelTimers.size(), 0);
 active = null; cancellation.dispose(); cancellation.dispose();
 assert.equal(signalEmitter.listenerCount('SIGINT'), 0); assert.equal(signalEmitter.listenerCount('SIGTERM'), 0);
+// (round 2 U38) one owner of a signal: round one held with the hold's own owner too, which released the lock and exited
+// before the worker closed (the final report never written); the hold's own stop now reaches the worker the same way
+{
+  const stops = [], held = registerCancellation(() => ({ stop: reason => stops.push(reason) }), new EventEmitter());
+  held.interrupt();
+  assert.deepEqual(stops, ['Interrupted']); assert.equal(held.isInterrupted(), true); held.dispose();
+  const tool = readFileSync(new URL('./wreck-paint-bench.mjs', import.meta.url), 'utf8');
+  assert.match(tool, /openCaptureHold\(\{[^\n]*signals: \[\] \}\)/, 'registerCancellation is the one signal owner');
+  assert.match(tool, /hold\.signal\.addEventListener\('abort', \(\) => \{\n[^\n]*cancellation\.interrupt\(\);/, 'the hold\'s stop reaches the worker');
+  assert.ok(tool.indexOf('await owner.done') < tool.indexOf('await hold?.release()') && tool.indexOf('await hold?.release()') < tool.lastIndexOf('write();'),
+    'the worker closes, then the lease goes, then the final report is written');
+}
 
 const timed = fakeChild(), timeoutTimers = fakeTimers();
 const timedOwner = ownWorker(timed, { ...timeoutTimers, timeoutMs: 1, graceMs: 2 });

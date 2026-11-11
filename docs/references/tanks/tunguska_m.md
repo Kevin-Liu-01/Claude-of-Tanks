@@ -37,7 +37,8 @@ The 2K22M (2S6M) Tunguska-M as photographed at Tank Biathlon 2014 (Kuzmin, 01-06
 rehearsal (07-08) and the related Tunguska-M1 at MAKS 2007/2011 (09-13: the M1's 9M311-M1 launchers differ in detail;
 use 01-08 for the M's own fit). GM-352 chassis, six road wheels with return rollers, the turret with the folding search
 radar at the rear and the tracking radar dish at the front, a 2A38M twin-barrel 30 mm on each side with two 9M311M
-canisters above and outboard of it, plain Russian green.
+canisters above and outboard of it, in the 2008 Moscow parade three-tone (07, 08): grey buff and near-black bands over
+the olive.
 
 ## Published numbers
 
@@ -67,7 +68,7 @@ canisters above and outboard of it, plain Russian green.
 | SAM | 9M311M: 360 dmg, 25 mm, 900 m/s, 8 rounds, 8 tubes, 3.0 s, `tow-launch` | the M6 Linebacker's Stinger handling; the 9M311's peak speed |
 | Fire control | 0.26 accuracy, 1.10 s aim (1.03 after recon) | |
 | Fire axes | twin, x = +/-0.925 m in the gun frame (round 3: bores 0.15 m apart): each 2A38M's inner bore (barrel groups 0 and 1); the outer bores are drawn with their own dark mouths | builder R, gm352Layout.ts TUNGUSKA |
-| Paint | stock `national_ru` (Russia's plain service green), spec coat the same recipe | the photographs' solid green; no new paint |
+| Paint | stock `paint_tunguska_m` (Russian Three-Tone Woodland: grey buff `#a59e7f` and near-black `#2f3329` bands over olive `#5a5d3b`, `nato`, scale 0.9), spec coat the same recipe | the 2008 Moscow parade rehearsal photographs (07, 08); owner 2026-11-05: "tunguska and pantsir need camos" (was `national_ru`, plain green) |
 | Marking | hull left anchor, number 211, Russian marking set | |
 | View / camouflage | 440 m, 0.230 still / 0.200 moving | the Linebacker's recon profile |
 

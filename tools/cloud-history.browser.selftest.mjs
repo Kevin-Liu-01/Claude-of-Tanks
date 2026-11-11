@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 function sourceHash() {
@@ -24,12 +24,11 @@ async function bounded(promise, ms, label) {
   } finally { clearTimeout(timer); }
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { sourceHash: sourceHash(), errors: [] };
-let server, browser, refresh;
+let server, browser;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'cloud-history.browser.selftest', timeoutMs: 45 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     plugins: [{ name: 'cloud-history-fixture', enforce: 'pre', configureServer(instance) {
@@ -68,7 +67,7 @@ try {
     try { await bounded(server.close(), 10_000, 'server close'); }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh); lock.release();
+  await hold?.release();
 }
 report.ok = report.errors.length === 0;
 console.log(JSON.stringify(report, null, 2));

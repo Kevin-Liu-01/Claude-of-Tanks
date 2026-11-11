@@ -23,6 +23,9 @@
 // floors keep the axis opening narrow) and a gunner, commander or operator in a hull crew capsule reclines like a
 // driver. Where still none fits, the nearest best placement is kept and its shapes are trimmed into the armour
 // (`trimmed`, with the outside share it started from).
+// An open mount's station (269, armor.openStations: the M163 VADS's gunner in his open-topped column) also holds the
+// upright cylinder he rides in over the armour, and nothing under his footrest (floorY: no deeper basket); his hit
+// shapes are held to it and the armour alike (he is struck where he sits exposed). A spec without one seats as before.
 // Pure numbers, no three.js; deterministic (fixed grids, fixed order).
 
 import { stationSideSign } from '../src/vehicles/vehicleSide.ts';
@@ -319,16 +322,16 @@ function largestCircle(cells, y, margin) {
  * cells for hull crew; for turret crew the turret's cells, the hull's under the turret at every yaw (the basket), and the
  * turret ring's opening between them. `inside(p, margin)` is `margin` in from every face (negative: a tolerance out).
  */
-export function crewShell(armor, frame) {
-  return makeShell(armor, frame, 'full');
+export function crewShell(armor, frame, crew = null) {
+  return makeShell(armor, frame, 'full', null, crew);
 }
 
 /**
  * The armour proper (crewShell without the turret ring's opening): the combat shells leave the gap between the hull's
  * roof and the turret's floor open, so a body may sit through the ring but its hit shapes stay out of the gap.
  */
-export function crewArmour(armor, frame) {
-  return makeShell(armor, frame, false);
+export function crewArmour(armor, frame, crew = null) {
+  return makeShell(armor, frame, false, null, crew);
 }
 
 /** How far under the hull's roof and over the turret's floor the full ring's radius is measured. */
@@ -341,11 +344,15 @@ const RING_DEPTH_M = 0.12;
  * `limit` (266, seats only): the turret ring as built ({ ringR, deckY }, the calibration's turretRing). Turret crew keep
  * whatever lies under the turret within the ring's radius (the basket turns inside the race, never past it); hull crew
  * keep out of that cylinder under the deck where a basket turns (`basket`).
+ * `crew` (269): the station's role, for its open-mount cylinder (armor.openStations); none, the closed shell.
  */
-function makeShell(armor, frame, ring, limit = null) {
+function makeShell(armor, frame, ring, limit = null, crew = null) {
   const pivot = armor.turretPivot || [0, 0, 0];
   const hull = armor.collisionShells?.hull || [];
   const turret = armor.collisionShells?.turret || [];
+  // an open mount's station: its own cylinder over the armour, and nothing under its footrest
+  const open = crew === null ? [] : (armor.openStations || []).filter((entry) => entry.crew === crew);
+  const floorY = open.length ? Math.min(...open.map((entry) => entry.floorY)) : -Infinity;
   // Hull crew stay inside the hull (the turret turns over them). Turret crew sit in the basket: inside the turret, or
   // inside the hull under it at every turret yaw (the part of the body below the turret turns with it).
   const own = frame === 'turret' ? frameCells(turret, [0, 0, 0]) : frameCells(hull, [0, 0, 0]);
@@ -409,6 +416,13 @@ function makeShell(armor, frame, ring, limit = null) {
       }
       if (limit?.basket && frame === 'hull' && Math.hypot(x - pivot[0], z - pivot[2]) < limit.ringR + margin) {
         const above = list.map(([lo, hi]) => [Math.max(lo, limit.deckY), hi]).filter(([lo, hi]) => hi > lo);
+        return unionIntervals(above);
+      }
+      if (open.length) {
+        for (const entry of open) {
+          if (Math.hypot(x - entry.center[0], z - entry.center[1]) <= entry.radius - margin) list.push([entry.floorY + margin, entry.topY - margin]);
+        }
+        const above = list.map(([lo, hi]) => [Math.max(lo, floorY + margin), hi]).filter(([lo, hi]) => hi > lo);
         return unionIntervals(above);
       }
       return unionIntervals(list);
@@ -613,9 +627,9 @@ const roundShape = (shape) => shape.kind === 'ellipsoid'
  * Returns the seat record (rounded) or null when the frame has no shell.
  */
 function seatStation({ armor, anchor, frame, station, ladders, fallback, placed, limit }) {
-  const shell = makeShell(armor, frame, 'axis', limit);
+  const shell = makeShell(armor, frame, 'axis', limit, anchor.crew);
   if (!shell.cells.length) return null;
-  const armour = makeShell(armor, frame, false);
+  const armour = makeShell(armor, frame, false, null, anchor.crew);
   const center = anchor.min.map((value, axis) => (value + anchor.max[axis]) / 2);
   const side = stationSideSign(station);
   const obstacleSets = [
@@ -721,7 +735,7 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed,
   // ring; then the best effort, trimmed.
   let result = attempt(ladders, shell);
   if (result?.found) return finishSeat({ ...result.found, shell, armour, trimmed: null });
-  const wide = frame === 'turret' ? makeShell(armor, frame, 'full', limit) : shell;
+  const wide = frame === 'turret' ? makeShell(armor, frame, 'full', limit, anchor.crew) : shell;
   if (result && (fallback.length > ladders.length || wide !== shell)) {
     const second = attempt(fallback, wide);
     if (second?.found) return finishSeat({ ...second.found, shell: wide, armour, trimmed: null });

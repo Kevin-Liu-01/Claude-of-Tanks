@@ -1,4 +1,6 @@
 {
+  "gun_152n_close": [1, 4],
+  "gun_152n_own": [1, 2],
   "impact_far_nonpen": [4, 3, 2],
   "alarm_fire_loop": [1],
   "pole_snap": [1, 4],

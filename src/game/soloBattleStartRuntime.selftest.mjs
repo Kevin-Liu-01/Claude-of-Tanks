@@ -2,18 +2,20 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { applyBurnHook, makeBurnUniforms } from '../vehicles/materials.ts';
 import { createSoloBattleStartRuntime } from './soloBattleStartRuntime.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
+import { createStudioLeftWorld } from '../world/studioLeftWorld.test-support.mjs';
 
 /** (ac130-fx-228) the harness roster adds a bot on the player's own spec (a valid duplicate pick) */
 let dupEscort = false;
 
-function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {} } = {}) {
+function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {}, world: givenWorld = null } = {}) {
   const events = [];
   let clock = 0;
   let trace = null;
   let setupOptions = null;
   let camoSweep = null;
   let snap = null;
-  const world = {
+  const world = givenWorld ?? {
     mapId: 'winter',
     resetDestructibles: () => events.push('world:reset'),
   };
@@ -22,6 +24,8 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
     state: { yaw: 1.25 }, visual, equip: ['rammer'],
   };
   const game = { preBattleS: 0, mapId: '', phase: 'garage', player: null, tanks: [] };
+  // (2026-11-02 audit F1) the session's lifecycle announces the phase the start runtime moves
+  createAppLifecycle({ game, announce: ({ phase }) => events.push(`phase:${phase}`) });
   const runtime = createSoloBattleStartRuntime({
     state: {
       game,
@@ -102,7 +106,6 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       hideEndOverlay: () => events.push('result:hide'),
       resetBattleResult: () => events.push('result:reset'),
       setGarageLighting: (value) => events.push(`garage:lighting:${value}`),
-      emitPhaseChange: (phase) => events.push(`phase:${phase}`),
       emitConsumableReset: () => events.push('consumable:event'),
       rig: {
         release: () => events.push('rig:release'),
@@ -158,6 +161,19 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
   const harness = createHarness({ playerCreated: false });
   assert.throws(() => harness.runtime.start('m1a1_abrams_hc'), /did not create a player/);
   assert.ok(!harness.events.includes('phase:battle'));
+}
+
+{
+  // (2026-11-02 audit F1 review) a start over the Studio's scene (studio -> battle is no edge) is refused before the
+  // count, the roster, the map, the Garage or the HUD move: the phase write used to throw only after all of them
+  const harness = createHarness();
+  harness.game.phase = 'studio';
+  harness.game.preBattleS = 0;
+  assert.throws(() => harness.runtime.start('m1a1_abrams_hc', 'winter', { preBattleHold: true }),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'battle');
+  assert.deepEqual(harness.events, [], 'nothing moved');
+  assert.equal(harness.game.phase, 'studio');
+  assert.equal(harness.game.preBattleS, 0, 'the count was not armed');
 }
 
 
@@ -216,7 +232,19 @@ assert.throws(
   /requires every activation port/,
 );
 
-console.log('soloBattleStartRuntime.selftest: activation order, covered start, and failure pass');
+// (round 3 A7/M4) A battlefield the Studio planned crushes on and never gave back (its teardown threw before
+// releaseCrushes): the solo start takes its falls and sweeps for the battle. The world stayed on the Studio's timeline, so
+// every felled tree of the battle opened its collision and never fell, and its sweeps stayed off.
+{
+  const left = createStudioLeftWorld({ mapId: 'winter' });
+  const harness = createHarness({ world: left.world });
+  harness.runtime.start('m1a1_abrams_hc', 'winter', { deferVisuals: true, preBattleHold: true });
+  assert.equal(harness.game.phase, 'battle');
+  assert.equal(left.fallsWithUpdate(), true, 'a tree the battle fells falls with its frames (before: the Studio\'s timeline held it)');
+  assert.equal(left.world.sweeps, true, 'the battle\'s crush sweeps run');
+}
+
+console.log('soloBattleStartRuntime.selftest: activation order, covered start, failure and a Studio-left world pass');
 
 {
  const h = createHarness();h.runtime.start('m1a1_abrams_hc','winter',{gameMode:'ac130',deferVisuals:true});

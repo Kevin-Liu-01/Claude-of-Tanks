@@ -6,6 +6,7 @@ import type {
   GarageReturnRuntimeOptions,
   GarageReturnTrace,
 } from './garageReturnRuntime.ts';
+import type { BattleAgainOutcome } from './battleEntryIntent.ts';
 
 type GarageReturnModule = Pick<
   typeof import('./garageReturnRuntime.ts'),
@@ -38,6 +39,13 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     preload: owner.preload,
     get current() { return owner.current; },
     get transitioning() { return owner.current?.transitioning ?? false; },
+    get operation() { return owner.current?.operation ?? null; },
+    // (2026-11-02 audit F3) a pristine Garage has had no return: idle, nothing suppressed, nothing to wait for
+    get state() { return owner.current?.state ?? 'idle'; },
+    get framesSuppressed() { return owner.current?.framesSuppressed ?? false; },
+    get owesGarage() { return owner.current?.owesGarage ?? false; },
+    get failure() { return owner.current?.failure ?? null; },
+    whenSettled() { return owner.current?.whenSettled() ?? null; },
     get lastTrace(): GarageReturnTrace | null { return owner.current?.lastTrace ?? null; },
     get awaitingHandoff() { return owner.current?.awaitingHandoff ?? false; },
     async enter(returnOptions?: GarageReturnOptions) {
@@ -50,7 +58,7 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     async leave() {
       return (await owner.preload()).leave();
     },
-    async battleAgain(trigger?: () => boolean) {
+    async battleAgain(trigger?: () => BattleAgainOutcome) {
       return (await owner.preload()).battleAgain(trigger);
     },
     async prepare() {

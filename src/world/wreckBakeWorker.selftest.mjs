@@ -42,8 +42,8 @@ function request(specId, options) {
 const dispose = baked => { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); };
 try {
   const receipts = [];
-  for (const fixture of [{ specId: 't90am', seed: 2526, pop: false },
-    { specId: 'xk2_black_panther', seed: 2002, pop: true }]) {
+  for (const fixture of [{ specId: 't90am', seed: 2526, state: 'burnt_out' },
+    { specId: 'xk2_black_panther', seed: 2002, state: 'turret_blown_off' }]) {
     await ensureTankBuilder(fixture.specId);
     const control = bakeTankWreck({}, fixture.specId, fixture);
     let transferred = null;
@@ -62,7 +62,7 @@ try {
         workerRoundTripMs: Math.round(performance.now() - started) });
     } finally { clearInterval(interval); dispose(control); dispose(transferred); }
   }
-  const missing = await request('__not_a_vehicle__', { seed: 1, pop: false });
+  const missing = await request('__not_a_vehicle__', { seed: 1, state: 'burnt_out' });
   assert.ok(missing.ok === false || missing.wire === null, 'missing donor cannot return unrelated geometry');
   console.log('wreckBakeWorker.selftest: PASS', JSON.stringify(receipts));
 } finally {

@@ -134,6 +134,9 @@ await advance(TICK_MS * 12);
 assert.equal(bobRtc.state, 'open');
 assert.ok(bobClient.welcome, 'the peer was welcomed through the data channel');
 assert.equal(bobClient.welcome.seat, 1);
+// (round 4 F0) the runtime tells a seat its HELLO waits for the boot only before its actor runs (bootHoldNotice): a peer of
+// a live host hears none
+assert.equal(bobClient.stats().holdNotices, 0, 'a peer that arrives at a live host is told of no boot hold');
 assert.equal(host.peersConnected, 1);
 assert.equal(host.acceptor.peers.get('bob').label, 'peer1');
 

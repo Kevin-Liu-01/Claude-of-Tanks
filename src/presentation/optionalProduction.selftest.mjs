@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const archiveShot = { src: '/archive.webp', title: 'Archive', alt: 'Archive', map: 'coastal', feature: 'world system', kind: 'battlefield' };
 const actionShot = { ...archiveShot, src: '/action.webp', kind: 'studio' };
@@ -65,6 +66,10 @@ try {
   await assert.rejects(recipes.loadCaptureRecipes(), /Capture recipes unavailable \(503\)/);
   const archive = await import('./mediaArchive.ts?required-failure');
   await assert.rejects(archive.mountMediaArchive(new Element()), /Presentation archive unavailable \(503\)/);
+  // (improve-271 plan 028) the page's own failure notice is text, never the error parsed as HTML
+  const archiveSource = readFileSync(new URL('./mediaArchive.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(archiveSource, /innerHTML = `<p class="media-archive-count">\$\{message\}/, 'the error never reaches innerHTML');
+  assert.match(archiveSource, /notice\.textContent = ARCHIVE_UNAVAILABLE;\s*root\.replaceChildren\(notice\);/, 'the notice is the archive\'s fixed sentence, as text');
 } finally {
   globalThis.fetch = originalFetch;
   if (originalDocument === undefined) delete globalThis.document;

@@ -1,5 +1,5 @@
 /**
- * The dedicated server's world kernels (workstream #3; RUST-ENGINE-DECISION §9.3: on by default since 2026-10-25): the
+ * The dedicated server's world kernels (workstream #3; docs/RUST-KERNELS.md: on by default since 2026-10-25): the
  * committed crates/cot-sim-wasm binary is compiled once per process, and every dedicated world answers its terrain
  * contact, obstacle grids and hulls' support on its own instance (src/world/wasmWorldKernels.ts). COT_SIM_KERNELS=ts
  * keeps the TypeScript. The kernels change no bit of the simulation, so a server on them plays the same match as one

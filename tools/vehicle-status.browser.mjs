@@ -4,15 +4,15 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 const modulePath=process.argv.find(a=>a.startsWith('--playwright-module='))?.slice(20)||'playwright';
 const {chromium}=await import(modulePath);
 const out=resolve('.qa-dev/vehicle-status');await mkdir(out,{recursive:true});
 const server=await createServer({server:{host:'127.0.0.1',port:5368,hmr:false},logLevel:'error'});
-let browser;const results=[];const capture=createCaptureLock();
+let browser;const results=[];let hold;
 function boxes(){return [...document.querySelectorAll('.cot-status-box:not([hidden])')].map(b=>({id:b.dataset.status,label:b.getAttribute('aria-label'),progress:b.style.getPropertyValue('--repair-fill'),tone:b.dataset.tone,...b.getBoundingClientRect().toJSON()}));}
 try{
- await capture.acquire(60000);
+ hold = await openCaptureHold({ label: 'vehicle-status', timeoutMs: 60000 });
  await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch=false,locale='en-US']of [
  ['desktop',1440,900],['short',844,390],['portrait-mouse',540,720],['phone',390,844,true],
@@ -68,4 +68,4 @@ try{
  }
  await writeFile(resolve(out,'results.json'),JSON.stringify(results,null,2));
  console.log(`vehicle status: ${results.length} viewport/locale cases PASS; repair, priority, overflow, tooltips, clearance and lifecycle`);
-}finally{await browser?.close();await server.close();capture.release();}
+}finally{await browser?.close();await server.close();await hold?.release();}

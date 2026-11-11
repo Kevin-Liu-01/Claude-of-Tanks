@@ -1,15 +1,12 @@
-// Kevin B. Liu — the M3A2 Bradley (ODS) cavalry fighting vehicle: the shared Bradley hull under the classic M2A2 turret.
-// Owner, 2026-11-02: "also make a new variant of the bradley based on the old turret we had before doing this. i liked the
-// shape and all the stuff arounnd it" (docs/references/tanks/m3a2_bradley.md). The M3A2 carried the M2A2's two-man
-// turret; the hull is the family's (modern3.ts buildBradleyHull + bradleyFlankDressing, rebuilt in place from the
-// owner's measured source), the turret the 7cc204ab32 m2a2_bradley turret (bradleyClassicTurret.ts), seated on that
-// hull's ring datum (BRADLEY_TURRET_RING; the spec's armor.turretPivot stands there).
-import { buildBradleyHull, bradleyFlankDressing, BRADLEY_TURRET_RING } from '../modern3.ts';
+// Kevin B. Liu — the M3A2 Bradley (ODS) cavalry fighting vehicle. 268 (owner 2026-11-02: "also make a new variant of the
+// bradley based on the old turret we had before doing this") built it as the shared hull under the classic turret; 269
+// (owner 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2
+// bradley") swapped the two: the M3A2 is the shared hull under the turret measured from the owner's source, with its
+// flank dressing and crew bags (modern3.ts buildBradleySourceTurretIfv, the M2A2's 268 build), and the M2A2 carries the
+// classic turret (modern3.ts buildM2A2Bradley). docs/references/tanks/m3a2_bradley.md.
+import { buildBradleySourceTurretIfv } from '../modern3.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { buildBradleyClassicTurret } from './bradleyClassicTurret.ts';
 
 export function buildM3A2Bradley(P: TankBuilderPort): void {
-  buildBradleyHull(P);
-  bradleyFlankDressing(P, { turretSeat: false });
-  buildBradleyClassicTurret(P, { deckY: BRADLEY_TURRET_RING.deckY - P.spec.armor.turretPivot[1] });
+  buildBradleySourceTurretIfv(P);
 }

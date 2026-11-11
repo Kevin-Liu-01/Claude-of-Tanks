@@ -380,6 +380,7 @@ const fakeAssets = {
   retainedTextures: () => [],
   diagnostics: () => ({ residentSets: 0, referencedSets: 0 }),
   warmAll() {},
+  retryFailed() {},
   dispose() {},
 };
 // every pack build holds its Garage's kit and skyline caches from its prepare to its bake, then releases them
@@ -467,6 +468,9 @@ retryController.dispose();
 const originalRaf = globalThis.requestAnimationFrame;
 const originalUploadDocument = globalThis.document;
 const sharedTexture = new THREE.Texture();
+// (2026-11-02 audit R5) a loaded library texture: its image arrived and its version moved, so it has an upload to make
+// (an image-less one has nothing to upload and is never latched as uploaded: garageArchitectureRecords.selftest.mjs)
+sharedTexture.needsUpdate = true;
 let textureUploads = 0;
 let textureLibraryWarms = 0;
 globalThis.document = {};
@@ -480,6 +484,7 @@ try {
     retainedTextures: () => [sharedTexture],
     diagnostics: () => ({ residentSets: 1, referencedSets: 1 }),
     warmAll() { textureLibraryWarms += 1; },
+    retryFailed() {},
     dispose() {},
   };
   const uploadKit = {
@@ -535,6 +540,25 @@ try {
 
 assert.ok(cachePins.held > 0, 'the pack builds hold their Garage caches');
 assert.equal(cachePins.released, cachePins.held, 'and release every hold');
+
+// (2026-11-02 audit R5) a variant's prepared structures are held by every pin, as its kit pieces and skyline are: the first
+// release no longer disposes what a concurrent prepare built for another holder's bake, and two concurrent prepares share
+// one preparation
+{
+  const kit = await import('./garageEnvironmentKit.ts');
+  const variant = GARAGE_VARIANTS.find((entry) => entry.architecture !== 'field_shed');
+  const first = kit.pinGarageEnvironmentCaches(variant);
+  const second = kit.pinGarageEnvironmentCaches(variant);
+  const noTrees = { prepareTreeGroves: async () => {} };
+  await Promise.all([kit.prepareGarageEnvironmentAssets(noTrees, variant), kit.prepareGarageEnvironmentAssets(noTrees, variant)]);
+  assert.equal(kit.hasPreparedGarageStructures(variant.id), true);
+  first();
+  first();
+  assert.equal(kit.hasPreparedGarageStructures(variant.id), true,
+    'the first release (twice: it is idempotent) leaves the other holder\'s prepared structures');
+  second();
+  assert.equal(kit.hasPreparedGarageStructures(variant.id), false, 'the last release drops a prepare whose bake never ran');
+}
 
 // (2026-10-26, the boot census) the boot builds the stage a section at a time (one task of 120 ms on a cold desktop, 604
 // ms on the 4x phone): a generator whose yields sit between its sections, the one-call build its driver, the boot its user

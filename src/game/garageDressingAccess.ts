@@ -1,4 +1,3 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type {
   GarageDressingEngineContext,
@@ -6,6 +5,7 @@ import type {
   GarageDressingRuntime,
   GarageWorkshopFleet,
 } from './garageDressing.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface GarageDressingModule {
   prepareGarageDressing?(engineCtx: GarageDressingEngineContext): Promise<GarageWorkshopFleet>;
@@ -60,26 +60,19 @@ export function createGarageDressingAccess(
   group.add(bayFill);
 
   let current: GarageDressingRuntime | null = null;
-  let pending: Promise<GarageDressingRuntime> | null = null;
   let variantId = initialVariantId;
   group.userData.garageVariantId = variantId;
 
-  const preload = (): Promise<GarageDressingRuntime> => {
-    if (current) return Promise.resolve(current);
-    if (pending) return pending;
-    const request = loaders.dressing().then(async (module) => {
-      const workshopFleet = await module.prepareGarageDressing?.(engineCtx);
-      current = module.createGarageDressing(engineCtx, pos, {
-        group, bayFill, variantId, workshopFleet,
-      });
-      return current;
-    }).catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => loaders.dressing().then(async (module) => {
+    const workshopFleet = await module.prepareGarageDressing?.(engineCtx);
+    current = module.createGarageDressing(engineCtx, pos, {
+      group, bayFill, variantId, workshopFleet,
     });
-    pending = request;
-    return request;
-  };
+    return current;
+  }));
+  const preload = (): Promise<GarageDressingRuntime> => chunk.load();
 
   return {
     group,
