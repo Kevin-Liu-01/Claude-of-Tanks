@@ -1411,6 +1411,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleWeatherPolicy.selftest.mjs',
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
+    'src/engine/muzzleNearField.selftest.mjs', // 271: a gun's muzzle light reaches its own gun through a near field
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
