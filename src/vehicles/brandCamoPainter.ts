@@ -28,7 +28,9 @@ export function paintBrandMark(
   ctx: MaterialCanvasContext, brand: Brand, x: number, y: number, size: number, rotation = 0, alpha = 1,
 ) {
   const path = paths[brand] ??= new Path2D(pathData[brand]);
-  const width = brand === 'openai' ? 267.198 : brand === 'xai' ? 1227 : brand === 'gt' ? 1213 : 28;
+  // gt: the globe (272, owner "for my gt camo, use our new gt logo!") spans 207.5 of its 256 viewBox; 278 gives each
+  // stamp the same ink as the 1213-wide monogram it replaced, so the tile keeps its density.
+  const width = brand === 'openai' ? 267.198 : brand === 'xai' ? 1227 : brand === 'gt' ? 278 : 28;
   ctx.save();
   if (alpha < 1) ctx.globalAlpha = ctx.globalAlpha * alpha;
   ctx.translate(x, y);
@@ -36,12 +38,12 @@ export function paintBrandMark(
   ctx.scale(size / width, size / width);
   if (brand === 'openai') ctx.translate(-280.293, -359.448);
   else if (brand === 'xai') ctx.translate(-600, -613.5);
-  else if (brand === 'gt') ctx.translate(-598.5, -599.5);
+  else if (brand === 'gt') ctx.translate(-128, -128);
   else ctx.translate(-14, -14);
   if (brand === 'gemini') paintGeminiMark(ctx, path);
   else {
     ctx.fillStyle = brand === 'openai' ? '#000000' : '#ffffff';
-    ctx.fill(path, brand === 'gt' ? 'evenodd' : 'nonzero');
+    ctx.fill(path, 'nonzero');
   }
   ctx.restore();
 }
