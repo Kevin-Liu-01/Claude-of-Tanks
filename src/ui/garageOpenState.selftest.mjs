@@ -750,6 +750,7 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
       openPhoto: () => calls.push('photo'), setCallouts: () => calls.push('callouts'), calloutsShown: false,
       recordTrigger: { click: () => calls.push('record') }, openDocs: () => calls.push('docs'), deployModes: null,
       step: (dir) => calls.push(`step:${dir}`), stepToEnd: () => calls.push('end'), battle: () => calls.push('battle'),
+      foreignModalOpen: () => false, // (improve-271 plan 026) no other screen's modal is open here
     };
     const garage = runMainStatements([treeCode, launchCode, keyCode], scope, '{ openTechTree, launchBattle, onKey }');
     const key = (code, { repeat = false } = {}) => {
