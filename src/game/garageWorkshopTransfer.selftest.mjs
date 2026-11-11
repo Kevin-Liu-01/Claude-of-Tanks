@@ -322,7 +322,8 @@ try {
   try {
     Object.defineProperty(globalThis, 'Worker', { configurable: true, value: FixtureWorker });
     Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout } });
-    // (a) a worker that never answers: rejected within the deadline, terminated, not replaced (it never answered: 264)
+    // (a) a worker that never answers: rejected within the deadline and terminated; one failure of R6's count, so the next
+    // request starts a fresh worker
     workers.length = 0;
     FixtureWorker.mode = 'silent';
     let silent = createGarageWorkshopTransfer(shadowCtx, { timers });
@@ -332,9 +333,11 @@ try {
     timers.advance(1);
     assert.equal(await held, 'Garage workshop worker went silent');
     assert.equal(workers[0].terminations, 1, 'the silent worker is terminated');
-    assert.equal(await settle(silent.createVisual('m1a1_abrams_hc', 2)), 'Garage workshop worker unavailable');
-    assert.equal(workers.length, 1, 'a worker that never answered is not started again');
+    const next = settle(silent.createVisual('m1a1_abrams_hc', 2));
+    assert.equal(workers.length, 2, 'a fresh worker takes the next request');
     assert.equal(workers[0].requests.length, 1, 'nothing posted to the dead worker');
+    timers.advance(30_000);
+    assert.equal(await next, 'Garage workshop worker went silent');
     silent.dispose(); silent = null;
     // (b) an error after an answer: the pending request rejects AND the next request starts a NEW worker
     workers.length = 0;

@@ -431,8 +431,8 @@ export function createGarageWorkshopTransfer(
   };
   // (improve-271, plan 031) src/workerCalls.ts: a worker silent past its deadline (each streamed batch resets it) or one
   // that fails rejects what it holds, so garageDressing.ts builds those exhibits in line and the covered Garage restore
-  // settles; the dead worker is terminated and, after one that had answered, the next request starts a fresh one under
-  // R6's count (src/workerClientHealth.ts)
+  // settles; the dead worker is terminated and the next request starts a fresh one under R6's count
+  // (src/workerClientHealth.ts)
   const calls = createWorkerCalls<WorkerReply>({
     name: 'Garage workshop worker',
     spawn: () => new Worker(new URL('./garageWorkshopGeometryWorker.ts', import.meta.url), {

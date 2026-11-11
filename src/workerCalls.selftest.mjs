@@ -1,7 +1,7 @@
 // workerCalls.selftest — improve-271 (plans 017, 031, the surface paint prefetch; on R6's count): the plumbing. A
 // silent worker fails what it holds at the deadline, an error or an unreadable reply fails it at once, an abandoned worker
-// is terminated and never posted to again, a fresh one starts under R6's count and only after one that had answered (the 264 ruling: a worker
-// that never answered may be a chunk that failed to load), and a reply after the deadline is dropped.
+// is terminated and never posted to again, a fresh one starts under R6's count (a worker that never answered, or one that
+// could not start, is one failure like any other: Main, 2026-11-11), and a reply after the deadline is dropped.
 import assert from 'node:assert/strict';
 import { createWorkerCalls } from './workerCalls.ts';
 
@@ -62,7 +62,8 @@ function recorder() {
   assert.equal(spawned[0].terminated, 0);
 }
 
-// ---- a worker that never answers: every call it holds fails at the deadline; it is terminated and never replaced
+// ---- a worker that never answers: every call it holds fails at the deadline; it is terminated, and it is one failure
+// of R6's count like any other: the next call starts a fresh worker until the count runs out
 {
   const { timers, spawned, calls } = client();
   const a = recorder(), b = recorder();
@@ -77,10 +78,18 @@ function recorder() {
   assert.equal(spawned[0].terminated, 1);
   spawned[0].answer({ id: 1 });
   assert.deepEqual(a.log.replies, [], 'a reply after the deadline is dropped');
+  assert.equal(calls.health.failures, 1, 'one failure');
   const c = recorder();
-  assert.equal(calls.post(3, { id: 3 }, undefined, c.call), false, 'a worker that never answered is not started again (264)');
-  assert.equal(spawned.length, 1);
-  assert.equal(calls.available, false);
+  assert.equal(calls.post(3, { id: 3 }, undefined, c.call), true, 'a fresh worker takes the next call');
+  assert.equal(spawned.length, 2);
+  assert.equal(spawned[0].posted.length, 2, 'never posted to the silent one again');
+  timers.advance(1000);
+  calls.post(4, { id: 4 }, undefined, recorder().call);
+  timers.advance(1000);
+  assert.equal(spawned.length, 3);
+  assert.equal(calls.health.state, 'unavailable', 'three silent workers in a row');
+  assert.equal(calls.post(5, { id: 5 }, undefined, recorder().call), false, 'every later call takes its fallback');
+  assert.equal(spawned.length, 3);
 }
 
 // ---- a streaming answer is never silent; the first message may take longer than the rest
@@ -157,11 +166,15 @@ function recorder() {
 
 // ---- no worker at all, and a post that throws
 {
-  const none = client({ spawn: () => null });
-  assert.equal(none.calls.post(1, { id: 1 }, undefined, recorder().call), false);
+  // a worker that cannot start is a failure of the count: three tries, then the client is unavailable
+  let tries = 0;
+  const none = client({ spawn: () => { tries++; return null; } });
+  for (let id = 1; id <= 4; id++) assert.equal(none.calls.post(id, { id }, undefined, recorder().call), false);
+  assert.equal(tries, 3, 'three starts, then none');
   assert.equal(none.calls.available, false);
   const throwing = client({ spawn: () => { throw new Error('no Worker'); } });
   assert.equal(throwing.calls.post(1, { id: 1 }, undefined, recorder().call), false);
+  assert.equal(throwing.calls.health.failures, 1);
   const refuse = client();
   const r = recorder();
   const ok = refuse.calls.post(1, { id: 1 }, undefined, recorder().call);
@@ -171,4 +184,4 @@ function recorder() {
   assert.equal(refuse.calls.running, true, 'the worker itself is not blamed');
 }
 
-console.log('workerCalls.selftest: deadline from the idle call, streaming never silent, first-message grace, abandon on error/unreadable/silence, fresh worker only after one that answered, dispose PASS');
+console.log('workerCalls.selftest: deadline from the idle call, streaming never silent, first-message grace, abandon on error/unreadable/silence, a fresh worker under R6\'s count (a silent or unstartable one counted like any failure), dispose PASS');

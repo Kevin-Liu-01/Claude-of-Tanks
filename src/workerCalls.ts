@@ -8,10 +8,10 @@
  * error, when a reply cannot be read, or when it stays silent past the deadline while it holds a call. Silence runs from
  * its last message, or from the call that found it idle: for a serial worker that is R6's "from dispatch" (its next job
  * starts when its last reply leaves), and a worker that streams a long answer is never silent. An abandoned worker is
- * terminated and never posted to again; the next call starts a fresh one under R6's count (`maxFailures` failures in a
- * row leave the client unavailable, a finished call starts the count again). One rule over R6: a worker that failed
- * before it ever answered is not started again, since it may be a code chunk that failed to load and the release-264
- * load-failure ruling never requests a failed chunk again (src/ui/components/loadFailure.ts).
+ * terminated and never posted to again; the next call starts a fresh one under R6's count, the one rule (Main,
+ * 2026-11-11): `maxFailures` failures in a row leave the client unavailable and a finished call starts the count again.
+ * A worker that failed before it ever answered, or one that could not be started, is one failure like any other;
+ * whether a failed chunk may be fetched again is the lazy-chunk loader's call, not a worker client's.
  *
  * The client still writes `new Worker(new URL('./x.ts', import.meta.url))` itself (the bundler finds workers by that
  * text; tools/viteSharedWorkers.selftest.mjs) and hands this module the factory. Presentation only: timers are allowed.
@@ -112,7 +112,6 @@ export function createWorkerCalls<R>(options: WorkerCallsOptions<R>): WorkerCall
       if ('onmessageerror' in dead) dead.onmessageerror = null;
       try { dead.terminate(); } catch { /* already gone */ }
       health.failed();
-      if (!heard) health.close();
     }
     if (!pending.size) return;
     const calls = [...pending.values()];
@@ -140,7 +139,7 @@ export function createWorkerCalls<R>(options: WorkerCallsOptions<R>): WorkerCall
     if (health.state === 'unavailable') return null;
     let owned: WorkerCallPort | null = null;
     try { owned = options.spawn(); } catch { owned = null; }
-    if (!owned) { health.close(); return null; }
+    if (!owned) { health.failed(); return null; }
     const port = owned;
     worker = port;
     heard = false;

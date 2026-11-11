@@ -108,17 +108,25 @@ assert.equal(startSurfacePaints([], () => { throw new Error('no worker for nothi
   const hayKey = surfacePaintKey({ kind: 'hay', size: 512, seed: HAY_PRINT_SEED });
   const port = () => ({ posted: [], terminated: 0, postMessage(job) { this.posted.push(job); }, terminate() { this.terminated++; },
     onmessage: null, onerror: null });
-  let silentPort;
-  const silent = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => (silentPort = port()), () => 0, timers);
+  const ports = [];
+  const silent = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => { const p = port(); ports.push(p); return p; }, () => 0, timers);
   const held = silent.take(hayKey);
   timers.advance(14_999);
   timers.advance(1);
   await assert.rejects(held, /Surface paint worker went silent/, 'a silent worker\'s print fails at the deadline');
-  assert.equal(silentPort.terminated, 1);
-  silent.add([{ kind: 'fieldStone', size: 512, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' }]);
-  assert.equal(silentPort.posted.length, 1, 'nothing more is posted to it');
-  assert.equal(silent.take(surfacePaintKey({ kind: 'fieldStone', size: 512, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' })), null,
-    'a later print is painted where it stands');
+  assert.equal(ports[0].terminated, 1);
+  // one failure of R6's count: a later print goes to a fresh worker, never to the silent one; three in a row and the
+  // prefetch paints nothing more (each print is painted where it is taken)
+  const chalk = { kind: 'fieldStone', size: 512, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' };
+  silent.add([chalk]);
+  assert.equal(ports.length, 2, 'a fresh worker');
+  assert.equal(ports[0].posted.length, 1, 'nothing more is posted to the silent one');
+  timers.advance(15_000);
+  silent.add([{ kind: 'fieldMud', size: 512, seed: 7 }]);
+  timers.advance(15_000);
+  silent.add([{ kind: 'fieldMud', size: 512, seed: 8 }]);
+  assert.equal(ports.length, 3, 'three silent workers in a row, then none');
+  assert.equal(silent.take(surfacePaintKey({ kind: 'fieldMud', size: 512, seed: 8 })), null, 'a later print is painted where it stands');
   silent.dispose();
   let failingPort;
   const failing = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }], () => (failingPort = port()), () => 0, timers);
