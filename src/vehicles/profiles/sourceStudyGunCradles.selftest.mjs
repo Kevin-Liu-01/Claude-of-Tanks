@@ -15,11 +15,18 @@ const cases = [
     dark:{origin:[1.1,.022,-.70],direction:[-1,0,0]} },
   { id:'warrior_tes_h', origin:[.18,.10,.6], direction:[0,0,-1], planeAxis:2,
     plane:.04+(.26+Math.sin(-.09)*.10)/Math.cos(-.09), seatZ:.20 },
-  { id:'bmp3m_dragun125', origin:[.154,0,.5], direction:[0,0,-1], planeAxis:2, plane:.0895, seatZ:.04 },
+  // Re-pinned 2026-11-11 (272): c6b60311c2 (2026-10-07, "repair IFV/MBT surfaces") replaced the source Object_17
+  // trunnion boot (front plane .0895) with the armored rocking mask and its barrel gland (cylZ .166 x .125 at .2025);
+  // the same ray now meets the gland's front face at .2025 + .0625 = .265.
+  { id:'bmp3m_dragun125', origin:[.154,0,.5], direction:[0,0,-1], planeAxis:2, plane:.265, seatZ:.04 },
   { id:'griffin50mm', origin:[0,.4*.9,.75*.9], direction:[0,-1,0], planeAxis:1,
     plane:(.165+(.1493-.165)*(.59/.60))*.9, seatZ:.30*.9 },
-  { id:'k21', origin:[.14,.08,.6], direction:[0,0,-1], planeAxis:2,
-    plane:.05+(.265+Math.sin(-.06)*.02)/Math.cos(-.06), seatZ:.12 },
+  // Re-pinned 2026-11-11 (272): 174e737c14 (2026-11-02, release 268, the owner: "give the k21 a mantlet") replaced the
+  // 340 x 370 x 530 mm cradle box with the measured mantlet, whose round courses differ HIGH to LOW; the witness moves to
+  // the mantlet's flat face at .612 (both qualities, and first visible stock), and its new coaxial-port mouth
+  // (addGunExtraDark, face .7035) is the K21's dark housing stock.
+  { id:'k21', origin:[-.14,0,.9], direction:[0,0,-1], planeAxis:2, plane:.612, seatZ:.12,
+    dark:{origin:[0,.229,.85],direction:[0,0,-1]} },
   { id:'ajax', origin:[-.12,.04,.5], direction:[0,0,-1], planeAxis:2, plane:.214, seatZ:.14,
     dark:{origin:[-.172,-.059,.26],direction:[0,0,-1]} },
 ];
