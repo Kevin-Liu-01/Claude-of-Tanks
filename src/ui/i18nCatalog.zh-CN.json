@@ -1717,6 +1717,8 @@
   "couch.title": "同屏",
   "couch.close": "关闭同屏",
   "couch.unavailable": "此页面无法连接手机。",
+  "couch.off.room": "同屏仅支持离线战斗",
+  "couch.off.mode": "此模式不支持同屏",
   "couch.qrAria": "打开手机控制器并加入本局的二维码",
   "couch.seats": "座位",
   "couch.seat.here": "座位 {n}：手机已连接",

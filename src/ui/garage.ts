@@ -848,12 +848,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
     // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
     `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
-    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle
-    `<button type="button" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
-    `${uiIconSVG('phone', 20)}<span>${t('couch.entry')}</span></button>` +
-    `<button type="button" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
+    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle. Couch and Watch are the kit's
+    // secondary and Deploy its primary (components.css .cot-c-btn): one family, its focus, press and unavailable states
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
+    `${uiIconSVG('couch', 20)}<span>${t('couch.entry')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
     `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
-    `<button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `<button type="button" class="cot-c-btn cot-c-btn--primary" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
     // the launch's estimate and the key hints load with deployScreen.ts (972c9575b3); the extra </div> closes Watch's .cot-deploy-acts
     `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
@@ -4647,8 +4648,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
     setupWatch.hidden = range;
-    // a couch battle plays the couch modes (COUCH_RULES), never inside a room
-    setupCouch.disabled = !solo || !isCouchMode(battleGameMode) || !opts.onCouch;
+    // a couch battle plays the couch modes (COUCH_RULES), never inside a room; unavailable, the button says why (the kit's
+    // hover tip, components/hoverTip.ts)
+    const couchOff = !opts.onCouch ? 'couch.unavailable' : !solo ? 'couch.off.room' : !isCouchMode(battleGameMode) ? 'couch.off.mode' : '';
+    setupCouch.disabled = Boolean(couchOff);
+    if (couchOff) setupCouch.dataset.tip = t(couchOff);
+    else delete setupCouch.dataset.tip;
     setupCouch.hidden = range;
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
