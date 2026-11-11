@@ -361,12 +361,16 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   reads), phonePause +70 (H8's battleTimeChoices chunk, which phonePause.ts joined). Requests held at 127 / 128 / 73
   //   / 8 / 12 / 7 (pad 14): couchSeats and bodyFlags, alone two more game and cn boot requests, ride vehicleActions
   //   (vite.config.ts). Home 28,923, docs 37,228 and 404 18,739 measure within their slack over the held pins.
-  game: { brotliBytes: 1210986, requests: 127, entryBrotliBytes: 259227 },
-  cn: { brotliBytes: 1256211, requests: 128, entryBrotliBytes: 259227 },
-  gallery: { brotliBytes: 760044, requests: 73 },
-  home: { brotliBytes: 28785, requests: 8 },
-  docs: { brotliBytes: 37100, requests: 12 },
-  notFound: { brotliBytes: 18677, requests: 7 },
+  // 2026-11-11 (integrator 271, the single end re-pin at integ/271's build 8612b0e164 + CSP; the owner's skip-all-tests
+  //   ruling, 272 folded in): game +26,562 B brotli, cn +26,573 B, Gallery +25,085 B; requests +8 on game, cn and Gallery
+  //   (new boot leaves from the folded 272 lanes and improve plans, not folded under the ruling: attribution and the fold
+  //   are owed post-deploy); the entry +229 B. Home +148 B, docs +150 B and 404 +57 B re-pinned at their measures.
+  game: { brotliBytes: 1237548, requests: 135, entryBrotliBytes: 259456 },
+  cn: { brotliBytes: 1282784, requests: 136, entryBrotliBytes: 259456 },
+  gallery: { brotliBytes: 785129, requests: 81 },
+  home: { brotliBytes: 28933, requests: 8 },
+  docs: { brotliBytes: 37250, requests: 12 },
+  notFound: { brotliBytes: 18734, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
