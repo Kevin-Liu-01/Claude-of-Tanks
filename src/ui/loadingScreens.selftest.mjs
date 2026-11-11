@@ -129,7 +129,7 @@ assert.deepEqual(
   for (const [n, id] of loadingPicks.entries()) {
     const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
     assert.equal(item.path, `/media/${sitePicks.loading.collection}/${id}.webp`);
-    assert.equal(item.group, close.has(id) ? 'close' : 'elevated', `${id}: its gallery section`);
+    assert.ok(item.group === (close.has(id) ? 'close' : 'elevated'), `${id}: its gallery section (${item.group})`);
     const file = await readFile(new URL(`${id}.webp`, loadingDir));
     assert.deepEqual(webpDimensions(file), [1920, 1080], `${id}: a 1920x1080 webp`);
     assert.ok(file.length > 50_000 && file.length <= 600 * 1024, `${id}: ${file.length} B, between 50 KB and 600 KB`);
