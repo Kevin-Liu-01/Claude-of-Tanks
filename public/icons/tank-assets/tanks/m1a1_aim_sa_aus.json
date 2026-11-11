@@ -599,7 +599,7 @@
       }
     ]
   },
-  "geometryHash": "8cb6629f",
+  "geometryHash": "ad21789c",
   "metadataHash": "14fa01f2",
   "presentationAnchor": {
     "xM": -0.0011,
@@ -623,8 +623,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 9,
-      "fittingPaint": 3,
+      "gunmetal": 12,
+      "fittingPaint": 6,
       "armorPaint": 9,
       "gearShadow": 3,
       "opticGlass": 2,
@@ -708,7 +708,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 37616,
-      "sha256": "232985aca9dca696ce1c2e5128c04be9c117a041df0a9e29e39b9b1e706275ee"
+      "sha256": "8c329ac0377e68fce23e74c0f6672506721ad74523d8d939feb3eb70e2cb0911"
     },
     "modulesSide": {
       "file": "m1a1_aim_sa_aus_modules_side.webp",
@@ -716,7 +716,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 37486,
-      "sha256": "73fcbb06ff9c8359086d94b0fc54d9a74a5488ab6a3cf676e36a64368c255dda"
+      "sha256": "a204c29125390cf4559e394b5aafb4b2bf77d7fc9e3797fb1a672bb1f39ce8ff"
     },
     "crewSide": {
       "file": "m1a1_aim_sa_aus_crew_side.webp",
@@ -724,7 +724,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 35552,
-      "sha256": "467ac1115817f41c27b78e9c5b74875c08db85a5117312e4718fd54e45662e55"
+      "sha256": "aaec96aa4ae32e57caa02940c89fbf719d04d14987433a44253007be1fdc0b4a"
     },
     "markings": {
       "file": "m1a1_aim_sa_aus_markings.png",

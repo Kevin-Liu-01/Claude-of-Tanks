@@ -1571,7 +1571,7 @@
       }
     ]
   },
-  "geometryHash": "0cbd9a42",
+  "geometryHash": "3443d465",
   "metadataHash": "c6df3b46",
   "presentationAnchor": {
     "xM": 0,
@@ -1595,8 +1595,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 10,
-      "fittingPaint": 3,
+      "gunmetal": 13,
+      "fittingPaint": 6,
       "armorPaint": 12,
       "gearShadow": 3,
       "opticGlass": 3,
@@ -1633,7 +1633,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 31116,
-      "sha256": "977683b669c993d305b9257aedd6a323732c2ebe0cce21c2ec67a4b7cd96b276",
+      "sha256": "f986e5b2f143a4a80729b4cbb63bc8e24283ec4c1bc8cb35d6c56ea5aceb685a",
       "thumbnail": {
         "file": "thumbs/m1a1_abrams_aim_angle.webp",
         "width": 256,
@@ -1656,8 +1656,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14150,
-      "sha256": "088e34425fbc83d9be8b3413135b8a0dd015a3894a3fb374c7f426d504ed2721"
+      "bytes": 14152,
+      "sha256": "066b42f8954a3b43c67a8d20a9baeb2b196d9b337f9240673fa9171f442b6cd8"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_aim_top_silhouette.png",
@@ -1680,16 +1680,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30316,
-      "sha256": "4fd6e1bc2ac19134210755ba3abe9c43c381b7de44f2212f5d283dbe2ada5361"
+      "bytes": 30320,
+      "sha256": "8222e29858120aa4250ea3b9aa6b2dd348f4d90eeda61dcb36846439b3fc2dd9"
     },
     "modulesSide": {
       "file": "m1a1_abrams_aim_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31186,
-      "sha256": "4161252b8665328b3e590ff6c38c2d825808475671b58444d5ab2fcb736bf98a"
+      "bytes": 31178,
+      "sha256": "f88c57d91d13023b8312835958b0a74fd5db87df0baf35a1c3923a3e571da455"
     },
     "crewSide": {
       "file": "m1a1_abrams_aim_crew_side.webp",
@@ -1697,7 +1697,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 29258,
-      "sha256": "26a4c138cb64efb0a06ba15d1942e289e55d06a512c74e57e0fe7ab6f0a62ceb"
+      "sha256": "e760e4e037e6250dcdf785bbf80b16e3ca9f6b297363d28bdd692cc90bc37f85"
     },
     "markings": {
       "file": "m1a1_abrams_aim_markings.png",

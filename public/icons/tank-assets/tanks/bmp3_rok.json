@@ -692,7 +692,7 @@
       }
     ]
   },
-  "geometryHash": "3d510216",
+  "geometryHash": "86e52f00",
   "metadataHash": "5c3f5470",
   "presentationAnchor": {
     "xM": -0.0042,
@@ -714,7 +714,7 @@
       "gunmetal": 13,
       "opticGlass": 5,
       "wheelTire": 2,
-      "wheelDish": 6,
+      "wheelDish": 8,
       "suspensionLink": 1,
       "suspensionJoint": 1,
       "trackHardware": 4,
@@ -759,7 +759,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11630,
-        "sha256": "d9cbb4c7861fded472f8a3cc015650c70e4aafdea02f23401eb10a244f5eb5b3"
+        "sha256": "d9cbb4c7861fded472f8a3cc015650c70e4aafdea02f23401eb10a244f5eb5b3",
+        "frame": [24,101,225,249]
       }
     },
     "top": {

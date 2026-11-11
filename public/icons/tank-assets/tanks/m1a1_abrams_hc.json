@@ -2009,7 +2009,7 @@
       }
     ]
   },
-  "geometryHash": "b5e453b8",
+  "geometryHash": "d5f860fb",
   "metadataHash": "61e46df1",
   "presentationAnchor": {
     "xM": 0.0009,
@@ -2033,9 +2033,9 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 11,
-      "fittingPaint": 6,
+      "fittingPaint": 9,
       "trackSteel": 1,
+      "gunmetal": 14,
       "armorPaint": 12,
       "gearShadow": 3,
       "opticGlass": 3,
@@ -2070,15 +2070,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27084,
-      "sha256": "9b4695edafc09c5b5540b7ba14425a369270a2b533090d0be92f9c61b8a6b3c2",
+      "bytes": 27074,
+      "sha256": "d7ad4bb9979e797f6741be49a051ffe781069ac400934cbe040cb8b1e7ac81a7",
       "thumbnail": {
         "file": "thumbs/m1a1_abrams_hc_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11190,
-        "sha256": "ea6e01fb32b9fb5bedc750cc2c25a50b67e279caddd17244cb04ab24a3847130"
+        "bytes": 11192,
+        "sha256": "39ddf1011d9c8e5536ef8cc1d15c738c2e4e354f9dc33417b990a5d59a0b53e3",
+        "frame": [20,85,228,249]
       }
     },
     "top": {
@@ -2095,7 +2096,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 11872,
-      "sha256": "a663e4da79ecf485fb4a9f3c7598633ca9b3fe647928c999895a572a70291f07"
+      "sha256": "3c61fc6f8aa7e927e1ed24a776e604d3111140f03592524e3e7d0cdf3cb11e6c"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_hc_top_silhouette.png",
@@ -2118,8 +2119,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28266,
-      "sha256": "929d198e70436bf79206d913c409a789dcb3ae16460a81985e0f40395d7fab72"
+      "bytes": 28272,
+      "sha256": "d7d2c0b84e0759deaafeec530d57736caaba0a335dd3e111842bcf264e375639"
     },
     "modulesSide": {
       "file": "m1a1_abrams_hc_modules_side.webp",
@@ -2127,15 +2128,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 27052,
-      "sha256": "1e7f8d0d38a820fd1df407eccec752737b28544cb69c8b82695f09fd1b939dc0"
+      "sha256": "0fbbeaf5fca50238892c88dbca9e419f1a24438a0f3a2a473d766b1a1f0027ec"
     },
     "crewSide": {
       "file": "m1a1_abrams_hc_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24464,
-      "sha256": "4d2c2ad9dff4f856ed1724941487712681787ea3268c8e5db4a0d248be03872c"
+      "bytes": 24462,
+      "sha256": "6791a1b322ee00adae66095d076aea581a427463d078f42a91c6462332a8e822"
     },
     "markings": {
       "file": "m1a1_abrams_hc_markings.png",

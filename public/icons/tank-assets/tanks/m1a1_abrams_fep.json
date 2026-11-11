@@ -2081,7 +2081,7 @@
       }
     ]
   },
-  "geometryHash": "622f3335",
+  "geometryHash": "aad8a76a",
   "metadataHash": "d18d09a1",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -2105,8 +2105,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "gunmetal": 13,
-      "fittingPaint": 3,
+      "gunmetal": 16,
+      "fittingPaint": 6,
       "armorPaint": 12,
       "gearShadow": 3,
       "opticGlass": 4,
@@ -2149,7 +2149,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 12328,
-        "sha256": "c3c57c24602ae8f650c321dd65a631468deb71d3d3887528b8d81f3d0db2b46a"
+        "sha256": "c3c57c24602ae8f650c321dd65a631468deb71d3d3887528b8d81f3d0db2b46a",
+        "frame": [20,84,229,250]
       }
     },
     "top": {
@@ -2165,8 +2166,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15124,
-      "sha256": "b7d3a66b82fe02367d851036d330420d605e040fe60a4fb9257be41ffb88fec8"
+      "bytes": 15118,
+      "sha256": "c99be14eaadab57756941c76cd9178db4025896aef8be1c2a60fd2b5cb276e95"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_fep_top_silhouette.png",
@@ -2189,24 +2190,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39720,
-      "sha256": "18e58d0839ee4ddfe6ec1c63fd6a648866d423de4f0500334b4ba5166c13e215"
+      "bytes": 39712,
+      "sha256": "93555a3ceac96d26400ee5feb1f41c38a136c58ffa6b8c4fe715447ab072aa55"
     },
     "modulesSide": {
       "file": "m1a1_abrams_fep_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38056,
-      "sha256": "79c696f372c489627b692fc83ef33570c3ebf5451daa092f7d00a9258ea25ce4"
+      "bytes": 38054,
+      "sha256": "1fa117f6856bd008380cd302e82dd694409c10888cb48607bbe42de2124ef62b"
     },
     "crewSide": {
       "file": "m1a1_abrams_fep_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36592,
-      "sha256": "d2449ff76c798980a5a272cfd33ea7e2ca14609e8c3a8acbc090435924914d67"
+      "bytes": 36598,
+      "sha256": "8a3ad91f158b388061a8ef8f8574d2dc1d522d74932d63bba6cfff68e71ca1bf"
     },
     "markings": {
       "file": "m1a1_abrams_fep_markings.png",

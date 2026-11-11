@@ -851,15 +851,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29092,
-      "sha256": "c6a8d1519f7d891b943494b4f7a71d9c0c4cc8e5a116ff86c8474209b512b604",
+      "bytes": 30446,
+      "sha256": "ebd2926a3dc5dc56fda7848ca863ecdba4a36db9532007b574fd47e16eefa86f",
       "thumbnail": {
         "file": "thumbs/shot_kal_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11990,
-        "sha256": "a74e830a584cf6c9b044159b989d29bed526818bc82b4f4aa0386cefd267f836"
+        "bytes": 12080,
+        "sha256": "9154eb0be5afd1a798f3eea78bec509d252c70b65bb158826cd4d44e4e9f45b9",
+        "frame": [24,111,226,250]
       }
     },
     "top": {
