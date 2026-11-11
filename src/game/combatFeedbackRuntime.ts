@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { MovementShellSpec, MovementSpec } from '../sim/movement.ts';
 import type { EventBus } from './stateCore.ts';
+import { createShotCadence, shotShakeScale } from './shotCadence.ts';
 import { pulseJuggernautImpact } from './juggernautVisual.ts';
 import { stripActivatedEra, type EraVisual } from './eraActivation.ts';
 
@@ -62,6 +63,9 @@ interface ShellFiredEvent {
   shellName?: string;
   shellType?: string;
   caliberMm?: number;
+  /** (272) the round's gun and the simulation clock it was fired on: the camera kick's cadence (game/shotCadence.ts) */
+  weaponSound?: string | null;
+  timeS?: number;
 }
 
 interface PropCrushedEvent {
@@ -138,6 +142,8 @@ export function createCombatFeedbackRuntime({
     }
   });
 
+  // (272) the network seat's camera kick by its gun's cadence, as the solo step's (state.ts applyShotFeedback)
+  const shotShake = createShotCadence();
   const playShotRecoil = (event: ShellFiredEvent): void => {
     const player = game.player;
     if (!event.isPlayer || !hasNetworkMatch() || !player) return;
@@ -155,8 +161,13 @@ export function createCombatFeedbackRuntime({
     const recoilScale = shotRecoilScale(player.spec, shellSpec);
     const caliberMm = shellSpec?.caliberMm || event.caliberMm || player.spec.gun.caliberMm;
     const caliberK = Math.max(0, Math.min(1, (caliberMm - 30) / 122));
-    rig.addTrauma((0.10 + caliberK * 0.20) * recoilScale);
-    rig.recoilKick?.((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
+    const trauma = (0.10 + caliberK * 0.20) * recoilScale;
+    // a shot with no clock (a probe's) kicks as it always did
+    const kick = Number.isFinite(event.timeS)
+      ? shotShakeScale(shotShake.admit('shake', event.shooterId ?? player.id, event.weaponSound || caliberMm, event.timeS!), trauma) : 1;
+    if (kick <= 0) return;
+    rig.addTrauma(trauma * kick);
+    rig.recoilKick?.((0.006 + caliberK * 0.011) * recoilScale * kick, recoilScale);
   };
 
   listen('shell:fired', (payload) => {

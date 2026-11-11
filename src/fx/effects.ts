@@ -43,6 +43,7 @@ import { shooterVelocityGain, subjectPointVelocity, syncSubjectEmitterAnchor } f
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import { createShotCadence, SHOT_CADENCE_WINDOW_S, SHOT_SUSTAIN_GAP_S, type ShotKey } from '../game/shotCadence.ts';
 import type { GunshipLensGuns } from '../game/gunshipAirframe.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
@@ -441,6 +442,8 @@ interface PredictedWeaponEvent {
   shellName?: string;
   /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
   shooterId?: ShellId | null;
+  /** (272) the simulation clock the round was fired on: its gun's flash cadence (game/shotCadence.ts) */
+  timeS?: number;
 }
 
 interface ShellFiredEvent extends PredictedWeaponEvent {
@@ -622,7 +625,9 @@ export interface FxRuntime {
     resolveSubject?: ((id: string) => FxEntity | null) | null,
   ): void;
   bindBus(bus: FxEventBus): void;
-  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket?: boolean, shooterId?: ShellId | null): void;
+  /** (272) `weapon` and `timeS` (the round's simulation clock) put the flash under its gun's cadence (game/shotCadence.ts) */
+  muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket?: boolean, shooterId?: ShellId | null,
+    weapon?: ShotKey | null, timeS?: number): void;
   vehicleCollision(
     pos: THREE.Vector3,
     normal: THREE.Vector3,
@@ -1606,6 +1611,29 @@ function* createFxSteps(
     gunNear.bore.copy(bore).normalize();
     gunNear.radius = muzzleNearRadiusM(state.peak * MUZZLE_LIGHT_ENVELOPE_MAX * A11Y.flash, rig?.sunIntensity ?? 4.5);
     applyLight(state);
+  }
+
+  // (272, the owner: "debounce ... muzzle flashes") a fast gun's flash by its cadence (game/shotCadence.ts). Its round
+  // inside the floor of the last is dark (a rotary gun's in-between rounds); a round inside the flash window of the last
+  // full flash shows its core alone at its own barrel; the full flash (jets, sparks, fire, smoke, wisps, ground blast)
+  // comes once a window; and a gun firing sustained holds its one pooled light as a flicker, relit past its attack each
+  // round, instead of striking it up from black every round. A gun slower than the window, and a round with no clock
+  // (the Studio's), flash as before.
+  const flashCadence = createShotCadence();
+  type FlashCadence = 'none' | 'flicker' | 'held' | 'full';
+  function flashCadenceOf(shooter: ShotKey | null | undefined, weapon: ShotKey | null, timeS: number): FlashCadence {
+    if (weapon == null || !Number.isFinite(timeS)) return 'full';
+    if (flashCadence.admit('report', shooter, weapon, timeS) === 0) return 'none';
+    if (flashCadence.admit('flash', shooter, weapon, timeS) === 0) return 'flicker';
+    return flashCadence.gapS < SHOT_SUSTAIN_GAP_S ? 'held' : 'full';
+  }
+  /** A sustained gun's light, held: relit each round past its attack (never from black), at HELD_LIGHT_K of the shot's
+   *  peak with a flicker, and long enough (HELD_LIGHT_S, linear) to still burn when its next round relights it. */
+  const HELD_LIGHT_K = 0.55;
+  const HELD_LIGHT_S = 2.5 * SHOT_CADENCE_WINDOW_S.flash;
+  function holdMuzzleLight(pos: THREE.Vector3, peak: number, range: number, vel: Readonly<MutableVec3>): boolean {
+    return flashLight(lightStates[0], pos, peak * HELD_LIGHT_K * (0.85 + 0.15 * rng()), MUZZLE_LIGHT_ATTACK_S, HELD_LIGHT_S, 1,
+      undefined, range, vel);
   }
 
   /**
@@ -2827,7 +2855,7 @@ function* createFxSteps(
     lightK: 1,
   };
 
-  function emitMuzzleCoreAndPetals(state: MuzzleFlashState): void {
+  function emitMuzzleCoreAndPetals(state: MuzzleFlashState, petals = true): void {
     const { pos, dir, s, caliberMm, birthOffset, axSize, axSizeC, axAtt, carry: c } = state;
     _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
     _puffO.vel[0] = dir.x * 1.5 + c[0]; _puffO.vel[1] = dir.y * 1.5 + c[1]; _puffO.vel[2] = dir.z * 1.5 + c[2];
@@ -2843,6 +2871,8 @@ function* createFxSteps(
     _puffO.rotVel = (rng() - 0.5) * 2;
     col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
     particles.emit('flash', _puffO);
+    // (272) a sustained gun's round between two full flashes: its core alone, a flicker at its own barrel
+    if (!petals) return;
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
       const tilt = 1.02 + rng() * 0.3;
@@ -3244,6 +3274,7 @@ function* createFxSteps(
     birthOffset = 0,
     reach = 1,
     vel: Readonly<MutableVec3> = ZERO_VEL,
+    coreOnly = false,
   ): number {
     // Defensive copy (r5): callers may hand in shared scratch vectors; every
     // internal helper below must be free to reuse module scratch without any
@@ -3318,6 +3349,11 @@ function* createFxSteps(
       state.smokeCarry[i] = vel[i] * MUZZLE_SMOKE_CARRY;
     }
     basisFrom(dir, _v1, _v2);
+    // (272) the flicker of a sustained gun's round between two full flashes (flashCadenceOf): its core cards alone
+    if (coreOnly) {
+      if (!scoped) emitMuzzleCoreAndPetals(state, false);
+      return scoped ? lightK * 0.2 : lightK;
+    }
     if (!scoped) {
       emitMuzzleCoreAndPetals(state);
       emitMuzzleAxialAndBrakeJets(state);
@@ -6883,12 +6919,16 @@ function* createFxSteps(
     // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
     flash: (p,d,caliber,id) => {
       subjectPointVelocity(id != null ? subjectFor(id) : null, p.x, p.z, _shotVel);
-      const lightK = spawnMuzzleFlash(p,d,caliber,0,1,_shotVel);
+      // (272) a roof gun's rounds by its station's cadence on the match clock (the Studio's timeline clock flashes each)
+      const cadence = auxiliaryClock ? 'full' : flashCadenceOf(id, 'station', auxiliaryTime!());
+      if (cadence === 'none') return;
+      const lightK = spawnMuzzleFlash(p,d,caliber,0,1,_shotVel,cadence === 'flicker');
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
       if (!(muzzleLight.intensity > peak)) {
         // (271) a refused pulse (a non-finite place) binds no near field: the pulse still burning stays its own gun's
-        if (flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)) boundGunNearField(lightStates[0], d);
+        if (cadence === 'full' ? flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)
+          : holdMuzzleLight(p, peak, pulse.range, _shotVel)) boundGunNearField(lightStates[0], d);
       }
     },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
@@ -7278,7 +7318,7 @@ function* createFxSteps(
           // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube
           const wired = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
           if (wired.wires > 0) beginWire(e, wired);
-        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
+        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId, e.weaponSound || e.caliberMm, e.timeS);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -7298,7 +7338,7 @@ function* createFxSteps(
         const gun = gunshipShotOf(e.weaponSound, false);
         if (gun) gunshipMuzzleFx(e, gun, idSeed(`${e.muzzlePos.join(',')}`));
         else if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
-        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
+        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId, e.weaponSound || e.caliberMm, e.timeS);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         // (2026-11-02 audit F10) taken by every hull event, so a hull blast names only the one raised right after it
@@ -7576,11 +7616,14 @@ function* createFxSteps(
      * @param {number} caliberMm gun caliber (scales the effect)
      */
     muzzleFlash(pos: THREE.Vector3, dir: THREE.Vector3, caliberMm: number, rocket = false,
-      shooterId: ShellId | null = null): void {
+      shooterId: ShellId | null = null, weapon: ShotKey | null = null, timeS = Number.NaN): void {
       // (fleet review 2026-11-03) a tank firing at speed: its flash leaves the muzzle with the muzzle's own motion
       subjectPointVelocity(shooterId != null ? subjectFor(shooterId) : null, pos.x, pos.z, _shotVel);
       if (rocket) { spawnRocketIgnition(pos, dir, caliberMm, 0, _shotVel); return; }
-      const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0, 1, _shotVel);
+      // (272) by its gun's cadence (flashCadenceOf): dark, a core flicker or the full flash, its light struck or held
+      const cadence = flashCadenceOf(shooterId, weapon, timeS);
+      if (cadence === 'none') return;
+      const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0, 1, _shotVel, cadence === 'flicker');
       // r2 ON THE BORE AXIS: the r1 light floated 0.45 m ABOVE the tube and
       // its local pool rendered as a glowing lozenge sitting ON TOP of the
       // barrel at mid-length (critic: "as if the barrel exploded midway").
@@ -7591,9 +7634,10 @@ function* createFxSteps(
       _sv.y += 0.10;
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
       const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
-      // (271) a refused pulse binds no near field (the flash site's note)
-      if (flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
-        undefined, undefined, undefined, pulse.range, _shotVel)) boundGunNearField(lightStates[0], dir);
+      // (271) a refused pulse binds no near field (the flash site's note); (272) a sustained gun's light is held
+      const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
+      if (cadence === 'full' ? flashLight(lightStates[0], _sv, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)
+        : holdMuzzleLight(_sv, peak, pulse.range, _shotVel)) boundGunNearField(lightStates[0], dir);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low

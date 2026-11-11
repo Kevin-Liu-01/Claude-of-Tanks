@@ -13,6 +13,7 @@ import type { PadAxes, PadStatus, PadTourLayout } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { showPadTour } from './padTourScreen.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
+import { createShotCadence } from '../game/shotCadence.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
 interface PadPlayer {
@@ -228,6 +229,9 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   let locked = false;
   let lastCueAt = -Infinity;
   const owner = { id: null as string | null, player: ports.ownsPlayer !== false };
+  // (272) a fast gun buzzes the phone once a shake window, as it kicks the camera (game/shotCadence.ts): a burst at the
+  // floor's 20 rounds a second sent 20 cues a second; a gun slower than the window buzzes every shot
+  const shotBuzz = createShotCadence();
   const unlisten = ports.listen ? PAD_CUE_EVENTS.map((type) => ports.listen!(type, (payload) => {
     if (type === 'ui:autoAimState' && owner.player) locked = !!(payload && typeof payload === 'object' && Reflect.get(payload, 'on') === true);
     if (!driving || view.state.kind !== 'live') return;
@@ -235,6 +239,11 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     owner.id = ports.source()?.player?.id ?? null;
     const cue = padCueOf(type, payload, owner);
     if (!cue) return;
+    if (cue.c === 'shot' && payload && typeof payload === 'object') {
+      const timeS = Number(Reflect.get(payload, 'timeS'));
+      const weapon = Reflect.get(payload, 'weaponSound') as string | null | undefined;
+      if (Number.isFinite(timeS) && shotBuzz.admit('shake', owner.id, weapon || cue.m || 0, timeS) === 0) return;
+    }
     const now = performance.now();
     if (relay && now - lastCueAt < RELAY_CUE_GAP_MS && cue.c !== 'kill' && cue.c !== 'dead') return;
     if (!link.sendCtl({ k: 'cue', ...cue })) return;

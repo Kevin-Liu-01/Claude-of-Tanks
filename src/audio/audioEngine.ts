@@ -76,6 +76,8 @@ import {
   type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
 } from './battleMode.ts';
 import { killcamOwnsScreen } from '../game/killcamScreen.ts';
+import { createShotCadence, sustainedGrainS, type ShotKey } from '../game/shotCadence.ts';
+import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import {
   GROUND_DEBRIS, MATERIAL_SOUNDS, NEAR_MISS_REACH_M, SPALL, calibreBand, compartmentOf, distantBank, groundMaterial, hitMaterial,
   impactAssetIds, impactLayers, landingResult, nearMissAsset, propMaterial,
@@ -312,6 +314,8 @@ interface ShellFiredEvent {
   shellType: string;
   /** The round's own name (a guided round's family: how it leaves its launcher). */
   shellName?: string;
+  /** (272) the clock the round was fired on (the simulation's): its gun's cadence (game/shotCadence.ts) */
+  timeS?: number;
 }
 
 interface ShellHitEvent {
@@ -1041,6 +1045,10 @@ export function createAudio({
   const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -6, autocannon: -16, mg: -19 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
+  // (272, the owner: "debounce some things like fire sounds") a fast gun's report by its cadence (game/shotCadence.ts):
+  // each round's crack at most the floor's 20 a second, a sustained gun's crack a short grain, its punch, distant boom and
+  // feed once a body window, its echo once a tail window. A gun slower than every window is heard as it always was.
+  const shotCadence = createShotCadence();
 
   /** The punch layer for a report: which recording, its rate (a bigger bore sits lower) and how long it may ring. */
   function punchFor(family: string, caliberMm: number): { id: string; rate: number; maxDurS: number } {
@@ -1078,12 +1086,25 @@ export function createAudio({
    * (a guided round's by how it launches) fading into the distant one by range, the muzzle brake's side blast, the punch
    * of the blast, the map's echo; for our own gun its own report from the hatch, in the sight the closed turret's, and
    * the breech's recoil. A shot whose key has no row is silent (the census and typecheck keep that from shipping).
+   * (272) A round given its weapon (`cadenceShooter`, `cadenceWeapon`) and its clock is heard by that gun's cadence
+   * (shotCadence above); one given no clock (a replay's, a cinematic's, a probe's) plays in full.
    */
   function fireWeapon(pos: Vec3, m: WeaponMount, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false,
-    shooterId: string | null = null, roundName: string | null = null, dir: Vec3 | null = null): void {
+    shooterId: string | null = null, roundName: string | null = null, dir: Vec3 | null = null,
+    cadenceShooter: ShotKey | null = null, cadenceWeapon: ShotKey | null = null, cadenceTimeS = Number.NaN): void {
     if (!ready()) return;
     const resolved = resolveWeaponReport(m, soundProfile);
     if (!resolved) { logSound('weapon:unkeyed', { key: m.key }); return; }
+    let grainS: number | undefined;
+    let body = true;
+    let tail = true;
+    if (cadenceShooter != null && Number.isFinite(cadenceTimeS)) {
+      // a round inside the floor of its gun's last crack is silent (a rotary gun's in-between rounds)
+      if (shotCadence.admit('report', cadenceShooter, cadenceWeapon, cadenceTimeS) === 0) return;
+      grainS = sustainedGrainS(shotCadence.gapS) ?? undefined;
+      body = shotCadence.admit('body', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
+      tail = shotCadence.admit('tail', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
+    }
     // The Juggernaut's gun carries further and sits a little deeper.
     const report = shooterId != null && shooterId === bossId ? { ...resolved, gainDb: resolved.gainDb + 2.5, rate: resolved.rate * 0.94 } : resolved;
     const row = report.row;
@@ -1110,19 +1131,22 @@ export function createAudio({
     const ownReport = own && (!launch || launch === 'tube') ? row.own : null;
     // The blast belongs to the close report: past its range the distant bank carries the shot.
     const blastDb = closeK > 0.05 ? BLAST_DB[row.family] : undefined;
-    if (blastDb != null && !(scopedInside && row.family !== 'cannon')) {
+    if (blastDb != null && body && !(scopedInside && row.family !== 'cannon')) {
       const punch = punchFor(row.family, row.boreMm);
       // the punch is the muzzle blast itself: it turns with the report around the brake
       play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) + brakeDb });
     }
     if (scopedInside && row.family !== 'cannon') {
-      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate }));
-    } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb });
-    else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb });
-    // The distant boom sits 3 dB under the close report.
-    if (farK > 0.03 && !(scopedInside && row.family !== 'cannon')) play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
-    if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
-    if (scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
+      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate, maxDurS: grainS }));
+    } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb, maxDurS: grainS });
+    else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb, maxDurS: grainS });
+    // The distant boom sits 3 dB under the close report. (272) Under a close report it is the body's; alone, past the close
+    // report's range, it is the round's own crack.
+    if (farK > 0.03 && (body || closeK <= 0.03) && !(scopedInside && row.family !== 'cannon')) {
+      play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3, maxDurS: grainS });
+    }
+    if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2, maxDurS: grainS });
+    if (tail && scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
       const now = mixer.ctx.currentTime;
       if (row.family !== 'mg' || now - (lastBurstTail.get(row.key) ?? -1) > 0.22) {
         if (row.family === 'mg') lastBurstTail.set(row.key, now);
@@ -1132,18 +1156,19 @@ export function createAudio({
       }
     }
     // In the sight our own gun is heard from inside its closed turret, close-miked by its bore.
-    if (own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
+    if (body && own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
     // The machinery of our own shot: the breech recoiling and running back into battery, the buffer's hiss, the
     // turret's loose gear rattling.
-    if (own && !cinematic && row.key === 'ac130-105/unitary_brass') {
+    // (272) a sustained gun's breech and feed sound once a body window
+    if (body && own && !cinematic && row.key === 'ac130-105/unitary_brass') {
       // In the gunship the breech runs open on counter-recoil and throws the hot case onto the deck.
       play('gunship_casing_drop', hullOptions({ delayS: 0.45 }));
-    } else if (own && !cinematic && row.family === 'cannon') {
+    } else if (body && own && !cinematic && row.family === 'cannon') {
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (row.boreMm - 100) / 300, 0.85, 1.15) }));
     }
     // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
     // and it made gunfire read as explosions. The recorded punch is the weight now.)
-    if ((own || distance < 45) && row.family === 'autocannon') {
+    if (body && (own || distance < 45) && row.family === 'autocannon') {
       play('ac_feed', own ? hullOptions({ delayS: row.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: row.actionDelayS, gainDb: -10 });
     }
   }
@@ -1199,7 +1224,8 @@ export function createAudio({
     const shotOf = shotMount(event.shooterId ?? null, event.shellName ?? null, event.caliberMm, event.weaponSound);
     // an airstrike's rounds are heard as the strike's own (Air Support: the A-10's one burst a run, onStrikeRound)
     const strikeOwned = STRIKE_OWNED_REPORTS.has(String(event.weaponSound || ''));
-    if (!event.feedbackPredicted && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
+    if (!event.feedbackPredicted && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir,
+      event.shooterId ?? '', event.weaponSound || event.caliberMm, Number(event.timeS));
     if (!ownShot) shellFlyby(event);
     if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
       const [gx, gy, gz] = event.muzzlePos;
@@ -1228,7 +1254,7 @@ export function createAudio({
     // Intent-only report: no flyby, crew call or shell bookkeeping.
     const shooter = event.shooterId ?? listenerOwnerId;
     fireWeapon(event.muzzlePos, shotMount(shooter, event.shellName ?? null, event.caliberMm, event.weaponSound), event.weaponSound, true,
-      event.muzzleIndex, false, null, event.shellName ?? null, event.dir);
+      event.muzzleIndex, false, null, event.shellName ?? null, event.dir, shooter, event.weaponSound || event.caliberMm, Number(event.timeS));
   }
 
   // --------------------------------------------------------------- impacts ---
@@ -1334,6 +1360,10 @@ export function createAudio({
       if (activation?.pos?.length === 3) { play('era_det', { ...at(activation.pos), focus }); cassettes++; }
     }
     if (!cassettes && isEraActivation(event) && event.kind !== 'era') play('era_det', { x, y, z, focus });
+    // (272) a fast gun's rounds on one hull, by one shooter, strike once an impact window (game/shotCadence.ts): a burst
+    // is a rattle of strikes, not a stack of every round's (a main gun's round, a missile's, always strikes)
+    if (isRapidFireHit(event) && event.targetId != null && ctx
+      && shotCadence.admit('impact', event.targetId, event.attackerId ?? '', ctx.currentTime) === 0) return;
     const result: ImpactResult | null = event.kind === 'pen' || event.kind === 'screen_pierce' ? 'through'
       : event.kind === 'ricochet' ? 'glance'
         : event.kind === 'nonpen' || event.kind === 'spaced_absorb' ? 'stop' : null;
@@ -2979,6 +3009,7 @@ export function createAudio({
 
   function stopWorld(reason: string): void {
     stopAerial();
+    shotCadence.clear();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
     // the rigs' loops go with the rigs (the next battle's rigs pin their own)
@@ -3371,7 +3402,10 @@ export function createAudio({
       play('rubble_chunk_land', { x, y, z, gainDb: clamp(-10 + 4 * Math.log10(mass / 20) + (speed - 2.5) * 0.8, -10, 0) });
     });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
-      if (battleMode.phase === 'battle' && !battleMode.over) fireWeapon([e.x, e.y, e.z], stationShot(e.caliberMm), null, isOwn(e.id));
+      // (272) a roof gun's rounds by its station's cadence, on the audio clock (its report names no simulation time)
+      if (battleMode.phase === 'battle' && !battleMode.over) {
+        fireWeapon([e.x, e.y, e.z], stationShot(e.caliberMm), null, isOwn(e.id), -1, false, null, null, null, e.id, 'station', ctx ? ctx.currentTime : Number.NaN);
+      }
     });
     on<ShellFiredEvent>('shell:fired', onShellFired);
     // (world-sfx-269) an active protection system defeating a missile or rocket played nothing: the interceptor's charge
@@ -3897,6 +3931,8 @@ export function createAudio({
       get voicesLoaded() { return !!radio && !!library?.voiceReady(radio.language); },
       get crewLanguage() { return radio?.language ?? null; },
       get sfxLog() { return pool?.log ?? []; },
+      /** (272) the one-shot and loop voices sounding now (the pool's budget bounds them): a fast gun's receipt */
+      activeVoices: () => { if (!pool || !ctx) return 0; pool.prune(ctx.currentTime); return pool.active.length; },
       get sfxLoaded() { return !!library?.supported && (library?.stats().assets ?? 0) > 0; },
       get sfxCount() { return library?.stats().assets ?? 0; },
       get killcamSfxLog() { return killcamLog; },
