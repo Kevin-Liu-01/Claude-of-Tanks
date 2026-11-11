@@ -7,7 +7,7 @@
 // src/vehicles. The authority (sim/authoritativeMatch.ts) and the page battle (game/state.ts for bots,
 // game/playerBattleActions.ts for the player) apply every item through applyConsumable and tickConsumables, so an item
 // does the same thing wherever the battle runs. Cooldowns and charges are the ruleset's (CONSUMABLE_TIMING); this
-// module holds what an item does. Catalog and grounding: ~/cot-launch-state/streams/CONSUMABLES-259.md.
+// module holds what an item does. Catalog and grounding: the consumables study of release 259 (kept outside the repository).
 //
 // EFFECT WIRING MAP — where each effect lands:
 //   repair, repair_large, track_links   modules to full HP (damage.ts repairAllModules / repairModules)

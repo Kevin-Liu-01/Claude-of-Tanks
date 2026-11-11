@@ -290,7 +290,7 @@ older copy) is reaped only when it is empty and four times `lockStaleMs` old. Re
 directory away and then clears it, together with its `*.holder` files. Any waiter may clear a dead owner's lock, but
 only the queue head claims. A caller that must not keep results from a hold it lost can check that `refresh()` still
 returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
-2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
+2's own copy, kept outside the repository.
 
 ### Warm capture holds (2026-10-22)
 

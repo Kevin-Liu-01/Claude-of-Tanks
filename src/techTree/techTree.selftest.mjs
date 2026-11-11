@@ -58,7 +58,7 @@ assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolve
 // ------------------------------------------------------------------------------------------------ the 257 order
 // Owner 2026-10-26 (257): "fix tank ordering. we need more tier 9s, stuff like leopard 2a6m,2a5, m1a2s, like these are all
 // powerful tanks". The shown tier follows a capability score (stats against the vehicle's own class, generation, era and
-// the 251 tier; ~/cot-launch-state/streams/tech-tree/RETIER-257.md), with the owner's anchors. These rules hold whatever
+// the 251 tier; the release-257 re-tier study), with the owner's anchors. These rules hold whatever
 // the scores: the anchors, the owner's Japan and Korea rulings, the T-90 line and the equal-rank lineages never stepping
 // down, an upgrade never below its base, and a prototype never above its production type.
 assert.deepEqual(['leo2a5', 'leo2a6', 'leo2a6m', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_tusk'].map(displayTier),

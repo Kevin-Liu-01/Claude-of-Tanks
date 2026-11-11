@@ -2,8 +2,8 @@
 // tank across a realm boundary (structured clone, the arrays handed over both ways, as the decor worker posts them)
 // attaches byte-identically to the decoration planned in-line, at HIGH and LOW; the tank graph wire rebuilds three.js
 // values, node references and LOD levels; a planner that throws leaves the tank to the in-line pass. The fleet-wide proof
-// (every tank, both tiers, stepped and interleaved, and the worker realm) runs beside the stage receipts:
-// ~/cot-launch-state/streams/frontend-e/decor2b.
+// (every tank, both tiers, stepped and interleaved, and the worker realm) runs beside the stage receipts, outside the
+// repository (the frontend-e decor2b proof).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import './tankFactory.ts';

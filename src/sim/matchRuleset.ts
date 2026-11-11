@@ -2397,7 +2397,7 @@ export function rulesetAllowsEquipment(ruleset: Pick<MatchRuleset, 'equipmentSlo
 
 /**
  * Each consumable's cooldown and uses per life (owner 2026-10-26: "have a much larger variety"; the catalog and its
- * grounding: sim/consumableRules.ts, ~/cot-launch-state/streams/CONSUMABLES-259.md). The only timing table: the page
+ * grounding: sim/consumableRules.ts and the release-259 consumables study). The only timing table: the page
  * battle, the authority, the HUD and the Garage all read it. The first three keep the kits' original cooldowns.
  */
 export const CONSUMABLE_TIMING: Readonly<Record<ConsumableId, ConsumableTiming>> = Object.freeze({

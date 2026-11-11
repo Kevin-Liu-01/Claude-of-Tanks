@@ -1,5 +1,5 @@
 // The capture-hold census (2026-11-02 audit S4): the rules every tool that holds the GPU follows, read from the sources.
-// - Retired machine gates: the memory guard's ~/cot-launch-state/memguard/{PAUSE,WARN} files are retired (no memory
+// - Retired machine gates: the memory guard's PAUSE and WARN files are retired (no memory
 //   gates; `headroom can-start` always passes). A tool that still reads them stops on a leftover PAUSE and waits hours on a
 //   leftover WARN, so no source of this checkout names the memguard directory in code.
 // - Release after teardown: a finally that releases the capture lock and closes a browser closes the browser first, so the
@@ -138,10 +138,10 @@ const MEMGUARD = new RegExp(['[\'"`/]mem', 'guard\\b'].join(''));
 
 /** The lines of one source's code that name the retired memory-guard directory. */
 const memguardReads = (text) => code(text).split('\n').flatMap((line, index) => (MEMGUARD.test(line) ? [`${index + 1}: ${line.trim().slice(0, 140)}`] : []));
-assert.equal(memguardReads(`const MEMGUARD = join(homedir(), 'cot-launch-state', '${'mem'}guard');`).length, 1, 'a joined path');
-assert.equal(memguardReads(`if (existsSync(\`\${home}/cot-launch-state/${'mem'}guard/PAUSE\`)) stop();`).length, 1, 'a template path');
+assert.equal(memguardReads(`const MEMGUARD = join(homedir(), 'launch-notes', '${'mem'}guard');`).length, 1, 'a joined path');
+assert.equal(memguardReads(`if (existsSync(\`\${home}/launch-notes/${'mem'}guard/PAUSE\`)) stop();`).length, 1, 'a template path');
 assert.equal(memguardReads(`// the ${'mem'}guard files are retired`).length, 0, 'a comment is not a read');
-assert.equal(memguardReads('const QUIET = join(homedir(), \'cot-launch-state\', \'QUIET\');').length, 0, 'the quiet window is not the memory guard');
+assert.equal(memguardReads('const QUIET = join(homedir(), \'launch-notes\', \'QUIET\');').length, 0, 'the quiet window is not the memory guard');
 
 // a finally block's code (its own line on, at most 10 lines, to where its braces close)
 function finallyBlocks(text) {
