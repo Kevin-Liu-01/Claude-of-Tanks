@@ -3284,6 +3284,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
     // it, at the tool's 1024x640 and a desktop's 1440x900
     'tools/mp-rooms-entry.browser.selftest.mjs',
+    // 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby and
+    // Deploy open, by mouse at 1920x1080 and 1200x819 and by touch at 390x844
+    'tools/couch-open.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program

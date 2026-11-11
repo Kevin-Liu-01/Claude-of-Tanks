@@ -39,7 +39,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, closeSurfacesWithin, openSurface, surfaceHolds, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
 import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
@@ -4202,8 +4202,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   battleMenu.addEventListener('click', (event) => {
     if ((event.target as Element | null)?.closest('[data-battle-close]')) closeBattleMenu({ restoreFocus: true });
   });
+  // (272) the focus a surface opened from Deploy takes (the couch lobby: a body-level modal standing on Deploy) stays
+  // Deploy's: read as a leave, it closed Deploy and the stack took the new surface with it
   const leavesDeploy = (event: FocusEvent) => event.relatedTarget instanceof Node
-    && !battleControl.contains(event.relatedTarget) && !battleMenu.contains(event.relatedTarget);
+    && !battleControl.contains(event.relatedTarget) && !surfaceHolds(deploySurface, event.relatedTarget);
   battleControl.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   battleMenu.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
