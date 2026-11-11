@@ -156,12 +156,9 @@ export const FLEET_GROUP_IDS = Object.freeze({
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;
 
-/** A tank's fleet group by its id. No prototype (improve-271, plan 039): an id spelled like an Object member
- *  ("constructor", "toString") finds no group in any reader, rather than a function. */
-export const FLEET_GROUP_BY_ID: Readonly<Record<string, FleetGroup>> = Object.freeze(Object.assign(
-  Object.create(null) as Record<string, FleetGroup>,
+export const FLEET_GROUP_BY_ID: Readonly<Record<string, FleetGroup>> = Object.freeze(
   Object.fromEntries(
     (Object.entries(FLEET_GROUP_IDS) as [FleetGroup, readonly string[]][])
       .flatMap(([group, ids]) => ids.map((id) => [id, group])),
   ),
-));
+);

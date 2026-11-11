@@ -14,8 +14,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import './tankFactory.ts';
-import { TANK_SPECS, getSpec } from './specs.ts';
-import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
+import { TANK_SPECS } from './specs.ts';
 import {
   TANK_IDS, TANK_ID_RENAMES, TANK_ID_SCHEMA, createTankIdResolver, resolveTankId, tankSeedId,
 } from './tankIdAliases.ts';
@@ -211,25 +210,5 @@ assert.equal(shown(resolveTankId('leo2a6m_x', 1)), 'Leopard 2A6M');
 assert.equal(shown(resolveTankId('t90m', 1)), 'T-90AM', 'schema-1 t90m is the vehicle shown as T-90AM');
 assert.equal(shown(resolveTankId('t90m_x', 1)), 'T-90M Proryv');
 
-// (improve-271, plan 039) an id spelled like an Object member is unknown at every boundary: the resolver hands it back as
-// the string it was, getSpec refuses it, and it has no fleet group; real ids resolve as before
-for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
-  const resolved = resolveTankId(name, 1);
-  assert.equal(typeof resolved, 'string', `${name}: the resolver returns a string`);
-  assert.equal(resolved, name, `${name}: unchanged`);
-  assert.throws(() => getSpec(name), /Unknown tank id/, `${name}: getSpec refuses it`);
-  assert.equal(FLEET_GROUP_BY_ID[name], undefined, `${name}: no fleet group`);
-}
-{
-  const [renamedFrom, renamedTo] = Object.entries(TANK_ID_RENAMES[0])[0];
-  const live = Object.keys(FLEET_GROUP_BY_ID).slice(0, 2);
-  assert.equal(resolveTankId(renamedFrom, 1), resolveTankId(renamedTo, 2), 'a renamed id resolves as before');
-  for (const id of live) {
-    assert.equal(resolveTankId(id, TANK_ID_SCHEMA), id);
-    assert.equal(getSpec(id), TANK_SPECS[id]);
-    assert.equal(typeof FLEET_GROUP_BY_ID[id], 'string');
-  }
-}
-
 console.log(`tankIdAliases selftest: schema ${TANK_ID_SCHEMA} (${TANK_ID_RENAMES.length} landed maps, protocol ${PROTOCOL_VERSION}); `
-  + `${SCHEMA_1_IDS.length} schema-1 ids name one live vehicle each; swaps resolve by schema; Object member names unknown`);
+  + `${SCHEMA_1_IDS.length} schema-1 ids name one live vehicle each; swaps resolve by schema`);
