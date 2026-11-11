@@ -35,6 +35,8 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/black-world.browser.selftest.mjs',
   // 2026-10-30 (garage-roster-thrash-265): the roster settle guard serves the checkout and takes the lock itself
   'tools/garage-roster-settle.browser.selftest.mjs',
+  // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard serves the checkout and takes the lock itself
+  'tools/camo-sheet-layout.browser.selftest.mjs',
   // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard serves the checkout and takes the lock itself
   'tools/hud-self-measure.browser.selftest.mjs',
   // 268: the multiplayer end-to-end's rooms entry at 1024x640 and 1440x900 serves the checkout and takes the lock itself
