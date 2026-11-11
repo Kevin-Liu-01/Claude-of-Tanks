@@ -129,7 +129,9 @@ function visit(node) {
   ts.forEachChild(node, visit);
 }
 visit(file);
-const ownerSource = source.slice(source.indexOf('  let pmrem: '), source.indexOf('  // Sourced-HDRI environment override'));
+const ownerStart = source.indexOf('  let pmrem: '), ownerEnd = source.indexOf('  // Round 65: the environment of the physically based dome');
+assert.ok(ownerStart >= 0 && ownerEnd > ownerStart, 'the environment owner block is found in sky.ts');
+const ownerSource = source.slice(ownerStart, ownerEnd);
 function skyFixture() {
   const state = { creates: 0, bakes: 0, validations: 0, generatorDisposals: 0,
     atmosphereInfo: null, atmosphereRefreshes: 0, geometryDisposals: 0, materialDisposals: 0, targets: [], inputs: [], failure: '' };
@@ -184,8 +186,7 @@ function skyFixture() {
     // legacy dome this fixture bakes — the authored floor applies exactly as before
     const physicalEnvIntensity = null;
     const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
-    const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21, HDRI_ENV_URL = null;
-    const loadHdriEnvironment = () => { throw new Error('unexpected HDRI'); };
+    const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21;
     // (item 31, 2026-10-11: the lunar Earth's land mask binds a one-texel placeholder until a preset draws the Earth;
     // this fixture's preset draws none, so the real raster must never be built here)
     const EARTH_LAND_PLACEHOLDER = new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType);
@@ -238,6 +239,6 @@ const resetGenerator = skyFixture(); resetGenerator.rig.bakeEnvironment();
 resetGenerator.renderer.info = {}; resetGenerator.rig.bakeEnvironment();
 assert.equal(resetGenerator.state.creates, 2); assert.equal(resetGenerator.state.generatorDisposals, 1);
 assert.equal(resetGenerator.state.targets[0].disposals, 1);
-assert.match(bakeMethod, /if \(HDRI_ENV_URL\)\s*\{\s*loadHdriEnvironment\(HDRI_ENV_URL\);\s*return;/);
-assert.match(source, /null, \(\) => environmentGenerator\(\)\.fromEquirectangular\(tex\)/);
+// (272) the switched-off sourced-HDRI experiment is gone: the procedural bake is the only environment path
+assert.doesNotMatch(source, /HDRI_ENV_URL|loadHdriEnvironment|fromEquirectangular|RGBELoader/);
 console.log('skyEnvironmentCache.selftest: bounded validated day/night reuse, exact keys, context/disposal/failure ownership, actual sky bake/state contracts passed');

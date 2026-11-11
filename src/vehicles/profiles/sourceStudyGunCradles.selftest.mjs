@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Held-out rays on the existing source-measured housing stock, in the gun
 // frame. These also cross real tube/cradle receiving sections; an empty
@@ -41,12 +42,12 @@ for (const quality of ['high','low']) for (const sourceRow of cases) {
     const dark=root.getObjectByName('gunMountDark');
     const preservedShadowSources=[];
     root.traverse(object=>{if(object.userData.preserveRecoilShadowSource)preservedShadowSources.push(object);});
-    assert.deepEqual(preservedShadowSources,row.dark?[dark]:[],
+    assert.deepEqual(graphLabels(preservedShadowSources),graphLabels(row.dark?[dark]:[]),
       `${label}: only the actual migrated dark stock preserves its prior shadow participation`);
     assert.ok(mount?.isMesh&&mount.geometry.attributes.position.count>=36,`${label}: real cradle stock`);
-    assert.equal(mount.parent,pitch,`${label}: cradle pitches independently of cannon recoil`);
-    assert.equal(gun.parent,recoil,`${label}: tube retains the real recoil path`);
-    assert.equal(mount.material,gun.material,`${label}: migrated paint retains the actual barrel material`);
+    assert.ok(mount.parent === pitch,`${label}: cradle pitches independently of cannon recoil`);
+    assert.ok(gun.parent === recoil,`${label}: tube retains the real recoil path`);
+    assert.ok(mount.material === gun.material,`${label}: migrated paint retains the actual barrel material`);
     for(const mesh of [mount,gun,dark].filter(Boolean)) if(!disposed.has(mesh.geometry)) {
       disposed.set(mesh.geometry,0);
       mesh.geometry.addEventListener('dispose',()=>disposed.set(mesh.geometry,disposed.get(mesh.geometry)+1));
@@ -115,7 +116,7 @@ for (const quality of ['high','low']) for (const sourceRow of cases) {
     }
     if(row.dark) {
       assert.equal(dark.userData.preserveRecoilShadowSource,true,`${label}: historical gun-dark shadow source retained`);
-      assert.equal(dark.parent,pitch,`${label}: dark sight/receiver is always-visible pitch stock`);
+      assert.ok(dark.parent === pitch,`${label}: dark sight/receiver is always-visible pitch stock`);
       const camera=new THREE.PerspectiveCamera(40,1,.1,1000);
       for(const distance of [2,500,2]) {
         camera.position.set(0,3,distance);camera.updateMatrixWorld(true);
