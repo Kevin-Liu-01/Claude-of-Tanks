@@ -3258,6 +3258,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
+    // 272: every mode's picture (Deploy tile and plate, the landing's and the Field Manual's still); Air Support shipped blank
+    'src/ui/deployModeArt.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',

@@ -10,7 +10,7 @@
   "width": 640,
   "height": 360
  },
- "count": 34,
+ "count": 36,
  "items": [
   {
    "id": "standard",
@@ -352,6 +352,35 @@
    "width": 1600,
    "height": 900,
    "bytes": 34004
+  },
+  {
+   "id": "air_support-tile",
+   "file": "air_support-480.webp",
+   "mode": "air_support",
+   "source": "in-engine battle capture on the air-support-270 lane (release 270), HUD and markers hidden: the AC-130 banking in its orbit over Verdant Fields at evening, the woods and fields it works below (tools/air-support-shots.mjs --aircraft, gunship 'close', 1600x900)",
+   "capture": {
+    "run": "air-support-270/a3",
+    "slot": "aircraft-gunship-close",
+    "candidate": null,
+    "crop": null
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "air_support-panel",
+   "file": "air_support-1600.webp",
+   "mode": "air_support",
+   "source": "in-engine battle capture on the air-support-270 lane (release 270), HUD and markers hidden: the AC-130 banking in its orbit over Verdant Fields at evening, the woods and fields it works below (tools/air-support-shots.mjs --aircraft, gunship 'close', 1600x900)",
+   "capture": {
+    "run": "air-support-270/a3",
+    "slot": "aircraft-gunship-close",
+    "candidate": null,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 89852
   },
   {
    "id": "proving_ground-tile",

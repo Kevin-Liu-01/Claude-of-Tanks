@@ -14,7 +14,7 @@
 //        before every slot, so slots can be added, reordered or removed while the run waits for the lock)
 //     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=7613] [--cache-dir=<dir>]
 //        [--base=http://127.0.0.1:<port>] [--hold-max-min=9] [--headroom-gb=8] [--dpr=2] [--lock-timeout-min=600]
-//        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double]
+//        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double] [--ready-timeout-s=240]
 //   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...] [--alt="what the frame shows"]
 //   node tools/marketing-shots/mode-battle-shots.mjs --sheet=modes/standard   (rebuild a slot's contact sheets)
 //
@@ -310,6 +310,8 @@ async function nextSlot() {
 }
 
 const holdMaxMs = Number(opt('hold-max-min', '9')) * 60 * 1000;
+// --ready-timeout-s: the page's budget to load and report the game ready (a loaded machine needs more than the default)
+const readyMs = Number(opt('ready-timeout-s', '240')) * 1000;
 const port = Number(opt('port', '7613'));
 let server = null;
 let base = opt('base');
@@ -440,8 +442,8 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
     }
 
     const t0 = Date.now();
-    await page.goto(`${baseUrl}/?nosplash=1${recipe.query || ''}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-    await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG && !!window.__MB, { timeout: 240000, polling: 250 });
+    await page.goto(`${baseUrl}/?nosplash=1${recipe.query || ''}`, { waitUntil: 'domcontentloaded', timeout: readyMs });
+    await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG && !!window.__MB, { timeout: readyMs, polling: 250 });
     await page.evaluate(() => window.__MB.attach());
     log(`${slot}: game ready in ${Math.round((Date.now() - t0) / 1000)} s; starting ${battle.gameMode} on ${battle.mapId} at ${hour} in ${battle.specId}`);
 
