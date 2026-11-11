@@ -241,11 +241,12 @@ check('lavoir on a bank', () => {
   // the floor's paving (inside the walls, under the basin's kerb) stands over the bank's highest ground inside the walls
   let inside = 0;
   for (let x = -4.4; x <= 4.4; x += 0.4) for (let z = -2.4; z <= 2.4; z += 0.4) inside = Math.max(inside, bank(x, z));
-  const floorAt = (parts) => top(parts, (x, z) => Math.abs(x) < 0.2 && z > 2.3 && z < 2.38);
+  // (the paving is one box: its top read at its front corners, past the walls' and the flight's reach)
+  const floorAt = (parts) => top(parts, (x, z) => Math.abs(x) > 5.2 && Math.abs(x) < 5.4 && z > 3.28 && z < 3.32);
   assert.ok(floorAt(a.parts) >= inside + 0.1, `the terraced floor ${floorAt(a.parts).toFixed(2)} over the ground inside ${inside.toFixed(2)}`);
   assert.ok(Math.abs(floorAt(flat.parts) - 0.25) < 1e-6, 'on flat ground the floor is the step over it it always was');
   // the flight: its lowest tread a riser over the ground at its foot, every tread within the plan's run
-  const foot = bank(0, 3.3 + 1.1), flight = (x, z) => Math.abs(x) < 0.5 && z > 3.35 && z < 6;
+  const foot = bank(0, 3.3 + 1.1), flight = (x, z) => Math.abs(x) < 1.7 && z > 3.35 && z < 6;
   let far = -Infinity;
   each(a.parts, (x, y, z) => { if (y < 3 && flight(x, z)) far = Math.max(far, z); });
   const lowest = top(a.parts, (x, z) => flight(x, z) && z > far - 0.01);
