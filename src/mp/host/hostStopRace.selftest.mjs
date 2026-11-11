@@ -6,6 +6,9 @@
 // harness, any in-process host) the actor never stopped, and a receipt that hit the race grew to 46 GB before it was
 // killed. This receipt drives the core through its port exactly as the browser host does: boot, the loopback link and its
 // HELLO while the world loads, stop, the load finishing — and asserts no actor, no frames, and a bounded process.
+// (Round 3 B1/X6, 2026-11-05: a HELLO that waits for the boot is told so at once, wire HOLD. Round 4 F0, 2026-11-06: the
+// host runtime tells it, on the main thread, matchHost.ts bootHoldNotice; this core sends a queued seat nothing. The counts
+// below read the frames by type.)
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHostPortPair, HOST_LOOPBACK_PEER } from './hostProtocol.ts';
@@ -37,13 +40,15 @@ function hostWithSlowWorld(loadMs) {
   let loaded = false;
   const core = createMatchHostCore({ port: pair.worker, buildWorld: async () => { await sleep(loadMs); loaded = true; return 'terrain'; }, reportIntervalMs: 500 });
   const posted = [];
-  pair.main.onMessage((message) => posted.push(message.type));
-  return { pair, core, posted, isLoaded: () => loaded };
+  // the message type of each frame the core sends a link (the wire header's second byte)
+  const sent = [];
+  pair.main.onMessage((message) => { posted.push(message.type); if (message.type === 'link_send') sent.push(new Uint8Array(message.bytes)[1]); });
+  return { pair, core, posted, sent, isLoaded: () => loaded };
 }
 
 // ---- stopped mid-load, with the loopback link and its HELLO queued: no actor, no frames, nothing running
 {
-  const { pair, core, posted, isLoaded } = hostWithSlowWorld(400);
+  const { pair, core, posted, sent, isLoaded } = hostWithSlowWorld(400);
   pair.main.post({ type: 'boot', config: bootConfig });
   pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback', playerId: 'me' });
   pair.main.post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: hello.slice().buffer });
@@ -57,7 +62,7 @@ function hostWithSlowWorld(loadMs) {
   // assert.ok, not assert.equal(core.actor, null): a failure must not carry the actor (a whole match) into the printed error
   assert.ok(core.actor === null, 'no actor after the stop (before: one built, the loopback seat welcomed, the loop running)');
   assert.equal(core.booted, false);
-  assert.equal(posted.filter((type) => type === 'link_send').length, 0, 'no frame for the queued loopback seat');
+  assert.deepEqual(sent, [], 'no frame for the queued loopback seat (its boot\'s HOLD notice is the host runtime\'s)');
   assert.equal(posted.includes('ready'), false, 'the core never reports ready');
   assert.equal(posted.includes('report'), false, 'nor a match report');
   core.dispose();
@@ -66,19 +71,19 @@ function hostWithSlowWorld(loadMs) {
 
 // ---- the same host not stopped boots and welcomes the queued seat (the queue itself still works)
 {
-  const { pair, core, posted, isLoaded } = hostWithSlowWorld(200);
+  const { pair, core, posted, sent, isLoaded } = hostWithSlowWorld(200);
   pair.main.post({ type: 'boot', config: bootConfig });
   pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback', playerId: 'me' });
   pair.main.post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: hello.slice().buffer });
   while (!isLoaded()) await sleep(20);
   const started = Date.now();
-  while (!posted.includes('link_send') && Date.now() - started < 3000) await sleep(20);
+  while (!sent.includes(MESSAGE_TYPE.WELCOME) && Date.now() - started < 3000) await sleep(20);
   assert.ok(core.actor, 'an actor once the world loads');
-  assert.ok(posted.includes('link_send'), 'the queued loopback seat is welcomed');
+  assert.ok(sent.includes(MESSAGE_TYPE.WELCOME), 'the queued loopback seat is welcomed');
   assert.ok(posted.includes('ready'), 'and the core reports ready (the check above is not vacuous)');
   core.dispose();
   assert.equal(core.actor.stopped, true, 'dispose stops a running actor');
   pair.main.close();
 }
 assert.ok(process.memoryUsage().rss < 1e9, 'bounded');
-console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends nothing to the queued loopback seat; an unstopped core still welcomes it');
+console.log('hostStopRace.selftest: a core stopped during its world load starts no actor and sends the queued loopback seat nothing; an unstopped core still welcomes it');

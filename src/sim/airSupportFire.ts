@@ -50,12 +50,21 @@ export function strikeRoundPayload(shell: ShellEntity<ShellSpec>, strike: AirStr
 const _pose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
 const _from = new Vector3(), _dir = new Vector3(), _lane = { x: 0, z: 0 };
 
-/** Does a periodic event at times `start + k * every` (k = 0..count-1) fall in (prevS, timeS]? Returns the k, or -1. */
-function tickIn(start: number, every: number, count: number, prevS: number, timeS: number): number {
-  if (timeS < start) return -1;
-  const k = Math.floor((timeS - start) / every + 1e-9);
-  if (k >= count || start + k * every <= prevS) return -1;
-  return k;
+/**
+ * The next round of a stream whose round k is due at `start + k * every` (k = 0..count-1), `fired` of them gone: its k
+ * once its time has come (the tolerance the old window had), else -1. One round per stream per step. A count replaces
+ * the float window (improve-271 plan 007: a round due a few ulps after a tick fired on that tick and the next, the
+ * AC-130's 30 mm 119 times for a rule of 60).
+ */
+function nextRound(start: number, every: number, count: number, fired: number, timeS: number): number {
+  if (fired >= count || timeS < start) return -1;
+  return (timeS - start) / every + 1e-9 >= fired ? fired : -1;
+}
+
+/** A strike an older host sealed has no count: the rounds due by the previous step had left. */
+function firedBy(count: number | undefined, start: number, every: number, rounds: number, prevS: number): number {
+  if (typeof count === 'number') return count;
+  return prevS < start ? 0 : Math.min(rounds, Math.floor((prevS - start) / every + 1e-9) + 1);
 }
 
 /** A round leaves (x, y, z) toward the aim at its own speed, or on `flightS`'s solved arc onto the aim (the bomb). */
@@ -85,9 +94,10 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
     if (strike.kind === 'artillery') {
       // the battery: round k lands at landsS + k * every (never before the warning has run) on a seeded point inside the
       // circle, plunging from altitudeM up and behind the mark along the heading, seen for its last flightS
-      const a = rules.artillery, every = a.fireS / Math.max(1, a.rounds - 1);
-      const k = tickIn(strike.landsS - a.flightS, every, a.rounds, prevS, timeS);
+      const a = rules.artillery, every = a.fireS / Math.max(1, a.rounds - 1), start = strike.landsS - a.flightS;
+      const k = nextRound(start, every, a.rounds, firedBy(strike.fired, start, every, a.rounds, prevS), timeS);
       if (k < 0) continue;
+      strike.fired = k + 1;
       const r = Math.sqrt(strikeRandom(support.seed, strike.id, k * 2)) * a.radiusM, bearing = strikeRandom(support.seed, strike.id, k * 2 + 1) * Math.PI * 2;
       const ax = strike.x + detMath.sin(bearing) * r, az = strike.z + detMath.cos(bearing) * r, ay = ctx.terrainHeight(ax, az);
       // a 70-degree fall: the round's last visible point stands altitude / tan(70) back toward the battery
@@ -99,8 +109,9 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
     }
     if (strike.kind === 'strafe') {
       const s = rules.strafe, every = s.fireS / Math.max(1, s.rounds - 1);
-      const k = tickIn(strike.landsS, every, s.rounds, prevS, timeS);
+      const k = nextRound(strike.landsS, every, s.rounds, firedBy(strike.fired, strike.landsS, every, s.rounds, prevS), timeS);
       if (k < 0) continue;
+      strike.fired = k + 1;
       const pose = aircraftPose(rules, strike, strike.landsS + k * every, _pose);
       const start = strafeLaneStart(rules, strike, _lane);
       const along = s.lengthM * k / Math.max(1, s.rounds - 1);
@@ -112,7 +123,8 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       fire(ctx, strike, AIR_STRIKE_WEAPONS.strafe, pose.x, pose.y, pose.z, ax, ctx.terrainHeight(ax, az), az);
     } else if (strike.kind === 'bomb') {
       const b = rules.bomb, releaseS = strike.landsS - b.fallS;
-      if (tickIn(releaseS, 1, 1, prevS, timeS) < 0) continue;
+      if (nextRound(releaseS, 1, 1, firedBy(strike.fired, releaseS, 1, 1, prevS), timeS) < 0) continue;
+      strike.fired = 1;
       const pose = aircraftPose(rules, strike, releaseS, _pose);
       const miss = strikeRandom(support.seed, strike.id, 0) * b.missM, bearing = strikeRandom(support.seed, strike.id, 1) * Math.PI * 2;
       const ax = strike.x + detMath.sin(bearing) * miss, az = strike.z + detMath.cos(bearing) * miss;
@@ -121,9 +133,16 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, pose.x, pose.y, pose.z, ax, ay, az, b.fallS + rules.fallMarginS - (timeS - releaseS));
     } else {
       const g = rules.gunship;
-      const cannon = tickIn(strike.landsS, g.cannonEveryS, Math.floor(g.orbitS / g.cannonEveryS), prevS, timeS);
-      const howitzer = tickIn(strike.landsS + g.cannonEveryS * 0.5, g.howitzerEveryS, Math.floor(g.orbitS / g.howitzerEveryS), prevS, timeS);
+      const cannonRounds = Math.floor(g.orbitS / g.cannonEveryS), howitzerRounds = Math.floor(g.orbitS / g.howitzerEveryS);
+      const howitzerStart = strike.landsS + g.cannonEveryS * 0.5;
+      const cannon = nextRound(strike.landsS, g.cannonEveryS, cannonRounds,
+        firedBy(strike.fired, strike.landsS, g.cannonEveryS, cannonRounds, prevS), timeS);
+      const howitzer = nextRound(howitzerStart, g.howitzerEveryS, howitzerRounds,
+        firedBy(strike.firedAux, howitzerStart, g.howitzerEveryS, howitzerRounds, prevS), timeS);
       if (cannon < 0 && howitzer < 0) continue;
+      // a due round is spent whether or not the gunship has a spotted enemy in reach (as ever: no target, no shot)
+      if (cannon >= 0) strike.fired = cannon + 1;
+      if (howitzer >= 0) strike.firedAux = howitzer + 1;
       const target = gunshipTarget(ctx, strike, g.engageM);
       if (!target) continue;
       const pose = aircraftPose(rules, strike, timeS, _pose);

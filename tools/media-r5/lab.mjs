@@ -12,7 +12,8 @@ import { resolve, join, basename } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const ROOT = process.cwd();
-const { createCaptureLock, CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR, stampBehindWaiting, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
+const { createCaptureLock, stampBehindWaiting, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
+const { yieldToNormalHolds } = await import(join(ROOT, 'tools/media-r5/priority-yield.mjs'));
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z0-9-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
 const out = resolve(args.out ?? 'shots/media-r5/lab');
 const WIDTH = Number(args.width ?? 960);
@@ -136,65 +137,36 @@ const fifo2Holds = () => { try { const n = Number(JSON.parse(readFileSync(FIFO2,
 // --yield-fifo2-base=<n>: the service's count when this lane's last hold ended (a run started later would count from a
 // hold that began after it, one too many)
 let fifo2Base = FIFO2 ? (args['yield-fifo2-base'] != null ? Number(args['yield-fifo2-base']) : fifo2Holds()) : null;
-if (FIFO2) {
-  const releaseLock = lock.release.bind(lock);
-  lock.release = (...a) => { fifo2Base = fifo2Holds() ?? fifo2Base; return releaseLock(...a); };
-}
+// Every lease ends here: with --yield-fifo2 the service's count is taken as the lease ends (a monkey-patched
+// lock.release did this before, 2026-11-02 audit S4).
+const releaseLease = () => { if (FIFO2) fifo2Base = fifo2Holds() ?? fifo2Base; return lock.release(); };
 // --ticket-stamp=<ms> (the finals' scheme, 2026-10-07: a per-job lease rejoined a 45-ticket line at its back for every
 // take): every acquisition joins the queue at that place, the media lane's. With --lease=budget each later lease first
 // lets --yield-holds other holds (2 by default; a hold is one lock directory, its inode and birth time) take the lock,
 // so the place never starves the line; with the lock free a minute and nobody waiting (five minutes at most) it goes on.
 const STAMP = args['ticket-stamp'] ? Number(args['ticket-stamp']) : null;
 const YIELD_HOLDS = Math.max(0, Number(args['yield-holds'] ?? 2));
-const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
 // Only a normal-band hold pays a yield (2026-10-12: two media labs at the same priority stamp each counted the other's
-// hold as the yield it owed and passed the lock between them for 25 minutes, starving every normal ticket). A ticket's
-// name starts with its 15-digit stamp; a priority ticket is stamped back in time (ticketAt), a normal one at about the
-// moment it joined. A new hold whose vanished ticket was back-dated by more than a day is another priority lease.
-const PRIORITY_AGE_MS = 24 * 3600 * 1000;
-const queueTickets = () => { try { return new Map(readdirSync(CAPTURE_QUEUE_DIR).filter((n) => n.endsWith('.t')).map((n) => [n, Number(n.slice(0, 15))])); } catch { return new Map(); } };
+// hold as the yield it owed and passed the lock between them for 25 minutes, starving every normal ticket). The rule is
+// shared with the finals (tools/media-r5/priority-yield.mjs, 2026-11-02 audit S4): with the lock free a minute it goes on
+// once no NORMAL-band ticket waits (it counted any waiter, a priority one included, before).
 let leaseCount = 0;
+// the current lease began here (the lock's own state says whether one is held: lock.held)
+let heldSince = 0;
 async function take(ms) {
   // (--yield-first: also before the first lease, for a run that follows another media lease straight away)
   if (STAMP && args.lease === 'budget' && (leaseCount > 0 || args['yield-first']) && YIELD_HOLDS) {
-    const seen = new Set(), skipped = new Set(), pending = new Map();
-    let freeSince = Date.now(), served = 0, readAt = 0, queue = queueTickets(), left = [];
-    for (;;) {
-      const id = holdId(), tickets = queueTickets(), t = Date.now();
-      // the tickets that left the queue in the last five seconds ([stamp, when]); a new hold is classed by the ticket
-      // that left within three seconds of it (its owner's), waiting up to three seconds for that ticket to go
-      for (const [name, stamp] of queue) if (!tickets.has(name)) left.push([stamp, t]);
-      left = left.filter(([, at]) => t - at < 5000);
-      queue = tickets;
-      if (id && !seen.has(id) && !skipped.has(id) && !pending.has(id)) pending.set(id, t);
-      for (const [hold, first] of pending) {
-        const owners = left.filter(([, at]) => Math.abs(at - first) < 3000);
-        if (!owners.length && t - first < 3000) continue;
-        const priority = owners.length > 0 && owners.every(([stamp]) => stamp < t - PRIORITY_AGE_MS);
-        (priority ? skipped : seen).add(hold);
-        pending.delete(hold);
-        if (priority) console.log(`[lab] a priority-band hold (another media lease) is not a yield ${new Date().toTimeString().slice(0, 8)}`);
-      }
-      if (id) freeSince = t;
-      if (FIFO2 && Date.now() - readAt > 5000) {
-        readAt = Date.now();
-        const now = fifo2Holds();
-        // (a restarted runner counts from zero again)
-        if (now != null && fifo2Base != null && now < fifo2Base) fifo2Base = now;
-        if (now != null && fifo2Base == null) fifo2Base = now;
-        served = now != null && fifo2Base != null ? now - fifo2Base : 0;
-      }
-      if ((FIFO2 ? served : seen.size) >= YIELD_HOLDS) break;
-      const free = id ? 0 : Date.now() - freeSince;
-      if ((free > 60000 && !(lock.waiting?.() > 0)) || free > 300000) break;
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    const yielded = FIFO2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${seen.size} in all)` : `${seen.size} hold${seen.size === 1 ? '' : 's'}`;
+    const paid = await yieldToNormalHolds({ holds: YIELD_HOLDS, fifo2: FIFO2 ? fifo2Holds : null, fifo2Base,
+      onPriority: () => console.log(`[lab] a priority-band hold (another media lease) is not a yield ${new Date().toTimeString().slice(0, 8)}`) });
+    fifo2Base = paid.fifo2Base;
+    const { served, normal } = paid;
+    const yielded = FIFO2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${normal} in all)` : `${normal} hold${normal === 1 ? '' : 's'}`;
     console.log(`[lab] yielded to ${yielded}; rejoining the queue at ${STAMP} ${new Date().toTimeString().slice(0, 8)}`);
   }
   leaseCount++;
   // (2026-10-13) a waiting perf cost hold goes first: the lease rejoins one past the last perf band ticket
   await lock.acquire(ms, STAMP ? { ticket: ticketAt(stampBehindWaiting(STAMP)) } : {});
+  heldSince = Date.now();
   // (2026-10-08: the coordinator could not tell from the log when a lab held the shared lock)
   console.log(`[lab] lease ${leaseCount} taken ${new Date().toTimeString().slice(0, 8)}`);
 }
@@ -206,7 +178,6 @@ const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
 const PER_JOB = args.lease === 'job', PER_MAP = args.lease === 'map' || args.lease === 'budget';
 // --lease=budget --lease-min=N: keep the lock across consecutive maps until N minutes have passed, then rejoin the FIFO
 const BUDGET_MS = args.lease === 'budget' ? Number(args['lease-min'] ?? 12) * 60000 : 0;
-let heldSince = 0, holding = false;
 const LOCK_WAIT = 3 * 60 * 60 * 1000;
 let server, browser;
 const results = [];
@@ -269,8 +240,8 @@ try {
   const FRESH_FILMS = args['fresh-page'] !== '0';
   // a budget lease starts at the boot's own acquisition and runs on into the first maps (2026-10-06: releasing after
   // the boot cost a whole trip round a 30-ticket line before the first map); --lease=map and job keep their release
-  if (PER_JOB || (PER_MAP && !BUDGET_MS)) lock.release();
-  else if (BUDGET_MS) { holding = true; heldSince = bootLockAt; }
+  if (PER_JOB || (PER_MAP && !BUDGET_MS)) releaseLease();
+  else if (BUDGET_MS) heldSince = bootLockAt;
   const ready = async () => page.evaluate(async () => {
     const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
     await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
@@ -292,14 +263,14 @@ try {
     .filter(id => tankIds.includes(id));
   for (const map of maps) {
     if (wedged || stopping) break;
-    if (PER_JOB || (PER_MAP && !holding)) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
+    if (PER_JOB || (PER_MAP && !lock.held)) await take(LOCK_WAIT);
     try {
     const t0 = Date.now();
     // a page a failed fresh load left without its Studio boots again on this map (2026-10-14: review 4's lab ended there)
     if (!(await page.evaluate(() => !!window.__STUDIO?.active).catch(() => false))) await openPage(map, true);
     await page.evaluate(map => window.__STUDIO.load({ map, actors: [], effects: [], fxTime: 0, timeScale: 0 }), map);
     await ready();
-    if (PER_JOB) { lock.release(); holding = false; }
+    if (PER_JOB) releaseLease();
     console.log(`[lab] ${map} ready in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     if (featureMaps.includes(map)) {
       const feats = await page.evaluate(() => {
@@ -382,7 +353,7 @@ try {
       if (wedged || stopping) break;
       if (PER_JOB) await take(LOCK_WAIT);
       // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
-      if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
+      if (BUDGET_MS && !lock.held) await take(LOCK_WAIT);
       try {
         if (FRESH_FILMS && args.film && job.scene.storyboard && (pageUsed || pageMap !== map)) {
           // a reload that loses its page to a navigation during the readiness wait gets one more reload
@@ -643,16 +614,16 @@ try {
         results.push({ map, name: job.name, error: String(error.message) });
         if (timedOut(error)) { wedged = true; console.error('[lab] the browser stopped answering; the run ends here, the rest for a fresh browser'); }
       } finally {
-        if (PER_JOB) lock.release();
-        else if (BUDGET_MS && holding && Date.now() - heldSince >= BUDGET_MS) { lock.release(); holding = false; console.log(`[lab] lease released ${new Date().toTimeString().slice(0, 8)} (budget)`); }
+        if (PER_JOB) releaseLease();
+        else if (BUDGET_MS && lock.held && Date.now() - heldSince >= BUDGET_MS) { releaseLease(); console.log(`[lab] lease released ${new Date().toTimeString().slice(0, 8)} (budget)`); }
       }
     }
-    } finally { if (PER_MAP && holding && (!BUDGET_MS || Date.now() - heldSince >= BUDGET_MS)) { lock.release(); holding = false; } }
+    } finally { if (PER_MAP && lock.held && (!BUDGET_MS || Date.now() - heldSince >= BUDGET_MS)) releaseLease(); }
   }
   if (errors.length) writeFileSync(join(out, 'page-errors.txt'), errors.join('\n'));
 } finally {
   await browser?.close().catch(() => {}); await server?.close().catch(() => {});
-  clearInterval(lease); lock.release();
+  clearInterval(lease); releaseLease();
 }
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 1));
 if (wedged) process.exitCode = 3;

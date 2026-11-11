@@ -9,17 +9,17 @@ const close = (a, b, eps, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg}: ${a
 // A hull bouncing over rough ground: the support solver's pose at grid step k, and the timeline's pose at any instant.
 const supportAt = (k) => ({
   y: 10 + 0.08 * Math.sin(k * 0.9), pitch: 0.02 * Math.sin(k * 1.3 + 0.4), roll: 0.01 * Math.cos(k * 0.7),
-  susp: 0.004 * Math.sin(k * 2.1), flinch: k >= 30 ? 0.01 * Math.exp(-(k - 30) / 8) : 0,
+  susp: 0.004 * Math.sin(k * 2.1),
 });
 const timelineAt = (tMs) => ({ x: 3 + 0.012 * tMs, z: -40 + 0.009 * tMs, yaw: 0.3 + 0.0001 * tMs, turret: 0.2 + 0.0004 * tMs, gun: 0.05 });
 const state = {
   pos: { x: 0, y: 0, z: 0 }, yaw: 0, speed: 0, yawRate: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0,
-  trackScroll: { l: 0, r: 0 }, _swayEst: 0, _susp: { p: 0, r: 0 }, _flinch: { p: 0, r: 0, pv: 0, rv: 0 },
+  trackScroll: { l: 0, r: 0 }, _swayEst: 0, _susp: { p: 0, r: 0 },
 };
 const solve = (k) => { // what applyStoryboardActorSample(a, k * step, SIM_DT, true) leaves in the state
   const s = supportAt(k), t = timelineAt(k * STEP_MS);
   state.pos.x = t.x; state.pos.z = t.z; state.yaw = t.yaw; state.turretYaw = t.turret; state.gunPitch = t.gun;
-  state.pos.y = s.y; state.visualPitch = s.pitch; state.visualRoll = s.roll; state._susp.p = s.susp; state._flinch.p = s.flinch;
+  state.pos.y = s.y; state.visualPitch = s.pitch; state.visualRoll = s.roll; state._susp.p = s.susp;
   state.speed = 9; state.trackScroll.l = 9 * k * STEP_MS / 1000; state.trackScroll.r = state.trackScroll.l;
 };
 const pose = (tMs) => { // the exact timeline sample (applyStoryboardActorSample(a, tMs, 0, false))
@@ -65,7 +65,6 @@ for (let frame = 0; frame < 120; frame++) {
     close(p.visualPitch, lerpSupport(tMs, 'pitch'), 1e-9, 'pitch between the support steps');
     close(p.visualRoll, lerpSupport(tMs, 'roll'), 1e-9, 'roll between the support steps');
     close(p._susp.p, lerpSupport(tMs, 'susp'), 1e-9, 'suspension rock between the support steps');
-    close(p._flinch.p, lerpSupport(tMs, 'flinch'), 1e-9, 'hit rock between the support steps');
     close(p.trackScroll.l, state.trackScroll.l - 0.01, 1e-12, 'track phase: the state\'s plus the film travel');
     close(p.trackScroll.r, state.trackScroll.r + 0.02, 1e-12, 'track phase: the state\'s plus the film travel');
     if (previousY !== null) maxJump = Math.max(maxJump, Math.abs(p.pos.y - previousY));
@@ -75,6 +74,10 @@ for (let frame = 0; frame < 120; frame++) {
 }
 // within one exposure the hull moves smoothly: no sample jumps by a whole step's change (up to 8 cm here)
 assert.ok(maxJump < 0.003, `consecutive samples in an exposure move the hull by under 3 mm (largest ${maxJump.toFixed(5)} m)`);
+
+// (round 3 of the 2026-11-02 audit, A12) the hit rock is the visual's own spring (audit M9: tankFactoryCore.ts hitFlinch,
+// stepped in syncFromState); no sim state carries it, so the film pose carries no `_flinch` to hand the visual
+assert.ok(!('_flinch' in support.pose), 'the film pose carries no dead hull-flinch field');
 
 // on a grid line: the step itself
 const on = createFilmSupport();

@@ -69,7 +69,8 @@ const view = ({ scene, sceneTris, cascades, outerMedian, outerMean, extra = 20, 
   // pose settles the terrain stream before the timer samples it
   const tool = readFileSync(new URL('./pr-census.mjs', import.meta.url), 'utf8');
   assert.match(tool, /await runWarmHold\(\{[^\n]*warm: warm\(batch\), shoot \}\)/, 'every batch is one warm hold');
-  assert.match(tool, /process\.env\.COT_LANE_HOLD === '1'/, 'unless a lane hold already holds the FIFO');
+  // (2026-11-02 audit S4, round 2) no unchecked bypass: under a hold, runWarmHold nests through the hold's token
+  assert.doesNotMatch(tool, /process\.env\.COT_LANE_HOLD/, 'no COT_LANE_HOLD bypass of the FIFO');
   const body = tool.slice(tool.indexOf('async function readView'), tool.indexOf('async function capture('));
   const settle = body.indexOf('page.evaluate(settleResidencyTerrain)'), sample = body.indexOf('const s1 = await sampleFrames(');
   assert.ok(settle > 0 && settle < sample, 'the terrain stream settles before the first sample');

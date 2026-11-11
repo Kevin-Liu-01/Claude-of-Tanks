@@ -64,6 +64,6 @@ const battleLoad = readFileSync(join(src, 'ui/battleLoad.ts'), 'utf8');
 assert.doesNotMatch(battleLoad, /^\s*import\s[^(]*mapLqip/m, 'no static import of the placeholder chunk');
 assert.match(battleLoad, /import\('\.\/mapLqip\.ts'\)/, 'the loading screen imports the chunk lazily');
 const main = readFileSync(join(src, 'main.ts'), 'utf8');
-assert.match(main, /window\.__GAME_READY = true;[\s\S]{0,600}primeMapLqipWhenIdle\(\);/, 'the Garage loads the chunk in idle time once ready');
+assert.match(main, /bootReadiness\.markReady\(\);[\s\S]{0,600}primeMapLqipWhenIdle\(\);/, 'the Garage loads the chunk in idle time once ready');
 
 console.log(`mapLqip.selftest: ${ids.length} battlefields, placeholders ${(total / 1024).toFixed(1)} kB (lazy), tones off near-black`);

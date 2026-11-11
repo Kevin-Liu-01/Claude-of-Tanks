@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectGarageActionOutcome, waitForGarageAction } from './garage-action-failure.mjs';
 import { withGarageActionProfile, withGarageActionTrace } from './garage-action-timing.mjs';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath, requestAutomationPath } from './game-readiness.mjs';
 
 const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
   const returning = action === 'return-to-garage';
@@ -24,8 +25,9 @@ const warmOwners = [
 ];
 const warmRows = structuredClone(rows);
 for (const row of warmRows.slice(0, 2)) {
-  row.loadingTraces = Object.fromEntries(warmOwners.map(([, receipt]) =>
-    [receipt, { done: true, doneBeforeRollout: true }]));
+  // (2026-11-02 audit S3) the deferred warm's receipt declares its state; its `done` is only "settled"
+  row.loadingTraces = Object.fromEntries(warmOwners.map(([owner, receipt]) =>
+    [receipt, { done: true, doneBeforeRollout: true, ...(owner === 'deferred' ? { state: 'finished' } : {}) }]));
 }
 // Returning can retain a prior trace; this gate examines only the two entries.
 warmRows[2].loadingTraces = Object.fromEntries(warmOwners.map(([, receipt]) =>
@@ -37,25 +39,40 @@ for (const index of [0, 1]) {
     delete missing[index].loadingTraces[receipt];
     assert.deepEqual(checkGarageActionWarmReadiness(missing),
       [`${missing[index].action}: missing ${owner} warm receipt`]);
-    for (const [key, value] of [['error', 'ProgramUniformPreparationError: budget'], ['cancelled', true],
-      ['done', false], ['done', undefined], ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]]) {
+    const mutations = owner === 'deferred'
+      ? [['state', 'failed'], ['state', 'cancelled'], ['state', 'running'], ['state', undefined],
+        ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]]
+      : [['error', 'ProgramUniformPreparationError: budget'], ['cancelled', true],
+        ['done', false], ['done', undefined], ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]];
+    for (const [key, value] of mutations) {
       const changed = structuredClone(warmRows);
       changed[index].loadingTraces[receipt][key] = value;
       const failures = checkGarageActionWarmReadiness(changed);
       assert.equal(failures.length, 1, `${changed[index].action}: ${owner} independently rejects ${key}=${value}`);
-      assert.ok(failures[0].startsWith(`${changed[index].action}: ${owner} warm `));
+      assert.ok(failures[0].startsWith(`${changed[index].action}: ${owner} warm `), failures[0]);
       assert.deepEqual(checkGarageBattleActions(changed), [], 'warm acceptance stays separate from functional handoff');
     }
   }
 }
-const deferredPaintTimeout = { done: true, generation: 3,
+const deferredPaintTimeout = { state: 'failed', done: true, generation: 3,
   error: 'Error: Visible paint frame did not arrive within 1000 ms', doneBeforeRollout: false };
 const observedDeferredFailure = structuredClone(warmRows);
 observedDeferredFailure[1].loadingTraces.__BATTLE_DEFERRED_WARM = deferredPaintTimeout;
 assert.deepEqual(checkGarageActionWarmReadiness(observedDeferredFailure), [
-  `battle-again: deferred warm error: ${deferredPaintTimeout.error}`,
+  `battle-again: deferred warm failed: ${deferredPaintTimeout.error}`,
   'battle-again: deferred warm was not ready before rollout',
-], 'done:true does not hide the observed deferred paint-timeout failure');
+], 'a settled receipt (done) does not hide the observed deferred paint-timeout failure');
+// a receipt with an error but declared finished (an optional step's error the warm went past) is not a failure; one
+// that declares no state (a build before the declared receipt) is not accepted
+{
+  const finishedWithNote = structuredClone(warmRows);
+  finishedWithNote[0].loadingTraces.__BATTLE_DEFERRED_WARM.error = 'noted';
+  assert.deepEqual(checkGarageActionWarmReadiness(finishedWithNote), []);
+  const undeclared = structuredClone(warmRows);
+  delete undeclared[0].loadingTraces.__BATTLE_DEFERRED_WARM.state;
+  assert.deepEqual(checkGarageActionWarmReadiness(undeclared),
+    ['battle: deferred warm receipt declares no state (a build before the declared receipt)']);
+}
 assert.deepEqual(checkGarageBattleActions(observedDeferredFailure), [],
   'the observed warm failure is not reinterpreted as a failed functional handoff');
 assert.ok(checkGarageActionAudio(rows).length, 'absent clock evidence does not pass the separate audio gate');
@@ -239,12 +256,13 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       },
       async evaluate(fn, ...args) {
         const body = String(fn);
+        if (body.includes('__AUTOMATION_PATH')) return { path: 'player', source: 'flag', webdriver: false };
         if (body.includes('__ACTION_TRACE.arm')) action = args[0];
         if (body.includes('__ACTION_TRACE.finish')) return { action,
           loadingTraces: { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: warmReady,
             ...(!warmReady ? { error: 'ProgramUniformPreparationError: budget' } : {}) },
           __BATTLE_DEFERRED_WARM: action === deferredFailureAction ? deferredPaintTimeout
-            : { done: true, doneBeforeRollout: true } } };
+            : { state: 'finished', done: true, doneBeforeRollout: true } } };
         return {};
       },
     };
@@ -264,7 +282,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       setInterval: () => ({ unref() {} }), clearInterval() {},
       mkdir: async () => {}, readFile: async url => String(url).endsWith('.json') ? '{"boot.retry":"Retry"}' : 'source',
       writeFile: async (file, text) => writes.push({ file, value: JSON.parse(text) }),
-      createCaptureLock: () => ({ async acquire() {
+      // (round 2 U38) the probe holds through the one wrapper's open form; this stand-in hold keeps the lease accounting
+      openCaptureHold: async (options) => {
+        equal(options.signals, [], 'the probe keeps its own signal handlers (the hold adds none)');
         if (phase === 'queued' || phase === 'rejected-queue') {
           process.emit('SIGTERM');
           equal(calls.released, 0, 'queued signal does not release a foreign lease');
@@ -272,7 +292,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
         }
         if (phase === 'rejected-queue') throw new Error('Queue rejected');
         calls.acquired++;
-      }, refresh() {}, release() { calls.released++; } }),
+        return { refresh() {}, async release() { calls.released++; } };
+      },
       puppeteer: { async launch(options) {
         calls.launched++;
         equal([options.handleSIGINT, options.handleSIGTERM], [false, false],
@@ -283,6 +304,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       checkGarageBattleActions: () => { calls.gate++; return []; }, checkGarageActionAudio: () => [],
       checkGarageActionWarmReadiness,
       installSourcedTextureReadiness() {},
+      // (2026-11-02 audit S3) the probe asks for the player's automation path and checks its page took it
+      requestAutomationPath, assertAutomationPath, BOOT_LOADED_EXPRESSION,
       checkSourcedTextureReadiness: row => sourceReady || row.action === 'return-to-garage'
         ? [] : [`${row.action}: source was not ready at reveal`],
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),
@@ -300,6 +323,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       const accepted = (!warmGate || allWarmReady) && (!sourceGate || sourceReady);
       equal(report.pass, accepted, 'either requested readiness failure defeats functional success');
       equal(report.functionalPass, true, 'readiness gates do not reinterpret the functional receipt');
+      equal(report.automation, { path: 'player', source: 'flag', webdriver: false, legacy: false }, 'the path the page took is recorded');
       equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'], 'all existing actions remain');
       if (warmGate) {
         equal(report.passScope, sourceGate ? 'real-control-functional-and-warm-and-source-readiness'
@@ -310,7 +334,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
         equal(report.warmReadiness.failures.length, (warmReady ? 0 : 4) + (deferredFailureAction ? 2 : 0),
           'each owner error and late-readiness failure survives');
         if (deferredFailureAction) equal(report.warmReadiness.failures.slice(-2), [
-          `${deferredFailureAction}: deferred warm error: ${deferredPaintTimeout.error}`,
+          `${deferredFailureAction}: deferred warm failed: ${deferredPaintTimeout.error}`,
           `${deferredFailureAction}: deferred warm was not ready before rollout`,
         ], 'the actual probe reports the observed deferred-only timeout failure');
       } else {

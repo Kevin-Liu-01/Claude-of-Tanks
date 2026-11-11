@@ -15,7 +15,8 @@ Render combat feedback from authoritative events without modifying simulation.
 `effects.ts` composes event reactions, `particles.ts` owns typed pools, `clock.ts`
 owns presentation time, `effectAttachments.ts` owns the attachment policy
 (continuous emitter anchors, and which muzzle parts leave with the shooter's
-velocity while its smoke trails), and `impactDecals.ts` owns bounded surface marks. Scene Studio's
+velocity: the bright parts keep it, the propellant and smoke shed it within a
+quarter second and then trail, the ground's dust stays), and `impactDecals.ts` owns bounded surface marks. Scene Studio's
 cinematic layer (`cinematicFx.ts` runtime, `cinematicRecipes.ts` recipes) is
 Studio-only: it reaches the battle runtime through `effects.cinematicPort()`,
 which battle never calls, and its emitters tick on absolute timeline grids so
@@ -60,3 +61,9 @@ survive reset. Network event IDs will be needed for deduplication.
 The structure mask patches every props bucket material (its depth materials too)
 at world activation: keep its only fragment discard the desktop hole cut (early
 depth), and touch the seam's shadows on every frame the GPU moves a building.
+The muzzle light sits 0.15 m behind its own gun's muzzle, so that gun's forward
+faces would take hundreds of suns: a gun's pulse claims its near field
+(`boundGunNearField`, `engine/muzzleNearField.ts`), which every cascade-shadow
+material bounds at `MUZZLE_NEAR_SUN_K` x the sun within a capsule round that gun.
+A new gun pulse of the muzzle light calls it too; the hull, ground and other
+vehicles keep the bare light.

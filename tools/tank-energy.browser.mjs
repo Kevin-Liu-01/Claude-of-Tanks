@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession} from './map-probe-runtime.mjs';
 const out=resolve('.qa-dev/tank-energy');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let heartbeat;
+let hold;
 try{
- await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);console.log('tank-energy: acquired native browser slot');
+ hold = await openCaptureHold({ label: 'tank-energy', timeoutMs: 10 * 60 * 1000 });console.log('tank-energy: acquired native browser slot');
  await withMapProbeSession({root:process.cwd()},async({browser,baseUrl})=>{
   const page=await browser.newPage(),errors=[];await page.setViewport({width:1280,height:800});
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
@@ -70,4 +70,4 @@ try{
   await page.screenshot({path:resolve(out,'mode-icons.png')});
   console.log(JSON.stringify(reports));await page.close();
  });
-}finally{clearInterval(heartbeat);await lock.release();}
+}finally{await hold?.release();}

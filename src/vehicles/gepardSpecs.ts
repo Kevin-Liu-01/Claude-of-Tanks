@@ -8,6 +8,7 @@
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { applyAirDefenseFirepower } from './airDefenseFirepower.ts';
 import { crewBox, moduleBox, plate, shell, type ArmorPlate } from './specHelpers.ts';
 import {
   GEPARD_BORE, GEPARD_GUN_COVER as COVER, GEPARD_MUZZLE_Z, GEPARD_RING, GEPARD_TRUNNION, GEPARD_TURRET as T,
@@ -119,4 +120,7 @@ for (const key of ['launcherSalvo', 'autoloader', 'fixedLaunchCanisters', 'prima
 // The Leopard 1A5's Bundeswehr NATO three-tone (its spec coat; its stock is the national Factory, service_leo2a6m)
 spec.visual = { ...spec.visual, marking: 'cross', number: '422' };
 
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
+// rounds.
+applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['gepard_1a2'], { gepard_1a2: spec });

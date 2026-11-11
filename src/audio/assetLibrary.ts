@@ -16,7 +16,12 @@
  *   sounds of a battle's countdown) or the first time something asks to play
  *   it before it has decoded, so a sound wanted now never waits behind a
  *   battle's worth of banks queued for later.
- * - Failure is local: a missing or undecodable file mutes that one variant.
+ * - Failure is local: a missing or undecodable file mutes that one variant. An asset whose every file failed is
+ *   asked for again after a backoff (2 s, doubling to a minute): one transient fetch error never silences a cue for
+ *   the session (2026-11-02 audit F11).
+ * - Pins are owned (2026-11-02 audit F11): each owner (the session's interface and radio sets, the battle warm, the
+ *   ambience scene, the live rigs, the aircraft) pins under its own group, and `replace` starts a new set for that
+ *   group only, so the battle warm never unpins the radio net or a loop that is playing.
  */
 
 import { SFX_ASSETS, type SfxAssetRecord } from './sfxManifest.generated.ts';
@@ -42,6 +47,13 @@ interface AssetLibraryOptions {
   seed?: ReadonlyMap<string, readonly AudioBuffer[]> | null;
 }
 
+/**
+ * The owners of pinned assets (each replaces or releases only its own): the session (the interface and the radio net),
+ * the battle warm, the ambience scene, the vehicle and aircraft rigs' loops, the aircraft set, and our own hull's weapons
+ * (its own and closed-turret reports and loader machinery, for the hull and gun we have now).
+ */
+export type PinGroup = 'session' | 'battle' | 'scene' | 'rigs' | 'aerial' | 'own-weapons';
+
 export interface AssetLibrary {
   /** Resolves once the format probe has run; false = samples unavailable. */
   readonly ready: Promise<boolean>;
@@ -49,6 +61,8 @@ export interface AssetLibrary {
   record(id: string): SfxAssetRecord | undefined;
   /** At least one variant decoded. */
   has(id: string): boolean;
+  /** A failed asset whose retry backoff has run out: its next request fetches it again (a wanted loop asks then). */
+  retryDue(id: string): boolean;
   /** A decoded variant, avoiding an immediate repeat; asked for before it has decoded, the asset joins the front lane. */
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
@@ -62,9 +76,15 @@ export interface AssetLibrary {
   /**
    * Keep assets decoded for the current context (the battle set, the garage
    * set, live loops): eviction never drops a pinned asset, so a sound that
-   * waited minutes for its moment still plays. `replace` starts a new set.
+   * waited minutes for its moment still plays. `group` names the owner that
+   * holds the pins and alone replaces or releases them; `replace` starts a
+   * new set for it, leaving every other owner's pins as they are. Every pin
+   * names its owner (round 8 Y3 s1-08: a bare pin(ids) went to a group no
+   * owner ever released).
    */
-  pin(ids: Iterable<string>, replace?: boolean): void;
+  pin(ids: Iterable<string>, replace: boolean, group: PinGroup): void;
+  /** Whether any owner pins the asset (eviction never drops it). */
+  isPinned(id: string): boolean;
   /** Mark assets as in use (LRU eviction never drops what played recently). */
   touch(id: string): void;
   loadVoice(language: string): Promise<void>;
@@ -94,7 +114,13 @@ interface Entry {
   last: number;
   bytes: number;
   lastVariant: number;
+  /** Failed loads in a row, and when (performance.now()) a failed asset may be asked for again. */
+  failures?: number;
+  retryAt?: number;
 }
+
+/** A failed asset's backoff before it is fetched again: 2 s, doubling, at most a minute. */
+const RETRY_MS = Object.freeze({ first: 2000, max: 60000 });
 
 function decodeBase64(b64: string): ArrayBuffer {
   const binary = typeof atob === 'function' ? atob(b64) : '';
@@ -169,7 +195,14 @@ export function createAssetLibrary({
   let decodedBytes = 0;
   let voiceBytes = 0;
   let failed = 0;
-  const pinned = new Set<string>();
+  // Pins by owner: an asset is pinned while any group holds it.
+  const pinGroups = new Map<string, Set<string>>();
+  const isPinned = (id: string): boolean => {
+    for (const group of pinGroups.values()) if (group.has(id)) return true;
+    return false;
+  };
+  /** A failed asset whose backoff has run out: it is fetched again on its next request. */
+  const retryDue = (entry: Entry): boolean => entry.state === 'failed' && performance.now() >= (entry.retryAt ?? 0);
   // Files waiting for a decode slot, by asset: the front lane is always served first.
   interface Waiter { readonly id: string; readonly resolve: () => void }
   const frontWaiting: Waiter[] = [];
@@ -252,7 +285,7 @@ export function createAssetLibrary({
     if (decodedBytes <= budget) return;
     const now = performance.now();
     const candidates = [...entries.entries()]
-      .filter(([id, e]) => e.state === 'ready' && !pinned.has(id) && now - e.last > 45000)
+      .filter(([id, e]) => e.state === 'ready' && !isPinned(id) && now - e.last > 45000)
       .sort((a, b) => a[1].last - b[1].last);
     for (const [, entry] of candidates) {
       if (decodedBytes <= budget * 0.85) break;
@@ -272,11 +305,12 @@ export function createAssetLibrary({
       entry = { buffers: [], state: 'idle', promise: null, last: 0, bytes: 0, lastVariant: -1 };
       entries.set(id, entry);
     }
-    if (entry.promise) return entry.promise;
+    if (entry.promise && !retryDue(entry)) return entry.promise;
     const target = entry;
     target.state = 'loading';
     target.promise = (async () => {
-      if (!(await ready)) { target.state = 'failed'; return; }
+      // a browser that cannot decode the format never will: no retry
+      if (!(await ready)) { target.state = 'failed'; target.retryAt = Infinity; return; }
       const files = Array.from({ length: Math.max(1, Math.min(rec.n, maxVariants)) }, (_, i) => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
       const buffers = await Promise.all(files.map((url) => slot(id, async () => {
         try {
@@ -293,6 +327,10 @@ export function createAssetLibrary({
       decodedBytes += target.bytes;
       target.state = buffers.some(Boolean) ? 'ready' : 'failed';
       target.last = performance.now();
+      if (target.state === 'failed') {
+        target.failures = (target.failures ?? 0) + 1;
+        target.retryAt = target.last + Math.min(RETRY_MS.max, RETRY_MS.first * 2 ** (target.failures - 1));
+      } else target.failures = 0;
       evictIfNeeded();
     })();
     return target.promise;
@@ -329,12 +367,17 @@ export function createAssetLibrary({
       const entry = entries.get(id);
       return !!entry && entry.state === 'ready';
     },
+    retryDue(id) {
+      const entry = entries.get(id);
+      return !!entry && retryDue(entry);
+    },
     pick(id, random) {
       const entry = entries.get(id);
       if (!entry || entry.state !== 'ready') {
-        // wanted now: ahead of whatever is queued for later
-        if (entry?.state !== 'failed') promote(id);
-        if (!entry || entry.state === 'idle') void loadOne(id);
+        // wanted now: ahead of whatever is queued for later (a failed asset once its backoff has run out)
+        const retry = !!entry && retryDue(entry);
+        if (entry?.state !== 'failed' || retry) promote(id);
+        if (!entry || entry.state === 'idle' || retry) void loadOne(id);
         return null;
       }
       const hold = held?.[id];
@@ -347,17 +390,24 @@ export function createAssetLibrary({
     variant(id, index) {
       const entry = entries.get(id);
       if (!entry || entry.state !== 'ready') return null;
-      return entry.buffers[index] ?? null;
+      const buffer = entry.buffers[index] ?? null;
+      // a live loop starting on it is a use (the idle eviction reads `last`)
+      if (buffer) entry.last = performance.now();
+      return buffer;
     },
     async load(ids, options) {
       const unique = [...new Set(ids)];
       if (options?.front) for (const id of unique) promote(id);
       await Promise.all(unique.map(loadOne));
     },
-    pin(ids, replace = false) {
-      if (replace) pinned.clear();
-      for (const id of ids) pinned.add(id);
+    // (an untyped receipt's bare pin lands in 'shared'; typed callers must name their owner)
+    pin(ids, replace = false, group: string = 'shared') {
+      let owned = pinGroups.get(group);
+      if (!owned) { owned = new Set(); pinGroups.set(group, owned); }
+      if (replace) owned.clear();
+      for (const id of ids) owned.add(id);
     },
+    isPinned,
     touch(id) {
       const entry = entries.get(id);
       if (entry) entry.last = performance.now();
@@ -439,7 +489,7 @@ export function createAssetLibrary({
         decodedMb: +((decodedBytes + voiceBytes) / 1048576).toFixed(1),
         sfxMb: +(decodedBytes / 1048576).toFixed(1),
         voiceMb: +(voiceBytes / 1048576).toFixed(1),
-        pinned: pinned.size,
+        pinned: new Set([...pinGroups.values()].flatMap((group) => [...group])).size,
         pending,
         failed,
         voices: [...readyVoices],

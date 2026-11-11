@@ -112,8 +112,8 @@ export function createAerialRig(deps: AerialDeps, kind: AerialKind, perspective:
   }
 
   function makeLoop(asset: string, highpassHz = 0): Loop {
-    // A live loop's buffer must outlive the library's idle eviction.
-    library.pin([asset]);
+    // A live loop's buffer must outlive the library's idle eviction (the rigs' pins, released with the battle's rigs).
+    library.pin([asset], false, 'rigs');
     const gain = ctx.createGain();
     gain.gain.value = 0;
     if (highpassHz > 0) {

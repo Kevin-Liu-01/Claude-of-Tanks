@@ -1,109 +1,21 @@
 import assert from 'node:assert/strict';
-import { createInput } from './input.ts';
+import { CHROME_ESCAPE_REFUSAL_MS, createChromePointerLockPage } from './chromePointerLockPage.test-support.mjs';
 import { createPlayerFrameInput } from './playerFrameInput.ts';
 
 // Item 243 (owner 2026-10-23: "clicking buttons like resume, x etc ... the tank ends up stuck looking at the cursor's
 // last click position on one of those buttons"). The input layer runs against a fake page whose pointer lock follows
-// Chrome's MouseLockController: Esc while locked is the browser's unlock gesture, every request in the 1250 ms after
-// it is refused, and after a user unlock a request without transient activation is refused. Refusals reject the
-// promise and fire 'pointerlockerror', as Chrome does.
+// Chrome's MouseLockController (chromePointerLockPage.test-support.mjs, shared with garageReturnState.selftest.mjs):
+// Esc while locked is the browser's unlock gesture, every request in the 1250 ms after it is refused, and after a user
+// unlock a request without transient activation is refused. Refusals reject the promise and fire 'pointerlockerror',
+// as Chrome does.
 
-const CHROME_ESCAPE_REFUSAL_MS = 1250;
 let clock = 1000;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-class FakeMouseEvent extends Event {
-  constructor(type, { target, clientX = 0, clientY = 0, button = 0 } = {}) {
-    super(type, { cancelable: true });
-    this.fakeTarget = target;
-    this.clientX = clientX;
-    this.clientY = clientY;
-    this.button = button;
-    this.movementX = 0;
-    this.movementY = 0;
-  }
-  get target() { return this.fakeTarget; }
-}
-
-function createPage({ lock = 'chrome', input: inputMode = 'fine' } = {}) {
-  const activation = { isActive: true };
-  const page = new EventTarget();
-  const document = Object.assign(new EventTarget(), {
-    hidden: false,
-    pointerLockElement: null,
-    body: { dataset: { cotInput: inputMode } },
-    exitPointerLock() {
-      if (!document.pointerLockElement) return;
-      unlockedByTarget = true;
-      document.pointerLockElement = null;
-      queueMicrotask(() => document.dispatchEvent(new Event('pointerlockchange')));
-    },
-  });
-  const canvas = Object.assign(new EventTarget(), {
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 800 }),
-  });
-  const resumeButton = new EventTarget();
-  const closeButton = new EventTarget();
-  let lastUserEscape = -Infinity;
-  let unlockedByTarget = true;
-  const stats = { attempts: 0, refused: 0 };
-  const refuse = () => {
-    stats.refused += 1;
-    setImmediate(() => document.dispatchEvent(new Event('pointerlockerror')));
-    return Promise.reject(new Error('pointer lock refused'));
-  };
-  if (lock === 'chrome') {
-    canvas.requestPointerLock = () => {
-      stats.attempts += 1;
-      if (!unlockedByTarget && !activation.isActive) return refuse();
-      if (clock < lastUserEscape + CHROME_ESCAPE_REFUSAL_MS) return refuse();
-      setImmediate(() => {
-        document.pointerLockElement = canvas;
-        document.dispatchEvent(new Event('pointerlockchange'));
-      });
-      return Promise.resolve();
-    };
-  } else if (lock === 'sandboxed') {
-    canvas.requestPointerLock = () => {
-      stats.attempts += 1;
-      throw new DOMException('The root document of this element is not valid for pointer lock.', 'SecurityError');
-    };
-  } else if (lock === 'refuse-all') {
-    canvas.requestPointerLock = () => { stats.attempts += 1; return refuse(); };
-  }
-  // touch phones: 'none' leaves requestPointerLock undefined (a call would throw a TypeError)
-
-  const globals = {
-    window: page,
-    document,
-    localStorage: { getItem: () => null, setItem() {} },
-    navigator: { userActivation: activation },
-    performance: { now: () => clock },
-    matchMedia: (query) => ({ matches: inputMode === 'coarse' ? query === '(pointer: coarse)' : query === '(pointer: fine)' }),
-  };
-  const prior = Object.fromEntries(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(globals)) {
-    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
-  }
-  const restore = () => {
-    for (const [key, descriptor] of Object.entries(prior)) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else delete globalThis[key];
-    }
-  };
-  const input = createInput({ lockElement: canvas });
-  const mouse = (type, target, clientX, clientY) =>
-    page.dispatchEvent(new FakeMouseEvent(type, { target, clientX, clientY }));
-  return {
-    input, document, canvas, resumeButton, closeButton, activation, stats, restore, mouse,
-    /** The player's Esc while locked: Chrome consumes it and drops the lock. */
-    userEscape() {
-      lastUserEscape = clock;
-      unlockedByTarget = false;
-      document.pointerLockElement = null;
-      document.dispatchEvent(new Event('pointerlockchange'));
-    },
-  };
+/** The shared Chrome model on this file's clock (its post-Esc window modelled), with two menu buttons to click. */
+function createPage(options = {}) {
+  return { ...createChromePointerLockPage({ ...options, now: () => clock }),
+    resumeButton: new EventTarget(), closeButton: new EventTarget() };
 }
 
 /** What Settings does: Esc opens the panel (input off), RESUME/X closes it and relocks inside the click. */
@@ -277,6 +189,55 @@ for (const lock of ['none', 'refuse-all']) {
     page.input.consumeMouseDelta(out, 1 / 60);
     assert.ok(out.x < 0, 'a swipe still turns the gun');
     assert.ok(aimsAtCentre(frameAim(page.input)), 'and the aim stays on the screen centre, not the X button');
+  } finally {
+    page.restore();
+  }
+}
+
+// 5. (round 5 Q2) releaseLock withdraws an attempt still in flight: Chrome grants a lock a task after the request, so a
+//    caller that asked and then gave the cursor back (a battle start refused while it waited for a Garage return, a
+//    Settings panel opened) lost nothing it held, and the lock landed over it after the release. A later request
+//    supersedes the withdrawal. (review r1) An answered attempt, its lock engaged or refused, is never withdrawn: a
+//    release with nothing in flight marks nothing (input.ts lockEngagedAttempt, lockDeniedAttempt). input.ts is the
+//    page's only requester, Chrome answers each request once and a later request supersedes a mark, so only a lock that
+//    lands with no request since (the page model's landWithoutRequest) can show a mark left on an answered attempt.
+{
+  const page = createPage();
+  try {
+    page.input.requestLock();
+    page.input.releaseLock(); // before the browser's answer
+    await flush();
+    await flush();
+    assert.equal(page.document.pointerLockElement, null, 'a lock released while in flight does not stand when it lands');
+    assert.equal(page.input.isLocked(), false);
+    assert.equal(page.input.isCursorAim(), false, 'and the withdrawal is no refusal');
+    page.input.requestLock();
+    page.input.releaseLock();
+    page.input.requestLock(); // asked again before the first answer
+    await flush();
+    await flush();
+    assert.equal(page.input.isLocked(), true, 'a later request supersedes the withdrawal');
+  } finally {
+    page.restore();
+  }
+}
+for (const answered of ['engaged', 'refused']) {
+  const page = createPage();
+  try {
+    page.input.requestLock();
+    await flush();
+    assert.equal(page.input.isLocked(), true);
+    page.userEscape(); // the player's Esc drops it
+    if (answered === 'refused') {
+      page.input.requestLock(); // inside Chrome's post-Esc window
+      await flush();
+      assert.equal(page.stats.refused, 1, '(refused)');
+    }
+    clock += CHROME_ESCAPE_REFUSAL_MS + 100;
+    page.input.releaseLock(); // nothing in flight: the last attempt was answered
+    page.landWithoutRequest();
+    await flush();
+    assert.equal(page.input.isLocked(), true, `a release after an attempt ${answered} withdraws nothing`);
   } finally {
     page.restore();
   }

@@ -43,7 +43,6 @@ interface TankPoseSource {
   trackScroll?: PoseTrackScroll;
   _swayEst?: number;
   _susp?: PoseSpring;
-  _flinch?: PoseSpring;
 }
 
 interface MutableTrackScroll {
@@ -72,7 +71,6 @@ interface TankPresentationSample {
   trackScroll: MutableTrackScroll;
   _swayEst: number;
   _susp: MutableSpring;
-  _flinch: MutableSpring;
 }
 
 export interface TankPresentationTracker {
@@ -108,7 +106,6 @@ function createSample(): TankPresentationSample {
     trackScroll: { l: 0, r: 0 },
     _swayEst: 0,
     _susp: { p: 0, r: 0, pv: 0, rv: 0 },
-    _flinch: { p: 0, r: 0, pv: 0, rv: 0 },
   };
 }
 
@@ -135,10 +132,6 @@ function readSample(
   out._susp.r = finite(state?._susp?.r);
   out._susp.pv = finite(state?._susp?.pv);
   out._susp.rv = finite(state?._susp?.rv);
-  out._flinch.p = finite(state?._flinch?.p);
-  out._flinch.r = finite(state?._flinch?.r);
-  out._flinch.pv = finite(state?._flinch?.pv);
-  out._flinch.rv = finite(state?._flinch?.rv);
   return out;
 }
 
@@ -165,10 +158,6 @@ function copySample(
   out._susp.r = source._susp.r;
   out._susp.pv = source._susp.pv;
   out._susp.rv = source._susp.rv;
-  out._flinch.p = source._flinch.p;
-  out._flinch.r = source._flinch.r;
-  out._flinch.pv = source._flinch.pv;
-  out._flinch.rv = source._flinch.rv;
   return out;
 }
 
@@ -202,10 +191,6 @@ function lerpSample(
   out._susp.r = lerp(previous._susp.r, current._susp.r, t);
   out._susp.pv = lerp(previous._susp.pv, current._susp.pv, t);
   out._susp.rv = lerp(previous._susp.rv, current._susp.rv, t);
-  out._flinch.p = lerp(previous._flinch.p, current._flinch.p, t);
-  out._flinch.r = lerp(previous._flinch.r, current._flinch.r, t);
-  out._flinch.pv = lerp(previous._flinch.pv, current._flinch.pv, t);
-  out._flinch.rv = lerp(previous._flinch.rv, current._flinch.rv, t);
   return out;
 }
 

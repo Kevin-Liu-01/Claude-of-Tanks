@@ -13,7 +13,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
-import { rayCollisionRecord, setObbShape } from './collision.ts';
+import { rayCollisionRecord, setCrushedRecords, setObbShape } from './collision.ts';
 import { SLAB_SHELL_KINDS } from './props.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
@@ -285,7 +285,10 @@ function checkSourceLifecycle(pool) {
     },
     cloth: () => false, burns: () => false, onBurn: () => {},
   });
+  // (2026-11-02 audit M9) a wall's cover opens only by the authority's crush (breakRecord's `authority` flag), through the
+  // one transition both worlds run (collision.ts setCrushedRecords): this lifecycle breaks as the authority
   const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive', 'crushPress', 'CIVILIAN_VEHICLE_RECEIPTS',
+    'setCrushedRecords',
     `const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0),
       _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _zeroScale = new THREE.Vector3(1e-4,1e-4,1e-4);
       const events = [], fx = [], pendingBlasts = [];
@@ -293,12 +296,15 @@ function checkSourceLifecycle(pool) {
       const emitDestroyed = event => events.push(event), emitBreakFx = (...args) => fx.push(args);
       ${breakAnimationSource}; ${breakRecordSource}; ${restoreSource};
       return { breakRecord, restoreDestructibleRecord, resetBrokenPools, events, fx };`)(
-    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive, crushPress, CIVILIAN_VEHICLE_RECEIPTS);
+    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive, crushPress, CIVILIAN_VEHICLE_RECEIPTS,
+    setCrushedRecords);
   const intact = pool.imI.instanceMatrix.array.slice(), placements = pool.mats4.map(m => m.elements.slice());
   const record = pool.records[0], ob = record.ob, col = record.col;
   const bounds = [ob.min.slice(), ob.max.slice(), col.min.slice(), col.max.slice()];
-  assert.equal(lifecycle.breakRecord(0,1,0,4,'ram'), true);
-  assert.equal(lifecycle.breakRecord(0,1,0,4,'ram'), false, 'a broken wall cannot duplicate its debris slot');
+  assert.equal(lifecycle.breakRecord(0,1,0,4,'ram'), false, 'a cosmetic break never opens a wall\'s cover');
+  assert.ok(!record.state && !ob.crushed && !col.crushed && !col.dead, 'the refused break leaves the wall standing');
+  assert.equal(lifecycle.breakRecord(0,1,0,4,'ram',false,true), true);
+  assert.equal(lifecycle.breakRecord(0,1,0,4,'ram',false,true), false, 'a broken wall cannot duplicate its debris slot');
   assert.equal(record.state,1); assert.equal(ob.crushed,true); assert.equal(col.dead,true);
   assert.equal(pool.nBroken,1); assert.equal(pool.imB.count,1); assert.equal(pool.imB.visible,true);
   const broken = new Matrix4(); pool.imB.getMatrixAt(0,broken);

@@ -9,6 +9,7 @@
 // with the chosen mode's opening objectives (deployObjectives.ts, the Deploy screen's own drawing). Leaving the cards
 // restores the chosen battlefield; one press chooses it. Nothing opens a dialog.
 
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { createPicker, type PickerFilter, type PickerItem, type PickerText } from './components/picker.ts';
 import { esc } from './components/escape.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
@@ -75,7 +76,9 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
   const name = host.querySelector<HTMLElement>('.cot-bf__name')!;
   const facts = host.querySelector<HTMLElement>('.cot-bf__facts')!;
   // the objectives' drawer and its data load with the first battlefield shown (they share the HUD's glyph modules)
-  let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and no map drew
+  // its objectives again for the session; the next map shown asks again
+  const drawer = createLazyChunk(() => import('./deployObjectives.ts'));
   let shownId: string | null | undefined;
   /** The card under the pointer or the focus, which an update from outside keeps in the preview. */
   let previewed: BattlefieldCard | null = null;
@@ -127,8 +130,7 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     if (!map) return;
     plate.src = minimapAssetUrl(map);
     settle(plate);
-    drawer ??= import('./deployObjectives.ts');
-    void drawer.then(({ drawDeployObjectives }) => (shownId === map ? drawDeployObjectives(canvas, map, mode) : undefined))
+    void drawer.load().then(({ drawDeployObjectives }) => (shownId === map ? drawDeployObjectives(canvas, map, mode) : undefined))
       .catch(() => { /* the bare tactical map */ });
   };
 

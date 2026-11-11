@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createSettingsAccess } from './settingsAccess.ts';
+import { publishKillcamScreen } from '../game/killcamScreen.ts';
 
 class FakeGear extends EventTarget {
   style = { display: '' };
@@ -10,7 +11,13 @@ let spectating = false;
 let releases = 0;
 const busHandlers = new Map();
 const input = { releaseLock() { releases++; }, onAction(_id, handler) { action = handler; } };
-const bus = { on(event, handler) { busHandlers.set(event, handler); } };
+const bus = { on(event, handler) { busHandlers.set(event, [...(busHandlers.get(event) ?? []), handler]); } };
+const emit = (event, payload) => { for (const handler of busHandlers.get(event) ?? []) handler(payload); };
+// the kill-cam controller publishes its own `active` flag on the bus (killcamScreen.ts, IR15); its edges only notify
+let replayLive = false;
+publishKillcamScreen(bus, () => replayLive);
+const replayBegins = () => { replayLive = true; emit('killcam:begin'); };
+const replayDone = () => { replayLive = false; emit('killcam:done'); };
 const gear = new FakeGear();
 let now = 1000;
 let modalOpen = false;
@@ -82,11 +89,11 @@ assert.equal(access.isOpen(), true);
 access.close({ noRelock: true });
 assert.equal(closes, 1);
 
-busHandlers.get('killcam:begin')();
+replayBegins();
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'kill-cam owns the settings action');
-busHandlers.get('killcam:done')();
+replayDone();
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'the replay skip key is absorbed by the done grace');
@@ -94,6 +101,44 @@ now += 251;
 gear.dispatchEvent(new Event('click'));
 await Promise.resolve();
 assert.equal(opens, 2);
+access.close({ noRelock: true });
+
+// 2026-11-02 audit F4: a battle-ending camera beat (time's up, objective orbit, wreck orbit) owns the screen like a
+// replay. Its any-key skip is a capture-phase window listener that does not stop the key, so the live Esc path (this
+// access's settingsMenu action: the panel registers none) must refuse the menu for the whole beat and the skip press.
+emit('ending:begin', { beat: 'timesUp' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 2, 'an ending beat owns the settings action (the Esc that skips it opens nothing)');
+emit('ui:openSettings');
+gear.dispatchEvent(new Event('click'));
+await Promise.resolve();
+assert.equal(opens, 2, 'no trigger opens Settings over an ending beat');
+emit('ending:done', { beat: 'timesUp' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 2, 'the beat\'s skip key is absorbed by the done grace');
+now += 251;
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 3, 'the report keeps its Esc menu once the beat is over');
+access.close({ noRelock: true });
+// overlapping owners: the first done must not free the screen while the other still owns it
+replayBegins();
+emit('ending:begin', { beat: 'wreckOrbit' });
+replayDone();
+now += 251;
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 3, 'an ending beat still running keeps the screen after the replay\'s done');
+emit('ending:done', { beat: 'wreckOrbit' });
+now += 251;
+// a phase flip is the reset of last resort (a lost done)
+emit('ending:begin', { beat: 'timesUp' });
+emit('phase:change', { phase: 'garage' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 4, 'a phase change releases a presentation whose done never came');
 
 access.close();
 spectating = true;
@@ -105,4 +150,70 @@ action('Pad9');
 await Promise.resolve();
 assert.equal(access.isOpen(), true, 'gamepad menu remains available while spectating');
 
-console.log('settingsAccess.selftest: retry, intent, modal, loading-cover and replay gates passed');
+// ---- (round 2 U35) the panel's load is one app/lazyChunk.ts chunk under the default policy, which the idle preload,
+// every battle entry's preload and the gear share. The memo here cleared each failure, so every caller asked a failed
+// chunk again at once: no backoff, no offline gate, no 404 rule. It is not an opener's chunk (a battle entry awaits it, so
+// a kept failure would fail every later battle); the gear keeps the kit's rule for its own press.
+{
+  const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve)); };
+  let clock = 0;
+  let asks = 0;
+  let failing = true;
+  let reloads = 0;
+  let online = true;
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { get onLine() { return online; } } });
+  globalThis.location = { reload() { reloads++; } };
+  const markedGear = Object.assign(new FakeGear(), {
+    dataset: {}, attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
+  });
+  const panel = { opens: 0, shown: false, root: {}, open() { this.opens++; this.shown = true; }, close() { this.shown = false; }, isOpen() { return this.shown; }, showHints() {} };
+  const failures = createSettingsAccess({ input: { releaseLock() {}, onAction() {} }, gearVisible: () => true }, async () => {
+    asks++;
+    if (failing) throw new TypeError('Failed to fetch dynamically imported module: ./settings.ts');
+    return { createSettings: () => panel };
+  }, { createGear: () => markedGear, modalOpen: () => false, now: () => clock, loadCovered: () => false });
+  const error = console.error;
+  console.error = () => {};
+  try {
+    // the idle preload, then a battle entry's: one failure is asked again at once, then the backoff holds
+    await assert.rejects(failures.preload(), /dynamically imported module/);
+    await assert.rejects(failures.preload(), /dynamically imported module/);
+    assert.equal(asks, 2);
+    for (let i = 0; i < 10; i++) await assert.rejects(failures.preload(), /dynamically imported module/);
+    assert.equal(asks, 2, `ten more preloads inside the 2 s backoff ask nothing (${asks - 2} more asks)`);
+    clock += 2000;
+    await assert.rejects(failures.preload(), /dynamically imported module/);
+    assert.equal(asks, 3, 'past the backoff the next caller asks again');
+    // the gear's press never asks a chunk another caller saw fail (the kit's opener rule), even past the backoff: it
+    // marks the gear, and its next press reloads
+    clock += 60_000;
+    failures.open();
+    await settle();
+    assert.equal(asks, 3, 'a press asks nothing for a failed chunk');
+    assert.equal(markedGear.dataset.loadState, 'error', 'the failed press marks the gear (the kit\'s error state)');
+    failures.open();
+    assert.equal(reloads, 1, 'and its next press reloads the page');
+    // offline, nothing is asked, however long
+    online = false;
+    clock += 120_000;
+    for (let i = 0; i < 5; i++) await assert.rejects(failures.preload(), /dynamically imported module/);
+    assert.equal(asks, 3, 'never while offline');
+    online = true;
+    // back online, a battle entry's preload loads the panel: the gear's press opens it, not a reload, and its mark goes
+    failing = false;
+    await failures.preload();
+    assert.equal(asks, 4);
+    assert.equal(markedGear.dataset.loadState, undefined, 'the built panel\'s gear loses the failed press\'s mark');
+    assert.equal(markedGear.attributes['aria-description'], undefined);
+    failures.open();
+    await settle();
+    assert.equal(reloads, 1, 'a press with the panel built opens it');
+    assert.equal(panel.opens, 1);
+  } finally {
+    console.error = error;
+  }
+}
+
+console.log('settingsAccess.selftest: retry, intent, modal, loading-cover and replay gates passed; one lazy chunk (backoff, offline, the gear\'s mark and reload)');

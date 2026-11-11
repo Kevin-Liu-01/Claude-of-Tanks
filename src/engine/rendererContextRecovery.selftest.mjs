@@ -62,16 +62,20 @@ for (const oldResult of ['reject', 'false', 'success']) {
 }
 
 {
+  // (2026-11-02 audit R3) this case used to pin the newer restoration completing while the older one still ran (two
+  // owner restorations at once on one renderer); the newer one now starts once the aborted older one settles
   const old = deferred();
   let calls = 0;
   const f = fixture(() => (++calls === 1 ? old.promise : Promise.resolve(true)));
   f.lost(); f.restored(); await flush();
   f.lost(); f.restored(); await flush();
-  assert.equal(f.removals, 1, 'newer successful context may complete before older rejection');
+  assert.equal(calls, 1, 'the newer restoration waits for the superseded one');
+  assert.equal(f.removals, 0);
   old.reject(new Error('late obsolete rejection'));
   await flush();
+  assert.equal(calls, 2);
   assert.equal(f.reloads, 0);
-  assert.equal(f.removals, 1);
+  assert.equal(f.removals, 1, 'the newer restoration completes after the obsolete rejection, which changes nothing');
 }
 
 for (const onRestored of [undefined, () => false, () => { throw new Error('fresh failure'); },

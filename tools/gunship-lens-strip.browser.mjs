@@ -16,7 +16,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { createCaptureLock, ticketAt } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { ticketAt } from './capture-lock.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const out = resolve(arg('out', '.qa-dev/gunship-lens'));
@@ -98,11 +100,11 @@ async function filmBuild(run, manifest) {
       const tier = viewName === 'phone' ? 'mobile' : 'desktop';
       const t0 = Date.now();
       await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=${tier}&gfxreset=1`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-      try { await page.waitForFunction('window.__GAME_READY === true', { timeout: 600000, polling: 1000 }); }
+      try { await waitForBootLoaded(page, { timeout: 600000, polling: 1000 }); }
       catch (error) { await page.screenshot({ path: resolve(out, `${run.tag}-${viewName}-boot-failure.png`) }); log('boot failed', errors.slice(0, 5)); throw error; }
       log(`${run.tag} ${viewName} game ready in ${Math.round((Date.now() - t0) / 1000)} s`);
       await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'ac130' }), 0); });
-      await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 900000, polling: 1000 });
+      await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 900000, polling: 1000 });
       log(`${run.tag} ${viewName} battle up in ${Math.round((Date.now() - t0) / 1000)} s`);
       await sleep(2500);
       // the lens guns draw with the airframe's program (its covered compile serves them: no first-use compile mid-battle)
@@ -162,12 +164,10 @@ async function filmBuild(run, manifest) {
   }
 }
 
-const lock = soft ? null : createCaptureLock();
-let heartbeat;
+let hold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold); none for a --soft run
 try {
-  if (lock) {
-    await lock.acquire(4 * 60 * 60 * 1000, stamp > 0 ? { ticket: ticketAt(stamp) } : {});
-    heartbeat = setInterval(() => lock.refresh(), 30000);
+  if (!soft) {
+    hold = await openCaptureHold({ label: 'gunship-lens-strip', timeoutMs: 4 * 60 * 60 * 1000, ...(stamp > 0 ? { ticket: ticketAt(stamp) } : {}) });
     log('acquired GPU slot', new Date().toISOString());
   }
   heldAt = Date.now();
@@ -178,4 +178,4 @@ try {
     writeFileSync(resolve(out, `${run.tag}-manifest.json`), JSON.stringify(manifest, null, 2));
     log(`${run.tag}: ${manifest.frames.length} frames in ${out}`);
   }
-} finally { clearInterval(heartbeat); lock?.release(); log('released', new Date().toISOString()); }
+} finally { await hold?.release(); log('released', new Date().toISOString()); }

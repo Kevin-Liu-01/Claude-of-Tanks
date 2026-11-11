@@ -24,7 +24,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 
 const option = (name, fallback = '') => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 let base = option('url').replace(/\/$/, '');
@@ -147,9 +148,7 @@ const regress = () => {
   setInterval(() => veil.classList.remove('show'), 150);
 };
 
-await acquireCaptureLock(60 * 60 * 1000, { lockClass: 'render', holdCapMinutes: 18 });
-const refresh = setInterval(() => refreshCaptureLock(), 30_000);
-refresh.unref();
+hold = await openCaptureHold({ label: 'hud-self-measure.browser.selftest', timeoutMs: 60 * 60 * 1000, lockClass: 'render', holdCapMinutes: 18 });
 // no --url: this checkout on its own server and optimizer cache (a shared cache hangs beside another dev server)
 let server = null, cacheDir = null;
 if (!base) {
@@ -233,8 +232,7 @@ try {
   await garage.close();
 } finally {
   await browser.close();
-  clearInterval(refresh);
-  releaseCaptureLock();
+  await hold?.release();
   await server?.close();
   if (cacheDir) rmSync(cacheDir, { recursive: true, force: true });
 }

@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { LOCAL_LIGHT_GLSL, localLightUniforms, registerLocalLightMaterial } from './localLights.ts';
 import { LATE_FX_LAYER } from './layers.ts';
+import { shooterCarryDrag } from './effectAttachments.ts';
 
 type Rng = () => number;
 type Noise2D = (x: number, y: number) => number;
@@ -49,6 +50,12 @@ interface PuffOptions {
   readonly rot?: number;
   readonly rotVel?: number;
   readonly grav?: number;
+  /**
+   * the emitter's own world velocity the puff is born with (m/s; a moving muzzle's smoke), from now (the emit): a pool
+   * that sheds it on its own clock (psmoke, at shooterCarryDrag('muzzleSmoke')) keeps it apart from `vel` and carries a
+   * pre-aged card from now; any other pool adds it to `vel`, where the pool's drag slows it from the card's birth
+   */
+  readonly carry?: Vec3Tuple;
 }
 
 interface StreakOptions {
@@ -267,6 +274,10 @@ attribute vec4 aVL;   // vel.xyz, life
 attribute vec4 aSR;   // size0, size1, rot0, rotVel
 attribute vec4 aC0;   // color0.rgb, gravity (+up)
 attribute vec4 aC1;   // color1.rgb, peakAlpha
+#ifdef FX_CARRY
+attribute vec4 aCV;   // carried velocity: the emitter's motion (m/s), shed at uCarryDrag from the age aCV.w (the shot)
+uniform float uCarryDrag;
+#endif
 uniform float uTime;
 uniform float uDrag;
 uniform float uTiles;
@@ -310,6 +321,12 @@ void main() {
   vSeed = fract( aPB.w * 1.6180339 + aPB.x * 0.0713 + aPB.z * 0.1131 );
   vAge = age;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
+  #ifdef FX_CARRY
+    // a moving muzzle's smoke leaves with the bore's motion and sheds it to still air, then trails (muzzleSmoke policy);
+    // a card born pre-aged (a cloud already formed at the shot) takes the motion from the shot, not from its early birth
+    float carriedAge = max( age - aCV.w, 0.0 );
+    wpos += aCV.xyz * ( ( 1.0 - exp( -uCarryDrag * carriedAge ) ) / uCarryDrag );
+  #endif
   // (the car-wreck lane, 233: "fire is round flame sprites") a flame tongue, flagged by a negative end size: it stands
   // upright from its foot, aSR.z times as tall as it is wide, narrowing to its tip, the tip swaying at aSR.w rad/s
   float tongue = step( aSR.y, -1e-6 );
@@ -1835,6 +1852,10 @@ export function createParticleSystem(
   }
 
   const PUFF_LAYOUT = { aPB: 4, aVL: 4, aSR: 4, aC0: 4, aC1: 4 };
+  /** a puff pool that sheds a carried velocity on its own clock (FX_CARRY): aCV, the emitter's motion and the age it
+   *  starts at */
+  const PUFF_CARRY_LAYOUT = { ...PUFF_LAYOUT, aCV: 4 };
+  const PSMOKE_DRAG = 0.9;
   const STREAK_LAYOUT = { aPB: 4, aVL: 4, aWS: 4, aC: 4 };
   const DEBRIS_LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4 };
   const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4, aCV: 3 };
@@ -1860,10 +1881,13 @@ export function createParticleSystem(
       // muzzle propellant mass (see PUFF_FRAG_PROP): erosion-masked cold grey
       // powder smoke — torn billow structure instead of gaussian cotton balls
       (() => {
-        const m = puffMaterial(propTex, false, 0.9, 1.0, 4, [0.8, 3.0]);
+        const m = puffMaterial(propTex, false, PSMOKE_DRAG, 1.0, 4, [0.8, 3.0]);
         m.fragmentShader = PUFF_FRAG_PROP;
+        // a moving muzzle's propellant sheds the bore's velocity faster than this pool's drag would (muzzleSmoke)
+        m.defines = { ...(m.defines ?? {}), FX_CARRY: '' };
+        m.uniforms.uCarryDrag = { value: shooterCarryDrag('muzzleSmoke', PSMOKE_DRAG) };
         return m;
-      })(), PUFF_LAYOUT, sizes.psmoke, 'aVL', 3),
+      })(), PUFF_CARRY_LAYOUT, sizes.psmoke, 'aVL', 3),
     // Dedicated obscurant budget: the cloud cannot evict cannon smoke or fire.
     // Eroded flipbook lobes carry stable billow detail, without screen-space noise.
     screen: new Pool('screen', makeQuadGeometry(sizes.screen),
@@ -1979,6 +2003,22 @@ export function createParticleSystem(
     sr[j] = o.size0; sr[j + 1] = o.size1; sr[j + 2] = o.rot || 0; sr[j + 3] = o.rotVel || 0;
     c0[j] = o.col0[0]; c0[j + 1] = o.col0[1]; c0[j + 2] = o.col0[2]; c0[j + 3] = o.grav || 0;
     c1[j] = o.col1[0]; c1[j + 1] = o.col1[1]; c1[j + 2] = o.col1[2]; c1[j + 3] = o.alpha;
+    // a carried velocity (a moving muzzle's smoke): kept apart where the pool sheds it on its own clock, else in vel.
+    // The emitter moves from now: a card born later leaves from where the emitter will be, and one born pre-aged (a
+    // cloud already formed at the shot) takes the motion from now. Every slot of a carrying pool is rewritten, so a
+    // reused slot never keeps an earlier shot's motion.
+    const carry = o.carry, carried = A.aCV as THREE.InstancedBufferAttribute | undefined;
+    const bo = o.birthOffset || 0;
+    if (carry && bo > 0) {
+      pb[j] += carry[0] * bo; pb[j + 1] += carry[1] * bo; pb[j + 2] += carry[2] * bo;
+    }
+    if (carried) {
+      const cv = carried.array;
+      cv[j] = carry ? carry[0] : 0; cv[j + 1] = carry ? carry[1] : 0; cv[j + 2] = carry ? carry[2] : 0;
+      cv[j + 3] = carry ? Math.max(0, -bo) : 0;
+    } else if (carry) {
+      vl[j] += carry[0]; vl[j + 1] += carry[1]; vl[j + 2] += carry[2];
+    }
     lateFxUntil = Math.max(lateFxUntil, birth + Math.max(0, o.life || 0));
     pool.dirty(i);
   }

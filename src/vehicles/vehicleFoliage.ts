@@ -18,7 +18,7 @@
 // stem's plane in a shallow V, so it has depth and never shows one straight edge.
 import * as THREE from 'three';
 import { drainAtlasSteps, makeSprayAtlas, makeSprayAtlasSteps, SPRAY_ATLAS_TILES, type SprayKind } from '../world/treeSprayAtlas.ts';
-import { coverageMipChainSteps, floodClearTexels, type MipImage } from './alphaCutTexture.ts';
+import { coverageMipChainSteps, createPaintAttempts, floodClearTexels, type MipImage } from './alphaCutTexture.ts';
 import { paintGarnishBough } from './garnishBoughs.ts';
 
 export type VehicleFoliageKind = SprayKind | 'garnish-woodland' | 'garnish-arid';
@@ -30,6 +30,9 @@ export const FOLIAGE_ALPHA_TEST = 0.4;
 
 const ATLAS_SIZE = 512;
 const atlasCache = new Map<VehicleFoliageKind, THREE.Texture | null>();
+// (2026-11-02 audit R6) a null in the caches is "no DOM here", never a paint that failed (alphaCutTexture.ts createPaintAttempts): one
+// transient canvas failure left the species leafless for the session
+const settlesAtlas = createPaintAttempts();
 
 /** Give an ImageData-backed atlas its coverage-preserving mips (idempotent; lighting.ts then leaves it alone). */
 function attachCoverageMips(texture: THREE.Texture): THREE.Texture {
@@ -377,7 +380,7 @@ export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind
     texture?.dispose();
     return garnishAtlasCache.get(key)!;
   }
-  if (typeof document !== 'undefined') garnishAtlasCache.set(key, texture);
+  if (typeof document !== 'undefined' && settlesAtlas(`garnish:${key}`, !!texture)) garnishAtlasCache.set(key, texture);
   return texture;
 }
 
@@ -397,7 +400,7 @@ export function vehicleFoliageAtlas(kind: VehicleFoliageKind): THREE.Texture | n
       texture = null;
     }
   }
-  atlasCache.set(kind, texture);
+  if (settlesAtlas(`atlas:${kind}`, !!texture)) atlasCache.set(kind, texture);
   return texture;
 }
 

@@ -52,7 +52,9 @@ import {
 } from './environment-shot-camera.mjs';
 import { evaluateQuality } from './map-environment-quality.mjs';
 import { selectWaterShoreViews } from './water-shore-camera.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const valueArg = (name, fallback) => {
@@ -121,7 +123,7 @@ const acquisition = {
 if (baseline) requireComparableRun(baseline, acquisition);
 fs.mkdirSync(outDir, { recursive: true });
 
-let server, browser, page, lockRefresher;
+let server, browser, page;
 const pageErrors = [];
 const readBuildIndexHash = () => production
   ? createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'dist/index.html'))).digest('hex') : null;
@@ -816,10 +818,7 @@ async function captureMapShots(mapId) {
 }
 
 try {
-  await acquireCaptureLock(20 * 60 * 1000);
-  process.on('exit', releaseCaptureLock);
-  lockRefresher = setInterval(refreshCaptureLock, 60_000);
-  lockRefresher.unref();
+  hold = await openCaptureHold({ label: 'map-environment-audit', timeoutMs: 20 * 60 * 1000 });
   // Let the OS select an available ephemeral port. The former random range
   // included Chromium-blocked 6566, failing navigation before game boot.
   const selectedPort = 0;
@@ -869,7 +868,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/${tier === 'auto' ? '' : `?tier=${tier}`}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate(waitForTimingGarage);
   await page.evaluate(() => window.__SHOTS.set('garage'));
@@ -984,8 +983,7 @@ try {
         server.httpServer.close(error => error ? reject(error) : resolve());
       });
     } finally {
-      clearInterval(lockRefresher);
-      releaseCaptureLock();
+      await hold?.release();
     }
   }
 }

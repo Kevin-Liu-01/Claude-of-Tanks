@@ -13,6 +13,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createCaptureLock } from './capture-lock.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 
 const PROTOCOL = 'cold-native-horizon-construction-v1';
 const SELF = fileURLToPath(import.meta.url);
@@ -297,10 +298,11 @@ function summarizeTrials(runs) {
 }
 
 export async function withLease(run, lock = createCaptureLock()) {
-  await lock.acquire(45 * 60 * 1000);
-  const refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
-  try { return await run(); }
-  finally { clearInterval(refresh); lock.release(); }
+  // the one hold wrapper (round 2 U38): refresh, the cap and the release after the run. Signals are runBench's own
+  // (signals: []): its handler aborts the comparison, whose worker closes before the lease goes, and the report is written.
+  // The hold's own stop (past the cap with a waiter) reaches the run as `signal`.
+  return withCaptureHold(({ signal }) => run(signal), { label: 'horizon-construction-bench', lock, timeoutMs: 45 * 60 * 1000, signals: [],
+    log: (line) => console.error(line) });
 }
 
 export async function writeFreshReport(out, run) {
@@ -322,13 +324,21 @@ async function main() {
     catch (error) { receipt = { ok: false, error: errorText(error) }; }
     process.send?.(receipt); process.exitCode = receipt.ok ? 0 : 1; return;
   }
-  const options = parseOptions(process.argv.slice(2)), controller = new AbortController();
+  await runBench(parseOptions(process.argv.slice(2)));
+}
+
+/** One benchmark run under one lease: SIGINT/SIGTERM (this tool's own handler, the hold's `signals: []`) or the hold's
+ *  stop abort the comparison, and the report is written either way (round 2 U38). `compare` and `lock` are for receipts. */
+export async function runBench(options, { compare = compareTrials, lock } = {}) {
+  const controller = new AbortController();
   const handlers = ['SIGINT', 'SIGTERM'].map(name => [name, () => controller.abort(name)]);
   for (const [name, handler] of handlers) process.once(name, handler);
   try {
-    const report = await writeFreshReport(options.out, () => withLease(() => compareTrials(options, { signal: controller.signal })));
+    const report = await writeFreshReport(options.out, () => withLease(holdSignal =>
+      compare(options, { signal: AbortSignal.any([controller.signal, holdSignal]) }), lock));
     console.log(JSON.stringify({ out: options.out, pass: report.pass, trials: report.runs?.length || 0 }));
     process.exitCode = controller.signal.aborted ? (controller.signal.reason === 'SIGINT' ? 130 : 143) : report.pass ? 0 : 1;
+    return report;
   } finally { for (const [name, handler] of handlers) process.removeListener(name, handler); }
 }
 

@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -482,7 +483,7 @@ export default {
     // in twins about the station square (props.rotationalCentre below; the maps-restyle lane, 2026-10-22, in place of
     // round 3b's count 0); the crossing posts' own wrecks are off (the east post's never found ground, so the west one
     // stood alone)
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48a5_patton', 'centurion5_2', 'm47_patton'] },
+    tankWrecks: WRECK_CASTS.railyard,
     sandbagLines: 10,
     // (round 3c) no field works at random: round 3b's three stood both pillboxes in bravo's half (x 13-18, z 151-198)
     fieldWorks: 0,

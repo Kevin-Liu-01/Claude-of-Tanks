@@ -21,8 +21,11 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
+import { readinessExpression } from './game-readiness.mjs';
+// (round 8 Y5 s6-04) the pad's state words from their owners; page functions get them as arguments
+import { PAD_GUN_STATE, PAD_LINK_PATH, PAD_LINK_STATE, PAD_PHONE_STATE, PAD_TOUR_STATE } from './pad-states.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -59,7 +62,7 @@ padServer.on('upgrade', (request, socket, head) => { if (!pads.handleUpgrade(req
 await new Promise((done) => padServer.listen(0, '127.0.0.1', done));
 const padService = `ws://127.0.0.1:${padServer.address().port}`;
 
-const lock = createCaptureLock();
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 let vite = null;
 let browser = null;
 /** The phone runs in a browser of its own: a second tab of one headless window would hide the desktop's, and a hidden
@@ -74,7 +77,7 @@ try {
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }
-  await lock.acquire(4 * 60 * 60 * 1000, { lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
+  captureHold = await openCaptureHold({ label: 'pad-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
@@ -102,7 +105,7 @@ try {
     if (String(sockets.get(requestId)).startsWith(padService)) socketFrames.desktopReceived.push({ timestamp, data: String(response.payloadData).slice(0, 80) });
   });
   await desktop.goto(`${origin}/?nosplash=1&tier=desktop&padService=${encodeURIComponent(padService)}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await desktop.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  await desktop.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   deadline();
 
   // Unpaired. The dev server preloads every module its static scan reaches (a dev-only plugin that also follows type
@@ -175,12 +178,13 @@ try {
   await phone.tap('.pad-form button[type="submit"]');
   // the first reading centres the wheel: hold the phone level, then wait for the data channel
   await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 });
-  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'live' && window.__COT_PAD.path === 'direct', { timeout: 30_000 });
+  await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live);
+  await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
+    PAD_LINK_STATE.live, PAD_LINK_PATH.direct);
   check('the phone pairs from the QR link with one Start tap; the data channel is live on both sides', true, `button "${startLabel}"`);
   report.step = 'guide';
   // the first pairing names the controls over the live panel, and the thumbs work through it
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'shown', { timeout: 10_000 }).catch(() => {});
+  await phone.waitForFunction((shown) => window.__COT_PAD_PHONE?.tour === shown, { timeout: 10_000 }, PAD_TOUR_STATE.shown).catch(() => {});
   const guideShownAt = Date.now();
   const guide = await phone.evaluate(() => {
     const lever = document.querySelector('.pad-lever').getBoundingClientRect();
@@ -236,7 +240,7 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 10_000 });
   await desktop.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc', 'verdant'));
-  await desktop.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.player && window.__DEBUG.game.preBattleS <= 0,
+  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG.game.player`,
     { timeout: 300_000, polling: 250 });
   check('a solo battle never becomes a multiplayer session', await desktop.evaluate(() => !document.querySelector('.cot-mp-strip, .cot-net-strip')
     && !performance.getEntriesByType('resource').some((entry) => /\/rooms\//.test(entry.name))));
@@ -246,7 +250,8 @@ try {
   await phone.waitForFunction(() => !document.querySelector('.pad-lock')?.hidden, { timeout: 5000 }).catch(() => {});
   check('the sight\'s lock key is on the phone in a solo battle', await phone.$eval('.pad-lock', (el) => !el.hidden));
   // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'timeout', { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) }).catch(() => {});
+  await phone.waitForFunction((timeout) => window.__COT_PAD_PHONE?.tour === timeout, { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) },
+    PAD_TOUR_STATE.timeout).catch(() => {});
   // timed where each screen saw it go: the phone from its showing, the game screen from the first sight of its own
   const phoneShut = await phone.evaluate(() => ({ how: window.__COT_PAD_PHONE.tour, ms: window.__COT_PAD_PHONE.tourMs, hidden: document.querySelector('.pad-tour').hidden,
     lineBack: getComputedStyle(document.querySelector('.pad-msg')).visibility !== 'hidden' }));
@@ -259,7 +264,7 @@ try {
     return Math.round(window.__padTourBusy.reduce((sum, [start, length]) => sum + Math.max(0, Math.min(to, start + length) - Math.max(from, start)), 0));
   });
   report.tourScreen = { shutMs: screenShutMs, busyMs: screenBusyMs };
-  check('the guide leaves both screens by itself after ten seconds', phoneShut.how === 'timeout' && phoneShut.hidden && phoneShut.lineBack
+  check('the guide leaves both screens by itself after ten seconds', phoneShut.how === PAD_TOUR_STATE.timeout && phoneShut.hidden && phoneShut.lineBack
     && phoneShut.ms >= 9500 && phoneShut.ms <= 12_000 && !(await screenGuideOpen()) && screenShutMs !== null && screenShutMs - screenBusyMs <= 12_000,
   `the phone's after ${(phoneShut.ms / 1000).toFixed(1)} s, the game screen's ${screenShutMs === null ? 'never' : `${(screenShutMs / 1000).toFixed(1)} s`} after it was seen`
     + ` (its page busy ${(screenBusyMs / 1000).toFixed(1)} s of that)`);
@@ -273,15 +278,15 @@ try {
   await phone.waitForFunction(() => document.querySelector('.pad-tour').hidden, { timeout: 5000 }).catch(() => {});
   await desktop.waitForFunction(() => !document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
   check('Options shows the guide again on both screens, and Skip on the phone ends it on both', replayedOnScreen
-    && await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'skipped') && !(await screenGuideOpen()));
+    && await phone.evaluate((skipped) => window.__COT_PAD_PHONE.tour === skipped, PAD_TOUR_STATE.skipped) && !(await screenGuideOpen()));
   await phone.tap('[data-menu]');
   await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
   await phone.tap('.pad-opts [data-tour]');
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
   await desktop.click('.cot-pad-tour-skip').catch(() => {});
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'screen', { timeout: 5000 }).catch(() => {});
-  check('Skip on the game screen ends the guide on the phone too', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'screen'
-    && document.querySelector('.pad-tour').hidden) && !(await screenGuideOpen()));
+  await phone.waitForFunction((screen) => window.__COT_PAD_PHONE?.tour === screen, { timeout: 5000 }, PAD_TOUR_STATE.screen).catch(() => {});
+  check('Skip on the game screen ends the guide on the phone too', await phone.evaluate((screen) => window.__COT_PAD_PHONE.tour === screen
+    && document.querySelector('.pad-tour').hidden, PAD_TOUR_STATE.screen) && !(await screenGuideOpen()));
   deadline();
 
   const player = (expr) => desktop.evaluate(new Function(`const p = window.__DEBUG.game.player; return (${expr});`));
@@ -432,8 +437,9 @@ try {
   await desktop.waitForFunction((a) => window.__DEBUG.game.player.combat.ammo[window.__DEBUG.game.player.combat.shellSlot] < a, { timeout: 5000 }, ammo0).catch(() => {});
   const ammo1 = await player('p.combat.ammo[p.combat.shellSlot]');
   check('fire from the phone shoots', ammo1 === ammo0 - 1, `rounds ${ammo0} → ${ammo1}`);
-  await phone.waitForFunction(() => document.querySelector('.pad-ctl')?.dataset.state === 'loading', { timeout: 3000 }).catch(() => {});
-  check('the phone shows the gun loading: the fire button dark, its ring refilling', await phone.$eval('.pad-ctl', (el) => el.dataset.state === 'loading'));
+  await phone.waitForFunction((loading) => document.querySelector('.pad-ctl')?.dataset.state === loading, { timeout: 3000 }, PAD_GUN_STATE.loading).catch(() => {});
+  check('the phone shows the gun loading: the fire button dark, its ring refilling',
+    await phone.$eval('.pad-ctl', (el, loading) => el.dataset.state === loading, PAD_GUN_STATE.loading));
   await sleep(800);
   const felt = await phone.evaluate(() => ({ ...window.__COT_PAD_PHONE.buzz }));
   const cues = await desktop.evaluate(() => ({ ...(window.__COT_PAD?.cues ?? {}) }));
@@ -557,13 +563,13 @@ try {
 
   report.step = 'relay';
   // ---- the relay path: a phone without WebRTC resumes the same pairing over the relay -------------------------------
-  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'away', { timeout: 10_000 }).catch(() => {});
+  await desktop.waitForFunction((away) => window.__COT_PAD?.state === away, { timeout: 10_000 }, PAD_LINK_STATE.away).catch(() => {});
   ({ phone, phoneRequests } = await openPhone({ rtc: false }));
   // the closed tab's sessionStorage is gone; the relay run pairs afresh
   await desktop.keyboard.press('Escape');
   await desktop.waitForSelector('.cot-settings.open .cot-pad-action', { timeout: 10_000 });
   await desktop.evaluate(() => document.querySelector('.cot-settings.open .cot-pad-action')?.click()); // Disconnect
-  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'ended', { timeout: 10_000 }).catch(() => {});
+  await desktop.waitForFunction((ended) => window.__COT_PAD?.state === ended, { timeout: 10_000 }, PAD_LINK_STATE.ended).catch(() => {});
   await desktop.evaluate(() => document.querySelector('.cot-settings.open .cot-pad-action')?.click()); // Connect again
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-qr')?.dataset.url, { timeout: 30_000 });
   const relayCode = (await desktop.$eval('.cot-pad-qr', (el) => el.dataset.url)).slice(-6);
@@ -572,8 +578,9 @@ try {
   await phone.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
   await phone.tap('.pad-form button[type="submit"]');
   await phone.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 });
-  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'live' && window.__COT_PAD.path === 'relay', { timeout: 30_000 });
+  await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live);
+  await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
+    PAD_LINK_STATE.live, PAD_LINK_PATH.relay);
   const relay = await steerSamples(Math.min(20, samples), 'relay');
   check('steering latency over the relay (loopback): recorded', relay.n > 0, `p50 ${relay.p50} ms, p95 ${relay.p95} ms (15 Hz cap)`);
   await phone.screenshot({ path: resolve(outDir, 'phone-live-relay.png') });
@@ -583,12 +590,13 @@ try {
   // inside its grace (no new code), and the phone, shown the desktop away meanwhile, comes back live by itself
   const reloadedAt = Date.now();
   await desktop.reload({ waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'away', { timeout: 30_000 }).catch(() => {});
+  await phone.waitForFunction((away) => window.__COT_PAD_PHONE?.state === away, { timeout: 30_000 }, PAD_PHONE_STATE.away).catch(() => {});
   const phoneSawAway = await phone.evaluate(() => document.querySelector('.pad-link')?.textContent ?? '');
-  await desktop.waitForFunction(() => window.__COT_PAD?.state === 'live', { timeout: 240_000, polling: 500 }).catch(() => {});
-  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 }).catch(() => {});
+  await desktop.waitForFunction((live) => window.__COT_PAD?.state === live, { timeout: 240_000, polling: 500 }, PAD_LINK_STATE.live).catch(() => {});
+  await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 30_000 }, PAD_PHONE_STATE.live).catch(() => {});
   const resumed = { desktop: await desktop.evaluate(() => window.__COT_PAD?.state ?? 'none'), phone: await phone.evaluate(() => window.__COT_PAD_PHONE?.state) };
-  check('a desktop reload resumes the pairing: no new code, the phone back live by itself', resumed.desktop === 'live' && resumed.phone === 'live',
+  check('a desktop reload resumes the pairing: no new code, the phone back live by itself',
+    resumed.desktop === PAD_LINK_STATE.live && resumed.phone === PAD_PHONE_STATE.live,
     `phone showed "${phoneSawAway}" meanwhile; ${JSON.stringify(resumed)} after ${Math.round((Date.now() - reloadedAt) / 1000)} s`);
 
   report.network.desktopRequestsTotal = desktopRequests.length;
@@ -604,7 +612,7 @@ try {
   try { await phoneBrowser?.close(); } catch { /* gone */ }
   try { await browser?.close(); } catch { /* gone */ }
   try { await vite?.close(); } catch { /* gone */ }
-  lock.release();
+  await captureHold?.release();
   await pads.close();
   padServer.close();
   const failed = Object.entries(report.checks).filter(([, value]) => !value.ok).map(([name]) => name);

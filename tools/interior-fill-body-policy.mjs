@@ -29,6 +29,15 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   gepard_1a2: Object.freeze(['hull', 'turret']),
   pgz95: Object.freeze(['hull', 'turret']),
   pgz09: Object.freeze(['hull', 'turret']),
+  // 269: the second air-defence round, the same: closed hull and turret shells, the guns and radars in exterior air
+  type87_aw: Object.freeze(['hull', 'turret']),
+  marksman_t55: Object.freeze(['hull', 'turret']),
+  itpsv_leopard2: Object.freeze(['hull', 'turret']),
+  lvkv9040: Object.freeze(['hull', 'turret']),
+  k30_biho: Object.freeze(['hull', 'turret']),
+  pza_loara: Object.freeze(['hull', 'turret']),
+  // 269: the M163 VADS likewise (the open mount's drum and shields; the Vulcan, its drum and the radar in exterior air)
+  m163_vads: Object.freeze(['hull', 'turret']),
   // The rebuilt scout turret has closed cheeks/roof and an open elevation
   // bay. Its external ERA, sights and stowage do not bound interior volume.
   // The unchanged hull retains all its historical boundary buckets below.

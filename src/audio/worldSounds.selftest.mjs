@@ -58,6 +58,15 @@ assert.match(modesSource, /emit\('mode_ball_hit', \{[^}]*x: ball\.x, y: ball\.y,
 assert.equal([...modesSource.matchAll(/emit\('mode_ball_hit', \{[^}]*x: ball\.x/g)].length, 2, 'a ram and a shot both say where');
 const engineSource = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
 assert.match(engineSource, /for \(const type of MODE_EVENT_TYPES\) on</, 'the engine listens to every mode event');
+// (round 8 Y3 s1-14) the crew's own mode events are typed by the same list, its handler exhaustive: a renamed or retired
+// event fails the typecheck there as in the engine (src/audio/audioOwners.typecheck.ts keeps the refusal honest)
+const crewSource = readFileSync(new URL('./crewProcedure.ts', import.meta.url), 'utf8');
+const crewList = /CREW_MODE_EVENTS = Object\.freeze\(\[([^\]]*)\] as const satisfies readonly ModeEventType\[\]\)/.exec(crewSource);
+assert.ok(crewList, "the crew's mode events are typed by modeSounds.ts MODE_EVENT_TYPES");
+const crewEvents = [...crewList[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+assert.ok(crewEvents.length >= 10, `the crew's mode events read (${crewEvents})`);
+assert.deepEqual(crewEvents.filter((type) => !MODE_EVENT_TYPES.includes(type)), [], 'every crew mode event is one the controller emits');
+assert.match(crewSource, /function onMode\(type: CrewModeEvent,[\s\S]*?const unheard: never = type;/, "the crew's mode handler names every one of its events");
 
 // ---- Air Support (air-support-270): every event its ledger and its authorities emit is named (scanned from
 // sim/airSupport.ts and the network authority's round), every call-in names its sounds, and every one ships.
@@ -211,6 +220,28 @@ seq = mark();
 ford.state.pos.x = 210;
 step(15);
 assert.ok(since(seq).includes('water_exit'), `the water pours off a hull leaving the river (${since(seq)})`);
+// (round 8 Y3 s1-15) the waterline's own edges, guarded: a hull first heard in a river (spawned there, or its rig rebuilt)
+// does not splash, and a hull in and out again inside the minimum stay is not drained (it drove in under the splash's
+// speed floor, so only the stay holds the exit back)
+seq = mark();
+const born = hull('born', 'bmp2', { x: 150, z: -40, team: 'enemy', speed: 4 });
+field.push(born);
+step(15);
+assert.ok(rig('born'), 'the hull born in the river is heard');
+assert.ok(!since(seq).some((id) => id === WATER_SOUND.splash || id === WATER_SOUND.plunge), `a hull born in a river does not splash (${since(seq)})`);
+const dabble = hull('dabble', 'bmp2', { x: 95, z: 60, team: 'enemy', speed: 0.5 });
+field.push(dabble);
+step(15);
+seq = mark();
+dabble.state.pos.x = 110;
+step(15);
+assert.ok(!since(seq).includes(WATER_SOUND.splash), `a crawl into the water is no splash (${since(seq)})`);
+dabble.state.speed = 4;
+dabble.state.pos.x = 210;
+step(15);
+assert.ok(!since(seq).includes(WATER_SOUND.exit), `in and out inside the minimum stay: no water off the hull (${since(seq)})`);
+field.splice(field.indexOf(born), 1);
+field.splice(field.indexOf(dabble), 1);
 
 // a light vehicle's end; a crash into a timber barn and a sandbag wall
 seq = mark();

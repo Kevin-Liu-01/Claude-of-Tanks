@@ -14,6 +14,7 @@ import longleaf from './maps/longleaf.ts';
 // (world/civic; null off a planned map)
 import { civicLawnTest, civicPavedRooms, civicPavementTest } from './civic/plans/index.ts';
 import verdant from './maps/verdant.ts';
+import { pavedGroundTest } from './maps/builtEnvironmentTable.ts'; // (built-env-270b) grass keeps off the row's paved grounds
 
 const source = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 function section(start, end) {
@@ -37,7 +38,7 @@ function compile(legacy) {
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', 'resolveGroundReduxProfile', 'swardPatchAt',
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
     'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees',
-    'civicLawnTest', 'civicPavedRooms', 'civicPavementTest', `return (${stripTypeScriptTypes(`
+    'civicLawnTest', 'civicPavedRooms', 'civicPavementTest', 'pavedGroundTest', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       const cfg = config; // (the maps lane, 228: the grass stage reads its map's civic plan by the config's id)
       const lightDesk = false; // (Ultra Low, 2026-10-13) the light-world vegetation is a desktop preset's; the default here
@@ -68,7 +69,7 @@ function compile(legacy) {
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry, resolveGroundReduxProfile, swardPatchAt,
     advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork,
     createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees,
-    civicLawnTest, civicPavedRooms, civicPavementTest);
+    civicLawnTest, civicPavedRooms, civicPavementTest, pavedGroundTest);
 }
 const build = compile(false), buildLegacy = compile(true);
 

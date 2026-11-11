@@ -15,6 +15,7 @@ import {
   clampU16, clampU8, quantizeAngle, quantizeMultiplier, quantizePosition, quantizeReloadS, quantizeUnitComponent, quantizeVelocity,
 } from '../../src/mp/wire/quantize.ts';
 import { MOVEMENT_CHECKPOINT_VERSION } from '../../src/mp/match/movementCheckpoint.ts';
+import { hullBodyRowFlags } from '../../src/mp/match/hullBodyRow.ts';
 import { eraPlateIndices } from '../../src/mp/wire/era.ts';
 
 const indicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
@@ -73,10 +74,8 @@ function entityFlags(entity: AuthoritativeEntity): number {
   if (combat.fire?.burning) flags |= ENTITY_FLAGS.BURNING;
   if (entity.input.fire) flags |= ENTITY_FLAGS.FIRING;
   if (entity.specialAction?.active) flags |= ENTITY_FLAGS.SPECIAL_ACTIVE;
-  if (state.grounded === false) flags |= ENTITY_FLAGS.AIRBORNE;
-  if (state.overturned) flags |= ENTITY_FLAGS.OVERTURNED;
-  if (state._body?.autoRighting) flags |= ENTITY_FLAGS.AUTO_RIGHTING;
-  return flags;
+  // ground contact and the body mode, the rigid phase itself included (wire 10, audit M8)
+  return flags | hullBodyRowFlags(state);
 }
 
 /** Capture an entity's row as of authority tick `tick` (the row remembers it: a viewer's held row is dated by it). */

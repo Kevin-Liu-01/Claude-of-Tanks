@@ -4,11 +4,12 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *
  * Particles are deliberately world-space after birth: smoke should trail a
  * moving tank instead of behaving like a rigid model accessory. Only a
- * continuous emitter's source follows its owner, and a muzzle's bright
- * sub-200 ms parts leave with the shooter's own velocity (gas thrown from a
- * moving bore carries the bore's motion; the pools' drag then slows it
- * against still air). The policy table makes those distinctions explicit so
- * new effects cannot silently inherit the wrong space.
+ * continuous emitter's source follows its owner, and a muzzle's burst leaves
+ * with the shooter's own velocity (gas thrown from a moving bore carries the
+ * bore's motion): its bright sub-200 ms parts keep it for their short life,
+ * and its smoke sheds it to still air within a quarter second, then trails.
+ * The policy table makes those distinctions explicit so new effects cannot
+ * silently inherit the wrong space.
  */
 export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   burningColumn: 'subject-local-emitter',
@@ -21,12 +22,23 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   // (fleet review 2026-11-03: s272/s86/s271) born world-fixed, a ~100 ms core
   // lagged 0.5-1.5 m back along the barrel of a tank firing at 5-15 m/s. The
   // core, petals, axial and brake jets, combustion tongues, bore sparks, ring
-  // and light ride the muzzle; its propellant mass, smoke, wisps and ground
-  // dust stay world-space and trail it.
+  // and light ride the muzzle.
   muzzleFlash: 'shooter-velocity-burst',
   muzzleRing: 'shooter-velocity-burst',
   muzzleLight: 'shooter-velocity-burst',
-  muzzleSmoke: 'world-space-burst',
+  // (loading-screen critics 2026-11-08: s39 Leopard 2A7V head-on, s286 Monsoon)
+  // left world-fixed, the propellant's glowing rings sat ~1.2 m back along the
+  // barrel 80 ms after a 15 m/s shot and its cloud hung over the firing tank's
+  // own turret. Gas leaving a moving bore has the bore's velocity at birth and
+  // air drag sheds it: the propellant mass and ring, the smoke ring, the gas
+  // cone and the wisps (the media layer's gas on desktop) are born with the
+  // muzzle's velocity and lose it at MUZZLE_SMOKE_CARRY_DRAG_MIN or faster
+  // (shooterCarryDrag), so they keep near the muzzle for ~0.1 s and trail it
+  // after. The ground's dust and grit, raised off still ground, stay world-space.
+  muzzleSmoke: 'shooter-velocity-shed-burst',
+  muzzleGroundDust: 'world-space-burst',
+  // a rocket motor's ignition smoke is thrown back out of the tube: it stays where it was thrown
+  rocketIgnitionSmoke: 'world-space-burst',
   impactParticles: 'world-space-burst',
   destructionParticles: 'world-space-burst',
   // wreck r1 (owner 2026-09-17): the wreck column rides the corpse's visual root and retires with it
@@ -153,7 +165,32 @@ type EffectAttachmentFamily = keyof typeof EFFECT_ATTACHMENT_POLICY;
 
 /** 1 when the family's burst leaves with its shooter's velocity, 0 when it stays world-space after birth. */
 export function shooterVelocityGain(family: EffectAttachmentFamily): number {
-  return EFFECT_ATTACHMENT_POLICY[family] === 'shooter-velocity-burst' ? 1 : 0;
+  const policy: string = EFFECT_ATTACHMENT_POLICY[family];
+  return policy === 'shooter-velocity-burst' || policy === 'shooter-velocity-shed-burst' ? 1 : 0;
+}
+
+/**
+ * (1/s) The slowest a shed burst (muzzleSmoke) may lose the velocity it was born with: 1/4 s or faster, so 80 ms after
+ * a 15 m/s shot the smoke sits within ~0.2-0.4 m of a still gun's place relative to the muzzle (1.2 m world-fixed), and
+ * by 0.5 s it trails the hull by over half of what the hull drove instead of riding along with it for seconds. A medium
+ * whose own drag is at least this (the media layer's propellant gas, 4.2-4.5 /s) sheds it by that drag.
+ */
+export const MUZZLE_SMOKE_CARRY_DRAG_MIN = 4;
+/**
+ * (1/s) τ = 0.1 s: the rate a pooled smoke card whose own drag is weaker (the propellant pool's 0.9 /s would carry the
+ * cloud on with the hull for a second) sheds the bore's velocity as its gas mixes into still air.
+ */
+export const MUZZLE_SMOKE_CARRY_DRAG = 10;
+
+/**
+ * The rate (1/s) at which a family's carried velocity decays in a medium of drag `mediumDrag` (1/s): a shed burst loses
+ * it by the medium's own drag where that is fast enough, else at MUZZLE_SMOKE_CARRY_DRAG; every other burst keeps it
+ * under the medium's own drag.
+ */
+export function shooterCarryDrag(family: EffectAttachmentFamily, mediumDrag: number): number {
+  const policy: string = EFFECT_ATTACHMENT_POLICY[family];
+  if (policy !== 'shooter-velocity-shed-burst') return mediumDrag;
+  return mediumDrag >= MUZZLE_SMOKE_CARRY_DRAG_MIN ? mediumDrag : MUZZLE_SMOKE_CARRY_DRAG;
 }
 
 interface EffectSubjectMotion {

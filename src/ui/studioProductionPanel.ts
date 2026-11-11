@@ -1,6 +1,7 @@
 /** Director workspace: curated scenes and camera tools, backed by the same Studio API as captures. */
 import { PRODUCTION_PRESETS, productionAspect, productionPreset, productionShotNames, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { createSessionHolder } from '../game/studioSession.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import type { NoticeSeverity } from './components/notice.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -129,6 +130,11 @@ interface StudioWorkspaceHosts {
   readonly guides?: HTMLElement;
   /** The Studio's toast (the kit's notices): what an action did, or why it failed. */
   readonly notice?: (text: string, tone?: 'info' | 'error', detail?: string) => void;
+  /**
+   * (audit F9) The host's reading of what holds the Studio (the Studio app's panel: its render queue's run, a time or sun
+   * change in flight, and the Studio's own holders); without a host, the Studio's own (S.busy()).
+   */
+  readonly busy?: () => boolean;
 }
 
 function button(text: string, action: () => void, className = ''): HTMLButtonElement {
@@ -169,7 +175,7 @@ function segments<V extends string>(label: string, key: string, choices: readonl
 
 export function mountStudioProductionPanel(
   S: StudioPanelApi, root: HTMLElement, dock: HTMLElement, refreshAll: () => void, hosts: StudioWorkspaceHosts = {},
-): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void; openTemplates(): void } {
+): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void; openTemplates(): void; busy(): boolean } {
   let visible = false;
   function syncPreviewViewport(): void {
     if (visible) document.body.dataset.studioWorkspace = root.dataset.controlsCollapsed === 'true' ? 'collapsed' : 'open';
@@ -183,10 +189,16 @@ export function mountStudioProductionPanel(
   director.dataset.group = 'director';
   let selectedId = PRODUCTION_PRESETS[0]?.id ?? '';
   let format: ProductionFormat = S.productionFormat;
-  let staging = false;
+  // (round 2 U36, review r2) the Director's staging, held for the session it began in, as the Studio's holders are: the
+  // panel is built once per page, and a plain flag set by a staging whose cold build an exit outlived held the Director
+  // (and, through the host, the Studio's header and keys) in the Studio entered again until that build returned
+  const staging = createSessionHolder();
   let shotSignature = '';
   const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
-  const failure = (error: unknown): void => { say(error instanceof Error ? error.message : String(error), true); };
+  const failure = (error: unknown): void => {
+    if (error instanceof Error && error.name === 'AbortError') return; // a cancel (the Studio's exit), never a failure
+    say(error instanceof Error ? error.message : String(error), true);
+  };
   const librarySection = node('section', 'production-templates');
   librarySection.append(heading('film', productionLabel('templates')));
   // The templates (owner 2026-10-27: "make template presentation a lotttt more and better"): the Director's sequences, the
@@ -272,8 +284,17 @@ export function mountStudioProductionPanel(
     ],
     onChoose: (template) => useTemplate(template),
   });
+  /**
+   * (2026-11-02 audit F9) Something holds the Studio: the Director's own staging or take fetch, or the host's holders (a
+   * render queue's run, a time or sun change, and the Studio's own: a recording, a film or its export, a scene, a
+   * battlefield change, an undo). Every way to stage a template, record or reframe asks this one question (staging a
+   * sequence once ignored a take still loading, and the last to finish won; neither knew a queued still at every shot).
+   */
+  function sceneBusy(): boolean {
+    return staging.held || loadingTake.held || (hosts.busy ? hosts.busy() : S.busy() !== null);
+  }
   function openTemplates(): void {
-    if (staging || loadingTake || S.recordingStatus().active) return;
+    if (sceneBusy()) return;
     sheet.open([...sequences, ...takes], currentTemplate);
   }
   /** Stage a template: a sequence casts the featured tank, a take stages as filmed. */
@@ -308,13 +329,16 @@ export function mountStudioProductionPanel(
   // the Director's frame row repeated the header's switch); the receipts' bare dock keeps its own
   if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
   function stageSequence(): void {
-    if (staging || S.recordingStatus().active) return;
-    staging = true; refresh(); say(productionLabel('staging'));
+    if (sceneBusy()) return;
+    const owner = S.sessionToken();
+    const release = staging.take(owner);
+    refresh(); say(productionLabel('staging'));
     const presetId = selectedId;
     S.directProduction({ presetId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
       .then(() => { markCurrent(`seq:${presetId}`); say(productionLabel('ready')); refreshAll(); })
-      .catch(failure)
-      .finally(() => { staging = false; refresh(); });
+      // (round 2 U36) a closed session's staging ends quietly (its cancel, or a build the next session superseded)
+      .catch((error: unknown) => { if (owner.current()) failure(error); })
+      .finally(() => { release(); refresh(); });
   }
   const stage = button(productionLabel('stage'), stageSequence, `${KIT_PRIMARY} production-stage`);
   stage.dataset.productionStage = '';
@@ -332,7 +356,7 @@ export function mountStudioProductionPanel(
   takesSection.append(takesLibrary, takesStatus);
   (hosts.takes ?? director).append(takesSection);
   let takesRequested = false;
-  let loadingTake = false;
+  const loadingTake = createSessionHolder(); // (round 2 U36) a take's fetch and load, for the session it was chosen in
   // the kit's inline notice (components/notice.ts notice(): its severity's glyph, the line, a status or an alert), built as
   // nodes so no Studio sink writes text as markup (studioSceneShare.selftest §10)
   const TAKE_NOTICE_GLYPH: Readonly<Record<NoticeSeverity, string>> = { info: 'info', success: 'check', warning: 'alert', error: 'alert', progress: 'clock' };
@@ -403,8 +427,11 @@ export function mountStudioProductionPanel(
   }
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
-    if (!path || loadingTake || staging || S.recordingStatus().active) return;
-    loadingTake = true;
+    if (!path || sceneBusy()) return;
+    // (audit F9) the take belongs to the session it was chosen in: one that an exit closed during the fetch refuses it,
+    // instead of load() entering the Studio again over the Garage
+    const owner = S.sessionToken();
+    const release = loadingTake.take(owner);
     refresh();
     say(productionLabel('takeLoading'));
     fetch(path)
@@ -412,14 +439,14 @@ export function mountStudioProductionPanel(
         if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
         return response.json();
       })
-      .then((json) => S.load(json))
+      .then((json) => S.load(json, { owner }))
       .then(() => {
         markCurrent(`take:${take.id}`);
         say(productionLabel('takeLoaded'));
         refreshAll();
       })
-      .catch(failure)
-      .finally(() => { loadingTake = false; refresh(); });
+      .catch((error: unknown) => { if (owner.current()) failure(error); })
+      .finally(() => { release(); refresh(); });
   }
 
   const sequence = node('section');
@@ -474,6 +501,7 @@ export function mountStudioProductionPanel(
   }, KIT_BUTTON);
   const video = button(productionLabel('video'), () => {
     if (S.recordingStatus().active) { S.stopRecording(); return; }
+    if (sceneBusy()) return; // (audit F9) a take records over nothing else in flight
     S.recordVideo({ fps: 30, download: true }).then(() => say(productionLabel('saved'))).catch(failure);
     refresh();
   }, KIT_BUTTON);
@@ -546,20 +574,22 @@ export function mountStudioProductionPanel(
   function refresh(): void {
     if (format !== S.productionFormat) setFormat(S.productionFormat);
     const recording = S.recordingStatus();
-    const locked = staging || recording.active;
+    const locked = staging.held || recording.active;
     toggle.disabled = recording.active;
     for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
+    const held = sceneBusy();
+    stage.disabled = held;
     tanks.setDisabled(locked);
-    frame.lock(locked);
+    frame.lock(held); // (audit F9) a reframe under a build, a film or a queued still at every shot mixed two framings
     lens.lock(locked);
-    feature.disabled = locked || loadingTake;
-    browse.disabled = locked || loadingTake;
-    shelfBrowse.disabled = locked || loadingTake;
-    for (const element of shelfCards.values()) element.disabled = locked || loadingTake;
+    feature.disabled = held;
+    browse.disabled = held;
+    shelfBrowse.disabled = held;
+    for (const element of shelfCards.values()) element.disabled = held;
     for (const element of rigs.querySelectorAll('button')) element.disabled = locked || S._internal.actors.length === 0;
     play.textContent = productionLabel(S.playing ? 'pause' : 'play');
     video.textContent = productionLabel(recording.active ? 'stop' : 'video');
-    video.disabled = staging || !recording.supported;
+    video.disabled = (held && !recording.active) || !recording.supported; // a recording's own button stops it
     video.title = recording.supported ? '' : productionLabel('unsupported');
     scrub.max = String(S.durationMs);
     if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
@@ -585,5 +615,5 @@ export function mountStudioProductionPanel(
   // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
   // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
   loadSiteTakes();
-  return { refresh, setVisible, activate, openTemplates };
+  return { refresh, setVisible, activate, openTemplates, busy: () => staging.held || loadingTake.held };
 }

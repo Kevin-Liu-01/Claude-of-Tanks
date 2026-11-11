@@ -4,7 +4,8 @@ import { encodeAimIntent } from './aimIntent.ts';
 import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { arrangeModeRoster } from '../mp/host/modeRoster.ts';
+import { planRoomBots } from '../mp/room/roomBots.ts';
+import { defaultRoomSettings } from '../mp/room/roomPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
 const modes=['juggernaut','infected','realistic','gun_game','drone','ac130'];
 for(const mode of modes){
@@ -42,7 +43,8 @@ for(const mode of modes){
 }
 for(const mode of ['juggernaut','infected','ac130']){
  const seats=[{playerId:'host',team:'alpha',specId:'m1a1_abrams_hc'},{playerId:'guest',team:'bravo',specId:'m1a1_abrams_hc'}],bots=[];
- arrangeModeRoster(mode,null,seats,bots);
+ // the room's own seating at match start (room/roomPolicy.ts planStart): its settings for the mode, then the bot planner
+ planRoomBots(defaultRoomSettings({gameMode:mode}),seats,bots,0);
  assert.ok(bots.length);assert.ok(seats.length+bots.length<=42);
  if(mode==='juggernaut')assert.equal([...seats,...bots].filter(e=>e.team==='alpha').length,1);
  else assert.ok(seats.every(seat=>seat.team==='alpha'));

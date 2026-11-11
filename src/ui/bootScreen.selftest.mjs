@@ -19,13 +19,13 @@ const globals = ['window', 'document', 'navigator', 'Element', 'KeyboardEvent', 
   'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'];
 const saved = new Map(globals.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
 
-function harness({ mode = 'garage', query = '', webdriver = false, missing = false, preparationError = false } = {}) {
+function harness({ mode = 'garage', query = '', webdriver = false, automation = undefined, missing = false, preparationError = false } = {}) {
   const root = missing ? null : new FakeElement();
   const listeners = new Map(), frames = new Map(), timers = new Map();
   const events = [];
   let sequence = 0;
   const scope = {
-    window: { location: { search: query }, __COT_NO_BOOT_HERO: true,
+    window: { location: { search: query }, __COT_NO_BOOT_HERO: true, ...(automation ? { __COT_AUTOMATION: automation } : {}),
       addEventListener(type, callback) { listeners.set(type, callback); },
       removeEventListener(type, callback) { if (listeners.get(type) === callback) listeners.delete(type); } },
     document: { getElementById: id => id === 'cot-boot' ? root : null,
@@ -66,10 +66,16 @@ try {
     lateCallback(event);
     assert.equal(h.prepares, 1, 'late delivery cannot repeat device preparation');
   }
-  for (const config of [{ query: '?nosplash' }, { query: '?nogate' }, { webdriver: true }, { missing: true }]) {
+  // (2026-11-02 audit S3) the harness path is a request (every tool's browser makes it), never navigator.webdriver
+  for (const config of [{ query: '?nosplash' }, { query: '?nogate' }, { automation: 'harness' }, { query: '?automation=harness' }, { missing: true }]) {
     const h = harness(config); await h.ready;
     assert.equal(h.prepares, 0, 'skipped/missing gates are never sound-preparation intent');
     assert.equal(h.listeners.size, 0);
+  }
+  {
+    const driven = harness({ webdriver: true });
+    assert.equal(driven.boot.gated, true, 'a driven page that asks for no path is a player\'s page: the gate waits');
+    driven.boot.dismiss(); await driven.ready;
   }
   for (const mode of ['garage', 'studio']) {
     const h = harness({ mode });

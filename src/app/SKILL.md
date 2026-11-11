@@ -17,7 +17,22 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `mainBattleHudRuntime.ts` coordinates lazy HUD acquisition and visibility.
 `combatAimComposition.ts` connects camera, reticle, physical aim, and spotting.
 `combatWarmComposition.ts` owns renderer-lifetime warm caches and cancellation.
-`lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration.
+`lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration;
+a new lazy chunk takes `lazyChunk.ts`'s failure policy (`lazyRuntimeOwner.ts` is
+one of its chunks per facade). The older memos that differ are named with their
+reasons in `lazyChunkSites.selftest.mjs` KNOWN: stylesheets kept for the
+document, memos asked once per lifecycle edge or open, the docs pages that do
+not boot the policy and the icon sprite every page's boot holds, the unused HDRI
+experiment, initializations and joins over chunks the policy holds (the Studio's
+module memo over its opener chunk among them), data fetches and a warm task.
+KNOWN fails a new hand-made memo, facade or latch in the spellings it reads, so
+a new lazy load starts from `createLazyChunk`.
+A caller that asks once per lifecycle edge (a battle's covered entry) may ask
+past the backoff with `load({ backoff: false })`; `failures` tells a first ask
+from a re-ask. `lazyChunkSites.selftest.mjs` EDGE_ASKS lists the files that may
+spell `backoff: false`, a prepare's `{ entry: true }` or a Studio relight (the
+option by name, or studio.ts's pass-throughs by their arity), and how often: a
+new edge caller is added there with its reason.
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 
@@ -28,7 +43,9 @@ its bar) the first time a watched battle loads; main.ts keeps only the lazy owne
   retain a stale world/player instead of consulting the supplied owner.
 - Retain scratch objects across frames; avoid per-frame object allocation.
 - Keep optional implementations demand-loaded. Concurrent preloads share
-  one request; failed lazy construction remains retryable.
+  one request; lazy construction that fails after its chunk arrived remains
+  retryable, while a chunk that did not arrive is never requested again in the
+  document (its trigger's next press reloads; `src/ui/components/loadFailure.ts`).
 - Derive adapter types from their subsystem owner and validate required
   functions before activating a dynamically loaded integration.
 - Warm work must honor generation cancellation and the common reset/dispose

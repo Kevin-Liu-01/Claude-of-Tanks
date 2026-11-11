@@ -4204,15 +4204,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28612,
-      "sha256": "e941ff3e68f7bb435b2d3767ca29324e591900af8b643ea841000dd2572068cf",
+      "bytes": 29154,
+      "sha256": "9fca98615c6342c0220c2cc7341c4375fbe1660187050376ec970635717a8ed4",
       "thumbnail": {
         "file": "thumbs/kf51_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11610,
-        "sha256": "d3070c567150fcf1f2724848b65b0071d9f7acfa38bbc6826f9bccf2df899f80"
+        "bytes": 12016,
+        "sha256": "6b8d5b0e7ee6c3ef5aa0e3fa45252faa78f02677c5f354efc4e9798ea0a4e18d",
+        "frame": [15,98,228,250]
       }
     },
     "top": {

@@ -45,7 +45,7 @@
       "widthM": 3.43,
       "overallLengthM": 10.6,
       "tallestM": 4.05,
-      "silhouette": "Retained Carro 45t hull and running gear with a continuous asymmetric turret crown, integral bustle and two tapered cheeks flanking an open elevating mantlet bay"
+      "silhouette": "Retained Carro 45t hull and running gear under a flat-roofed welded turret: a symmetric planar crown and cheeks sharing one plan sweep and side-plate lean, a long sloped upper front falling to the cheek noses, a flush wedge mantlet in the bay, a vertical bustle rear carrying the basket, a raised commander's panoramic sight, and six bolted skirt panels a side running over the front idler"
     }
   },
   "preservedGeometry": {
@@ -53,5 +53,15 @@
     "hullAndRunningGearSha256": "26ff5258fd476ec3b658e346046beaffe5fcc9c6c41f13eeeab690b44df58111",
     "gunAssemblySha256": "2bbfe19332f316a01cd10613a36f63428c49fa067245bdf8e052f9f13111fa3f",
     "hashMethod": "SHA-256 of authored buildCarro45T hull/running-gear and gun source sections; diff confirmed unchanged."
-  }
+  },
+  "amendments": [
+    {
+      "date": "2026-11-01",
+      "design": "carro45t",
+      "field": "silhouette",
+      "from": "Retained Carro 45t hull and running gear with a continuous asymmetric turret crown, integral bustle and two tapered cheeks flanking an open elevating mantlet bay",
+      "to": "Retained Carro 45t hull and running gear under a flat-roofed welded turret: a symmetric planar crown and cheeks sharing one plan sweep and side-plate lean, a long sloped upper front falling to the cheek noses, a flush wedge mantlet in the bay, a vertical bustle rear carrying the basket, a raised commander's panoramic sight, and six bolted skirt panels a side running over the front idler",
+      "evidence": "The owner, 2026-11-01: \"now update the ... carro 45t ...\". Release 268 (item/italy-korea-bmp-267, profiles/carro45tParts.ts) rebuilt the turret shell from planar faces and refitted the hull fittings; ring, gunLocal, barrel, pitch and every recorded dimension hold (overall 10.605, width 3.43, tallest 4.050, hull 6.965). Blind A/B against the previous build won 2-0 (round carror2, Opus medium, Sonnet medium)."
+    }
+  ]
 }

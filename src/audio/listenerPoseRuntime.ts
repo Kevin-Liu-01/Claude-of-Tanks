@@ -1,4 +1,5 @@
 import { Vector3, type Camera } from 'three';
+import { isPlayerVisible, type PlayerVisibilityGame, type VisibilityHull } from '../game/playerVisibility.ts';
 
 type AudioListenerKind =
   | 'camera'
@@ -17,13 +18,17 @@ export interface AudioListenerPose {
 
 interface AudioTank {
   id: string;
+  team?: string;
+  /** A network battle's actor: whether the authority sent it this frame. */
+  networkVisible?: boolean;
   state?: { pos?: Vector3 } | null;
   spec?: { dims?: { heightM?: number } } | null;
   /** Drone mode: the tank's FPV drone, while `active` flying at x, y, z. */
   aerial?: { kind?: string; active?: boolean; x?: number; y?: number; z?: number } | null;
 }
 
-interface AudioGame {
+/** The battle as the listener reads it, and what the player sees in it (src/game/playerVisibility.ts). */
+interface AudioGame extends PlayerVisibilityGame {
   player: AudioTank | null;
   tanks: readonly AudioTank[];
   tankById: ReadonlyMap<string, AudioTank>;
@@ -41,7 +46,9 @@ interface AudioKillcam {
 }
 
 interface AudioMixer {
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[], shells?: readonly unknown[]): void;
+  /** `visible`: whether the player sees a hull of `tanks` (the crew names only what it shows). */
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[], shells?: readonly unknown[],
+    visible?: (hull: VisibilityHull) => boolean): void;
 }
 
 interface ListenerPoseRuntimeOptions {
@@ -81,6 +88,8 @@ export function createListenerPoseRuntime({
     ownerId: null,
     scoped: false,
   };
+  // what the player sees, the one rule (round 8 Y3 s1-02): made once, read by the engine for each hull of each frame
+  const visible = (hull: VisibilityHull): boolean => isPlayerVisible(game, hull);
 
   return {
     pose,
@@ -115,7 +124,7 @@ export function createListenerPoseRuntime({
         pose.ownerId = null;
         pose.scoped = false;
       }
-      audio.update(dtSeconds, pose, game.tanks, game.shells);
+      audio.update(dtSeconds, pose, game.tanks, game.shells, visible);
     },
   };
 }

@@ -8,6 +8,7 @@ import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles, manualSuiteFiles, manualSuiteOf, parseSuiteNames } from './selftest-tiers.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 import { isStarved } from './selftest-verdict.mjs';
+import { installRefusal } from './changed-only/fingerprint.mjs';
 import { createSelftestCache, REPO_ROOT, SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { createHash } from 'node:crypto';
@@ -92,6 +93,8 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
   'tools/changed-only/fleet-partition.selftest.mjs',
   // the release plan and its CLI driven with fake runners; the planned tools are argument lists
   'tools/tank-release-plan.selftest.mjs',
+  // the provenance CLI's blob-keyed digest cache (272) on a Git repository it writes in tmpdir; never this checkout's index
+  'tools/asset-provenance.selftest.mjs',
 ]);
 
 // Receipts that run only on fixture repositories they write in tmpdir: keyed by the receipt and the code its
@@ -102,9 +105,13 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
 export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/changed-only/chain.selftest.mjs', 'tools/changed-only/resolver.selftest.mjs', 'tools/changed-only/world.selftest.mjs',
 ].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
+  // 2026-11-02 audit S5: the chain's lock and child process groups
+  'tools/chain-lifecycle.mjs',
+  // round 2 U38: the chain's GPU holds go through the one hold wrapper (chain-lifecycle runInCaptureHold) and its Vite child
+  'tools/capture-hold.mjs', 'tools/vite-child.mjs',
   'tools/selftest-inputs.mjs', 'tools/id-list.mjs', 'tools/browser-id-chunks.mjs', 'tools/browser-id-caps.mjs',
   'tools/browser-launch.mjs', 'tools/icons-page-public.mjs', 'tools/served-public.mjs', 'tools/gate-page-public.mjs',
-  'tools/page-catalog-keys.mjs'])])));
+  'tools/page-catalog-keys.mjs', 'tools/game-readiness.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
@@ -534,7 +541,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   let command;
   try { command = selftestCommand(process.argv.slice(2)); }
   catch (error) { console.error(error.message); process.exitCode = 2; }
-  if (command) {
+  // A stale install never runs or records receipts (272): the cache keys a PASS on package-lock.json, and worktrees share
+  // one store, so a PASS recorded on another install would be reused by checkouts that have the lock's.
+  const refusal = command ? installRefusal(REPO_ROOT) : null;
+  if (refusal) { console.error(`[selftests] ${refusal}`); process.exitCode = 1; }
+  else if (command) {
     const { name: suiteName, files: suite } = command;
     const childEnv = selftestChildEnv();
     // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.

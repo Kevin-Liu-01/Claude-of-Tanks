@@ -5,6 +5,12 @@ const CENTURION_SOURCE = { source: 'glb', glb: {
   turretNode: '^turret_0_turret_0_0$', gunNode: '^gun_0_gun_0_0$',
   autoPivot: true, pivot: [-.000085, 1.69628, .468587], gunPivot: [.000004, 2.079211, 1.10], paintUntextured: true,
 } } as const;
+const CHIEFTAIN5_SOURCE_GLB = {
+  path: '/models/community-candidates/chieftain5_x_source.glb',
+  // All eleven supplied material owners remain complete. They mix hull,
+  // turret and equipment and cannot define valid moving component masks.
+  fixedMount: true, componentMasks: false, geometryComponentMasks: false,
+} as const;
 export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
   // ztz100 retired 2026-10-27 (release 262, owner: "the ztz 100 is its prototype"): the ZTZ-100 is the ZTZ-20 family's
   // pre-production stage, an owner-authored concept (docs/references/concepts/ztz20-family-20261027.json); the same
@@ -15,12 +21,11 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // establish component masks or reference articulation.
     fixedMount:true,componentMasks:false,geometryComponentMasks:false,
   }},
-  chieftain5: {source:'glb',qualityBar:'exemplar',glb:{
-    path:'/models/community-candidates/chieftain5_x_source.glb',
-    // All eleven supplied material owners remain complete. They mix hull,
-    // turret and equipment and cannot define valid moving component masks.
-    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
-  }},
+  chieftain5: {source:'glb',qualityBar:'exemplar',glb:CHIEFTAIN5_SOURCE_GLB},
+  // 271 (Main on italy-korea-bmp-267): the Mk 3 is built on the Mk 5 X hull and turret castings (chieftainMk3X.ts), so it
+  // measures against that source, source-world certified with chieftain5 (source-world-registration.mjs). Its earlier
+  // print (recovered/chieftain5.glb) lay on its nose in the gate frame (reference height 10.79 m, hull 2.19 m).
+  chieftain3: {source:'glb',glb:CHIEFTAIN5_SOURCE_GLB},
   c1_ariete: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/ariete_c1_x_source.glb',
     // Eleven complete material owners mix hull, turret, optics and fittings.

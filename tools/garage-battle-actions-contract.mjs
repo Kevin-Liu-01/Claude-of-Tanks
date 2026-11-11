@@ -36,8 +36,14 @@ export function checkGarageActionAudio(rows) {
 }
 
 // Optional acceptance of both production warm owners' own receipts. Functional
-// rollout can succeed after caught warm errors, and deferred warm marks done
-// even on failure. Neither alone proves readiness. Ignore stale return traces.
+// rollout can succeed after caught warm errors, so neither the rollout nor a
+// settled receipt alone proves readiness. Ignore stale return traces.
+// (2026-11-02 audit S3) the deferred warm's receipt declares its state
+// (src/game/deferredCombatWarmRuntime.ts DeferredWarmState: running, then
+// finished, failed or cancelled once), where `done` used to be set on failure
+// too; its `done` is only "settled". The countdown warm keeps its fields.
+export const DEFERRED_WARM_STATES = Object.freeze(['running', 'finished', 'failed', 'cancelled']);
+
 export function checkGarageActionWarmReadiness(rows) {
   const failures = [];
   for (const action of ['battle', 'battle-again']) {
@@ -50,9 +56,19 @@ export function checkGarageActionWarmReadiness(rows) {
         failures.push(`${action}: missing ${owner} warm receipt`);
         continue;
       }
-      if (warm.error) failures.push(`${action}: ${owner} warm error: ${String(warm.error)}`);
-      if (warm.cancelled === true) failures.push(`${action}: ${owner} warm was cancelled`);
-      if (warm.done !== true) failures.push(`${action}: ${owner} warm did not finish`);
+      if (owner === 'deferred') {
+        if (!DEFERRED_WARM_STATES.includes(warm.state)) {
+          failures.push(`${action}: deferred warm receipt declares no state (a build before the declared receipt)`);
+        } else if (warm.state === 'failed') {
+          failures.push(`${action}: deferred warm failed: ${String(warm.error)}`);
+        } else if (warm.state !== 'finished') {
+          failures.push(`${action}: deferred warm was ${warm.state}`);
+        }
+      } else {
+        if (warm.error) failures.push(`${action}: ${owner} warm error: ${String(warm.error)}`);
+        if (warm.cancelled === true) failures.push(`${action}: ${owner} warm was cancelled`);
+        if (warm.done !== true) failures.push(`${action}: ${owner} warm did not finish`);
+      }
       if (warm.doneBeforeRollout !== true) failures.push(`${action}: ${owner} warm was not ready before rollout`);
     }
   }

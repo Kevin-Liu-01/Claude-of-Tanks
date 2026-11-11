@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // audio-probe.mjs — auditable verification for the sound engine
 // (src/audio/audioEngine.ts and its __COT_AUDIO debug surface).
 //
@@ -25,6 +25,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 // --- FIFO capture lock (same protocol/dirs as tools/screenshot.mjs) ---------
 
@@ -68,10 +69,7 @@ function analyze(i16) {
   };
 }
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'audio-probe', timeoutMs: 20 * 60 * 1000 });
 
 // --- server (own 7xxx port per the SOUND agent mandate) ----------------------
 const port = 7100 + Math.floor(Math.random() * 500);
@@ -116,7 +114,7 @@ async function openPage() {
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await waitForBootLoaded(page, { timeout: 90000 });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -138,7 +136,9 @@ async function startRealBattleEntry() {
     window.__AUDIO_PROBE_ENTRY = window.__DEBUG.beginBattleEntry('m1a1_abrams_hc', 'desert');
   });
   await page.waitForFunction(
-    'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingActive',
+    // (2026-11-02 audit F11, round 2) the bed sounding, not only wanted: loadingActive is the engine's intent since the
+    // wanted-loop change, which opens before a cold bed has decoded (loadingSounding is the bed itself)
+    'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingSounding',
     { timeout: 30000 },
   );
 }
@@ -201,18 +201,18 @@ try {
   // Capture the actual loading transition before the entry promise resolves.
   // This proves the real master bus produces PCM while terrain, roster and GPU
   // warm-up work is still underway—not merely that loadingOn(true) was called.
-  const loadingActiveDuring = await page.evaluate(() => window.__COT_AUDIO.loadingActive);
+  const loadingSoundingDuring = await page.evaluate(() => window.__COT_AUDIO.loadingSounding);
   await tapStart();
   await sleep(1200);
   const loadingPcm = await tapStopAndFetch();
   const loadingAudio = capReport('battle-loading', loadingPcm);
-  if (!loadingActiveDuring || loadingAudio.rms < 0.0005) {
+  if (!loadingSoundingDuring || loadingAudio.rms < 0.0005) {
     failed = true;
-    report.errors.push(`battle loading bed inaudible (active=${loadingActiveDuring}, rms=${loadingAudio.rms.toFixed(6)})`);
+    report.errors.push(`battle loading bed inaudible (sounding=${loadingSoundingDuring}, rms=${loadingAudio.rms.toFixed(6)})`);
   }
   await page.evaluate(() => window.__AUDIO_PROBE_ENTRY);
   const loadingStopped = await page.evaluate(() => !window.__COT_AUDIO.loadingActive);
-  report.loading = { activeDuring: loadingActiveDuring, stoppedAfterEntry: loadingStopped };
+  report.loading = { soundingDuring: loadingSoundingDuring, stoppedAfterEntry: loadingStopped };
   if (!loadingStopped) {
     failed = true;
     report.errors.push('battle loading bed remained active after the battle entry completed');
@@ -500,8 +500,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 if (report.errors.length) {

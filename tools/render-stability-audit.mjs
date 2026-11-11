@@ -5,13 +5,14 @@
  *
  * Usage:
  *   npx vite --host 127.0.0.1
- *   agent-browser --session cot-render-stability open 'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1'
+ *   agent-browser --session cot-render-stability open 'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1&automation=harness'
  *   node tools/render-stability-audit.mjs cot-render-stability
  */
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { AUTOMATION_PATH_EXPRESSION, BOOT_LOADED_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
 
 const session = process.argv[2] || 'cot-render-stability';
 const outPath = resolve(process.argv[3] || '.qa-dev/render-stability-audit.json');
@@ -45,8 +46,12 @@ async function waitForEvaluation(script, timeoutMs = 180_000) {
   throw lastError || new Error('browser evaluation did not become ready');
 }
 
-if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.lighting')) {
+if (!evaluate(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.lighting`)) {
   throw new Error('game/render debug facade is not ready in the audit browser');
+}
+{
+  const problem = sessionPathProblem(evaluate(AUTOMATION_PATH_EXPRESSION), 'harness');
+  if (problem) throw new Error(`render-stability-audit: ${problem}`);
 }
 const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');
 const presets = deviceTier === 'mobile'
@@ -459,7 +464,8 @@ for (const preset of presets) {
     let frozenMinLuma = 765;
     let frozenMaxLuma = 0;
     const fixedProjection = { taaEnabledBefore: Boolean(D.post.taa.enabled), taaDisabledForCheck: true };
-    D.post.taa.enabled = false;
+    // (2026-11-02 audit U30, round 2) held off through post's one owner (its release resets the history); never written here
+    const taaHold = D.post.holdTemporalAA('qa');
     try {
     for (let frame = 0; frame < 6; frame++) {
       // These six fixed-state draws share one task: rAF/background producers
@@ -493,8 +499,7 @@ for (const preset of presets) {
       previousFrame = pixels;
     }
     } finally {
-      D.post.taa.enabled = fixedProjection.taaEnabledBefore;
-      if (fixedProjection.taaEnabledBefore) D.post.taa.resetHistory();
+      taaHold.release();
     }
     if (frozenClouds && savedCloudPreset) {
       frozenClouds.frozen = savedCloudFrozen;
@@ -776,12 +781,13 @@ for (const preset of presets) {
 // two mutually exclusive presentation owners.
 const liveAuditUrl = new URL(evaluate('location.href'));
 liveAuditUrl.searchParams.set('_shadowAuditLive', String(Date.now()));
+liveAuditUrl.searchParams.set('automation', 'harness'); // (audit S3) the harness path, as the preset sweep ran
 execFileSync('agent-browser', [
   '--session', session,
   'open', liveAuditUrl.href,
 ], { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
 await waitForEvaluation(`(() => ({
-  ready: window.__GAME_READY === true && !!window.__DEBUG?.lighting,
+  ready: ${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.lighting,
   error: '',
 }))()`);
 

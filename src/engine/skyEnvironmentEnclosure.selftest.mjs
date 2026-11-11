@@ -17,15 +17,17 @@ const main = read('../main.ts');
 const rigAt = lighting.indexOf('function applyRig(opts: SunPreset): void {');
 assert.ok(rigAt > 0, 'applyRig present');
 const rig = lighting.slice(rigAt, lighting.indexOf('\n  }\n', rigAt));
-const writeAt = rig.indexOf('scene.userData.lightEnclosed = farCascadeDormant;');
-const notifyAt = rig.indexOf('for (const listener of enclosureListeners) listener(farCascadeDormant);');
+// (2026-11-02 audit R3/R4) the enclosure is its own state (enclosedPresentation), apart from the far-cascade sleep
+const writeAt = rig.indexOf('scene.userData.lightEnclosed = enclosedPresentation;');
+const notifyAt = rig.indexOf('for (const listener of enclosureListeners) listener(enclosedPresentation);');
 assert.ok(writeAt > 0 && notifyAt > writeAt, 'the listeners hear the flip after the scene records it');
-assert.match(rig, /if \(publishedEnclosed !== farCascadeDormant\) \{\s*publishedEnclosed = farCascadeDormant;\s*for \(const listener of enclosureListeners\) listener\(farCascadeDormant\);/,
+assert.match(rig, /if \(publishedEnclosed !== enclosedPresentation\) \{\s*publishedEnclosed = enclosedPresentation;\s*for \(const listener of enclosureListeners\) listener\(enclosedPresentation\);/,
   'only a change notifies (the first rig\'s included: a Studio boot opens on the sky)');
 assert.match(lighting, /onEnclosureChange\(listener: \(enclosed: boolean\) => void\): \(\) => void \{\s*enclosureListeners\.add\(listener\);\s*return \(\) => \{ enclosureListeners\.delete\(listener\); \};/,
   'onEnclosureChange subscribes and returns the unsubscribe');
-// the dormancy switch is the flip's path out of the Garage: it re-applies the rig
-assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{[\s\S]{0,260}if \(lastSunPreset\) applyRig\(lastSunPreset\);/);
+// the enclosure switch (setFarCascadeDormant is its older name) is the flip's path out of the Garage: it re-applies the rig
+assert.match(lighting, /setFarCascadeDormant\(on: boolean\): void \{\s*setEnclosedPresentation\(on\);/);
+assert.match(lighting, /function setEnclosedPresentation\(on: boolean\): void \{[\s\S]{0,260}if \(enclosureChanged && lastSunPreset\) applyRig\(lastSunPreset\);/);
 
 // 2. sky: the bake records whether it was the enclosed variant; the sync re-bakes only a bake made enclosed, on the open sky
 const bakeAt = sky.indexOf('bakeEnvironment(): void {');

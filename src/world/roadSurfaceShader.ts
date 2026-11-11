@@ -157,11 +157,15 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
       }
       float onStreet = max(1.0 - smoothstep(roadHalf + 0.6, roadHalf + 2.4, dRoad), paveTownW * (1.0 - smoothstep(5.1, 5.4, dRoad)));
       float streetCls = paveTownW > 0.5 && uPaveExtra.y > 0.5 ? uPaveExtra.y : uPaveClass.x;
-      float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass : (onStreet > 0.5 ? streetCls : uPaveClass.y);
+      float pCls = gRoadClass > 0.5 && abs(gRoadClass - 4.0) > 0.5 ? gRoadClass
+        : (onStreet > 0.5 ? streetCls : (gGroundCls > 0.5 ? gGroundCls : uPaveClass.y));
       // (Low: the old law; built-env-270: a map whose row asks for it paves its streets in their class there too — the R
       // print read as oversized slabs or a striped grid on the phones' asphalt streets)
-      if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoadClass < 3.5 ? gRoadClass
-        : (uPaveLow > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls : 0.0);
+      // (built-env-270b: uPaveLow's 1 bit the streets, its 2 bit the catalogue's paths — a path's concrete (6) too, flat)
+      // (and the row's open ground in its own surface on Low too, where Low draws that surface: 1-3, concrete)
+      if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && (gRoadClass < 3.5 || (uPaveLow > 1.5 && abs(gRoadClass - 6.0) < 0.5)) ? gRoadClass
+        : (mod(uPaveLow, 2.0) > 0.5 && onStreet > 0.5 && streetCls > 0.5 && streetCls < 3.5 ? streetCls
+        : (onStreet < 0.5 && gGroundCls > 0.5 && (gGroundCls < 3.5 || abs(gGroundCls - 6.0) < 0.5) ? gGroundCls : 0.0));
       vec4 pav = vec4(0.0), pnn = NRM_MEAN;
       if (pCls < 0.5) {
         pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
@@ -206,9 +210,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
         // (2026-10-05) a styled path's own surface (terrain.ts RoadPathStyle), in the road's frame: setts in courses
         // across it, or asphalt — dark and even, the wheel paths polished paler, oil down the lanes' middles — and, patched,
         // its repairs (newer darker, older paler and greyer, their seams sealed) and the old surface's cracks
-        // (built-env-270 hotfix: the class is pCls — a styled path's own, or the street's where the row paves Low streets
-        // (uPaveLow); this branch tested gRoadClass, so a Low street drew no paving: a zero albedo, the phones' "near-black
-        // flat band". A street off any styled path has no heading of its own: the world's axes, no lanes drawn.)
+        // (built-env-270b: the class is pCls — a styled path's own, or the street's where the row paves Low streets
+        // (uPaveLow); 270 tested gRoadClass here, so a Low street drew no paving at all: a zero albedo, the phones' "near-
+        // black flat band". A street off any styled path has no heading of its own: the world's axes, no lanes drawn.)
         float lCls = pCls;
         float lDir = step(0.5, gRoadClass);
         if (lCls > 0.5 && lCls < 3.5) {
@@ -233,7 +237,8 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
           } else {
             float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
-            // (a row that paves Low streets: the desktop's binder at the row's tone; every other map the old dark styled path)
+            // (a row that paves on Low — its streets or its paths: the desktop's binder at the row's tone; 270 drew a Low
+            // street near black. Every other map keeps the old law's dark styled path.)
             vec3 asph = (uPaveLow > 0.5 ? vec3(0.118, 0.116, 0.111) * uPaveExtra.x : vec3(0.068, 0.068, 0.072)) * (0.92 + 0.16 * agg);
             float laneP = abs(fract(rq.y / 3.5) - 0.5) * 3.5; // metres from a 3.5 m lane's middle
             float wheelP = (laneP - 0.95) / 0.35;
@@ -259,6 +264,17 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             pav = vec4(asph, 0.80);
             pnn = NRM_MEAN;
           }
+        } else if (abs(lCls - 6.0) < 0.5) {
+          // (built-env-270b) a catalogue path's concrete on Low: the desktop's slab tone, a pour's tone per 4.5 m slab and
+          // its sawn joint, along the path's own heading
+          vec2 rq = vec2(dot(wp.xz, gRoadDir), dot(wp.xz, vec2(-gRoadDir.y, gRoadDir.x)));
+          float si2 = floor(rq.x / 4.5);
+          vec2 slh = cellHash2(vec2(si2, (rq.y < 0.0 ? 0.0 : 1.0) + 37.0));
+          float jx = abs(fract(rq.x / 4.5) - 0.5) * 4.5;
+          float jT = (1.0 - smoothstep(2.238, 2.25 + gFootM, jx)) * tileVis(0.5);
+          vec3 conc = vec3(0.30, 0.295, 0.28) * (0.86 + 0.20 * slh.x) * (0.92 + 0.12 * nz(uv, 1.9, vec2(0.31, 0.57)).r);
+          pav = vec4(conc * (1.0 - 0.45 * jT), 0.86);
+          pnn = NRM_MEAN;
         }
       } else {
         // the road's own frame on a street (along: the running length; across: signed metres off the centreline, its side
@@ -363,6 +379,14 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           vec3 bMean = mix(soling ? vec3(0.195, 0.116, 0.084) : vec3(0.140, 0.080, 0.067), jointC, 0.22);
           vec3 col = mix(bMean, mix(brick, jointC, jointB), bv);
           col *= 0.92 + 0.16 * nzq(uv, 0.35, vec2(0.61, 0.23)).x;
+          // (built-env-270b, Polders: "the klinker fades to earth with distance" — past the bricks' resolution the road
+          // was one flat dark brown) the bricks' own ±12 % carried as a metre-scale mottle as they fade, and the burnt
+          // purple ones as darker drifts: a laid road's patchwork at range, not a smooth band
+          if (!soling) {
+            float bFar = 1.0 - bv;
+            vec2 bm = nzq(uv, 0.15, vec2(0.19, 0.53));
+            col *= mix(1.0, (0.86 + 0.28 * bm.x) * mix(1.0, 0.86, smoothstep(0.62, 0.80, bm.y)), bFar);
+          }
           col *= 1.0 - 0.12 * wheelW;
           float broken = soling ? step(0.90, bh.y) * bv : 0.0;           // a brick gone or broken: the mud under it
           if (soling) {

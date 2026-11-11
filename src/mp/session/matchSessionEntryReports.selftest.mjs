@@ -79,14 +79,18 @@ const snapshotWith = (host) => ({ ...serializeRoom(room), host });
 const world = new RtcWorld();
 const cores = [];
 
-async function seat({ presentationMs = 0, presentationUntil = null, p2p = {} } = {}) {
+async function seat({ presentationMs = 0, presentationUntil = null, presentationGate = null, p2p = {} } = {}) {
   let transport = null;
+  const counts = { presentations: 0 };
   const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 2000, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const logs = [];
   const session = new MatchSession({
     room: client, clock: () => performance.now(),
     createPresentation: async () => {
+      counts.presentations++;
       if (presentationMs) await sleep(presentationMs);
+      // a world build held open until the case releases it
+      if (presentationGate) await presentationGate();
       // (267) a world build that lasts until the event it is there for (the entry reports flowing), capped
       if (presentationUntil) await until(() => presentationUntil(transport), 'the presentation\'s event', 20_000);
       const presentation = new RecordingPresentation(64);
@@ -103,7 +107,7 @@ async function seat({ presentationMs = 0, presentationUntil = null, p2p = {} } =
   const request = transport.outbound.find((envelope) => envelope.type === 'room_join');
   transport.deliver({ type: 'room_joined', requestId: request.requestId, payload: { room: snapshotWith({ transport: 'p2p', hostId: null, generation: 0, since: 0 }), playerId: 'me', seat: 0, chat: [] } });
   await joining;
-  return { client, session, transport, logs };
+  return { client, session, transport, logs, counts };
 }
 
 let matchCounter = 0;
@@ -200,6 +204,43 @@ stage = 'case 4';
   session.dispose(); client.dispose();
 }
 
+// ---- the named host of a fresh match that fails its world load, or leaves while loading, tells the room it cannot host
+//      (improve-271 plan 003: it left silently, and its peers offered to a seat with no acceptor until the 60 s link window)
+const unableDeclines = (transport) => transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline')
+  .map((envelope) => envelope.payload.command).filter((command) => command.declined === true && command.unable === true);
+stage = 'case 4c';
+{
+  const { transport, session, client } = await seat({ presentationGate: () => Promise.reject(new Error('the world failed to load')) });
+  start(transport);
+  await until(() => unableDeclines(transport).length > 0, 'the unable decline after a failed load', 5000);
+  assert.equal(unableDeclines(transport).length, 1, 'declined once');
+  assert.equal(session.phase, 'lobby');
+  session.dispose(); client.dispose();
+}
+stage = 'case 4d';
+{
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { transport, session, client, counts } = await seat({ presentationGate: () => held });
+  start(transport);
+  await until(() => counts.presentations === 1, 'the entry began');
+  await session.leaveMatch('garage');
+  assert.equal(unableDeclines(transport).length, 1, 'a Garage return while loading declines as unable, once');
+  release();
+  session.dispose(); client.dispose();
+}
+stage = 'case 4e';
+{
+  const { transport, session, client } = await seat({ presentationGate: () => Promise.reject(new Error('the world failed to load')) });
+  const phases = [];
+  session.onPhase(({ phase }) => phases.push(phase));
+  start(transport, { hostId: 'other' });
+  await until(() => phases.includes('loading') && session.phase === 'lobby', 'the failed peer entry', 5000);
+  await sleep(50);
+  assert.equal(transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').length, 0, 'a peer whose load failed sends no decline');
+  session.dispose(); client.dispose();
+}
+
 // ---- a peer sends none
 stage = 'case 5';
 {
@@ -274,4 +315,4 @@ await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
 peakRss = Math.max(peakRss, process.memoryUsage().rss);
 assert.ok(peakRss < 1e9, `memory stayed bounded (peak RSS ${(peakRss / 1e6).toFixed(0)} MB)`);
-console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor');
+console.log('matchSessionEntryReports.selftest: the elected host reports loading through a slow entry and stops at its actor\'s first report; the ceiling, host_only and a new election stop them; a named host whose load fails or that leaves while loading declines as unable, a peer does not; a peer and a running match send none; a re-entry decline is withdrawn at the welcome; a core stopped during its world load starts no actor');

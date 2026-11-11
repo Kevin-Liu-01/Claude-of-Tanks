@@ -214,6 +214,8 @@ export interface DamageTarget {
   spec: DamageTankSpec & { armor: DamageArmorModel };
   state: DamageTankState;
   combat: CombatState;
+  /** False while a mode holds the hull out of play (a rescued AC-130 escort, a benched wave hostile); absent is active. */
+  modeActive?: boolean;
 }
 
 export type PlateHit = ArmorPlateIntersection;
@@ -671,6 +673,15 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
   m.state = m.hp <= 0 ? 'red' : m.hp <= m.maxHp * 0.5 ? 'yellow' : 'ok';
   if (m.state !== 'red' || prev !== 'red') m.repairT = 0;
   return m.state;
+}
+
+/**
+ * Set a module's hit points (floored at 0) and derive its stage through refreshModuleState: the module law's one writer
+ * for code outside this file (sim/impact.ts crashes and lethal rams; 2026-11-02 audit M6 — impact.ts re-implemented it).
+ */
+export function setModuleHp(m: CombatModuleState, hp: number): ModuleStateName {
+  m.hp = Math.max(0, hp);
+  return refreshModuleState(m);
 }
 
 /**
@@ -2177,6 +2188,8 @@ export function resolveHeBurst(
   for (const tank of tanks) {
     if (direct && tank === directTarget) continue;
     if (tank.combat.destroyed) continue;
+    // a hull out of play takes no splash, as the direct trace skips it (improve-271 plan 011)
+    if (tank.modeActive === false) continue;
     const event = resolveHeSplashTarget(shell, burstPoint, tank, radiusM, dmgRoll, rng);
     if (event) events.push(event);
   }

@@ -87,7 +87,8 @@ function k5Pack(P: TankBuilderPort, p: Pack): void {
     { z: half - e, ring: ring(half - e, 0) }, { z: half, ring: ring(half, e) },
   ];
   const frame = new THREE.Matrix4().makeBasis(n, Y, w).setPosition(origin);
-  P.addEquipment('turretDetail', sectionSolid(sections).applyMatrix4(frame));
+  // (269) the end caps keep their collinear edge stations in real faces, never in zero-area ones (3 zero normals)
+  P.addEquipment('turretDetail', sectionSolid(sections, { preserveCapBoundary: true }).applyMatrix4(frame));
   // brick bond: a horizontal seam between the rows, the lower row's seam at mid-width, the upper row's at the quarters
   const mid = (p.y0 + p.y1 - ch) / 2, lo = (p.y0 + mid) / 2, hi = (mid + p.y1 - ch) / 2;
   const rowH = mid - p.y0 - .03, at = (g: THREE.BufferGeometry, a: number, y: number, s: number) => g.translate(a, y, s);

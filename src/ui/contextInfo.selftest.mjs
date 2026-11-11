@@ -113,4 +113,14 @@ for(const dictionary of Object.values(CATALOG)){
  assert(dictionary['fieldGuide.smoke.2.body'].includes(String(SMOKE_COOLDOWN_S)));
  assert(dictionary['fieldGuide.smoke.2.body'].includes(String(SMOKE_DURATION_S)));
 }
+// (improve-271 plan 026) the Garage's hide() closes every open info dossier: each dossier joins the open set as it opens
+// and leaves it as it closes or is disposed, and closeContextInfo closes them all with no focus handed back
+{
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('./contextInfo.ts', import.meta.url), 'utf8');
+  assert.match(source, /export function closeContextInfo\(\): void \{\s*for \(const open of \[\.\.\.openInfoModals\]\) open\.close\(\{ restoreFocus: false, immediate: true \}\);/);
+  assert.match(source, /onOpen: \(\) => \{ button\.setAttribute\('aria-expanded', 'true'\); if \(modal\) openInfoModals\.add\(modal\); \}/);
+  assert.match(source, /onClose: \(\) => \{ button\.setAttribute\('aria-expanded', 'false'\); if \(modal\) openInfoModals\.delete\(modal\); \}/);
+}
+
 console.log(`contextInfo.selftest: ${photos.size} real-capture guides, localized annotations and smoke receipts passed`);

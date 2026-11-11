@@ -9,11 +9,9 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  acquireCaptureLock,
-  refreshCaptureLock,
-  releaseCaptureLock,
-} from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
+import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -34,9 +32,9 @@ const productShots = config.shots.filter((shot) =>
     && (!onlyIds.size || onlyIds.has(shot.id)));
 mkdirSync(outDir, { recursive: true });
 
-await acquireCaptureLock(30 * 60 * 1000);
-process.on('exit', releaseCaptureLock);
-const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
+hold = await openCaptureHold({ label: 'capture-showcase-r2-ui', timeoutMs: 30 * 60 * 1000 });
+
+const lockRefresher = setInterval(() => hold?.refresh(), 60 * 1000);
 lockRefresher.unref();
 
 const port = 7800 + Math.floor(Math.random() * 400);
@@ -89,7 +87,7 @@ try {
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, {
     waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__GARAGE_WORKSHOP`,
     { timeout: LOAD_MS });
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
@@ -165,7 +163,7 @@ try {
     await page.goto(`${baseUrl}/?studio=1&map=${scene.map ?? 'urban'}&nogate=1`, {
       waitUntil: 'domcontentloaded', timeout: LOAD_MS,
     });
-    await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true,
+    await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`,
       { timeout: LOAD_MS });
     await page.evaluate(async (nextScene) => {
       await window.__STUDIO.load(nextScene);
@@ -178,5 +176,5 @@ try {
   if (browser) await browser.close();
   await server.close();
   clearInterval(lockRefresher);
-  releaseCaptureLock();
+  await hold?.release();
 }

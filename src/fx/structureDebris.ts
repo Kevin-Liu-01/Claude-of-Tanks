@@ -857,6 +857,11 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       for (const s of showAt) s.at += delta;
       for (const e of pending) e.due += delta;
       for (const e of throws) e.birth += delta;
+      // (round 3 B5) every time the part holds moves: the last stage's birth, and the spent records kept for reuse (each
+      // is rewritten when it is reused, but none keeps a pre-rebase time a census, or a later reader, could take as live)
+      stageBirth += delta;
+      for (const e of spent) e.due += delta;
+      for (const e of spentThrows) e.birth += delta;
     },
     reset() {
       for (const e of pending) spent.push(e);

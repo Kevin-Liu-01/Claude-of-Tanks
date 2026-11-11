@@ -474,12 +474,18 @@ function stallAwning(rng: Rng): THREE.BufferGeometry[] {
   out.push(valance(0.004, false), valance(-0.004, true));
   return out;
 }
-/** (props lane A, r2 sweep 2026-10-16) the stall's last intact build, for its wreck (the pool builds the intact first). */
-let lastStall: THREE.BufferGeometry | null = null;
+/**
+ * (props lane A, r2 sweep 2026-10-16) the stall's intact build, for its wreck (the pool builds the intact first).
+ * (2026-11-02 audit R1) Kept by the stream the pool builds both from, not in one process-wide slot: the pool yields between
+ * the intact and the broken build, so another world's build (the Garage's background build, a rematch prefetch) could
+ * build its own stall between them and hand this world's wreck its stall; a world whose intact build did not run took
+ * whatever stall was built last.
+ */
+const keptStalls = new WeakMap<Rng, THREE.BufferGeometry>();
 function bStallKept(rng: Rng): THREE.BufferGeometry {
   const g = bStall(rng);
-  lastStall?.dispose();
-  lastStall = g.clone();
+  keptStalls.get(rng)?.dispose();
+  keptStalls.set(rng, g.clone());
   return g;
 }
 /**
@@ -489,7 +495,9 @@ function bStallKept(rng: Rng): THREE.BufferGeometry {
  */
 function bStallTipped(rng: Rng): THREE.BufferGeometry {
   bStallBroken(rng).dispose();
-  const g = (lastStall ?? bStall(dryStoneRng(0x57a1))).clone();
+  const kept = keptStalls.get(rng);
+  keptStalls.delete(rng);
+  const g = kept ?? bStall(dryStoneRng(0x57a1));
   g.translate(0, 0, -0.94);
   g.rotateX(1.0);
   g.translate(0, 0, 0.94);

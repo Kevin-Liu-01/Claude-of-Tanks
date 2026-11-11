@@ -29,7 +29,7 @@ const SECURITY_HEADERS = {
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()',
   'x-frame-options': 'SAMEORIGIN',
   'cross-origin-opener-policy': 'same-origin',
-  'content-security-policy-report-only': await contentSecurityPolicy(),
+  'content-security-policy': await contentSecurityPolicy(),
 };
 const securityHeadersOf = (headers) => Object.fromEntries(Object.keys(SECURITY_HEADERS).map((name) => [name, headers[name]]));
 
@@ -150,8 +150,8 @@ assert.deepEqual(Object.fromEntries(securityRules[0].headers.map(({ key, value }
 assert.deepEqual(securityHeadersOf(resolve('/').headers), SECURITY_HEADERS, 'the root document');
 assert.deepEqual(securityHeadersOf(resolve('/assets/missing-abcdefgh.js').headers), SECURITY_HEADERS, 'a 404');
 assert.deepEqual(securityHeadersOf(resolve('/api/jev').headers), SECURITY_HEADERS, 'an API path');
-assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy$/i.test(key))),
-  'the script-src policy is report-only this round (deploy 243); enforcement follows once no page reports a violation');
+assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy-report-only$/i.test(key))),
+  'the script-src policy is enforced (272), never only reported');
 
 // INFRA-P5 (2026-10-01): the alias domains answer 308 to the canonical origin with path and query — 18 % of document
 // loads arrived there, where multiplayer is unavailable (the rooms Worker admits cot.kevinliu.studio alone). The

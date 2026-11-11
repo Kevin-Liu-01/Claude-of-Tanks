@@ -45,6 +45,8 @@ import {
   SIM_DT, applyShellKnock, createTankState, fireRecoil, resetTankVerticalState, updateTank,
 } from '../src/sim/movement.ts';
 import { applyMovementPredictionState, captureMovementPredictionState } from '../src/sim/movementPredictionState.ts';
+import { enterHullTumble } from '../src/sim/hullBodyMode.ts';
+import { applyHullBodyRowFlags, hullBodyRowFlags } from '../src/mp/match/hullBodyRow.ts';
 import { publishedTrackContact } from '../src/sim/trackContact.ts';
 import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
 import { tankBodyTopM, tankContactRect } from '../src/sim/tankContactShape.ts';
@@ -589,10 +591,11 @@ const wrap = (a) => {
   else if (a <= -Math.PI) a += 2 * Math.PI;
   return a;
 };
-/** The attitude the renderer composes (tankFactoryCore syncFromState): sim spring + amplified rock, sway, flinch. */
+/** The attitude the renderer composes (tankFactoryCore syncFromState): sim spring + amplified rock and sway. The hit
+ *  rock is the visual's own spring (audit M9), never sim state, so it has no term here (round 3 A12). */
 function renderedAttitude(state, out) {
-  out.pitch = state.visualPitch + (state._susp?.p ?? 0) * 2.2 - (state._flinch?.p ?? 0);
-  out.roll = state.visualRoll + (state._susp?.r ?? 0) * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+  out.pitch = state.visualPitch + (state._susp?.p ?? 0) * 2.2;
+  out.roll = state.visualRoll + (state._susp?.r ?? 0) * 1.9 + (state._swayEst ?? 0) * 2.4;
   return out;
 }
 
@@ -670,7 +673,7 @@ function seatAirborne(entity, world, dropTo, { pitch: pitchGiven, roll: rollGive
   state._spring.pitchV = 0;
   state._spring.rollV = 0;
   resetTankVerticalState(state, y, vy, false);
-  if (Math.cos(pitch) * Math.cos(roll) < 0.55) state._body.tumbling = true;
+  if (Math.cos(pitch) * Math.cos(roll) < 0.55) enterHullTumble(state);
 }
 
 /**
@@ -702,18 +705,16 @@ function replayStateFrom(entity) {
   state.visualRoll = source.visualRoll;
   state.turretYaw = source.turretYaw;
   state.gunPitch = source.gunPitch;
-  state.grounded = source.grounded;
-  state.overturned = source.overturned;
+  // ground contact and the body mode as the client's rewind restores them: the row's body bits through their owner
+  // (authorityRow.ts applyAuthorityRow; wire 10 carries the rigid phase itself, round 2 U14)
+  applyHullBodyRowFlags(state, hullBodyRowFlags(source));
   // the hydropneumatic aim the client's presentation sets from the special action (prediction.ts copies it too)
   state.suspensionAim = source.suspensionAim;
-  state._body.autoRighting = source._body.autoRighting;
-  state._body.tumbling = state.overturned || state._body.autoRighting;
   state._prevSpeed = state.speed;
   state._spring.pitch = state.visualPitch;
   state._spring.roll = state.visualRoll;
   state._ride.y = state.pos.y;
   state._ride.v = state.verticalSpeed;
-  state._ride.grounded = state.grounded;
   state._ride.airTime = 0;
   state._ride.supportY = NaN;
   const checkpoint = captureMovementPredictionState(source);
@@ -1071,8 +1072,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     // +0.30 m); perched is time grounded with two stations or fewer
     if (state.grounded && t >= 1) {
       const sp = state._spring, su = state._susp;
-      const tp = sp.pitch + (su.p - su.d) * 2.2 - (state._flinch?.p ?? 0);
-      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+      const tp = sp.pitch + (su.p - su.d) * 2.2;
+      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4;
       const halfLen = 0.45 * subject.spec.dims.hullLengthM, halfW = 0.5 * subject.spec.dims.widthM;
       const tcp = Math.cos(-tp), tsp = Math.sin(-tp), tcr = Math.cos(tr), tsr = Math.sin(tr);
       let reach = 0;

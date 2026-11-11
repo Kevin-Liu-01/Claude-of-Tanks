@@ -15077,7 +15077,7 @@
       }
     ]
   },
-  "geometryHash": "c11dc8af",
+  "geometryHash": "04eb9cb0",
   "metadataHash": "098695e2",
   "presentationAnchor": {
     "xM": 0.0028,
@@ -15158,15 +15158,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29666,
-      "sha256": "083576153a3cbaac73ad3fa3389cf990f3e24231bdfbb2990750e5cf0da2c3dc",
+      "bytes": 29656,
+      "sha256": "2662d5d3f940703887ad86fb0fd3f262083cb748cc893a1da681de52a18fdeb8",
       "thumbnail": {
         "file": "thumbs/t90ms_tagil_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 11622,
-        "sha256": "9ec57eada8f2f875d76f58618f8e5800da9411b097c11a7f5da2d361ad5ad359"
+        "sha256": "9ec57eada8f2f875d76f58618f8e5800da9411b097c11a7f5da2d361ad5ad359",
+        "frame": [23,103,228,250]
       }
     },
     "top": {

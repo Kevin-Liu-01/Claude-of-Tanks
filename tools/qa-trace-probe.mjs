@@ -6,6 +6,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
+import { BOOT_LOADED_EXPRESSION, waitForBootLoaded } from './game-readiness.mjs';
 
 const server = await preview({
   root: process.cwd(),
@@ -42,7 +43,7 @@ try {
   const normal = await browser.newPage();
   await normal.emulate({ viewport, userAgent });
   await normal.goto(`${base}?tier=mobile&gfxreset=1`, { waitUntil: 'domcontentloaded', timeout: 360000 });
-  await normal.waitForFunction('window.__GAME_READY === true', { timeout: 360000 });
+  await waitForBootLoaded(normal, { timeout: 360000 });
   const normalState = await normal.evaluate(() => ({
     qaTrace: typeof window.__QA_TRACE,
     devTrace: window.__DEBUG?.devTrace ?? null,
@@ -60,7 +61,7 @@ try {
   const qa = await browser.newPage();
   await qa.emulate({ viewport, userAgent });
   await qa.goto(`${base}?tier=mobile&gfxreset=1&debug=1`, { waitUntil: 'domcontentloaded', timeout: 360000 });
-  await qa.waitForFunction('window.__GAME_READY === true && window.__QA_TRACE?.enabled === true', { timeout: 360000 });
+  await qa.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__QA_TRACE?.enabled === true`, { timeout: 360000 });
   await new Promise((done) => setTimeout(done, 1200));
   const qaState = await qa.evaluate(() => {
     const trace = window.__QA_TRACE;

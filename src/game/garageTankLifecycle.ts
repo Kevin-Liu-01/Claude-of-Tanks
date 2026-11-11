@@ -1,5 +1,6 @@
 import type { Object3D } from 'three';
 import { clearJuggernautVisual, hasGarageTankEnergyVisual } from './juggernautVisual.ts';
+import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * End every battle-owned presentation lifetime before a resident player tank
@@ -60,11 +61,18 @@ interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   spotting: RuntimeValue | null;
   result: RuntimeValue | null;
   resultReason: RuntimeValue | null;
+  resultTimeS?: number | null;
   preBattleS: number;
   timeS: number;
   fireTickAcc: number;
   nextShellId: number;
   openingRouteJobs?: RuntimeValue[];
+  /** The battle's Jev commander (game/jevCommander.ts), when the battle had one. */
+  jev?: { dispose(): void } | null;
+  _jevView?: RuntimeValue | null;
+  /** The battle's crush press ledger (sim/crushPress.ts) and ram pair cooldowns (state.ts), keyed by its world records and hulls. */
+  _crushPress?: RuntimeValue | null;
+  _ramPairT?: Map<string, number>;
 }
 
 export function resetBattleTankForGarage({
@@ -173,9 +181,19 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
   game.spotting = null;
   game.result = null;
   game.resultReason = null;
-  game.preBattleS = 0;
+  game.resultTimeS = null; // (2026-11-02 audit F1 review) the verdict's time leaves with its battle
+  transitionBattleCountdown(game, 'clear'); // (2026-11-02 audit F1) the countdown's one writer
   game.timeS = 0;
   game.fireTickAcc = 0;
   game.nextShellId = 1;
   game.openingRouteJobs?.splice(0);
+  // a quit or a finished battle leaves no Jev commander behind: its in-flight requests abort and late answers land
+  // nowhere (2026-11-02 audit M6; the next battle's setup disposed it before, long after the Garage return)
+  game.jev?.dispose();
+  game.jev = null;
+  game._jevView = null;
+  // the battle's own ledgers leave with it (round 2 U13): the press held the last battle's obstacle records and hulls
+  // through the Garage until the next battle's reset
+  game._crushPress = null;
+  game._ramPairT?.clear();
 }

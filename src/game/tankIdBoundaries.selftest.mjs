@@ -6,7 +6,7 @@
 // already in schema 2 is never renamed again. With the live schema (1 until a
 // rename lands) every boundary is the identity.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createTankIdResolver, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import {
   galleryHref, linkTankId, replayInCurrentTankIds, sceneInCurrentTankIds, stampTankIdLink, telemetryTankId,
@@ -49,12 +49,18 @@ const save = memoryStorage({
   'cot.camoCustom.v1.leo2a6m_x': '{"base":"#445533"}',
   'cot.equip.t90m': '["smoke","repair","ammo"]',
   'cot.equip.m1a3': '["smoke"]',
-  'cot.profile.v2': JSON.stringify({ version: 2, matches: 3, lastBattle: { result: 'victory', vehicleId: 't90m', mapId: 'verdant' } }),
+  'cot.profile.v2': JSON.stringify({ version: 2, matches: 3, lastBattle: { result: 'victory', vehicleId: 't90m', mapId: 'verdant' },
+    recentBattles: [{ result: 'victory', vehicleId: 't90m', mapId: 'verdant' }, { result: 'defeat', vehicleId: 'leo2a6m', mapId: 'urban' }] }),
   'cot.service.v1': JSON.stringify({
     version: 1, vehicles: ['leo2a6m', 't90m', 'm1a3'],
     history: [{ at: 1, vehicleId: 'leo2a6m', mapId: 'urban', trace: [{ t: 3, specId: 't90m', distM: 400, cause: 'shot' }] }],
   }),
   'cot.settings.v1': '{"volume":0.5}',
+  // (improve-271 plan 035) the stores added after the last rename: consumables, the camo picker's memory, the profile's
+  // recent battles and the favourites the Garage shares with the Gallery
+  'cot.cons.t90m': '["repair","medkit","fire"]',
+  'cot.picker.camo.leo2a6m_x': '{"filter":"woodland"}',
+  'cot.gallery.v2': JSON.stringify({ view: 'grid', sort: 'tier', favourites: ['leo2a6m', 'm1a3', 't90m_x'] }),
 });
 const migrated = migrateStoredTankIds(save, fixture);
 assert.equal(migrated.from, 1);
@@ -74,6 +80,14 @@ const service = JSON.parse(get('cot.service.v1'));
 assert.deepEqual(service.vehicles.map(shown), ['Leopard 2A4 OTCO', 'T-90AM', 'M1E3 Abrams']);
 assert.equal(shown(service.history[0].vehicleId), 'Leopard 2A4 OTCO');
 assert.equal(shown(service.history[0].trace[0].specId), 'T-90AM');
+assert.deepEqual(JSON.parse(get('cot.profile.v2')).recentBattles.map((battle) => shown(battle.vehicleId)), ['T-90AM', 'Leopard 2A4 OTCO'],
+  'the recent battles name the same vehicles');
+assert.equal(get('cot.cons.t90am'), '["repair","medkit","fire"]', 'the T-90AM keeps its consumables');
+assert.equal(get('cot.cons.t90m'), null);
+assert.equal(get('cot.picker.camo.leo2a6m'), '{"filter":"woodland"}', "the 2A6M's camo picker remembers its place");
+assert.equal(get('cot.picker.camo.leo2a6m_x'), null);
+assert.deepEqual(JSON.parse(get('cot.gallery.v2')), { view: 'grid', sort: 'tier', favourites: ['leo2a4_otco', 'm1a3', 't90m'] },
+  'the favourites name the same vehicles and the Gallery keeps its other preferences');
 assert.equal(get('cot.settings.v1'), '{"volume":0.5}', 'other keys are untouched');
 assert.equal(get(TANK_ID_STORAGE_SCHEMA_KEY), '2');
 // Never twice: a second boot (and a value a schema-2 page wrote since) stays as it is.
@@ -202,5 +216,41 @@ if (TANK_IDS.schema >= 3) {
   assert.equal(telemetryTankId('leo2a6m'), `leo2a6m.s${TANK_IDS.schema}`);
 }
 
+// ---- (improve-271 plan 035) every browser store keyed by a tank id is migrated: a source scan for keys built from an id
+// (a `cot.<store>.${...}` template, a `cot.<store>.` prefix constant, a picker memory `<store>.${...}`, kept as
+// cot.picker.<store>.), each either moved by the migration or allowed here with its reason
+const ALLOWED = new Map([
+  ['cot.picker.', 'components/picker.ts builds every picker memory key; a spec-keyed memory is found at its `memory:` owner'],
+]);
+const sourceFiles = [];
+const walk = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) walk(path);
+    else if (entry.name.endsWith('.ts')) sourceFiles.push(path);
+  }
+};
+walk(new URL('..', import.meta.url).pathname.replace(/\/$/, ''));
+const idKeyed = new Map();
+for (const file of sourceFiles) {
+  const text = readFileSync(file, 'utf8');
+  const name = file.slice(file.indexOf('/src/') + 1);
+  for (const match of text.matchAll(/`(cot\.[a-zA-Z0-9.]+\.)\$\{/g)) idKeyed.set(match[1], name);
+  for (const match of text.matchAll(/['"](cot\.[a-zA-Z0-9.]+\.)['"]/g)) idKeyed.set(match[1], name);
+  for (const match of text.matchAll(/\bmemory:\s*`([a-zA-Z0-9.]+\.)\$\{/g)) idKeyed.set(`cot.picker.${match[1]}`, name);
+}
+for (const prefix of ['cot.camo.', 'cot.camoCustom.v1.', 'cot.equip.', 'cot.cons.', 'cot.picker.camo.']) {
+  assert.ok(idKeyed.has(prefix), `the scan finds the spec-keyed store ${prefix}`);
+}
+const unmigrated = [];
+for (const [prefix, file] of [...idKeyed].sort(([a], [b]) => a.localeCompare(b))) {
+  if (ALLOWED.has(prefix)) continue;
+  const store = memoryStorage({ [`${prefix}leo2a6m`]: 'kept' });
+  migrateStoredTankIds(store, fixture);
+  if (store.getItem(`${prefix}leo2a4_otco`) !== 'kept') unmigrated.push(`${prefix} (${file})`);
+}
+assert.deepEqual(unmigrated, [], 'every store keyed by a tank id moves with a rename (tankIdStorageMigration.ts ID_KEYED_PREFIXES)');
+
 console.log('tankIdBoundaries selftest: an old save, replay, scene link, gallery URL and room seat naming leo2a6m '
-  + '(2A4 OTCO) and t90m (T-90AM) resolve to the right vehicles; schema-2 data is read as written');
+  + `(2A4 OTCO) and t90m (T-90AM) resolve to the right vehicles; schema-2 data is read as written; ${idKeyed.size - ALLOWED.size} `
+  + 'spec-keyed stores found in the sources, each migrated');

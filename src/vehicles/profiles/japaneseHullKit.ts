@@ -107,9 +107,11 @@ export function guardedSilencer(P: HullKitPort, x: number, y: number, z0: number
 }
 
 /** A round tail lamp on its bracket at a rear fender's top outer corner. */
-export function tailLamp(P: HullKitPort, x: number, y: number, z: number): void {
+/** (270, default 'hull') `housing`: the slot its housing joins; a lamp on stowage behind the stern plate (the Type 87's bins)
+ *  takes 'hullEquipment', out of the armoured hull's measured box. */
+export function tailLamp(P: HullKitPort, x: number, y: number, z: number, housing = 'hull'): void {
   const { box, cylZ } = KIT;
-  P.add('hull', box(0.10, 0.10, 0.04), x, y + 0.05, z + 0.02);
+  P.add(housing, box(0.10, 0.10, 0.04), x, y + 0.05, z + 0.02);
   P.add('hullDetail', cylZ(0.04, 0.04, 12), x, y + 0.055, z - 0.02);
   P.add('hullGlass', markVehicleNightLens(cylZ(0.032, 0.012, 12), 'marker', { tint: 'red' }), x, y + 0.055, z - 0.042);
 }

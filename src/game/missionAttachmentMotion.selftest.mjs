@@ -78,7 +78,7 @@ for(const id of['m1a1_abrams_hc','abramsx','leo2_improved']){
  const parked=tank.root.getObjectByName('Docked FPV mission payload'),position=new Vector3(),orientation=new Quaternion();
  for(const yaw of[0,.7,-1.8])for(const rocking of[false,true]){
   state.turretYaw=yaw;state.gunPitch=.1;state.visualPitch=.03;state.visualRoll=-.02;
-  state._susp.p=rocking?.025:0;state._susp.r=rocking?-.032:0;state._swayEst=rocking?.035:0;state._flinch.p=rocking?.008:0;state._flinch.r=rocking?-.009:0;
+  state._susp.p=rocking?.025:0;state._susp.r=rocking?-.032:0;state._swayEst=rocking?.035:0;
   tank.syncFromState(state,0);tank.root.updateMatrixWorld(true);missionAttachmentPose(spec,state,position,orientation);
   assert.ok(position.distanceTo(parked.getWorldPosition(new Vector3()))<.00011,id+': deterministic position matches live stabilized/rocking native dock');
   assert.ok(orientation.angleTo(parked.getWorldQuaternion(new Quaternion()))<1e-7,id+': launch axes match live dock');

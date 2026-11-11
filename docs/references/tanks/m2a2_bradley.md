@@ -37,6 +37,15 @@ TOW pod folding on the turret LEFT, ODS appliqué armor package.
 - Engine front-right (exhaust on the right hull side) — the hull roof
   runs flat from the turret aft to the rear ramp (troop compartment).
 
+## Comparison target (270, current)
+`m2a2_bradley` is compared to **photographs**, not to a 3D model: photo packet
+`docs/references/photos/m2a2-bradley-20261106.json` (fixture `src/vehicles/profiles/m3a2Bradley.selftest.mjs`;
+numerical 3D comparison unverified). Since the 269 swap it carries the classic turret rebuilt as an ODS turret, and no
+registered or owner-supplied model shows that turret. The 42manako print described below is the model of the source
+turret, which `m3a2_bradley` carries, so it is registered to `m3a2_bradley` (`tools/procedural-fidelity.html`); the
+sections below record its history as this id's oracle. See "270 — the comparison registration follows the swap" at
+the end.
+
 ## Oracle status
 ORACLE LANDED (2026-08-04): owner-downloaded 42manako "M2 Bradley IFV"
 (CC-BY-4.0 embedded; ATTRIBUTION.md "AFV oracle drop") at
@@ -946,7 +955,12 @@ tRearZ −1.05 → −1.20, tH 0.87 → 0.77. `m3a3_bradley` (`afvFamily.ts`): h
 −1.62 → 1.62. `combatGunRigs.generated.ts` m2a2/ua rows re-measured by the census to the new frame (lengthM 2.1705).
 `fleetLauncherMuzzles.ts`: bradley [1.05/1.35, 1.055, 0.60] → stowed [1.105, 0.68/0.38, 0.60]; m3a3 x −0.91 → 0.91.
 
-Shared seam (for the new `m3a2_bradley`'s classic turret): `buildBradleyHullSteps(P)` / `buildBradleyHull(P)` build the
+269 (owner 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2
+bradley"): the M2A2 now carries the classic turret (`modern3.ts` `buildM2A2Bradley`, profiles/bradleyClassicTurret.ts; its
+datums set in `m3a2BradleySpecs.ts`) and the M3A2 the source-measured turret this packet describes
+(`buildBradleySourceTurretIfv`). The M2A2 row in `modern3Specs.ts` keeps the source datums as the family base its clones read.
+
+Shared seam (for the classic turret, the M3A2's in 268 and the M2A2's since 269): `buildBradleyHullSteps(P)` / `buildBradleyHull(P)` build the
 hull core, deck furniture, running gear and glacis links with no turret group; `BRADLEY_TURRET_RING` exports the ring
 datum (x −0.14, z −0.40, deckY 2.06); `bradleyFlankDressing(P, { turretSeat: false })` adds the side armour, bow kit,
 stern and markings without the A2 turret's seat pan and collar. `marder1a3` keeps its pre-268 donor build verbatim
@@ -957,3 +971,36 @@ C/source/overlay-final4): against the source with its launcher folded to the tra
 IoU side 0.921, front 0.930, top 0.959, rear 0.931, front34 0.961; against the source as modelled (launcher
 erected) side 0.909, front 0.889, top 0.959, rear 0.890, front34 0.954. Round 1 read 0.784 / 0.751 / 0.950 /
 0.752 / 0.866.
+
+## 270 — the comparison registration follows the swap (2026-11-06)
+
+Main, 2026-11-06: "The comparison registration follows the owner's swap. m3a2_bradley takes the source turret's model
+... m2a2_bradley, now the classic turret, gets a classic-turret reference: a registered model if one exists, otherwise the
+photo-class route with a cited packet. Never score a build against a turret it no longer carries."
+
+- `m3a2_bradley` takes the 42manako registration unchanged (`/models/tanks/community/m2_bradley_ifv.glb`, sha256
+  0d3f779a…, pinned in `tools/oracle-pins.mjs`; `turretNode ^turret_lod$`, autoPivot, no yaw), in
+  `tools/procedural-fidelity.html` and `tools/visual-evaluator-page.html`. The prepared uniform export
+  `m2a2_bradley_x_source.glb` (268, above) was never registered: the gate measured the batch-38 copy, and still does.
+- `m2a2_bradley` is unregistered. Searched for a model of its turret: the registered oracles
+  (`public/models/community-candidates/`: `m2a3_bradley_ua_42manako.glb` and `m3a3_bradley_sipriv.glb`, both A3
+  turrets), the owner's folder (`m2_bradley_ifv.glb`, the source turret; `low_poly_m3a3_bradley.glb` and
+  `ukrainian_m2a3_bradley.glb`, A3s) and the research packets: none shows the classic/ODS turret. It takes the
+  photo-class route, as `m3a2_bradley` did in 268 and the true T-64s and the Type 10 TK-X do: packet
+  `docs/references/photos/m2a2-bradley-20261106.json` (`tools/photo-reference-policy.mjs`), its photographs the M2A2 ODS
+  research packet's (`~/cot-lanes/abrams-bradley-268-evidence/research/m2a2_bradley/`, sources.md: Commons
+  M2A2_ODS-SA_Bradley_Fighting_Vehicle.JPG, M2A2_Bradley.jpg, Mechanized_infantry_syria.jpg,
+  M2A2_Bradley_Infantry_Fighting_Vehicle.jpg, Bradley_M2A2_ODS_of_the_Croatian_Armed_Forces.jpg), the builder T2
+  rebuild that drew the turret from them (commit 0f0c4793f7; renders `~/cot-lanes/abrams-bradley-268-evidence/r269/T2/`),
+  armyrecognition's M2A2 ODS page and Wikipedia "M2 Bradley". Envelope as built: 3.502 x 6.618 m, whips to 3.46 m
+  (turret roof 2.98 m). `tools/photo-reference-check.mjs --ids=m2a2_bradley`: PASS physical configuration.
+- The M3A2's packet (`m3a2-bradley-20261102.json`) is retired: an id with a registered oracle never proves a packet
+  (`photo-reference-policy.mjs` rule (c)).
+
+Scores after the swap (2026-11-06, this tree): `m3a2_bradley` procedural-fidelity 89.4 (H92 T78 G100 R88), geometry gate
+34.1/90 (hull 45.3, whole 34.1, turret 64.2, stations 49.1, dims 44.9, floaters 100) — within 0.02 of this id's last
+ledger row on the same build and print (the 268 source-turret M2A2), so the scores moved with the turret. The dims row
+reads the source turret's silhouette targets the M3A2 clones from this row (6.28 / 6.25 / 3.25 / 2.83). `m2a2_bradley`:
+fidelity N/A (no comparison target), stage A on its photo packet. Before the swap the classic turret scored 0/90
+(dims 0) and fidelity 89.0 against the source turret's print.
+

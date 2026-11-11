@@ -6,7 +6,7 @@ import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS,
 } from '../../../src/mp/room/protocol.ts';
 import type { RoomSnapshot } from '../../../src/mp/room/protocol.ts';
-import { closeClients, connect, create, identity, origin, token } from './client.ts';
+import { RECEIPT_WAIT_MS, closeClients, connect, create, identity, origin, token } from './client.ts';
 
 function storedState(code: string): Promise<RoomActorState> {
   return runInDurableObject(env.ROOMS.getByName(code), (_instance, state) => JSON.parse(state.storage.sql
@@ -86,7 +86,7 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     expect(state.players.filter((player) => player.team === 'alpha').length).toBe(14);
     expect(state.players.filter((player) => player.team === 'bravo').length).toBe(14);
     expect(state.players.filter((player) => player.team === 'spectator').length).toBe(8);
-  }, 40_000);
+  });
 
   it('migrates admin at once on leave, after the grace on disconnect, and resumes with the rotated capability across hibernation', async () => {
     const admin = await create('ROOM05', { teamSize: 3 });
@@ -124,6 +124,26 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     expect((await stale.request('room_join', identity('second', token('c'), token('c')))).payload.code).toBe('resume_denied');
   });
 
+  it('keeps the admin\'s lock of a waiting room stored before the lock split across an eviction (round 2 U6)', async () => {
+    const admin = await create('ROOM07');
+    expect((await admin.command({ type: 'set_locked', locked: true })).type).toBe('room_ack');
+    const stub = env.ROOMS.getByName('ROOM07');
+    // the state a Worker before the split stored: the admin's lock in `locked` alone
+    await runInDurableObject(stub, (_instance, state) => {
+      const stored = JSON.parse(state.storage.sql.exec<{ data: string }>('SELECT data FROM room_state WHERE id=1').one().data) as RoomActorState;
+      const settings = stored.room!.settings as { locked: boolean; adminLocked?: boolean };
+      delete settings.adminLocked;
+      settings.locked = true;
+      state.storage.sql.exec('UPDATE room_state SET data=? WHERE id=1', JSON.stringify(stored));
+    });
+    await evictDurableObject(stub);
+    // the first touch after the deploy (the admin readies) keeps the room locked, and a fresh join is refused
+    expect((await admin.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    expect((await storedState('ROOM07')).room?.settings.locked).toBe(true);
+    const late = await connect('ROOM07', 'late');
+    expect((await late.request('room_join', identity('late', token('c'), token('d')))).payload.code).toBe('room_locked');
+  });
+
   it('expires 24 h after the last message and deallocates, and never closes on departures', async () => {
     const admin = await create('ROOM06', { teamSize: 1 });
     admin.socket.close();
@@ -148,14 +168,21 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
   it('keeps chat bounded, replays history to a joiner, and rate limits a flooding socket', async () => {
     const admin = await create('ROOM07');
     for (let index = 0; index < 60; index++) admin.send('room_chat', { text: `line ${index}` });
-    await admin.next((message) => message.type === 'room_chat' && message.payload.entry !== undefined && (message.payload.entry as { text: string }).text === 'line 59');
+    // sixty round trips, each persisted and broadcast: twice a receipt's wait (round 3 B14: under load the old 3 s saw
+    // 10-37 of them)
+    await admin.next((message) => message.type === 'room_chat' && message.payload.entry !== undefined && (message.payload.entry as { text: string }).text === 'line 59', 2 * RECEIPT_WAIT_MS);
     const guest = await connect('ROOM07');
     const joined = await guest.request('room_join', identity('guest', token('c'), token('d')));
     const history = joined.payload.chat as Array<{ text: string }>;
     expect(history.length).toBe(48);
     expect(history[0]!.text).toBe('line 12');
+    // the flood inside one rate window whatever the runtime's speed: only Date stands still (relay.test's clockAhead
+    // pattern; the room's timers run), so all 130 count in one window. A runtime that handled them over more than
+    // ROOM_RATE_WINDOW_MS turned the window and left the socket open (round 3 B14: roomActor.ts handleMessage)
+    vi.useFakeTimers({ toFake: ['Date'] });
     for (let index = 0; index < 130; index++) guest.send('room_ping');
-    const closed = await guest.closed;
+    const closed = await guest.closedWithin('the ping flood\'s rate limit', 2 * RECEIPT_WAIT_MS);
+    vi.useRealTimers();
     expect(closed.reason).toBe('rate_limit');
   });
 });

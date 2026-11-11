@@ -26,7 +26,8 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { LAN_ROOMS_PORT } from '../src/mp/session/endpoint.ts';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { armBudget, once } from './chain-lifecycle.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -255,13 +256,24 @@ const stage = async (name, startedAt) => {
     + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}${csp.length ? `\n    ${csp.slice(0, 6).join('\n    ')}` : ''}`);
 };
 
-const lock = useLock ? createCaptureLock() : null;
+// the capture hold (round 2 U38: tools/capture-hold.mjs openCaptureHold, refresh, the cap, signals, the release at exit)
+let captureHold = null;
 let rooms = null, server = null, browser = null, pages = [];
+// (2026-11-02 audit S5) One teardown for every way out: the finally, and the budget, which used to process.exit(3) past
+// the finally and leave the preview server (no parent watch), Chrome and the in-process rooms server to the OS. The exit
+// backstop kills the preview child synchronously whatever ends the process (the hold releases the lock at exit).
+const stopAll = once(async () => {
+  await browser?.close().catch(() => {});
+  server?.kill();
+  try { await rooms?.close(); } catch { /* already gone */ }
+});
+const teardown = once(async () => { await stopAll(); await captureHold?.release(); });
+process.on('exit', () => { try { server?.kill('SIGKILL'); } catch { /* gone */ } });
 try {
-  if (lock) {
-    await lock.acquire(150 * 60 * 1000, { place: `mp-room-census-${label}` });
-    setInterval(() => lock.refresh(), 30_000).unref();
-    setTimeout(() => { console.error(`mp-room-census: past its ${budgetMin} min budget`); process.exit(3); }, budgetMin * 60_000).unref();
+  if (useLock) {
+    // a signal (or a stop past the cap's grace) stops what runs before the release: the hold's teardown
+    captureHold = await openCaptureHold({ label: 'mp-room-census', timeoutMs: 150 * 60 * 1000, place: `mp-room-census-${label}`, teardown: stopAll });
+    armBudget(budgetMin * 60_000, { teardown, code: 3, log: (line) => console.error(`mp-room-census: ${line}`) });
   }
   if (!await portFree(LAN_ROOMS_PORT)) throw new Error(`port ${LAN_ROOMS_PORT} (the LAN room helper's) is in use`);
   rooms = await createRoomsServer({ host: '127.0.0.1', port: LAN_ROOMS_PORT, seatSecret: randomBytes(24).toString('hex'), world: 'terrain',
@@ -531,10 +543,7 @@ try {
   for (const line of [...samples.at(-1).census.consoleErrors, ...samples.at(-1).census.consoleWarningTexts]) console.error(`  ${String(line).slice(0, 240)}`);
   process.exitCode = 2;
 } finally {
-  await browser?.close().catch(() => {});
-  server?.kill();
-  try { await rooms?.close(); } catch { /* already gone */ }
-  await lock?.release();
+  await teardown();
 }
 mkdirSync(join(out, label), { recursive: true });
 writeFileSync(join(out, label, 'mp-room.desktop.json'), `${JSON.stringify({ profile: 'desktop', dist, samples }, null, 1)}\n`);

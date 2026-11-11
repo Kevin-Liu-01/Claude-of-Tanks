@@ -4,7 +4,7 @@ import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 
 interface LoadoutEntity {
   spec: FleetTankSpec;
-  combat: Pick<CombatState, 'ammo' | 'ammoCapacity' | 'shellSlot' | 'reload' | 'reloadChannels' | 'magazine'>;
+  combat: Pick<CombatState, 'ammo' | 'ammoCapacity' | 'shellSlot' | 'reload' | 'gunReload' | 'reloadChannels' | 'magazine'>;
   input: { shellSlot: number };
 }
 /** Copies only the gun; armor, crew geometry and the shared catalog remain unchanged. */
@@ -18,6 +18,9 @@ export function setModeWeapon(entity: LoadoutEntity, stage: number | 'gunship'):
   entity.combat.ammo = shells.map(() => 200);
   entity.combat.ammoCapacity = shells.map(() => 200);
   entity.combat.shellSlot = 0; entity.input.shellSlot = 0;
+  // the whole reload machine comes from the new gun: its cannon channel too (audit M5, 2026-11-02: gunReload, which the
+  // rows and the magazine read, stayed on the old gun's timer, frozen, since it ticked in no channel any more)
   const fresh = createCombatState(entity.spec);
-  entity.combat.reload = fresh.reload; entity.combat.reloadChannels = fresh.reloadChannels; entity.combat.magazine = null;
+  entity.combat.reload = fresh.reload; entity.combat.gunReload = fresh.gunReload; entity.combat.reloadChannels = fresh.reloadChannels;
+  entity.combat.magazine = null;
 }

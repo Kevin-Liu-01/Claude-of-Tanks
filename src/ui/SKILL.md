@@ -41,6 +41,10 @@ live frame: `setPose` stages, `update` commits only while the vehicle lives);
 `shotInfo.ts` owns typed resolved-hit cards, incoming-fire alerts, the bounded
 combat log, armor-diagram projection, event-derived battle statistics, and the
 killcam-aware handoff to the after-action report;
+`battleInputOwner.ts` owns who has battle input (presentation > menu > veil >
+play; one owner per bus, its kill-cam source read from the replay's own flag,
+`src/game/killcamScreen.ts`), and `battleReportGate.ts` when the report renders
+(held by a presentation on a watchdog, by the menu until it closes);
 `perfHud.ts` owns the lazy typed diagnostics surface and its bounded 4 Hz DOM
 paint;
 `studioPanel.ts` owns the typed Scene Studio workspace, actor/effect/timeline
@@ -85,7 +89,7 @@ Decorative metadata such as repository stars must render a stable-width loading
 state or a bounded verified local cache, then refresh only through the cached
 same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
 Garage presentation depend on a third-party request.
-A lazy chunk that failed is never asked for again in its document: Chrome 151
+An opener's lazy chunk that failed is never asked for again in its document: Chrome 151
 keeps a failed import() and a failed modulepreload, Chrome 156 loads them once
 online, and in both a chunk's failed stylesheet never applies (Vite's preload
 skips it), so a reload is the one recovery that always works. No opener offers
@@ -93,7 +97,43 @@ an in-page retry of a chunk: its failure marks the trigger with
 `components/loadFailure.ts` `markLoadFailed` (a danger dot that needs no chunk),
 its next press goes through `pressFailed` (the page reloads once online, never
 by itself), and a page's enhancement asks once through `importWhenOnline`
-(`node src/ui/components/loadFailure.selftest.mjs`).
+(`node src/ui/components/loadFailure.selftest.mjs`). A new lazy chunk's load is
+one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6), held directly or
+through `app/lazyRuntimeOwner.ts` (the access facades' owner of a module and the
+runtime made from it); a page that does not boot the policy's chunk (the docs,
+the 404 page) takes the kit's opener rule through `importWhenOnline`. Not every
+lazy load is one: the older memos that differ are named, each with its reason,
+in `lazyChunkSites`' KNOWN list (memos cleared on failure whose callers ask once
+per lifecycle edge or open, never per frame, tick, pointer move or focus move;
+stylesheets kept for the document; the docs pages that do not boot the policy
+and the icon sprite every page's boot holds; the unused HDRI experiment;
+initializations and joins over loads the policy holds, the Studio's module memo
+over its opener chunk among them; data fetches; and a warm task). The selftest
+fails a new hand-made memo, facade or latch in the spellings it reads (its
+comments list them); another spelling goes unseen, so a new lazy load starts
+from `createLazyChunk`.
+A kit facade is a chunk too: the custom camouflage studio's is an opener's (its
+intent preload marks the swatch and never asks offline), the settings panel's is
+a default-policy chunk because every battle entry awaits it. A failed stylesheet
+(in any part of the load: a load of several parts settles them with
+`importAll`), a removed chunk (a hashed chunk that answers 404, which also shows
+the watchdog's reload action), or any failure of an opener's chunk
+(`opener: true`), is terminal. Every default-policy chunk's callers ask a failed
+module again on their next need, pressed and dragged triggers among them (the
+consumables slot, the Studio's sun dial and sliders, the battle canvas's press
+that resumes the audio) as well as builders, warms, notices and decorative
+paint: at once after one failure and then past the INFRA-P11 backoff capped at a
+minute, with no budget that would spend it for the document, never by itself and
+never offline (`node src/app/lazyChunk.selftest.mjs`,
+`node src/app/lazyChunkSites.selftest.mjs`). A battle's covered entry asks past
+that backoff with `load({ backoff: false })`, which `lazyChunkSites`' EDGE_ASKS
+holds to its callers. The stylesheet guarantee holds per
+owner: Vite's preload keeps one `seen` map for the whole document, so a sheet
+that failed at one owner loads "successfully" without it at any other. Give
+each lazy stylesheet one owner per document (the hero cards' is
+`heroCardChunk.ts`; every surface asks it), held in a `createLazyChunk`, an
+`importWhenOnline`, or a kit opener; `lazyChunkSites.selftest.mjs` walks every
+page's imports and fails a second owner or a sheet asked again after a failure.
 Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
 space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
 writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`

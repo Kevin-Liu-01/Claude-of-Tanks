@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createPropsProfiler, expectedPropsSlices, instrumentSource, registerProfileCancellation } from './props-build-profile.mjs';
 
@@ -41,6 +42,15 @@ assert.equal(signals.length, killsAfterCleanup, 'removed handlers cannot kill a 
 assert.equal(foreignCalls, 5);
 assert.equal(cancellation.isInterrupted(), true, 'disposal does not erase cancellation evidence');
 emitter.off('SIGINT', foreign);
+// (round 2 U38) the capture hold's own stop (past the cap with a waiter) stops the current worker as a signal does
+{
+  const kills = [], held = registerProfileCancellation(() => ({ kill: signal => kills.push(signal) }), new EventEmitter());
+  held.interrupt();
+  assert.deepEqual(kills, ['SIGTERM']); assert.equal(held.isInterrupted(), true); held.dispose();
+  const tool = readFileSync(new URL('./props-build-profile.mjs', import.meta.url), 'utf8');
+  assert.match(tool, /openCaptureHold\(\{[^\n]*signals: \[\]/, 'its own handler is the one signal owner');
+  assert.match(tool, /hold\.signal\.addEventListener\('abort', \(\) => \{\n[^\n]*cancellation\.interrupt\(\);/, 'the hold\'s stop reaches the worker');
+}
 
 let time = 0;
 const profiler = createPropsProfiler(() => time);

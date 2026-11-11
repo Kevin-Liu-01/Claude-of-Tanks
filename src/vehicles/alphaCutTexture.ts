@@ -272,3 +272,26 @@ export function castThroughAlphaCut(mesh: THREE.Mesh): void {
   const material = Array.isArray(mesh.material) ? null : mesh.material;
   if (material && material.alphaTest > 0) mesh.customDepthMaterial = alphaCutDepthMaterial(material);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// When a cached canvas paint's failure may stand (2026-11-02 audit R6). The vehicle paint caches (the foliage and
+// garnish atlases, the ghillie cover, the camo net) keep one texture per key, and a null for "no DOM here" (node
+// receipts, the workshop worker: nothing to paint with). A paint that threw was cached as that same null, so one
+// transient canvas failure (a lost context, an allocation the browser refused) left that species leafless, or that
+// cover bare, for the session. A cache now asks `settles(key, painted)` before it keeps a null: a texture, or no DOM,
+// settles at once; a failed paint is counted, the next build paints again, and only the `PAINT_ATTEMPTS`-th failure in
+// a row stands (a canvas that never works here is not repainted on every build). DOM-free.
+// ---------------------------------------------------------------------------------------------------------------
+
+export const PAINT_ATTEMPTS = 3;
+
+/** A cache's failure count: `settles(key, painted)` says whether this paint's outcome is the key's for the session. */
+export function createPaintAttempts(limit = PAINT_ATTEMPTS): (key: string, painted: boolean) => boolean {
+  const failures = new Map<string, number>();
+  return (key, painted) => {
+    if (painted || typeof document === 'undefined') { failures.delete(key); return true; }
+    const count = (failures.get(key) ?? 0) + 1;
+    failures.set(key, count);
+    return count >= limit;
+  };
+}

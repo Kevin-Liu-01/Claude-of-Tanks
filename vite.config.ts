@@ -152,12 +152,11 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
 // (physics stream, 2026-10-16; the coordinator's ruling with the MP lane) the manifests are served on their format's route,
 // and the production before them keeps its own files, frozen byte for byte, so a tab left open at the deploy that hosts
 // or is elected still decodes its own format and its own world (collisionManifestRoutes.selftest). (The maps lane,
-// 2026-10-20; the coordinator's ruling) this build's at /mp-collision/v3/ (the v5 codec), production 228's at
-// /mp-collision/v2/ (server/world-collision-manifests-228, ed0f3e31b's); production 224's at /mp-collision/ are retired
-// (the build-mismatch refusal sends an older tab to Refresh).
+// 2026-10-20; the coordinator's ruling) this build's at /mp-collision/v3/ (the v5 codec). Production 224's at /mp-collision/
+// and production 228's at /mp-collision/v2/ are retired (272: the deploys after them have shipped, and the build-mismatch
+// refusal sends an older tab to Refresh).
 const COLLISION_MANIFEST_SOURCES: ReadonlyArray<{ route: string; dir: string }> = [
   { route: '/mp-collision/v3', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests') },
-  { route: '/mp-collision/v2', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-228') },
 ];
 
 function collisionManifestFiles(dir: string): Array<{ name: string; path: string }> {
@@ -179,7 +178,7 @@ const collisionManifestPlugin = () => ({
     const files = new Map<string, Map<string, string>>();
     server.middlewares.use((req, res, next) => {
       const url = req.url || '';
-      // (each route its own prefix: '/mp-collision/v3/' and '/mp-collision/v2/' never overlap)
+      // (each route its own prefix, so a new format's route never overlaps another's)
       const source = COLLISION_MANIFEST_SOURCES.find((entry) => url.startsWith(`${entry.route}/`));
       if (!source) { next(); return; }
       if (!files.has(source.route)) files.set(source.route, new Map(collisionManifestFiles(source.dir).map((entry) => [entry.name, entry.path])));
@@ -444,7 +443,13 @@ export default defineConfig({
             // 2026-10-31 (shot-card-damage-266): the hit's hull points reader (game/hullPointsRemoved.ts: the profile's tally at
             // boot, the lazy HUD, killcam, hit format and service record) is a leaf the same three pages load; on its own it
             // was one more game, cn and Gallery boot request.
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-02 (audit R6): the one lazy-chunk failure policy (app/lazyChunk.ts and the backoff it reads,
+            // app/lazyImportRetry.ts) and the one worker-client failure count (src/workerClientHealth.ts), 2.5 KB together,
+            // are leaves the ring loader, the fleet facade, the material painter's client and the Garage and Gallery
+            // openers load at boot on the same three pages; they ride here rather than in a chunk of their own. (review round
+            // 2) The hero cards' one load (ui/heroCardChunk.ts, a leaf of a few hundred bytes the Garage and the Gallery
+            // import at boot: the card module and its sheet stay lazy) rides here for the same reason.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/](?:uiCanvas|heroCardChunk)|app[\\/](?:lazyChunk|lazyImportRetry)|workerClientHealth)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
@@ -463,7 +468,11 @@ export default defineConfig({
             // 2026-10-27 (integrator 261): the program receipt (engine/programReceipt.ts, 0.8 KB, the room-stalls lane's
             // revealPrograms and lateLinks receipts) is a leaf main imports at boot and the lazy network composition imports
             // too; on its own it was one more game and cn boot request. It rides with the program warm owner it measures.
-            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-06 (the 2026-11-02 audit's state-machine fixes, round-four merge, E3): the named holds (engine/namedHolds.ts,
+            // 0.5 KB, audit R3/R4: the governor's suspension and the temporal-AA override as holds) are a leaf the boot's post
+            // imports and the lazy black-world guard imports too; on its own it was one more game and cn boot request. It
+            // rides with the program warm owner, another boot engine owner.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt|namedHolds)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
@@ -485,7 +494,12 @@ export default defineConfig({
             // strike code: the action bits (sim/playerActions.ts, constants), the strike view's state (game/strikeViewState.ts)
             // and the terrain's strike-mark uniforms (engine/strikeMarks.ts; three stays in its own chunk). Alone they were three
             // more boot requests on both pages, on the same two pages this group already loads.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-09 (the implicit state machine fixes' round eight merge, Y11, over 270): two leaves the game and cn now load
+            // at boot and lazy code loads too: the couch session's owner (game/couchSeats.ts: stateCore's clearMatchSession ends
+            // a session, round 8 Y1; DOM-free, its one import the action bits above) and the body-class reasons (ui/bodyFlags.ts,
+            // audit F8: main's couch view raises 'cot-spectating' now, round 8 Y4, beside the lazy HUD's). Alone they were two
+            // more boot requests on both pages.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -561,7 +575,12 @@ export default defineConfig({
             // loaded with Deploy's picker) read the landscape tags. As their third importer, with main and the Rooms host's
             // playMenu, the tags split off the chunk they shared with the random-map mosaic and the play-mode normaliser: one more
             // game and cn boot request for 1 KB. The three ride together again, exactly these modules.
-            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-06 (the 2026-11-02 audit's state-machine fixes, round-four merge, E3): five DOM-free owners main imports
+            // at boot and lazy chunks import too ride here, exactly these modules: the app lifecycle and the countdown it reads
+            // (game/appLifecycle.ts, game/preBattleCountdown.ts), the battle input owner and the kill cam's screen claim it
+            // reads (ui/battleInputOwner.ts, game/killcamScreen.ts), and the audio's battle mode (audio/battleMode.ts). On
+            // their own they were five more game and cn boot requests (0.2-2.7 KB each); none runs anything at evaluation.
+            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags|battleInputOwner)|game[\\/](?:appLifecycle|preBattleCountdown|killcamScreen)|audio[\\/]battleMode)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
             // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
             // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes

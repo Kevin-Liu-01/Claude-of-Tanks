@@ -12,7 +12,7 @@
 //     [--locales=en-US,zh-CN,pseudo] [--only=<variant substring>]
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.slice(name.length + 3) || fallback;
 const { chromium } = await import(arg('playwright-module', 'playwright'));
@@ -142,9 +142,9 @@ async function stage({ events, shellId }) {
   };
 }
 
-const lock = createCaptureLock();
-await lock.acquire(Number(arg('lock-timeout', String(45 * 60 * 1000))), { lockClass: 'render', holdCapMinutes: 15 });
-const refresh = setInterval(() => lock.refresh(), 30000);
+let hold;
+hold = await openCaptureHold({ label: 'shot-card-fit', timeoutMs: Number(arg('lock-timeout', String(45 * 60 * 1000))), lockClass: 'render', holdCapMinutes: 15 });
+
 let browser;
 const failures = [];
 const report = {};
@@ -195,9 +195,8 @@ try {
   }
   await writeFile(`${out}/report.json`, JSON.stringify(report, null, 1));
 } finally {
-  clearInterval(refresh);
   await browser?.close();
-  await lock.release();
+  await hold?.release();
 }
 for (const failure of failures) console.error(`FAIL ${failure}`);
 console.log(failures.length ? `FAIL shot-card-fit: ${failures.length}` : `PASS shot-card-fit: ${Object.keys(report).length} cards`);

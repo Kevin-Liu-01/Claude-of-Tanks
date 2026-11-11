@@ -10,7 +10,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.slice(name.length + 3) || fallback;
 const { chromium } = await import(arg('playwright-module', 'playwright'));
@@ -44,9 +44,9 @@ function contrast(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const lock = createCaptureLock();
-await lock.acquire(Number(arg('lock-timeout', String(45 * 60 * 1000))), { lockClass: 'render', holdCapMinutes: 12 });
-const refresh = setInterval(() => lock.refresh(), 30000);
+let hold;
+hold = await openCaptureHold({ label: 'shot-damage-figures', timeoutMs: Number(arg('lock-timeout', String(45 * 60 * 1000))), lockClass: 'render', holdCapMinutes: 12 });
+
 let browser;
 let failures = 0;
 try {
@@ -158,6 +158,6 @@ try {
     }
     await context.close();
   }
-} finally { await browser?.close(); clearInterval(refresh); lock.release(); }
+} finally { await browser?.close(); await hold?.release(); }
 console.log(`shot-damage-figures: ${failures ? `FAIL (${failures})` : 'PASS'}`);
 if (failures) process.exitCode = 1;

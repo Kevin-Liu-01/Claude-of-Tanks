@@ -772,6 +772,12 @@ interface FlagPitchRules {
    * some 200 m further back; round 3, the critic's M5).
    */
   readonly respawnBackM?: number | null;
+  /**
+   * Carrying a flag reveals the carrier to every viewer (Main's ruling on audit finding 53, 2026-11-09: standard CTF).
+   * A carried flag publishes its carrier's position, so this stays true while flags publish positions: the authority's
+   * spotting filter reveals the carrier by name ('flag_carrier') and the snapshot places no hull the viewer cannot see.
+   */
+  readonly carrierRevealed?: boolean;
 }
 /** Infected survivors: unengaged survivors close on their own living centroid and hold together within this. */
 interface InfectionBotRules {
@@ -1272,6 +1278,18 @@ export interface MatchRuleset {
    * read a battle only where this is true. The practice modes play without a record (nothing to farm on a range).
    */
   readonly records: boolean;
+  /** The battle ends when a side is wiped out (Standard, Realistic): the controller's usesElimination. */
+  readonly elimination?: boolean;
+  /** A confirmed enemy destruction scores for the killer's side (the zone modes, Drone, Gun Game, Juggernaut, Realistic, AC-130). */
+  readonly scoresKills?: boolean;
+  /** The ground each side's own objective (a flag base, a goal) reserves in placement; `arena` keeps it inside the
+   *  mode arena's half-extent (sim/matchPlacement.ts). */
+  readonly objectiveFootprint?: { readonly radiusM: number; readonly arena?: boolean };
+  /** The middle point placement reserves: Turbo Ball's kick-off spot (the map's authored one where it has one) or the
+   *  AC-130's extraction, with the footprint's radius and relief. */
+  readonly middleReserve?: { readonly kind: 'kickoff' | 'extraction'; readonly radiusM: number; readonly reliefM: number; readonly arena?: boolean };
+  /** The bots' routes are pushed toward the mode's objective (sim/modeRoutePush.ts); Standard's hunt on their own. */
+  readonly routePush?: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
@@ -1405,6 +1423,18 @@ export const TERRAIN_VARIANTS: readonly TerrainVariant[] = Object.freeze(['assau
 export function terrainVariantFor(mode: GameModeId | string | null | undefined): TerrainVariant | null {
   return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.terrainVariant ?? null;
 }
+/** The world cache key a battle in `mode` on `mapId` builds: `map#variant` for a mode that plays a variant, else the bare id
+ *  (the world coordinator keys a variant's build and cache by it; a prefetch of the bare id builds a world the battle never uses). */
+export function worldKeyFor(mapId: string, mode: GameModeId | string | null | undefined): string {
+  const variant = terrainVariantFor(mode);
+  return variant ? `${mapId}#${variant}` : mapId;
+}
+
+/** The ground a mode's placement reserves for its objectives (sim/matchPlacement.ts reads it by the mode alone, as the
+ *  world's clearings do): each side's objective footprint and the middle reserve (null: an unknown mode). */
+export function objectivePlacementFor(mode: GameModeId | string | null | undefined): Pick<MatchRuleset, 'objectiveFootprint' | 'middleReserve'> | null {
+  return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)] ?? null;
+}
 
 export interface CampaignRulesetInput {
   /** 1-based ladder difficulty. */
@@ -1451,7 +1481,7 @@ const STANDARD: MatchRuleset = Object.freeze({
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, respawnSafeM: 75, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
-  destruction: DESTRUCTION_ON, terrainVariant: null, records: true,
+  destruction: DESTRUCTION_ON, terrainVariant: null, records: true, routePush: true,
 });
 
 // Per-side doctrines (gameplay-modes-228). Each is a partial over CLASSIC_BOT_DOCTRINE; see BotDoctrine for the knobs.
@@ -1506,7 +1536,8 @@ const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
 // refill only the gunship there). Unlimited rounds turn every cache into a repair (cacheHealChance): an ammunition cache
 // could never be taken.
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
-  standard: STANDARD,
+  // the elimination battle: the side wiped out loses, and its bots hunt on their own (no objective to push toward)
+  standard: Object.freeze({ ...STANDARD, elimination: true, routePush: false }),
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
   // gameplay-modes-228 (owner 2026-10-18: "increase aggression of bots trying to capturing flag"): the flags are run,
   // not brawled over — half the squad recovers a taken home flag (a capture needs it home) and the rest raid back,
@@ -1519,7 +1550,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // revive stands 100 m behind its own flag base (flagPitch.respawnBackM; at the deployment, 200 m further back, a robbed
   // team's revives chased the carrier from behind its run's start), and a carrier takes 4 escorts with no guard left home
   // (the A/B over seeds 401-402: pursuers within 120 m 0.28 -> 0.38, escorts within 80 m 0.32 -> 0.47, captures 2 a match)
-  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
+  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6, objectiveFootprint: Object.freeze({ radiusM: 12 }),
     bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
       escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
@@ -1528,9 +1559,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // match, a capture in 3 of 8, 6 draws, first pickup 94 s, nearly every carrier killed on its run): the bases 320 m
     // apart (was 400) and a carrier at full speed (was 85 %). The A/B over the same seeds: 1.38 captures, a capture in 6
     // of 8, 2 draws, first pickup 64 s; the shorter pitch alone 0.88 / 6 / 3, the full-speed carrier alone 0.88 / 4 / 4
-    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }) }),
+    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1, carrierRevealed: true }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
-  zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
+  zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6, scoresKills: true }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
   // damage, quick reloads, HE only with unlimited rounds, no equipment or consumables, 3 s
   // respawns, a ten-minute clock.
@@ -1539,6 +1570,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
+    // the goals and the kick-off spot stand inside the arena
+    objectiveFootprint: Object.freeze({ radiusM: 18, arena: true }),
+    middleReserve: Object.freeze({ kind: 'kickoff', radiusM: 12, reliefM: 3, arena: true }),
     // gameplay-modes-228 ("pursuing ball"): two strikers on an intercept course, screens and a keeper, at most three a
     // team on the ball; strikers jump at it and shoot it toward the goal; the goals sit goalAxisM apart (A/B-chosen).
     // Round 3b (the critic's M6: the nearest bot 65-67 m from the ball, the crowd cap broken on Coastal): the support
@@ -1627,10 +1661,10 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns, unlimited
   // rounds and a twelve-minute clock; the boost caches (repairs, under unlimited rounds) are the mode controller's.
   mars: Object.freeze({
-    ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
+    ...STANDARD, mode: 'mars', scoresKills: true, mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
     reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
-  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
+  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', scoresKills: true, ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
   // Infected (owner 2026-10-17, the zombies): sturdy survivors (150 % hull) against five fragile infected (35 %) that hunt
   // the nearest survivor at +30 % speed with no reload bonus and come back 5 s after every death, a converted survivor's
@@ -1665,16 +1699,17 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 60, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, sightLeadM: 0, spawnCandidates: 12 }) }) }),
-  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
-  gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
+  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', elimination: true, scoresKills: true, alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
+  gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', scoresKills: true, respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
-  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', scoresKills: true, aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', scoresKills: true,
+    middleReserve: Object.freeze({ kind: 'extraction', radiusM: 30, reliefM: 7 }), aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
   // Air Support (air-support-270): Zone Control's three sectors, 8 s respawns and a twelve-minute clock, with the support
   // ledger and the three airstrikes; the vehicle's own loadout (the strikes are the mode's firepower, not the guns)
-  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
+  air_support: Object.freeze({ ...STANDARD, mode: 'air_support', scoresKills: true, respawnS: 8, timeLimitS: 720, airSupport: AIR_SUPPORT_RULES }),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
   // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
@@ -1702,6 +1737,68 @@ export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.fr
   // three minutes, before a crew had earned a call-in); about six to eight minutes at the usual two-to-one sector split
   air_support: 2000,
 });
+/** The arrangement fields Deploy offers beyond the sides, and which modes take each (improve-271 plan 027). */
+export type ArrangementChoiceField = 'scoreTarget' | 'respawnS' | 'waveSize' | 'waveStep' | 'holdS' | 'juggernautRole';
+/** Whether `mode` takes `field`: one rule the clamp (normalizeTeamArrangement) and Deploy's choices (arrangementChoices) read. */
+function arrangementFieldApplies(mode: GameModeId | string, field: ArrangementChoiceField): boolean {
+  switch (field) {
+    case 'scoreTarget':
+    case 'respawnS': return Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
+    case 'waveSize':
+    case 'waveStep': return mode === 'endless_horde';
+    case 'holdS': return mode === 'frontline_assault';
+    case 'juggernautRole': return mode === 'juggernaut';
+  }
+}
+/** The winning score's clamp per mode (the authority applies it; Deploy offers only values inside it). */
+const SCORE_TARGET_RANGES: Readonly<Record<string, readonly [number, number]>> = Object.freeze({
+  capture_the_flag: [1, 9], turbo_ball: [1, 15], drone: [5, 100],
+});
+const SCORE_TARGET_RANGE: readonly [number, number] = [100, 2000];
+const RESPAWN_RANGE: readonly [number, number] = [2, 15];
+const WAVE_STEP_RANGE: readonly [number, number] = [0, 3];
+const HOLD_RANGE: readonly [number, number] = [10, 60];
+/** The values Deploy offers before a mode's own default joins them (each inside its clamp). */
+const OFFERED_SCORE_TARGETS: Readonly<Record<string, readonly number[]>> = Object.freeze({
+  capture_the_flag: [1, 3, 5, 7, 9], turbo_ball: [3, 5, 7, 10, 15], drone: [5, 10, 20, 30, 50],
+});
+const OFFERED_SCORE_TARGET = [250, 500, 750, 1000, 1500, 2000];
+const OFFERED_RESPAWN_S = [2, 3, 6, 10, 15];
+const OFFERED_WAVE_STEP = [0, 1, 2, 3];
+const OFFERED_HOLD_S = [10, 20, 30, 45, 60];
+
+/** Deploy's choices for each arrangement field `mode` takes (a field it does not take is absent), in order. */
+export interface ArrangementChoices {
+  readonly scoreTarget?: readonly number[];
+  readonly respawnS?: readonly number[];
+  readonly waveSize?: readonly number[];
+  readonly waveStep?: readonly number[];
+  readonly holdS?: readonly number[];
+  readonly juggernautRole?: readonly ('boss' | 'hunter')[];
+}
+/** `offered` with the mode's own default when it is missing, ascending (Air Support's 8 s respawn joins 2, 3, 6, 10, 15). */
+const withDefault = (offered: readonly number[], fallback: number | null | undefined): readonly number[] =>
+  Object.freeze([...new Set(fallback == null || !Number.isFinite(fallback) ? offered : [...offered, fallback])].sort((a, b) => a - b));
+/**
+ * The values Deploy's further options offer for `mode`, read from this table: the mode's default is always among them and
+ * every one survives the clamp the authority applies (improve-271 plan 027: Air Support's 8 s respawn had no option).
+ */
+export function arrangementChoices(mode: GameModeId): ArrangementChoices {
+  const base = BASE_RULESETS[mode];
+  if (!base || base.provingGround) return Object.freeze({});
+  const out: { -readonly [K in keyof ArrangementChoices]: ArrangementChoices[K] } = {};
+  if (arrangementFieldApplies(mode, 'scoreTarget')) out.scoreTarget = withDefault(OFFERED_SCORE_TARGETS[mode] ?? OFFERED_SCORE_TARGET, RULESET_SCORE_TARGETS[mode]);
+  if (arrangementFieldApplies(mode, 'respawnS')) out.respawnS = withDefault(OFFERED_RESPAWN_S, base.respawnS);
+  if (arrangementFieldApplies(mode, 'waveSize')) {
+    const [lo, hi] = TEAM_ARRANGEMENT_LIMITS.waveSize;
+    out.waveSize = Object.freeze(Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+  }
+  if (arrangementFieldApplies(mode, 'waveStep')) out.waveStep = withDefault(OFFERED_WAVE_STEP, base.horde?.waveStep);
+  if (arrangementFieldApplies(mode, 'holdS')) out.holdS = withDefault(OFFERED_HOLD_S, base.assault?.holdS);
+  if (arrangementFieldApplies(mode, 'juggernautRole')) out.juggernautRole = Object.freeze(['boss', 'hunter'] as const);
+  return Object.freeze(out);
+}
+
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 /** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared (the Horde's `waveRepair`). */
@@ -1816,7 +1913,7 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   if (BASE_RULESETS[mode].provingGround) return input.movingTargets === true ? Object.freeze({ movingTargets: true }) : null;
   let allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies[mode]);
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
-  const waveSize = mode === 'endless_horde' && input.waveSize != null
+  const waveSize = arrangementFieldApplies(mode, 'waveSize') && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
   // TEAM NATIONS: only 'random' is stored; mono is the absent default (old stores, old rooms and the retired
   // alliedNation 'player' all read as MONO)
@@ -1824,13 +1921,13 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
-  const juggernautRole = mode === 'juggernaut' && (input.juggernautRole === 'hunter' || input.juggernautRole === 'boss') ? input.juggernautRole : null;
-  const hasScore = Object.prototype.hasOwnProperty.call(RULESET_SCORE_TARGETS, mode);
-  const scoreTarget = hasScore && Number.isFinite(input.scoreTarget) ? clampInt(input.scoreTarget!,
-    mode === 'capture_the_flag' ? [1, 9] : mode === 'turbo_ball' ? [1, 15] : mode === 'drone' ? [5, 100] : [100, 2000]) : null;
-  const respawnS = hasScore && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, [2, 15]) : null;
-  const waveStep = mode === 'endless_horde' && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, [0, 3]) : null;
-  const holdS = mode === 'frontline_assault' && Number.isFinite(input.holdS) ? clampInt(input.holdS!, [10, 60]) : null;
+  const juggernautRole = arrangementFieldApplies(mode, 'juggernautRole') && (input.juggernautRole === 'hunter' || input.juggernautRole === 'boss') ? input.juggernautRole : null;
+  // (improve-271 plan 027) which fields a mode takes, and their clamps, are the table Deploy's choices read
+  const scoreTarget = arrangementFieldApplies(mode, 'scoreTarget') && Number.isFinite(input.scoreTarget)
+    ? clampInt(input.scoreTarget!, SCORE_TARGET_RANGES[mode] ?? SCORE_TARGET_RANGE) : null;
+  const respawnS = arrangementFieldApplies(mode, 'respawnS') && Number.isFinite(input.respawnS) ? clampInt(input.respawnS!, RESPAWN_RANGE) : null;
+  const waveStep = arrangementFieldApplies(mode, 'waveStep') && Number.isFinite(input.waveStep) ? clampInt(input.waveStep!, WAVE_STEP_RANGE) : null;
+  const holdS = arrangementFieldApplies(mode, 'holdS') && Number.isFinite(input.holdS) ? clampInt(input.holdS!, HOLD_RANGE) : null;
   // the field limit (player included) holds whatever the two sides ask for: the enemy count is kept — it is
   // the number the player typed for a "1 v 20" — and the allied bots yield
   if (!isWaveMode(mode) && (allies != null || enemies != null)) {
@@ -2218,6 +2315,9 @@ interface RulesetCombatState {
   ammo: number[];
   ammoCapacity: number[];
   equipMults?: Partial<Record<string, number>>;
+  /** The reload factor the ruleset folded into this life's equipMults (applyRulesetToCombat), kept so a re-equip folds it
+   *  into its new object (equipmentRules.ts applyEquipmentToCombat). Absent: no fold. */
+  rulesetReload?: number;
   /** Multiplies every hit point lost (damage.ts hull sites and ramming). */
   modeDamageTakenScale?: number;
   /** False keeps modules, crew and fires intact (damage.ts rollModuleDamage / rollCrewHit). */
@@ -2230,8 +2330,10 @@ interface RulesetShellSpec { readonly type?: string }
 /**
  * Stamp a freshly created combat state with the ruleset: hull hit points (times the wave / health scale
  * the mode controller hands to a revive), the damage-taken scale, the reload multiplier folded into the
- * equipment multipliers, and the ammunition channels. Call it after applyEquipmentToCombat so the
- * reload fold survives; spawn and revive both go through it, in the browser sim and the authority.
+ * equipment multipliers, and the ammunition channels. Spawn and revive both go through it, after
+ * applyEquipmentToCombat, in the browser sim and the authority. The reload fold is also recorded on the
+ * state (rulesetReload): a later applyEquipmentToCombat (a live re-equip) replaces equipMults whole and
+ * folds the record into its new object, so the fold survives it (round 3 B7 review, 2026-11-06).
  */
 export function applyRulesetToCombat(
   combat: RulesetCombatState,
@@ -2251,7 +2353,10 @@ export function applyRulesetToCombat(
   if (ruleset.reloadScale !== 1) {
     const mults = combat.equipMults || (combat.equipMults = {});
     const current = mults.reload;
-    mults.reload = (Number.isFinite(current) ? current! : 1) * rulesetReloadMultiplier(ruleset);
+    const fold = rulesetReloadMultiplier(ruleset);
+    mults.reload = (Number.isFinite(current) ? current! : 1) * fold;
+    const recorded = combat.rulesetReload;
+    combat.rulesetReload = (typeof recorded === 'number' && Number.isFinite(recorded) ? recorded : 1) * fold;
   }
   if (ruleset.ammo === 'he_only' && Array.isArray(shells) && combat.ammoCapacity.length) {
     const capacities = combat.ammoCapacity.map((authored, slot) =>

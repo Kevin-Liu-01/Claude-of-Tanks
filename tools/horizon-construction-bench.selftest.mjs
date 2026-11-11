@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import * as THREE from 'three';
@@ -11,7 +12,8 @@ import { parseOptions, trialPlan, describeAttribute, describeTexture, inspectAnd
 } from './horizon-construction-bench.mjs';
 
 // Importing the tool is inert: all tests below use small fixtures, not a real
-// horizon build, native timing trial, worker process, browser or shared lease.
+// horizon build, native timing trial, worker process, browser or shared lease
+// (the signal case runs the real runBench in one Node child on a private lock).
 const argv = ['--baseline-root=/before', '--candidate-root=/after', '--maps=verdant,coastal',
   '--seeds=1337,2049', '--pairs=2', '--out=/evidence/result.json', '--canvas-module=/native/index.js'];
 const options = parseOptions(argv);
@@ -158,6 +160,46 @@ for (const fail of [false, true]) {
   const run = withLease(async () => { events.push(['run']); if (fail) throw new Error('kept error'); return 7; }, lock);
   if (fail) await assert.rejects(run, /kept error/); else assert.equal(await run, 7);
   assert.deepEqual(events, [['acquire', 2700000], ['run'], ['release']], 'One lease, not one per worker');
+}
+{
+  // (round 2 U38) the hold's own stop reaches the run: withLease hands it the hold's signal
+  const lock = { async acquire() {}, refresh() {}, release() {} };
+  assert.equal(await withLease(async signal => signal instanceof AbortSignal && !signal.aborted, lock), true, 'the run gets the hold\'s signal');
+}
+// (round 2 U38 review) one owner of a signal: round one held through withCaptureHold's own signal owner as well, which
+// released and exited at a SIGTERM before runBench's abort finished, leaving the 'wx' report at 0 bytes (a rerun to the
+// same --out then failed EEXIST) and the lock gone while the trial still closed. A child runs the real runBench on a
+// private lock, with a comparison that ends on its abort after its worker closes.
+{
+  const root = fs.mkdtempSync(join(os.tmpdir(), 'cot-horizon-bench-signal-'));
+  try {
+    const out = join(root, 'receipt.json'), lockDir = join(root, 'lock'), closed = join(root, 'closed');
+    const script = `import { writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { runBench } from ${JSON.stringify(new URL('./horizon-construction-bench.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+      const worker = setInterval(() => {}, 1000); // the trial's worker process keeps the parent alive
+      await runBench({ out: ${JSON.stringify(out)} }, { lock, compare: async (options, { signal }) => {
+        console.log('comparing');
+        await new Promise(done => signal.addEventListener('abort', done, { once: true }));
+        await new Promise(done => setTimeout(done, 200)); // the trial's worker closing
+        clearInterval(worker);
+        writeFileSync(${JSON.stringify(closed)}, String(Boolean(lock.held)));
+        return { protocol: 'x', pass: false, interrupted: String(signal.reason) };
+      } });`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+    for (let i = 0; i < 400 && !stdout.includes('comparing'); i++) await new Promise(done => setTimeout(done, 25));
+    assert.ok(fs.existsSync(lockDir), `the child holds its private lock: ${stderr.slice(-400)}`);
+    child.kill('SIGTERM');
+    const code = await new Promise(done => child.once('close', (status, signal) => done(status ?? signal)));
+    assert.equal(code, 143, `runBench's own exit code for SIGTERM: ${stderr.slice(-400)}`);
+    assert.equal(fs.readFileSync(closed, 'utf8'), 'true', 'the lock is still held while the trial closes');
+    assert.deepEqual(JSON.parse(fs.readFileSync(out, 'utf8')), { protocol: 'x', pass: false, interrupted: 'SIGTERM' }, 'the report is written');
+    assert.equal(fs.existsSync(lockDir), false, 'and the lock was released after the run');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 const dir = fs.mkdtempSync(join(os.tmpdir(), 'cot-horizon-bench-unit-'));
 try {

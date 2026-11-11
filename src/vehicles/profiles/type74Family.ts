@@ -96,24 +96,76 @@ function onSlope(side: number, t: number, out = 0): { x: number; y: number; rz: 
   return { x: side * (x0 + (x1 - x0) * t + nx * out), y: y0 + (y1 - y0) * t + ny * out, rz: -side * SLOPE_ANGLE };
 }
 
-function addHullBody(P: TankBuilderPort, proto: boolean): void {
+/** 269 (builder J): the options a vehicle built on this hull passes (none for the Type 74 and the STB-1, whose builds they
+ * leave byte-identical). */
+interface Type74FamilyOptions {
+  /** The hull and running gear alone: no cast turret, mask or gun (a turret of the vehicle's own seats on the ring). */
+  readonly hullOnly?: boolean;
+  /**
+   * The deck-level z of an overhung stern (the Type 87 SPAAG's enlarged hull, docs/references/tanks/type87_aw.md: its
+   * deck and sponsons run 1.03 m behind the sprocket's axis, photo 01): a vertical upper stern from the deck to 1.13 m
+   * at that z, the overhang's underside rising to a knee 0.26 m ahead of it at 0.98 m (photo 01: the lower hull's rear
+   * 0.63 m behind the sprocket, the grass seen under it), then the lower plate raked forward to the belly 0.72 m ahead
+   * of the stern, behind the sprockets' track wraps. The production stern kit (door, rail, shackles, tow eyes, mufflers,
+   * tail lamps, mudflaps) is left to the caller, whose stern it is.
+   */
+  readonly overhungSternZ?: number;
+  /**
+   * The z to which the sponsons' tops run level at the deck, square-ended there (the Type 87's enlarged hull, photos 01,
+   * 04, 06: the side's top edge level to the lamp boxes, the central glacis sloping between the sponsons). The lamp boxes
+   * then stand on the sponsons' fronts at the deck; the fender caps and ribbed mudguards are left to the caller, whose
+   * deep fenders they are.
+   */
+  readonly levelSponsonFrontZ?: number;
+  /** The side of the driver's hatch and periscopes (vehicleSide.ts: +1 the vehicle's left); the Type 74's own at -x. */
+  readonly driverSide?: 1 | -1;
+  /** The tow cable laid across the glacis (the Type 74's NDA photographs; none on the Type 87's). */
+  readonly glacisCable?: boolean;
+  /** The upper track run's dead sag (m): the Type 74's 0.10 rides the road wheels' tops. */
+  readonly trackSag?: number;
+  /** The stowage lockers on the side slopes (the Type 74's; the Type 87's sides carry flush panels, its caller's). */
+  readonly sideLockers?: boolean;
+}
+
+/** The overhung stern's upper face foot, the knee where its underside meets the lower plate, and the lower plate's toe
+ * on the belly (z ahead of the stern). */
+const OVERHUNG_STERN_FOOT_Y = 1.13, OVERHUNG_STERN_KNEE_Z = 0.26, OVERHUNG_STERN_KNEE_Y = 0.98, OVERHUNG_STERN_TOE_Z = 0.72;
+
+/** The hull's stations a vehicle on it seats its own hull kit against (269: the Type 87's stern kit, profiles/type87.ts). */
+export const TYPE74_HULL_STATIONS = Object.freeze({
+  deckY: DECK, bellyY: BELLY, tubHalfW: TUB, sponsonFloorY: FLOOR, sponsonX: SPONSON_X, deckEdgeX: DECK_EDGE, lip: LIP,
+  overhungSternFootY: OVERHUNG_STERN_FOOT_Y, overhungSternKneeZ: OVERHUNG_STERN_KNEE_Z,
+  overhungSternKneeY: OVERHUNG_STERN_KNEE_Y, overhungSternToeZ: OVERHUNG_STERN_TOE_Z,
+});
+
+function addHullBody(P: TankBuilderPort, proto: boolean, overhungSternZ?: number, levelSponsonFrontZ?: number): void {
   const front: [number, number, number][] = [
     [CREST_Z, BELLY, DECK], [LOWER_Z, BELLY, roofY(LOWER_Z)], [NOSE_FOOT_Z, NOSE_FOOT_Y, roofY(NOSE_FOOT_Z)],
     [3.37, 0.945, roofY(3.37)],
   ];
   // the prototype's vertical stern over its raked lower plate (the owner's model); the production tank's upper plate
   // leans forward from a short lower plate (docs/references/tanks/type74.md "Hull")
-  const stern: [number, number, number][] = proto
-    ? [[-3.41, STERN_FOOT_Y, DECK], [-3.00, BELLY, DECK]]
-    : [[-3.40, 0.475, REAR_FOOT_Y], [-3.24, BELLY, 1.13], [-3.12, BELLY, DECK]];
+  // (269) an overhung stern: the vertical upper face, the overhang's underside to the knee, the lower plate raked
+  // forward under it
+  const stern: [number, number, number][] = overhungSternZ !== undefined
+    ? [[overhungSternZ, OVERHUNG_STERN_FOOT_Y, DECK], [overhungSternZ + OVERHUNG_STERN_KNEE_Z, OVERHUNG_STERN_KNEE_Y, DECK],
+      [overhungSternZ + OVERHUNG_STERN_TOE_Z, BELLY, DECK]]
+    : proto
+      ? [[-3.41, STERN_FOOT_Y, DECK], [-3.00, BELLY, DECK]]
+      : [[-3.40, 0.475, REAR_FOOT_Y], [-3.24, BELLY, 1.13], [-3.12, BELLY, DECK]];
   P.add('hull', tubSolid([...stern, ...front]));
-  const sponsonRows: [number, number][] = [
-    ...(proto ? [[-3.41, DECK]] as [number, number][] : [[-3.21, FLOOR + LIP + 0.005], [-3.12, DECK]] as [number, number][]),
-    [CREST_Z, DECK], [SPONSON_FRONT, roofY(SPONSON_FRONT)],
-  ];
+  const sternRows: [number, number][] = overhungSternZ !== undefined
+    ? [[overhungSternZ, DECK]]
+    : proto ? [[-3.41, DECK]] : [[-3.21, FLOOR + LIP + 0.005], [-3.12, DECK]];
+  // (269) level sponsons run at the deck to their square fronts
+  const frontRow: [number, number] = levelSponsonFrontZ !== undefined
+    ? [levelSponsonFrontZ, DECK] : [SPONSON_FRONT, roofY(SPONSON_FRONT)];
+  const sponsonRows: [number, number][] = [...sternRows, [CREST_Z, DECK], frontRow];
   for (const s of [-1, 1] as const) P.add('hull', sponsonSolid(s, sponsonRows));
   // the front fender caps over the idlers, run out from the sponsons' front faces
-  for (const s of [-1, 1]) P.add('hull', KIT.box(SPONSON_X - TUB, LIP, 0.62), s * (SPONSON_X + TUB) / 2, FLOOR + LIP / 2, SPONSON_FRONT + 0.30);
+  if (levelSponsonFrontZ === undefined) {
+    for (const s of [-1, 1]) P.add('hull', KIT.box(SPONSON_X - TUB, LIP, 0.62), s * (SPONSON_X + TUB) / 2, FLOOR + LIP / 2, SPONSON_FRONT + 0.30);
+  }
   // the weld bead along the nose and the crest's seam
   P.add('hullDark', KIT.box(TUB * 2, 0.014, 0.03), 0, roofY(3.352) - 0.001, 3.352);
   P.add('hullDark', KIT.box(TUB * 2 - 0.04, 0.008, 0.02), 0, DECK + 0.002, CREST_Z);
@@ -131,27 +183,38 @@ function addHullBody(P: TankBuilderPort, proto: boolean): void {
 // ---------------------------------------------------------------------------------------------------------------------
 // The production Type 74's hull kit
 // ---------------------------------------------------------------------------------------------------------------------
-function addProductionHullKit(P: TankBuilderPort): void {
+function addProductionHullKit(P: TankBuilderPort, sternKit = true, options: Type74FamilyOptions = {}): void {
   const { box, cylY, cylZ, torus, openRackGrid, liftEye, shovelTool } = KIT;
   // BOW: two clevis tow shackles on the lower plate (its face 59 degrees off vertical)
   for (const s of [-1, 1]) towShackle(P, s * 0.46, 0.70, lowerZ(0.70) + 0.01, 1, LOWER_TILT);
   // the lamp boxes on the front fender caps, their backs on the sponsons' faces: amber marker and blackout lamp
   // outboard, the IR lamp, the sealed-beam headlight inboard (NDA 2024 photographs); the ribbed mudguards under them
+  // (269: level sponsons carry the boxes on their square fronts at the deck, their backs 3 cm into them; the caller hangs
+  // its own fenders)
+  const level = options.levelSponsonFrontZ;
   for (const s of [-1, 1]) {
-    cagedLampBox(P, { x: s * 1.28, y: FLOOR + LIP, z: SPONSON_FRONT + 0.27, w: 0.44, h: 0.18, d: 0.27, side: s,
-      lamps: ['marker', 'ir', 'head'], bars: 4 });
-    ribbedMudguard(P, s * 1.28, FLOOR + 0.004, SPONSON_FRONT + 0.60, 0.50, 0.30, 0.42);
+    if (level === undefined) {
+      cagedLampBox(P, { x: s * 1.28, y: FLOOR + LIP, z: SPONSON_FRONT + 0.27, w: 0.44, h: 0.18, d: 0.27, side: s,
+        lamps: ['marker', 'ir', 'head'], bars: 4 });
+      ribbedMudguard(P, s * 1.28, FLOOR + 0.004, SPONSON_FRONT + 0.60, 0.50, 0.30, 0.42);
+    } else {
+      cagedLampBox(P, { x: s * 1.28, y: DECK - 0.185, z: level + 0.24, w: 0.44, h: 0.18, d: 0.27, side: s,
+        lamps: ['marker', 'ir', 'head'], bars: 4 });
+    }
   }
   // the driver's flush single-piece hatch on the glacis' upper left and the three JM17 periscopes ahead of it
   // (HistoryOfWar), laid on the plate
-  const tilt = Math.atan(GLACIS);
-  P.add('hull', cylY(0.23, 0.23, 0.035, 16), -0.55, roofY(2.15) + 0.012, 2.15, tilt, 0, 0);
-  P.add('hullDark', cylY(0.236, 0.236, 0.012, 16), -0.55, roofY(2.15) + 0.004, 2.15, tilt, 0, 0);
-  P.add('hullDetail', box(0.16, 0.022, 0.035), -0.42, roofY(2.10) + 0.035, 2.10, tilt, 0, 0);
-  for (const x of [-0.73, -0.55, -0.37]) P.add('hull', box(0.15, 0.07, 0.10), x, roofY(2.43) + 0.03, 2.43, tilt, 0, 0);
-  for (const x of [-0.73, -0.55, -0.37]) P.add('hullGlass', box(0.12, 0.03, 0.012), x, roofY(2.43) + 0.045, 2.485, tilt, 0, 0);
+  // (269: the side is an option, -x the Type 74's own)
+  const tilt = Math.atan(GLACIS), ds = options.driverSide ?? -1;
+  P.add('hull', cylY(0.23, 0.23, 0.035, 16), ds * 0.55, roofY(2.15) + 0.012, 2.15, tilt, 0, 0);
+  P.add('hullDark', cylY(0.236, 0.236, 0.012, 16), ds * 0.55, roofY(2.15) + 0.004, 2.15, tilt, 0, 0);
+  P.add('hullDetail', box(0.16, 0.022, 0.035), ds * 0.42, roofY(2.10) + 0.035, 2.10, tilt, 0, 0);
+  for (const x of [0.73, 0.55, 0.37]) P.add('hull', box(0.15, 0.07, 0.10), ds * x, roofY(2.43) + 0.03, 2.43, tilt, 0, 0);
+  for (const x of [0.73, 0.55, 0.37]) P.add('hullGlass', box(0.12, 0.03, 0.012), ds * x, roofY(2.43) + 0.045, 2.485, tilt, 0, 0);
   // the tow cable laid across the glacis ahead of the periscopes (the NDA photographs: the rope runs across the plate)
-  P.hullG.add(FITTINGS.towCable({ mats: P.mats, pts: [[-0.88, roofY(2.80) + 0.02, 2.80], [0, roofY(2.70) + 0.02, 2.70], [0.88, roofY(2.80) + 0.02, 2.80]], seed: 11 }));
+  if (options.glacisCable ?? true) {
+    P.hullG.add(FITTINGS.towCable({ mats: P.mats, pts: [[-0.88, roofY(2.80) + 0.02, 2.80], [0, roofY(2.70) + 0.02, 2.70], [0.88, roofY(2.80) + 0.02, 2.80]], seed: 11 }));
+  }
   P.decal('hull', 'number', '74-4302', 0.22, [-0.55, roofY(3.06) + 0.006, 3.06], 0, -tilt);
   // ENGINE DECK: two radiator grilles in raised frames over dark wells behind the turret's sweep, a hinged access plate
   // between them, two filler caps; aft of them the cooling-air louvre banks
@@ -168,43 +231,48 @@ function addProductionHullKit(P: TankBuilderPort): void {
   }
   P.add('hull', box(0.24, 0.022, 0.58), 0, DECK + 0.010, -1.95);
   P.add('hullDark', box(0.24, 0.016, 0.03), 0, DECK + 0.007, -1.645);
-  // STERN: the sloped upper plate's large bolted access door, its handle, the pipe rail and clamps, two low tow shackles
-  // and the big tow eyes at its top corners
-  const rearZ = (y: number): number => -3.40 + ((y - REAR_FOOT_Y) / (DECK - REAR_FOOT_Y)) * 0.28;
-  const lean = Math.atan2(0.28, DECK - REAR_FOOT_Y);
-  const doorY = 1.04;
-  P.add('hull', box(0.94, 0.59, 0.024), 0, doorY, rearZ(doorY) - 0.012, lean, 0, 0);
-  P.add('hullDark', box(0.97, 0.62, 0.012), 0, doorY, rearZ(doorY) - 0.004, lean, 0, 0);
-  for (let k = 0; k < 18; k++) {
-    const t = k / 18, along = t < 0.5 ? (t / 0.5) * 2 - 1 : ((t - 0.5) / 0.5) * 2 - 1, top = t < 0.5;
-    const by = doorY + (top ? 0.265 : -0.265);
-    P.add('hullDetail', cylZ(0.012, 0.016, 8), along * 0.43, by, rearZ(by) - 0.028, lean, 0, 0);
-  }
-  P.add('hullDetail', box(0.16, 0.025, 0.035), 0.30, 0.90, rearZ(0.90) - 0.03, lean, 0, 0);
-  for (const x of [-0.82, 0, 0.82]) P.add('hullDetail', box(0.05, 0.06, 0.07), x, 1.42, rearZ(1.42) - 0.03, lean, 0, 0);
-  P.add('hullDetail', beamBetween([-0.86, 1.42, rearZ(1.42) - 0.06], [0.86, 1.42, rearZ(1.42) - 0.06], 0.02, 12));
-  for (const s of [-1, 1]) {
-    towShackle(P, s * 0.55, 0.68, rearZ(0.68), -1);
-    uTowEye(P, s * 0.86, DECK, -3.06);
-  }
-  // the exhaust: a long tubular muffler cover on each rear side slope, its outlet turned rearward and outward
-  // (HistoryOfWar; the Katsura photographs), a tail lamp on the sponson's rear corner; the rear mudflaps behind the
-  // sprockets
-  for (const s of [-1, 1]) {
-    const m = onSlope(s, 0.55);
-    mufflerCover(P, m.x + s * 0.02, m.y - 0.02, -1.20, -3.05, 0.09, s);
-    tailLamp(P, s * 1.47, FLOOR + LIP + 0.01, -3.215);
-    MUDGUARDS.add(P, { hang: true, label: `type74-mudflap-${s < 0 ? 'left' : 'right'}-rear`,
-      x: s * 1.2835, y: FLOOR - 0.10, z: -3.22, thickness: 0.035, length: 0.52, height: 0.18,
-      material: 'rubber', rotation: [0, Math.PI / 2, 0], crown: 0.007, frontCut: 0.018, rearCut: 0.013 });
+  // (269: an overhung stern carries its own stern kit, Type74FamilyOptions.overhungSternZ)
+  if (sternKit) {
+    // STERN: the sloped upper plate's large bolted access door, its handle, the pipe rail and clamps, two low tow shackles
+    // and the big tow eyes at its top corners
+    const rearZ = (y: number): number => -3.40 + ((y - REAR_FOOT_Y) / (DECK - REAR_FOOT_Y)) * 0.28;
+    const lean = Math.atan2(0.28, DECK - REAR_FOOT_Y);
+    const doorY = 1.04;
+    P.add('hull', box(0.94, 0.59, 0.024), 0, doorY, rearZ(doorY) - 0.012, lean, 0, 0);
+    P.add('hullDark', box(0.97, 0.62, 0.012), 0, doorY, rearZ(doorY) - 0.004, lean, 0, 0);
+    for (let k = 0; k < 18; k++) {
+      const t = k / 18, along = t < 0.5 ? (t / 0.5) * 2 - 1 : ((t - 0.5) / 0.5) * 2 - 1, top = t < 0.5;
+      const by = doorY + (top ? 0.265 : -0.265);
+      P.add('hullDetail', cylZ(0.012, 0.016, 8), along * 0.43, by, rearZ(by) - 0.028, lean, 0, 0);
+    }
+    P.add('hullDetail', box(0.16, 0.025, 0.035), 0.30, 0.90, rearZ(0.90) - 0.03, lean, 0, 0);
+    for (const x of [-0.82, 0, 0.82]) P.add('hullDetail', box(0.05, 0.06, 0.07), x, 1.42, rearZ(1.42) - 0.03, lean, 0, 0);
+    P.add('hullDetail', beamBetween([-0.86, 1.42, rearZ(1.42) - 0.06], [0.86, 1.42, rearZ(1.42) - 0.06], 0.02, 12));
+    for (const s of [-1, 1]) {
+      towShackle(P, s * 0.55, 0.68, rearZ(0.68), -1);
+      uTowEye(P, s * 0.86, DECK, -3.06);
+    }
+    // the exhaust: a long tubular muffler cover on each rear side slope, its outlet turned rearward and outward
+    // (HistoryOfWar; the Katsura photographs), a tail lamp on the sponson's rear corner; the rear mudflaps behind the
+    // sprockets
+    for (const s of [-1, 1]) {
+      const m = onSlope(s, 0.55);
+      mufflerCover(P, m.x + s * 0.02, m.y - 0.02, -1.20, -3.05, 0.09, s);
+      tailLamp(P, s * 1.47, FLOOR + LIP + 0.01, -3.215);
+      MUDGUARDS.add(P, { hang: true, label: `type74-mudflap-${s < 0 ? 'left' : 'right'}-rear`,
+        x: s * 1.2835, y: FLOOR - 0.10, z: -3.22, thickness: 0.035, length: 0.52, height: 0.18,
+        material: 'rubber', rotation: [0, Math.PI / 2, 0], crown: 0.007, frontCut: 0.018, rearCut: 0.013 });
+    }
   }
   // stowage lockers on the side slopes, low on them: their tops stay under the deck line, where the mask and the bustle
   // swing over them, and their outer edges inside the width anchor
-  for (const s of [-1, 1]) for (const [z, len] of [[0.85, 0.80], [-0.30, 0.90]] as const) {
-    const p = onSlope(s, 0.45, 0.05);
-    P.addEquipment('hull', box(0.16, 0.10, len), p.x, p.y, z, 0, 0, p.rz);
-    const lid = onSlope(s, 0.45, 0.102);
-    P.add('hullDark', box(0.17, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
+  if (options.sideLockers ?? true) {
+    for (const s of [-1, 1]) for (const [z, len] of [[0.85, 0.80], [-0.30, 0.90]] as const) {
+      const p = onSlope(s, 0.45, 0.05);
+      P.addEquipment('hull', box(0.16, 0.10, len), p.x, p.y, z, 0, 0, p.rz);
+      const lid = onSlope(s, 0.45, 0.102);
+      P.add('hullDark', box(0.17, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
+    }
   }
   // the pioneer tools on the rear deck strip, outside the bustle's sweep; the rear deck's lifting eyes
   shovelTool(P, -1.12, DECK + 0.015, -2.40);
@@ -315,7 +383,7 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
 // ---------------------------------------------------------------------------------------------------------------------
 // The running gear (both): five road wheels on the model's pitch, the raised idler and sprocket
 // ---------------------------------------------------------------------------------------------------------------------
-function addRunningGear(P: TankBuilderPort): void {
+function addRunningGear(P: TankBuilderPort, deadSag = 0.10): void {
   // §D WIDTH ANCHOR: the kit's sprocket tooth ring spans the band edges +0.031; at xc 1.2835 it seats exactly at the
   // published ±1.59, so authored = world, scale 1.0. The dead track rides the wheel tops (no return rollers).
   KIT.buildRunningGear(P, {
@@ -323,7 +391,7 @@ function addRunningGear(P: TankBuilderPort): void {
     style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.49, xc: 1.2835,
     wheelZs: [2.00, 0.99, 0.00, -1.01, -2.02],
     sprocket: { z: -2.95, y: 0.79, r: 0.29 }, idler: { z: 3.00, y: 0.75, r: 0.32 },
-    rollers: [], trackW: 0.55, topY: 1.13, botY: 0.055, deadSag: 0.10,
+    rollers: [], trackW: 0.55, topY: 1.13, botY: 0.055, deadSag,
     paintedEnds: true, coveredTop: false, arms: true,
   });
 }
@@ -628,12 +696,13 @@ function addPrototypeTurretKit(P: TankBuilderPort, at: ShellProbe): void {
 }
 
 /** The Type 74 family on the owner's model: the production Type 74 or the STB-1 prototype. */
-export function buildType74Family(P: TankBuilderPort, variant: Type74Variant): void {
+export function buildType74Family(P: TankBuilderPort, variant: Type74Variant, options: Type74FamilyOptions = {}): void {
   const proto = variant === 'prototype';
   P.turretG.position.set(...TURRET_PIVOT);
-  addHullBody(P, proto);
-  if (proto) addPrototypeHullKit(P); else addProductionHullKit(P);
-  addRunningGear(P);
+  addHullBody(P, proto, options.overhungSternZ, options.levelSponsonFrontZ);
+  if (proto) addPrototypeHullKit(P); else addProductionHullKit(P, options.overhungSternZ === undefined, options);
+  addRunningGear(P, options.trackSag);
+  if (options.hullOnly) return;
   const shell = castTurretShell(P, variant);
   const at = shellProbe(shell);
   if (proto) addPrototypeTurretKit(P, at); else addProductionTurretKit(P, at);

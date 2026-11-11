@@ -39,9 +39,9 @@ const HEAD_REACH_M = 0.15;
 // --- shell ---------------------------------------------------------------------------------------------------------
 // "Inside" is the armour definition the combat seats are held to (tools/crew-seat-fit.mjs crewShell): armour at every
 // turret yaw, the turret ring's opening included. The search below is the census's own.
-function makeShell(armor) {
-  const shells = { hull: crewShell(armor, 'hull'), turret: crewShell(armor, 'turret') };
-  const armour = { hull: crewArmour(armor, 'hull'), turret: crewArmour(armor, 'turret') };
+function makeShell(armor, crew = null) {
+  const shells = { hull: crewShell(armor, 'hull', crew), turret: crewShell(armor, 'turret', crew) };
+  const armour = { hull: crewArmour(armor, 'hull', crew), turret: crewArmour(armor, 'turret', crew) };
   const empty = !(armor.collisionShells?.hull || []).length && !(armor.collisionShells?.turret || []).length;
   return {
     inside: (p, frame, tol) => shells[frame].inside(p, -tol),
@@ -213,9 +213,11 @@ const t0 = performance.now();
 for (const id of ids) {
   const armor = armorOf(id);
   if (!armor) continue;
-  const shell = makeShell(armor);
+  const closed = makeShell(armor);
   for (const box of armor.crew || []) {
     const frame = box.turretLocal ? 'turret' : 'hull';
+    // (269) an open mount's station is judged in its own cylinder (crew-seat-fit.mjs armor.openStations)
+    const shell = (armor.openStations || []).some((entry) => entry.crew === box.crew) ? makeShell(armor, box.crew) : closed;
     const samples = boxSamples(box);
     let out = 0, outM = 0;
     for (const p of samples) {

@@ -159,6 +159,20 @@ interface ArmorModuleVolume extends ArmorVolumeBase {
   gunFollow?: boolean;
 }
 
+/**
+ * (269) An open mount's crew station (the M163 VADS's gunner in his open-topped column): the upright cylinder, in the
+ * station's frame, his body rides in over the armour, and his footrest (floorY: nothing under it is his station). The
+ * crew seats (tools/crew-seat-fit.mjs) seat him in it and hold his hit shapes to it as well as to the armour.
+ */
+interface ArmorOpenStation {
+  crew: string;
+  /** the cylinder's axis, [x, z] */
+  center: readonly [number, number];
+  radius: number;
+  floorY: number;
+  topY: number;
+}
+
 interface ArmorCrewVolume extends ArmorVolumeBase {
   crew: string;
   /** A seated body (235 crew seats): where HE splash strikes it (head, torso, lap), however its hit shapes are split. */
@@ -189,6 +203,7 @@ export interface ArmorModel {
   trackShapes?: TrackPrismShape[];
   modules?: ArmorModuleVolume[];
   crew?: ArmorCrewVolume[];
+  openStations?: readonly ArmorOpenStation[];
   gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
   boundingRadiusM?: number;
   turretless?: boolean;

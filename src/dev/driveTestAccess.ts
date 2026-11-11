@@ -2,6 +2,7 @@ import type {
   DriveTestController,
   DriveTestControllerOptions,
 } from './driveTestController.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface DriveTestControllerModule {
   createDriveTestController(options: DriveTestControllerOptions): DriveTestController;
@@ -33,21 +34,10 @@ export function createDriveTestAccess({
   }
 
   let runtime: DriveTestController | null = null;
-  let pending: Promise<DriveTestController> | null = null;
-  const preload = (): Promise<DriveTestController | null> => {
-    if (!enabled) return Promise.resolve(null);
-    if (runtime) return Promise.resolve(runtime);
-    if (pending) return pending;
-    const request = load().then((module) => {
-      runtime = module.createDriveTestController(options());
-      return runtime;
-    });
-    pending = request;
-    request.catch(() => {
-      if (pending === request) pending = null;
-    });
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => load().then((module) => (runtime = module.createDriveTestController(options()))));
+  const preload = (): Promise<DriveTestController | null> => (enabled ? chunk.load() : Promise.resolve(null));
 
   return {
     preload,

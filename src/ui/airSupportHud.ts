@@ -5,14 +5,14 @@
  * artillery annd recon with the 3 airstrikes").
  *
  * - At rest, one slot (owner 2026-11-06, of a row of seven down the left: "theres gotta be a better way than presenting
- *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count and their fill toward the
- *   cap, at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
+ *   that as an obtrusive line"): Support, the binoculars (X) with the crew's points as its count (no fill meter: gauntlet
+ *   g9 read it as an outline edge), at the end of the battle tray on a desktop and beside the vehicle's action row on a phone.
  * - The call-ins come up only with the binoculars: the five (1-5: recon, barrage, strafing run, precision bomb, AC-130)
  *   in a row centred over the tray, each a slot of the tray's own kind (the ammunition and consumable slots: the key top
  *   left, the price top right, the sprite glyph, the short name along the floor, the consumables' conic cooldown shade,
  *   the tray's one selected state); its hover tip names it in full.
  * - The strike view: the binoculars come up over the scope's camera (game/strikeViewState.ts; the camera rig enters the
- *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its price and warning, the range and
+ *   scope), a two-lens vignette, one readout plate (the call-in's glyph and name, its warning, the range and
  *   bearing to the reticle, its state as a chip), the keys as key caps, and on a phone the kit's CALL and close buttons.
  *   The reticle itself is on the ground (engine/strikeMarks.ts).
  * - The warning: a strike whose footprint covers the crew raises an INCOMING plate (the HUD alert's form: the alert
@@ -41,11 +41,11 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent
   const element = document.createElement(tag); element.className = cls; parent.append(element); return element;
 }
 
-/** A readout's figure and its unit (the unit in the label ink). */
-function stat(parent: HTMLElement, unit: string): HTMLElement {
+/** A readout's figure, its unit with it, and its label (in the label ink). */
+function stat(parent: HTMLElement, label: string): HTMLElement {
   const box = node('span', 'binocular-stat', parent);
   const value = node('b', 'num', box);
-  if (unit) node('small', '', box).textContent = unit;
+  if (label) node('small', '', box).textContent = label;
   return value;
 }
 
@@ -74,8 +74,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const points = markDatum(node('span', 'strike-points num', view), 'support-points');
   points.setAttribute('role', 'status');
   node('span', 'label', view).textContent = t('airSupport.short.view');
-  const pointsFill = node('i', 'strike-points-fill', view);
-  pointsFill.setAttribute('aria-hidden', 'true');
   view.addEventListener('click', () => bus.emit('ui:strikeViewToggle', {}));
   let seat: 'tray' | 'own' = 'own';
   /** The rest slot's seat: the tray's end on a desktop, its own place on a touch layout (or before the tray exists). */
@@ -127,10 +125,9 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const kindGlyph = node('span', 'glyph', readout);
   const kindName = node('strong', 'binocular-kind', readout);
   const facts = node('span', 'binocular-group binocular-facts', readout);
-  const price = stat(facts, t('airSupport.points'));
-  const warn = stat(facts, `s ${t('airSupport.warning')}`);
+  const warn = stat(facts, t('airSupport.warning'));
   const where = node('span', 'binocular-group', readout);
-  const range = stat(where, 'm');
+  const range = stat(where, '');
   const bearing = stat(where, '');
   const state = node('span', 'binocular-state', readout);
   const hint = node('div', 'binocular-hint', binoculars);
@@ -138,10 +135,12 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     const item = node('span', '', hint);
     const cap = node('kbd', 'cot-c-kbd', item);
     cap.textContent = key;
+    // (a zh cap, 左键, is set in the UI face, as the controls card's: settings.ts CJK_CAP)
+    cap.classList.toggle('cjk', /[\u3400-\u9fff]/.test(key));
     node('span', '', item).textContent = label;
     return cap;
   };
-  hintKey(t('airSupport.key.fire'), t('airSupport.hint.call'));
+  hintKey(t('input.mouse.left'), t('airSupport.hint.call'));
   hintKey('1–5', t('airSupport.hint.pick'));
   const lowerKey = hintKey('', t('airSupport.hint.lower'));
   const call = node('button', 'binocular-call cot-c-btn cot-c-btn--primary cot-c-btn--56', binoculars);
@@ -208,7 +207,6 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
 
     const have = air.points ?? 0;
     setText(points, String(have));
-    setStyle(view, '--strike-fill', String(Math.min(1, have / R.points.cap)));
     setText(viewKey, keyX);
     setData(view, 'selected', strikeView.open ? 'true' : 'false');
     setAttr(view, 'aria-pressed', strikeView.open ? 'true' : 'false');
@@ -218,7 +216,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       setData(slot.button, 'selected', strikeView.open && strikeView.kind === slot.kind ? 'true' : 'false');
       const cool = air.cooldowns?.[slot.kind] ?? 0;
       setStyle(slot.button, '--strike-cool', `${Math.round(Math.min(1, cool / R[slot.kind].cooldownS) * 100)}%`);
-      setText(slot.left, cool > 0 ? String(Math.ceil(cool)) : '');
+      // (gauntlet g10: a duration carries its unit, "35 s", as the readout's and the warning's do)
+      setText(slot.left, cool > 0 ? `${Math.ceil(cool)} s` : '');
       setAttr(slot.button, 'aria-label', `${t(`airSupport.kind.${slot.kind}`)}, ${R[slot.kind].cost} ${t('airSupport.points')}`
         + (slotWhy ? `, ${t(`airSupport.state.${slotWhy}`)}` : ''));
     }
@@ -230,9 +229,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       const kind = strikeView.kind;
       if (glyphKind !== kind) { kindGlyph.innerHTML = icon(STRIKE_ICON[kind], { size: 20 }); glyphKind = kind; }
       setText(kindName, t(`airSupport.kind.${kind}`));
-      setText(price, String(R[kind].cost));
-      setText(warn, String(R[kind].warningS));
-      setText(range, String(Math.round(rangeM)));
+      setText(warn, `${R[kind].warningS} s`);
+      setText(range, `${Math.round(rangeM)} m`);
       setText(bearing, `${String(Math.round(((strikeView.heading * 180 / Math.PI) + 360) % 360)).padStart(3, '0')}°`);
       const locked = timeS < strikeView.lockedUntilS;
       setText(state, locked ? t('airSupport.state.called') : why ? t(`airSupport.state.${why}`) : t('airSupport.state.ready'));

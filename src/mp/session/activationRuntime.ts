@@ -1,4 +1,7 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../../world/battleWorldReset.ts';
+import { endCouchSession, type CouchSessionHost } from '../../game/couchSeats.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
@@ -12,9 +15,9 @@ interface NetworkBattleEntity {
   state?: { yaw?: number } | null;
 }
 
-interface NetworkBattleGame {
+interface NetworkBattleGame extends CouchSessionHost<unknown> {
   mapId?: string;
-  phase?: string;
+  phase?: AppPhase;
   player?: NetworkBattleEntity | null;
 }
 
@@ -61,9 +64,7 @@ interface NetworkBridgePort {
   setPerspective(entityId: string | null | undefined): void;
 }
 
-interface WorldPort {
-  resetDestructibles?(): void;
-}
+type WorldPort = BattleResetWorld;
 
 interface ActivationPresentationPorts {
   setShotMode(active: boolean): void;
@@ -79,7 +80,6 @@ interface ActivationPresentationPorts {
   resetBattleResult(): void;
   setGarageSpots(active: boolean): void;
   setGarageSunTrim(active: boolean): void;
-  emitPhaseChange(phase: 'battle'): void;
   emitConsumableReset(): void;
   stopShowroom(): void;
 }
@@ -135,7 +135,7 @@ export function createActivationRuntime({
     presentation?.getWorld, presentation?.setCamoBiome,
     presentation?.hideGarage, presentation?.hideEndOverlay,
     presentation?.resetBattleResult, presentation?.setGarageSpots,
-    presentation?.setGarageSunTrim, presentation?.emitPhaseChange,
+    presentation?.setGarageSunTrim,
     presentation?.emitConsumableReset, presentation?.stopShowroom];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('network battle activation requires every presentation port');
@@ -146,6 +146,13 @@ export function createActivationRuntime({
       if (!viewerId || !own?.specId || !mapId || !bridge || !fx) {
         throw new TypeError('network battle activation requires a complete request');
       }
+      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before any presentation moves. (round
+      // 2) The round decided its hand-over before its cover (browserComposition: the room's takeSceneForRound, main.ts),
+      // so this is the last guard, for a Studio entered under the round's cover by a tool's hook (Window.__STUDIO.load).
+      assertAppPhaseTransition(game as { phase: AppPhase }, 'battle', 'network-activation');
+      // (round 8 Y1 s2-01) a room's round is no couch battle: a couch session still open (a round taken straight from a
+      // couch battle's result screen) ends here, so the keyboard drives this round's own vehicle (game/couchSeats.ts)
+      endCouchSession(game);
       const hud = getHud();
       const damagePanel = getDamagePanel();
       if (typeof hud?.shotInfo?.setPlayer !== 'function'
@@ -166,7 +173,8 @@ export function createActivationRuntime({
       }
       driveTest.resetAim();
       presentation.setWorldDormant(false);
-      presentation.getWorld()?.resetDestructibles?.();
+      // (round 3 A7/M4) the battle edge's reset: the falls and sweeps the battle's, the battlefield intact
+      resetWorldForBattle(presentation.getWorld());
       game.mapId = mapId;
       presentation.setCamoBiome(mapId);
       hud.shotInfo.setPlayer(viewerId);
@@ -186,10 +194,15 @@ export function createActivationRuntime({
       presentation.hideEndOverlay();
       presentation.resetBattleResult();
       hud.setMode('battle');
-      game.phase = 'battle';
-      presentation.setGarageSpots(false);
-      presentation.setGarageSunTrim(false);
-      presentation.emitPhaseChange('battle');
+      // (2026-11-02 audit F1) the one phase writer (game/appLifecycle.ts): the edge check, the write and the
+      // announcement; the Garage lights go out between the write and the announcement, as before
+      transitionAppPhase(game as { phase: AppPhase }, 'battle', {
+        reason: 'network-activation',
+        beforeAnnounce: () => {
+          presentation.setGarageSpots(false);
+          presentation.setGarageSunTrim(false);
+        },
+      });
       playerActions.resetConsumables();
       presentation.emitConsumableReset();
       rig.release();

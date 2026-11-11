@@ -7394,7 +7394,7 @@
       }
     ]
   },
-  "geometryHash": "dc68fda0",
+  "geometryHash": "307dee1d",
   "metadataHash": "176fb89f",
   "presentationAnchor": {
     "xM": 0.0074,
@@ -7460,7 +7460,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10730,
-        "sha256": "feed699e9b58ebed101325466c141f228fff81342834368dba1a96a8f7dcbab1"
+        "sha256": "feed699e9b58ebed101325466c141f228fff81342834368dba1a96a8f7dcbab1",
+        "frame": [24,117,225,250]
       }
     },
     "top": {

@@ -12,7 +12,7 @@ import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.t
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone, type HeightField, type TerrainPlacementSampler } from './terrain.ts';
-import { setToppleAxis, settledToppleAngle } from './topple.ts';
+import { createFelledTrees, type FallDriver } from './felledTrees.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
@@ -66,6 +66,7 @@ import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from '
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { civicLawnTest, civicPavedRooms, civicPavementTest, civicTreeStations } from './civic/plans/index.ts';
+import { pavedGroundTest } from './maps/builtEnvironmentTable.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
 import { createGrassCarpetWork, advanceGrassCarpetWork,
@@ -502,8 +503,6 @@ export function outlandAdoptable(x: number, z: number, reachM = OUTLAND_ADOPT_M)
 
 export interface TreeObstacle extends CollisionRecord {
   treeIdx: number;
-  _pressS?: number;
-  _pressT?: number;
 }
 
 interface ConcealmentDisc extends VegetationDisc {
@@ -555,6 +554,8 @@ export interface VegetationRuntime {
   resetToppled(): void;
   /** Step only the felled trunks' falls by `dt` (update runs them; the Scene Studio runs them on its timeline). */
   advanceToppled(dt: number): void;
+  /** (round 2 U28) Who advances the falls: this update ('frame') or the Studio's timeline (advanceToppled). */
+  setFallDriver(driver: FallDriver): void;
   _clusters: VegetationDisc[];
   /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
   _standOutline(index: number, x: number, z: number): number;
@@ -4162,39 +4163,50 @@ export async function createVegetationAsync(
   const stageTimings: Record<string, number> = {};
   const sliceTimings: Array<{ stage: string; ms: number }> = [];
   let stepStarted = performance.now();
-  let r = g.next();
-  const recordStep = (result: IteratorResult<BuildYield, VegetationRuntime>): void => {
-    const key = result.done ? 'finalize' : (result.value.stage || 'other');
-    const ms = performance.now() - stepStarted;
-    stageTimings[key] = (stageTimings[key] || 0) + ms;
-    sliceTimings.push({ stage: key, ms });
-  };
-  recordStep(r);
-  let i = 0;
-  // Fine builds include per-species texture and geometry boundaries. The
-  // exact count varies with the biome, so this is an upper-bound progress
-  // denominator; createMapAsync advances to the next canonical stage when
-  // the generator completes.
-  const total = fineSlices ? 160 : 16;
-  while (!r.done) {
-    const admissionStep = r.value?.stage === 'placementTerrain';
-    const shouldTick = admissionStep || fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
-    // Admission preparation yields even in coarse builds; its extra sampler
-    // rows must not consume the planting progress denominator.
-    if (tick && shouldTick) await tick(admissionStep ? i : ++i, total);
-    stepStarted = performance.now();
-    r = g.next();
+  // (2026-11-02 audit R1) a tick that throws (a cancelled build) closes the generator, as the terrain's and the props'
+  // builds close theirs: its own finally blocks run (the placing belts'), and nothing is left suspended
+  let completed = false;
+  try {
+    let r = g.next();
+    const recordStep = (result: IteratorResult<BuildYield, VegetationRuntime>): void => {
+      const key = result.done ? 'finalize' : (result.value.stage || 'other');
+      const ms = performance.now() - stepStarted;
+      stageTimings[key] = (stageTimings[key] || 0) + ms;
+      sliceTimings.push({ stage: key, ms });
+    };
     recordStep(r);
+    let i = 0;
+    // Fine builds include per-species texture and geometry boundaries. The
+    // exact count varies with the biome, so this is an upper-bound progress
+    // denominator; createMapAsync advances to the next canonical stage when
+    // the generator completes.
+    const total = fineSlices ? 160 : 16;
+    while (!r.done) {
+      const admissionStep = r.value?.stage === 'placementTerrain';
+      const shouldTick = admissionStep || fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
+      // Admission preparation yields even in coarse builds; its extra sampler
+      // rows must not consume the planting progress denominator.
+      if (tick && shouldTick) await tick(admissionStep ? i : ++i, total);
+      stepStarted = performance.now();
+      r = g.next();
+      recordStep(r);
+    }
+    const slowest = sliceTimings.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+    r.value._buildDetail = {
+      ...Object.fromEntries(
+        Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)])),
+      sliceCount: sliceTimings.length,
+      maxSliceMs: slowest[0]?.ms || 0,
+      slowest,
+    };
+    completed = true;
+    return r.value;
+  } finally {
+    if (!completed) {
+      const pending: Iterator<BuildYield, VegetationRuntime, void> = g;
+      try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
+    }
   }
-  const slowest = sliceTimings.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
-  r.value._buildDetail = {
-    ...Object.fromEntries(
-      Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)])),
-    sliceCount: sliceTimings.length,
-    maxSliceMs: slowest[0]?.ms || 0,
-    slowest,
-  };
-  return r.value;
 }
 
 function* vegetationBuildSteps(
@@ -4534,6 +4546,8 @@ function* vegetationBuildSteps(
   const yardWeedsAt = heightField._yardWeedsAt ?? null;
   const civicLawnAt = civicLawnTest((cfg as { id?: string } | null)?.id);
   const civicRooms = civicPavedRooms((cfg as { id?: string } | null)?.id);
+  // (built-env-270b) and the row's open built ground (a place, a forecourt, an approach, a quay): no tuft through it
+  const pavedGroundAt = pavedGroundTest((cfg as { id?: string } | null)?.id, 1);
   // (228 r3) and the kerbed streets' pavement bands: no tuft through the flags
   const civicPave = civicPavementTest((cfg as { id?: string } | null)?.id, heightField._layout?.roads ?? []);
   function terrainDryness(
@@ -4547,6 +4561,7 @@ function* vegetationBuildSteps(
     // (and the square's paving round it, out to the houses, grows none)
     for (const r of civicRooms) if (x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1) return -1;
     if (civicPave !== null && civicPave(x, z)) return -1;
+    if (pavedGroundAt !== null && pavedGroundAt(x, z)) return -1;
     if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
@@ -9271,84 +9286,29 @@ function* vegetationBuildSteps(
   // (props.ts crushProp pattern) and writes it through the existing near/far
   // slot plumbing (writeTreeSlot handles the ranged GPU uploads), so the
   // felled trunk persists as set dressing exactly where it dropped.
-  interface TreeCrushAnimation {
-    t: TreeRecord;
-    base: THREE.Matrix4;
-    x: number;
-    y: number;
-    z: number;
-    ax: number;
-    az: number;
-    u: number;
-    maxAng: number;
-  }
-  const treeCrushAnims: TreeCrushAnimation[] = [];
-  const _tcq = new THREE.Quaternion();
-  const _tcax = new THREE.Vector3();
-  const _tcm1 = new THREE.Matrix4();
-  const _tcm2 = new THREE.Matrix4();
+  // (2026-11-02 audit M9) the felled-tree transition (felledTrees.ts): the tree, its trunk's records and its canopy's
+  // concealment discs fall and stand together; its upright pose is its placement before any crater lift; one declared
+  // driver advances the falls (this update, or the Studio's timeline while it has the world: setFallDriver)
+  const felledTrees = createFelledTrees<TreeRecord>({
+    trees, records: treeObstacles, concealers, heightField,
+    write: (t) => {
+      if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
+      if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
+    },
+    poseChanged: () => { nearTierHeightVersion++; },
+    standingChanged: () => { nearCullStale = true; },
+  });
   // `settled` (multiplayer world state, 2026-10-01): a trunk the authority had already felled before this viewer saw it
   // (a late joiner, a reconnect, the persistent destroyed list) starts at the end of its fall — the next update writes
   // the final pose once and retires the animation — so nothing falls at the wrong time and nothing sounds.
   function crushTree(ob: TreeObstacle, dx: number, dz: number, settled = false): boolean {
-    const t = trees[ob.treeIdx];
-    if (!t || t.crushed) return false;
-    if (!t.uprightMat) t.uprightMat = t.mat.clone();
-    t.crushed = true;
-    nearCullStale = true; // trees perf: a falling tree draws from the next update wherever it stood (nearTreeInVolume)
-    ob.crushed = true;
-    ob.dead = true;
-    setToppleAxis(_tcax, dx, dz);
-    treeCrushAnims.push({
-      t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
-      ax: _tcax.x, az: _tcax.z, u: settled ? 1.1 : 0,
-      maxAng: settledToppleAngle(heightField, t.x, ob.min[1], t.z, dx, dz,
-        t.fallH!, t.fallR!),
-    });
-    return true;
+    return felledTrees.fell(ob, dx, dz, settled);
   }
   function resetToppled(): void {
-    nearTierHeightVersion++;
-    treeCrushAnims.length = 0;
-    nearCullStale = true; // trees perf: the righted trees are culled again from the next update
-    for (const ob of treeObstacles) {
-      ob.crushed = false;
-      ob.dead = false;
-      ob._pressS = 0;
-      ob._pressT = -1e9;
-      const t = trees[ob.treeIdx];
-      if (!t || !t.crushed || !t.uprightMat) continue;
-      t.crushed = false;
-      t.mat.copy(t.uprightMat);
-      if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
-      if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
-    }
-  }
-  function updateTreeCrush(dt: number): void {
-    nearTierHeightVersion++; // a falling trunk's matrix is rewritten each tick
-    for (let k = treeCrushAnims.length - 1; k >= 0; k--) {
-      const a = treeCrushAnims[k];
-      a.u = Math.min(a.u + dt / 1.15, 1.1);
-      const e = Math.min(a.u / 0.82, 1);
-      // Terrain-seated fall along the ram direction + a small settle bounce.
-      let ang = a.maxAng * e * e * (3 - 2 * e);
-      if (a.u > 0.82) {
-        ang = a.maxAng - 0.035 * Math.sin((a.u - 0.82) * 17) * Math.exp(-(a.u - 0.82) * 5.5);
-      }
-      _tcax.set(a.ax, 0, a.az).normalize();
-      _tcq.setFromAxisAngle(_tcax, ang);
-      a.t.mat.makeTranslation(a.x, a.y, a.z)
-        .multiply(_tcm1.makeRotationFromQuaternion(_tcq))
-        .multiply(_tcm2.makeTranslation(-a.x, -a.y, -a.z))
-        .multiply(a.base);
-      if (a.t.slot >= 0) {
-        writeTreeSlot(nearMeshes[a.t.species][a.t.variant], a.t.slot, a.t, a.t.fade);
-      }
-      if (a.t.fslot >= 0) {
-        writeTreeSlot(farMeshes[a.t.species][a.t.fv], a.t.fslot, a.t, 0);
-      }
-      if (a.u >= 1.1) treeCrushAnims.splice(k, 1); // final pose persists in t.mat
-    }
+    // (2026-11-02 audit M6; round 2 U13) a hull's press on a trunk is its battle's own ledger (sim/crushPress.ts), cleared
+    // at each battle start (game/state.ts resetBattleSession) and made per match by the authority: no press state lives
+    // on the trunk records, so the reset is the felled trees' alone
+    felledTrees.restoreAll();
   }
 
   const grassSelection: {
@@ -9542,7 +9502,7 @@ function* vegetationBuildSteps(
     uWindTime.value += dt;
     uLeafTransmission.value = (engineCtx.scene?.userData.lightModel as { mode?: string } | undefined)?.mode === 'physical'
       ? LEAF_TRANSMISSION : 0;
-    if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
+    felledTrees.advance(dt, 'frame'); // gameplay_feel r6 topples (yields to the Studio's timeline when it drives them)
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
     updateNearTierShadowReach(camPos);
@@ -9932,13 +9892,16 @@ function* vegetationBuildSteps(
     return batch.trees.length;
   }
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, groundCoverSealSteps, treeObstacles, concealers,
-    crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, advanceToppled: (dt: number) => felledTrees.advance(dt, 'timeline'), setFallDriver: (driver: FallDriver) => felledTrees.setDriver(driver), _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _seeThrough: () => ({ on: seeThrough, sweeps: occlusionSweeps, sniperTarget: sniperFadeTarget, crownReach: uCrownNearReach.value,
       shrubReach: uShrubNearReach.value, nearSee: uCotNearSee.value }),
     _woodsMask: woodsMask,
     _nearCull: nearCullState,
     _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
-    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
-    warmImpostorsAsync: (waitLinks) => (treeImpostors ? treeImpostors.ensureBakedAsync(waitLinks) : Promise.resolve(false)),
+    // (2026-11-02 audit R1) a released world's warm bakes nothing: drawn after the release, the atlas re-created its
+    // framebuffers with no owner left to free them
+    warmImpostors: () => (treeImpostors && !disposed ? treeImpostors.ensureBaked() : false),
+    warmImpostorsAsync: (waitLinks) => (treeImpostors && !disposed
+      ? treeImpostors.ensureBakedAsync(waitLinks, () => !disposed) : Promise.resolve(false)),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

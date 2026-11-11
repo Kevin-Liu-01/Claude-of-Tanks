@@ -68,8 +68,12 @@ belongs behind the covered loading transition.
 
 Visible work yields within a small frame budget. Work under an opaque loader
 uses cooperative task yields and guarantees periodic real paints. Slow progress
-is not treated as failure; failed imports and graphics-context loss remain
-retryable without a refresh loop. Public first-visit performance is measured in
+is not treated as failure. A lazy chunk that did not arrive (a failed `import()`
+or stylesheet) is never requested again in its document: its trigger keeps an
+error state and its next press reloads the page once online, and the page never
+reloads by itself (the release-264 ruling, `src/ui/components/loadFailure.ts`).
+A failure after the code arrived (construction, data, graphics-context loss)
+stays retryable in the page, without a refresh loop. Public first-visit performance is measured in
 multiple cache-disabled sessions under constrained network and CPU conditions.
 Optional workers are accelerators, never lifecycle dependencies. Each worker
 task has a bounded deadline and an equivalent local fallback, so a browser that
@@ -97,8 +101,9 @@ Their circular lifecycle links are assembled only by
 presentation activation, and transport closure cannot be rewired independently
 inside `main.ts`.
 The common Bots preload list must contain no multiplayer composition, battle-client or
-network-presentation work. A failed first acquisition is retryable and must not
-poison later room attempts in the same page session.
+network-presentation work. A first acquisition that fails after its chunk arrived
+is retryable and must not poison later room attempts in the same page session; a
+chunk that did not arrive is not requested again (the next press reloads, as above).
 The demand-loaded battle HUD and damage panel are one phase-owned application
 runtime. Every acquisition reapplies the current directional-hit setting and
 queues the active minimap; replay veiling changes both surfaces atomically.
@@ -127,8 +132,9 @@ demand-loaded owner; `main.ts` does not make ordinary players parse its
 parallel acquisition policy.
 Solo loading, exact deployment warming, and Garage return/rematch are likewise
 accessed through stable typed facades backed by `app/lazyRuntimeOwner.ts`.
-Concurrent first callers must coalesce, a rejected acquisition must remain
-retryable, and their concrete option graphs must not be constructed during
+Concurrent first callers must coalesce, an acquisition rejected after its chunk
+arrived must remain retryable (a chunk that did not arrive is not requested
+again, as above), and their concrete option graphs must not be constructed during
 ordinary Garage boot.
 
 ## World and Garage lifecycle

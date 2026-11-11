@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GUN_ROTOR_KEY } from './gunRotorSpin.ts';
 
 const DEFAULT_SAMPLE_FRACTIONS = Object.freeze([0.45, 0.55, 0.65, 0.75]);
 const DEFAULT_AXIS_SAMPLE_FRACTIONS = Object.freeze([0.80, 0.85, 0.90, 0.925, 0.95, 0.975]);
@@ -6,6 +7,7 @@ const BARREL_MESH_NAMES = /^(gun|gunBarrel\d+)$/;
 const BATCHED_BARREL_MESH_NAMES = /^gunMount$/;
 const FORWARD_BARREL_MESH_NAMES = /^(gun|gunDark|gunMount|gunMountDark|gunBarrel\d+(?:Dark)?)$/;
 const NUMBERED_BARREL_NAME = /^gunBarrel(\d+)(?:Dark)?$/;
+const ROTOR_LANE = 'rotor';
 const EPSILON = 1e-6;
 const NODE_EPSILON = 1e-4;
 
@@ -26,6 +28,11 @@ interface BarrelLane {
   maxZ: number;
   allowOffset: boolean;
   expectedCenterXM: number;
+  // the lane's fire axis in rig_gun space: a slice keeps only section points within maxRadiusM of it
+  axisXM: number;
+  axisYM: number;
+  // its tubes ride a rotor (gunRotorSpin.ts): the bore is the cluster's centre, no one barrel's
+  rotary: boolean;
 }
 
 interface BarrelLaneBounds {
@@ -157,6 +164,8 @@ function farthestSliceSegment(points: readonly SlicePoint[]): {
 function trianglePlaneSegment(
   planeZ: number,
   maxRadiusM: number,
+  axisXM: number,
+  axisYM: number,
 ): SliceSegment | null {
   const minZ = Math.min(_a.z, _b.z, _c.z);
   const maxZ = Math.max(_a.z, _b.z, _c.z);
@@ -172,7 +181,7 @@ function trianglePlaneSegment(
   ]);
   const segment = farthestSliceSegment(unique);
   if (!segment || segment.distance <= EPSILON) return null;
-  if (segment.pair.some(([x, y]) => Math.hypot(x, y) > maxRadiusM)) return null;
+  if (segment.pair.some(([x, y]) => Math.hypot(x - axisXM, y - axisYM) > maxRadiusM)) return null;
   return segment.pair;
 }
 
@@ -182,6 +191,8 @@ function appendGeometrySlice(
   gunWorldInverse: THREE.Matrix4,
   planeZ: number,
   maxRadiusM: number,
+  axisXM: number,
+  axisYM: number,
 ): void {
   const geometry = mesh.geometry;
   const position = geometry?.attributes?.position;
@@ -197,16 +208,22 @@ function appendGeometrySlice(
     readVertex(_a, index ? index.getX(offset) : offset);
     readVertex(_b, index ? index.getX(offset + 1) : offset + 1);
     readVertex(_c, index ? index.getX(offset + 2) : offset + 2);
-    const segment = trianglePlaneSegment(planeZ, maxRadiusM);
+    const segment = trianglePlaneSegment(planeZ, maxRadiusM, axisXM, axisYM);
     if (segment) segments.push(segment);
   }
+}
+
+function ridesRotor(mesh: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = mesh; node; node = node.parent) if (node.userData?.[GUN_ROTOR_KEY]) return true;
+  return false;
 }
 
 function barrelLaneMeshGroups(meshes: readonly THREE.Mesh[]): Map<string, THREE.Mesh[]> {
   const laneMeshes = new Map<string, THREE.Mesh[]>([['main', []]]);
   for (const mesh of meshes) {
     const numbered = mesh.name.match(NUMBERED_BARREL_NAME);
-    const lane = numbered ? `barrel-${numbered[1]}` : 'main';
+    // 270: a rotary cluster's tubes (gunRotorSpin.ts) are one lane of their own, measured about the gun's bore
+    const lane = numbered ? `barrel-${numbered[1]}` : ridesRotor(mesh) ? ROTOR_LANE : 'main';
     const group = laneMeshes.get(lane) || [];
     group.push(mesh);
     laneMeshes.set(lane, group);
@@ -233,17 +250,18 @@ function barrelLaneBounds(
   return Number.isFinite(minZ) && Number.isFinite(maxZ) ? { minZ, maxZ } : null;
 }
 
-function expectedBarrelLaneCenterX(
+function expectedBarrelLaneAxis(
   name: string,
   gunWorldInverse: THREE.Matrix4,
   gunRig: THREE.Object3D,
-): number {
+): { x: number; y: number } {
   const numbered = name.match(/^barrel-(\d+)$/);
   const muzzleName = numbered ? `rig_muzzle_tip_${numbered[1]}` : 'rig_muzzle';
   const muzzle = gunRig.getObjectByName(muzzleName);
-  if (!muzzle) return 0;
+  if (!muzzle) return { x: 0, y: 0 };
   muzzle.getWorldPosition(_muzzleWorld);
-  return _muzzleWorld.applyMatrix4(gunWorldInverse).x;
+  _muzzleWorld.applyMatrix4(gunWorldInverse);
+  return { x: _muzzleWorld.x, y: _muzzleWorld.y };
 }
 
 function barrelLanes(
@@ -256,12 +274,20 @@ function barrelLanes(
     if (!meshesForLane.length) continue;
     const bounds = barrelLaneBounds(meshesForLane, gunWorldInverse);
     if (!bounds) continue;
+    const axis = expectedBarrelLaneAxis(name, gunWorldInverse, gunRig);
+    // 270: a numbered tube is sliced about its own fire axis; the air-defence twins carry theirs 0.9-1.4 m out on the
+    // turret sides, past any radius about the gun's centre. A rotor's barrels sit round the bore, off it by design. The
+    // main lane keeps the gun's centre.
+    const offset = name !== 'main';
     lanes.push({
       name,
       meshes: meshesForLane,
       ...bounds,
-      allowOffset: name !== 'main',
-      expectedCenterXM: expectedBarrelLaneCenterX(name, gunWorldInverse, gunRig),
+      allowOffset: offset,
+      expectedCenterXM: axis.x,
+      axisXM: offset ? axis.x : 0,
+      axisYM: offset ? axis.y : 0,
+      rotary: name === ROTOR_LANE,
     });
   }
   return lanes;
@@ -369,7 +395,7 @@ function measureBarrelStation(
 ): BarrelCircularitySample[] {
   const segments: SliceSegment[] = [];
   for (const mesh of lane.meshes) {
-    appendGeometrySlice(segments, mesh, context.gunWorldInverse, zM, context.maxRadiusM);
+    appendGeometrySlice(segments, mesh, context.gunWorldInverse, zM, context.maxRadiusM, lane.axisXM, lane.axisYM);
   }
   const stationSamples: BarrelCircularitySample[] = [];
   for (const component of sliceComponents(segments)) {
@@ -387,14 +413,22 @@ function measureBarrelStation(
   return stationSamples;
 }
 
+// 270: of equal tubes (within a millimetre) the one nearest the fire axis is the bore: the Pantsir-S1's 2A38M carries two
+// barrels in one cradle and fires down its inner one
+const AXIS_TIE_M = 0.001;
+
 function primaryAxisSample(
   samples: readonly BarrelCircularitySample[],
   maxAspectRatio: number,
+  expectedCenterXM: number,
 ): BarrelCircularitySample | null {
+  const bore = (sample: BarrelCircularitySample): number => Math.min(sample.widthM, sample.heightM);
   return samples
     .filter((sample) => sample.aspectRatio <= maxAspectRatio + EPSILON)
     .reduce<BarrelCircularitySample | null>((current, sample) => (
-      !current || Math.min(sample.widthM, sample.heightM) > Math.min(current.widthM, current.heightM)
+      !current || bore(sample) > bore(current) + AXIS_TIE_M
+        || (bore(sample) > bore(current) - AXIS_TIE_M
+          && Math.abs(sample.centerXM - expectedCenterXM) < Math.abs(current.centerXM - expectedCenterXM))
         ? sample
         : current
     ), null);
@@ -405,8 +439,16 @@ function appendAxisSample(
   lane: BarrelLane,
   stationSamples: readonly BarrelCircularitySample[],
 ): void {
-  const primary = primaryAxisSample(stationSamples, context.maxAspectRatio);
-  if (!primary) return;
+  const tube = primaryAxisSample(stationSamples, context.maxAspectRatio, lane.expectedCenterXM);
+  if (!tube) return;
+  // 270: a rotary cluster (the M163's Vulcan) sets its barrels round the bore, so its axis is their common centre
+  const round = stationSamples.filter((sample) => sample.aspectRatio <= context.maxAspectRatio + EPSILON);
+  const primary = lane.rotary ? {
+    ...tube,
+    centerXM: round.reduce((sum, sample) => sum + sample.centerXM, 0) / round.length,
+    centerYM: round.reduce((sum, sample) => sum + sample.centerYM, 0) / round.length,
+    source: 'rotor-cluster',
+  } : tube;
   primary.expectedCenterXM = lane.expectedCenterXM;
   primary.lateralAxisOffsetM = Math.abs(primary.centerXM - lane.expectedCenterXM);
   primary.axisPass = primary.lateralAxisOffsetM <= context.maxLateralAxisOffsetM + EPSILON;

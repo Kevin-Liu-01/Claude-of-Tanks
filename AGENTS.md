@@ -18,7 +18,7 @@ worktree and never stage generated tank work wholesale.
 <!-- agent-docs:fill:architecture -->
 - `docs/DEVELOPMENT.md#publishing-to-shared-main` — shared Codex/Claude integration,
   overlap review and preflight; read before integrating or publishing changes.
-- `docs/ARCHITECTURE.md` — original module contracts and simulation invariants.
+- `docs/ARCHITECTURE.md` — binding conventions in §1, including §1.6; §2 onward is the original module plan.
 - `docs/AUDIO.md` — the sound engine and how its sounds were generated (ElevenLabs
   catalog, takes, selection, mastering, crew script and cast); read before changing
   `src/audio/` or regenerating sounds.
@@ -211,8 +211,10 @@ The `agent-docs:auto` blocks come from the Agent-Docs kit in the owner's
 Kevin-Wiki checkout, which is outside this repo and optional: with one,
 `KEVIN_WIKI_ROOT=<checkout> npm run agent-docs -- scaffold .` refreshes them
 and `-- doctor --json` checks them; without it the command exits 2 and can be
-skipped. The Graphify commands above need the same checkout (read
-`~/Documents/GitHub/kevin-wiki` as `$KEVIN_WIKI_ROOT`). Edit prose only below
+skipped. The Graphify commands in the generated block above name
+`~/Documents/GitHub/kevin-wiki`, which need not exist: set `KEVIN_WIKI_ROOT` to the
+checkout and run them from `$KEVIN_WIKI_ROOT` instead (the block's "Package scripts
+detected" count also lags `package.json` until the next scaffold). Edit prose only below
 `agent-docs:fill` markers; generated auto blocks are owned by the scaffold
 command.
 
