@@ -162,11 +162,6 @@ export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
     maps: ['desert'], focal: '50% 50%',
   },
   {
-    img: '/media/loading-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp',
-    capKey: 'media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14',
-    maps: ['mars'], focal: '50% 50%',
-  },
-  {
     img: '/media/loading-r1/s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14.webp',
     capKey: 'media.loading.title.s39Leo2a7vLakesideVillageHerolowClT3333M271R14',
     maps: ['reservoir'], focal: '50% 50%',
@@ -215,6 +210,11 @@ export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
     img: '/media/loading-r1/s190-t90am-frontier-herolow-own-m271-r14.webp',
     capKey: 'media.loading.title.s190T90amFrontierHerolowOwnM271R14',
     maps: ['frontier'], focal: '50% 50%',
+  },
+  {
+    img: '/media/loading-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp',
+    capKey: 'media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14',
+    maps: ['mars'], focal: '50% 50%',
   },
 ]);
 

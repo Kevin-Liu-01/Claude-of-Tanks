@@ -225,61 +225,6 @@
    "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33"
   },
   {
-   "id": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14",
-   "group": "close",
-   "map": "mars",
-   "hour": "day",
-   "title": {
-    "en": "Olympus Basin: T-72B3M Bulat-M",
-    "zh": "奥林匹斯盆地：T-72B3M Bulat-M"
-   },
-   "tanks": [
-    {
-     "role": "hero",
-     "id": "t72b3m_bulat_m",
-     "displayName": "T-72B3M Bulat-M"
-    },
-    {
-     "role": "ally",
-     "id": "t90a",
-     "displayName": "T-90A"
-    },
-    {
-     "role": "ally",
-     "id": "t90a_vladimir",
-     "displayName": "T-90A Vladimir"
-    },
-    {
-     "role": "ally",
-     "id": "bmp3m_dragun125",
-     "displayName": "BMP-3M Dragun 125"
-    },
-    {
-     "role": "foe",
-     "id": "challenger1_mk3",
-     "displayName": "Challenger 1 Mk 3"
-    },
-    {
-     "role": "foe",
-     "id": "leo2a6",
-     "displayName": "Leopard 2A6"
-    },
-    {
-     "role": "foe",
-     "id": "m1a2_abrams",
-     "displayName": "M1A2 Abrams"
-    }
-   ],
-   "path": "/media/loading-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp",
-   "bytes": 292844,
-   "sha256": "7452ae420ab78c2a19ad8927d5ad3bc14e274d6e8a12ef0a7384eac284139503",
-   "width": 1920,
-   "height": 1080,
-   "quality": 90,
-   "source": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14/stills/mars-landscape-2160p-still-3633ms-e2ms.png",
-   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33"
-  },
-  {
    "id": "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
    "group": "close",
    "map": "reservoir",
@@ -707,6 +652,61 @@
    "height": 1080,
    "quality": 90,
    "source": "s190-t90am-frontier-herolow-own-m271-r14/stills/frontier-landscape-2160p-still-4500ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33"
+  },
+  {
+   "id": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14",
+   "group": "close",
+   "map": "mars",
+   "hour": "day",
+   "title": {
+    "en": "Olympus Basin: T-72B3M Bulat-M",
+    "zh": "奥林匹斯盆地：T-72B3M Bulat-M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t72b3m_bulat_m",
+     "displayName": "T-72B3M Bulat-M"
+    },
+    {
+     "role": "ally",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "ally",
+     "id": "t90a_vladimir",
+     "displayName": "T-90A Vladimir"
+    },
+    {
+     "role": "ally",
+     "id": "bmp3m_dragun125",
+     "displayName": "BMP-3M Dragun 125"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/loading-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp",
+   "bytes": 292844,
+   "sha256": "7452ae420ab78c2a19ad8927d5ad3bc14e274d6e8a12ef0a7384eac284139503",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14/stills/mars-landscape-2160p-still-3633ms-e2ms.png",
    "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33"
   }
  ]

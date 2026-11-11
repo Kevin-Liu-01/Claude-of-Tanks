@@ -87,6 +87,10 @@ assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garag
 const loadingPicks = [...sitePicks.loading.close, ...sitePicks.loading.elevated];
 assert.equal(sitePicks.loading.close.length, 16, 'the gallery\'s first sixteen close-ups');
 assert.equal(sitePicks.loading.elevated.length, 0, 'no elevated still');
+// (owner 2026-11-11, on the pass sheet: "the one with space background should come later") the Olympus Basin still
+// closes the rotation's order, after the other fifteen in the gallery's order
+assert.equal(sitePicks.loading.close.at(-1), 's143-ru-t72b3m-modern-mars-herolow-fb-m271-r14',
+  'the space-background still comes last');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
 const loadingDir = new URL(`../../public/media/${sitePicks.loading.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));
