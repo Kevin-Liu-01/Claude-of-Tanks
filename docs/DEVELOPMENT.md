@@ -566,8 +566,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
 
 | Tier | What runs it | Size (docs/TEST-AUDIT.md) |
 |---|---|---|
-| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,542 receipts, ~227 CPU-min, ~60 min simulated wall (before the tiers: 2,204 receipts, ~1,395 CPU-min, ~242 min) |
-| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 661 receipts in 11 suites, ~1,167 CPU-min |
+| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,798 receipts, ~387 CPU-min, ~66 min simulated wall (before the tiers: 2,473 receipts, ~1,571 CPU-min, ~264 min) |
+| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 674 receipts in 12 suites, ~1,183 CPU-min |
 
 - **Manual suites**: `balance` (round-robin duels and `balance-matchups --check`), `pacing` (the battlePacing shards and
   judge, placement, deployment), `bots`, `sims` (drone, missile, escort and counter-drone runs), `perf` (host-time
