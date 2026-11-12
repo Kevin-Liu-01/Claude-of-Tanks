@@ -3305,6 +3305,15 @@ export function createPost(
     }
     const canvasH = renderer.getDrawingBufferSize(_viewNative).y / ratio;
     const priorScissorTest = renderer.getScissorTest();
+    // one shadow fit for every view (docs/COUCH-MODE.md "The couch tier"): the cascades are fitted once a frame
+    // (lighting.update) and three renders them inside each renderer.render; the first view's draw renders them and every
+    // later view samples the same maps
+    const shadowMap = renderer.shadowMap;
+    const priorShadowAuto = shadowMap.autoUpdate;
+    const priorShadowNeeds = shadowMap.needsUpdate;
+    // and one pass over the scene graph's world matrices: nothing moves between the views (a view changes only its own
+    // camera, posed and updated by beforeView, and visibility), so every later view's draws reuse the first view's
+    const priorMatrixAuto = scene.matrixWorldAutoUpdate;
     // the gutters and any spare cell hold no stale frame: the canvas is cleared once, then each view draws its own rect
     renderer.setRenderTarget(null);
     renderer.setScissorTest(false);
@@ -3318,9 +3327,13 @@ export function createPost(
         renderer.setScissorTest(true);
         plan.beforeView(index);
         viewEndsFrame = index === views.length - 1;
+        if (index === 1) { shadowMap.autoUpdate = false; shadowMap.needsUpdate = false; scene.matrixWorldAutoUpdate = false; }
         renderChain(dt, frameWallDtSeconds, index === 0);
       }
     } finally {
+      shadowMap.autoUpdate = priorShadowAuto;
+      shadowMap.needsUpdate = priorShadowNeeds;
+      scene.matrixWorldAutoUpdate = priorMatrixAuto;
       viewEndsFrame = true;
       renderer.setScissorTest(priorScissorTest);
       renderer.setViewport(0, 0, renderer.getDrawingBufferSize(_viewNative).x / ratio, canvasH);
@@ -3428,7 +3441,9 @@ export function createPost(
 
     renderViews(dt, frameWallDtSeconds, views, beforeView) {
       viewPlan = { views, beforeView };
-      try { frameAccounting.render(dt, frameWallDtSeconds); } finally { viewPlan = null; }
+      // through the chain's one render entry (`render`, as the object holds it now): a probe that wraps it (the frame-pass
+      // timer) sees a split frame as one frame
+      try { this.render(dt, frameWallDtSeconds); } finally { viewPlan = null; }
     },
 
     /**

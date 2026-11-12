@@ -157,7 +157,15 @@ try {
         panes: panes.map((pane) => ({ seat: pane.seat, id: pane.entityId, team: pane.team, rect: pane.rect, tier: pane.tier,
           hudScale: pane.doc.defaultView.frameElement.style.transform || 'scale(1)',
           layoutBox: [pane.doc.documentElement.clientWidth, pane.doc.documentElement.clientHeight],
-          widthBand: pane.doc.body.dataset.cotWidth, heightBand: pane.doc.body.dataset.cotHeight })),
+          widthBand: pane.doc.body.dataset.cotWidth, heightBand: pane.doc.body.dataset.cotHeight,
+          minimap: (() => {
+            const mm = pane.doc.querySelector('.cot-minimap');
+            if (!mm) return null;
+            const box = mm.getBoundingClientRect();
+            const style = pane.doc.defaultView.getComputedStyle(mm);
+            return { box: [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)], display: style.display,
+              visibility: style.visibility, hidden: mm.hidden, mapMax: pane.doc.body.style.getPropertyValue('--hud-map-max') || null };
+          })() })),
         pageHudHidden: getComputedStyle(document.querySelector('.cot-hud')).visibility === 'hidden',
         preset: window.__DEBUG.post ? document.querySelector('canvas')?.dataset.renderScale : null,
         tanks: game.tanks.length,
@@ -246,12 +254,25 @@ try {
       await sleep(1500);
       const result = await desktop.evaluate((n) => window.__FRAME_PASS_TIMER.sample({ frames: n, block: 30, modes: ['whole'], timeoutMs: 120000 }), frames);
       const summary = summarizePassFrames(result);
+      // the split screen's own main-thread split over the same frames' span: every pane's HUD frame, every pane's draw
+      const split = await desktop.evaluate(async (n) => {
+        const hud = [], draw = [];
+        for (let i = 0; i < n; i++) {
+          await new Promise((done) => requestAnimationFrame(done));
+          const t = window.__COT_COUCH.paneViews?.timing;
+          if (t) { hud.push(t.hudMs); draw.push(t.drawMs); }
+        }
+        const med = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? Math.round(s[s.length >> 1] * 100) / 100 : null; };
+        return { hudMs: med(hud), drawMs: med(draw), n: hud.length };
+      }, 60);
       const ratios = proxyRatios(MID_RANGE_PROXIES['rtx4050-laptop']);
       const projected = projectFrameMs({ gpuMs: summary.gpuFrame.p25 ?? summary.gpuFrame.med, cpuMs: summary.cpuFrame.med }, ratios);
       report.frames[count] = { load: os.loadavg().map(Math.round), gpuFrame: summary.gpuFrame, cpuFrame: summary.cpuFrame,
-        interval: summary.interval, calls: summary.calls, tris: summary.tris, projected };
+        interval: summary.interval, calls: summary.calls, tris: summary.tris, projected, split,
+        cpuByLabel: Object.fromEntries(Object.entries(summary.passes).map(([label, pass]) => [label, pass.cpu.med])) };
       console.log(`frames ${count} panes: GPU p25 ${summary.gpuFrame.p25} med ${summary.gpuFrame.med} ms; main ${summary.cpuFrame.med} ms; `
-        + `draws ${summary.calls.med}; projected ${projected.frameMs} ms (${projected.fps} fps, ${projected.bound}); load ${os.loadavg().map(Math.round).join(' ')}`);
+        + `draws ${summary.calls.med}; projected ${projected.frameMs} ms (${projected.fps} fps, ${projected.bound}); `
+        + `panes' HUD ${split.hudMs} ms, draw ${split.drawMs} ms; load ${os.loadavg().map(Math.round).join(' ')}`);
       await desktop.evaluate(() => window.__FRAME_PASS_TIMER?.uninstall?.());
     }
 

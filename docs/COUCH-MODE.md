@@ -204,9 +204,12 @@ big group that wants one view; Battle Again keeps the screen the battle had.
   drawn at that scale, the square root of the pane's height over 1080, between 0.75 and 1: a half-height pane's type is
   0.75 of the solo HUD's, not half. The HUD's own bands then apply to that layout size. Below a full layout the HUD gives
   up parts from the end of one stated priority list (sight, health, ammunition, hits, objective, minimap, consumables,
-  messages, rosters, furniture): compact (under 1100 x 640) gives up the rosters and furniture, small (under 720 x 480)
-  also the consumables and messages, and under the minimum pane (480 x 300 laid out) it keeps sight, health, ammunition
-  and hits only. At 1080p: 2 panes compact, 4 panes full, 8 panes small.
+  messages, rosters, furniture): compact (under 1100 x 640) gives up the rosters and furniture, small (under 768 x 480)
+  also the minimap, consumables and messages, and under the minimum pane (480 x 300 laid out) it keeps sight, health,
+  ammunition and hits only. At 1080p: 2 panes compact, 4 panes full, 8 panes small. Small starts at 768 wide because the
+  HUD's own mouse layout gives the map no room beside the ammunition rack below the tablet band (its `--hud-map-max` goes
+  negative there, as in a narrow solo window); an 8-pane HUD drawn smaller than 0.75 to keep the map would not read
+  from a couch.
 - **Sound: the most recent shooter's solo mix.** The room hears one mix, the solo mix of the seat that fired last (its
   gun, engine and hits as its own), held 1.5 s after its shot so a burst of fire from several seats does not swing the
   room between them; seat 1 before anyone fires. Why not one listener for the room: the audio engine is built around
@@ -215,6 +218,28 @@ big group that wants one view; Battle Again keeps the screen the battle had.
 - **The couch tier** (`quality.ts` `COUCH_PRESET`, `setCouchTier`): asked for at a split battle's Start, before the
   world builds, and let go on the Garage return. Ultra Low's world and sky cuts (light world, the cheapest terrain
   splat, no marched clouds, bloom or AO) at one raster sample per CSS pixel.
+- **One shadow render and one matrix pass a frame.** The first pane's draw renders the cascades and updates the scene
+  graph's world matrices; every later pane samples the same maps and reuses the matrices (nothing moves between the
+  panes' draws). Measured: the shadow labels stay flat as panes are added, and the matrix reuse took the eight-pane
+  scene pass from 94 to 71 ms of main thread under the same load.
+- **Measured (2026-11-11, production build, Verdant, Teams, 1920 x 1080, bots frozen, governor pinned, couch tier;
+  `node tools/couch-panes.browser.mjs --layouts=1,2,4,8 --measure --preview=.`).** The machine was shared at load
+  50 to 88, which the frame-budget method warns inflates the whole-frame GPU query (one pane read higher than two).
+  Projection: the RTX 4050 Laptop proxy (GPU / 0.342, main thread / 0.624).
+
+  | Panes | GPU p25 | Main thread | of it: scene pass | panes' HUDs | Draws | Triangles | Projected |
+  |---:|---:|---:|---:|---:|---:|---:|---:|
+  | 1 | 35.0 ms | 22.6 ms | 16.9 ms | 0.9 ms | 519 | 3.4 M | 102 ms (9.8 fps) |
+  | 2 | 23.8 ms | 33.5 ms | 26.6 ms | 1.3 ms | 985 | 6.9 M | 70 ms (14.4 fps) |
+  | 4 | 33.7 ms | 62.2 ms | 52.2 ms | 2.4 ms | 1,725 | 13.2 M | 100 ms (10.0 fps) |
+  | 8 | 52.8 ms | 87.5 ms | 71.2 ms | 2.9 ms | 2,742 | 25.8 M | 154 ms (6.5 fps) |
+
+  The pass rule (60 fps at two panes, 45 at four) is not met. Under this load even one pane reads 22.6 ms of main
+  thread against the solo chase view's 7.8 to 12.6 ms on a quiet machine, so the absolute figures need a quiet-machine
+  run; the shape does not: each added pane costs about 10 to 13 ms of main thread, nearly all of it three.js's scene
+  pass (culling, sorting and about 400 draws a pane), while each pane's HUD costs under half a millisecond. The next
+  levers are the couch tier's own: detail distances scaled by the pane's height (vehicle, prop and tree LOD, the near
+  tree band), a shorter far plane for small panes, and fewer draws a pane.
 - **What still follows one camera.** The world's one-camera systems (terrain and vehicle detail, the near trees, the
   tall grass, the water field) and the shadow cascades follow seat 1's pane; the other panes see that detail at its
   distance from seat 1. Per-pane detail is the next step on this list.

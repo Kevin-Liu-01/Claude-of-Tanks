@@ -57,7 +57,7 @@ assert.ok(couchHudScale({ width: 3000, height: 3000 }).scale <= 1, 'never larger
 // --- tiers by the stated priority -------------------------------------------------------------------------------------
 assert.deepEqual(couchHudHidden('full'), []);
 assert.deepEqual(couchHudHidden('compact'), ['rosters', 'furniture']);
-assert.deepEqual(couchHudHidden('small'), ['consumables', 'messages', 'rosters', 'furniture']);
+assert.deepEqual(couchHudHidden('small'), ['minimap', 'consumables', 'messages', 'rosters', 'furniture']);
 assert.deepEqual(couchHudHidden('least'), COUCH_HUD_PRIORITY.slice(4));
 for (const tier of ['full', 'compact', 'small', 'least']) {
   assert.ok(!couchHudHidden(tier).includes('sight'), 'the sight is never given up');
@@ -68,7 +68,7 @@ const tierAt = (n, w, h) => couchHudTier(couchHudScale(couchPaneLayout(n, w, h).
 assert.equal(tierAt(1, 1920, 1080), 'full');
 assert.equal(tierAt(2, 1920, 1080), 'compact', 'a side-by-side half (959 wide) gives up the rosters and the furniture');
 assert.equal(tierAt(4, 1920, 1080), 'full', 'a 1080p quarter lays out at 1280 x 720: the whole HUD');
-assert.equal(tierAt(8, 1920, 1080), 'small', 'a 4 x 2 eighth (640 x 719 laid out) keeps sight to minimap');
+assert.equal(tierAt(8, 1920, 1080), 'small', 'a 4 x 2 eighth (637 x 719 laid out) keeps sight to objective: the HUD\'s own mouse layout has no room for the map beside the rack under 768 wide');
 assert.equal(couchHudTier({ layoutWidth: MIN_PANE_LAYOUT.width - 1, layoutHeight: 720 }), 'least', 'under the minimum pane');
 
 console.log('couchPanes: PASS — grids by seat count and screen shape, equal panes inside the screen with gutters, the HUD scale, tiers from the stated priority');

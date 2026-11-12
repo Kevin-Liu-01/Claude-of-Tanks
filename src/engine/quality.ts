@@ -572,7 +572,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
  * It is never a menu choice: the couch runtime asks for it (setCouchTier) before a split couch battle's world builds,
  * since the light world is read at world build, and lets it go when that battle ends.
  */
-export const COUCH_PRESET: QualityPreset = Object.freeze({
+const COUCH_PRESET: QualityPreset = Object.freeze({
   label: 'Couch',
   ambience: 0,
   msaaSamples: 0,

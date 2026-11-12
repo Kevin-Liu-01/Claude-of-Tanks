@@ -132,7 +132,7 @@ interface PaneView {
 }
 
 /** What a receipt reads of one pane. */
-export interface CouchPaneProbe {
+interface CouchPaneProbe {
   seat: number;
   entityId: string;
   team: string;
@@ -150,6 +150,8 @@ export interface CouchPaneProbe {
 export interface CouchPaneViews {
   /** The panes in seat order (receipts read them). */
   readonly panes: readonly CouchPaneProbe[];
+  /** The last frame's split-screen work on the main thread, ms: every pane's HUD frame, and every pane's draw. */
+  readonly timing: { readonly hudMs: number; readonly drawMs: number };
   readonly layout: CouchPaneLayout | null;
   /** This battle's seats: a pane each (a new battle's seats replace the last's panes). */
   seat(seats: readonly CouchPaneSeat[]): void;
@@ -168,7 +170,7 @@ export interface CouchPaneViews {
 }
 
 /** How long the room's mix stays with a seat after its shot before another seat's shot may take it. */
-export const LISTENER_HOLD_S = 1.5;
+const LISTENER_HOLD_S = 1.5;
 
 const _origin = new Vector3();
 
@@ -260,6 +262,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
   let heardShotMs = -Infinity;
   const listenerForward = new Vector3();
   const detailFoci: { x: number; z: number }[] = [];
+  const timing = { hudMs: 0, drawMs: 0 };
   const listener = { entity: null as unknown as PaneEntity, forward: listenerForward };
   ports.bus.on('shell:fired', (payload) => {
     const shooter = payload && typeof payload === 'object' ? Reflect.get(payload, 'shooterId') : null;
@@ -429,6 +432,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       }));
     },
     get layout() { return layout; },
+    get timing() { return timing; },
     seat(seats) {
       disposeViews();
       const mine = ++generation;
@@ -485,6 +489,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     },
     render(dt, wallDt) {
       if (!views.length || !layout) return;
+      const hudStart = performance.now();
       const inBattle = ports.game.phase === 'battle';
       for (const view of views) {
         syncCards(view, ports.game);
@@ -499,6 +504,8 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
           view.hudFrame.update(inBattle, false);
         }
       }
+      const drawStart = performance.now();
+      timing.hudMs = drawStart - hudStart;
       const tanks = ports.game.tanks;
       baseVisible.length = tanks.length;
       for (let i = 0; i < tanks.length; i++) {
@@ -521,6 +528,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
           if (root) root.visible = baseVisible[i];
         }
         copyCamera(views[0].camera, ports.camera);
+        timing.drawMs = performance.now() - drawStart;
       }
     },
     listenerFocus() {

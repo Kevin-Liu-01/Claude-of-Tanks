@@ -31,9 +31,9 @@ export interface CouchPaneLayout {
 }
 
 /** The most panes the split screen draws (the lobby's eight seats). */
-export const MAX_COUCH_PANES = 8;
+const MAX_COUCH_PANES = 8;
 /** A screen at least this wide (width / height) splits two seats side by side and five to eight into 4 x 2. */
-export const SIDE_BY_SIDE_ASPECT = 1.6;
+const SIDE_BY_SIDE_ASPECT = 1.6;
 /** The dark line between panes, CSS px. */
 export const PANE_GUTTER_PX = 2;
 
@@ -72,14 +72,14 @@ export function couchPaneLayout(count: number, width: number, height: number, gu
  * square root, so a half-height pane's type is 0.75 of the solo HUD's, not half: the HUD shrinks slower than the pane and
  * stays readable from a couch. It never draws larger than the solo HUD.
  */
-export interface CouchHudScale {
+interface CouchHudScale {
   readonly scale: number;
   readonly layoutWidth: number;
   readonly layoutHeight: number;
 }
 
 /** The screen height the solo HUD is drawn 1:1 at (a 1080p television). */
-export const HUD_REFERENCE_HEIGHT = 1080;
+const HUD_REFERENCE_HEIGHT = 1080;
 /** The smallest scale a pane's HUD is drawn at. */
 export const HUD_MIN_SCALE = 0.75;
 
@@ -108,16 +108,20 @@ export const COUCH_HUD_PRIORITY = [
   'rosters', // the team strip and the side rosters
   'furniture', // key caps, the network and frame chips, the hints
 ] as const;
-export type CouchHudPart = (typeof COUCH_HUD_PRIORITY)[number];
+type CouchHudPart = (typeof COUCH_HUD_PRIORITY)[number];
 
 /** A pane's HUD tier: how many parts of COUCH_HUD_PRIORITY it keeps. */
 export type CouchHudTier = 'full' | 'compact' | 'small' | 'least';
 
-const TIER_KEEPS: Readonly<Record<CouchHudTier, number>> = { full: 10, compact: 8, small: 6, least: 4 };
+const TIER_KEEPS: Readonly<Record<CouchHudTier, number>> = { full: 10, compact: 8, small: 5, least: 4 };
+
+/** Under this layout width the HUD's own mouse layout leaves the minimap no room beside the ammunition rack (its
+ *  --hud-map-max goes negative under the tablet band, battleHudLayout.ts): the small tier gives the map up by the list. */
+const MAP_ROOM_MIN_WIDTH = 768;
 
 /**
  * The minimum pane: a pane's HUD laid out under MIN_PANE_LAYOUT (CSS px, after its scale) keeps only the sight, health,
- * ammunition and hits. The 4 x 2 grid on a 1080p screen (480 x 539, laid out at 640 x 719) is above it.
+ * ammunition and hits. The 4 x 2 grid on a 1080p screen (478 x 539, laid out at 637 x 719) is above it: small.
  */
 export const MIN_PANE_LAYOUT = Object.freeze({ width: 480, height: 300 });
 
@@ -125,7 +129,7 @@ export const MIN_PANE_LAYOUT = Object.freeze({ width: 480, height: 300 });
 export function couchHudTier(layout: { readonly layoutWidth: number; readonly layoutHeight: number }): CouchHudTier {
   const { layoutWidth: w, layoutHeight: h } = layout;
   if (w < MIN_PANE_LAYOUT.width || h < MIN_PANE_LAYOUT.height) return 'least';
-  if (w < 720 || h < 480) return 'small';
+  if (w < MAP_ROOM_MIN_WIDTH || h < 480) return 'small';
   if (w < 1100 || h < 640) return 'compact';
   return 'full';
 }
