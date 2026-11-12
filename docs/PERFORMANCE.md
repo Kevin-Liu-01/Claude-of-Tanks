@@ -898,6 +898,91 @@ order, the run first) and `?treeCullOrder=sorted` (the run front to back from th
 whether the swaps' instance order costs the GPU; the default is the swaps. Re-measure GPU time on the current tree
 before relying on the triangle saving: until the `tree-cull` toggle's A/B says the GPU gains, the cull ships off.
 
+## World pools: fewer color-pass draws (2026-11-12, world-pools-272)
+
+The draw census (`tools/draw-census.mjs`: every `renderBufferDirect` call of whole frames charged to its object's world
+subtree, name and material, main and shadow passes apart; an instanced call with count 0 is a submission, not a draw)
+put a held battle frame at 270 to 320 color-pass draws on the six maps it read (desktop High, 14 v 14, bots frozen and
+hidden, 1920x1080); at Verdant's chase the vegetation drew 86 of them and the props 96 (the world inventory's visible
+pools include count-0 and shadow-only ones, which draw nothing in the color pass). Two classes of pool shared a shader and
+drew apart:
+
+- **Far tree impostors**: one quad pool per species and far variant (8 on a four-species map), and as many again for
+  the trees adopted over the red line and on the horizon ring and the hinterland. The quads differed only in four
+  per-vertex constants (the species' first atlas row, the mirror flag, the variants baked, the elevated row) and the
+  needle share. `TreeImpostorLibrary.poolGeometry` now makes one quad with those as instanced attributes
+  (`aImpCell`, `aImpNeedle`), written with each slot (`cellOf`, `needleOf`): the battlefield's far tier, each adopted
+  batch, the ring forest and the hinterland draw one pool each. Same program, same values per instance.
+- **Destructible props**: one InstancedMesh per kind (a crate, a drum, a fence plank: 36 to 51 draws a frame), in 11 or
+  12 materials. Pools of different geometry can only share a call as a multi-draw: `src/world/instancedDrawBatch.ts`
+  draws every group of two or more intact pools of one material and vertex layout as one `BatchedMesh`
+  (`WEBGL_multi_draw`; without it nothing is batched, since three would submit a draw per instance). The pools stay
+  what every owner reads and writes (crush, topple, toss, hide, tint); the batch mirrors their matrices, colours,
+  counts and visibility when their streams' versions move (in its `onBeforeRender`, before its draw), and the pools move
+  to the shadow-only layer, so the cascades, the r8 caster proxies and the static shadow cache see the same casters. A
+  pool whose geometry is swapped leaves its batch. The material is the pools' own; its batched program reads the
+  instance through `batchShaderSource` (an instancing hook's `instanceMatrix` / `instanceColor` read the batching matrix
+  and colour, fetched at the top of `main`, since the clutter tint reads the instance before three's `batching_vertex`;
+  an inlined `color_vertex`, the vehicle livery's, keeps its masked instancing branch and drops the second multiply).
+  The members draw in the order three's painter sort gave the pools (their depth, then their id: `customSort`), so a
+  depth tie between two kinds resolves as before. Pools with an instanced attribute of their own (the night fixtures'
+  buildings), transparent or hidden ones (the set pieces), and a kind alone in its material keep their own draw.
+  `?propBatch=0` builds without batches; `window.__DRAW_BATCH_DEBUG.set(false)` switches them off in a live page.
+
+The rock variants (6 draws: three geometries, near and far, with their own instanced ground and slope streams) and the
+grass chunks (two variants per visible 128 m chunk, culled per chunk) stay as they are: the first needs per-instance
+streams a batch does not carry, the second trades the per-chunk cull for draws.
+
+Measured: the frame-budget probe (A B B A, base 1b0797059c against this change, pinned 14 v 14, bots frozen and
+hidden, governor pinned, still poses, `--frames=180`), desktop High at 1920x1080 and the phone tier (`?tier=mobile`,
+the mobile preset) at 1280x720. Draw calls are exact; the machine ran at load 40 to 190 during these slots (other
+sessions' browsers and builds), so the timings are listed as measured with their deltas and cannot certify a change of
+this size (40-50 draws, about 1 ms of main thread at the couch harness's 22 µs a draw).
+
+| tier · map · pose | frame draws base → new | scene-pass draws | render-path CPU ms (Δ pairs) | frame GPU p25 ms | load |
+| --- | ---: | ---: | --- | --- | --- |
+| desktop · Verdant · chase | 354 → 305 (−49) | 304 → 255 | 18.7 → 16.9 (−0.4) | 18.5 → 19.2 | 43–188 |
+| desktop · Verdant · overview | 239 → 188 (−51) | 203 → 154 | 15.4 → 14.9 (−0.2) | 29.6 → 42.5 | 43–188 |
+| desktop · Monsoon · chase | 383 → 340 (−43) | 316 → 272 | 18.5 → 19.8 (+1.3) | 43.6 → 47.1 | 50–174 |
+| desktop · Monsoon · overview | 247 → 204 (−41) | 207 → 164 | 16.0 → 15.8 (+0.2) | 62.5 → 72.8 | 50–174 |
+| desktop · Autumn · chase | 363 → 319 (−44) | 296 → 251 | 17.2 → 17.3 (+0.1) | 27.9 → 28.2 | 57–89 |
+| desktop · Autumn · overview | 235 → 193 (−42) | 194 → 152 | 14.3 → 15.3 (+2.4) | 33.1 → 47.8 | 57–89 |
+| phone · Verdant · chase | 454 → 418 (−36) | 266 → 230 | 13.5 → 14.0 (+0.5) | 19.6 → 18.7 | 42–109 |
+| phone · Verdant · overview | 415 → 380 (−35) | 176 → 141 | 12.4 → 13.2 (+0.8) | 17.9 → 17.0 | 42–109 |
+| phone · Monsoon · chase | 436 → 405 (−31) | 252 → 221 | 14.6 → 14.8 (+0.2) | 19.1 → 20.0 | 84–145 |
+| phone · Monsoon · overview | 377 → 347 (−30) | 164 → 134 | 13.8 → 13.3 (−0.1) | 17.6 → 18.7 | 84–145 |
+| phone · Autumn · chase | 502 → 470 (−32) | 267 → 235 | 14.5 → 14.2 (0.0) | 16.3 → 15.8 | 40–155 |
+| phone · Autumn · overview | 402 → 373 (−29) | 162 → 133 | 13.6 → 12.9 (0.0) | 24.8 → 30.9 | 40–155 |
+
+(Monsoon's phone rows: the probe's pair deltas read −18 / −19 where one base slot drew more; the scene-pass draws are
+exact.) Couch split screen (`tools/couch-panes.browser.mjs --layouts=1,2,4 --measure`, item/couch-panes-272 at
+59ed90240d with and without this change, Verdant, production builds, load 41–220, NOT QUIET): draws 629 → 554 at one
+pane, 1,040 → 917 at two, 2,233 → 2,021 at four; the main-thread ratios to solo read 1.35 → 1.39 at two panes and 2.59 →
+3.10 at four, inside that load's spread (the two runs' solo baselines read 17.9 and 16.8 ms). The batches cost 5.2 to
+6.0 MB of vertex and index copies a map; one battle page's browser tree read 4.3 to 4.5 GB on the base and 4.3 to 4.4 GB
+here (GPU process 1.02 vs 1.04 GB). The sim is untouched: `tools/sim-determinism-audit.mjs` (Verdant, seed 7, 3,600
+ticks) IDENTICAL on both trees, final 33703c13935a04a6. Boot requests unchanged (game 139 → 139, `npm run check:bundle`).
+
+Rendered proof (`tools/world-pools-truth.mjs`; fixed cameras, temporal AA held, the clouds' history frozen, the wind
+clock set, each frame rendered and read back in one task): the same scene state drawn both ways inside one task, at four poses (chase, overview, bird,
+side) on Verdant, Monsoon and Autumn. The A/A floor (the frame twice) is 0 px everywhere. Batches off against on:
+0 px over 8/255 at 11 of the 12 poses; 1 px (13/255) at Autumn's overview, on the edge of a thin monument shaft against
+a gatestone (bisected to that batch alone; the members already draw in the painter sort's order, so it is the batched
+program's vertex arithmetic, one MSAA sample flipping on a silhouette). The impostor merge against the base's layout
+rebuilt in the page from the shared pools' own data (one pool per species and far variant, 2 pools → 16): 0 px at 6 of
+the 9 poses captured, 2–4 px (max 21/255) at Verdant's and Monsoon's chase and overview, every one inside a mass of
+distant crowns (two species' quads tying at a cutout edge). Autumn's three remaining impostor poses tripped the browser
+guard's tree cap with the rebuilt pools added on top of the merged ones; Verdant and Monsoon covered the ring forest's
+pool too. A cross-build capture of two loads each was taken as well; the clouds' drift, the particles and the grass made
+it noise between loads, so the in-page A/B is the proof.
+
+Far hulls (one draw per far vehicle) are not in this change. The census of a pose that puts 14 allies past the far LOD
+(`--bots --views=far-allies`, 230 m behind the player) read 439 hull draws over 172 materials, every material owned by
+one vehicle (its own paint and camouflage), 6 to 8 of them on one far hull, with a coplanar polygon offset per stand-in
+and the turret and gun articulated. One draw per hull needs one material per hull: its materials' maps and parameters
+in one atlas and per-vertex records, the owners' frames per vertex, the depth layers in the shader. That is a new
+far-vehicle material, not a pool merge, and it cannot be pixel-identical: its own item, judged by a blind A/B.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
