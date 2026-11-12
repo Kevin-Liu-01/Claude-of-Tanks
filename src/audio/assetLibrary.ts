@@ -18,7 +18,10 @@
  *   battle's worth of banks queued for later.
  * - Failure is local: a missing or undecodable file mutes that one variant. An asset whose every file failed is
  *   asked for again after a backoff (2 s, doubling to a minute): one transient fetch error never silences a cue for
- *   the session (2026-11-02 audit F11).
+ *   the session (2026-11-02 audit F11). (improve-271, plan 018) A sound that decoded some variants keeps playing
+ *   them, and the variants the network failed (the fetch or its body threw: a missing or undecodable file stays
+ *   final) are fetched again on a later load, on the same backoff; a crew pack's takes the same way on a later
+ *   loadVoice. A pass that lands after an eviction or a reload of the same sound takes nothing.
  * - Pins are owned (2026-11-02 audit F11): each owner (the session's interface and radio sets, the battle warm, the
  *   ambience scene, the live rigs, the aircraft) pins under its own group, and `replace` starts a new set for that
  *   group only, so the battle warm never unpins the radio net or a loop that is playing.
@@ -117,7 +120,13 @@ interface Entry {
   /** Failed loads in a row, and when (performance.now()) a failed asset may be asked for again. */
   failures?: number;
   retryAt?: number;
+  /** (plan 018) Variants (takes) the network failed on an asset that has others: fetched again once `retryAt` passes. */
+  refill?: number[];
 }
+
+/** A fetched file: its buffer, or null and whether the network failed it (worth a later try) rather than a final miss. */
+interface Fetched { buffer: AudioBuffer | null; network: boolean }
+const NOT_FETCHED: Fetched = Object.freeze({ buffer: null, network: false });
 
 /** A failed asset's backoff before it is fetched again: 2 s, doubling, at most a minute. */
 const RETRY_MS = Object.freeze({ first: 2000, max: 60000 });
@@ -235,6 +244,56 @@ export function createAssetLibrary({
     }
   }
 
+  /** One file, told apart by why it failed: the network (the fetch or its body threw) or for good (a status, a decode). */
+  async function fetchOne(url: string, rate: number): Promise<Fetched> {
+    let bytes: ArrayBuffer;
+    try {
+      const res = await fetchImpl(url);
+      if (!res.ok) { failed++; return NOT_FETCHED; }
+      bytes = await res.arrayBuffer();
+    } catch {
+      failed++;
+      return { buffer: null, network: true };
+    }
+    try {
+      return { buffer: await decode(bytes, rate), network: false };
+    } catch {
+      failed++;
+      return NOT_FETCHED;
+    }
+  }
+
+  /** (plan 018) After a fetch of an asset that has buffers: the variants the network failed wait for F11's backoff. */
+  function keepRefill(entry: Entry, network: number[]): void {
+    if (!network.length) { entry.refill = undefined; entry.failures = 0; return; }
+    entry.refill = network;
+    entry.failures = (entry.failures ?? 0) + 1;
+    entry.retryAt = performance.now() + Math.min(RETRY_MS.max, RETRY_MS.first * 2 ** (entry.failures - 1));
+  }
+  const refillDue = (entry: Entry): boolean => !!entry.refill && entry.state === 'ready' && performance.now() >= (entry.retryAt ?? 0);
+
+  /** Fetch an entry's `refill` variants into its own buffers, their bytes counted once by `count`; null: nothing due. */
+  function refillInto(entry: Entry, url: (i: number) => string, rate: number, lane: (task: () => Promise<Fetched>) => Promise<Fetched>,
+    count: (bytes: number) => void, live: () => boolean): Promise<void> {
+    const missing = entry.refill ?? [];
+    entry.refill = undefined;
+    const buffers = entry.buffers;
+    return (async () => {
+      const fetched = await Promise.all(missing.map((i) => lane(() => (live() ? fetchOne(url(i), rate) : Promise.resolve(NOT_FETCHED)))));
+      if (entry.buffers !== buffers || entry.state !== 'ready' || !live()) return;
+      let added = 0;
+      for (let k = 0; k < missing.length; k++) {
+        const buffer = fetched[k].buffer;
+        if (!buffer) continue;
+        buffers[missing[k]] = buffer;
+        added += bufferBytes(buffer);
+      }
+      entry.bytes += added;
+      count(added);
+      keepRefill(entry, missing.filter((_, k) => fetched[k].network));
+    })();
+  }
+
   async function slot<T>(id: string, task: () => Promise<T>): Promise<T> {
     if (active >= CONCURRENCY) {
       await new Promise<void>((resolve) => (frontIds.has(id) ? frontWaiting : bulkWaiting).push({ id, resolve }));
@@ -294,6 +353,7 @@ export function createAssetLibrary({
       entry.bytes = 0;
       entry.state = 'idle';
       entry.promise = null;
+      entry.refill = undefined;
     }
   }
 
@@ -305,23 +365,21 @@ export function createAssetLibrary({
       entry = { buffers: [], state: 'idle', promise: null, last: 0, bytes: 0, lastVariant: -1 };
       entries.set(id, entry);
     }
+    const url = (i: number): string => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`;
+    // (plan 018) a playing sound's variants the network failed, once their backoff has run out
+    if (entry.promise && refillDue(entry)) {
+      entry.promise = refillInto(entry, url, rec.r, (task) => slot(id, task), (bytes) => { decodedBytes += bytes; evictIfNeeded(); }, () => true);
+      return entry.promise;
+    }
     if (entry.promise && !retryDue(entry)) return entry.promise;
     const target = entry;
     target.state = 'loading';
     target.promise = (async () => {
       // a browser that cannot decode the format never will: no retry
       if (!(await ready)) { target.state = 'failed'; target.retryAt = Infinity; return; }
-      const files = Array.from({ length: Math.max(1, Math.min(rec.n, maxVariants)) }, (_, i) => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
-      const buffers = await Promise.all(files.map((url) => slot(id, async () => {
-        try {
-          const res = await fetchImpl(url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return await decode(await res.arrayBuffer(), rec.r);
-        } catch {
-          failed++;
-          return null;
-        }
-      })));
+      const count = Math.max(1, Math.min(rec.n, maxVariants));
+      const fetched = await Promise.all(Array.from({ length: count }, (_, i) => slot(id, () => fetchOne(url(i), rec.r))));
+      const buffers = fetched.map((f) => f.buffer);
       target.buffers = buffers;
       target.bytes = buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
       decodedBytes += target.bytes;
@@ -330,7 +388,7 @@ export function createAssetLibrary({
       if (target.state === 'failed') {
         target.failures = (target.failures ?? 0) + 1;
         target.retryAt = target.last + Math.min(RETRY_MS.max, RETRY_MS.first * 2 ** (target.failures - 1));
-      } else target.failures = 0;
+      } else keepRefill(target, fetched.flatMap((f, i) => (f.network ? [i] : [])));
       evictIfNeeded();
     })();
     return target.promise;
@@ -358,6 +416,8 @@ export function createAssetLibrary({
   function voiceKey(language: string, line: string): string {
     return `${language}/${line}`;
   }
+  /** (plan 018) Packs whose first load has settled: only they refill their takes. */
+  const voiceSettled = new Set<string>();
 
   return {
     ready,
@@ -416,30 +476,38 @@ export function createAssetLibrary({
       const pack = VOICE_PACKS[language];
       if (!pack) return Promise.resolve();
       let promise = voiceLanguages.get(language);
-      if (promise) return promise;
+      if (promise) {
+        // (plan 018) a settled pack's takes the network failed, once their backoff has run out
+        const due = voiceSettled.has(language) ? Object.keys(pack).map((line) => voiceEntries.get(voiceKey(language, line)))
+          .filter((entry): entry is Entry => !!entry && !!entry.refill && performance.now() >= (entry.retryAt ?? 0)) : [];
+        if (!due.length) return promise;
+        const refill: Promise<void> = Promise.resolve().then(() => Promise.all(due.map((entry) => {
+          const line = Object.keys(pack).find((key) => voiceEntries.get(voiceKey(language, key)) === entry)!;
+          if (entry.state === 'failed') entry.state = 'ready';
+          return refillInto(entry, (i) => `${root}audio/voice/${language}/${line}_${i}.webm`, VOICE_DECODE_HZ, voiceSlot,
+            (bytes) => { voiceBytes += bytes; }, () => voiceLanguages.get(language) === refill).then(() => {
+            if (!entry.buffers.some(Boolean)) entry.state = 'failed';
+          });
+        }))).then(() => undefined);
+        voiceLanguages.set(language, refill);
+        return refill;
+      }
       const current = (): boolean => voiceLanguages.get(language) === promise;
       promise = (async () => {
         if (!(await ready) || !current()) return;
         await Promise.all(Object.entries(pack).map(async ([line, takes]) => {
           const entry: Entry = { buffers: [], state: 'loading', promise: null, last: 0, bytes: 0, lastVariant: -1 };
           voiceEntries.set(voiceKey(language, line), entry);
-          entry.buffers = await Promise.all(takes.map((_, i) => voiceSlot(async () => {
-            if (!current()) return null;
-            try {
-              const res = await fetchImpl(`${root}audio/voice/${language}/${line}_${i}.webm`);
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return await decode(await res.arrayBuffer(), VOICE_DECODE_HZ);
-            } catch {
-              failed++;
-              return null;
-            }
-          })));
+          const fetched = await Promise.all(takes.map((_, i) => voiceSlot(() => (current()
+            ? fetchOne(`${root}audio/voice/${language}/${line}_${i}.webm`, VOICE_DECODE_HZ) : Promise.resolve(NOT_FETCHED)))));
           if (!current()) return;
+          entry.buffers = fetched.map((f) => f.buffer);
           entry.bytes = entry.buffers.reduce((sum, b) => sum + (b ? bufferBytes(b) : 0), 0);
           voiceBytes += entry.bytes;
           entry.state = entry.buffers.some(Boolean) ? 'ready' : 'failed';
+          keepRefill(entry, fetched.flatMap((f, i) => (f.network ? [i] : [])));
         }));
-        if (current()) readyVoices.add(language);
+        if (current()) { readyVoices.add(language); voiceSettled.add(language); }
       })();
       voiceLanguages.set(language, promise);
       return promise;
@@ -457,6 +525,7 @@ export function createAssetLibrary({
     dropVoice(language) {
       if (!voiceLanguages.delete(language)) return;
       readyVoices.delete(language);
+      voiceSettled.delete(language);
       for (const line of Object.keys(VOICE_PACKS[language] ?? {})) {
         const key = voiceKey(language, line);
         voiceBytes -= voiceEntries.get(key)?.bytes ?? 0;

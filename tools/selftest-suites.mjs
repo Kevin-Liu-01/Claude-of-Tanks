@@ -1469,6 +1469,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/circular-cap-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
+    'src/workerCalls.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
     'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
