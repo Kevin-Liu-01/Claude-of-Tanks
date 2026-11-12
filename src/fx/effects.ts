@@ -491,12 +491,10 @@ interface ShellHitEvent {
   blast?: readonly number[];
   /** (impact-materials-269) the struck plate's material (sim/plateMaterial.ts), for strikeLooks.ts; absent from an older peer */
   material?: string;
-  /** (272) who fired it, the round's type and the solo step's clock (a network hit carries none): a fast gun's strike
-   *  cadence (game/shotCadence.ts) */
+  /** (272) who fired it and the round's type: a fast gun's strike cadence (game/shotCadence.ts) */
   attackerId?: string | null;
   shellType?: string;
   guided?: boolean;
-  timeS?: number;
 }
 
 interface ShellExpiredEvent {
@@ -1631,6 +1629,9 @@ function* createFxSteps(
   // round, instead of striking it up from black every round. A gun slower than the window, and a round with no clock
   // (the Studio's), flash as before.
   const flashCadence = createShotCadence();
+  // (272) a fast gun's strikes, on hulls and on the ground, by the fx clock: their stamps move with its rebase
+  const strikeCadence = createShotCadence();
+  timeShifts.on('strikeCadence', (delta) => strikeCadence.shift(delta));
   type FlashCadence = 'none' | 'flicker' | 'held' | 'full';
   function flashCadenceOf(shooter: ShotKey | null | undefined, weapon: ShotKey | null, timeS: number): FlashCadence {
     if (weapon == null || !Number.isFinite(timeS)) return 'full';
@@ -7406,8 +7407,7 @@ function* createFxSteps(
         // (272) a fast gun's rounds on one hull, by one shooter, draw their strike once an impact window
         // (game/shotCadence.ts): a burst drew twenty layered strikes (sparks, smoke, debris, dust) a second. Its scars, ERA,
         // tracers and records above stay per round; a main gun's round and a missile always strike
-        if (isRapidFireHit(e) && e.targetId != null
-          && flashCadence.admit('impact', e.targetId, e.attackerId ?? '', Number.isFinite(e.timeS) ? e.timeS! : particles.getTime()) === 0) return;
+        if (isRapidFireHit(e) && e.targetId != null && strikeCadence.admit('impact', e.targetId, e.attackerId ?? '', particles.getTime()) === 0) return;
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
         if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
@@ -7530,7 +7530,7 @@ function* createFxSteps(
         // plume); an airstrike's strafe lands in full
         const folded = !!e.hitTerrain && e.shooterId != null && !strikeRound
           && isRapidFireHit({ caliberMm: e.caliberMm ?? m.caliberMm, shellType: e.shellType })
-          && flashCadence.admit('impact', e.shooterId, 'ground', particles.getTime()) === 0;
+          && strikeCadence.admit('impact', e.shooterId, 'ground', particles.getTime()) === 0;
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
           // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own; (round 2 U31)

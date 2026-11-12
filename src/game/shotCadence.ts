@@ -68,6 +68,9 @@ export interface ShotCadence {
   readonly gapS: number;
   /** Forgets every weapon (a battle's end). */
   clear(): void;
+  /** Moves every time it holds by `deltaS` (a clock's rebase: effects.ts registers its strike cadence's with the fx
+   *  clock's time shifts, fx/timeShift.ts, so no stamp it keeps outlives a rebase). */
+  shift(deltaS: number): void;
   /** Weapons remembered (a receipt's bound). */
   readonly weapons: number;
 }
@@ -121,6 +124,17 @@ export function createShotCadence(): ShotCadence {
     },
     get gapS() { return gapS; },
     clear() { shooters.clear(); weapons = 0; gapS = Infinity; },
+    shift(deltaS) {
+      if (!Number.isFinite(deltaS) || deltaS === 0) return;
+      for (const byWeapon of shooters.values()) {
+        for (const slots of byWeapon.values()) {
+          for (let at = 0; at < slots.length; at += SLOT) {
+            slots[at] = slots[at]! + deltaS;
+            slots[at + 1] = slots[at + 1]! + deltaS;
+          }
+        }
+      }
+    },
     get weapons() { return weapons; },
   };
 }
