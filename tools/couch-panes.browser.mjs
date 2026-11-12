@@ -331,6 +331,19 @@ try {
     check(`${count}: every pane's core fits at full size`, probe.panes.every((p) => p.coreFits),
       probe.panes.map((p) => `${p.seat}:${p.coreFits ? 'fits' : 'NO'}`).join(' '));
     check(`${count}: no pane's HUD is scaled`, probe.panes.every((p) => p.hudScale === 'scale(1)'));
+    // the 3D view is cut to each pane's shape, never stretched: a round object draws round (width over height 1, as in
+    // solo, within 1 %), and each pane's camera keeps the solo vertical field of view
+    const shape = await desktop.evaluate(async () => {
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+      const panes = window.__COT_COUCH.paneViews.panes;
+      return panes.map((pane) => ({ seat: pane.seat, ratio: Math.round(pane.objectRatio * 10000) / 10000,
+        aspect: Math.round(pane.camera.aspect * 1000) / 1000, rect: Math.round(pane.rect.width / pane.rect.height * 1000) / 1000,
+        fov: Math.round(pane.camera.fov * 100) / 100 }));
+    });
+    report[`shape${count}`] = shape;
+    check(`${count}: every pane draws a round object round (cut to its shape, not stretched)`,
+      shape.every((p) => Math.abs(p.ratio - 1) <= 0.01),
+      shape.map((p) => `${p.seat}: ${p.ratio} (aspect ${p.aspect}, pane ${p.rect}, fov ${p.fov})`).join(' | '));
     coreAtOne ??= first.core;
     check(`${count}: pane 1's core is one pane's size (no squish)`, JSON.stringify(first.core) === JSON.stringify(coreAtOne),
       `${JSON.stringify(first.core)} against ${JSON.stringify(coreAtOne)}`);

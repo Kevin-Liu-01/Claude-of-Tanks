@@ -166,6 +166,8 @@ interface PaneView {
   coreFits: boolean;
   /** The hulls this pane's last draw showed (ids, receipts read them). */
   drawn: string[];
+  /** The last draw's width-to-height ratio of a round object's image (1: drawn true, as in solo; receipts read it). */
+  objectRatio: number;
   dispose(): void;
 }
 
@@ -188,6 +190,8 @@ interface CouchPaneProbe {
   clash: readonly CouchHudPart[];
   clashLog: readonly string[];
   drawn: readonly string[];
+  /** Its last draw's width-to-height ratio of a round object's image: 1 when the view is cut, never stretched. */
+  objectRatio: number;
   /** The pane's HUD frame's spotting read (the minimap's and the markers'): its seat as the receiver. */
   hudSpotted(id: string): boolean;
   /** The seat's HUD shows GUN TRAVEL LIMIT (the gun held at its limit past the label's dwell). */
@@ -524,7 +528,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     const paneDoc = createPaneDocument(ensureHost());
     Object.assign(view, {
       seat: seat.seat, entity, camera, rig, aim, hudFrame, frame: paneDoc.frame, doc: paneDoc.doc,
-      hud: null, damagePanel: null, cards: [], cardShells: null, minimapSrc: null, drawn: [],
+      hud: null, damagePanel: null, cards: [], cardShells: null, minimapSrc: null, drawn: [], objectRatio: 1,
       dropped: new Set<CouchHudPart>(), lastBoxes: [], lastClash: [], clashLog: [], fitWait: FIT_SETTLE_FRAMES, fitted: false, coreFits: true,
       dispose() {
         view.hud?.setMode('hidden');
@@ -546,7 +550,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       return views.map((view, index): CouchPaneProbe => ({
         seat: view.seat, entityId: view.entity.id, team: view.entity.team,
         rect: layout?.panes[index] ?? { x: 0, y: 0, width: 0, height: 0 },
-        doc: view.doc, hud: view.hud, camera: view.camera, rigMode: view.rig.mode, drawn: view.drawn,
+        doc: view.doc, hud: view.hud, camera: view.camera, rigMode: view.rig.mode, drawn: view.drawn, objectRatio: view.objectRatio,
         dropped: [...view.dropped], fitted: view.fitted, coreFits: view.coreFits, boxes: view.lastBoxes, clash: view.lastClash, clashLog: view.clashLog,
         hudSpotted: (id) => view.hudFrame.frameInfo.spotting?.isSpotted(id) ?? true,
         atGunLimit: !!view.hudFrame.frameInfo.aim.gunLimitSpec,
@@ -644,6 +648,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         ports.post.renderViews(dt, wallDt, layout.panes, (index) => {
           const view = views[index];
           copyCamera(view.camera, ports.camera);
+          view.objectRatio = projectedRatio(ports.camera, layout!.panes[index]);
           applyPaneVisibility(view, tanks, baseVisible, views, ports.game);
           applyPaneDetail(view, tanks, lodBias);
           view.drawn.length = 0;
@@ -775,6 +780,13 @@ function applyPaneVisibility(view: PaneView, tanks: HudGame['tanks'], base: read
   }
 }
 
+/** A round object's image width over its height in `rect` drawn through `camera` (its projection's x and y scales
+ *  across the rectangle's pixels): 1 when the projection's aspect is the rectangle's, as in solo. */
+function projectedRatio(camera: PerspectiveCamera, rect: CouchPaneRect): number {
+  const e = camera.projectionMatrix.elements;
+  return (e[0] * rect.width) / Math.max(1e-9, e[5] * rect.height);
+}
+
 function copyCamera(from: PerspectiveCamera, to: PerspectiveCamera): void {
   to.position.copy(from.position);
   to.quaternion.copy(from.quaternion);
@@ -783,9 +795,22 @@ function copyCamera(from: PerspectiveCamera, to: PerspectiveCamera): void {
   to.near = from.near;
   to.far = from.far;
   to.zoom = from.zoom;
-  if (from.view) to.setViewOffset(from.view.fullWidth, from.view.fullHeight, from.view.offsetX, from.view.offsetY,
-    from.view.width, from.view.height);
-  else if (to.view) to.clearViewOffset();
+  // the lens shift's view written directly, as the rig writes it (engine/cameraRig.ts applyLens): setViewOffset would also
+  // set the aspect to the view's full width over its full height (the rig's 1 x 1), drawing every shifted pane square
+  // into its own rectangle, stretched (Kevin, 2026-11-12: "dont squish the ui tho, just cut it to fit aspect ratios")
+  if (from.view) {
+    const view = to.view ?? { enabled: true, fullWidth: 1, fullHeight: 1, offsetX: 0, offsetY: 0, width: 1, height: 1 };
+    view.enabled = from.view.enabled;
+    view.fullWidth = from.view.fullWidth;
+    view.fullHeight = from.view.fullHeight;
+    view.offsetX = from.view.offsetX;
+    view.offsetY = from.view.offsetY;
+    view.width = from.view.width;
+    view.height = from.view.height;
+    to.view = view;
+  } else if (to.view) {
+    to.view = null;
+  }
   Object.assign(to.userData, from.userData);
   to.updateProjectionMatrix();
   to.updateMatrixWorld(true);

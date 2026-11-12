@@ -199,6 +199,12 @@ the battle had.
   each writing its own rectangle of the canvas through the viewport and the scissor; the governor samples the frame
   once. Each pane's camera is copied onto the chain's camera for its draw, so every camera-dependent pass (the scene,
   the aerial haze, the late effects) is the pane's.
+- **Cut to fit, never stretched** (Kevin, 2026-11-12: "dont squish the ui tho, just cut it to fit aspect ratios"). Each
+  pane's camera takes its own pane's aspect with the solo vertical field of view, so a narrow pane shows less side to
+  side; the chain's targets are the pane's size, and the HUD projects through the pane's own camera. The copy onto the
+  chain's camera writes the chase's lens shift as the rig writes it (`camera.view` directly): `setViewOffset` would
+  set the aspect to the shift's 1 x 1 and draw every shifted pane square into its rectangle. The harness checks that a
+  round object draws round in every pane at 1, 2, 4 and 8 (its image's width over height within 1 % of 1, as in solo).
 - **The battle opens inside the gun's limits.** The chase camera's first look is taken under the hull's own pitch, not
   under the horizon, and no deeper than the gun can follow (`engine/chaseStart.ts`, for the solo start, its reveal and
   every pane): 10 degrees, or shallower where that look's ground point (from the chase camera about 6 m up and 20 m
