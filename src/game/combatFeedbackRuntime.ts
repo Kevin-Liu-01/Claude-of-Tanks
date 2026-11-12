@@ -59,6 +59,8 @@ interface ShellFiredEvent {
   isPlayer?: boolean;
   shooterId?: string;
   feedbackPredicted?: boolean;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): no flash, report or kick */
+  thinned?: boolean;
   shellName?: string;
   shellType?: string;
   caliberMm?: number;
@@ -140,7 +142,8 @@ export function createCombatFeedbackRuntime({
 
   const playShotRecoil = (event: ShellFiredEvent): void => {
     const player = game.player;
-    if (!event.isPlayer || !hasNetworkMatch() || !player) return;
+    // (270) a rotary gun's thinned rounds kick nothing: its camera kick at the floor's density
+    if (!event.isPlayer || event.thinned || !hasNetworkMatch() || !player) return;
     const shells = player.spec.gun.shells || [];
     let shellSpec: FeedbackShellSpec | null = null;
     let typeFallback: FeedbackShellSpec | null = null;

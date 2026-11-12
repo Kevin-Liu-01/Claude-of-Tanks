@@ -444,6 +444,8 @@ interface PredictedWeaponEvent {
   shellName?: string;
   /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
   shooterId?: ShellId | null;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): no flash, report or kick */
+  thinned?: boolean;
 }
 
 interface ShellFiredEvent extends PredictedWeaponEvent {
@@ -2427,8 +2429,9 @@ function* createFxSteps(
     blastRadiusM: undefined as number | undefined, launcherTubes: 0 };
   /** The records each map keeps at most: an overflow drops the oldest. (Round 2 U31 review: the map was cleared past 96,
    *  so a heavy fight's machine-gun rounds dropped the class of every round in flight, and a WP smoke round's expiry read
-   *  as an HE burst by its type.) */
-  const SHELL_RECORDS_MAX = 256;
+   *  as an HE burst by its type.) (270) 512: a rotary gun keeps ~180 rounds in flight (one a tick, 3 s each), every
+   *  one recorded, thinned or not. */
+  const SHELL_RECORDS_MAX = 512;
   function keepNewest(map: Map<ShellId, ShellRecord>, id: ShellId, record: ShellRecord): void {
     map.delete(id);
     if (map.size >= SHELL_RECORDS_MAX) map.delete(map.keys().next().value as ShellId);
@@ -7284,14 +7287,16 @@ function* createFxSteps(
           // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube
           const wired = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
           if (wired.wires > 0) beginWire(e, wired);
-        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
+        } else if (!e.feedbackPredicted && !e.thinned) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
         // seed its sweep tail at the muzzle — a fast shell can be born and
         // dead between two render frames, so the expiry-time sweep below is
         // what guarantees flight coverage against destructible props.
-        if (shellKinds.size > 96) { shellKinds.clear(); sweepTails.clear(); } // leak guard
+        // leak guard: the oldest round past the bound goes (270: a rotary gun keeps hundreds in flight, and a whole clear
+        // forgot every other gun's rounds with them)
+        if (shellKinds.size >= SHELL_RECORDS_MAX) { const oldest = shellKinds.keys().next().value!; shellKinds.delete(oldest); sweepTails.delete(oldest); }
         shellKinds.set(e.shellId, e.shellType);
         sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
         rememberMunition(e);
@@ -7304,7 +7309,7 @@ function* createFxSteps(
         const gun = gunshipShotOf(e.weaponSound, false);
         if (gun) gunshipMuzzleFx(e, gun, idSeed(`${e.muzzlePos.join(',')}`));
         else if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
-        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
+        else if (!e.thinned) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket, e.shooterId);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         // (2026-11-02 audit F10) taken by every hull event, so a hull blast names only the one raised right after it

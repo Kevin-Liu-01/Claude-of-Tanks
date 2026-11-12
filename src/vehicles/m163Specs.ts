@@ -146,20 +146,25 @@ spec.armor.crew = [
 // well over his head is his station (tools/crew-seat-fit.mjs armor.openStations), his boots just under the race through
 // the ring (the column is 0.49 m deep; seated so, his pelvis lands on the seat's 0.50 m), never the hull's floor.
 spec.armor.openStations = [{ crew: 'gunner', center: [C.x, C.z], radius: C.r - C.wall, floorY: -0.25, topY: C.topY + 0.9 }];
-// The M168 (the M61A1 on the M157 mount). The game cannot fire faster than its 0.05 s floor, so the cycle is the real
-// gun's 1,000 rounds a minute (its ground rate; the 3,000 of its air bursts is below the floor), and the gunner's
-// 60-round burst setting (the burst limiter's 10, 30, 60 or 100) is one magazine: 3.5 s of fire, then 4.0 s while
-// the burst limiter resets and the feed recharges. A burst puts 1,200 damage out at ~340 a second (twice the 268/269
+// The M168 (the M61A1 on the M157 mount). As authored, the cycle is the real gun's 1,000 rounds a minute (its ground
+// rate), and the gunner's 60-round burst setting (the burst limiter's 10, 30, 60 or 100) is one magazine: 3.5 s of fire,
+// then 4.0 s while the burst limiter resets and the feed recharges. It is a rotary gun (`rotary`, sim/fireCycleFloor.ts,
+// release 270): the air-defence rule below runs it at one round a tick, 3,600 rounds a minute, past the 3,000 of its air
+// bursts and the 0.05 s floor every other gun keeps. A burst puts 1,200 damage out at ~340 a second (twice the 268/269
 // twin-35 mm's ~175), and the cycle sustains ~9,550 a minute (the tier-V twin-35 mm's ~10,450 a minute): a 20 mm hose
 // for a tier IV light hull. The M53 API (100 g at 1,030 m/s) a step over the Marder's 20 mm at IV, losing fast with
 // range; the M56 HEI (10.7 g of HE) bursts on what it strikes. 2,100 rounds (1,100 ready in the drum and 1,000 stowed),
 // one in three armour-piercing.
+// (270) Each round flies 3 s, not every round's 6 (sim/ballistics.ts SHELL_MAX_LIFETIME_S): ~3.1 km at 1,030 m/s, past the
+// Vulcan's 3,000 m ground range and its 1,200 m air range, so a burst into the sky at one round a tick keeps ~180 rounds in
+// flight, not ~360 (tools/rotary-fire-probe.mjs: the authority's step and the viewers' shell rows).
+const ROUND_FLIGHT_S = 3;
 spec.gun = {
   ...spec.gun, caliberMm: 20, reloadS: 4.0, baseAccuracy: 0.30, aimTimeS: 0.95, soundProfile: 'rh202',
-  autoloader: { magazineSize: 60, intraClipS: 0.06, fullReloadS: 4.0 },
+  autoloader: { magazineSize: 60, intraClipS: 0.06, fullReloadS: 4.0, rotary: true },
   shells: [
-    shell('M53 API', 'AP', 20, 90, 72, 20, 1030, { pen2000Mm: 55, reloadS: 0.06, count: 700 }),
-    shell('M56 HEI', 'HE', 20, 8, 8, 22, 1030, { pen2000Mm: 8, reloadS: 0.06, count: 1400 }),
+    shell('M53 API', 'AP', 20, 90, 72, 20, 1030, { pen2000Mm: 55, reloadS: 0.06, count: 700, maxLifetimeS: ROUND_FLIGHT_S }),
+    shell('M56 HEI', 'HE', 20, 8, 8, 22, 1030, { pen2000Mm: 8, reloadS: 0.06, count: 1400, maxLifetimeS: ROUND_FLIGHT_S }),
   ],
 };
 for (const key of ['launcherSalvo', 'fixedLaunchCanisters', 'primaryGuided', 'muzzleBoreSegments', 'launcherMuzzles', 'muzzles'] as const) {
@@ -182,7 +187,8 @@ function reach(record: FleetTankSpec): number {
 spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
 
 // The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
-// rounds; the Vulcan keeps its burst limiter: 300-round bursts, a 2 s reset.
+// rounds; the Vulcan keeps its burst limiter: 300-round bursts, a 2 s reset. Its floor is a tick (the owner: "a super super
+// high fire rate"): each burst 5 s of fire, 7.4 damage an API round (a rotary gun's damage goes to a tenth, 272).
 applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['m163_vads'], { m163_vads: spec });
 

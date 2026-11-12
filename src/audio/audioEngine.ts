@@ -302,6 +302,8 @@ function moduleHealth(entity: AudioEntity, name: string): ModuleHealth {
 interface ShellFiredEvent {
   feedbackPredicted?: boolean;
   shellId?: number;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): no flash, report or kick */
+  thinned?: boolean;
   shooterId?: string;
   muzzlePos: Vec3;
   caliberMm: number;
@@ -1200,13 +1202,13 @@ export function createAudio({
     const shotOf = shotMount(event.shooterId ?? null, event.shellName ?? null, event.caliberMm, event.weaponSound);
     // an airstrike's rounds are heard as the strike's own (Air Support: the A-10's one burst a run, onStrikeRound)
     const strikeOwned = STRIKE_OWNED_REPORTS.has(String(event.weaponSound || ''));
-    if (!event.feedbackPredicted && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
+    if (!event.feedbackPredicted && !event.thinned && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
     if (!ownShot) shellFlyby(event);
     if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
       const [gx, gy, gz] = event.muzzlePos;
       if (distanceTo(gx, gy, gz) < 350) caption('gunfire', gx, gy, gz);
     }
-    if (event.isPlayer) {
+    if (event.isPlayer && !event.thinned) {
       if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { delayS: 0.1 });
       else say('firing', { prob: 0.1, delayS: 0.08 });
     }
@@ -1225,7 +1227,7 @@ export function createAudio({
 
   function onPredictedWeapon(event: ShellFiredEvent): void {
     if (!ctx || battleMode.phase !== 'battle' || battleMode.over || !event.isPlayer) return;
-    if (listenerOwnerId == null || event.shooterId !== listenerOwnerId) return;
+    if (listenerOwnerId == null || event.shooterId !== listenerOwnerId || event.thinned) return;
     // Intent-only report: no flyby, crew call or shell bookkeeping.
     const shooter = event.shooterId ?? listenerOwnerId;
     fireWeapon(event.muzzlePos, shotMount(shooter, event.shellName ?? null, event.caliberMm, event.weaponSound), event.weaponSound, true,

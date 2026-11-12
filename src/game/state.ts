@@ -26,6 +26,7 @@ import type {
   CombatState,
   HitEvent,
 } from '../sim/damage.ts';
+import { createRotaryShotThinning } from '../sim/fireCycleFloor.ts';
 import type {
   MovementArmorSpec,
   MovementContactGeometry,
@@ -600,6 +601,9 @@ interface ShellFiredEvent {
   /** (233) the round's own blast envelope when its spec has one (the gunship's howitzer: 22 m): the effects size its
    *  charge by it (effects.ts rememberMunition) instead of the calibre's generic charge */
   blastRadiusM?: number;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): it flies, hits
+   *  and impacts, but plays no muzzle flash, report or camera kick */
+  thinned: boolean;
 }
 
 interface NearestTankTrace {
@@ -707,8 +711,10 @@ const _firedEv: ShellFiredEvent = {
   caliberMm: 0, velocityMps: 0, timeS: 0,
   muzzlePos: [0, 0, 0], dir: [0, 0, 0],
   weaponSound: null, muzzleIndex: -1,
-  recoilScale: 1,
+  recoilScale: 1, thinned: false,
 };
+// (270) the rotary gun's presentation at the floor's density: every third round of the M163's one a tick in full
+const thinRotaryShot = createRotaryShotThinning();
 
 
 
@@ -1809,6 +1815,7 @@ function applyShotFeedback(
   muzzleIndex: number,
   recoilScale: number,
   rig: CameraRig | null,
+  thinned: boolean,
 ): void {
   fireRecoil(entity.state, entity.spec, shell, recoilLaunchFor(entity, _dir));
   entity.visual?.recoilKick(
@@ -1817,7 +1824,7 @@ function applyShotFeedback(
     muzzleIndex >= 0 ? muzzleIndex : undefined,
     usesLauncherMuzzles(entity.spec.gun, shell),
   );
-  if (!entity.isPlayer || !rig) return;
+  if (!entity.isPlayer || !rig || thinned) return;
   const caliberScale = Math.max(0, Math.min(1, (shell.caliberMm - 30) / 122));
   rig.addTrauma((0.10 + caliberScale * 0.20) * recoilScale);
   rig.recoilKick?.(
@@ -1834,6 +1841,7 @@ function emitShellFired(
   muzzleIndex: number,
   recoilScale: number,
   bus: EventBus,
+  thinned: boolean,
 ): void {
   _firedEv.shellId = shell.id;
   _firedEv.shooterId = entity.id;
@@ -1848,6 +1856,7 @@ function emitShellFired(
   _firedEv.velocityMps = shellSpec.velocityMps;
   _firedEv.blastRadiusM = shellSpec.blastRadiusM;
   _firedEv.timeS = game.timeS;
+  _firedEv.thinned = thinned;
   _firedEv.muzzlePos[0] = _muzzle.x;
   _firedEv.muzzlePos[1] = _muzzle.y;
   _firedEv.muzzlePos[2] = _muzzle.z;
@@ -1876,6 +1885,8 @@ function tryFire(
   applyDispersion(_dir, dispersion, game.combatRng);
   const firedSlot = entity.combat.shellSlot;
   if (!consumeAmmunition(entity.combat, firedSlot)) return;
+  const thinned = entity.spec.gun.autoloader?.rotary === true && shellSpec.guided !== true
+    && thinRotaryShot(entity.id, game.timeS);
   const shell = acquireShell(
     shellSpec,
     entity.id,
@@ -1884,6 +1895,7 @@ function tryFire(
     _dir,
     game.nextShellId++,
   );
+  shell.thinned = thinned;
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
@@ -1891,8 +1903,8 @@ function tryFire(
   if (rulesetUnlimitedFor(game.ruleset, entity)) refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
-  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
-  emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus);
+  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig, thinned);
+  emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus, thinned);
   startPostShotReload(entity.combat, entity.spec);
   if (!hasAmmunition(entity.combat, firedSlot)) {
     const fallbackSlot = selectFirstAvailableShell(entity.combat, entity.spec);

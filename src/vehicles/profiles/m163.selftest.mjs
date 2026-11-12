@@ -36,7 +36,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
-import { createTankState } from '../../sim/movement.ts';
+import { SIM_DT, createTankState } from '../../sim/movement.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
@@ -338,18 +338,21 @@ try {
     turned += d;
     last = rotor.rotation.z;
   };
-  for (let shot = 0; shot < 10; shot++) {
+  // (270) a rotary gun: one round a tick, the cycle the simulation's step
+  assert.equal(cycle, SIM_DT, 'the rotor turns at the rotary floor\'s cycle');
+  for (let shot = 0; shot < 36; shot++) {
     tank.recoilKick(0, 0.36);
     for (let f = 0; f < 4; f++) frame(cycle / 4);
   }
-  // spin-up over 0.3 s, then one barrel position (60 degrees) a 0.06 s cycle: 7.85 rad over the 0.6 s burst
-  assert.ok(turned > 6, `a burst turns the rotor (${turned.toFixed(2)} rad in ${t.toFixed(2)} s)`);
+  // spin-up over 0.3 s, then one barrel position (60 degrees) a tick's cycle: ~28 rad over the 0.6 s burst (the 240 Hz
+  // frames under the 24-degree step bound)
+  assert.ok(turned > 20, `a burst turns the rotor (${turned.toFixed(2)} rad in ${t.toFixed(2)} s)`);
   assert.ok(tank.gunDirWorld(new THREE.Vector3()).angleTo(axis0) < 0.05, 'the fire axis stays on the bore');
   assert.equal(snapshot(), simBefore, 'the spin leaves the simulation\'s state untouched');
   const burst = turned;
   for (let f = 0; f < 600; f++) frame(1 / 60);
-  // (the 0.16 s hold at speed and the 0.45 s coast: ~10.6 rad, a revolution and a half)
-  assert.ok(turned - burst > 3 && turned - burst < 12, `it coasts on after the burst (${(turned - burst).toFixed(2)} rad)`);
+  // (the 0.16 s hold at speed and the 0.45 s coast, the 60 Hz frames held to 24 degrees a step: ~26 rad, four turns)
+  assert.ok(turned - burst > 15 && turned - burst < 35, `it coasts on after the burst (${(turned - burst).toFixed(2)} rad)`);
   const rested = rotor.rotation.z;
   frame(1 / 60);
   assert.equal(rotor.rotation.z, rested, 'it comes to rest after the coast');

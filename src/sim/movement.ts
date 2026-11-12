@@ -2,6 +2,7 @@ import { movementDispersionFactor } from './movementDispersion.ts';
 import { mechanicalGunPitchFloor, minimumMechanicalGunPitch } from './gunPitchLimits.ts';
 import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
 import { usesLauncherMuzzles, type LauncherMuzzle } from './launcherPolicy.ts';
+import { floorShotShare, type GunAutoloader } from './fireCycleFloor.ts';
 /**
  * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
  * dispersion bloom. Implements docs/history/research/movement-physics.md §2–§8 and §10
@@ -53,6 +54,8 @@ export interface MovementGunSpec {
   baseAccuracy: number;
   caliberMm: number;
   reloadS: number;
+  /** a rotary gun's autoloader: its rounds shake the hull by their share of a floor cycle (fireRecoil) */
+  autoloader?: GunAutoloader | null;
   bloom: {
     move: number;
     hullRot: number;
@@ -5811,11 +5814,15 @@ export function fireRecoil(
   // gravity a bot firing through a boost flight pitched over 95 degrees and came down on its back: the ground rock's
   // kick, three times a flight, and the air does not damp it back)
   const turn = state.grounded === false ? AIR_RECOIL_TURN_SCALE : 1;
-  spr.pitchV += kick * ct * recoilScale * turn;
-  spr.rollV += kick * st * recoilScale * turn;
+  // (272) a rotary gun's round kicks, shoves and blooms by its share of a floor cycle (fireCycleFloor.ts floorShotShare):
+  // a second of the Vulcan's fire disturbs the gun as a second at the floor does. At full size a round, three times the
+  // shocks kept the M163's hull rocking and its reticle open: 3 % of its rounds hit an MBT at 120 m, not the floor's 42 %.
+  const share = floorShotShare(spec.gun.autoloader);
+  spr.pitchV += kick * ct * recoilScale * turn * share;
+  spr.rollV += kick * st * recoilScale * turn * share;
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
-  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;
+  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale * share;
   spr.recoilVX -= detMath.sin(gunYawWorld) * v;
   spr.recoilVZ -= detMath.cos(gunYawWorld) * v;
   if (launch && launch.scale > 1) {
@@ -5838,7 +5845,7 @@ export function fireRecoil(
   const afterShotBloom = rapidIfvShot
     ? Math.min(spec.gun.bloom.afterShot, IFV_AUTOCANNON_AFTER_SHOT_BLOOM)
     : spec.gun.bloom.afterShot;
-  state.bloomF *= afterShotBloom;
+  state.bloomF *= share === 1 ? afterShotBloom : detMath.pow(afterShotBloom, share);
 }
 
 /**

@@ -1039,6 +1039,19 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     0.3 * 0.7 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
     'IFV autocannon: translation impulse uses the readable 36-percent scale');
 
+  // (272) a rotary gun (fireCycleFloor.ts floorShotShare): three of its rounds kick, shove and bloom the gun as one round
+  // of the same gun at the floor does, so a second of its fire disturbs the aim as a second at the floor
+  const rotaryIfv = { ...rapidIfv, gun: { ...rapidIfv.gun, autoloader: { magazineSize: 300, intraClipS: 1 / 60, rotary: true } } };
+  const rotaryState = createTankState(rotaryIfv, new Vector3(), 0);
+  const floorState = createTankState(rapidIfv, new Vector3(), 0);
+  for (let round = 0; round < 3; round++) fireRecoil(rotaryState, rotaryIfv, beltRound);
+  fireRecoil(floorState, rapidIfv, beltRound);
+  near(rotaryState._spring.pitchV, floorState._spring.pitchV, 1e-12, 'rotary gun: three rounds kick the hull as one floor round');
+  near(Math.hypot(rotaryState._spring.recoilVX, rotaryState._spring.recoilVZ),
+    Math.hypot(floorState._spring.recoilVX, floorState._spring.recoilVZ), 1e-12, 'rotary gun: three rounds shove the hull as one');
+  near(rotaryState.bloomF, floorState.bloomF, 1e-12, 'rotary gun: three rounds bloom the aim as one');
+  assert(rotaryState._spring.pitchV > 0 && floorState.bloomF > 1, 'rotary gun: the control rounds did kick and bloom');
+
   ent.state.bloomF = 1;
   fireRecoil(ent.state, rapidIfv, { caliberMm: 152, reloadS: 14 });
   near(ent.state.bloomF, 2.2, 1e-9, 'IFV missile rail keeps full after-shot bloom');
