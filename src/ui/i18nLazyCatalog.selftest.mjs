@@ -148,6 +148,8 @@ assert.equal(studioPlugin.enforce, 'pre', 'the split serves the catalog files be
 const fleetKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).fleet).sort();
 // (252: the tech-tree screen's strings are a third slice, section 7)
 const techTreeKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).techTree).sort();
+// (272: the first-game tutorial's strings are a fourth slice, section 8)
+const tutorialKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).tutorial).sort();
 const sliceModule = (plugin, slice, locale) => JSON.parse(plugin.load.call(pluginContext,
   plugin.resolveId.call(pluginContext, `virtual:cot-i18n-${slice}/${locale}`)).replace(/^export default /, '').replace(/;\s*$/, ''));
 for (const locale of ['en-US', 'zh-CN']) {
@@ -155,13 +157,16 @@ for (const locale of ['en-US', 'zh-CN']) {
   const slice = sliceModule(studioPlugin, 'studio', locale);
   const fleet = sliceModule(studioPlugin, 'fleet', locale);
   const techTree = sliceModule(studioPlugin, 'techTree', locale);
+  const tutorial = sliceModule(studioPlugin, 'tutorial', locale);
   assert.ok(studioKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the Studio's strings out`);
   assert.deepEqual(Object.keys(slice).sort(), studioKeys, `the ${locale} Studio slice holds them`);
   assert.ok(fleetKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the Filter panel's strings out`);
   assert.deepEqual(Object.keys(fleet).sort(), fleetKeys, `the ${locale} fleet slice holds them`);
   assert.ok(techTreeKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the tech-tree screen's strings out`);
   assert.deepEqual(Object.keys(techTree).sort(), techTreeKeys, `the ${locale} tech-tree slice holds them`);
-  assert.deepEqual({ ...game, ...slice, ...fleet, ...techTree }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
+  assert.ok(tutorialKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the tutorial's strings out`);
+  assert.deepEqual(Object.keys(tutorial).sort(), tutorialKeys, `the ${locale} tutorial slice holds them`);
+  assert.deepEqual({ ...game, ...slice, ...fleet, ...techTree, ...tutorial }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
 }
 assert.throws(() => studioPlugin.resolveId.call(pluginContext, 'virtual:cot-i18n-fleet/fr-FR'), /no fleet catalog for the locale "fr-FR"/,
   'a slice of an unknown locale fails the build');
@@ -182,6 +187,7 @@ for (const locale of ['en-US', 'zh-CN']) {
   assert.deepEqual(Object.keys(sliceModule(restricted, 'studio', locale)).sort(), studioKeys, `the ${locale} Studio slice is not restricted`);
   assert.deepEqual(Object.keys(sliceModule(restricted, 'fleet', locale)).sort(), fleetKeys, `the ${locale} fleet slice is not restricted`);
   assert.deepEqual(Object.keys(sliceModule(restricted, 'techTree', locale)).sort(), techTreeKeys, `the ${locale} tech-tree slice is not restricted`);
+  assert.deepEqual(Object.keys(sliceModule(restricted, 'tutorial', locale)).sort(), tutorialKeys, `the ${locale} tutorial slice is not restricted`);
   assert.equal(wholePlugin.load.call(pluginContext, file), studioPlugin.load.call(pluginContext, file),
     `no key set: the ${locale} game catalog is served whole`);
 }
@@ -303,15 +309,37 @@ assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
   /import\('\.\/techTree\.ts'\), import\('\.\/techTree\.css'\), heroCardChunk\.load\(\),\s*import\('\.\/techTreeStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTechTreeStrings\(\)\)/,
   'the tech tree opens once its strings are resident');
 
+// 8. The first-game tutorial's strings (src/ui/i18nTutorialKeys.ts, 272) load with its overlay: only the tutorial's own
+//    modules show them, the game's static graph holds neither the overlay, its steps nor its loader, and a chapter starts
+//    once they are resident. Settings' Replay row and the manual's link keep their own keys in the catalogs they load.
+const TUTORIAL_MODULES = ['src/ui/tutorial/tutorialRunner.ts', 'src/ui/tutorial/tutorialOverlay.ts', 'src/ui/tutorial/tutorialSteps.ts',
+  'src/ui/tutorialStrings.ts'];
+assert.ok(tutorialKeys.length >= 40 && tutorialKeys.every((key) => key.startsWith('tutorial.')), 'the tutorial owns its slice');
+assert.deepEqual(Object.keys(splitStudioCatalog(fullCatalogs['zh-CN']).tutorial).sort(), tutorialKeys,
+  'both locales split the tutorial slice alike');
+for (const file of sources) {
+  if (TUTORIAL_MODULES.includes(file) || file === 'src/ui/i18nTutorialKeys.ts') continue;
+  const text = readFileSync(resolve(ROOT, file), 'utf8');
+  const shown = tutorialKeys.find((key) => ["'", '"', '`'].some((quote) => text.includes(`${quote}${key}${quote}`)));
+  assert.equal(shown, undefined, `${file} shows the tutorial string ${shown}, which the game's catalogs leave out`);
+}
+for (const module of TUTORIAL_MODULES) {
+  assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
+}
+assert.match(readFileSync(resolve(ROOT, 'src/app/tutorialAccess.ts'), 'utf8'),
+  /createLazyChunk\(\(\) => importAll\(\[\s*import\('\.\.\/ui\/tutorial\/tutorialRunner\.ts'\),\s*import\('\.\.\/ui\/tutorial\/tutorial\.css'\),\s*import\('\.\.\/ui\/tutorialStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTutorialStrings\(\)\),/,
+  'a tutorial chapter starts once its strings are resident');
+
 // Runtime: outside Vite the loaders resolve at once (the full catalogs are resident); inside, one request per slice.
-const [{ ensureFleetStrings }, { ensureStudioStrings }, { ensureTechTreeStrings }] = await Promise.all([
-  import('./fleetStrings.ts'), import('./studioStrings.ts'), import('./techTreeStrings.ts')]);
+const [{ ensureFleetStrings }, { ensureStudioStrings }, { ensureTechTreeStrings }, { ensureTutorialStrings }] = await Promise.all([
+  import('./fleetStrings.ts'), import('./studioStrings.ts'), import('./techTreeStrings.ts'), import('./tutorialStrings.ts')]);
 assert.equal(await ensureFleetStrings(), undefined);
 assert.equal(await ensureStudioStrings(), undefined);
 assert.equal(await ensureTechTreeStrings(), undefined);
+assert.equal(await ensureTutorialStrings(), undefined);
 assert.equal(dictionaries.catalogText('zh-CN', 'fleet.filter.clear'), fullCatalogs['zh-CN']['fleet.filter.clear'],
   'Node keeps the panel\'s strings resident');
 
 console.log('i18nLazyCatalog.selftest: no page graph holds a catalog; zh-CN loads on demand, English pages never fetch it, '
   + `/cn/ preloads it; the Studio's ${studioKeys.length} strings per locale load with its chunk and the Filter panel's `
-  + `${fleetKeys.length} with the panel; the tech tree's ${techTreeKeys.length} with the screen`);
+  + `${fleetKeys.length} with the panel; the tech tree's ${techTreeKeys.length} with the screen; the tutorial's ${tutorialKeys.length} with its overlay`);

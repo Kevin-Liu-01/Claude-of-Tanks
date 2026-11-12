@@ -56,6 +56,12 @@ at first use, and the muted player that decodes only on screen) for the Gallery
 dossier, the manual's fleet reference and the Garage's battle gallery, which
 reach it only through `import()`; the Studio Director finds the same takes in
 its scenes index (`group: 'fleet'`);
+`tutorial/` owns the first-game tutorial (272): `tutorialSteps.ts` is the steps as data (chapter, lit selectors, catalog
+title and body, media, what advances it, the input it is written for), `tutorialRunner.ts` plays a chapter through the
+one overlay `tutorialOverlay.ts` (a top-layer spotlight and centre card, off the surface stack by design) and
+`tutorialRecord.ts` is the boot-side record (`cot.tutorial.v1`); `app/tutorialAccess.ts` decides when a chapter runs
+and loads the rest as one lazy chunk with its own catalog slice (`i18nTutorialKeys.ts`, `tutorialStrings.ts`). A new
+step is a record, never code (`tutorial/tutorialSteps.selftest.mjs`; the live walk is `tools/tutorial.browser.mjs`);
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 `i18n.ts` owns locale detection and runtime formatting; the paired

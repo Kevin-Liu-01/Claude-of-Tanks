@@ -1,0 +1,243 @@
+/**
+ * tutorialRunner.ts — plays one chapter of the first-game tutorial (272). Copyright © 2026 Kevin B. Liu.
+ *
+ * It walks a chapter's steps (tutorialSteps.ts, filtered for the player's hands) through the one overlay
+ * (tutorialOverlay.ts), and moves on by the step's record: Next, a press on the lit control, or the player doing the
+ * thing in battle (driving N metres, firing, loading another shell), heard on the game's bus and read from the player's
+ * position. Back steps back; Skip ends the whole tutorial at once (every chapter recorded skipped, by the caller).
+ *
+ * Every input works: a mouse or a finger presses the card's buttons; the Garage's keyboard takes Enter or → for Next,
+ * ← for Back and Esc for Skip; a battle, whose keys drive the tank and whose pointer is locked to the sight, takes
+ * Enter for Next and Backspace for Skip (keys no default binding uses) and never moves focus to the card; a gamepad
+ * takes A / B / BACK in the Garage and the stick clicks (RS Next, LS Skip) in battle, where every other button is
+ * bound. The card's buttons show those keys.
+ */
+import { labelForCode, type ActionId } from '../../game/input.ts';
+import { t } from '../i18n.ts';
+import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
+import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
+import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
+
+export interface TutorialPort {
+  /** The game's bus (its `on`): shell:fired, ui:shellSelect, ui:shellSelectionChanged, ui:pause. */
+  on(event: string, listener: (payload: unknown) => void): () => void;
+  /** Who is playing: a keyboard and mouse, a touch layout, or a connected pad. */
+  inputKind(): TutorialInput;
+  /** The cap for an action's current binding (its pad button with a pad connected). */
+  keyLabel(action: ActionId): string;
+  /** The player's tank on the ground plane, in battle; null elsewhere. */
+  playerPosition(): { readonly x: number; readonly z: number } | null;
+}
+
+export interface TutorialRun {
+  readonly chapter: TutorialChapter;
+  /** The step showing (receipts and the capture tool). */
+  readonly stepId: string | null;
+  readonly overlay: TutorialOverlay;
+  /** End the run without recording anything (the screen it ran on is gone). */
+  stop(): void;
+  next(): void;
+  back(): void;
+  skip(): void;
+}
+
+export interface RunOptions {
+  readonly chapter: TutorialChapter;
+  readonly port: TutorialPort;
+  /** The chapter ended: done (its last step passed) or skipped (Skip, which ends the whole tutorial). */
+  onEnd(outcome: TutorialOutcome): void;
+}
+
+const DRIVE_POLL_MS = 250;
+const PAD_POLL_MS = 90;
+/** Gamepad buttons (standard mapping) per screen: the Garage's menus take none; a battle binds all but the stick clicks. */
+const PAD_KEYS = {
+  menu: { next: 0, back: 1, skip: 8 },
+  battle: { next: 11, back: -1, skip: 10 },
+} as const;
+const PAD_CAPS: Readonly<Record<number, string>> = { 0: 'A', 1: 'B', 8: 'BACK', 10: 'LS', 11: 'RS' };
+
+/** A key's cap as the game writes it (the Garage's Deploy names Enter in the player's language). */
+const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : labelForCode(code));
+
+const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** A body line with its {placeholders} as key caps (the line itself escaped). */
+function bodyHtml(step: TutorialStep, port: TutorialPort): string {
+  const keys = step.keys ?? {};
+  const marks = Object.fromEntries(Object.keys(keys).map((name, i) => [name, `\u0000${i}\u0000`]));
+  let html = esc(t(step.body, marks));
+  Object.values(keys).forEach((action, i) => {
+    const cap = port.keyLabel(action);
+    html = html.split(`\u0000${i}\u0000`).join(`<kbd class="cot-c-kbd"${/[㐀-鿿]/.test(cap) ? ' data-cjk' : ''}>${esc(cap)}</kbd>`);
+  });
+  return html;
+}
+
+export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): TutorialRun {
+  const input = port.inputKind();
+  const steps = chapterSteps(chapter, input);
+  const battle = chapter === 'battle';
+  let index = 0;
+  let ended = false;
+  let hiddenByPause = false;
+  let stepOff: Array<() => void> = [];
+  const runOff: Array<() => void> = [];
+
+  const overlay = createTutorialOverlay({ next: () => api.next(), back: () => api.back(), skip: () => api.skip() });
+  overlay.root.dataset.chapter = chapter;
+
+  const resolver = (step: TutorialStep): (() => Element | null) | null => {
+    if (!step.target.length) return null;
+    return () => {
+      for (const selector of step.target) {
+        for (const element of document.querySelectorAll(selector)) {
+          const rect = element.getBoundingClientRect();
+          if (rect.width >= 2 && rect.height >= 2) return element;
+        }
+      }
+      return null;
+    };
+  };
+
+  function clearStep(): void {
+    for (const off of stepOff.splice(0)) off();
+  }
+
+  function end(outcome: TutorialOutcome | null): void {
+    if (ended) return;
+    ended = true;
+    clearStep();
+    for (const off of runOff.splice(0)) off();
+    overlay.destroy();
+    if (outcome) onEnd(outcome);
+  }
+
+  function arm(step: TutorialStep): void {
+    const advance = step.advance;
+    const go = (): void => { if (!ended && steps[index] === step) api.next(); };
+    if (advance.on === 'press') {
+      const onPress = (event: Event): void => {
+        const lit = resolver(step)?.();
+        if (lit && event.target instanceof Node && lit.contains(event.target)) go();
+      };
+      document.addEventListener('click', onPress, true);
+      stepOff.push(() => document.removeEventListener('click', onPress, true));
+    } else if (advance.on === 'fire') {
+      stepOff.push(port.on('shell:fired', (payload) => { if ((payload as { isPlayer?: boolean } | null)?.isPlayer) go(); }));
+    } else if (advance.on === 'shell') {
+      // the player's ask (a shell key, a rack press) or the load it led to: an ATGM slot answers with its own event
+      stepOff.push(port.on('ui:shellSelect', go), port.on('ui:shellSelectionChanged', go));
+    } else if (advance.on === 'drive') {
+      let from = port.playerPosition();
+      const timer = window.setInterval(() => {
+        const at = port.playerPosition();
+        if (!at) return;
+        if (!from) { from = at; return; }
+        if (Math.hypot(at.x - from.x, at.z - from.z) >= advance.metres) go();
+      }, DRIVE_POLL_MS);
+      stepOff.push(() => window.clearInterval(timer));
+    }
+  }
+
+  function render(): void {
+    clearStep();
+    const step = steps[index]!;
+    overlay.root.dataset.step = step.id;
+    const last = index === steps.length - 1;
+    const acting = step.advance.on !== 'next';
+    const pad = input === 'pad';
+    const keys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
+    const cap = (keyboard: string, padButton: number): string => (pad ? PAD_CAPS[padButton] ?? '' : input === 'touch' ? '' : keyboard);
+    const view: OverlayView = {
+      label: t('tutorial.label'),
+      chapter: t(`tutorial.chapter.${chapter}`),
+      progress: t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }),
+      fraction: (index + 1) / steps.length,
+      title: t(step.title),
+      bodyHtml: bodyHtml(step, port),
+      media: step.media ? { ...step.media, alt: t(step.title) } : null,
+      target: resolver(step),
+      dim: step.dim ?? true,
+      place: step.card ?? 'middle',
+      nextLabel: t(last ? 'tutorial.done' : 'tutorial.next'),
+      backLabel: t('tutorial.back'),
+      skipLabel: t('tutorial.skip'),
+      canBack: index > 0,
+      actionHint: acting ? t('tutorial.doIt') : null,
+      caps: battle
+        ? { next: cap(codeCap('Enter'), keys.next), back: '', skip: cap(codeCap('Backspace'), keys.skip) }
+        : step.advance.on === 'press'
+        ? { next: '', back: cap(codeCap('ArrowLeft'), PAD_KEYS.menu.back), skip: cap(codeCap('Escape'), keys.skip) }
+        : { next: cap(codeCap('Enter'), keys.next), back: cap(codeCap('ArrowLeft'), PAD_KEYS.menu.back), skip: cap(codeCap('Escape'), keys.skip) },
+      focus: !battle && input !== 'touch',
+    };
+    overlay.show(view);
+    arm(step);
+  }
+
+  // keys: the Garage's arrows and Esc, a battle's Enter and Backspace (see the module comment)
+  const onKey = (event: KeyboardEvent): void => {
+    if (ended || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+    let handled = true;
+    if (event.code === 'Enter' || event.code === 'NumpadEnter') {
+      // a step that waits for a press on its control lets Enter reach it (the Garage's Deploy answers to Enter)
+      if (steps[index]?.advance.on === 'press') handled = false;
+      else if (battle || !(event.target instanceof HTMLButtonElement) || !overlay.root.contains(event.target)) api.next();
+      else handled = false; // a focused card button presses itself
+    } else if (battle && event.code === 'Backspace') api.skip();
+    else if (!battle && event.code === 'ArrowRight') api.next();
+    else if (!battle && event.code === 'ArrowLeft') api.back();
+    else if (!battle && event.code === 'Escape') api.skip();
+    else handled = false;
+    if (handled) { event.preventDefault(); event.stopImmediatePropagation(); }
+  };
+  window.addEventListener('keydown', onKey, true);
+  runOff.push(() => window.removeEventListener('keydown', onKey, true));
+
+  // a gamepad's edges, read here (the game's own poll fires its actions only in battle)
+  const padKeys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
+  let padHeld = 0;
+  const padTimer = window.setInterval(() => {
+    const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+    const pad = [...pads].find((entry) => entry?.connected) ?? null;
+    let held = 0;
+    pad?.buttons.forEach((b, i) => { if (b.pressed) held |= 1 << i; });
+    const pressed = held & ~padHeld;
+    padHeld = held;
+    if (!pressed || hiddenByPause) return;
+    if (pressed & (1 << padKeys.next)) api.next();
+    else if (padKeys.back >= 0 && pressed & (1 << padKeys.back)) api.back();
+    else if (pressed & (1 << padKeys.skip)) api.skip();
+  }, PAD_POLL_MS);
+  runOff.push(() => window.clearInterval(padTimer));
+
+  // a paused battle (the pause menu) hides the card; it comes back with the battle
+  runOff.push(port.on('ui:pause', (payload) => {
+    hiddenByPause = !!(payload as { on?: boolean } | null)?.on;
+    overlay.setHidden(hiddenByPause);
+  }));
+
+  const api: TutorialRun = {
+    chapter,
+    get stepId() { return ended ? null : steps[index]?.id ?? null; },
+    overlay,
+    stop: () => end(null),
+    next(): void {
+      if (ended) return;
+      if (index >= steps.length - 1) { end('done'); return; }
+      index += 1;
+      render();
+    },
+    back(): void {
+      if (ended || index === 0) return;
+      index -= 1;
+      render();
+    },
+    skip: () => end('skipped'),
+  };
+
+  if (!steps.length) { end('done'); return api; }
+  render();
+  return api;
+}

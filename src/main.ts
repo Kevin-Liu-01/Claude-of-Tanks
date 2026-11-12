@@ -230,7 +230,7 @@ import type { DriveTestControllerOptions } from './dev/driveTestController.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
-import { createInput } from './game/input.ts';
+import { createInput, labelForCode, labelForPadButton } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
@@ -261,6 +261,7 @@ import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchR
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
+import { createTutorialAccess, readTutorialReplay } from './app/tutorialAccess.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
@@ -4719,6 +4720,43 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
     settings.preload().catch((error) => console.warn('[settings] idle preload failed', error));
     playSurface.prepareMenu();
   }));
+}
+// 272: the first-game tutorial (app/tutorialAccess.ts): a new player's first Garage, first battle and the strategy tips
+// after it, replayable from Settings and from the Field Manual (/?tutorial=1). Only its record is read on boot; its
+// overlay, sheet and strings load when a chapter is due. A test drive or a room invite boots past the Garage: the
+// tutorial waits for the Garage's next showing.
+const tutorialReplay = readTutorialReplay(location.href);
+if (tutorialReplay.asked) {
+  try { history.replaceState(history.state, '', tutorialReplay.cleaned); } catch { /* the address keeps it */ }
+}
+let tutorialEntryPassed = false;
+const tutorial = createTutorialAccess({
+  on: (event, listener) => bus.on(event, listener),
+  inputKind: () => (input.isTouchLayout() ? 'touch' : input.isPadConnected() ? 'pad' : 'keyboard'),
+  keyLabel: (action) => (input.isPadConnected() && !input.isTouchLayout()
+    ? labelForPadButton(input.getPadBinding(action)) : labelForCode(input.getBinding(action))),
+  playerPosition: () => {
+    const pos = game.phase === 'battle' ? game.player?.state?.pos : null;
+    return pos ? { x: pos.x, z: pos.z } : null;
+  },
+  onGarage: () => tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending,
+  isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
+    && !game.ruleset?.provingGround,
+  preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+});
+bus.on('phase:change', () => { if (game.phase === 'garage') tutorial.garageShown(); });
+bus.on('ui:replayTutorial', () => tutorial.replay());
+void entryReady.then(() => {
+  tutorialEntryPassed = true;
+  if (testDriveSpecId || pendingRoomInvitePromise) return;
+  if (tutorialReplay.asked) tutorial.replay();
+  else tutorial.garageShown();
+}).catch(() => { /* the entry gate's own failure is reported where it is awaited */ });
+// receipts read the chapter and step showing; a diagnostics page (dev, ?debug=1, automation) may also start a chapter
+// directly (tools/tutorial.browser.mjs walks Skip from every step without fighting a battle per step)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorial.current() });
+  if (diagnosticsRequested) Object.defineProperty(window, '__TUTORIAL_START', { configurable: true, value: tutorial.debugStart });
 }
 garageBootDone = true;
 // (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts); it writes window.__GAME_READY, the harness

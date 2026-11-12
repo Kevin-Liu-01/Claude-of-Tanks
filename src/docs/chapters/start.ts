@@ -76,7 +76,10 @@ export function startSections(): RichSection[] {
   const next = ([['controls', 'interface'], ['modes', 'modes']] as const).map(([slug, glyph]) => `<a class="dm-next" href="${hrefForLocale(`/docs/${slug}`, locale)}">`
     + `${icon(glyph === 'interface' ? 'settings' : 'modeStandard', { size: 20 })}<b>${esc(t(`docs.topic.${slug}.label`))}</b>`
     + `<span>${esc(t(`docs.chapter.${slug}Lede`))}</span></a>`).join('');
-  const html = `<div class="dm-nexts">${next}</div>`;
+  // (272) the game's own first-game tutorial, replayed: the Garage tour, then the first-battle steps (app/tutorialAccess.ts)
+  const replay = `<a class="dm-next" href="${hrefForLocale('/?tutorial=1', locale)}">${icon('play', { size: 20 })}`
+    + `<b>${esc(t('docs.start.replay'))}</b><span>${esc(t('docs.start.replayLede'))}</span></a>`;
+  const html = `<div class="dm-nexts">${replay}${next}</div>`;
   sections.push({ id: 'next', title: t('docs.start.next.title'), html, text: plain(html) });
   return sections;
 }

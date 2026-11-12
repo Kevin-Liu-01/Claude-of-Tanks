@@ -64,6 +64,7 @@ const OFF_STACK_EXEMPT = {
   'src/ui/endScreen.ts': "the battle's report: the screen a battle ends on, not a surface over one",
   'src/engine/renderer.ts': "the renderer's lost-context notice: the page's last state",
   'src/audio/interfaceSounds.ts': "names the dialogs' roles to choose a sound; shows none",
+  'src/ui/tutorial/tutorialOverlay.ts': "the first-game tutorial's spotlight and card: it lights a control on a surface and must never close or replace that surface, and a press on the lit control must reach it",
   'src/pad/padTourScreen.ts': "the phone's controls guide mirrored: raised by the phone, never a press here; it takes no focus or key, and must not replace the surface the phone pairs from (Settings, the couch lobby)",
 };
 const SHOWS = /\.showModal\(|\.showPopover\(|aria-modal|role',\s*'dialog'|role="dialog"/;

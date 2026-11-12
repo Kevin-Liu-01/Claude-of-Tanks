@@ -1206,6 +1206,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garagePedestalResidency.selftest.mjs',
     'src/game/garageCamoTryOn.selftest.mjs',
     'src/ui/camoPicker.selftest.mjs',
+    // 272: the first-game tutorial's steps, strings, media and claims (every tip held to the simulation), and its record
+    'src/ui/tutorial/tutorialSteps.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
     // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
