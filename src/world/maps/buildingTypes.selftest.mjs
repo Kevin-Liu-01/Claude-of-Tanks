@@ -41,5 +41,15 @@ assert.equal(typeFitsSetting('habmodule', S('mars')), true, 'a habitat module on
 assert.equal(typeFitsSetting('nosuchtype', S('urban')), false, 'a type without a row stands nowhere');
 assert.deepEqual(misplacedTypes('alpine', S('alpine'), { plannedSites: [{ structure: 'onionchurch' }] }), ['alpine: onionchurch'],
   'a map placing a wrong type is caught');
+// (typefit-272) the blind A/B's kept placements pass only on their own map, and each is still placed there
+assert.equal(typeFitsSetting('saunahut', S('alpine')), false, 'the table still calls a sauna wrong for Savoie');
+assert.deepEqual(misplacedTypes('alpine', S('alpine'), { destructibleBuildings: ['saunahut'] }), [], 'the A/B kept Savoie\'s sauna slot');
+assert.deepEqual(misplacedTypes('autumn', S('autumn'), { destructibleBuildings: ['saunahut'] }), ['autumn: saunahut'],
+  'a sauna the A/B did not keep is still caught');
+assert.deepEqual(misplacedTypes('titan_gorge', S('titan_gorge'), { destructibleBuildings: ['deserttent'] }), [],
+  'the A/B kept the Navajo Nation\'s wall tent');
+for (const [id, t] of [['alpine', 'saunahut'], ['coastal', 'saunahut'], ['winter', 'saunahut'], ['titan_gorge', 'deserttent']]) {
+  assert.ok(placedTypesOf(getMapConfig(id).props ?? {}).includes(t), `${id} still places the ${t} the A/B kept (else drop its row)`);
+}
 
 console.log(`buildingTypes selftest: ${Object.keys(BUILDING_TYPES).length} types with years and cultures, ${MAP_IDS.length} maps each placing only types of their place and era`);
