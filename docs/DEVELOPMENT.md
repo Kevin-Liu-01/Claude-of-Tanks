@@ -290,7 +290,7 @@ older copy) is reaped only when it is empty and four times `lockStaleMs` old. Re
 directory away and then clears it, together with its `*.holder` files. Any waiter may clear a dead owner's lock, but
 only the queue head claims. A caller that must not keep results from a hold it lost can check that `refresh()` still
 returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
-2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
+2's own copy, kept outside the repository.
 
 ### Warm capture holds (2026-10-22)
 
@@ -566,8 +566,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
 
 | Tier | What runs it | Size (docs/TEST-AUDIT.md) |
 |---|---|---|
-| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,542 receipts, ~227 CPU-min, ~60 min simulated wall (before the tiers: 2,204 receipts, ~1,395 CPU-min, ~242 min) |
-| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 661 receipts in 11 suites, ~1,167 CPU-min |
+| Default | `npm test`, the release gate (`tools/gate.mjs`), tank:release:check's embedded suite; lane mode runs the part a diff reaches | 1,798 receipts, ~387 CPU-min, ~66 min simulated wall (before the tiers: 2,473 receipts, ~1,571 CPU-min, ~264 min) |
+| Manual | only `npm run test:heavy -- <suite...>`, triggered by the owner | 674 receipts in 12 suites, ~1,183 CPU-min |
 
 - **Manual suites**: `balance` (round-robin duels and `balance-matchups --check`), `pacing` (the battlePacing shards and
   judge, placement, deployment), `bots`, `sims` (drone, missile, escort and counter-drone runs), `perf` (host-time

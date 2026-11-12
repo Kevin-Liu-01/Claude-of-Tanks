@@ -946,7 +946,7 @@ const missileLaunches = [
 
 // ------------------------------------------------- world-sfx-269 (2026-11-03) ---
 // The owner, 11-03: "make a lot better sounds for everything ... all the special moodes". Each entry closes a class the
-// audit found (~/cot-launch-state/streams/world-sfx-269/AUDIT.md): one sound covering moments that should differ (a
+// audit found (world-sfx-269, kept outside the repository): one sound covering moments that should differ (a
 // pivot on mud screeching like steel, a crash gearbox and an automatic, a BMP and a 60 t tank landing, a barn and a
 // concrete wall, every roof as clay tiles, every vehicle exploding as an MBT, a night full of songbirds), a moment that
 // played nothing (another hull's ford, the water leaving a hull, an APS intercept, a drone shot down, a counter-attack,

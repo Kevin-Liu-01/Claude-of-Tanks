@@ -25,11 +25,9 @@ const json = args.includes('--json');
 /** Every file that draws UI icons: the sprite and its host, the icon modules, and (pre-F4) the product marks. */
 const ICON_SOURCES = [
   'src/ui/icons/sprite.svg', 'src/ui/icons/icon.ts', 'src/ui/uiIcons.ts', 'src/ui/equipIcons.ts', 'src/ui/shellIcons.ts',
-  'src/ui/settingsIcons.ts', 'src/docs/docsIcons.ts', 'src/gallery/viewGlyphs.ts',
+  'src/ui/settingsIcons.ts', 'src/docs/docsIcons.ts',
 ];
 const MARK_DIRS = ['public/brand/nav', 'public/brand/features'];
-/** CSS that strokes an icon family drawn inline (the Gallery camera-view glyphs). */
-const ICON_CSS = [['src/gallery/gallery.css', /\.camera-view-glyph[^{]*\{[^}]*\}/g]];
 
 /** Full sprite and boot-slice budgets (SPEC 7 and 16.1). The lazy sprite was 10 KB until equipment-249 (2026-10-24)
  *  drew the eleven glyphs of the 25-item equipment catalog: 10169 to 10696 B, re-pinned at 11 KB. 252 (tech-tree view)
@@ -65,10 +63,6 @@ function census() {
     for (const name of readdirSync(path).filter((n) => n.endsWith('.svg')).sort()) {
       files.push([`${dir}/${name}`, readFileSync(join(path, name), 'utf8')]);
     }
-  }
-  for (const [rel, pattern] of ICON_CSS) {
-    const path = join(root, rel);
-    if (existsSync(path)) files.push([rel, (readFileSync(path, 'utf8').match(pattern) || []).join('\n')]);
   }
   const byValue = new Map();
   for (const [rel, text] of files) {

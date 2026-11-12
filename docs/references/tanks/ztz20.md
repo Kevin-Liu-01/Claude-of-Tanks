@@ -157,4 +157,4 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   budgets, switch latency and primitive probes); a live Garage and battle look at the four ids, HIGH and LOW. The
   fleet count moved 221 → 223 (`src/productStats.ts`, README, the Field Manual prerender): on a main merge that adds
   tanks, re-sum it.
-- Logged in `~/cot-launch-state/streams/TESTS-OWED.md` under "ZTZ-20 family 262".
+- Logged in the tests-owed record (kept outside the repository) under "ZTZ-20 family 262".

@@ -35,7 +35,6 @@ import { spawnSync } from 'node:child_process';
 import {
   appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, statSync, writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { openCaptureHold } from '../capture-hold.mjs';
@@ -186,11 +185,12 @@ if (opt('sheet')) {
 }
 
 // ------------------------------------------------------------------------------------------------ machine guards
-// The coordinator's quiet window (2026-10-14): ~/cot-launch-state/QUIET ("<epoch> <owner> <reason>"), refreshed while it
+// The coordinator's quiet window (2026-10-14): the file COT_QUIET_FILE names ("<epoch> <owner> <reason>"), refreshed while it
 // stands, stale after 35 minutes untouched (the same rule as shots/media-r5/tmp/quiet-wait.zsh). While it is live no new
 // browser run starts: the gate waits without a ticket, an acquisition gives its turn back, and a hold ends at the next
 // slot boundary.
-const QUIET = join(homedir(), 'cot-launch-state', 'QUIET');
+// (272) the path comes from the environment; unset, there is no quiet window
+const QUIET = process.env.COT_QUIET_FILE || null;
 function quietLive() {
   try { return Date.now() - statSync(QUIET).mtimeMs < 35 * 60 * 1000; } catch { return false; }
 }

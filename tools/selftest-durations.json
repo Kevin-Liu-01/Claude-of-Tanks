@@ -265,7 +265,6 @@
     "src/gallery/modeDockLayout.selftest.mjs": 1000,
     "src/gallery/overlays.selftest.mjs": 50000,
     "src/gallery/surfaceMarkup.selftest.mjs": 1000,
-    "src/gallery/viewGlyphs.selftest.mjs": 1000,
     "src/game/ai.casemateLay.selftest.mjs": 5000,
     "src/game/ai.colliderStop.selftest.mjs": 7000,
     "src/game/ai.cornerHold.selftest.mjs": 1000,

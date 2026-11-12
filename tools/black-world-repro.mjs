@@ -193,7 +193,7 @@ const blackFrac = Number(opt('black-frac', '0.6'));
 const suspectFrac = Number(opt('suspect-frac', '0.35')); // night maps read up to ~0.30 (Verdant, Cinder Junction night)
 const blackLuma = Number(opt('black-luma', '6'));
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const out = path.resolve(opt('out', path.join(homedir(), 'cot-launch-state/streams/black-screen-228/inv-repro', `run-${stamp}`)));
+const out = path.resolve(opt('out', path.join('.qa-dev/black-screen-repro', `run-${stamp}`)));
 mkdirSync(out, { recursive: true });
 mkdirSync(path.join(out, 'frames'), { recursive: true });
 if (!['cold', 'warm', 'esc', 'regarage', 'session'].includes(scenario)) { console.error('bad --scenario'); process.exit(2); }

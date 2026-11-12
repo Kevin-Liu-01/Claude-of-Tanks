@@ -1356,7 +1356,7 @@ without it (`--lines <id>`).
   audition) against its 500k cap.
 - **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
   owner: "make a lot better sounds for everything ... all the special
-  moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
+  moodes". The audit (kept outside the repository)
   ranked 30 findings by how often a player hears them; the fixes go through
   exhaustive tables, so a new ground, gearbox, drive, hull class, mode, mode
   event, map or spot fails typecheck or `worldSounds.selftest.mjs` until it is
