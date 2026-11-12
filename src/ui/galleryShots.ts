@@ -149,7 +149,7 @@ export const GALLERY_SHOTS: readonly GalleryShot[] = Object.freeze([
     id: 's47-ironworks-crane-herolow-fb-m271-r14',
     img: '/media/gallery-r1/s47-ironworks-crane-herolow-fb-m271-r14.webp',
     thumb: '/media/gallery-r1/s47-ironworks-crane-herolow-fb-m271-r14-640.webp',
-    map: 'foundry', group: 'close', focal: '64% 55%',
+    map: 'foundry', group: 'close', focal: '53% 55%',
     title: { en: 'Ironworks: T-90A Burlak', zh: '钢铁厂：T-90A Burlak' },
     who: { en: 'T-90A Burlak', zh: 'T-90A Burlak' },
   },

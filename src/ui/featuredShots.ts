@@ -204,7 +204,7 @@ export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/loading-r1/s47-ironworks-crane-herolow-fb-m271-r14.webp',
     capKey: 'media.loading.title.s47IronworksCraneHerolowFbM271R14',
-    maps: ['foundry'], focal: '64% 55%',
+    maps: ['foundry'], focal: '53% 55%',
   },
   {
     img: '/media/loading-r1/s190-t90am-frontier-herolow-own-m271-r14.webp',
