@@ -1693,6 +1693,8 @@
   "couch.title": "Couch",
   "couch.close": "Close Couch",
   "couch.unavailable": "Phones can’t connect from this page.",
+  "couch.off.room": "Couch plays offline battles only",
+  "couch.off.mode": "This mode can’t be played on the couch",
   "couch.qrAria": "QR code that opens the phone controller and joins this game",
   "couch.seats": "Seats",
   "couch.seat.here": "Seat {n}: phone here",

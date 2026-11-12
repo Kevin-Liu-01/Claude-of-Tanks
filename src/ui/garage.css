@@ -184,8 +184,9 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
   outline:2px solid var(--focus-ink);outline-offset:-3px;}
-.cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:transform var(--dur-fast) ease-out;}
-.cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:scale(.98);}
+/* (Deploy presses as the kit's buttons beside it do, components.css .cot-c-btn:active) */
+.cot-battle-menu [data-battle-close]{transition:transform var(--dur-fast) ease-out;}
+.cot-battle-menu [data-battle-close]:active{transform:scale(.98);}
 .cot-battle-menu .cot-battle-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
   margin:0;padding:0;border:0;}
 .cot-battle-menu .cot-battle-times legend{width:100%;padding:0 0 var(--s2);color:var(--ink-3);
@@ -205,8 +206,8 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-battle-galaxy>svg{flex:0 0 24px;}
 .cot-battle-galaxy strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-1);}
 @media (prefers-reduced-motion:reduce){
-  .cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:none;}
-  .cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:none;}
+  .cot-battle-menu [data-battle-close]{transition:none;}
+  .cot-battle-menu [data-battle-close]:active{transform:none;}
 }
 .cot-room-controls{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
   display:none;width:max-content;max-width:min(420px,calc(100vw - 24px));}
