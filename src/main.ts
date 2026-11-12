@@ -230,7 +230,7 @@ import type { DriveTestControllerOptions } from './dev/driveTestController.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
-import { createInput } from './game/input.ts';
+import { createInput, labelForCode, labelForPadButton } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
@@ -262,6 +262,9 @@ import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchR
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
+import {
+  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
+} from './ui/tutorial/tutorialRecord.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
@@ -4747,6 +4750,59 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
     settings.preload().catch((error) => console.warn('[settings] idle preload failed', error));
     playSurface.prepareMenu();
   }));
+}
+// 272: the first-game tutorial (app/tutorialAccess.ts): a new player's first Garage, first battle and the strategy tips
+// after it, replayable from Settings and from the Field Manual (/?tutorial=1). The boot reads only its record
+// (ui/tutorial/tutorialRecord.ts): the tutorial's access loads while a chapter could still run, or on a replay, so a
+// player who finished or skipped it, or who played before it existed, loads nothing more. A test drive or a room
+// invite boots past the Garage: the tutorial waits for the Garage's next showing.
+const tutorialReplay = readTutorialReplay(location.href);
+if (tutorialReplay.asked) {
+  try { history.replaceState(history.state, '', tutorialReplay.cleaned); } catch { /* the address keeps it */ }
+}
+let tutorialEntryPassed = false;
+const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').then(({ createTutorialAccess }) => createTutorialAccess({
+  record: {
+    read: () => readTutorialRecord(), due: (chapter) => tutorialChapterDue(chapter),
+    mark: (chapter, outcome) => markTutorialChapter(chapter, outcome), reset: () => resetTutorialRecord(),
+  },
+  on: (event, listener) => bus.on(event, listener),
+  inputKind: () => (input.isTouchLayout() ? 'touch' : input.isPadConnected() ? 'pad' : 'keyboard'),
+  keyLabel: (action) => (input.isPadConnected() && !input.isTouchLayout()
+    ? labelForPadButton(input.getPadBinding(action)) : labelForCode(input.getBinding(action))),
+  codeLabel: labelForCode,
+  playerPosition: () => {
+    const pos = game.phase === 'battle' ? game.player?.state?.pos : null;
+    return pos ? { x: pos.x, z: pos.z } : null;
+  },
+  onGarage: () => tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending,
+  isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
+    && !game.ruleset?.provingGround,
+  preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+})));
+const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
+  tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));
+};
+// the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
+bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
+bus.on('ui:replayTutorial', () => withTutorial((access) => access.replay()));
+void entryReady.then(() => {
+  tutorialEntryPassed = true;
+  if (testDriveSpecId || pendingRoomInvitePromise) {
+    if (tutorialMayRun()) withTutorial(() => { /* resident for the Garage's next showing */ });
+    return;
+  }
+  if (tutorialReplay.asked) withTutorial((access) => access.replay());
+  else if (tutorialMayRun()) withTutorial((access) => access.garageShown());
+}).catch(() => { /* the entry gate's own failure is reported where it is awaited */ });
+// receipts read the chapter and step showing; a diagnostics page (dev, ?debug=1, automation) may also start a chapter
+// directly (tools/tutorial.browser.mjs walks Skip from every step without fighting a battle per step)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
+  if (diagnosticsRequested) {
+    Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
+      value: (chapter: 'garage' | 'battle' | 'tips') => withTutorial((access) => access.debugStart(chapter)) });
+  }
 }
 garageBootDone = true;
 // (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts); it writes window.__GAME_READY, the harness

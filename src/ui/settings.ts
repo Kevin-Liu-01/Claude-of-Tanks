@@ -1285,6 +1285,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         markLoadFailed([editHud], t('hudEditor.loadError'));
       } finally { editHud.disabled = false; }
     });
+    // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle
+    // steps in the next Standard battle and the tips after it (app/tutorialAccess.ts hears ui:replayTutorial)
+    const tutorialRow = el('div', 'cot-set-row', iface);
+    settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
+    const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
+    replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
+    replayTutorial.addEventListener('click', () => {
+      emit('ui:click', {});
+      closePanel();
+      emit('ui:replayTutorial', {});
+    });
+    const tutorialNote = el('div', 'cot-set-note', iface);
+    tutorialNote.textContent = t('settings.tutorial.replayNote');
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
     const cleanViewNote = el('div', 'cot-set-note', iface);
     cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
@@ -2198,7 +2211,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus.on('ui:consumableLoadout', adoptConsumableLoadout); // item 259: the slots show the chosen tank's items
     // the verdict ends the battle the veil belongs to (the 150 ms sweep stays the belt for an un-evented result)
     bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); hideResumeVeil(); });
-    bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
+    // (272) the first-game tutorial teaches the controls in its own battle chapter: the strip stands down while it runs
+    // (app/tutorialAccess.ts raises body.cot-tutorial at the rollout, before this listener hears it)
+    bus.on('battle:rollout', () => { if (!open && !document.body.classList.contains('cot-tutorial') && takeFirstBattleHint()) showHints(); });
     // the player's first hit given or taken this battle (hud.ts): the strip has done its work
     bus.on('ui:playerEngaged', () => fadeHints());
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — the input owner holds it).
