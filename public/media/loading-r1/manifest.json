@@ -19,6 +19,7 @@
    "group": "close",
    "map": "copper_mesa",
    "hour": "day",
+   "focal": "27% 55%",
    "title": {
     "en": "Copper Mesa Mine: M1A1 Abrams SA v T-72B3M obr. 2016",
     "zh": "铜台地矿场：M1A1 Abrams SA 对 T-72B3M obr. 2016"
@@ -64,6 +65,7 @@
    "group": "close",
    "map": "copper_mesa",
    "hour": "day",
+   "focal": "66% 60%",
    "title": {
     "en": "Copper Mesa Mine: M1A2 Abrams SEPv3",
     "zh": "铜台地矿场：M1A2 Abrams SEPv3"
@@ -104,6 +106,7 @@
    "group": "close",
    "map": "saltwind",
    "hour": "morning",
+   "focal": "70% 55%",
    "title": {
     "en": "Saltwind Narrows: T-90MS Tagil",
     "zh": "盐风海峡：T-90MS Tagil"
@@ -149,6 +152,7 @@
    "group": "close",
    "map": "urban",
    "hour": "day",
+   "focal": "31% 62%",
    "title": {
     "en": "Steinburg: Leopard 2A3 v T-90A",
     "zh": "斯泰因堡：Leopard 2A3 对 T-90A"
@@ -189,6 +193,7 @@
    "group": "close",
    "map": "desert",
    "hour": "day",
+   "focal": "36% 60%",
    "title": {
     "en": "Sirocco Wadi: M1A2 Abrams",
     "zh": "西罗科旱谷：M1A2 Abrams"
@@ -229,6 +234,7 @@
    "group": "close",
    "map": "reservoir",
    "hour": "day",
+   "focal": "64% 60%",
    "title": {
     "en": "Highland Reservoir: Leopard 2A7V",
     "zh": "高地水库：Leopard 2A7V"
@@ -269,6 +275,7 @@
    "group": "close",
    "map": "skybridge",
    "hour": "day",
+   "focal": "39% 60%",
    "title": {
     "en": "Skybridge Chasm: Type 10",
     "zh": "天桥裂谷：Type 10"
@@ -314,6 +321,7 @@
    "group": "close",
    "map": "monsoon",
    "hour": "golden",
+   "focal": "43% 55%",
    "title": {
     "en": "Monsoon Ridge: Leopard 2A4M",
     "zh": "季风雨脊：Leopard 2A4M"
@@ -354,6 +362,7 @@
    "group": "close",
    "map": "coastal",
    "hour": "day",
+   "focal": "72% 60%",
    "title": {
     "en": "Saltmere Bay: T-90M Proryv v Challenger 3 TD (RWS)",
     "zh": "盐沼湾：T-90M Proryv 对 Challenger 3 TD (RWS)"
@@ -394,6 +403,7 @@
    "group": "close",
    "map": "copper_mesa",
    "hour": "golden",
+   "focal": "43% 42%",
    "title": {
     "en": "Copper Mesa Mine: KF51 Panther",
     "zh": "铜台地矿场：KF51 Panther"
@@ -434,6 +444,7 @@
    "group": "close",
    "map": "caldera",
    "hour": "morning",
+   "focal": "74% 48%",
    "title": {
     "en": "Obsidian Caldera: T-90A Vladimir",
     "zh": "黑曜石火山口：T-90A Vladimir"
@@ -479,6 +490,7 @@
    "group": "close",
    "map": "longleaf",
    "hour": "sunset",
+   "focal": "64% 47%",
    "title": {
     "en": "Longleaf Crossing: T-90MS obr. 2011 v ZTZ-20",
     "zh": "长叶渡口：T-90MS obr. 2011 对 ZTZ-20"
@@ -519,6 +531,7 @@
    "group": "close",
    "map": "airfield",
    "hour": "day",
+   "focal": "43% 60%",
    "title": {
     "en": "Kestrel Airfield: M1A2 Abrams SEPv2",
     "zh": "红隼机场：M1A2 Abrams SEPv2"
@@ -559,6 +572,7 @@
    "group": "close",
    "map": "foundry",
    "hour": "night",
+   "focal": "64% 55%",
    "title": {
     "en": "Ironworks: T-90A Burlak",
     "zh": "钢铁厂：T-90A Burlak"
@@ -614,6 +628,7 @@
    "group": "close",
    "map": "frontier",
    "hour": "morning",
+   "focal": "26% 58%",
    "title": {
     "en": "Frontier Basin: T-90AM",
     "zh": "边疆盆地：T-90AM"
@@ -659,6 +674,7 @@
    "group": "close",
    "map": "mars",
    "hour": "day",
+   "focal": "41% 60%",
    "title": {
     "en": "Olympus Basin: T-72B3M Bulat-M",
     "zh": "奥林匹斯盆地：T-72B3M Bulat-M"

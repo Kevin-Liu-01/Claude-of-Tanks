@@ -139,82 +139,82 @@ export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/loading-r1/s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14.webp',
     capKey: 'media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14',
-    maps: ['copper_mesa'], focal: '50% 50%',
+    maps: ['copper_mesa'], focal: '27% 55%',
   },
   {
     img: '/media/loading-r1/s294-sepv3-copper-mesa-herolow-f33-m271-r14.webp',
     capKey: 'media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14',
-    maps: ['copper_mesa'], focal: '50% 50%',
+    maps: ['copper_mesa'], focal: '66% 60%',
   },
   {
     img: '/media/loading-r1/s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14.webp',
     capKey: 'media.loading.title.s298T90msTagilSaltwindHerolowV3F33M271R14',
-    maps: ['saltwind'], focal: '50% 50%',
+    maps: ['saltwind'], focal: '70% 55%',
   },
   {
     img: '/media/loading-r1/s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14.webp',
     capKey: 'media.loading.title.s280Leo2a3B4UrbanDuelLowT70F33M271R14',
-    maps: ['urban'], focal: '50% 50%',
+    maps: ['urban'], focal: '31% 62%',
   },
   {
     img: '/media/loading-r1/s199-m1a2-x-desert-herolow-m271-r14.webp',
     capKey: 'media.loading.title.s199M1a2XDesertHerolowM271R14',
-    maps: ['desert'], focal: '50% 50%',
+    maps: ['desert'], focal: '36% 60%',
   },
   {
     img: '/media/loading-r1/s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14.webp',
     capKey: 'media.loading.title.s39Leo2a7vLakesideVillageHerolowClT3333M271R14',
-    maps: ['reservoir'], focal: '50% 50%',
+    maps: ['reservoir'], focal: '64% 60%',
   },
   {
     img: '/media/loading-r1/s120-type10-skybridge-herolow-v3-m271-r14.webp',
     capKey: 'media.loading.title.s120Type10SkybridgeHerolowV3M271R14',
-    maps: ['skybridge'], focal: '50% 50%',
+    maps: ['skybridge'], focal: '39% 60%',
   },
   {
     img: '/media/loading-r1/s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14.webp',
     capKey: 'media.loading.title.s286Leo2a4mMonsoonHerohighV2FbM271R14',
-    maps: ['monsoon'], focal: '50% 50%',
+    maps: ['monsoon'], focal: '43% 55%',
   },
   {
     img: '/media/loading-r1/s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14.webp',
     capKey: 'media.loading.title.s296T90mProryvCoastalDuelLowTm70F33M271R14',
-    maps: ['coastal'], focal: '50% 50%',
+    maps: ['coastal'], focal: '72% 60%',
   },
   {
     img: '/media/loading-r1/s202-kf51-panther-copper-mesa-herohigh-m271-r14.webp',
     capKey: 'media.loading.title.s202Kf51PantherCopperMesaHerohighM271R14',
-    maps: ['copper_mesa'], focal: '50% 50%',
+    maps: ['copper_mesa'], focal: '43% 42%',
   },
   {
     img: '/media/loading-r1/s267-t90a-vladimir-caldera-herohigh-fb-m271-r14.webp',
     capKey: 'media.loading.title.s267T90aVladimirCalderaHerohighFbM271R14',
-    maps: ['caldera'], focal: '50% 50%',
+    maps: ['caldera'], focal: '74% 48%',
   },
   {
     img: '/media/loading-r1/s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14.webp',
     capKey: 'media.loading.title.s289T90ms2011LongleafDuelLowTm95M271R14',
-    maps: ['longleaf'], focal: '50% 50%',
+    maps: ['longleaf'], focal: '64% 47%',
   },
   {
     img: '/media/loading-r1/s307-sepv2-airfield-herolow-m271-r14.webp',
     capKey: 'media.loading.title.s307Sepv2AirfieldHerolowM271R14',
-    maps: ['airfield'], focal: '50% 50%',
+    maps: ['airfield'], focal: '43% 60%',
   },
   {
     img: '/media/loading-r1/s47-ironworks-crane-herolow-fb-m271-r14.webp',
     capKey: 'media.loading.title.s47IronworksCraneHerolowFbM271R14',
-    maps: ['foundry'], focal: '50% 50%',
+    maps: ['foundry'], focal: '64% 55%',
   },
   {
     img: '/media/loading-r1/s190-t90am-frontier-herolow-own-m271-r14.webp',
     capKey: 'media.loading.title.s190T90amFrontierHerolowOwnM271R14',
-    maps: ['frontier'], focal: '50% 50%',
+    maps: ['frontier'], focal: '26% 58%',
   },
   {
     img: '/media/loading-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp',
     capKey: 'media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14',
-    maps: ['mars'], focal: '50% 50%',
+    maps: ['mars'], focal: '41% 60%',
   },
 ]);
 
