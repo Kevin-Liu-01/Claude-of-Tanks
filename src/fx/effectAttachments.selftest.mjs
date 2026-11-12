@@ -11,7 +11,8 @@ import {
 } from './effectAttachments.ts';
 
 function near(actual, expected, label, eps = 1e-6) {
-  if (Math.abs(actual - expected) > eps) {
+  // NaN-strict: a NaN on either side fails
+  if (!(Math.abs(actual - expected) <= eps)) {
     throw new Error(`${label}: expected ${expected}, got ${actual}`);
   }
 }
@@ -483,11 +484,20 @@ console.log('effect attachment selftest passed');
   }
 
   // (round 8 H9, the 271 merge) a gun's near field (engine/muzzleNearField.ts) binds only to a pulse flashLight lit. Gun a's
-  // 120 mm pulse burns and its near field names a's bore; then gun b's pulse is refused by flashLight's finite guard (a
+  // pulse burns and its near field names a's bore; a frame later gun b's pulse is refused by flashLight's finite guard (a
   // non-finite muzzle place) at each of the three sites that bind a near field: the roof-gun flash port, muzzleFlash and
-  // composeFiringMoment. Main's shape bound b's bore to a's pulse after the refusal (boundGunNearField without the lit
-  // gate), so a's gun lost its bound and b's line of fire took a's light. The near field keeps a's bore and radius, and a
-  // battle reset releases it. A lit pulse from the same site binds its own gun (the control: each site reaches the bind).
+  // composeFiringMoment. The near field's first shape (b5b7bef466, before the lit gate) bound b's bore to a's pulse after
+  // the refusal, so a's gun lost its bound and b's line of fire took a's light. The near field keeps a's radius, bore and
+  // seat, and a battle reset releases it. A lit pulse from the same site binds its own gun (the control: each site reaches
+  // the bind), and a lit rocket pulse binds no gun (composeFiringMoment's `!rocket`).
+  //   What each check catches (mutants, never committed): the bore, a site without the lit gate (m1-m3; the radius comes
+  // back from a's peak, the seat from a's light); the radius, a's field unbound by the refusal (m5); the seat, a refused
+  // pulse that moves the light (m6); atReset, a reset without the release (m4; the next frame's applyLight releases it
+  // anyway); the rocket run, composeFiringMoment without `!rocket` (m7); the count of callers, a fourth one (m9).
+  //   The roof port lights its pulse only over one no brighter than its peak (`!(muzzleLight.intensity > peak)`), so its
+  // gun a fires the roof gun's own bore, and gun b fires a frame after gun a at every site: no site leans on the frame
+  // a's pulse is born in. There a's attack ramp holds its intensity at 0, and a roof shot in that frame still takes a
+  // 120 mm pulse's light (a gap in the port's guard, left to the fx owner; this case does not pin it).
   {
     globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
     try {
@@ -499,10 +509,10 @@ console.log('effect attachment selftest passed');
       const seat = shared.uniforms.uCotMuzzleSeat.value, bore = shared.uniforms.uCotMuzzleBore.value;
       const ROOF_SPEC = { id: 'm1a1' }, roofGun = auxiliaryCapabilities(ROOF_SPEC)?.guns[0];
       if (!roofGun) throw new Error('the m1a1 must carry a roof gun for the flash port');
-      /** Gun a (120 mm, line of fire +Z) fires on the battle path; then gun b (line of fire -X, its roof gun on the hull
-       *  root) does what `second` says; two frames on, the published near field, and again after a battle reset and
-       *  after one more frame. */
-      const nearFieldAfter = (second) => {
+      /** Gun a (`aCaliberMm`, line of fire +Z) fires on the battle path; a frame on, while its pulse burns, gun b (line of
+       *  fire -X, its roof gun on the hull root) does what `second` says; two frames on, the published near field, and
+       *  again after a battle reset and after one more frame. */
+      const nearFieldAfter = (second, aCaliberMm) => {
         const handlers = new Map();
         const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
         const scene = new THREE.Scene();
@@ -528,7 +538,9 @@ console.log('effect attachment selftest passed');
         const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
         const frame = () => { clock += 1 / 60; fx.update(1 / 60, [], camera, resolve); };
         frame(); // the roof station is prepared on its first frame
-        bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: 120, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
+        bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: aCaliberMm, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
+        frame();
+        const atB = { w: seat.w, bore: bore.clone() };
         second?.(bus, fx, b, root);
         // two frames: the roof station fires inside a frame, and a pulse lit there burns from the next one
         frame(); frame();
@@ -537,19 +549,37 @@ console.log('effect attachment selftest passed');
         fx.resetAll();
         const atReset = seat.w;
         frame();
-        return { ...now, atReset, after: seat.w };
+        return { ...now, atB, atReset, after: seat.w };
       };
-      const alone = nearFieldAfter(null);
       const A_BORE = new THREE.Vector3(0, 0, 1), B_BORE = new THREE.Vector3(-1, 0, 0);
-      if (!(alone.w > 0) || alone.bore.distanceTo(A_BORE) > 1e-9) {
-        throw new Error(`gun a's burning pulse must publish its own near field (w ${alone.w}, bore ${alone.bore.toArray()})`);
-      }
-      const keepsA = (run, label) => {
-        if (run.bore.distanceTo(A_BORE) > 1e-9) {
+      /** a near field bound to `axis` (NaN-strict: a NaN radius or bore fails) */
+      const names = (field, axis, eps) => field.w > 0 && field.bore.distanceTo(axis) <= eps;
+      /** gun a's pulse alone, by its calibre: what a refused shot of b's must leave */
+      const aloneBy = new Map();
+      const aloneFor = (aCaliberMm) => {
+        if (!aloneBy.has(aCaliberMm)) {
+          const alone = nearFieldAfter(null, aCaliberMm);
+          if (!names(alone.atB, A_BORE, 1e-9) || !names(alone, A_BORE, 1e-9)) {
+            throw new Error(`gun a's burning ${aCaliberMm} mm pulse must publish its own near field (w ${alone.atB.w} then ${alone.w}, bore ${alone.bore.toArray()})`);
+          }
+          aloneBy.set(aCaliberMm, alone);
+        }
+        return aloneBy.get(aCaliberMm);
+      };
+      const firesIntoA = (run, label) => {
+        if (!names(run.atB, A_BORE, 1e-9)) {
+          throw new Error(`${label}: gun a's near field must be published when gun b fires (w ${run.atB.w}, bore ${run.atB.bore.toArray()})`);
+        }
+      };
+      const keepsA = (run, aCaliberMm, label) => {
+        const alone = aloneFor(aCaliberMm);
+        firesIntoA(run, label);
+        // the radius first: a released field (w 0) keeps the last publisher's bore and seat, which name nothing
+        near(run.w, alone.w, `${label}: the near field keeps gun a's radius`, 1e-9);
+        if (!(run.bore.distanceTo(A_BORE) <= 1e-9)) {
           throw new Error(`${label}: the near field must still name gun a's bore (got ${run.bore.toArray()}, b's is ${B_BORE.toArray()})`);
         }
-        near(run.w, alone.w, `${label}: the near field keeps gun a's radius`, 1e-9);
-        if (run.seat.distanceTo(run.light) > 1e-6 || run.light.distanceTo(alone.light) > 1e-6) {
+        if (!(run.seat.distanceTo(run.light) <= 1e-6 && run.light.distanceTo(alone.light) <= 1e-6)) {
           throw new Error(`${label}: the near field's seat must stay gun a's burning light (${run.seat.toArray()} vs ${alone.light.toArray()})`);
         }
         if (run.atReset !== 0 || run.after !== 0) {
@@ -557,28 +587,51 @@ console.log('effect attachment selftest passed');
         }
       };
       const bindsB = (run, label) => {
-        if (!(run.w > 0) || run.bore.distanceTo(B_BORE) > 1e-6) {
+        firesIntoA(run, label);
+        if (!names(run, B_BORE, 1e-6)) {
           throw new Error(`${label}: a lit pulse must bind its own gun's near field (w ${run.w}, bore ${run.bore.toArray()})`);
         }
       };
-      /** the three sites: gun b's shot at a finite muzzle, or at a non-finite one flashLight refuses */
+      /** the three sites: gun a's bore, and gun b's shot at a finite muzzle or at a non-finite one flashLight refuses */
       const sites = {
-        'the roof-gun flash port': (finite) => (bus, fx, b, root) => {
-          // the station's mount at a non-finite place: its muzzle is not finite, its line of fire is (a non-finite hull
-          // would poison the mount's rotation too, and a non-finite line of fire binds nothing on either shape)
-          if (!finite) root.getObjectByName(roofGun.name).position.x = NaN;
-          b.combat.auxiliary.shots++;
+        'the roof-gun flash port': {
+          aCaliberMm: roofGun.caliberMm,
+          shot: (finite) => (bus, fx, b, root) => {
+            // the station's mount at a non-finite place: its muzzle is not finite, its line of fire is (a non-finite hull
+            // would poison the mount's rotation too, and a non-finite line of fire binds nothing on either shape)
+            if (!finite) root.getObjectByName(roofGun.name).position.x = NaN;
+            b.combat.auxiliary.shots++;
+          },
         },
-        muzzleFlash: (finite) => (bus) => bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120,
-          muzzlePos: [finite ? 14.5 : NaN, 2.3, 0], dir: [-1, 0, 0] }),
-        composeFiringMoment: (finite) => (bus, fx) => fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(finite ? 14.5 : NaN, 2.3, 0),
-          dir: new THREE.Vector3(-1, 0, 0), caliberMm: 120, tracerType: 'HEAT', ageS: 0 }),
+        muzzleFlash: {
+          aCaliberMm: 120,
+          shot: (finite) => (bus) => bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120,
+            muzzlePos: [finite ? 14.5 : NaN, 2.3, 0], dir: [-1, 0, 0] }),
+        },
+        composeFiringMoment: {
+          aCaliberMm: 120,
+          shot: (finite) => (bus, fx) => fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(finite ? 14.5 : NaN, 2.3, 0),
+            dir: new THREE.Vector3(-1, 0, 0), caliberMm: 120, tracerType: 'HEAT', ageS: 0 }),
+        },
       };
-      for (const [site, shot] of Object.entries(sites)) {
-        bindsB(nearFieldAfter(shot(true)), `${site} (a lit pulse)`);
-        keepsA(nearFieldAfter(shot(false)), `${site} (a refused pulse)`);
+      // every caller of boundGunNearField is one of these sites: a new one joins `sites` with its lit and refused shots
+      const binders = [...fs.readFileSync(new URL('./effects.ts', import.meta.url), 'utf8').matchAll(/(?<!function )\bboundGunNearField\(/g)].length;
+      if (binders !== Object.keys(sites).length) {
+        throw new Error(`effects.ts binds a gun's near field at ${binders} sites; this case drives ${Object.keys(sites).length} (add the new site's lit and refused shots)`);
       }
-      console.log('effectAttachments.selftest: a refused pulse binds no near field at any of its three sites (gun a keeps its bore and radius; a reset releases it)');
+      for (const [site, { aCaliberMm, shot }] of Object.entries(sites)) {
+        bindsB(nearFieldAfter(shot(true), aCaliberMm), `${site} (a lit pulse)`);
+        keepsA(nearFieldAfter(shot(false), aCaliberMm), aCaliberMm, `${site} (a refused pulse)`);
+      }
+      // a composed rocket's pulse is lit (the light leaves gun a for the launcher) and releases a's near field: it binds
+      // no gun, as muzzleFlash's rocket ignition binds none
+      const rocket = nearFieldAfter((bus, fx) => fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(14.5, 2.3, 0),
+        dir: new THREE.Vector3(-1, 0, 0), caliberMm: 80, tracerType: 'HEAT', ageS: 0, rocket: true }), 120);
+      firesIntoA(rocket, 'composeFiringMoment (a lit rocket pulse)');
+      if (!(rocket.light.x > 10) || rocket.w !== 0) {
+        throw new Error(`composeFiringMoment (a lit rocket pulse): the rocket's pulse lights its launcher and binds no gun (light x ${rocket.light.x}, w ${rocket.w}, bore ${rocket.bore.toArray()})`);
+      }
+      console.log('effectAttachments.selftest: a refused pulse binds no near field at any of its three sites (gun a keeps its radius, bore and seat; a reset releases it), and a rocket binds none');
     } finally {
       if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
     }

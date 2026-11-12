@@ -65,5 +65,8 @@ The muzzle light sits 0.15 m behind its own gun's muzzle, so that gun's forward
 faces would take hundreds of suns: a gun's pulse claims its near field
 (`boundGunNearField`, `engine/muzzleNearField.ts`), which every cascade-shadow
 material bounds at `MUZZLE_NEAR_SUN_K` x the sun within a capsule round that gun.
-A new gun pulse of the muzzle light calls it too; the hull, ground and other
-vehicles keep the bare light.
+A new gun pulse of the muzzle light calls it too, only when `flashLight`
+returned true: a refused pulse binds nothing, and the pulse still burning stays
+its own gun's. `effectAttachments.selftest` drives every caller's lit and
+refused shot and counts the callers, so a new site joins its list. The hull,
+ground and other vehicles keep the bare light.
