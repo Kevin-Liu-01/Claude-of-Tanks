@@ -538,6 +538,9 @@ console.log('effect attachment selftest passed');
         const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
         const frame = () => { clock += 1 / 60; fx.update(1 / 60, [], camera, resolve); };
         frame(); // the roof station is prepared on its first frame
+        // (272) nothing is published before gun a fires, so a near field that names a's bore afterwards is a's own: the
+        // uniforms once started as a published 1 m field on the default bore (0, 0, 1), which is A_BORE
+        if (seat.w !== 0) throw new Error(`no gun's near field may be published before gun a fires (w ${seat.w}, bore ${bore.toArray()})`);
         bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: aCaliberMm, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
         frame();
         const atB = { w: seat.w, bore: bore.clone() };
