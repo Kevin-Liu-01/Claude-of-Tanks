@@ -291,6 +291,18 @@ async function shootRuns(page, signal, tag, checkpoint) {
       return craft;
     };
     window.__runCam = null;
+    // the battle's clock held at each frame's moment (the debug surface's shot mode: the sim stands, frames still draw),
+    // so a loaded machine's slow screenshot never lets the run fly on past the frame
+    window.__runFreezeAt = null; window.__runFrozen = false;
+    // checked in the simulation's own step (the mode's air step runs every fixed step): a loaded page whose
+    // requestAnimationFrame starves is ticked by the frame loop's fallback interval, where a rAF check never runs
+    const air = D.game.matchModeController.airSupport, step = air.step;
+    air.step = (timeS, held) => {
+      step(timeS, held);
+      if (window.__runFreezeAt != null && !window.__runFrozen && D.game.timeS >= window.__runFreezeAt) {
+        D.shotMode = true; window.__runFrozen = true;
+      }
+    };
     const loop = () => {
       const f = window.__runCam;
       if (f) {
@@ -360,13 +372,16 @@ async function shootRuns(page, signal, tag, checkpoint) {
       await page.evaluate((f) => { window.__runCam = f; }, { ...cam, id: accepted.id, kind, x: accepted.x, y: accepted.y, z: accepted.z, heading: accepted.heading,
         calledS: accepted.calledS, landsS: accepted.landsS });
       try {
-        await page.waitForFunction((t) => window.__DEBUG.game.timeS >= t, { timeout: 60_000, polling: 16 }, accepted.landsS + rel - 0.1);
+        await page.evaluate((t) => { window.__runFrozen = false; window.__runFreezeAt = t; }, accepted.landsS + rel);
+        await page.waitForFunction(() => window.__runFrozen, { timeout: 120_000, polling: 50 });
       } catch {
         // the battle's clock stopped (a verdict, a pause): recorded, and the run moves on
         receipt.runs.push({ kind, label, stalled: await battleState() });
+        await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
         break;
       }
-      await sleep(90);
+      // a few drawn frames with the camera on its pose
+      await sleep(600);
       const name = `${tag}-${kind}-${label}`;
       const before = await page.evaluate((s) => {
         const D = window.__DEBUG, R = D.game.matchModeController.airSupport.rules, t = D.game.timeS;
@@ -386,8 +401,9 @@ async function shootRuns(page, signal, tag, checkpoint) {
       }, { ...accepted, kind });
       await shot(page, name);
       receipt.runs.push({ kind, label, shot: name, cam: cam.cam, ...before });
+      await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
     }
-    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.rig.release(); });
+    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.shotMode = false; window.__DEBUG.rig.release(); });
     await checkpoint?.();
   }
 }
