@@ -37,8 +37,8 @@
    "type": "video/webm",
    "width": 640,
    "height": 360,
-   "bytes": 469469,
-   "sha256": "d0e43859c3ebcbe77b7417e6a12d6595ee0da57c891ed327da084359bc8a44bf",
+   "bytes": 457317,
+   "sha256": "4ad8398ce8c943bf1dc07071989a848f8febcc8d403563db2c5e6d2ef184f27b",
    "shows": "A tank behind a crest on Verdant Fields, seen from the enemy side with a long lens: only its turret shows, and two shots stop on it (the Hull-down tip)."
   },
   {
@@ -48,8 +48,8 @@
    "type": "image/webp",
    "width": 640,
    "height": 360,
-   "bytes": 48114,
-   "sha256": "283bd5abb229c658c12c3e7ee6f54dc76ccfa20f7d4de2d0c9709be55ae629dd",
+   "bytes": 48690,
+   "sha256": "bd303a0aa512400595b1409db4206ba702cbfcdca7700ebdefe5fdc0fb304c2d",
    "shows": "A tank behind a crest on Verdant Fields, seen from the enemy side with a long lens: only its turret shows, and two shots stop on it (the Hull-down tip). Poster: its middle frame."
   },
   {

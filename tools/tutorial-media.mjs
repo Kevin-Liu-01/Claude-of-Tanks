@@ -193,8 +193,8 @@ try {
         // the posed scene again, with the enemy's camera and two shots that stop on the mantlet
         const posed = S.state();
         posed.storyboard = { version: 1, durationMs: 4000, actorTracks: [], shots: [
-          { id: 'cam', tMs: 0, pos: [eye[0] - fwd[1] * 3, 1.6, eye[1] + fwd[0] * 3], lookAt: [x, 1.4, z], fov: 13, rollDeg: 0, transition: 'smooth' },
-          { id: 'cam2', tMs: 4000, pos: [eye[0] - fwd[1] * 2.5, 1.6, eye[1] + fwd[0] * 2.5], lookAt: [x, 1.5, z], fov: 12, rollDeg: 0, transition: 'smooth' },
+          { id: 'cam', tMs: 0, pos: [eye[0] - fwd[1] * 3, 1.6, eye[1] + fwd[0] * 3], lookAt: [x, 1.7, z], fov: 6.5, rollDeg: 0, transition: 'smooth' },
+          { id: 'cam2', tMs: 4000, pos: [eye[0] - fwd[1] * 2.5, 1.6, eye[1] + fwd[0] * 2.5], lookAt: [x, 1.8, z], fov: 6, rollDeg: 0, transition: 'smooth' },
         ] };
         posed.effects = [700, 2300].flatMap((tMs, i) => [
           { id: `in${i}`, type: 'tracer', tMs, params: { from: [eye[0] + i, 2.6, eye[1]], to: mantlet, shellType: 'AP', speedMps: 260, caliberMm: 105 } },
