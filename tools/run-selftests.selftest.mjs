@@ -428,6 +428,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
+  'tools/camo-sheet-layout.browser.selftest.mjs', // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
   'tools/mp-rooms-entry.browser.selftest.mjs', // 268: the multiplayer end-to-end's rooms entry per layout
   'tools/couch-open.browser.selftest.mjs', // 272: a real press on Couch keeps the lobby open

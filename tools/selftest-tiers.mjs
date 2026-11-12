@@ -825,6 +825,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/gallery/overlays.selftest.mjs',
     'src/ui/hudAmmoOutPaint.selftest.mjs',
     'tools/gallery-shell.selftest.mjs',
+    'tools/camo-sheet-layout.browser.selftest.mjs',
     'tools/couch-open.browser.selftest.mjs',
     'tools/garage-roster-settle.browser.selftest.mjs',
     'tools/hud-self-measure.browser.selftest.mjs',

@@ -341,14 +341,19 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
 // (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
 const FIT_SHRINK_PX = 10;
 const FIT_STRETCH_PX = 36;
+/** A docked paint swatch gives up to half its picture's 48 px basis (showroom.css) to bring one more row in: its picture
+ *  takes the row's height, so its name keeps its lines (owner 11-11: two rows missed a 1920 sheet by 11 px, and one row
+ *  stood over an empty strip). */
+const CAMO_FIT_SHRINK_PX = 24;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
  * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic). `fill` (a phone's sheet)
  * leaves no strip empty under those rows while more wait below: its rows take one height, the tallest tile's give or take
  * what brings in a row that misses by a few pixels or fills what is left over, and the scroll stops on them (garage.css),
- * so the window stays whole wherever it scrolls.
+ * so the window stays whole wherever it scrolls. `shrink` is how far a row may give to bring the next one in (the docked
+ * paint sheet's swatches give more: their picture takes the row's height).
  */
-function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
+function fitWholeRows(grid: HTMLElement, peek = true, fill = false, shrink = FIT_SHRINK_PX): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
   grid.style.gridAutoRows = '';
@@ -365,7 +370,7 @@ function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
       const rows = room - (parseFloat(style.paddingTop) || 0) + gap;
       if (tallest > 0) {
         let count = Math.max(1, Math.floor(rows / (tallest + gap)));
-        if (tallest - (rows / (count + 1) - gap) <= FIT_SHRINK_PX) count += 1;
+        if (tallest - (rows / (count + 1) - gap) <= shrink) count += 1;
         const height = Math.min(tallest + FIT_STRETCH_PX, rows / count - gap);
         grid.style.gridAutoRows = `${Math.floor(height * 100) / 100}px`;
       }
@@ -2055,8 +2060,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
     // whole rows, as the equipment grid's (the r26 critic read the paint grid's 40 % peek, dimmed to a quarter, as a row
-    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below
-    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false));
+    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below. Docked, they fill the sheet (owner 11-11:
+    // a fit that only dropped the row that missed left one row of swatches over an empty half sheet at 900 to 1920); the
+    // swatch's picture takes the row's height (showroom.css)
+    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false, document.body.dataset.cotPanels === 'persistent', CAMO_FIT_SHRINK_PX));
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {

@@ -644,6 +644,9 @@ body[data-cot-panels='overlay'] .cot-country-step{grid-column:2;}
 /* INTERACTION-REDESIGN B: the sheet is the kit picker (camoPicker.ts): it fills the sheet under the picker's own search and
    kind chips, its grid scrolls, and each swatch is a UI canvas drawing its paint's tile to fit (the skeleton until then) */
 .cot-camo-picker{flex:1 1 auto;min-height:0}
+/* a paint's name wraps inside its swatch whatever it holds: one long word (an unnamed paint's catalog key) widened its
+   column and gave the docked grid a sideways scrollbar that cut its row's names (owner 11-11) */
+.cot-camo-picker .cot-c-picker__name{overflow-wrap:anywhere}
 .cot-camo-picker .cot-c-picker__media{position:relative;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-2)}
 .cot-camo-picker .cot-camo-swatch{position:absolute;inset:0;display:block;width:100%;height:100%}
 .cot-camos .cot-c-picker__grid.can-scroll{
