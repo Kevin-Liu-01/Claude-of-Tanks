@@ -9,13 +9,15 @@
  * Battle Again replays (watched, couch).
  */
 import type { CouchSides } from '../sim/matchRuleset.ts';
-import type { CouchBattle } from './couchSeats.ts';
+import type { CouchBattle, CouchView } from './couchSeats.ts';
 
 export type BattleTerrainVariant = 'assault-trenches' | null;
 
 /** A couch entry as Battle Again replays it: its sides. The seats are read again at the replay (a phone may have left). */
 export interface BattleEntryCouch {
   readonly sides: CouchSides;
+  /** How the screen showed it (split panes or the shared camera). */
+  readonly view: CouchView;
 }
 
 export interface BattleEntryIntentRecord {
@@ -47,11 +49,12 @@ export function createBattleEntryIntent(): BattleEntryIntent {
     get couch() { return current.couch; },
     begin({ terrainVariant, campaignOperationId, watched, couch }) {
       const sides = couch?.sides;
+      const view: CouchView = couch?.view === 'shared' ? 'shared' : 'split';
       current = Object.freeze({
         terrainVariant: terrainVariant === 'assault-trenches' ? terrainVariant : null,
         campaignOperationId: typeof campaignOperationId === 'string' && campaignOperationId ? campaignOperationId : null,
         watched: watched === true,
-        couch: sides === 'together' || sides === 'teams' ? Object.freeze({ sides }) : null,
+        couch: sides === 'together' || sides === 'teams' ? Object.freeze({ sides, view }) : null,
       });
     },
     clear() { current = EMPTY; },
@@ -80,7 +83,7 @@ export interface BattleEntryReplayPorts {
   /** The couch session's runtime (src/app/couchRuntime.ts), or null before its chunk loaded. */
   couch(): {
     seatsInPlay(): number[];
-    startBattle(launch: (seats: readonly number[]) => boolean): boolean;
+    startBattle(launch: (seats: readonly number[]) => boolean, view?: CouchView): boolean;
   } | null;
   /** The couch lobby over the Garage (src/ui/garage.ts openCouch): false when it could not open. */
   openCouchLobby(): boolean;
@@ -100,7 +103,7 @@ export function replayBattleEntry(intent: Pick<BattleEntryIntentRecord, 'watched
   const runtime = ports.couch();
   if (runtime && runtime.seatsInPlay().length) {
     const started = runtime.startBattle((seats) => ports.replay({ watch: false,
-      couch: { seats, sides: couch.sides, names: seats.map((seat) => ports.seatName(seat)) } }));
+      couch: { seats, sides: couch.sides, view: couch.view, names: seats.map((seat) => ports.seatName(seat)) } }), couch.view);
     return started ? 'started' : 'unavailable';
   }
   return ports.openCouchLobby() ? 'lobby' : 'unavailable';

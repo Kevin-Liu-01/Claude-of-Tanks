@@ -211,6 +211,13 @@ export interface PostRuntime {
   readonly perfTrim: number;
   warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
   render(dt: number, frameWallDtSeconds?: number): void;
+  /**
+   * Couch mode's split screen (docs/COUCH-MODE.md "Drawing several views"): the whole chain once per view, sized to one
+   * view (every view is the same size), each written into its own rectangle of the canvas through the viewport and the
+   * scissor. `beforeView(index)` poses the chain's camera for that view (and its visibility). One accounted frame: the
+   * governor samples the frame once, on the first view, and its GPU sample closes after the last.
+   */
+  renderViews(dt: number, frameWallDtSeconds: number, views: readonly PostView[], beforeView: (index: number) => void): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
   /** (perf-253) The late pass's draws of the effects now visible, through its own target (LateFxPass.warmDraw). */
@@ -2186,6 +2193,14 @@ export class LateFxPass extends Pass {
  * @param {THREE.PerspectiveCamera} camera - the gameplay camera
  * @returns {Post}
  */
+/** One view of a split screen, in CSS pixels from the canvas's top left. */
+export interface PostView {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export function createPost(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -2705,7 +2720,7 @@ export function createPost(
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
     const renderUpscaler = upscaler.render.bind(upscaler);
     upscaler.render = (...args: Parameters<FsrUpscalePass['render']>) => {
-      try { renderUpscaler(...args); } finally { gpuFrameTimer?.endFrame(); }
+      try { renderUpscaler(...args); } finally { if (viewEndsFrame) gpuFrameTimer?.endFrame(); }
     };
   }
 
@@ -2718,6 +2733,13 @@ export function createPost(
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
+  /** The canvas's own CSS size (the public setSize): a split screen sizes the chain to one view and gives it back. */
+  let fullCssW = 0;
+  let fullCssH = 0;
+  /** The split screen's view output in device pixels (null: the native canvas). */
+  let viewOutput: { width: number; height: number } | null = null;
+  /** This pass of the chain is the frame's last (a split screen's last view): the GPU sample closes after it. */
+  let viewEndsFrame = true;
   // EffectComposer's explicit-target constructor starts with these dimensions
   // and renderer ratio. Replay the final patched pass chain once at startup.
   let appliedSize: {
@@ -2918,7 +2940,8 @@ export function createPost(
       1 / Math.max(1, Math.round(w * renderScale)),
       1 / Math.max(1, Math.round(h * renderScale)));
     const native = renderer.getDrawingBufferSize(_nativeSize);
-    upscaler.setOutputSize(native.x, native.y);
+    if (viewOutput) upscaler.setOutputSize(viewOutput.width, viewOutput.height);
+    else upscaler.setOutputSize(native.x, native.y);
     appliedSize = next;
   }
   function applyAdaptiveQualityAction(action: AdaptiveQualityAction): void {
@@ -3028,6 +3051,8 @@ export function createPost(
   }
   {
     const css = renderer.getSize(new THREE.Vector2());
+    fullCssW = css.x;
+    fullCssH = css.y;
     applySize(css.x, css.y);
   }
   function resetGovernorState() {
@@ -3252,10 +3277,60 @@ export function createPost(
   }
 
   /** Complete allocation-free post transaction for one rendered frame. */
+  /** The split screen's views for the frame renderViews is drawing (null: one view, the whole canvas). */
+  let viewPlan: { views: readonly PostView[]; beforeView: (index: number) => void } | null = null;
+  const _viewNative = new THREE.Vector2();
+
   function renderFrame(dt: number, frameWallDtSeconds = dt): void {
+    if (viewPlan) { renderViewFrames(dt, frameWallDtSeconds, viewPlan); return; }
+    if (viewOutput) {
+      // the split screen ended: the chain takes the whole canvas again
+      viewOutput = null;
+      if (fullCssW > 0 && fullCssH > 0) applySize(fullCssW, fullCssH);
+    }
+    renderChain(dt, frameWallDtSeconds, true);
+  }
+
+  function renderViewFrames(dt: number, frameWallDtSeconds: number,
+    plan: { views: readonly PostView[]; beforeView: (index: number) => void }): void {
+    const { views } = plan;
+    if (!views.length) return;
+    const ratio = renderer.getPixelRatio();
+    const first = views[0];
+    const outW = Math.max(1, Math.round(first.width * ratio));
+    const outH = Math.max(1, Math.round(first.height * ratio));
+    if (!viewOutput || viewOutput.width !== outW || viewOutput.height !== outH || cssW !== first.width || cssH !== first.height) {
+      viewOutput = { width: outW, height: outH };
+      applySize(Math.max(16, first.width), Math.max(16, first.height));
+    }
+    const canvasH = renderer.getDrawingBufferSize(_viewNative).y / ratio;
+    const priorScissorTest = renderer.getScissorTest();
+    // the gutters and any spare cell hold no stale frame: the canvas is cleared once, then each view draws its own rect
+    renderer.setRenderTarget(null);
+    renderer.setScissorTest(false);
+    renderer.clear(true, true, false);
+    try {
+      for (let index = 0; index < views.length; index++) {
+        const view = views[index];
+        const bottom = canvasH - view.y - view.height;
+        renderer.setViewport(view.x, bottom, view.width, view.height);
+        renderer.setScissor(view.x, bottom, view.width, view.height);
+        renderer.setScissorTest(true);
+        plan.beforeView(index);
+        viewEndsFrame = index === views.length - 1;
+        renderChain(dt, frameWallDtSeconds, index === 0);
+      }
+    } finally {
+      viewEndsFrame = true;
+      renderer.setScissorTest(priorScissorTest);
+      renderer.setViewport(0, 0, renderer.getDrawingBufferSize(_viewNative).x / ratio, canvasH);
+    }
+  }
+
+  function renderChain(dt: number, frameWallDtSeconds: number, governs: boolean): void {
     // A governor resize must land before any pass reads resolution uniforms.
     // Animation stays bounded; cadence and hitch filtering need actual time.
-    dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
+    if (governs) dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     updateOutputGrade();
     grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
@@ -3351,6 +3426,11 @@ export function createPost(
      */
     render: frameAccounting.render,
 
+    renderViews(dt, frameWallDtSeconds, views, beforeView) {
+      viewPlan = { views, beforeView };
+      try { frameAccounting.render(dt, frameWallDtSeconds); } finally { viewPlan = null; }
+    },
+
     /**
      * Resize the whole chain. Pass CSS-pixel dimensions; the composer applies
      * its pixel ratio internally and every pass (GTAO, bloom, SMAA) is resized
@@ -3365,7 +3445,11 @@ export function createPost(
         dynamicScaleFloor(renderer.getPixelRatio(), preset),
       );
       // (black-screen-228 RC2) never below 16 CSS px (viewportRuntime.ts MIN_VIEWPORT_CSS_PX)
-      applySize(w > 16 ? w : 16, h > 16 ? h : 16);
+      fullCssW = w > 16 ? w : 16;
+      fullCssH = h > 16 ? h : 16;
+      // a split screen keeps the chain at its view's size; its next frame re-fits the views, and the frame after it ends
+      // gives the chain this size back (renderFrame)
+      if (!viewOutput) applySize(fullCssW, fullCssH);
     },
 
     /** Allocate the late-FX color/depth targets behind a loading screen. */

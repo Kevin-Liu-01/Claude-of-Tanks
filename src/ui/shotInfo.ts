@@ -1059,7 +1059,8 @@ export function mergeEndRosterRow(
  * @param {{on:Function,emit:Function}} bus event bus (§1.5)
  * @returns {{root:HTMLElement,statsRoot:HTMLElement,setPlayer:Function,reset:Function,hideStats:Function,toggleLog:Function}}
  */
-export function createShotInfo(bus: EventBus): ShotInfoRuntime {
+/** `mount`: where the end screen's root goes (the HUD's own document's body: a split-screen pane's, hud.ts HudView). */
+export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body): ShotInfoRuntime {
   ensureFonts();
   ensureStyle('cot-si-style', SI_CSS, 'surfaces');
 
@@ -1103,7 +1104,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   toastHost.setAttribute('role', 'status');
   toastHost.setAttribute('aria-live', 'polite');
   const statsRoot = el('div', 'cot-si-stats');
-  document.body.appendChild(statsRoot);
+  mount.appendChild(statsRoot);
   // END SCREEN renders into statsRoot so the integration seams keep holding:
   // main.ts veilHud() toggles this exact element around the kill-cam, and
   // the kill-cam parity veil CSS addresses `.cot-si-stats`.

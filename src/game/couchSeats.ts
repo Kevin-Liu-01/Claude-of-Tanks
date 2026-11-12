@@ -16,17 +16,24 @@ export interface CouchSeatAssignment<T> {
   entity: T;
 }
 
-/** How a couch battle is asked for: the lobby's seat numbers in play, how they take sides, and each seat's name over its
- *  tank (seat order; the lobby's words, "Seat 2"), so each player finds their tank on the shared screen. */
+/** How the big screen shows a couch battle (docs/COUCH-MODE.md): one pane per seat, each with its own camera and the
+ *  normal battle HUD ('split', phase 2), or one camera framing every seat ('shared', phase 1), the lobby's choice. */
+export type CouchView = 'split' | 'shared';
+export const COUCH_VIEWS: readonly CouchView[] = ['split', 'shared'];
+
+/** How a couch battle is asked for: the lobby's seat numbers in play, how they take sides, how the screen shows them
+ *  (split when unsaid) and each seat's name over its tank (seat order; the lobby's words, "Seat 2"). */
 export interface CouchBattle {
   seats: readonly number[];
   sides: CouchSides;
+  view?: CouchView;
   names?: readonly string[];
 }
 
 /** A couch battle's seats on the page (game.couch). */
 export interface CouchSession<T> {
   sides: CouchSides;
+  view: CouchView;
   seats: CouchSeatAssignment<T>[];
 }
 
@@ -55,7 +62,8 @@ const namedHulls = new WeakMap<object, Set<CouchNamedHull>>();
 export function beginCouchSession<T extends object>(host: CouchSessionHost<T>, battle: CouchBattle, tanks: readonly T[],
   allies: ReadonlySet<T>, sides: readonly boolean[]): CouchSession<T> {
   endCouchSession(host);
-  const session: CouchSession<T> = { sides: battle.sides, seats: assignCouchSeats(tanks, allies, battle.seats, sides) };
+  const session: CouchSession<T> = { sides: battle.sides, view: battle.view === 'shared' ? 'shared' : 'split',
+    seats: assignCouchSeats(tanks, allies, battle.seats, sides) };
   const ordered = [...battle.seats].sort((a, b) => a - b);
   const named = new Set<CouchNamedHull>();
   for (const { seat, entity } of session.seats) {
@@ -116,7 +124,19 @@ const AIM_RAD_PER_UNIT = 0.0035;
 export const COUCH_AIM_DISTANCE_M = 400;
 const PITCH_LIMIT = 0.35;
 
-/** The phone's taps that are presses in the core (one tick each); the scope and zoom keys mean nothing here. */
+/** What a seat's phone asked of its own camera since the split screen's last frame (docs/COUCH-MODE.md phase 2: each pane
+ *  is its seat's own camera, driven by its phone as the mouse and wheel drive the solo camera). */
+export interface CouchCameraIntent {
+  /** The aim pad's drag, in the mapper's units (padDesk.ts PAD_AIM_GAIN applied); right and down are positive. */
+  aimDx: number;
+  aimDy: number;
+  /** Scope taps (each one toggles the gunner's sight). */
+  sniperToggles: number;
+  /** Zoom notches: positive in, negative out (the wheel's sense: engine/cameraRig.ts stepZoom). */
+  zoom: number;
+}
+
+/** The phone's taps that are presses in the core (one tick each); the scope and zoom keys are the seat's camera's. */
 const TAP_BITS: Partial<Record<PadTapAction, number>> = {
   consumable1: PLAYER_ACTION_BITS.REPAIR,
   consumable2: PLAYER_ACTION_BITS.FIRST_AID,
@@ -141,6 +161,14 @@ export interface CouchSeatControls {
   tapVirtual(actionId: PadTapAction): void;
   /** Point the sight along a world bearing (a new battle: the seat's hull and gun). */
   aimAlong(yaw: number): void;
+  /**
+   * The split screen's pane camera lays the seat's sight (its camera's aim, as the solo camera lays the player's): the
+   * next ticks carry this bearing, pitch and range until the pane lays it again. The phone's drag then turns the pane's
+   * camera (drainCamera), not the bearing.
+   */
+  layAim(yaw: number, pitch: number, distance: number): void;
+  /** The camera intent since the last drain (the split screen's frame), then cleared. */
+  drainCamera(out: CouchCameraIntent): CouchCameraIntent;
   /** Write this tick's input into `out`, and clear the presses it carried. */
   take(out: CouchSeatInput): CouchSeatInput;
   /** Let every control go (the phone left, the battle ended). */
@@ -158,6 +186,12 @@ export function createCouchSeatControls(): CouchSeatControls {
   let pending = 0;
   let aimYaw = 0;
   let aimPitch = 0;
+  let aimDistance = COUCH_AIM_DISTANCE_M;
+  /** A pane camera lays the sight (layAim): the drag is the camera's, not the bearing's. */
+  let laid = false;
+  /** The free-look hold: the gun keeps its lay while the camera looks around (the core's aimLocked). */
+  let hold = false;
+  let camDx = 0, camDy = 0, camSniper = 0, camZoom = 0;
   return {
     setVirtualMove(x, y) {
       // the stick's x is screen-right; a tank's steer is positive hull yaw, the nose toward screen-left (playerFrameInput)
@@ -165,6 +199,9 @@ export function createCouchSeatControls(): CouchSeatControls {
       throttle = Math.max(-1, Math.min(1, y));
     },
     addVirtualAim(dx, dy) {
+      camDx += dx;
+      camDy += dy;
+      if (laid) return;
       // dragging right turns the gun right, toward the hull's -X side: the bearing (atan2(x, z)) falls
       aimYaw -= dx * AIM_RAD_PER_UNIT;
       aimPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, aimPitch - dy * AIM_RAD_PER_UNIT * 0.5));
@@ -172,34 +209,53 @@ export function createCouchSeatControls(): CouchSeatControls {
     pressVirtual(actionId) {
       if (actionId === 'fire') { fire = true; pulled = true; }
       else if (actionId === 'handbrake') brake = true;
+      else if (actionId === 'freeLook') hold = true;
     },
     releaseVirtual(actionId) {
       if (actionId === 'fire') fire = false;
       else if (actionId === 'handbrake') brake = false;
+      else if (actionId === 'freeLook') hold = false;
     },
     tapVirtual(actionId) {
       const slot = SHELL_TAPS[actionId];
       if (slot !== undefined) { shellSlot = slot; return; }
+      if (actionId === 'sniperToggle') { camSniper++; return; }
+      if (actionId === 'zoomIn' || actionId === 'zoomOut') { camZoom += actionId === 'zoomIn' ? 1 : -1; return; }
       pending |= TAP_BITS[actionId] ?? 0;
     },
-    aimAlong(yaw) { aimYaw = yaw; aimPitch = 0; },
+    aimAlong(yaw) { aimYaw = yaw; aimPitch = 0; aimDistance = COUCH_AIM_DISTANCE_M; laid = false; },
+    layAim(yaw, pitch, distance) {
+      laid = true;
+      aimYaw = yaw;
+      aimPitch = pitch;
+      aimDistance = distance;
+    },
+    drainCamera(out) {
+      out.aimDx = camDx;
+      out.aimDy = camDy;
+      out.sniperToggles = camSniper;
+      out.zoom = camZoom;
+      camDx = 0; camDy = 0; camSniper = 0; camZoom = 0;
+      return out;
+    },
     take(out) {
       out.throttle = throttle;
       out.steer = steer;
       out.brake = brake;
       out.fire = fire || pulled;
-      out.aimLocked = false;
+      out.aimLocked = hold;
       out.shellSlot = shellSlot;
       out.actionBits = pending;
       out.aimYaw = aimYaw;
       out.aimPitch = aimPitch;
-      out.aimDistance = COUCH_AIM_DISTANCE_M;
+      out.aimDistance = aimDistance;
       pending = 0;
       pulled = false;
       return out;
     },
     release() {
-      steer = 0; throttle = 0; fire = false; pulled = false; brake = false; pending = 0;
+      steer = 0; throttle = 0; fire = false; pulled = false; brake = false; pending = 0; hold = false;
+      camDx = 0; camDy = 0; camSniper = 0; camZoom = 0;
     },
   };
 }

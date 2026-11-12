@@ -15,7 +15,7 @@ import { padPageUrl } from '../pad/padDesk.ts';
 import { encodeQr, qrSvgPath } from '../pad/qr.ts';
 import type { PadLobbyView } from '../pad/padLobby.ts';
 import type { CouchRuntime } from '../app/couchRuntime.ts';
-import type { CouchBattle } from '../game/couchSeats.ts';
+import { COUCH_VIEWS, type CouchBattle, type CouchView } from '../game/couchSeats.ts';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
 import type { CouchSides } from '../sim/matchRuleset.ts';
 
@@ -119,6 +119,11 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.sides'), className: 'cot-couch-sides', value: sides,
     options: (['together', 'teams'] as const).map((value) => ({ value, label: t(`couch.sides.${value}`), disabled: togetherOnly && value === 'teams' })) }));
   wireRoving(side.lastElementChild as HTMLElement, (value) => { sides = value as CouchSides; paint(lobby.view); });
+  // the screen: a pane per player with its own camera and HUD (split), or one camera over every seat (shared)
+  let view: CouchView = 'split';
+  side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.view'), className: 'cot-couch-view', value: view,
+    options: COUCH_VIEWS.map((value) => ({ value, label: t(`couch.view.${value}`) })) }));
+  wireRoving(side.lastElementChild as HTMLElement, (value) => { view = value === 'shared' ? 'shared' : 'split'; });
 
   const end = button(footer, 'quiet', t('couch.end'));
   const reopen = button(footer, 'secondary', t('couch.reopen'));
@@ -129,8 +134,8 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   start.addEventListener('click', () => {
     runtime.startBattle((inPlay) => {
       modal?.close();
-      return request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
-    });
+      return request.start({ seats: inPlay, sides, view, names: inPlay.map((n) => t('pad.seat', { n })) });
+    }, view);
   });
 
   let shownCode = '';

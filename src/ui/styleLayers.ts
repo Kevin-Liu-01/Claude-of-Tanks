@@ -29,12 +29,12 @@ export const STYLE_LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,u
  * order, so it can never be the first to name a layer out of place; where the document declared it already, the
  * repeat changes nothing.
  */
-export function ensureStyle(id: string, css: string, layer: StyleLayer): HTMLStyleElement {
-  const existing = document.getElementById(id);
+export function ensureStyle(id: string, css: string, layer: StyleLayer, doc: Document = document): HTMLStyleElement {
+  const existing = doc.getElementById(id);
   if (existing?.tagName === 'STYLE') return existing as HTMLStyleElement;
-  const style = document.createElement('style');
+  const style = doc.createElement('style');
   style.id = id;
   style.textContent = `${STYLE_LAYER_ORDER}@layer ${layer}{${css}}`;
-  document.head.appendChild(style);
+  doc.head.appendChild(style);
   return style;
 }

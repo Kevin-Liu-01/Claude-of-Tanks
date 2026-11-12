@@ -1,8 +1,9 @@
 # Couch mode — up to eight phones, one big screen
 
 Phase 1 is built (deploy 268): the lobby and its seats, each phone driving its own tank, one shared camera; "The couch
-session on the page" below says how it runs. Panes (phase 2) and the phone as each player's HUD (phase 3) are still
-design. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
+session on the page" below says how it runs. Phase 2 is built (item/couch-panes-272): the split screen, one pane per
+seat with that player's own camera and the normal battle HUD; "The split screen as built" says how. The phone as each
+player's HUD (phase 3) is still design. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
 qr code from their phones to a host of a computer for claude of tanks? i think that will be so much faster and easier.
 sort of like a console split screen, up to 8 people that you can share on a big screen?"
 
@@ -160,6 +161,64 @@ viewpoint for presentation, the mode perspective and verdict (`stepMatchMode`, `
 the death hold and respawn view (`battleResultPresentationRuntime.ts`), the recoil and shake applied to the player's
 rig, and the pad receiver's `source()` (`padReceiver.ts`), which today returns `game.player`.
 
+## The split screen as built (phase 2, 272)
+
+The owner's ruling (2026-11-11): "the couch version should just show the normal game ui in each session screen". The
+big screen splits like a console's split screen, and each pane shows that player's own camera and the normal battle
+HUD, the one the solo battle shows: hull points and the damage panel, ammunition and reload, the sight, the minimap,
+consumables, damage and kill messages, the capture and objective state, the rosters. No reduced couch HUD. This
+replaces the reduced pane HUD of "Panes' HUD and sound" below, and the four-pane stop of "Decided on the owner's
+behalf": the split screen now seats one to eight. The lobby's Screen choice keeps the shared camera (phase 1) for a
+big group that wants one view; Battle Again keeps the screen the battle had.
+
+- **One HUD, many instances.** `src/ui/hud.ts` `initHud(bus, view)` takes a `HudView`: the body it mounts on, whose
+  document is the HUD's. A pane's HUD mounts in its own document, a same-origin iframe over the pane
+  (`src/app/couchPaneViews.ts`), so every document-level read and write of the HUD (`battleHudLayout.ts`'s body flags,
+  variables and bands, its media queries, its window's resize, the shot log's mount, the kill ribbon's flags) is the
+  pane's. `initHud` and `installBattleHudLayout` bind `document` and `window` to the root's own document; the page's HUD
+  is the view with no `HudView`. The pane's document carries the page's style sheets (copied, and kept in step as the
+  page adds more) and its own responsive bands (`installResponsiveLayout(paneWindow, paneDocument)`).
+- **The per-view context.** Each pane's HUD frame (`game/battleHudFrameRuntime.ts`) and aim controller
+  (`game/aimController.ts`) read a view of the battle whose player is the seat's tank (`Object.create(game)` with its
+  own `player`), the pane's camera and the pane's rig, so the HUD's player, camera, reticle, shells, damage panel and
+  spotting are the seat's. The page player's events that name no tank (`ui:shellSelect`, `ui:consumableUsed`, the sixth
+  sense, the killcam) never reach a pane's HUD, and nothing a pane's HUD emits reaches the page.
+- **Panes** (`game/couchPanes.ts`): 1 seat the whole screen; 2 side by side on a screen at least 1.6 wide (every TV and
+  laptop), stacked on a narrower one; 3 or 4 a 2 x 2 grid; 5 to 8 a 4 x 2 grid on a wide screen, 3 x 3 on a narrower
+  one. Every pane is the same size, 2 px apart; a cell no seat takes shows dark.
+- **One renderer, one context.** `post.ts` `renderViews` runs the normal post chain once per pane, sized to one pane,
+  each writing its own rectangle of the canvas through the viewport and the scissor; the governor samples the frame
+  once. Each pane's camera is copied onto the chain's camera for its draw, so every camera-dependent pass (the scene,
+  the aerial haze, the late effects) is the pane's.
+- **Cameras.** Each pane has the solo camera rig (`engine/cameraRig.ts`) following its seat, driven by its phone as the
+  mouse and wheel drive the solo camera: the aim pad turns it, Scope toggles the gunner's sight, the zoom taps step the
+  orbit and the scope, Free look holds the gun. The rig's sight lays the seat's gun (`CouchSeatControls.layAim`), as
+  the solo camera lays the player's; the seat's input stage carries that bearing, pitch and range each tick.
+- **Spotting per seat.** Before each pane's draw, an enemy of its seat's side is drawn only while that side has it
+  spotted with the seat as the receiver (the solo rule with this seat as the player); the seat's own tank hides only in
+  its own gunner's sight. The HUD's markers and minimap read the same through the pane's HUD frame. Every hull stays in
+  the scene for the split screen (`stateCore.ts` `watchRevealsAll`), and each pane hides for its own draw only. In a
+  Together battle the seats share one side, and so its spotting, as allies do in solo; in Teams a pane never shows a
+  hull only the other side has spotted.
+- **Scale** (`couchHudScale`, `couchHudTier`): a pane's HUD is laid out at the pane's size divided by its scale and
+  drawn at that scale, the square root of the pane's height over 1080, between 0.75 and 1: a half-height pane's type is
+  0.75 of the solo HUD's, not half. The HUD's own bands then apply to that layout size. Below a full layout the HUD gives
+  up parts from the end of one stated priority list (sight, health, ammunition, hits, objective, minimap, consumables,
+  messages, rosters, furniture): compact (under 1100 x 640) gives up the rosters and furniture, small (under 720 x 480)
+  also the consumables and messages, and under the minimum pane (480 x 300 laid out) it keeps sight, health, ammunition
+  and hits only. At 1080p: 2 panes compact, 4 panes full, 8 panes small.
+- **Sound: the most recent shooter's solo mix.** The room hears one mix, the solo mix of the seat that fired last (its
+  gun, engine and hits as its own), held 1.5 s after its shot so a burst of fire from several seats does not swing the
+  room between them; seat 1 before anyone fires. Why not one listener for the room: the audio engine is built around
+  one own tank, and a room mix that gives every seat's tank its own presence needs the engine to treat several hulls as
+  its own (phase 3, with the phone's private cues); a listener between the seats heard every seat from far away.
+- **The couch tier** (`quality.ts` `COUCH_PRESET`, `setCouchTier`): asked for at a split battle's Start, before the
+  world builds, and let go on the Garage return. Ultra Low's world and sky cuts (light world, the cheapest terrain
+  splat, no marched clouds, bloom or AO) at one raster sample per CSS pixel.
+- **What still follows one camera.** The world's one-camera systems (terrain and vehicle detail, the near trees, the
+  tall grass, the water field) and the shadow cascades follow seat 1's pane; the other panes see that detail at its
+  distance from seat 1. Per-pane detail is the next step on this list.
+
 ## The screen
 
 Today the game draws one view. There is one camera (`src/main.ts:516`), one post chain fixed to it (`createPost`,
@@ -285,10 +344,12 @@ measures the input latency with every phone linked and checks that a phone which
 
 ## Decided on the owner's behalf
 
-- Split screen stops at four panes. Five to eight players share one camera, because eight panes on one TV are each about
+- (Replaced 2026-11-11 by the owner's ruling: the split screen seats one to eight, each pane with the normal HUD; see
+  "The split screen as built".) Split screen stops at four panes. Five to eight players share one camera, because eight panes on one TV are each about
   480 × 540 on a 1080p set, too small to read from a couch, and cost eight views a frame.
 - The first modes are co-op against bots and team against team. Free-for-all follows once spotting per seat is proven.
 - Couch co-op seats up to eight, through a couch entry in `src/sim/matchRuleset.ts` (the co-op modes seat seven today).
 - The battle stays on the page, like solo. Moving a local simulation off the main thread needs the owner's ruling
   (`docs/ARCHITECTURE.md` §1.6), and couch mode does not ask for it.
-- Two players split the screen top and bottom, which keeps the horizon wide; a side-by-side option can follow.
+- (Replaced 2026-11-11: two players sit side by side on a wide screen, stacked on a narrower one.) Two players split the
+  screen top and bottom, which keeps the horizon wide; a side-by-side option can follow.

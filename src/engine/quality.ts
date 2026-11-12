@@ -565,6 +565,44 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
 };
 
+/**
+ * The couch tier (docs/COUCH-MODE.md "The couch tier"): the big screen's split view draws one view per seated player,
+ * so each view carries about a pane's share of the picture. Ultra Low's world and sky cuts (the light world, the
+ * cheapest terrain splat, no marched clouds, no bloom, no AO, no shafts or flare) at one raster sample per CSS pixel.
+ * It is never a menu choice: the couch runtime asks for it (setCouchTier) before a split couch battle's world builds,
+ * since the light world is read at world build, and lets it go when that battle ends.
+ */
+export const COUCH_PRESET: QualityPreset = Object.freeze({
+  label: 'Couch',
+  ambience: 0,
+  msaaSamples: 0,
+  tallGrass: 0.1,
+  maxPixelRatio: 1.0,
+  dynMin: 1.0,
+  nativeDynMin: 0.75,
+  rcasMinScale: 0.4,
+  aoScale: 0,
+  bloomScale: 0.35,
+  bloom: false,
+  volumetricClouds: false,
+  terrainLite: true,
+  lightWorld: true,
+  shadowMapSizes: [1024, 1024, 512, 512] as const,
+  shadowMaxFar: 240,
+});
+
+let couchTier = false;
+/** The couch tier in force (set by the couch split view, never by a menu). */
+export function couchTierActive(): boolean {
+  return couchTier;
+}
+/** Ask for the couch tier, or let it go; every preset listener hears the change (post.ts, lighting.ts). */
+export function setCouchTier(on: boolean): void {
+  if (couchTier === on) return;
+  couchTier = on;
+  broadcastPreset();
+}
+
 export const PRESET_ORDER: readonly DesktopPresetName[] = ['ultralow', 'low', 'medium', 'high', 'ultra'];
 export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-ultralow', 'mobile-low', 'mobile', 'mobile-high'];
 
@@ -824,6 +862,7 @@ export function setMobilePresetName(name: string): void {
 const autoVariants = new Map<PresetName, QualityPreset>();
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin and autoNativeDynMin floors) */
 export function getPreset(): QualityPreset {
+  if (couchTier) return COUCH_PRESET;
   const name = resolvePresetName();
   const preset = PRESETS[name];
   if ((preset.autoDynMin === undefined && preset.autoNativeDynMin === undefined) || getStoredChoice() !== 'auto') return preset;

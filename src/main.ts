@@ -3754,7 +3754,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     // a watched battle (the Deploy foot's Watch): Battle Again watches again
     watched: options?.watch === true,
     // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
-    couch: options?.couch ? { sides: options.couch.sides } : null,
+    couch: options?.couch ? { sides: options.couch.sides, view: options.couch.view === 'shared' ? 'shared' : 'split' } : null,
   }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -3930,6 +3930,23 @@ const couchOwner = createLazyRuntimeOwner(
     // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other
     // owner's reason strips it; both writes happen only on a change (the runtime asks every frame)
     setSpectating: (on) => { setBodyFlag('cot-spectating', 'couch', on); currentHud()?.setCouchView(on); },
+    // the split screen (src/app/couchPaneViews.ts): each pane's camera, aim and HUD are made of the page's own parts
+    paneViews: {
+      game,
+      camera,
+      canvas: () => renderer.domElement,
+      post,
+      rig: { heightField: hfProxy, raycast: worldRaycast, getCameraSettings: () => input.getSettings() },
+      aim: { worldRaycast, computeDispersion: (spec, state, distanceM) => computeDispersionRadM(spec, state, distanceM) },
+      input,
+      bus,
+      loadHud: () => Promise.all([import('./ui/hud.ts'), import('./ui/damagePanel.ts')]).then(([hud, damagePanel]) => ({ hud, damagePanel })),
+      detailFoci: (points) => currentWorld()?.setTerrainDetailFoci?.(points),
+      minimap: () => {
+        const src = currentHud()?.exportMinimapBackground('image/png');
+        return src ? { heightField: hfProxy, src } : null;
+      },
+    },
   }),
 );
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
@@ -3944,7 +3961,9 @@ bus.on('watch:change', (payload) => {
   panel?.setTank(entity.spec, entity.visual);
   panel?.setEquipment(entity.equip ?? null);
 });
-const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
+const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio,
+  // a couch battle's split screen: the room hears the most recent shooter's solo mix (src/app/couchPaneViews.ts)
+  focus: () => couchOwner.current?.listenerFocus() ?? null });
 const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
@@ -4126,6 +4145,9 @@ const mainFrame = createMainFrameRuntime({
   rig,
   // Watch's cameras, else a couch battle's shared camera, own the frame (the chase rig then stands down)
   watchFrame: (dt) => (watchOwner.current?.frame(dt) ?? false) || (couchOwner.current?.frame(dt) ?? false),
+  // a couch battle's split screen draws one pane per seat (docs/COUCH-MODE.md phase 2)
+  renderViews: (dt, wallDt) => couchOwner.current?.renderViews(dt, wallDt) ?? false,
+  splitHud: () => !!couchOwner.current?.paneViews && game.result == null,
   killcam,
   veilHud,
   worldFramePresentation,

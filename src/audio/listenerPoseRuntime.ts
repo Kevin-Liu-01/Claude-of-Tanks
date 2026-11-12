@@ -57,6 +57,12 @@ interface ListenerPoseRuntimeOptions {
   rig: AudioRig;
   killcam: AudioKillcam;
   audio: AudioMixer;
+  /**
+   * Couch mode's split screen (docs/COUCH-MODE.md, "Panes' HUD and sound"): the seat the room hears the battle as, and
+   * its pane camera's facing (src/app/couchPaneViews.ts listenerFocus: the most recent shooter's solo mix); null to hear
+   * it as the page's player.
+   */
+  focus?: () => { readonly entity: AudioTank; readonly forward: Vector3 } | null;
 }
 
 export interface ListenerPoseRuntime {
@@ -77,6 +83,7 @@ export function createListenerPoseRuntime({
   rig,
   killcam,
   audio,
+  focus,
 }: ListenerPoseRuntimeOptions): ListenerPoseRuntime {
   const tankPosition = new Vector3();
   const dronePosition = new Vector3();
@@ -96,7 +103,11 @@ export function createListenerPoseRuntime({
     update(dtSeconds, inBattle, killcamActive): void {
       camera.getWorldDirection(forward);
       let entity: AudioTank | null | undefined = null;
-      if (inBattle && !killcamActive && !killcam.isActive()) {
+      const seat = inBattle && !killcamActive ? focus?.() ?? null : null;
+      if (seat) {
+        entity = seat.entity;
+        forward.copy(seat.forward);
+      } else if (inBattle && !killcamActive && !killcam.isActive()) {
         const spectateId = killcam.spectate.active ? killcam.spectate.targetId : null;
         entity = spectateId ? game.tankById.get(spectateId) : game.player;
       }
@@ -115,9 +126,9 @@ export function createListenerPoseRuntime({
           ? entity.spec.dims.heightM * 0.68
           : 1.6;
         pose.pos = tankPosition;
-        pose.kind = killcam.spectate.active ? 'spectated-tank' : 'player-tank';
+        pose.kind = killcam.spectate.active && !seat ? 'spectated-tank' : 'player-tank';
         pose.ownerId = entity.id;
-        pose.scoped = rig.mode === 'SNIPER' && camera.userData.scoped === true;
+        pose.scoped = !seat && rig.mode === 'SNIPER' && camera.userData.scoped === true;
       } else {
         pose.pos = camera.position;
         pose.kind = killcamActive || killcam.isActive() ? 'killcam-camera' : 'camera';
