@@ -24,6 +24,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type AirSupportView } from '../sim/airSupport.ts';
 import { strikeView, STRIKE_VIEW_TRANSITION_S } from '../game/strikeViewState.ts';
+import { strikeCallBlocker, type StrikeOrderRefusal } from '../game/strikeOrder.ts';
 import { icon, type IconId } from './icons/icon.ts';
 import { markDatum } from './dom.ts';
 import { t } from './i18n.ts';
@@ -49,14 +50,13 @@ function stat(parent: HTMLElement, label: string): HTMLElement {
   return value;
 }
 
-/** Why a call-in cannot be made now (null: it can). */
-function blocker(air: AirSupportView, kind: AirStrikeKind, rangeM: number): 'points' | 'cooldown' | 'air' | 'range' | null {
-  if ((air.points ?? 0) < R[kind].cost) return 'points';
-  if ((air.cooldowns?.[kind] ?? 0) > 0) return 'cooldown';
-  if (air.teamAirFull) return 'air';
-  if (rangeM > R.callRangeM) return 'range';
-  return null;
-}
+/** A refusal's plate state (its i18n key under airSupport.state and its data-state): the reasons a crew can act on
+ *  have their own words, the rest (a wreck's press, a mark that is no point, a verdict that never came) read "refused". */
+type PlateState = 'points' | 'cooldown' | 'air' | 'gunship' | 'range' | 'denied';
+const PLATE_STATE: Readonly<Record<StrikeOrderRefusal, PlateState>> = {
+  POINTS: 'points', COOLDOWN: 'cooldown', AIR_FULL: 'air', GUNSHIP_UP: 'gunship', RANGE: 'range',
+  DESTROYED: 'denied', MARK: 'denied', LOST: 'denied',
+};
 
 export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   // the rest slot: Support (the binoculars) with the points; it joins the battle tray on a desktop (update() re-seats it
@@ -161,12 +161,10 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
   const warningTitle = node('strong', '', warning);
   const warningTime = node('span', 'num', warning);
 
-  let lastTimeS = 0, called = false, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
-  bus.on('ui:strikeCalled', () => { called = true; });
+  let lastTimeS = 0, glyphKind: AirStrikeKind | null = null, scopedFlag = false;
   bus.on('ui:strikeView', (payload) => {
     const open = !!(payload as { open?: boolean } | null)?.open;
     binoculars.classList.toggle('is-raising', open && !prefersReducedMotion());
-    if (!open) called = false;
   });
 
   /**
@@ -198,12 +196,14 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       rangeM = Math.hypot(dx, dz);
       if (rangeM > 1) strikeView.heading = Math.atan2(dx, dz);
     }
-    const why = blocker(air, strikeView.kind, rangeM);
-    strikeView.ready = !why;
+    strikeView.rangeM = rangeM;
+    // readiness is the authority's own rule (game/strikeOrder.ts strikeCallBlocker); the order is read, never written
+    const why = strikeCallBlocker(air, strikeView.kind, rangeM);
+    const order = strikeView.order.read(timeS);
     const step = dt / STRIKE_VIEW_TRANSITION_S;
     strikeView.blend = Math.max(0, Math.min(1, strikeView.blend + (strikeView.open ? step : -step)));
-    // a call made: the reticle holds its lock, then the binoculars come down
-    if (called && strikeView.open && timeS >= strikeView.lockedUntilS) bus.emit('ui:strikeViewClose', {});
+    // an accepted call: the reticle held its lock, then the binoculars come down
+    if (strikeView.order.takeLowered(timeS) && strikeView.open) bus.emit('ui:strikeViewClose', {});
 
     const have = air.points ?? 0;
     setText(points, String(have));
@@ -211,7 +211,8 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
     setData(view, 'selected', strikeView.open ? 'true' : 'false');
     setAttr(view, 'aria-pressed', strikeView.open ? 'true' : 'false');
     for (const slot of slots) {
-      const slotWhy = blocker(air, slot.kind, slot.kind === strikeView.kind ? rangeM : 0);
+      const slotRefusal = strikeCallBlocker(air, slot.kind, slot.kind === strikeView.kind ? rangeM : 0);
+      const slotWhy = slotRefusal ? PLATE_STATE[slotRefusal] : null;
       setData(slot.button, 'state', slotWhy ?? 'ready');
       setData(slot.button, 'selected', strikeView.open && strikeView.kind === slot.kind ? 'true' : 'false');
       const cool = air.cooldowns?.[slot.kind] ?? 0;
@@ -232,11 +233,13 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       setText(warn, `${R[kind].warningS} s`);
       setText(range, `${Math.round(rangeM)} m`);
       setText(bearing, `${String(Math.round(((strikeView.heading * 180 / Math.PI) + 360) % 360)).padStart(3, '0')}°`);
-      const locked = timeS < strikeView.lockedUntilS;
-      setText(state, locked ? t('airSupport.state.called') : why ? t(`airSupport.state.${why}`) : t('airSupport.state.ready'));
-      setData(binoculars, 'state', locked ? 'called' : why ?? 'ready');
+      // the plate: the order under way (sending, called, or the refusal it met), else whether a press would be taken
+      const plate = order.phase === 'sent' ? 'sent' : order.phase === 'called' ? 'called'
+        : order.phase === 'denied' && order.kind === kind ? PLATE_STATE[order.reason] : why ? PLATE_STATE[why] : 'ready';
+      setText(state, t(`airSupport.state.${plate}`));
+      setData(binoculars, 'state', plate);
       setText(lowerKey, keyX);
-      setDisabled(call, !strikeView.ready || locked);
+      setDisabled(call, !!why || order.phase === 'sent' || order.phase === 'called');
     }
 
     // the warning: the nearest-landing strike of the other side (or a friendly one: friendly fire is on) whose footprint

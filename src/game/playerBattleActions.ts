@@ -1,4 +1,6 @@
 import { strikeView, type AirStrikeKind } from './strikeViewState.ts';
+import { strikeCallBlocker } from './strikeOrder.ts';
+import type { AirSupportView, StrikeRefusal } from '../sim/airSupport.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { couchSeatsActive, type EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
@@ -73,6 +75,8 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   /** A couch battle (game/couchSeats.ts): phones drive every seat through the input stage, the page's keys no tank, while
    *  that battle runs (stateCore.ts couchSeatsActive). */
   couch?: object | null;
+  /** The mode's view for the player (Air Support: its ledger, its refusals and the strikes; sim/airSupport.ts). */
+  matchModeState?: { air?: AirSupportView | null } | object | null;
 }
 
 interface ActionInput {
@@ -114,8 +118,6 @@ const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
 const STRIKE_ACTION_NAMES = Object.freeze({
   recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'strikeGunship',
 } as const satisfies Record<AirStrikeKind, string>);
-/** A call locks the reticle (and holds the binoculars up) this long (s). */
-const STRIKE_LOCK_S = 0.9;
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 
 function hasLiveCombat<TEntity extends BattleActionEntity>(
@@ -213,15 +215,39 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     if (!strikeView.open && battleInputAllowed() && livePlayer()) setStrikeView(true);
     bus.emit('ui:click', {});
   });
+  // The order (game/strikeOrder.ts owns its transitions): a press the authority's own rule refuses is refused at the
+  // plate with its reason; one it would take is sent, and the plate reads CALLED only once the authority took it (its
+  // strike_called names our crew) or the refusal it sent back. The range is the authority's: the hull to the aim point
+  // the call carries (sim/hullActions.ts strike).
+  const airView = (): AirSupportView | null => (game.matchModeState as { air?: AirSupportView | null } | null | undefined)?.air ?? null;
+  const markRangeM = (player: TEntity): number => {
+    const aim = (player.input as { aimPoint?: { x: number; z: number } | null }).aimPoint;
+    const pos = (player.state as { pos?: { x: number; z: number } } | null)?.pos;
+    return aim && pos ? Math.hypot(aim.x - pos.x, aim.z - pos.z) : Number.NaN;
+  };
   listen('ui:strikeCall', () => {
     const player = strikeView.open && battleInputAllowed() ? livePlayer() : null;
-    if (!player || game.timeS < strikeView.lockedUntilS) return;
-    if (!strikeView.ready) { bus.emit('ui:strikeDenied', { kind: strikeView.kind }); return; }
+    if (!player) return;
     const kind = strikeView.kind;
+    const blocker = strikeCallBlocker(airView(), kind, markRangeM(player));
+    const pressed = strikeView.order.press(game.timeS, kind, blocker);
+    if (pressed === 'busy') return;
+    if (pressed === 'denied') { bus.emit('ui:strikeDenied', { kind, reason: blocker }); return; }
     if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
     else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | strikes.bit(kind);
-    strikeView.lockedUntilS = game.timeS + STRIKE_LOCK_S;
-    bus.emit('ui:strikeCalled', { kind });
+  });
+  listen('mode:strike_called', (payload) => {
+    const call = payload as { callerId?: RuntimeValue; kind?: RuntimeValue; strikeId?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || call?.callerId !== player.id || !strikes.kinds.includes(call.kind as AirStrikeKind)) return;
+    if (strikeView.order.accepted(game.timeS, call.kind as AirStrikeKind, Number(call.strikeId))) bus.emit('ui:strikeCalled', { kind: call.kind });
+  });
+  listen('mode:strike_denied', (payload) => {
+    // (the authority's refusal is heard by the audio engine's own listener: no second ui:strikeDenied sound here)
+    const refusal = payload as { id?: RuntimeValue; kind?: RuntimeValue; reason?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || refusal?.id !== player.id || !strikes.kinds.includes(refusal.kind as AirStrikeKind)) return;
+    strikeView.order.refused(game.timeS, refusal.kind as AirStrikeKind, String(refusal.reason) as StrikeRefusal);
   });
   onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));
   onAction('fire', () => { if (strikeView.open) bus.emit('ui:strikeCall', {}); });
@@ -537,6 +563,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       return shellCards.length === 0 || ((card?.count ?? 0) | 0) > 0;
     },
     resetConsumables() {
+      // a battle's start: no call of the last battle's (its lock, its pending verdict) holds in this one
+      strikeView.order.reset();
       // a life's cooldowns and charges are the tank's own (game/soloConsumables.ts createSoloConsumables at spawn); the
       // tray learns its items: the page battle's tank carries them, and a network battle's are the ones the host derives
       // the same way (the saved loadout within the mode's gate; sim/authoritativeMatch.ts consumableLoadoutFor)

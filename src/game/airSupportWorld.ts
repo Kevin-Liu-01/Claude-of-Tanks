@@ -18,6 +18,7 @@ import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
 import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
+import { strikeCallBlocker } from './strikeOrder.ts';
 
 interface AirSupportWorldOptions {
   viewerPosition?: () => { x: number; y: number; z: number } | null;
@@ -89,14 +90,16 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     return pose.y > strike.y - 2 && dt < 9;
   }
 
-  function aimMark(): void {
+  function aimMark(air: AirSupportView): void {
     if (!strikeView.open || strikeView.blend < 0.05) return;
     const footprint = strikeFootprint(R, strikeView.kind);
     const shape: StrikeMarkShape = strikeView.kind === 'recon' ? 'aim-track' : footprint.shape === 'lane' ? 'aim-lane'
       : strikeView.kind === 'gunship' ? 'aim-orbit' : 'aim-circle';
-    const locked = lastTimeS < strikeView.lockedUntilS;
-    // the reticle's colour: the side's own when it can be called, the contested amber when it cannot
-    aimColour.set(sideColor(strikeView.ready || locked ? 'own' : 'contested'));
+    // locked while the call is under way or taken (game/strikeOrder.ts); the reticle's colour: the side's own when the
+    // authority would take the call, the contested amber when it would not
+    const phase = strikeView.order.read(lastTimeS).phase;
+    const locked = phase === 'sent' || phase === 'called';
+    aimColour.set(sideColor(locked || !strikeCallBlocker(air, strikeView.kind, strikeView.rangeM) ? 'own' : 'contested'));
     pushMark(strikeView.x, strikeView.y, strikeView.z, shape, strikeView.heading,
       footprint.shape === 'circle' ? footprint.radiusM : footprint.halfLengthM, footprint.shape === 'lane' ? footprint.halfWidthM : 0,
       aimColour, locked ? 1 : 0.2);
@@ -147,7 +150,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
       }
     }
     for (const [id, craft] of crafts) if (!craft.seen) release(id, craft);
-    aimMark();
+    aimMark(air);
     if (markCount) setStrikeMarks(marks, t, markCount); else clearStrikeMarks();
   }
 

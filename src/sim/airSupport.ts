@@ -54,16 +54,28 @@ export interface AirStrike {
 /** A strike as anyone may see it: its record without its caller (the flight, the footprint and the rounds need no more). */
 export type PublicStrike = Omit<AirStrike, 'callerId' | 'fired' | 'firedAux'>;
 
+/** Why the authority refuses a call (requestStrike's mode_strike_denied reason). */
+export type StrikeRefusal = 'DESTROYED' | 'MARK' | 'POINTS' | 'COOLDOWN' | 'AIR_FULL' | 'GUNSHIP_UP' | 'RANGE';
+
 /** What the HUD, the minimap, the world and the sounds read of the strikes, per viewer. */
 export interface AirSupportView {
   /** The mode's clock the records are on (the presentation interpolates the aircraft from it). */
   nowS: number;
   /** The viewer's own ledger (absent for a spectator). */
   points?: number;
-  /** Seconds until the viewer may call each kind again (0: ready), and whether the side's air is full. */
+  /** Seconds until the viewer may call each kind again (0: ready). */
   cooldowns?: Record<AirStrikeKind, number>;
-  teamAirFull?: boolean;
+  /** Why the authority would refuse the viewer's call of each kind now, before its mark is known (null: it would
+   *  take it at any mark in reach). The authority's own rule, so the strike view can never read a call as ready that
+   *  the authority refuses; the mark's part is strikeMarkRefusal. */
+  refusals?: Record<AirStrikeKind, StrikeRefusal | null>;
   strikes: (PublicStrike & { mine: boolean })[];
+}
+
+/** The mark's part of a call's refusal: a mark that is no point, or one beyond the caller's reach. */
+export function strikeMarkRefusal(rules: AirSupportRules, rangeM: number): 'MARK' | 'RANGE' | null {
+  if (!Number.isFinite(rangeM)) return 'MARK';
+  return rangeM > rules.callRangeM ? 'RANGE' : null;
 }
 
 export interface AirSupportCheckpoint {
@@ -287,18 +299,23 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     return count;
   };
 
-  /** Why a call by `entity` of `kind` would be refused now (null: it may be made). */
-  function refusal(entity: Entity, kind: AirStrikeKind, x: number, z: number, timeS: number): string | null {
+  /** Why a call by `entity` of `kind` would be refused now, whatever its mark (null: not for its ledger or its side). */
+  function ledgerRefusal(entity: Entity, kind: AirStrikeKind, timeS: number): StrikeRefusal | null {
     if (!living(entity)) return 'DESTROYED';
-    if (!Number.isFinite(x) || !Number.isFinite(z)) return 'MARK';
     const strike = rules[kind];
     if ((points.get(entity.id) ?? 0) < strike.cost) return 'POINTS';
     if ((cooldowns.get(cooldownKey(entity.id, kind)) ?? 0) > timeS) return 'COOLDOWN';
     const team = teamOf(entity);
     if (teamAir(team, timeS) >= rules.teamAirCap) return 'AIR_FULL';
     if (kind === 'gunship' && teamAir(team, timeS, 'gunship') >= rules.teamGunshipCap) return 'GUNSHIP_UP';
-    if (detMath.hypot(x - entity.state.pos.x, z - entity.state.pos.z) > rules.callRangeM) return 'RANGE';
     return null;
+  }
+  /** Why a call by `entity` of `kind` at (x, z) would be refused now (null: it may be made). */
+  function refusal(entity: Entity, kind: AirStrikeKind, x: number, z: number, timeS: number): StrikeRefusal | null {
+    if (!living(entity)) return 'DESTROYED';
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return 'MARK';
+    return ledgerRefusal(entity, kind, timeS)
+      ?? strikeMarkRefusal(rules, detMath.hypot(x - entity.state.pos.x, z - entity.state.pos.z));
   }
 
   /** A crew calls `kind` on the mark (x, z). The authorities pass the caller's own aim point; true when accepted. */
@@ -562,9 +579,13 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     if (viewer) {
       out.points = Math.floor(points.get(viewer.id) ?? 0);
       const cool = {} as Record<AirStrikeKind, number>;
-      for (const kind of AIR_STRIKE_KINDS) cool[kind] = Math.max(0, (cooldowns.get(cooldownKey(viewer.id, kind)) ?? 0) - nowS);
+      const refused = {} as Record<AirStrikeKind, StrikeRefusal | null>;
+      for (const kind of AIR_STRIKE_KINDS) {
+        cool[kind] = Math.max(0, (cooldowns.get(cooldownKey(viewer.id, kind)) ?? 0) - nowS);
+        refused[kind] = ledgerRefusal(viewer, kind, nowS);
+      }
       out.cooldowns = cool;
-      out.teamAirFull = teamAir(teamOf(viewer), nowS) >= rules.teamAirCap;
+      out.refusals = refused;
     }
     return out;
   }
