@@ -33,6 +33,8 @@ const aircraft = argv.includes('--aircraft');
 // its mark, wide frames across the run, the AC-130 and the battery from a fixed oblique; each frame logs where the
 // airframe stands against its run (sim/strikeRuns.ts runPose) and the run's axis
 const runs = argv.includes('--runs');
+// --frames=close: only the run frames whose label holds that text (a re-shoot of a few frames)
+const framesFilter = arg('frames');
 // --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
 const gauntlet = argv.includes('--gauntlet');
 const locale = arg('locale', 'en-US');
@@ -315,7 +317,19 @@ async function shootRuns(page, signal, tag, checkpoint) {
           const p = window.__runs.runPose(R, f, D.game.timeS, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
           dir.set(Math.sin(p.yaw), 0, Math.cos(p.yaw));
           eye.set(p.x - dir.x * f.back, p.y + f.up, p.z - dir.z * f.back);
-          world(at, 0, 0, 0);
+          // aimed at the mark, or (aimNose) along the aircraft's nose: its dive line, the mark ahead on it
+          if (f.aimNose) {
+            const cp = Math.cos(p.pitch);
+            at.set(p.x + Math.sin(p.yaw) * cp * 120, p.y + Math.sin(p.pitch) * 120, p.z + Math.cos(p.yaw) * cp * 120);
+          } else world(at, 0, 0, 0);
+          D.rig.setExternalPose(eye, at, f.fov);
+        } else if (f.cam === 'beside') {
+          // outside the aircraft's turn, behind it and a little above, on the aircraft (its bank onto the mark reads)
+          const R = D.game.matchModeController.airSupport.rules;
+          const p = window.__runs.runPose(R, f, D.game.timeS, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
+          const ox = p.x - f.x, oz = p.z - f.z, o = Math.hypot(ox, oz) || 1;
+          eye.set(p.x + ox / o * f.out - Math.sin(p.yaw) * f.back, p.y + f.up, p.z + oz / o * f.out - Math.cos(p.yaw) * f.back);
+          at.set(p.x, p.y - 4, p.z);
           D.rig.setExternalPose(eye, at, f.fov);
         } else if (f.cam === 'side') {
           world(eye, f.along - 120, -f.out, f.up); world(at, f.along, 0, f.up * 0.35);
@@ -347,31 +361,40 @@ async function shootRuns(page, signal, tag, checkpoint) {
   // each frame: [label, seconds from the warning's end, camera]
   const chase = { cam: 'chase', back: 70, up: 22, fov: 55 };
   const side = (along) => ({ cam: 'side', along, out: 560, up: 160, fov: 55 });
+  // the close frames (Main, 2026-11-11: the wide ones read the aircraft small): the jet in its dive from close behind,
+  // the bomber at the release with the bomb off its pylon, the AC-130 beside it outside its ring, banked onto the mark
+  const close = { cam: 'chase', back: 24, up: 6, fov: 42 };
   const FRAMES = {
-    strafe: [['ingress', -3.2, chase], ['dive', -1.2, chase], ['open-fire', 0.15, chase], ['walking', 0.85, chase],
+    strafe: [['dive-close', 0.45, close],['ingress', -3.2, chase], ['dive', -1.2, chase], ['open-fire', 0.15, chase], ['walking', 0.85, chase],
       ['walking-side', 0.9, side(-300)], ['cease', 1.6, chase], ['pull-out', 2.6, chase], ['egress', 5, chase]],
-    bomb: [['dive', -3.4, chase], ['release', 'release+0.15', chase], ['release-side', 'release+0.35', side(-260)],
+    bomb: [['release-close', 'release+0.15', { ...close, aimNose: true, back: 26, up: 7 }], ['dive', -3.4, chase], ['release', 'release+0.15', chase], ['release-side', 'release+0.35', side(-260)],
       ['falling', 'release+1.1', chase], ['falling-side', 'release+1.6', side(-160)], ['impact', 0.5, chase], ['egress', 4, chase]],
-    gunship: [['inbound', -4, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-in', 0.8, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }],
+    gunship: [['orbit-close', 20, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }], ['inbound', -4, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-in', 0.8, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }],
       ['orbit', 7, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['orbit-chase', 12, { cam: 'chase', back: 60, up: 20, fov: 60 }],
       ['orbit-late', 22, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-out', 31.5, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }]],
     artillery: [['warning', -3, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['first', 0.2, { cam: 'fixed', out: 260, up: 160, fov: 45 }],
       ['barrage', 2.5, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['last', 5, { cam: 'fixed', out: 260, up: 160, fov: 45 }]],
   };
   receipt.runs = [];
-  for (const [kind, frames] of Object.entries(FRAMES)) {
+  for (const [kind, all] of Object.entries(FRAMES)) {
+    const frames = all.filter(([label]) => !framesFilter || label.includes(framesFilter));
+    if (!frames.length) continue;
     if (signal.aborted) return;
     let accepted = null;
     for (let tries = 0; !accepted && tries < 60 && !signal.aborted; tries++) { accepted = await call(kind); if (!accepted) await sleep(1500); }
     receipt.calls.push({ kind, accepted: !!accepted });
     if (!accepted) continue;
     const releaseOffset = await release(kind);
-    for (const [label, when, cam] of frames) {
+    const at = (when) => (typeof when === 'string' ? releaseOffset + Number(when.slice('release'.length)) : when);
+    // in time order: the clock only runs forward
+    for (const [label, when, cam] of [...frames].sort((a, b) => at(a[1]) - at(b[1]))) {
       if (signal.aborted) return;
-      const rel = typeof when === 'string' ? releaseOffset + Number(when.slice('release'.length)) : when;
+      const rel = at(when);
       await page.evaluate((f) => { window.__runCam = f; }, { ...cam, id: accepted.id, kind, x: accepted.x, y: accepted.y, z: accepted.z, heading: accepted.heading,
         calledS: accepted.calledS, landsS: accepted.landsS });
       try {
+        // a thawed page can come back under the pause panel (its visibility changed): resumed, or the clock never runs
+        await resume(page);
         await page.evaluate((t) => { window.__runFrozen = false; window.__runFreezeAt = t; }, accepted.landsS + rel);
         await page.waitForFunction(() => window.__runFrozen, { timeout: 120_000, polling: 50 });
       } catch {
