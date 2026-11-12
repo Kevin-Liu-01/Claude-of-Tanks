@@ -1,6 +1,5 @@
 import { strikeView, type AirStrikeKind } from './strikeViewState.ts';
-import { strikeCallBlocker } from './strikeOrder.ts';
-import type { AirSupportView, StrikeRefusal } from '../sim/airSupport.ts';
+import type { AirSupportView, StrikeRefusal } from './strikeOrder.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { couchSeatsActive, type EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
@@ -101,7 +100,10 @@ interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
   network: NetworkActionPort;
   /** Air Support's call-ins in the strip's order (sim/matchRuleset.ts AIR_STRIKE_KINDS) and each one's action bit
    *  (sim/playerActions.ts AIR_STRIKE_BITS): ports, so the policy stays free of the sim. */
-  strikes: { readonly kinds: readonly AirStrikeKind[]; bit(kind: AirStrikeKind): number };
+  strikes: { readonly kinds: readonly AirStrikeKind[]; bit(kind: AirStrikeKind): number;
+    /** Why a call of `kind` at a mark `rangeM` out would be refused now (sim/strikeCall.ts strikeCallBlocker; null: it
+     *  would be taken). */
+    blocker(air: AirSupportView | null, kind: AirStrikeKind, rangeM: number): StrikeRefusal | null };
   isSettingsOpen(): boolean;
 }
 
@@ -229,7 +231,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = strikeView.open && battleInputAllowed() ? livePlayer() : null;
     if (!player) return;
     const kind = strikeView.kind;
-    const blocker = strikeCallBlocker(airView(), kind, markRangeM(player));
+    const blocker = strikes.blocker(airView(), kind, markRangeM(player));
     const pressed = strikeView.order.press(game.timeS, kind, blocker);
     if (pressed === 'busy') return;
     if (pressed === 'denied') { bus.emit('ui:strikeDenied', { kind, reason: blocker }); return; }

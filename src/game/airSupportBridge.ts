@@ -9,6 +9,7 @@
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { EventBus } from './stateCore.ts';
+import { markFreeFallStore } from '../fx/freeFallStores.ts';
 
 interface StrikeRoundEvent {
   kind?: string; shellId?: number; shellName?: string; shellType?: string; caliberMm?: number; velocityMps?: number;
@@ -24,7 +25,9 @@ const RELEASED_MAX = 16;
 
 export function installAirSupportBridge(bus: EventBus): () => void {
   return bus.on('mode:strike_round', (payload) => {
-    const round = payload as (StrikeRoundEvent & { strikeId?: number }) | null;
+    const round = payload as (StrikeRoundEvent & { strikeId?: number; freeFall?: number }) | null;
+    // an unpowered store: the tracer pass never draws it (fx/freeFallStores.ts), the world draws its body falling
+    if (round?.freeFall === 1 && round.shellId != null) markFreeFallStore(round.shellId);
     if (round?.kind === 'bomb' && Number.isFinite(round.x) && Number.isFinite(round.strikeId)) {
       const speed = round.velocityMps ?? 0;
       releasedBombs.set(round.strikeId!, { x: round.x!, y: round.y!, z: round.z!,

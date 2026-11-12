@@ -22,6 +22,7 @@ import { AIR_STRIKE_KINDS, airStrikeFlies, type AirStrikeKind, type AirSupportRu
 import type { ObjectiveTeam } from './gameModeCatalog.ts';
 import { botDriven } from './botDriven.ts';
 import { footprintCovers, runExitS, runFootprint, runPose, type RunPose } from './strikeRuns.ts';
+import { strikeMarkRefusal } from './strikeCall.ts';
 
 interface Point3 { x: number; y: number; z: number }
 /** The fixed steps a second the authorities advance the mode clock by (sim/movement.ts SIM_DT = 1 / STRIKE_TICK_HZ;
@@ -83,11 +84,6 @@ export interface AirSupportView {
   strikes: (PublicStrike & { mine: boolean })[];
 }
 
-/** The mark's part of a call's refusal: a mark that is no point, or one beyond the caller's reach. */
-export function strikeMarkRefusal(rules: AirSupportRules, rangeM: number): 'MARK' | 'RANGE' | null {
-  if (!Number.isFinite(rangeM)) return 'MARK';
-  return rangeM > rules.callRangeM ? 'RANGE' : null;
-}
 
 export interface AirSupportCheckpoint {
   points: [string, number][];

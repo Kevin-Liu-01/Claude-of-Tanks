@@ -47,6 +47,8 @@ export function strikeRoundPayload(shell: ShellEntity<ShellSpec>, strike: AirStr
     weaponSound: typeof shell.spec.soundProfile === 'string' ? shell.spec.soundProfile : null,
     blastRadiusM: typeof shell.spec.blastRadiusM === 'number' ? shell.spec.blastRadiusM : null,
     x: shell.pos.x, y: shell.pos.y, z: shell.pos.z, dx: shell.vel.x / speed, dy: shell.vel.y / speed, dz: shell.vel.z / speed,
+    // an unpowered store (the bomb): no tracer, no motor; a client's shell carries only its type, so it is named here
+    freeFall: shell.spec.flight === 'free_fall' ? 1 : 0,
   };
 }
 

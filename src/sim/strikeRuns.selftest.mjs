@@ -8,7 +8,8 @@
 //     turn's own (tan bank = v * rate / g within 1 deg); it comes in from about 600 m out or more and leaves to at least 1 km;
 //   - strafe: while the gun fires the jet flies the lane's axis (0.01 m off it), its rounds leave the GAU-8 under the
 //     nose (0.01 m) and land in the lane (the lane's footprint widened by the burst's own along-spread, 2.5 m);
-//   - bomb: dropped by the jet (the bomber is the strike jet, never the AC-130): the bomb leaves the port pylon at the
+//   - bomb: dropped by the jet (the bomber is the strike jet, never the AC-130), an unpowered store (no tracer, no
+//     motor's flame: fx/freeFallStores.ts, named to a client by its announcement): the bomb leaves the port pylon at the
 //     run's release (0.01 m), with the jet's velocity (within 5 m/s: the solve onto a miss of at most 8 m from a pylon 3.9 m
 //     off the axis over a 2.7 s fall), arrives at
 //     least 40 deg steep, and lands inside the ellipse footprint, which is long along the heading;
@@ -21,7 +22,8 @@ import assert from 'node:assert/strict';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, AIR_STRIKE_WEAPONS, airStrikeFlies } from './matchRuleset.ts';
 import { createAirSupport, STRIKE_TICK_HZ, strikeDueTick, strikeTick } from './airSupport.ts';
 import { SIM_DT } from './movement.ts';
-import { stepAirSupportFire } from './airSupportFire.ts';
+import { stepAirSupportFire, strikeRoundPayload } from './airSupportFire.ts';
+import { isFreeFallStore, markFreeFallStore } from '../fx/freeFallStores.ts';
 import { shellGravityMps2 } from './ballistics.ts';
 import {
   BOMB_GRAVITY_MPS2, bombFall, bombReleaseOffsetS, footprintCovers, runExitS, runFootprint, runMuzzle, runPose, runVelocity,
@@ -148,6 +150,8 @@ for (const heading of [0.35, -2.4]) {
         for (let i = 0; i < 4000 && y > ground(x, z); i++) { x += v.x * 0.25; y += v.y * 0.25; z += v.z * 0.25; }
         if (!footprintCovers(footprint, strike, x, z, R.strafe.spreadM * 0.5)) outside++;
       });
+      assert.equal(strikeRoundPayload(shells[0].shell, strike).freeFall, 0, 'a gun round keeps its tracer');
+      assert.equal(isFreeFallStore(shells[0].shell), false);
       assert.ok(off < 0.01, `the strafing jet flies the lane's axis while it fires (${off.toFixed(4)} m off)`);
       assert.ok(muzzle < 0.01, `each round leaves the GAU-8 (${muzzle.toFixed(4)} m)`);
       assert.equal(outside, 0, `every round lands in the lane (${outside} outside)`);
@@ -166,6 +170,16 @@ for (const heading of [0.35, -2.4]) {
       // (the solve onto its miss, at most 8 m along, and from the pylon 3.9 m to the left, over a 2.7 s fall: under 5 m/s)
       assert.ok(dv < 5, `the bomb leaves with the jet's velocity (${dv.toFixed(2)} m/s off ${Math.hypot(jet.x, jet.y, jet.z).toFixed(0)} m/s)`);
       assert.ok(airStrikeFlies('bomb') && R.bomb.speedMps >= 150, 'a fast jet drops it');
+      // an unpowered store: no tracer, no motor's flame (fx/freeFallStores.ts), on the authority and on a client alike
+      assert.equal(shells[0].shell.spec.flight, 'free_fall');
+      assert.ok(isFreeFallStore(shells[0].shell), 'the bomb is a free-fall store by its own spec');
+      const announced = strikeRoundPayload(shells[0].shell, strike);
+      assert.equal(announced.freeFall, 1, 'its public announcement names it a free-fall store');
+      // (a client's id space of its own here: this receipt's two runs both number their shells from 1)
+      const clientShell = { id: `client-${heading}-${announced.shellId}`, spec: { type: 'HE' } };
+      assert.equal(isFreeFallStore(clientShell), false);
+      markFreeFallStore(clientShell.id);
+      assert.ok(isFreeFallStore(clientShell), 'a client\'s shell (its type only) is one once announced');
       const land = landing(pos, vel, shells[0].shell.gravityMps2);
       assert.ok(footprintCovers(footprint, strike, land.x, land.z, 0), 'the bomb lands inside its footprint');
       assert.ok(Math.abs(t + land.t - (strike.landsS + R.fallMarginS)) < 0.02, `it lands fallMarginS after the warning (${(t + land.t - strike.landsS).toFixed(3)} s)`);

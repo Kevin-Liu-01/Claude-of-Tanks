@@ -6,6 +6,7 @@ import { gunshipCaliberMm, gunshipRoundOf, gunshipShotOf, type GunshipRound } fr
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
   type MissileTrail } from './missileLooks.ts';
 import { createMissileTrails, TRAIL_STEP_M } from './missileTrails.ts';
+import { isFreeFallStore } from './freeFallStores.ts';
 import { missileIgnition, missileLaunch } from './missileRecipes.ts';
 import { createMissileWires, WIRE_SLOTS } from './missileWires.ts';
 import { createSceneLightUniforms, readSceneLight, type SceneLightData } from './sceneLight.ts';
@@ -412,6 +413,8 @@ interface LiveShell {
     soundProfile?: string;
     type?: string;
     caliberMm?: number;
+    /** 'free_fall': an unpowered store (a bomb), drawn with no tracer and no motor (fx/freeFallStores.ts) */
+    flight?: string;
   };
 }
 
@@ -5935,6 +5938,9 @@ function* createFxSteps(
       const shell = shells[index];
       if (shell.dead) continue;
       if (shell.spec?.tracer === 'DRONE') continue;
+      // an unpowered store (a bomb) burns no tracer and has no motor: its body is drawn where it falls
+      // (game/airSupportWorld.ts; fx/freeFallStores.ts)
+      if (isFreeFallStore(shell)) continue;
       // atmospherics lane: a ballistic round's tracer (the gunship's autocannon and howitzer rounds too: their own
       // classes, projectileTracers.ts tracerRoundClass)
       if (!shell.spec?.guided && shell.rocket !== true) { tracers.write(shell); continue; }

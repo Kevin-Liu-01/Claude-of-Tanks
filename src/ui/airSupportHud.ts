@@ -23,8 +23,11 @@
 import type { EventBus } from '../game/stateCore.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeCovers, strikeDangerS, type AirSupportView } from '../sim/airSupport.ts';
+import { strikeCallBlocker as callBlocker } from '../sim/strikeCall.ts';
 import { strikeView, STRIKE_VIEW_TRANSITION_S } from '../game/strikeViewState.ts';
-import { strikeCallBlocker, type StrikeOrderRefusal } from '../game/strikeOrder.ts';
+import type { StrikeOrderRefusal } from '../game/strikeOrder.ts';
+
+const strikeCallBlocker = (air: AirSupportView | null | undefined, kind: AirStrikeKind, rangeM: number) => callBlocker(R, air, kind, rangeM);
 import { icon, type IconId } from './icons/icon.ts';
 import { markDatum } from './dom.ts';
 import { t } from './i18n.ts';
@@ -197,7 +200,7 @@ export function createAirSupportHud(parent: HTMLElement, bus: EventBus) {
       if (rangeM > 1) strikeView.heading = Math.atan2(dx, dz);
     }
     strikeView.rangeM = rangeM;
-    // readiness is the authority's own rule (game/strikeOrder.ts strikeCallBlocker); the order is read, never written
+    // readiness is the authority's own rule (sim/strikeCall.ts strikeCallBlocker); the order is read, never written
     const why = strikeCallBlocker(air, strikeView.kind, rangeM);
     const order = strikeView.order.read(timeS);
     const step = dt / STRIKE_VIEW_TRANSITION_S;

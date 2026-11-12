@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { AIR_SUPPORT_RULES, airStrikeFlies } from '../sim/matchRuleset.ts';
 import { strikeDangerS } from '../sim/airSupport.ts';
+import { strikeCallBlocker } from '../sim/strikeCall.ts';
 import type { AirSupportView } from '../sim/airSupport.ts';
 import { BOMB_GRAVITY_MPS2, bombReleaseOffsetS, runExitS, runFootprint, runMuzzle, runPose, runVelocity,
   type RunPose, type StrikeFootprint } from '../sim/strikeRuns.ts';
@@ -21,7 +22,6 @@ import { hideGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
 import { STRIKE_MARK_MAX, clearStrikeMarks, setStrikeMarks, type StrikeMark, type StrikeMarkShape } from '../engine/strikeMarks.ts';
 import { sideColor } from '../ui/objectiveGlyphs.ts';
 import { strikeView } from './strikeViewState.ts';
-import { strikeCallBlocker } from './strikeOrder.ts';
 
 interface AirSupportWorldOptions {
   viewerPosition?: () => { x: number; y: number; z: number } | null;
@@ -147,7 +147,7 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
     // authority would take the call, the contested amber when it would not
     const phase = strikeView.order.read(lastTimeS).phase;
     const locked = phase === 'sent' || phase === 'called';
-    aimColour.set(sideColor(locked || !strikeCallBlocker(air, strikeView.kind, strikeView.rangeM) ? 'own' : 'contested'));
+    aimColour.set(sideColor(locked || !strikeCallBlocker(R, air, strikeView.kind, strikeView.rangeM) ? 'own' : 'contested'));
     pushFootprint(footprint, strikeView.kind === 'recon', true, strikeView.x, strikeView.y, strikeView.z, strikeView.heading,
       aimColour, locked ? 1 : 0.2);
   }

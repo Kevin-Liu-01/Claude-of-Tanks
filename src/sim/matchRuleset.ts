@@ -101,7 +101,8 @@ export const AIR_STRIKE_WEAPONS = Object.freeze({
   // A-10 GAU-8/A Avenger, PGU-14/B API: a depleted-uranium core good for ~69 mm at 500 m, through any tank's roof.
   strafe: shell('GAU-8 30 mm API', 'AP', 30, 75, 55, 110, 1010, { reloadGroup: 'strike-strafe', soundProfile: 'strike-strafe' }),
   // GBU-12 Paveway II: a laser-guided Mk 82 (500 lb, 87 kg of Tritonal, 273 mm body), falling free onto the spot.
-  bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22 }),
+  bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22,
+    flight: 'free_fall' }),
 });
 export interface AirStrikeRules {
   /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the

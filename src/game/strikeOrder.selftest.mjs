@@ -27,8 +27,10 @@ import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { strikeView } from './strikeViewState.ts';
 
-// after the fix the readiness is one shared rule (game/strikeOrder.ts); on the base it was the HUD's own blocker()
+// after the fix the order has one owner (game/strikeOrder.ts) and the readiness is one shared rule (sim/strikeCall.ts,
+// the action owner's port as main.ts hands it); on the base it was the HUD's own blocker()
 const order = await import('./strikeOrder.ts').catch(() => null);
+const call = await import('../sim/strikeCall.ts').catch(() => null);
 
 const flat = { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) };
 const collider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
@@ -99,7 +101,8 @@ const input = (() => {
 const actions = createPlayerBattleActions({
   game, bus, input,
   rules: { rulesetUnlimitedFor: () => false, hasAmmunition: () => true, shellAmmunitionCapacity: () => 1 },
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
+    ...(call ? { blocker: (air, kind, rangeM) => call.strikeCallBlocker(R, air, kind, rangeM) } : {}) },
   isSettingsOpen: () => false,
   network: { isActive: () => false, queueConsumable() {}, queueAction() {} },
 });

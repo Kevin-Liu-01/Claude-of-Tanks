@@ -14,13 +14,17 @@
  * reticle on the battle clock in a module singleton nobody reset, and the authority's refusal never came back. So the
  * plate read CALLED for a call nobody took, and a battle that followed a late call dropped every press until its clock
  * passed the last battle's. Now readiness is the authority's own rule (the view's refusals, sim/airSupport.ts), CALLED is
- * the authority's acceptance, a refusal is shown with its reason, and every state ends by itself.
+ * the authority's acceptance, a refusal is shown with its reason, and every state ends by itself. The readiness rule
+ * itself is the sim's (sim/strikeCall.ts strikeCallBlocker): the action owner takes it as a port, the HUD and the world
+ * read it directly.
  *
- * Pure: no DOM, no three.js; the clock is the caller's battle clock (game.timeS). Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
+ * Pure: no DOM, no three.js, no sim at run time (types only); the clock is the caller's battle clock (game.timeS). Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { AirStrikeKind } from '../sim/matchRuleset.ts';
-import { AIR_SUPPORT_RULES } from '../sim/matchRuleset.ts';
-import { strikeMarkRefusal, type AirSupportView, type StrikeRefusal } from '../sim/airSupport.ts';
+import type { AirSupportView, StrikeRefusal } from '../sim/airSupport.ts';
+
+/** The view and the refusal, for the owners that take the sim's rules as ports (game/playerBattleActions.ts). */
+export type { AirSupportView, StrikeRefusal };
 
 /** A call the plate refuses before sending, or the authority refused, or whose verdict never came. */
 export type StrikeOrderRefusal = StrikeRefusal | 'LOST';
@@ -37,15 +41,6 @@ export const STRIKE_SENT_TIMEOUT_S = 2.5;
 export const STRIKE_LOCK_S = 0.9;
 /** A refusal stays on the plate this long. */
 export const STRIKE_DENIED_S = 1.6;
-
-/**
- * Why `kind` cannot be called now at a mark `rangeM` from the hull (null: the authority would take it): the authority's
- * own ledger refusal from the viewer's view, then the mark's. No view (no ledger yet): not callable.
- */
-export function strikeCallBlocker(air: AirSupportView | null | undefined, kind: AirStrikeKind, rangeM: number): StrikeRefusal | null {
-  if (!air?.refusals) return 'DESTROYED';
-  return air.refusals[kind] ?? strikeMarkRefusal(AIR_SUPPORT_RULES, rangeM);
-}
 
 const IDLE: StrikeOrderState = Object.freeze({ phase: 'idle' });
 

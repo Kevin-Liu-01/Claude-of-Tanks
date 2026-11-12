@@ -153,7 +153,7 @@ const actions = createPlayerBattleActions({
   bus,
   input,
   rules,
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind], blocker: () => null },
   isSettingsOpen: () => settingsOpen,
   network: {
     isActive: () => networkActive,
