@@ -108,6 +108,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/battle-memory-probe.mjs`
 - `tools/battle-spike-census.mjs`
 - `tools/black-world.browser.selftest.mjs`
+- `tools/couch-panes.browser.mjs`
 - `tools/daynight-atmosphere-probe.mjs`
 - `tools/destruction-first-use.browser.selftest.mjs`
 - `tools/dev-perf-probe.mjs`
