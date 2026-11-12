@@ -24,8 +24,10 @@ const start = garage.indexOf('  const featuredPanel = (() => {');
 const end = garage.indexOf('\n  })();\n', start);
 assert.ok(start > 0 && end > start, 'garage.ts holds the battle gallery panel');
 const panelSource = garage.slice(start, end + '\n  })();'.length);
-assert.equal(panelSource.match(/import\(/g).length, 1, 'the panel\'s one dynamic import');
-const executable = stripTypeScriptTypes(panelSource.replace("import('./fleetTakes.ts')", '__importFleetTakes()'));
+// its two dynamic imports: the fleet takes, and (2026-11-11) the owner's gallery on the first page turn
+assert.equal(panelSource.match(/import\(/g).length, 2, 'the panel\'s two dynamic imports');
+const executable = stripTypeScriptTypes(panelSource.replace("import('./fleetTakes.ts')", '__importFleetTakes()')
+  .replace("import('./galleryShots.ts')", '__importGalleryShots()'));
 const escapeStart = garage.indexOf('function escapeHtmlAttribute(');
 const escapeHelper = stripTypeScriptTypes(garage.slice(escapeStart, garage.indexOf('\n}\n', escapeStart) + 2));
 assert.ok(escapeStart > 0, 'garage.ts holds escapeHtmlAttribute');
@@ -55,7 +57,7 @@ function mountPanel(module) {
   const column = dom.document.createElement('div');
   column.className = 'cot-leftcol';
   root.append(column);
-  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: {},
+  const harness = { preloads: [], imports: 0, galleryImports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: {},
     closers: [] };
   // (2026-11-02 audit F5) the panel waits on the shared ready wait (gameReady.ts) and gives the Garage screen its closer;
   // (audit S3) that wait reads the product's boot latch (src/app/bootReadiness.ts), as the page's own gameReady does
@@ -82,6 +84,7 @@ function mountPanel(module) {
     // (2026-11-02 audit R6, loaders-workers) the panel holds fleetTakes.ts in the one lazy-chunk policy
     createLazyChunk,
     __importFleetTakes() { harness.imports++; return module(); },
+    __importGalleryShots() { harness.galleryImports++; return import('./galleryShots.ts'); },
     Promise, console,
   };
   // (the panel names its dots through garage.ts's escapeHtmlAttribute since the lead's 261 follow-up: its own source joins)
@@ -185,6 +188,41 @@ assert.equal(missing.imports, 1);
 assert.ok(!missing.element.classList.contains('vehicle'), 'no index: no take');
 assert.equal(missing.video(), null, 'and no video');
 assert.equal(missing.caption.textContent, t(SHOTS[0].capKey), 'the rotation\'s first still');
+
+// 7. (2026-11-11, Kevin: "add all 78 to the galleries") The first page is the rotation's own (here three, so three dots);
+// the first turn off its end brings the owner's gallery in, and the dots page through it.
+{
+  const { GALLERY_SHOTS, galleryShotText } = await import('./galleryShots.ts');
+  const paged = mountPanel(() => import('./fleetTakes.ts?missing-index'));
+  dom.state.responses.clear();
+  paged.panel.setVehicle('m1a1_abrams_hc');
+  dom.intersect(paged.shot, 1);
+  await paged.play();
+  const dots = [...paged.element.querySelectorAll('.fdots button')];
+  assert.equal(dots.length, SHOTS.length, 'the first page draws one dot per featured still, as before');
+  assert.equal(paged.galleryImports, 0, 'the gallery waits for the first page turn');
+  const next = paged.element.querySelector('.fnav.next');
+  const turn = async (button) => { button.click(); await settle(); await settle(); };
+  for (let n = 1; n < SHOTS.length; n++) await turn(next);
+  assert.equal(paged.galleryImports, 0, 'stepping within the first page loads nothing more');
+  await turn(next);
+  assert.equal(paged.galleryImports, 1, 'the first turn off the page loads the gallery, once');
+  const first = GALLERY_SHOTS[0];
+  assert.equal(paged.preloads.at(-1), first.thumb, 'on its first still, at the 640 card');
+  assert.equal(paged.caption.textContent, galleryShotText(first, 'title'), 'with its caption in the page\'s language');
+  const count = SHOTS.length + GALLERY_SHOTS.length;
+  assert.equal(dots[0].getAttribute('aria-label'), t('garage.gallery.shot', { n: SHOTS.length + 1, count }), 'the dots name the next page');
+  assert.ok(dots[0].classList.contains('on') && dots[0].getAttribute('aria-current') === 'true');
+  assert.ok([...paged.element.querySelectorAll('.fly')].some((layer) => layer.style.backgroundPosition === first.focal),
+    'the strip aims at its hero tank');
+  // the previous arrow from the first still wraps to the gallery's last; a short last page hides its spare dots
+  await turn(paged.element.querySelector('.fnav.prev'));
+  for (let n = 0; n < SHOTS.length; n++) await turn(paged.element.querySelector('.fnav.prev'));
+  assert.equal(paged.preloads.at(-1), GALLERY_SHOTS.at(-1).thumb, 'before the first still comes the gallery\'s last');
+  const lastPage = (count - 1) - ((count - 1) % SHOTS.length);
+  assert.equal(dots.filter((dot) => !dot.hidden).length, count - lastPage, 'the last page shows only its own dots');
+  assert.equal(paged.galleryImports, 1, 'the gallery loaded once');
+}
 
 // Wiring: the selection feeds the panel; nothing in src loads the takes statically; the styles keep hidden parts hidden.
 assert.match(garage, /renderStats\(spec\);\n\s+featuredPanel\?\.setVehicle\(specId\);/, 'each selection reaches the panel');

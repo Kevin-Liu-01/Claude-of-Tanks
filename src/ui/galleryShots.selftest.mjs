@@ -10,7 +10,7 @@
 // - galleryShots.ts (site-media-wire.mjs --only=gallery) holds the same rows in the same order, and its openers name a
 //   gallery still on each Garage battlefield the gallery shows.
 // - no module imports galleryShots.ts statically and no caption is a catalog key: the rows load with the surfaces that
-//   show them (the Garage's slideshow, the archive's wall), never with a boot chunk.
+//   show them (the Garage's slideshow and battle gallery, the archive's wall), never with a boot chunk.
 // - the archive wall counts them (docs.ts limit, the manual's card) and the loading screens' stills aim where the
 //   gallery's do.
 import assert from 'node:assert/strict';
@@ -150,8 +150,8 @@ for (const file of sources) {
   assert.deepEqual(statics, [], `${rel} must import galleryShots.ts through import(), never statically`);
   if (/import\('(?:\.\.\/ui|\.)\/galleryShots\.ts'\)/.test(text)) lazySites.push(rel);
 }
-assert.deepEqual(lazySites.sort(), ['src/game/garageDressing.ts', 'src/presentation/mediaArchive.ts'],
-  'the Garage\'s slideshow and the archive\'s wall load the gallery');
+assert.deepEqual(lazySites.sort(), ['src/game/garageDressing.ts', 'src/presentation/mediaArchive.ts', 'src/ui/garage.ts'],
+  'the Garage\'s slideshow and battle gallery and the archive\'s wall load the gallery');
 for (const lang of ['en', 'zh']) {
   assert.ok(!Object.keys(catalogs[lang]).some((key) => key.startsWith('media.gallery.')),
     `no gallery caption is a ${lang} catalog key (the game loads its catalog whole at boot)`);
