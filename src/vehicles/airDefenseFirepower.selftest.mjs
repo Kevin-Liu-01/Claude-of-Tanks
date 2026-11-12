@@ -8,9 +8,11 @@ import { getSpec } from './specs.ts';
 import { sustainedPrimaryDpm } from './balanceAudit.ts';
 
 const AIR_DEFENCE = ['m163_vads', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09', 'type87_aw', 'marksman_t55',
-  'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara'];
-// each rack and its salvo: every tube a launch
-const RACKS = { tunguska_m: 8, pantsir_s1: 12, pgz95: 4 };
+  'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara', 'm6_linebacker'];
+// each rack and its salvo: every tube a launch (272: the M6 Linebacker's four-tube Stinger rack)
+const RACKS = { tunguska_m: 8, pantsir_s1: 12, pgz95: 4, m6_linebacker: 4 };
+// the authored load when it is more than one rack: the M6 stows three racks of Stingers (m6LinebackerSpecs.ts)
+const STOWED = { m6_linebacker: 12 };
 
 for (const id of AIR_DEFENCE) {
   const spec = getSpec(id);
@@ -29,7 +31,7 @@ for (const id of AIR_DEFENCE) {
   if (RACKS[id]) {
     assert.ok(missile, `${id}: its missile rack`);
     assert.deepEqual(spec.gun.launcherSalvo, { rounds: RACKS[id], intervalS: 0.15 }, `${id}: the rack fires whole`);
-    assert.equal(missile.count, RACKS[id] * 3, `${id}: three loads of missiles`);
+    assert.equal(missile.count, (STOWED[id] ?? RACKS[id]) * 3, `${id}: three loads of missiles`);
     assert.equal(missile.reloadS, 6, `${id}: the rack reloads in 6 s`);
   } else {
     assert.equal(missile, undefined, `${id}: guns only`);
