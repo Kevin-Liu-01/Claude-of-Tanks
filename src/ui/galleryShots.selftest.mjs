@@ -3,7 +3,7 @@
 //
 // - picks.json `gallery` is the gallery in its order: 26 close-ups, then 52 elevated stills, each once; the loading
 //   screens' sixteen are among its close-ups.
-// - the collection is exactly the picks (tools/media-r5/loading-media.mjs --section=gallery): per still one 1920x1080 webp
+// - the collection is exactly the picks (tools/media-r5/loading-media.mjs): per still one 1920x1080 webp
 //   of at most 600 KB and its 640x360 rung, each with its bytes and sha256 in the manifest, rendered on a recorded commit,
 //   on a battlefield, with its focal (two-digit CSS object-position) and its caption in both languages, the battlefield's
 //   name in each from its catalog.
