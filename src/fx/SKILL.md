@@ -71,5 +71,17 @@ its own gun's. `effectAttachments.selftest` drives every caller's lit and
 refused shot and counts the callers, so a new site joins its list. The hull,
 ground and other vehicles keep the bare light. A site that yields to a brighter
 pulse still burning (the roof-gun flash port) asks `pulseOutranks`, the pulse's
-own level, never the light's intensity: the attack ramp holds that at 0 in the
-frame a pulse is born, and it was written a frame back.
+own level now with neither side under the Accessibility flash, never the
+light's intensity: the attack ramp holds that under the level for 42 ms, a
+replay suppression zeroes it, the flash scales it and it was written a frame
+back. Against the old intensity guard a decaying pulse hands the light over one
+frame sooner at its crossing. `effectAttachments.selftest` pins that every
+comparison of a light's intensity in `effects.ts` is with a constant. The
+intensity reads left show the light as it is and decide no yield: applyLight's
+near-field publish, `writeLocalLights` and its spot lights, the suppression
+report, and `engine/vehicleGroundOcclusion.ts` `packGroundKeyLights` (lamps by
+`light.intensity > 1e-3`). The explosion light's reads of a burning pulse go by
+its age (`lightAge < dur`): `writeLocalLights`' blast, `updateWreckLight` and
+`cinematicFx` through `explosionFlashAgeS`. The pulse's level law
+(`pulseDecayK`, `muzzleAttackK`) also sizes its gun's near field
+(`muzzleEnvelopeMax`), so a change to it moves both.
