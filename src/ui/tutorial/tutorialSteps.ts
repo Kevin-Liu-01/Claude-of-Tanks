@@ -129,6 +129,9 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'tips.round', chapter: 'tips', target: [], title: 'tutorial.tips.round.title', body: 'tutorial.tips.round.body', advance: NEXT },
   { id: 'tips.reveal', chapter: 'tips', target: [], title: 'tutorial.tips.reveal.title', body: 'tutorial.tips.reveal.body', advance: NEXT },
   { id: 'tips.team', chapter: 'tips', target: [], title: 'tutorial.tips.team.title', body: 'tutorial.tips.team.body', advance: NEXT },
+  // the close: the blind check read the last card as "press Done" whatever it said (round 2), so the last card is the
+  // close itself, and it says where Replay lives
+  { id: 'tips.done', chapter: 'tips', target: [], title: 'tutorial.tips.done.title', body: 'tutorial.tips.done.body', advance: NEXT },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

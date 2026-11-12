@@ -50,8 +50,9 @@ const subjects = (chapter, input) => chapterSteps(chapter, input).map((step) => 
 for (const input of INPUTS) {
   assert.deepEqual(subjects('garage', input), ['welcome', 'tank', 'nation', 'ammo', 'kit', 'camo', 'deploy'], `the Garage chapter (${input})`);
   assert.deepEqual(subjects('battle', input), ['drive', 'fire', 'reload', 'ammo', 'spotting', 'minimap', 'win'], `the battle chapter (${input})`);
-  const tips = chapterSteps('tips', input);
+  const tips = chapterSteps('tips', input).filter((step) => step.id !== 'tips.done');
   assert.ok(tips.length >= 5 && tips.length <= 8, `five to eight strategy tips (${tips.length})`);
+  assert.equal(chapterSteps('tips', input).at(-1).id, 'tips.done', `${input}: the tips close on a card that says where Replay lives`);
   const acts = chapterSteps('battle', input).map((step) => step.advance.on);
   for (const deed of ['drive', 'fire', 'shell']) assert.ok(acts.includes(deed), `${input}: the battle chapter moves on when the player does ${deed}`);
   assert.equal(chapterSteps('garage', input).at(-1).advance.on, 'press', `${input}: the Garage chapter ends on the Deploy press`);
