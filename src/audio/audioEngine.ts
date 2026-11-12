@@ -77,6 +77,8 @@ import {
   type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
 } from './battleMode.ts';
 import { killcamOwnsScreen } from '../game/killcamScreen.ts';
+import { createShotCadence, sustainedGrainS, type ShotKey } from '../game/shotCadence.ts';
+import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import {
   GROUND_DEBRIS, MATERIAL_SOUNDS, NEAR_MISS_REACH_M, SPALL, calibreBand, compartmentOf, distantBank, groundMaterial, hitMaterial,
   impactAssetIds, impactLayers, landingResult, nearMissAsset, propMaterial,
@@ -315,6 +317,8 @@ interface ShellFiredEvent {
   shellType: string;
   /** The round's own name (a guided round's family: how it leaves its launcher). */
   shellName?: string;
+  /** (272) the clock the round was fired on (the simulation's): its gun's cadence (game/shotCadence.ts) */
+  timeS?: number;
 }
 
 interface ShellHitEvent {
@@ -712,7 +716,11 @@ export function createAudio({
     active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null, mountKey: '', slot: -1, gun: null,
   };
   let reloadCalled = false;
-  const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number }>();
+  const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number; previous: SurfaceId | null; changedAt: number }>();
+  /** (272) A hull going straight back to the ground it just left within this keeps its current ground (s): along a road's
+   *  edge, a soft patch or a shoreline the sample flapped between two grounds, and each flip faded out two track loops and
+   *  built two more. A single crossing still switches at once. */
+  const SURFACE_RETURN_HOLD_S = 0.4;
   const input: VehicleAudioInput = {
     dtS: 0, speedMps: 0, topSpeedMps: 1, reverseTopMps: 1, throttle: 0, brake: false, yawRate: 0,
     grounded: true, verticalSpeedMps: 0, landingImpactMps: 0, gripLost: false, engine: 'ok', immobilized: false,
@@ -1044,6 +1052,12 @@ export function createAudio({
   const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -6, autocannon: -16, mg: -19 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
+  // (272, the owner: "debounce some things like fire sounds") a fast gun's report by its cadence (game/shotCadence.ts):
+  // each round's crack at most the floor's 20 a second, a sustained gun's crack a short grain, its punch, distant boom and
+  // feed once a body window, its echo once a tail window. A gun slower than every window is heard as it always was.
+  const shotCadence = createShotCadence();
+  /** (272) the audio clock of the last empty trigger heard: a held trigger is one press */
+  let lastAmmoEmptyAt = -Infinity;
 
   /** The punch layer for a report: which recording, its rate (a bigger bore sits lower) and how long it may ring. */
   function punchFor(family: string, caliberMm: number): { id: string; rate: number; maxDurS: number } {
@@ -1081,12 +1095,25 @@ export function createAudio({
    * (a guided round's by how it launches) fading into the distant one by range, the muzzle brake's side blast, the punch
    * of the blast, the map's echo; for our own gun its own report from the hatch, in the sight the closed turret's, and
    * the breech's recoil. A shot whose key has no row is silent (the census and typecheck keep that from shipping).
+   * (272) A round given its weapon (`cadenceShooter`, `cadenceWeapon`) and its clock is heard by that gun's cadence
+   * (shotCadence above); one given no clock (a replay's, a cinematic's, a probe's) plays in full.
    */
   function fireWeapon(pos: Vec3, m: WeaponMount, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false,
-    shooterId: string | null = null, roundName: string | null = null, dir: Vec3 | null = null): void {
+    shooterId: string | null = null, roundName: string | null = null, dir: Vec3 | null = null,
+    cadenceShooter: ShotKey | null = null, cadenceWeapon: ShotKey | null = null, cadenceTimeS = Number.NaN): void {
     if (!ready()) return;
     const resolved = resolveWeaponReport(m, soundProfile);
     if (!resolved) { logSound('weapon:unkeyed', { key: m.key }); return; }
+    let grainS: number | undefined;
+    let body = true;
+    let tail = true;
+    if (cadenceShooter != null && Number.isFinite(cadenceTimeS)) {
+      // a round inside the floor of its gun's last crack is silent (a rotary gun's in-between rounds)
+      if (shotCadence.admit('report', cadenceShooter, cadenceWeapon, cadenceTimeS) === 0) return;
+      grainS = sustainedGrainS(shotCadence.gapS) ?? undefined;
+      body = shotCadence.admit('body', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
+      tail = shotCadence.admit('tail', cadenceShooter, cadenceWeapon, cadenceTimeS) > 0;
+    }
     // The Juggernaut's gun carries further and sits a little deeper.
     const report = shooterId != null && shooterId === bossId ? { ...resolved, gainDb: resolved.gainDb + 2.5, rate: resolved.rate * 0.94 } : resolved;
     const row = report.row;
@@ -1113,19 +1140,22 @@ export function createAudio({
     const ownReport = own && (!launch || launch === 'tube') ? row.own : null;
     // The blast belongs to the close report: past its range the distant bank carries the shot.
     const blastDb = closeK > 0.05 ? BLAST_DB[row.family] : undefined;
-    if (blastDb != null && !(scopedInside && row.family !== 'cannon')) {
+    if (blastDb != null && body && !(scopedInside && row.family !== 'cannon')) {
       const punch = punchFor(row.family, row.boreMm);
       // the punch is the muzzle blast itself: it turns with the report around the brake
       play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) + brakeDb });
     }
     if (scopedInside && row.family !== 'cannon') {
-      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate }));
-    } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb });
-    else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb });
-    // The distant boom sits 3 dB under the close report.
-    if (farK > 0.03 && !(scopedInside && row.family !== 'cannon')) play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
-    if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
-    if (scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
+      play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate, maxDurS: grainS }));
+    } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb, maxDurS: grainS });
+    else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb, maxDurS: grainS });
+    // The distant boom sits 3 dB under the close report. (272) Under a close report it is the body's; alone, past the close
+    // report's range, it is the round's own crack.
+    if (farK > 0.03 && (body || closeK <= 0.03) && !(scopedInside && row.family !== 'cannon')) {
+      play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3, maxDurS: grainS });
+    }
+    if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2, maxDurS: grainS });
+    if (tail && scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
       const now = mixer.ctx.currentTime;
       if (row.family !== 'mg' || now - (lastBurstTail.get(row.key) ?? -1) > 0.22) {
         if (row.family === 'mg') lastBurstTail.set(row.key, now);
@@ -1135,18 +1165,19 @@ export function createAudio({
       }
     }
     // In the sight our own gun is heard from inside its closed turret, close-miked by its bore.
-    if (own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
+    if (body && own && listenerScoped && row.family === 'cannon' && row.interior) play(row.interior, hullOptions({ bus: 'ownCombat', gainDb: 3 }));
     // The machinery of our own shot: the breech recoiling and running back into battery, the buffer's hiss, the
     // turret's loose gear rattling.
-    if (own && !cinematic && row.key === 'ac130-105/unitary_brass') {
+    // (272) a sustained gun's breech and feed sound once a body window
+    if (body && own && !cinematic && row.key === 'ac130-105/unitary_brass') {
       // In the gunship the breech runs open on counter-recoil and throws the hot case onto the deck.
       play('gunship_casing_drop', hullOptions({ delayS: 0.45 }));
-    } else if (own && !cinematic && row.family === 'cannon') {
+    } else if (body && own && !cinematic && row.family === 'cannon') {
       play('gun_recoil_mech', hullOptions({ delayS: 0.035, rate: clamp(1.15 - (row.boreMm - 100) / 300, 0.85, 1.15) }));
     }
     // (A synthesized sub sweep used to sit under every cannon; 0.5–0.8 s of falling sine is a trailer boom,
     // and it made gunfire read as explosions. The recorded punch is the weight now.)
-    if ((own || distance < 45) && row.family === 'autocannon') {
+    if (body && (own || distance < 45) && row.family === 'autocannon') {
       play('ac_feed', own ? hullOptions({ delayS: row.actionDelayS, gainDb: -8 }) : { x, y, z, delayS: row.actionDelayS, gainDb: -10 });
     }
   }
@@ -1202,7 +1233,8 @@ export function createAudio({
     const shotOf = shotMount(event.shooterId ?? null, event.shellName ?? null, event.caliberMm, event.weaponSound);
     // an airstrike's rounds are heard as the strike's own (Air Support: the A-10's one burst a run, onStrikeRound)
     const strikeOwned = STRIKE_OWNED_REPORTS.has(String(event.weaponSound || ''));
-    if (!event.feedbackPredicted && !event.thinned && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir);
+    if (!event.feedbackPredicted && !event.thinned && !strikeOwned) fireWeapon(event.muzzlePos, shotOf, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId ?? null, event.shellName ?? null, event.dir,
+      event.shooterId ?? '', event.weaponSound || event.caliberMm, Number(event.timeS));
     if (!ownShot) shellFlyby(event);
     if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
       const [gx, gy, gz] = event.muzzlePos;
@@ -1231,7 +1263,7 @@ export function createAudio({
     // Intent-only report: no flyby, crew call or shell bookkeeping.
     const shooter = event.shooterId ?? listenerOwnerId;
     fireWeapon(event.muzzlePos, shotMount(shooter, event.shellName ?? null, event.caliberMm, event.weaponSound), event.weaponSound, true,
-      event.muzzleIndex, false, null, event.shellName ?? null, event.dir);
+      event.muzzleIndex, false, null, event.shellName ?? null, event.dir, shooter, event.weaponSound || event.caliberMm, Number(event.timeS));
   }
 
   // --------------------------------------------------------------- impacts ---
@@ -1337,6 +1369,10 @@ export function createAudio({
       if (activation?.pos?.length === 3) { play('era_det', { ...at(activation.pos), focus }); cassettes++; }
     }
     if (!cassettes && isEraActivation(event) && event.kind !== 'era') play('era_det', { x, y, z, focus });
+    // (272) a fast gun's rounds on one hull, by one shooter, strike once an impact window (game/shotCadence.ts): a burst
+    // is a rattle of strikes, not a stack of every round's (a main gun's round, a missile's, always strikes)
+    if (isRapidFireHit(event) && event.targetId != null && ctx
+      && shotCadence.admit('impact', event.targetId, event.attackerId ?? '', ctx.currentTime) === 0) return;
     const result: ImpactResult | null = event.kind === 'pen' || event.kind === 'screen_pierce' ? 'through'
       : event.kind === 'ricochet' ? 'glance'
         : event.kind === 'nonpen' || event.kind === 'spaced_absorb' ? 'stop' : null;
@@ -1455,7 +1491,8 @@ export function createAudio({
       say('low_hp', { delayS: 0.12 });
       return;
     }
-    if (call) say(call, { delayS: 0.12 });
+    // (272) a fast gun's hits keep the call's moment rather than pushing it back each round (crewRadio burst)
+    if (call) say(call, isRapidFireHit(event) ? { delayS: 0.12, burst: true } : { delayS: 0.12 });
   }
 
   /**
@@ -1470,7 +1507,9 @@ export function createAudio({
     const modules = new Map((event.modulesHit || []).map((m) => [m.module, m.newState] as const));
     const damaged = (event.damage || 0) > 0;
     const prob = (event.caliberMm || 0) >= 60 ? 1 : 0.3;
-    const call = (id: string): void => { say(id, { prob, delayS: 0.4 + random() * 0.15 }); };
+    // (272) a fast gun's results keep the call's moment rather than pushing it back each hit (crewRadio burst)
+    const burst = isRapidFireHit(event);
+    const call = (id: string): void => { say(id, burst ? { prob, delayS: 0.4 + random() * 0.15, burst } : { prob, delayS: 0.4 + random() * 0.15 }); };
     if (event.fireStarted) call('enemy_fire');
     else if (modules.has('ammoRack')) call('enemy_ammo_rack');
     else if (modules.get('trackL') === 'red' || modules.get('trackR') === 'red') call('enemy_immobilized');
@@ -1532,15 +1571,22 @@ export function createAudio({
     } else if (event.attackerId === playerId) reportOutgoing(event);
   }
 
+  /** (272) an airstrike's rounds by shell id (onStrikeRound), at most the last 256 */
+  const strikeShells = new Set<number>();
   function onShellExpired(event: ShellExpiredEvent): void {
     const round = event.shellId != null ? ownRounds.get(event.shellId) : undefined;
     if (round && event.shellId != null) {
       ownRounds.delete(event.shellId);
       callMiss(round, event.pos ?? null);
     }
+    const strikeRound = event.shellId != null && strikeShells.delete(event.shellId);
     if (!event.pos || !(event.hitTerrain || event.hitKind === 'prop')) return;
     const [x, y, z] = event.pos;
     const caliber = event.caliberMm || 76;
+    // (272) a fast gun's rounds on the world strike once an impact window per shooter (game/shotCadence.ts): a burst was a
+    // stack of every round's ground layers and, for its HE, every round's explosion; an airstrike's strafe is its own
+    if (!strikeRound && event.shooterId != null && ctx && isRapidFireHit({ caliberMm: caliber, shellType: event.shellType })
+      && shotCadence.admit('impact', event.shooterId, 'ground', ctx.currentTime) === 0) return;
     const small = caliber < 23;
     const water = event.surfaceKind === 'water';
     // Our own round landing short or wide is heard like our hits are.
@@ -1727,6 +1773,7 @@ export function createAudio({
    * recipe's layers at the prop, a topple's landing when it lands. The obstacle crush and the world's own report of
    * the same prop arrive in one tick; the props' 0.05 s cooldown keeps it to one sound.
    */
+  const lastPropBreak = { at: Number.NaN, kind: '', x: 0, z: 0 };
   function onProp(event: PropEvent, destroyed: boolean): void {
     if (!event?.pos) return;
     const [x, y, z] = event.pos;
@@ -1743,6 +1790,14 @@ export function createAudio({
     }
     const kind = String(event.kind || 'tree');
     const layers = propSoundRecipe(kind, event.h ?? 0);
+    // (272) one break reported twice in a frame (the world's crush raises prop:destroyed, the step's prop:crushed): the
+    // props group's cooldown merged its own layers, never a destruction layer (debris_metal) with none, which played twice
+    const at = ctx ? ctx.currentTime : Number.NaN;
+    if (at === lastPropBreak.at && kind === lastPropBreak.kind && Math.hypot(x - lastPropBreak.x, z - lastPropBreak.z) < 2) {
+      logSound('prop:repeat', { kind: event.kind });
+      return;
+    }
+    lastPropBreak.at = at; lastPropBreak.kind = kind; lastPropBreak.x = x; lastPropBreak.z = z;
     const trimDb = destroyed ? 0 : -1;
     for (const layer of layers) {
       play(layer.id, { x, y, z, gainDb: layer.gainDb + trimDb, delayS: layer.jitterS ? layer.delayS + random() * layer.jitterS : layer.delayS });
@@ -2515,12 +2570,17 @@ export function createAudio({
       const p = entity.state.pos;
       let cached = surfaceCache.get(c.id);
       if (!cached) {
-        cached = { surface: 'earth', depth: 0, occluded: 0, at: -Infinity };
+        cached = { surface: 'earth', depth: 0, occluded: 0, at: -Infinity, previous: null, changedAt: -Infinity };
         surfaceCache.set(c.id, cached);
       }
       if (now - cached.at > (lod === 'own' ? 0.12 : 0.35)) {
         const s = surfaceAt(p.x, p.z);
-        cached.surface = s.surface;
+        if (cached.at === -Infinity) cached.surface = s.surface;
+        else if (s.surface !== cached.surface && !(s.surface === cached.previous && now - cached.changedAt < SURFACE_RETURN_HOLD_S)) {
+          cached.previous = cached.surface;
+          cached.surface = s.surface;
+          cached.changedAt = now;
+        }
         cached.depth = s.depth;
         cached.occluded = lod === 'own' ? 0 : occlusionAt(p.x, p.y, p.z);
         cached.at = now;
@@ -2856,6 +2916,12 @@ export function createAudio({
     const kind = payload.kind as AirStrikeKind;
     const x = Number(payload.x), y = Number(payload.y), z = Number(payload.z);
     if (!AIR_STRIKE_KINDS.includes(kind) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+    // (272) its rounds strike the ground in full (a strafe's ripple), never folded into their caller's cadence
+    const shellId = Number(payload.shellId);
+    if (Number.isFinite(shellId)) {
+      if (strikeShells.size >= 256) strikeShells.delete(strikeShells.values().next().value as number);
+      strikeShells.add(shellId);
+    }
     const sound = AIR_STRIKE_SOUND[kind];
     const strikeId = Number(payload.strikeId);
     const heard = airStrikes.get(strikeId);
@@ -2983,6 +3049,7 @@ export function createAudio({
 
   function stopWorld(reason: string): void {
     stopAerial();
+    shotCadence.clear();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
     // the rigs' loops go with the rigs (the next battle's rigs pin their own)
@@ -3375,7 +3442,10 @@ export function createAudio({
       play('rubble_chunk_land', { x, y, z, gainDb: clamp(-10 + 4 * Math.log10(mass / 20) + (speed - 2.5) * 0.8, -10, 0) });
     });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
-      if (battleMode.phase === 'battle' && !battleMode.over) fireWeapon([e.x, e.y, e.z], stationShot(e.caliberMm), null, isOwn(e.id));
+      // (272) a roof gun's rounds by its station's cadence, on the audio clock (its report names no simulation time)
+      if (battleMode.phase === 'battle' && !battleMode.over) {
+        fireWeapon([e.x, e.y, e.z], stationShot(e.caliberMm), null, isOwn(e.id), -1, false, null, null, null, e.id, 'station', ctx ? ctx.currentTime : Number.NaN);
+      }
     });
     on<ShellFiredEvent>('shell:fired', onShellFired);
     // (world-sfx-269) an active protection system defeating a missile or rocket played nothing: the interceptor's charge
@@ -3519,6 +3589,11 @@ export function createAudio({
     });
     on<{ id?: string; slot?: number }>('ammo:empty', (e) => {
       if (!isOwn(e?.id ?? playerId)) return;
+      // (272) the step raises it every tick the trigger is held on an empty gun: one click and one call a press
+      const now = ctx ? ctx.currentTime : 0;
+      const held = now - lastAmmoEmptyAt < 0.25;
+      lastAmmoEmptyAt = now;
+      if (held) return;
       play('dry_fire', hullOptions());
       say('ammo_empty', { delayS: 0.1 });
     });
@@ -3901,6 +3976,8 @@ export function createAudio({
       get voicesLoaded() { return !!radio && !!library?.voiceReady(radio.language); },
       get crewLanguage() { return radio?.language ?? null; },
       get sfxLog() { return pool?.log ?? []; },
+      /** (272) the one-shot and loop voices sounding now (the pool's budget bounds them): a fast gun's receipt */
+      activeVoices: () => { if (!pool || !ctx) return 0; pool.prune(ctx.currentTime); return pool.active.length; },
       get sfxLoaded() { return !!library?.supported && (library?.stats().assets ?? 0) > 0; },
       get sfxCount() { return library?.stats().assets ?? 0; },
       get killcamSfxLog() { return killcamLog; },

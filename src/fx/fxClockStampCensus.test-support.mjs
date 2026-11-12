@@ -259,7 +259,9 @@ export async function runFxClockStampCensus({ houses }) {
   }
   // (round 4 F7) the machine gun's round strikes the ground the frame after its last (its record still live): its tracer's
   // strike spray (projectileTracers strike: the sparks' t0; a record missing past its grace draws no strike)
-  emit('shell:expired', { shellId: 74, pos: [-6, 0, 18], hitTerrain: true, shellType: 'AP', caliberMm: 7.62 });
+  // (272) by its shooter, so its strike passes the fast guns' ground cadence (effects.ts strikeCadence, whose stamps the
+  // rebase moves)
+  emit('shell:expired', { shellId: 74, shooterId: 'g', pos: [-6, 0, 18], hitTerrain: true, shellType: 'AP', caliberMm: 7.62 });
   // a salvo's bursts on the ground, and rounds striking a building's wall
   for (let k = 0; k < 3; k++) { groundBurst(k * 3); frames(2); }
   for (let k = 0; k < 2; k++) {
@@ -297,6 +299,9 @@ export async function runFxClockStampCensus({ houses }) {
     { const s = id++; fired(s); emit('shell:expired', { shellId: s, pos: [-3, 0, 2], hitTerrain: true, ...he }); frames(2);
       emit('shell:hit', { shellId: s, attackerId: 'g', targetId: 't', kind: 'he_splash', damage: 20, pos: [-2, 0.8, 2], normal: [0, 1, 0],
         caliberMm: 125, shellType: 'HE', destroyed: false }); frames(2); }
+    // (272) an autocannon's round on the hull: the fast guns' hull-strike cadence (effects.ts strikeCadence)
+    emit('shell:hit', { shellId: id++, attackerId: 'g', targetId: 't', kind: 'nonpen', damage: 0, pos: [-2, 1, 2.5], normal: [0, 0, -1],
+      caliberMm: 30, shellType: 'AP', destroyed: false }); frames(1);
     // the house's stages and sections: damaged, breached, its faces falling a storey at a time, collapsed
     const stage = { structureId: 7, massClass: 'house', cx: 0, cz: 8, hw: 5, hd: 4, yaw: 0, baseY: 0, topY: 8.4, cause: 'blast',
       munition: 'he', points: 30, integrity: 0.5 };

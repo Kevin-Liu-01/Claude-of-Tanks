@@ -8626,8 +8626,15 @@ export function initHud(bus: EventBus): HudRuntime {
       { icon: 'autoAim', tone: 'success' });
     else if (reason) showAlert(reason, { icon: 'autoAim', tone: 'info' });
   });
+  // (272) the step raises it every tick the trigger is held on an empty gun (the band counted "×60" a second): one alert a
+  // press, a press being a pull after a quarter second without one
+  let lastAmmoEmptyMs = -Infinity;
   on('ammo:empty', ({ id }) => {
     if (playerId == null || id === playerId) {
+      const nowMs = performance.now();
+      const held = nowMs - lastAmmoEmptyMs < 250;
+      lastAmmoEmptyMs = nowMs;
+      if (held) return;
       showAlert(t('hud.alert.ammoTypeEmpty'), {
         icon: 'shell', tone: 'danger',
       });

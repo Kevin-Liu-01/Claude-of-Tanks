@@ -101,10 +101,18 @@ export function createCustomCamoStudio({
 
   // the pattern on the selected tank's swatch: garage.ts's swatch drawing (paintPreview) takes this surface
   const previewCanvas = createUiCanvas(null, '').canvas;
-  const repaintPreview = () => {
+  const paintPreviewNow = () => {
     drawTile();
     const spec = selectedSpec();
     if (spec) paintPreview(previewCanvas, spec, customCamoPatternId(draft));
+  };
+  // (272) a colour picker's drag reports a change each step, and each repainted the tile and the tank's swatch: they
+  // follow once a frame, at the latest draft
+  let previewFrame = 0;
+  const repaintPreview = () => {
+    if (typeof requestAnimationFrame !== 'function') { paintPreviewNow(); return; }
+    if (previewFrame) return;
+    previewFrame = requestAnimationFrame(() => { previewFrame = 0; paintPreviewNow(); });
   };
 
   const syncControls = () => {

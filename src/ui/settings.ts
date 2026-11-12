@@ -86,7 +86,7 @@ import {
 // entry telemetry (2026-09-24): the anonymous crash/load beacon is a player choice
 import { setTelemetryOptOut, telemetryOptOutStored } from '../entry/telemetry.ts';
 import {
-  COLOR_PRESETS, DEFAULT_ACCESSIBILITY, HOLD_ACTIONS, RANGES, accessibilityPreferences, saveAccessibility, setCustomTeamColours,
+  COLOR_PRESETS, DEFAULT_ACCESSIBILITY, HOLD_ACTIONS, RANGES, accessibilityPreferences, previewAccessibility, saveAccessibility, setCustomTeamColours,
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
@@ -1100,11 +1100,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       num.value = String(parseFloat(toD(v).toFixed(digits)));
     };
     sync();
+    // (272) a drag applies each step and stores once, on its release (an arrow key's step is a release too)
     range.addEventListener('input', () => {
-      input.setSetting(key, parseFloat(range.value));
+      input.setSetting(key, parseFloat(range.value), false);
       sync();
       if (o.onChange) o.onChange();
     });
+    range.addEventListener('change', () => input.setSetting(key, parseFloat(range.value)));
     num.addEventListener('change', () => {
       const d = parseFloat(num.value);
       if (Number.isFinite(d)) input.setSetting(key, fromD(d));
@@ -1537,14 +1539,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       range.style.setProperty('--f', `${(((v - min) / (max - min)) * 100).toFixed(1)}%`);
       num.value = String(Math.round(v * 100));
     };
-    const set = (value: number): void => {
-      if (Number.isFinite(value)) saveAccessibility({ [key]: Math.round(value * 100) / 100 } as AccessibilityChange);
+    const set = (value: number, store = true): void => {
+      const change = { [key]: Math.round(value * 100) / 100 } as AccessibilityChange;
+      if (Number.isFinite(value)) { if (store) saveAccessibility(change); else previewAccessibility(change); }
       sync();
     };
     sync();
-    range.addEventListener('input', () => set(parseFloat(range.value)));
+    // (272) a drag previews each step and stores once, on its release
+    range.addEventListener('input', () => set(parseFloat(range.value), false));
     num.addEventListener('change', () => { set(parseFloat(num.value) / 100); emit('ui:click', {}); });
-    range.addEventListener('change', () => emit('ui:click', {}));
+    range.addEventListener('change', () => { set(parseFloat(range.value)); emit('ui:click', {}); });
   }
 
   function renderAccessibility(): void {

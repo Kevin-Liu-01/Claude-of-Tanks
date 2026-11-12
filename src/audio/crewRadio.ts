@@ -29,6 +29,9 @@ interface SayOptions {
   staleS?: number;
   /** Speak this take of the line (its index in the script) instead of a random one. */
   take?: number;
+  /** (272) a burst's repeat: the same line already queued and not yet due keeps its moment (a fast gun's hits each
+   *  replaced it with a fresh delay, so the call waited for the burst to pause) */
+  burst?: boolean;
 }
 
 interface Request {
@@ -352,8 +355,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1) || (pri >= 2 && currentPri === 0) || (pri >= 1 && currentYields));
   }
 
-  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined): boolean {
+  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined,
+    burst = false): boolean {
     const group = line.group || id;
+    if (burst) for (const queued of queue) if (queued.id === id && queued.readyAt > now) return true;
     if (!replaceQueuedGroup(group, line.pri)) return false;
     if (line.pri >= 3) removeLowerPriority(line.pri);
     if (!reserveSlot(line.pri)) return false;
@@ -392,7 +397,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
         if (library.voiceReady(language)) return false;
       }
       if (line.pri === 0 && now < busyUntil) return false;
-      return enqueue(id, line, now, delayS, options?.staleS, take);
+      return enqueue(id, line, now, delayS, options?.staleS, take, options?.burst === true);
     },
     update() {
       if (!queue.length) return;

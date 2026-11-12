@@ -270,6 +270,18 @@ roof stations' machine guns and 30 mm cannons; every row when the roster is
 unknown or in the Gun Game); our own reports and our loader's machinery load
 and are pinned once our hull is known.
 
+A fast gun is heard by its cadence (2026-11-11, release 272; `src/game/shotCadence.ts`, the one cap the audio, the
+effects, the camera and the phone read). Each round's crack plays up to the simulation's floor, 20 a second; a rotary
+gun's rounds between are silent. A gun firing sustained (rounds under 0.25 s apart) rings each crack for a short grain
+(0.3-1 s), its punch, distant boom (under a close report), breech and feed once each 0.15 s, its echo once each 0.45 s,
+and a burst's hull strikes on one target once each 0.1 s. A round with no simulation clock (a replay's, the Studio's)
+and any gun slower than 0.45 s a round are heard as before, voice for voice (`shotCadence.selftest`).
+The same audit (the lane's evidence `AUDIT.md`) bounded the other bursts the engine heard: a fast gun's rounds on the
+world strike once each 0.1 s per shooter (an airstrike's strafe in full); a held empty trigger clicks once a press; a
+fast gun's hit calls keep their queued moment instead of waiting for the burst to pause (crewRadio `burst`); a hull
+going straight back to the ground it just left within 0.4 s keeps its track loops; one prop break reported twice in a
+frame plays once; and a hull's landings come at most every 0.3 s.
+
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
 and at most 22 % of their body below 100 Hz (see Sound effects below). Under

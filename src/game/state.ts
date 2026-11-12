@@ -141,6 +141,7 @@ import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
+import { createShotCadence, shotShakeScale } from './shotCadence.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
@@ -1809,6 +1810,10 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   return muzzleIndex;
 }
 
+// (272) the player's camera kick by its gun's cadence (game/shotCadence.ts): a fast gun kicks once a shake window, by the
+// rounds it stands for, so a long burst holds a steady shake instead of ratcheting the camera to its full shake
+const shotShake = createShotCadence();
+
 function applyShotFeedback(
   entity: SoloEntity,
   shell: DamageShellSpec,
@@ -1816,6 +1821,7 @@ function applyShotFeedback(
   recoilScale: number,
   rig: CameraRig | null,
   thinned: boolean,
+  timeS: number,
 ): void {
   fireRecoil(entity.state, entity.spec, shell, recoilLaunchFor(entity, _dir));
   entity.visual?.recoilKick(
@@ -1826,9 +1832,13 @@ function applyShotFeedback(
   );
   if (!entity.isPlayer || !rig || thinned) return;
   const caliberScale = Math.max(0, Math.min(1, (shell.caliberMm - 30) / 122));
-  rig.addTrauma((0.10 + caliberScale * 0.20) * recoilScale);
+  const trauma = (0.10 + caliberScale * 0.20) * recoilScale;
+  const kick = shotShakeScale(shotShake.admit('shake', entity.id, shell.soundProfile || entity.spec.gun.soundProfile || shell.caliberMm,
+    timeS), trauma);
+  if (kick <= 0) return;
+  rig.addTrauma(trauma * kick);
   rig.recoilKick?.(
-    (0.006 + caliberScale * 0.011) * recoilScale,
+    (0.006 + caliberScale * 0.011) * recoilScale * kick,
     recoilScale,
   );
 }
@@ -1903,7 +1913,7 @@ function tryFire(
   if (rulesetUnlimitedFor(game.ruleset, entity)) refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
-  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig, thinned);
+  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig, thinned, game.timeS);
   emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus, thinned);
   startPostShotReload(entity.combat, entity.spec);
   if (!hasAmmunition(entity.combat, firedSlot)) {

@@ -499,7 +499,10 @@ export default defineConfig({
             // a session, round 8 Y1; DOM-free, its one import the action bits above) and the body-class reasons (ui/bodyFlags.ts,
             // audit F8: main's couch view raises 'cot-spectating' now, round 8 Y4, beside the lazy HUD's). Alone they were two
             // more boot requests on both pages.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-11 (fire-fx-debounce-272): the fast guns' presentation cadence (game/shotCadence.ts, 1.5 KB, DOM-free, no
+            // imports) that the solo step, the camera feedback, the audio, the effects and the phone's buzz all read; alone it
+            // would be one more request.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats|shotCadence)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

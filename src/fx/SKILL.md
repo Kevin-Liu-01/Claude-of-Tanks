@@ -67,3 +67,7 @@ faces would take hundreds of suns: a gun's pulse claims its near field
 material bounds at `MUZZLE_NEAR_SUN_K` x the sun within a capsule round that gun.
 A new gun pulse of the muzzle light calls it too; the hull, ground and other
 vehicles keep the bare light.
+A fast gun's flash goes by its cadence (`game/shotCadence.ts`, release 272): the full flash
+and its smoke once each 0.15 s per weapon, the rounds between only their core cards at their
+own barrel, and a sustained gun's muzzle light held (relit each round past its attack, never
+from black). A round with no simulation clock flashes in full, as before.

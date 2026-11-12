@@ -1684,7 +1684,13 @@ function stepVehicle(step: number): void {
   if (next) void loadTank(next.id);
 }
 
-$('#gallerySearch').addEventListener('input', applyFilters);
+// (272) key repeat types about 30 characters a second, and each rebuilt the whole roster (its ~600 rows and hero cards):
+// the roster follows once a frame, at the latest query, as the fleet grid's search does (docs/fleetGrid.ts)
+let searchFrame = 0;
+$('#gallerySearch').addEventListener('input', () => {
+  if (searchFrame) return;
+  searchFrame = requestAnimationFrame(() => { searchFrame = 0; applyFilters(); });
+});
 $('#archiveFilters').addEventListener('submit', (event) => event.preventDefault());
 for (const id of ['#nationFacets', '#classFacets', '#eraFacets', '#roleFacets', '#extraFacets']) $(id).addEventListener('click', onFacet);
 $('#sortDirection').addEventListener('click', () => {

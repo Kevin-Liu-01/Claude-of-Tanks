@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1803 | 412.7 |
+| KEEP | 1804 | 415.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 676 | 1183.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2480 | 1596.5 | 267.6 |
-| After: the default tier | 1803 | 412.7 | 68.1 |
+| Before: every receipt (npm test without the tiers) | 2481 | 1599.2 | 267.9 |
+| After: the default tier | 1804 | 415.4 | 68.4 |
 
-Default tier: 25.9 % of the whole registry's CPU; 45.1 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.2 min pool, 18.6 min browser receipts.
+Default tier: 26.0 % of the whole registry's CPU; 45.3 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.6 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -824,7 +824,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1803)
+## KEEP (1804)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -844,6 +844,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/fx/fxLifecycles.selftest.mjs` | 182 | KEEP | effects contract, 182 s: 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bu | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/russia152.selftest.mjs` | 177 | KEEP | vehicle rule, 177 s: the 152 mm line (owner 2026-11-04: "make a new russian tank called object 195"): the Object 292, the Object 47 | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-r5/site-loops-resume.selftest.mjs` | 162 | KEEP | tool contract, 162 s: 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/shotCadence.selftest.mjs` | 160 | KEEP | game flow, 160 s: 272: a fast gun's report, flash, light and kick by its cadence; a slow gun's as before | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/i18n-page-catalogs.selftest.mjs` | 156 | KEEP | every public page loads exactly its catalog keys (must-keep: i18n) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/tankVisualClone.selftest.mjs` | 135 | KEEP | a battle clone equals a pristine build (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/leopard2A4Family.selftest.mjs` | 127 | KEEP | vehicle rule, 127 s: release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wed | default tier (npm test, the release gate; lane mode by its closure) |
