@@ -365,8 +365,11 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   ruling, 272 folded in): game +26,562 B brotli, cn +26,573 B, Gallery +25,085 B; requests +8 on game, cn and Gallery
   //   (new boot leaves from the folded 272 lanes and improve plans, not folded under the ruling: attribution and the fold
   //   are owed post-deploy); the entry +229 B. Home +148 B, docs +150 B and 404 +57 B re-pinned at their measures.
-  game: { brotliBytes: 1237548, requests: 135, entryBrotliBytes: 259456 },
-  cn: { brotliBytes: 1282784, requests: 136, entryBrotliBytes: 259456 },
+  // 2026-11-11 (integrator 271.1, the patch re-pin at integ/271.1's build 580fb07d28): game +858 B brotli, cn +1,547 B
+  //   (the loading stills' rotation on the boot path, the Couch/Watch/Deploy button family, the camo sheet layout and
+  //   the Air Support plate; cn also their zh strings); requests and the entry held. The other rows inside their slack.
+  game: { brotliBytes: 1238406, requests: 135, entryBrotliBytes: 259456 },
+  cn: { brotliBytes: 1284331, requests: 136, entryBrotliBytes: 259456 },
   gallery: { brotliBytes: 785129, requests: 81 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },
