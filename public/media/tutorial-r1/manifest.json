@@ -1,0 +1,78 @@
+{
+ "libraryId": "claude-of-tanks-tutorial-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The first-game tutorial's in-engine loops: Scene Studio scenes filmed with the deterministic film renderer (4 samples, 180 degree shutter, 30 fps), VP9 WebM without audio, and WebP posters. Loaded only by the tutorial's card.",
+ "generatedBy": "tools/tutorial-media.mjs --render",
+ "count": 6,
+ "items": [
+  {
+   "id": "angle-webm",
+   "slot": "angle",
+   "src": "/media/tutorial-r1/angle.webm",
+   "type": "video/webm",
+   "width": 640,
+   "height": 360,
+   "bytes": 376660,
+   "sha256": "4c0311a924e0af1777ee2542149362698c29e64c64f436b5da9e5851f7ded209",
+   "shows": "A hull turned 30 degrees from an unseen shooter on Verdant Fields: three AP shots glance off its front plate in spark fans (the Angle your armour tip)."
+  },
+  {
+   "id": "angle-webp",
+   "slot": "angle",
+   "src": "/media/tutorial-r1/angle.webp",
+   "type": "image/webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 42570,
+   "sha256": "6466d6d58323a815745432926804e74abd5bd5354117a43f38b0f65c6ee63bbd",
+   "shows": "A hull turned 30 degrees from an unseen shooter on Verdant Fields: three AP shots glance off its front plate in spark fans (the Angle your armour tip). Poster: its middle frame."
+  },
+  {
+   "id": "hullDown-webm",
+   "slot": "hullDown",
+   "src": "/media/tutorial-r1/hullDown.webm",
+   "type": "video/webm",
+   "width": 640,
+   "height": 360,
+   "bytes": 469469,
+   "sha256": "d0e43859c3ebcbe77b7417e6a12d6595ee0da57c891ed327da084359bc8a44bf",
+   "shows": "A tank behind a crest on Verdant Fields, seen from the enemy side with a long lens: only its turret shows, and two shots stop on it (the Hull-down tip)."
+  },
+  {
+   "id": "hullDown-webp",
+   "slot": "hullDown",
+   "src": "/media/tutorial-r1/hullDown.webp",
+   "type": "image/webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 48114,
+   "sha256": "283bd5abb229c658c12c3e7ee6f54dc76ccfa20f7d4de2d0c9709be55ae629dd",
+   "shows": "A tank behind a crest on Verdant Fields, seen from the enemy side with a long lens: only its turret shows, and two shots stop on it (the Hull-down tip). Poster: its middle frame."
+  },
+  {
+   "id": "flank-webm",
+   "slot": "flank",
+   "src": "/media/tutorial-r1/flank.webm",
+   "type": "video/webm",
+   "width": 640,
+   "height": 360,
+   "bytes": 278043,
+   "sha256": "956c7bb3aa372fdb245b49e48961cfb338e4986823baf2dcc6c13afc30adc6d5",
+   "shows": "A Jagdpanzer E 100 faces the front; a Leopard 2 drives round its left side and puts a shot into its flank (the Flank the heavies tip)."
+  },
+  {
+   "id": "flank-webp",
+   "slot": "flank",
+   "src": "/media/tutorial-r1/flank.webp",
+   "type": "image/webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 31022,
+   "sha256": "263c11c3553701feb4f003bfab24fee6cbe38df76cbea2e837d771209447eae3",
+   "shows": "A Jagdpanzer E 100 faces the front; a Leopard 2 drives round its left side and puts a shot into its flank (the Flank the heavies tip). Poster: its middle frame."
+  }
+ ]
+}

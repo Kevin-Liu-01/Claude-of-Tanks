@@ -272,7 +272,7 @@ try {
     report.checks.returningPlayer = {
       overlay: !(await overlayGone(returning)),
       requests: await returning.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name)
-        .filter((name) => /src\/ui\/tutorial|tutorialStrings|i18n-tutorial|surface-tutorial/.test(name))),
+        .filter((name) => /src\/ui\/tutorial|tutorialStrings|i18n-tutorial|surface-tutorial|media\/tutorial-r1/.test(name))),
     };
     assert.ok(!report.checks.returningPlayer.overlay && !report.checks.returningPlayer.requests.length, 'a returning player sees and loads nothing');
     // /?tutorial=1 replays

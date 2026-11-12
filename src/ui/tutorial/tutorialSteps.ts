@@ -56,6 +56,8 @@ export interface TutorialStep {
 }
 
 const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });
+/** An in-engine loop the Studio filmed for the tutorial (tools/tutorial-media.mjs; public/media/tutorial-r1). */
+const loop = (id: string): TutorialMedia => ({ src: `/media/tutorial-r1/${id}.webm`, kind: 'video', poster: `/media/tutorial-r1/${id}.webp` });
 const NEXT = { on: 'next' } as const;
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
@@ -120,12 +122,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     title: 'tutorial.battle.win.title', body: 'tutorial.battle.win.body', advance: NEXT },
 
   // ── Strategy, on the Garage after the first battle ────────────────────────────────────────────────────────────────
-  { id: 'tips.angle', chapter: 'tips', target: [], media: still('combat-armor'),
+  { id: 'tips.angle', chapter: 'tips', target: [], media: loop('angle'),
     title: 'tutorial.tips.angle.title', body: 'tutorial.tips.angle.body', advance: NEXT },
-  { id: 'tips.hullDown', chapter: 'tips', target: [], title: 'tutorial.tips.hullDown.title', body: 'tutorial.tips.hullDown.body', advance: NEXT },
+  { id: 'tips.hullDown', chapter: 'tips', target: [], media: loop('hullDown'), title: 'tutorial.tips.hullDown.title', body: 'tutorial.tips.hullDown.body', advance: NEXT },
   { id: 'tips.open', chapter: 'tips', target: [], title: 'tutorial.tips.open.title', body: 'tutorial.tips.open.body', advance: NEXT },
   { id: 'tips.reload', chapter: 'tips', target: [], title: 'tutorial.tips.reload.title', body: 'tutorial.tips.reload.body', advance: NEXT },
-  { id: 'tips.flank', chapter: 'tips', target: [], title: 'tutorial.tips.flank.title', body: 'tutorial.tips.flank.body', advance: NEXT },
+  { id: 'tips.flank', chapter: 'tips', target: [], media: loop('flank'), title: 'tutorial.tips.flank.title', body: 'tutorial.tips.flank.body', advance: NEXT },
   { id: 'tips.round', chapter: 'tips', target: [], title: 'tutorial.tips.round.title', body: 'tutorial.tips.round.body', advance: NEXT },
   { id: 'tips.reveal', chapter: 'tips', target: [], title: 'tutorial.tips.reveal.title', body: 'tutorial.tips.reveal.body', advance: NEXT },
   { id: 'tips.team', chapter: 'tips', target: [], title: 'tutorial.tips.team.title', body: 'tutorial.tips.team.body', advance: NEXT },

@@ -180,7 +180,9 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
     media.textContent = '';
     media.hidden = !next;
     if (!next) return;
-    const still = next.kind === 'image' || prefersReducedMotion();
+    // a still under reduced motion, or where the browser cannot play the loop (VP9 WebM; an older Safari)
+    const playable = next.kind === 'video' && document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== '';
+    const still = next.kind === 'image' || prefersReducedMotion() || !playable;
     if (still) {
       const img = el('img', '', media);
       img.decoding = 'async';
@@ -195,6 +197,8 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       video.preload = 'auto';
       video.setAttribute('aria-label', next.alt);
       if (next.poster) video.poster = next.poster;
+      // a loop that fails to load leaves its poster
+      video.addEventListener('error', () => { if (next.poster && video.isConnected) video.replaceWith(Object.assign(document.createElement('img'), { src: next.poster, alt: next.alt })); }, { once: true });
       video.src = next.src;
       void video.play().catch(() => { /* a refused autoplay shows the poster */ });
     }
