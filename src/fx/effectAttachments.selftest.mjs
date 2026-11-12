@@ -614,8 +614,11 @@ console.log('effect attachment selftest passed');
             dir: new THREE.Vector3(-1, 0, 0), caliberMm: 120, tracerType: 'HEAT', ageS: 0 }),
         },
       };
-      // every caller of boundGunNearField is one of these sites: a new one joins `sites` with its lit and refused shots
-      const binders = [...fs.readFileSync(new URL('./effects.ts', import.meta.url), 'utf8').matchAll(/(?<!function )\bboundGunNearField\(/g)].length;
+      // every caller of boundGunNearField is one of these sites: a new one joins `sites` with its lit and refused shots.
+      // Counted as every use of the name outside comments but its definition, so a call spelled `boundGunNearField (`
+      // or made through an alias counts too
+      const code = effectsSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      const binders = [...code.matchAll(/\bboundGunNearField\b/g)].length - [...code.matchAll(/\bfunction\s+boundGunNearField\b/g)].length;
       if (binders !== Object.keys(sites).length) {
         throw new Error(`effects.ts binds a gun's near field at ${binders} sites; this case drives ${Object.keys(sites).length} (add the new site's lit and refused shots)`);
       }
