@@ -101,7 +101,8 @@ export const AIR_STRIKE_WEAPONS = Object.freeze({
   // A-10 GAU-8/A Avenger, PGU-14/B API: a depleted-uranium core good for ~69 mm at 500 m, through any tank's roof.
   strafe: shell('GAU-8 30 mm API', 'AP', 30, 75, 55, 110, 1010, { reloadGroup: 'strike-strafe', soundProfile: 'strike-strafe' }),
   // GBU-12 Paveway II: a laser-guided Mk 82 (500 lb, 87 kg of Tritonal, 273 mm body), falling free onto the spot.
-  bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22 }),
+  bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22,
+    flight: 'free_fall' }),
 });
 export interface AirStrikeRules {
   /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the
@@ -153,15 +154,23 @@ export interface AirSupportRules {
   readonly recon: AirStrikeRules & { readonly trackM: number; readonly revealM: number; readonly revealS: number };
   /** The barrage: `rounds` over `fireS`, each falling `flightS` from its last visible point, seeded within `radiusM`. */
   readonly artillery: AirStrikeRules & { readonly radiusM: number; readonly rounds: number; readonly fireS: number; readonly flightS: number };
-  /** The strafing run: the lane it walks along the heading from the caller to the mark, its rounds and their spread. */
+  /** The strafing run: the lane it walks along the heading from the caller to the mark, its rounds and their spread. The
+   *  jet dives at `diveDeg` on a line that meets the lane's start, and opens fire `altitudeM` over the mark
+   *  (sim/strikeRuns.ts). */
   readonly strafe: AirStrikeRules & { readonly lengthM: number; readonly halfWidthM: number; readonly rounds: number; readonly fireS: number;
-    readonly spreadM: number; readonly pullUpM: number };
-  /** The precision bomb: released `fallS` before it lands, `releaseBackM` short of the mark (nearly overhead: a steep fall
-   *  a ridge or a crown on the way cannot meet before the warning has run); it lands within `missM` of the mark. */
-  readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly fallS: number; readonly releaseBackM: number; readonly missM: number };
-  /** The AC-130 orbit: its ring, its time on station, the reach it engages spotted enemies in and its guns' cadence. */
-  readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly engageM: number;
+    readonly spreadM: number; readonly diveDeg: number };
+  /** The precision bomb: a jet's dive at `diveDeg`, released `altitudeM` over the mark at the point from which the free fall
+   *  at the jet's velocity lands fallMarginS after the warning (sim/strikeRuns.ts bombFall: a steep arrival a ridge on the
+   *  way cannot meet first); it lands within `missAlongM` of the mark along the run and `missAcrossM` across it. */
+  readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly diveDeg: number; readonly missAlongM: number; readonly missAcrossM: number };
+  /** The AC-130 orbit: its ring (a left-hand pylon turn round the mark, which is also the reach its guns engage spotted
+   *  enemies in), its time on station, the speed it comes in at, and its guns' cadence. */
+  readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly inboundMps: number;
     readonly cannonEveryS: number; readonly howitzerEveryS: number; readonly cannonSpreadM: number; readonly howitzerSpreadM: number };
+  /** The jets' manoeuvres (sim/strikeRuns.ts): the push-over and pull-out load (g), the egress climb angle, how long a dive
+   *  settles before the attack, the egress turn's bank and length, and the exit's length and acceleration. */
+  readonly flight: { readonly pushG: number; readonly pullG: number; readonly climbDeg: number; readonly settleS: number;
+    readonly egressBankDeg: number; readonly egressS: number; readonly exitS: number; readonly exitAccelMps2: number };
   /** Bots: how often a bot weighs a call, the friendly clearance it keeps, the targets each strike needs, the margin
    *  a bot drives clear of a footprint by, the side's air slots bots leave free (the crews' own calls are never crowded
    *  out) and the gap between one side's bot recon passes. */
@@ -183,18 +192,24 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   // the battery: a 6 s warning, then ten 155 mm rounds over 5 s inside a 35 m circle, each seen falling its last 2.5 s
   artillery: Object.freeze({ cost: 300, cooldownS: 60, warningS: 6, hp: 0, hitRadiusM: 0, altitudeM: 420, speedMps: 0,
     radiusM: 35, rounds: 10, fireS: 5, flightS: 2.5 }),
-  // the A-10's run: 5 s of warning while it comes in low from behind the caller, then 28 rounds walked down a 140 m lane
-  // in 1.6 s at 150 m/s (a 30 m dive), and the pull-up; the rounds spread 5 m either side of the lane's line
-  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 90, speedMps: 150,
-    lengthM: 140, halfWidthM: 12, rounds: 28, fireS: 1.6, spreadM: 5, pullUpM: 140 }),
-  // the GBU-12: a 7 s laser warning; the jet runs in at 350 m and releases 60 m short of the spot, 4 s before it lands
-  // (from 720 m out, a shallow glide that a ridge on the way could meet early); it lands within 2 m of the spot
+  // the A-10's run: 5 s of warning while it comes in from behind the caller and pushes over into a 15-degree dive, then
+  // 28 rounds walked down a 140 m lane in 1.6 s at 150 m/s from 120 m over the mark (about 460 m slant), the pull-out and
+  // a banked climb away; the rounds spread 5 m either side of the lane's line
+  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 120, speedMps: 150,
+    lengthM: 140, halfWidthM: 12, rounds: 28, fireS: 1.6, spreadM: 5, diveDeg: 15 }),
+  // the GBU-12 from a fast jet: a 7 s laser warning while it comes in high and pushes over into a 40-degree dive at
+  // 180 m/s; released 350 m over the mark (about 375 m short of it: the bomb's forward throw), it falls 2.7 s and arrives
+  // at about 46 degrees; it lands within 8 m of the spot along the run and 2 m across it
   bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitRadiusM: 8, altitudeM: 350, speedMps: 180,
-    radiusM: 22, fallS: 4, releaseBackM: 60, missM: 2 }),
-  // the AC-130: 8 s inbound, then 30 s on a 120 m pylon turn 180 m over the mark at 42 m/s, engaging only the enemies its
-  // side has spotted within 140 m with the gunship's own 30 mm and 152 mm
+    radiusM: 22, diveDeg: 40, missAlongM: 8, missAcrossM: 2 }),
+  // the AC-130: 8 s inbound along a line tangent to its ring, slowing from 110 to 42 m/s, then 30 s on a 140 m left-hand
+  // pylon turn 180 m over the mark (the pivotal altitude of 42 m/s: v^2/g = 180 m, so its 52-degree bank lays the guns'
+  // line on the mark), engaging only the enemies its side has spotted inside the ring with the gunship's 30 mm and 152 mm
   gunship: Object.freeze({ cost: 800, cooldownS: 150, warningS: 8, hp: 1400, hitRadiusM: 16, altitudeM: 180, speedMps: 42,
-    radiusM: 120, orbitS: 30, engageM: 140, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
+    radiusM: 140, orbitS: 30, inboundMps: 110, cannonEveryS: 0.5, howitzerEveryS: 4, cannonSpreadM: 4, howitzerSpreadM: 3 }),
+  // the jets: a 2.5 g push-over, a 5 g pull-out, a 20-degree climb away, 1 s settled in the dive, a 60-degree bank in an
+  // 8 s egress turn, then 6 s out accelerating at 8 m/s^2
+  flight: Object.freeze({ pushG: 2.5, pullG: 5, climbDeg: 20, settleS: 1, egressBankDeg: 60, egressS: 8, exitS: 6, exitAccelMps2: 8 }),
   bots: Object.freeze({ decideEveryS: 2, friendlyClearM: 45,
     minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 2 }), evadeMarginM: 15, leaveSlots: 1,
     reconGapS: 30 }),

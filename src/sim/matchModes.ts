@@ -2791,9 +2791,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
   // Air Support: the reach a bot looks for enemy aircraft in (its roof gun's counter-air reach and a margin)
-  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
   // and the reach a gun with no ground target takes an aircraft at (a tank gun's practical anti-aircraft range)
-  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
+  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;

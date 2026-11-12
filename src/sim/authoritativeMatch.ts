@@ -1234,7 +1234,7 @@ export function createAuthoritativeMatch({
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   const airSupportView = modeController.airSupport;
-  const _airPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const _airPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
   /** Air Support's counter-air for the roof stations: the nearest enemy aircraft, and its share of a round. */
   function counterAirFor(now: () => number): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
     return {

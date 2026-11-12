@@ -11,7 +11,7 @@
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
 import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
-import { strikeFootprint } from '../sim/airSupport.ts';
+import { runFootprint } from '../sim/strikeRuns.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
 
@@ -56,9 +56,11 @@ export interface ObjectiveMarker {
    * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike: the call-in's kind.
    */
   status?: string;
-  /** strike: its footprint (a circle's radius, or a lane's half length and half width along `heading`), the seconds
-   *  until it lands (0 once it does) and whether it is the viewer's own call */
+  /** strike: its footprint (sim/strikeRuns.ts runFootprint: a circle's radius, an ellipse's semi-axis along `heading` with
+   *  `acrossM` across it, or a lane's half length and half width along `heading`), the seconds until it lands (0 once it
+   *  does) and whether it is the viewer's own call */
   radiusM?: number;
+  acrossM?: number;
   halfLengthM?: number;
   halfWidthM?: number;
   heading?: number;
@@ -206,13 +208,13 @@ function strikeMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, 
   if (!air) return;
   for (const strike of air.strikes) {
     if (strike.downedS != null || air.nowS >= strike.endS) continue;
-    const footprint = strikeFootprint(AIR_SUPPORT_RULES, strike.kind);
+    const footprint = runFootprint(AIR_SUPPORT_RULES, strike.kind);
     const countdownS = Math.max(0, strike.landsS - air.nowS);
     out.push({
       kind: 'strike', x: strike.x, z: strike.z, side: objectiveSide(strike.team, perspective), status: strike.kind,
       heading: strike.heading, countdownS, mine: !!strike.mine, pulse: countdownS > 0, priority: 3,
-      ...(footprint.shape === 'circle' ? { radiusM: footprint.radiusM }
-        : { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }),
+      ...(footprint.shape === 'lane' ? { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }
+        : footprint.shape === 'ellipse' ? { radiusM: footprint.alongM, acrossM: footprint.acrossM } : { radiusM: footprint.radiusM }),
     });
   }
 }
