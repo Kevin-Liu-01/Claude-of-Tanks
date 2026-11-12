@@ -64,8 +64,7 @@ const imports = (...entries) => Object.freeze({ imports: Object.freeze(entries) 
 export const SELFTEST_SCANS = Object.freeze({
   // ---- receipts and helpers that list this checkout's sources
   'server/collisionManifestIndex.selftest.mjs': lists('server/world-collision-manifests/*.json'),
-  'server/collisionManifestRoutes.selftest.mjs': lists('server/world-collision-manifests-228/*.json', 'src/**/*.{ts,mjs,js}',
-    'server/**/*.{ts,mjs,js}'),
+  'server/collisionManifestRoutes.selftest.mjs': lists('src/**/*.{ts,mjs,js}', 'server/**/*.{ts,mjs,js}'),
   'server/dedicatedWorldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   // 2026-11-02 audit R6 (loaders-workers): the lazy-chunk ratchet walks every source module and every site page
   'src/app/lazyChunkSites.selftest.mjs': lists('src/**/*.ts', 'site/*.html'),
@@ -81,6 +80,8 @@ export const SELFTEST_SCANS = Object.freeze({
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
   // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
   'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
+  // (improve-271 plan 035) every source module, for a browser store keyed by a tank id the rename migration misses
+  'src/game/tankIdBoundaries.selftest.mjs': lists('src/**/*.ts'),
   'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   // phone-feel-269: every module, for a desktop importer of a pad module the phone's page loads
   'src/pad/padPhoneHalf.selftest.mjs': lists('src/**/*.ts'),
@@ -103,6 +104,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
+  'src/ui/loadingScreens.selftest.mjs': lists('public/media/loading-r*/*'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),
@@ -163,7 +165,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tank-assets-store.mjs': lists('public/icons/tank-assets/**'),
   'tools/vercel-config.selftest.mjs': lists('api/*.ts'),
   'tools/viteGlslMinify.selftest.mjs': lists('src/**/*.ts'),
-  'vite.config.ts': lists('server/world-collision-manifests/*.json', 'server/world-collision-manifests-228/*.json'),
+  'vite.config.ts': lists('server/world-collision-manifests/*.json'),
 
   // 248 (selftest-scans hygiene): listings the receipts gained in 240-247
   // the Watch seat ledger never reaches the network: every src/mp module is read
@@ -192,6 +194,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // censusFiles: the sources, the public sheets and the site documents
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
+  // the kernel sources the build compiles: the .rs files of the two crates' src directories
+  'tools/sim-kernel-manifest.selftest.mjs': lists('crates/cot-sim/src/*.rs', 'crates/cot-sim-wasm/src/*.rs'),
 
   // 2026-11-02 audit S3 (tools-lifecycle): the automation-path, readiness and MP-vocabulary censuses
   // no module under src reads navigator.webdriver but the two bot exclusions
@@ -279,10 +283,14 @@ export const SELFTEST_SCANS = Object.freeze({
   // round 4 F12: the marketing pass as a function, run by its receipt on a fixture scene folder
   'tools/marketing-shots/shoot.mjs': caller('shootMarketing(args): the scene folder its --scenes names ' +
     '(tools/marketing-shots/scenes by default)'),
+  // 272: --write's digest cache also reads `git ls-files -s` and `git diff-files --name-only` of that root
+  'tools/asset-provenance.mjs': caller('git ls-files of the --root its caller names (npm run build: this checkout; its receipt: ' +
+    'a fixture repository in tmpdir)'),
 
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/asset-provenance.selftest.mjs': outside('the fixture repository its digest-cache cases create under tmpdir'),
   'tools/genHeroCards.mjs': outside('its own output directory (--out, .qa-dev/hero-cards by default): the layers it wrote, for tank-layers.json'),
   'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),

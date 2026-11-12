@@ -361,12 +361,22 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   reads), phonePause +70 (H8's battleTimeChoices chunk, which phonePause.ts joined). Requests held at 127 / 128 / 73
   //   / 8 / 12 / 7 (pad 14): couchSeats and bodyFlags, alone two more game and cn boot requests, ride vehicleActions
   //   (vite.config.ts). Home 28,923, docs 37,228 and 404 18,739 measure within their slack over the held pins.
-  game: { brotliBytes: 1210986, requests: 127, entryBrotliBytes: 259227 },
-  cn: { brotliBytes: 1256211, requests: 128, entryBrotliBytes: 259227 },
-  gallery: { brotliBytes: 760044, requests: 73 },
-  home: { brotliBytes: 28785, requests: 8 },
-  docs: { brotliBytes: 37100, requests: 12 },
-  notFound: { brotliBytes: 18677, requests: 7 },
+  // 2026-11-11 (integrator 271, the single end re-pin at integ/271's build 8612b0e164 + CSP; the owner's skip-all-tests
+  //   ruling, 272 folded in): game +26,562 B brotli, cn +26,573 B, Gallery +25,085 B; requests +8 on game, cn and Gallery
+  //   (new boot leaves from the folded 272 lanes and improve plans, not folded under the ruling: attribution and the fold
+  //   are owed post-deploy); the entry +229 B. Home +148 B, docs +150 B and 404 +57 B re-pinned at their measures.
+  // 2026-11-11 (integrator 271.1, the patch re-pin at integ/271.1's build 580fb07d28): game +858 B brotli, cn +1,547 B
+  //   (the loading stills' rotation on the boot path, the Couch/Watch/Deploy button family, the camo sheet layout and
+  //   the Air Support plate; cn also their zh strings); requests and the entry held. The other rows inside their slack.
+  // 2026-11-11 (integrator 271.2, the Air Support fix's re-pin at integ/271.2's build): game +1,501 B brotli, cn +1,483 B;
+  //   requests +4 on both (air-support-runs-272's strike order, strike runs and strike call modules on the boot path, not
+  //   folded under the live-fix ruling: the fold is owed with 271's); the entry +172 B.
+  game: { brotliBytes: 1239907, requests: 139, entryBrotliBytes: 259628 },
+  cn: { brotliBytes: 1285814, requests: 140, entryBrotliBytes: 259628 },
+  gallery: { brotliBytes: 785129, requests: 81 },
+  home: { brotliBytes: 28933, requests: 8 },
+  docs: { brotliBytes: 37250, requests: 12 },
+  notFound: { brotliBytes: 18734, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

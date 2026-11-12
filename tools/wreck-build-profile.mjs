@@ -14,7 +14,7 @@ import { createPropsProfiler, registerProfileCancellation } from './props-build-
 
 const TOOL = fileURLToPath(import.meta.url);
 const ROOT = process.env.COT_WRECK_PROFILE_ROOT ?? process.argv.find(arg => arg.startsWith('--root='))?.slice(7);
-const INPUTS = Object.freeze({ specId: 't90am', seed: 2526, pop: false, camoSeed: 4532,
+const INPUTS = Object.freeze({ specId: 't90am', seed: 2526, state: 'burnt_out', camoSeed: 4532,
   quality: 'low', geometryQuality: 'low', materialMode: 'geometry-only', proceduralOnly: true, anisotropy: 4 });
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = array => Buffer.from(array.buffer, array.byteOffset, array.byteLength);
@@ -229,7 +229,7 @@ async function worker(mode) {
     const builderAcquisitionMs = performance.now() - acquisitionStart;
     const start = performance.now();
     baked = bakeTankWreck({ anisotropy: INPUTS.anisotropy, setupShadowMaterial() {} }, INPUTS.specId,
-      { seed: INPUTS.seed, pop: INPUTS.pop });
+      { seed: INPUTS.seed, state: INPUTS.state });
     const bakeMs = performance.now() - start;
     assert.ok(baked, 'Exact real T-90M bake must succeed');
     for (const name of [...BODY_STAGES.values(), ...GEOMETRY_STAGES.values(), ...CALL_STAGES.values()]) {

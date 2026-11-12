@@ -24,6 +24,10 @@ const expected = new Map([
   ['type74', 'nato-double-pin'],
   ['stb1', 'soviet-single-pin'],
   ['strv103b', 'hydropneumatic-dead-track'],
+  // 269: the second air-defence round runs its base hulls' tracks
+  ['type87_aw', 'nato-double-pin'],
+  ['lvkv9040', 'compact-ifv'],
+  ['pza_loara', 'soviet-single-pin'],
 ]);
 for (const [id, patternId] of expected) {
   assert.equal(trackPatternFor(TANK_SPECS[id]).id, patternId, `${id} track family`);

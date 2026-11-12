@@ -9,12 +9,18 @@ import { getSpec } from '../specs.ts';
 // build byte for byte, so it alone still carries the donor's continuous upper-hull closure receipt.
 const IDS = [
   'm2a2_bradley',
+  'm3a2_bradley',
   'ua_m2a3_bradley',
   'm3a3_bradley',
   'm6_linebacker',
   'marder1a3',
 ];
-const A2_TURRET_IDS = new Set(['m2a2_bradley', 'ua_m2a3_bradley']);
+// 2026-11-05 (269, the owner's "redesign the m3a3 bradley turret"): the M3A3's A3 turret stands on the same measured
+// shell (profiles/bradleyA3Turret.ts), so it carries the shell's receipt too.
+// 2026-11-06 (269, the owner's swap: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be
+// the m3a2 bradley"): the source-measured turret moved to the M3A2 and the M2A2 took the classic turret
+// (profiles/bradleyClassicTurret.ts, receipted in m3a2Bradley.selftest.mjs); both keep the measured hull core.
+const A2_TURRET_IDS = new Set(['m3a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley']);
 
 const near = (a, b, tolerance = 1e-4) => Math.abs(a - b) <= tolerance;
 

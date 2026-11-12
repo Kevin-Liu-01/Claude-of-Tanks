@@ -24,6 +24,7 @@ import { addChieftain10XFenderCases } from './chieftain10XFenderCases.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftainCastSection, chieftainCheekHorn, chieftainHullSection } from './chieftainXFoundation.ts';
+import { CHIEFTAIN_MK9_LAUNCHER_SEATS, addChieftainMk9Kit } from './chieftainMk9X.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylY, cylZ, torus } = KIT;
@@ -246,7 +247,9 @@ function leftCastShoulder(z: number): number[] {
   return a.slice(1).map((value, i) => value + (b[i + 1] - value) * t);
 }
 
-function turretCast(P: TankBuilderPort): void {
+/** The casting; the Mk 9 (`bareNose`) leaves out the two forward horns the Mk 10's Stillbrew stands on, for its own
+ * bare cast nose (chieftainMk9X.ts). */
+function turretCast(P: TankBuilderPort, bareNose: boolean): void {
   const rows: readonly CastRow[] = [
     [-1.114, 1.015, 2.4187, 2.40], [-.90, 1.06492, 2.397225, 2.13],
     [-.78, 1.0927, 2.39725, 2.15], [-.7625, 1.0968, 2.39725, 2.15],
@@ -266,9 +269,11 @@ function turretCast(P: TankBuilderPort): void {
   P.add('turret', cylY(1.14163, 1.14163, .07528, 64), 0,
     1.550597 - D.turretPivot[1], .614026 - D.turretPivot[2]);
   addChieftain10XBasket(P, D.turretPivot);
-  for (const side of [-1, 1]) {
-    P.add('turret', local(chieftainCheekHorn(side, [[1.54, .17, 1.015, 1.65, 2.13],
-      [1.80, .17, .6984, 1.65, 2.095], [2.114786, .17, .18, 1.65, 1.79]], 0, 0), D.turretPivot));
+  for (const side of bareNose ? [] : [-1, 1]) {
+    const horn = local(chieftainCheekHorn(side, [[1.54, .17, 1.015, 1.65, 2.13],
+      [1.80, .17, .6984, 1.65, 2.095], [2.114786, .17, .18, 1.65, 1.79]], 0, 0), D.turretPivot);
+    horn.userData.chieftain10Horn = side;
+    P.add('turret', horn);
   }
   P.add('turret', local(slab([[1.54, -.23, .23, 2.075, 2.31],
     [1.796146, -.23, .23, 2.075, 2.15708]]), D.turretPivot));
@@ -373,11 +378,21 @@ function antennaStations(P: TankBuilderPort): void {
   }
 }
 
-function launchers(P: TankBuilderPort): void {
-  for (const [x, y, z, yaw] of [[-.1329e1, 1.9685, 1.5298, -.67], [.8578, 1.9951, 2.02245, .67]]) {
+type LauncherSeat = readonly [x: number, y: number, z: number, yaw: number];
+/** The Mk 10's two banks stand on the Stillbrew cheeks. */
+const MK10_LAUNCHER_SEATS: readonly LauncherSeat[] = [[-.1329e1, 1.9685, 1.5298, -.67], [.8578, 1.9951, 2.02245, .67]];
+
+/** Launcher tube section (radius, axial): 18.5 cm long, 7.8 cm over the wall, bore 6.2 cm to the charge at -7.05 cm. */
+const TUBE_PROFILE = [[0, -.0915], [.039, -.0925], [.039, .0925], [.031, .0925], [.031, -.0705], [0, -.0705]]
+  .map(([r, y]) => new THREE.Vector2(r, y));
+
+function launchers(P: TankBuilderPort, seats: readonly LauncherSeat[]): void {
+  for (const [x, y, z, yaw] of seats) {
     equipment(P, 'turretDetail', box(.25, .085, .22), x, y - .105, z - .105, -.38, yaw);
     for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-      const g = new THREE.CylinderGeometry(.039, .039, .185, 16, 1, true);
+      // One closed lathe per tube (wall, mouth annulus, bore down to the dark charge, domed 1 mm back): the open
+      // cylinder showed its inner wall's back faces through the mouth and the open back (sealed check 270, Mk 9/10).
+      const g = new THREE.LatheGeometry(TUBE_PROFILE, 16);
       markOpenSmokeTube(g.rotateX(Math.PI / 2));
       const dx = (col - 1) * .080 + row * .015, dy = (row - .5) * .079;
       equipment(P, 'turretDetail', g, x + dx, y + dy, z, -.48, yaw);
@@ -387,7 +402,11 @@ function launchers(P: TankBuilderPort): void {
   }
 }
 
-export function buildChieftainMk10X(P: TankBuilderPort): void {
+/** The marks built on this Mk 10: the Mk 9 (chieftainMk9X.ts) is its predecessor on the same castings, without the
+ * Stillbrew (Mk 10-12, 1984-86) and its horns, with its own bare nose and late-1970s fittings. */
+type ChieftainMk10FamilyMark = 'mk9' | 'mk10';
+
+function buildChieftainMk10Family(P: TankBuilderPort, mark: ChieftainMk10FamilyMark): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
   P.gunG.position.set(...D.trunnion.map((v, i) => v - D.turretPivot[i]) as [number, number, number]);
@@ -397,15 +416,23 @@ export function buildChieftainMk10X(P: TankBuilderPort): void {
   skirts(P);
   engineDeck(P);
   bowFurniture(P);
-  turretCast(P);
-  stillbrew(P);
+  turretCast(P, mark === 'mk9');
+  if (mark === 'mk10') stillbrew(P);
   turretStowage(P);
   addChieftain10XCupola(P, D.turretPivot);
   addChieftain10XUpperFittings(P, D.turretPivot);
   loaderHatches(P);
   roofFittings(P);
-  launchers(P);
+  launchers(P, mark === 'mk9' ? CHIEFTAIN_MK9_LAUNCHER_SEATS : MK10_LAUNCHER_SEATS);
   addChieftain10XGun(P, D.trunnion, D.muzzleZ);
+  if (mark === 'mk9') addChieftainMk9Kit(P, D.turretPivot, D.trunnion);
 }
 
-export const CHIEFTAIN10_X_PROFILES = Object.freeze({ chieftain_mk10: { build: buildChieftainMk10X } });
+export function buildChieftainMk10X(P: TankBuilderPort): void {
+  buildChieftainMk10Family(P, 'mk10');
+}
+
+export const CHIEFTAIN10_X_PROFILES = Object.freeze({
+  chieftain_mk10: { build: buildChieftainMk10X },
+  chieftain_mk9: { build: (P: TankBuilderPort) => buildChieftainMk10Family(P, 'mk9') },
+});

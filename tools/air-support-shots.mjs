@@ -3,7 +3,9 @@
 // the warm, outside the lock, starts a dev server and a guarded browser and brings two pages into an Air Support battle
 // on Verdant (a desktop page, and a phone-tier page at a phone's landscape viewport); the hold only stages and shoots.
 //
-//   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft]
+//   node tools/air-support-shots.mjs --out=DIR [--map=verdant] [--only=desktop|phone] [--no-perf] [--aircraft | --runs]
+//     [--gauntlet --locale=en-US [--sizes=WxH,WxH]]
+//     [--gauntlet] [--locale=en-US|zh-CN]
 //
 // Shots (DIR/*.png): the strip in third person; the strike view's binoculars with each call-in's reticle on the ground;
 // each strike from a camera over its mark (the recon jet's pass, the barrage, the strafing jet's run, the bomb, the AC-130
@@ -14,7 +16,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { runWarmHold, warmPage } from './capture-hold.mjs';
+import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture-hold.mjs';
+import { datumProblems } from './datum-census.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
@@ -26,9 +29,28 @@ const only = arg('only');
 const perf = !argv.includes('--no-perf');
 // --aircraft: the desktop page films the aircraft (shootAircraft) in place of the strip, views and strikes
 const aircraft = argv.includes('--aircraft');
+// --runs (air-support-runs-272): each call-in's run as a frame sequence (shootRuns): a chase camera behind the aircraft on
+// its mark, wide frames across the run, the AC-130 and the battery from a fixed oblique; each frame logs where the
+// airframe stands against its run (sim/strikeRuns.ts runPose) and the run's axis
+const runs = argv.includes('--runs');
+// --frames=close: only the run frames whose label holds that text (a re-shoot of a few frames)
+const framesFilter = arg('frames');
+// --gauntlet: the UI gauntlet's frames (UI-GAUNTLET.md): each page through its sizes, three states each, in --locale
+const gauntlet = argv.includes('--gauntlet');
+const locale = arg('locale', 'en-US');
+const GAUNTLET_SIZES = {
+  desktop: [[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 600], [900, 700]],
+  phone: [[844, 390], [390, 844]],
+};
+// --sizes=1920x1080,900x700: a re-capture of only the frames a change touches
+const sizesArg = arg('sizes');
+if (sizesArg) {
+  const keep = new Set(sizesArg.split(','));
+  for (const page of Object.keys(GAUNTLET_SIZES)) GAUNTLET_SIZES[page] = GAUNTLET_SIZES[page].filter(([w, h]) => keep.has(`${w}x${h}`));
+}
 mkdirSync(out, { recursive: true });
 const root = process.cwd();
-const receipt = { map: mapId, shots: [], calls: [], errors: {}, perf: {} };
+const receipt = { map: mapId, locale, shots: [], calls: [], errors: {}, perf: {}, gauntlet: {} };
 
 const VIEWPORTS = {
   desktop: { width: 1600, height: 900 },
@@ -235,6 +257,298 @@ async function shootAircraft(page, signal, tag) {
 }
 
 /**
+ * Each call-in's run as a frame sequence (air-support-runs-272; owner 2026-11-11: "planes need to follow proper actual
+ * flight paths, be aligned with the explosion highlight areas, and the bomb dropping should be from a jet"). The strike is
+ * called on the mark 260 m ahead; a page-side loop holds the camera each frame: `chase` behind the aircraft and above it,
+ * aimed at the mark's ground (the jet and its highlight on one line when they agree), `side` across the run from its
+ * right, `fixed` an oblique over the mark (the AC-130's ring, the battery). HUD off; the marks on the ground stay. Each
+ * frame records its strike time and the airframe's offset from the run's predicted pose and from the run's axis.
+ */
+async function shootRuns(page, signal, tag, checkpoint) {
+  await page.evaluate(stage);
+  const battleState = () => page.evaluate(() => {
+    const D = window.__DEBUG, g = D.game;
+    return { timeS: +g.timeS.toFixed(2), phase: g.phase, result: g.result ?? null, rig: D.rig.mode ?? null,
+      camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)) };
+  });
+  receipt.runStart = await battleState();
+  await page.evaluate(async () => {
+    const D = window.__DEBUG, V = D.camera.position.constructor;
+    window.__runs = await import('/src/sim/strikeRuns.ts');
+    const style = document.createElement('style');
+    style.textContent = 'html.as-hud-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-hints,.cot-medal-toasts,.cot-touch,'
+      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning,.cot-strike-dock){display:none!important}';
+    document.head.append(style);
+    document.documentElement.classList.add('as-hud-hidden');
+    const eye = new V(), at = new V(), dir = new V();
+    window.__runCraft = (f) => {
+      if (f.kind === 'artillery') return null;
+      if (f.kind !== 'gunship') { const o = D.scene.getObjectByName(`air-support jet ${f.id}`); return o?.visible ? o : null; }
+      let craft = null, best = Infinity;
+      D.scene.traverseVisible((o) => {
+        if (o.name !== 'AC-130 gunship') return;
+        const d = Math.hypot(o.position.x - f.x, o.position.z - f.z);
+        if (d < best) { best = d; craft = o; }
+      });
+      return craft;
+    };
+    window.__runCam = null;
+    // the battle's clock held at each frame's moment (the debug surface's shot mode: the sim stands, frames still draw),
+    // so a loaded machine's slow screenshot never lets the run fly on past the frame
+    window.__runFreezeAt = null; window.__runFrozen = false;
+    // checked in the simulation's own step (the mode's air step runs every fixed step): a loaded page whose
+    // requestAnimationFrame starves is ticked by the frame loop's fallback interval, where a rAF check never runs
+    const air = D.game.matchModeController.airSupport, step = air.step;
+    air.step = (timeS, held) => {
+      step(timeS, held);
+      if (window.__runFreezeAt != null && !window.__runFrozen && D.game.timeS >= window.__runFreezeAt) {
+        D.shotMode = true; window.__runFrozen = true;
+      }
+    };
+    const loop = () => {
+      const f = window.__runCam;
+      if (f) {
+        const sinH = Math.sin(f.heading), cosH = Math.cos(f.heading);
+        // run frame -> world: along (sinH, cosH), left (cosH, -sinH)
+        const world = (out, a, l, u) => out.set(f.x + sinH * a + cosH * l, f.y + u, f.z + cosH * a - sinH * l);
+        if (f.cam === 'chase') {
+          // behind the aircraft where its run puts it now (the drawn airframe is checked against the run per frame)
+          const R = D.game.matchModeController.airSupport.rules;
+          const p = window.__runs.runPose(R, f, D.game.timeS, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
+          dir.set(Math.sin(p.yaw), 0, Math.cos(p.yaw));
+          eye.set(p.x - dir.x * f.back, p.y + f.up, p.z - dir.z * f.back);
+          // aimed at the mark, or (aimNose) along the aircraft's nose: its dive line, the mark ahead on it
+          if (f.aimNose) {
+            const cp = Math.cos(p.pitch);
+            at.set(p.x + Math.sin(p.yaw) * cp * 120, p.y + Math.sin(p.pitch) * 120, p.z + Math.cos(p.yaw) * cp * 120);
+          } else world(at, 0, 0, 0);
+          D.rig.setExternalPose(eye, at, f.fov);
+        } else if (f.cam === 'beside') {
+          // outside the aircraft's turn, behind it and a little above, on the aircraft (its bank onto the mark reads)
+          const R = D.game.matchModeController.airSupport.rules;
+          const p = window.__runs.runPose(R, f, D.game.timeS, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
+          const ox = p.x - f.x, oz = p.z - f.z, o = Math.hypot(ox, oz) || 1;
+          eye.set(p.x + ox / o * f.out - Math.sin(p.yaw) * f.back, p.y + f.up, p.z + oz / o * f.out - Math.cos(p.yaw) * f.back);
+          at.set(p.x, p.y - 4, p.z);
+          D.rig.setExternalPose(eye, at, f.fov);
+        } else if (f.cam === 'side') {
+          world(eye, f.along - 120, -f.out, f.up); world(at, f.along, 0, f.up * 0.35);
+          D.rig.setExternalPose(eye, at, f.fov);
+        } else if (f.cam === 'fixed') {
+          world(eye, -f.out, -f.out, f.up); world(at, 0, 0, f.aimUp ?? 0);
+          D.rig.setExternalPose(eye, at, f.fov);
+        }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+  const call = (kind) => page.evaluate((kind) => {
+    const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    const saved = air.capture();
+    saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
+    saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
+    // the side's air cleared of the bots' own calls: the film's one strike is the only one up
+    saved.strikes = [];
+    air.restore(saved);
+    const p = game.player.state.pos, yaw = game.player.state.yaw;
+    const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+    const ok = air.requestStrike(game.player.id, kind, x, z, game.timeS);
+    const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
+    return ok ? mine[mine.length - 1] : null;
+  }, kind);
+  const release = (kind) => (kind === 'bomb' ? page.evaluate(() => window.__runs.bombReleaseOffsetS(window.__DEBUG.game.matchModeController.airSupport.rules)) : 0);
+  // each frame: [label, seconds from the warning's end, camera]
+  const chase = { cam: 'chase', back: 70, up: 22, fov: 55 };
+  const side = (along) => ({ cam: 'side', along, out: 560, up: 160, fov: 55 });
+  // the close frames (Main, 2026-11-11: the wide ones read the aircraft small): the jet in its dive from close behind,
+  // the bomber at the release with the bomb off its pylon, the AC-130 beside it outside its ring, banked onto the mark
+  const close = { cam: 'chase', back: 24, up: 6, fov: 42 };
+  const FRAMES = {
+    strafe: [['dive-close', 0.45, close],['ingress', -3.2, chase], ['dive', -1.2, chase], ['open-fire', 0.15, chase], ['walking', 0.85, chase],
+      ['walking-side', 0.9, side(-300)], ['cease', 1.6, chase], ['pull-out', 2.6, chase], ['egress', 5, chase]],
+    bomb: [['release-close', 'release+0.15', { ...close, aimNose: true, back: 26, up: 7 }], ['dive', -3.4, chase], ['release', 'release+0.15', chase], ['release-side', 'release+0.35', side(-260)],
+      ['falling', 'release+1.1', chase], ['falling-side', 'release+1.6', side(-160)], ['impact', 0.5, chase], ['egress', 4, chase]],
+    gunship: [['orbit-close', 20, { cam: 'beside', out: 40, back: 30, up: 10, fov: 45 }], ['inbound', -4, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-in', 0.8, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }],
+      ['orbit', 7, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['orbit-chase', 12, { cam: 'chase', back: 60, up: 20, fov: 60 }],
+      ['orbit-late', 22, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }], ['roll-out', 31.5, { cam: 'fixed', out: 420, up: 320, fov: 50, aimUp: 60 }]],
+    artillery: [['warning', -3, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['first', 0.2, { cam: 'fixed', out: 260, up: 160, fov: 45 }],
+      ['barrage', 2.5, { cam: 'fixed', out: 260, up: 160, fov: 45 }], ['last', 5, { cam: 'fixed', out: 260, up: 160, fov: 45 }]],
+  };
+  receipt.runs = [];
+  for (const [kind, all] of Object.entries(FRAMES)) {
+    const frames = all.filter(([label]) => !framesFilter || label.includes(framesFilter));
+    if (!frames.length) continue;
+    if (signal.aborted) return;
+    let accepted = null;
+    for (let tries = 0; !accepted && tries < 60 && !signal.aborted; tries++) { accepted = await call(kind); if (!accepted) await sleep(1500); }
+    receipt.calls.push({ kind, accepted: !!accepted });
+    if (!accepted) continue;
+    const releaseOffset = await release(kind);
+    const at = (when) => (typeof when === 'string' ? releaseOffset + Number(when.slice('release'.length)) : when);
+    // in time order: the clock only runs forward
+    for (const [label, when, cam] of [...frames].sort((a, b) => at(a[1]) - at(b[1]))) {
+      if (signal.aborted) return;
+      const rel = at(when);
+      await page.evaluate((f) => { window.__runCam = f; }, { ...cam, id: accepted.id, kind, x: accepted.x, y: accepted.y, z: accepted.z, heading: accepted.heading,
+        calledS: accepted.calledS, landsS: accepted.landsS });
+      try {
+        // a thawed page can come back under the pause panel (its visibility changed): resumed, or the clock never runs
+        await resume(page);
+        await page.evaluate((t) => { window.__runFrozen = false; window.__runFreezeAt = t; }, accepted.landsS + rel);
+        await page.waitForFunction(() => window.__runFrozen, { timeout: 120_000, polling: 50 });
+      } catch {
+        // the battle's clock stopped (a verdict, a pause): recorded, and the run moves on
+        receipt.runs.push({ kind, label, stalled: await battleState() });
+        await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
+        break;
+      }
+      // a few drawn frames with the camera on its pose
+      await sleep(600);
+      const name = `${tag}-${kind}-${label}`;
+      const before = await page.evaluate((s) => {
+        const D = window.__DEBUG, R = D.game.matchModeController.airSupport.rules, t = D.game.timeS;
+        const craft = window.__runCraft({ id: s.id, kind: s.kind, x: s.x, z: s.z });
+        const pose = window.__runs.runPose(R, s, t, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
+        const w = craft ? craft.getWorldPosition(D.camera.position.clone()) : null;
+        // the airframe against its run (a drawn frame may trail the clock by a frame: ~3 m at a jet's speed)
+        const sinH = Math.sin(s.heading), cosH = Math.cos(s.heading);
+        const lateral = w ? (w.x - s.x) * cosH - (w.z - s.z) * sinH : null;
+        const bomb = D.scene.getObjectByName(`air-support bomb ${s.id}`);
+        const b = bomb?.visible ? bomb.getWorldPosition(D.camera.position.clone()) : null;
+        return { found: !!craft, camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(1)),
+          result: D.game.result ?? null, t: +(t - s.landsS).toFixed(3), craft: w ? [w.x, w.y, w.z].map((v) => +v.toFixed(1)) : null,
+          offRunM: w ? +Math.hypot(w.x - pose.x, w.y - pose.y, w.z - pose.z).toFixed(2) : null,
+          offAxisM: lateral == null ? null : +lateral.toFixed(2), bank: +(pose.bank * 180 / Math.PI).toFixed(1),
+          pitch: +(pose.pitch * 180 / Math.PI).toFixed(1), bomb: b ? [b.x, b.y, b.z].map((v) => +v.toFixed(1)) : null };
+      }, { ...accepted, kind });
+      await shot(page, name);
+      receipt.runs.push({ kind, label, shot: name, cam: cam.cam, ...before });
+      await page.evaluate(() => { window.__runFreezeAt = null; window.__runFrozen = false; window.__DEBUG.shotMode = false; });
+    }
+    await page.evaluate(() => { window.__runCam = null; window.__DEBUG.shotMode = false; window.__DEBUG.rig.release(); });
+    await checkpoint?.();
+  }
+}
+
+/** In the page: Air Support's surfaces cut or spilling off the screen, and any of their plates over another opaque HUD
+ *  plate or control (ancestors, descendants and full-screen layers aside). */
+const surfaceCheck = () => {
+  const vw = innerWidth, vh = innerHeight;
+  const shown = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && el.getBoundingClientRect().width >= 1;
+  const name = (el) => `${el.tagName.toLowerCase()}${el.classList.length ? `.${[...el.classList].join('.')}` : ''}`;
+  const mine = [...document.querySelectorAll('.cot-strike-rack, .strike-support, .cot-binoculars .binocular-readout, '
+    + '.cot-binoculars .binocular-hint, .cot-strike-warning, .binocular-call, .binocular-close')].filter(shown);
+  const clipped = [], off = [], overlaps = [];
+  for (const root of mine) {
+    const r = root.getBoundingClientRect();
+    if (r.left < -0.5 || r.top < -0.5 || r.right > vw + 0.5 || r.bottom > vh + 0.5) off.push(name(root));
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      if (!shown(el) || !el.textContent.trim() || el.closest('.tip')) continue;
+      if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible') clipped.push(`${name(el)} "${el.textContent.trim()}"`);
+    }
+  }
+  const opaque = (el) => {
+    const cs = getComputedStyle(el);
+    return el.tagName === 'BUTTON' || cs.backgroundImage !== 'none' || !/rgba\([^)]*,\s*0\)|transparent/.test(cs.backgroundColor);
+  };
+  const others = [...document.querySelectorAll('body *')].filter((el) => {
+    if (!shown(el) || mine.some((m) => m.contains(el) || el.contains(m))) return false;
+    if (el.closest('.cot-binoculars, .tip, canvas') || el.tagName === 'CANVAS') return false;
+    const r = el.getBoundingClientRect();
+    return r.width < vw * 0.9 && r.height < vh * 0.9 && r.width * r.height >= 300 && opaque(el);
+  });
+  for (const m of mine) {
+    const a = m.getBoundingClientRect();
+    for (const o of others) {
+      const b = o.getBoundingClientRect();
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      if (w > 1 && h > 1) overlaps.push(`${name(m)} x ${name(o)} (${Math.round(w)}x${Math.round(h)})`);
+    }
+  }
+  for (const a of mine) for (const b of mine) {
+    if (a === b || a.contains(b) || b.contains(a) || a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING) continue;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+    if (w > 1 && h > 1) overlaps.push(`${name(a)} x ${name(b)} (${Math.round(w)}x${Math.round(h)})`);
+  }
+  return { clipped, off, overlaps: [...new Set(overlaps)].slice(0, 40) };
+};
+
+/**
+ * The UI gauntlet (UI-GAUNTLET.md; Main 2026-11-07): Support at rest, the binoculars with an enemy bomb coming in on
+ * the crew (the call-in row, the readout, the keys and INCOMING), and the binoculars short of points with a barrage
+ * reloading (the disabled states), at each of the page's sizes. Every frame carries the datum census and the surfaces'
+ * own clip and overlap check. The enemy's bomb is struck off again before it lands.
+ */
+async function shootGauntlet(page, tag) {
+  const spot = await page.evaluate(stage);
+  await page.evaluate(() => {
+    const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+    window.__gx = {
+      reset(points, cooling) {
+        const s = air.capture();
+        s.strikes = [];
+        s.points = s.points.filter(([id]) => id !== game.player.id).concat([[game.player.id, points]]);
+        s.cooldowns = s.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`))
+          .concat(cooling.map((kind) => [`${game.player.id}:${kind}`, game.timeS + air.rules[kind].cooldownS * 0.6]));
+        air.restore(s);
+        const c = game.player.combat;
+        if (!c.destroyed) c.hp = c.maxHp;
+      },
+      // (g5: the first live foe could stand out of its call-in's range; every live foe is asked in turn)
+      incoming() {
+        return game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).some((foe) => this.ask(foe));
+      },
+      ask(foe) {
+        const s = air.capture();
+        s.points = s.points.filter(([id]) => id !== foe.id).concat([[foe.id, air.rules.points.cap]]);
+        // (g1: the first size's call left the foe's bomb cooling, so every later size had nothing incoming)
+        s.cooldowns = s.cooldowns.filter(([key]) => !key.startsWith(`${foe.id}:`));
+        air.restore(s);
+        const p = game.player.state.pos;
+        return air.requestStrike(foe.id, 'bomb', p.x, p.z, game.timeS);
+      },
+    };
+  });
+  const frame = async (name) => {
+    const file = `${tag}-${locale}-${name}`;
+    // (g4: the battle went on around the frames and once destroyed the crew; the hull is topped up at every frame)
+    const crew = await page.evaluate(() => { const c = window.__DEBUG.game.player.combat; if (!c.destroyed) c.hp = c.maxHp; return c.destroyed ? ['destroyed'] : []; });
+    // (g3: a focus loss on a loaded machine raised the pause veil over one frame; the veil is not this surface)
+    if (await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); return !!go; })) await sleep(600);
+    await shot(page, file);
+    receipt.gauntlet[file] = { ...(await page.evaluate(surfaceCheck)), datum: await datumProblems(page), crew };
+  };
+  const aim = () => page.evaluate((spot) => {
+    const D = window.__DEBUG, p = D.game.player.state.pos, hf = D.world.heightField;
+    D.rig.snapSniper(4, Math.atan2(spot.x - p.x, spot.z - p.z), Math.atan2(hf.getHeightAt(spot.x, spot.z) - (p.y + 2.6), 260));
+  }, spot);
+  for (const [width, height] of GAUNTLET_SIZES[tag]) {
+    await page.setViewport({ ...VIEWPORTS[tag], width, height });
+    await sleep(1500);
+    const size = `${width}x${height}`;
+    await page.evaluate(() => { window.__gx.reset(window.__DEBUG.game.matchModeController.airSupport.rules.points.cap, []); window.__DEBUG.bus.emit('ui:strikeViewClose', {}); });
+    await sleep(900);
+    await frame(`${size}-rest`);
+    await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikePick', { kind: 'strafe' }));
+    await sleep(900);
+    await aim();
+    // (g3: one size's request was refused under load; ask once more before the frame)
+    const incoming = await page.evaluate(() => window.__gx.incoming()) || (await sleep(400), await page.evaluate(() => window.__gx.incoming()));
+    receipt.calls.push({ size, kind: 'bomb', incoming });
+    await sleep(700);
+    await frame(`${size}-view`);
+    await page.evaluate(() => { window.__gx.reset(350, ['artillery']); window.__DEBUG.bus.emit('ui:strikePick', { kind: 'bomb' }); });
+    await sleep(700);
+    await aim();
+    await sleep(300);
+    await frame(`${size}-view-short`);
+    await page.evaluate(() => window.__DEBUG.bus.emit('ui:strikeViewClose', {}));
+  }
+}
+
+/**
  * Paired GPU frame time: eight marks up against none, alternated. Every animation-frame callback's GL work is timed with
  * its own TIME_ELAPSED query (EXT_disjoint_timer_query_webgl2; the post chain's governor timer pauses once it pins), so
  * a pair compares the whole frame's GPU time with and without the marks' term. Null without the extension.
@@ -286,8 +600,12 @@ async function measureMarks(page, tag) {
 }
 
 let server = null;
+const writeReceipt = () => writeFileSync(path.join(out, `air-support-shots${gauntlet ? `-gauntlet-${locale}` : ''}${runs ? '-runs' : ''}${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+process.on('exit', () => { try { writeReceipt(); } catch {} });
 await runWarmHold({
   label: 'air-support-270',
+  // a film of the runs is a render (it shares the lock with other renders); the perf passes stay exclusive
+  ...(runs ? { lockClass: 'render' } : {}),
   place: `air-support-270-shots-${only ?? 'all'}`,
   // a battle page frozen in the queue is checked (and re-warmed if it reloaded) only past this
   maxFrozenMinutes: 30,
@@ -300,18 +618,30 @@ await runWarmHold({
     for (const tag of Object.keys(VIEWPORTS)) {
       if (only && only !== tag) continue;
       const errors = receipt.errors[tag] = [];
-      const page = await warmPage(browser, `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, {
-        ready: 'window.__GAME_READY === true', viewport: VIEWPORTS[tag],
+      // warmPage's own load, with the locale stored before the first document (i18n reads it once, at boot)
+      const page = await browser.newPage();
+      await page.setViewport(VIEWPORTS[tag]);
+      await stubViteSocket(page);
+      if (locale !== 'en-US') await page.evaluateOnNewDocument((value) => { try { localStorage.setItem('cot.locale', value); } catch {} }, locale);
+      rememberWarm(page, {
+        url: `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, ready: 'window.__GAME_READY === true',
         after: (page) => beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500, timeoutMs: 900_000 }),
       });
+      await rewarmPage(page);
       page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
       page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text().slice(0, 400)); });
       pages[tag] = page;
     }
     return { pages: Object.values(pages), byTag: pages, close: async () => { await browser.close(); await server.close(); } };
   },
-  shoot: async ({ byTag, signal }) => {
-    if (byTag.desktop && aircraft) {
+  shoot: async ({ byTag, signal, checkpoint }) => {
+    if (gauntlet) {
+      for (const tag of ['desktop', 'phone']) if (byTag[tag] && !signal.aborted) await shootGauntlet(byTag[tag], tag);
+      return;
+    }
+    if (byTag.desktop && runs) {
+      await shootRuns(byTag.desktop, signal, 'runs', checkpoint);
+    } else if (byTag.desktop && aircraft) {
       await shootAircraft(byTag.desktop, signal, 'aircraft');
     } else if (byTag.desktop) {
       await shootDesktop(byTag.desktop, signal, 'desktop');
@@ -330,5 +660,5 @@ await runWarmHold({
     }
   },
 });
-writeFileSync(path.join(out, `air-support-shots${only ? `-${only}` : ''}.json`), `${JSON.stringify(receipt, null, 2)}\n`);
+writeReceipt();
 console.log(JSON.stringify({ shots: receipt.shots.length, calls: receipt.calls, perf: receipt.perf, errors: Object.fromEntries(Object.entries(receipt.errors).map(([k, v]) => [k, v.length])) }));

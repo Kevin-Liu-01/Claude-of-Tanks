@@ -43,7 +43,10 @@ const hook = registerHooks({
 globalThis.__factoryStagingCapture = value => { capture = value; };
 globalThis.__factoryStagingSlice = value => { decorStage = value.stage; };
 await import('./tankFactory.ts');
-const candidate = await import(coreUrl);
+// Literal specifiers (272): the result cache keys a receipt only when its imports name files; these resolve to coreUrl
+// and candidateFacadeUrl, the URLs the hook above matches.
+const candidate = await import('./tankFactoryCore.ts');
+assert.equal(import.meta.resolve('./tankFactoryCore.ts'), coreUrl);
 const digest = value => createHash('sha256').update(value).digest('hex');
 function attribute(value) {
   const array = value.isInterleavedBufferAttribute ? value.data.array : value.array;
@@ -314,7 +317,8 @@ try {
   equal(core.finishedAt - core.startedAt, 0, 'core stage checkpoint waits never enter the core receipt');
 } finally { timed?.dispose(); Object.defineProperty(globalThis, 'performance', clockDescriptor); }
 
-const facade = await import(candidateFacadeUrl);
+assert.equal(import.meta.resolve('./fleetFactory.ts?factory-staging-test'), candidateFacadeUrl);
+const facade = await import('./fleetFactory.ts?factory-staging-test');
 assert.throws(() => facade.createTankSteps('m1a1', null, baseOpts), /not loaded/,
   'new demand facade checks readiness synchronously before returning any iterator');
 await facade.ensureTankBuilder('m1a1');

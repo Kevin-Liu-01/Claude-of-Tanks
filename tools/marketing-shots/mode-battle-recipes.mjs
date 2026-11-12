@@ -734,6 +734,125 @@ export const RECIPES = {
     },
   },
 
+  // (272, the owner: "air support needs an image") Air Support's Deploy tile and plate, as its siblings': a HUD-free
+  // battle frame of the mode's own moment. The player's side calls each strike on two enemies parked 260 m ahead (the
+  // staging tools/air-support-shots.mjs uses: points to the cap, cooldowns cleared, requestStrike on the mark), and a
+  // page-side loop keeps the pinned camera on the moment each frame: beside the strafing jet as it fires, behind the
+  // bomb's run over the mark, beside the AC-130 in its orbit. The strike rack, binoculars and warning are hidden with
+  // the HUD (mode-battle-director setHud).
+  'deploy/air_support': {
+    hour: 'day',
+    windowS: 60,
+    hud: 'hidden',
+    async run(ctx) {
+      await ctx.ff(3);
+      await ctx.eval(() => {
+        const D = window.__DEBUG, V = D.camera.position.constructor;
+        const eye = new V(), at = new V(), dir = new V();
+        /** The followed airframe: a jet by its strike's own name; the AC-130 nearest the mark. */
+        const craftOf = (f) => {
+          if (!f.gunship) { const o = D.scene.getObjectByName(`air-support jet ${f.id}`); return o?.visible ? o : null; }
+          let craft = null, best = Infinity;
+          D.scene.traverseVisible((o) => {
+            if (o.name !== 'AC-130 gunship') return;
+            const d = Math.hypot(o.position.x - f.x, o.position.z - f.z);
+            if (d < best) { best = d; craft = o; }
+          });
+          return craft;
+        };
+        window.__AS = { follow: null, craftOf, stopAtS: Infinity };
+        // the mode's objective markers (matchModeWorldPresentation's root) and every overlay icon (a sprite drawn over
+        // the depth: zone letters, contact diamonds) move to a layer the camera never draws, each frame (markers rebuild)
+        const OFF = 31;
+        const hideOverlays = () => {
+          D.scene.getObjectByName('match-mode-objectives')?.traverse((o) => o.layers.set(OFF));
+          D.scene.traverse((o) => { if (o.isSprite && o.material?.depthTest === false) o.layers.set(OFF); });
+        };
+        const loop = () => {
+          hideOverlays();
+          const f = window.__AS.follow;
+          if (f?.mark) {
+            // behind the run's heading and off its side, looking at the mark: the strike's ground and its airframe
+            const hf = D.world.heightField, y = hf.getHeightAt(f.x, f.z), h = f.heading;
+            eye.set(f.x - Math.sin(h) * f.back + Math.cos(h) * f.side, y + f.up, f.z - Math.cos(h) * f.back - Math.sin(h) * f.side);
+            at.set(f.x, y + f.lookUp, f.z);
+            D.rig.setExternalPose(eye, at, f.fov);
+          } else if (f) {
+            const craft = craftOf(f);
+            if (craft) {
+              craft.getWorldPosition(at);
+              craft.getWorldDirection(dir);
+              dir.y = 0; dir.normalize();
+              eye.set(at.x - dir.x * f.back + dir.z * f.side, at.y + f.up, at.z - dir.z * f.back - dir.x * f.side);
+              // look a little ahead and below the airframe, so the ground it works on shares the frame
+              at.set(at.x + dir.x * f.ahead, at.y - f.drop, at.z + dir.z * f.ahead);
+              D.rig.setExternalPose(eye, at, f.fov);
+            }
+          }
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      });
+      /** In the page: points to the cap, cooldowns cleared, two enemies parked on a mark 260 m ahead, the strike called. */
+      const call = (kind) => ctx.eval((kind) => {
+        const D = window.__DEBUG, game = D.game, air = game.matchModeController.airSupport;
+        const saved = air.capture();
+        saved.points = saved.points.map(([id, value]) => [id, id === game.player.id ? air.rules.points.cap : value]);
+        saved.cooldowns = saved.cooldowns.filter(([key]) => !key.startsWith(`${game.player.id}:`));
+        air.restore(saved);
+        const p = game.player.state.pos, yaw = game.player.state.yaw, hf = D.world.heightField;
+        const x = p.x + Math.sin(yaw) * 260, z = p.z + Math.cos(yaw) * 260;
+        const enemies = game.tanks.filter((t) => t.team !== game.player.team && !t.combat.destroyed).slice(0, 2);
+        enemies.forEach((t, i) => {
+          const ex = x + Math.cos(yaw) * (i ? -9 : 7), ez = z - Math.sin(yaw) * (i ? -9 : 7) + (i ? 12 : 0);
+          t.state.pos.set(ex, hf.getHeightAt(ex, ez), ez); t.state.speed = 0;
+        });
+        if (!air.requestStrike(game.player.id, kind, x, z, game.timeS)) return null;
+        D.bus.emit('ui:strikeViewClose', {});
+        const mine = air.capture().strikes.filter((s) => s.callerId === game.player.id);
+        const s = mine[mine.length - 1];
+        return { id: s.id, kind: s.kind, x: s.x, z: s.z, heading: s.heading, calledS: s.calledS, landsS: s.landsS, endS: s.endS };
+      }, kind);
+      const reach = (label, atS) => ctx.until((t) => window.__DEBUG.game.timeS >= t, { timeoutS: 40, label, args: [atS] });
+      const follow = (spec) => ctx.eval((f) => { window.__AS.follow = f; }, spec);
+      // windows run in game time: a frozen candidate holds the battle's clock while the 4K frame is written, so each
+      // window takes up to `max` frames `everyS` of play apart and stops at its game-time end
+      const SHOTS = [
+        // the strafing jet beside its run as the cannon walks the lane onto the parked pair, from either side
+        { kind: 'strafe', label: 'strafe chase', from: -0.6, toS: 3, max: 7, everyS: 0.35,
+          view: { back: 22, side: 11, up: 4, ahead: 40, drop: 14, fov: 52 } },
+        { kind: 'strafe', label: 'strafe chase high', from: -0.4, toS: 3, max: 7, everyS: 0.35,
+          view: { back: 26, side: -14, up: 9, ahead: 60, drop: 28, fov: 55 } },
+        // the bomb's run from behind and above the mark: the jet over the pair, then the blast
+        { kind: 'bomb', label: 'bomb mark', from: -1.4, toS: 2, max: 7, everyS: 0.3,
+          view: { mark: true, back: 130, side: 80, up: 45, lookUp: 8, fov: 50 } },
+        // the AC-130 banking in its orbit, the ground it works below it
+        { kind: 'gunship', label: 'gunship close', from: 2, toS: 9, max: 6, everyS: 1,
+          view: { gunship: true, back: 64, side: 46, up: 16, ahead: 0, drop: 16, fov: 50 } },
+        { kind: 'gunship', label: 'gunship over the ground', from: 3, toS: 10, max: 6, everyS: 1,
+          view: { gunship: true, back: 34, side: 22, up: 34, ahead: 50, drop: 70, fov: 58 } },
+      ];
+      for (const shot of SHOTS) {
+        let strike = null;
+        for (let tries = 0; !strike && tries < 40; tries++) {
+          strike = await call(shot.kind);
+          if (!strike) await ctx.sleep(1500);
+        }
+        if (!strike) { ctx.note(`${shot.label}: no ${shot.kind} accepted`); continue; }
+        ctx.log(shot.label, JSON.stringify(strike));
+        await reach(`${shot.label}: the strike's moment`, strike.landsS + shot.from);
+        await follow({ ...shot.view, id: strike.id, x: strike.x, z: strike.z, heading: strike.heading });
+        await ctx.sleep(120);
+        await ctx.eval((t) => { window.__AS.stopAtS = t; }, strike.landsS + shot.toS);
+        await ctx.capture({ label: shot.label, windowS: 120, max: shot.max, everyS: shot.everyS, minGapMs: 200,
+          cameras: [{ kind: 'game', hud: 'hidden' }], stopWhen: () => window.__DEBUG.game.timeS >= window.__AS.stopAtS });
+        await follow(null);
+        await ctx.eval(() => window.__DEBUG.rig.release());
+        await reach(`${shot.label}: the strike's end`, Math.min(strike.endS, strike.landsS + 6));
+      }
+    },
+  },
+
   // ============================================================== mechanics (battle captures)
   'mechanics/missiles': {
     hour: 'sunset',

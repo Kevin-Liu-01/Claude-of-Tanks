@@ -153,6 +153,11 @@ for (const spec of Object.values(TANK_SPECS)) {
         `${spec.id} slot ${slot + 1}: primary missile follows the main-gun reload`);
       assert.ok(round.reloadS >= 6 && round.reloadS <= 10,
         `${spec.id} slot ${slot + 1}: primary missile uses a standard tank reload`);
+    } else if (spec.gun.launcherSalvo) {
+      // (270, airDefenseFirepower.ts) an auxiliary rack fired whole in salvos reloads as a group: slower than one missile,
+      // as magazineIndicator.selftest.mjs holds every salvo (the Tunguska-M's, the Pantsir-S1's and the PGZ-95's)
+      assert.ok(round.reloadS >= 5 && round.reloadS <= 8,
+        `${spec.id} slot ${slot + 1}: an auxiliary salvo rack reloads in 5-8 seconds`);
     } else {
       assert.ok(round.reloadS >= 2 && round.reloadS <= 3,
         `${spec.id} slot ${slot + 1}: auxiliary missile reload is 2-3 seconds`);
@@ -180,6 +185,12 @@ assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}
 const airDefense268Ids = new Set(['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09']);
 assert.deepEqual(guidedRounds.filter(({spec}) => airDefense268Ids.has(spec.id)).map(({spec, round}) => `${spec.id}/${round.name}`),
   ['tunguska_m/9M311M', 'pantsir_s1/57E6', 'pgz95/QW-2'], 'the 268 air defence carries three guided channels');
+// 269: the second air-defence round (the Type 87, the two Marksmen, the Lvkv 9040, the K30 Biho, the PZA Loara) carries no
+// missile: guns only
+const airDefense269Ids = new Set(['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara']);
+assert.deepEqual(guidedRounds.filter(({spec}) => airDefense269Ids.has(spec.id)), [], 'the 269 air defence carries no guided channel');
+// 269: the M163 VADS fires its Vulcan only: no missile
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'm163_vads'), [], 'the M163 VADS carries no guided channel');
 // 268: the M3A2 fires the M2A2's TOW (its twelve stowed rounds), one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'm3a2_bradley').map(({round}) => round.name), ['BGM-71 TOW-2A'],
   "the M3A2 carries the M2A2's one TOW channel");
@@ -230,6 +241,8 @@ const laterChannelCounts = {
   type10_dozer: 3,
   // 267: the Type 90 (B), the Type 90's three rounds
   type90b: 3,
+  // 269: the 152 mm line, three rounds each (APFSDS, HEAT-FS, HE-FRAG)
+  object292: 3, object477_molot: 3, object195: 3, t14_152: 3,
   // (release 262 CN) the new T-55A's D-10T2S rounds
   t55a: 3,
   // 262: the ZTZ-20's and the ZTZ-20 Prototype's three 105 mm rounds
@@ -269,10 +282,16 @@ const laterChannelCounts = {
   m3a2_bradley: 3,
   // 269: the South African line, three rounds each (the Semel, the Olifant Mk 1, 1A and 1B, the TTD)
   semel: 3, olifant_mk1: 3, olifant_mk1a: 3, olifant_mk1b: 3, ttd: 3,
+  // 269: the second air-defence round, each its gun's armour-piercing and high-explosive rounds
+  type87_aw: 2, marksman_t55: 2, itpsv_leopard2: 2, lvkv9040: 2, k30_biho: 2, pza_loara: 2,
   // 269: the Australian line (the M113A1 FSV's and MRV's two 76 mm rounds; three for the rest)
   m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3,
   // 269: the US M113A3's three .50 belts (the Ares APC's)
   m113a3: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
+  // 270: the T95's three 6"/47 rounds (AP, Common, HC)
+  t95: 3,
+  // 269: the M163 VADS's Vulcan, its M53 API and M56 HEI
+  m163_vads: 2,
 };
 const southAfrica269Channels = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
@@ -291,6 +310,8 @@ const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm4
   'cv9035dk', 't49', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const airDefense268Channels = [...airDefense268Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(airDefense268Channels, 13, 'the five 268 air-defence vehicles add thirteen channels');
+const airDefense269Channels = [...airDefense269Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
+assert.equal(airDefense269Channels, 12, 'the six 269 air-defence vehicles add twelve channels');
 const brazil266Channels = ['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
   'ee_t4_osorio'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -347,14 +368,16 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
-// and the Type 90 (B)'s three (267), the M3A2's three (268), and the South African line's five and the Australian line's seven (269).
+// and the Type 90 (B)'s three (267), the M3A2's three (268), and the South African line's five and the Australian line's
+// seven (269), the second air-defence round's twelve and the M163 VADS's two (270), and the 152 mm line's three each (271).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
-  - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels
-  - australia269Channels, 560,
+  - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels - australia269Channels
+  - airDefense269Channels - laterChannelCounts.m163_vads - laterChannelCounts.t95
+  - ['object292', 'object477_molot', 'object195', 't14_152'].reduce((n, id) => n + laterChannelCounts[id], 0), 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

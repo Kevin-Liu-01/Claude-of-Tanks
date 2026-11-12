@@ -134,6 +134,7 @@ const GROUP_LOADERS = Object.freeze({
   southAfrica: () => import('./profiles/southAfrica.ts').then((mod) => registerProfiles(mod.SOUTH_AFRICA_PROFILES)),
   australia: () => import('./profiles/australia.ts').then((mod) => registerProfiles(mod.AUSTRALIA_PROFILES)),
   m41: () => import('./profiles/m41.ts').then((mod) => registerProfiles(mod.M41_PROFILES)),
+  t95: () => import('./profiles/t95.ts').then((mod) => registerProfiles(mod.T95_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),
@@ -155,6 +156,7 @@ const GROUP_LOADERS = Object.freeze({
   k2X: () => import('./profiles/k2X.ts').then((mod) => registerProfiles(mod.K2_X_PROFILES)),
   kf51X: () => import('./profiles/kf51X.ts').then((mod) => registerProfiles(mod.KF51_X_PROFILES)),
   t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
+  russia152: () => import('./profiles/russia152.ts').then((mod) => registerProfiles(mod.RUSSIA_152_PROFILES)),
   kurganetsX: () => import('./profiles/kurganetsX.ts')
     .then((mod) => registerProfiles(mod.KURGANETS_X_PROFILES)),
   fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ warrior_tes_h: { build: mod.buildFv510MilanX } })),
@@ -238,6 +240,13 @@ const GROUP_LOADERS = Object.freeze({
   gepard: () => import('./profiles/gepard.ts').then((mod) => registerProfiles(mod.GEPARD_PROFILES)),
   chineseAirDefense: () => import('./profiles/chineseAirDefense.ts')
     .then((mod) => registerProfiles(mod.CHINESE_AIR_DEFENSE_PROFILES)),
+  // 269: the second air-defence round
+  type87: () => import('./profiles/type87.ts').then((mod) => registerProfiles(mod.TYPE87_PROFILES)),
+  marksman: () => import('./profiles/marksman.ts').then((mod) => registerProfiles(mod.MARKSMAN_PROFILES)),
+  lvkv9040: () => import('./profiles/lvkv9040.ts').then((mod) => registerProfiles(mod.LVKV9040_PROFILES)),
+  k30Biho: () => import('./profiles/k30Biho.ts').then((mod) => registerProfiles(mod.K30_BIHO_PROFILES)),
+  loara: () => import('./profiles/loara.ts').then((mod) => registerProfiles(mod.LOARA_PROFILES)),
+  m163: () => import('./profiles/m163.ts').then((mod) => registerProfiles(mod.M163_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupLoads = new Map<FleetGroup, LazyChunk<void>>();
 const tankSpecs = TANK_SPECS;

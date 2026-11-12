@@ -1373,6 +1373,11 @@ interface MuzzleInput {
   birthOffset?: number;
   /** 0..1: a scoped own-gun shot keeps the gas off the lens */
   nearAtt?: number;
+  /**
+   * the velocity (m/s) the gas is born with: a moving muzzle's (EFFECT_ATTACHMENT_POLICY.muzzleSmoke), which the gas's
+   * own drag (4.2-4.5 /s, at least MUZZLE_SMOKE_CARRY_DRAG_MIN) sheds so it trails the hull; the ground's dust stays
+   */
+  carry?: Readonly<ArrayLike<number>>;
 }
 
 export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
@@ -1381,6 +1386,7 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
   const bo = I.birthOffset ?? 0;
   const s = Math.max(0.35, Math.min(1.6, I.caliberMm / 120));
   const att = I.nearAtt ?? 1;
+  const cx = I.carry ? I.carry[0] : 0, cy = I.carry ? I.carry[1] : 0, cz = I.carry ? I.carry[2] : 0;
   // propellant gas: thrown out of the bore, it stops a few metres out and swells into a pale cloud that drifts off
   // (round 4: three to five puffs spaced along the bore read as a row of cotton balls; the gas is one cloud: more,
   // smaller, overlapping puffs strung continuously along the throw, spreading sideways, wider than tall, thinner)
@@ -1389,8 +1395,10 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
     const along = (i + R() * 0.9) / gasN;
     const v = (8 + 26 * (1 - along) * (1 - along)) * s;
     const side = (R() - 0.5) * 0.5;
-    place(m, I.x + I.dx * 0.4, I.y + I.dy * 0.4, I.z + I.dz * 0.4, bo + R() * 0.03);
-    move(m, I.dx * v + side * I.dz * v, I.dy * v + (R() - 0.3) * 1.4, I.dz * v - side * I.dx * v, 4.2, 0.4, 0.9, 0);
+    // a puff born after the shot leaves from where the moving muzzle is then
+    const late = R() * 0.03;
+    place(m, I.x + I.dx * 0.4 + cx * late, I.y + I.dy * 0.4 + cy * late, I.z + I.dz * 0.4 + cz * late, bo + late);
+    move(m, I.dx * v + side * I.dz * v + cx, I.dy * v + (R() - 0.3) * 1.4 + cy, I.dz * v - side * I.dx * v + cz, 4.2, 0.4, 0.9, 0);
     shape(m, 2.2 + R() * 1.4, 0.5 * s, (1.8 + 1.8 * along + R() * 0.8) * s, 2.8, R);
     look(m, PROPELLANT, PROPELLANT, 0.42 * att, 0.0, 0.3);
     book(m, 'billow', R, 3.4, 6);
@@ -1402,7 +1410,7 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
   for (let sgn = -1; sgn <= 1; sgn += 2) {
     const lx = I.dz * sgn, lz = -I.dx * sgn;
     place(m, I.x, I.y, I.z, bo);
-    move(m, lx * 9 * s + I.dx * 2, 0.6, lz * 9 * s + I.dz * 2, 4.5, 0.3, 0.9, 0);
+    move(m, lx * 9 * s + I.dx * 2 + cx, 0.6 + cy, lz * 9 * s + I.dz * 2 + cz, 4.5, 0.3, 0.9, 0);
     shape(m, 2.2 + R(), 0.5 * s, (1.8 + R() * 0.6) * s, 2.8, R);
     look(m, PROPELLANT, PROPELLANT, 0.45 * att, 0.0, 0.35);
     book(m, 'billow', R, 3.0, 6);

@@ -64,7 +64,11 @@ const targets={
   // over the track (0.72 m), each convex, each mirrored by its peer of the same width
   ztz99a2:{expected:4,select:p=>p.bucket==='hull'&&p.site.includes('buildZTZ99A2Hull (')&&((p.part.size.x>.39&&p.part.size.x<.41&&p.part.size.z>2.14&&p.part.size.z<2.15)||(p.part.size.x>.71&&p.part.size.x<.73&&p.part.size.z>2.29&&p.part.size.z<2.31))&&p.part.bounds.max.y<1.63,convexAll:true,mirrorPair:true},
   k2_black_panther:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.part.triangles.length===92&&p.site.includes('k2X.ts'),sectionContour:p=>p.part.size.x>2?8:6},
-  k21:{expected:2,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(p.bucket==='turret'&&p.site.includes('buildK21Turret (')&&p.part.vertices.length===30)),sectionContour:p=>p.bucket==='hull'?14:6},
+  // owner 2026-11-04 ("tbf the k21 turret just neds to be completely redesigined. it just wrong"): new K21 turret
+  // (profiles/k21Turret.ts addShell/addSideKit): the lofted 5-station shell became six closed convex plates cut from one
+  // set of measured planes (rear body, the two front halves either side of the gun slot, the slot floor and its two
+  // chamfered corners) and the left wall's appliqué panel; the hull's 14-point section is unchanged
+  k21:{expected:8,select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='hull'&&p.site.includes('buildK21Hull (')&&p.part.size.z>6)||(['turret','turretExternalArmor'].includes(p.bucket)&&p.site.includes('k21Turret.ts'))),sectionContour:p=>p.bucket==='hull'?14:0},
   marder2:{expected:4,select:p=>p.part.geometryType==='BufferGeometry'&&p.site.includes('buildMarder2 (')&&((p.bucket==='hull'&&p.part.size.z>7)||(p.bucket==='turret'&&p.part.vertices.length>8)),sectionContour:p=>p.bucket==='hull'?8:p.part.size.x>2?6:5},
   challenger1_mk3:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
   // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build

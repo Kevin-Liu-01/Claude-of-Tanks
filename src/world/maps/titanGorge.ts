@@ -40,6 +40,7 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
@@ -174,12 +175,12 @@ export default {
       'caravanserai', 'adobe', 'watertower', 'ruin', 'factory', 'depot',
       'containerRow', 'compoundSouk', 'warehouse', 'ruin',
     ],
-    destructibleBuildings: ['deserttent', 'motorpool', 'commandtent', 'checkpointhut'],
+    destructibleBuildings: ['motorpool', 'commandtent', 'checkpointhut'],
     tacticalBeats: [
       { id: 'western-switchback', role: 'brawl', x: -300, z: 150, yawDeg: -6,
         structure: 'motorpool', redoubt: true, outcrop: { count: 9, radius: 13, scaleMax: 4.2 }, wreck: true, wreckOffsetZ: -18 },
       { id: 'dry-river-camp', role: 'scout', x: 18, z: -210, yawDeg: 18,
-        structure: 'deserttent', outcrop: { count: 6, radius: 10, scaleMax: 3.1 } },
+        structure: 'commandtent', outcrop: { count: 6, radius: 10, scaleMax: 3.1 } },
       { id: 'eastern-shelf-battery', role: 'support', x: 300, z: 150, yawDeg: 7,
         structure: 'checkpointhut', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.8 }, wreck: true, wreckOffsetX: 18 },
     ],
@@ -206,7 +207,7 @@ export default {
     hedgehogs: 24, sandbagLines: 26,
     // the map-vehicles lane (2026-10-06, the period ruling): the American West in the 1960s: the M60A1, M48, M551
     // and M47
-    tankWrecks: { era: 'cold-war', count: 8, debris: true, ids: ['m60a1', 'm48a5_patton', 'm551_sheridan', 'm47_patton'] },
+    tankWrecks: WRECK_CASTS.titan_gorge,
     inhabit: {
       stalls: 3, benches: 1, coreClutter: 24, drums: 14, pots: 7,
       trucks: 8, jeeps: 6, drumClusters: 8, camps: 6, modernClutter: 30,

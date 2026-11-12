@@ -41,8 +41,11 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
 // grazes, near misses) — 33.65 MB. What a player pays is the battle's set, not this sum. 35 MB from 2026-11-05
 // (air-support-270: Air Support's call-ins +0.66 MB, decoded only in an Air Support battle; the measured 34.3 MB). The
 // rule (DECISIONS 2026-11-05, the russia-152 entry): the cap is the measured sum rounded up to the next MiB, re-derived
-// once on each integration tip, never by adding the heads' deltas.
-assert.ok(bytes < 35 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 35 MB`);
+// once on each integration tip, never by adding the heads' deltas. 37 MB from 2026-11-09 (russia-152 on main 3f31c66abc):
+// the three 152 mm bores' reports (2A83, 2A73, LP-83) and the carousel and bustle loaders' 152 mm reloads, +1.67 MB,
+// decoded only when a 152 mm tank is in the battle; the measured sum 37,748,765 B is 29 B over 36 MiB. Re-derived
+// on integ/271 (every 271 head with russia-152): 38,080,182 B, 36.3 MiB, so 37 MB stands.
+assert.ok(bytes < 37 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 37 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');

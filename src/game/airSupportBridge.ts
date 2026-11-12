@@ -4,10 +4,12 @@
  * strafing jet's 30 mm and the AC-130's guns are fired rounds the presentation already knows how to show, so their
  * rounds reach the effects and the weapon sounds as a shell:fired from the aircraft's own muzzle, with no shooter (no hull
  * recoils, no hull's sight flashes). The bomb's release and the battery's rounds have no muzzle here: their arrival is
- * the presentation's (the whistle, the burst). Solo and multiplayer both raise mode:strike_round on the one bus.
+ * the presentation's (the whistle, the burst); the bomb's launch is kept for the world, which draws it falling from the
+ * jet (releasedBombs). Solo and multiplayer both raise mode:strike_round on the one bus.
  * Copyright (c) 2026 Kevin B. Liu (NOTICE.md).
  */
 import type { EventBus } from './stateCore.ts';
+import { markFreeFallStore } from '../fx/freeFallStores.ts';
 
 interface StrikeRoundEvent {
   kind?: string; shellId?: number; shellName?: string; shellType?: string; caliberMm?: number; velocityMps?: number;
@@ -16,9 +18,23 @@ interface StrikeRoundEvent {
 
 const FIRED_KINDS = new Set(['strafe', 'gunship']);
 
+/** Each released bomb's launch, by strike id: where it left the jet's pylon and its velocity (m/s), as the authority
+ *  launched it, so the world draws it falling on its own arc (game/airSupportWorld.ts; at most RELEASED_MAX kept). */
+export const releasedBombs = new Map<number, { x: number; y: number; z: number; vx: number; vy: number; vz: number }>();
+const RELEASED_MAX = 16;
+
 export function installAirSupportBridge(bus: EventBus): () => void {
   return bus.on('mode:strike_round', (payload) => {
-    const round = payload as StrikeRoundEvent | null;
+    const round = payload as (StrikeRoundEvent & { strikeId?: number; freeFall?: number }) | null;
+    // an unpowered store: the tracer pass never draws it (fx/freeFallStores.ts), the world draws its body falling
+    if (round?.freeFall === 1 && round.shellId != null) markFreeFallStore(round.shellId);
+    if (round?.kind === 'bomb' && Number.isFinite(round.x) && Number.isFinite(round.strikeId)) {
+      const speed = round.velocityMps ?? 0;
+      releasedBombs.set(round.strikeId!, { x: round.x!, y: round.y!, z: round.z!,
+        vx: (round.dx ?? 0) * speed, vy: (round.dy ?? 0) * speed, vz: (round.dz ?? 0) * speed });
+      if (releasedBombs.size > RELEASED_MAX) releasedBombs.delete(releasedBombs.keys().next().value!);
+      return;
+    }
     if (!round || !FIRED_KINDS.has(String(round.kind)) || !Number.isFinite(round.x)) return;
     bus.emit('shell:fired', {
       shellId: round.shellId ?? -1,

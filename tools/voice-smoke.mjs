@@ -287,8 +287,15 @@ try {
     .catch(() => {});
   // Checked now: the radio log keeps its last 64 calls, and the sweep adds 38 and the battle's own.
   const envelope = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));
+  // The battle behind can still end inside that window (a run on 11-08 heard the player's crew go down, then its own
+  // defeat presented over the smoke's victory): that is staging, named as such, not a radio that dropped the line.
+  const after = await page.evaluate(() => ({ result: window.__DEBUG.game.result ?? null,
+    timeS: +(window.__DEBUG.game.timeS ?? 0).toFixed(1) }));
+  report.battleBehindAfter = after;
   for (const id of ['battle_start', 'victory']) {
-    if (!envelope.includes(id)) fail(`bus event never played voice line: ${id}`);
+    if (envelope.includes(id)) continue;
+    if (id === 'victory' && after.result) fail(`the battle behind the smoke ended (${after.result} at ${after.timeS} s) inside the result window: staging, rerun`);
+    else fail(`bus event never played voice line: ${id}`);
   }
 
   // 5) every pack through the radio chain, isolated from the rest of the mix.

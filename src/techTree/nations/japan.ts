@@ -28,6 +28,9 @@ export const JAPAN_TREE: NationTree = Object.freeze({
     node({ id: 'type90a', tier: 8, line: 'type', lane: 1, parents: ['type90'], slot: 'line' }),
     node({ id: 'type10_tk_x', tier: 9, line: 'type', lane: 1, parents: ['type90a'], slot: 'line' }),
     node({ id: 'type10b', tier: 9, line: 'type', lane: 0, parents: ['type90a'], slot: 'line' }),
+    // 269: the Type 87 self-propelled anti-aircraft gun, the Type 74 chassis under the twin 35 mm turret, at V off the Type
+    // 74 (lane 1: lane 0 carries the Type 74's run to the Type 90, lane 2 the Hayate's to the Type 89)
+    node({ id: 'type87_aw', tier: 5, line: 'type', lane: 1, parents: ['type74'], slot: 'line' }),
     node({
       id: 'type10', tier: 10, line: 'type', lane: 1, parents: ['type10_tk_x', 'type10b'], slot: 'line',
       builds: ['type10_dozer'],

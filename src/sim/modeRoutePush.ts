@@ -17,16 +17,17 @@ interface RouteHull {
   _modeTargetZ?: number;
 }
 
-/** Push each due side's bots (`due`: each side's next push time, advanced here) toward `botTarget`'s point. */
+/** Push each due side's bots (`due`: each side's next push time, advanced here) toward `botTarget`'s point. Whether the
+ *  mode pushes at all is the ruleset's routePush; `_mode` stays for the two drivers' calls (improve-271 plan 012). */
 export function pushModeRoutes<Hull extends RouteHull>(
   hulls: readonly Hull[],
-  mode: string,
-  ruleset: Pick<MatchRuleset, 'bots' | 'mode'>,
+  _mode: string,
+  ruleset: Pick<MatchRuleset, 'bots' | 'mode' | 'routePush'>,
   timeS: number,
   due: { alpha: number; bravo: number },
   botTarget: (entity: Hull) => { x: number; z: number } | null | undefined,
 ): void {
-  if (mode === 'standard') return;
+  if (!ruleset.routePush) return;
   const alphaDue = timeS >= due.alpha, bravoDue = timeS >= due.bravo;
   if (!alphaDue && !bravoDue) return;
   if (alphaDue) due.alpha = timeS + rulesetRoutePush(ruleset, 'alpha').refreshS;

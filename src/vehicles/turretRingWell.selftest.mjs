@@ -465,8 +465,8 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
 
 // ---- a hulk: the ring merged into the one mesh, the placement exactly the ring-less bake's --------------------------
 {
-  const pop = bakeTankWreck(null, 't72b3', { seed: 4242, pop: true });
-  const bare = bakeTankWreck(null, 't72b3', { seed: 4242, pop: true, ring: false });
+  const pop = bakeTankWreck(null, 't72b3', { seed: 4242, state: 'turret_blown_off' });
+  const bare = bakeTankWreck(null, 't72b3', { seed: 4242, state: 'turret_blown_off', ring: false });
   assert.ok(pop && bare);
   assert.ok(pop.tris > bare.tris && pop.tris < bare.tris + 4000, `the well and the cut deck (${bare.tris} -> ${pop.tris})`);
   for (const key of ['budgetTris', 'hx', 'hz', 'h', 'placeHx', 'placeHz']) assert.equal(pop[key], bare[key], `the hulk's ${key} holds`);
@@ -474,8 +474,8 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   assert.deepEqual(pop.solids, bare.solids, 'its collision holds');
   assert.deepEqual(pop.shellSolids, bare.shellSolids, 'its shell record holds');
   assert.deepEqual(Array.from(pop.shadowGeo.attributes.position.array), Array.from(bare.shadowGeo.attributes.position.array), 'its shadow holds');
-  const plain = bakeTankWreck(null, 't72b3', { seed: 4242, pop: false });
-  const plainBare = bakeTankWreck(null, 't72b3', { seed: 4242, pop: false, ring: false });
+  const plain = bakeTankWreck(null, 't72b3', { seed: 4242, state: 'burnt_out' });
+  const plainBare = bakeTankWreck(null, 't72b3', { seed: 4242, state: 'burnt_out', ring: false });
   assert.equal(plain.tris, plainBare.tris, 'a plain kill\'s turret covers its ring: no well');
   assert.deepEqual(Array.from(plain.geo.attributes.position.array), Array.from(plainBare.geo.attributes.position.array));
   for (const bake of [pop, bare, plain, plainBare]) { bake.geo.dispose(); bake.shadowGeo?.dispose(); }

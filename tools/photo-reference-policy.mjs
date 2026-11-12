@@ -26,13 +26,27 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 268 (the owner, 2026-11-01: "now update the ... bmp 3 rok, bwp-1"): the BMP-3 in ROK service on the fleet's BMP-3
+  // hull and the BWP-1 under the RCWS-30, built from photographs with no 3D model to follow
+  'docs/references/photos/bmp-family-20261101.json':Object.freeze(['bmp3_rok','bwp1']),
+  // 268 (the owner, 2026-11-01: "now update the c2 protottype, c1 prototype s1 ... K2B ... k1e1"): the C1 and C2 Ariete
+  // prototypes, the K1E1 and the K2B, rebuilt from photographs; the prints the first three were registered to (the series
+  // C1 Ariete, the K1A1) show other variants and are deregistered (Main's ruling 2026-10-28); the K2B had no 3D target
+  'docs/references/photos/ariete-prototypes-20261101.json':Object.freeze(['c1_ariete_proto_serie1','c2_ariete_proto']),
+  'docs/references/photos/korea-k1e1-k2b-20261101.json':Object.freeze(['k1e1','k2b']),
+  // 269 (the owner, 2026-11-02: "also update the cheiftainn mk 3 and mk 9"): the Chieftain Mk 9 on the source-built Mk 10
+  // castings without Stillbrew (the Mk 5 to the Mk 9 looked externally the same), proved by photographs of its base Mk 6
+  // and of 1979-90 BAOR Chieftains, with no 3D model to follow
+  'docs/references/photos/chieftain-mk9-20261102.json':Object.freeze(['chieftain_mk9']),
   // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
   // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
   'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),
   'docs/references/photos/kf51-u-20261101.json':Object.freeze(['kf51_u']),
-  // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
-  // turret is kept as main built it, not measured to a model, so the id proves its packet
-  'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
+  // 270 (Main 2026-11-06, following the owner's 269 swap): the M2A2 Bradley, the shared Bradley hull under the classic
+  // turret rebuilt as an ODS turret in 269, which no registered model shows, so the id proves its packet. The M3A2 (the
+  // source turret since 269) is measured against that turret's model, the 42manako print (procedural-fidelity.html), and
+  // its 268 packet is retired.
+  'docs/references/photos/m2a2-bradley-20261106.json':Object.freeze(['m2a2_bradley']),
   // 269 (Main 2026-11-02, the South Africa line): the Semel and the Olifant Mk 1, Mk 1A and Mk 1B on the Centurion family,
   // and Project Loggim's TTD, each proved by its photographs and published dimensions with no 3D model to follow
   'docs/references/photos/olifant-centurions-20261102.json':Object.freeze(['semel','olifant_mk1','olifant_mk1a','olifant_mk1b']),
@@ -45,6 +59,9 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/aus-leopard-as1-20261102.json':Object.freeze(['leopard_as1']),
   'docs/references/photos/aus-abrams-20261102.json':Object.freeze(['m1a1_aim_sa_aus','m1a2_sepv3_aus']),
   'docs/references/photos/aus-redback-20261102.json':Object.freeze(['redback']),
+  // 269 (DECISIONS 2026-11-04, the Russian 152 mm line): the Object 292 on the T-80BV's build, the Molot and the Object 195
+  // on their own hulls, the T-14 152 on the T-14's, none with a 3D model to follow
+  'docs/references/photos/russia-152-20261104.json':Object.freeze(['object292','object477_molot','object195','t14_152']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

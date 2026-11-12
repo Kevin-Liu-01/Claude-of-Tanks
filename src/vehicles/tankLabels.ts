@@ -197,6 +197,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m41_jgsdf: { displayName: 'M41 (JGSDF)', shortName: 'M41 JGSDF', searchAliases: ['M41 Japan', 'JGSDF M41', 'Walker Bulldog Japan'] },
   m41dk1: { displayName: 'M41 DK-1', searchAliases: ['M41DK1', 'M41 DK1', 'Walker Bulldog DK', 'Danish M41', 'M41 Walker Bulldog'] },
   leo2a7dk: { displayName: 'Leopard 2A7 DK', searchAliases: ['Leopard 2A7DK', 'Danish Leopard 2A7', 'Leopard 2 A7 DK', 'Leopard 2A7 Denmark'] },
+  t95: { displayName: 'T95 (152 mm)', shortName: 'T95', searchAliases: ['T95', 'T28', 'T28 Super Heavy Tank', 'T95 GMC', 'T95 152', 'Doomturtle'] },
   t49: { displayName: 'T49', searchAliases: ['T49', 'T49 light tank', 'M41 Sheridan turret', 'Walker Bulldog 152'] },
   leo1a5dk1: { displayName: 'Leopard 1A5 DK-1', searchAliases: ['Leopard 1A5DK1', 'Leopard 1A5 DK1', 'Bøllebank', 'Bollebank', 'UN Leopard', 'Danish Leopard Bosnia'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
@@ -297,6 +298,39 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   pgz09: {
     displayName: 'PGZ-09', shortName: 'PGZ-09',
     searchAliases: ['PGZ09', 'Type 09 SPAAA', 'Type 09 SPAAG', 'Type 09 self-propelled anti-aircraft gun', '09式自行高炮'],
+  },
+  // 269: the second air-defence round
+  type87_aw: {
+    displayName: 'Type 87 Self-Propelled Anti-Aircraft Gun', shortName: 'Type 87',
+    searchAliases: ['Type 87 SPAAG', 'Type 87 AW', '87AW', 'Type 87 self-propelled anti-aircraft gun', '87式自走高射機関砲'],
+  },
+  marksman_t55: {
+    displayName: 'Marksman (T-55)', shortName: 'Marksman T-55',
+    searchAliases: ['Marksman', 'UK Marksman', 'Marconi Marksman', 'T-55 Marksman', 'T-55AM Marksman', 'ItPsv 90',
+      'ItPsv 90 Marksman'],
+  },
+  itpsv_leopard2: {
+    displayName: 'ItPsv Leopard 2 (Leopard 2 Marksman)', shortName: 'ItPsv Leopard 2',
+    searchAliases: ['Leopard 2 Marksman', 'Leopard 2A4 Marksman', 'ItPsv Leopard', 'Finnish Leopard 2 Marksman',
+      'Ilmatorjuntapanssarivaunu Leopard 2'],
+  },
+  lvkv9040: {
+    displayName: 'Lvkv 9040', shortName: 'Lvkv 9040',
+    searchAliases: ['Lvkv 90', 'Lvkv9040', 'Luftvärnskanonvagn 9040', 'Luftvarnskanonvagn 90', 'CV9040 AAV',
+      'CV90 anti-aircraft'],
+  },
+  k30_biho: {
+    displayName: 'K30 Biho', shortName: 'K30 Biho',
+    searchAliases: ['Biho', 'K-30', 'K30', 'K30 SPAAG', 'Flying Tiger', 'K30 비호'],
+  },
+  pza_loara: {
+    displayName: 'PZA Loara', shortName: 'PZA Loara',
+    searchAliases: ['Loara', 'Loara-A', 'PZA Loara-A', 'Przeciwlotniczy Zestaw Artyleryjski Loara'],
+  },
+  // 269: the M163 VADS
+  m163_vads: {
+    displayName: 'M163 VADS', shortName: 'M163',
+    searchAliases: ['M163', 'M163A1', 'VADS', 'Vulcan Air Defense System', 'M163 Vulcan', 'M741', 'M168 Vulcan', 'Vulcan SPAAG'],
   },
   m3a2_bradley: {
     displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
@@ -444,6 +478,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // t84bm_oplot_m (the welded Duplet turret before the armoured bustle compartment, in its wartime field kit) is the
   // 2000 serial T-84U Oplot, Object 478DU9. The new T-84BM Oplot-M (478DU9-1) and Oplot-T (478DU9-T) are bm_oplot_m and
   // bm_oplot_t. The ids stay: saves, rooms, replays and the Gallery key on them.
+  // release 269: the 152 mm line
+  object292: { displayName: 'Object 292', shortName: 'Obj. 292', searchAliases: ['Obiekt 292', 'Объект 292', 'T-80 152', 'LP-83'] },
+  object477_molot: { displayName: 'Object 477 Molot', shortName: 'Molot', searchAliases: ['Object 477A', 'Obyekt 477', 'Boxer', 'Hammer', 'Объект 477', 'Молот'] },
+  object195: { displayName: 'Object 195', shortName: 'Obj. 195', searchAliases: ['T-95', 'Obyekt 195', 'Объект 195', 'Sovershenstvovanie-88'] },
+  t14_152: { displayName: 'T-14 152', shortName: 'T-14 152', searchAliases: ['T-14 Armata 152', 'Armata 152 mm', 'T-14 2A83'] },
   t84: {
     displayName: 'Object 478DU2', shortName: 'Object 478DU2',
     searchAliases: ['T-84', 'T-84 prototype', 'T-84 Oplot', 'Obyekt 478DU2', 'Ob. 478DU2'],

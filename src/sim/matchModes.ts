@@ -467,6 +467,9 @@ interface ObjectiveCheckpoint {
   ball: BallState | null; ballActiveAtS: number; lastBallTouchS: number | null;
   /** The CTF raid's stages (round 8 Y2 fix-up r3: a migrated host staged every raider afresh); absent when none. */
   raids?: [string, RaidStage][];
+  /** Gravity Mode's boost caches (improve-271 plan 009: a migrated host dropped every cache on the ground and restarted
+   *  the drop clock): the next drop, the pickup sequence and the pickups. Absent in other modes and older checkpoints. */
+  caches?: { nextAtS: number; sequence: number; pickups: PickupState[] };
 }
 /** One raider's stage (flagBots.raidStageM): when it reached it, and whether it has gone in. */
 interface RaidStage { atS: number; go: boolean }
@@ -484,6 +487,9 @@ interface WaveCheckpoint {
     /** The attack's plan per bot (round 8 Y2 fix-up r3: a migrated host staged every attacker afresh); absent if none. */
     attack?: [string, AttackStage][] };
 }
+
+/** Why every viewer sees a hull its side has not spotted (the authority's spotting filter reads it). */
+export type ModeRevealReason = 'flag_carrier';
 
 export interface MatchModeResult {
   result: ObjectiveTeam | 'draw';
@@ -543,6 +549,9 @@ export interface MatchModeController<
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
   /** A bravo hunter's search record (round 8 Y2: receipts and probes read the phase), a copy; null before it has one. */
   huntSearchOf(entity: Pick<MatchModeEntity, 'id'>): HuntSearch | null;
+  /** The mode's named reveal of a hull to every viewer, or null (Main's ruling on audit finding 53: a flag carrier,
+   *  whose position its carried flag publishes). Allocation-free: the filter asks it for every hull and viewer. */
+  revealReason(entityId: string): ModeRevealReason | null;
 }
 
 
@@ -2782,9 +2791,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
   // Air Support: the reach a bot looks for enemy aircraft in (its roof gun's counter-air reach and a margin)
-  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
   // and the reach a gun with no ground target takes an aircraft at (a tank gun's practical anti-aircraft range)
-  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
+  const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;
@@ -2839,10 +2848,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     definition,
     ruleset,
     state,
-    usesElimination: id === 'standard' || id === 'realistic',
+    usesElimination: ruleset.elimination === true,
     airSupport: air,
     recordDestruction(victimId, killerId, supportKill = false) {
-      if (result || (objective !== 'zone_control' && !['drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'].includes(id)) || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
+      if (result || !ruleset.scoresKills || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
       const victim=entities.find(entity=>entity.id===victimId);
       const killer=entities.find(entity=>entity.id===killerId);
       if (!victim?.combat.destroyed || !killer || victim.modeActive===false || teamOf(victim)===teamOf(killer)) return;
@@ -2955,6 +2964,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     lineGuardFallbacks() {
       return lineGuardFallbackLog;
     },
+    revealReason(entityId) {
+      if (!ruleset.flagPitch?.carrierRevealed) return null;
+      const flag = flagCarriedBy(entityId);
+      return flag && flag.status === 'carried' ? 'flag_carrier' : null;
+    },
     captureCheckpoint(elapsedS) {
       // the wave rules the ruleset names (its horde, its assault), never a mode-id literal (round 3, the critic's E-R2-7)
       const waves: WaveCheckpoint | null = ruleset.horde || ruleset.assault ? {
@@ -2981,6 +2995,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           zones: ruleset.assault ? [] : zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
           ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
+          ...(ruleset.mars ? { caches: { nextAtS: nextMarsCacheAtS, sequence: pickupSequence, pickups: pickups.map((p) => ({ ...p })) } } : {}),
         } } : {}),
         ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}), ...(air ? { air: air.capture() } : {}) };
     },
@@ -3031,6 +3046,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         // each raider's stage as the old host had it (round 8 Y2 fix-up r3): when it reached it, whether it went in
         raidStaged.clear();
         for (const [key, staged] of saved.raids ?? []) if (finite(staged?.atS)) raidStaged.set(key, { atS: staged.atS, go: staged.go === true });
+        if (ruleset.mars && saved.caches) {
+          nextMarsCacheAtS = saved.caches.nextAtS; pickupSequence = saved.caches.sequence;
+          pickups.length = 0; pickups.push(...saved.caches.pickups.map((p) => ({ ...p })));
+        }
       }
       if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
     },

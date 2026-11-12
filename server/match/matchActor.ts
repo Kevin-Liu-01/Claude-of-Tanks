@@ -36,7 +36,7 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, SnapshotMeta, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { captureShellSnapshot, type QuantizedShellSnapshot, type SnapshotShellSource } from '../../src/sim/worldSnapshot.ts';
-import { dequantizePosition } from '../../src/mp/wire/quantize.ts';
+import { dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
 import { estimateEntityRowBytes } from '../../src/mp/wire/rows.ts';
 import { createEventPayloadCache } from '../../src/mp/wire/eventPayload.ts';
 import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
@@ -324,7 +324,7 @@ export interface MatchActorStats {
 export interface ResumeHintStats {
   applied: number;
   rejected: number;
-  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; noSeat: number; late: number };
+  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; tooHigh: number; tooFast: number; noSeat: number; late: number };
 }
 
 export interface MatchActor {
@@ -482,6 +482,14 @@ function clampI16(value: number): number {
   return value < -32768 ? -32768 : value > 32767 ? 32767 : value;
 }
 
+/** A resume hint's vertical speed bound (m/s): a hull falling from a ~45 m drop; a true row never climbs or falls faster. */
+const RESUME_HINT_MAX_VERTICAL_MPS = 30;
+/** A resume hint's gun pitch is clamped (never refused) to the gun's limits with this slack (rad): rounding must not refuse a true row. */
+const RESUME_HINT_PITCH_SLACK_RAD = 0.05;
+/** The resume hint's pitch limit (rad, either way) for a spec that declares no elevation or depression. */
+const RESUME_HINT_FALLBACK_PITCH_RAD = 0.6;
+const DEG_TO_RAD = Math.PI / 180;
+
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
@@ -528,14 +536,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   const publishFailures = new WeakSet<object>();
-  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase), its clock
-  // limit counting from the battle time already played.
+  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase); its battle
+  // clock continues from the newest frame's time (the HUD's): the authority runs its mode clock and its full clock limit
+  // on that one clock (272, improve-271 plan 010).
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
   const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
   const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
-  const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
-  const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
-    : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
 
   // ---- roster: seats first (entity ids in seat order), then bots
   const players: AuthoritativePlayerRecord[] = [];
@@ -588,7 +594,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const bound: { hook: LagCompensation | null } = { hook: null };
     authority = createAuthoritativeMatch({
       players, mapId, seed, countdownS, gameMode: mode, ruleset,
-      ...(effectiveBattleLimitS != null ? { battleLimitS: effectiveBattleLimitS } : {}),
+      ...(battleLimitS != null ? { battleLimitS } : {}), resumedAtS: resumedBattleTimeMs / 1000,
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
       ...(profile ? { profile } : {}),
@@ -647,6 +653,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const restoredTicks = new Int32Array(MAX_ENTITIES + 1).fill(-1);
   const restoredX = new Float64Array(MAX_ENTITIES + 1);
   const restoredZ = new Float64Array(MAX_ENTITIES + 1);
+  // the restored row's height (the entity's own, written before noteRestoredRow): bounds a hint's climb like its drive
+  const restoredY = new Float64Array(MAX_ENTITIES + 1);
   const hinted = new Uint8Array(MAX_ENTITIES + 1);
   // an entity this resumed actor has already driven from its seat's inputs: its pose is this authority's own, so a
   // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
@@ -654,7 +662,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
   // the tick the resumed loop started from (past resume.tick by the ticks the world stood still, MatchActorResume.dueAtMs)
   let resumedFromTick = resume ? resume.tick : 0;
-  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
+  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, tooHigh: 0, tooFast: 0, noSeat: 0, late: 0 } };
   let ended = false;
   let stopped = false;
   let verdict: MatchVerdict | null = null;
@@ -810,13 +818,29 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const z = dequantizePosition(hint.z);
     const allowedM = (hint.tick - restoredTick) * SIM_DT * topSpeedMps(entity) * 1.25 + 3;
     const movedM = Math.hypot(x - restoredX[entityId]!, z - restoredZ[entityId]!);
-    if (movedM > allowedM) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    if (!(movedM <= allowedM)) { refuse('tooFar'); actorLog.warn('resume hint refused', { player: client.playerId, movedM: Math.round(movedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    // (improve-271 plan 006) the other pose fields are bounded before the row is seated: a hull climbs no further than it
+    // could drive, never past its top speed (the mode's multiplier included), and its gun stays inside its own limits
+    // (clamped below). The angles are wrapped into one turn by their dequantization.
+    const climbedM = Math.abs(dequantizePosition(hint.y) - restoredY[entityId]!);
+    if (!(climbedM <= allowedM)) { refuse('tooHigh'); actorLog.warn('resume hint refused', { player: client.playerId, climbedM: Math.round(climbedM * 10) / 10, allowedM: Math.round(allowedM * 10) / 10 }); return; }
+    const speed = dequantizeVelocity(hint.speed);
+    const verticalSpeed = dequantizeVelocity(hint.verticalSpeed);
+    const multiplier = entity.modeSpeedMultiplier ?? 1;
+    const modeSpeed = Number.isFinite(multiplier) ? Math.max(1, multiplier) : 1;
+    if (!(Math.abs(speed) <= topSpeedMps(entity) * modeSpeed * 1.25) || !(Math.abs(verticalSpeed) <= RESUME_HINT_MAX_VERTICAL_MPS)) {
+      refuse('tooFast'); actorLog.warn('resume hint refused', { player: client.playerId, speed, verticalSpeed }); return;
+    }
     // The hint is the seat's newest row of its own hull from the host it lost, and seats as a row does: pose, ground
     // contact and body mode from its body bits, then the spring and ride on that pose (authorityRow.ts applyAuthorityRow,
     // the restore's own owner; round 3 A14). Before, the hint carried no body bits: its contact was read from its height
     // over the terrain field (a hull on a roof or a bridge read as airborne and dropped onto its support in a tick) and
     // the restored row's body mode stood under the newer pose (a hull that had righted came back tumbling).
     applyAuthorityRow(entity.state, hint);
+    const gun = entity.spec as { gunElevationDeg?: number; gunDepressionDeg?: number };
+    const maxPitch = typeof gun.gunElevationDeg === 'number' && Number.isFinite(gun.gunElevationDeg) ? gun.gunElevationDeg * DEG_TO_RAD + RESUME_HINT_PITCH_SLACK_RAD : RESUME_HINT_FALLBACK_PITCH_RAD;
+    const minPitch = typeof gun.gunDepressionDeg === 'number' && Number.isFinite(gun.gunDepressionDeg) ? -gun.gunDepressionDeg * DEG_TO_RAD - RESUME_HINT_PITCH_SLACK_RAD : -RESUME_HINT_FALLBACK_PITCH_RAD;
+    entity.state.gunPitch = Math.min(maxPitch, Math.max(minPitch, entity.state.gunPitch));
     hinted[entityId] = 1;
     resumeHints.applied++;
     actorLog.info('resume hint applied', { player: client.playerId, tick: hint.tick, restoredTick, movedM: Math.round(movedM * 100) / 100 });
@@ -1423,6 +1447,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       restoredTicks[entityId] = tick;
       restoredX[entityId] = x;
       restoredZ[entityId] = z;
+      restoredY[entityId] = entityByWireId.get(entityId)?.state.pos.y ?? Number.NaN;
       hinted[entityId] = 0;
       driven[entityId] = 0;
     },

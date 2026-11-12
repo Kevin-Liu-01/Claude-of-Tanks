@@ -186,6 +186,20 @@ export function installDrift(root) {
 }
 
 /**
+ * Why a checkout's checks must not run (272, plan 043), or null: its install departs from package-lock.json. The gate
+ * and the receipt runner refuse such a checkout, since a stale install can lack a tool (Oxlint) and the result cache keys
+ * PASSes on the lockfile, not on what is installed. A linked node_modules is read through its link. Never installs.
+ */
+export function installRefusal(root, drift = installDrift) {
+  const found = drift(root);
+  if (!found.length) return null;
+  const shown = found.slice(0, 12).map((line) => `  ${line}`);
+  if (found.length > shown.length) shown.push(`  ... and ${found.length - shown.length} more`);
+  return [`node_modules does not match package-lock.json (${found.length} difference${found.length === 1 ? '' : 's'}):`, ...shown,
+    'run npm ci'].join('\n');
+}
+
+/**
  * The fingerprint state of a tree: the fleet partition, the roster, every row, and per step either a decomposed tool key
  * or a fail-closed reason. `rows` may be injected (tests); otherwise one child process reads them.
  */

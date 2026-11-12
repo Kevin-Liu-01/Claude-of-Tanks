@@ -32,6 +32,7 @@ import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -426,6 +427,8 @@ export default {
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
     architecture: BUILDING_STYLES.autumn.kit,
+    // buildings-271 R4: the doorsteps (world/doorstepDressing.ts): pots, a bench, casks, logs and a cart by Amberford's 113 doors
+    doorsteps: 150,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
@@ -484,7 +487,7 @@ export default {
     // tanks) + harvest-season logistics dressing
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.autumn,
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 8, // the harvest is in — stubble plots + standing rows on both banks

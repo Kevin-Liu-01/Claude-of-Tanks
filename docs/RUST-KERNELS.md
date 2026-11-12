@@ -2,7 +2,26 @@
 
 The authority can answer its world queries on a WebAssembly build of `crates/cot-sim`. The kernels change no bit of
 the simulation: a match on them keeps every state digest of the same match on the TypeScript, so hosts and servers may
-mix them. They are on by default since 2026-10-25 (RUST-ENGINE-DECISION §9.3), with the TypeScript as the fallback.
+mix them. They are on by default since 2026-10-25 ("The decision", below), with the TypeScript as the fallback.
+
+## The decision (2026-10-25)
+
+The owner's ruling on the engine question, approved 2026-10-25 ("approved for all"):
+
+- **The hybrid: keep the three.js renderer and grow a Rust simulation core** under the TypeScript's interfaces, one
+  bit-exact kernel or whole subsystem at a time. No port to Bevy and no rewrite: a frame's time goes to render
+  submission (18 to 25 ms of main thread against 1.4 to 5.0 ms for the authoritative tick), so a Rust sim cannot buy
+  the frame rate back; a kernel earns its place by being bit-exact and owning a whole loop.
+- **Why Rust at all: determinism.** The TypeScript sim's `Math.*` results differ between Node and Chromium, between
+  operating systems and in Safari; a WebAssembly core with its own math gives the same bits everywhere.
+- **The kernels are on by default**, with the TypeScript as the fallback and the opt-outs below. Their gate is below
+  ("The default's gate") and their speed under "Measured".
+- **The renderer** stays three.js WebGL while the draw count comes down; a lean WebGPU renderer is a later candidate,
+  decided only on measurements. A native app wraps the web build first.
+- **Step 5, a solo battle's authority in a Worker, was tried and retired on 2026-10-29** by the owner's "one core,
+  two drivers" ruling (docs/ARCHITECTURE.md §1.6): a local battle never runs through the multiplayer client. Any
+  future off-thread local simulation must be a local driver, with no prediction or interpolation, and needs the
+  owner's OK after they have played it.
 
 ## What runs on them
 
@@ -51,9 +70,10 @@ it happens; a NaN the kernel answered (its ground's) passes.
 
 ## Turning them off
 
-- **Dedicated server:** on unless `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). The server compiles
-  `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once per process, so the deploy image must carry that file; one it lacks,
-  or that does not compile, logs `world kernels did not load` and the server plays on the TypeScript.
+- **LAN helper** (the one Node authority since the container left the tree, docs/MULTIPLAYER-V2.md §13.10): on unless
+  `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). It compiles `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once
+  per process, so its checkout must carry that file; one it lacks, or that does not compile, logs `world kernels did
+  not load` and it plays on the TypeScript.
 - **Browser host and solo battles:** on unless `?simKernels=ts`. The lazy chunks read the flag and carry the asset URL;
   nothing loads at boot. A module that does not arrive or compile leaves that host or battle on the TypeScript.
   - A multiplayer host's Worker fetches and compiles the module. The choice stays with the host: it is never sealed into
@@ -121,7 +141,7 @@ the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a 
   - sets `window.__SIM_KERNELS`'s `mode`, `source` (`solo` / `host`) and `reason`;
   - on a fallback, sends one telemetry note a session, `kernels:<source>:<reason>` (the entry telemetry's `sim_kernels`);
   - in development, writes one `console.info` line. A production build writes nothing to the console.
-- **Dedicated server:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
+- **LAN helper:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
   and serves it in `/metrics` as `kernels`.
 
 ## Receipts
@@ -133,6 +153,7 @@ the module's bytes by `HOST_KERNELS_FETCH_MS`), `compile`, `link`, `missing` (a 
 | `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
 | `node src/world/wasmKernelRefusals.selftest.mjs` | Each refusal named by the call it refused, asserted at the seam (a refused sample's NaN, a walk's missing entry, a replayed crater); a heap's start is the one it was given |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
+| `node tools/sim-kernel-manifest.selftest.mjs` (default tier) | The committed binary and every Rust source, Cargo file and toolchain pin match its manifest |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30 --base=scans` | The clearance scans' own share: A on the kernels less the scans |
@@ -155,7 +176,7 @@ porting the change to its Rust file; `cargo test` fails until both agree.
 ## Measured
 
 - The authority (server, multiplayer host): 16 a side, 3,600 ticks, digests identical at every check: Verdant −22 to
-  −24 %, Urban −21 %, Mars −18 % of the tick's CPU (RUST-ENGINE-DECISION §2).
+  −24 %, Urban −21 %, Mars −18 % of the tick's CPU (the decision's kernel measurements, 2026-10-25).
 - A solo battle in Chrome, 16 a side, pairs of 20 s runs (profiled): Verdant (four pairs) the sim step 2.57 → 2.37 ms
   a tick (−7.5 %), the support solve −25 %; Urban (three pairs) 2.51 → 2.26 ms (−10 %), the support solve −15 %. Only
   the support rides the kernels there; the rendered world's grids and rays, the AI and the shells stay TypeScript.

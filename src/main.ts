@@ -266,8 +266,9 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
+import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -1143,12 +1144,18 @@ const missionBrief = createMissionBrief();
 // flag — as one record every solo entry replaces whole once accepted (soloBattleEntry's recordIntent, retries included;
 // src/game/battleEntryIntent.ts)
 const battleEntryIntent = createBattleEntryIntent();
+// (improve-271 plan 034) the solo countdown opens the brief once per sortie: set when it opens it, reset when the count
+// rolls out and when the Garage takes the screen, so the BRIEF button can dismiss it during the count and a long warm
+// hold never re-opens a brief that had faded
+let briefShownForCountdown = false;
+bus.on('battle:rollout', () => { briefShownForCountdown = false; });
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
   if (active) {
     battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
+    briefShownForCountdown = false;
     lighting.setBattleLitSet(false);
   }
   garagePhasePresentation.setActive(active);
@@ -2432,7 +2439,8 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
+    blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
@@ -3405,7 +3413,7 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
  * A local battle (solo quick battle, campaign, Proving Ground, Watch, the Jev opponent): the local driver. The shared core
  * steps on the page (game/state.ts simStep), with input, the fixed step and the render in one frame. No match client,
  * prediction, interpolation, input-delay buffer, loopback, room or wire message: nothing from src/mp (the owner,
- * 2026-10-29: "rubberbanding on a LOCAL game"; RUST-ENGINE-DECISION §7 step 5, the solo sim Worker, is retired;
+ * 2026-10-29: "rubberbanding on a LOCAL game"; the solo sim Worker, step 5 of the kernel decision, is retired;
  * docs/ARCHITECTURE.md "One core, two drivers", tools/driver-boundaries.selftest.mjs).
  */
 function beginLocalBattleEntry(
@@ -4028,8 +4036,9 @@ const battleFrame = createBattleFrameRuntime({
       // batch 19: the rules of engagement sit under the count (Standard shows none)
       currentHud()?.setPreBattleRules(game.ruleset);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
-      if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
-        missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
+      if (game.gameMode === 'frontline_assault' && !briefShownForCountdown) {
+        briefShownForCountdown = true;
+        if (!missionBrief.isShowing()) missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
     // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)

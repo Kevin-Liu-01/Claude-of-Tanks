@@ -76,7 +76,7 @@ function harness({ steps, modes, timeoutMs = 60, acquire = async () => {}, mainB
   return { run: () => run({}, {}, 2002, null, tick, true, null, prefetch), workers, events, warnings };
 }
 
-const request = (specId, seed = 2002, pop = false) => ({ specId, options: { seed, pop, remnant: 0x4e5834 }, result: null });
+const request = (specId, seed = 2002, state = 'burnt_out') => ({ specId, options: { seed, state, remnant: 0x4e5834 }, result: null });
 const mainBakeOf = (calls) => function* (ctx, specId, options) {
   calls.push([ctx, specId, options]);
   yield { fine: true, progress: false, stage: `wreck-${specId}:construct` };
@@ -98,7 +98,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
   assert.deepEqual(second.result, { specId: 'marder1a3', seed: 2133, mainThread: true }, `${mode}: the next request too`);
   assert.deepEqual(calls.map(([ctx, id, options]) => [ctx, id, options]),
     [[{}, 'm551_sheridan', first.options], [{}, 'marder1a3', second.options]],
-    `${mode}: the worker's own bake of the same donor, seed, pop and remnant, on the main thread`);
+    `${mode}: the worker's own bake of the same donor, seed, damage state and remnant, on the main thread`);
   assert.deepEqual(acquired, ['m551_sheridan', 'marder1a3'], `${mode}: each donor's builder loads on the main thread`);
   assert.equal(h.workers.length, 1, `${mode}: one worker failure is the build's last worker`);
   assert.equal(h.workers[0].terminated, 1, `${mode}: the failed worker is terminated`);
@@ -246,7 +246,7 @@ for (const mode of ['silent', 'error-reply', 'onerror', 'worker-rejection']) {
   const control = bakeTankWreck({}, 't90am', real.options);
   try {
     assert.deepEqual(outputIdentity(real.result), outputIdentity(control),
-      'same donor, seed, pop and remnant: the same wreck as the worker bakes');
+      'same donor, seed, damage state and remnant: the same wreck as the worker bakes');
   } finally {
     for (const baked of [real.result, control]) { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); }
   }

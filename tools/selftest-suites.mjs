@@ -92,6 +92,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
+    'src/game/strikeOrder.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
+    'src/sim/strikeRuns.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
@@ -193,6 +197,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
     'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
+    // 269: the second air-defence round: the Type 87 on the Type 74 hull, the Marksman turret on the T-55 and Leopard 2A4,
+    // the Lvkv 9040 on the CV90 Mk 4, the K30 Biho on its K200 hull, the PZA Loara on the PT-91: frames, bores, sweeps
+    'src/vehicles/profiles/type87.selftest.mjs',
+    'src/vehicles/profiles/marksman.selftest.mjs',
+    'src/vehicles/profiles/lvkv9040.selftest.mjs',
+    'src/vehicles/profiles/k30Biho.selftest.mjs',
+    'src/vehicles/profiles/loara.selftest.mjs',
+    // 269: the M163 VADS on the M113 builder's M741: its frame, the Vulcan's rotor and its spin, the sweeps
+    'src/vehicles/profiles/m163.selftest.mjs',
+    // 2026-11-06: the owner's air-defence firepower (airDefenseFirepower.ts): the floor cycle, the output, the rounds, the racks
+    'src/vehicles/airDefenseFirepower.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
@@ -229,6 +244,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
     // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
     'src/vehicles/profiles/australia.selftest.mjs',
+    // the 152 mm line (owner 2026-11-04: "make a new russian tank called object 195"): the Object 292, the Object 477 Molot,
+    // the Object 195 and the T-14 152 in Russia's tree, tiers and photo packet at both qualities, each one's guns and kit
+    'src/vehicles/profiles/russia152.selftest.mjs',
     // 2026-11-08 round 8 s5-05: a variant built on a donor's build (the Australian and Ukrainian M1A1s, donorBuild.ts)
     // wears its own suit whatever row the donor has; its id is its own again after the donor build; two suited low builds
     // and a plain one, 6.8 s CPU at load 50 (2 s of it the fleet import)
@@ -345,6 +363,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/publicBuildEnv.selftest.mjs',
     'tools/vercel-output-immutable.selftest.mjs',
     'tools/typescriptToolchain.selftest.mjs',
+    // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
+    'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
@@ -382,6 +402,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gate-stowage.selftest.mjs',
     // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
     'tools/gate-oracle-pins.selftest.mjs',
+    // 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision
+    // recipe; the M3A3 registers its pinned excised print
+    'tools/oracle-width-audit.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
@@ -616,7 +639,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
     // 268: the M3A2 under the classic turret (its photo packet fixture)
     'src/vehicles/profiles/m3a2Bradley.selftest.mjs',
-    'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/ifvMantletAndBow.selftest.mjs',
@@ -1386,6 +1408,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
+    // 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled cable)
+    'src/vehicles/decorLivedIn.selftest.mjs',
+    // 270 (Main 2026-11-06: "the dock is a mission add-on, so it finds clear deck"): no mission seat over a stowage rack
+    'src/vehicles/stowageRackSeats.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
@@ -1583,6 +1609,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
+    'src/fx/volumeCardBody.selftest.mjs', // dust-orient-271: a media card's aspect is its body's shape in the world, never the screen's
     'src/fx/structureStages.selftest.mjs',
     // destruction-slabs 227 round 3: what a building's damage leaves hanging comes down (a roof's chimney and ladder, a mill's
     // sails, a loose room or face piece)
@@ -2150,6 +2177,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit M4: a hull the mode keeps off the field is neither spotted nor spotting; the linger ends on time
     'src/sim/spottingLife.selftest.mjs',
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
+    'src/sim/flagCarrierReveal.selftest.mjs', // Main's ruling on audit finding 53 (2026-11-09): the flag carrier is a named reveal
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage law
@@ -2438,6 +2466,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
+    // 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on a
+    // wheel turns, and rides the suspension, with it (tankFactoryCore seatWheelDressing)
+    'src/vehicles/wheelDressing.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
@@ -2491,6 +2522,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
+    // 269: a rotary cannon's rotor spinning while it fires (gunRotorSpin.ts, the M163 VADS's Vulcan)
+    'src/vehicles/gunRotorSpin.selftest.mjs',
     // 2026-11-02 audit M9: the hit/recoil hull rock is the visual's own spring; the sim never reads or carries it
     'src/vehicles/hullFlinchPresentation.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
@@ -2679,6 +2712,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
+    // buildings-271 (Main 2026-11-08, for the ground lane): each regional building's plinth, eave, apron and doors in world
+    // metres from the live plans, deterministic, its doors on their plinths facing out; counts pinned on Autumn and Caldera
+    'src/world/buildingContacts.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground
@@ -2922,6 +2958,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // buildings-270 (2026-11-05): the building-style table — one row per battlefield, its map's kit, measured against the
     // kit's houses, with its photographs; and each building's look from its row's variation, no two neighbours alike
     'src/world/maps/buildingStyleTable.selftest.mjs',
+    // buildings-271 (2026-11-06, Main: a type wrong for the place cannot be placed): every building type's years and cultures,
+    // every map's setting, and every generic type a map places fitting it
+    'src/world/maps/buildingTypes.selftest.mjs',
     'src/world/maps/regional/appearance.selftest.mjs',
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
@@ -2981,6 +3020,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
+    // wrecks-270 (2026-11-05): one donor baked in each of the eight damage states
+    'src/world/wreckStates.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',
@@ -3181,6 +3222,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // Patton continuity, low-turret and M48 roof-seating receipts
     'src/vehicles/profiles/pattonCastProportions.selftest.mjs',
     'src/vehicles/profiles/pattonGunClearance.selftest.mjs',
+    // release 268: the photo-route rebuilds (the C1 and C2 Ariete prototypes, the K1E1, the K2B, the BMP-3 (ROK) and
+    // the BWP-1 under the RCWS-30) hold their packets
+    'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
@@ -3218,6 +3262,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
+    // 272: every mode's picture (Deploy tile and plate, the landing's and the Field Manual's still); Air Support shipped blank
+    'src/ui/deployModeArt.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
@@ -3238,12 +3284,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
     'tools/garage-roster-settle.browser.selftest.mjs',
+    // 2026-11-11 (camo-picker-layout-272): the Garage's paint sheet opens on whole rows that fill it, with every name
+    // inside its swatch and no sideways scroll, docked and on a phone
+    'tools/camo-sheet-layout.browser.selftest.mjs',
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
     // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
     // it, at the tool's 1024x640 and a desktop's 1440x900
     'tools/mp-rooms-entry.browser.selftest.mjs',
+    // 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby and
+    // Deploy open, by mouse at 1920x1080 and 1200x819 and by touch at 390x844
+    'tools/couch-open.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program

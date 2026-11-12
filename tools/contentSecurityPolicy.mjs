@@ -8,7 +8,8 @@
 // kernels compile WebAssembly (src/world/wasmWorldKernels.ts, on since 252): 'wasm-unsafe-eval' allows that and nothing
 // else (never 'unsafe-eval'; Main 2026-10-25: production filed a report for every kernels compile).
 //
-// vercel.json sends it report-only for one round (deploy 243), then enforced. When an inline script changes:
+// vercel.json sent it report-only from deploy 243; it is enforced since 272 (the owner's 2026-10-23 decision: "enforced
+// (243+)"), so an inline script missing from it does not run in production. When an inline script changes:
 //   node tools/contentSecurityPolicy.mjs --write     rewrites the header value in vercel.json
 // tools/contentSecurityPolicy.selftest.mjs fails until it matches, and checks a built dist/ when one exists.
 import { createHash } from 'node:crypto';
@@ -17,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { SPECULATION_RULES_TAG, speculationRulesFor } from './viteSpeculationRules.ts';
 import { bundleSeed } from './viteResponsiveSeed.ts';
 
-export const CSP_HEADER = 'Content-Security-Policy-Report-Only';
+export const CSP_HEADER = 'Content-Security-Policy';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 /** The HTML entries the build emits (vite.config.ts build.rollupOptions.input). */

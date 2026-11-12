@@ -244,16 +244,22 @@ Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
   enemy (once per enemy per 30 s), 80 for an aircraft brought down, and 1 every 4 s.
 - **Call-ins** (cost, the caller's cooldown, the warning): recon pass 120 / 40 s / 3 s (a jet along a 600 m track
   through the mark spots every enemy within 160 m for 12 s, through `spotting.isSpotted`); artillery 300 / 60 s / 6 s
-  (ten M795 155 mm rounds over 5 s inside 35 m, 18 m blast); strafing run 400 / 75 s / 5 s (an A-10-class jet walks
-  28 GAU-8 30 mm API rounds down a 140 m lane along the line from the caller's hull to the mark); precision bomb
-  450 / 90 s / 7 s (a GBU-12 within 2 m of the laser spot, 22 m blast); AC-130 orbit 800 / 150 s / 8 s (the gunship's
-  own airframe, 30 mm and 152 mm, AI-flown for 30 s on a 120 m ring 180 m up, engaging only enemies its side has spotted
-  within 140 m). A side has at most two call-ins under way and one gunship; bots never take the last slot.
+  (ten M795 155 mm rounds over 5 s inside 35 m, 18 m blast); strafing run 400 / 75 s / 5 s (an A-10-class jet in a
+  15-degree dive walks 28 GAU-8 30 mm API rounds down a 140 m lane along the line from the caller's hull to the mark);
+  precision bomb 450 / 90 s / 7 s (a fast jet's GBU-12, released in a 40-degree dive 350 m up and about 375 m short, lands
+  within 8 m along the run and 2 m across it, 22 m blast); AC-130 orbit 800 / 150 s / 8 s (the gunship's own airframe,
+  30 mm and 152 mm, AI-flown for 30 s in a left-hand pylon turn on a 140 m ring 180 m up, engaging only enemies its side
+  has spotted inside the ring). A side has at most two call-ins under way and one gunship; bots never take the last slot.
 - **The warning.** A call's record is public the moment it is made: both sides see its footprint on the ground and the
   minimap with its countdown, a crew inside it gets the INCOMING plate (and the sound), and no round of it arrives before
   the warning has run (`sim/airSupport.selftest.mjs` checks every arrival; the balance probe counts any early one).
-- **Aircraft** are not entities: each flies a path derived from its record alone (`aircraftPose`), the one the
-  presentation draws and the authority tests rounds against. A round of the other side through its sphere (jet 8 m,
+- **Aircraft** are not entities: each flies its run, derived from its record alone (`sim/strikeRuns.ts`, air-support-runs-272):
+  one description per kind gives the flight (ingress from about 600 m to 1.3 km out at speed and altitude, the attack lined
+  up on the footprint's axis, a banked climbing egress; no jump, no instant turn, never sideways), the release points (the
+  GAU-8 under the nose, the bomb from the jet's pylon with the jet's velocity, the AC-130's guns from its left side) and
+  the footprint (the strafing lane, the bomb's ellipse long along the heading, the AC-130's ring at the radius it flies,
+  the battery's circle). The presentation draws it, the authority fires from it and tests rounds against it, and
+  `sim/strikeRuns.selftest.mjs` pins that they agree. An aircraft can be shot until it has flown its run out. A round of the other side through its sphere (jet 8 m,
   gunship 16 m) costs it the round's damage (jets 600 hp, recon 400, gunship 1400); roof stations engage aircraft with
   their counter-drone shares x4 at 1.5x their reach, laid early on an inbound aircraft and led by their rounds' flight;
   a bot's main gun with no ground target takes an aircraft it can elevate to within 900 m. Brought down, the strike ends.
@@ -262,7 +268,9 @@ Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
   hold when nobody is spotted (one a side every 30 s). A bot inside a footprint takes the `evade` mission out of it; the
   gunship's ring is answered with guns.
 - **The strike view**: X (or the binoculars on a phone) raises binoculars over the scope's camera; 1-5 pick the call-in,
-  the trigger calls it, X / Esc / the right button lower them. The reticle and every footprint are painted on whatever
+  the trigger calls it, X / Esc / the right button lower them. The order has one owner (`game/strikeOrder.ts`): the plate
+  reads ready only when the authority's own rule would take the call (the view carries each kind's refusal), CALLED only
+  once the authority has taken it, and a refusal shows its reason (`game/strikeOrder.selftest.mjs`). The reticle and every footprint are painted on whatever
   surface is there by a term of the aerial post pass (`engine/strikeMarks.ts`: at most eight marks, a fixed uniform block,
   nothing when none is up).
 - **Wire**: no layout change. Strafe, bomb and gunship use the u16's three spare action bits; artillery and recon reuse the
@@ -271,7 +279,8 @@ Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
   impacts are shown to every viewer (they leave the aircraft, not the caller's hull).
 - **Checks by hand**: `node tools/air-support-shots.mjs --out=DIR [--only=desktop|phone]` films the strip, the strike
   view for each call-in and each strike's warning, flight and impact under the capture lock, and measures the marks'
-  frame cost on and off; `node tools/mode-balance-probe.mjs --mode=air_support --map=verdant --seeds=1-24 --jobs=5
+  frame cost on and off (`--runs --only=desktop`: each call-in's run as a frame sequence from a chase or wide camera, each
+  frame logging the airframe's offset from its run); `node tools/mode-balance-probe.mjs --mode=air_support --map=verdant --seeds=1-24 --jobs=5
   --out=DIR --tag=as` runs the seeded bot battles (seeds take commas: `--seeds=9,11,12`).
 
 ## Asymmetric teams and progression

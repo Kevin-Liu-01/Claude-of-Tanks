@@ -257,6 +257,8 @@ export const TOKENS = {
   'btn-disabled-ink': '#9a9a95',
   'btn-press-drop': '1px',
   'btn-primary-bevel': 'inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.18)',
+  'btn-primary-lift': 'inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.18),0 12px 32px rgba(0,0,0,.35)',
+  'btn-primary-focus': '0 0 0 2px #07090b,0 0 0 4px #f6f3ec,inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.18)',
   'chip-fill': 'rgba(246,243,236,.03)',
   'chip-edge': 'rgba(246,243,236,.38)',
   'chip-fill-on': 'rgba(240,160,48,.12)',

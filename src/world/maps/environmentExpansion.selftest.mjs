@@ -199,9 +199,10 @@ for (const config of maps) {
   const settlementCeiling = budget.settlement ?? (label === 'copper_mesa' ? 40 : label === 'oasis' ? 32 : plannedSites ? 26 : 18);
   assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
-  // the map-vehicles lane (2026-10-06, the period ruling): five period hulks, or none on a 1944 front the public fleet
-  // has no tank of (mapQuality.selftest)
-  assert.equal(config.props.tankWrecks.count, config.props.tankWrecks.era === 'ww2' ? 0 : 5, `${label}: fixed five-wreck authoring budget`);
+  // (wrecks-270) 8 to 12 hulks: the period's, or on a 1944 front today's armour of its nations (maps/wreckCasts.ts,
+  // mapQuality.selftest)
+  assert.ok(config.props.tankWrecks.count >= 8 && config.props.tankWrecks.count <= 12,
+    `${label}: the cast's wreck budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);
   // (item 31, Longleaf round 4, 2026-10-11, the gauntlet's wave 376 "no haze to give the distance depth": a humid Gulf

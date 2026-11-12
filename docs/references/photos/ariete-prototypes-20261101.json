@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "c1_ariete_proto_serie1": {
+      "name": "C1 Ariete Prototype (Serie 1)",
+      "authority": "The owner, 2026-11-01: \"now update the c2 protottype, c1 prototype s1, ariete preserie ...\". Release 268 (item/italy-korea-bmp-267, profiles/italy.ts buildArieteMkSteps) refits the 1986-88 C1 prototype from photographs; no free photograph of the six prototypes exists, so the series C1 Ariete, the closest sibling (same hull, turret, gun and running gear), is the photographic reference. Its registered oracle ariete_c1_arrafi.glb shows the series C1, another variant, and is unregistered (Main's ruling 2026-10-28). It won its blind A/B against the previous build in two rounds, 2-0 each (arieter1 and arieter2). Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Ariete_front_view.JPG",
+        "https://commons.wikimedia.org/wiki/File:Carro_ariete_di_lato.JPG",
+        "https://commons.wikimedia.org/wiki/File:Ariete_tank.JPG",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_132nd_Tank_Regiment_Ariete_main_battle_tank_from_above.jpg",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_Ariete_main_battle_tank.jpg",
+        "https://commons.wikimedia.org/wiki/File:SETC_Italy_(26890721722).jpg",
+        "https://en.wikipedia.org/wiki/Ariete"
+      ],
+      "widthM": 3.986,
+      "overallLengthM": 10.637,
+      "tallestM": 4.033,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule), on the spec's owner gameplay enlargement of the C1 chassis (x1.10: the published C1's 7.59 m hull, 9.67 m overall and 3.61 m over the skirts). Width over the track guards; length from the stern to the 120 mm muzzle with the gun forward. Tallest is the tip of the whip antenna; the turret roof fittings stand 2.87 m.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    },
+    "c2_ariete_proto": {
+      "name": "C2 Ariete Prototype",
+      "authority": "The owner, 2026-11-01: \"now update the c2 protottype, c1 prototype s1, ariete preserie ...\". Release 268 (item/italy-korea-bmp-267, profiles/italy.ts buildArieteMkSteps) rebuilds the C2 prototype from five Italian Army photographs of the real Ariete C2 (acceptance trials, the Cavalry School, the first serial vehicle): bolted cheek, shoulder and bustle plates, armour-block skirts over the front of the run, the panoramic commander's sight and the loader's shielded 12.7 mm. Its registered oracle ariete_c1_arrafi.glb shows the series C1, another variant, and is unregistered (Main's ruling 2026-10-28). It won its blind A/B against the previous build in two rounds, 2-0 each (arieter1 and arieter2). Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_Ariete_C2_main_battle_tank_during_acceptance_trials_01.jpg",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_Ariete_C2_main_battle_tank_during_acceptance_trials_02.jpg",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_Ariete_C2_main_battle_tank_during_acceptance_trials_03.jpg",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_Cavalry_School_Ariete_C2_main_battle_tank_during_a_crew_training_exercise_2024.jpg",
+        "https://commons.wikimedia.org/wiki/File:Italian_Army_-_Presentation_of_the_first_serial_production_Ariete_C2_main_battle_tank_-_July_2025.jpg",
+        "https://en.wikipedia.org/wiki/Ariete"
+      ],
+      "widthM": 4.06,
+      "overallLengthM": 10.637,
+      "tallestM": 4.033,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule), on the spec's owner gameplay enlargement of the C1 chassis (x1.10; the real C2 keeps the C1's 7.59 m hull). Width over the owner-ordered field net's garnish on the skirts (1.99 m a side over the hull armour). Length from the stern to the 120 mm muzzle with the gun forward. Tallest is the tip of the whip antenna; the turret roof stands 3.19 m.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    }
+  }
+}

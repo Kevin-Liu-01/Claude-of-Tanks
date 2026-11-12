@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BANK_KIND_CODE, BUILT_ENVIRONMENT, builtEnvironmentFor, watersideFor } from './builtEnvironmentTable.ts';
+import { BANK_KIND_CODE, BUILT_ENVIRONMENT, PAVED_GROUND_MAX, builtEnvironmentFor, pavedGroundLocal, pavedGroundTest, watersideFor } from './builtEnvironmentTable.ts';
 import { MAP_IDS } from './mapIds.ts';
 import { getMapConfig } from './index.ts';
 import { BOAT_FAMILIES } from './boatHulls.ts';
@@ -69,5 +69,38 @@ for (const id of MAP_IDS) {
   }
 }
 
+// (built-env-270b) the open built ground: each piece inside the battlefield's square with a sensible size, a named surface
+// from the catalogue, at most PAVED_GROUND_MAX surfaced pieces a map (the material's uniforms), its frame a rotation (the
+// mask stamp and the shader share it), and the vegetation test true on it and false off it
+let groundPieces = 0;
+for (const id of MAP_IDS) {
+  const grounds = BUILT_ENVIRONMENT[id].roads.ground ?? [];
+  groundPieces += grounds.length;
+  assert.ok(grounds.filter((g) => g.surface).length <= PAVED_GROUND_MAX, `${id}: at most ${PAVED_GROUND_MAX} surfaced grounds`);
+  const test = pavedGroundTest(id);
+  assert.equal(test === null, grounds.length === 0, `${id}: the vegetation's ground test exists exactly where grounds do`);
+  for (const g of grounds) {
+    assert.ok(Math.abs(g.x) + g.hw < 512 && Math.abs(g.z) + g.hl < 512 || Math.hypot(g.x, g.z) + Math.hypot(g.hw, g.hl) < 512 * Math.SQRT2,
+      `${id}: ${g.what} inside the battlefield`);
+    assert.ok(g.hw >= 1 && g.hl >= 1 && g.hw <= 60 && g.hl <= 60, `${id}: ${g.what} 2-120 m a side`);
+    if (g.surface) assert.ok(g.surface in ROAD_SURFACE_CODE, `${id}: ${g.what} names a catalogue surface`);
+    assert.ok(g.what.length > 10, `${id}: each ground says what it is`);
+    const [cx, cz] = pavedGroundLocal(g, g.x, g.z);
+    assert.ok(Math.abs(cx) < 1e-9 && Math.abs(cz) < 1e-9, `${id}: the frame is centred`);
+    const [lx, lz] = pavedGroundLocal(g, g.x + 3, g.z + 4);
+    assert.ok(Math.abs(Math.hypot(lx, lz) - 5) < 1e-9, `${id}: the frame is a rotation`);
+    assert.ok(test(g.x, g.z), `${id}: the vegetation test holds at ${g.what}'s centre`);
+  }
+}
+assert.ok(groundPieces > 0, 'some rows lay open ground');
+{
+  // the material's arrays are sized 8 in its source (the ownership receipt reads literal declarations)
+  const terrainSrc = (await import('node:fs')).readFileSync(new URL('../terrain.ts', import.meta.url), 'utf8');
+  assert.equal(PAVED_GROUND_MAX, 8, 'the table and the material agree on 8 surfaced grounds');
+  assert.ok(terrainSrc.includes('uniform vec4 uPaveGround[8];') && terrainSrc.includes('uniform vec4 uPaveGroundB[8];')
+    && terrainSrc.includes('for (int gi = 0; gi < 8; gi++) {'), 'the material declares and loops over 8 grounds');
+}
+assert.equal(builtEnvironmentFor('studio-probe'), null);
+
 console.log(`builtEnvironmentTable.selftest: ${MAP_IDS.length} rows, ${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].civic).length} civic styles, `
-  + `${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paved).length} paved catalogues`);
+  + `${MAP_IDS.filter((id) => BUILT_ENVIRONMENT[id].roads.paved).length} paved catalogues, ${groundPieces} pieces of open ground`);

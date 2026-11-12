@@ -6,7 +6,11 @@
 //        [--pair-minutes=10]
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
-//               "maps": ["urban", ...], "poses": ["street", ...], "posesByMap": { "urban": ["shore"] } }, ...]
+//               "maps": ["urban", ...], "poses": ["street", ...], "posesByMap": { "urban": ["shore"] },
+//               "customByMap": { "autumn": [{ "name": "place", "cam": [x, eyeOverGround, z], "at": [x, yOverGround, z],
+//               "fov": 60 }] } }, ...]
+// (built-env-270b) a custom pose is fixed in the world (its heights over the ground there), framed on every build alike:
+// a round's own targets (a square, an approach, a bank), chosen to keep treeline skylines out of the frame's middle.
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first (job, map) pair
 // staged while it waits, every pair on its own page inside the hold, checkpoint() between pairs. Its poses, all at the
@@ -41,6 +45,7 @@ import { censusShotView } from './visual-census.mjs';
 import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 import { civicPavedRooms } from '../src/world/civic/plans/index.ts';
+import { builtEnvironmentFor } from '../src/world/maps/builtEnvironmentTable.ts';
 
 const TOOL = 'built-env-shots';
 const DEVICES = Object.freeze({
@@ -75,6 +80,13 @@ function parse(argv) {
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
     for (const p of job.poses) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
+    for (const [id, list] of Object.entries(job.customByMap ?? {})) {
+      if (!job.maps.includes(id)) throw new Error(`${job.name}: custom poses for ${id}, which the job does not shoot`);
+      for (const c of list) {
+        if (!/^[a-z0-9-]+$/.test(c.name) || POSES.includes(c.name)) throw new Error(`${job.name}: custom pose name ${c.name}`);
+        if (c.cam?.length !== 3 || c.at?.length !== 3) throw new Error(`${job.name}: ${id}-${c.name} needs cam and at [x, y, z]`);
+      }
+    }
     if (!existsSync(path.join(job.dist, 'index.html'))) throw new Error(`${job.dist} has no build`);
   }
   return out;
@@ -363,6 +375,37 @@ async function stageMap(entry, mapId) {
   entry.mapId = mapId;
 }
 
+/**
+ * (built-env-270b, Main 11-08: "a per-frame dark-band check ... so a vote can't pass a black street again") the frame's
+ * street points (page side): a grid of screen points marched to the ground, kept where the ground is a road's core
+ * (within 3 m of a centreline) or a row's open ground; each { u, v } in 0..1 of the frame. Both arms of a pair share the
+ * terrain, so a pair's points agree; tools/built-env-darkband.py reads them.
+ */
+function pageStreetSamples({ cols, rows, grounds }) {
+  const D = window.__DEBUG, hf = D.world.heightField, cam = D.camera, V = cam.position.constructor;
+  cam.updateMatrixWorld(); cam.updateProjectionMatrix?.();
+  const inGround = (x, z) => grounds.some((g) => {
+    const yaw = (g.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw), dx = x - g.x, dz = z - g.z;
+    return Math.abs(dx * c - dz * s) < g.hw - 0.5 && Math.abs(dx * s + dz * c) < g.hl - 0.5;
+  });
+  const out = [];
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const u = (i + 0.5) / cols, v = (j + 0.5) / rows;
+    const o = cam.position.clone(), d = new V(u * 2 - 1, 1 - v * 2, 0.5).unproject(cam).sub(o).normalize();
+    if (d.y >= -0.01) continue;
+    // march to the ground: 0.5 m steps out to 400 m, then a bisection
+    let t0 = 0, t1 = -1;
+    for (let t = 0.5; t < 400; t += 0.5) { const p = o.clone().addScaledVector(d, t); if (p.y <= hf.getHeightAt(p.x, p.z)) { t1 = t; break; } t0 = t; }
+    if (t1 < 0) continue;
+    for (let k = 0; k < 12; k++) { const tm = (t0 + t1) / 2, p = o.clone().addScaledVector(d, tm); if (p.y <= hf.getHeightAt(p.x, p.z)) t1 = tm; else t0 = tm; }
+    const p = o.clone().addScaledVector(d, t1);
+    if ((hf.getWaterMaskAt?.(p.x, p.z) ?? 0) > 0.5) continue;
+    const core = hf._roadDist(p.x, p.z) < 3.0, ground = inGround(p.x, p.z);
+    if (core || ground) out.push({ u: +u.toFixed(4), v: +v.toFixed(4), road: core, ground, m: +t1.toFixed(1) });
+  }
+  return out;
+}
+
 function posesFor(plan, wanted) {
   const out = [];
   const eye = (p, run, fov = 60) => ({ cam: [p.x, EYE, p.z], at: [p.x + p.dx * run, 0.5, p.z + p.dz * run], fov });
@@ -392,6 +435,7 @@ async function shootMap(entry, options, frames) {
   const receipt = { plan, poses: {}, missing: [] };
   const poses = posesFor(plan, options.poses);
   receipt.missing = options.poses.filter((p) => !poses.some((q) => q.name === p));
+  for (const c of options.custom ?? []) poses.push({ name: c.name, at: { x: c.cam[0], z: c.cam[2] }, pose: { cam: c.cam, at: c.at, fov: c.fov ?? 60 } });
   for (const pose of poses) {
     const resolved = await page.evaluate(externalPoseScript(pose.pose));
     await sleep(900);
@@ -412,10 +456,11 @@ async function shootMap(entry, options, frames) {
     }
     const file = path.join(frames, `${mapId}-${pose.name}.png`);
     await page.screenshot({ path: file, type: 'png' });
+    const streetSamples = await page.evaluate(pageStreetSamples, { cols: 96, rows: 54, grounds: builtEnvironmentFor(mapId)?.roads.ground ?? [] });
     const grassShot = await page.evaluate(pageFreezeGround, false);
     receipt.poses[pose.name] = { resolved, at: pose.at, grassSettled: settled, grass: { settled: grass, shot: grassShot }, clouds: { timeS: CLOUD_TIME_S, frames: CLOUD_FRAMES },
       worldTime: { timeS: WORLD_TIME_S, uniformsPinned: timesPinned },
-      file: path.basename(file) };
+      streetSamples, file: path.basename(file) };
   }
   receipt.errors = entry.errors.splice(0);
   return receipt;
@@ -483,7 +528,7 @@ async function main(argv) {
           const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
           if (live !== mapId) await stageMap(entry, mapId);
           entry.staged++;
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses }, job.frames);
+          const receipt = await shootMap({ ...entry, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses, custom: job.customByMap?.[mapId] }, job.frames);
           receipt.ms = Date.now() - started;
           job.manifest.maps[mapId] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);

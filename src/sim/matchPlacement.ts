@@ -12,6 +12,7 @@ import {
 } from './deployment.ts';
 
 import * as detMath from './detMath.ts';
+import { objectivePlacementFor } from './matchRuleset.ts';
 export interface PlacementPoint { x: number; z: number }
 interface PlacementSpawn extends PlacementPoint { yaw: number }
 export interface PlacementTerrain {
@@ -474,25 +475,28 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
 
   const centers = { alpha: { ...anchors.alpha }, bravo: { ...anchors.bravo } };
-  if (mode === 'capture_the_flag' || mode === 'turbo_ball') {
-    const radius = mode === 'turbo_ball' ? 18 : 12;
-    const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
+  // the ruleset's objective footprint (each side's flag base or goal) and middle reserve (the kick-off, the extraction)
+  const { objectiveFootprint = null, middleReserve = null } = objectivePlacementFor(mode) ?? {};
+  if (objectiveFootprint) {
+    const radius = objectiveFootprint.radiusM;
+    const halfExtent = objectiveFootprint.arena ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
     for (const [team, half] of [['alpha', -1], ['bravo', 1]] as const) {
       Object.assign(centers[team], reserve(anchors[team], { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent }, `base-${team}`, half));
     }
   }
-  const middle = mode === 'turbo_ball'
-    ? reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M }, 'kickoff')
-    : mode === 'ac130' ? reserve(originalMiddle, {radius:30,relief:7,normalY:OBJECTIVE_NORMAL_Y,solidOnly:true}, 'extraction') : originalMiddle;
+  const middle = !middleReserve ? originalMiddle : reserve(
+    middleReserve.kind === 'kickoff' ? MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle : originalMiddle,
+    { radius: middleReserve.radiusM, relief: middleReserve.reliefM, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true,
+      ...(middleReserve.arena ? { halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M } : {}) }, middleReserve.kind);
   // the flag bases / goals on the axis (objectiveAxisM): the middle ± half the span along the reserved bases' axis (the
   // mode controller's own frame), each moved by the objective search to ground the bases' footprint proves
   const objectiveSpan = options.objectiveAxisM ?? null;
   let objectives: MatchPlacement['objectives'] = null;
-  if ((mode === 'capture_the_flag' || mode === 'turbo_ball') && objectiveSpan != null) {
+  if (objectiveFootprint && objectiveSpan != null) {
     const bx = centers.bravo.x - centers.alpha.x, bz = centers.bravo.z - centers.alpha.z, span = detMath.hypot(bx, bz) || 1;
     if (objectiveSpan < span) {
-      const radius = mode === 'turbo_ball' ? 18 : 12;
-      const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
+      const radius = objectiveFootprint.radiusM;
+      const halfExtent = objectiveFootprint.arena ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
       const footprint = { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent };
       const ax = bx / span, az = bz / span;
       const at = (side: -1 | 1) => ({ x: middle.x + ax * side * 0.5 * objectiveSpan, z: middle.z + az * side * 0.5 * objectiveSpan });

@@ -24,7 +24,7 @@ import { createPicker, readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
-import { createInfoButton } from './contextInfo.ts';
+import { closeContextInfo, createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
@@ -39,7 +39,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, closeSurfacesWithin, openSurface, surfaceHolds, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
 import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
@@ -236,7 +236,7 @@ interface GarageOptions {
   }) => Promise<unknown>;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
-  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
+  readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string; readonly gameMode: GameModeId }) => void;
   readonly onStudioIntent?: () => void;
   /** Open the Studio (main.ts: its lazy access boundary's own open, the one F8 takes in the Garage). */
   readonly onStudio?: () => void;
@@ -341,14 +341,19 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
 // (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
 const FIT_SHRINK_PX = 10;
 const FIT_STRETCH_PX = 36;
+/** A docked paint swatch gives up to half its picture's 48 px basis (showroom.css) to bring one more row in: its picture
+ *  takes the row's height, so its name keeps its lines (owner 11-11: two rows missed a 1920 sheet by 11 px, and one row
+ *  stood over an empty strip). */
+const CAMO_FIT_SHRINK_PX = 24;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
  * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic). `fill` (a phone's sheet)
  * leaves no strip empty under those rows while more wait below: its rows take one height, the tallest tile's give or take
  * what brings in a row that misses by a few pixels or fills what is left over, and the scroll stops on them (garage.css),
- * so the window stays whole wherever it scrolls.
+ * so the window stays whole wherever it scrolls. `shrink` is how far a row may give to bring the next one in (the docked
+ * paint sheet's swatches give more: their picture takes the row's height).
  */
-function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
+function fitWholeRows(grid: HTMLElement, peek = true, fill = false, shrink = FIT_SHRINK_PX): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
   grid.style.gridAutoRows = '';
@@ -365,7 +370,7 @@ function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
       const rows = room - (parseFloat(style.paddingTop) || 0) + gap;
       if (tallest > 0) {
         let count = Math.max(1, Math.floor(rows / (tallest + gap)));
-        if (tallest - (rows / (count + 1) - gap) <= FIT_SHRINK_PX) count += 1;
+        if (tallest - (rows / (count + 1) - gap) <= shrink) count += 1;
         const height = Math.min(tallest + FIT_STRETCH_PX, rows / count - gap);
         grid.style.gridAutoRows = `${Math.floor(height * 100) / 100}px`;
       }
@@ -848,12 +853,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
     // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
     `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
-    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle
-    `<button type="button" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
-    `${uiIconSVG('phone', 20)}<span>${t('couch.entry')}</span></button>` +
-    `<button type="button" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
+    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle. Couch and Watch are the kit's
+    // secondary and Deploy its primary (components.css .cot-c-btn): one family, its focus, press and unavailable states
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
+    `${uiIconSVG('couch', 20)}<span>${t('couch.entry')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
     `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
-    `<button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `<button type="button" class="cot-c-btn cot-c-btn--primary" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
     // the launch's estimate and the key hints load with deployScreen.ts (972c9575b3); the extra </div> closes Watch's .cot-deploy-acts
     `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
@@ -2054,8 +2060,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
     // whole rows, as the equipment grid's (the r26 critic read the paint grid's 40 % peek, dimmed to a quarter, as a row
-    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below
-    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false));
+    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below. Docked, they fill the sheet (owner 11-11:
+    // a fit that only dropped the row that missed left one row of swatches over an empty half sheet at 900 to 1920); the
+    // swatch's picture takes the row's height (showroom.css)
+    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false, document.body.dataset.cotPanels === 'persistent', CAMO_FIT_SHRINK_PX));
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
@@ -4202,8 +4210,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   battleMenu.addEventListener('click', (event) => {
     if ((event.target as Element | null)?.closest('[data-battle-close]')) closeBattleMenu({ restoreFocus: true });
   });
+  // (272) the focus a surface opened from Deploy takes (the couch lobby: a body-level modal standing on Deploy) stays
+  // Deploy's: read as a leave, it closed Deploy and the stack took the new surface with it
   const leavesDeploy = (event: FocusEvent) => event.relatedTarget instanceof Node
-    && !battleControl.contains(event.relatedTarget) && !battleMenu.contains(event.relatedTarget);
+    && !battleControl.contains(event.relatedTarget) && !surfaceHolds(deploySurface, event.relatedTarget);
   battleControl.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   battleMenu.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
@@ -4226,7 +4236,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!selectedId) return;
       try {
         if (battleMode === 'solo') {
-          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId() });
+          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId(), gameMode: battleGameMode });
         } else {
           // Opening a room is not solo-battle intent. Warming the bot roster and
           // current garage map here made the lobby compete with irrelevant
@@ -4647,8 +4657,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
     setupWatch.hidden = range;
-    // a couch battle plays the couch modes (COUCH_RULES), never inside a room
-    setupCouch.disabled = !solo || !isCouchMode(battleGameMode) || !opts.onCouch;
+    // a couch battle plays the couch modes (COUCH_RULES), never inside a room; unavailable, the button says why (the kit's
+    // hover tip, components/hoverTip.ts)
+    const couchOff = !opts.onCouch ? 'couch.unavailable' : !solo ? 'couch.off.room' : !isCouchMode(battleGameMode) ? 'couch.off.mode' : '';
+    setupCouch.disabled = Boolean(couchOff);
+    if (couchOff) setupCouch.dataset.tip = t(couchOff);
+    else delete setupCouch.dataset.tip;
     setupCouch.hidden = range;
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
@@ -4952,11 +4966,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '.cot-settings-slot').addEventListener('pointerdown', () => {
     setGaragePanel('');
   });
+  /** A shown modal box ([aria-modal="true"], laid out) outside the Garage's own root: the tech tree, a dossier, a kit modal. */
+  function foreignModalOpen(): boolean {
+    for (const box of document.querySelectorAll<HTMLElement>('[aria-modal="true"]')) {
+      if (!root.contains(box) && box.getClientRects().length > 0) return true;
+    }
+    return false;
+  }
+
   function onKey(e: KeyboardEvent): void {
     // (round 8 Y4 residual fix-up r1) the Garage's keys are the player's only while it is: not under a start's loader nor
     // a cover (garageScreen.ts interactive). The listener stays from show() to hide(), and the Garage showed under the
     // loader, so T opened the tree over it and B, F, the arrows acted on the Garage beneath
     if (!garageScreen.interactive) return;
+    // (improve-271 plan 026) an open modal surface the Garage did not render (the tech tree, an info dossier, a kit modal)
+    // owns the keyboard even while the focus rests on the page body: nothing behind it deploys, switches or leaves
+    if (foreignModalOpen()) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
@@ -5110,6 +5135,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
+      // (improve-271 plan 026) the tech tree and the info dossiers never outlive the Garage (over the cover or a battle)
+      techTreeScreen?.close({ restoreFocus: false });
+      closeContextInfo();
       closeMobileNavigation();
       closeGarageVariantMenu();
       closeBattleMenu();

@@ -36,7 +36,8 @@ export function openHudEditor(trigger:HTMLElement):void {
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
   const modal=createModal({surface:'hud-editor',title:label('title'),size:'wide',unsaved:()=>JSON.stringify(draft)!==stored,onClose:()=>{
-    closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
+    // (improve-271 plan 028) the part picker's observers and its online listener go with the editor
+    closed=true;request?.abort();scene?.frame.remove();observer.disconnect();parts.dispose();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');
   const toolbar=element('div','hud-edit-toolbar',modal.body);

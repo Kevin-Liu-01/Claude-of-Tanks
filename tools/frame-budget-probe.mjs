@@ -5,7 +5,7 @@
 //   node tools/frame-budget-probe.mjs --roots=<treeA>,<treeB> --labels=base,new --maps=verdant,desert,whiteout,monsoon \
 //        [--pattern=ABBA] [--views=chase,centre-far] [--viewports=1600x900,1920x1080] [--frames=240] [--block=30] \
 //        [--sides=13x14] [--spec=t90m] [--preset=high] [--governor=pinned|live] [--emulate=<proxy>] \
-//        [--queries=,<query>] [--toggle=<name>] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
+//        [--queries=,<query>] [--toggle=<name> [--toggle-cycles=N] [--toggle-warm]] [--shots] [--port=5395] [--session-mutex=<dir>] [--budget-min=18] \
 //        [--hide-bots[=0|1]] [--out=<dir>] [--tag=<tag>]
 //   node tools/frame-budget-probe.mjs --report=<dir>[,<dir>...] [--labels=base,new]
 //
@@ -168,6 +168,11 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'pylon-wires': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
+  // the wrecks lane (wrecks-270): the battlefield's static tank hulks, the merged wreck mesh and its shadow proxy
+  // (props.ts finalizeWreckMeshes); off hides both, so the delta is the wrecks' whole frame cost on either build
+  'tank-wrecks': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'tank-wrecks' || o.name === 'tank-wrecks-shadow') o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'tank-wrecks' || o.name === 'tank-wrecks-shadow') o.visible = false; })` }),
   // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, and since the wave-74 cascade trim each one's
   // -far pool and its -shadow pool for the far cascades); off hides them, so the delta is their whole frame cost. Both
   // sides run without the static shadow cache, so every cascade redraws every boulder every frame, as it does while the
@@ -352,6 +357,8 @@ export function parseFrameProbeArgs(argv) {
       case 'emulate': o.emulate = need(); break;
       case 'queries': o.queries = (raw ?? '').split(','); break;
       case 'toggle': o.toggle = need(); break;
+      case 'toggle-cycles': o.toggleCycles = Math.max(1, Number(need()) || 1); break;
+      case 'toggle-warm': if (raw !== undefined) throw new Error('--toggle-warm takes no value'); o.toggleWarm = true; break;
       case 'shots': if (raw !== undefined) throw new Error('--shots takes no value'); o.shots = true; break;
       case 'hide-bots':
         if (raw === undefined || raw === '1') o.hideBots = true;
@@ -1006,7 +1013,13 @@ async function sampleView(page, options, { moving = false } = {}) {
   const half = Math.max(30, Math.round(options.frames / 2));
   const blocks = [];
   let previous = 'on';
-  for (const side of ['off', 'on', 'on', 'off']) {
+  // (wrecks-270, Main 11-09) --toggle-cycles=N repeats the cycle N times, alternating A B B A with B A A B so a warm-up
+  // curve cancels as well as a straight drift; --toggle-warm samples one unpooled 'warm' block first (round 6's orchard
+  // pages ran their first block 4-9 ms slower than the rest on both builds)
+  const order = [...(options.toggleWarm ? ['warm'] : []),
+    ...Array.from({ length: options.toggleCycles ?? 1 }, (_, i) => (i % 2 ? ['on', 'off', 'off', 'on'] : ['off', 'on', 'on', 'off'])).flat()];
+  for (const sideName of order) {
+    const side = sideName === 'warm' ? 'on' : sideName;
     // (what the switch reports it did, kept with the block: a toggle that finds nothing to switch shows it here)
     const switched = await page.evaluate(t[side]);
     await sleep(side === 'on' && previous === 'off' && t.onSettleMs ? t.onSettleMs : 700);
@@ -1022,7 +1035,7 @@ async function sampleView(page, options, { moving = false } = {}) {
     await page.evaluate(cacheTrace, 'start');
     const result = await sample(half, ['prefix'], TOGGLE_CHECKPOINTS);
     const cache = await page.evaluate(cacheTrace, 'stop');
-    blocks.push({ side, state, switched: switched ?? null, result, cache });
+    blocks.push({ side: sideName, state, switched: switched ?? null, result, cache });
     previous = side;
   }
   await page.evaluate(t.on);

@@ -80,6 +80,8 @@ export interface InternalArmorModelPort {
   gunPivot?: readonly number[];
   modules?: readonly InternalModuleVolumePort[];
   crew?: readonly InternalCrewVolumePort[];
+  /** (269) Open mounts' crew stations (src/sim/armor.ts ArmorOpenStation), in each station's own frame. */
+  openStations?: readonly { crew: string; floorY: number; topY: number }[];
 }
 
 interface BoundsPort {
@@ -247,6 +249,7 @@ function reseatCrewInsideArmor(
   crownBounds: THREE.Box3,
   armor: InternalArmorModelPort | null | undefined,
   turretLocal: boolean,
+  crew: string | null = null,
 ): CrewSeatReceipt | null {
   const envelope = crewArmorEnvelope(armor, turretLocal);
   if (!envelope) return null;
@@ -267,9 +270,12 @@ function reseatCrewInsideArmor(
     ));
   }
 
-  const roofY = localCrewRoofY(armor, turretLocal, group.position, crownBounds, envelope.max[1]);
+  // An open mount's station has no roof plate over its rider (the M163 VADS's gunner rides head and shoulders over his
+  // column's rim): his station's own top and footrest bound him, not the closed armour around it.
+  const open = crew === null ? null : armor?.openStations?.find((entry) => entry.crew === crew) ?? null;
+  const roofY = open ? open.topY : localCrewRoofY(armor, turretLocal, group.position, crownBounds, envelope.max[1]);
   const roofLimit = roofY - crownBounds.max.y - CREW_ARMOR_CLEARANCE_M;
-  const floorY = internalTankFloorY(armor, turretLocal);
+  const floorY = open ? open.floorY : internalTankFloorY(armor, turretLocal);
   const floorLimit = floorY - poseMin[1] + CREW_ARMOR_CLEARANCE_M;
   const height = roofY - floorY;
   if (height + 1e-9 >= poseSize[1] + CREW_ARMOR_CLEARANCE_M * 2) {
@@ -1032,7 +1038,7 @@ export function addInternalCrewModel(
     if (mesh) crownBounds.expandByObject(mesh);
   }
   const seat = reseatCrewInsideArmor(
-    group, poseBounds, crownBounds, armor, !!volume.turretLocal,
+    group, poseBounds, crownBounds, armor, !!volume.turretLocal, volume.crew,
   );
   group.userData.internalAnatomy.visualAnchorPolicy = seat
     ? 'structuralArmorEnvelope'

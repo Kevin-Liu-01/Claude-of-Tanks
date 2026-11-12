@@ -49,7 +49,7 @@ import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
-import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
+import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
   drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
@@ -2090,8 +2090,8 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
-  font-family:var(--hud-font);
-  color:var(--ink-1);letter-spacing:.02em;z-index:4;}
+  font-family:var(--font-mono);
+  color:var(--ink-1);letter-spacing:0;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
@@ -4016,7 +4016,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
     if (modeState.id === 'realistic') return t(`hud.modeStatus.${modeState.id}`);
-    if (modeState.id === 'drone') return t('hud.modeStatus.drone', { target: modeState.target ?? 20 });
+    if (modeState.id === 'drone') return t('hud.modeStatus.drone', { target: modeState.target ?? RULESET_SCORE_TARGETS[modeState.id] });
     if (modeState.id === 'gun_game') { const stage = modeState.weaponStage; return t('hud.modeStatus.gun_game', { stage: (stage?.index ?? 0) + 1, total: stage?.total ?? 5, name: stage?.name ?? '', kills: stage?.kills ?? 0, required: stage?.required ?? 2 }); }
     return null;
   }
@@ -4028,13 +4028,14 @@ export function initHud(bus: EventBus): HudRuntime {
     if (special !== null) return special;
     if (modeState.id === 'standard') return t('hud.modeStatus.eliminate', {target:String(modeState.target || 0)});
     if (modeState.id === 'capture_the_flag') {
-      return t('hud.modeStatus.flags', { target: String(modeState.target || 3) });
+      return t('hud.modeStatus.flags', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
     }
     if (modeState.id === 'zone_control' || modeState.id === 'mars' || modeState.id === 'air_support') {
-      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS.zone_control) });
+      // (improve-271 plan 027) each mode's own target from the ruleset: Air Support plays to 2000, not Zone Control's 750
+      return t('hud.modeStatus.control', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
     }
     if (modeState.id === 'turbo_ball') {
-      return t('hud.modeStatus.goals', { target: String(modeState.target || 5) });
+      return t('hud.modeStatus.goals', { target: String(modeState.target || RULESET_SCORE_TARGETS[modeState.id]) });
     }
     if (modeState.id === 'frontline_assault') {
       const line = modeState.line;
@@ -7908,7 +7909,8 @@ export function initHud(bus: EventBus): HudRuntime {
           const ux = along[0] - point[0], uy = along[1] - point[1], pxPerM = Math.hypot(ux, uy) || 1;
           const march = (timeS * (marker.pulse ? 1.6 : 0.4)) % 1;
           const urgency = marker.countdownS != null && marker.countdownS > 0 ? Math.max(0, 1 - marker.countdownS / 8) : 1;
-          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null ? { radiusPx: marker.radiusM * pxPerM }
+          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null
+            ? { radiusPx: marker.radiusM * pxPerM, ...(marker.acrossM != null ? { acrossPx: marker.acrossM * pxPerM, angle: Math.atan2(-ux, uy) } : {}) }
             : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle: Math.atan2(-ux, uy) },
             // a recon pass's swath is outlined, never filled (filled, it tinted the whole minimap)
             marker.side, march, urgency, marker.status !== 'recon');
@@ -8096,7 +8098,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // tactical map 2026-09-15: modes whose objectives stand on the spawns
     // (flag bases, goals) or that carry their own spawn markers skip the
     // generic base rings; every other objective is drawn by kind.
-    const markers = objectiveMarkers(frame.matchModeState);
+    // the one derivation, retained per change of the mode state (improve-271 plan 023: the world stage reads the same)
+    const markers = objectiveMarkersFor(frame.matchModeState, frame.timeS);
     if (spawnFlags && !markersStandOnSpawns(markers)) drawMinimapBases(plMapX, plMapY);
     // the sector chips under the score read the same markers, at the map's own cadence (15 to 30 Hz)
     teamPips.updateSectors(markers);

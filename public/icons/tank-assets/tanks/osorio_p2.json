@@ -744,7 +744,7 @@
       }
     ]
   },
-  "geometryHash": "053ec479",
+  "geometryHash": "4ed86c2c",
   "metadataHash": "50bfb69e",
   "presentationAnchor": {
     "xM": -0.0005,
@@ -761,14 +761,14 @@
     "issues": [],
     "roles": {
       "wheelTire": 2,
-      "wheelDish": 8,
+      "wheelDish": 10,
       "suspensionLink": 1,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 17,
+      "armorPaint": 15,
       "hullRubber": 1,
       "gunmetal": 9,
       "opticGlass": 3,
@@ -803,15 +803,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22494,
-      "sha256": "ccf9c816761f7bc2c0b1e3eaa0591efe4d5c46de2d230423a4dad7de47f74588",
+      "bytes": 22530,
+      "sha256": "2ea95330d808f4e691eb9d34e71fdb2963d0bf615b9b708fc7526a973f7009d8",
       "thumbnail": {
         "file": "thumbs/osorio_p2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9872,
-        "sha256": "45debea20472ee06fbeaabf1f86e0a989a9ccc1ccae367e475a2a1192d8bfe53"
+        "bytes": 9880,
+        "sha256": "086b1daeec9aac4d6a7965a59b3b3fba216b9c6a17e6f63733dc10aab292ea60",
+        "frame": [19,109,225,248]
       }
     },
     "top": {
@@ -827,8 +828,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8742,
-      "sha256": "a5588ecce6673737635a0c442aeea66506a47e7e1e313a84279bba96968e0aa0"
+      "bytes": 8800,
+      "sha256": "cdd06c942ac7a30e4b96aba9a8ca863d8bfe63703d4e110cb0945a0c69756cdd"
     },
     "topSilhouette": {
       "file": "osorio_p2_top_silhouette.png",
@@ -851,24 +852,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19230,
-      "sha256": "16d281d1194f9db990d82299c5c0efdc890eab10527c65ff4f604c05abc3a0b8"
+      "bytes": 19890,
+      "sha256": "a3150a15c9b77d472dd1fab1c35215157e0179007716c82ec8712aa19021642e"
     },
     "modulesSide": {
       "file": "osorio_p2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20196,
-      "sha256": "93245bf1cbf0c8c93c743b25e72f03a252981c2896889868381fb84da11ad1f3"
+      "bytes": 20316,
+      "sha256": "4ea1dd5e06cca73c550ead74fa36217e3928fa9230eac4f90c82e8b7866ba2ca"
     },
     "crewSide": {
       "file": "osorio_p2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17638,
-      "sha256": "a62677f8dc858bd0b54d1db59b17d00d344a801bbc095a19afd271bc40e8c777"
+      "bytes": 17724,
+      "sha256": "a610b10afad49ea2597e8bcbc16b342924c3797a03f0e59cfa2b7c2829865562"
     },
     "markings": {
       "file": "osorio_p2_markings.png",

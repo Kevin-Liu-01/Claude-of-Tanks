@@ -25,6 +25,12 @@ const cases = [
   // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
   ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
   ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
+  // 269: the second air-defence round on its base hulls' powertrains
+  ['type87_aw', 'ifv', 38, 'diesel_two_stroke'], ['marksman_t55', 'ifv', 41, 'diesel_v12_soviet'],
+  ['itpsv_leopard2', 'ifv', 49, 'diesel_v12_modern'], ['lvkv9040', 'ifv', 37, 'diesel_ifv'], ['k30_biho', 'ifv', 26.5, 'diesel_ifv'],
+  ['pza_loara', 'ifv', 45.3, 'diesel_v12_soviet'],
+  // 269: the M163 VADS on the M113's powertrain (the IFV family, as the M113A3)
+  ['m163_vads', 'ifv', 12.31, 'diesel_ifv'],
 ];
 // …and a cold-war Western hull runs the cold-war diesel, the Leopard 2 lineage the MTU from its first prototype
 for (const [id, family] of [['leo1a5', 'diesel_v12_coldwar'], ['amx30b2', 'diesel_v12_coldwar'], ['challenger1_mk2', 'diesel_v12_coldwar'],

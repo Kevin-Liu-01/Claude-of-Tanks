@@ -64,9 +64,12 @@ assert.throws(() => transformConstructor('', 'unknown'), /Known constructor sour
 // on tiny buffers. No vehicle/world modules, Canvas, browser or GPU are loaded.
 function normalization(source) {
   const file = ts.createSourceFile('wrecks.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const declaration = file.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'normalizeGeometry');
-  assert.ok(declaration);
-  const javascript = ts.transpileModule(declaration.getText(file), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  // (wrecks-270) with the normal repair normalizeGeometry calls (wrecks.ts repairWreckNormals), where the source has it
+  const declarations = ['repairWreckNormals', 'normalizeGeometry'].map(name =>
+    file.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)).filter(Boolean);
+  assert.equal(declarations.at(-1)?.name.text, 'normalizeGeometry');
+  const javascript = ts.transpileModule(declarations.map(node => node.getText(file)).join('\n'),
+    { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   let time = 0;
   const profiler = createPropsProfiler(() => ++time);
   profiler.observeNormalization = () => {};

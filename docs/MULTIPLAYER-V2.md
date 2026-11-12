@@ -999,10 +999,10 @@ one map fetched per hosted match, nothing on the boot path.
 before it keeps its own files there, frozen byte for byte, so a tab left open across a deploy that hosts (or is elected)
 still decodes its own format and builds its own world. Since 229 the host reads `/mp-collision/v3/`: the v5 codec
 (`server/collisionManifestCodec.ts`; the same records as v4 bit for bit, the base roster 69.0 → 57.9 MB, all shards
-143.4 → 120.3 MB). Production 228's v4 files are frozen at `/mp-collision/v2/` (`server/world-collision-manifests-228`,
-the tree of ed0f3e31b). Production 224's set at `/mp-collision/` is retired: 227 and 228 have shipped, and the
-build-mismatch refusal sends any older tab to Refresh (`collisionManifestRoutes.selftest`). A new format adds a route
-and freezes the production before it in the same way; retire a frozen set once the deploy after it has shipped.
+143.4 → 120.3 MB). Production 224's set at `/mp-collision/` and production 228's v4 set at `/mp-collision/v2/` are
+retired (272: every deploy since has shipped, and the build-mismatch refusal sends any older tab to Refresh;
+`collisionManifestRoutes.selftest`); the build serves `/mp-collision/v3/` alone. A new format adds a route and freezes
+the production before it in the same way; retire a frozen set once the deploy after it has shipped.
 
 **Bundle.** `vite build` at the base (a2b660786) and this tip: `main-*.js` 763,135 → 764,155 B raw (+1,020),
 228,927 → 229,059 B brotli (+132). The host Worker chunk `matchHostWorker-*.js` is 10.4 MB raw / 2.1 MB brotli
@@ -2670,7 +2670,7 @@ now read the room size rules (same behaviour).
 
 ### 13.31 A solo battle on a local host (2026-10-25): retired 2026-10-29
 
-RUST-ENGINE-DECISION §7 step 5 put a free sortie on this stack: the solo local host (255, `?soloAuthority=host`) and then
+Step 5 of the kernel decision (docs/RUST-KERNELS.md "The decision") put a free sortie on this stack: the solo local host (255, `?soloAuthority=host`) and then
 the solo sim Worker (261-264). Both played the player's seat through the match client, with its prediction,
 interpolation and stall clock. The owner's 2026-10-29 ruling retires both (§13.32). Removed in item/core-two-drivers-265,
 and git keeps them:

@@ -1421,7 +1421,8 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
     P.add('turretDark', box(0.05, 0.05, 0.40), s * 0.80, 0.45, -1.90);
     P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, 0.75, 0, 0), s * 0.80, 0.62, -1.92);
   }
-  // the drone dock's two bars over the basket's left half (missionAttachmentReceiver.ts): the roof guns sweep the roof
+  // the drone dock's two bars on the right turret bin's lid, off the basket (missionAttachmentReceiver.ts, round 270):
+  // the roof guns sweep the roof
   addMissionAttachmentReceiver(P, 'shot_kal');
   // jerrycan cage: a welded bar frame on two brackets off the casting
   const cx = -1.26, cz = -1.56, w = 0.30, d = 0.50, h = 0.52, y0 = 0.33;

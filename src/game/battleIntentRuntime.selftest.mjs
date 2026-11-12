@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createBattleIntentRuntime } from './battleIntentRuntime.ts';
 import { resolveMapId } from '../world/maps/mapIds.ts';
+import { GAME_MODE_IDS } from '../sim/gameModeCatalog.ts';
+import { terrainVariantFor } from '../sim/matchRuleset.ts';
 
 const flushTasks = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -187,4 +189,20 @@ function createHarness(overrides = {}) {
   assert.equal(runtime.peekMap('hero', 'random'), 'desert', 'the next entry plans afresh');
 }
 
-console.log('battleIntentRuntime.selftest: explicit map intent, coalescing, handoff and the pending cover\'s peek passed');
+// (improve-271 plan 036) a Garage intent in a mode that plays a terrain variant prefetches that variant's world; the
+// minimap keeps the bare map; a Standard intent and one with no mode keep the bare id
+{
+  const variantMode = GAME_MODE_IDS.find((mode) => terrainVariantFor(mode));
+  const key = `verdant#${terrainVariantFor(variantMode)}`;
+  const { runtime, log } = createHarness();
+  runtime.preload({ specId: 'hero', mapId: 'verdant', gameMode: variantMode });
+  assert.ok(log.includes(`world:${key}:intent`), `the ${variantMode} intent prefetches ${key} (${log.filter((entry) => entry.startsWith('world:'))})`);
+  assert.ok(!log.includes('world:verdant:intent'), 'and never the standard battlefield');
+  assert.ok(log.includes('preload:minimap:verdant'), 'the minimap is the bare map\'s');
+  const standard = createHarness();
+  standard.runtime.preload({ specId: 'hero', mapId: 'verdant', gameMode: 'standard' });
+  standard.runtime.preload({ specId: 'other', mapId: 'desert' });
+  assert.ok(standard.log.includes('world:verdant:intent') && standard.log.includes('world:desert:intent'), 'Standard and unnamed modes prefetch the bare id');
+}
+
+console.log('battleIntentRuntime.selftest: explicit map intent, coalescing, handoff and the pending cover\'s peek passed; a variant mode prefetches its variant world');

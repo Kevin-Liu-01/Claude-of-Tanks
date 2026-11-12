@@ -552,7 +552,7 @@ if (command === 'roster') {
       const world = worlds.get(key);
       const playerNation = nationKey(getSpec(playerSpecFor(seed))?.nation);
       // multiplayer: the room's start plan (roomPolicy.planStart: bots fill a side with its humans' most common pick, the
-      // co-op and asymmetric modes left to arrangeModeRoster and the authority), seated by the network authority
+      // co-op and asymmetric modes seated by room/roomBots.ts planRoomBots), seated by the network authority
       for (const variant of mpVariants) {
         // the co-op row is one human in a co-operative mode (Horde, Frontline): what the room seats around them
         if (variant === 'coop' && !isCoopGameMode(mode)) continue;
