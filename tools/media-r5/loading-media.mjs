@@ -1,19 +1,23 @@
 #!/usr/bin/env node
-// The loading-screen collection, public/media/loading-r1 (owner 2026-11-04: "for loading screens we need to use these
-// elevated scenes"; 2026-11-11, on the gallery's full rotation sheet: "only need 1-16 for the loading screen").
-// tools/media-r5/site-media/picks.json `loading` names the stills in the gallery's order, its close-ups and then any
-// elevated stills. Each ships as one
+// The owner's loading-screen gallery as one collection, public/media/gallery-r1 (owner 2026-11-04: "for loading screens we
+// need to use these elevated scenes"; 2026-11-11: "only need 1-16 for the loading screen", then "we can also add all 78 to
+// the galleries and other image areas"). tools/media-r5/site-media/picks.json `gallery` names its 78 stills in the
+// gallery's order, its close-ups and then its elevated stills; `loading` is a list on top of it, the stills the loading
+// screens rotate after the boot pick (272, Main: one collection, so loading-r1 retired). Each still ships as one
 // 1920x1080 webp of at most 600 KB, encoded at q90 (a busy scene steps down to q86, then q82) from its 4K render,
-// <masters>/<id>/stills/<one>.png, through the master filter (master-filter.mjs); the render's cinema-receipt.json holds
-// its scene. manifest.json records, per still, its map and hour, its caption in English and Chinese (the battlefield's catalog name, then the hero and the tank its scene pairs
-// it with: "A v B" for a foe, "A and B" for an ally, "A pair" for two of one vehicle, the hero alone for a solo; names
-// are public/icons/tank-assets/ rows' label.displayName at this tree's tank-id schema, never an id), its tanks, the
-// render's revision and source file, and the webp's bytes and sha256. Nothing is written unless every pick has its
-// render. Files in the folder that no pick names are removed. site-media-wire.mjs (--only=loading) wires the rotation
-// and the captions; src/ui/loadingScreens.selftest.mjs holds the result.
+// <masters>/<id>/stills/<one>.png, through the master filter (master-filter.mjs), and its smaller rungs (gallery.rungs:
+// the 640 cards); the render's cinema-receipt.json holds its scene. manifest.json records, per still, its map and hour,
+// its focal (gallery.focal: CSS object-position aimed at the hero tank), its caption in English and Chinese (the
+// battlefield's catalog name, then the hero and the tank its scene pairs it with: "A v B" for a foe, "A and B" for an
+// ally, "A pair" for two of one vehicle, the hero alone for a solo; names are public/icons/tank-assets/ rows'
+// label.displayName at this tree's tank-id schema, never an id), its tanks, the render's revision and source file, and
+// the webps' bytes and sha256; and `loading`, the loading list. Nothing is written unless every pick has its render.
+// Files in the folder that no pick names are removed. site-media-wire.mjs wires it (--only=gallery: galleryShots.ts;
+// --only=loading: the rotation and its captions); src/ui/galleryShots.selftest.mjs and loadingScreens.selftest.mjs hold
+// the result.
 //   node tools/media-r5/loading-media.mjs [--masters <dir>] [--jobs <n>] [--cache <dir>] [--plan | --dry]
 // --plan prints each pick's render and caption and encodes nothing; --cache keeps the encodes between runs.
-// (--masters defaults to picks.json loading.masters under the repository: shots/ is ignored, so a lane names the media
+// (--masters defaults to picks.json gallery.masters under the repository: shots/ is ignored, so a lane names the media
 // worktree's folder.)
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -34,7 +38,14 @@ const option = (name) => {
   return argv[i].includes('=') ? argv[i].slice(name.length + 3) : argv[i + 1];
 };
 const DRY = argv.includes('--dry');
-const PICKS = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8')).loading;
+const ALL_PICKS = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
+const PICKS = ALL_PICKS.gallery;
+const FOCAL = PICKS.focal;
+const FOCAL_RE = /^(?:[1-9]\d)% (?:[1-9]\d)%$/;
+// the smaller rungs each still ships beside its 1920 file ({ width, quality }: the 640 cards)
+const RUNGS = PICKS.rungs ?? [];
+// the loading screens' list on top of the collection: gallery stills, in the rotation's order
+const LOADING = [...ALL_PICKS.loading.close, ...ALL_PICKS.loading.elevated];
 const MASTERS = resolve(ROOT, option('masters') ?? PICKS.masters);
 const JOBS = Math.max(1, Number(option('jobs') ?? 6));
 const OUT = join(ROOT, 'public/media', PICKS.collection);
@@ -98,13 +109,15 @@ function itemOf(id, group, scene) {
     en: `${word(EN, `map.${map}`, 'en-US')}: ${who.en}`,
     zh: `${word(ZH, `map.${map}`, 'zh-CN')}：${who.zh}`,
   };
-  return { id, group, map, hour: scene.timeOfDay, title, tanks };
+  const focal = FOCAL[id];
+  if (!focal || !FOCAL_RE.test(focal)) throw new Error(`its focal ${focal} is not "<x>% <y>%" in two digits each (picks.json gallery.focal)`);
+  return { id, group, map, hour: scene.timeOfDay, focal, title, tanks };
 }
 
 /** cwebp, off the main thread so several encode at once. */
-function cwebp(png, out, quality) {
+function cwebp(png, out, quality, width = WIDTH) {
   return new Promise((done) => {
-    const child = spawn('cwebp', ['-quiet', '-m', '6', '-sharp_yuv', '-q', String(quality), '-resize', String(WIDTH), String(HEIGHT), png, '-o', out]);
+    const child = spawn('cwebp', ['-quiet', '-m', '6', '-sharp_yuv', '-q', String(quality), '-resize', String(width), String(Math.round(width * HEIGHT / WIDTH)), png, '-o', out]);
     let stderr = '';
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', (error) => done(error.message));
@@ -127,9 +140,30 @@ async function encode(id, png, cache) {
   }
   throw new Error(`over ${MAX_BYTES} B even at q${QUALITIES.at(-1)}`);
 }
+/** The still's smaller rungs (RUNGS), each at its one quality, cached like the full encode. */
+async function encodeRungs(id, png, cache) {
+  const rungs = [];
+  for (const { width, quality } of RUNGS) {
+    const out = join(cache, `${id}-${width}-q${quality}.webp`);
+    if (!existsSync(out) || statSync(out).mtimeMs < statSync(png).mtimeMs) {
+      const failed = await cwebp(filteredStill(png, cache, id), out, quality, width);
+      if (failed) throw new Error(failed);
+    }
+    const bytes = readFileSync(out), size = webpSize(bytes);
+    const height = Math.round(width * HEIGHT / WIDTH);
+    if (!size || size[0] !== width || size[1] !== height) throw new Error(`its ${width} rung encoded ${size ? `${size[0]}x${size[1]}` : 'no webp'}`);
+    rungs.push({ width, height, quality, bytes });
+  }
+  return rungs;
+}
 
 const picks = [...PICKS.close.map((id) => [id, 'close']), ...PICKS.elevated.map((id) => [id, 'elevated'])];
 if (new Set(picks.map(([id]) => id)).size !== picks.length) throw new Error('loading-media: a still is picked twice');
+const gallery = new Set(picks.map(([id]) => id));
+const strays = LOADING.filter((id) => !gallery.has(id));
+if (strays.length || new Set(LOADING).size !== LOADING.length) {
+  throw new Error(`loading-media: the loading list takes each gallery still once (${strays.join(', ') || 'a still twice'})`);
+}
 // --plan: each pick's render and caption, nothing encoded
 if (argv.includes('--plan')) {
   let ready = 0;
@@ -144,7 +178,7 @@ if (argv.includes('--plan')) {
   process.exit(ready === picks.length ? 0 : 1);
 }
 const cacheArg = option('cache');
-const work = cacheArg ? resolve(cacheArg) : mkdtempSync(join(tmpdir(), 'cot-loading-'));
+const work = cacheArg ? resolve(cacheArg) : mkdtempSync(join(tmpdir(), 'cot-gallery-'));
 mkdirSync(work, { recursive: true });
 const results = new Array(picks.length);
 let next = 0;
@@ -157,7 +191,7 @@ async function worker() {
       const { bytes, quality } = await encode(id, render.png, work);
       const size = webpSize(bytes);
       if (!size || size[0] !== WIDTH || size[1] !== HEIGHT) throw new Error(`encoded ${size ? `${size[0]}x${size[1]}` : 'no webp'}, not ${WIDTH}x${HEIGHT}`);
-      results[n] = { item, render, bytes, quality };
+      results[n] = { item, render, bytes, quality, rungs: await encodeRungs(id, render.png, work) };
       console.log(`${String(n + 1).padStart(2)} ${id.padEnd(66)} ${(bytes.length / 1024).toFixed(0).padStart(4)} KB q${quality}  ${item.title.en}`);
     } catch (error) {
       results[n] = { problem: String(error.message ?? error) };
@@ -176,11 +210,18 @@ if (problems.length) {
   process.exit(1);
 }
 const files = new Map();
-const items = results.map(({ item, render, bytes, quality }) => {
+const items = results.map(({ item, render, bytes, quality, rungs }) => {
   const name = `${item.id}.webp`;
   files.set(name, bytes);
-  return { ...item, path: `${URL_BASE}/${name}`, bytes: bytes.length, sha256: sha256(bytes), width: WIDTH, height: HEIGHT, quality,
+  const row = { ...item, path: `${URL_BASE}/${name}`, bytes: bytes.length, sha256: sha256(bytes), width: WIDTH, height: HEIGHT, quality,
     source: render.source, revision: render.revision };
+  if (!rungs.length) return row;
+  return { ...row, rungs: rungs.map((rung) => {
+    const rungName = `${item.id}-${rung.width}.webp`;
+    files.set(rungName, rung.bytes);
+    return { width: rung.width, height: rung.height, quality: rung.quality, path: `${URL_BASE}/${rungName}`, bytes: rung.bytes.length,
+      sha256: sha256(rung.bytes) };
+  }) };
 });
 const manifest = {
   libraryId: `claude-of-tanks-${PICKS.collection}`,
@@ -189,15 +230,17 @@ const manifest = {
   author: PROJECT_CREATOR,
   copyright: PROJECT_COPYRIGHT,
   license: FIRST_PARTY_LICENSE,
-  description: 'The loading-screen stills: the ones the owner picked from his loading-screen gallery, its close-ups and then any elevated stills, each a scene staged in the Scene Studio and rendered at 4K by the game engine; after the boot pick they are the loading screens\' rotation (src/ui/featuredShots.ts LOADING_SHOTS).',
+  description: 'The owner\'s loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual\'s archive show them (src/ui/galleryShots.ts GALLERY_SHOTS); `loading` lists the ones the loading screens rotate after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still\'s focal aims a crop at its hero tank.',
   generatedBy: relative(ROOT, fileURLToPath(import.meta.url)),
   sources: `the 4K stills of the Scene Studio renders under ${PICKS.masters} (each item's source names its file, its revision the commit it was rendered on)`,
   dimensions: { width: WIDTH, height: HEIGHT },
   count: items.length,
+  loading: LOADING,
   items,
 };
 const total = items.reduce((sum, i) => sum + i.bytes, 0);
-console.log(`loading-media: ${items.length} stills, ${(total / 1048576).toFixed(2)} MB -> ${relative(ROOT, OUT)}${DRY ? ' (dry run: nothing written)' : ''}`);
+const rungTotal = items.reduce((sum, i) => sum + (i.rungs ?? []).reduce((s2, r) => s2 + r.bytes, 0), 0);
+console.log(`loading-media: ${items.length} stills (${LOADING.length} on the loading screens), ${(total / 1048576).toFixed(2)} MB${rungTotal ? ` + ${(rungTotal / 1048576).toFixed(2)} MB of rungs` : ''} -> ${relative(ROOT, OUT)}${DRY ? ' (dry run: nothing written)' : ''}`);
 if (!DRY) {
   mkdirSync(OUT, { recursive: true });
   for (const f of readdirSync(OUT)) {

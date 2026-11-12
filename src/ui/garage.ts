@@ -962,6 +962,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // r9.5: the list moved to featuredShots.ts — ONE copy shared with the boot
   // splash and the transition screens (hand-synced copies drifted from disk
   // twice; r9.1 was the "always the same picture" bug that caused).
+  // (2026-11-11, Kevin: "add all 78 to the galleries") After the twenty, the owner's whole loading-screen gallery
+  // (galleryShots.ts), loaded on the first page turn: the strip a Garage draws at boot is today's first page, and its
+  // twenty dots page through the rest (a dot is one picture of the page in view; its name counts all of them).
   // The selected tank's own take (owner 2026-10-12, fleetTakes.ts): once the
   // Garage is playable (or on intent) and the panel is on screen, the fleet
   // index loads; while it has the selected tank, the panel shows that take's
@@ -989,6 +992,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
     const dots = panel.querySelectorAll<HTMLButtonElement>('.fdots button');
     const shotEl = requiredElement<HTMLElement>(panel, '.fshot');
+    let shots: { img: string; cap: () => string; focal?: string }[] =
+      FEATURED_SHOTS.map((shot) => ({ img: shot.img, cap: () => t(shot.capKey, shot.capVars) }));
+    const pageSize = dots.length;
+    let galleryJoined = false;
+    const galleryShotsChunk = createLazyChunk(() => import('./galleryShots.ts'));
+    // the gallery joins once, its 640 cards aimed by their focal; a failed load keeps the twenty and the next turn asks again
+    const joinGallery = (): Promise<void> => galleryShotsChunk.load().then(({ GALLERY_SHOTS, galleryShotText }) => {
+      if (galleryJoined) return;
+      galleryJoined = true;
+      shots = shots.concat(GALLERY_SHOTS.map((shot) => ({ img: shot.thumb, cap: () => galleryShotText(shot, 'title'), focal: shot.focal })));
+    }, () => {});
     let idx = -1;
     let front = 0;
     let timer: ReturnType<typeof setInterval> | 0 = 0;
@@ -1000,29 +1014,46 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let fleetRequest: Promise<void> | null = null;
     const fleetTakesChunk = createLazyChunk(() => import('./fleetTakes.ts'));
     let player: FleetTakePlayer | null = null;
-    const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
+    const show = (i: number, imageUrl = shots[i].img): void => {
       front ^= 1;
       layers[front].style.backgroundImage = `url("${imageUrl}")`;
+      layers[front].style.backgroundPosition = shots[i].focal ?? '';
       layers[front].classList.add('on');
       layers[front ^ 1].classList.remove('on');
-      capEl.textContent = t(FEATURED_SHOTS[i].capKey, FEATURED_SHOTS[i].capVars);
-      dots.forEach((d, k) => d.classList.toggle('on', k === i));
-      // the picture in view is the dots' one tab stop (the arrows step the rotation from it)
-      for (const dot of dots) { dot.tabIndex = -1; dot.removeAttribute('aria-current'); }
-      dots[i].tabIndex = 0;
-      dots[i].setAttribute('aria-current', 'true');
+      capEl.textContent = shots[i].cap();
+      // the dots show the page in view; the picture in view is their one tab stop (the arrows step the rotation from it)
+      const page = i - (i % pageSize);
+      dots.forEach((dot, k) => {
+        dot.classList.toggle('on', page + k === i);
+        dot.hidden = page + k >= shots.length;
+        dot.setAttribute('aria-label', t('garage.gallery.shot', { n: page + k + 1, count: shots.length }));
+        dot.tabIndex = -1;
+        dot.removeAttribute('aria-current');
+      });
+      dots[i - page].tabIndex = 0;
+      dots[i - page].setAttribute('aria-current', 'true');
       idx = i;
     };
     const preload = (i: number, cb: (url: string) => void, priority: ImagePriority = 'low'): void => {
-      preloadImage(FEATURED_SHOTS[i].img, { priority }).then((url) => {
+      preloadImage(shots[i].img, { priority }).then((url) => {
         if (url) cb(url);
       });
     };
     const jump = (i: number, priority: ImagePriority = 'high') => preload(i, (url) => {
       if (!vehicleTake) show(i, url);
     }, priority);
+    /** Step to picture `to` of all of them (wrapping); a turn off either end of the twenty first brings the gallery in. */
+    const go = (to: number, priority: ImagePriority = 'high', then?: (i: number) => void): void => {
+      const land = (): void => {
+        const i = (to + shots.length) % shots.length;
+        jump(i, priority);
+        then?.(i);
+      };
+      if (galleryJoined || (to >= 0 && to < shots.length)) land();
+      else void joinGallery().then(land);
+    };
     const advance = (priority: ImagePriority = 'low') => {
-      if (!vehicleTake) jump((idx + 1) % FEATURED_SHOTS.length, priority);
+      if (!vehicleTake) go(idx + 1, priority);
     };
     const arm = () => { if (!timer && !vehicleTake) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
@@ -1051,7 +1082,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         shotEl.dataset.tip = fleet.fleetTakeText(take, 'title');
       } else {
         shotEl.removeAttribute('title');
-        if (idx >= 0) capEl.textContent = t(FEATURED_SHOTS[idx].capKey, FEATURED_SHOTS[idx].capVars);
+        if (idx >= 0) capEl.textContent = shots[idx].cap();
         else if (activated) showFirst('low');
         if (engaged) arm();
       }
@@ -1101,23 +1132,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     requiredElement<HTMLButtonElement>(panel, '.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
-      jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
+      go(idx - 1);
       rearm();
     });
     requiredElement<HTMLButtonElement>(panel, '.fnav.next').addEventListener('click', (e) => {
       e.stopPropagation(); advance(); rearm();
     });
-    dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
+    dots.forEach((d, k) => d.addEventListener('click', () => { go(idx - (idx % pageSize) + k); rearm(); }));
     // the keys (261, the lead's follow-up): the arrows, Home and End move the rotation from the dots and the focus with it
     requiredElement<HTMLElement>(panel, '.fdots').addEventListener('keydown', (event) => {
-      const count = FEATURED_SHOTS.length;
-      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: count - 1 } as Record<string, number>)[event.key];
+      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: shots.length - 1 } as Record<string, number>)[event.key];
       if (to === undefined || idx < 0) return;
       event.preventDefault();
-      const next = (to + count) % count;
-      jump(next);
+      go(to, 'high', (next) => dots[next % pageSize].focus({ preventScroll: true }));
       rearm();
-      dots[next].focus({ preventScroll: true });
     });
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);

@@ -25,6 +25,8 @@ const featureLabel = (feature: string): string => caption(
 interface PresentationShot {
   src: string;
   previewSrc?: string;
+  /** The card's crop aim (CSS object-position): the gallery's stills aim at their hero tank. */
+  focal?: string;
   alt: string;
   feature: string;
   /** The battlefield: its id on the battlefield stills, its English name on the frames and takes (with `mapId`). */
@@ -60,6 +62,24 @@ interface MediaArchiveOptions {
   filters?: boolean;
   /** A take's title in the locale (mediaArchiveTakes.ts), where the archive shows takes; without it a take keeps its manifest title. */
   takeTitle?: (take: string) => string | null;
+  /** (2026-11-11) The owner's gallery (src/ui/galleryShots.ts) after the battlefield photographs; the wall (the manual's
+   *  archive, the one archive in `wall` mode) shows it unless this says otherwise. */
+  gallery?: boolean;
+}
+
+/**
+ * The gallery's stills as archive shots, worded in the page's language. galleryShots.ts loads only for a wall that shows
+ * them, once per mount (a mount is once per wall; a failed one throws, and the wall's Retry mounts again): a lazy-chunk
+ * holder here would put app/lazyChunk.ts into the public pages' preload maps for this module, their boot bytes.
+ */
+async function galleryArchiveShots(): Promise<PresentationShot[]> {
+  const { GALLERY_SHOTS, galleryShotText } = await import('../ui/galleryShots.ts');
+  return GALLERY_SHOTS.map((shot) => ({
+    src: shot.img, previewSrc: shot.thumb, focal: shot.focal, alt: galleryShotText(shot, 'title'),
+    // a close-up is the archive's close portrait, an elevated still its key moment (the site fifty's two still kinds)
+    feature: shot.group === 'close' ? 'Close portrait' : 'Key moment',
+    map: shot.map, mapId: shot.map, title: galleryShotText(shot, 'who'), kind: 'gallery',
+  }));
 }
 
 let manifestPromise: Promise<PresentationManifest> | undefined;
@@ -131,6 +151,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue, t
   image.alt = words.alt;
   image.loading = index < 3 ? 'eager' : 'lazy';
   image.decoding = 'async';
+  if (shot.focal) image.style.objectPosition = shot.focal;
   const copy = document.createElement('span');
   copy.className = 'media-archive-card-copy';
   copy.innerHTML = `<span><span>${featureLabel(shot.feature)}</span><strong>${words.title}</strong></span>${words.place ? `<small>${words.place}</small>` : ''}`;
@@ -169,9 +190,10 @@ export async function mountMediaArchive(
   root.dataset.mediaMounted = 'true';
   root.classList.add('media-archive');
   if (options.mode) root.classList.add(`media-archive--${options.mode}`);
-  const [manifest, recipes] = await Promise.all([
+  const [manifest, recipes, gallery] = await Promise.all([
     loadPresentationManifest(),
     loadCaptureRecipes().catch(() => ({ media: {}, recipes: {} })),
+    (options.gallery ?? options.mode === 'wall') ? galleryArchiveShots() : [],
   ]).catch((error: RuntimeValue) => {
     // the archive that never arrived is not mounted: a Retry mounts it again (the loading census: the mark set before
     // this wait and the kept failed manifest left the docs archive's Retry with nothing to do)
@@ -179,7 +201,11 @@ export async function mountMediaArchive(
     throw error;
   });
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
-  const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
+  // the gallery follows the battlefield photographs, which lead the manifest
+  const lead = manifest.shots.findIndex((shot) => shot.kind !== 'battlefield');
+  const at = lead < 0 ? manifest.shots.length : lead;
+  const shots = [...manifest.shots.slice(0, at), ...gallery, ...manifest.shots.slice(at)];
+  const source = shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
   const limit = typeof options.limit === 'number' && Number.isFinite(options.limit)
     ? options.limit : source.length;
   const pageSize = typeof options.pageSize === 'number' && Number.isFinite(options.pageSize)

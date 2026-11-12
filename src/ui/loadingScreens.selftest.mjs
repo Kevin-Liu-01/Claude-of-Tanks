@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
@@ -63,8 +64,8 @@ for (const { mapId, asset } of minimapAssets) {
 // with all my new ones"), picked in tools/media-r5/site-media/picks.json `featured`. Since 2026-11-11 the loading screens
 // rotate the boot pick and then picks.json `loading`: the stills the owner picked from his loading-screen gallery (its
 // close-ups, then any elevated stills; 2026-11-04: "for loading screens we need to use these elevated scenes"), each a
-// 1920x1080 webp
-// in public/media/loading-r1 (tools/media-r5/loading-media.mjs) with its battlefield and its caption in both catalogs.
+// 1920x1080 webp of the gallery's one collection, public/media/gallery-r1 (tools/media-r5/loading-media.mjs; 272: the
+// loading list sits on top of it and loading-r1 is retired), with its battlefield and its caption in both catalogs.
 const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
 const siteStills = `/media/${sitePicks.collection}/stills/`;
 // a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still; or
@@ -92,8 +93,11 @@ assert.equal(sitePicks.loading.elevated.length, 0, 'no elevated still');
 assert.equal(sitePicks.loading.close.at(-1), 's143-ru-t72b3m-modern-mars-herolow-fb-m271-r14',
   'the space-background still comes last');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
-const loadingDir = new URL(`../../public/media/${sitePicks.loading.collection}/`, import.meta.url);
+const loadingDir = new URL(`../../public/media/${sitePicks.gallery.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));
+// one collection (272, Main): the loading stills are the gallery's files, and the old loading-r1 folder is gone
+assert.ok(!existsSync(new URL('../../public/media/loading-r1/', import.meta.url)), 'loading-r1 is retired: its stills are the gallery\'s');
+assert.equal(sitePicks.loading.collection, undefined, 'the loading picks are a list on the gallery, not a collection');
 const loadingItems = new Map(loadingManifest.items.map((item) => [item.id, item]));
 assert.equal(LOADING_SHOTS.length, loadingPicks.length, 'every loading pick rotates');
 assert.equal(TRANSITION_SHOTS.length, 1 + loadingPicks.length, 'the rotation is the boot pick and the loading picks');
@@ -118,23 +122,22 @@ assert.deepEqual(
   [pickImg(bootPicks[0]), ...loadingPicks.map((id) => loadingItems.get(id)?.path)],
   'the transition-screen rotation is the boot pick, then the loading picks in the gallery\'s order',
 );
-// public/media/loading-r1 is exactly the loading picks: one 1920x1080 webp each, its bytes and sha256 in the manifest,
-// rendered on a recorded commit; each rotates with its own battlefield and its caption in both catalogs
+// the gallery's manifest lists the loading picks; each is one of its 1920x1080 webps, its bytes and sha256 in the
+// manifest, rendered on a recorded commit, and rotates with its own battlefield, its focal and its caption in both catalogs
 {
   const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
   const catalogs = {
     en: JSON.parse(await readFile(new URL('./i18nCatalog.en-US.json', import.meta.url), 'utf8')),
     zh: JSON.parse(await readFile(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8')),
   };
-  assert.deepEqual(loadingManifest.items.map((item) => item.id), loadingPicks, 'the loading collection is the picks, in order');
-  assert.equal(loadingManifest.count, loadingPicks.length);
+  assert.deepEqual(loadingManifest.loading, loadingPicks, 'the gallery\'s manifest lists the loading picks, in order');
   assert.deepEqual(loadingManifest.dimensions, { width: 1920, height: 1080 });
-  assert.deepEqual((await readdir(loadingDir)).sort(), ['manifest.json', ...loadingPicks.map((id) => `${id}.webp`)].sort(),
-    'the loading collection holds its picks\' stills and its manifest, nothing else');
-  const close = new Set(sitePicks.loading.close);
+  const files = new Set(await readdir(loadingDir));
+  for (const id of loadingPicks) assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);
+  const close = new Set(sitePicks.gallery.close);
   for (const [n, id] of loadingPicks.entries()) {
     const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
-    assert.equal(item.path, `/media/${sitePicks.loading.collection}/${id}.webp`);
+    assert.equal(item.path, `/media/${sitePicks.gallery.collection}/${id}.webp`);
     assert.ok(item.group === (close.has(id) ? 'close' : 'elevated'), `${id}: its gallery section (${item.group})`);
     const file = await readFile(new URL(`${id}.webp`, loadingDir));
     assert.deepEqual(webpDimensions(file), [1920, 1080], `${id}: a 1920x1080 webp`);
@@ -145,6 +148,7 @@ assert.deepEqual(
     assert.ok(MAP_IDS.includes(item.map), `${id}: ${item.map} is a battlefield`);
     assert.equal(shot.img, item.path);
     assert.deepEqual(shot.maps, [item.map], `${id}: it rotates as its own battlefield`);
+    assert.equal(shot.focal, item.focal, `${id}: its focal, aimed at its hero tank`);
     assert.equal(shot.capKey, `media.loading.title.${camel(id)}`, `${id}: its caption key`);
     for (const [locale, catalog] of Object.entries(catalogs)) {
       assert.equal(catalog[shot.capKey], item.title[locale], `${id}: its ${locale} caption`);
