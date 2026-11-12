@@ -188,7 +188,7 @@ spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
 
 // The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the floor cycle, twice the output, six times the
 // rounds; the Vulcan keeps its burst limiter: 300-round bursts, a 2 s reset. Its floor is a tick (the owner: "a super super
-// high fire rate"): each burst 5 s of fire, 7 damage an API round.
+// high fire rate"): each burst 5 s of fire, 7.4 damage an API round (a rotary gun's damage goes to a tenth, 272).
 applyAirDefenseFirepower(spec);
 registerFleetSpecs(registries, ['m163_vads'], { m163_vads: spec });
 

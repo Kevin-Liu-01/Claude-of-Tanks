@@ -92,7 +92,7 @@ const EXPECTED = Object.freeze({
   // limiter's 60-round bursts, the headline reload the burst limiter's 4.0 s reset (a magazine's: fleetBalance.selftest)
   // (2026-11-06, airDefenseFirepower.ts: the floor cycle 0.05 s, 300-round bursts, the reset 2 s; 270: a rotary gun, one
   // round a tick, 7 damage a round for twice the authored output)
-  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 7, pen: [90, 72, 55], reload: 2, cycle: 1 / 60, magazine: 300, rotary: true, sound: 'rh202', missile: null },
+  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 7.4, pen: [90, 72, 55], reload: 2, cycle: 1 / 60, magazine: 300, rotary: true, sound: 'rh202', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
