@@ -1,4 +1,5 @@
 import type { CouchBattle } from './couchSeats.ts';
+import { chaseStartPitch } from '../engine/chaseStart.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
@@ -267,7 +268,8 @@ export function createSoloBattleStartRuntime({
       ui.playerActions.resetConsumables();
       ui.emitConsumableReset();
       ui.rig.release();
-      ui.rig.snapArcade(2, player.state.yaw, -10 * Math.PI / 180);
+      ui.rig.snapArcade(2, player.state.yaw, chaseStartPitch((player.state as { _spring?: { pitch?: number } })._spring?.pitch,
+        (player.spec as { gunDepressionDeg?: number } | undefined)?.gunDepressionDeg));
       ui.stopShowroom();
       mark('uiAndCamera');
       trace.totalMs = Math.round(now() - startedAt);

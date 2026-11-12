@@ -15,7 +15,8 @@ import { padPageUrl } from '../pad/padDesk.ts';
 import { encodeQr, qrSvgPath } from '../pad/qr.ts';
 import type { PadLobbyView } from '../pad/padLobby.ts';
 import type { CouchRuntime } from '../app/couchRuntime.ts';
-import type { CouchBattle } from '../game/couchSeats.ts';
+import { COUCH_VIEWS, type CouchBattle, type CouchView } from '../game/couchSeats.ts';
+import { couchSplitCapacity } from '../game/couchPanes.ts';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
 import type { CouchSides } from '../sim/matchRuleset.ts';
 
@@ -119,6 +120,18 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.sides'), className: 'cot-couch-sides', value: sides,
     options: (['together', 'teams'] as const).map((value) => ({ value, label: t(`couch.sides.${value}`), disabled: togetherOnly && value === 'teams' })) }));
   wireRoving(side.lastElementChild as HTMLElement, (value) => { sides = value as CouchSides; paint(lobby.view); });
+  // the screen: a pane per player with its own camera and HUD (split), or one camera over every seat (shared)
+  // (shared by default: the split screen is experimental until it meets the frame-budget pass rule, docs/COUCH-MODE.md)
+  let screen: CouchView = 'shared';
+  side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.view'), className: 'cot-couch-view', value: screen,
+    options: COUCH_VIEWS.map((value) => ({ value, label: t(`couch.view.${value}`) })) }));
+  const viewControl = side.lastElementChild as HTMLElement;
+  wireRoving(viewControl, (value) => { screen = value === 'split' ? 'split' : 'shared'; });
+  // the split screen seats as many as the screen's panes hold the HUD at its solo size (game/couchPanes.ts): past that,
+  // Shared, and the note says how many Split fits here
+  const viewLimit = side.appendChild(document.createElement('p'));
+  viewLimit.className = 'cot-couch-note';
+  viewLimit.hidden = true;
 
   const end = button(footer, 'quiet', t('couch.end'));
   const reopen = button(footer, 'secondary', t('couch.reopen'));
@@ -129,8 +142,8 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   start.addEventListener('click', () => {
     runtime.startBattle((inPlay) => {
       modal?.close();
-      return request.start({ seats: inPlay, sides, names: inPlay.map((n) => t('pad.seat', { n })) });
-    });
+      return request.start({ seats: inPlay, sides, view: screen, names: inPlay.map((n) => t('pad.seat', { n })) });
+    }, screen);
   });
 
   let shownCode = '';
@@ -162,6 +175,13 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
       cell.setAttribute('aria-label', t(entry ? (entry.presence === 'here' ? 'couch.seat.here' : 'couch.seat.away') : 'couch.seat.free', { n: seat }));
     }
     start.disabled = !inPlay.length || view.state === 'ended';
+    const capacity = couchSplitCapacity(innerWidth, innerHeight);
+    const over = inPlay.length > capacity;
+    const splitButton = viewControl.querySelector<HTMLButtonElement>('[data-value="split"]');
+    if (splitButton) splitButton.disabled = over;
+    if (over && screen === 'split') viewControl.querySelector<HTMLButtonElement>('[data-value="shared"]')?.click();
+    viewLimit.hidden = !over;
+    if (over) viewLimit.textContent = t('couch.view.splitLimit', { n: capacity });
   }
   paint(lobby.view);
   detach = lobby.subscribe(paint);

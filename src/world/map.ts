@@ -332,6 +332,12 @@ export interface WorldRuntime {
    * (2026-10-24, perf-245; engine/cameraDestinationWarm.ts): a Watch hop, a spectate handover, the killcam.
    */
   setTerrainStreamFocus(position: THREE.Vector3 | null): void;
+  /**
+   * More places the terrain's chunk detail and the near tree tier are chosen for (couch mode's split screen: the other
+   * panes' cameras), besides the camera `update` is given: each takes the detail of its distance to the nearest. Null:
+   * the camera alone.
+   */
+  setTerrainDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null): void;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   /** (battle-spikes-253) The same, its bake programs linked first between tasks (the network entry's compile). */
@@ -1307,6 +1313,11 @@ function* assembleWorldSteps(
     },
     setTerrainStreamFocus(position: THREE.Vector3 | null) {
       (terrain.userData.setStreamFocus as ((p: THREE.Vector3 | null) => void) | undefined)?.(position);
+    },
+    setTerrainDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null) {
+      (terrain.userData.setDetailFoci as ((p: readonly { readonly x: number; readonly z: number }[] | null) => void) | undefined)?.(points);
+      // (couch-panes-272) and the near tree tier: a tree near any pane's camera is a near tree
+      vegetation.setDetailFoci?.(points);
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     warmImpostorsAsync: (waitLinks) => { bakePanorama(); return vegetation.warmImpostorsAsync(waitLinks); },

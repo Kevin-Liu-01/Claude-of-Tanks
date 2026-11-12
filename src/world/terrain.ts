@@ -9941,6 +9941,8 @@ function* terrainBuildSteps(
   let streamCameraZ = 0;
   const streamFocusPoint = new THREE.Vector3();
   let streamFocus: THREE.Vector3 | null = null;
+  /** More places chunk detail is chosen for (couch mode's split screen, map.ts setTerrainDetailFoci); empty: the camera. */
+  let detailFoci: readonly { readonly x: number; readonly z: number }[] = [];
   const streamJob: TerrainLodBuild = { index: -1, level: 2, distanceM: 0, urgent: false };
   let pendingStream: Generator<TerrainBuildProgress, void, void> | null = null;
   function* buildStreamJob(job: TerrainLodBuild): Generator<TerrainBuildProgress, void, void> {
@@ -9999,7 +10001,11 @@ function* terrainBuildSteps(
     // the frame they land, before any decal or dressing reads it (an O(1) check when nothing moved)
     (group.userData.syncGroundOverlay as (() => void) | undefined)?.();
     for (const c of chunks) {
-      const d = detMath.hypot(camPos.x - c.cx, camPos.z - c.cz);
+      let d = detMath.hypot(camPos.x - c.cx, camPos.z - c.cz);
+      for (let i = 0; i < detailFoci.length; i++) {
+        const focusD = detMath.hypot(detailFoci[i].x - c.cx, detailFoci[i].z - c.cz);
+        if (focusD < d) d = focusD;
+      }
       const want = terrainLodForDistance(d, c.level);
       if (want !== c.level && c.lods[want]) {
         c.level = want;
@@ -10033,6 +10039,9 @@ function* terrainBuildSteps(
   // (perf-245) the live stream's destination while a camera travels (cameraDestinationWarm.ts); null follows the camera
   group.userData.setStreamFocus = (position: THREE.Vector3 | null): void => {
     streamFocus = position ? streamFocusPoint.copy(position) : null;
+  };
+  group.userData.setDetailFoci = (points: readonly { readonly x: number; readonly z: number }[] | null): void => {
+    detailFoci = points ?? [];
   };
   group.userData.streamingStats = streamStats;
   streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);

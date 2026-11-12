@@ -81,6 +81,10 @@ interface MainFrameRuntimeOptions {
   rig: CameraRig;
   /** Watch mode (watch-mode-243): true when the watch camera solved this frame's camera (the rig stays out). */
   watchFrame?(dtSeconds: number): boolean;
+  /** A battle frame drawn as several views (couch mode's split screen): true when it drew the frame. */
+  renderViews?(dtSeconds: number, wallDtSeconds: number): boolean;
+  /** The panes' HUDs show the battle (couch mode's split screen): the page's HUD frame is not assembled. */
+  splitHud?(): boolean;
   killcam: KillcamRuntime;
   veilHud(hidden: boolean): void;
   worldFramePresentation: WorldFramePresentationRuntime;
@@ -140,6 +144,8 @@ export function createMainFrameRuntime({
   getMobileAutoAim,
   rig,
   watchFrame,
+  renderViews,
+  splitHud,
   killcam,
   veilHud,
   worldFramePresentation,
@@ -291,7 +297,8 @@ export function createMainFrameRuntime({
       game.timeS,
     );
     stages?.stage(FRAME_STAGE.hud);
-    battleHudFrame.update(frame.inBattle, frame.killcamActive);
+    // (couch mode's split screen) each pane's HUD is its own and the page's stands down: its frame is not assembled
+    if (!splitHud?.()) battleHudFrame.update(frame.inBattle, frame.killcamActive);
     stages?.stage(FRAME_STAGE.audio);
     audioListener.update(dtSeconds, frame.inBattle, frame.killcamActive);
   };
@@ -333,7 +340,9 @@ export function createMainFrameRuntime({
     camera.userData.sensorVision=vision;
     thermalVehicles.begin(game.tanks,(vision===1||vision===2),game.player?.team,frame.inBattle?game.timeS:undefined);
     if (frame.inBattle) destinationWarm?.update();
-    try { post.render(dtSeconds, frameWallDtSeconds); }
+    try {
+      if (!(frame.inBattle && !frame.killcamActive && renderViews?.(dtSeconds, frameWallDtSeconds))) post.render(dtSeconds, frameWallDtSeconds);
+    }
     finally { thermalVehicles.end(); }
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
     if (game.phase === 'garage') clearGaragePresentationDirty();

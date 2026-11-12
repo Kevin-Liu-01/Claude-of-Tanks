@@ -2392,7 +2392,7 @@ function setObjectiveValue(target: HTMLElement, copy: string, marks: readonly (D
     seg.append(part.replace(/ \/ /g, ' / '));
     target.append(seg);
   });
-  const width = parseFloat(document.body?.style?.getPropertyValue?.('--hud-objective-width') || '') || OBJECTIVE_DEFAULT_W;
+  const width = parseFloat(target.ownerDocument?.body?.style?.getPropertyValue?.('--hud-objective-width') || '') || OBJECTIVE_DEFAULT_W;
   // (a class, which the planner observes, so its re-seat follows the taller tab; toggle with its force writes nothing when
   // unchanged)
   const over = objectiveCopyOver(target, copy, width);
@@ -2422,12 +2422,27 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
  * @param {{on:Function,off:Function,emit:Function}} bus - injected event bus (§1.5).
  * @returns {{setMode:Function,update:Function,buildMinimap:Function,setDamagePanel:Function,forceAimDisplay:Function,root:HTMLElement}} Hud
  */
-export function initHud(bus: EventBus): HudRuntime {
+/**
+ * Where a HUD lives (couch mode's split screen, docs/COUCH-MODE.md): the page's HUD mounts on the page's body; a pane's
+ * HUD mounts on its pane's own document (an iframe the pane's size), and every document-level read and write of the HUD
+ * (its bands and media queries, its body's and root element's flags, its window's resize) is that document's. One HUD,
+ * many instances: the page's HUD is the view with no `HudView`.
+ */
+export interface HudView {
+  /** The body the HUD's root mounts on; its document is the view's. */
+  readonly mount: HTMLElement;
+}
+
+export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime {
+  // the view's document and window (the page's with no view): the HUD's reads of its layout, its flags and its resize
+  const document = view?.mount.ownerDocument ?? globalThis.document;
+  const window = (document?.defaultView ?? globalThis.window) as Window & typeof globalThis;
   ensureFonts();
+  // (the page's head: a pane's document carries the page's style sheets, src/app/couchPaneViews.ts)
   ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
 
   const root = el('div', 'cot-hud');
-  document.body.appendChild(root);
+  (view?.mount ?? document.body).appendChild(root);
   installBattleHudLayout(root);
   // The nations' flags (flags.ts, the Garage's and the load screen's, already the game's own chunk): imported on demand so
   // this module stays Node-loadable, as battleLoad.ts loads them; a Node receipt's feed and ribbon go without flags.
@@ -2865,7 +2880,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // action -> bus 'ui:shotLog'), and the end-of-battle session stats.
   // All rendering/bookkeeping lives in src/ui/shotInfo.ts; the HUD only
   // mounts the layer and forwards player identity + lifecycle below.
-  const shotInfo = createShotInfo(bus);
+  const shotInfo = createShotInfo(bus, document.body);
   shotInfo.setTeamResolver((id) => teamById.get(id));
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
@@ -4460,7 +4475,7 @@ export function initHud(bus: EventBus): HudRuntime {
     frame.forwardZ = forwardZ;
     frame.centerX = w / 2;
     // (round the battle sight where the chase framing raises it, battleSight.ts; the scope's is the centre)
-    frame.centerY = mode === 'sniper' ? h / 2 : h / 2 - battleSightShift();
+    frame.centerY = mode === 'sniper' ? h / 2 : h / 2 - battleSightShift(document);
     frame.minDimension = Math.min(w, h);
     const drawnRadius = clampRetR(smoothRadPx);
     frame.radius = Math.min(

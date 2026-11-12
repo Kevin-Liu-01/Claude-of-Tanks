@@ -19,7 +19,11 @@ import type { PadLobby, PadLobbyPorts, PadLobbyView } from '../pad/padLobby.ts';
 import type { PadStatusSource } from '../pad/padReceiver.ts';
 import { padServiceUrl } from '../pad/padEndpoint.ts';
 import { createCouchSeatControls } from '../game/couchSeats.ts';
-import type { CouchSeatControls, CouchSeatInput, CouchSession } from '../game/couchSeats.ts';
+import type { CouchSeatControls, CouchSeatInput, CouchSession, CouchView } from '../game/couchSeats.ts';
+import { createCouchPaneViews } from './couchPaneViews.ts';
+import type { CouchPaneSeat, CouchPaneViewPorts, CouchPaneViews } from './couchPaneViews.ts';
+import { setCouchTier } from '../engine/quality.ts';
+import { couchPaneAreaFraction, couchPaneDetail, couchSplitCapacity } from '../game/couchPanes.ts';
 import { solveCouchPose } from '../game/couchCamera.ts';
 import type { CouchPoint } from '../game/couchCamera.ts';
 import type { CouchRules } from '../sim/matchRuleset.ts';
@@ -69,6 +73,8 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   setSpectating(on: boolean): void;
   /** The lobby's service (default: the pairing service of this page, src/pad/padEndpoint.ts); null with none. */
   startLobby?(ports: PadLobbyPorts): PadLobby | null;
+  /** The split screen's page ports (src/app/couchPaneViews.ts); without them a couch battle shows the shared camera. */
+  paneViews?: Omit<CouchPaneViewPorts, 'controls'>;
 }
 
 export interface CouchRuntime {
@@ -85,9 +91,26 @@ export interface CouchRuntime {
    * (docs/COUCH-MODE.md: joins wait between battles). False with no phone here (nothing is sent) or when the launch
    * refused; the window stays closed after a refused launch (the lobby's Reopen lets phones in again).
    */
-  startBattle(launch: (seats: readonly number[]) => boolean): boolean;
+  startBattle(launch: (seats: readonly number[]) => boolean, view?: CouchView): boolean;
   /** The frame's camera slot: true while a couch battle owns the camera. */
   frame(dtSeconds: number): boolean;
+  /** The frame's draw slot: true when the split screen drew the frame (one pane per seat), false to draw as usual. */
+  renderViews(dtSeconds: number, wallDtSeconds: number): boolean;
+  /** The split screen's panes (receipts), or null outside a split couch battle. */
+  readonly paneViews: CouchPaneViews | null;
+  /**
+   * The frame-budget harness's solo baseline (tools/couch-panes.browser.mjs): the couch tier held for the next battle,
+   * so one pane is measured against solo at the same tier (the Garage return lets it go, as after a couch battle).
+   */
+  holdTierForProbe(on: boolean): void;
+  /** The harness's like-for-like baseline: the same split battle drawn the solo way (couchPaneViews.ts probeSolo). */
+  probeSoloView(on: boolean): void;
+  /** The split screen's vehicle LOD bias (couchPaneDetail: hulls take their far meshes sooner in a small pane), else 1. */
+  lodBias(): number;
+  /** The split screen's other panes' cameras (the world's detail follows every pane), or null outside one. */
+  extraViews(): readonly import('three').PerspectiveCamera[] | null;
+  /** The seat the room's one mix hears in a split couch battle (couchPaneViews.ts listenerFocus), else null. */
+  listenerFocus(): ReturnType<CouchPaneViews['listenerFocus']>;
   /** Once per fixed step, before it: every seat's controls onto its tank. */
   beforeStep(): void;
 }
@@ -113,6 +136,35 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
   let bearing = 0;
   let placed = false;
   const startLobby = ports.startLobby ?? startServiceLobby;
+  /** The split screen (one pane per seat), made at the first split battle; the battle its panes were seated for. */
+  let panes: CouchPaneViews | null = null;
+  let panesFor: CouchSession<E> | null = null;
+  const paneSeats: CouchPaneSeat[] = [];
+  const splitActive = (): boolean => {
+    const session = ports.game.couch;
+    // (Kevin, 2026-11-11: "dont squish the uis") never more panes than the screen's panes hold the HUD's core at its solo
+    // size: past that the battle shows the shared camera (the lobby offers only Shared then)
+    return !!session && session.view === 'split' && !!ports.paneViews && !!ports.game.ruleset.couch
+      && ports.game.phase === 'battle' && session.seats.length <= splitCapacity();
+  };
+  const biasFor = { seats: 0, width: 0, height: 0, bias: 1 };
+  /** The harness's baseline: the split battle drawn the solo way (probeSoloView). */
+  let soloView = false;
+  // (read every frame and for every hull: solved again only when the screen changes)
+  const capacityFor = { width: -1, height: -1, seats: 8 };
+  const splitCapacity = (): number => {
+    if (typeof innerWidth !== 'number') return 8;
+    if (innerWidth !== capacityFor.width || innerHeight !== capacityFor.height) {
+      capacityFor.width = innerWidth; capacityFor.height = innerHeight;
+      capacityFor.seats = couchSplitCapacity(innerWidth, innerHeight);
+    }
+    return capacityFor.seats;
+  };
+  const dropPanes = (): void => {
+    panes?.dispose();
+    panesFor = null;
+    soloView = false;
+  };
 
   const seatEntity = (seat: number): E | null => ports.game.couch?.seats.find((entry) => entry.seat === seat)?.entity ?? null;
   const controlsOf = (seat: number): CouchSeatControls => {
@@ -137,7 +189,13 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
   }
 
   // the couch view never outlives its battle: a phase away from the battle drops it (no couch frame runs there)
-  ports.on('phase:change', () => { if (ports.game.phase !== 'battle') ports.setSpectating(false); });
+  ports.on('phase:change', () => {
+    if (ports.game.phase === 'battle') return;
+    ports.setSpectating(false);
+    // the panes and the couch tier are the battle's: the Garage gets the page's one view and the player's own preset
+    dropPanes();
+    if (ports.game.phase === 'garage') setCouchTier(false);
+  });
 
   const runtime: CouchRuntime = {
     get lobby() { return lobby; },
@@ -161,12 +219,46 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       for (const seatControls of controls.values()) seatControls.release();
       controls.clear();
       ports.setSpectating(false);
+      dropPanes();
+      setCouchTier(false);
     },
-    startBattle(launch) {
+    startBattle(launch, view = 'shared') {
       const seats = runtime.seatsInPlay();
       if (!lobby || !seats.length) return false;
       lobby.setOpen(false);
-      return launch(seats);
+      // the split screen's tier before the battle's world builds (its light world is read at the build: quality.ts), its
+      // raster, sward and cascades by the panes' size (game/couchPanes.ts couchPaneDetail: one rule from the pane's area)
+      const splits = view === 'split' && !!ports.paneViews && seats.length <= splitCapacity();
+      setCouchTier(splits && typeof innerWidth === 'number'
+        ? couchPaneDetail(couchPaneAreaFraction(seats.length, innerWidth, innerHeight)) : splits);
+      const launched = launch(seats);
+      if (!launched) setCouchTier(false);
+      return launched;
+    },
+    get paneViews() { return splitActive() && !soloView ? panes : null; },
+    holdTierForProbe(on) { setCouchTier(on); },
+    probeSoloView(on) {
+      soloView = on;
+      panes?.probeSolo(on);
+    },
+    lodBias() {
+      const session = ports.game.couch;
+      if (!session || typeof innerWidth !== 'number' || !splitActive()) return 1;
+      // (read for every hull every frame: solved again only when the seats or the screen change)
+      if (session.seats.length !== biasFor.seats || innerWidth !== biasFor.width || innerHeight !== biasFor.height) {
+        biasFor.seats = session.seats.length; biasFor.width = innerWidth; biasFor.height = innerHeight;
+        biasFor.bias = couchPaneDetail(couchPaneAreaFraction(biasFor.seats, innerWidth, innerHeight)).lodBias;
+      }
+      return biasFor.bias;
+    },
+    extraViews() { return splitActive() && panesFor === ports.game.couch ? panes?.extraViews() ?? null : null; },
+    listenerFocus() { return splitActive() && panesFor === ports.game.couch ? panes?.listenerFocus() ?? null : null; },
+    renderViews(dtSeconds, wallDtSeconds) {
+      if (!splitActive() || !panes || panesFor !== ports.game.couch) return false;
+      // the harness's baseline: the same frame drawn the solo way (one render, the page's HUD)
+      if (soloView) { panes.renderSolo(dtSeconds, wallDtSeconds); return true; }
+      panes.render(dtSeconds, wallDtSeconds);
+      return true;
     },
     frame(dtSeconds) {
       const session = ports.game.couch;
@@ -174,9 +266,22 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       const active = !!session && !!rules && ports.game.phase === 'battle';
       // (round 8 Y4 s3-02) asked every frame, never latched: another owner's teardown (the HUD's battle end) cleared what
       // a latch still believed was up, and every couch battle after the first showed seat 1's own-tank furniture
-      ports.setSpectating(active);
+      ports.setSpectating(active && !(soloView && splitActive()));
       if (!active || !session || !rules) return false;
       if (session !== aimedFor) beginBattle(session);
+      if (splitActive() && ports.paneViews) {
+        const views = panes ??= createCouchPaneViews({ ...ports.paneViews, controls: (seat) => controls.get(seat) ?? null });
+        if (panesFor !== session) {
+          paneSeats.length = 0;
+          for (const { seat, entity } of session.seats) paneSeats.push({ seat, entity: entity as unknown as CouchPaneSeat['entity'] });
+          views.seat(paneSeats);
+          panesFor = session;
+        }
+        // (the harness's solo-view baseline: the seats idle and the bots frozen, the camera stands; no pane work runs, so the
+        // baseline is the solo path's own: the page's HUD and one render)
+        if (!soloView) views.frame(dtSeconds);
+        return true;
+      }
       points.length = 0;
       for (const { entity } of session.seats) if (entity.state && !entity.combat?.destroyed) points.push(entity.state.pos);
       const pose = solveCouchPose(points, rules, bearing, ports.camera.fov, ports.camera.aspect);
@@ -204,5 +309,7 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       }
     },
   };
+  // the receipts' read of the session (tools/couch-panes.browser.mjs), as the pad's seats publish theirs
+  (globalThis as { __COT_COUCH?: CouchRuntime }).__COT_COUCH = runtime;
   return runtime;
 }

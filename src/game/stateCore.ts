@@ -98,11 +98,12 @@ export function watchRevealsAll(game: {
   player: unknown;
   ruleset?: { readonly watch?: { readonly revealAll: boolean } | null; readonly couch?: unknown } | null;
   watch?: { readonly opened: boolean } | null;
-  couch?: { readonly sides: string } | null;
+  couch?: { readonly sides: string; readonly view?: string } | null;
 }): boolean {
   // a couch battle with seats on both sides shares one screen, and each seat sees its own side: the screen shows every
-  // hull (docs/COUCH-MODE.md; one pane per seat draws only its side's spotting)
-  if (couchSeatsActive(game) && game.couch?.sides === 'teams') return true;
+  // hull (docs/COUCH-MODE.md). The split screen keeps every hull in the scene too: each pane hides what its own seat's
+  // side has not spotted for its own draw (src/app/couchPaneViews.ts)
+  if (couchSeatsActive(game) && (game.couch?.sides === 'teams' || game.couch?.view === 'split')) return true;
   return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
 }
 
