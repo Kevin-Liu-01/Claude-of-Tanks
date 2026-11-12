@@ -24,6 +24,7 @@ import {
 import { DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS } from '../../game/input.ts';
 import { SHELL_BEHAVIOR } from '../../sim/damage.ts';
 import { SIGNAL_RANGE_M, combineCamo, fireBloomAt } from '../../sim/spotting.ts';
+import { BASE_CAMO, equipCamoBonus } from '../../sim/spottingStats.ts';
 import { camoSelectionBonus } from '../../sim/camoPaint.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
@@ -167,6 +168,26 @@ assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
 // reload: a gun's reload is the gun's (or the shell's), not a crew skill: no skill table exists
 assert.ok(!existsSync(resolve(ROOT, 'src/sim/crewSkills.ts')), 'no crew skills change a reload');
 
+// 5b. The boot screen's tips (src/ui/bootScreen.ts TIP_KEYS) make claims of the same kind; the checkable ones are held
+//     here too, so neither the tutorial nor the boot screen can drift from the simulation.
+const boot = (id) => en[`boot.tip.${id}.body`];
+// camouflage: a bush keeps hiding a moving tank (the bush bonus has no motion input); moving costs the hull's own camo,
+// about a third for most of the fleet (the middle of BASE_CAMO's still→moving loss); a camouflage net counts only still
+assert.doesNotMatch(boot('camouflage'), /every bonus|disappears/i, 'the camouflage tip never says moving loses every bonus');
+assert.match(boot('camouflage'), /bush[^.]*even on the move/i, 'the camouflage tip says a bush hides a moving tank');
+const moveLoss = Object.values(BASE_CAMO).map((row) => (row.still > 0 ? (row.still - row.moving) / row.still : 0)).sort((a, b) => a - b);
+const quartile = (p) => moveLoss[Math.floor(p * (moveLoss.length - 1))];
+assert.ok(quartile(0.25) >= 0.2 && quartile(0.75) <= 0.4 && quartile(0.5) > 0.25 && quartile(0.5) < 0.4,
+  `"about a third for most tanks": the fleet's moving camo loss runs ${quartile(0.25).toFixed(2)}-${quartile(0.75).toFixed(2)} (median ${quartile(0.5).toFixed(2)})`);
+assert.match(boot('camouflage'), /about a third/);
+assert.ok(equipCamoBonus(['camo_net'], false) > 0 && equipCamoBonus(['camo_net'], true) === 0, 'a camouflage net counts only while still');
+assert.match(boot('camouflage'), /net works only while you stand still/);
+// angling: the same 20-30° the tutorial's tip names
+assert.match(boot('angling'), /20 to 30°/, 'the boot tip angles the hull as the tutorial does');
+// shell types: HE never bounces
+assert.match(boot('shelltypes'), /HE never bounces/);
+assert.equal(SHELL_BEHAVIOR.HE.ricochetDeg, Infinity, 'HE never bounces (damage.ts SHELL_BEHAVIOR)');
+
 // 6. The record.
 const memory = () => { const map = new Map(); return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => map.set(k, String(v)), map }; };
 const fresh = memory();
@@ -187,4 +208,4 @@ assert.ok(!tutorialChapterDue('garage', null), 'no storage: never a tutorial it 
 
 console.log(`tutorialSteps.selftest: ${TUTORIAL_STEPS.length} steps in ${TUTORIAL_CHAPTERS.length} chapters for ${INPUTS.length} kinds of hands; `
   + `every string in both locales, ${targets.size} targets on their owners, ${media.length} media files (${mediaBytes} bytes, lazy), `
-  + 'every claim held to the simulation, the record replayable PASS');
+  + 'every claim (and the boot tips\' checkable ones) held to the simulation, the record replayable PASS');

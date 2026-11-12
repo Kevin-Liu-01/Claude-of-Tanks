@@ -19,7 +19,7 @@
   "boot.tip.weakspots.heading": "弱点",
   "boot.tip.weakspots.body": "瞄准下首装甲、炮塔座圈与指挥塔。X 级首上斜面几乎可以弹开一切，但旁边的舱盖不行。",
   "boot.tip.camouflage.heading": "隐蔽",
-  "boot.tip.camouflage.body": "静止站在灌木中会大幅缩短被点亮距离。开始移动，先前积累的隐蔽加成立即消失。",
+  "boot.tip.camouflage.body": "你与敌人之间的灌木即使在移动时也能遮蔽你。移动会让多数战车损失约三分之一的自身隐蔽，伪装网只在静止时生效。",
   "boot.tip.gunhandling.heading": "火炮操控",
   "boot.tip.gunhandling.body": "等瞄准圈收缩到位再开火。瞄准圈还很大就开火，等于把射击时机白白送给对方。",
   "boot.tip.hulldown.heading": "卖头",
