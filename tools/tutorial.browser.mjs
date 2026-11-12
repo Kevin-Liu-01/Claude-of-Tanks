@@ -111,7 +111,7 @@ async function shoot(page, index) {
   const file = `${String(index).padStart(2, '0')}-${now.step}.png`;
   await page.screenshot({ path: resolve(OUT, file) });
   const entry = { ...now, file, ...facts };
-  const first = /\b(?:1 of|第 1 步)/.test(facts.progress);
+  const first = chapterSteps(now.chapter, touch ? 'touch' : 'keyboard')[0]?.id === now.step;
   assert.equal(entry.shown.back, !first, `${now.step}: Back shows on every step but a chapter's first`);
   assert.equal(entry.shown.next, now.step !== 'garage.deploy', `${now.step}: Next shows on every step but the press step`);
   assert.ok(entry.shown.skip, `${now.step}: Skip always shows`);
