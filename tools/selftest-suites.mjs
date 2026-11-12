@@ -1969,6 +1969,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
     'src/game/couchPanes.selftest.mjs', // couch-panes-272: the split screen's grids, equal panes, the HUD scale and its priority tiers
+    'src/engine/chaseStart.selftest.mjs', // couch-panes-272: the chase camera's first look follows the hull's pitch (no GUN TRAVEL LIMIT at a slope spawn)
     // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
     'src/app/couchRuntime.selftest.mjs',
     // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's

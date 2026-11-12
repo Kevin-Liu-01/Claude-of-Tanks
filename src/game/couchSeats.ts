@@ -22,7 +22,7 @@ export type CouchView = 'split' | 'shared';
 export const COUCH_VIEWS: readonly CouchView[] = ['split', 'shared'];
 
 /** How a couch battle is asked for: the lobby's seat numbers in play, how they take sides, how the screen shows them
- *  (split when unsaid) and each seat's name over its tank (seat order; the lobby's words, "Seat 2"). */
+ *  (shared when unsaid: the split screen is experimental until it meets the pass rule, docs/COUCH-MODE.md) and each seat's name over its tank (seat order; the lobby's words, "Seat 2"). */
 export interface CouchBattle {
   seats: readonly number[];
   sides: CouchSides;
@@ -62,7 +62,7 @@ const namedHulls = new WeakMap<object, Set<CouchNamedHull>>();
 export function beginCouchSession<T extends object>(host: CouchSessionHost<T>, battle: CouchBattle, tanks: readonly T[],
   allies: ReadonlySet<T>, sides: readonly boolean[]): CouchSession<T> {
   endCouchSession(host);
-  const session: CouchSession<T> = { sides: battle.sides, view: battle.view === 'shared' ? 'shared' : 'split',
+  const session: CouchSession<T> = { sides: battle.sides, view: battle.view === 'split' ? 'split' : 'shared',
     seats: assignCouchSeats(tanks, allies, battle.seats, sides) };
   const ordered = [...battle.seats].sort((a, b) => a - b);
   const named = new Set<CouchNamedHull>();

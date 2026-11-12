@@ -168,8 +168,10 @@ big screen splits like a console's split screen, and each pane shows that player
 HUD, the one the solo battle shows: hull points and the damage panel, ammunition and reload, the sight, the minimap,
 consumables, damage and kill messages, the capture and objective state, the rosters. No reduced couch HUD. This
 replaces the reduced pane HUD of "Panes' HUD and sound" below, and the four-pane stop of "Decided on the owner's
-behalf": the split screen now seats one to eight. The lobby's Screen choice keeps the shared camera (phase 1) for a
-big group that wants one view; Battle Again keeps the screen the battle had.
+behalf": the split screen seats as many as the screen holds (below). The lobby's Screen choice is Shared by default
+(phase 1, one camera) with Split labelled Experimental (Main, 2026-11-11): Split stays experimental until the
+quiet-machine ratio table meets the pass rule and every detail ring follows every pane. Battle Again keeps the screen
+the battle had.
 
 - **One HUD, many instances.** `src/ui/hud.ts` `initHud(bus, view)` takes a `HudView`: the body it mounts on, whose
   document is the HUD's. A pane's HUD mounts in its own document, a same-origin iframe over the pane
@@ -177,19 +179,33 @@ big group that wants one view; Battle Again keeps the screen the battle had.
   variables and bands, its media queries, its window's resize, the shot log's mount, the kill ribbon's flags) is the
   pane's. `initHud` and `installBattleHudLayout` bind `document` and `window` to the root's own document; the page's HUD
   is the view with no `HudView`. The pane's document carries the page's style sheets (copied, and kept in step as the
-  page adds more) and its own responsive bands (`installResponsiveLayout(paneWindow, paneDocument)`).
+  page adds more) and the page's own responsive bands, never a narrow window's (the solo HUD's sizes, below).
 - **The per-view context.** Each pane's HUD frame (`game/battleHudFrameRuntime.ts`) and aim controller
   (`game/aimController.ts`) read a view of the battle whose player is the seat's tank (`Object.create(game)` with its
   own `player`), the pane's camera and the pane's rig, so the HUD's player, camera, reticle, shells, damage panel and
   spotting are the seat's. The page player's events that name no tank (`ui:shellSelect`, `ui:consumableUsed`, the sixth
   sense, the killcam) never reach a pane's HUD, and nothing a pane's HUD emits reaches the page.
-- **Panes** (`game/couchPanes.ts`): 1 seat the whole screen; 2 side by side on a screen at least 1.6 wide (every TV and
-  laptop), stacked on a narrower one; 3 or 4 a 2 x 2 grid; 5 to 8 a 4 x 2 grid on a wide screen, 3 x 3 on a narrower
-  one. Every pane is the same size, 2 px apart; a cell no seat takes shows dark.
+- **Panes and the seat cap, one rule from the screen** (`game/couchPanes.ts`): each seat count has its grids, the
+  screen's preferred shape first: 1 the whole screen; 2 side by side on a screen at least 1.6 wide, else stacked; 3 or
+  4 a 2 x 2 grid; 5 or 6 3 x 2 (2 x 3 on a narrow screen); 7 or 8 4 x 2 (3 x 3 on a narrow screen). The grid is the
+  first whose cell holds the HUD's core at the solo size (`CORE_MIN_CELL`, 528 x 272 CSS px, measured), and the split
+  screen seats at most the largest count whose grid's cell holds it (`couchSplitCapacity`): 8 at 1920 x 1080 (3 x 3,
+  639 x 358; a 4 x 2 eighth is 478 wide and cannot), 8 at 2560 x 1440 (4 x 2), 4 at 1366 x 768 and 1280 x 720, 2 in a
+  1024 x 600 window (stacked). With more seats in the lobby than the cap, Split is disabled with "Split fits up to N on
+  this screen" and the battle is Shared; the runtime never splits past the cap. 2 x 4 strips are out. Every pane is the
+  same size, 2 px apart; a cell no seat takes shows dark.
 - **One renderer, one context.** `post.ts` `renderViews` runs the normal post chain once per pane, sized to one pane,
   each writing its own rectangle of the canvas through the viewport and the scissor; the governor samples the frame
   once. Each pane's camera is copied onto the chain's camera for its draw, so every camera-dependent pass (the scene,
   the aerial haze, the late effects) is the pane's.
+- **The battle opens inside the gun's limits.** The chase camera's first look is taken under the hull's own pitch, not
+  under the horizon, and no deeper than the gun can follow (`engine/chaseStart.ts`, for the solo start, its reveal and
+  every pane): 10 degrees, or shallower where that look's ground point (from the chase camera about 6 m up and 20 m
+  back) needs more than the gun's depression less 2 degrees from its 2.5 m muzzle, and never deeper under the hull than
+  that depression less 2 degrees (a hull nose-up on a mound over level ground). The old 10 degrees under the horizon
+  opened GUN TRAVEL LIMIT on slopes and on shallow guns (a 5 degree gun cannot reach the ground 20 m ahead). And a pane's aim ray skips its own
+  seat's hull, not the page player's (`aimController.ts`): a seat's camera ray met its own turret and laid the gun 83
+  degrees up.
 - **Cameras.** Each pane has the solo camera rig (`engine/cameraRig.ts`) following its seat, driven by its phone as the
   mouse and wheel drive the solo camera: the aim pad turns it, Scope toggles the gunner's sight, the zoom taps step the
   orbit and the scope, Free look holds the gun. The rig's sight lays the seat's gun (`CouchSeatControls.layAim`), as
@@ -200,16 +216,15 @@ big group that wants one view; Battle Again keeps the screen the battle had.
   the scene for the split screen (`stateCore.ts` `watchRevealsAll`), and each pane hides for its own draw only. In a
   Together battle the seats share one side, and so its spotting, as allies do in solo; in Teams a pane never shows a
   hull only the other side has spotted.
-- **Scale** (`couchHudScale`, `couchHudTier`): a pane's HUD is laid out at the pane's size divided by its scale and
-  drawn at that scale, the square root of the pane's height over 1080, between 0.75 and 1: a half-height pane's type is
-  0.75 of the solo HUD's, not half. The HUD's own bands then apply to that layout size. Below a full layout the HUD gives
-  up parts from the end of one stated priority list (sight, health, ammunition, hits, objective, minimap, consumables,
-  messages, rosters, furniture): compact (under 1100 x 640) gives up the rosters and furniture, small (under 768 x 480)
-  also the minimap, consumables and messages, and under the minimum pane (480 x 300 laid out) it keeps sight, health,
-  ammunition and hits only. At 1080p: 2 panes compact, 4 panes full, 8 panes small. Small starts at 768 wide because the
-  HUD's own mouse layout gives the map no room beside the ammunition rack below the tablet band (its `--hud-map-max` goes
-  negative there, as in a narrow solo window); an 8-pane HUD drawn smaller than 0.75 to keep the map would not read
-  from a couch.
+- **The solo HUD's size, never squished** (Kevin, 2026-11-11: "dont squish the uis"). A pane's HUD is drawn at scale 1
+  with the solo HUD's pixel sizes: its document takes the page's (the TV's) responsive bands and keeps the solo tray
+  (`battleHudLayout.ts` `data-couch-pane`), while its panels still anchor to the pane's own edges. A pane too small for
+  every part gives up parts by one stated priority list (`COUCH_HUD_PRIORITY`, most important first: sight, health,
+  ammunition, speed, hits, objective, messages, furniture, consumables, minimap, rosters); the core (sight, hull points,
+  ammunition and reload, speed) is never given up. The fit (`couchHudFitStep`, `couchPaneViews.ts` `fitPane`) measures
+  each panel in the pane's document; while two parts' panels overlap, one leaves the pane, or the minimap would draw
+  under its solo size (its 32vh cap in a short pane), the least important part in that clash goes, and the planner lays
+  out again. The harness checks every pane's core against one pane's, pixel for pixel, and names what each layout keeps.
 - **Sound: the most recent shooter's solo mix.** The room hears one mix, the solo mix of the seat that fired last (its
   gun, engine and hits as its own), held 1.5 s after its shot so a burst of fire from several seats does not swing the
   room between them; seat 1 before anyone fires. Why not one listener for the room: the audio engine is built around
@@ -240,9 +255,11 @@ big group that wants one view; Battle Again keeps the screen the battle had.
   pass (culling, sorting and about 400 draws a pane), while each pane's HUD costs under half a millisecond. The next
   levers are the couch tier's own: detail distances scaled by the pane's height (vehicle, prop and tree LOD, the near
   tree band), a shorter far plane for small panes, and fewer draws a pane.
-- **What still follows one camera.** The world's one-camera systems (terrain and vehicle detail, the near trees, the
-  tall grass, the water field) and the shadow cascades follow seat 1's pane; the other panes see that detail at its
-  distance from seat 1. Per-pane detail is the next step on this list.
+- **Detail that follows every pane.** The terrain's chunk detail and the near tree tier take the nearest pane's distance
+  (`map.ts` `setTerrainDetailFoci`, `terrain.ts`, `vegetation.ts` `setDetailFoci`), and a hull's detail and animation
+  cadence the nearest pane's distance and any pane's view (`battlePresentationRuntime.ts` `getExtraViews`). Still
+  following seat 1's pane (acceptable while Split is Experimental, not after): the tall grass ring, the grass carpet,
+  the litter, the water field and the shadow cascades.
 
 ## The screen
 

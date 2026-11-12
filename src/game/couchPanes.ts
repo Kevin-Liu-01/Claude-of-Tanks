@@ -8,7 +8,10 @@
  * - 1 seat: the whole screen.
  * - 2 seats: side by side on a screen at least SIDE_BY_SIDE_ASPECT wide (every TV and laptop), stacked on a narrower one.
  * - 3 or 4 seats: a 2 x 2 grid.
- * - 5 to 8 seats: 4 columns x 2 rows on a wide screen, 3 x 3 on a narrower one.
+ * - 5 or 6 seats: 3 columns x 2 rows on a wide screen, 2 x 3 on a narrower one.
+ * - 7 or 8 seats: 4 columns x 2 rows on a wide screen, 3 x 3 on a narrower one.
+ * A pane never shrinks the HUD (Kevin, 2026-11-11: "dont squish the uis"): a screen whose panes would not hold the HUD's
+ * core at its solo size splits for fewer seats (couchSplitCapacity: 6 on a 1080p screen); with more, the shared camera.
  * Every pane of a layout is the same size (the post chain is sized once for all of them); a cell no seat takes is a
  * spare, which the screen shows dark with the battle's score.
  */
@@ -37,14 +40,47 @@ const SIDE_BY_SIDE_ASPECT = 1.6;
 /** The dark line between panes, CSS px. */
 export const PANE_GUTTER_PX = 2;
 
-/** The grid for `count` seats on a `width` x `height` screen (columns x rows). */
+/** The grids a seat count may take, the screen's preferred shape first (a wide screen splits side by side). */
+function gridCandidates(seats: number, wide: boolean): readonly { columns: number; rows: number }[] {
+  if (seats === 1) return [{ columns: 1, rows: 1 }];
+  if (seats === 2) return wide ? [{ columns: 2, rows: 1 }, { columns: 1, rows: 2 }] : [{ columns: 1, rows: 2 }, { columns: 2, rows: 1 }];
+  if (seats <= 4) return [{ columns: 2, rows: 2 }];
+  if (seats <= 6) return wide ? [{ columns: 3, rows: 2 }, { columns: 2, rows: 3 }] : [{ columns: 2, rows: 3 }, { columns: 3, rows: 2 }];
+  return wide ? [{ columns: 4, rows: 2 }, { columns: 3, rows: 3 }] : [{ columns: 3, rows: 3 }, { columns: 4, rows: 2 }];
+}
+
+/** A grid's cell on the screen, CSS px (the gutters out). */
+function cellOf(grid: { columns: number; rows: number }, width: number, height: number, gutter = PANE_GUTTER_PX): { width: number; height: number } {
+  return {
+    width: Math.floor((width - gutter * (grid.columns - 1)) / grid.columns),
+    height: Math.floor((height - gutter * (grid.rows - 1)) / grid.rows),
+  };
+}
+
+/**
+ * The smallest pane that holds the HUD's core at the solo HUD's own pixel size, CSS px (measured 2026-11-11 with
+ * tools/couch-panes.browser.mjs: the damage panel 16-176, the speed gauge 184-292 and the shell slots 305-509 across, a
+ * rack the layout moves right to clear the gauge, with the right margin; the panel's 203 px over its 16 px foot under the
+ * 44 px score band, with a gap). Kevin, 2026-11-11: "dont squish the uis"; a screen too small for more panes seats fewer.
+ */
+export const CORE_MIN_CELL = Object.freeze({ width: 528, height: 272 });
+const holdsCore = (cell: { width: number; height: number }): boolean => cell.width >= CORE_MIN_CELL.width && cell.height >= CORE_MIN_CELL.height;
+
+/** The grid for `count` seats on a `width` x `height` screen (columns x rows): the screen's preferred shape whose cell
+ *  holds the core at the solo size, or the preferred shape when none does (couchSplitCapacity keeps a battle from that). */
 export function couchPaneGrid(count: number, width: number, height: number): { columns: number; rows: number } {
   const seats = Math.max(1, Math.min(MAX_COUCH_PANES, Math.floor(count) || 1));
-  const wide = width / Math.max(1, height) >= SIDE_BY_SIDE_ASPECT;
-  if (seats === 1) return { columns: 1, rows: 1 };
-  if (seats === 2) return wide ? { columns: 2, rows: 1 } : { columns: 1, rows: 2 };
-  if (seats <= 4) return { columns: 2, rows: 2 };
-  return wide ? { columns: 4, rows: 2 } : { columns: 3, rows: 3 };
+  const candidates = gridCandidates(seats, width / Math.max(1, height) >= SIDE_BY_SIDE_ASPECT);
+  return candidates.find((grid) => holdsCore(cellOf(grid, width, height))) ?? candidates[0];
+}
+
+/** The most seats the split screen shows on a `width` x `height` screen: the largest count whose grid's cell holds the
+ *  core at the solo size (one rule from the screen: six at 1080p, eight on a screen that fits them). */
+export function couchSplitCapacity(width: number, height: number): number {
+  for (let seats = MAX_COUCH_PANES; seats > 1; seats--) {
+    if (holdsCore(cellOf(couchPaneGrid(seats, width, height), width, height))) return seats;
+  }
+  return 1;
 }
 
 /** Split the screen for `count` seats: equal panes with a gutter between, the grid centred on the screen. */
@@ -67,74 +103,75 @@ export function couchPaneLayout(count: number, width: number, height: number, gu
 }
 
 /**
- * How a pane's HUD is drawn: laid out at `layoutWidth` x `layoutHeight` CSS px (its own document's viewport, so the
- * HUD's own bands and layouts apply) and drawn at `scale` into the pane. The scale follows the pane's height by its
- * square root, so a half-height pane's type is 0.75 of the solo HUD's, not half: the HUD shrinks slower than the pane and
- * stays readable from a couch. It never draws larger than the solo HUD.
- */
-interface CouchHudScale {
-  readonly scale: number;
-  readonly layoutWidth: number;
-  readonly layoutHeight: number;
-}
-
-/** The screen height the solo HUD is drawn 1:1 at (a 1080p television). */
-const HUD_REFERENCE_HEIGHT = 1080;
-/** The smallest scale a pane's HUD is drawn at. */
-export const HUD_MIN_SCALE = 0.75;
-
-export function couchHudScale(pane: Pick<CouchPaneRect, 'width' | 'height'>): CouchHudScale {
-  const scale = Math.max(HUD_MIN_SCALE, Math.min(1, Math.sqrt(pane.height / HUD_REFERENCE_HEIGHT)));
-  return {
-    scale: Math.round(scale * 1000) / 1000,
-    layoutWidth: Math.round(pane.width / scale),
-    layoutHeight: Math.round(pane.height / scale),
-  };
-}
-
-/**
- * The HUD's parts in the order a pane keeps them (most important first). A pane too small for the whole HUD gives up
- * parts from the end of this list, never ad hoc: the tiers below name how far down the list a pane's HUD keeps.
+ * The HUD's parts in the order a pane keeps them (most important first). Kevin, 2026-11-11: "dont squish the uis": a
+ * pane's HUD is the solo HUD at the solo HUD's pixel size, never scaled to fit. A pane too small for every part gives up
+ * parts from the end of this list, the team lists first, then the minimap, then the consumables row; the core (the
+ * sight, hull points, ammunition and reload, speed) is never given up.
  */
 export const COUCH_HUD_PRIORITY = [
-  'sight', // the reticle, the reload, the gun marker and the hit marks: never given up
+  'sight', // the reticle, the reload, the gun marker and the hit marks
   'health', // hull points and the damage panel's modules and crew
-  'ammunition', // the shell slots and their counts
+  'ammunition', // the shell slots, their counts and the reload
+  'speed', // the speedometer
   'hits', // the direction of a hit taken, the damage dealt
   'objective', // the score, the clock and the capture or mode state
-  'minimap',
-  'consumables',
   'messages', // the kill feed and the battle's alerts
+  'furniture', // the vehicle systems row, the network and frame chips, the hints
+  'consumables', // the consumables row
+  'minimap',
   'rosters', // the team strip and the side rosters
-  'furniture', // key caps, the network and frame chips, the hints
 ] as const;
-type CouchHudPart = (typeof COUCH_HUD_PRIORITY)[number];
+export type CouchHudPart = (typeof COUCH_HUD_PRIORITY)[number];
 
-/** A pane's HUD tier: how many parts of COUCH_HUD_PRIORITY it keeps. */
-export type CouchHudTier = 'full' | 'compact' | 'small' | 'least';
+/** The core: never given up, at full size, whatever the pane. */
+export const COUCH_HUD_CORE: readonly CouchHudPart[] = ['sight', 'health', 'ammunition', 'speed'];
 
-const TIER_KEEPS: Readonly<Record<CouchHudTier, number>> = { full: 10, compact: 8, small: 5, least: 4 };
-
-/** Under this layout width the HUD's own mouse layout leaves the minimap no room beside the ammunition rack (its
- *  --hud-map-max goes negative under the tablet band, battleHudLayout.ts): the small tier gives the map up by the list. */
-const MAP_ROOM_MIN_WIDTH = 768;
-
-/**
- * The minimum pane: a pane's HUD laid out under MIN_PANE_LAYOUT (CSS px, after its scale) keeps only the sight, health,
- * ammunition and hits. The 4 x 2 grid on a 1080p screen (478 x 539, laid out at 637 x 719) is above it: small.
- */
-export const MIN_PANE_LAYOUT = Object.freeze({ width: 480, height: 300 });
-
-/** The tier for a pane's HUD laid out at `layout` (couchHudScale's layout size). */
-export function couchHudTier(layout: { readonly layoutWidth: number; readonly layoutHeight: number }): CouchHudTier {
-  const { layoutWidth: w, layoutHeight: h } = layout;
-  if (w < MIN_PANE_LAYOUT.width || h < MIN_PANE_LAYOUT.height) return 'least';
-  if (w < MAP_ROOM_MIN_WIDTH || h < 480) return 'small';
-  if (w < 1100 || h < 640) return 'compact';
-  return 'full';
+/** One part's measured state in a pane's HUD (its panels' box, CSS px in the pane's own document). */
+export interface CouchHudPartBox {
+  readonly part: CouchHudPart;
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+  /** The part is drawn under its solo size (the minimap capped by a short pane): it does not fit as it is. */
+  readonly squeezed?: boolean;
 }
 
-/** The parts a tier gives up (the tail of COUCH_HUD_PRIORITY past what it keeps). */
-export function couchHudHidden(tier: CouchHudTier): readonly CouchHudPart[] {
-  return COUCH_HUD_PRIORITY.slice(TIER_KEEPS[tier]);
+/** The overlap the fit tolerates between two parts' boxes, CSS px (anti-aliased edges and shadows). */
+const FIT_SLACK_PX = 2;
+
+/**
+ * The fit (one step): whether a pane's HUD fits as it stands (no two parts' panels overlap, none leaves the pane, none
+ * is squeezed under its solo size), and if not, the part to give up next: the least important part in a clash, by
+ * COUCH_HUD_PRIORITY, never one of the core. `coreFits` is false when only core parts clash.
+ */
+export function couchHudFitStep(boxes: readonly CouchHudPartBox[], width: number, height: number,
+  dropped: ReadonlySet<CouchHudPart>, pairs?: string[]): { fits: boolean; drop: CouchHudPart | null; coreFits: boolean; clashing: readonly CouchHudPart[] } {
+  const shown = boxes.filter((box) => !dropped.has(box.part));
+  // the parts in a clash: two parts' panels over each other, a panel off the pane, a panel squeezed under its solo size
+  const clashing = new Set<CouchHudPart>();
+  for (let i = 0; i < shown.length; i++) {
+    const a = shown[i];
+    if (a.squeezed || a.x0 < -FIT_SLACK_PX || a.y0 < -FIT_SLACK_PX || a.x1 > width + FIT_SLACK_PX || a.y1 > height + FIT_SLACK_PX) {
+      clashing.add(a.part);
+      pairs?.push(`${a.part}:${a.squeezed ? 'squeezed' : 'off-pane'}`);
+    }
+    for (let j = i + 1; j < shown.length; j++) {
+      const b = shown[j];
+      if (a.part === b.part) continue;
+      if (Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > FIT_SLACK_PX && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > FIT_SLACK_PX) {
+        clashing.add(a.part);
+        clashing.add(b.part);
+        pairs?.push(`${a.part}+${b.part}`);
+      }
+    }
+  }
+  if (!clashing.size) return { fits: true, drop: null, coreFits: true, clashing: [] };
+  // the least important part in a clash goes (giving up one that clashes with nothing would not make room)
+  for (let i = COUCH_HUD_PRIORITY.length - 1; i >= 0; i--) {
+    const part = COUCH_HUD_PRIORITY[i];
+    if (COUCH_HUD_CORE.includes(part)) break;
+    if (clashing.has(part)) return { fits: false, drop: part, coreFits: true, clashing: [...clashing] };
+  }
+  return { fits: false, drop: null, coreFits: false, clashing: [...clashing] };
 }

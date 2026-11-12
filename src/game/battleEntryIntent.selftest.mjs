@@ -31,9 +31,9 @@ const { createBattleEntryIntent, replayBattleEntry } = battleEntryIntentModule;
 {
   const intent = createBattleEntryIntent();
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'teams', seats: [1, 2] } });
-  assert.deepEqual(intent.couch, { sides: 'teams', view: 'split' }, 'a couch begin keeps its sides, and its screen split when unsaid (the seats are read again at a replay)');
-  intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'together', view: 'shared' } });
-  assert.deepEqual(intent.couch, { sides: 'together', view: 'shared' }, 'couch-panes-272: the shared camera is kept');
+  assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'a couch begin keeps its sides, and its screen shared when unsaid (the seats are read again at a replay)');
+  intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'together', view: 'split' } });
+  assert.deepEqual(intent.couch, { sides: 'together', view: 'split' }, 'couch-panes-272: the experimental split screen is kept');
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: null });
   assert.equal(intent.couch, null, 'a solo begin clears the couch');
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'sideways' } });

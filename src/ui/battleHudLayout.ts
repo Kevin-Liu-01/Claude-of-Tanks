@@ -1050,7 +1050,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     reuseReads = !touch;
     // a new window size (a resize, a keyboard, a toolbar) is a new plan input
     if (width * 65536 + height !== lastSize) planInputs = true;
-    const tray = width < 1000 ? 'stacked' : 'inline';
+    // (couch-panes-272: a split-screen pane keeps the solo HUD's sizes, Kevin's "dont squish the uis": its tray stays the
+    // TV's inline one, and the pane gives up parts by priority where they do not fit, src/app/couchPaneViews.ts)
+    const tray = width < 1000 && !document.body.hasAttribute('data-couch-pane') ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     // r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): a mouse layout's inline tray,
     // centred, moves right until it keeps the gap the damage panel keeps from the gauge (TRAY_GAUGE_GAP)

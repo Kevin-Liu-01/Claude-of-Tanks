@@ -333,8 +333,9 @@ export interface WorldRuntime {
    */
   setTerrainStreamFocus(position: THREE.Vector3 | null): void;
   /**
-   * More places the terrain's chunk detail is chosen for (couch mode's split screen: the other panes' cameras), besides
-   * the camera `update` is given: a chunk takes the detail of its distance to the nearest. Null: the camera alone.
+   * More places the terrain's chunk detail and the near tree tier are chosen for (couch mode's split screen: the other
+   * panes' cameras), besides the camera `update` is given: each takes the detail of its distance to the nearest. Null:
+   * the camera alone.
    */
   setTerrainDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null): void;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
@@ -1315,6 +1316,8 @@ function* assembleWorldSteps(
     },
     setTerrainDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null) {
       (terrain.userData.setDetailFoci as ((p: readonly { readonly x: number; readonly z: number }[] | null) => void) | undefined)?.(points);
+      // (couch-panes-272) and the near tree tier: a tree near any pane's camera is a near tree
+      vegetation.setDetailFoci?.(points);
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     warmImpostorsAsync: (waitLinks) => { bakePanorama(); return vegetation.warmImpostorsAsync(waitLinks); },

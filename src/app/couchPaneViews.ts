@@ -11,7 +11,8 @@
  *   battle whose player is the seat's tank: the per-view context (`viewGame`), so the HUD's player, camera and spotting
  *   are the seat's and nothing of the page's player leaks into it;
  * - a HUD mounted in its own document (an iframe laid over the pane, hud.ts HudView), so the HUD's bands, media
- *   queries and body flags are the pane's, drawn at the pane's HUD scale (game/couchPanes.ts couchHudScale);
+ *   queries and body flags are the pane's, at the solo HUD's own pixel size (never scaled: "dont squish the uis"), its
+ *   parts given up from the end of one priority list while the pane cannot hold them (game/couchPanes.ts couchHudFitStep);
  * - a draw through the one post chain into the pane's rectangle of the one canvas (post.ts renderViews), with the
  *   pane's visibility: an enemy the seat's side has not spotted is hidden for that pane's draw only, and the seat's own
  *   tank is hidden only in its own gunner's sight.
@@ -23,18 +24,18 @@ import { createBattleHudFrameRuntime, type BattleHudFrameRuntime } from '../game
 import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { CouchCameraIntent, CouchSeatControls } from '../game/couchSeats.ts';
 import {
-  couchHudHidden, couchHudScale, couchHudTier, couchPaneLayout,
-  type CouchHudTier, type CouchPaneLayout, type CouchPaneRect,
+  couchHudFitStep, couchPaneLayout,
+  type CouchHudPart, type CouchHudPartBox, type CouchPaneLayout, type CouchPaneRect,
 } from '../game/couchPanes.ts';
 import { encodeAimIntent } from '../sim/aimIntent.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import { rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
-import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { PostView } from '../engine/post.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { battleBands, setBattleSightShift } from '../ui/battleSight.ts';
+import { chaseStartPitch } from '../engine/chaseStart.ts';
 
 type HudFrameOptions = Parameters<typeof createBattleHudFrameRuntime>[0];
 type HudGame = HudFrameOptions['game'];
@@ -98,16 +99,29 @@ const PAGE_PLAYER_EVENTS = new Set([
  *  phase-1 seat's gun by 0.0035 rad a unit turns the pane's camera as far (engine/cameraRig.ts BASE_SENS 0.0022). */
 const AIM_UNIT_PX = 0.0035 / 0.0022;
 
-/** The parts of the HUD each COUCH_HUD_PRIORITY entry names (the selectors a tier hides). */
-const PART_SELECTORS: Readonly<Record<string, string>> = {
+/** The HUD's panels each COUCH_HUD_PRIORITY entry names (the selectors a pane gives up; the sight, the hit layer and the
+ *  messages are overlays the fit does not measure). */
+const PART_SELECTORS: Readonly<Partial<Record<CouchHudPart, string>>> = {
+  health: '.cot-dp',
+  // (the slots and the consumables, not the tray: the tray holds both, and the consumables go before the ammunition)
+  ammunition: '.cot-shell',
+  speed: '.cot-drive',
   hits: '.cot-dmglayer',
-  objective: '.cot-top,.cot-mode-status',
-  minimap: '.cot-minimap',
-  consumables: '.cot-cons',
+  objective: '.cot-top .sc,.cot-top .tm-block,.cot-mode-status',
   messages: '.cot-killfeed,.cot-alert,.cot-si-toasthost',
-  rosters: '.cot-pips,.cot-ear-rows,.cot-er',
-  furniture: '.cot-net,.cot-hints,.cot-vehicle-controls,.cot-drive',
+  furniture: '.cot-vehicle-controls,.cot-net,.cot-hints',
+  consumables: '.cot-con',
+  minimap: '.cot-minimap',
+  rosters: '.cot-ear,.cot-pips',
 };
+/** The parts whose panels the fit measures (the rest are overlays over the whole pane). */
+const MEASURED_PARTS: readonly CouchHudPart[] = ['health', 'ammunition', 'speed', 'objective', 'furniture', 'consumables', 'minimap', 'rosters'];
+/** Frames the HUD's own planner takes to lay out again after a part goes (its relayouts run on animation frames). */
+const FIT_SETTLE_FRAMES = 4;
+/** A fitted pane is measured again this often (a part that appeared later, a mode's tab). */
+const FIT_RECHECK_FRAMES = 120;
+/** The minimap's solo size before its zoom step (hud.ts .cot-minimap: 220 px x --mm-k). */
+const MINIMAP_SOLO_PX = 220;
 
 /** The panes' host over the canvas and the page HUD standing down (the page's document). */
 const PANES_CSS = '.cot-couch-panes{position:fixed;inset:0;pointer-events:none;z-index:var(--z-hud-score)}'
@@ -135,7 +149,17 @@ interface PaneView {
   cards: ShellCard[];
   cardShells: unknown;
   minimapSrc: string | null;
-  tier: CouchHudTier | null;
+  /** The fit: the parts given up, frames until the planner has laid out again, whether the pane holds what it shows, and
+   *  whether its core fits at all (false: the core alone overlaps or leaves the pane). */
+  dropped: Set<CouchHudPart>;
+  /** The fit's last measure and the parts its last step found in a clash (receipts read them). */
+  lastBoxes: CouchHudPartBox[];
+  lastClash: readonly CouchHudPart[];
+  /** Every clash the fit found since this size began (receipts read it: what a pane gave up, and why). */
+  clashLog: string[];
+  fitWait: number;
+  fitted: boolean;
+  coreFits: boolean;
   /** The hulls this pane's last draw showed (ids, receipts read them). */
   drawn: string[];
   dispose(): void;
@@ -151,15 +175,26 @@ interface CouchPaneProbe {
   hud: PaneHud | null;
   camera: PerspectiveCamera;
   rigMode: string;
-  tier: CouchHudTier | null;
+  /** The HUD parts this pane gave up to fit (from the end of the priority list), whether it fits, whether its core does. */
+  dropped: readonly CouchHudPart[];
+  fitted: boolean;
+  coreFits: boolean;
+  /** The fit's last measure of the parts' panels, and the parts its last clash named. */
+  boxes: readonly CouchHudPartBox[];
+  clash: readonly CouchHudPart[];
+  clashLog: readonly string[];
   drawn: readonly string[];
   /** The pane's HUD frame's spotting read (the minimap's and the markers'): its seat as the receiver. */
   hudSpotted(id: string): boolean;
+  /** The seat's HUD shows GUN TRAVEL LIMIT (the gun held at its limit past the label's dwell). */
+  atGunLimit: boolean;
 }
 
 export interface CouchPaneViews {
   /** The panes in seat order (receipts read them). */
   readonly panes: readonly CouchPaneProbe[];
+  /** Every pane's camera but seat 1's (seat 1's is the page's camera): the world's detail is every pane's. */
+  extraViews(): readonly PerspectiveCamera[];
   /** The last frame's split-screen work on the main thread, ms: every pane's HUD frame, and every pane's draw. */
   readonly timing: { readonly hudMs: number; readonly drawMs: number };
   readonly layout: CouchPaneLayout | null;
@@ -242,16 +277,84 @@ function createPaneDocument(host: HTMLElement): { frame: HTMLIFrameElement; doc:
     for (const record of records) for (const node of Array.from(record.addedNodes)) copy(node);
   });
   mirror.observe(document.head, { childList: true });
-  const responsive = installResponsiveLayout(frame.contentWindow!, doc);
+  // the solo HUD's sizes (Kevin, 2026-11-11: "dont squish the uis"): the pane's document takes the page's own bands,
+  // never a narrow window's, and the layout keeps the solo tray (battleHudLayout.ts data-couch-pane); its places still
+  // anchor to the pane's own edges (syncPaneViewport)
+  doc.body.setAttribute('data-couch-pane', '');
   return {
     frame,
     doc,
     dispose() {
       mirror.disconnect();
-      responsive.destroy();
       frame.remove();
     },
   };
+}
+
+/** The page's responsive bands, copied onto a pane's body (the solo HUD's sizes), and the pane's own viewport size. */
+const BAND_KEYS = ['cotWidth', 'cotHeight', 'cotWidthDensity', 'cotHeightDensity', 'cotOrientation', 'cotInput', 'cotPanels', 'cotViewport'] as const;
+function syncPaneViewport(view: PaneView, rect: CouchPaneRect): void {
+  const body = view.doc.body;
+  for (const key of BAND_KEYS) {
+    const value = document.body.dataset[key];
+    if (value === undefined) delete body.dataset[key];
+    else if (body.dataset[key] !== value) body.dataset[key] = value;
+  }
+  const root = view.doc.documentElement.style;
+  root.setProperty('--cot-viewport-width', `${rect.width}px`);
+  root.setProperty('--cot-viewport-height', `${rect.height}px`);
+  root.setProperty('--cot-ui-scale', document.documentElement.style.getPropertyValue('--cot-ui-scale') || '1');
+  view.doc.defaultView?.dispatchEvent(new Event('cot:layoutchange'));
+}
+
+/** The parts a pane gave up, hidden in its own document (the overrides layer outranks the HUD's own layout rules). */
+function applyDropped(view: PaneView): void {
+  for (const sheet of Array.from(view.doc.querySelectorAll('style[id^="cot-couch-fit-"]'))) sheet.remove();
+  const hidden = [...view.dropped].map((part) => PART_SELECTORS[part]).filter(Boolean);
+  if (hidden.length) ensureStyle(`cot-couch-fit-${[...view.dropped].join('-')}`, `${hidden.join(',')}{display:none}`, 'overrides', view.doc);
+}
+
+/** The measured parts' panels in a pane's document (each part's shown elements' union box). */
+function measureParts(doc: Document): CouchHudPartBox[] {
+  const boxes: CouchHudPartBox[] = [];
+  const win = doc.defaultView;
+  for (const part of MEASURED_PARTS) {
+    // one box per panel: a part's panels in different corners (the systems row and the network chip) are not one box
+    for (const element of Array.from(doc.querySelectorAll<HTMLElement>(PART_SELECTORS[part] ?? ''))) {
+      if (!element.getClientRects().length) continue;
+      const style = win?.getComputedStyle(element);
+      if (style && (style.visibility === 'hidden' || Number(style.opacity) === 0)) continue;
+      const box = element.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) continue;
+      let squeezed = false;
+      if (part === 'minimap' && style) {
+        const k = parseFloat(style.getPropertyValue('--mm-k')) || 1;
+        squeezed = box.width < MINIMAP_SOLO_PX * k - 2;
+      }
+      boxes.push({ part, x0: box.left, y0: box.top, x1: box.right, y1: box.bottom, squeezed });
+    }
+  }
+  return boxes;
+}
+
+/** One frame of a pane's fit: measure once the planner has settled, give up the next part while it does not fit. */
+function fitPane(view: PaneView, rect: CouchPaneRect): void {
+  if (!view.hud) return;
+  if (view.fitWait > 0) { view.fitWait--; return; }
+  view.lastBoxes = measureParts(view.doc);
+  const pairs: string[] = [];
+  const step = couchHudFitStep(view.lastBoxes, rect.width, rect.height, view.dropped, pairs);
+  if (step.drop) view.clashLog.push(`${pairs.join(' ')} -> ${step.drop}`);
+  view.coreFits = step.coreFits;
+  if (step.clashing.length) view.lastClash = step.clashing;
+  view.fitted = step.fits;
+  if (step.drop) {
+    view.dropped.add(step.drop);
+    applyDropped(view);
+    view.fitWait = FIT_SETTLE_FRAMES;
+  } else {
+    view.fitWait = FIT_RECHECK_FRAMES;
+  }
 }
 
 export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews {
@@ -271,6 +374,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
   const listenerForward = new Vector3();
   const detailFoci: { x: number; z: number }[] = [];
   const timing = { hudMs: 0, drawMs: 0 };
+  const extra: PerspectiveCamera[] = [];
   const listener = { entity: null as unknown as PaneEntity, forward: listenerForward };
   ports.bus.on('shell:fired', (payload) => {
     const shooter = payload && typeof payload === 'object' ? Reflect.get(payload, 'shooterId') : null;
@@ -306,22 +410,20 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     const box = ensureHost();
     views.forEach((view, index) => {
       const rect = layout!.panes[index];
-      const scale = couchHudScale(rect);
+      // the solo HUD's own pixel size: the pane's document is the pane's size, never scaled
       const style = view.frame.style;
       style.left = `${rect.x}px`;
       style.top = `${rect.y}px`;
-      style.width = `${scale.layoutWidth}px`;
-      style.height = `${scale.layoutHeight}px`;
-      style.transform = scale.scale === 1 ? '' : `scale(${scale.scale})`;
-      const tier = couchHudTier(scale);
-      if (tier !== view.tier) {
-        view.tier = tier;
-        view.doc.body.dataset.couchHud = tier;
-        const hidden = couchHudHidden(tier).map((part) => PART_SELECTORS[part]).filter(Boolean);
-        // one sheet a tier, in the overrides layer (it outranks the HUD's own layout rules for these parts)
-        for (const sheet of Array.from(view.doc.querySelectorAll('style[id^="cot-couch-tier-"]'))) sheet.remove();
-        if (hidden.length) ensureStyle(`cot-couch-tier-${tier}`, `${hidden.join(',')}{display:none}`, 'overrides', view.doc);
-      }
+      style.width = `${rect.width}px`;
+      style.height = `${rect.height}px`;
+      syncPaneViewport(view, rect);
+      // a new size fits again from the whole HUD
+      view.dropped.clear();
+      view.clashLog.length = 0;
+      applyDropped(view);
+      view.fitWait = FIT_SETTLE_FRAMES;
+      view.fitted = false;
+      view.coreFits = true;
       view.camera.aspect = rect.width / Math.max(1, rect.height);
       view.camera.updateProjectionMatrix();
     });
@@ -407,7 +509,8 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     const paneDoc = createPaneDocument(ensureHost());
     Object.assign(view, {
       seat: seat.seat, entity, camera, rig, aim, hudFrame, frame: paneDoc.frame, doc: paneDoc.doc,
-      hud: null, damagePanel: null, cards: [], cardShells: null, minimapSrc: null, tier: null, drawn: [],
+      hud: null, damagePanel: null, cards: [], cardShells: null, minimapSrc: null, drawn: [],
+      dropped: new Set<CouchHudPart>(), lastBoxes: [], lastClash: [], clashLog: [], fitWait: FIT_SETTLE_FRAMES, fitted: false, coreFits: true,
       dispose() {
         view.hud?.setMode('hidden');
         view.damagePanel?.clear();
@@ -416,8 +519,10 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       },
     } satisfies PaneView);
     // a new battle's camera starts behind its own tank, along its gun
-    rig.snapArcade(2, ((entity.state as { yaw?: number; turretYaw?: number } | null)?.yaw ?? 0)
-      + ((entity.state as { turretYaw?: number } | null)?.turretYaw ?? 0), -0.17);
+    // (the hull's attitude: sim/movement.ts _spring, positive nose up)
+    const pose = entity.state as { yaw?: number; turretYaw?: number; _spring?: { pitch?: number } } | null;
+    rig.snapArcade(2, (pose?.yaw ?? 0) + (pose?.turretYaw ?? 0),
+      chaseStartPitch(pose?._spring?.pitch, (entity.spec as { gunDepressionDeg?: number }).gunDepressionDeg));
     return view;
   };
 
@@ -426,12 +531,19 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       return views.map((view, index): CouchPaneProbe => ({
         seat: view.seat, entityId: view.entity.id, team: view.entity.team,
         rect: layout?.panes[index] ?? { x: 0, y: 0, width: 0, height: 0 },
-        doc: view.doc, hud: view.hud, camera: view.camera, rigMode: view.rig.mode, tier: view.tier, drawn: view.drawn,
+        doc: view.doc, hud: view.hud, camera: view.camera, rigMode: view.rig.mode, drawn: view.drawn,
+        dropped: [...view.dropped], fitted: view.fitted, coreFits: view.coreFits, boxes: view.lastBoxes, clash: view.lastClash, clashLog: view.clashLog,
         hudSpotted: (id) => view.hudFrame.frameInfo.spotting?.isSpotted(id) ?? true,
+        atGunLimit: !!view.hudFrame.frameInfo.aim.gunLimitSpec,
       }));
     },
     get layout() { return layout; },
     get timing() { return timing; },
+    extraViews() {
+      extra.length = Math.max(0, views.length - 1);
+      for (let i = 1; i < views.length; i++) extra[i - 1] = views[i].camera;
+      return extra;
+    },
     seat(seats) {
       disposeViews();
       const mine = ++generation;
@@ -463,6 +575,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
           if (view.rig.mode === 'ARCADE') view.rig.enterSniper();
           else view.rig.exitSniper(true);
         }
+        fitPane(view, layout!.panes[views.indexOf(view)]);
         camInput.mouseDX = intent.aimDx * AIM_UNIT_PX;
         camInput.mouseDY = intent.aimDy * AIM_UNIT_PX;
         camInput.wheel = intent.zoom;

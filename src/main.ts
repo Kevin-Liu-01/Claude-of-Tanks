@@ -248,6 +248,7 @@ import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { togglePhonePause } from './ui/phonePause.ts';
 import { setBodyFlag } from './ui/bodyFlags.ts';
 import { openCouchWhenCurrent } from './app/couchOpener.ts';
+import { chaseStartPitch } from './engine/chaseStart.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -317,7 +318,6 @@ const startupIntent = createStartupIntent(globalThis.location);
 const STUDIO_BOOT_INTENT = startupIntent.studioRequested;
 const STUDIO_BOOT_MAP = startupIntent.studioMapId;
 
-const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
@@ -2465,6 +2465,8 @@ const battlePresentation = createBattlePresentationRuntime({
   game,
   camera,
   scene,
+  // a couch battle's split screen: every pane's camera (src/app/couchPaneViews.ts), so no pane's hulls lose their detail
+  getExtraViews: () => couchOwner.current?.extraViews() ?? null,
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
@@ -2829,7 +2831,8 @@ function prepareBattleRevealCamera() {
   if (game.ruleset?.watch && watchOwner.current?.prepareReveal()) return;
   if (!game.player || !game.player.state) return;
   rig.release();
-  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  rig.snapArcade(2, game.player.state.yaw, chaseStartPitch((game.player.state as { _spring?: { pitch?: number } })._spring?.pitch,
+    (game.player.spec as { gunDepressionDeg?: number } | undefined)?.gunDepressionDeg));
 }
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees: a network round's actors and the solo roster both
@@ -3754,7 +3757,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     // a watched battle (the Deploy foot's Watch): Battle Again watches again
     watched: options?.watch === true,
     // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
-    couch: options?.couch ? { sides: options.couch.sides, view: options.couch.view === 'shared' ? 'shared' : 'split' } : null,
+    couch: options?.couch ? { sides: options.couch.sides, view: options.couch.view === 'split' ? 'split' : 'shared' } : null,
   }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),

@@ -49,7 +49,7 @@ export function createBattleEntryIntent(): BattleEntryIntent {
     get couch() { return current.couch; },
     begin({ terrainVariant, campaignOperationId, watched, couch }) {
       const sides = couch?.sides;
-      const view: CouchView = couch?.view === 'shared' ? 'shared' : 'split';
+      const view: CouchView = couch?.view === 'split' ? 'split' : 'shared';
       current = Object.freeze({
         terrainVariant: terrainVariant === 'assault-trenches' ? terrainVariant : null,
         campaignOperationId: typeof campaignOperationId === 'string' && campaignOperationId ? campaignOperationId : null,
