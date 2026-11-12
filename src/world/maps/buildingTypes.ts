@@ -103,12 +103,27 @@ export function placedTypesOf(props: {
 }
 
 /**
+ * The placements a blind A/B kept against the table (typefit-272, 2026-11-11: the A/B rule reverts a map that loses).
+ * Shot 18-26 m from each swapped structure, three critics preferred the old type 0-18 on Alpine, 3-20 on Coastal, 0-18
+ * on Winter and 0-12 on Titan Gorge. The generic `saunahut` reads there as a snow-roofed log shed, and its `fieldhut`
+ * and `fishershack` replacements as plank porch houses with bare roofs. The generic `deserttent` reads as a canvas wall
+ * tent with a stovepipe, which beat the `commandtent`. Fjord's Quonset swap won 24-0 and stays. A row leaves this list
+ * when its replacement model wins a new A/B.
+ */
+const AB_KEPT: Readonly<Partial<Record<MapId, readonly string[]>>> = {
+  alpine: ['saunahut'], coastal: ['saunahut'], winter: ['saunahut'], titan_gorge: ['deserttent'],
+};
+
+/**
  * The types a map's props place that its setting does not allow (none, for a map that may load). A type the map's own kit
  * builds is the kit's reading of the slot, made for that place (the Navajo kit's `caravanserai` is Goulding's trading post,
  * its `minaret` the chapter's water tank; the Goral kit's `onionchurch` a Podhale kościół; the Glen Canyon kit's
  * `megatower` the dam's control building): `kitBuilds` names those, and only the generic builders are judged by the table.
+ * A placement in AB_KEPT also passes.
  */
 export function misplacedTypes(mapId: MapId, setting: MapSetting, props: Parameters<typeof placedTypesOf>[0],
   kitBuilds: (type: string) => boolean = () => false): string[] {
-  return placedTypesOf(props).filter((t) => !kitBuilds(t) && !typeFitsSetting(t, setting)).map((t) => `${mapId}: ${t}`);
+  const kept = AB_KEPT[mapId] ?? [];
+  return placedTypesOf(props).filter((t) => !kitBuilds(t) && !kept.includes(t) && !typeFitsSetting(t, setting))
+    .map((t) => `${mapId}: ${t}`);
 }
