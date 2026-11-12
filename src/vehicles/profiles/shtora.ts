@@ -13,6 +13,7 @@ interface ShtoraPort {
   readonly disposables?: { push(material: THREE.Material): unknown };
   _shtoraRed?: THREE.MeshStandardMaterial;
   _shtoraBlue?: THREE.MeshStandardMaterial;
+  _shtoraSlit?: THREE.MeshStandardMaterial;
   add(slot: string, geometry: THREE.BufferGeometry, x: number, y: number, z: number): void;
 }
 
@@ -37,7 +38,7 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
   const [dx, dy, dz] = seats.offset ?? [0, 0, 0];
   const y = seats.y + dy, zc = seats.z + dz;
   const blue = seats.lens === 'blue';
-  if ((seats.round || seats.slit) && !(blue ? P._shtoraBlue : P._shtoraRed)) {
+  if (seats.round && !(blue ? P._shtoraBlue : P._shtoraRed)) {
     const material = cloneRehookedVehicleMaterial(P.mats.dark);
     material.color.setHex(blue ? 0x0c2a5a : 0x54180e);
     material.emissive.setHex(blue ? 0x1a4a9a : 0x7c2410);
@@ -45,13 +46,22 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
     if (blue) P._shtoraBlue = material; else P._shtoraRed = material;
   }
   const lensMaterial = blue ? P._shtoraBlue : P._shtoraRed;
+  // the slit's own lens (Main 2026-11-12): a narrow lens shows little of its glow, so it is a lighter tint of its colour
+  // with a little more self-light, and it reads as blue (or red) rather than navy; the round lenses keep theirs
+  if (seats.slit && !P._shtoraSlit) {
+    const material = cloneRehookedVehicleMaterial(P.mats.dark);
+    material.color.setHex(blue ? 0x1f5cb8 : 0x8c2a16);
+    material.emissive.setHex(blue ? 0x2f6fd6 : 0xa8361a);
+    P.disposables?.push(material);
+    P._shtoraSlit = material;
+  }
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.24 * es, 0.27 * es, 0.22 * es), s * x + dx, y, zc);
     if (seats.slit) {
       P.add('turretDark', box(0.21 * es, 0.085 * es, 0.03 * es), s * x + dx, y, zc + 0.11 * es);
       const geometry = markVehicleNightLens(box(0.17 * es, 0.026 * es, 0.012 * es), 'shtora');
       prepareVehicleNightLensParts([geometry]);
-      const lens = new THREE.Mesh(geometry, lensMaterial);
+      const lens = new THREE.Mesh(geometry, P._shtoraSlit);
       lens.position.set(s * x + dx, y, zc + 0.127 * es);
       lens.castShadow = lens.receiveShadow = true;
       P.turretG.add(lens);

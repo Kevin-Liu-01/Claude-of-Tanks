@@ -558,15 +558,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23412,
-      "sha256": "c8530253b2fce244b6d3462f1136d4daa405979d8eb86c27ecc9121459a2974a",
+      "bytes": 23354,
+      "sha256": "0b8661dda2255492ba3d34a08d1b05e66196645670950f1c51792e10a66daf97",
       "thumbnail": {
         "file": "thumbs/object477_molot_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9780,
-        "sha256": "b7a78aa0b9bde4c236bace203b4f4678e0c8759fe68a62162630d31a57e340be",
+        "bytes": 9778,
+        "sha256": "aa1708d9b6ee3e130b4b8a78851239782f1783faf871ac8d8a7d6043f0ea21d7",
         "frame": [17,128,225,248]
       }
     },
