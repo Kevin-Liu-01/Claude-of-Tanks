@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1802 | 412.5 |
+| KEEP | 1803 | 412.6 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 676 | 1183.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2479 | 1596.3 | 267.5 |
-| After: the default tier | 1802 | 412.5 | 68.1 |
+| Before: every receipt (npm test without the tiers) | 2480 | 1596.4 | 267.5 |
+| After: the default tier | 1803 | 412.6 | 68.1 |
 
 Default tier: 25.8 % of the whole registry's CPU; 45.0 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.2 min pool, 18.6 min browser receipts.
 
@@ -824,7 +824,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1802)
+## KEEP (1803)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1273,6 +1273,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/gunFacePlates.selftest.mjs` | 6.8 | KEEP | vehicle rule, 6.8 s: 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/volumeCardBody.selftest.mjs` | 6.7 | KEEP | effects contract, 6.7 s: dust-orient-271: a media card's aspect is its body's shape in the world, never the screen's | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteCssInTsMinify.selftest.mjs` | 6.6 | KEEP | tool contract, 6.6 s: 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/strikeOrder.selftest.mjs` | 6.3 | KEEP | game flow, 6.3 s: 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/garageOpenState.selftest.mjs` | 6.3 | KEEP | interface contract, 6.3 s: 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/maps/mapBuildScopes.selftest.mjs` | 6.3 | KEEP | world rule, 6.3 s: 2026-11-02 audit R1: kit build slots in one registry, asserted at yields; no cross-build latches | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/owner-kit-targets.selftest.mjs` | 6.1 | KEEP | tool contract, 6.1 s: 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2627,6 +2628,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/game/strikeOrder.selftest.mjs` | n/a | KEEP | game flow, n/a s: 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/strikeRuns.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/deployModeArt.selftest.mjs` | n/a | KEEP | interface contract, n/a s: 272: every mode's picture (Deploy tile and plate, the landing's and the Field Manual's still); Air Support shi | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/instancedDrawBatch.selftest.mjs` | n/a | KEEP | world rule, n/a s: world-pools-272 (2026-11-12): instanced pools that share a material draw as one batch (the destructible props) | default tier (npm test, the release gate; lane mode by its closure) |
