@@ -5887,5 +5887,21 @@
   "playMenu.matchMode.air_support.label": "空中支援",
   "playMenu.matchMode.air_support.short": "空支",
   "playMenu.matchMode.air_support.desc": "坚守三个区域，并通过作战赢得支援点数。举起望远镜，对标记点呼叫侦察掠过、炮火覆盖、低空扫射、精确制导炸弹或 AC-130 盘旋。每次打击都会预警被瞄准的一方。",
-  "docs.modes.win.air_support": "先达到 {target}"
+  "docs.modes.win.air_support": "先达到 {target}",
+  "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "铜台地矿场：M1A1 Abrams SA 对 T-72B3M obr. 2016",
+  "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "铜台地矿场：M1A2 Abrams SEPv3",
+  "media.loading.title.s298T90msTagilSaltwindHerolowV3F33M271R14": "盐风海峡：T-90MS Tagil",
+  "media.loading.title.s280Leo2a3B4UrbanDuelLowT70F33M271R14": "斯泰因堡：Leopard 2A3 对 T-90A",
+  "media.loading.title.s199M1a2XDesertHerolowM271R14": "西罗科旱谷：M1A2 Abrams",
+  "media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14": "奥林匹斯盆地：T-72B3M Bulat-M",
+  "media.loading.title.s39Leo2a7vLakesideVillageHerolowClT3333M271R14": "高地水库：Leopard 2A7V",
+  "media.loading.title.s120Type10SkybridgeHerolowV3M271R14": "天桥裂谷：Type 10",
+  "media.loading.title.s286Leo2a4mMonsoonHerohighV2FbM271R14": "季风雨脊：Leopard 2A4M",
+  "media.loading.title.s296T90mProryvCoastalDuelLowTm70F33M271R14": "盐沼湾：T-90M Proryv 对 Challenger 3 TD (RWS)",
+  "media.loading.title.s202Kf51PantherCopperMesaHerohighM271R14": "铜台地矿场：KF51 Panther",
+  "media.loading.title.s267T90aVladimirCalderaHerohighFbM271R14": "黑曜石火山口：T-90A Vladimir",
+  "media.loading.title.s289T90ms2011LongleafDuelLowTm95M271R14": "长叶渡口：T-90MS obr. 2011 对 ZTZ-20",
+  "media.loading.title.s307Sepv2AirfieldHerolowM271R14": "红隼机场：M1A2 Abrams SEPv2",
+  "media.loading.title.s47IronworksCraneHerolowFbM271R14": "钢铁厂：T-90A Burlak",
+  "media.loading.title.s190T90amFrontierHerolowOwnM271R14": "边疆盆地：T-90AM"
 }

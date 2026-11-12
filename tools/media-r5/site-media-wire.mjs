@@ -14,8 +14,10 @@
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
 // --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
-// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs), each
-// still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
+// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs, loading),
+// each still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
+// loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading`, built into
+// public/media/loading-r1 by loading-media.mjs) and its captions in both catalogs.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -474,10 +476,41 @@ function wireCatalogs() {
   }
 }
 
+// --- the loading screens (2026-11-11, the owner's loading-screen gallery) -------------------------------------------
+// picks.loading names the stills that follow the boot pick (featured[0]) on the boot splash and the transition screens:
+// the gallery's close-ups, then its elevated stills. tools/media-r5/loading-media.mjs builds public/media/<collection>
+// and its manifest (each still's battlefield and its caption in both locales); this writes src/ui/featuredShots.ts
+// LOADING_SHOTS and the captions' keys, and drops the caption of a still the picks no longer name.
+const loadingKey = (id) => `media.loading.title.${camel(id)}`;
+function loadingItems() {
+  const L = PICKS.loading;
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'public/media', L.collection, 'manifest.json'), 'utf8'));
+  const byId = new Map(manifest.items.map((item) => [item.id, item]));
+  return [...L.close, ...L.elevated].map((id) => {
+    const item = byId.get(id);
+    if (!item) throw new Error(`loading still ${id} is not built (run tools/media-r5/loading-media.mjs)`);
+    if (!existsSync(join(ROOT, 'public', item.path))) throw new Error(`loading still ${id}: ${item.path} is not published`);
+    return item;
+  });
+}
+function wireLoading() {
+  const items = loadingItems();
+  const entries = items.map((item) => `\n  {\n    img: '${item.path}',\n    capKey: '${loadingKey(item.id)}',\n    maps: ['${item.map}'], focal: '50% 50%',\n  },`);
+  swap('src/ui/featuredShots.ts', /(export const LOADING_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[)[\s\S]*?(\n\]\);)/,
+    (_, open, close) => `${open}${entries.join('')}${close}`, 'loading shots');
+  const keys = new Set(items.map((item) => loadingKey(item.id)));
+  for (const [locale, file] of [['en', 'src/ui/i18nCatalog.en-US.json'], ['zh', 'src/ui/i18nCatalog.zh-CN.json']]) {
+    const catalog = JSON.parse(get(file));
+    for (const key of Object.keys(catalog)) if (key.startsWith('media.loading.title.') && !keys.has(key)) delete catalog[key];
+    for (const item of items) catalog[loadingKey(item.id)] = item.title[locale];
+    texts.set(file, keepEscapes(get(file), `${JSON.stringify(catalog, null, 2)}\n`));
+  }
+}
+
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
   const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards, readme: wireReadme,
-    landing: wireLandingManifest, catalogs: wireCatalogs };
+    landing: wireLandingManifest, catalogs: wireCatalogs, loading: wireLoading };
   const only = arg('only')?.split(',');
   if (only?.some((name) => !sections[name])) throw new Error(`--only takes sections of ${Object.keys(sections).join(', ')}`);
   for (const [name, wire] of Object.entries(sections)) if (!only || only.includes(name)) wire();

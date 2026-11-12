@@ -5887,5 +5887,21 @@
   "playMenu.matchMode.air_support.label": "Air Support",
   "playMenu.matchMode.air_support.short": "Air",
   "playMenu.matchMode.air_support.desc": "Hold the three sectors and earn support points from combat. Raise your binoculars to call a recon pass, artillery, a strafing run, a precision bomb or an AC-130 orbit onto a mark. Every strike warns the side it targets.",
-  "docs.modes.win.air_support": "First to {target}"
+  "docs.modes.win.air_support": "First to {target}",
+  "media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14": "Copper Mesa Mine: M1A1 Abrams SA v T-72B3M obr. 2016",
+  "media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14": "Copper Mesa Mine: M1A2 Abrams SEPv3",
+  "media.loading.title.s298T90msTagilSaltwindHerolowV3F33M271R14": "Saltwind Narrows: T-90MS Tagil",
+  "media.loading.title.s280Leo2a3B4UrbanDuelLowT70F33M271R14": "Steinburg: Leopard 2A3 v T-90A",
+  "media.loading.title.s199M1a2XDesertHerolowM271R14": "Sirocco Wadi: M1A2 Abrams",
+  "media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14": "Olympus Basin: T-72B3M Bulat-M",
+  "media.loading.title.s39Leo2a7vLakesideVillageHerolowClT3333M271R14": "Highland Reservoir: Leopard 2A7V",
+  "media.loading.title.s120Type10SkybridgeHerolowV3M271R14": "Skybridge Chasm: Type 10",
+  "media.loading.title.s286Leo2a4mMonsoonHerohighV2FbM271R14": "Monsoon Ridge: Leopard 2A4M",
+  "media.loading.title.s296T90mProryvCoastalDuelLowTm70F33M271R14": "Saltmere Bay: T-90M Proryv v Challenger 3 TD (RWS)",
+  "media.loading.title.s202Kf51PantherCopperMesaHerohighM271R14": "Copper Mesa Mine: KF51 Panther",
+  "media.loading.title.s267T90aVladimirCalderaHerohighFbM271R14": "Obsidian Caldera: T-90A Vladimir",
+  "media.loading.title.s289T90ms2011LongleafDuelLowTm95M271R14": "Longleaf Crossing: T-90MS obr. 2011 v ZTZ-20",
+  "media.loading.title.s307Sepv2AirfieldHerolowM271R14": "Kestrel Airfield: M1A2 Abrams SEPv2",
+  "media.loading.title.s47IronworksCraneHerolowFbM271R14": "Ironworks: T-90A Burlak",
+  "media.loading.title.s190T90amFrontierHerolowOwnM271R14": "Frontier Basin: T-90AM"
 }
