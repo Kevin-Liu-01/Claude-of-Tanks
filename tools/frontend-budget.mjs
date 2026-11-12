@@ -368,8 +368,11 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // 2026-11-11 (integrator 271.1, the patch re-pin at integ/271.1's build 580fb07d28): game +858 B brotli, cn +1,547 B
   //   (the loading stills' rotation on the boot path, the Couch/Watch/Deploy button family, the camo sheet layout and
   //   the Air Support plate; cn also their zh strings); requests and the entry held. The other rows inside their slack.
-  game: { brotliBytes: 1238406, requests: 135, entryBrotliBytes: 259456 },
-  cn: { brotliBytes: 1284331, requests: 136, entryBrotliBytes: 259456 },
+  // 2026-11-11 (integrator 271.2, the Air Support fix's re-pin at integ/271.2's build): game +1,501 B brotli, cn +1,483 B;
+  //   requests +4 on both (air-support-runs-272's strike order, strike runs and strike call modules on the boot path, not
+  //   folded under the live-fix ruling: the fold is owed with 271's); the entry +172 B.
+  game: { brotliBytes: 1239907, requests: 139, entryBrotliBytes: 259628 },
+  cn: { brotliBytes: 1285814, requests: 140, entryBrotliBytes: 259628 },
   gallery: { brotliBytes: 785129, requests: 81 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },
