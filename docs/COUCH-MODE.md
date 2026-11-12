@@ -1,8 +1,9 @@
 # Couch mode — up to eight phones, one big screen
 
 Phase 1 is built (deploy 268): the lobby and its seats, each phone driving its own tank, one shared camera; "The couch
-session on the page" below says how it runs. Phase 2 is built (item/couch-panes-272): the split screen, one pane per
-seat with that player's own camera and the normal battle HUD; "The split screen as built" says how. The phone as each
+session on the page" below says how it runs. Phase 2 is built (item/couch-panes-272, Experimental in 272: Shared stays the lobby's default until the split
+screen meets the pass rule): one pane per seat with that player's own camera and the normal battle HUD; "The split
+screen as built" says how. The phone as each
 player's HUD (phase 3) is still design. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
 qr code from their phones to a host of a computer for claude of tanks? i think that will be so much faster and easier.
 sort of like a console split screen, up to 8 people that you can share on a big screen?"
@@ -236,7 +237,7 @@ the battle had.
 - **The world's detail by the pane's area, one rule** (`couchPaneDetail`, Main's review 2026-11-11). Every knob follows
   the pane's linear size (the square root of its share of the screen): the scene's raster 1 down to 0.6 of the pane's
   pixels (FSR reconstructs it), hulls taking their far detail up to 3 times sooner, the tall grass's density, the
-  cascades' reach 240 m down to 80 m with smaller maps, and a draw distance (1500 m down to 500 m, not wired yet). The
+  cascades' reach 240 m down to 80 m with smaller maps, and a draw distance (1500 m down to 500 m, not applied: the world is batched map-wide, below). The
   couch tier carries the raster, the sward and the cascades (`setCouchTier(detail)` at a split Start, when the seat
   count and the screen are known); the hulls' bias reaches the presentation (`getLodBias`).
 - **Hull detail per pane.** The near-detail groups a hull keeps (`tankFactoryCore.ts` battle detail groups) attach when
@@ -252,24 +253,39 @@ the battle had.
   graph's world matrices; every later pane samples the same maps and reuses the matrices (nothing moves between the
   panes' draws). Measured: the shadow labels stay flat as panes are added, and the matrix reuse took the eight-pane
   scene pass from 94 to 71 ms of main thread under the same load.
-- **Measured (2026-11-11, production build, Verdant, Teams, 1920 x 1080, bots frozen, governor pinned, couch tier;
-  `node tools/couch-panes.browser.mjs --layouts=1,2,4,8 --measure --preview=.`).** The machine was shared at load
-  50 to 88, which the frame-budget method warns inflates the whole-frame GPU query (one pane read higher than two).
-  Projection: the RTX 4050 Laptop proxy (GPU / 0.342, main thread / 0.624).
+- **Measured (2026-11-12, production build at febf0db4a6, Verdant, Teams, 1920 x 1080, bots frozen, governor pinned,
+  the couch tier by pane area; `node tools/couch-panes.browser.mjs --layouts=1,2,4,8 --measure --preview=.
+  --max-load=10 --load-wait-min=360`).** The run took the lock when the load fell to 8.6, but other sessions resumed and
+  the rows were measured at load 13 to 26: not a quiet machine. The baseline is the same couch battle through seat 1's
+  camera, visibility and hull detail drawn the solo way (`probeSoloView`: one `post.render`, the page's HUD), 17.9 ms of
+  main thread and 409 draws; a solo battle (another roster) read 17.1 ms and 379 draws. Projection: the RTX 4050 Laptop
+  proxy (GPU / 0.342, main thread / 0.624).
 
-  | Panes | GPU p25 | Main thread | of it: scene pass | panes' HUDs | Draws | Triangles | Projected |
+  | Panes | Main thread | Scene pass | Panes' HUDs | Draws | Main / solo view | Per added pane | Projected |
   |---:|---:|---:|---:|---:|---:|---:|---:|
-  | 1 | 35.0 ms | 22.6 ms | 16.9 ms | 0.9 ms | 519 | 3.4 M | 102 ms (9.8 fps) |
-  | 2 | 23.8 ms | 33.5 ms | 26.6 ms | 1.3 ms | 985 | 6.9 M | 70 ms (14.4 fps) |
-  | 4 | 33.7 ms | 62.2 ms | 52.2 ms | 2.4 ms | 1,725 | 13.2 M | 100 ms (10.0 fps) |
-  | 8 | 52.8 ms | 87.5 ms | 71.2 ms | 2.9 ms | 2,742 | 25.8 M | 154 ms (6.5 fps) |
+  | 1 | 16.6 ms | 11.3 ms | 0.9 ms | 409 | 0.93 | | 10.1 fps |
+  | 2 | 28.3 ms | 22.0 ms | 1.2 ms | 888 | 1.58 | 11.7 ms | 15.1 fps |
+  | 4 | 47.5 ms | 38.4 ms | 1.8 ms | 1,619 | 2.65 | 10.3 ms | 10.9 fps |
+  | 8 | 89.1 ms | 70.4 ms | 3.4 ms | 2,853 | 4.98 | 10.4 ms | 7.0 fps |
 
-  The pass rule (60 fps at two panes, 45 at four) is not met. Under this load even one pane reads 22.6 ms of main
-  thread against the solo chase view's 7.8 to 12.6 ms on a quiet machine, so the absolute figures need a quiet-machine
-  run; the shape does not: each added pane costs about 10 to 13 ms of main thread, nearly all of it three.js's scene
-  pass (culling, sorting and about 400 draws a pane), while each pane's HUD costs under half a millisecond. The next
-  levers are the couch tier's own: detail distances scaled by the pane's height (vehicle, prop and tree LOD, the near
-  tree band), a shorter far plane for small panes, and fewer draws a pane.
+  The pass rule (60 fps at two panes, 45 at four) is not met, so Split ships Experimental with Shared the default. Main's
+  harness check (one pane within 5 % of solo) reads 0.93 with identical draws, the same in three runs (0.91 to 0.93): the
+  split path for one pane is cheaper than the solo path's own HUD and aim work, so the ratios are reported as they are.
+  Even with solo at a quiet 9 ms, two panes would take about 14 ms of main thread (about 45 fps on the proxy). Each
+  added pane costs about 10 to 12 ms here, nearly all of it three.js's scene pass at about 450 draws a pane; each
+  pane's HUD costs under half a millisecond. Before the per-pane detail rule and hull detail (the same harness, load
+  about 55), a pane added 13.1 / 13.8 / 10.9 ms at 2 / 4 / 8 panes.
+- **What a pane draws, and why a draw-distance cull does not help** (the world inventory, 2026-11-12, a solo battle on
+  Verdant, 486 draws a frame: `couch-panes-272-evidence/world-inventory.json`). The world is already batched across the
+  whole map: the trees are 80 instanced pools (species x near and far tier x level of detail, about 125,000 trees) and
+  about 60 canopy and outland shadow-caster pools; the props are instanced rock variants and meshes merged per material
+  over the whole map (`props.ts`); the terrain is 64 chunks of 128 m, culled per chunk, with the horizon pieces; the
+  litter and the tall grass are three instanced meshes each. A batch that spans the map is one draw at 50 m or 900 m, so
+  a per-pane draw distance has nothing to leave out but terrain chunks (holes at the horizon), and batching by chunk
+  would add draws. A pane's world draws (about 230) count its distinct pools and materials; its other half is the hulls,
+  20 to 74 draws each at near detail. The class fix, fewer vegetation and prop pools (species and tiers that share a
+  shader in fewer instanced pools), lowers solo too and is its own item (Main, 2026-11-12), with the hulls' merged far
+  layer drawn per pane as its second half; `couchPaneDetail`'s draw distance stays unwired.
 - **Detail that follows every pane.** The terrain's chunk detail and the near tree tier take the nearest pane's distance
   (`map.ts` `setTerrainDetailFoci`, `terrain.ts`, `vegetation.ts` `setDetailFoci`), and a hull's detail and animation
   cadence the nearest pane's distance and any pane's view (`battlePresentationRuntime.ts` `getExtraViews`). Still

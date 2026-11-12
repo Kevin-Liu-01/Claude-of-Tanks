@@ -185,7 +185,9 @@ export function couchHudFitStep(boxes: readonly CouchHudPartBox[], width: number
  * - lodBias: how much sooner a hull takes its far meshes (fewer parts and draws), 1 up to 3;
  * - density: the tall grass's share of its couch-tier sward, 1 down to 0.33 (the couch tier's 0.1 times this);
  * - shadowReachM and shadowMapSize: the cascades' reach and maps (one fit for every pane), 240 m down to 80 m;
- * - drawDistanceM: past this a pane's draw leaves the world's detail categories out (couchPaneViews.ts).
+ * - drawDistanceM: the pane's share of the world's draw distance. Not applied: the world is batched across the whole map
+ *   (one draw per pool or material bucket, near or far), so a distance cull has nothing to leave out but terrain chunks
+ *   (docs/COUCH-MODE.md, the world inventory); fewer pools is its own item.
  */
 export interface CouchPaneDetail {
   readonly renderScale: number;
