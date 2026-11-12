@@ -254,7 +254,9 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
     extraViews() { return splitActive() && panesFor === ports.game.couch ? panes?.extraViews() ?? null : null; },
     listenerFocus() { return splitActive() && panesFor === ports.game.couch ? panes?.listenerFocus() ?? null : null; },
     renderViews(dtSeconds, wallDtSeconds) {
-      if (soloView || !splitActive() || !panes || panesFor !== ports.game.couch) return false;
+      if (!splitActive() || !panes || panesFor !== ports.game.couch) return false;
+      // the harness's baseline: the same frame drawn the solo way (one render, the page's HUD)
+      if (soloView) { panes.renderSolo(dtSeconds, wallDtSeconds); return true; }
       panes.render(dtSeconds, wallDtSeconds);
       return true;
     },
@@ -275,7 +277,9 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
           views.seat(paneSeats);
           panesFor = session;
         }
-        views.frame(dtSeconds);
+        // (the harness's solo-view baseline: the seats idle and the bots frozen, the camera stands; no pane work runs, so the
+        // baseline is the solo path's own: the page's HUD and one render)
+        if (!soloView) views.frame(dtSeconds);
         return true;
       }
       points.length = 0;

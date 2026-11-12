@@ -233,6 +233,21 @@ the battle had.
 - **The couch tier** (`quality.ts` `COUCH_PRESET`, `setCouchTier`): asked for at a split battle's Start, before the
   world builds, and let go on the Garage return. Ultra Low's world and sky cuts (light world, the cheapest terrain
   splat, no marched clouds, bloom or AO) at one raster sample per CSS pixel.
+- **The world's detail by the pane's area, one rule** (`couchPaneDetail`, Main's review 2026-11-11). Every knob follows
+  the pane's linear size (the square root of its share of the screen): the scene's raster 1 down to 0.6 of the pane's
+  pixels (FSR reconstructs it), hulls taking their far detail up to 3 times sooner, the tall grass's density, the
+  cascades' reach 240 m down to 80 m with smaller maps, and a draw distance (1500 m down to 500 m, not wired yet). The
+  couch tier carries the raster, the sward and the cascades (`setCouchTier(detail)` at a split Start, when the seat
+  count and the screen are known); the hulls' bias reaches the presentation (`getLodBias`).
+- **Hull detail per pane.** The near-detail groups a hull keeps (`tankFactoryCore.ts` battle detail groups) attach when
+  any pane is near (the union); before each pane's draw, a hull far from that pane's camera (its screen-equivalent
+  distance times the pane's bias) is drawn without them in that pane, so no pane pays near-detail draws for another
+  seat's neighbours. Restored after the frame.
+- **The harness's baseline** (`probeSoloView`). Main's check: one pane must be within 5 % of solo, or the harness is
+  wrong. A solo battle is not that baseline: its roster is the solo entry's (far-LOD hulls, 9 to 12 draws each, against
+  the couch roster's 40 to 74 at near detail), so it drew 30 % less than the couch battle's one pane. The baseline is
+  the same couch battle through seat 1's same camera, visibility and hull detail, drawn the solo way (one
+  `post.render`, the page's HUD); the solo battle stays in the report as context.
 - **One shadow render and one matrix pass a frame.** The first pane's draw renders the cascades and updates the scene
   graph's world matrices; every later pane samples the same maps and reuses the matrices (nothing moves between the
   panes' draws). Measured: the shadow labels stay flat as panes are added, and the matrix reuse took the eight-pane

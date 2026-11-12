@@ -17,14 +17,15 @@
  *   pane's visibility: an enemy the seat's side has not spotted is hidden for that pane's draw only, and the seat's own
  *   tank is hidden only in its own gunner's sight.
  */
-import { PerspectiveCamera, Vector3 } from 'three';
+import { PerspectiveCamera, Vector3, type Object3D } from 'three';
+import { lodDistanceScale } from '../engine/lodDistanceScale.ts';
 import { createCameraRig, type CameraRig, type CameraRigDeps } from '../engine/cameraRig.ts';
 import { createAimController, type AimController, type AimControllerDependencies } from '../game/aimController.ts';
 import { createBattleHudFrameRuntime, type BattleHudFrameRuntime } from '../game/battleHudFrameRuntime.ts';
 import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { CouchCameraIntent, CouchSeatControls } from '../game/couchSeats.ts';
 import {
-  couchHudFitStep, couchPaneLayout,
+  couchHudFitStep, couchPaneAreaFraction, couchPaneDetail, couchPaneLayout,
   type CouchHudPart, type CouchHudPartBox, type CouchPaneLayout, type CouchPaneRect,
 } from '../game/couchPanes.ts';
 import { encodeAimIntent } from '../sim/aimIntent.ts';
@@ -72,7 +73,10 @@ export interface CouchPaneViewPorts {
   camera: PerspectiveCamera;
   /** The canvas the panes divide (its parent hosts the panes' HUD documents). */
   canvas(): HTMLCanvasElement;
-  post: { renderViews(dt: number, wallDt: number, views: readonly PostView[], beforeView: (index: number) => void): void };
+  post: {
+    renderViews(dt: number, wallDt: number, views: readonly PostView[], beforeView: (index: number) => void): void;
+    render(dt: number, wallDt?: number): void;
+  };
   rig: Pick<CameraRigDeps, 'heightField' | 'raycast' | 'getCameraSettings'>;
   aim: Pick<AimControllerDependencies, 'worldRaycast' | 'computeDispersion'>;
   input: HudFrameOptions['input'];
@@ -216,6 +220,8 @@ export interface CouchPaneViews {
    * HUD); the panes' cameras keep posing. Off: the split screen again.
    */
   probeSolo(on: boolean): void;
+  /** The harness's baseline frame: seat 1's pane's camera, visibility and hull detail, drawn the solo way (one render). */
+  renderSolo(dtSeconds: number, wallDtSeconds: number): void;
   /** Take the panes down (the battle ended, the split screen was let go). */
   dispose(): void;
 }
@@ -380,6 +386,8 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
   const listenerForward = new Vector3();
   const detailFoci: { x: number; z: number }[] = [];
   const timing = { hudMs: 0, drawMs: 0 };
+  /** The panes' LOD bias (couchPaneDetail, by the layout's pane share), solved with the layout. */
+  let paneLodBias = 1;
   const extra: PerspectiveCamera[] = [];
   const listener = { entity: null as unknown as PaneEntity, forward: listenerForward };
   ports.bus.on('shell:fired', (payload) => {
@@ -413,6 +421,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     if (key === layoutKey && layout) return;
     layoutKey = key;
     layout = couchPaneLayout(views.length, width, height);
+    paneLodBias = couchPaneDetail(couchPaneAreaFraction(views.length, width, height)).lodBias;
     const box = ensureHost();
     views.forEach((view, index) => {
       const rect = layout!.panes[index];
@@ -625,6 +634,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       const drawStart = performance.now();
       timing.hudMs = drawStart - hudStart;
       const tanks = ports.game.tanks;
+      const lodBias = paneLodBias;
       baseVisible.length = tanks.length;
       for (let i = 0; i < tanks.length; i++) {
         const root = (tanks[i].visual as { root?: { visible: boolean } } | null | undefined)?.root;
@@ -635,6 +645,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
           const view = views[index];
           copyCamera(view.camera, ports.camera);
           applyPaneVisibility(view, tanks, baseVisible, views, ports.game);
+          applyPaneDetail(view, tanks, lodBias);
           view.drawn.length = 0;
           for (const tank of tanks) {
             if ((tank.visual as { root?: { visible: boolean } } | null | undefined)?.root?.visible) view.drawn.push(tank.id);
@@ -645,8 +656,32 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
           const root = (tanks[i].visual as { root?: { visible: boolean } } | null | undefined)?.root;
           if (root) root.visible = baseVisible[i];
         }
+        {
+          restorePaneDetail(tanks);
+        }
         copyCamera(views[0].camera, ports.camera);
         timing.drawMs = performance.now() - drawStart;
+      }
+    },
+    renderSolo(dt, wallDt) {
+      if (!views.length) { ports.post.render(dt, wallDt); return; }
+      const tanks = ports.game.tanks;
+      baseVisible.length = tanks.length;
+      for (let i = 0; i < tanks.length; i++) {
+        const root = (tanks[i].visual as { root?: { visible: boolean } } | null | undefined)?.root;
+        baseVisible[i] = !!root?.visible;
+      }
+      try {
+        copyCamera(views[0].camera, ports.camera);
+        applyPaneVisibility(views[0], tanks, baseVisible, views, ports.game);
+        applyPaneDetail(views[0], tanks, paneLodBias);
+        ports.post.render(dt, wallDt);
+      } finally {
+        for (let i = 0; i < tanks.length; i++) {
+          const root = (tanks[i].visual as { root?: { visible: boolean } } | null | undefined)?.root;
+          if (root) root.visible = baseVisible[i];
+        }
+        restorePaneDetail(tanks);
       }
     },
     probeSolo(on) {
@@ -681,6 +716,47 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
 /** One pane's visibility (docs/COUCH-MODE.md "Drawing several views"): its seat's own tank hides only in its own gunner's
  *  sight; an enemy of the seat's side is drawn only while that side has it spotted (the seat as the receiver, the solo
  *  rule with this seat as the player); every other hull as the presentation left it. */
+/** A hull's near-detail groups (vehicles/tankFactoryCore.ts battleDetailGroups: `userData.battleDetailGroup` under its
+ *  root), found once a visual and kept; a group the visual has detached is not drawn in any pane anyway. */
+const detailGroupsOf = new WeakMap<object, Object3D[]>();
+function detailGroups(root: Object3D): Object3D[] {
+  let groups = detailGroupsOf.get(root);
+  const count = Number(root.userData?.battleDetailGroupCount) || 0;
+  if (!groups || (groups.length < count && groups.every((group) => group.parent))) {
+    groups = [];
+    root.traverse((node) => { if (node.userData?.battleDetailGroup) groups!.push(node); });
+    detailGroupsOf.set(root, groups);
+  }
+  return groups;
+}
+/** The near-detail hand-off distance (tankFactoryCore.ts: groups attach under 96 m, detach past 122 m), its middle. */
+const PANE_DETAIL_HANDOFF_M = 109;
+const _hullAt = new Vector3();
+
+/** One pane's hull detail: a hull far from this pane's camera (its screen-equivalent distance, times the pane's LOD bias)
+ *  is drawn without its near-detail groups in this pane, whatever another pane needs (the union only attaches them). */
+function applyPaneDetail(view: PaneView, tanks: HudGame['tanks'], lodBias: number): void {
+  const scale = lodDistanceScale(view.camera) * lodBias;
+  for (let i = 0; i < tanks.length; i++) {
+    const tank = tanks[i];
+    const root = (tank.visual as { root?: Object3D } | null | undefined)?.root;
+    if (!root?.visible) continue;
+    const groups = detailGroups(root);
+    if (!groups.length) continue;
+    root.getWorldPosition(_hullAt);
+    const near = tank === view.entity || view.camera.position.distanceTo(_hullAt) * scale < PANE_DETAIL_HANDOFF_M;
+    for (let g = 0; g < groups.length; g++) groups[g].visible = near;
+  }
+}
+function restorePaneDetail(tanks: HudGame['tanks']): void {
+  for (let i = 0; i < tanks.length; i++) {
+    const root = (tanks[i].visual as { root?: Object3D } | null | undefined)?.root;
+    if (!root) continue;
+    const groups = detailGroupsOf.get(root);
+    if (groups) for (let g = 0; g < groups.length; g++) groups[g].visible = true;
+  }
+}
+
 function applyPaneVisibility(view: PaneView, tanks: HudGame['tanks'], base: readonly boolean[], all: readonly PaneView[],
   game: HudGame): void {
   const seatTeam = view.entity.team;
