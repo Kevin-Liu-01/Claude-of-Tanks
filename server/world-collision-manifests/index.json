@@ -40,11 +40,11 @@
       "concealers": 3675
     },
     "autumn": {
-      "bytes": 1855047,
-      "sha256": "05595155324bdb91c46dfe6304a916c6ee9bac88c7740131257cd399f9043859",
-      "obstacles": 6370,
-      "colliders": 6865,
-      "concealers": 5993
+      "bytes": 1861892,
+      "sha256": "babacd53d7af3307e67853089194f7502cafad80f84a6c698488541171e5daab",
+      "obstacles": 6368,
+      "colliders": 6876,
+      "concealers": 5992
     },
     "steppe": {
       "bytes": 1165382,
