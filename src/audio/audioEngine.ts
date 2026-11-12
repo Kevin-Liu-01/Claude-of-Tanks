@@ -60,7 +60,8 @@ import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.t
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES, AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, matchRulesetFor, rulesetUnlimitedFor, type AirStrikeKind } from '../sim/matchRuleset.ts';
-import { aircraftPose, strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
+import { strikeCovers, strikeDangerS, type PublicStrike } from '../sim/airSupport.ts';
+import { bombFall, runExitS, runPose } from '../sim/strikeRuns.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import {
   resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type TrackClass, type VehicleAudioIdentity,
@@ -2762,8 +2763,8 @@ export function createAudio({
   let airClock = 0;
   // the strikes draw their own stream: their loops and whistles never move the shared one (the crew radio's takes)
   const airRandom = mulberry32(0x41a5c);
-  const airPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
-  const airAhead = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const airPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+  const airAhead = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
 
   function airTeam(): 'alpha' | 'bravo' {
     const perspective = getObjectiveTeam?.();
@@ -2779,8 +2780,8 @@ export function createAudio({
   /** Where a strike's aircraft is at mode time t: on its path, or falling once brought down (false once it is down). */
   function airAircraftAt(heard: HeardStrike, t: number, out: typeof airPose): boolean {
     const strike = heard.strike;
-    if (heard.downedS == null) { aircraftPose(AIR, strike, t, out); return true; }
-    aircraftPose(AIR, strike, heard.downedS, out);
+    if (heard.downedS == null) { runPose(AIR, strike, t, out); return true; }
+    runPose(AIR, strike, heard.downedS, out);
     const dt = Math.max(0, t - heard.downedS);
     const speed = strike.kind === 'gunship' ? AIR.gunship.speedMps : AIR[strike.kind].speedMps;
     out.x += Math.sin(out.yaw) * speed * dt;
@@ -2833,7 +2834,8 @@ export function createAudio({
     const strike: PublicStrike = {
       id, kind, team, x: mark.x, y: mark.y, z: mark.z, heading: Number(payload.heading) || 0,
       calledS: landsS - (Number.isFinite(warningS) ? warningS : rules.warningS), landsS,
-      endS: landsS + strikeDangerS(AIR, kind) + AIR_TAIL_S, hp: rules.hp, maxHp: rules.hp, downedS: null, downedBy: null,
+      // heard until its danger and its tail are past, or (an aircraft) until it has flown its run out
+      endS: Math.max(landsS + strikeDangerS(AIR, kind) + AIR_TAIL_S, runExitS(AIR, { kind, landsS })), hp: rules.hp, maxHp: rules.hp, downedS: null, downedBy: null,
     };
     const heard: HeardStrike = { strike, heardAt: airClock, ours: team === airTeam(), rig: null, covered: false, downedS: null, crashed: false };
     airStrikes.set(id, heard);
@@ -2869,7 +2871,7 @@ export function createAudio({
     }
     if (sound.fall && library) {
       // the round falls on its solved arc onto its landing (sim/airSupportFire.ts): its whistle ends as it lands there
-      const flightS = (kind === 'bomb' ? AIR.bomb.fallS : AIR.artillery.flightS) + 0.05;
+      const flightS = (kind === 'bomb' ? bombFall(AIR).fallS : AIR.artillery.flightS) + 0.05;
       const speed = Number(payload.velocityMps) || 0;
       const lx = x + (Number(payload.dx) || 0) * speed * flightS, lz = z + (Number(payload.dz) || 0) * speed * flightS;
       const ly = groundY(lx, lz, heard?.strike.y ?? y);

@@ -7909,7 +7909,8 @@ export function initHud(bus: EventBus): HudRuntime {
           const ux = along[0] - point[0], uy = along[1] - point[1], pxPerM = Math.hypot(ux, uy) || 1;
           const march = (timeS * (marker.pulse ? 1.6 : 0.4)) % 1;
           const urgency = marker.countdownS != null && marker.countdownS > 0 ? Math.max(0, 1 - marker.countdownS / 8) : 1;
-          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null ? { radiusPx: marker.radiusM * pxPerM }
+          drawStrikeFootprint(mmCtx, point[0], point[1], marker.radiusM != null
+            ? { radiusPx: marker.radiusM * pxPerM, ...(marker.acrossM != null ? { acrossPx: marker.acrossM * pxPerM, angle: Math.atan2(-ux, uy) } : {}) }
             : { halfLengthPx: (marker.halfLengthM ?? 0) * pxPerM, halfWidthPx: (marker.halfWidthM ?? 0) * pxPerM, angle: Math.atan2(-ux, uy) },
             // a recon pass's swath is outlined, never filled (filled, it tinted the whole minimap)
             marker.side, march, urgency, marker.status !== 'recon');

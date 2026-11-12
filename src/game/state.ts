@@ -2871,7 +2871,7 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   }
 }
 /** Air Support's counter-air for the solo battle's roof stations: the nearest enemy aircraft, and its share of a round. */
-const _soloAirPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+const _soloAirPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
 function soloCounterAir(game: SoloGameState): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
   return {
     nearest(shooter, origin, rangeM, out, roundMps) {

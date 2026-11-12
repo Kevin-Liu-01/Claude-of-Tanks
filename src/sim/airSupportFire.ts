@@ -1,6 +1,8 @@
 /**
  * Air Support's rounds (air-support-270): the strafing run's 30 mm walked down its lane, the precision bomb's release and the
- * AC-130 orbit's 30 mm and 152 mm on the enemies its side has spotted. Stepped by both authorities (game/state.ts, the solo
+ * AC-130 orbit's 30 mm and 152 mm on the enemies its side has spotted. Each leaves the aircraft where its run puts it
+ * (sim/strikeRuns.ts, air-support-runs-272): the GAU-8 under the strafing jet's nose, the bomb from the jet's pylon at its
+ * release point with the jet's own velocity, the gunship's guns from its left side. Stepped by both authorities (game/state.ts, the solo
  * battle; sim/authoritativeMatch.ts, the network) on the fixed step, after the mode controller has taken the calls: every
  * round is a normal shell in the normal projectile, armour and blast pipeline, credited to the strike's caller, and leaves
  * at a time derived from the strike's record (a round k leaves in the step whose interval holds its time), so the solo
@@ -10,7 +12,8 @@ import { Vector3 } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
 import { AIR_STRIKE_WEAPONS, GUNSHIP_WEAPONS } from './matchRuleset.ts';
 import type { ShellSpec } from './shellSpec.ts';
-import { aircraftPose, strafeLaneStart, strikeRandom, type AirStrike, type AirSupport } from './airSupport.ts';
+import { strikeRandom, type AirStrike, type AirSupport } from './airSupport.ts';
+import { bombReleaseOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
 import * as detMath from './detMath.ts';
 
 interface FireTarget {
@@ -47,8 +50,8 @@ export function strikeRoundPayload(shell: ShellEntity<ShellSpec>, strike: AirStr
   };
 }
 
-const _pose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
-const _from = new Vector3(), _dir = new Vector3(), _lane = { x: 0, z: 0 };
+const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+const _from = new Vector3(), _dir = new Vector3(), _lane = { x: 0, z: 0 }, _muzzle = { x: 0, y: 0, z: 0 };
 
 /**
  * The next round of a stream whose round k is due at `start + k * every` (k = 0..count-1), `fired` of them gone: its k
@@ -112,7 +115,7 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       const k = nextRound(strike.landsS, every, s.rounds, firedBy(strike.fired, strike.landsS, every, s.rounds, prevS), timeS);
       if (k < 0) continue;
       strike.fired = k + 1;
-      const pose = aircraftPose(rules, strike, strike.landsS + k * every, _pose);
+      const muzzle = runMuzzle(runPose(rules, strike, strike.landsS + k * every, _pose), 'strafe', _muzzle);
       const start = strafeLaneStart(rules, strike, _lane);
       const along = s.lengthM * k / Math.max(1, s.rounds - 1);
       const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
@@ -120,17 +123,21 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       const across = (strikeRandom(support.seed, strike.id, k * 2) * 2 - 1) * s.spreadM;
       const jitter = (strikeRandom(support.seed, strike.id, k * 2 + 1) * 2 - 1) * s.spreadM * 0.5;
       const ax = start.x + sinH * (along + jitter) + cosH * across, az = start.z + cosH * (along + jitter) - sinH * across;
-      fire(ctx, strike, AIR_STRIKE_WEAPONS.strafe, pose.x, pose.y, pose.z, ax, ctx.terrainHeight(ax, az), az);
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.strafe, muzzle.x, muzzle.y, muzzle.z, ax, ctx.terrainHeight(ax, az), az);
     } else if (strike.kind === 'bomb') {
-      const b = rules.bomb, releaseS = strike.landsS - b.fallS;
+      const b = rules.bomb, releaseS = strike.landsS + bombReleaseOffsetS(rules);
       if (nextRound(releaseS, 1, 1, firedBy(strike.fired, releaseS, 1, 1, prevS), timeS) < 0) continue;
       strike.fired = 1;
-      const pose = aircraftPose(rules, strike, releaseS, _pose);
-      const miss = strikeRandom(support.seed, strike.id, 0) * b.missM, bearing = strikeRandom(support.seed, strike.id, 1) * Math.PI * 2;
-      const ax = strike.x + detMath.sin(bearing) * miss, az = strike.z + detMath.cos(bearing) * miss;
+      // the bomb leaves the jet's pylon at the release point, the jet's velocity its own (strikeRuns.ts bombFall): its
+      // miss is long along the run and short across it, inside the footprint's ellipse
+      const muzzle = runMuzzle(runPose(rules, strike, releaseS, _pose), 'bomb', _muzzle);
+      const r = Math.sqrt(strikeRandom(support.seed, strike.id, 0)), bearing = strikeRandom(support.seed, strike.id, 1) * Math.PI * 2;
+      const along = detMath.cos(bearing) * r * b.missAlongM, across = detMath.sin(bearing) * r * b.missAcrossM;
+      const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
+      const ax = strike.x + sinH * along + cosH * across, az = strike.z + cosH * along - sinH * across;
       const ay = ctx.terrainHeight(ax, az);
       // the bomb falls on a ballistic arc that meets the spot a little after the warning has run (never before it)
-      fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, pose.x, pose.y, pose.z, ax, ay, az, b.fallS + rules.fallMarginS - (timeS - releaseS));
+      fire(ctx, strike, AIR_STRIKE_WEAPONS.bomb, muzzle.x, muzzle.y, muzzle.z, ax, ay, az, strike.landsS + rules.fallMarginS - timeS);
     } else {
       const g = rules.gunship;
       const cannonRounds = Math.floor(g.orbitS / g.cannonEveryS), howitzerRounds = Math.floor(g.orbitS / g.howitzerEveryS);
@@ -143,9 +150,9 @@ export function stepAirSupportFire<Target extends FireTarget>(support: AirSuppor
       // a due round is spent whether or not the gunship has a spotted enemy in reach (as ever: no target, no shot)
       if (cannon >= 0) strike.fired = cannon + 1;
       if (howitzer >= 0) strike.firedAux = howitzer + 1;
-      const target = gunshipTarget(ctx, strike, g.engageM);
+      const target = gunshipTarget(ctx, strike, g.radiusM);
       if (!target) continue;
-      const pose = aircraftPose(rules, strike, timeS, _pose);
+      const pose = runMuzzle(runPose(rules, strike, timeS, _pose), 'gunship', _muzzle);
       if (cannon >= 0) {
         const spread = g.cannonSpreadM, u = strikeRandom(support.seed, strike.id, cannon * 3), v = strikeRandom(support.seed, strike.id, cannon * 3 + 1);
         const ax = target.state.pos.x + (u * 2 - 1) * spread, az = target.state.pos.z + (v * 2 - 1) * spread;

@@ -8,8 +8,9 @@
  * Every crew, human or bot, earns support points from combat (damage, kills, captures, spotting, aircraft brought down,
  * and a slow trickle) and spends them on a strike at a mark. The targeted side is warned at the call (the strike's record
  * is public: its footprint and its countdown), and nothing of a strike lands before its warning has run. The aircraft are
- * not entities: each one flies a path derived from its strike's record alone (aircraftPose), so the presentation draws it
- * from the public record and the wire carries no flight. A round from the other side passing through an aircraft's hit
+ * not entities: each one flies its run, derived from its strike's record alone (sim/strikeRuns.ts runPose: its path, its
+ * release points and its footprint from one description), so the presentation draws it from the public record and the
+ * wire carries no flight. A round from the other side passing through an aircraft's hit
  * sphere strikes it (tryHitAircraft); brought down, its strike ends.
  *
  * Pure and deterministic: no DOM, no three.js, no wall clock; randomness from the match seed and the strike id only. The
@@ -20,6 +21,7 @@ import * as detMath from './detMath.ts';
 import { AIR_STRIKE_KINDS, airStrikeFlies, type AirStrikeKind, type AirSupportRules } from './matchRuleset.ts';
 import type { ObjectiveTeam } from './gameModeCatalog.ts';
 import { botDriven } from './botDriven.ts';
+import { footprintCovers, runExitS, runFootprint, runPose, type RunPose } from './strikeRuns.ts';
 
 interface Point3 { x: number; y: number; z: number }
 /** The fixed step the authorities advance the mode clock by (sim/constants SIM_DT): a recon pass reveals in one step. */
@@ -125,7 +127,7 @@ export interface AirSupport {
   tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean;
   damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number): void;
   counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void;
-  aircraftPoseOf(strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number };
+  aircraftPoseOf(strike: AirStrike, timeS: number, out: RunPose): RunPose;
   aircraftWithin(team: ObjectiveTeam, x: number, y: number, z: number, rangeM: number, timeS: number): AirStrike | null;
   /** A bot's seeded preferred call-in (it calls nothing cheaper, recon aside). */
   botPreference(id: string): 'artillery' | 'strafe' | 'bomb' | 'gunship';
@@ -155,108 +157,9 @@ function strikeEndS(rules: AirSupportRules, kind: AirStrikeKind, landsS: number)
   return landsS + rules.gunship.orbitS + 8;
 }
 
-/** A call-in's ground footprint, the shape the reticle, the minimap and the world draw it as. */
-export type StrikeFootprint =
-  | { readonly shape: 'circle'; readonly radiusM: number }
-  | { readonly shape: 'lane'; readonly halfLengthM: number; readonly halfWidthM: number };
-const footprints = new WeakMap<AirSupportRules, Map<AirStrikeKind, StrikeFootprint>>();
-/** (made once per rules and kind: the presentation reads it every frame) */
-export function strikeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootprint {
-  let byKind = footprints.get(rules);
-  if (!byKind) { byKind = new Map(); footprints.set(rules, byKind); }
-  let footprint = byKind.get(kind);
-  if (!footprint) { footprint = Object.freeze(makeFootprint(rules, kind)); byKind.set(kind, footprint); }
-  return footprint;
-}
-function makeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootprint {
-  if (kind === 'recon') return { shape: 'lane', halfLengthM: rules.recon.trackM * 0.5, halfWidthM: rules.recon.revealM };
-  if (kind === 'strafe') return { shape: 'lane', halfLengthM: rules.strafe.lengthM * 0.5, halfWidthM: rules.strafe.halfWidthM };
-  return { shape: 'circle', radiusM: kind === 'gunship' ? rules.gunship.engageM : rules[kind].radiusM };
-}
-
-/** The strafing lane's start: half the lane short of the mark along the heading. */
-export function strafeLaneStart(rules: AirSupportRules, strike: Pick<AirStrike, 'x' | 'z' | 'heading'>, out: { x: number; z: number }): { x: number; z: number } {
-  const half = rules.strafe.lengthM * 0.5;
-  out.x = strike.x - detMath.sin(strike.heading) * half;
-  out.z = strike.z - detMath.cos(strike.heading) * half;
-  return out;
-}
-
-/** The horizontal stand-off at which the jet's gun opens on the lane's start (the run is a 20-degree dive). */
-const STRAFE_STANDOFF_M = 220;
-
-/**
- * Where a strike's aircraft is at `timeS`, and which way it heads (yaw, and the bank the presentation rolls it by). The
- * jet comes in from behind the caller along the heading, dives on the lane (strafe) or runs over the mark at height
- * (bomb), and climbs away; the AC-130 spirals in onto its pylon turn over the mark, holds it, and spirals out.
- */
-export function aircraftPose(rules: AirSupportRules, strike: PublicStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number } {
-  const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
-  if (strike.kind === 'gunship') {
-    const g = rules.gunship;
-    const rate = g.speedMps / g.radiusM;
-    const angle = (strike.id * 1.7) + (timeS - strike.calledS) * rate;
-    const leave = strike.landsS + g.orbitS;
-    const radius = g.radiusM + g.speedMps * 2.2 * (Math.max(0, strike.landsS - timeS) + Math.max(0, timeS - leave));
-    out.x = strike.x + detMath.sin(angle) * radius;
-    out.z = strike.z + detMath.cos(angle) * radius;
-    out.y = strike.y + g.altitudeM;
-    // flying counter-clockwise seen from above: the left wing (the guns' side) toward the mark
-    out.yaw = angle + Math.PI / 2;
-    out.bank = -0.3;
-    return out;
-  }
-  if (strike.kind === 'recon' || strike.kind === 'artillery') {
-    // the recon jet passes over the mark at landsS along the heading (artillery has no aircraft: the point over the mark)
-    const r = rules[strike.kind];
-    const along = r.speedMps * (timeS - strike.landsS);
-    out.x = strike.x + sinH * along;
-    out.z = strike.z + cosH * along;
-    out.y = strike.y + r.altitudeM;
-    out.yaw = strike.heading;
-    out.bank = 0;
-    return out;
-  }
-  if (strike.kind === 'bomb') {
-    const b = rules.bomb;
-    // the release point: releaseBackM short of the mark; the jet passes it at landsS - fallS
-    const along = b.speedMps * (timeS - (strike.landsS - b.fallS)) - b.releaseBackM;
-    out.x = strike.x + sinH * along;
-    out.z = strike.z + cosH * along;
-    out.y = strike.y + b.altitudeM;
-    out.yaw = strike.heading;
-    out.bank = 0;
-    return out;
-  }
-  const s = rules.strafe;
-  const start = strafeLaneStart(rules, strike, _lane);
-  const along = s.speedMps * (timeS - strike.landsS) - STRAFE_STANDOFF_M;
-  out.x = start.x + sinH * along;
-  out.z = start.z + cosH * along;
-  const firing = timeS - strike.landsS;
-  // level in, a 30 m dive while the gun walks the lane, then the pull-up at 40 m/s
-  const dive = firing <= 0 ? 0 : firing <= s.fireS ? 30 * firing / s.fireS : 30 - 40 * (firing - s.fireS);
-  out.y = strike.y + s.altitudeM - Math.max(-s.pullUpM, dive);
-  out.yaw = strike.heading;
-  out.bank = 0;
-  return out;
-}
-const _lane = { x: 0, z: 0 };
-
-/** Whether a ground point lies inside a strike's danger footprint, widened by `marginM`. */
+/** Whether a ground point lies inside a strike's danger footprint (its run's, sim/strikeRuns.ts), widened by `marginM`. */
 export function strikeCovers(rules: AirSupportRules, strike: PublicStrike, x: number, z: number, marginM: number): boolean {
-  if (strike.kind === 'bomb') return detMath.hypot(x - strike.x, z - strike.z) <= rules.bomb.radiusM + marginM;
-  if (strike.kind === 'artillery') return detMath.hypot(x - strike.x, z - strike.z) <= rules.artillery.radiusM + marginM;
-  if (strike.kind === 'recon') return laneCovers(strike, x, z, rules.recon.trackM * 0.5 + marginM, rules.recon.revealM + marginM);
-  if (strike.kind === 'gunship') return detMath.hypot(x - strike.x, z - strike.z) <= rules.gunship.engageM + marginM;
-  return laneCovers(strike, x, z, rules.strafe.lengthM * 0.5 + marginM, rules.strafe.halfWidthM + marginM);
-}
-
-function laneCovers(strike: Pick<AirStrike, 'x' | 'z' | 'heading'>, x: number, z: number, halfLength: number, halfWidth: number): boolean {
-  const sinH = detMath.sin(strike.heading), cosH = detMath.cos(strike.heading);
-  const dx = x - strike.x, dz = z - strike.z;
-  const along = dx * sinH + dz * cosH, across = dx * cosH - dz * sinH;
-  return Math.abs(along) <= halfLength && Math.abs(across) <= halfWidth;
+  return footprintCovers(runFootprint(rules, strike.kind), strike, x, z, marginM);
 }
 
 /** A seeded unit draw for round `k` of strike `id` (mulberry32 over the match seed, the strike and the round). */
@@ -291,8 +194,10 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
   };
   const cooldownKey = (id: string, kind: AirStrikeKind): string => `${id}:${kind}`;
   const flying = (strike: AirStrike, timeS: number): boolean => strike.downedS == null && timeS < strike.endS;
-  /** An aircraft in the air that rounds can strike (artillery has none). */
-  const airborne = (strike: AirStrike, timeS: number): boolean => airStrikeFlies(strike.kind) && flying(strike, timeS) && timeS >= strike.calledS;
+  /** An aircraft in the air that rounds can strike (artillery has none): from its call until it has flown its run out
+   *  (its egress included: what a crew sees it can shoot), unless it fell. */
+  const airborne = (strike: AirStrike, timeS: number): boolean => airStrikeFlies(strike.kind) && strike.downedS == null
+    && timeS >= strike.calledS && timeS < runExitS(rules, strike);
   const teamAir = (team: ObjectiveTeam, timeS: number, kind: AirStrikeKind | null = null): number => {
     let count = 0;
     for (const strike of strikes) if (strike.team === team && flying(strike, timeS) && (!kind || strike.kind === kind)) count++;
@@ -377,7 +282,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     award(spotter.id, rules.points.spot);
   }
 
-  const _pose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const _pose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
   /**
    * A round of the other side passing through a flying aircraft's hit sphere strikes it for the round's damage (the strike's
    * own side never hits its own aircraft: its own rounds leave from inside it). True when the round was spent on it.
@@ -390,7 +295,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     const team = teamOf(shooter);
     for (const strike of strikes) {
       if (strike.team === team || !airborne(strike, timeS)) continue;
-      const pose = aircraftPose(rules, strike, timeS, _pose);
+      const pose = runPose(rules, strike, timeS, _pose);
       const radius = rules[strike.kind].hitRadiusM;
       if (segmentPointDistanceSq(pose, shell.prevPos, shell.pos) > radius * radius) continue;
       shell.dead = true;
@@ -408,7 +313,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     if (strike.hp > 0) return;
     strike.downedS = timeS; strike.downedBy = by; strike.endS = Math.min(strike.endS, timeS + 6);
     award(by, rules.points.downed);
-    const pose = aircraftPose(rules, strike, timeS, _pose);
+    const pose = runPose(rules, strike, timeS, _pose);
     emit('mode_aircraft_down', { strikeId: strike.id, kind: strike.kind, team: strike.team, by, x: pose.x, y: pose.y, z: pose.z });
   }
 
@@ -422,7 +327,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     let best: AirStrike | null = null, bestD = rangeM * rangeM;
     for (const strike of strikes) {
       if (strike.team === team || !airborne(strike, timeS)) continue;
-      const pose = aircraftPose(rules, strike, timeS, _pose);
+      const pose = runPose(rules, strike, timeS, _pose);
       const d = (pose.x - x) ** 2 + (pose.y - y) ** 2 + (pose.z - z) ** 2;
       if (d < bestD) { bestD = d; best = strike; }
     }
@@ -452,7 +357,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       }
       if (isSpotted && !isSpotted(entity.id, team)) continue;
       // the gunship's ring counts the enemies well inside it (its 30 s of fire stays on them as they move)
-      if (strikeCovers(rules, _probe, entity.state.pos.x, entity.state.pos.z, kind === 'gunship' ? -rules.gunship.engageM * 0.3 : 0)) count++;
+      if (strikeCovers(rules, _probe, entity.state.pos.x, entity.state.pos.z, kind === 'gunship' ? -rules.gunship.radiusM * 0.3 : 0)) count++;
     }
     return count;
   }
@@ -524,7 +429,9 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       if (!strikeCovers(rules, strike, pos.x, pos.z, rules.bots.evadeMarginM * 0.5)) continue;
       const margin = rules.bots.evadeMarginM;
       if (strike.kind === 'bomb' || strike.kind === 'artillery') {
-        const radius = rules[strike.kind].radiusM + margin;
+        // out past the footprint's far edge (the bomb's ellipse by its long semi-axis: clear of it in any direction)
+        const footprint = runFootprint(rules, strike.kind);
+        const radius = (footprint.shape === 'ellipse' ? footprint.alongM : footprint.shape === 'lane' ? footprint.halfLengthM : footprint.radiusM) + margin;
         const dx = pos.x - strike.x, dz = pos.z - strike.z, d = detMath.hypot(dx, dz);
         const ux = d > 0.5 ? dx / d : detMath.cos(strike.heading), uz = d > 0.5 ? dz / d : -detMath.sin(strike.heading);
         _evade.x = strike.x + ux * radius; _evade.z = strike.z + uz * radius;
@@ -559,14 +466,18 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
       if (strike.kind !== 'recon' || strike.downedS != null || timeS < strike.landsS || timeS - SIM_STEP_S >= strike.landsS) continue;
       for (const entity of entities) {
         if (!living(entity) || teamOf(entity) === strike.team) continue;
-        if (!laneCovers(strike, entity.state.pos.x, entity.state.pos.z, rules.recon.trackM * 0.5, rules.recon.revealM)) continue;
+        if (!strikeCovers(rules, strike, entity.state.pos.x, entity.state.pos.z, 0)) continue;
         revealedUntil.set(`${strike.team}:${entity.id}`, strike.landsS + rules.recon.revealS);
       }
       emit('mode_recon_pass', { strikeId: strike.id, team: strike.team });
     }
     for (const [key, until] of revealedUntil) if (until < timeS) revealedUntil.delete(key);
-    // the records of aircraft long gone are dropped (their rounds have landed: the end is past every danger window)
-    for (let i = strikes.length - 1; i >= 0; i--) if (timeS > strikes[i]!.endS + 2) strikes.splice(i, 1);
+    // the records of aircraft long gone are dropped (their rounds have landed: the end is past every danger window), once
+    // the aircraft has flown its run out (a fallen one at its end): the presentation draws it from the record till then
+    for (let i = strikes.length - 1; i >= 0; i--) {
+      const strike = strikes[i]!;
+      if (timeS > (strike.downedS != null ? strike.endS : Math.max(strike.endS, runExitS(rules, strike))) + 2) strikes.splice(i, 1);
+    }
   }
 
   function view(viewerId: string | null): AirSupportView {
@@ -595,7 +506,7 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     strikes: strikes as readonly AirStrike[],
     seed,
     requestStrike, recordDamage, recordKill, recordCapture, recordSpot, tryHitAircraft, damageAircraft, counterAirHit, aircraftWithin,
-    aircraftPoseOf: (strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }) => aircraftPose(rules, strike, timeS, out),
+    aircraftPoseOf: (strike: AirStrike, timeS: number, out: RunPose) => runPose(rules, strike, timeS, out),
     evadeTarget, step, view, botPreference,
     revealed: (id: string, side: ObjectiveTeam): boolean => (revealedUntil.get(`${side}:${id}`) ?? -Infinity) >= nowS,
     pointsOf: (id: string): number => points.get(id) ?? 0,
