@@ -105,6 +105,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
   'src/ui/loadingScreens.selftest.mjs': lists('public/media/loading-r*/*'),
+  'src/ui/galleryShots.selftest.mjs': lists('public/media/gallery-r*/*'),
   'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/components/loadFailure.selftest.mjs': lists('src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),

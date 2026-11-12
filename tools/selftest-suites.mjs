@@ -3127,6 +3127,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
+    // the gallery lane (2026-11-11): the owner's whole loading-screen gallery, public/media/gallery-r1 and galleryShots.ts
+    'src/ui/galleryShots.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
