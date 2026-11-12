@@ -28,11 +28,11 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | `20/belt` | Rh 202 (Marder 1A3, AMX-10P, the MBT-70's station) | rifled | long | multi_baffle | belt | autocannon | `ac_20_close` / `ac_20_own` / `ac_20_interior` / `ac_20_far` | 4 |
 | `220/rocket` | 220 mm rockets (TOS-1A) | none | launcher tubes | none | rocket | rocket_rack | `rocket_salvo` / `—` / `—` / `rocket_salvo_far` | 1 |
 | `25/belt` | M242 Bushmaster chain gun (Bradley, Dardo, AMX-10P 25, Linebacker) | rifled | long | flash_hider | belt | autocannon | `ac_25_close` / `ac_25_own` / `ac_25_interior` / `ac_25_far` | 8 |
-| `30/belt` | 2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons | rifled | long | multi_baffle | belt | autocannon | `ac_30_close` / `ac_30_own` / `ac_30_interior` / `ac_30_far` | 39 |
+| `30/belt` | 2A42, 2A72, Mk 30-2, L21A1 Rarden, the 30 mm remote cannons | rifled | long | multi_baffle | belt | autocannon | `ac_30_close` / `ac_30_own` / `ac_30_interior` / `ac_30_far` | 38 |
 | `35/belt` | Oerlikon KDE 35 (CV9035, Lynx KF41, Type 89, the ZTZ-100 prototype) | rifled | long | multi_baffle | belt | autocannon | `ac_35_close` / `ac_35_own` / `ac_35_interior` / `ac_35_far` | 12 |
 | `40/belt` | Bofors 40/70 (CV9040, Ajax, K21) | rifled | long | multi_baffle | belt | autocannon | `ac_40_close` / `ac_40_own` / `ac_40_interior` / `ac_40_far` | 6 |
 | `50/belt` | XM913, Rh 503 (CV90 Mk IV, Griffin, Marder 2) | rifled | long | multi_baffle | belt | autocannon | `ac_50_close` / `ac_50_own` / `ac_50_interior` / `ac_50_far` | 4 |
-| `7.62/belt` | PKT, M240, MG3, FN MAG, L37/L94, Ksp 58, UKM-2000 (roof, loader and remote stations) | rifled | long | flash_hider | belt | autocannon | `mg_rifle_close` / `mg_rifle_own` / `mg_rifle_interior` / `mg_rifle_far` | 132 |
+| `7.62/belt` | PKT, M240, MG3, FN MAG, L37/L94, Ksp 58, UKM-2000 (roof, loader and remote stations) | rifled | long | flash_hider | belt | autocannon | `mg_rifle_close` / `mg_rifle_own` / `mg_rifle_interior` / `mg_rifle_far` | 133 |
 | `76/unitary_brass` | 76 mm M32 (the M41 Walker Bulldog family) | rifled | long (L/60) | deflector | unitary_brass | manual | `gun_76_close` / `gun_76_own` / `gun_76_interior` / `gun_76_far` | 6 |
 | `84/unitary_brass` | OQF 20-pounder (Centurion 3, Strv 81) | rifled | long (L/66.7) | none | unitary_brass | manual | `gun_84_close` / `gun_84_own` / `gun_84_interior` / `gun_84_far` | 5 |
 | `90/unitary_brass` | 90 mm M3A1 and M41 (M46 to M48A3), the Brazilian 90 mm (X1, X1A2, Tamoyo 1) | rifled | long (L/48–L/50) | deflector | unitary_brass | manual | `gun_90_close` / `gun_90_own` / `gun_90_interior` / `gun_90_far` | 6 |
@@ -216,7 +216,7 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Object 148 Proto (`object148_proto`) | 125 mm | `125/two_piece`: Vacuum-1 APFSDS, 3VBK27 HEAT, Telnik HE-Frag | carousel_unmanned | no | 30 mm `30/belt` |
 | Object 195 (`object195`) | 152 mm | `152-2a83/two_piece`: 2A83 APFSDS, 2A83 HEAT-FS, 2A83 HE-FRAG | carousel_unmanned | no | 30 mm `30/belt` |
 | Object 292 (`object292`) | 152 mm | `152-lp83/two_piece`: LP-83 APFSDS, LP-83 HEAT-FS, LP-83 HE-FRAG | bustle | no | 12.7 mm `12.7/belt` |
-| Object 477 Molot (`object477_molot`) | 152 mm | `152-2a73/two_piece`: 2A73 APFSDS, 2A73 HEAT-FS, 2A73 HE-FRAG | bustle | no | 30 mm `30/belt`, 12.7 mm `12.7/belt` |
+| Object 477 Molot (`object477_molot`) | 152 mm | `152-2a73/two_piece`: 2A73 APFSDS, 2A73 HEAT-FS, 2A73 HE-FRAG | bustle | no | 12.7 mm `12.7/belt`, 7.62 mm `7.62/belt` |
 | Object 695 (`object695`) | 30 mm | `guided/missile`: 9M-695 Tandem, 9M-695 Blast<br>`30/belt`: 30 mm APFSDS-T | manual | no | — |
 | Olifant Mk 1 (`olifant_mk1`) | 84 mm | `84/unitary_brass`: L23A1 APFSDS, L31A7 HESH, L34 WP Smoke | manual | no | 7.62 mm `7.62/belt` |
 | Olifant Mk 1A (`olifant_mk1a`) | 105 mm | `105/unitary_brass`: GT3 APFSDS, L31A7 HESH, L34 WP Smoke | manual | no | 7.62 mm `7.62/belt` |

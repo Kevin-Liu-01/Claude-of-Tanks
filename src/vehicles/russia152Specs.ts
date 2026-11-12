@@ -79,9 +79,11 @@ object292.armor.turretPlates = modernArmor({
 object292.armor.turretPivot = [0, OBJECT292_FRAME.ringY, OBJECT292_FRAME.ringZ];
 object292.armor.gunPivot = [0, OBJECT292_FRAME.trunnionY - OBJECT292_FRAME.ringY, OBJECT292_FRAME.trunnionZ - OBJECT292_FRAME.ringZ];
 object292.armor.gunBarrel = { lengthM: OBJECT292_FRAME.muzzleZ - OBJECT292_FRAME.trunnionZ, radiusM: 0.135 };
-// the plain green Kubinka shows (the national Russian plain, camoPolicy national_ru)
-object292.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '292',
-  trackWidthM: 0.58 };
+// the three-tone the surviving tank wore at Kubinka before its plain green repaint (owner 2026-11-11: "give the molot and
+// obj 292 actual camos"; the owner's Patriot Park photograph, image 7 of 2026-11-05): a pale sand base under broad soft
+// bands of a grey green and a near-black, about a third each (camoPolicy paint_object292)
+object292.visual = { scheme: 'nato', base: '#968f6b', weather: '#a29b77', patches: ['#66714f', '#2b2e2c'], camoScale: .45,
+  patchK: 1.15, marking: 'number', number: '292', trackWidthM: 0.58 };
 
 // ------------------------------------------------------------------------------------------------ Object 477 Molot --
 // KhKBM Kharkiv's 1987-91 OKR "Boxer", "Molot" from the late 1980s (Yu. Apukhtin's memoir; btvt.info): two prototypes, a
@@ -118,7 +120,8 @@ molot.armor = modernArmor({
 // tube passes the hull's fittings (hullDetail)
 molot.gunPitchByYawDeg = [[0, -6], [133, -6], [134, -5], [135, -4.3], [136, -4], [143, -2.9], [147, -2.5], [151, -2.5],
   [155, -2.7], [156, -3], [157, -3.6], [159, -6], [180, -6]];
-// the Object 292's plain green (camoPolicy national_ru)
+// its stock coat is the Russian three-colour blotch (camoPolicy paint_pantsir_s1, owner 2026-11-11: "actual camos"); the
+// spec keeps the national plain as its own coat (no new paint)
 molot.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '477',
   trackWidthM: 0.58 };
 

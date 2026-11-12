@@ -26,6 +26,9 @@ interface ShtoraSeats {
   readonly offset?: readonly [number, number, number];
   /** Lens tint: the OTShU red by default; blue where the owner asked for it (T-90MS X, 2026-09-16). */
   readonly lens?: 'red' | 'blue';
+  /** A narrow horizontal slit lens in a dark visor frame in place of the round lens (the Object 477 Molot, owner
+   *  2026-11-11: "slit eyes instead of circles"); the kit's louvres stand above and below the slit. Off by default. */
+  readonly slit?: boolean;
 }
 
 export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
@@ -34,7 +37,7 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
   const [dx, dy, dz] = seats.offset ?? [0, 0, 0];
   const y = seats.y + dy, zc = seats.z + dz;
   const blue = seats.lens === 'blue';
-  if (seats.round && !(blue ? P._shtoraBlue : P._shtoraRed)) {
+  if ((seats.round || seats.slit) && !(blue ? P._shtoraBlue : P._shtoraRed)) {
     const material = cloneRehookedVehicleMaterial(P.mats.dark);
     material.color.setHex(blue ? 0x0c2a5a : 0x54180e);
     material.emissive.setHex(blue ? 0x1a4a9a : 0x7c2410);
@@ -44,7 +47,16 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
   const lensMaterial = blue ? P._shtoraBlue : P._shtoraRed;
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.24 * es, 0.27 * es, 0.22 * es), s * x + dx, y, zc);
-    if (seats.round) {
+    if (seats.slit) {
+      P.add('turretDark', box(0.21 * es, 0.085 * es, 0.03 * es), s * x + dx, y, zc + 0.11 * es);
+      const geometry = markVehicleNightLens(box(0.17 * es, 0.026 * es, 0.012 * es), 'shtora');
+      prepareVehicleNightLensParts([geometry]);
+      const lens = new THREE.Mesh(geometry, lensMaterial);
+      lens.position.set(s * x + dx, y, zc + 0.127 * es);
+      lens.castShadow = lens.receiveShadow = true;
+      P.turretG.add(lens);
+      registerVehicleNightLensMesh(lens, [geometry]);
+    } else if (seats.round) {
       P.add('turretDark', KIT.cylZ(0.100 * es, 0.055 * es, 16), s * x + dx, y, zc + 0.0975 * es);
       P.add('turretDetail', KIT.cylZ(0.106 * es, 0.016 * es, 16), s * x + dx, y, zc + 0.092 * es);
       const geometry = markVehicleNightLens(KIT.cylZ(0.072 * es, 0.014 * es, 16), 'shtora');
@@ -59,8 +71,9 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
     }
     P.add('turretDetail', box(0.27 * es, 0.04 * es, 0.24 * es), s * x + dx, y + 0.155 * es, zc + 0.01 * es);
     if (seats.kit) {
-      for (let fi = 0; fi < 3; fi++) {
-        P.add('turretDark', box(0.19 * es, 0.024 * es, 0.014 * es), s * x + dx, y + (-0.056 + fi * 0.056) * es, zc + 0.118 * es);
+      const louvres = seats.slit ? [-0.09, 0.09] : [0, 1, 2].map((fi) => -0.056 + fi * 0.056);
+      for (const ly of louvres) {
+        P.add('turretDark', box(0.19 * es, 0.024 * es, 0.014 * es), s * x + dx, y + ly * es, zc + 0.118 * es);
       }
       P.add('turretDetail', box(0.014 * es, 0.21 * es, 0.19 * es), s * (x + 0.122 * es) + dx, y, zc - 0.005 * es);
       P.add('turretDetail', box(0.014 * es, 0.21 * es, 0.19 * es), s * (x - 0.122 * es) + dx, y, zc - 0.005 * es);
