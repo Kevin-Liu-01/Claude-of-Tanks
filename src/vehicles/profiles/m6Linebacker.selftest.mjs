@@ -33,7 +33,8 @@ assert.equal(spec.name,'M6 Linebacker');
 assert.equal(spec.gun.shells.filter(s=>s.guided).length,1);
 const missile=spec.gun.shells.find(s=>s.guided);
 assert.equal(missile.type,'HE','Stinger is fragmentation, not the Bradley donor’s anti-tank HEAT');
-assert.equal(missile.launcherTubes,4);assert.equal(missile.count,12);
+assert.equal(missile.launcherTubes,4);assert.equal(missile.count,36); // 272: three loads of the 12 stowed (airDefenseFirepower.ts)
+assert.deepEqual(spec.gun.launcherSalvo,{rounds:4,intervalS:.15},'the four-tube rack fires whole');
 assert.ok(missile.pen100Mm<25,'no inherited TOW penetration');
 assert.equal(spec.gun.launcherMuzzles.length,4);
 assert.equal([...spec.armor.hullPlates,...spec.armor.turretPlates].some(p=>p.kind==='era'),false,
