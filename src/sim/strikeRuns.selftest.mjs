@@ -19,7 +19,8 @@
 //   - the authored round counts (improve-271 plan 007): strafe 28, bomb 1, artillery 10, the AC-130's 30 mm 60 and 152 mm 7.
 import assert from 'node:assert/strict';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES as R, AIR_STRIKE_WEAPONS, airStrikeFlies } from './matchRuleset.ts';
-import { createAirSupport } from './airSupport.ts';
+import { createAirSupport, STRIKE_TICK_HZ, strikeDueTick, strikeTick } from './airSupport.ts';
+import { SIM_DT } from './movement.ts';
 import { stepAirSupportFire } from './airSupportFire.ts';
 import { shellGravityMps2 } from './ballistics.ts';
 import {
@@ -31,6 +32,12 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const pose = () => ({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
 const lines = [];
 
+assert.equal(1 / STRIKE_TICK_HZ, SIM_DT, 'the strike clock\'s ticks are the sim\'s steps');
+// the strike clock on the step grid: a resumed clock a fraction of a tick off its grid names the same step
+assert.equal(strikeTick(14.033), strikeDueTick(842 / 60), 'a resume on battleTimeMs (14.033) is the step a landing at 842/60 falls due in');
+assert.equal(strikeTick(14.0335), 842);
+assert.equal(strikeDueTick(842 / 60 + 1e-9), 842, 'a moment a hair past a step falls due in that step');
+assert.equal(strikeDueTick(842.5 / 60), 843, 'a moment between steps falls due in the next');
 assert.equal(BOMB_GRAVITY_MPS2, shellGravityMps2(AIR_STRIKE_WEAPONS.bomb), 'the run falls the bomb under its own shell\'s gravity');
 
 // ---- the flight: continuous, lined up, banked as it turns

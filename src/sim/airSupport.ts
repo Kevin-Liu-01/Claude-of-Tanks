@@ -24,8 +24,17 @@ import { botDriven } from './botDriven.ts';
 import { footprintCovers, runExitS, runFootprint, runPose, type RunPose } from './strikeRuns.ts';
 
 interface Point3 { x: number; y: number; z: number }
-/** The fixed step the authorities advance the mode clock by (sim/constants SIM_DT): a recon pass reveals in one step. */
-const SIM_STEP_S = 1 / 60;
+/** The fixed steps a second the authorities advance the mode clock by (sim/movement.ts SIM_DT = 1 / STRIKE_TICK_HZ;
+ *  strikeRuns.selftest pins the two). */
+export const STRIKE_TICK_HZ = 60;
+/**
+ * The strike clock on the step grid (air-support-runs-272): a moment's tick, and the first tick at or after a moment that
+ * falls due. Every comparison of a strike's times (its rounds, its pass) is made on these integers, never on float
+ * seconds, so a clock that resumes a fraction of a tick off its grid (the 271 one-clock resume runs the mode clock on
+ * battleTimeMs, rounded to the millisecond: 14.033 against a landing at 14.0333...) still names the same step.
+ */
+export const strikeTick = (timeS: number): number => Math.round(timeS * STRIKE_TICK_HZ);
+export const strikeDueTick = (timeS: number): number => Math.ceil(timeS * STRIKE_TICK_HZ - 1e-6);
 
 /** One strike: everything its flight, its rounds and its warning are derived from. Times are the mode's clock. */
 export interface AirStrike {
@@ -463,7 +472,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     }
     // a recon pass reveals, as its jet passes the mark, every enemy within its reach of the track (unless it fell first)
     for (const strike of strikes) {
-      if (strike.kind !== 'recon' || strike.downedS != null || timeS < strike.landsS || timeS - SIM_STEP_S >= strike.landsS) continue;
+      // the pass reveals in the one step its landing falls due in (ticks: a resumed clock cannot skip or repeat it)
+      if (strike.kind !== 'recon' || strike.downedS != null || strikeTick(timeS) !== strikeDueTick(strike.landsS)) continue;
       for (const entity of entities) {
         if (!living(entity) || teamOf(entity) === strike.team) continue;
         if (!strikeCovers(rules, strike, entity.state.pos.x, entity.state.pos.z, 0)) continue;

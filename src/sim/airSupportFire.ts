@@ -12,7 +12,7 @@ import { Vector3 } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
 import { AIR_STRIKE_WEAPONS, GUNSHIP_WEAPONS } from './matchRuleset.ts';
 import type { ShellSpec } from './shellSpec.ts';
-import { strikeRandom, type AirStrike, type AirSupport } from './airSupport.ts';
+import { strikeDueTick, strikeRandom, strikeTick, type AirStrike, type AirSupport } from './airSupport.ts';
 import { bombReleaseOffsetS, runMuzzle, runPose, strafeLaneStart, type RunPose } from './strikeRuns.ts';
 import * as detMath from './detMath.ts';
 
@@ -55,19 +55,27 @@ const _from = new Vector3(), _dir = new Vector3(), _lane = { x: 0, z: 0 }, _muzz
 
 /**
  * The next round of a stream whose round k is due at `start + k * every` (k = 0..count-1), `fired` of them gone: its k
- * once its time has come (the tolerance the old window had), else -1. One round per stream per step. A count replaces
- * the float window (improve-271 plan 007: a round due a few ulps after a tick fired on that tick and the next, the
- * AC-130's 30 mm 119 times for a rule of 60).
+ * once the step it falls due in has come, else -1. One round per stream per step. A count replaces the float window
+ * (improve-271 plan 007: a round due a few ulps after a tick fired on that tick and the next, the AC-130's 30 mm 119
+ * times for a rule of 60), and the comparison is on the step grid (airSupport.ts strikeTick), never in float seconds.
  */
 function nextRound(start: number, every: number, count: number, fired: number, timeS: number): number {
-  if (fired >= count || timeS < start) return -1;
-  return (timeS - start) / every + 1e-9 >= fired ? fired : -1;
+  if (fired >= count) return -1;
+  return strikeDueTick(start + fired * every) <= strikeTick(timeS) ? fired : -1;
 }
 
-/** A strike an older host sealed has no count: the rounds due by the previous step had left. */
+/**
+ * A strike an older host sealed has no count: the rounds due by the previous step had left. Counted on the step grid
+ * (air-support-runs-272): the 271 one-clock resume runs the mode clock on battleTimeMs, rounded to the millisecond, so a
+ * resumed prevS of 14.033 against a round due at 14.0333... (the step that fired it) read as before it, and the round
+ * fired again (a strafing run split by a host change fired 29 for a rule of 28).
+ */
 function firedBy(count: number | undefined, start: number, every: number, rounds: number, prevS: number): number {
   if (typeof count === 'number') return count;
-  return prevS < start ? 0 : Math.min(rounds, Math.floor((prevS - start) / every + 1e-9) + 1);
+  const prev = strikeTick(prevS);
+  let n = 0;
+  while (n < rounds && strikeDueTick(start + n * every) <= prev) n++;
+  return n;
 }
 
 /** A round leaves (x, y, z) toward the aim at its own speed, or on `flightS`'s solved arc onto the aim (the bomb). */
