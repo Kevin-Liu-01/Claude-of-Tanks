@@ -29,6 +29,9 @@ const instantiate = new Function('ports', stripTypeScriptTypes(`
   const updatePostLightFx = () => {}; // round 69: the light effects' per-frame state (stubbed like the aerial helpers)
   const updateOutputGrade = () => {}; // 2026-10-01: the light model's exposure and grade (lightModel.ts), stubbed like the rest
   const CLOUD_SHADE_DEFAULT = 0, lateTarget = null;
+  // couch-panes-272: the split screen's state around the frame boundary (one view here: no plan, the canvas's size)
+  let viewPlan = null, viewOutput = null, viewEndsFrame = true;
+  const fullCssW = 0, fullCssH = 0, applySize = () => {}, _viewNative = { x: 1, y: 1 };
   // temporal AA (2026-09-12): the frame boundary jitters the projection when the pass is on; this
   // CPU-only receipt keeps it off and stubs the camera/target ports it would touch
   const taa = { enabled: false }; let taaFrame = 0;

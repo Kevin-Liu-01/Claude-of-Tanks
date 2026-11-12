@@ -223,9 +223,9 @@ function phaseListener(game, battleEntryIntent) {
   const announceGarage = phaseListener({ phase: 'battle' }, solo.intent);
   await solo.beginLocalBattleEntry('leopard2a4', 'desert',
     { gameMode: 'standard', couch: { seats: [1, 2], sides: 'teams', names: ['Seat 1', 'Seat 2'] } });
-  assert.deepEqual(solo.intent.couch, { sides: 'teams' }, 'the couch entry records its couch');
+  assert.deepEqual(solo.intent.couch, { sides: 'teams', view: 'split' }, 'the couch entry records its couch (and its screen: split when unsaid)');
   announceGarage();
-  assert.deepEqual(solo.intent.couch, { sides: 'teams' }, "the return's 'garage' announcement keeps it");
+  assert.deepEqual(solo.intent.couch, { sides: 'teams', view: 'split' }, "the return's 'garage' announcement keeps it");
   const uiSource = mainSource.slice(mainSource.indexOf('\n    triggerBattle: '));
   const triggerExpression = uiSource.slice('\n    triggerBattle: '.length, uiSource.indexOf('\n  },\n')).replace(/,\s*$/, '');
   const mainTrigger = ({ seats }) => {
@@ -247,7 +247,7 @@ function phaseListener(game, battleEntryIntent) {
   assert.equal(again.calls.some(([name]) => name === 'querySelector' || name === 'click'), false, "Battle Again never clicks a button");
   assert.equal(again.outcome, 'started');
   assert.deepEqual(again.calls, [['closeJoins'], ['replay', { watch: false,
-    couch: { seats: [2, 5], sides: 'teams', names: ['pad.seat:2', 'pad.seat:5'] } }]], 'a couch battle with the phones here now');
+    couch: { seats: [2, 5], sides: 'teams', view: 'split', names: ['pad.seat:2', 'pad.seat:5'] } }]], 'a couch battle with the phones here now');
   const alone = mainTrigger({ seats: [] });
   assert.deepEqual([alone.outcome, alone.calls], ['lobby', [['lobby']]], 'no phone here: the couch lobby');
   // a later solo entry clears it: Battle Again is BATTLE again

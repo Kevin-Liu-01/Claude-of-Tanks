@@ -30,6 +30,7 @@ import { encodeAimIntent } from '../sim/aimIntent.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import { rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { ensureStyle } from '../ui/styleLayers.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { PostView } from '../engine/post.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -107,6 +108,15 @@ const PART_SELECTORS: Readonly<Record<string, string>> = {
   rosters: '.cot-pips,.cot-ear-rows,.cot-er',
   furniture: '.cot-net,.cot-hints,.cot-vehicle-controls,.cot-drive',
 };
+
+/** The panes' host over the canvas and the page HUD standing down (the page's document). */
+const PANES_CSS = '.cot-couch-panes{position:fixed;inset:0;pointer-events:none;z-index:var(--z-hud-score)}'
+  + '.cot-couch-pane-hud{position:absolute;border:0;margin:0;padding:0;background:transparent;transform-origin:0 0;'
+  + 'pointer-events:none;color-scheme:normal}'
+  + '.cot-couch-spare{position:absolute;background:var(--surface-scene)}'
+  + 'body.cot-couch-split .cot-hud{visibility:hidden}';
+/** A pane's own ground: the canvas shows through its document (the overrides layer outranks the page's html and body). */
+const PANE_GROUND_CSS = 'html,body{background:transparent;margin:0;overflow:hidden}';
 
 /** Classes of the page's body a pane's document never copies: they are each view's own. */
 const VIEW_OWN_BODY_CLASSES = new Set(['cot-spectating', 'cot-gun-dry', 'cot-hud-aerial', 'cot-couch-split']);
@@ -227,9 +237,7 @@ function createPaneDocument(host: HTMLElement): { frame: HTMLIFrameElement; doc:
     }
   };
   for (const node of Array.from(document.head.children)) copy(node);
-  const own = doc.createElement('style');
-  own.textContent = 'html,body{background:transparent!important;margin:0;overflow:hidden}';
-  doc.head.appendChild(own);
+  ensureStyle('cot-couch-pane-ground', PANE_GROUND_CSS, 'overrides', doc);
   const mirror = new MutationObserver((records) => {
     for (const record of records) for (const node of Array.from(record.addedNodes)) copy(node);
   });
@@ -276,18 +284,9 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
 
   const ensureHost = (): HTMLDivElement => {
     if (host?.isConnected) return host;
-    if (!document.getElementById('cot-couch-panes-style')) {
-      const style = document.createElement('style');
-      style.id = 'cot-couch-panes-style';
-      // the panes' HUD documents over the canvas (input passes through to nothing: the phones are the controllers); the
-      // page's own battle HUD stands down while the split screen shows (the page's end screen is not under it)
-      style.textContent = '.cot-couch-panes{position:fixed;inset:0;pointer-events:none;z-index:40}'
-        + '.cot-couch-pane-hud{position:absolute;border:0;margin:0;padding:0;background:transparent;transform-origin:0 0;'
-        + 'pointer-events:none;color-scheme:normal}'
-        + '.cot-couch-spare{position:absolute;background:var(--surface-0,#0b0d10)}'
-        + 'body.cot-couch-split .cot-hud{visibility:hidden!important}';
-      document.head.appendChild(style);
-    }
+    // the panes' HUD documents over the canvas (input passes through to nothing: the phones are the controllers); the
+    // page's own battle HUD stands down while the split screen shows (the page's end screen is not under it)
+    ensureStyle('cot-couch-panes-style', PANES_CSS, 'surfaces');
     host = document.createElement('div');
     host.className = 'cot-couch-panes';
     const parent = ports.canvas().parentElement ?? document.body;
@@ -319,9 +318,9 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         view.tier = tier;
         view.doc.body.dataset.couchHud = tier;
         const hidden = couchHudHidden(tier).map((part) => PART_SELECTORS[part]).filter(Boolean);
-        let rule = view.doc.getElementById('cot-couch-tier') as HTMLStyleElement | null;
-        if (!rule) { rule = view.doc.createElement('style'); rule.id = 'cot-couch-tier'; view.doc.head.appendChild(rule); }
-        rule.textContent = hidden.length ? `${hidden.join(',')}{display:none!important}` : '';
+        // one sheet a tier, in the overrides layer (it outranks the HUD's own layout rules for these parts)
+        for (const sheet of Array.from(view.doc.querySelectorAll('style[id^="cot-couch-tier-"]'))) sheet.remove();
+        if (hidden.length) ensureStyle(`cot-couch-tier-${tier}`, `${hidden.join(',')}{display:none}`, 'overrides', view.doc);
       }
       view.camera.aspect = rect.width / Math.max(1, rect.height);
       view.camera.updateProjectionMatrix();

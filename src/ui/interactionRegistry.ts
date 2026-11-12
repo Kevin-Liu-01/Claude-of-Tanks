@@ -125,6 +125,8 @@ export const INTERACTION_SITES = Object.freeze({
   'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:.cot-teams-seg'], lane: 'premiere-site' },
   // couch mode's lobby (docs/COUCH-MODE.md): how the seats take sides, Together or Teams
   'couch-sides': { chooses: 'sides', options: 2, screen: 'deploy', owner: 'src/ui/couchLobby.ts', build: 'segmented', marks: ['segmented:.cot-couch-sides'], lane: 'premiere-site' },
+  // and how the big screen shows the battle (couch-panes-272): a pane per player with its own camera and HUD, or one camera
+  'couch-view': { chooses: 'view', options: 2, screen: 'deploy', owner: 'src/ui/couchLobby.ts', build: 'segmented', marks: ['segmented:.cot-couch-view'], lane: 'premiere-site' },
   'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'picker', marks: ['picker:nation-dropdown'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)

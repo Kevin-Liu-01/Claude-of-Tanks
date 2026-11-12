@@ -2438,7 +2438,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const document = view?.mount.ownerDocument ?? globalThis.document;
   const window = (document?.defaultView ?? globalThis.window) as Window & typeof globalThis;
   ensureFonts();
-  ensureStyle('cot-hud-style', HUD_CSS, 'surfaces', document);
+  // (the page's head: a pane's document carries the page's style sheets, src/app/couchPaneViews.ts)
+  ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
 
   const root = el('div', 'cot-hud');
   (view?.mount ?? document.body).appendChild(root);
