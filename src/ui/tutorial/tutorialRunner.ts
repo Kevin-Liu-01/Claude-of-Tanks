@@ -12,7 +12,7 @@
  * takes A / B / BACK in the Garage and the stick clicks (RS Next, LS Skip) in battle, where every other button is
  * bound. The card's buttons show those keys.
  */
-import { labelForCode, type ActionId } from '../../game/input.ts';
+import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
 import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
 import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
@@ -25,6 +25,9 @@ export interface TutorialPort {
   inputKind(): TutorialInput;
   /** The cap for an action's current binding (its pad button with a pad connected). */
   keyLabel(action: ActionId): string;
+  /** A key's cap as the game writes it (input.ts labelForCode; passed in so the chunk never splits input.ts off the
+   *  boot graph into a request of its own). */
+  codeLabel(code: string): string;
   /** The player's tank on the ground plane, in battle; null elsewhere. */
   playerPosition(): { readonly x: number; readonly z: number } | null;
 }
@@ -57,9 +60,6 @@ const PAD_KEYS = {
 } as const;
 const PAD_CAPS: Readonly<Record<number, string>> = { 0: 'A', 1: 'B', 8: 'BACK', 10: 'LS', 11: 'RS' };
 
-/** A key's cap as the game writes it (the Garage's Deploy names Enter in the player's language). */
-const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : labelForCode(code));
-
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** A body line with its {placeholders} as key caps (the line itself escaped). */
@@ -78,6 +78,8 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
   const battle = chapter === 'battle';
+  // the Garage's Deploy names Enter in the player's language; the card's caps match it
+  const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : port.codeLabel(code));
   let index = 0;
   let ended = false;
   let hiddenByPause = false;
@@ -164,6 +166,7 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
       backLabel: t('tutorial.back'),
       skipLabel: t('tutorial.skip'),
       canBack: index > 0,
+      canNext: step.advance.on !== 'press',
       actionHint: acting ? t('tutorial.doIt') : null,
       caps: battle
         ? { next: cap(codeCap('Enter'), keys.next), back: '', skip: cap(codeCap('Backspace'), keys.skip) }

@@ -37,6 +37,8 @@ export interface OverlayView {
   readonly backLabel: string;
   readonly skipLabel: string;
   readonly canBack: boolean;
+  /** A step that waits for a press on its lit control shows no Next: the control is the way on. */
+  readonly canNext: boolean;
   /** The step moves on when the player does the thing: Next stays, quietly, and the hint names the deed. */
   readonly actionHint: string | null;
   readonly caps: OverlayButtonCaps;
@@ -228,6 +230,7 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       setButton(backButton, next.backLabel, next.caps.back);
       setButton(skipButton, next.skipLabel, next.caps.skip);
       backButton.button.hidden = !next.canBack;
+      nextButton.button.hidden = !next.canNext;
       nextButton.button.classList.toggle('cot-c-btn--primary', !next.actionHint);
       nextButton.button.classList.toggle('cot-c-btn--secondary', !!next.actionHint);
       lastKey = '#'; // re-measure and re-place for the new step
@@ -235,7 +238,9 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       if (!hidden && root.hasAttribute('popover') && !root.matches(':popover-open')) root.showPopover();
       measure();
       if (next.target && next.target !== previousTarget && lastRect) pulseOnce();
-      if (next.focus) nextButton.button.focus({ preventScroll: true });
+      // (a press step takes no focus: its Enter belongs to the lit control, the Garage's Deploy)
+      if (next.focus && next.canNext) nextButton.button.focus({ preventScroll: true });
+      else if (root.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
     },
     setHidden(value: boolean): void {
       if (hidden === value) return;

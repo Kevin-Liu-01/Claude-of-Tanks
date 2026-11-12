@@ -8,8 +8,9 @@
  * record (ui/settings.ts, written at a battle's rollout). A returning player from before the tutorial existed never
  * sees it unless they ask (Settings > Replay tutorial, or `/?tutorial=1` from the Field Manual).
  *
- * This is the only part of the tutorial on the boot path: a few lines over localStorage. The overlay, the steps and
- * their strings load only when a chapter runs (app/tutorialAccess.ts).
+ * This is the only part of the tutorial on the boot path: a few lines over localStorage. A browser with nothing left to
+ * show (finished, skipped, or a returning player) loads nothing more; otherwise main.ts loads app/tutorialAccess.ts,
+ * which loads the overlay, the steps and their strings when a chapter runs.
  */
 
 export const TUTORIAL_STORAGE_KEY = 'cot.tutorial.v1';
@@ -73,4 +74,22 @@ export function markTutorialChapter(chapter: TutorialChapter | 'all', outcome: T
 /** Replay: every chapter pending again (an empty record, which is not "no record": it never asks about past play). */
 export function resetTutorialRecord(storage?: RecordStorage | null): void {
   writeRecord({}, storage);
+}
+
+/** Any chapter could still run: the boot loads the tutorial's access (app/tutorialAccess.ts) only then. */
+export function tutorialMayRun(storage?: RecordStorage | null): boolean {
+  return TUTORIAL_CHAPTERS.some((chapter) => tutorialChapterDue(chapter, storage));
+}
+
+/** The URL flag the Field Manual's Replay link carries; the boot drops it from the address once read. */
+const TUTORIAL_REPLAY_PARAM = 'tutorial';
+
+/** The Field Manual's Replay link: whether the address asks for it, and the address without it. */
+export function readTutorialReplay(href: string): { asked: boolean; cleaned: string } {
+  try {
+    const url = new URL(href);
+    if (!url.searchParams.has(TUTORIAL_REPLAY_PARAM)) return { asked: false, cleaned: href };
+    url.searchParams.delete(TUTORIAL_REPLAY_PARAM);
+    return { asked: true, cleaned: url.toString() };
+  } catch { return { asked: false, cleaned: href }; }
 }

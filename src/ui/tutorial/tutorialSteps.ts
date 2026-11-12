@@ -115,7 +115,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     title: 'tutorial.battle.minimap.title', body: 'tutorial.battle.minimap.body', advance: NEXT, keys: { zoom: 'minimapZoom' } },
   { id: 'battle.minimapTouch', chapter: 'battle', when: 'touch', target: ['.cot-minimap'],
     title: 'tutorial.battle.minimap.title', body: 'tutorial.battle.minimap.bodyTouch', advance: NEXT },
-  { id: 'battle.win', chapter: 'battle', target: ['.cot-top'], media: still('start-win'),
+  // (no picture: the end screen's VICTORY read as "you have already won" in the blind check, round 1)
+  { id: 'battle.win', chapter: 'battle', target: ['.cot-top'],
     title: 'tutorial.battle.win.title', body: 'tutorial.battle.win.body', advance: NEXT },
 
   // ── Strategy, on the Garage after the first battle ────────────────────────────────────────────────────────────────
