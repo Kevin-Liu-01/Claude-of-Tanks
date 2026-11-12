@@ -163,7 +163,10 @@ const dressing = readFileSync(join(ROOT, 'src/game/garageDressing.ts'), 'utf8');
 assert.match(dressing, /createLazyChunk\(\(\) => import\('\.\.\/ui\/galleryShots\.ts'\)\)/, 'the slideshow holds the gallery in the lazy-chunk policy');
 assert.match(dressing, /battleScreenOpeners\.get\(mapId\)/, 'a Garage opens on its battlefield\'s gallery opener');
 const archive = readFileSync(join(ROOT, 'src/presentation/mediaArchive.ts'), 'utf8');
-assert.match(archive, /createLazyChunk\(\(\) => import\('\.\.\/ui\/galleryShots\.ts'\)\)/, 'the archive holds the gallery in the lazy-chunk policy');
+// the archive imports it once per mount, with no lazy-chunk holder: lazyChunk.ts is not on the public pages, and holding it
+// here put it in their preload maps for this module (+75 B on the home and docs boot chunks)
+assert.match(archive, /await import\('\.\.\/ui\/galleryShots\.ts'\)/, 'the archive\'s wall loads the gallery when it mounts');
+assert.doesNotMatch(archive, /from '\.\.\/app\/lazyChunk\.ts'/, 'and keeps app/lazyChunk.ts off the public pages');
 assert.match(archive, /options\.gallery \?\? options\.mode === 'wall'/, 'the manual\'s wall shows the gallery');
 // the wall's limit and its card count every shot: the battlefield photographs, the gallery and the site fifty's frames
 const wall = (await json('public/media/site50-r14/archive.json')).shots.length

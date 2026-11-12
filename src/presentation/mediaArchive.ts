@@ -7,7 +7,6 @@ import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 import { revealStills } from './revealStills.ts';
-import { createLazyChunk } from '../app/lazyChunk.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
 /** The manifest's feature names in filter order. */
@@ -68,10 +67,13 @@ interface MediaArchiveOptions {
   gallery?: boolean;
 }
 
-const galleryShotsChunk = createLazyChunk(() => import('../ui/galleryShots.ts'));
-/** The gallery's stills as archive shots, worded in the page's language (galleryShots.ts loads only for a wall that shows them). */
+/**
+ * The gallery's stills as archive shots, worded in the page's language. galleryShots.ts loads only for a wall that shows
+ * them, once per mount (a mount is once per wall; a failed one throws, and the wall's Retry mounts again): a lazy-chunk
+ * holder here would put app/lazyChunk.ts into the public pages' preload maps for this module, their boot bytes.
+ */
 async function galleryArchiveShots(): Promise<PresentationShot[]> {
-  const { GALLERY_SHOTS, galleryShotText } = await galleryShotsChunk.load();
+  const { GALLERY_SHOTS, galleryShotText } = await import('../ui/galleryShots.ts');
   return GALLERY_SHOTS.map((shot) => ({
     src: shot.img, previewSrc: shot.thumb, focal: shot.focal, alt: galleryShotText(shot, 'title'),
     // a close-up is the archive's close portrait, an elevated still its key moment (the site fifty's two still kinds)
