@@ -175,3 +175,43 @@ export function couchHudFitStep(boxes: readonly CouchHudPartBox[], width: number
   }
   return { fits: false, drop: null, coreFits: false, clashing: [...clashing] };
 }
+
+/**
+ * The world's detail for a pane, one rule tied to its pixel area (Main's review, 2026-11-11): `areaFraction` is the
+ * pane's share of the screen (1 whole, 0.5 a half, 0.25 a quarter, about 0.11 a 3 x 3 ninth). Every knob follows the
+ * pane's linear size, the square root of that share, so a pane a third of the screen's width draws its world a third
+ * as far in detail:
+ * - renderScale: the scene's raster against the pane's own pixels (FSR reconstructs the pane), 1 down to 0.6;
+ * - lodBias: how much sooner a hull takes its far meshes (fewer parts and draws), 1 up to 3;
+ * - density: the tall grass's share of its couch-tier sward, 1 down to 0.33 (the couch tier's 0.1 times this);
+ * - shadowReachM and shadowMapSize: the cascades' reach and maps (one fit for every pane), 240 m down to 80 m;
+ * - drawDistanceM: past this a pane's draw leaves the world's detail categories out (couchPaneViews.ts).
+ */
+export interface CouchPaneDetail {
+  readonly renderScale: number;
+  readonly lodBias: number;
+  readonly density: number;
+  readonly shadowReachM: number;
+  readonly shadowMapSize: number;
+  readonly drawDistanceM: number;
+}
+
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+export function couchPaneDetail(areaFraction: number): CouchPaneDetail {
+  const size = Math.max(0.2, Math.min(1, Math.sqrt(Number.isFinite(areaFraction) ? areaFraction : 1)));
+  return {
+    renderScale: round2(Math.max(0.6, Math.min(1, 0.5 + 0.5 * size))),
+    lodBias: round2(1 / size),
+    density: round2(size),
+    shadowReachM: Math.round(240 * size),
+    shadowMapSize: size >= 0.7 ? 1024 : 512,
+    drawDistanceM: Math.round(1500 * size),
+  };
+}
+
+/** A layout's pane share of the screen (couchPaneDetail's input). */
+export function couchPaneAreaFraction(count: number, width: number, height: number): number {
+  const pane = couchPaneLayout(count, width, height).panes[0];
+  return (pane.width * pane.height) / Math.max(1, width * height);
+}

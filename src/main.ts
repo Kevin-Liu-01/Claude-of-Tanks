@@ -2467,6 +2467,7 @@ const battlePresentation = createBattlePresentationRuntime({
   scene,
   // a couch battle's split screen: every pane's camera (src/app/couchPaneViews.ts), so no pane's hulls lose their detail
   getExtraViews: () => couchOwner.current?.extraViews() ?? null,
+  getLodBias: () => couchOwner.current?.lodBias() ?? 1,
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,

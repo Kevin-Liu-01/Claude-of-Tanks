@@ -197,8 +197,13 @@ try {
         }
         for (const child of obj.children) walk(child, owner);
       };
-      for (const child of scene.children) walk(child, child.name || child.userData?.kind || child.type);
-      return Object.fromEntries(Object.entries(out).sort((a, b) => b[1] - a[1]).slice(0, 14));
+      // (the world's root by its own groups: its draws are the categories a draw distance acts on)
+      for (const child of scene.children) {
+        const owner = child.name || child.userData?.kind || child.type;
+        if (/^world/.test(owner)) for (const part of child.children) walk(part, `${owner}/${part.name || part.userData?.kind || part.type}`);
+        else walk(child, owner);
+      }
+      return Object.fromEntries(Object.entries(out).sort((a, b) => b[1] - a[1]).slice(0, 24));
     });
     const ratios = proxyRatios(MID_RANGE_PROXIES['rtx4050-laptop']);
     const projected = projectFrameMs({ gpuMs: summary.gpuFrame.p25 ?? summary.gpuFrame.med, cpuMs: summary.cpuFrame.med }, ratios);
@@ -397,6 +402,14 @@ try {
           gameMode: window.__DEBUG.game.gameMode ?? 'standard' }));
       }
       report.frames[count] = await measureFrames(`${count} panes`);
+      if (count === 1 && baseline) {
+        // the like-for-like baseline: this battle, seat 1's same camera, drawn the solo way (one view, the page's HUD)
+        await desktop.evaluate(() => window.__COT_COUCH.probeSoloView(true));
+        await sleep(2500);
+        report.frames.soloView = await measureFrames('same battle, solo view');
+        await desktop.evaluate(() => window.__COT_COUCH.probeSoloView(false));
+        await sleep(1500);
+      }
     }
 
     report.step = `layout ${count}: leave`;
@@ -406,9 +419,10 @@ try {
       && !document.body.classList.contains('cot-couch-split')));
   }
   if (measure && baseline && soloEntry) {
-    // the solo baseline on the same build, tier and map: the same staging and timer, the page's one view
-    report.frames.solo = await soloFrames('solo');
-    const solo = report.frames.solo;
+    // a solo battle on the same build, tier and map (context: its roster is the solo entry's, not the couch battle's);
+    // the ratios are to the same couch battle drawn the solo way (frames.soloView), the like-for-like baseline
+    report.frames.solo = await soloFrames('solo battle');
+    const solo = report.frames.soloView ?? report.frames.solo;
     report.ratios = {};
     for (const count of layouts) {
       const row = report.frames[count];
@@ -421,8 +435,8 @@ try {
         + `draws ${report.ratios[count].draws}; per added pane ${report.ratios[count].perPaneMainMs} ms`);
     }
     if (report.ratios[1]) {
-      check('the harness: one pane is within 5 % of solo (main thread)', Math.abs(report.ratios[1].main - 1) <= 0.05,
-        `1 pane / solo = ${report.ratios[1].main} (main), ${report.ratios[1].draws} (draws)`);
+      check('the harness: one pane is within 5 % of solo (main thread; the same battle, the same camera, drawn the solo way)',
+        Math.abs(report.ratios[1].main - 1) <= 0.05, `1 pane / solo view = ${report.ratios[1].main} (main), ${report.ratios[1].draws} (draws)`);
     }
   }
 } catch (error) {

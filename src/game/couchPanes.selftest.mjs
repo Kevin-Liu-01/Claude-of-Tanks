@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   CORE_MIN_CELL, COUCH_HUD_CORE, COUCH_HUD_PRIORITY, PANE_GUTTER_PX, couchHudFitStep, couchPaneGrid, couchPaneLayout,
-  couchSplitCapacity,
+  couchPaneAreaFraction, couchPaneDetail, couchSplitCapacity,
 } from './couchPanes.ts';
 
 // --- grids ---------------------------------------------------------------------------------------------------------
@@ -97,4 +97,25 @@ const box = (part, x0, y0, x1, y1, squeezed = false) => ({ part, x0, y0, x1, y1,
   assert.equal(couchHudFitStep([box('health', -40, 300, 170, 520)], 400, 539, new Set()).coreFits, false, 'a core part off the pane');
 }
 
-console.log('couchPanes: PASS — grids by seat count and screen shape, equal panes inside the screen with gutters, the HUD at its solo size, parts given up by the stated priority, the core kept');
+// --- the world's detail: one rule from the pane's area ------------------------------------------------------------
+{
+  const whole = couchPaneDetail(1);
+  assert.deepEqual(whole, { renderScale: 1, lodBias: 1, density: 1, shadowReachM: 240, shadowMapSize: 1024, drawDistanceM: 1500 },
+    'a whole screen: the couch tier as it stands');
+  const shares = [1, 2, 4, 8].map((n) => couchPaneAreaFraction(n, 1920, 1080));
+  const details = shares.map(couchPaneDetail);
+  for (let i = 1; i < details.length; i++) {
+    const [a, b] = [details[i - 1], details[i]];
+    assert.ok(b.renderScale <= a.renderScale && b.lodBias >= a.lodBias && b.density <= a.density
+      && b.shadowReachM <= a.shadowReachM && b.drawDistanceM <= a.drawDistanceM, `smaller panes take less detail (${i})`);
+  }
+  const { drawDistanceM: quarterDraw, ...quarter } = details[2];
+  assert.deepEqual(quarter, { renderScale: 0.75, lodBias: 2, density: 0.5, shadowReachM: 120, shadowMapSize: 512 },
+    'a 1080p quarter: half the size, half the reach, twice the LOD bias');
+  assert.ok(Math.abs(quarterDraw - 750) <= 2, 'and half the draw distance (the gutters take a pixel)');
+  assert.ok(details[3].lodBias > 2.9 && details[3].renderScale === 0.67, 'a 3 x 3 ninth: a third the size');
+  assert.ok(Math.abs(shares[2] - 0.25) < 0.01, 'a 2 x 2 quarter is a quarter of the screen');
+  assert.equal(couchPaneDetail(0.001).lodBias, 5, 'never past the floor (a fifth of the screen\'s width)');
+}
+
+console.log('couchPanes: PASS — grids by seat count and screen shape, equal panes inside the screen with gutters, the HUD at its solo size, parts given up by the stated priority, the core kept, the world\'s detail by the pane\'s area');

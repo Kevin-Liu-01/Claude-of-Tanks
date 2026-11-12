@@ -591,15 +591,36 @@ const COUCH_PRESET: QualityPreset = Object.freeze({
   shadowMaxFar: 240,
 });
 
-let couchTier = false;
+/**
+ * The couch tier's share of a pane (game/couchPanes.ts couchPaneDetail): its raster, its sward and its cascades follow
+ * the pane's size. Plain numbers, so the engine reads no game module.
+ */
+export interface CouchTierDetail {
+  readonly renderScale: number;
+  readonly density: number;
+  readonly shadowReachM: number;
+  readonly shadowMapSize: number;
+}
+let couchTier: QualityPreset | null = null;
+let couchTierKey = '';
 /** The couch tier in force (set by the couch split view, never by a menu). */
 export function couchTierActive(): boolean {
-  return couchTier;
+  return couchTier !== null;
 }
-/** Ask for the couch tier, or let it go; every preset listener hears the change (post.ts, lighting.ts). */
-export function setCouchTier(on: boolean): void {
-  if (couchTier === on) return;
-  couchTier = on;
+/** Ask for the couch tier for a pane of `detail` (true: a whole screen's), or let it go (false); every preset listener
+ *  hears a change (post.ts, lighting.ts). */
+export function setCouchTier(on: boolean | CouchTierDetail): void {
+  const detail = on === true ? { renderScale: 1, density: 1, shadowReachM: COUCH_PRESET.shadowMaxFar, shadowMapSize: 1024 } : on || null;
+  const key = detail ? `${detail.renderScale}:${detail.density}:${detail.shadowReachM}:${detail.shadowMapSize}` : '';
+  if (key === couchTierKey) return;
+  couchTierKey = key;
+  couchTier = detail ? Object.freeze({
+    ...COUCH_PRESET,
+    maxPixelRatio: COUCH_PRESET.maxPixelRatio * detail.renderScale,
+    tallGrass: (COUCH_PRESET.tallGrass ?? 0) * detail.density,
+    shadowMaxFar: detail.shadowReachM,
+    shadowMapSizes: [detail.shadowMapSize, detail.shadowMapSize, detail.shadowMapSize / 2, detail.shadowMapSize / 2] as const,
+  }) : null;
   broadcastPreset();
 }
 
@@ -862,7 +883,7 @@ export function setMobilePresetName(name: string): void {
 const autoVariants = new Map<PresetName, QualityPreset>();
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin and autoNativeDynMin floors) */
 export function getPreset(): QualityPreset {
-  if (couchTier) return COUCH_PRESET;
+  if (couchTier) return couchTier;
   const name = resolvePresetName();
   const preset = PRESETS[name];
   if ((preset.autoDynMin === undefined && preset.autoNativeDynMin === undefined) || getStoredChoice() !== 'auto') return preset;

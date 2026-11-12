@@ -172,6 +172,8 @@ interface BattlePresentationRuntimeOptions {
    * or none: a hull's detail is every view's (the nearest view's distance, visible in any view).
    */
   getExtraViews?(): readonly PerspectiveCamera[] | null;
+  /** How much sooner a hull takes its far meshes (couch mode's small panes, game/couchPanes.ts couchPaneDetail); 1 else. */
+  getLodBias?(): number;
 }
 
 /**
@@ -190,6 +192,7 @@ export function createBattlePresentationRuntime({
   getPedestalVisual,
   isCinematicActive,
   getExtraViews,
+  getLodBias,
 }: BattlePresentationRuntimeOptions): BattlePresentationRuntime {
   // A tank outside a generous camera guard band cannot contribute a visible
   // articulated pose. Keep authoritative state and FX at their existing
@@ -392,7 +395,7 @@ export function createBattlePresentationRuntime({
       visual.syncFromState(
         state,
         presentationDt,
-        detailVisible ? viewDistanceM * lodDistanceScale(camera) : viewDistanceM,
+        detailVisible ? viewDistanceM * lodDistanceScale(camera) * (getLodBias?.() ?? 1) : viewDistanceM,
         presented,
         detailVisible,
       );

@@ -210,6 +210,12 @@ export interface CouchPaneViews {
    * between seats; seat 1 before anyone fires. Its pane camera's facing is the mix's.
    */
   listenerFocus(): { readonly entity: PaneEntity; readonly forward: Vector3 } | null;
+  /**
+   * The frame-budget harness's like-for-like baseline (tools/couch-panes.browser.mjs): the panes' HUDs stand down and
+   * the page's HUD comes back, so the same battle through seat 1's same camera draws the solo way (one view, the page's
+   * HUD); the panes' cameras keep posing. Off: the split screen again.
+   */
+  probeSolo(on: boolean): void;
   /** Take the panes down (the battle ended, the split screen was let go). */
   dispose(): void;
 }
@@ -642,6 +648,10 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         copyCamera(views[0].camera, ports.camera);
         timing.drawMs = performance.now() - drawStart;
       }
+    },
+    probeSolo(on) {
+      if (host) host.hidden = on;
+      document.body.classList.toggle('cot-couch-split', !on && views.length > 0);
     },
     listenerFocus() {
       const view = heard && views.includes(heard) ? heard : views[0];
