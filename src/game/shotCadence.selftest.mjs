@@ -149,10 +149,10 @@ function audioTank(id, x, z, team, isPlayer = false) {
   };
 }
 /**
- * One fresh audio engine (same seed every time), a listener in our hull, a foe 60 m off; then the shots, each at its own
- * simulation time (`clocked`) or with none. Returns what the mix did over the shots.
+ * One fresh audio engine (same seed every time), a listener in our hull, a foe 60 m off; then the events, each emitted on
+ * the tick of its time `t`. Returns what the mix did over them.
  */
-async function runAudio(shots, clocked) {
+async function runAudioEvents(events) {
   const ctx = createFakeContext({ decode: () => fakeBuffer(1.5) });
   const audio = createAudio({ context: ctx, getMapId: () => 'urban', getGameMode: () => 'standard', getTerrain: () => terrain, tier: 'desktop' });
   const bus = createBus();
@@ -170,22 +170,23 @@ async function runAudio(shots, clocked) {
   const startsBefore = ctx.started.length, nodesBefore = ctx.nodes.length;
   const seqBefore = probe.sfxLog.at(-1)?.seq ?? 0;
   const t0 = ctx.currentTime;
-  let most = 0, id = 1;
-  const endS = shots.at(-1).t + 1;
+  let most = 0;
+  const endS = events.at(-1).t + 1;
   for (let tick = 0, s = 0; tick * TICK <= endS; tick++) {
     const now = tick * TICK;
-    while (s < shots.length && shots[s].t <= now + 1e-9) {
-      const shot = shots[s++];
-      bus.emit('shell:fired', { shellId: id++, shooterId: shot.shooterId, isPlayer: shot.shooterId === 'me', muzzlePos: shot.muzzlePos,
-        dir: shot.dir, caliberMm: shot.caliberMm, shellType: 'APFSDS', weaponSound: shot.weaponSound, velocityMps: 1000,
-        ...(clocked ? { timeS: shot.t } : {}) });
-    }
+    while (s < events.length && events[s].t <= now + 1e-9) { const event = events[s++]; bus.emit(event.type, event.payload); }
     ctx.advance(TICK);
     audio.update(TICK, listener, tanks);
     most = Math.max(most, probe.activeVoices());
   }
   const log = probe.sfxLog.filter((e) => e.seq > seqBefore).map((e) => ({ n: e.n, t: +(e.t - t0).toFixed(6), g: e.g, r: e.r, d: e.d, b: e.b }));
   return { starts: ctx.started.length - startsBefore, nodes: ctx.nodes.length - nodesBefore, mostVoices: most - idle, idleVoices: idle, log };
+}
+/** The shots, each at its own simulation time (`clocked`) or with none (the pre-272 path). */
+function runAudio(shots, clocked) {
+  return runAudioEvents(shots.map((shot, i) => ({ t: shot.t, type: 'shell:fired', payload: { shellId: i + 1, shooterId: shot.shooterId,
+    isPlayer: shot.shooterId === 'me', muzzlePos: shot.muzzlePos, dir: shot.dir, caliberMm: shot.caliberMm, shellType: 'APFSDS',
+    weaponSound: shot.weaponSound, velocityMps: 1000, ...(clocked ? { timeS: shot.t } : {}) } })));
 }
 const foeShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'foe', muzzlePos: [-20, 2.5, 57], dir: [0.33, 0, -0.94], caliberMm, weaponSound });
 const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'me', muzzlePos: [0, 2.5, 3], dir: [0, 0, 1], caliberMm, weaponSound });
@@ -231,6 +232,45 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
   }
 }
 
+// --------------------------------------------- audio: the audit's other bursts ---
+{
+  // a fast gun's rounds on the ground: with their shooter (the cadence's key) or without (the pre-272 path)
+  const ground = (withShooter, caliberMm, every, seconds) => rounds(every, seconds).map((t, i) => ({ t, type: 'shell:expired', payload: {
+    shellId: 500 + i, ...(withShooter ? { shooterId: 'foe' } : {}), pos: [-12 + (i % 7), 0, 30 + (i % 5)], hitTerrain: true, hitKind: 'terrain',
+    surfaceKind: 'terrain', caliberMm, shellType: caliberMm < 60 ? 'HE' : 'APFSDS' } }));
+  const b = await runAudioEvents(ground(false, 30, 3, BURST_S));
+  const a = await runAudioEvents(ground(true, 30, 3, BURST_S));
+  report.audio_ground_30mm_1200rpm = { before: { voiceStarts: b.starts, voicesMost: b.mostVoices }, after: { voiceStarts: a.starts, voicesMost: a.mostVoices } };
+  assert.ok(a.starts > 0 && a.starts <= b.starts * 0.65, `a burst's ground strikes start fewer voices (${b.starts} -> ${a.starts})`);
+  const slowB = await runAudioEvents(ground(false, 120, 360, 13));
+  const slowA = await runAudioEvents(ground(true, 120, 360, 13));
+  assert.deepEqual(slowA.log, slowB.log, 'a main gun\'s rounds land exactly as before');
+  // an airstrike's strafe, credited to its caller, lands in full (its rounds named by mode:strike_round first)
+  const strafe = (withShooter) => ground(withShooter, 30, 2, 1.5).flatMap((event) => [
+    { t: event.t, type: 'mode:strike_round', payload: { kind: 'strafe', strikeId: 7, shellId: event.payload.shellId, x: -12, y: 40, z: 30 } },
+    event]);
+  const strafeB = await runAudioEvents(strafe(false));
+  const strafeA = await runAudioEvents(strafe(true));
+  assert.deepEqual(strafeA.log, strafeB.log, 'an airstrike\'s strafe lands exactly as before');
+  report.audio_strafe = { identical: true, voices: strafeA.log.length };
+
+  // a trigger held on an empty gun raises ammo:empty every tick: one dry click a press
+  const empty = [...rounds(1, 0.5).map((t) => ({ t, type: 'ammo:empty', payload: { id: 'me', slot: 0 } })),
+    ...rounds(1, 0.3, 1.5).map((t) => ({ t, type: 'ammo:empty', payload: { id: 'me', slot: 0 } }))];
+  const dry = (await runAudioEvents(empty)).log.filter((e) => e.n === 'dry_fire').length;
+  assert.equal(dry, 2, `two presses, two clicks (${dry})`);
+
+  // one prop break reported twice in a frame (the world's prop:destroyed, the step's prop:crushed): its layers once
+  const breakOf = (twice) => [
+    { t: 0.5, type: 'prop:destroyed', payload: { kind: 'windpump', pos: [-10, 0, 20], h: 8 } },
+    ...(twice ? [{ t: 0.5, type: 'prop:crushed', payload: { kind: 'windpump', pos: [-10, 0, 20], h: 8 } }] : []),
+    { t: 3, type: 'prop:destroyed', payload: { kind: 'windpump', pos: [10, 0, 25], h: 8 } }];
+  const once = (await runAudioEvents(breakOf(false))).log.map((e) => e.n);
+  const doubled = (await runAudioEvents(breakOf(true))).log.map((e) => e.n);
+  assert.ok(once.includes('debris_metal'), `the wind pump's break carries its metal debris (${once})`);
+  assert.deepEqual(doubled, once, 'a break reported twice plays once');
+}
+
 // ------------------------------------------------------------------ effects ---
 {
   const { createFx } = await import('../fx/effects.ts');
@@ -239,7 +279,11 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
   globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
   try {
     /** One fresh effects runtime (seed 91), a camera 30 m off the gun, then the shots; per-pool emits counted by slot. */
-    const runFx = (shots, clocked) => {
+    /** The shots as `shell:fired` (with the round's clock or without), or any events as given ({ t, type, payload }). */
+    const runFx = (shots, clocked, events = null) => {
+      const timeline = events ?? shots.map((shot, i) => ({ t: shot.t, type: 'shell:fired', payload: { shellId: i + 1, shooterId: 'aa',
+        shellType: 'HE', caliberMm: shot.caliberMm, weaponSound: shot.weaponSound, muzzlePos: [0, 2.5, 5], dir: [0, 0.6, 0.8],
+        muzzleIndex: shot.muzzleIndex ?? 0, ...(clocked ? { timeS: shot.t } : {}) } }));
       const handlers = new Map();
       const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
       const scene = new THREE.Scene();
@@ -253,7 +297,8 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
       const pools = new Map();
       let pointLights = 0, light = null;
       fx.group.traverse((o) => {
-        if (o.name?.startsWith('particles:') && o.geometry?.attributes?.aPB) pools.set(o.name.slice(10), o.geometry.attributes.aPB);
+        // every pooled emitter: the particle pools, and the media layer's volumes and chunks (a ground strike's dust and clods)
+        if (o.geometry?.attributes?.aPB) pools.set(o.name?.startsWith('particles:') ? o.name.slice(10) : o.name, o.geometry.attributes.aPB);
         if (o.isPointLight) pointLights++;
         if (o.name === 'fx:muzzleLight') light = o;
       });
@@ -261,9 +306,9 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
       const snapshot = new Map([...pools].map(([k, a]) => [k, Float32Array.from(a.array)]));
       const count = () => {
         for (const [k, a] of pools) {
-          const prev = snapshot.get(k), cur = a.array;
-          for (let i = 0; i < cur.length; i += 4) {
-            if (cur[i] !== prev[i] || cur[i + 1] !== prev[i + 1] || cur[i + 2] !== prev[i + 2] || cur[i + 3] !== prev[i + 3]) emitted[k]++;
+          const prev = snapshot.get(k), cur = a.array, stride = a.itemSize || 4;
+          for (let i = 0; i < cur.length; i += stride) {
+            for (let j = 0; j < stride; j++) if (cur[i + j] !== prev[i + j]) { emitted[k]++; break; }
           }
           prev.set(cur);
         }
@@ -272,14 +317,9 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
       count();
       for (const k of Object.keys(emitted)) emitted[k] = 0;
       const lightSamples = [];
-      let id = 1;
-      const endS = shots.at(-1).t;
+      const endS = timeline.at(-1).t;
       for (let tick = 0, s = 0; tick * TICK <= endS + 1e-9; tick++) {
-        while (s < shots.length && shots[s].t <= tick * TICK + 1e-9) {
-          const shot = shots[s++];
-          bus.emit('shell:fired', { shellId: id++, shooterId: 'aa', shellType: 'HE', caliberMm: shot.caliberMm, weaponSound: shot.weaponSound,
-            muzzlePos: [0, 2.5, 5], dir: [0, 0.6, 0.8], muzzleIndex: shot.muzzleIndex ?? 0, ...(clocked ? { timeS: shot.t } : {}) });
-        }
+        while (s < timeline.length && timeline[s].t <= tick * TICK + 1e-9) { const event = timeline[s++]; bus.emit(event.type, event.payload); }
         fx.update(TICK, [], camera, resolve);
         count();
         lightSamples.push(light.intensity);
@@ -304,10 +344,35 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
       pointLights: a.pointLights };
     assert.equal(a.pointLights, b.pointLights, 'the same pooled lights (no light is ever made per round)');
     assert.ok(a.total <= b.total * 0.45, `the burst emits under half the particles (${b.total} -> ${a.total})`);
-    assert.ok((a.emitted.psmoke ?? 0) <= (b.emitted.psmoke ?? 0) / 2.5, `its propellant smoke stays inside its pool (${b.emitted.psmoke} -> ${a.emitted.psmoke})`);
+    // the muzzle's smoke: the propellant pool on the phone tier, the media layer's volumes on the others
+    const smoke = (r) => (r.emitted.psmoke ?? 0) + (r.emitted['fx-volume-media'] ?? 0);
+    assert.ok(smoke(b) > 0 && smoke(a) <= smoke(b) / 2.5, `its muzzle smoke stays inside its pool (${smoke(b)} -> ${smoke(a)})`);
     assert.ok((a.emitted.flash ?? 0) > 0 && (a.emitted.flash ?? 0) >= (b.emitted.flash ?? 0) / 3, `every round still flickers at its barrel (${b.emitted.flash} -> ${a.emitted.flash})`);
     assert.equal(a.light.dark, 0, 'the held light never goes dark mid-burst');
     assert.ok(a.light.mean <= b.light.mean * 1.6, `nor floods the hull (${b.light.mean.toFixed(1)} -> ${a.light.mean.toFixed(1)} mean)`);
+
+    // the audit's strikes: a fast gun's rounds on one hull by one shooter (the cadence keys on the target and the attacker),
+    // and on the ground by one shooter; without the key, the pre-272 path
+    const hullHits = (keyed, caliberMm, every, seconds) => rounds(every, seconds).map((t, i) => ({ t, type: 'shell:hit', payload: {
+      shellId: 900 + i, kind: 'nonpen', caliberMm, shellType: caliberMm < 60 ? 'AP' : 'APFSDS', pos: [2, 1.5, 30], normal: [0, 0, -1],
+      attackerId: 'aa', ...(keyed ? { targetId: 'tgt', timeS: t } : {}) } }));
+    const hb = runFx(null, false, hullHits(false, 30, 3, BURST_S));
+    const ha = runFx(null, false, hullHits(true, 30, 3, BURST_S));
+    report.fx_hull_strikes_30mm_1200rpm = { before: { particles: hb.total }, after: { particles: ha.total } };
+    assert.ok(ha.total > 0 && ha.total <= hb.total * 0.6, `a burst's strikes on one hull draw fewer particles (${hb.total} -> ${ha.total})`);
+    assert.deepEqual(runFx(null, false, hullHits(true, 120, 360, 13)).emitted, runFx(null, false, hullHits(false, 120, 360, 13)).emitted,
+      'a main gun\'s hits strike exactly as before');
+    const groundHits = (keyed, every, seconds, strike = false) => rounds(every, seconds).flatMap((t, i) => [
+      ...(strike ? [{ t, type: 'shell:fired', payload: { shellId: 700 + i, shooterId: null, shellType: 'AP', caliberMm: 30, airStrike: 'strafe',
+        muzzlePos: [0, 60, -200], dir: [0, -0.3, 0.95] } }] : []),
+      { t, type: 'shell:expired', payload: { shellId: 700 + i, ...(keyed ? { shooterId: 'aa' } : {}), pos: [-6 + (i % 7), 0, 40 + (i % 5)],
+        hitTerrain: true, hitKind: 'terrain', surfaceKind: 'terrain', caliberMm: 30, shellType: 'AP' } }]);
+    const gb = runFx(null, false, groundHits(false, 3, BURST_S));
+    const ga = runFx(null, false, groundHits(true, 3, BURST_S));
+    report.fx_ground_strikes_30mm_1200rpm = { before: { particles: gb.total }, after: { particles: ga.total } };
+    assert.ok(ga.total > 0 && ga.total <= gb.total * 0.75, `a burst's ground strikes draw fewer particles (${gb.total} -> ${ga.total})`);
+    assert.deepEqual(runFx(null, false, groundHits(true, 2, 1.5, true)).emitted, runFx(null, false, groundHits(false, 2, 1.5, true)).emitted,
+      'an airstrike\'s strafe, credited to its caller, lands exactly as before');
   } finally {
     if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
   }
@@ -338,6 +403,44 @@ const ownShot = (t, caliberMm = 30, weaponSound = '2a42') => ({ t, shooterId: 'm
   assert.equal(a.length, 20, 'one kick a shake window');
   assert.ok(a.reduce((x, y) => x + y, 0) < b.reduce((x, y) => x + y, 0) * 0.65, 'carrying less trauma than one a round');
   report.camera_30mm_1200rpm = { before: { kicks: b.length }, after: { kicks: a.length } };
+}
+
+// ------------------------------------------------------ camera shake from hits ---
+{
+  const { createCombatFeedbackRuntime } = await import('./combatFeedbackRuntime.ts');
+  const run = (hits) => {
+    const bus = createBus();
+    const kicks = [];
+    const player = { id: 'me', spec: { gun: { caliberMm: 120, shells: [] } } };
+    const runtime = createCombatFeedbackRuntime({
+      bus, game: { player, tankById: new Map([['me', player]]) },
+      rig: { addTrauma: (amount) => kicks.push(amount), recoilKick: () => {} },
+      getFx: () => null, hasNetworkMatch: () => false, shotRecoilScale: () => 1,
+      setDestroyedEventSink: () => {}, trimGarageTanks: () => {}, getDeviceTier: () => 'desktop',
+    });
+    for (const hit of hits) bus.emit('shell:hit', hit);
+    runtime.dispose();
+    return kicks;
+  };
+  const hail = (caliberMm, every, seconds) => rounds(every, seconds).map((t) => ({ targetId: 'me', attackerId: 'aa', kind: 'pen', damage: 40,
+    caliberMm, shellType: caliberMm < 60 ? 'AP' : 'APFSDS', timeS: t }));
+  const slow = hail(120, 400, 20);
+  assert.deepEqual(run(slow), slow.map((h) => Math.min(0.62, 0.24 + h.damage / 2400 + h.caliberMm / 1200)), 'a main gun\'s hits shake exactly as before');
+  const burst = hail(30, 3, BURST_S);
+  const kicks = run(burst);
+  const rigSource = readFileSync(new URL('../engine/cameraRig.ts', import.meta.url), 'utf8');
+  const decay = Number(/const TRAUMA_DECAY_PER_S = ([\d.]+);/.exec(rigSource)?.[1]);
+  const peak = (amounts, times) => { let trauma = 0, most = 0, last = 0;
+    amounts.forEach((amount, i) => { trauma = Math.max(0, trauma - decay * (times[i] - last)); last = times[i]; trauma = Math.min(1, trauma + amount); most = Math.max(most, trauma); });
+    return most; };
+  const perHit = Math.min(0.62, 0.24 + 40 / 2400 + 30 / 1200);
+  const before = peak(burst.map(() => perHit), burst.map((h) => h.timeS));
+  const kickTimes = burst.map((h) => h.timeS).filter((_, i) => i % 3 === 0);
+  const after = peak(kicks, kickTimes);
+  assert.equal(kicks.length, 20, 'a 30 mm hail shakes once a shake window');
+  assert.equal(before, 1, 'one shake a hit pinned the camera at its full shake');
+  assert.ok(after < 0.6, `the hail holds it at ${after.toFixed(2)}`);
+  report.camera_hit_hail_30mm = { before: { shakes: burst.length, peakTrauma: before }, after: { shakes: kicks.length, peakTrauma: +after.toFixed(3) } };
 }
 
 console.log(`shotCadence.selftest: ${JSON.stringify(report)}`);

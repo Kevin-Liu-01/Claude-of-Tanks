@@ -713,7 +713,11 @@ export function createAudio({
     active: false, total: 0, kind: 'shell', caliber: 100, lastT: 0, next: 0, plan: null, mountKey: '', slot: -1, gun: null,
   };
   let reloadCalled = false;
-  const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number }>();
+  const surfaceCache = new Map<string, { surface: SurfaceId; depth: number; occluded: number; at: number; previous: SurfaceId | null; changedAt: number }>();
+  /** (272) A hull going straight back to the ground it just left within this keeps its current ground (s): along a road's
+   *  edge, a soft patch or a shoreline the sample flapped between two grounds, and each flip faded out two track loops and
+   *  built two more. A single crossing still switches at once. */
+  const SURFACE_RETURN_HOLD_S = 0.4;
   const input: VehicleAudioInput = {
     dtS: 0, speedMps: 0, topSpeedMps: 1, reverseTopMps: 1, throttle: 0, brake: false, yawRate: 0,
     grounded: true, verticalSpeedMps: 0, landingImpactMps: 0, gripLost: false, engine: 'ok', immobilized: false,
@@ -1049,6 +1053,8 @@ export function createAudio({
   // each round's crack at most the floor's 20 a second, a sustained gun's crack a short grain, its punch, distant boom and
   // feed once a body window, its echo once a tail window. A gun slower than every window is heard as it always was.
   const shotCadence = createShotCadence();
+  /** (272) the audio clock of the last empty trigger heard: a held trigger is one press */
+  let lastAmmoEmptyAt = -Infinity;
 
   /** The punch layer for a report: which recording, its rate (a bigger bore sits lower) and how long it may ring. */
   function punchFor(family: string, caliberMm: number): { id: string; rate: number; maxDurS: number } {
@@ -1482,7 +1488,8 @@ export function createAudio({
       say('low_hp', { delayS: 0.12 });
       return;
     }
-    if (call) say(call, { delayS: 0.12 });
+    // (272) a fast gun's hits keep the call's moment rather than pushing it back each round (crewRadio burst)
+    if (call) say(call, isRapidFireHit(event) ? { delayS: 0.12, burst: true } : { delayS: 0.12 });
   }
 
   /**
@@ -1497,7 +1504,9 @@ export function createAudio({
     const modules = new Map((event.modulesHit || []).map((m) => [m.module, m.newState] as const));
     const damaged = (event.damage || 0) > 0;
     const prob = (event.caliberMm || 0) >= 60 ? 1 : 0.3;
-    const call = (id: string): void => { say(id, { prob, delayS: 0.4 + random() * 0.15 }); };
+    // (272) a fast gun's results keep the call's moment rather than pushing it back each hit (crewRadio burst)
+    const burst = isRapidFireHit(event);
+    const call = (id: string): void => { say(id, burst ? { prob, delayS: 0.4 + random() * 0.15, burst } : { prob, delayS: 0.4 + random() * 0.15 }); };
     if (event.fireStarted) call('enemy_fire');
     else if (modules.has('ammoRack')) call('enemy_ammo_rack');
     else if (modules.get('trackL') === 'red' || modules.get('trackR') === 'red') call('enemy_immobilized');
@@ -1559,15 +1568,22 @@ export function createAudio({
     } else if (event.attackerId === playerId) reportOutgoing(event);
   }
 
+  /** (272) an airstrike's rounds by shell id (onStrikeRound), at most the last 256 */
+  const strikeShells = new Set<number>();
   function onShellExpired(event: ShellExpiredEvent): void {
     const round = event.shellId != null ? ownRounds.get(event.shellId) : undefined;
     if (round && event.shellId != null) {
       ownRounds.delete(event.shellId);
       callMiss(round, event.pos ?? null);
     }
+    const strikeRound = event.shellId != null && strikeShells.delete(event.shellId);
     if (!event.pos || !(event.hitTerrain || event.hitKind === 'prop')) return;
     const [x, y, z] = event.pos;
     const caliber = event.caliberMm || 76;
+    // (272) a fast gun's rounds on the world strike once an impact window per shooter (game/shotCadence.ts): a burst was a
+    // stack of every round's ground layers and, for its HE, every round's explosion; an airstrike's strafe is its own
+    if (!strikeRound && event.shooterId != null && ctx && isRapidFireHit({ caliberMm: caliber, shellType: event.shellType })
+      && shotCadence.admit('impact', event.shooterId, 'ground', ctx.currentTime) === 0) return;
     const small = caliber < 23;
     const water = event.surfaceKind === 'water';
     // Our own round landing short or wide is heard like our hits are.
@@ -1754,6 +1770,7 @@ export function createAudio({
    * recipe's layers at the prop, a topple's landing when it lands. The obstacle crush and the world's own report of
    * the same prop arrive in one tick; the props' 0.05 s cooldown keeps it to one sound.
    */
+  const lastPropBreak = { at: Number.NaN, kind: '', x: 0, z: 0 };
   function onProp(event: PropEvent, destroyed: boolean): void {
     if (!event?.pos) return;
     const [x, y, z] = event.pos;
@@ -1770,6 +1787,14 @@ export function createAudio({
     }
     const kind = String(event.kind || 'tree');
     const layers = propSoundRecipe(kind, event.h ?? 0);
+    // (272) one break reported twice in a frame (the world's crush raises prop:destroyed, the step's prop:crushed): the
+    // props group's cooldown merged its own layers, never a destruction layer (debris_metal) with none, which played twice
+    const at = ctx ? ctx.currentTime : Number.NaN;
+    if (at === lastPropBreak.at && kind === lastPropBreak.kind && Math.hypot(x - lastPropBreak.x, z - lastPropBreak.z) < 2) {
+      logSound('prop:repeat', { kind: event.kind });
+      return;
+    }
+    lastPropBreak.at = at; lastPropBreak.kind = kind; lastPropBreak.x = x; lastPropBreak.z = z;
     const trimDb = destroyed ? 0 : -1;
     for (const layer of layers) {
       play(layer.id, { x, y, z, gainDb: layer.gainDb + trimDb, delayS: layer.jitterS ? layer.delayS + random() * layer.jitterS : layer.delayS });
@@ -2542,12 +2567,17 @@ export function createAudio({
       const p = entity.state.pos;
       let cached = surfaceCache.get(c.id);
       if (!cached) {
-        cached = { surface: 'earth', depth: 0, occluded: 0, at: -Infinity };
+        cached = { surface: 'earth', depth: 0, occluded: 0, at: -Infinity, previous: null, changedAt: -Infinity };
         surfaceCache.set(c.id, cached);
       }
       if (now - cached.at > (lod === 'own' ? 0.12 : 0.35)) {
         const s = surfaceAt(p.x, p.z);
-        cached.surface = s.surface;
+        if (cached.at === -Infinity) cached.surface = s.surface;
+        else if (s.surface !== cached.surface && !(s.surface === cached.previous && now - cached.changedAt < SURFACE_RETURN_HOLD_S)) {
+          cached.previous = cached.surface;
+          cached.surface = s.surface;
+          cached.changedAt = now;
+        }
         cached.depth = s.depth;
         cached.occluded = lod === 'own' ? 0 : occlusionAt(p.x, p.y, p.z);
         cached.at = now;
@@ -2882,6 +2912,12 @@ export function createAudio({
     const kind = payload.kind as AirStrikeKind;
     const x = Number(payload.x), y = Number(payload.y), z = Number(payload.z);
     if (!AIR_STRIKE_KINDS.includes(kind) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+    // (272) its rounds strike the ground in full (a strafe's ripple), never folded into their caller's cadence
+    const shellId = Number(payload.shellId);
+    if (Number.isFinite(shellId)) {
+      if (strikeShells.size >= 256) strikeShells.delete(strikeShells.values().next().value as number);
+      strikeShells.add(shellId);
+    }
     const sound = AIR_STRIKE_SOUND[kind];
     const strikeId = Number(payload.strikeId);
     const heard = airStrikes.get(strikeId);
@@ -3549,6 +3585,11 @@ export function createAudio({
     });
     on<{ id?: string; slot?: number }>('ammo:empty', (e) => {
       if (!isOwn(e?.id ?? playerId)) return;
+      // (272) the step raises it every tick the trigger is held on an empty gun: one click and one call a press
+      const now = ctx ? ctx.currentTime : 0;
+      const held = now - lastAmmoEmptyAt < 0.25;
+      lastAmmoEmptyAt = now;
+      if (held) return;
       play('dry_fire', hullOptions());
       say('ammo_empty', { delayS: 0.1 });
     });

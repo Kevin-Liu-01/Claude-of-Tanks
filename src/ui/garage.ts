@@ -3772,7 +3772,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return true;
   }
 
-  function step(dir: number): void {
+  // (272) a held arrow walks the roster at the key's repeat rate (about 30 a second): the highlight and its card follow each
+  // step, and the pick itself (its storage writes, its builder and texture prebake, a room's selection) settles once, 120 ms
+  // after the last repeat. A single press picks at once, as before.
+  const HELD_PICK_SETTLE_MS = 120;
+  let heldPickTimer: ReturnType<typeof setTimeout> | null = null;
+  function step(dir: number, repeat = false): void {
     if (vehicleLocked) return;
     // Arrows walk the active national fleet only, as the roster filter shows it.
     const pool = (specsByCountry.get(countryFilter) || []).filter((s) => facetVisible(s.id));
@@ -3780,7 +3785,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const idx = pool.findIndex((s) => s.id === selectedId);
     const next = idx < 0 ? pool[dir > 0 ? 0 : pool.length - 1] : pool[(idx + dir + pool.length) % pool.length];
     emit('ui:click', {});
-    api.setSelected(next.id);
+    if (heldPickTimer) { clearTimeout(heldPickTimer); heldPickTimer = null; }
+    if (!repeat) { api.setSelected(next.id); return; }
+    if (!applySelection(next.id)) return;
+    const id = next.id;
+    heldPickTimer = setTimeout(() => {
+      heldPickTimer = null;
+      if (!vehicleLocked && selectedId === id && onSelect) onSelect(id);
+    }, HELD_PICK_SETTLE_MS);
   }
   /** Home and End on the roster strip: the active fleet's first or last tank (the interaction census: no Home/End). */
   function stepToEnd(last: boolean): void {
@@ -5030,8 +5042,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a control that took the key (a station's or a chip row's roving, the camo picker's grid) keeps it: its arrows never
     // also switch the tank (the interaction census)
     if (e.defaultPrevented) return;
-    if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
-    else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
+    if (e.code === 'ArrowLeft') { step(-1, e.repeat); e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { step(1, e.repeat); e.preventDefault(); }
     else if ((e.code === 'Home' || e.code === 'End') && target?.closest('.cot-cards')) { stepToEnd(e.code === 'End'); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
       // the bare screen's Enter deploys; every control keeps its own (residual fix-up r1: a held Enter deploys once)

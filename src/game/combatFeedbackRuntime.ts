@@ -2,7 +2,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { MovementShellSpec, MovementSpec } from '../sim/movement.ts';
 import type { EventBus } from './stateCore.ts';
-import { createShotCadence, shotShakeScale } from './shotCadence.ts';
+import { SHAKE_SUSTAIN_TRAUMA_PER_S, SHOT_CADENCE_WINDOW_S, createShotCadence, shotShakeScale } from './shotCadence.ts';
+import { isRapidFireHit } from './weaponHitKind.ts';
 import { pulseJuggernautImpact } from './juggernautVisual.ts';
 import { stripActivatedEra, type EraVisual } from './eraActivation.ts';
 
@@ -54,6 +55,10 @@ interface ShellHitEvent {
   damage?: number;
   caliberMm?: number;
   eraPlate?: string | null;
+  /** (272) the round's type and the solo step's clock (a network hit carries none): a fast gun's hail shakes by its cadence */
+  shellType?: string;
+  guided?: boolean;
+  timeS?: number;
 }
 
 interface ShellFiredEvent {
@@ -117,6 +122,7 @@ export function createCombatFeedbackRuntime({
     unsubscribe.push(bus.on(event, listener));
   };
 
+  const hitShake = createShotCadence();
   listen('shell:hit', (payload) => {
     const event = payload as ShellHitEvent;
     const target = event.targetId ? game.tankById.get(event.targetId) : null;
@@ -138,7 +144,13 @@ export function createCombatFeedbackRuntime({
         0.62,
         0.24 + (event.damage || 0) / 2400 + (event.caliberMm || 90) / 1200,
       );
-      rig.addTrauma(shock);
+      // (272) a fast gun's hail on our hull shakes once a shake window (game/shotCadence.ts), its folded rounds' shake held
+      // under the rig's decay: twenty damaging 30 mm hits a second pinned the camera at its full shake. A main gun's hit,
+      // and a hail's first, shake as before.
+      const rounds = isRapidFireHit(event)
+        ? hitShake.admit('shake', player.id, event.attackerId ?? '', Number.isFinite(event.timeS) ? event.timeS! : performance.now() / 1000)
+        : 1;
+      if (rounds > 0) rig.addTrauma(rounds > 1 ? Math.min(shock, SHAKE_SUSTAIN_TRAUMA_PER_S * SHOT_CADENCE_WINDOW_S.shake) : shock);
     }
   });
 
@@ -179,11 +191,20 @@ export function createCombatFeedbackRuntime({
     if (event.shooterId === game.player?.id) playShotRecoil(event);
   });
 
+  // (272) a burst of crushes in one frame (a network tick's world events released at once, a returning tab's backlog) draws
+  // the dust and chips of the first PROP_CRUSH_FX_PER_FRAME; the props still go (the world applies them, not this). One
+  // crush, or a hull rolling through a fence line, plays every effect as before.
+  const PROP_CRUSH_FX_PER_FRAME = 8;
+  let crushFrameMs = -Infinity;
+  let crushesThisFrame = 0;
   listen('prop:crushed', (payload) => {
     const event = payload as PropCrushedEvent;
     const fx = getFx();
     // a crush without a place (a prop this world lacks) has no effect to play; the listener must never throw inside the frame pump
     if (!fx || !event.pos || !event.dir) return;
+    const nowMs = performance.now();
+    if (nowMs - crushFrameMs > 16) { crushFrameMs = nowMs; crushesThisFrame = 0; }
+    if (++crushesThisFrame > PROP_CRUSH_FX_PER_FRAME) return;
     effectPosition.set(event.pos[0], event.pos[1], event.pos[2]);
     effectDirection.set(event.dir[0], 0, event.dir[2]);
     fx.propCrush(effectPosition, effectDirection, event.h);

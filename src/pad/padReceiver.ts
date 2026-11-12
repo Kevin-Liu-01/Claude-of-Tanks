@@ -239,12 +239,18 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     owner.id = ports.source()?.player?.id ?? null;
     const cue = padCueOf(type, payload, owner);
     if (!cue) return;
+    const now = performance.now();
     if (cue.c === 'shot' && payload && typeof payload === 'object') {
       const timeS = Number(Reflect.get(payload, 'timeS'));
       const weapon = Reflect.get(payload, 'weaponSound') as string | null | undefined;
       if (Number.isFinite(timeS) && shotBuzz.admit('shake', owner.id, weapon || cue.m || 0, timeS) === 0) return;
     }
-    const now = performance.now();
+    // (272) a burst's hits, given or taken, buzz once an impact window per other tank (on the page's clock: a hit names no
+    // simulation time); a phone with no vibration motor scheduled every buzz's ticks on top of the last
+    if ((cue.c === 'hit' || cue.c === 'deflect' || cue.c === 'hurt' || cue.c === 'glance') && payload && typeof payload === 'object') {
+      const other = Reflect.get(payload, cue.c === 'hit' || cue.c === 'deflect' ? 'targetId' : 'attackerId') as string | null | undefined;
+      if (shotBuzz.admit('impact', owner.id, other ?? '', now / 1000) === 0) return;
+    }
     if (relay && now - lastCueAt < RELAY_CUE_GAP_MS && cue.c !== 'kill' && cue.c !== 'dead') return;
     if (!link.sendCtl({ k: 'cue', ...cue })) return;
     lastCueAt = now;

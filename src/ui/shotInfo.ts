@@ -1,4 +1,4 @@
-import { weaponHitKind } from '../game/weaponHitKind.ts';
+import { isRapidFireHit, weaponHitKind } from '../game/weaponHitKind.ts';
 import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { shouldShowShotReadout, keepMissileDirectHit, MissileBlastLedger } from './shotReadoutPolicy.ts';
 import { BattleKillLedger, FiredRoundLedger } from '../game/battleEventStats.ts';
@@ -1379,8 +1379,40 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     return card;
   }
 
+  // (272, the owner: "debounce ... anywhere debouncing makes sense") a fast gun's penetrations on one target repaint the
+  // card at most once a CARD_BURST_GAP_MS: the burst's first at once, its latest when the window ends (an air-defence
+  // gun's burst rebuilt the card, its schematic and its damage figure twenty times a second). A main gun's card, and a
+  // fast gun's first on a new target, paint as before.
+  const CARD_BURST_GAP_MS = 150;
+  const lastBurstCard = { attackerId: null as string | null | undefined, targetId: null as string | null | undefined, at: -Infinity };
+  let burstCard: { ev: ShotHitEvent; cls: HitOutcomePresentation } | null = null;
+  let burstCardTimer: ReturnType<typeof setTimeout> | null = null;
   function clearCardTimers(): void {
     clearTimeout(primaryFadeTimer); clearTimeout(primaryRemoveTimer);
+    // (272) a newer card, or a reset, supersedes a burst's card still waiting for its window
+    if (burstCardTimer) { clearTimeout(burstCardTimer); burstCardTimer = null; }
+    burstCard = null;
+  }
+  function heldForBurst(ev: ShotHitEvent, cls: HitOutcomePresentation): boolean {
+    if (!isRapidFireHit(ev)) { lastBurstCard.at = -Infinity; return false; }
+    const now = performance.now();
+    const sinceMs = now - lastBurstCard.at;
+    if (sinceMs >= CARD_BURST_GAP_MS || lastBurstCard.attackerId !== ev.attackerId || lastBurstCard.targetId !== ev.targetId) {
+      lastBurstCard.attackerId = ev.attackerId; lastBurstCard.targetId = ev.targetId; lastBurstCard.at = now;
+      return false;
+    }
+    burstCard = { ev, cls };
+    if (!burstCardTimer) {
+      burstCardTimer = setTimeout(() => {
+        burstCardTimer = null;
+        const held = burstCard;
+        burstCard = null;
+        if (!held || isTouchBattleLayout() || logOpen) return;
+        lastBurstCard.at = performance.now();
+        paintCard(held.ev, held.cls);
+      }, CARD_BURST_GAP_MS - sinceMs);
+    }
+    return true;
   }
   /**
    * The card's figure, beside the outcome: the hull points the shot took off (owner 2026-10-31, "should show the amount u
@@ -1415,6 +1447,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       if (card && currentPrimary) showMissileBlast(card, currentPrimary);
       return;
     }
+    if (heldForBurst(ev, cls)) return;
+    paintCard(ev, cls);
+  }
+  function paintCard(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     currentPrimary = ev;
     clearCardTimers();
     while (cardHost.firstChild) cardHost.firstChild.remove();
@@ -1430,7 +1466,22 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   // ---------- 2. collapsible log ----------
+  // (272) the open log follows a burst at most once a LOG_RENDER_GAP_MS: the first hit at once, the rest of the burst when
+  // the window ends (every hit of an air-defence gun's burst rebuilt every row of the battle's received log, twenty times a
+  // second). A hit after a pause renders at once, as before.
+  const LOG_RENDER_GAP_MS = 100;
+  let logRenderedAt = -Infinity;
+  let logRenderTimer: ReturnType<typeof setTimeout> | null = null;
+  function refreshLog(): void {
+    if (!logOpen) return;
+    const sinceMs = performance.now() - logRenderedAt;
+    if (sinceMs >= LOG_RENDER_GAP_MS) { renderLog(); return; }
+    if (logRenderTimer) return;
+    logRenderTimer = setTimeout(() => { logRenderTimer = null; if (logOpen) renderLog(); }, LOG_RENDER_GAP_MS - sinceMs);
+  }
   function renderLog(): void {
+    logRenderedAt = performance.now();
+    if (logRenderTimer) { clearTimeout(logRenderTimer); logRenderTimer = null; }
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
     sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
@@ -1825,7 +1876,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     allShots.push({ ev, cls: outcome });
     showCard(ev, outcome);
-    if (logOpen) renderLog();
+    refreshLog();
   }
 
   function recordIncomingHit(ev: ShotHitEvent): void {
@@ -1849,7 +1900,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       zone: ev.zone || '',
     });
     showToast(ev, outcome);
-    if (logOpen) renderLog();
+    refreshLog();
   }
 
   bus.on('shell:fired', (payload) => {

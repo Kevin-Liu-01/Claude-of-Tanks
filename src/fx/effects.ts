@@ -44,6 +44,7 @@ import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { createShotCadence, SHOT_CADENCE_WINDOW_S, SHOT_SUSTAIN_GAP_S, type ShotKey } from '../game/shotCadence.ts';
+import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import type { GunshipLensGuns } from '../game/gunshipAirframe.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
@@ -458,6 +459,8 @@ interface ShellFiredEvent extends PredictedWeaponEvent {
   guided?: boolean;
   tracer?: string;
   blastRadiusM?: number;
+  /** an airstrike's round (game/airSupportBridge.ts): its kind */
+  airStrike?: string;
 }
 
 interface ShellHitEvent {
@@ -488,6 +491,12 @@ interface ShellHitEvent {
   blast?: readonly number[];
   /** (impact-materials-269) the struck plate's material (sim/plateMaterial.ts), for strikeLooks.ts; absent from an older peer */
   material?: string;
+  /** (272) who fired it, the round's type and the solo step's clock (a network hit carries none): a fast gun's strike
+   *  cadence (game/shotCadence.ts) */
+  attackerId?: string | null;
+  shellType?: string;
+  guided?: boolean;
+  timeS?: number;
 }
 
 interface ShellExpiredEvent {
@@ -510,6 +519,8 @@ interface ShellExpiredEvent {
   structureId?: number;
   /** (impact-materials-269) the round's incidence off the surface, whole degrees (90 grazing): a graze skips on */
   impactAngleDeg?: number;
+  /** who fired it (both drivers publish it): a fast gun's ground strikes by its cadence (272) */
+  shooterId?: ShellId | null;
 }
 
 interface TankDestroyedEvent {
@@ -2376,7 +2387,8 @@ function* createFxSteps(
   // destruction-fx lane: shellId -> the round's munition class and charge (fed by shell:fired, read by its impact)
   interface ShellMunition { munition: MunitionClass; chargeKg: number; caliberMm: number }
   /** (round 4 F6) A record as kept: the round's class, and the fx-clock time by which the round has ended. */
-  interface ShellRecord extends ShellMunition { dueS: number }
+  /** (272) `strike`: an airstrike's round (airSupportBridge's shell:fired names it), never folded into its caller's cadence */
+  interface ShellRecord extends ShellMunition { dueS: number; strike?: boolean }
   /**
    * The records of rounds in flight that have not met a hull: a round's record leaves here at its first hull event (a
    * ricochet's too) or at its expiry, and in any case by its flight-time bound (ageShellRecords).
@@ -2488,7 +2500,7 @@ function* createFxSteps(
       chargeKg = munitionChargeKg(_munShell, munition);
     }
     const record: ShellRecord = { munition, chargeKg: chargeKg as number, caliberMm: e.caliberMm,
-      dueS: particles.getTime() + SHELL_RECORD_BOUND_S };
+      dueS: particles.getTime() + SHELL_RECORD_BOUND_S, ...(e.airStrike ? { strike: true } : {}) };
     keepNewest(shellMunitions, e.shellId, record);
     // (round 4 F6 review) a new record only can fall due before the next sweep: a record moved to the hull-met records
     // keeps its dueS, which the last sweep counted (lowering the sweep for it too broke the spacing at a late hull event)
@@ -7391,6 +7403,11 @@ function* createFxSteps(
         // its record; it waited for drop-oldest, and a sustained fight crowded a long-flight round's class out); (round 4
         // F6) a ricochet too: it may have been the round's end (a shaped charge's, a second bounce), with no expiry after it
         if (e.shellId != null) munitionMetHull(e.shellId);
+        // (272) a fast gun's rounds on one hull, by one shooter, draw their strike once an impact window
+        // (game/shotCadence.ts): a burst drew twenty layered strikes (sparks, smoke, debris, dust) a second. Its scars, ERA,
+        // tracers and records above stay per round; a main gun's round and a missile always strike
+        if (isRapidFireHit(e) && e.targetId != null
+          && flashCadence.admit('impact', e.targetId, e.attackerId ?? '', Number.isFinite(e.timeS) ? e.timeS! : particles.getTime()) === 0) return;
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
         if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
@@ -7430,6 +7447,8 @@ function* createFxSteps(
         // destruction-fx lane: the round's class and charge (the event's own, else its fired record, else HE by
         // calibre for the Studio's stand-in blasts), and the direction it arrived from (its last swept point)
         let info = munitionOf(e.shellId);
+        // (272) an airstrike's round strikes the ground in full (a strafe's ripple), whoever called it
+        const strikeRound = (info as ShellRecord | null)?.strike === true;
         forgetMunition(e.shellId);
         if (e.munition && Number.isFinite(e.chargeKg)) {
           info = { munition: e.munition, chargeKg: e.chargeKg as number, caliberMm: e.caliberMm || info?.caliberMm || 76 };
@@ -7506,12 +7525,19 @@ function* createFxSteps(
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
+        // (272) a fast gun's rounds on the ground burst once an impact window per shooter (game/shotCadence.ts): the rest keep
+        // their ground marks (crater mark, cleared cover, water ring) and draw no burst of their own (the phone tier: no
+        // plume); an airstrike's strafe lands in full
+        const folded = !!e.hitTerrain && e.shooterId != null && !strikeRound
+          && isRapidFireHit({ caliberMm: e.caliberMm ?? m.caliberMm, shellType: e.shellType })
+          && flashCadence.admit('impact', e.shooterId, 'ground', particles.getTime()) === 0;
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
           // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own; (round 2 U31)
           // but keeps the ground's own marks (its crater mark, the cover it clears, the water's ring).
           // (impact-materials-269) a solid round meeting the ground at a glancing angle skips on: its ground sprays forward
           // and low along its path (sim/shellSurface.ts grazes, the angle the audio plays as a graze too)
+          if (folded) { if (!blast) return; burstDrawn = true; }
           const graze = grazes(e.impactAngleDeg) && !charged;
           if (mediaGroundHit(_v3, m, water, arrival, { noBurst: burstDrawn, graze })) {
             if (recorded) noteBurst(e.shellId);
