@@ -23,7 +23,7 @@
 - Owned files: profiles/object477Molot.ts, profiles/russia152Kit.ts (shared with the 195), the molot rows of russia152Specs.ts and russia152Frames.ts (MOLOT_FRAME).
 - Protected original IDs: none (no shared builder is edited).
 - Explicitly excluded: the post-1991 "Nota" paper continuation.
-- Variant matrix: object477_molot = high hull with a long sloped glacis on seven road wheels, the multi-barrier skirts, a low turret, the 152 mm 2A73 in an armoured casing on its roof, the 30 mm GSh-30 to its right (a working station), Shtora-1 (two OTShU-1-7 dazzlers in the turret's front corners, two TShU-1-11 heads) and the commander's remote 12.7 mm NSVT behind his sight (a working station, molotCommanderMgStation; the BTVT profile drawing). Uncertainty: no photograph of the vehicle is published beyond one poor print; the btvt profile and two game artworks guide the look only.
+- Variant matrix: object477_molot = high hull with a long sloped glacis on seven road wheels, the multi-barrier skirts, a low turret, the 152 mm 2A73 in an armoured casing on its roof, the gunner's remote 7.62 mm PKT on the housing's left shoulder (a working station, molotGunnerMgStation; release 272: in place of the 30 mm GSh-30), Shtora-1 (two OTShU-1-7 dazzlers in the turret's front corners, blue slit lenses since 272, two TShU-1-11 heads) and the commander's remote 12.7 mm NSVT behind his sight (a working station, molotCommanderMgStation; the BTVT profile drawing). Uncertainty: no photograph of the vehicle is published beyond one poor print; the btvt profile and two game artworks guide the look only.
 
 ## Source and comparison contract
 
@@ -40,7 +40,7 @@
 
 - Hull: addHullTub stations to the prow (noseY from z 1.60 at 1.60 down to 0.92 at 3.75), glacis seams, the driver's hatch at z 1.36.
 - Running gear: seven wheels at z -2.45..2.45 (0.817 pitch), sprocket -3.05, idler 3.20.
-- Turret: the low body, the casting stations z -1.72..1.66, the gunner's sight, the commander's dome sight, the 30 mm molot_gsh30 (muzzle z 2.35), the mantlet and the 2A73.
+- Turret: the low body, the casting stations z -1.72..1.66, the gunner's sight, the commander's dome sight, the gunner's 7.62 mm molotGunnerMgStation (muzzle z 1.36; 272, in place of the 30 mm molot_gsh30), the mantlet and the 2A73.
 - Plates: modernArmor (glacis [520,760,1100]); crew driver ahead, gunner and commander low under the turret (internalLayoutRegistry molot).
 
 ## Evidence matrix
@@ -60,7 +60,7 @@
 | Primitive reuse / high-low reduction / accessory material roles | NOT RUN | | | |
 | Live/spent/reset ERA / permanent backing | NOT RUN | | | |
 | Main/aux armor finite rays / modules / crew | NOT RUN | | npm run tank:anatomy:update | |
-| Markings, colors, bores, actual roof weapon | NOT RUN | | | photo document: 2 roof weapons (the 30 mm pod and the NSVT; was 1 before the owner's round) |
+| Markings, colors, bores, actual roof weapon | NOT RUN | | | photo document: 2 roof weapons (the gunner's 7.62 mm, 272: was the 30 mm pod, and the NSVT; was 1 before the owner's round) |
 | Original-model/record preservation | NOT APPLICABLE (own hull; no shared builder edited) | | scripts/mesh-digest.mjs base v lane | |
 | Anatomy update / freshness | NOT RUN | | | |
 | Scoped assets / centering / source exclusion | NOT RUN | | npm run tank:regen:changed -- --ids=... | |
@@ -83,6 +83,16 @@
   .qa-dev/r152/station-table.mjs). The 12.7 mm fires the B-32 12.7x108 (auxiliaryWeapons.ts vehicleHeavyAmmunition).
 - The release gate's decor census (2026-11-08) counted two roof weapons against the photo document's one: the
   document now declares 2 (docs/references/photos/russia-152-20261104.json, with the owner's words as the authority).
+- Release 272 (owner 2026-11-11: "give the molot and obj 292 actual camos please . and make the shtora on thee molot
+  blue and slit eyes instead oof circles and mak ethe autocannon onn it a lil smaller until its a rregular remote machine
+  gun emplacement"): stock coat `paint_pantsir_s1` (Russian Blotch Woodland: khaki `#8c7a55` and black `#24271f`
+  blotches over green `#4b5a36`), the Soviet and Russian Army's three-colour deforming coat of its era; the one 477A
+  photograph shows no scheme, so the coat is the era's, not the vehicle's (was `national_ru`, plain green). The Shtora
+  eyes are blue slits (shtora.ts `slit`, lens `blue`) under a painted brow. The GSh-30 is now the gunner's remote 7.62 mm
+  PKT in Kharkiv's KT-7.62 open cradle (the Oplot-M's; the gun drawn as the fleet's 7.62 mm GPMG), on the same race:
+  pivot (.80, .70, .52), muzzle z 1.36, arc -18 to 169 degrees (blocked at -19 by the casing's flank, past 170 by the
+  roof's left rear corner), full .18 rad depression but at its stops (table in the builder); it fires the B-32
+  7.62x54R (auxiliaryWeapons.ts vehicleRifleAmmunition). The commander's NSVT stays the 12.7 mm.
 
 ## Publication receipt (only if requested)
 
