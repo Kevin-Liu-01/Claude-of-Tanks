@@ -38,6 +38,8 @@
 .cot-tut-body .cot-c-kbd{margin:0 1px;}
 .cot-tut-foot{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;}
 .cot-tut-foot .cot-tut-skip{margin-right:auto;}
+/* the kit's buttons set their own display: a hidden one (Back on a first step, Next on a press step) stays hidden */
+.cot-tut-foot .cot-c-btn[hidden]{display:none;}
 .cot-tut-hint{font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--text-accent);}
 .cot-tut-hint[hidden]{display:none;}
 .cot-tut-cap{margin-left:var(--s1);opacity:.7;}

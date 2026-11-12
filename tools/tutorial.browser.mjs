@@ -102,11 +102,19 @@ async function shoot(page, index) {
       progress: root?.querySelector('.cot-tut-progress')?.textContent ?? '', place: root?.querySelector('.cot-tut-card')?.dataset.place ?? '',
       media: root?.querySelector('.cot-tut-media img,.cot-tut-media video')?.getAttribute('src') ?? null,
       next: root?.querySelector('.cot-tut-next')?.textContent ?? '', skip: root?.querySelector('.cot-tut-skip')?.textContent ?? '',
+      shown: Object.fromEntries(['next', 'back', 'skip'].map((name) => {
+        const button = root?.querySelector(`.cot-tut-${name}`);
+        return [name, !!button && getComputedStyle(button).display !== 'none'];
+      })),
     };
   });
   const file = `${String(index).padStart(2, '0')}-${now.step}.png`;
   await page.screenshot({ path: resolve(OUT, file) });
   const entry = { ...now, file, ...facts };
+  const first = /\b(?:1 of|第 1 步)/.test(facts.progress);
+  assert.equal(entry.shown.back, !first, `${now.step}: Back shows on every step but a chapter's first`);
+  assert.equal(entry.shown.next, now.step !== 'garage.deploy', `${now.step}: Next shows on every step but the press step`);
+  assert.ok(entry.shown.skip, `${now.step}: Skip always shows`);
   report.steps.push(entry);
   console.log(`[tutorial] ${now.step}: lit=${facts.lit} place=${facts.place} overlap=${facts.overlap} "${facts.title}"`);
   return entry;
@@ -191,11 +199,10 @@ try {
     } else if (touch) await press(page, '.cot-tut-next');
     else await page.keyboard.press('Enter');
     advanced[entry.step] = how;
-    if (entry.step === 'battle.win') break;
+    if (entry.step === 'battle.win') { await recorder?.stop(); break; }
     if (how === 'next') now = await waitStep(page, (s) => s?.step !== entry.step);
   }
   await waitStep(page, (s) => s === null, 10_000);
-  await recorder?.stop();
   report.checks.battleAdvanced = advanced;
   report.checks.battleRecord = await record(page);
   assert.equal(report.checks.battleRecord?.battle, 'done', 'the last battle step finishes the battle chapter');
