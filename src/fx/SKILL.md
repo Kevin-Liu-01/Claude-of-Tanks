@@ -75,7 +75,8 @@ own level now with neither side under the Accessibility flash, never the
 light's intensity: the attack ramp holds that under the level for 42 ms, a
 replay suppression zeroes it, the flash scales it and it was written a frame
 back. Against the old intensity guard a decaying pulse hands the light over one
-frame sooner at its crossing. `effectAttachments.selftest` pins that every
+frame sooner at its crossing at the default flash of 1 (below it the old guard
+passed the light sooner, once the level fell under peak / flash). `effectAttachments.selftest` pins that every
 comparison of a light's intensity in `effects.ts` is with a constant. The
 intensity reads left show the light as it is and decide no yield: applyLight's
 near-field publish, `writeLocalLights` and its spot lights, the suppression

@@ -1589,7 +1589,8 @@ function* createFxSteps(
    * suppression holds it at 0, the Accessibility flash scaled that side only, and applyLight wrote it a frame back. So a
    * roof gun's small pulse took a bigger pulse's light, place and gun's near field through that pulse's attack, under a
    * replay suppression and in the first frame after it; and against that guard a decaying pulse now hands the light over
-   * one frame sooner where its level crosses the new peak (its level now, not the intensity of the frame before).
+   * one frame sooner where its level crosses the new peak (its level now, not the intensity of the frame before), at the
+   * default flash of 1; below it the old guard passed the light sooner, once the level fell under peak / flash.
    *   Every other read of a light's intensity shows the light as it is and decides no yield (effectAttachments.selftest
    * pins that no comparison of one in this file is with anything but a constant): applyLight's near-field publish,
    * writeLocalLights and its spot lights, the replay-suppression report, and engine/vehicleGroundOcclusion.ts
