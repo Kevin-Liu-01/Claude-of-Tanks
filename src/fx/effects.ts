@@ -1558,6 +1558,23 @@ function* createFxSteps(
     return particles.getTime() - state.bornAt;
   }
 
+  /** A pulse's own level at `age` (s): its peak on its decay (cd; before the Accessibility flash, the muzzle light's attack
+   *  and the blast light's flicker, which applyLight lays on it). */
+  function pulseLevel(state: LightState, age: number): number {
+    return state.peak * Math.pow(Math.max(0, 1 - age / state.dur), state.pow || 2);
+  }
+
+  /**
+   * (272) Whether the pulse burning in `state` outranks a new pulse of `peak` (cd, as flashLight takes it): its own level
+   * now (pulseLevel) is the brighter. A spent or reset pulse (level 0) or a dimmer one does not. The roof-gun flash port
+   * asked the light's intensity instead, which the attack ramp (MUZZLE_LIGHT_ATTACK_S) holds at 0 in the frame a pulse is
+   * born and which applyLight last wrote a frame back, so a roof gun's small pulse replaced a 120 mm pulse born that
+   * frame: its light, its place and its gun's near field.
+   */
+  function pulseOutranks(state: LightState, peak: number): boolean {
+    return pulseLevel(state, Math.max(0, lightAge(state))) > peak;
+  }
+
   function applyLight(state: LightState): void {
     if (replaySuppressed) {
       state.light.intensity = 0;
@@ -1573,7 +1590,7 @@ function* createFxSteps(
       state.light.position.copy(state.origin).addScaledVector(c, Math.max(0, age));
     }
     // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
-    let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
+    let v = pulseLevel(state, age) * A11Y.flash;
     // r7 fire-moment exposure wash (critic: "at ignition the flash glow +
     // dust veil bleach the firing tank and ~half the frame to cream"): the
     // muzzle light ATTACKS over ~40 ms instead of stamping full peak on the
@@ -6886,13 +6903,14 @@ function* createFxSteps(
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
     // (240) a roof gun's flash lights its mount as any gun of its bore does (muzzleLightPulse: a 12.7 mm round a ~30 cd
-    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
+    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning,
+    // (272) by that pulse's own level (pulseOutranks), also in the frame it is born
     flash: (p,d,caliber,id) => {
       subjectPointVelocity(id != null ? subjectFor(id) : null, p.x, p.z, _shotVel);
       const lightK = spawnMuzzleFlash(p,d,caliber,0,1,_shotVel);
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
-      if (!(muzzleLight.intensity > peak)) {
+      if (!pulseOutranks(lightStates[0], peak)) {
         // (271) a refused pulse (a non-finite place) binds no near field: the pulse still burning stays its own gun's
         if (flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)) boundGunNearField(lightStates[0], d);
       }

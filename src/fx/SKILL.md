@@ -69,4 +69,7 @@ A new gun pulse of the muzzle light calls it too, only when `flashLight`
 returned true: a refused pulse binds nothing, and the pulse still burning stays
 its own gun's. `effectAttachments.selftest` drives every caller's lit and
 refused shot and counts the callers, so a new site joins its list. The hull,
-ground and other vehicles keep the bare light.
+ground and other vehicles keep the bare light. A site that yields to a brighter
+pulse still burning (the roof-gun flash port) asks `pulseOutranks`, the pulse's
+own level, never the light's intensity: the attack ramp holds that at 0 in the
+frame a pulse is born, and it was written a frame back.

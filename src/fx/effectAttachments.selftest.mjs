@@ -494,10 +494,14 @@ console.log('effect attachment selftest passed');
   // back from a's peak, the seat from a's light); the radius, a's field unbound by the refusal (m5); the seat, a refused
   // pulse that moves the light (m6); atReset, a reset without the release (m4; the next frame's applyLight releases it
   // anyway); the rocket run, composeFiringMoment without `!rocket` (m7); the count of callers, a fourth one (m9).
-  //   The roof port lights its pulse only over one no brighter than its peak (`!(muzzleLight.intensity > peak)`), so its
-  // gun a fires the roof gun's own bore, and gun b fires a frame after gun a at every site: no site leans on the frame
-  // a's pulse is born in. There a's attack ramp holds its intensity at 0, and a roof shot in that frame still takes a
-  // 120 mm pulse's light (a gap in the port's guard, left to the fx owner; this case does not pin it).
+  //   The roof port lights its pulse only over a burning pulse no brighter than its peak (effects.ts pulseOutranks). So
+  // there gun a fires the roof gun's own bore: the lit shot follows a dimmer pulse, and the refused shot reaches
+  // flashLight's finite guard (behind a burning 120 mm pulse the port would refuse both before flashLight). Gun b fires a
+  // frame after gun a at every site, so a's near field is published when b fires (firesIntoA).
+  //   (272) The roof port's guard once read the light's intensity, which a's attack ramp holds at 0 in the frame a's
+  // pulse is born, so a roof shot in that frame took a 120 mm pulse's light. The same-frame case below pins the fix: the
+  // light keeps a's place, a's peak and a's near field (red on the intensity guard), and after a spent 120 mm pulse the
+  // roof gun still lights and binds its own.
   {
     globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
     try {
@@ -509,10 +513,11 @@ console.log('effect attachment selftest passed');
       const seat = shared.uniforms.uCotMuzzleSeat.value, bore = shared.uniforms.uCotMuzzleBore.value;
       const ROOF_SPEC = { id: 'm1a1' }, roofGun = auxiliaryCapabilities(ROOF_SPEC)?.guns[0];
       if (!roofGun) throw new Error('the m1a1 must carry a roof gun for the flash port');
-      /** Gun a (`aCaliberMm`, line of fire +Z) fires on the battle path; a frame on, while its pulse burns, gun b (line of
-       *  fire -X, its roof gun on the hull root) does what `second` says; two frames on, the published near field, and
-       *  again after a battle reset and after one more frame. */
-      const nearFieldAfter = (second, aCaliberMm) => {
+      /** Gun a (`aCaliberMm`, line of fire +Z) fires on the battle path; `framesToB` frames of `hz` on (1: while its pulse
+       *  burns; 0: in the frame it is born, before any update ages it), gun b (line of fire -X, its roof gun on the hull
+       *  root) does what `second` says; two frames on, the published near field and the muzzle light, and again after a
+       *  battle reset and after one more frame. `roofFrames`: the frames after a's shot in which b's roof station fired. */
+      const nearFieldAfter = (second, aCaliberMm, framesToB = 1, hz = 60) => {
         const handlers = new Map();
         const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
         const scene = new THREE.Scene();
@@ -529,45 +534,52 @@ console.log('effect attachment selftest passed');
         const b = { id: 'b', spec: ROOF_SPEC, visual: { root },
           combat: { auxiliary: { gunYaw: 0, gunPitch: 0, shots: 0 } },
           state: { pos: root.position, yaw: -Math.PI / 2, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        let frames = 0, aFrame = 0;
+        const roofFrames = [];
         const fx = createFx({ anisotropy: 4, scene }, { getHeightAt: () => 0 },
-          { seed: 91, auxiliaryEntities: () => [b], auxiliaryTime: () => clock });
+          { seed: 91, auxiliaryEntities: () => [b], auxiliaryTime: () => clock,
+            auxiliaryReport: (id) => { if (id === 'b') roofFrames.push(frames - aFrame); } });
         fx.bindBus(bus);
         scene.add(fx.group);
         const camera = new THREE.PerspectiveCamera();
         camera.position.set(-12, 4, 6); camera.lookAt(0, 2, 4); camera.updateMatrixWorld();
         const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
-        const frame = () => { clock += 1 / 60; fx.update(1 / 60, [], camera, resolve); };
+        const frame = () => { frames++; clock += 1 / hz; fx.update(1 / hz, [], camera, resolve); };
         frame(); // the roof station is prepared on its first frame
         // (272) nothing is published before gun a fires, so a near field that names a's bore afterwards is a's own: the
         // uniforms once started as a published 1 m field on the default bore (0, 0, 1), which is A_BORE
         if (seat.w !== 0) throw new Error(`no gun's near field may be published before gun a fires (w ${seat.w}, bore ${bore.toArray()})`);
         bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: aCaliberMm, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
-        frame();
+        aFrame = frames;
+        for (let i = 0; i < framesToB; i++) frame();
         const atB = { w: seat.w, bore: bore.clone() };
         second?.(bus, fx, b, root);
         // two frames: the roof station fires inside a frame, and a pulse lit there burns from the next one
         frame(); frame();
         const light = fx.group.getObjectByName('fx:muzzleLight');
-        const now = { w: seat.w, bore: bore.clone(), seat: new THREE.Vector3(seat.x, seat.y, seat.z), light: light.position.clone() };
+        const now = { w: seat.w, bore: bore.clone(), seat: new THREE.Vector3(seat.x, seat.y, seat.z), light: light.position.clone(),
+          intensity: light.intensity };
         fx.resetAll();
         const atReset = seat.w;
         frame();
-        return { ...now, atB, atReset, after: seat.w };
+        return { ...now, atB, atReset, after: seat.w, roofFrames };
       };
       const A_BORE = new THREE.Vector3(0, 0, 1), B_BORE = new THREE.Vector3(-1, 0, 0);
       /** a near field bound to `axis` (NaN-strict: a NaN radius or bore fails) */
       const names = (field, axis, eps) => field.w > 0 && field.bore.distanceTo(axis) <= eps;
-      /** gun a's pulse alone, by its calibre: what a refused shot of b's must leave */
+      /** gun a's pulse alone, by its calibre and when b would fire: what a refused or outranked shot of b's must leave */
       const aloneBy = new Map();
-      const aloneFor = (aCaliberMm) => {
-        if (!aloneBy.has(aCaliberMm)) {
-          const alone = nearFieldAfter(null, aCaliberMm);
-          if (!names(alone.atB, A_BORE, 1e-9) || !names(alone, A_BORE, 1e-9)) {
-            throw new Error(`gun a's burning ${aCaliberMm} mm pulse must publish its own near field (w ${alone.atB.w} then ${alone.w}, bore ${alone.bore.toArray()})`);
+      const aloneFor = (aCaliberMm, framesToB = 1, hz = 60) => {
+        const key = `${aCaliberMm} mm, b ${framesToB} frames on at ${hz} Hz`;
+        if (!aloneBy.has(key)) {
+          const alone = nearFieldAfter(null, aCaliberMm, framesToB, hz);
+          // in the frame it is born the pulse is not yet lit (its attack), so it publishes from the next one
+          if ((framesToB > 0 && !names(alone.atB, A_BORE, 1e-9)) || !names(alone, A_BORE, 1e-9)) {
+            throw new Error(`gun a's burning pulse (${key}) must publish its own near field (w ${alone.atB.w} then ${alone.w}, bore ${alone.bore.toArray()})`);
           }
-          aloneBy.set(aCaliberMm, alone);
+          aloneBy.set(key, alone);
         }
-        return aloneBy.get(aCaliberMm);
+        return aloneBy.get(key);
       };
       const firesIntoA = (run, label) => {
         if (!names(run.atB, A_BORE, 1e-9)) {
@@ -637,7 +649,38 @@ console.log('effect attachment selftest passed');
       if (!(rocket.light.x > 10) || rocket.w !== 0) {
         throw new Error(`composeFiringMoment (a lit rocket pulse): the rocket's pulse lights its launcher and binds no gun (light x ${rocket.light.x}, w ${rocket.w}, bore ${rocket.bore.toArray()})`);
       }
+      // (272) a roof shot in the frame a 120 mm pulse is born: the port's guard asks the burning pulse's own level
+      // (pulseOutranks), so the muzzle light keeps gun a's pulse: its place, its peak (the light's intensity two frames on,
+      // as a's pulse alone gives it) and its gun's near field (radius and bore). At 60 Hz and on a 240 Hz display, where
+      // the roof port fires 4 ms into a's attack ramp (a guard that scaled a's level by the ramp let the roof gun in there).
+      // After a spent 120 mm pulse the roof gun still lights and binds its own; after a dimmer pulse it does too (the roof
+      // port's lit control above).
+      const roofLit = sites['the roof-gun flash port'].shot(true), SPENT_FRAMES = 10;
+      for (const hz of [60, 240]) {
+        const label = `the roof-gun flash port (in the frame a 120 mm pulse is born, ${hz} Hz)`;
+        const born = aloneFor(120, 0, hz), run = nearFieldAfter(roofLit, 120, 0, hz);
+        if (run.roofFrames.length !== 1 || run.roofFrames[0] !== 1) {
+          throw new Error(`${label}: the roof station must fire in the first update after a's shot (fired after ${run.roofFrames} frames)`);
+        }
+        if (!(run.light.distanceTo(born.light) <= 1e-6)) {
+          throw new Error(`${label}: the muzzle light must stay at gun a's pulse (${run.light.toArray()} vs ${born.light.toArray()})`);
+        }
+        near(run.intensity, born.intensity, `${label}: the muzzle light keeps gun a's peak`, 1e-9);
+        near(run.w, born.w, `${label}: the near field keeps gun a's radius`, 1e-9);
+        if (!(run.bore.distanceTo(A_BORE) <= 1e-9 && run.seat.distanceTo(run.light) <= 1e-6)) {
+          throw new Error(`${label}: the near field must still name gun a's bore and light (bore ${run.bore.toArray()}, seat ${run.seat.toArray()})`);
+        }
+      }
+      const spentLabel = 'the roof-gun flash port (after a spent 120 mm pulse)';
+      const spent = nearFieldAfter(roofLit, 120, SPENT_FRAMES);
+      if (spent.roofFrames.length !== 1 || spent.roofFrames[0] !== SPENT_FRAMES + 1 || spent.atB.w !== 0) {
+        throw new Error(`${spentLabel}: the roof station fires once after a's pulse is spent (fired after ${spent.roofFrames} frames; a's w ${spent.atB.w} then)`);
+      }
+      if (!names(spent, B_BORE, 1e-6) || !(spent.light.x > 10)) {
+        throw new Error(`${spentLabel}: the roof gun's pulse must light and bind its own gun (w ${spent.w}, bore ${spent.bore.toArray()}, light ${spent.light.toArray()})`);
+      }
       console.log('effectAttachments.selftest: a refused pulse binds no near field at any of its three sites (gun a keeps its radius, bore and seat; a reset releases it), and a rocket binds none');
+      console.log('effectAttachments.selftest: a roof shot in the frame a 120 mm pulse is born leaves the muzzle light to that pulse (place, peak, near field); after a spent pulse it lights its own');
     } finally {
       if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
     }
