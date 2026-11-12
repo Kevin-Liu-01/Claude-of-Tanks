@@ -22,7 +22,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
-import { intraClipCycleS } from './fireCycleFloor.ts';
+import { intraClipCycleS, type GunAutoloader } from './fireCycleFloor.ts';
 import type {
   BallisticShellSpec,
   ShellEntity,
@@ -107,13 +107,8 @@ export interface DamageGunSpec {
   primaryGuided?: boolean;
   launcherMuzzles?: readonly LauncherMuzzle[];
   shells?: DamageShellSpec[];
-  autoloader?: {
-    magazineSize: number;
-    fullReloadS?: number;
-    intraClipS?: number;
-    /** a rotary gun: one round a tick, below every other gun's floor (fireCycleFloor.ts) */
-    rotary?: boolean;
-  } | null;
+  /** a rotary gun's (`rotary`) floor is one tick, below every other gun's (fireCycleFloor.ts) */
+  autoloader?: GunAutoloader | null;
 }
 
 export interface DamageTankSpec {

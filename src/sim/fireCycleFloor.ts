@@ -18,9 +18,23 @@ export interface FireCycleAutoloader {
   rotary?: boolean;
 }
 
+/** A gun's autoloader as the sim reads it: one type for damage.ts DamageGunSpec and movement.ts MovementGunSpec, which
+ *  the solo gun spec extends together. */
+export interface GunAutoloader extends FireCycleAutoloader {
+  magazineSize: number;
+  fullReloadS?: number;
+}
+
 /** The floor this autoloader's gun fires at. */
 export function fireCycleFloorS(autoloader: FireCycleAutoloader | null | undefined): number {
   return autoloader?.rotary === true ? ROTARY_FIRE_CYCLE_FLOOR_S : FIRE_CYCLE_FLOOR_S;
+}
+
+/** (272) A round's share of one floor cycle's shocks (movement.ts fireRecoil): a rotary gun fires three rounds to the
+ *  floor's one, so each round kicks the hull, shoves it and blooms the aim a third as much, and a second of its fire
+ *  disturbs the gun as a second at the floor does. 1 for every other gun. */
+export function floorShotShare(autoloader: FireCycleAutoloader | null | undefined): number {
+  return fireCycleFloorS(autoloader) / FIRE_CYCLE_FLOOR_S;
 }
 
 /** The delay between two rounds of one magazine as the simulation runs it (the authored cycle, held at the floor). */
