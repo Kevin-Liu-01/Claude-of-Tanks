@@ -253,8 +253,8 @@
         "concealers": 1255
       },
       "winter": {
-        "bytes": 1738955,
-        "sha256": "95b10af336ddc7f4baa49a65261ee293e7dbb13b61ed3020c1d668fc9601bff2",
+        "bytes": 1736167,
+        "sha256": "b5aae00dd82b55df8460c444e9d163986f76871f8716ae627ba45e867b911744",
         "obstacles": 8462,
         "colliders": 8528,
         "concealers": 7231
@@ -267,18 +267,18 @@
         "concealers": 2491
       },
       "coastal": {
-        "bytes": 2138694,
-        "sha256": "cf8097b3c7c5e79bbbee217f103aba859b8261e9aabbeb737affdb8aa0feb549",
-        "obstacles": 4055,
-        "colliders": 4489,
-        "concealers": 3435
+        "bytes": 2180916,
+        "sha256": "bf4f1f54530b85752d751055260b3cddf29121446a403f37de3ea5a37881b927",
+        "obstacles": 4054,
+        "colliders": 4492,
+        "concealers": 3436
       },
       "autumn": {
-        "bytes": 2021585,
-        "sha256": "e0a8b956aaa097bbf5064dc22b6e68a1e3982efba8abdb62fef278885fbbb4a7",
-        "obstacles": 5968,
-        "colliders": 6332,
-        "concealers": 5432
+        "bytes": 2028431,
+        "sha256": "ae4cab75a4ef496620ccc17afb790afbc20271178c6cb89a049e6aeb92037079",
+        "obstacles": 5966,
+        "colliders": 6343,
+        "concealers": 5431
       },
       "steppe": {
         "bytes": 1250894,
@@ -330,17 +330,17 @@
         "concealers": 11375
       },
       "alpine": {
-        "bytes": 1521432,
-        "sha256": "c6e26d7b14ae555b448d77989fa07cab6c399b47369b964cf52f4de4896a849c",
+        "bytes": 1525088,
+        "sha256": "513ddb17aa88b8af6ac74264b907b3861cb500286efa8633d8c1ac1b10037755",
         "obstacles": 2661,
         "colliders": 2725,
         "concealers": 1139
       },
       "caldera": {
-        "bytes": 1960723,
-        "sha256": "48492e6f0f2b5420d1c3d6a7cd84c0c6c67fecfccf82df90b9b9ae5a6ce938e2",
-        "obstacles": 3038,
-        "colliders": 3129,
+        "bytes": 1921158,
+        "sha256": "7923fe4b06153c474a43cdc2ef4c916e2467f579267b95b771d47b102888d2fd",
+        "obstacles": 2911,
+        "colliders": 3002,
         "concealers": 1035
       },
       "foundry": {
@@ -365,8 +365,8 @@
         "concealers": 1916
       },
       "titan_gorge": {
-        "bytes": 2027216,
-        "sha256": "0a9670a6f78af8320c0098e13edf800f40babdd21effb76726dec00857cf4bc0",
+        "bytes": 2025784,
+        "sha256": "5ca86df8d58dc3aab2191d323768d6bb036741f1eb9c145ff7f0b77ad563d8ba",
         "obstacles": 3238,
         "colliders": 3262,
         "concealers": 1226
