@@ -1263,9 +1263,14 @@ generated spec data, index/loader maps), the builder groups on the id's spec cha
 the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
 writes. An id re-runs when its row is missing or either key moved; a hand edit to one output row marks that id.
 Beside the keys the table keeps the component lines the resolver names when a key moves (a step's tool, the core, the
-groups, the rows, the roster). A step's own lines are written only when it runs, and the shared ones only by a chain
+groups, the rows). A step's own lines are written only when it runs, and the shared ones only by a chain
 that selects every step (268). A partial chain (`--steps`, `--no-gpu`, `--no-world`) leaves every step it did not run
-as its keys were taken, so a step whose tool moved stays due under its true reason.
+as its keys were taken, so a step whose tool moved stays due under its true reason. The roster is a step's own line
+(272): `roster <step> <hash>`, written when the step runs on the whole fleet. A single shared roster line used to stay
+behind in a partial chain while the keys moved to the new roster, so every pass resolved "full 311 (roster)" and the
+CPU fixpoint never settled. An `--ids` run leaves its step's roster as it was, and judges its own ids by their keys
+(`resolveChanged` `only`); the other ids stay due as the roster until a plain chain runs the step whole-fleet. The
+chain fails if its final resolve marks any id due without a reason.
 
 It fails closed: an undeclared directory read, child process, computed import or whole-environment read in a step's
 closure runs that step on every id; a roster change, a missing manifest, an unreadable table or an output file edited

@@ -198,7 +198,6 @@ comp	world:map:wreckPlan:urban	5d806f76e9ba0e3f
 comp	world:map:wreckPlan:verdant	3b6387d506b30848
 comp	world:map:wreckPlan:whiteout	1f1c8d512c411783
 comp	world:map:wreckPlan:winter	45ce180228632581
-comp	world:roster	c3797f6fbc261c2e
 comp	world:tool:collision	8414dd3391f01e64
 comp	world:tool:trenches	a94e16a96cc34342
 comp	world:tool:wreckPlan	a1ab11a5fb26aa61
@@ -4604,7 +4603,20 @@ key	wreckPlan	urban	d91a5abbf1fce7d1	e6372c9c27735dd6
 key	wreckPlan	verdant	42ee2321a35c9b60	5f2ee2a7f69a47c0
 key	wreckPlan	whiteout	f27b027d79ee6198	50a567c9905a872f
 key	wreckPlan	winter	ff6409450921f41f	c6210636e7e2720f
-roster	a53e7ba505bc3920
+roster	anatomy	a53e7ba505bc3920
+roster	centering	a53e7ba505bc3920
+roster	collision	c3797f6fbc261c2e
+roster	controls	a53e7ba505bc3920
+roster	fills	a53e7ba505bc3920
+roster	gate	a53e7ba505bc3920
+roster	gunLines	a53e7ba505bc3920
+roster	icons	a53e7ba505bc3920
+roster	ledger	a53e7ba505bc3920
+roster	marking	a53e7ba505bc3920
+roster	seats	a53e7ba505bc3920
+roster	spareTrack	a53e7ba505bc3920
+roster	trenches	c3797f6fbc261c2e
+roster	wreckPlan	c3797f6fbc261c2e
 row	auxiliaryInventory	abramsx	a26d4aed6046dbb3
 row	auxiliaryInventory	aft10	131d9d763f08fc13
 row	auxiliaryInventory	ajax	3c7b858987d82768
