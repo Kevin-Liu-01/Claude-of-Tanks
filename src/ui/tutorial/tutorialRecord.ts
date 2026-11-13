@@ -15,9 +15,12 @@
 
 export const TUTORIAL_STORAGE_KEY = 'cot.tutorial.v1';
 export const TUTORIAL_CHAPTERS = ['garage', 'battle', 'tips'] as const;
-export type TutorialChapter = (typeof TUTORIAL_CHAPTERS)[number];
+/** The chapters the record keeps, and (273) the training battle's, which runs whenever a training battle rolls out (the
+ *  tutorial launches that battle; its place in the record comes with the journey's record, tutorial-journey slice 5). */
+export type TutorialChapter = (typeof TUTORIAL_CHAPTERS)[number] | 'training';
+type RecordedChapter = (typeof TUTORIAL_CHAPTERS)[number];
 export type TutorialOutcome = 'done' | 'skipped';
-export type TutorialRecord = Partial<Record<TutorialChapter, TutorialOutcome>>;
+export type TutorialRecord = Partial<Record<RecordedChapter, TutorialOutcome>>;
 
 /** Keys that only a browser that has played holds (see the module comment). */
 const PLAYED_KEYS = ['cot.profile.v2', 'cot.battle.hints.v2', 'cot.battle.hints.v1'] as const;
@@ -59,6 +62,7 @@ export function hasPlayedBefore(storage?: RecordStorage | null): boolean {
 
 /** The chapter is still to show: recorded as neither done nor skipped, and the player is new (or asked to replay). */
 export function tutorialChapterDue(chapter: TutorialChapter, storage?: RecordStorage | null): boolean {
+  if (chapter === 'training') return true; // the battle itself is the tutorial's: it runs whenever it is launched
   const record = readTutorialRecord(storage);
   if (!record) return !hasPlayedBefore(storage);
   return record[chapter] === undefined;
@@ -66,6 +70,7 @@ export function tutorialChapterDue(chapter: TutorialChapter, storage?: RecordSto
 
 /** Record one chapter's outcome; Skip passes 'skipped' for every chapter still pending. */
 export function markTutorialChapter(chapter: TutorialChapter | 'all', outcome: TutorialOutcome, storage?: RecordStorage | null): void {
+  if (chapter === 'training') return; // not in the record yet (see TutorialChapter)
   const record = readTutorialRecord(storage) ?? {};
   for (const name of chapter === 'all' ? TUTORIAL_CHAPTERS : [chapter]) if (record[name] === undefined || chapter !== 'all') record[name] = outcome;
   writeRecord(record, storage);

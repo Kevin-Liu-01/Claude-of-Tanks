@@ -57,8 +57,13 @@ export interface TutorialPort {
 /** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
 export interface TutorialView {
   readonly mode: 'third' | 'sight';
+  /** The sight's magnification (the rig's zoom). */
   readonly zoom: number;
+  /** How far the third-person camera stands from the tank (m). */
+  readonly orbitM: number;
   readonly freeLook: boolean;
+  /** Where the gun points on the ground plane (rad; 0 faces +z, turning toward +x): the hull's yaw plus the turret's. */
+  readonly gunYaw: number;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -100,6 +105,14 @@ const PAD_KEYS = {
 } as const;
 const PAD_CAPS: Readonly<Record<number, string>> = { 0: 'A', 1: 'B', 8: 'BACK', 10: 'LS', 11: 'RS' };
 
+/** The least ground distance from point `p` to the segment a→b (m). */
+function segmentDistance(a: { x: number; z: number }, b: { x: number; z: number }, p: { x: number; z: number }): number {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const length2 = dx * dx + dz * dz;
+  const t = length2 > 1e-9 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / length2)) : 0;
+  return Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z);
+}
+
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** A body line with its {placeholders} as key caps (the line itself escaped). */
@@ -117,7 +130,8 @@ function bodyHtml(step: TutorialStep, port: TutorialPort): string {
 export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose }: RunOptions): TutorialRun {
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
-  const battle = chapter === 'battle';
+  // the training battle's chapter takes a battle's keys and caps (its keys drive the tank, its pointer aims)
+  const battle = chapter === 'battle' || chapter === 'training';
   // the Garage's Deploy names Enter in the player's language; the card's caps match it
   const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : port.codeLabel(code));
   let index = Math.max(0, Math.min(startAt, Math.max(0, chapterSteps(chapter, input).length - 1)));
@@ -196,18 +210,39 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       const marker = step.guide?.marker;
       if (marker) {
         const radius = advance.radiusM ?? marker.radiusM;
-        poll(() => { const at = port.playerPosition(); return !!at && Math.hypot(at.x - marker.x, at.z - marker.z) <= radius; });
+        // the path since the last read, not its end alone: a tank at speed crosses a ring between two reads
+        let last: { x: number; z: number } | null = null;
+        poll(() => {
+          const at = port.playerPosition();
+          if (!at) return false;
+          const from = last ?? at;
+          last = { x: at.x, z: at.z };
+          return segmentDistance(from, at, marker) <= radius;
+        });
       }
     } else if (advance.on === 'camera') {
       let heldSince = 0;
       poll(() => {
         const view = port.view?.();
         if (!view) return false;
-        const modeOk = view.mode === advance.mode && view.zoom >= (advance.zoomAtLeast ?? -Infinity);
+        const modeOk = (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity)
+          && (view.mode !== 'third' || view.orbitM >= (advance.orbitAtLeastM ?? -Infinity));
         if (!advance.freeLook) return modeOk;
         if (!view.freeLook) { heldSince = 0; return false; }
         heldSince ||= performance.now();
         return performance.now() - heldSince >= FREE_LOOK_HOLD_MS;
+      });
+    } else if (advance.on === 'turret') {
+      const marker = step.guide?.marker;
+      let heldSince = 0;
+      if (marker) poll(() => {
+        const view = port.view?.(), at = port.playerPosition();
+        if (!view || !at) return false;
+        const bearing = Math.atan2(marker.x - at.x, marker.z - at.z);
+        const off = Math.abs(Math.atan2(Math.sin(view.gunYaw - bearing), Math.cos(view.gunYaw - bearing)));
+        if (off > (advance.toleranceDeg * Math.PI) / 180) { heldSince = 0; return false; }
+        heldSince ||= performance.now();
+        return performance.now() - heldSince >= advance.holdS * 1000;
       });
     } else if (advance.on === 'armour') {
       if (port.armourOn?.() === advance.value) { queueMicrotask(go); return; }

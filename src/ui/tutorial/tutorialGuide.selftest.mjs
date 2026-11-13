@@ -19,7 +19,11 @@ import {
   PATH_COUNT, PATH_FIRST_M, PATH_HIDE_WITHIN_M, PATH_STEP_M, actorCorners, actorPoint, edgeInsets, edgePointer, groundDistance,
   insideInsets, onScreen, pathChevrons, ringPoints, screenBox,
 } from './tutorialGuideMath.ts';
-import { TUTORIAL_STEPS } from './tutorialSteps.ts';
+import { TRAINING_STEPS, TUTORIAL_STEPS, chapterSteps } from './tutorialSteps.ts';
+import { DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS } from '../../game/input.ts';
+import { TRAINING_POINTS, TRAINING_RULES, planTrainingRange, trainingRoster } from '../../sim/trainingGround.ts';
+import { GAME_MODE_DEFINITIONS, DEPLOY_MODE_ORDER, isPracticeMode, isTutorialMode } from '../../sim/gameModeCatalog.ts';
+import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -86,7 +90,7 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
 const en = JSON.parse(read('src/ui/i18nCatalog.en-US.json'));
 const zh = JSON.parse(read('src/ui/i18nCatalog.zh-CN.json'));
 for (const catalog of [en, zh]) assert.match(catalog['tutorial.guide.distance'] ?? '', /\{m\}/, 'the distance line names {m}');
-for (const step of TUTORIAL_STEPS) {
+for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
   const advance = step.advance;
   if (advance.on === 'reach') assert.ok(step.guide?.marker, `${step.id}: a reach step has a marker`);
   if (['spot', 'destroy'].includes(advance.on)) assert.ok(advance.actor, `${step.id}: names its actor`);
@@ -94,6 +98,52 @@ for (const step of TUTORIAL_STEPS) {
     assert.ok(en[label] && zh[label], `${step.id}: guide label ${label} in en-US and zh-CN`);
   }
   if (step.guide?.aimAt) assert.ok(step.guide.actor?.id === step.guide.aimAt.id, `${step.id}: the aim ghost's actor is the bracketed one`);
+}
+
+// 2b. The training battle (273): its steps, strings and ground.
+{
+  for (const input of ['keyboard', 'touch', 'pad']) {
+    const ids = chapterSteps('training', input).map((step) => step.id.replace(/(Touch|Pad)$/, ''));
+    assert.deepEqual(ids.slice(0, 4), ['training.rollout', 'training.driveA', 'training.driveB', 'training.turret'],
+      `${input}: the training opens with the rollout, the two rings and the turret`);
+    assert.ok(ids.includes('training.sight'), `${input}: the gunner's sight is taught`);
+  }
+  for (const step of TRAINING_STEPS) {
+    for (const key of [step.title, step.body]) assert.ok(en[key] && zh[key], `${step.id}: ${key} in en-US and zh-CN`);
+    const named = Object.keys(step.keys ?? {}).sort();
+    for (const catalog of [en, zh]) {
+      const used = [...(catalog[step.body] ?? '').matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+      assert.deepEqual(used, named, `${step.id}: the body's placeholders are exactly its key caps`);
+    }
+    const inputs = step.when ? [step.when].flat() : ['keyboard', 'touch', 'pad'];
+    for (const action of Object.values(step.keys ?? {})) {
+      if (inputs.includes('keyboard')) assert.ok(DEFAULT_BINDINGS[action], `${step.id}: ${action} has a key`);
+      if (inputs.includes('pad')) assert.ok(DEFAULT_PAD_BINDINGS[action] != null, `${step.id}: ${action} has a pad button`);
+    }
+    if (step.advance.on === 'turret') assert.ok(step.guide?.marker, `${step.id}: a turret step points at a marker`);
+    assert.equal(step.chapter, 'training');
+  }
+  // the ground: every actor a distinct tank, none the loaner; seated in roster order on their own marks
+  const roster = trainingRoster(TRAINING_RULES);
+  assert.equal(new Set(roster).size, roster.length, 'each actor a distinct tank (a solo roster keys hulls by spec)');
+  assert.ok(!roster.includes(TRAINING_RULES.loanerSpecId), 'no actor is the loaner');
+  const layout = planTrainingRange(TRAINING_RULES);
+  assert.deepEqual([layout.origin.x, layout.origin.z], [TRAINING_RULES.start.x, TRAINING_RULES.start.z], 'the player on the start');
+  layout.lanes.forEach((lane, i) => assert.deepEqual([lane.x, lane.z], [TRAINING_RULES.actors[i].x, TRAINING_RULES.actors[i].z],
+    `actor ${i} on its own mark`));
+  for (const point of Object.values(TRAINING_POINTS)) assert.ok(Number.isFinite(point.x) && Number.isFinite(point.z) && point.radiusM > 0);
+  // the mode: never offered, no record, no clock, its own seed and roster size
+  assert.ok(isTutorialMode('training') && !isPracticeMode('training') && !DEPLOY_MODE_ORDER.includes('training'),
+    'the training battle is the tutorial\'s mode, never in Deploy\'s picker');
+  assert.ok(GAME_MODE_DEFINITIONS.training, 'a mode definition');
+  const ruleset = matchRulesetFor('training');
+  assert.equal(ruleset.records, false, 'nothing recorded');
+  assert.equal(ruleset.timeLimitS, null, 'no clock');
+  assert.equal(ruleset.enemies, TRAINING_RULES.actors.length, 'the field is the scenes\' hulls');
+  assert.equal(ruleset.allies, 0);
+  assert.equal(ruleset.training, TRAINING_RULES);
+  assert.equal(matchRulesetFor('training', null, { allies: 5, enemies: 9, teamNations: 'random' }).enemies, TRAINING_RULES.actors.length,
+    'no arrangement changes it');
 }
 
 // 3. The 272.1 rules for the guide.

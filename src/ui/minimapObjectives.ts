@@ -12,6 +12,7 @@
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
 import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
 import { strikeFootprint } from '../sim/airSupport.ts';
+import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
 
@@ -94,7 +95,8 @@ const OWN_SPAWN_ONLY = new Set(['endless_horde', 'frontline_assault']);
 
 function spawnMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, out: ObjectiveMarker[]): void {
   const id = String(state.id || 'standard');
-  if (!state.spawns || SPAWN_MARKED_BY_OBJECTIVE.has(id)) return;
+  // the training battle's places are its scenes' rings (the tutorial's guide, 273): no spawn glyph beside them
+  if (!state.spawns || SPAWN_MARKED_BY_OBJECTIVE.has(id) || isTutorialMode(id)) return;
   for (const spawn of state.spawns) {
     const side = objectiveSide(spawn.team, perspective);
     if (spawn.team !== 'alpha' && OWN_SPAWN_ONLY.has(id)) continue;

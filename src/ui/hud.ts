@@ -48,7 +48,7 @@ import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
@@ -4012,6 +4012,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function additionalModeStatusCopy(modeState: HudMatchModeState): string | null {
     if (modeState.range) return t(modeState.range.moving ? 'hud.modeStatus.provingMoving' : 'hud.modeStatus.proving', { lanes: modeState.range.lanes.length });
+    // the training battle (273): no score to name; its goals are the tutorial card's
+    if (isTutorialMode(modeState.id)) return t('hud.modeStatus.training');
     if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
@@ -4050,7 +4052,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function modeStatusIconName(modeId: string): string {
     // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
     if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
-    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport' }[modeId];
+    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport', training: GAME_MODE_DEFINITIONS.training.icon }[modeId];
     if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
@@ -9366,7 +9368,7 @@ export function initHud(bus: EventBus): HudRuntime {
       conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
       // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
-      if (!ruleset || ruleset.provingGround) return;
+      if (!ruleset || ruleset.provingGround || ruleset.training) return;
       for (const line of rulesetLines(ruleset)) {
         // (the battle's clock is the score plate's, which shows the whole limit before the start: UI-LOCKDOWN B20)
         if (line.key === 'clock') continue;

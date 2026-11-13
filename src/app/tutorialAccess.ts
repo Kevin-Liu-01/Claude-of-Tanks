@@ -43,6 +43,8 @@ export interface TutorialAccessDeps {
   readonly screen: (chapter: TutorialChapter) => 'live' | 'covered' | 'gone';
   /** This rollout is a local Standard battle the player drives (see the module comment). */
   readonly isTutorialBattle: () => boolean;
+  /** 273: this rollout is the training battle (the tutorial's own mode, sim/trainingGround.ts). */
+  readonly isTrainingBattle: () => boolean;
   /** A new player's first battle is a gentle one: easy bots (the Deploy screen shows the choice). */
   readonly preferEasyBots: () => void;
   /** 273: what the battle's guide reads (ui/tutorial/tutorialGuide.ts), and the battle state camera, armour and hit
@@ -56,6 +58,8 @@ export interface TutorialAccessDeps {
 export interface TutorialAccess {
   /** The Garage has shown (the first time, or on a return from a battle). */
   garageShown(): void;
+  /** 273: a training battle rolled out before this access was resident (main.ts loads it then): run its chapter. */
+  trainingRolledOut(): void;
   /** Settings' Replay, or the Field Manual's link. */
   replay(): void;
   /** The chapter running and its step (receipts and the capture tool), or null. */
@@ -88,7 +92,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   function start(chapter: TutorialChapter, stillWanted: () => boolean): void {
     if (run || starting) return;
     starting = chapter;
-    if (chapter === 'battle') setBodyFlag(BODY_FLAG, 'battle', true);
+    if (chapter === 'battle' || chapter === 'training') setBodyFlag(BODY_FLAG, 'battle', true);
     chunk.load().then((runner) => {
       starting = null;
       if (run || !stillWanted() || !tutorialChapterDue(chapter)) { setBodyFlag(BODY_FLAG, 'battle', false); return; }
@@ -107,6 +111,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
           run = null;
           delete resumeAt[chapter];
           setBodyFlag(BODY_FLAG, 'battle', false);
+          // the training battle keeps no record yet (tutorialRecord.ts TutorialChapter): its Skip ends its own run only
+          if (chapter === 'training') return;
           if (outcome === 'skipped') markTutorialChapter('all', 'skipped');
           else markTutorialChapter(chapter, 'done');
         },
@@ -128,7 +134,15 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
 
   // A battle's rollout: the battle chapter, or (a Garage chapter cut short by Deploy) the Garage chapter recorded done.
   // A battle the tutorial does not teach (a room, the Proving Ground, Watch) only puts a Garage chapter away for later.
+  /** The training battle is the tutorial's own: its chapter runs on every rollout of it (273). */
+  function runTraining(): void {
+    if (run) stopRun();
+    closedOnDeploy = false;
+    delete resumeAt.training;
+    start('training', deps.isTrainingBattle);
+  }
   deps.on('battle:rollout', () => {
+    if (deps.isTrainingBattle()) { runTraining(); return; }
     const teaching = deps.isTutorialBattle();
     if (run && run.chapter !== 'battle') stopRun();
     // the Garage closed on Deploy (Enter, or the press itself): a tutorial battle is that Deploy, so the chapter is done;
@@ -140,12 +154,16 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   });
   // the battle's end ends its chapter: the player has fought it; the tips follow on the Garage
   deps.on('battle:ended', () => {
+    if (run?.chapter === 'training') { stopRun(); return; }
     if (run?.chapter !== 'battle') return;
     stopRun();
     markTutorialChapter('battle', 'done');
   });
 
   return {
+    trainingRolledOut(): void {
+      if (deps.isTrainingBattle() && run?.chapter !== 'training' && starting !== 'training') runTraining();
+    },
     garageShown(): void {
       if (!deps.onGarage()) return;
       if (tutorialChapterDue('garage')) {
@@ -164,6 +182,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
     },
     debugStart(chapter: TutorialChapter): void {
       stopRun();
+      if (chapter === 'training') { delete resumeAt.training; start('training', () => true); return; }
       for (const name of ['garage', 'battle', 'tips'] as const) delete resumeAt[name];
       closedOnDeploy = false;
       resetTutorialRecord();

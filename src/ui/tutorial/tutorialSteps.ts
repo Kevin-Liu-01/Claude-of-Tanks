@@ -13,6 +13,7 @@
  */
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
+import { TRAINING_POINTS } from '../../sim/trainingGround.ts';
 
 /** Who the step is written for: a keyboard-and-mouse player, a touch layout, a connected gamepad. Absent: everyone. */
 export type TutorialInput = 'keyboard' | 'touch' | 'pad';
@@ -31,8 +32,12 @@ export type TutorialAdvance =
   // ── 273: the training battle's kinds (each heard on the bus or read from the port; tutorialRunner.ts arm) ──────────
   /** The player's tank stands inside the step's guide marker (its ring's radius, or this one). */
   | { readonly on: 'reach'; readonly radiusM?: number }
-  /** The player's view: the third-person camera or the gunner's sight, at least this zoom, or free look held. */
-  | { readonly on: 'camera'; readonly mode: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly freeLook?: boolean }
+  /** The player's view: the third-person camera (pulled back at least this far) or the gunner's sight (at least this zoom),
+   *  or free look held; a step that names no mode takes either. */
+  | { readonly on: 'camera'; readonly mode?: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly orbitAtLeastM?: number;
+      readonly freeLook?: boolean }
+  /** The gun points at the step's guide marker (its bearing within the tolerance), held this long. */
+  | { readonly on: 'turret'; readonly toleranceDeg: number; readonly holdS: number }
   /** The armour colours reach this state (the H key's ui:armorOverlayState, or the Settings row). */
   | { readonly on: 'armour'; readonly value: boolean }
   /** Hits of these kinds (sim/damage.ts HitEvent kind): by the player on an actor, or by an actor on the player. */
@@ -172,7 +177,65 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'tips.done', chapter: 'tips', target: [], title: 'tutorial.tips.done.title', body: 'tutorial.tips.done.body', advance: NEXT },
 ];
 
+// ── The training battle (273): scenes S1 to S4 (storyboard §2.4) ────────────────────────────────────────────────────
+// Every marker is a named point of the training ground (sim/trainingGround.ts TRAINING_POINTS), never a literal here.
+const marker = (point: { readonly x: number; readonly z: number; readonly radiusM: number }, label: string) =>
+  ({ x: point.x, z: point.z, radiusM: point.radiusM, label }) as const;
+const PLAY = { dim: false, card: 'upper' } as const;
+
+export const TRAINING_STEPS: readonly TutorialStep[] = [
+  // S1: the rollout card: what this battle is
+  { id: 'training.rollout', chapter: 'training', target: [], title: 'tutorial.training.rollout.title', body: 'tutorial.training.rollout.body',
+    advance: NEXT },
+  // S2: drive to ring A, then turn to ring B
+  { id: 'training.driveA', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.driveA.title', body: 'tutorial.training.driveA.body', advance: { on: 'reach' }, behindS: 40,
+    keys: { forward: 'forward', left: 'left', right: 'right' },
+    guide: { marker: marker(TRAINING_POINTS.driveA, 'tutorial.training.marker.a'), path: true } },
+  { id: 'training.driveATouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.driveA.title', body: 'tutorial.training.driveA.bodyTouch', advance: { on: 'reach' }, behindS: 40,
+    guide: { marker: marker(TRAINING_POINTS.driveA, 'tutorial.training.marker.a'), path: true, hud: ['.cot-touch .joy'] } },
+  { id: 'training.driveAPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+    title: 'tutorial.training.driveA.title', body: 'tutorial.training.driveA.bodyPad', advance: { on: 'reach' }, behindS: 40,
+    guide: { marker: marker(TRAINING_POINTS.driveA, 'tutorial.training.marker.a'), path: true } },
+  { id: 'training.driveB', chapter: 'training', target: [], ...PLAY,
+    title: 'tutorial.training.driveB.title', body: 'tutorial.training.driveB.body', advance: { on: 'reach' }, behindS: 40,
+    guide: { marker: marker(TRAINING_POINTS.driveB, 'tutorial.training.marker.b'), path: true } },
+  // S3: the turret turns apart from the hull
+  { id: 'training.turret', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.body', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
+    keys: { left: 'left', right: 'right' }, guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
+  { id: 'training.turretTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.bodyTouch', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
+    guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
+  { id: 'training.turretPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+    title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.bodyPad', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
+    guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
+  // S4: the views: pull the camera back, the gunner's sight, its zoom, free look
+  { id: 'training.orbit', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.orbit.title', body: 'tutorial.training.orbit.body', advance: { on: 'camera', mode: 'third', orbitAtLeastM: 18 } },
+  { id: 'training.orbitTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.orbit.title', body: 'tutorial.training.orbit.bodyTouch', advance: { on: 'camera', mode: 'third', orbitAtLeastM: 18 } },
+  { id: 'training.sight', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.sight.title', body: 'tutorial.training.sight.body', advance: { on: 'camera', mode: 'sight' },
+    keys: { sight: 'sniperToggle' } },
+  { id: 'training.sightTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.sight.title', body: 'tutorial.training.sight.bodyTouch', advance: { on: 'camera', mode: 'sight' },
+    guide: { hud: ['.cot-touch .round.scope'] } },
+  { id: 'training.sightPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+    title: 'tutorial.training.sight.title', body: 'tutorial.training.sight.body', advance: { on: 'camera', mode: 'sight' },
+    keys: { sight: 'sniperToggle' } },
+  { id: 'training.zoom', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.zoom.title', body: 'tutorial.training.zoom.body', advance: { on: 'camera', mode: 'sight', zoomAtLeast: 8 } },
+  { id: 'training.zoomTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.zoom.title', body: 'tutorial.training.zoom.bodyTouch', advance: { on: 'camera', mode: 'sight', zoomAtLeast: 8 } },
+  // a touch layout has no free look (the hold is a key or a pad button)
+  { id: 'training.freeLook', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.freeLook.title', body: 'tutorial.training.freeLook.body', advance: { on: 'camera', freeLook: true },
+    keys: { look: 'freeLook' } },
+];
+
 /** A chapter's steps for this player's hands, in order. */
 export function chapterSteps(chapter: TutorialChapter, input: TutorialInput): TutorialStep[] {
-  return TUTORIAL_STEPS.filter((step) => step.chapter === chapter && (!step.when || (typeof step.when === 'string' ? step.when === input : step.when.includes(input))));
+  return (chapter === 'training' ? TRAINING_STEPS : TUTORIAL_STEPS).filter((step) => step.chapter === chapter && (!step.when || (typeof step.when === 'string' ? step.when === input : step.when.includes(input))));
 }

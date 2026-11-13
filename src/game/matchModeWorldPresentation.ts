@@ -15,6 +15,7 @@ import {
 } from '../ui/objectiveGlyphs.ts';
 import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
 import { createAirSupportWorld } from './airSupportWorld.ts';
+import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 
 /** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
 const spriteLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
@@ -1088,7 +1089,8 @@ export function createMatchModeWorldPresentation(
     } else rangeDressing?.update(null);
     // (the proving ground's firing line has its start board and the map's mark: no revive beacon round the player's own
     // hull, whose full-strength team ring flooded the tarmac at every start and reset)
-    if (!state.range) updateSpawns(state);
+    // nor round the training battle's start (273), where the tutorial's first ring stands
+    if (!state.range && !isTutorialMode(state.id)) updateSpawns(state);
     // Air Support (air-support-270): the call-ins' aircraft and their marks on the ground (airSupportWorld.ts)
     if (state.air) {
       airWorld ??= createAirSupportWorld(root, options);

@@ -37,7 +37,11 @@ export function battleRosterPlan(
   ruleset: MatchRuleset,
   campaignOperationId: string | null | undefined,
   randomBattle: boolean,
-): { nations: readonly string[]; slots: number | null; formationLead: number | null; national: SoloNationalMode } {
+): { nations: readonly string[]; slots: number | null; formationLead: number | null; national: SoloNationalMode; exact: readonly string[] | null } {
+  // the training battle (273) fields exactly its scenes' hulls, in order, whatever the battle's randomness
+  if (ruleset.training) {
+    return { nations: [], slots: null, formationLead: null, national: null, exact: ruleset.training.actors.map((actor) => actor.specId) };
+  }
   const nations = battleEnemyNations(ruleset, campaignOperationId);
   // team arrangement (2026-09-15): the co-op modes size their own field — allied bots plus the enemy pool
   // sides (2026-09-18): the symmetric modes field both sides at once and the tier-balanced split seats
@@ -59,7 +63,7 @@ export function battleRosterPlan(
       });
     }
   }
-  return { nations, slots, formationLead, national };
+  return { nations, slots, formationLead, national, exact: null };
 }
 
 /**

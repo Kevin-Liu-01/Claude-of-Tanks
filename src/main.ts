@@ -1234,7 +1234,7 @@ const battleIntent = createBattleIntentRuntime({
   // the hover prefetch plans the battle the garage's mode would field (TEAM NATIONS included), as the loading plan does
   planRoster: (specId) => {
     const plan = soloRosterPlan(garagePreviewMode, null, true);
-    return planBattleParticipantIds(game, specId, true, plan.nations, plan.slots, plan.formationLead, plan.national)
+    return planBattleParticipantIds(game, specId, true, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact)
       .filter(id => garagePreviewMode !== 'ac130' || id !== specId);
   },
   getSpec,
@@ -2779,7 +2779,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     // team arrangement (2026-09-15): the plan sizes the field and leads with the arranged nation like setupBattle
     planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national);
+      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact);
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
@@ -4758,13 +4758,14 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   // when its phase ends; Settings or any transient surface the step did not open covers either
   screen: (chapter) => {
     const covered = settings.isOpen() || openSurfaceIds().length > 0;
-    if (chapter === 'battle') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
+    if (chapter === 'battle' || chapter === 'training') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
     const garageLive = tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending
       && !document.querySelector('.cot-bl.on');
     return !garageLive ? 'gone' : covered ? 'covered' : 'live';
   },
   isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
     && !game.ruleset?.provingGround,
+  isTrainingBattle: () => game.phase === 'battle' && !onlineMatchActive() && !!game.ruleset?.training && !game.watch && !game.couch,
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
   // 273: the battle's guide projects world points through the battle camera; the tutorial's steps read the view, the
   // player's id and the armour colours
@@ -4778,10 +4779,16 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     player: () => tutorialPose(game.phase === 'battle' ? game.player : null),
     actor: (id) => tutorialPose(game.phase === 'battle' ? game.tankById.get(id) ?? null : null),
   },
-  view: () => (game.phase !== 'battle' || !game.player ? null : {
-    mode: rig.mode === 'SNIPER' ? 'sight' : 'third', zoom: rig.zoom,
-    freeLook: !!game.player.input?.aimLocked && !game.player.combat?.destroyed,
-  }),
+  view: () => {
+    const state = game.phase === 'battle' ? game.player?.state : null;
+    if (!state || !game.player) return null;
+    return {
+      mode: rig.mode === 'SNIPER' ? 'sight' : 'third', zoom: rig.zoom,
+      orbitM: Math.hypot(camera.position.x - state.pos.x, camera.position.y - state.pos.y, camera.position.z - state.pos.z),
+      freeLook: !!game.player.input?.aimLocked && !game.player.combat?.destroyed,
+      gunYaw: state.yaw + (state.turretYaw ?? 0),
+    };
+  },
   playerId: () => (game.phase === 'battle' ? game.player?.id ?? null : null),
   armourOn: () => !!input.getSettings().armorAimOverlay,
 })));
@@ -4791,6 +4798,11 @@ const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAc
 // the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
 bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
 bus.on('ui:replayTutorial', () => withTutorial((access) => access.replay()));
+// 273: the training battle is the tutorial's own mode; its rollout loads the tutorial for any player (a resident access
+// hears the rollout itself)
+bus.on('battle:rollout', () => {
+  if (game.ruleset?.training && !tutorialAccess.value) withTutorial((access) => access.trainingRolledOut());
+});
 void entryReady.then(() => {
   tutorialEntryPassed = true;
   if (testDriveSpecId || pendingRoomInvitePromise) {
@@ -4806,7 +4818,7 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
   if (diagnosticsRequested) {
     Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
-      value: (chapter: 'garage' | 'battle' | 'tips') => withTutorial((access) => access.debugStart(chapter)) });
+      value: (chapter: 'garage' | 'battle' | 'tips' | 'training') => withTutorial((access) => access.debugStart(chapter)) });
     // 273: the guide alone over the battle showing (tools/tutorial-guide.browser.mjs); resolves to its snapshot reader
     Object.defineProperty(window, '__TUTORIAL_GUIDE', { configurable: true,
       value: (spec: import('./ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null) => tutorialAccess.load().then((access) => access.debugGuide(spec)) });

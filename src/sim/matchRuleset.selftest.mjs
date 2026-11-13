@@ -1,7 +1,7 @@
 // Rulesets are the contract every mode plays by (owner 2026-09-14 evening): pin the values the
 // sim reads, their determinism, the campaign difficulty fold, and the rule lines the cards show.
 import assert from 'node:assert/strict';
-import { isPracticeMode } from './gameModeCatalog.ts';
+import { isPracticeMode, isTutorialMode } from './gameModeCatalog.ts';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { rulesetSeatHullScale,
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
@@ -31,7 +31,7 @@ assert.equal(standard.timeLimitS, 900); assert.equal(standard.respawnS, null); a
 // owner 2026-09-21: the battle report reads this split — deaths are a stat and `dead` the state at the end
 // only where the ruleset revives
 assert.deepEqual(GAME_MODE_IDS.filter((mode) => matchRulesetFor(mode).respawnS != null).sort(),
-  ['air_support', 'capture_the_flag', 'drone', 'gun_game', 'infected', 'juggernaut', 'mars', 'proving_ground', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
+  ['air_support', 'capture_the_flag', 'drone', 'gun_game', 'infected', 'juggernaut', 'mars', 'proving_ground', 'training', 'turbo_ball', 'zone_control'], 'exactly the respawning modes revive');
 
 const turbo = matchRulesetFor('turbo_ball');
 assert.equal(turbo.gravityScale, 0.6, 'Turbo Ball plays at 0.6 g');
@@ -185,8 +185,9 @@ assert.deepEqual([...TEAM_NATIONS_IDS], ['mono', 'random']); assert.equal(DEFAUL
 for (const mode of GAME_MODE_IDS) {
   assert.equal(matchRulesetFor(mode).teamNations, 'mono', `${mode}: MONO-NATION is the default`);
   assert.ok(TEAM_NATIONS_MODE_SCOPE[mode], `${mode}: a TEAM NATIONS scope row`);
-  // the proving ground (a practice mode) has no opposing team to arrange: it stays MONO
-  if (!isPracticeMode(mode)) assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
+  // the proving ground (a practice mode) and the training battle (273: its hulls are the scenes') have no opposing team to
+  // arrange: they stay MONO
+  if (!isPracticeMode(mode) && !isTutorialMode(mode)) assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
 }
 assert.deepEqual(normalizeTeamArrangement('standard', { teamNations: 'random' }), { allies: null, enemies: null, waveSize: null, enemyNation: null, teamNations: 'random' });
 assert.equal(normalizeTeamArrangement('standard', { teamNations: 'mono' }), null, 'mono is the absent default');

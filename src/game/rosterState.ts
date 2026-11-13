@@ -647,9 +647,14 @@ export function pickBattleParticipants(
   // TEAM NATIONS (gameplay-modes-228): MONO's plan (pickNationalBattle), RANDOM ('random': no country preference at all,
   // the wave modes' default formation included), or null (the legacy pool: direct callers and the receipts)
   national: SoloNationalMode = null,
+  // the training battle's scenes' hulls (273, soloRosterPlan exact): exactly these, in order
+  exact: readonly string[] | null = null,
 ): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
+  if (exact) {
+    return [player, ...exact.map((id) => game.tankById.get(id)).filter((entity): entity is RosterEntity => !!entity && entity !== player)];
+  }
   const enemySlots = slots != null && Number.isFinite(slots) ? Math.max(1, Math.floor(slots)) : randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
   // debug roster bypasses the seeded shuffle/era matchmaking so the perf
@@ -699,8 +704,9 @@ export function planBattleParticipantIds(
   slots: number | null = null,
   formationLead: number | null = null,
   national: SoloNationalMode = null,
+  exact: readonly string[] | null = null,
 ) {
-  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead, national)
+  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead, national, exact)
     .map((entity) => entity.specId);
 }
 

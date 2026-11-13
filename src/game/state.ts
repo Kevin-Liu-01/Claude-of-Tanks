@@ -166,6 +166,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
+import { planTrainingRange } from '../sim/trainingGround.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
   APS_BURST_OFFSET_M, type ConsumableId, type ConsumableState,
@@ -754,8 +755,6 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.fireTickAcc = 0;
   // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
   // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal
-  game.matchSeed = options.seed ?? soloMatchSeed(game.battleCount, !!options.random);
-  game.combatRng = mulberry32(game.matchSeed);
   game.result = null;
   game.resultReason = null;
   game.resultTimeS = null;
@@ -765,6 +764,11 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
     options.arrangement === undefined ? readTeamArrangement(game.gameMode) : options.arrangement);
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
   else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
+  // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
+  // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal. The training
+  // battle pins its own (273: the same inputs give the same battle), so it is read once the ruleset is known.
+  game.matchSeed = options.seed ?? game.ruleset.training?.seed ?? soloMatchSeed(game.battleCount, !!options.random);
+  game.combatRng = mulberry32(game.matchSeed);
   game.watch = null;
   // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
   endCouchSession(game);
@@ -971,6 +975,14 @@ function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spaw
   context.provingTargets.push(entity);
 }
 
+/** A training battle's hull the scene does not drive (273): it holds its mark, braked, and never fires. */
+function holdTrainingActor(entity: SoloEntity): void {
+  entity.input.throttle = 0;
+  entity.input.steer = 0;
+  entity.input.brake = true;
+  entity.input.fire = false;
+}
+
 function warmStartBattleEntity(
   entity: SoloEntity,
   world: SoloWorld,
@@ -1078,7 +1090,9 @@ export function setupBattle(
   world.bindGroundOverlay?.(ground.overlay);
   // the proving ground (2026-10-20): its range laid out on this battlefield, the drive course raised in the overlay after
   // the map's craters (sim/provingGround.ts; fails closed); the bound ground reads every stamp as it lands
-  const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
+  // the training battle (273) seats from the same kind of layout: the player on its start, each scene's hull on its mark
+  const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world)
+    : game.ruleset.training ? planTrainingRange(game.ruleset.training) : null;
   game._provingRange = provingLayout;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
   // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
@@ -1129,7 +1143,7 @@ export function setupBattle(
     game.teamNations = national.record;
   } else {
     game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-      rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national) as SoloEntity[];
+      rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national, rosterPlan.exact) as SoloEntity[];
     const flags = soloDebugFlags();
     if (flags?.forceRoster?.length && flags.forceAllies) {
       game._nationalAllyIds = new Set(flags.forceAllies);
@@ -2316,6 +2330,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
       collectNavigationWrecks(game.tanks, game._navigationWrecks));
   }
   const proving = game.ruleset.provingGround;
+  const training = !!game.ruleset.training;
   const host = soloActionsHost(game, bus, world);
   for (const entity of game.tanks) {
     if (entity.modeActive === false) continue;
@@ -2324,6 +2339,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
+    else if (training && entity._provingMark && !entity.combat.destroyed) holdTrainingActor(entity);
     applyHullActions(entity, host);
     tickHullConsumables(entity, host);
   }

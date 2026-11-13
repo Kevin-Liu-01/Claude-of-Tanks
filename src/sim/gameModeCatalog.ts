@@ -48,8 +48,15 @@ export const HEADLINE_MODE_COUNT = 4;
  */
 export const PRACTICE_MODE_IDS = Object.freeze(['proving_ground'] as const);
 
-/** Every mode the simulation plays: the battle modes, then the practice modes. */
-export const GAME_MODE_IDS = Object.freeze([...BATTLE_MODE_IDS, ...PRACTICE_MODE_IDS] as const);
+/**
+ * The tutorial's modes (273): the training battle the first-game tutorial plays (sim/trainingGround.ts). Solo only, no
+ * verdict and no record, like a practice mode, but never offered: no list, picker or room names it; the tutorial
+ * launches it.
+ */
+export const TUTORIAL_MODE_IDS = Object.freeze(['training'] as const);
+
+/** Every mode the simulation plays: the battle modes, then the practice modes, then the tutorial's. */
+export const GAME_MODE_IDS = Object.freeze([...BATTLE_MODE_IDS, ...PRACTICE_MODE_IDS, ...TUTORIAL_MODE_IDS] as const);
 
 /**
  * The modes Deploy's mode picker offers (owner 2026-10-26: "make proving grround into a mode"): every battle mode in the
@@ -65,6 +72,11 @@ const PRACTICE_MODE_SET: ReadonlySet<string> = new Set(PRACTICE_MODE_IDS);
 /** A practice mode: solo only, no opponent, no verdict, no record (rooms refuse it; lists leave it out). */
 export function isPracticeMode(mode: unknown): mode is PracticeModeId {
   return typeof mode === 'string' && PRACTICE_MODE_SET.has(mode);
+}
+const TUTORIAL_MODE_SET: ReadonlySet<string> = new Set(TUTORIAL_MODE_IDS);
+/** A tutorial mode (273): the training battle; like a practice mode it takes no arrangement and keeps no record. */
+export function isTutorialMode(mode: unknown): mode is typeof TUTORIAL_MODE_IDS[number] {
+  return typeof mode === 'string' && TUTORIAL_MODE_SET.has(mode);
 }
 export type ObjectiveTeam = 'alpha' | 'bravo';
 
@@ -140,6 +152,9 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     // and angles, every shot's outcome on the shot card, no enemies, no clock, nothing recorded
     proving_ground: Object.freeze({ id: 'proving_ground', label: 'Proving Ground', shortLabel: 'RANGE', icon: 'modeProving',
       description: 'Test drive any tank on a measured range: target hulls at set ranges and angles show every penetration outcome. No enemies, no clock, nothing recorded.', respawns: true }),
+    // the training battle (273): the first-game tutorial's scripted battle, launched by the tutorial alone
+    training: Object.freeze({ id: 'training', label: 'Training', shortLabel: 'TRAIN', icon: 'modeProving',
+      description: 'The training battle: drive, look, spot, read armour, angle, go hull-down and win a first fight, one scene at a time. Nothing recorded.', respawns: true }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);

@@ -11,6 +11,7 @@ import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+import { TRAINING_RULES, type TrainingRules } from './trainingGround.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
 import type { ConsumableGateContext, ConsumableId, ConsumableTiming } from './consumableRules.ts';
 
@@ -882,6 +883,8 @@ export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly not
   air_support: { note: null },
   // the proving ground is a solo range against static target hulls: no team fiction applies (230 x gameplay-modes union)
   proving_ground: { note: null },
+  // the training battle's hulls are the scenes' own (273): no team fiction applies
+  training: { note: null },
 });
 
 export interface TeamArrangement {
@@ -1092,6 +1095,8 @@ const SYMMETRIC_ALLIES = range(0, BATTLE_FIELD_LIMIT - 2), SYMMETRIC_ENEMIES = r
 const COOP_ALLIES = range(0, 6);
 // the proving ground fields no allied bot and exactly one target hull per lane
 const PROVING_ALLIES = range(0, 0), PROVING_TARGETS = range(PROVING_GROUND_RULES.lanes.length, PROVING_GROUND_RULES.lanes.length);
+// the training battle fields exactly its scenes' hulls (273)
+const TRAINING_ALLIES = range(0, 0), TRAINING_ACTORS = range(TRAINING_RULES.actors.length, TRAINING_RULES.actors.length);
 export const TEAM_ARRANGEMENT_LIMITS: {
   readonly field: number;
   readonly allies: Readonly<Record<GameModeId, IntRange>>;
@@ -1103,13 +1108,13 @@ export const TEAM_ARRANGEMENT_LIMITS: {
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
     juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8), air_support: SYMMETRIC_ALLIES,
-    proving_ground: PROVING_ALLIES,
+    proving_ground: PROVING_ALLIES, training: TRAINING_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
     juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24), air_support: SYMMETRIC_ENEMIES,
-    proving_ground: PROVING_TARGETS,
+    proving_ground: PROVING_TARGETS, training: TRAINING_ACTORS,
   }),
   waveSize: range(2, 12),
 });
@@ -1292,6 +1297,8 @@ export interface MatchRuleset {
   readonly routePush?: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
+  /** The training battle's ground (273, sim/trainingGround.ts): the loaner, the seed, the start and the scenes' hulls. */
+  readonly training?: TrainingRules;
   /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
   readonly watch?: WatchRules;
   /** A couch battle (COUCH_RULES): phones drive seats of the roster, shown under one shared camera. */
@@ -1432,6 +1439,13 @@ export function worldKeyFor(mapId: string, mode: GameModeId | string | null | un
 
 /** The ground a mode's placement reserves for its objectives (sim/matchPlacement.ts reads it by the mode alone, as the
  *  world's clearings do): each side's objective footprint and the middle reserve (null: an unknown mode). */
+/** The mode seats its hulls on marks that keep the facing they were laid with (the proving ground's lanes, the training
+ *  battle's scenes): the placement keeps each mark's yaw rather than the deployment facing law. */
+export function rulesetKeepsMarkFacing(mode: GameModeId | string | null | undefined): boolean {
+  const base = (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)];
+  return !!(base?.provingGround || base?.training);
+}
+
 export function objectivePlacementFor(mode: GameModeId | string | null | undefined): Pick<MatchRuleset, 'objectiveFootprint' | 'middleReserve'> | null {
   return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)] ?? null;
 }
@@ -1719,6 +1733,14 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     allies: 0, enemies: PROVING_GROUND_RULES.lanes.length, respawnS: 3, respawnSafeM: null, timeLimitS: null,
     records: false, provingGround: PROVING_GROUND_RULES,
   }),
+  // The training battle (273, the first-game tutorial): the player in the loaner on one section of Verdant Fields, the
+  // scenes' hulls on their marks (no AI; a scene's script drives the ones that fire), normal spotting (the spotting scene
+  // hides its target until the player finds it), unlimited rounds, a destroyed hull back on its mark in 3 s, no clock, no
+  // record. The standard physics, damage and destruction apply unchanged: every outcome the scenes teach is a battle's.
+  training: Object.freeze({
+    ...STANDARD, mode: 'training', ammo: 'unlimited', allies: 0, enemies: TRAINING_RULES.actors.length, respawnS: 3,
+    respawnSafeM: null, timeLimitS: null, records: false, training: TRAINING_RULES,
+  }),
 });
 
 /**
@@ -1785,7 +1807,7 @@ const withDefault = (offered: readonly number[], fallback: number | null | undef
  */
 export function arrangementChoices(mode: GameModeId): ArrangementChoices {
   const base = BASE_RULESETS[mode];
-  if (!base || base.provingGround) return Object.freeze({});
+  if (!base || base.provingGround || base.training) return Object.freeze({});
   const out: { -readonly [K in keyof ArrangementChoices]: ArrangementChoices[K] } = {};
   if (arrangementFieldApplies(mode, 'scoreTarget')) out.scoreTarget = withDefault(OFFERED_SCORE_TARGETS[mode] ?? OFFERED_SCORE_TARGET, RULESET_SCORE_TARGETS[mode]);
   if (arrangementFieldApplies(mode, 'respawnS')) out.respawnS = withDefault(OFFERED_RESPAWN_S, base.respawnS);
@@ -1911,6 +1933,8 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   if (!input || !acceptsTeamArrangement(mode)) return null;
   // the proving ground's sides are its lanes: the moving-target switch is its only arrangement
   if (BASE_RULESETS[mode].provingGround) return input.movingTargets === true ? Object.freeze({ movingTargets: true }) : null;
+  // the training battle's sides are its scenes' (273): nothing a player arranges changes them
+  if (BASE_RULESETS[mode].training) return null;
   let allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies[mode]);
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = arrangementFieldApplies(mode, 'waveSize') && input.waveSize != null
