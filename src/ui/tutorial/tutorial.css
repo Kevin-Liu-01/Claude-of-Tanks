@@ -35,7 +35,7 @@
 .cot-tut-bar i{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transition:transform var(--dur-base) var(--ease-move);}
 .cot-tut-media{margin:0;border-radius:var(--r1);overflow:hidden;background:var(--surface-scene);aspect-ratio:16 / 9;}
 .cot-tut-media[hidden]{display:none;}
-.cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;}
+.cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
 .cot-tut-body{margin:0;font-size:var(--fs-14);line-height:1.5;color:var(--ink-2);}
 .cot-tut-body .cot-c-kbd{margin:0 1px;}
