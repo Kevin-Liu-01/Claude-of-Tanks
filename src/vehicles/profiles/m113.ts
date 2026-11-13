@@ -37,7 +37,7 @@ import { weaponAssembly } from './weaponStock.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-import { M113_BASE as BASE, M113_TOW, m113Datums, type M113Mark, type M113TowMark } from '../m113Datums.ts';
+import { M113_A2_TANKS, M113_BASE as BASE, M113_TOW, m113Datums, type M113Mark, type M113TowMark } from '../m113Datums.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
 
 /** The marks this file draws the hull of: the four, and the M163 VADS's carrier, the M741. */
@@ -268,7 +268,7 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   // ridges and the cap on the slope beside it; plain outer faces (r8: nothing on or under them; each tank hangs on the
   // rear plate by its front face)
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.54, yTop = 1.04, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
+    const A = M113_A2_TANKS, z0 = D.sternZ, z1 = D.sternZ - A.depth, yLo = A.yLo, yTop = A.yTop, yFace = yLo + A.faceFrac * (yTop - yLo), run = yTop - yFace;
     const slope = Math.atan2(yTop - yFace, run), slopeLen = Math.hypot(yTop - yFace, run);
     const onSlope = (u: number, out: number): [number, number] => [yFace + u * (yTop - yFace) + out * Math.cos(slope),
       z1 + u * run - out * Math.sin(slope)];

@@ -17,6 +17,10 @@ export const M113_BASE = Object.freeze({
   // it about 0.07 m over them, its top level with the bottoms of the A2's rear fuel tanks, Commons photo 07)
   idlerFromRear: 0.32, idlerY: 0.46,
 });
+/** The M113A2's armoured rear fuel tanks (profiles/m113.ts addA2FuelTanks; the A3's and the M741A1's), hull frame: their
+ * depth astern of the rear plate, their bottoms and their tops at the plate, the vertical rear face over the lower half
+ * (272: photo 07's ratios through its own camera put the bottoms level in it with the foot of the hull's rear lip). */
+export const M113_A2_TANKS = Object.freeze({ depth: 0.43, yLo: 0.54, yTop: 1.04, faceFrac: 0.5 });
 /** The turret ring's distance behind the nose (the AS4 profile; the FSV's and MRV's turrets over the fighting
  * compartment behind the driver; the A3's commander's cupola on the roof's centre behind the engine, ahead of the cargo
  * hatch, at the FSV's and MRV's station: the powerpack and final drive ahead of it keep their room). */

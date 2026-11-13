@@ -41,7 +41,7 @@ import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles,
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
-import { m113Datums } from '../m113Datums.ts';
+import { M113_A2_TANKS, M113_BASE, m113Datums } from '../m113Datums.ts';
 import { shapeSurfaceSamples } from '../../../tools/crew-seat-fit.mjs';
 import { M163_BEACON, M163_GUN, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
 
@@ -237,9 +237,11 @@ try {
   // lower half and a 45 degree slope over the upper; the long flat case across the roof's left rear; the beacon out of
   // the gun's reach at the roof's front right corner
   {
-    const D = m113Datums('fsv'), roofY = M741_RING.roofY, z1 = D.sternZ - 0.43, yLo = 0.76, yFace = 1.01;
+    // (272: from the shared hull's datums, so a move of the idler or the tanks moves the probes with them)
+    const A = M113_A2_TANKS, D = m113Datums('fsv'), roofY = M741_RING.roofY, z1 = D.sternZ - A.depth, yLo = A.yLo,
+      yFace = A.yLo + A.faceFrac * (A.yTop - A.yLo);
     for (const s of [-1, 1]) {
-      const low = firstHit(hull, hull, [s * 1.085, 0.56, D.sternZ - 1.5], [0, 0, 1], 1.6);
+      const low = firstHit(hull, hull, [s * 1.085, Math.min(M113_BASE.idlerY, yLo - 0.04), D.sternZ - 1.5], [0, 0, 1], 1.6);
       assert.ok(low && low.point.z > D.sternZ - 0.40, `the ${s > 0 ? 'left' : 'right'} idler's hub shows under its fuel tank (hit z ${low?.point.z.toFixed(2)})`);
       for (const y of [yLo + 0.04, yFace - 0.04]) {
         const face = firstHit(hull, hull, [s * 0.90, y, D.sternZ - 1.5], [0, 0, 1], 1.6);
