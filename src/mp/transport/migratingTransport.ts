@@ -63,8 +63,9 @@ export class MigratingTransport implements Transport {
 
   close(reason: TransportCloseReason = TRANSPORT_CLOSE.CLIENT, detail = ''): void {
     if (this.closed) return;
-    this.closed = true;
+    // the state it leaves, read before `closed` (audit M2, 2026-11-02: it was read after, so always 'closed')
     const previous = this.state;
+    this.closed = true;
     this.detach();
     this.current.close(reason, detail);
     this.stateListeners.emit({ state: 'closed', previous, reason, detail });
@@ -78,6 +79,7 @@ export class MigratingTransport implements Transport {
   replace(next: Transport, detail = 'host migration'): void {
     if (this.closed) throw new Error('transport closed');
     if (next === this.current) return;
+    const left = this.state;
     const previous = this.current;
     this.detach();
     const inner = previous.stats;
@@ -89,7 +91,7 @@ export class MigratingTransport implements Transport {
     this.replacements++;
     this.replacing = true;
     this.current = next;
-    this.stateListeners.emit({ state: 'reconnecting', previous: 'open', reason: TRANSPORT_CLOSE.NETWORK, detail, attempt: this.replacements, retryDelayMs: 0 });
+    this.stateListeners.emit({ state: 'reconnecting', previous: left, reason: TRANSPORT_CLOSE.NETWORK, detail, attempt: this.replacements, retryDelayMs: 0 });
     this.attach(next, true);
     if (next.state === 'open') this.finishReplacement(next, 0);
     else if (next.state === 'idle' || next.state === 'closed') next.open();

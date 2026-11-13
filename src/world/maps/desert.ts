@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -503,7 +504,7 @@ export default {
     // tanks), convoy dressing + defended-crossroads clutter
     // the map-vehicles lane (2026-10-06, the period ruling): the Maghreb: Tunisia's M60A3s and M48s, the T-55s and
     // T-62s over the Libyan border
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48a5_patton', 't62_1975'] },
+    tankWrecks: WRECK_CASTS.desert,
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall

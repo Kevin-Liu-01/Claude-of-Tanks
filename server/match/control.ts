@@ -17,7 +17,8 @@ import type http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { CLOSE_REASON } from '../../src/mp/wire/constants.ts';
 import { TANK_IDS } from '../../src/vehicles/tankIdAliases.ts';
-import type { ActorBotSpec, ActorSeatSpec, MatchActor } from './matchActor.ts';
+import { matchConcluded, matchStatusPhase } from './matchActor.ts';
+import type { ActorBotSpec, ActorSeatSpec, MatchActor, MatchStatusPhase } from './matchActor.ts';
 
 const ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
 const MAX_BODY_BYTES = 64 * 1024;
@@ -37,13 +38,20 @@ export interface MatchStartRequest {
 interface MatchControlStatus {
   roomId: string;
   matchId: string | null;
-  phase: string;
+  phase: MatchStatusPhase;
   tick: number;
   verdict: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
 }
 
+/**
+ * What a status reads of a match: its actor, or the final reading the service keeps of an actor that stopped itself
+ * (audit M3, 2026-11-02: the service drops such an actor, so its world and histories go, while the room may still poll
+ * its verdict; MatchService.matchStatusSource).
+ */
+export type MatchStatusSource = Pick<MatchActor, 'phase' | 'tick'> & { readonly authority: Pick<MatchActor['authority'], 'result' | 'resultReason'> };
+
 interface MatchControlPort {
-  actor(roomId: string): MatchActor | undefined;
+  actor(roomId: string): MatchStatusSource | undefined;
   createActor(request: MatchStartRequest): MatchActor;
   removeActor(roomId: string, reason?: number): boolean;
 }
@@ -100,13 +108,13 @@ function readMatchStartRequest(value: unknown): MatchStartRequest | null {
   };
 }
 
-export function statusOf(roomId: string, actor: MatchActor | undefined, matchId: string | null): MatchControlStatus | null {
+export function statusOf(roomId: string, actor: MatchStatusSource | undefined, matchId: string | null): MatchControlStatus | null {
   if (!actor) return null;
   const result = actor.authority.result;
   return {
     roomId,
     matchId,
-    phase: actor.stopped ? 'stopped' : actor.ended ? 'ended' : actor.authority.phase,
+    phase: matchStatusPhase(actor.phase),
     tick: actor.tick,
     verdict: result ? { result, reason: actor.authority.resultReason ?? '' } : null,
   };
@@ -155,7 +163,7 @@ export function createMatchControl({ port, controlSecret, matchPath = '/match' }
           const start = readMatchStartRequest(body);
           if (!start) { json(response, 400, { error: 'invalid_start' }); return; }
           const existing = port.actor(start.roomId);
-          if (existing && !existing.stopped && !existing.ended) { json(response, 409, { error: 'match_running', matchId: matchIds.get(start.roomId) ?? null }); return; }
+          if (existing && !matchConcluded(existing.phase)) { json(response, 409, { error: 'match_running', matchId: matchIds.get(start.roomId) ?? null }); return; }
           if (existing) port.removeActor(start.roomId, CLOSE_REASON.MATCH_ENDED);
           try {
             port.createActor(start);

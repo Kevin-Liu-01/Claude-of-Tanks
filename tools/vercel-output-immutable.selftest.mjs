@@ -109,11 +109,10 @@ try {
   }
   assert.equal(cacheFor('/mp-collision/verdant.3700dca0d36b.json'), IMMUTABLE_CACHE_CONTROL, 'a content-addressed manifest is immutable');
   assert.equal(cacheFor('/mp-collision/titan_gorge.0123456789ab.json'), IMMUTABLE_CACHE_CONTROL);
-  // (physics stream, 2026-10-16) this build's manifests on their own route, as immutable as 225's frozen ones
-  assert.equal(cacheFor('/mp-collision/v2/verdant.0a1b2c3d4e5f.json'), IMMUTABLE_CACHE_CONTROL, 'a v2 manifest is immutable');
-  assert.equal(cacheFor('/mp-collision/v2/verdant@assault-trenches.0a1b2c3d4e5f.json'), IMMUTABLE_CACHE_CONTROL);
-  assert.equal(cacheFor('/mp-collision/v2/index.json'), null, 'the v2 index keeps Vercel\'s default');
-  // (the maps lane, 2026-10-20) 229's manifests (the v5 codec) on v3, production 228's frozen on v2
+  // (272) production 228's frozen set on v2 is retired: a stray file there gets no route, like any unknown path
+  for (const path of ['/mp-collision/v2/verdant.0a1b2c3d4e5f.json', '/mp-collision/v2/verdant@assault-trenches.0a1b2c3d4e5f.json',
+    '/mp-collision/v2/index.json']) assert.equal(cacheFor(path), null, `${path}: the retired v2 route keeps Vercel's default`);
+  // (the maps lane, 2026-10-20) 229's manifests (the v5 codec) on v3
   assert.equal(cacheFor('/mp-collision/v3/verdant.5e4d3c2b1a0f.json'), IMMUTABLE_CACHE_CONTROL, 'a v3 manifest is immutable');
   assert.equal(cacheFor('/mp-collision/v3/titan_gorge.5e4d3c2b1a0f.json'), IMMUTABLE_CACHE_CONTROL);
   assert.equal(cacheFor('/mp-collision/v3/index.json'), null, 'the v3 index keeps Vercel\'s default');
@@ -148,15 +147,15 @@ try {
   writeFileSync(join(output, 'config.json'), JSON.stringify({ version: 3, routes: [{ handle: 'filesystem' }] }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'without routes --check exits non-zero');
   const first = execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
-  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 2 v2 collision manifests → 1 immutable routes; 2 v3 collision manifests → 1 immutable routes; 11 runtime files in textures, icons, fonts, audio, maps, minimaps, media, brand, field-guide → 8 routes \(public, max-age=3600, stale-while-revalidate=86400\); 3 manifests in media, icons, field-guide → 2 routes/);
+  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 2 v3 collision manifests → 1 immutable routes; 11 runtime files in textures, icons, fonts, audio, maps, minimaps, media, brand, field-guide → 8 routes \(public, max-age=3600, stale-while-revalidate=86400\); 3 manifests in media, icons, field-guide → 2 routes/);
   const once = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
   const twice = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   assert.deepEqual(twice, once, 'running the tool again changes nothing');
   assert.equal(twice.routes.filter(isImmutableAssetRoute).length, 1);
-  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 14, 'assets + the three collision routes + eight runtime directories + two manifest directories');
+  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 13, 'assets + the two collision routes + eight runtime directories + two manifest directories');
   assert.equal(twice.routes[twice.routes.length - 1].handle, 'filesystem');
-  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 26 files is covered/);
+  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 24 files is covered/);
   // --check covers the new families: drop the collision route and it fails.
   writeFileSync(join(output, 'config.json'), JSON.stringify({ ...twice, routes: twice.routes.filter((route) => !route.src?.startsWith('^/mp-collision/')) }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'an uncovered collision manifest fails --check');

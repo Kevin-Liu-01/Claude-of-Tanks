@@ -68,8 +68,7 @@ in [bm_oplot_t.md](bm_oplot_t.md).
   `761c8698003c6729`, `~/cot-lanes/oplot-ref/ukrainian_t-84bm_oplot-m.glb` (gitignored lane folder). Nodes: HULL,
   HULL ARMOR (bow ERA), HULL POKLOP (driver's hatch), SKIRT, KOLLO (wheels), GUS (tracks), TUR, TUR ARMOR, TUR POKLOP,
   `default076` (turret interior), mg. Front is source -Z. No vertex, index, texture or topology of it ships.
-- Owner references: `~/cot-launch-state/streams/owner-shots/20261027-oplot-m-ref.png` (green Oplot-M) and
-  `20261027-oplot-t-ref.png` (desert Oplot-T).
+- Owner references (kept outside the repository): a green Oplot-M (2026-10-27) and a desert Oplot-T.
 - Published figures: KMDB/Malyshev and Ukroboronprom via Army Technology ("Oplot-M Main Battle Tank"), Quwa ("KMDB-
   Malyshev Oplot"), Wikipedia "T-84" (variants list: 478DU2, 478DU4, 478DU9, 478DU9-1, 478DU9-T, Oplot-P, 478DU10;
   Oplot-T order of 49 in 2011, deliveries to 2018), GlobalSecurity "T-84 fire control" (PNK-5/TKN-5 on the T-84U),

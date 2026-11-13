@@ -103,6 +103,9 @@ export interface StageFracture {
   /** A structure's damage changed what it draws: what it left hanging is read (structureHanging.ts) once its faces are
    *  drawn, and comes down (`settled`: a late joiner's, at rest at once). */
   hanging(seam: StructureDamageSeam, settled: boolean): void;
+  /** (amberford-lavoir-272) Its roof went as a set piece's named piece, no roof section's fall: its top storey's rooms are
+   *  laid open from now on, as a roof's fall leaves them. */
+  roofOpened(structureIdx: number): void;
 }
 
 interface FractureStagesOptions {
@@ -656,6 +659,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         if (isLandmark(seam) && !landmarks.handles(seam.builder)) { markHanging(seam, settled); return; }
         markHanging(seam, settled);
       },
+      roofOpened(structureIdx) {
+        fracture.roofFell(structureIdx);
+      },
       fallRoof(e, seam) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
@@ -744,7 +750,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       }
       return laid.size;
     },
-    shiftTime(delta) { last += delta; },
+    shiftTime(delta) {
+      last += delta;
+      // (2026-11-02 audit R7) the fracture it owns keeps its own stamps (its collapse's face hold), and the sweep its age
+      fracture.shiftTime(delta);
+      if (hangingJob && hangingJob.at >= 0) hangingJob.at += delta;
+    },
     reset() {
       for (const m of warmed) { m.removeFromParent(); m.geometry.dispose(); }
       warmed.length = 0;

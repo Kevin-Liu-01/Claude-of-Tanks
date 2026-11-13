@@ -1,10 +1,12 @@
-import type { ModeCheckpoint } from './matchModes.ts';
+import type { ModeCheckpoint, ModeLife } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
-import { packSmokeScreen } from './smokeReceipt.ts';
-import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
+import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
+import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, SMOKE_DURATION_S, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
-import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
+import {
+  usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex, nextCannonMuzzle, cannonMouth, type CannonMouth, type CannonMuzzleCursor,
+} from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Headless authoritative battle simulation.
@@ -36,7 +38,7 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, resetHullCrashMemory, resolveHullImpact, resolveRamPairDamage,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
@@ -61,7 +63,6 @@ import {
   tickReload,
   tickFire,
   tickModuleRepairs,
-  hullDamageTaken,
 } from './damage.ts';
 import type {
   CombatState,
@@ -76,6 +77,7 @@ import type {
   SpottingVector3,
 } from './spotting.ts';
 import { captureWorldSnapshot } from './worldSnapshot.ts';
+import { createRotaryShotThinning } from './fireCycleFloor.ts';
 import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
 import { sweepLightCover, type LightCoverQuery } from './shellLightCover.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
@@ -93,7 +95,8 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { botFriendlyFireRisk } from '../game/ai.ts';
+// applyPendingBotNews: the drivers' flush of the bots' news (audit M7)
+import { applyPendingBotNews } from '../game/ai.ts';
 import { createBotController, createOpeningPlan, openingRoute } from '../game/botConstruction.ts';
 import type { BotMatch } from '../game/botConstruction.ts';
 import type { AiDifficulty } from '../game/ai.ts';
@@ -122,8 +125,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor, terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -139,6 +142,8 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
+import { createCrushPressLedger } from './crushPress.ts';
+import { botShotClear, deliverShellHit, deliverShotFired } from './botEvents.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
@@ -151,10 +156,10 @@ import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../worl
 import { fellConcealersAt } from './spotting.ts';
 import { botCamoRoll, camoSelectionBonus } from './camoPaint.ts';
 import { hullReachM, shellMayReachHull } from './shellHullReach.ts';
-import { applyLethalRamModuleDamage } from './ramModuleDamage.ts';
 import type { BotCamo } from './camoPaint.ts';
 
 import * as detMath from './detMath.ts';
+import { OBSTACLE_FALL_NONE, encodeObstacleFall } from './obstacleFall.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
 type MatchPhase = 'loading' | 'countdown' | 'playing';
@@ -201,7 +206,7 @@ interface AuthoritativeInput {
 type AuthoritativeSpec = FleetTankSpec;
 
 type AuthoritativeCombatState = CombatState & EquipmentCombatState &
-  MovementCombatState & MatchModeEntity['combat'];
+  MovementCombatState & MatchModeEntity['combat'] & CannonMuzzleCursor;
 
 interface AIFriendlyRisk {
   allyId: string;
@@ -216,6 +221,10 @@ interface AuthoritativeAIController {
   notifyUnderFire(entity: AuthoritativeEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
   notifyEnemyFired(entity: AuthoritativeEntity): void;
   notifyFriendlyBlocked(risk: AIFriendlyRisk): void;
+  /** Apply what reached the brain since its last update (game/ai.ts applyPendingBotNews; audit M7). */
+  applyPendingNews?(): void;
+  /** Hand the hull back after a revive (game/ai.ts resume; round 2 U18). */
+  resume?(timeS?: number): void;
 }
 
 export interface AuthoritativeEntity {
@@ -226,7 +235,9 @@ export interface AuthoritativeEntity {
   state: TankState;
   combat: AuthoritativeCombatState;
   input: AuthoritativeInput;
-  equip: string[];
+  /** The seat's loadout after the ruleset's cut, handed to applyEquipmentToCombat at the spawn and at each revive. The
+   *  kit that took effect, gated by the hull, is combat.equip: its one copy, which a live re-equip replaces (round 4 F8
+   *  review: a second copy here was written beside each call and went stale on a re-equip). */
   loadout: string[];
   bot: boolean;
   isPlayer: boolean;
@@ -243,6 +254,9 @@ export interface AuthoritativeEntity {
   aiCtl?: AuthoritativeAIController;
   aerial?: AerialView;
   modeActive?: boolean;
+  /** The mode controller's life state and lives begun (sim/matchModes.ts ModeLife; lag compensation reads the count). */
+  modeLife?: ModeLife;
+  modeLives?: number;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
   modeJumpMps?: number | null;
@@ -272,10 +286,8 @@ export interface AuthoritativeEntity {
   _ramKeep?: number;
 }
 
-export interface AuthoritativeObstacle extends CollisionRecord {
-  _pressT?: number;
-  _pressS?: number;
-}
+// (the crush press is the match's, never the record's: sim/crushPress.ts; 2026-11-02 audit M6)
+export type AuthoritativeObstacle = CollisionRecord;
 
 interface AuthoritativeWorldRayHit extends SpottingRayHit {
   kind: string;
@@ -334,6 +346,8 @@ export const MAX_AUTHORITATIVE_PLAYERS = 64;
 export interface NewModeCheckpoint {
   mode: ModeCheckpoint;
   flights: { id: string; flight: AerialCheckpoint }[];
+  /** The pillboxes' booked points by prop index (audit M1, 2026-11-02: a half-broken pillbox came back whole). */
+  fortified?: Array<[propIdx: number, points: number]>;
 }
 
 export interface AuthoritativeMatchOptions {
@@ -346,7 +360,13 @@ export interface AuthoritativeMatchOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
   seed?: number;
+  /** The clock limit in battle seconds (tests, tooling, a room's configured limit); absent = the ruleset's clock. */
   battleLimitS?: number;
+  /**
+   * (272) The battle time a resumed match starts from (a host migration: the newest frame's battle time, the HUD's
+   * clock); 0 for a fresh match. The mode controller and the clock limit both run on `timeS + resumedAtS`.
+   */
+  resumedAtS?: number;
   countdownS?: number;
   gameMode?: GameModeId | string;
   /** Rules the match plays by; derived from gameMode when absent (campaign operations pass theirs). */
@@ -389,6 +409,12 @@ export interface AuthoritativeMatch {
   readonly phase: MatchPhase;
   readonly gameMode: GameModeId;
   readonly pendingEventCount: number;
+  /**
+   * The mode events (`mode_*`) emitted so far (round 2 U2): a migration keyframe seals the mode checkpoint, and a host
+   * that dies between a mode event and its next keyframe leaves the event out of every seat's resume (a goal, a wave, a
+   * capture replayed or lost), so the host core seals one soon after each (matchHostCore.ts housekeep).
+   */
+  readonly modeEventSerial: number;
   readonly shotFeedbackVersion: 1;
   readonly modeController: MatchModeController<AuthoritativeEntity>;
   onMatchReady(): void;
@@ -424,10 +450,24 @@ export interface AuthoritativeMatch {
    */
   restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
   /**
+   * A resumed match the previous authority had already decided (audit M1, 2026-11-02): its verdict stands, without an
+   * event (every seat was told), and its ending hold counts as spent, so the field stays still and the match ended. A
+   * keyframe sealed after the verdict used to resume as a running match with no result.
+   */
+  restoreVerdict(result: MatchResult, reason: string): void;
+  /**
    * A resumed match (physics lane): a wreck's turret body where the previous authority's newest row had it — asleep
    * where it lay, or awake to fall on from there. False for an unknown hull or a vehicle without a turret.
    */
   restoreWreckTurret(id: string, pose: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; asleep: boolean }): boolean;
+  /**
+   * A resumed match (round 2 U2): the smoke screens still standing, from the compact form a snapshot meta carries
+   * (smokeReceipt.ts packSmokeScreen), rebuilt on this map's wind and moved onto this authority's clock by `clockShiftS`
+   * (each launch time plus it). They block sight lines here as they did on the previous authority, and the frames carry
+   * them on (a migrated host used to drop every screen: the hulls behind them were seen at once). Screens past their
+   * duration are left out. Returns how many were laid down.
+   */
+  restoreSmokeScreens(screens: readonly SmokeScreen[], clockShiftS: number): { restored: number };
   /** Every turret body's pose, rounded to the millimetre (the determinism audit hashes it). */
   wreckTurretDigest(): string;
 }
@@ -471,12 +511,9 @@ interface PendingRam {
   vertical: boolean;
 }
 
-const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
-const CRUSH_PRESS_S = 0.45;
-const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
 const TEAM_ALPHA = 'alpha';
@@ -590,7 +627,15 @@ function spawnFor(
   return { x: slot.x, z: slot.z, yaw: slot.yaw };
 }
 
-function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec): { muzzle: Vector3; direction: Vector3 } {
+const _mouth: CannonMouth = { x: 0, y: 0 };
+/**
+ * The round's origin and bore. `cannonMuzzle` (round 8 Y1 s5-01) is the gun's own mouth the round leaves
+ * (launcherPolicy.ts nextCannonMuzzle; -1 for a single bore): the origin moves to that mouth in the pitching gun frame
+ * (its x and y about the bore, the barrel's length along it), the bore stays the gun's, as the solo step takes the
+ * visual's tip of the same mouth and the gun's direction.
+ */
+function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec,
+  cannonMuzzle = -1): { muzzle: Vector3; direction: Vector3 } {
   const state = entity.state;
   const armor = entity.spec.armor || {};
   const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
@@ -608,9 +653,14 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   const sinPitch = detMath.sin(state.gunPitch);
   const cosPitch = detMath.cos(state.gunPitch);
   _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
-  _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
-    .applyMatrix4(_turretMatrix)
-    .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
+  if (cannonMouth(entity.spec.gun, cannonMuzzle, _mouth)) {
+    _muzzle.set(gunPivot[0] + _mouth.x, gunPivot[1] + _mouth.y * cosPitch + barrelM * sinPitch,
+      gunPivot[2] - _mouth.y * sinPitch + barrelM * cosPitch).applyMatrix4(_turretMatrix);
+  } else {
+    _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
+      .applyMatrix4(_turretMatrix)
+      .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
+  }
   const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
     const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
@@ -792,7 +842,8 @@ export function createAuthoritativeMatch({
   players = [],
   mapId = 'verdant',
   seed = 6000,
-  battleLimitS = BATTLE_LIMIT_S,
+  battleLimitS,
+  resumedAtS = 0,
   countdownS = 5,
   gameMode = 'standard',
   ruleset: rulesetOption,
@@ -812,9 +863,10 @@ export function createAuthoritativeMatch({
   // A browser world or dedicated collision lease already owns the exact field.
   // Do not bake a second 5.5 MB field merely to obtain its existing layout.
   const suppliedHeightField = worldCollision?.heightField;
-  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines
+  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines (the
+  // ruleset's terrainVariant names it)
   const normalizedGameMode = normalizeGameMode(gameMode);
-  const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
+  const shared = suppliedHeightField ? null : sharedTerrain(mapId, terrainVariantFor(normalizedGameMode) === 'assault-trenches');
   // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
   // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
   const baseHeightField = suppliedHeightField || shared!.heightField;
@@ -837,8 +889,16 @@ export function createAuthoritativeMatch({
   // (physics stream, 2026-10-16) the same indices as a set: a restore of thousands (a keyframe, a migration, a late
   // join over Saltwind's crushed walls) asks it, not the list, whether an index is in (the list keeps its order)
   const destroyedObstacleSet = new Set<number>();
+  // (round 2, U27) each listed obstacle's fall, in the list's order (sim/obstacleFall.ts), and the team whose viewers may
+  // read it (null: every viewer). A fall is the live event's cause and direction, so it is withheld as that event's are:
+  // a hull source's fall reads only to its own team (viewerWorldEvent withholds them from a viewer that does not see the
+  // source; the list outlives the moment, so the team that always saw it is the one that reads it). A restored entry has
+  // none (a keyframe names indices only).
+  const destroyedObstacleFalls: number[] = [];
+  const destroyedObstacleFallTeams: (Team | null)[] = [];
   let destructibleRevision = 0;
   const shells: DamageShell[] = [];
+  const thinRotaryShot = createRotaryShotThinning();
   const destroyedBeforeBurst = new Map<string, boolean>();
   let nextShellId = 1;
   const nextAerialShellId = () => nextShellId++;
@@ -855,7 +915,7 @@ export function createAuthoritativeMatch({
     tankAlong: (origin, direction, maxDist, ownerId) => droneTankAlong(entities, origin, direction, maxDist, ownerId),
   };
   let timeS = 0;
-  let modeTimeOffsetS = 0;
+  const modeTimeOffsetS = Math.max(0, finite(resumedAtS, 0));
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
@@ -868,11 +928,16 @@ export function createAuthoritativeMatch({
   // damage-taken, reload, ammunition and equipment at spawn / revive, gravity at the muzzle, the clock.
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === normalizedGameMode
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
-  // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
-  const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
+  // ONE clock (272, improve-271 plan 010): the limit and the mode controller both read `timeS + modeTimeOffsetS`,
+  // the battle time (a resumed match's offset is the newest frame's battle time, the HUD's clock, never the older
+  // keyframe's), against the FULL limit: an explicit battleLimitS (any value, 900 included), else the ruleset's
+  // (null = no clock). The mode steps first in a tick, so at the limit its own verdict wins over time_limit.
+  const clockLimitS = battleLimitS ?? ruleset.timeLimitS ?? Infinity;
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
+  // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
+  const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
   // step owns the same object (game/state.ts) and calls it at the same moments
   const destruction = createDestructionMatch({
@@ -961,7 +1026,7 @@ export function createAuthoritativeMatch({
     const bot = !!record.bot;
     const loadout = rulesetLoadout(ruleset, Array.isArray(record.equipment)
       ? record.equipment.slice() : defaultLoadoutFor(spec));
-    const equipment = applyEquipmentToCombat(
+    applyEquipmentToCombat(
       combat,
       loadout,
       spec,
@@ -979,7 +1044,6 @@ export function createAuthoritativeMatch({
       team,
       state,
       combat,
-      equip: equipment,
       loadout,
       input,
       bot,
@@ -1082,7 +1146,9 @@ export function createAuthoritativeMatch({
 
   initializeBots();
 
+  let modeEventSerial = 0;
   function emit(type: string, payload: Record<string, RuntimeValue>): AuthoritativeEvent {
+    if (type.startsWith('mode_')) modeEventSerial++;
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
@@ -1132,7 +1198,7 @@ export function createAuthoritativeMatch({
     tank.input = makeInput();
     tank.input.aimPoint.copy(tank.state.aimPoint);
     tank.combat = createCombatState(tank.spec) as AuthoritativeCombatState;
-    tank.equip = applyEquipmentToCombat(
+    applyEquipmentToCombat(
       tank.combat, tank.loadout || rulesetLoadout(ruleset, defaultLoadoutFor(tank.spec)), tank.spec,
     );
     // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
@@ -1142,7 +1208,12 @@ export function createAuthoritativeMatch({
     initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
+    // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
+    resetHullCrashMemory(tank);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
+    // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn
+    // (game/ai.ts resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
+    tank.aiCtl?.resume?.(timeS);
   }
 
   const modeController = createMatchModeController<AuthoritativeEntity>({
@@ -1165,7 +1236,7 @@ export function createAuthoritativeMatch({
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   const airSupportView = modeController.airSupport;
-  const _airPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  const _airPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
   /** Air Support's counter-air for the roof stations: the nearest enemy aircraft, and its share of a round. */
   function counterAirFor(now: () => number): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
     return {
@@ -1237,10 +1308,8 @@ export function createAuthoritativeMatch({
     // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never
     // crushing them)
     if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
-    if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
-    obstacle._pressT = timeS;
-    obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-    return obstacle._pressS >= CRUSH_PRESS_S;
+    // this match's press of this hull on this record (sim/crushPress.ts, the solo step's ledger; 2026-11-02 audit M6)
+    return crushPress.press(obstacle, entity.id, timeS, SIM_DT);
   }
 
   function queueCrushedObstacle(
@@ -1419,6 +1488,7 @@ export function createAuthoritativeMatch({
       entity?.state ? detMath.cos(entity.state.yaw) * directionSign : 1
     );
     const speedMps = impactSpeedMps ?? (entity?.state ? Math.abs(entity.state.speed) : 0);
+    const worldCrushes = !!worldCollision && typeof worldCollision.crushObstacle === 'function';
     const destroyed = worldCollision && typeof worldCollision.crushObstacle === 'function'
       ? worldCollision.crushObstacle(obstacle, directionX, directionZ, speedMps)
       : true;
@@ -1428,11 +1498,15 @@ export function createAuthoritativeMatch({
     if (typeof destroyedIndex === 'number' && Number.isSafeInteger(destroyedIndex)) {
       destroyedObstacleIndices.push(destroyedIndex);
       destroyedObstacleSet.add(destroyedIndex);
+      const source = sourceId ? entityById.get(sourceId) : undefined;
+      destroyedObstacleFalls.push(encodeObstacleFall(cause, directionX, directionZ));
+      destroyedObstacleFallTeams.push(source && !source.combat.destroyed ? source.team : null);
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
-    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
-    if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
+    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6): (round 2 U28) the world's crush fells its
+    // canopy with its trunk (headlessCollisionWorld.ts crushObstacle); only a world that crushes nothing leaves it here
+    if (!worldCrushes && obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
     emitFrom(sourceId, 'world_prop_destroyed', {
       obstacleIndex: destroyedIndex,
       propIdx: obstacle.propIdx,
@@ -1502,7 +1576,10 @@ export function createAuthoritativeMatch({
         if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
         obstacle.crushed = true;
       }
-      if (!destroyedObstacleSet.has(index)) { destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index); }
+      if (!destroyedObstacleSet.has(index)) {
+        destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index);
+        destroyedObstacleFalls.push(OBSTACLE_FALL_NONE); destroyedObstacleFallTeams.push(null);
+      }
       restored++;
     }
     destructibleRevision = Math.max(destructibleRevision, Math.floor(finite(revision, 0)), destroyedObstacleIndices.length);
@@ -1524,14 +1601,9 @@ export function createAuthoritativeMatch({
     pendingRams.length = 0;
   }
 
-  function ramPairCanDamage(key: string, contact: PendingRam): boolean {
+  function ramPairCooling(key: string): boolean {
     const last = ramPairTime.get(key);
-    if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) return false;
-    const { a, b } = contact;
-    if (!a.combat || !b.combat || a.combat.destroyed) return false;
-    // Teammates still resolve physical separation, but contact can never
-    // become friendly-fire damage or a kill credit.
-    return a.team !== b.team;
+    return last != null && timeS - last < RAM_PAIR_COOLDOWN_S;
   }
 
   function recordRamDestructions(
@@ -1552,32 +1624,20 @@ export function createAuthoritativeMatch({
     });
   }
 
+  /** tank_ram events whose struck hull was already a wreck: its owner took nothing live (canObserveRam). */
+  const wreckRams = new WeakSet<AuthoritativeEvent>();
+
   function resolveRamPair(key: string, contact: PendingRam): void {
-    if (!ramPairCanDamage(key, contact)) return;
+    if (ramPairCooling(key)) return;
     const { a, b } = contact;
-    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-    const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
-    const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
-    const damage = ramShares(
-      ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
-      ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
-      contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
-      contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
-    );
-    if (damage.total <= 0) return;
+    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
+    // lethal ram reddens the struck track and the drivetrain — the solo step's one rule (sim/impact.ts resolveRamPairDamage;
+    // a wreck rams nothing, and a teammate contact is reported with no damage, module hit or kill credit: 2026-11-02 audit M6)
+    const dealt = resolveRamPairDamage(ruleset.physics, contact);
+    if (!dealt) return;
     ramPairTime.set(key, timeS);
-    const bWasDestroyed = b.combat.destroyed;
-    const damageA = hullDamageTaken(a.combat, damage.toA);
-    const damageB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
-    a.combat.hp = Math.max(0, a.combat.hp - damageA);
-    if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-    a.combat.destroyed = a.combat.hp <= 0;
-    if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
-    // (268, item 8) a lethal ram disables the struck running gear and the drivetrain, as the solo battle's does
-    // (sim/ramModuleDamage.ts)
-    if (a.combat.destroyed) applyLethalRamModuleDamage(a, contact.nx, contact.nz);
-    if (b.combat.destroyed && !bWasDestroyed) applyLethalRamModuleDamage(b, -contact.nx, -contact.nz);
-    emit('tank_ram', {
+    const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
+    const ram = emit('tank_ram', {
       aId: a.id,
       bId: b.id,
       damageA,
@@ -1587,6 +1647,12 @@ export function createAuthoritativeMatch({
       y: (a.state.pos.y + b.state.pos.y) * 0.5,
       z: (a.state.pos.z + b.state.pos.z) * 0.5,
     });
+    if (bWasDestroyed) wreckRams.add(ram);
+    if (dealt.friendly) return;
+    // the lethal ram's module receipts before the destruction, as the solo step publishes them (state.ts
+    // publishRamDamage) and as a crash's are (publishEntityImpact): a client sets a peer's module stage only from these
+    for (const hit of aModulesHit) emit('module_state', { id: a.id, module: hit.module, state: hit.newState, source: 'ram' });
+    for (const hit of bModulesHit) emit('module_state', { id: b.id, module: hit.module, state: hit.newState, source: 'ram' });
     recordRamDestructions(a, b, bWasDestroyed);
   }
 
@@ -1695,18 +1761,6 @@ export function createAuthoritativeMatch({
     return shellSpec;
   }
 
-  function botShotIsClear(
-    entity: AuthoritativeEntity,
-    shellSpec: AuthoritativeSpec['gun']['shells'][number],
-  ): boolean {
-    if (!entity.bot) return true;
-    const friendlyRisk = botFriendlyFireRisk(
-      entity, entity.input.aimPoint, shellSpec, entities,
-    );
-    if (!friendlyRisk) return true;
-    entity.aiCtl?.notifyFriendlyBlocked?.(friendlyRisk);
-    return false;
-  }
 
   function selectFallbackAfterShot(
     entity: AuthoritativeEntity,
@@ -1719,13 +1773,6 @@ export function createAuthoritativeMatch({
     if (!entity.bot) emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
   }
 
-  function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
-    if(isGunship(entity))return;
-    for (const other of entities) {
-      if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
-      if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
-    }
-  }
 
   function emitShellFired(
     entity: AuthoritativeEntity,
@@ -1734,6 +1781,7 @@ export function createAuthoritativeMatch({
     muzzle: Vector3,
     direction: Vector3,
     firedSlot: number,
+    cannonMuzzle: number,
   ): void {
     emit('shell_fired', {
       shellId: shell.id,
@@ -1742,8 +1790,9 @@ export function createAuthoritativeMatch({
       shellSlot: firedSlot,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
+      // the mouth it left: a launcher's tube, or (round 8 Y1 s5-01) one of the gun's own mouths; -1 for a single bore
       muzzleIndex: usesLauncherMuzzles(entity.spec.gun, shellSpec)
-        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles!.length : -1,
+        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles!.length : cannonMuzzle,
       weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
       caliberMm: shellSpec.caliberMm,
       velocityMps: shellSpec.velocityMps,
@@ -1758,17 +1807,22 @@ export function createAuthoritativeMatch({
 
   function tryFire(entity: AuthoritativeEntity): void {
     const shellSpec = selectedShellForFire(entity);
-    if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
+    // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the solo step's gate too)
+    if (!shellSpec || !botShotClear(entity, entity.input.aimPoint, shellSpec, entities)) return;
     const combat = entity.combat;
-    const gun = gunWorldPose(entity, shellSpec);
+    // the gun's own mouth this round leaves, as the solo step chooses it (sim/launcherPolicy.ts; a gunship fires from its hull)
+    const cannonMuzzle = isGunship(entity) ? -1 : nextCannonMuzzle(entity.spec.gun, shellSpec, combat);
+    const gun = gunWorldPose(entity, shellSpec, cannonMuzzle);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
-    const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
+    const shell: DamageShell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
+    // (270) a rotary gun's rounds between full ones fly unrowed (fireCycleFloor.ts): the viewers' shell rows at the floor's density
+    shell.thinned = entity.spec.gun.autoloader?.rotary === true && shellSpec.guided !== true && thinRotaryShot(entity.id, timeS);
     if (usesLauncherMuzzles(entity.spec.gun, shellSpec)) {
       combat.launcherCursor = launcherMuzzleIndex(entity.spec.gun, shellSpec, combat.launcherCursor ?? 0) + 1;
     }
@@ -1782,8 +1836,9 @@ export function createAuthoritativeMatch({
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
-    notifyEnemyBotsOfShot(entity);
-    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
+    // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
+    deliverShotFired(entities, entity);
+    emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot, cannonMuzzle);
   }
 
   function notifyShellHitAI(
@@ -1793,18 +1848,9 @@ export function createAuthoritativeMatch({
   ): void {
     // (the scoreboard's damage is the hull points the hits took off, the figure every readout shows: hpRemoved)
     if (shooter && hit.hpRemoved > 0) shooter.damage += hit.hpRemoved;
-    if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
-      ...hit,
-      targetId: target?.id || null,
-    });
-    // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
-    if (!shooter || !target || isGunship(shooter)) return;
-    for (const ally of entities) {
-      if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
-          (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {
-        selfHit: ally === target, damaging: hit.damage > 0, kind: hit.kind,
-      });
-    }
+    // the shooter's controller hears the result, then (bot philosophy r1: a bounce is still a shot at the team) the struck
+    // hull reacts and its teammates gain intel — sim/botEvents.ts, the solo step's delivery (2026-11-02 audit M6)
+    deliverShellHit(entities, shooter, target, shooter?.aiCtl ? { ...hit, targetId: target?.id || null } : hit);
   }
 
   /**
@@ -2117,7 +2163,10 @@ export function createAuthoritativeMatch({
     _lightCoverDir.multiplyScalar(1 / length);
     sweepLightCover(worldCollision.queryObstacles.bind(worldCollision) as LightCoverQuery, shell.prevPos, _lightCoverDir,
       Math.min(stop, length), _lightCoverScratch as CollisionRecord[], (record) => {
-        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps);
+        // the shooter is the blow's source (as destroyShellObstacle names it): a viewer that does not see it reads the
+        // fall without the round's bearing and speed (viewerWorldEvent; 2026-11-02 audit SIDE)
+        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps,
+          shell.shooterId);
       });
   }
 
@@ -2147,6 +2196,8 @@ export function createAuthoritativeMatch({
     result = nextResult;
     resultReason = reason;
     resultTimeS = timeS;
+    // the mode controller hears the verdict it did not reach itself (audit M3): no scoring, respawns or waves in the hold
+    modeController.matchEnded(nextResult, reason);
     emit('match_ended', { result, reason: resultReason });
   }
 
@@ -2156,7 +2207,7 @@ export function createAuthoritativeMatch({
   }
 
   function determineModeResult(): void {
-    if (timeS < clockLimitS) return;
+    if (timeS + modeTimeOffsetS < clockLimitS) return;
     const score = modeController.state.score;
     const winner = winnerFromScores(score.alpha, score.bravo);
     // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost by the attackers
@@ -2177,7 +2228,7 @@ export function createAuthoritativeMatch({
     const alpha = survivingTeams.alpha;
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
-    if (!eliminated && timeS < clockLimitS) return;
+    if (!eliminated && timeS + modeTimeOffsetS < clockLimitS) return;
     finishMatch(
       winnerFromScores(alpha, bravo),
       eliminated ? 'elimination' : 'time_limit',
@@ -2222,6 +2273,8 @@ export function createAuthoritativeMatch({
     if (botNavigation && navigationWreckTicks++ % 15 === 0) {
       syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
     }
+    // anything that reached the bots since the last flush lands before the first of them thinks (audit M7)
+    applyPendingBotNews(entities);
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
@@ -2370,9 +2423,12 @@ export function createAuthoritativeMatch({
     upper: AuthoritativeEntity,
     lower: AuthoritativeEntity,
     closing: number,
+    nx = 0,
+    nz = 0,
   ): void {
-    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse
-    pendingRams.push({ a: upper, b: lower, closing, nx: 0, nz: 0, vAn: -closing, vBn: 0, vertical: true });
+    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse. The contact's
+    // normal rides it, as the solo step's queueRam takes it (a lethal landing reddens the track on that side)
+    pendingRams.push({ a: upper, b: lower, closing, nx, nz, vAn: -closing, vBn: 0, vertical: true });
   }
 
   function advanceTankContacts(dt: number): void {
@@ -2425,6 +2481,9 @@ export function createAuthoritativeMatch({
         if (stepRoofStation(entity,station,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
     }
     stepShells(dt);
+    // the phase's news (shots heard, shell results, hits) reaches the bots here, in one declared order, where the
+    // callbacks always ran: before the visibility update and the mode step (audit M7; the solo step's stepShells too)
+    applyPendingBotNews(entities);
   }
 
   function advanceFires(dt: number): void {
@@ -2525,11 +2584,45 @@ export function createAuthoritativeMatch({
     timeS: -1, revision: -1, smokeCount: -1, smokeScreens: [], destroyed: [],
   };
 
+  /** The destroyed list's falls as `viewer` may read them (none where its team may not; whole for a viewer that is no
+   *  hull: a spectator, the sealed migration keyframe): a new array when the list grew, so a frame never sees one move. */
+  const destroyedFallViews = new Map<string, { length: number; falls: number[] }>();
+  function destroyedFallsFor(viewer: AuthoritativeEntity | undefined): number[] {
+    const key = viewer ? viewer.team : '';
+    let view = destroyedFallViews.get(key);
+    if (!view) destroyedFallViews.set(key, view = { length: -1, falls: [] });
+    if (view.length !== destroyedObstacleFalls.length) {
+      const falls = new Array<number>(destroyedObstacleFalls.length);
+      for (let i = 0; i < falls.length; i++) {
+        const team = destroyedObstacleFallTeams[i];
+        falls[i] = !viewer || team === null || team === viewer.team ? destroyedObstacleFalls[i]! : OBSTACLE_FALL_NONE;
+      }
+      view.falls = falls;
+      view.length = falls.length;
+    }
+    return view.falls;
+  }
+
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
     const entity = entityById.get(entityId);
     return Boolean(entity && entity.modeActive !== false &&
       (!viewer || entity.team === viewer.team || entity.combat.destroyed ||
-        spotting.isSpotted(entity.id, viewer.team, viewer)));
+        spotting.isSpotted(entity.id, viewer.team, viewer) ||
+        // a named reveal to every viewer: the flag carrier, whose position its carried flag publishes (Main's ruling on
+        // audit finding 53, 2026-11-09), so the mode state never places a hull the snapshot hides
+        modeController.revealReason(entity.id) !== null));
+  }
+
+  /**
+   * The one shell rule snapshot() and observeForViewer() share (improve-271 plan 014: snapshot() hid what
+   * observeForViewer() sent): a viewer sees a round whose shooter is gone or observed, and every airstrike's round, which
+   * flies from its aircraft or battery, never from the caller's hull (sim/airSupportFire.ts; the owner, 2026-11-05: strike
+   * footprints and headings are public).
+   */
+  function viewerSeesShell(viewer: AuthoritativeEntity | undefined, shell: SnapshotShellSource): boolean {
+    if (typeof (shell as { strikeId?: number }).strikeId === 'number') return true;
+    const shooter = entityById.get(String(shell.shooterId));
+    return !shooter || canObserveEntity(viewer, shooter.id);
   }
 
   /** The fields of a world event that say how it was dealt (withheld from a viewer that does not see the source). */
@@ -2544,7 +2637,8 @@ export function createAuthoritativeMatch({
    * The event as `viewer` may read it: whole when its source is this viewer's team, spotted by it, destroyed, or not a
    * hull of this match (a scripted or mode source); else one shared copy without WITHHELD_WORLD_FIELDS — the world
    * state it carries (which prop, which structure and stage, the hole, the crater) is unchanged, and the presentation
-   * lays it with neutral values (the prop's own fall axis, the structure's centre).
+   * lays it with neutral values (a ram along the prop's own heading, sim/obstacleFall.ts withheldObstacleFall; the
+   * structure's centre).
    */
   function viewerWorldEvent(viewer: AuthoritativeEntity | undefined, event: AuthoritativeEvent): AuthoritativeEvent {
     if (!viewer) return event;
@@ -2592,6 +2686,30 @@ export function createAuthoritativeMatch({
     return copy;
   }
 
+  /**
+   * A ram as `viewer` may read it. Its two ids and its midpoint place both hulls (the midpoint less one hull's place is
+   * the other's), so it goes to a hull that took it live, and otherwise only to a viewer that sees both parties. Every
+   * viewer sees a wreck, so a wreck party never makes a ram observable on its own: a hidden hull shoving a wreck, its own
+   * team's or the viewer's, gave that viewer its exact place (2026-11-03 review of the 2026-11-02 audit M6).
+   */
+  function canObserveRam(viewer: AuthoritativeEntity, event: Record<string, RuntimeValue>): boolean {
+    const aId = String(event.aId ?? ''), bId = String(event.bId ?? '');
+    if (viewer.id === aId || (viewer.id === bId && !wreckRams.has(event as AuthoritativeEvent))) return true;
+    return canObserveEntity(viewer, aId) && canObserveEntity(viewer, bId);
+  }
+
+  /**
+   * A viewer's events, for the event batch (eventsForViewer) and the snapshot's event list alike: each judged on the
+   * authority's own event object, then handed as the viewer may read it (viewerWorldEvent's copy). canObserveRam's
+   * wreckRams and the withheld copies key on that object, so the rule must never see a copy (round 2 Q6, 2026-11-04: the
+   * snapshot judged the viewer's copies, which held only while viewerWorldEvent passed a tank_ram through unchanged).
+   */
+  function viewerEvents(viewer: AuthoritativeEntity | undefined): AuthoritativeEvent[] {
+    const out: AuthoritativeEvent[] = [];
+    for (const event of pendingEvents) if (canObserveEvent(viewer, event)) out.push(viewerWorldEvent(viewer, event));
+    return out;
+  }
+
   function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
     if (!viewer) return true;
     if (!value || typeof value !== 'object') return false;
@@ -2601,6 +2719,7 @@ export function createAuthoritativeMatch({
     // destruction: a building breaking or the ground cratering is world state every viewer receives; how it was dealt is
     // withheld from a viewer that does not see its source (viewerWorldEvent, 2026-10-13)
     if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
+    if (eventType === 'tank_ram') return canObserveRam(viewer, event);
     // an airstrike's round bursts where its aircraft or battery put it, not where its caller stands: every viewer sees it
     if (eventType === 'shell_impact' && typeof event.strikeId === 'number') return true;
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
@@ -2666,12 +2785,10 @@ export function createAuthoritativeMatch({
     },
 
     get pendingEventCount(): number { return pendingEvents.length; },
+    get modeEventSerial(): number { return modeEventSerial; },
 
     eventsForViewer(viewerId: string): AuthoritativeEvent[] {
-      const viewer = entityById.get(viewerId);
-      const out: AuthoritativeEvent[] = [];
-      for (const event of pendingEvents) if (canObserveEvent(viewer, event)) out.push(viewerWorldEvent(viewer, event));
-      return out;
+      return viewerEvents(entityById.get(viewerId));
     },
 
     afterEventBroadcast(): void { pendingEvents.length = 0; },
@@ -2686,21 +2803,19 @@ export function createAuthoritativeMatch({
       const canObserve = (_id: string, source: SnapshotEntitySource): boolean => {
         return canObserveEntity(viewer, String(source.id));
       };
-      const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean => {
-        const shooter = entityById.get(String(shell.shooterId));
-        return !shooter || canObserve(viewerId, shooter);
-      };
+      const canObserveShell = (_id: string, shell: SnapshotShellSource): boolean =>
+        !(shell as DamageShell).thinned && viewerSeesShell(viewer, shell);
       return captureWorldSnapshot({
         tick,
         serverTimeMs,
         entities,
         shells,
-        events: pendingEvents.length ? pendingEvents.map((event) => viewerWorldEvent(viewer, event)) : pendingEvents,
+        // filtered here, on the authority's own event objects, as the event batch is (viewerEvents)
+        events: pendingEvents.length ? viewerEvents(viewer) : pendingEvents,
         viewerId,
         ackInputSeq,
         canObserve,
         canObserveShell,
-        canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
         meta: simulation.snapshotMeta(viewerId),
       });
     },
@@ -2713,11 +2828,8 @@ export function createAuthoritativeMatch({
         if (entity.id === viewerId || canObserveEntity(viewer, entity.id)) entitiesOut.push(entity);
       }
       for (const shell of shells) {
-        const shooter = entityById.get(String(shell.shooterId));
-        // an airstrike's round flies from its aircraft or battery: every viewer sees it come in (sim/airSupportFire.ts)
-        if (!shooter || typeof (shell as { strikeId?: number }).strikeId === 'number' || canObserveEntity(viewer, shooter.id)) {
-          shellsOut.push(shell as unknown as SnapshotShellSource);
-        }
+        if (shell.thinned) continue;
+        if (viewerSeesShell(viewer, shell as unknown as SnapshotShellSource)) shellsOut.push(shell as unknown as SnapshotShellSource);
       }
     },
 
@@ -2742,6 +2854,8 @@ export function createAuthoritativeMatch({
         resultReason,
         destructibleRevision,
         destroyedObstacleIndices: sharedMeta.destroyed,
+        // (round 2, U27) each listed index's fall as this viewer may read it, in the list's order
+        destroyedObstacleFalls: destroyedFallsFor(viewer),
         // the destruction log (append-only; the host actor copies it when it grows)
         destructionLog: destruction.log,
         ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
@@ -2762,21 +2876,32 @@ export function createAuthoritativeMatch({
     },
 
     captureModeCheckpoint() {
-      // the wave modes carry their waves, line and queue too (round 2: a migrated host restarted them from the beginning)
-      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)
-        && !ruleset.airSupport) return null;
+      // every mode carries its checkpoint: scores, respawns, the wave modes' waves, line and queue (round 2: a migrated
+      // host restarted them from the beginning), the objective modes' flags, zones and ball (audit M1, 2026-11-02: a
+      // hand-kept list of modes left Zone Control, Mars, CTF and Turbo Ball out, so their matches restarted at 0-0; 270's
+      // Air Support rides it too: its strikes are the mode controller's)
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
-      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
+      const pillboxes = fortified.capture();
+      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}) };
     },
     restoreModeCheckpoint(checkpoint) {
-      modeTimeOffsetS = Math.max(0, checkpoint.mode.elapsedS);
+      // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
+      // up to a keyframe interval older than the newest frame the match resumed from
       modeController.restoreCheckpoint(checkpoint.mode);
       for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
+      if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
     },
     restoreDestroyedObstacles,
     restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
       return { applied: destruction.restore(entries) };
+    },
+    restoreVerdict(nextResult, reason) {
+      if (result || (nextResult !== TEAM_ALPHA && nextResult !== TEAM_BRAVO && nextResult !== 'draw')) return;
+      result = nextResult;
+      resultReason = String(reason ?? '');
+      resultTimeS = timeS - ENDING_HOLD_LIMIT_S;
+      modeController.matchEnded(nextResult, resultReason);
     },
     restoreWreckTurret(id, pose) {
       const entity = entityById.get(id);
@@ -2788,6 +2913,19 @@ export function createAuthoritativeMatch({
         out[7] = pose.asleep ? 1 : 0;
       }
       return ok;
+    },
+    restoreSmokeScreens(screens, clockShiftS) {
+      let restored = 0;
+      const shift = Number.isFinite(clockShiftS) ? clockShiftS : 0;
+      for (const packed of screens) {
+        if (!packed || typeof packed !== 'object' || !Number.isFinite(packed.born)) continue;
+        const born = packed.born + shift;
+        if (!(timeS - born <= SMOKE_DURATION_S)) continue;
+        auxiliarySmokeScreens.push({ ...restoreSmokeScreen(packed, smokeWind), born });
+        restored++;
+      }
+      while (auxiliarySmokeScreens.length > 84) auxiliarySmokeScreens.shift();
+      return { restored };
     },
     wreckTurretDigest: () => wreckTurrets.digest(),
   };

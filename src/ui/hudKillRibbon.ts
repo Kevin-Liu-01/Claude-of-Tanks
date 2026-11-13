@@ -206,7 +206,9 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
     shows() {
       // (its layouts set it flex: anything else, a phone's none or a stub document's nothing, shows no ribbon)
       if (typeof getComputedStyle !== 'function' || getComputedStyle(root).display !== 'flex') return false;
-      return !document.body.classList.contains('cot-spectating') && !document.documentElement.hasAttribute('data-cot-scoped');
+      // (its own document's flags: a split-screen pane's ribbon reads its pane's, hud.ts HudView)
+      const doc = root.ownerDocument ?? document;
+      return !doc.body.classList.contains('cot-spectating') && !doc.documentElement.hasAttribute('data-cot-scoped');
     },
     spot() {
       spotTimes[spotNext] = performance.now();

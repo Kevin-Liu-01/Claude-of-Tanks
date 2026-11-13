@@ -1,5 +1,4 @@
-import { BRADLEY_SCOUT_TURRET_PIVOT, buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradleyScoutTurretShell.ts';
-import { buildM3BradleyGunMount } from './m3BradleyGunMount.ts';
+import { buildBradleyA3Turret, placeBradleyA3CheekEra, placeBradleyA3SideEra } from './bradleyA3Turret.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT72B3MXHull } from './t72b3mX.ts';
@@ -20,17 +19,19 @@ import {
   BRADLEY_GLACIS,
   BRADLEY_HULL,
   buildBradley,
-  buildBMP2,
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
+import { BMP_HULL_OPTIONS, buildBmpBoatHull } from './bmpBoatHull.ts';
+import { addBwp1Applique, buildBwp1Rcws30 } from './bwp1Rcws30.ts';
+import { addBmp3HullDetail, addBmp3SternWaterJetFlaps, buildBmp3WeldedTurret } from './bmp3Family.ts';
+import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { T90_X_PROFILES } from './t90X.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
 import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 import { fabricBody, fabricStrap, type FabricSpec } from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
-import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 import { buildTerminatorT90Station } from './bmptT90Station.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -111,24 +112,6 @@ function radioPair(P: AfvBuilderPort, y: number, z: number, seed: number, spread
   }
 }
 
-function smokePair(
-  P: AfvBuilderPort,
-  x: number,
-  y: number,
-  z: number,
-  count: number,
-  seed: number,
-  pitch = -0.42,
-): void {
-  for (const side of [-1, 1]) {
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count, r: 0.040, len: 0.27, spacing: 0.095,
-      splay: side * 1.02, pitch, arc: 0.60, slot: 'detail',
-      rotation: [0, 0, -side * 0.10], seed: seed + (side > 0 ? 1 : 0),
-    }), side * x, y, z);
-  }
-}
-
 function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
   const count = o.count || 7;
   for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
@@ -158,121 +141,28 @@ function bowLightPair(P: AfvBuilderPort, x: number, y: number, z: number, seed: 
   }
 }
 
-function addBMP3Turret(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, lathe, torus, buildGun } = KIT;
-  clearUpperStructure(P);
-  P.gunG.position.set(0, 0.34, 0.62);
+// 267 rebuild (owner: "now update the ... bmp 3 rok"): the BMP-3 in Republic of Korea Army service (delivered
+// 1996-2005; research/bmp3_rok: the 3rd Armoured Brigade photograph) is the standard export BMP-3, so it stands on the
+// fleet's BMP-3 hull (buildBMP3Hull: rear-engined boat hull with the wave-breaker bow, bow PKTs, rear drive sprocket,
+// rear doors under the raised troop deck). Round 268b (the owner: "make a new bmp 3 turret"): it carries the new
+// welded BMP-3 turret (profiles/bmp3Family.ts) with its own 2A70 + 2A72 + PKT plant, whips, flank bins and markings.
 
-  // Broad, low BMP-3 turntable with a buried front saddle. The lower ring
-  // overlaps the donor roof instead of exposing a neck or empty annulus.
-  // 2026-10-24 (the owner: "redesing the bmp-3 rok and bwp-1 turret bases. amke them better"): the turret stands on its
-  // ring, a 0.92 m collar sunk 4 cm into the roof, and the casting's rolled skirt over it (closed lathe) overhangs the
-  // collar by 21 cm, fullest 12-19 cm up, and rolls in under the dome's foot; the 1.16 m frustum read as a disc under
-  // the dome.
-  P.add('turret', cylY(0.92, 0.92, 0.12, 32), 0, 0.02, -0.08);
-  P.add('turret', lathe([[0, 0.06], [0.92, 0.06], [1.08, 0.075], [1.13, 0.12], [1.13, 0.19], [1.08, 0.27], [1.02, 0.33],
-    [0.94, 0.37], [0, 0.37]], 32), 0, 0, -0.08);
-  P.add('turret', cylY(0.84, 1.02, 0.40, 24), 0, 0.48, -0.02);
-  P.add('turret', orientedSlab(
-    [-0.72, 0.22, 1.00], [0.72, 0.22, 1.00], [0.92, 0.22, 0.22], [-0.92, 0.22, 0.22],
-    [-0.55, 0.70, 0.86], [0.55, 0.70, 0.86], [0.76, 0.72, 0.16], [-0.76, 0.72, 0.16]));
-  P.addGunExtra(box(0.68, 0.42, 0.28), 0, 0, 0.31);
-  P.addGunExtra(cylZ(0.14, 0.34, 18, 0.12), 0, 0, 0.62);
-  buildGun(P, { len: 2.72, r: 0.058, sleeve: true, evac: 0.44,
-    collar: true, baseR: 0.14 });
-  // Parallel 30-mm cannon and coaxial PKT: both pitch with the gun plant.
-  // 2026-10-19 (owner float sweep): both tubes began ~10 cm ahead of the mantlet block (59-66 mm off the mount);
-  // their breech ends now run back into it, muzzles unchanged
-  P.addGunExtraDark(cylZ(0.037, 2.41, 12), 0.22, 0.03, 1.645);
-  P.addGunExtraDark(cylZ(0.022, 1.835, 10), -0.21, 0.02, 1.3575);
-  P.addGunExtraDark(cylZ(0.052, 0.15, 12), 0.22, 0.03, 2.90);
-  P.add('turret', box(0.30, 0.07, 0.30), -0.40, 0.72, -0.18);
-  P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), -0.40, 0.91, -0.18);
-  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.045);           // on the sight drum's face (18 mm off it before: owner 2026-10-19 float sweep)
-  P.add('turret', cylY(0.24, 0.26, 0.07, 18), 0.40, 0.73, -0.30);
-  // Owner landing c425f495 (re-applied after the §5.258 lane-side merge):
-  // two overlapping crew stations, periscopes and service lids break up the
-  // cast crown without leaving unsupported roof furniture.
-  for (const station of [
-    { x: -0.39, z: -0.25, r: 0.235, yaw: -0.08 },
-    { x: 0.40, z: -0.34, r: 0.255, yaw: 0.11 },
-  ]) {
-    P.add('turret', cylY(station.r * 0.92, station.r, 0.085, 18),
-      station.x, 0.735, station.z);
-    P.add('turretDark', torus(station.r * 0.82, 0.014, 18),
-      station.x, 0.783, station.z);
-    P.add('turret', box(station.r * 1.45, 0.055, station.r * 1.50),
-      station.x, 0.805, station.z, 0, station.yaw, 0);
-    for (let i = -1; i <= 1; i++) {
-      P.add('turretGlass', box(0.078, 0.045, 0.026),
-        station.x + i * 0.090, 0.825, station.z + station.r * 0.73,
-        0, station.yaw, 0);
-    }
-  }
-  // 2026-10-19 (owner float sweep): the rear lid stood 58 mm over the crown; it drops onto it
-  P.snapGroup('bmp3-rear-lid', () => {
-    P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
-    P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
-  }, { reachM: 0.08, mode: 'down' });
-  // A supported flank collar gives the smoke banks and fittings visible
-  // armor seats instead of allowing them to disappear into the dome.
-  for (const side of [-1, 1]) {
-    armorTile(P, 'turret', side * 0.94, 0.50, 0.27, 0.13, 0.25, 0.36,
-      [0, 0, side * 0.09], false);
-    armorTile(P, 'turret', side * 0.99, 0.46, -0.14, 0.12, 0.23, 0.34,
-      [0, 0, side * 0.07], false);
-    P.add('turretDetail', box(0.10, 0.06, 0.46), side * 0.85, 0.69, -0.70,
-      0, 0, side * 0.03);
-  }
-  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
-  // §5.349 RESIDUE (§5.265 orphan-flap law, rebuilt-instrument find): the MG
-  // chain had real air at BOTH ends — ring bottom 0.7625 hung 5 cm over the
-  // crown slab (~0.71) and the pintle foot (0.87) hung 1.3 cm over the ring
-  // cap (0.857): a 1745px front-low / 520px yaw-45 floating-cross island.
-  // One pintle column chains slab -> ring bore -> fitting foot (0.70..0.89);
-  // the MG itself does not move (§B3: mount stays proud and readable).
-  P.add('turret', cylY(0.13, 0.15, 0.19, 14), 0.40, 0.795, -0.30);
-  smokePair(P, 0.82, 0.58, 0.14, 4, 3110);
-  // §5.349 RESIDUE (§B2 sweep handoff bmp3_rok(a)): the whip pots stood on
-  // 28 cm of air over the turntable (pot base local 0.63 vs turntable top
-  // 0.35, outboard of the dome wall's r 0.86 reach — the yaw-45
-  // "cross-antenna" island, 718px pre-landing / 686px live). Rear shelf
-  // wings carry the pots (§B5 physical-seat law, the bmpt wing-shelf
-  // precedent): inner chord buried in the dome upper wall (r 0.67 vs the
-  // wall's 0.86 at shelf height), outer end under the pot bases.
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.43, 0.055, 0.34), side * 0.575, 0.6325, -0.74);
-  }
-  // §5.349 RESIDUE: the pano-sight drum floated 1.5 cm over its base box
-  // (the 533px yaw-45 island once the gap resolves at 900px) — pedestal
-  // collar welds drum to base.
-  P.add('turret', cylY(0.145, 0.155, 0.10, 14), -0.40, 0.80, -0.18);
-  radioPair(P, 0.66, -0.86, 3120, 0.76);
-  P.decal('turret', 'number', 'ROK 3', 0.20, [1.03, 0.38, -0.30], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.24);
+// The BMP-3 hull's three stern roof pockets (census: the void under the stern block behind the leaning underside
+// plate, x +-1.01 y 0.53..0.63, and the two slots under the troop hatches' rear lips, y 1.67..1.73): solid fills inside
+// the existing envelope. Round 268b: buildBMP3Hull calls it, so bmp3 closes them too.
+function closeBmp3SternPockets(P: AfvBuilderPort): void {
+  const q: Array<[number, number]> = [[-3.18, 0.35], [-3.53, 0.66], [-3.53, 0.675], [-3.06, 0.675]];
+  P.add('hull', orientedSlab(
+    ...q.map(([z, y]) => [-1.00, y, z] as Vec3Tuple) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple],
+    ...q.map(([z, y]) => [1.00, y, z] as Vec3Tuple) as [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple]));
+  P.add('hull', KIT.box(1.40, 0.185, 0.13), 0, 1.7425, -3.30);
 }
 
 function buildBMP3ROK(P: AfvBuilderPort): void {
-  buildBMP2(P);
-  addBMP3Turret(P);
-  // Oracle identity: uninterrupted buoyant sponsons, six wheels and a clean
-  // low bow. Armor stays above the animated shoe envelope.
-  sideArmorCourse(P, { x: 1.61, y: 1.26, h: 0.34, d: 0.58, count: 8,
-    front: 2.42, step: 0.70, cap: false });
-  for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
-    armorTile(P, 'hull', side * (0.32 + i * 0.30), 1.46 - i * 0.025,
-      2.35 - i * 0.12, 0.27, 0.085, 0.30, [-0.28, 0, 0], false);
-  }
-  bowLightPair(P, 1.18, 1.47, 2.88, 3130);
-  // §5.349 RESIDUE (§B2 sweep handoff bmp3_rok(b)): the bow light clusters
-  // hovered over the glacis (112px island every side view + 26px guard-bar
-  // sliver) — light platforms drop them to surface contact (§5.265): bottoms
-  // sunk 2.5 cm into the upper-glacis plate (surface y 1.31 at z 2.87), tops
-  // welded to the drum bases (1.43); §B4-clear 29 cm over the covered-run
-  // line, forward of the z 2.52 sprocket-wrap reach.
-  for (const side of [-1, 1]) {
-    P.add('hull', KIT.box(0.24, 0.145, 0.18), side * 1.14, 1.3575, 2.87);
-  }
+  buildBMP3Hull(P);
+  P.clearDecals('hull');
+  P.decal('hull', 'soot', null, 0.55, [0.90, 1.60, -3.585], Math.PI);
+  buildBmp3WeldedTurret(P, 'bmp3_rok');
 }
 
 // 268 (owner: "update all the bradleys"): the Ukrainian M2A2 ODS-SA as the captured vehicles show it (research/
@@ -502,93 +392,13 @@ function buildBMPT2(P: AfvBuilderPort): void {
   P.hullG.userData.familyRebuild = { donor: 't72b3m_2016', revision: 3 };
 }
 
-function addBWP1Station(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, lathe, torus, buildGun } = KIT;
-  clearUpperStructure(P);
-  P.gunG.position.set(0, 0.40, 0.60);
-  // 2026-10-24 (the owner: "redesing the bmp-3 rok and bwp-1 turret bases. amke them better"): its ring, a 0.88 m collar
-  // sunk 5 cm into the roof, and over it a chamfered sixteen-facet armour base in the faceted body's own plates (closed
-  // lathe): out 19 cm over the collar, its band standing 5 cm, chamfered in under the body; in place of the 1.08 m frustum
-  P.add('turret', cylY(0.88, 0.88, 0.10, 32), 0, 0.0, -0.12);
-  P.add('turret', lathe([[0, 0.035], [0.88, 0.035], [1.03, 0.055], [1.07, 0.085], [1.07, 0.135], [0.96, 0.19],
-    [0, 0.19]], 16), 0, 0, -0.12);
-  P.add('turret', orientedSlab(
-    [-0.64, 0.12, 1.08], [0.64, 0.12, 1.08], [0.84, 0.14, -0.82], [-0.84, 0.14, -0.82],
-    [-0.42, 0.68, 0.82], [0.42, 0.68, 0.82], [0.62, 0.70, -0.70], [-0.62, 0.70, -0.70]));
-  P.addGunExtra(box(0.50, 0.36, 0.26), 0, 0, 0.30);
-  P.addGunExtra(cylZ(0.12, 0.32, 16, 0.10), 0, 0, 0.58);
-  buildGun(P, { len: 2.82, r: 0.040, sleeve: true, evac: 0.38,
-    collar: true, baseR: 0.11 });
-  // Source-defining raised missile/sensor head, backed into the cupola.
-  P.add('turret', cylY(0.27, 0.30, 0.09, 18), 0.28, 0.73, -0.18);
-  P.add('turret', box(0.54, 0.42, 0.46), 0.28, 0.98, -0.04);
-  P.add('turretGlass', box(0.34, 0.18, 0.025), 0.28, 1.00, 0.205);
-  weaponAssembly(P, () => {
-    P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
-  });
-  // §5.349 RESIDUE (§B2 sweep handoff bwp1(a)): the sensor-head/rack
-  // framed pocket (489px pre-landing / 668px live at [y 2.51..2.82] world)
-  // — the head cantilevered over air behind/beside its pedestal ring. Mast
-  // arm block bridges the head rear to the drum roof: bottom buried in the
-  // crown slab (0.67 vs slab top 0.69), front welded 4 cm into the head,
-  // clear of the MG ring (x -0.22) and the right station lid (x 0.212).
-  P.add('turret', box(0.37, 0.34, 0.26), 0.025, 0.84, -0.36);
-  // Owner landing c425f495 (re-applied after the §5.258 lane-side merge):
-  // stepped roof armor and two real crew/service stations replace the former
-  // uninterrupted slab. Rings overlap the roof; sights sit on broad shoes.
-  for (const station of [
-    { x: -0.38, z: -0.30, r: 0.22, yaw: -0.12 },
-    { x: 0.34, z: -0.42, r: 0.18, yaw: 0.10 },
-  ]) {
-    P.add('turret', cylY(station.r * 0.90, station.r, 0.075, 18),
-      station.x, 0.705, station.z);
-    P.add('turretDark', torus(station.r * 0.80, 0.013, 18),
-      station.x, 0.747, station.z);
-    P.add('turret', box(station.r * 1.42, 0.055, station.r * 1.48),
-      station.x, 0.766, station.z, 0, station.yaw, 0);
-  }
-  P.add('turret', box(0.42, 0.055, 0.32), -0.02, 0.735, -0.66, 0, -0.04, 0);
-  P.add('turretDark', box(0.30, 0.018, 0.045), -0.02, 0.769, -0.49,
-    0, -0.04, 0);
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 2; i++) {
-      armorTile(P, 'turret', side * (0.76 + i * 0.11), 0.48,
-        0.36 - i * 0.44, 0.12, 0.24, 0.34,
-        [0, 0, side * 0.08], false);
-    }
-    P.add('turret', box(0.24, 0.18, 0.32), side * 0.64, 0.67, -0.51,
-      0, 0, side * 0.04);
-    P.add('turretGlass', box(0.15, 0.08, 0.024), side * 0.64, 0.70, -0.33);
-  }
-  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.517, -0.88);                // up to the rack's base (32 mm under it before: owner 2026-10-19 float sweep)
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
-  }), 0, 0.56, -0.82);
-  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
-  smokePair(P, 0.83, 0.57, 0.05, 4, 3410);
-  radioPair(P, 0.66, -0.72, 3420, 0.78);
-  P.decal('turret', 'number', 'BWP-1', 0.19, [-1.02, 0.41, -0.32], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.49);
-}
-
+// 267 rebuild (owner: "now update the ... bwp-1"): the Polish BWP-1 on the shared BMP-1/BMP-2 boat hull
+// (profiles/bmpBoatHull.ts, BMP-1 stations) with the BWP-1M "Puma" demonstrator fit: bolted appliqué and the unmanned
+// Rafael RCWS-30 station with its Spike-LR canister (profiles/bwp1Rcws30.ts).
 function buildBWP1Variant(P: AfvBuilderPort): void {
-  buildBMP2(P);
-  addBWP1Station(P);
-  sideArmorCourse(P, { x: 1.69, y: 1.14, h: 0.70, d: 0.68, count: 8,
-    front: 2.45, step: 0.73, cap: false });
-  for (const side of [-1, 1]) for (let i = 0; i < 5; i++) {
-    armorTile(P, 'hull', side * (0.27 + i * 0.29), 1.48, 2.30 - i * 0.08,
-      0.25, 0.10, 0.30, [-0.30, 0, 0], false);
-  }
-  bowLightPair(P, 1.18, 1.51, 2.84, 3430);
-  // §5.349 RESIDUE (§B2 sweep handoff bwp1(b)): the same bmp3_rok-class
-  // bow light hover (119px pre-landing / 106px live every side view) —
-  // light platforms to surface contact (§5.265): bottoms sunk into the
-  // upper-glacis plate (surface y 1.32 at z 2.84), tops welded to the drum
-  // bases (1.46); §B4-clear over the covered-run line.
-  for (const side of [-1, 1]) {
-    P.add('hull', KIT.box(0.24, 0.16, 0.18), side * 1.14, 1.385, 2.84);
-  }
+  buildBmpBoatHull(P, 'bwp1');
+  buildBwp1Rcws30(P);
+  addBwp1Applique(P, BMP_HULL_OPTIONS.bwp1.binOuter);
 }
 
 // ============================ Marder 1A3 ====================================
@@ -725,214 +535,28 @@ function buildMarder1A3(P: AfvBuilderPort): void {
 
 // ========================= M3A3 Bradley CFV =================================
 // §5.306 OWNER ORDER (verbatim): "revert our m3a3 bradley CFV except add the
-// extra equipment we added and detailing and armor". The pre-§5.286 base
-// returns — buildBradley donor hull + the low welded A3 turret below — and
-// the §5.286 wave's equipment/detailing/armor additions carry over, each
-// re-seated at this base's stations: TOW twin-box at real depth on the LEFT
-// (+X, 268: the owner's source; it had stood on −X) A3 elevating bracket,
-// stowage wing RIGHT (−X) on the freed station, ISU hood on the
-// cheek/roof junction, the CIV drum head on the tall left pedestal (the old
-// box sight's station; the wave's 2.99 crown holds), deeper mesh bustle rack
-// + standoff plate, glacis appliqué panel, coax M240 + muzzle bore/tip
-// instruments. Wave items whose stations the donor base already owns (cargo
-// hump, rear roof box, troop hatch seam, wire cutter, stern light boxes) are
-// inherited from buildBradley and NOT duplicated; the wave's skirt-bin course
-// stays out — the base's spaced side armor owns the flank (packet documents
-// every disposition).
-const M3A3_GUN_LEN = 1.99;
-
+// extra equipment we added and detailing and armor". 269 (owner 2026-11-05: "redesign the m3a3 bradley turret"): the
+// turret is the A3's (profiles/bradleyA3Turret.ts), the family's measured A2 shell, M242 and stowed TOW launcher with the
+// A3's IBAS head, Commander's Independent Viewer, side-by-side hatches, deep bustle rack and BRAT tiles; it replaced the
+// 268 scout shell squashed to 0.80 of its height (roof 0.59 m over the ring, the low-poly and Ukrainian A3 sources and
+// the A2 source stand theirs 0.70-0.77 m) and its lowered M242 on the compact M3 shield. The hull keeps its glacis
+// field, side courses and spaced side armour.
 function addM3A3Turret(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, torus, xform, buildGun } = KIT;
-  const TURRET_HEIGHT_SCALE = 0.80;
-  clearUpperStructure(P);
-  // buildBradley owns a complete A2 upper assembly. Its ordinary turret
-  // buckets are cleared by clearUpperStructure; these semantic buckets are
-  // cleared explicitly so no A2 sight, cupola or fitting survives invisibly
-  // beneath the replacement A3 station.
-  P.clear('turretEquipment', 'turretCupola', 'turretTrack');
-
-  // M2A2-derived two-man foundation, re-cut for the A3.  The former A3 was a
-  // narrow wedge hidden behind a 1.35 m-tall TOW cabinet.  This shell carries
-  // the M2's broad shoulder line and deep bustle, but keeps an A3 roof, CIV
-  // sight and left-hand elevating launcher. Every upper edge overlaps the
-  // lower ring or the roof cap: there is no daylight seam around the race.
-  // 268: the ring on the source's datum (deck 2.06, 0.14 m right, z −0.40), as the M2A2's
-  P.turretG.position.set(...BRADLEY_SCOUT_TURRET_PIVOT);
-  // Seat the gun 100 mm lower in the cheek opening. The rear deck uses a
-  // traverse-dependent depression stop instead of lifting the whole gun.
-  // Bearings and saddles share this pre-compression datum.
-  P.gunG.position.set(-0.06, 0.490, 0.78);
-  P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
-  buildBradleyScoutTurretShell(P);
-  // Separate side journals preserve the 70 mm bearing insertion while
-  // leaving an actual longitudinal passage for the recoiling M242 root.
-  // A full cross-shaft/receiver would pass straight through that barrel.
-  for (const side of [-1, 1]) {
-    P.addGunExtraDark(cylX(0.095, 0.225, 24), side * 0.2475, 0, 0);
-    P.addGunExtra(cylX(0.14, 0.14, 24), side * 0.21, 0, 0.04);
-  }
-  buildM3BradleyGunMount(P);
-  // 268: the M242 to the M2's own muzzle (world z 2.37 in the owner's source; was 2.42 long, 0.47 m past it)
-  buildGun(P, { len: M3A3_GUN_LEN, r: 0.037, sleeve: true, evac: 0.34,
-    collar: true, baseR: 0.10 });
-  muzzleBore(P, { len: M3A3_GUN_LEN, r: 0.037 });
-  P.addGunExtraDark(cylZ(0.016, 0.60, 8), 0.19, 0.06, 0.72);                   // coax M240
-  muzzleTipDot(P, 0.19, 0.06, 1.01, 0.011, { parent: 'gunG' });
-
-  // Compact twin TOW box on a buried elevating bracket.  The launcher remains
-  // unmistakable, but its mass no longer substitutes for the turret.  The
-  // root, trunnion, cradle, muzzle face and rear door make one visible load
-  // path from the pod into the left side wall.
-  // 268 (the owner's source): the launcher rides the turret's LEFT, +X (it stood on −X, the vehicle's right).
-  weaponAssembly(P, () => {
-    P.add('turret', box(0.24, 0.28, 0.46), 0.76, 0.53, -0.18);
-    P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), 0.88, 0.57, -0.18);
-    P.add('turret', box(0.11, 0.33, 0.64), 0.91, 0.60, -0.20, -0.05, 0, 0);
-    // 268 round 4 (roof-pocket census, 48 cm2): the bracket's forward web, brought down onto the cheek's outer slope and
-    // in against the side cassette; the bracket ended 15 cm over the cheek, roofing a slot between root and cassette.
-    P.add('turret', orientedSlab(
-      [0.855, 0.08, 0.125], [0.955, 0.29, 0.125], [0.955, 0.29, -0.11], [0.855, 0.08, -0.11],
-      [0.855, 0.46, 0.125], [0.955, 0.46, 0.125], [0.955, 0.46, -0.11], [0.855, 0.46, -0.11]));
-    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the box is an open pack, four walls and a back
-    // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar around a dark liner and a
-    // sealed terminal 6 cm behind the face, 152 mm bore (the dark face and two painted discs read as a closed lid).
-    // The turret's buckets are squashed to TURRET_HEIGHT_SCALE below and its equipment re-seated part by part, which
-    // would shear a multi-part pack. So the pack is authored at its final place (the old box's re-seated centre, y
-    // 0.6334), merged and pre-stretched by the inverse scale: one rigid launcher whose cells meet its launch exits.
-    const at = [0.91, 0.6334, -0.22, -0.05, 0, 0] as const;
-    const placed = (g: THREE.BufferGeometry) => xform(g, ...at).scale(1, 1 / TURRET_HEIGHT_SCALE, 1);
-    const tubes = [-0.095, 0.095];
-    const cell = { bore: 0.076, wall: 0.016, proud: 0.054, behind: 0.02, depth: 0.06, segments: [24, 12] as const };
-    const paint: THREE.BufferGeometry[] = [], dark: THREE.BufferGeometry[] = [];
-    for (const x of [-0.1875, 0.1875]) paint.push(xform(box(0.025, 0.395, 1.08), x, 0, 0));
-    for (const y of [-0.2075, 0.2075]) paint.push(xform(box(0.40, 0.025, 1.078), 0, y, -0.001));
-    paint.push(xform(box(0.355, 0.395, 0.025), 0, 0, -0.525));
-    paint.push(xform(perforatedPlate(0.355, 0.395, 0.02, tubes.map(y => [0, y] as const), 0.084, P.q ? 24 : 12), 0, 0, 0.53));
-    for (const y of tubes) {
-      const tube = launchCellParts(cell, P.q, 0, y, 0.53);
-      paint.push(tube.rim); dark.push(tube.bore);
-    }
-    P.add('turretDetail', placed(KIT.mergeAll(paint)));
-    P.add('turretDark', placed(KIT.mergeAll(dark)));
-    for (let k = 0; k < 3; k++) {
-      P.add('turretDark', box(0.42, 0.03, 0.05), 0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
-    }
-    P.add('turretDark', box(0.36, 0.36, 0.04), 0.91, 0.71, -0.75, -0.05, 0, 0);
-
-  });
-  // Right (−X) stowage wing balances the launcher and returns through a broad
-  // mounting shoe rather than hovering over the turret flank.
-  P.add('turret', box(0.34, 0.34, 1.08), -0.91, 0.43, -0.43);
-  P.add('turretDark', box(0.30, 0.025, 1.00), -0.91, 0.615, -0.43);
-  P.addEquipment('turret', box(0.26, 0.15, 0.38), -0.91, 0.70, -0.70);
-
-  // A3 gunner's ISU hood, buried in the right cheek/roof junction.
-  P.addEquipment('turret', box(0.46, 0.30, 0.52), 0.30, 0.59, 0.28);
-  P.add('turretDark', box(0.38, 0.13, 0.04), 0.30, 0.60, 0.55);
-  P.add('turretGlass', box(0.32, 0.085, 0.016), 0.30, 0.595, 0.565);
-  P.addEquipment('turret', box(0.50, 0.045, 0.56), 0.30, 0.75, 0.26);
-
-  // Two structural crew stations, each with a visible hatch and periscope
-  // cadence. These carry the pair of shielded roof weapons below.
-  for (const station of [
-    { x: -0.31, z: -0.36, r: 0.235, yaw: -0.08 },
-    { x: 0.34, z: -0.47, r: 0.215, yaw: 0.12 },
-  ]) {
-    P.addCupola('turret', cylY(station.r * 0.92, station.r, 0.085, 18),
-      station.x, 0.755, station.z);
-    P.add('turretDark', torus(station.r * 0.80, 0.014, 18),
-      station.x, 0.800, station.z);
-    P.addCupola('turret', box(station.r * 1.42, 0.055, station.r * 1.48),
-      station.x, 0.823, station.z, 0, station.yaw, 0);
-    for (let i = -1; i <= 1; i++) {
-      P.add('turretGlass', box(0.066, 0.042, 0.024),
-        station.x + i * 0.078, 0.846, station.z + station.r * 0.73,
-        0, station.yaw, 0);
-    }
-  }
-
-  // Commander's independent viewer — the A3 recognition tell — on a tapered
-  // armored plinth. Only the plinth is structural; the sight body is semantic
-  // equipment so it cannot inflate the turret hit volume.
-  P.add('turret', orientedSlab(
-    [-0.58, 0.70, -0.22], [-0.10, 0.70, -0.22], [-0.10, 0.70, 0.16], [-0.58, 0.70, 0.16],
-    [-0.51, 0.84, -0.18], [-0.17, 0.84, -0.18], [-0.17, 0.84, 0.10], [-0.51, 0.84, 0.10]));
-  P.addEquipment('turret', box(0.30, 0.34, 0.30), -0.34, 0.91, -0.04);
-  P.addEquipment('turret', cylY(0.13, 0.15, 0.24, 16), -0.34, 1.10, -0.04);
-  P.add('turretDark', cylY(0.145, 0.145, 0.04, 16), -0.34, 1.21, -0.04);
-  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.34, 1.12, 0.115);
-
-  // Deep backed bustle and open rack.  The bins overlap the shell rear and
-  // diagonal braces return the rack to both turret shoulders.
-  P.add('turret', box(1.48, 0.34, 0.48), 0, 0.39, -1.13);
-  P.add('turretDark', box(1.28, 0.16, 0.04), 0, 0.40, -1.39);
-  P.add('turretDark', box(1.58, 0.24, 0.055), 0, 0.48, -1.34);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.62, d: 0.56, h: 0.32, fill: 0.86, rails: 4, seed: 3610,
-  }), 0, 0.64, -1.24);
-  P.add('turretDetail', box(0.035, 0.28, 0.58), -0.74, 0.48, -1.20,
-    0, 0, -0.54);
-  P.add('turretDetail', box(0.035, 0.28, 0.58), 0.74, 0.48, -1.20,
-    0, 0, 0.54);
-
-  // Dense service equipment. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the
-  // lane's audit): the M3A3's armament is the 25 mm, the M240C coax and TOW, and no .50 rides its turret, so the
-  // hatch-ring M2 is gone. 2026-10-14 (VH.14, "roof weapons match the real vehicle and every drawn gun works"): no M240
-  // rides it either (roofWeaponPolicy.ts), so the shielded hatch-ring M240 the old §B3 rule kept is gone too.
-  for (const [x, z, yaw] of [
-    [-0.62, -0.76, -0.08], [0.62, -0.82, 0.08],
-    [-0.58, 0.28, -0.05], [0.58, 0.16, 0.05],
-  ]) {
-    P.addEquipment('turret', box(0.28, 0.12, 0.34), x, 0.82, z, 0, yaw, 0);
-    P.add('turretDark', box(0.22, 0.018, 0.28), x, 0.891, z, 0, yaw, 0);
-  }
-  mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 3618 }),
-    0.52, 0.77, -1.05);
-  mount(P, 'turret', FITTINGS.spareTrackLinks({
-    mats: P.mats, links: 4, width: 0.52, seed: 3620,
-  }), -0.48, 0.735, -1.04);
-
-  smokePair(P, 0.76, 0.47, 0.30, 4, 3640, -0.36);
-  radioPair(P, 0.86, -1.07, 3630, 0.70);
-  P.decal('turret', 'number', 'M3A3', 0.20,
-    [-1.085, 0.43 * TURRET_HEIGHT_SCALE, -0.43], -Math.PI / 2);
-
-  // Destructible BRAT-style turret cassettes. The cheek rows follow the
-  // frontal rake; the side rows stand on the dark beds authored above.
+  buildBradleyA3Turret(P);
+  // Destructible BRAT tiles (eraCluster takes turret-frame x, hull-frame y and z when turret-local).
+  const [, pivotY, pivotZ] = P.spec.armor.turretPivot;
+  const hullFrame = (put: EraPut): EraPut => (x, y, z, ...rest) => put(x, y + pivotY, z + pivotZ, ...rest);
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      placeBradleyScoutCheekEra(side, put);
+      placeBradleyA3CheekEra(side, hullFrame(put));
     }, true);
     P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
-        put(side * 1.08, BRADLEY_SCOUT_TURRET_PIVOT[1] + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE,
-          BRADLEY_SCOUT_TURRET_PIVOT[2] + .005 - c * 0.31,
-          0, side * Math.PI / 2, side * 0.025,
-          1.00, 0.96 * TURRET_HEIGHT_SCALE, 1.75);
-      }
+      placeBradleyA3SideEra(side, hullFrame(put));
     }, true);
   }
-
-  // OWNER HEIGHT ORDER (2026-08-17): shorten the complete A3 armored turret
-  // by exactly 20 percent about its ring datum. Structural armor, cupolas,
-  // glazing and backed detail scale together, while semantic equipment keeps
-  // its native dimensions and is re-seated by its lower face. Direct fitting
-  // assemblies (TOW/stowage, MGs, smoke, radios and basket contents) move to
-  // the corrected roof stations without being visually squashed. The gun rig
-  // follows the same datum so its saddle remains buried between the cheeks.
-  P.scaleBuckets([
-    'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCupola',
-  ], 1, TURRET_HEIGHT_SCALE, 1);
-  P.forEachBucketPart(['turretEquipment'], (geo: THREE.BufferGeometry, bounds: THREE.Box3 | null) => {
-    if (!bounds) return;
-    geo.translate(0, bounds.min.y * (TURRET_HEIGHT_SCALE - 1), 0);
-  });
-  for (const child of P.turretG.children) child.position.y *= TURRET_HEIGHT_SCALE;
-
   // Retain the full-length A3 spaced side armor as the cassette backing.
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
     front: 2.42, step: 0.71 });
-  P.topY = Math.max(P.topY || 0, 1.28);
 }
 
 function buildM3A3(P: AfvBuilderPort): void {
@@ -1019,7 +643,7 @@ function buildM3A3(P: AfvBuilderPort): void {
   // itself stays untouched in buildBradley), hinge seams + hanger blocks,
   // mounting aprons closing the skirt-top daylight, and the §B2 donor
   // bow-corner closure. CFV blank flanks hold (§5.286): no port holes.
-  bradleyFlankDressing(P, { turretSeat: 'flush' });              // (the A3's floor seats on the pre-268 sunk seat)
+  bradleyFlankDressing(P);                                        // (269: the A2 shell's seat, as the M2A2's)
   // (268: the old engine-raise cap that closed a deck-to-cradle slit is gone: the shared hull's engine-deck raise now
   // stands on the source's deck on the right, −X, and leaves no slit)
   // 268: the glacis ERA field covers the shared spare-link course's station, so the CFV racks a short run on the nose
@@ -1046,13 +670,27 @@ function addBmp3WaveBreakerRibs(P: AfvBuilderPort): void {
   }
 }
 
+// 267: split into its hull and its turret (same calls, same order: bmp3 is byte-identical) so the ROK variant can
+// draw the BMP-3 hull under its own turret.
 function buildBMP3(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, lathe, sph, xform, torus,
-    buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
+  buildBMP3Hull(P);
+  buildBmp3WeldedTurret(P, 'bmp3');
+}
+
+function buildBMP3Hull(P: AfvBuilderPort): void {
+  const { box, cylX, cylY, cylZ, frustum, xform, torus,
+    buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
   // ---- hull core (print lines x0.9684): tub floor 0.29, deck 1.80-1.84,
   // raised mid strip 1.95, fender band to +-1.615 ---------------------------
-  P.add('hull', box(2.16, 0.92, 6.20), 0, 0.76, -0.10);                        // tub y 0.30..1.22, z -3.20..3.00
+  // Round 268b (the owner: "fix the rectaunglar prisms in teh bmp 3 hulls that look like jutting out from bottom"): the
+  // tub's square front-bottom corner stood 0.30 m off the ground out to z 3.00, under the rising track and ahead of the
+  // first wheel. The tub now ends at the first wheel's station and the lower bow plate rises from the belly to the nose
+  // (its underside on prow plane A's inner face), as the real hull's does.
+  P.add('hull', box(2.16, 0.92, 5.28), 0, 0.76, -0.56);                        // tub y 0.30..1.22, z -3.20..2.08
+  P.add('hull', orientedSlab(                                                   // lower bow plate wedge
+    [-1.08, 0.335, 2.08], [1.08, 0.335, 2.08], [1.08, 0.876, 3.00], [-1.08, 0.876, 3.00],
+    [-1.08, 1.22, 2.08], [1.08, 1.22, 2.08], [1.08, 1.22, 3.00], [-1.08, 1.22, 3.00]));
   P.add('hull', box(3.00, 0.51, 5.42), 0, 1.545, -0.55);                       // upper body y 1.29..1.80 (SS-B4)
   P.add('hull', box(2.90, 0.05, 5.30), 0, 1.815, -0.57);                       // roof plate, top 1.84
   // (release 240, the owner: "make sure all tank turrets are clear of hulls": the strip starts at -1.05, outside the sweep
@@ -1188,10 +826,25 @@ function buildBMP3(P: AfvBuilderPort): void {
     P.add('hull', box(0.42, 0.06, 6.40), s * 1.40, 1.355, -0.14);              // band roof over the track run
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, 2.40);          // band step rails
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, -2.60);
-    P.hangMudguard('bmp3-bow-flap', 'hullRubber', box(0.07, 0.30, 0.42), s * 1.578, 0.74, 3.02);         // bow mud flaps (outboard of the
-    P.hangMudguard('bmp3-rear-flap', 'hullRubber', box(0.07, 0.32, 0.30), s * 1.578, 0.72, -3.30);        //   1.504 shoe plane, §B4)
+    // 267 round 2 (both critics: the bow flaps "hang below ... and look detached", most visibly ahead of the front
+    // idler): the band's own painted fender ends curve down over the front idler and the rear sprocket, lofted inside
+    // the band faces (x 1.55..1.61, outboard of the 1.504 shoe plane) and buried in the band bins and the nose run. The
+    // bow flaps are gone; the rear rubber flaps stay (the BMP-3 carries them) and now hang flush from the rear end's
+    // flat 0.88 underside instead of from air.
+    for (const end of [
+      [[-3.47, 1.05], [-3.45, 0.88], [-3.15, 0.88], [-3.02, 0.95], [-2.88, 1.01]],
+      [[2.78, 1.01], [2.92, 0.95], [3.05, 0.88], [3.14, 0.88], [3.20, 1.00], [3.24, 1.16]],
+    ] as Array<Array<[number, number]>>) {
+      P.add('hull', sectionSolid(end.map(([z, bottom]) => {
+        const ring: SectionPoint[] = [[1.55, bottom], [1.61, bottom], [1.61, 1.30], [1.55, 1.30]];
+        return { z, ring: s > 0 ? ring : ring.slice().reverse().map(([x, y]) => [-x, y] as SectionPoint) };
+      })));
+    }
   }
-  bowLightPair(P, 1.16, 1.70, 2.62, 3810);
+  // Round 268b: the plain rubber boxes that hung 16 cm under the rear fender ends (the stern's "jutting prisms") are the
+  // stern water-jet outlet flaps, now shaped and hung flush under the fender ends (profiles/bmp3Family.ts); the glacis
+  // headlights move into their hoop guards there (addBmp3HullDetail).
+  addBmp3SternWaterJetFlaps(P);
   shovelTool(P, -1.56, 1.40, 0.80, 0.9);
   stowage(P, 'hullCloth', rng, [[1.50, 1.41, -1.60, 0.20, 0.08, 0.66]]);      // inside the width datum (r6)
   // §5.303 equipment: rear-deck stowage bins flanking the troop hatches
@@ -1219,7 +872,11 @@ function buildBMP3(P: AfvBuilderPort): void {
   }
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.30, pitch: 0.14, seed: 9 });
-    links.position.set(-1.42, 1.395, -2.10);                                   // inside the 1.615 width datum
+    // round 268b: the seat pass never kept the links on the band roof (they cut 7 cm into the upper side; its recorded
+    // answer stood them on the right flank wall at z -1.915, over the exhaust slot, profiles/bmp3Family.ts). They are
+    // authored on that wall seat, carried forward of the slot.
+    links.position.set(-1.5405, 1.623, -0.95);                                 // inside the 1.615 width datum
+    links.rotation.set(0, 0, Math.PI / 2);
     P.hullG.add(links);                                                        //   (r6 WIDTH GUARD: at -1.56 the
                                                                                //   0.30-wide fitting reached -1.71
                                                                                //   and the harness shrank the
@@ -1235,6 +892,8 @@ function buildBMP3(P: AfvBuilderPort): void {
   P.add('hullDark', cylY(0.018, 0.018, 0.03, 8), -1.30, 1.905, -1.90);
   P.decal('hull', 'number', '331', 0.26, [-1.617, 1.10, 0.90], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.55, [0.90, 1.60, -3.585], Math.PI);
+  addBmp3HullDetail(P);
+  closeBmp3SternPockets(P);
   // ---- running gear (print x0.9684): 6 wheels r 0.30, FRONT idler raised,
   // REAR drive sprocket (rear engine), track band top 1.20 ------------------
   buildRunningGear(P, {
@@ -1246,70 +905,6 @@ function buildBMP3(P: AfvBuilderPort): void {
     contactZF: 1.79, contactZR: -2.15,
   });
   P.topY = 1.00;
-  // ---- low two-man turret (print x0.9684: body z -0.86..+1.34 world, plan
-  // half-width to 1.156, roof 2.30-2.46, ring plane 1.85 at z +0.24) --------
-  // Turret-local frame (pivot [0, 1.85, 0.24]).
-  P.add('turret', cylY(1.00, 1.06, 0.09, 26), 0, -0.015, 0.02);                // ring collar on the deck
-  P.add('turret', cylY(0.66, 0.70, 1.08, 20), 0, -0.60, 0.02);                 // crew basket (print interior.001 —
-                                                                                //   a registered turret follower)
-  P.add('turret', nonUniformXform(lathe([                                       // low faceted dome: wall to the
-    [1.04, 0.0], [1.06, 0.10], [1.02, 0.22], [0.92, 0.32],                      //   0.42 shoulder, flat crown band
-    [0.72, 0.42], [0.48, 0.49], [0.22, 0.525], [0.0, 0.53],                     //   (crown <=2.41 world: the p95
-  ], 26), 0, 0, 0, 0, 0, 0, [1.02, 1, 1.06]), 0, 0, 0.06);                     //   dims roof rides the 2.40 datum)
-  P.add('turret', box(0.88, 0.05, 0.70), 0, 0.525, 0.10);                      // crown plate, top 2.40 world
-  // gun-root saddle wedge to the mantlet (print front tapers to the tube)
-  P.add('turret', orientedSlab(
-    [-0.52, 0.12, 0.78], [0.52, 0.12, 0.78], [0.34, 0.14, 1.12], [-0.34, 0.14, 1.12],
-    [-0.42, 0.46, 0.70], [0.42, 0.46, 0.70], [0.24, 0.38, 1.10], [-0.24, 0.38, 1.10]));
-  // commander sight tower rear-left (print mast band z -0.67..-0.62 world;
-  // the ONLY >2.42 z-band together with the co-located MG — the p95 dims
-  // roof stays on the 2.40 crown datum)
-  P.addEquipment('turret', cylY(0.13, 0.15, 0.14, 16), -0.30, 0.45, -0.85);             // commander sight: LOW ROUNDED POT
-  P.add('turret', nonUniformXform(sph(0.14, 14), 0, 0, 0, 0, 0, 0, [1, 0.35, 1]), -0.30, 0.50, -0.85); // domed cap, crown 2.399
-  P.add('turretDark', box(0.16, 0.045, 0.03), -0.30, 0.51, -0.755);            //   world (§5.269: not a chimney —
-  P.add('turretGlass', box(0.12, 0.028, 0.014), -0.30, 0.505, -0.742);         //   and the whole pot ducks the
-  P.add('turret', cylY(0.155, 0.165, 0.06, 16), -0.30, 0.375, -0.85);          //   2.42 p95 line; only the thin
-                                                                                //   whips stand above the crown)
-  // commander cupola RIGHT + gunner hatch LEFT
-  P.add('turret', cylY(0.22, 0.25, 0.06, 18), 0.44, 0.475, -0.30);
-  P.add('turretDark', torus(0.22, 0.010, 16), 0.44, 0.52, -0.30);
-  P.add('turret', cylY(0.21, 0.23, 0.05, 18), -0.42, 0.47, -0.18);
-  P.add('turretDark', torus(0.21, 0.010, 16), -0.42, 0.51, -0.18);
-  P.addEquipment('turret', box(0.15, 0.08, 0.15), 0.44, 0.49, 0.02);                    // TKN sight stalk (top 2.38 — under
-  P.add('turretGlass', box(0.10, 0.03, 0.015), 0.44, 0.515, 0.10);             //   the p95 datum roof)
-  // 902V smoke banks on BOTH rear flanks (§B3) — seated on visible armor
-  // collar plates (owner c425f495 seat intent, absorbed)
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.17, 0.26, 0.50), side * 0.88, 0.24, -0.53, 0, 0, side * 0.08);
-  }
-  for (const sde of [-1, 1]) {
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 3, r: 0.065, len: 0.44, spacing: 0.145,
-      splay: sde * 1.15, pitch: -0.38, arc: 0.62, slot: 'detail',
-      rotation: [0, sde * 0.10, -sde * 0.08], seed: 3820 + (sde > 0 ? 1 : 0),
-    }), sde * 0.92, 0.29, -0.52);                                              // 902V banks — §5.303 mass-up
-  }                                                                            //   (~2.5x tube volume + broader
-                                                                                //   collar seats; the §5.269 banks
-                                                                                //   read ~70% under-massed)
-  radioPair(P, 0.30, -0.85, 3830, 0.68);                                       // whips share the sight-tower
-                                                                                //   z-band (p95 dims discipline)
-  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
-  P.decal('turret', 'number', '331', 0.22, [1.02, 0.26, -0.15], Math.PI / 2, 0, 0.03);
-  P.decal('turret', 'number', '331', 0.22, [-1.02, 0.26, -0.15], -Math.PI / 2, 0, -0.03);
-  // ---- triple gun plant: 100 mm 2A70 + 30 mm 2A72 LEFT + PKT --------------
-  P.addGunExtra(box(0.56, 0.40, 0.36), 0, 0.0, 0.30);                          // mantlet block
-  P.addGunExtra(cylZ(0.13, 0.30, 16, 0.10), 0, 0, 0.58);                       // 100 mm root collar
-  // r7 GUN LENGTH: published overall = hull-total 7.14 (muzzle flush with
-  // the bow) — the print's own +0.27 overhang is the documented print
-  // delta; the build rides the published datum (dims sovereignty).
-  buildGun(P, { len: 2.68, r: 0.058, sleeve: false, collar: true, baseR: 0.135 });
-  muzzleBore(P, { len: 2.68, r: 0.058 });
-  P.addGunExtraDark(cylZ(0.030, 1.40, 10), -0.16, 0.01, 1.50);                 // 30 mm 2A72 tube LEFT
-  P.addGunExtraDark(cylZ(0.040, 0.22, 10), -0.16, 0.01, 2.10);                 // 2A72 muzzle sleeve
-  muzzleBore(P, { z: 2.21, x: -0.16, y: 0.01, r: 0.036 });
-  P.addGunExtraDark(cylZ(0.014, 0.55, 8), 0.20, 0.04, 1.00);                   // PKT tube RIGHT
-  muzzleTipDot(P, 0.20, 0.04, 1.29, 0.010, { parent: 'gunG' });
-  P.topY = Math.max(P.topY || 0, 1.86);
 }
 
 // ================================ Upiór (ground-up) ==========================

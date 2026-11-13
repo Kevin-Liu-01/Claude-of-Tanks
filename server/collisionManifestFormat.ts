@@ -71,7 +71,7 @@ export function isSimpleShape(value: RuntimeValue): value is PackedSimpleShape {
 }
 
 /** The most parts a compound record may carry (physics stream, 2026-10-16: 64 -> 256, the pillboxes' embrasures on their
- * structure bands; 226's manifests are served on their own route, /mp-collision/v2, for this format). */
+ * structure bands; a format change takes its own manifest route, docs/MULTIPLAYER-V2.md "Manifest routes"). */
 export const COLLISION_COMPOUND_MAX_PARTS = 256;
 
 function isPackedShape(value: RuntimeValue): boolean {

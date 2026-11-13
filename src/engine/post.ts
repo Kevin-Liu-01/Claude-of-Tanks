@@ -118,6 +118,22 @@ import {
 } from './structureGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
+import { createNamedHolds, type NamedHold } from './namedHolds.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
+
+/**
+ * (2026-11-02 audit R3) who holds the adaptive governor off. The governor measures only while none does:
+ * - 'loading': the covered loading phase (the Garage's battle start, the solo and network loads, the Garage return
+ *   releases it); `setAdaptiveSuspended` is this latch, and QA probes that freeze the governor share it as before;
+ * - 'context-lost': a lost WebGL context, until its restore completes;
+ * - 'studio-film': a Studio film or still owns every frame.
+ * A restore during a covered load releases only its own hold, so loading frames still never govern.
+ */
+export type AdaptiveHoldReason = 'loading' | 'context-lost' | 'studio-film';
+/** (2026-11-02 audit R4) who holds temporal AA off: a Studio film's jittered accumulation replaces it; (round 2 U30) a QA
+ *  tool's fixed-state comparisons (tools/shadow-cache-truth, shadow-render-truth, render-stability-audit), which wrote the
+ *  pass directly and restored their snapshot over whatever the preset or a film had set meanwhile. */
+export type TemporalAaHoldReason = 'studio-film' | 'qa';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
 const hazeTermsScratch = { x: 0, y: 0 };
 
@@ -179,6 +195,11 @@ export interface PostRuntime {
   /** Temporal anti-aliasing (2026-09-12); enabled per quality preset. */
   taa: TemporalAAPass;
   readonly taaEnabled: boolean;
+  /**
+   * (2026-11-02 audit R4) hold temporal AA (and the upscaler's temporal floor) off; the pass follows the preset again when
+   * the last hold releases. The preset listener is the pass's one owner: nobody snapshots and restores `taa.enabled`.
+   */
+  holdTemporalAA(reason: TemporalAaHoldReason): NamedHold<TemporalAaHoldReason>;
   upscaler: FsrUpscalePass;
   sceneAA: SceneAAPass;
   lateFx: LateFxPass;
@@ -190,6 +211,13 @@ export interface PostRuntime {
   readonly perfTrim: number;
   warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
   render(dt: number, frameWallDtSeconds?: number): void;
+  /**
+   * Couch mode's split screen (docs/COUCH-MODE.md "Drawing several views"): the whole chain once per view, sized to one
+   * view (every view is the same size), each written into its own rectangle of the canvas through the viewport and the
+   * scissor. `beforeView(index)` poses the chain's camera for that view (and its visibility). One accounted frame: the
+   * governor samples the frame once, on the first view, and its GPU sample closes after the last.
+   */
+  renderViews(dt: number, frameWallDtSeconds: number, views: readonly PostView[], beforeView: (index: number) => void): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
   /** (perf-253) The late pass's draws of the effects now visible, through its own target (LateFxPass.warmDraw). */
@@ -198,7 +226,16 @@ export interface PostRuntime {
   pinDynScale(value: number | null): void;
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
+  /** The covered loading phase's governor hold (the 'loading' latch of {@link AdaptiveHoldReason}). */
   setAdaptiveSuspended(suspended: boolean): void;
+  /** Latch one named governor hold (one slot per reason). */
+  setAdaptiveHold(reason: AdaptiveHoldReason, held: boolean): void;
+  /** A counted governor hold; the handle releases once. */
+  holdAdaptive(reason: AdaptiveHoldReason): NamedHold<AdaptiveHoldReason>;
+  /** True while any governor hold stands. */
+  readonly adaptiveSuspended: boolean;
+  /** The reasons holding the governor now (telemetry). */
+  readonly adaptiveHoldReasons: readonly AdaptiveHoldReason[];
   /** 2026-10-01: the battlefield's ground height (world x, z → y) — the base of the aerial haze layer. */
   setGroundHeightSource(source: ((x: number, z: number) => number) | null): void;
   resetAdaptiveResolution(): void;
@@ -2156,6 +2193,14 @@ export class LateFxPass extends Pass {
  * @param {THREE.PerspectiveCamera} camera - the gameplay camera
  * @returns {Post}
  */
+/** One view of a split screen, in CSS pixels from the canvas's top left. */
+export interface PostView {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export function createPost(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -2222,9 +2267,11 @@ export function createPost(
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
   let taaEnabled = !!preset.taa;
+  // (2026-11-02 audit R4) a named hold keeps the pass off (holdTemporalAA); the published state is the effective one
+  let taaHeld = false;
   const publishAAState = (): void => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = `${taaEnabled ? 'taa+' : ''}smaa-high+fsr1`;
+    renderer.domElement.dataset.postAa = `${taaEnabled && !taaHeld ? 'taa+' : ''}smaa-high+fsr1`;
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve
@@ -2657,11 +2704,23 @@ export function createPost(
   upscaler.temporalAccumulation = taaEnabled;
   upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
   composer.addPass(upscaler);
+  /** The temporal AA's effective state: the preset's, unless a named hold stands. */
+  function applyTemporalAA(): void {
+    const on = taaEnabled && !taaHeld;
+    taa.enabled = on;
+    taa.resetHistory();
+    upscaler.temporalAccumulation = on;
+    publishAAState();
+  }
+  const taaHolds = createNamedHolds<TemporalAaHoldReason>((held) => {
+    taaHeld = held;
+    applyTemporalAA();
+  });
   {
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
     const renderUpscaler = upscaler.render.bind(upscaler);
     upscaler.render = (...args: Parameters<FsrUpscalePass['render']>) => {
-      try { renderUpscaler(...args); } finally { gpuFrameTimer?.endFrame(); }
+      try { renderUpscaler(...args); } finally { if (viewEndsFrame) gpuFrameTimer?.endFrame(); }
     };
   }
 
@@ -2674,6 +2733,13 @@ export function createPost(
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
+  /** The canvas's own CSS size (the public setSize): a split screen sizes the chain to one view and gives it back. */
+  let fullCssW = 0;
+  let fullCssH = 0;
+  /** The split screen's view output in device pixels (null: the native canvas). */
+  let viewOutput: { width: number; height: number } | null = null;
+  /** This pass of the chain is the frame's last (a split screen's last view): the GPU sample closes after it. */
+  let viewEndsFrame = true;
   // EffectComposer's explicit-target constructor starts with these dimensions
   // and renderer ratio. Replay the final patched pass chain once at startup.
   let appliedSize: {
@@ -2766,6 +2832,12 @@ export function createPost(
   // graph; until it arrives, or without the timer extension, the policy decides on the frame cadence alone.
   let gpuFrameTimer: GpuFrameTimer | null = null;
   let gpuFrameTimerRequested = false;
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failure was the cadence rules alone for the session;
+  // now the next decision window that sees the frozen world asks again under the one policy (at once after one failure,
+  // then past its backoff; the kept failure in between)
+  const gpuFrameTimerLoad = createLazyChunk((): Promise<void> => import('./gpuFrameTimer.ts').then((module) => {
+    gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
+  }));
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let telemetryClock = 0;
@@ -2785,6 +2857,13 @@ export function createPost(
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
+  // (2026-11-02 audit R3) the suspension is derived from named holds (AdaptiveHoldReason): each owner releases only
+  // its own, and the governor resets only when the derived switch flips
+  const adaptiveHolds = createNamedHolds<AdaptiveHoldReason>((held) => {
+    adaptiveSuspended = held;
+    renderer.domElement.dataset.adaptiveSuspended = String(held);
+    resetGovernorState();
+  });
   // (local-fps-265) the raster the governor's own tier change carries into the next preset, set only while it reports
   // the change (the preset listeners, this module's included, run inside that call)
   let carriedRasterRatio: number | null = null;
@@ -2861,7 +2940,8 @@ export function createPost(
       1 / Math.max(1, Math.round(w * renderScale)),
       1 / Math.max(1, Math.round(h * renderScale)));
     const native = renderer.getDrawingBufferSize(_nativeSize);
-    upscaler.setOutputSize(native.x, native.y);
+    if (viewOutput) upscaler.setOutputSize(viewOutput.width, viewOutput.height);
+    else upscaler.setOutputSize(native.x, native.y);
     appliedSize = next;
   }
   function applyAdaptiveQualityAction(action: AdaptiveQualityAction): void {
@@ -2948,11 +3028,10 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
+    if (gpuFrameTimerLoad.state === 'failed') gpuFrameTimerRequested = false;
     if (!gpuFrameTimerRequested && scene.children.some((o) => o.userData.matrixTraversalFrozen === true)) {
       gpuFrameTimerRequested = true;
-      import('./gpuFrameTimer.ts').then((module) => {
-        gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
-      }, () => { /* the cadence rules alone */ });
+      void gpuFrameTimerLoad.load(); // the cadence rules alone until it lands, and while it fails
     }
     const action = qualityPolicy.evaluate({
       clockSeconds: dynClock,
@@ -2972,6 +3051,8 @@ export function createPost(
   }
   {
     const css = renderer.getSize(new THREE.Vector2());
+    fullCssW = css.x;
+    fullCssH = css.y;
     applySize(css.x, css.y);
   }
   function resetGovernorState() {
@@ -3196,10 +3277,73 @@ export function createPost(
   }
 
   /** Complete allocation-free post transaction for one rendered frame. */
+  /** The split screen's views for the frame renderViews is drawing (null: one view, the whole canvas). */
+  let viewPlan: { views: readonly PostView[]; beforeView: (index: number) => void } | null = null;
+  const _viewNative = new THREE.Vector2();
+
   function renderFrame(dt: number, frameWallDtSeconds = dt): void {
+    if (viewPlan) { renderViewFrames(dt, frameWallDtSeconds, viewPlan); return; }
+    if (viewOutput) {
+      // the split screen ended: the chain takes the whole canvas again
+      viewOutput = null;
+      if (fullCssW > 0 && fullCssH > 0) applySize(fullCssW, fullCssH);
+    }
+    renderChain(dt, frameWallDtSeconds, true);
+  }
+
+  function renderViewFrames(dt: number, frameWallDtSeconds: number,
+    plan: { views: readonly PostView[]; beforeView: (index: number) => void }): void {
+    const { views } = plan;
+    if (!views.length) return;
+    const ratio = renderer.getPixelRatio();
+    const first = views[0];
+    const outW = Math.max(1, Math.round(first.width * ratio));
+    const outH = Math.max(1, Math.round(first.height * ratio));
+    if (!viewOutput || viewOutput.width !== outW || viewOutput.height !== outH || cssW !== first.width || cssH !== first.height) {
+      viewOutput = { width: outW, height: outH };
+      applySize(Math.max(16, first.width), Math.max(16, first.height));
+    }
+    const canvasH = renderer.getDrawingBufferSize(_viewNative).y / ratio;
+    const priorScissorTest = renderer.getScissorTest();
+    // one shadow fit for every view (docs/COUCH-MODE.md "The couch tier"): the cascades are fitted once a frame
+    // (lighting.update) and three renders them inside each renderer.render; the first view's draw renders them and every
+    // later view samples the same maps
+    const shadowMap = renderer.shadowMap;
+    const priorShadowAuto = shadowMap.autoUpdate;
+    const priorShadowNeeds = shadowMap.needsUpdate;
+    // and one pass over the scene graph's world matrices: nothing moves between the views (a view changes only its own
+    // camera, posed and updated by beforeView, and visibility), so every later view's draws reuse the first view's
+    const priorMatrixAuto = scene.matrixWorldAutoUpdate;
+    // the gutters and any spare cell hold no stale frame: the canvas is cleared once, then each view draws its own rect
+    renderer.setRenderTarget(null);
+    renderer.setScissorTest(false);
+    renderer.clear(true, true, false);
+    try {
+      for (let index = 0; index < views.length; index++) {
+        const view = views[index];
+        const bottom = canvasH - view.y - view.height;
+        renderer.setViewport(view.x, bottom, view.width, view.height);
+        renderer.setScissor(view.x, bottom, view.width, view.height);
+        renderer.setScissorTest(true);
+        plan.beforeView(index);
+        viewEndsFrame = index === views.length - 1;
+        if (index === 1) { shadowMap.autoUpdate = false; shadowMap.needsUpdate = false; scene.matrixWorldAutoUpdate = false; }
+        renderChain(dt, frameWallDtSeconds, index === 0);
+      }
+    } finally {
+      shadowMap.autoUpdate = priorShadowAuto;
+      shadowMap.needsUpdate = priorShadowNeeds;
+      scene.matrixWorldAutoUpdate = priorMatrixAuto;
+      viewEndsFrame = true;
+      renderer.setScissorTest(priorScissorTest);
+      renderer.setViewport(0, 0, renderer.getDrawingBufferSize(_viewNative).x / ratio, canvasH);
+    }
+  }
+
+  function renderChain(dt: number, frameWallDtSeconds: number, governs: boolean): void {
     // A governor resize must land before any pass reads resolution uniforms.
     // Animation stays bounded; cadence and hitch filtering need actual time.
-    dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
+    if (governs) dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     updateOutputGrade();
     grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
@@ -3255,9 +3399,7 @@ export function createPost(
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
     taaEnabled = !!preset.taa;
-    taa.enabled = taaEnabled;
-    taa.resetHistory();
-    upscaler.temporalAccumulation = taaEnabled;
+    applyTemporalAA();
     upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
     publishAAState();
     resolveLightFx();
@@ -3297,6 +3439,13 @@ export function createPost(
      */
     render: frameAccounting.render,
 
+    renderViews(dt, frameWallDtSeconds, views, beforeView) {
+      viewPlan = { views, beforeView };
+      // through the chain's one render entry (`render`, as the object holds it now): a probe that wraps it (the frame-pass
+      // timer) sees a split frame as one frame
+      try { this.render(dt, frameWallDtSeconds); } finally { viewPlan = null; }
+    },
+
     /**
      * Resize the whole chain. Pass CSS-pixel dimensions; the composer applies
      * its pixel ratio internally and every pass (GTAO, bloom, SMAA) is resized
@@ -3311,7 +3460,11 @@ export function createPost(
         dynamicScaleFloor(renderer.getPixelRatio(), preset),
       );
       // (black-screen-228 RC2) never below 16 CSS px (viewportRuntime.ts MIN_VIEWPORT_CSS_PX)
-      applySize(w > 16 ? w : 16, h > 16 ? h : 16);
+      fullCssW = w > 16 ? w : 16;
+      fullCssH = h > 16 ? h : 16;
+      // a split screen keeps the chain at its view's size; its next frame re-fits the views, and the frame after it ends
+      // gives the chain this size back (renderFrame)
+      if (!viewOutput) applySize(fullCssW, fullCssH);
     },
 
     /** Allocate the late-FX color/depth targets behind a loading screen. */
@@ -3344,6 +3497,7 @@ export function createPost(
     get msaaSamples() { return sceneTarget.samples; },
     taa,
     get taaEnabled() { return taaEnabled; },
+    holdTemporalAA(reason) { return taaHolds.acquire(reason); },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */
@@ -3402,12 +3556,20 @@ export function createPost(
     },
 
     setAdaptiveSuspended(suspended) {
-      const next = !!suspended;
-      if (next === adaptiveSuspended) return;
-      adaptiveSuspended = next;
-      renderer.domElement.dataset.adaptiveSuspended = String(next);
-      resetGovernorState();
+      adaptiveHolds.set('loading', !!suspended);
     },
+
+    setAdaptiveHold(reason, held) {
+      adaptiveHolds.set(reason, !!held);
+    },
+
+    holdAdaptive(reason) {
+      return adaptiveHolds.acquire(reason);
+    },
+
+    get adaptiveSuspended() { return adaptiveSuspended; },
+
+    get adaptiveHoldReasons() { return adaptiveHolds.reasons(); },
 
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */

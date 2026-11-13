@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/mp/session/headlessSession.ts';
+import { ROOM_CLIENT_PHASE, ROOM_PHASE, SESSION_PHASE } from './mp-states.mjs';
 
 function argValue(name, fallback) {
   const prefix = `--${name}=`;
@@ -123,7 +124,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
       matchStartKept: !!p3.headless.room.matchStart, actorClients: actor()?.stats().clients ?? 0, rosterEntity: roster3?.entityId ?? null, movedMAfterLeave: movedM,
     };
     log(`p3 left the battle: session ${report.steps.leave.sessionPhase}, room ${report.steps.leave.roomPhase}, seat kept ${report.steps.leave.seatKept}, actor clients ${report.steps.leave.actorClients}, hull moved ${movedM?.toFixed(2)} m in 2 s`);
-    if (report.steps.leave.sessionPhase !== 'lobby') failures.push(`leave: session ${report.steps.leave.sessionPhase}`);
+    if (report.steps.leave.sessionPhase !== SESSION_PHASE.lobby) failures.push(`leave: session ${report.steps.leave.sessionPhase}`);
     if (!report.steps.leave.seatKept || !report.steps.leave.matchStartKept) failures.push('leave: the room seat or the match_start was lost');
     if (movedM !== null && movedM > 1.5) failures.push(`leave: the released hull kept moving (${movedM.toFixed(2)} m)`);
 
@@ -147,7 +148,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     const tab2 = spawn('p3', 'Three (tab 2)', p3.storage, 2);
     await tab2.headless.room.join({ roomCode: code });
     await until(() => !!tab2.headless.session.match?.welcome, 'the second tab welcomed', 15_000);
-    await until(() => p3.headless.room.phase === 'closed' && p3.headless.session.phase === 'lobby', 'the first tab reads the room\'s refusal and leaves the match', 10_000);
+    await until(() => p3.headless.room.phase === ROOM_CLIENT_PHASE.closed && p3.headless.session.phase === SESSION_PHASE.lobby, 'the first tab reads the room\'s refusal and leaves the match', 10_000);
     await sleep(600);
     const roomReason = p3.headless.room.lastClosedReason;
     report.steps.replaced = {
@@ -180,23 +181,23 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
 
     // ---- 5. the admin kicks a seat: room and match links end together
     await p1.headless.room.command({ type: 'kick', playerId: 'p2' });
-    await until(() => p2.headless.room.phase === 'closed', 'p2 room closed', 5_000);
+    await until(() => p2.headless.room.phase === ROOM_CLIENT_PHASE.closed, 'p2 room closed', 5_000);
     await until(() => (actor()?.stats().clients ?? 0) === 2, 'the kicked client left the actor', 5_000);
     report.steps.kick = { reason: p2.headless.room.lastClosedReason, sessionPhase: p2.headless.session.phase, actorClients: actor()?.stats().clients ?? 0 };
     log(`p2 kicked: room ${report.steps.kick.reason}, session ${report.steps.kick.sessionPhase}, actor clients ${report.steps.kick.actorClients}`);
-    if (report.steps.kick.reason !== 'kicked' || report.steps.kick.sessionPhase !== 'lobby') failures.push(`kick: ${JSON.stringify(report.steps.kick)}`);
+    if (report.steps.kick.reason !== 'kicked' || report.steps.kick.sessionPhase !== SESSION_PHASE.lobby) failures.push(`kick: ${JSON.stringify(report.steps.kick)}`);
     retire(p2);
 
     // ---- 6. the verdict reaches the survivors; the room unlocks; the fresh join seats p4 again; the rematch welcomes it
     const survivors = () => sessions.filter((entry) => !entry.disposed);
     await until(() => [p1, tab2].every((entry) => entry.headless.session.verdict), 'a verdict at the survivors', (battleS + countdownS + 30) * 1000);
-    await until(() => roomSnapshot()?.phase === 'waiting', 'room back to waiting', 20_000);
+    await until(() => roomSnapshot()?.phase === ROOM_PHASE.waiting, 'room back to waiting', 20_000);
     for (const entry of survivors()) await entry.headless.session.leaveMatch('result screen');
     p4b = spawn('p4', 'Four again', memoryStorage(), 3);
     await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } });
     report.steps.rejoin = { roomPhase: roomSnapshot()?.phase ?? null, seated: !!roomSnapshot()?.players.some((player) => player.id === 'p4'), matchStart: p4b.headless.room.matchStart !== null, sessionPhase: p4b.headless.session.phase };
     log(`p4 joined again by code after the verdict: room ${report.steps.rejoin.roomPhase}, seated ${report.steps.rejoin.seated}, match_start ${report.steps.rejoin.matchStart}, session ${report.steps.rejoin.sessionPhase}`);
-    if (!report.steps.rejoin.seated || report.steps.rejoin.matchStart || report.steps.rejoin.sessionPhase !== 'lobby') failures.push(`rejoin: ${JSON.stringify(report.steps.rejoin)}`);
+    if (!report.steps.rejoin.seated || report.steps.rejoin.matchStart || report.steps.rejoin.sessionPhase !== SESSION_PHASE.lobby) failures.push(`rejoin: ${JSON.stringify(report.steps.rejoin)}`);
     await Promise.all(survivors().map((entry) => entry.headless.room.setReady(true)));
     await until(() => roomSnapshot()?.players.filter((player) => player.connected).every((player) => player.ready), 'everyone ready again', 10_000);
     await p1.headless.room.start();
@@ -204,7 +205,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     report.steps.rematch = { welcomed: survivors().filter((entry) => entry.headless.session.match?.welcome).length, expected: survivors().length, freshSeatWelcomed: !!p4b.headless.session.match?.welcome };
     log(`rematch: ${report.steps.rematch.welcomed}/${report.steps.rematch.expected} welcomed, the fresh seat ${report.steps.rematch.freshSeatWelcomed}`);
     if (!report.steps.rematch.freshSeatWelcomed) failures.push('rematch: the fresh seat was not welcomed');
-    for (const entry of survivors()) if (entry.headless.session.stats().phase === 'lost') failures.push(`${entry.id} ended in lost`);
+    for (const entry of survivors()) if (entry.headless.session.stats().phase === SESSION_PHASE.lost) failures.push(`${entry.id} ended in lost`);
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   } finally {

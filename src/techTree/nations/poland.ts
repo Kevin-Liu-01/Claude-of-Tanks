@@ -37,6 +37,9 @@ export const POLAND_TREE: NationTree = Object.freeze({
     // release 262: the PT-64 Tur, the Polish what-if on the true T-64 (profiles/pt64Tur.ts)
     node({ id: 'pt64_tur', tier: 4, line: 'pt91_side', lane: 1, parents: ['t72m1_jaguar'], slot: 'line' }),
     node({ id: 'pt84_sokol', tier: 9, line: 'pt91_side', lane: 3, parents: ['pt91a_twardy'], slot: 'line' }),
+    // 269: the PZA Loara, the PT-91 chassis under the twin 35 mm turret, at VI off the Twardy on lane 1 (lane 2 carries
+    // the Twardy's run to the Sokół, and a drop to lane 4 would cross the Ryś's run to the Zubr on lane 3)
+    node({ id: 'pza_loara', tier: 6, line: 'pt91_side', lane: 1, parents: ['pt91a_twardy'], slot: 'line' }),
     node({ id: 'pt84_orzel', tier: 10, line: 'pt91_side', lane: 3, parents: ['pt84_sokol'], slot: 'line' }),
     node({ id: 'pt84_zbik', tier: 10, line: 'pt91_side', lane: 4, parents: ['pt84_sokol'], slot: 'line' }),
     // PL-01

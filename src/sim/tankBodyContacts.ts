@@ -11,6 +11,7 @@
 import { tankContactRect } from './tankContactShape.ts';
 
 import * as detMath from './detMath.ts';
+import { enterHullTumble, setHullGrounded } from './hullBodyMode.ts';
 interface TankBodyState {
   pos: { x: number; y: number; z: number };
   yaw: number;
@@ -319,12 +320,51 @@ function ensureBodyState(state: TankBodyState) {
   });
 }
 
+/**
+ * The hull is supported by another hull's body, or elevated above its own static support: it rests on a roof (the contact
+ * pass's restSupportY), the pass held it this tick (dynamicSupport), or it rides more than STACK_ELEVATED_M above its own
+ * static support. The last term is true for any hull that high, a plain jump on open ground included (most of a jump's
+ * airborne ticks), not only for a hull on another: it mirrors isDynamicBodyContact, which the tank contacts read. A
+ * snapshot row carries the answer (ENTITY_FLAGS.STACKED, wire 10; src/mp/match/hullBodyRow.ts): a client's copy of
+ * another hull runs no contact pass and has no support cache of its own (audit M8, 2026-11-02).
+ */
+export function hullBearsOnBody(state: {
+  pos: { y: number }; _sup?: { y: number; top?: number }; _body?: { dynamicSupport?: boolean; restSupportY?: number };
+}): boolean {
+  return state._body?.dynamicSupport === true || Number.isFinite(state._body?.restSupportY) ||
+    state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+}
+
+/** Where a snapshot row keeps the hull's body bits (the sim's SNAPSHOT_FLAGS and the wire's ENTITY_FLAGS hold the same
+ * values: hullBodyRow.selftest pins them). */
+export interface HullBodyFlagBits {
+  readonly AIRBORNE: number; readonly OVERTURNED: number; readonly AUTO_RIGHTING: number;
+  readonly TUMBLING: number; readonly STACKED: number;
+}
+
+/**
+ * The hull's body bits for a snapshot row: ground contact, the body mode's storage (src/sim/hullBodyMode.ts) and
+ * hullBearsOnBody. The one packer (round 2, U14): the authority's wire rows (src/mp/match/hullBodyRow.ts
+ * hullBodyRowFlags) and the sim's viewer snapshot (worldSnapshot.ts) both pack through it. A state without a position
+ * (a hand-built fixture) has no stack term.
+ */
+export function hullBodyFlags(state: {
+  grounded?: boolean; overturned?: boolean; pos?: { y: number } | null; _sup?: { y: number; top?: number } | null;
+  _body?: { tumbling?: boolean; autoRighting?: boolean; dynamicSupport?: boolean; restSupportY?: number } | null;
+}, bits: HullBodyFlagBits): number {
+  let flags = 0;
+  if (state.grounded === false) flags |= bits.AIRBORNE;
+  if (state.overturned) flags |= bits.OVERTURNED;
+  if (state._body?.autoRighting) flags |= bits.AUTO_RIGHTING;
+  if (state._body?.tumbling) flags |= bits.TUMBLING;
+  if (state.pos && hullBearsOnBody(state as Parameters<typeof hullBearsOnBody>[0])) flags |= bits.STACKED;
+  return flags;
+}
+
 function isDynamicBodyContact(entity: TankBodyEntity): boolean {
   const state = entity.state;
-  return state.grounded === false || state.overturned === true ||
-    state._body?.tumbling === true || state._body?.dynamicSupport === true ||
-    Number.isFinite(state._body?.restSupportY) ||
-    state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+  return state.grounded === false || state.overturned === true || state._body?.tumbling === true ||
+    hullBearsOnBody(state);
 }
 
 /** How deep an upper hull's bottom may sit in a lower roof and still be a landing on it (see STACK_ENTRY_M). */
@@ -507,8 +547,7 @@ function resolveVerticalImpulse(
 function markDynamicSupport(upper: TankBodyEntity): ReturnType<typeof ensureBodyState> {
   const body = ensureBodyState(upper.state);
   body.dynamicSupport = true;
-  upper.state.grounded = false;
-  upper.state._ride.grounded = false;
+  setHullGrounded(upper.state, false);
   return body;
 }
 
@@ -516,7 +555,6 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   upper: Entity,
   lower: Entity,
   upperFrame: BodyContactFrame,
-  upperBody: ReturnType<typeof ensureBodyState>,
   closing: number,
   onImpact: TankBodyImpact<Entity> | null,
 ): void {
@@ -551,7 +589,7 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   upper.state._spring.rollV += rollKick;
   const upY = detMath.cos(upper.state.visualPitch) * detMath.cos(upper.state.visualRoll);
   if (Math.abs(pitchKick) + Math.abs(rollKick) >= STACK_TUMBLE_KICK || upY < 0.7) {
-    upperBody.tumbling = true;
+    enterHullTumble(upper.state);
   }
   if (!onImpact) return;
   const centerDistance = detMath.hypot(centerDx, centerDz);
@@ -568,8 +606,7 @@ function seatOnRoof(upper: TankBodyEntity, lower: TankBodyEntity): void {
   const seated = state.pos.y;
   body.restSupportY = Number.isFinite(body.restSupportY) ? Math.max(body.restSupportY!, seated) : seated;
   const lowerV = lower.state.verticalSpeed || lower.state._ride.v || 0;
-  state.grounded = true;
-  ride.grounded = true;
+  setHullGrounded(state, true);
   ride.airTime = 0;
   ride.supportY = body.restSupportY!;
   ride.groundV = lowerV;
@@ -619,8 +656,8 @@ function resolveContactPair<Entity extends TankBodyEntity>(
     upper.state.speed *= 0.985;
     return true;
   }
-  const upperBody = markDynamicSupport(upper);
-  applyAngularImpact(upper, lower, upperFrame, upperBody, closing, onImpact);
+  markDynamicSupport(upper);
+  applyAngularImpact(upper, lower, upperFrame, closing, onImpact);
   upper.state.speed *= 0.985;
   return true;
 }

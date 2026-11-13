@@ -8,6 +8,7 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -45,7 +46,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   const receipt = await page.evaluate(async () => {
     await window.__SHOTS.set('battlefield');
     const debug = window.__DEBUG;

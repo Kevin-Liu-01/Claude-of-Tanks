@@ -60,6 +60,8 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
 import './type90bSpecs.ts';
+// release 269: the Russian 152 mm line (the T-14 152 clones the source-X T-14 registered above)
+import './russia152Specs.ts';
 import './christian2Specs.ts';
 import './m48VariantSpecs.ts';
 import './shotKalSpecs.ts';
@@ -80,6 +82,7 @@ import './denmarkSpecs.ts';
 import './m60VariantSpecs.ts';
 import './brazilSpecs.ts';
 import './m41Specs.ts';
+import './t95Specs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
@@ -98,6 +101,14 @@ import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
 import './gm352AirDefenseSpecs.ts';
 import './gepardSpecs.ts';
 import './chineseAirDefenseSpecs.ts';
+// 269: the second air-defence round registers after the first, so every earlier id keeps its roster place
+import { synchronizeType87Frame } from './type87Specs.ts';
+import { synchronizeMarksmanFrames } from './marksmanSpecs.ts';
+import { synchronizeLvkv9040Frame } from './lvkv9040Specs.ts';
+import { synchronizeK30BihoFrame } from './k30BihoSpecs.ts';
+import { synchronizeLoaraFrame } from './loaraSpecs.ts';
+// 269: the M163 VADS on the M113 builder's M741 hull, registered after the second air-defence round
+import { synchronizeM163Frame } from './m163Specs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
@@ -115,6 +126,14 @@ synchronizeNationalModernizationMetadata();
 synchronizeLongweiFamilyMetadata();
 // 264: the 2A4-era Leopards' plates move onto the release's construction after every registration-time copy of them
 applyLeopard2A4FamilyEnvelopes(TANK_SPECS);
+// 269: the second air-defence round's hulls take their base vehicles' final frames (the T-72B3 frame the renewal gives the
+// PT-91 Twardy, the 2A4 envelopes), once every pass that rewrites those frames has run
+synchronizeType87Frame();
+synchronizeMarksmanFrames();
+synchronizeLvkv9040Frame();
+synchronizeK30BihoFrame();
+synchronizeLoaraFrame();
+synchronizeM163Frame();
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);

@@ -4,6 +4,7 @@
 // Usage: node tools/garage-entry-performance-probe.mjs --url=http://127.0.0.1:4178
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -69,7 +70,7 @@ try {
   await page.goto(`${baseUrl}/?nosplash=1&nohero=1`, {
     waitUntil: 'domcontentloaded', timeout: 60_000,
   });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__GARAGE_WORKSHOP`,
     { timeout: 60_000 });
   const ready = await page.evaluate(() => ({
     at: performance.now(),

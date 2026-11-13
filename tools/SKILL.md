@@ -16,7 +16,7 @@ external model files.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 Receipt tiers (266): `selftest-tiers.mjs` splits `selftest-suites.mjs` into the default tier (`npm test`, the
-release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser, media) that only
+release gate) and named manual suites (balance, pacing, bots, sims, perf, fleet, tanks, world, ui, browser, fx, media) that only
 `npm run test:heavy -- <suite>` runs, when the owner triggers it. `test-recommend.mjs` says which suites a diff
 warrants, one plain line each for Main to relay; `test-lane.mjs` runs a lane's share of the default tier plus its
 tanks' pins, each with its reason and a negative control; `test-diff.mjs` holds what both read (the diff, the
@@ -107,7 +107,14 @@ name before any server, browser or capture hold (`id-list.selftest` scans
 (127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
 `localhost`), and load their first page with `loadReadyPage` (180 s navigation,
 one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
-`COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. Those three variables are read
+there only: a tool that keeps its own wait passes its defaults to
+`pageLoadBudget` (`sfx-smoke.mjs` and `voice-smoke.mjs` 90 s ready and one
+retry of any failed load, `audio-mix-balance.mjs` 120 s ready and a single
+load, `weapon-readout.browser.mjs` 30 s each and no retry), so the two
+timeouts govern all four and `COT_NAV_RETRIES` every one that retries;
+`COT_PAGE_TIMEOUT_MS` is retired (`tool-page-load.selftest` checks all
+three). `gen-interior-fills.mjs`
 generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
 also spelled `--release`); exploration passes its own rounds explicitly.
 
@@ -202,9 +209,11 @@ A browser check that needs a stable battle (an inspection camera, minutes of rad
 comes (src/dev/SKILL.md).
 Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mjs
 <url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
-into every battlefield through the player's covered solo entry with
-`navigator.webdriver` reported false (the scene watchdog runs only outside
-automation, so an ordinary smoke never sees a refusal) and reports entered / refused
+into every battlefield through the player's covered solo entry on the player's
+automation path (`window.__COT_AUTOMATION = 'player'`, src/app/automationPath.ts:
+the scene watchdog runs only off the harness path, which every launched browser asks
+for, so an ordinary smoke never sees a refusal; the sweep checks its page took the
+player's path; docs/AUTOMATION-PATHS.md lists every tool's path) and reports entered / refused
 / stuck / black / rescued per run, plus the negative control
 (`?diagforce=blackout` must be refused); a protected preview reads
 `COT_PROTECTION_BYPASS` from the environment.
@@ -479,15 +488,20 @@ bad flag return before a server exists; every run writes
 | `suspension-strip-probe.mjs` | frame strips of the player hull for the visual gauntlet (physics lane, 2026-10-03): rough ground at speed, a hard stop, a landing in each gravity world, level drops onto flat ground (a case may name its hull), a rest on a slope and across one, a field trench and an assault sector line crossed at a held speed (round 7, watched from inside the trench); each frame stamped (root height, rendered pitch and roll, wheels in contact, each road wheel's travel) and checked against the sim state it was synced from, a landing's window anchored on its touchdown step | `--root=<checkout> --dist=<built dist> --out=<dir> --tag=after --ids=land-mars,hardstop` |
 | `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |
 
-The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run and
-use `nice -n 19`. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
+The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run with
+`node tools/with-session-mutex.mjs "$SP/probe.lock" -- nice -n 19 node tools/<probe>.mjs ...`
+(an owned mutex, reaped once its holder is dead; a bare `mkdir` loop left a killed
+agent's mutex held for good, 2026-11-02 audit S4). To hold the `/tmp/cot-shots` FIFO across several steps, run them
+under one normal ticket with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`
+(round 2 U38: the one hold wrapper's shell form; every tool under it that takes the lock nests in that hold through its
+token; a wait that runs out exits 77). The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
 127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:
 a `virtual:` module without its plugin in `mapProbeServerOptions` fails the whole scan, vite then re-bundles three
 mid-session, and the probe page (hmr off) never reloads, so it holds two copies of three (2026-10-20, modes-228 r2d:
 "world/vegetation: expected three directional shadow sites, found 1"). The scan also drops a dynamic import in code it
-proves dead (sky.ts's RGBELoader), so every dynamic `import('three/...')` sits in its `optimizeDeps.include`. The receipt
+proves dead (sky.ts's retired HDRI loader, 2026-10-21), so every dynamic `import('three/...')` sits in its `optimizeDeps.include`. The receipt
 checks that list and every `virtual:` import;
 `[map-probe] vite re-bundled its dependencies mid-session` on stderr names the event. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
 preview instead (`withDistProbeSession`): a before/after pair from two builds shares no module graph or optimizer

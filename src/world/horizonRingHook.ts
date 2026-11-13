@@ -26,10 +26,11 @@ export function horizonRing(): HorizonRing {
 /**
  * The ring's pipeline computed away from the terrain build (2026-10-08, the time-to-battle lane): the horizon ring
  * worker's, or the kept ring of a rematch on the same map (horizonRingPrefetch.ts startHorizonRingBuild). The world
- * build (map.ts) supplies it for its own build and withdraws it when the build ends; the terrain build takes it here,
- * so the hook is the one place the ring comes from — supplied, or built where it stands.
+ * build (map.ts) hands it to its own terrain build (TerrainStreamOptions.horizonRingSupply); without one the terrain
+ * builds the ring where it stands. (2026-11-02 audit R1: a process-wide slot keyed by map and trench variant handed one
+ * build's ring to another build of the same map, receipts and a cancel-and-rebuild that skipped the predecessor wait.)
  */
-interface HorizonRingSupply {
+export interface HorizonRingSupply {
   readonly request: { readonly mapId: string; readonly terrainVariant: string | null; readonly vista: boolean; readonly debugColors: boolean };
   /** The worker has not answered yet. */
   readonly pending: boolean;
@@ -39,30 +40,4 @@ interface HorizonRingSupply {
   take(): HorizonRingPipeline | null;
   /** Keep a pipeline built where it stood for a rematch. */
   remember(pipeline: HorizonRingPipeline): void;
-}
-
-/**
- * One supply a map and trench variant (battle-spikes-253): a world build that starts while another runs (the Garage's
- * background build and a deploy's battle map) supplies its own beside the other's. A single slot handed the later build's
- * ring to both, and the earlier terrain build, finding no ring of its own, built it on the page (nav-perf's phone Garage
- * sweep: 100-376 ms steps on deploy).
- */
-const supplied = new Map<string, HorizonRingSupply>();
-const supplyKey = (mapId: string | undefined, trenches: boolean): string => `${mapId}|${trenches}`;
-
-/** The world build's supply for the terrain build it runs (null withdraws every supply). */
-export function supplyHorizonRing(supply: HorizonRingSupply | null): void {
-  if (!supply) { supplied.clear(); return; }
-  supplied.set(supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches'), supply);
-}
-
-/** Withdraw a supply when its world build ends — only if it is still the one supplied (a later build's stays). */
-export function withdrawHorizonRing(supply: HorizonRingSupply): void {
-  const key = supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches');
-  if (supplied.get(key) === supply) supplied.delete(key);
-}
-
-/** The supply for a terrain build of this config (its map and its trench variant), else null. */
-export function horizonRingSupplyFor(cfg: { readonly id?: string; readonly assaultTrenches?: boolean } | null): HorizonRingSupply | null {
-  return cfg ? supplied.get(supplyKey(cfg.id, !!cfg.assaultTrenches)) ?? null : null;
 }

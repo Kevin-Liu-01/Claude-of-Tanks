@@ -43,6 +43,7 @@ import { createRoomsServer } from '../server/rooms/serve.ts';
 import { createRelayIssuer } from '../server/relayCredentials.ts';
 import { verifySeatToken } from '../server/match/seatToken.ts';
 import { ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_SIGNAL_MAX_BYTES } from '../src/mp/room/protocol.ts';
+import { ROOM_MATCH_STATUS, ROOM_PHASE } from './mp-states.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const token = (seed) => seed.repeat(64).slice(0, 64);
@@ -205,8 +206,8 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
     check((await p1.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 1 })).payload.code === 'host_only', 'a peer\'s report → host_only');
     check((await p2.command({ type: 'match_report', matchId, generation: 1, phase: 'loading', tick: 0 })).type === 'room_ack', 'the host reports loading');
     check((await p2.command({ type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 500 })).type === 'room_ack', 'the host reports playing');
-    const playing = (await s1.next((m) => m.type === 'room_state' && m.payload.room.phase === 'playing')).payload.room;
-    check(playing.match?.status === 'playing' && playing.host.hostId === hostId && playing.host.generation === 1, 'the room follows the report to playing');
+    const playing = (await s1.next((m) => m.type === 'room_state' && m.payload.room.phase === ROOM_PHASE.playing)).payload.room;
+    check(playing.match?.status === ROOM_MATCH_STATUS.playing && playing.host.hostId === hostId && playing.host.generation === 1, 'the room follows the report to playing');
 
     // ---- 5. the host's socket drops: migration after the grace
     const droppedAt = performance.now();
@@ -222,7 +223,7 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
       check(copy.hostId === 'p3' && copy.hostSecret === undefined, `${entry.id} host_changed without the secret`);
     }
     const migrated = (await s1.next((m) => m.type === 'room_state' && m.payload.room.host.generation === 2)).payload.room;
-    check(migrated.host.hostId === 'p3' && migrated.phase === 'playing' && migrated.match?.id === matchId, 'the room record moved with the match running on');
+    check(migrated.host.hostId === 'p3' && migrated.phase === ROOM_PHASE.playing && migrated.match?.id === matchId, 'the room record moved with the match running on');
     report.host.push({ generation: 2, hostId: 'p3', reason: 'timeout', resumeTick: changed.resumeTick });
     log(`host p2 dropped: host_changed to p3 (generation 2, resume tick ${changed.resumeTick}) after ${migrationMs} ms`);
 
@@ -243,9 +244,9 @@ export async function runP2pRoomsE2E({ mapId = 'verdant', log = () => {} } = {})
     check((await p3.command({ type: 'match_report', matchId, generation: 2, phase: 'ended', tick: 1200, verdict: { result: 'alpha', reason: 'elimination' } })).type === 'room_ack', 'p3 reports the verdict');
     for (const entry of [p1, p2b, p3, s1, s2]) {
       const status = (await entry.next((m) => m.type === 'match_status')).payload;
-      check(status.status === 'ended' && status.verdict?.result === 'alpha' && status.verdict?.reason === 'elimination', `${entry.id} match_status ${JSON.stringify(status)}`);
+      check(status.status === ROOM_MATCH_STATUS.ended && status.verdict?.result === 'alpha' && status.verdict?.reason === 'elimination', `${entry.id} match_status ${JSON.stringify(status)}`);
     }
-    const finished = (await s1.next((m) => m.type === 'room_state' && m.payload.room.phase === 'waiting' && m.payload.room.lastResult)).payload.room;
+    const finished = (await s1.next((m) => m.type === 'room_state' && m.payload.room.phase === ROOM_PHASE.waiting && m.payload.room.lastResult)).payload.room;
     report.verdict = finished.lastResult;
     check(finished.lastResult?.result === 'alpha' && finished.lastResult?.round === 1, `lastResult ${JSON.stringify(finished.lastResult)}`);
     check(finished.host.hostId === null && finished.host.generation === 2, `the election cleared: ${JSON.stringify(finished.host)}`);

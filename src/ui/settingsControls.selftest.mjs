@@ -58,6 +58,9 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
 // framing and field of view at their ranges, the kit's segmented control for the shoulder, and a named reset on each row
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
+  // (improve-271 plan 028) a preset picked in the same visit as a language switch is applied before the reload
+  assert.match(source, /\(locale\) => \{\s*(?:\/\/[^\n]*\n\s*)*commitGraphics\(\);\s*setLocale\(locale\);[\s\S]{0,300}window\.location\.assign\(/,
+    'the language switch commits the staged graphics preset before it navigates');
   assert.match(source, /cameraCard\(body\);/, 'the Gameplay tab carries the Camera card');
   for (const key of ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov']) {
     assert.match(source, new RegExp(String.raw`slider\(t\('settings\.camera\.[a-z]+'\), '${key}'`), `${key} is a slider row`);
@@ -116,12 +119,16 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   assert.match(source, /\.filter\(\(\{ id \}\) => !record\.learned\.has\(id\)\)/, 'only the groups still unused show');
   assert.match(source, /hintListeners\.push\(input\.onAction\(action, \(\) => learnHint\(id\)\)\)/, 'a group leaves as its control is pressed');
   assert.match(source, /bus\.on\('ui:playerEngaged', \(\) => fadeHints\(\)\);/, 'the first engagement ends the strip');
-  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*kcReplay = true;\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
+  // (2026-11-02 audit F4: the kill-cam latch is the input owner's, battleInputOwner.ts; the panel's handler only clears up)
+  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
   // the resume veil's hide writes only when the veil is up: updateGear's 150 ms sweep calls it in every state, and a
   // classList.remove of an absent class still rewrites the attribute (266; the idle census in
   // tools/hud-self-measure.browser.selftest.mjs fails on any attribute a page at rest keeps rewriting)
-  assert.match(source, /function hideResumeVeil\(\) \{\s*if \(resume\.classList\.contains\('show'\)\) resume\.classList\.remove\('show'\);/,
+  // (2026-11-02 audit F4: the class is a projection of the input owner's veil, written only when it must change)
+  assert.match(source, /function syncResumeVeil\(\) \{\s*const up = inputOwner\.veil !== null;\s*if \(up !== resume\.classList\.contains\('show'\)\) resume\.classList\.toggle\('show', up\);/,
     'the veil\'s hide is a no-op while the veil is down');
+  assert.match(source, /function hideResumeVeil\(\) \{\s*inputOwner\.hideVeil\(\);\s*syncResumeVeil\(\);/,
+    'the sweep\'s hide goes through the owner and the projection');
   assert.match(source, /setInterval\(updateGear, 150\);/, 'the sweep it guards is still the 150 ms one');
   // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
   // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)

@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { MEDALS } from '../game/serviceRecord.ts';
 import { createElement as el, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
@@ -72,7 +73,6 @@ export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document
   root.setAttribute('aria-live', 'polite');
   const cards = new Map<string, HTMLElement>();
   let queue: NoticeQueue | null = null;
-  let loading: Promise<NoticeQueue> | null = null;
   let serial = 0;
   let timer = 0;
   let enterTimer = 0;
@@ -100,8 +100,9 @@ export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document
     root.append(card);
     requestAnimationFrame(() => card.classList.add('show'));
   };
-  const load = (): Promise<NoticeQueue> => {
-    loading ??= import('./components/notice.ts').then(({ NoticeQueue: Queue }) => {
+  // (2026-11-02 audit R6) the kit's queue under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed import,
+  // so after one failed chunk no medal showed for the session; the next medal asks again
+  const loading = createLazyChunk(() => import('./components/notice.ts').then(({ NoticeQueue: Queue }) => {
       queue = new Queue(1, () => performance.now(), {
         show(toast) {
           const medal = MEDALS.find((entry) => entry.id === toast.options.text);
@@ -124,9 +125,8 @@ export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document
       });
       queue.pause(paused);
       return queue;
-    });
-    return loading;
-  };
+    }));
+  const load = (): Promise<NoticeQueue> => loading.load();
   const clear = (): void => {
     window.clearTimeout(timer);
     window.clearTimeout(enterTimer);
@@ -163,4 +163,8 @@ export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document
     if ((payload as { phase?: RuntimeValue } | undefined)?.phase !== 'battle') clear();
   });
   bus.on('battle:presented', clear);
+  // (round 4 E6b review r1) a network battle's restart opens a new battle (battlePresentation.ts 'battle:restarted'):
+  // the service record drops the abandoned battle's medals (serviceRecord.ts begin), so no card of them shows or waits
+  // to show in the restarted battle
+  bus.on('battle:restarted', clear);
 }

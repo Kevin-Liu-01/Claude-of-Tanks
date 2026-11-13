@@ -13,6 +13,7 @@
 // the next free one, then a whole look a neighbour has is stepped over the roof, the render, the roof's age and the stone
 // (the dress kept free). Without a ledger (a receipt's bare build, a set piece) the first pick stands.
 import { rgb, type Rgb } from './geometry.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 import type { WeatherPalette, WeatherTints } from './weather.ts';
 
 /** What a map's buildings vary in (its row of the building-style table). */
@@ -108,6 +109,7 @@ export function pickLook(palette: WeatherPalette, variation: BuildingVariation |
  * set round one synchronous builder call (regional/index.ts), so it never reaches another building.
  */
 let paintSlot: Rgb | null = null;
+registerBuildScope('appearance.paint', () => paintSlot !== null); // (2026-11-02 audit R1: buildScopes.ts; round 8 Y11)
 export function withPaint<T>(paint: string | undefined, build: () => T): T {
   const prior = paintSlot;
   paintSlot = paint && /^#[0-9a-f]{6}$/.test(paint) ? rgb(parseInt(paint.slice(1), 16)) : null;

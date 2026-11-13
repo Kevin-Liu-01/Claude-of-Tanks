@@ -147,8 +147,8 @@ assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root bloc
 // none.
 const sheetPaths = Object.keys(first).filter((path) => path.endsWith('.css') && path !== TOKENS_CSS);
 assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(),
-  ['src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-pad.css', 'src/ui/tokens/surface-print.css'],
-  'the landing, the manual, the Gallery, the technical diagrams, the item badges (and their paper hues) and Deploy each have their own token sheet');
+  ['src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-pad.css', 'src/ui/tokens/surface-print.css', 'src/ui/tokens/surface-tutorial.css'],
+  'the landing, the manual, the Gallery, the technical diagrams, the item badges (and their paper hues), Deploy and the tutorial each have their own token sheet');
 const sheetDecls = new Map();
 for (const path of sheetPaths) {
   const body = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{\s*:root\{([^}]*)\}\s*\}\s*$/
@@ -725,8 +725,15 @@ assert.ok(!gameHtml.includes('mediaArchive.css'), 'the game boot does not link t
 const viteGroup = /\{ name: '([A-Za-z]+)', test: \/\[\\\\\/\]src\[\\\\\/\]ui\[\\\\\/\]tokens\[\\\\\/\]tokens\\\.css\$\//.exec(read('vite.config.ts'));
 assert.ok(viteGroup, 'vite.config.ts keeps tokens.css in a chunk group of its own');
 assert.equal(viteGroup[1].length, 'mediaArchive'.length, `the tokens chunk name (${viteGroup[1]}) keeps the entry's bytes`);
-assert.match(read('src/ui/studioPanel.ts'), /import\('\.\.\/presentation\/mediaArchive\.css'\)\s*\.then\(\(\) => mountMediaArchive\(/,
-  'the Studio, the game\'s one archive host, loads the archive stylesheet before it mounts the archive');
+// (integration: loaders-workers' audit R6 holds the sheet in one module-level lazy chunk, archiveSheet, asked on each
+// mount; the mount still waits for it; round 3 X9: an opener's chunk, studioArchiveOpener.selftest)
+{
+  const studioPanelSource = read('src/ui/studioPanel.ts');
+  assert.match(studioPanelSource, /const archiveSheet = createLazyChunk\(\(\) => import\('\.\.\/presentation\/mediaArchive\.css'\), \{ opener: true \}\);/,
+    'the Studio, the game\'s one archive host, holds the archive stylesheet in one lazy chunk');
+  assert.match(studioPanelSource, /archiveSheet\.load\(\)\s*\.then\(\(\) => mountMediaArchive\(/,
+    'the Studio loads the archive stylesheet before it mounts the archive');
+}
 
 /* 6. one source with the type package ------------------------------------------------------------------------ */
 // The type package (BUI-F2) declares the font families in each document's head (src/ui/typeFaces.ts typeTokenCss) and

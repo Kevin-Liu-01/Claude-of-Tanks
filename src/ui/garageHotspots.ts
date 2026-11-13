@@ -64,6 +64,8 @@ const _placed = new Float64Array(ORDER.length * 4);
 // each placed plate's leader, anchor to numeral (ax, ay, bx, by): a later plate keeps off it, and its own leader off the plates
 const _leads = new Float64Array(ORDER.length * 4);
 const LEAD_SAMPLES = 12;
+/** Frames between two measurements of a model that showed no hull (it may still be filling in). */
+const REMEASURE_FRAMES = 30;
 
 /** Whether the segment (ax, ay)-(bx, by) passes through the box x0..x1, y0..y1 (sampled: the leaders are short). */
 function segmentHits(ax: number, ay: number, bx: number, by: number, x0: number, y0: number, x1: number, y1: number): boolean {
@@ -160,7 +162,12 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
   host.insertBefore(layer, before);
 
   let hasFacts = false;
+  // the model the anchors were measured on, and whether that found no hull (2026-11-02 audit, 05-ui-2 #9: an empty
+  // model used to be measured again on every frame, a full traverse with closures each time): an empty measurement is
+  // tried again every REMEASURE_FRAMES frames, and new facts (a new tank, a new loadout) measure the model again
   let measured: Object3D | null = null;
+  let measuredEmpty = false;
+  let remeasureIn = 0;
   // the tank's parts as boxes, each in its own frame (the hull's without the turret, the turret's without the gun)
   const parts = [0, 1, 2].map(() => ({ node: null as Object3D | null, box: new Box3() }));
   // each anchor: a point in its part's frame (the hull's unless the rig names the part)
@@ -183,7 +190,8 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     // the bodies the anchors stand on: each part's shadow proxy (its armour body without the antennas, weapon stations
     // and fittings that stand metres above the roof), else its body mesh, else every mesh outside the detail groups
     const hull = bodyBounds(model, _box, ['procShadow_hull', 'hull'], turret ?? null);
-    if (hull.isEmpty()) { measured = null; return; }
+    measuredEmpty = hull.isEmpty();
+    if (measuredEmpty) { remeasureIn = REMEASURE_FRAMES; return; }
     const gear = bodyBounds(model, _gear, ['gearTrackBand', 'gearRoadWheel'], turret ?? null, true);
     if (gear.isEmpty()) gear.copy(hull);
     for (const spot of spots) spot.place = -1;
@@ -317,13 +325,14 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
         spots[index].value.textContent = facts[id].lead;
         spots[index].more.textContent = facts[id].more;
       });
-      // new values, new widths: the next frame reads the room again
+      // new values, new widths: the next frame reads the room again, and measures the tank again
       roomW = -1;
+      measured = null;
     },
     frame(camera, model, shown) {
       if (!shown || !hasFacts || !model) { if (!layer.hidden) layer.hidden = true; return; }
-      if (model !== measured) measure(model);
-      if (!measured) { layer.hidden = true; return; }
+      if (model !== measured || (measuredEmpty && --remeasureIn <= 0)) measure(model);
+      if (measuredEmpty) { layer.hidden = true; return; }
       const width = host.clientWidth, height = host.clientHeight;
       if (width !== roomW || height !== roomH) readRoom(width, height);
       // the running gear's callout takes the side the camera sees

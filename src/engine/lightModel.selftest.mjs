@@ -14,7 +14,7 @@ import {
   OVERCAST_THICK_CUT, OVERCAST_THICK_FROM, OVERCAST_SATURATION_CUT,
 } from './lightModel.ts';
 import {
-  DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
+  DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, importGroundedLightModel, luminance,
   resolveLightModel, resolveOvercast, resolveDeckClosure, DECK_CLOSED_COVERAGE, OVERCAST_DIRECT_CUT_SHARED,
 } from './lightModelCore.ts';
 import { CLOUD_LAYER_RULES } from './cloudPresets.ts';
@@ -30,7 +30,7 @@ const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${
   const preset = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };
   const args = [preset, skyPresetToAtmosphere(preset), { irradianceRaw: [0.05, 0.08, 0.14] }];
   assert.equal(resolveLightModel(...args).mode, 'legacy', 'before the grounded model loads, an open sky keeps the authored rig');
-  await loadGroundedLightModel();
+  await importGroundedLightModel();
   assert.equal(resolveLightModel(...args).mode, 'physical', 'loaded, the grounded model lights it');
 }
 const verdantSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('verdant').sky };
@@ -340,8 +340,9 @@ const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8')
 assert.match(lighting, /fill\.intensity = model\.mode === 'physical' \? 0 : \(opts\.fillIntensity \?\? FILL_INTENSITY\);/, 'the grounded rig drives the fill to zero');
 assert.doesNotMatch(lighting, /fill\.visible = false/, 'without leaving the light signature (no program recompiles between rigs)');
 assert.match(lighting, /scene\.userData\.lightModel = model;/, 'the rig publishes the model the output pass reads');
-assert.match(lighting, /scene\.userData\.lightEnclosed = farCascadeDormant;/, 'the rig publishes the enclosed presentation');
-assert.match(lighting, /const physical = physicalRig && !farCascadeDormant/, 'the Garage keeps the authored rig');
+// (2026-11-02 audit R3/R4) the enclosure is its own state, apart from the far-cascade sleep (a perf latch)
+assert.match(lighting, /scene\.userData\.lightEnclosed = enclosedPresentation;/, 'the rig publishes the enclosed presentation');
+assert.match(lighting, /const physical = physicalRig && !enclosedPresentation/, 'the Garage keeps the authored rig');
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,2000}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*\}[\s\S]{0,800}?#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
@@ -380,8 +381,9 @@ assert.match(main, /getLightReadability: \(\) => \(scene\.userData\.lightModel a
   'the battle atmosphere reads the light\'s readability share');
 
 // ---- the boot weight (2026-10-02): the grounded model loads behind the battle entry. The boot chunk's importers take
-// the core (types, the authored rig, the dispatcher); the battle atmosphere's acquisition and the capture staging load
-// the grounded model before they light an open sky; until then every resolve is the authored rig
+// the core (types, the authored rig, the dispatcher); the battle atmosphere's prepare (round 4 F2: a battle entry asks
+// at once) and the capture staging load the grounded model before they light an open sky; until then every resolve is
+// the authored rig
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const core = read('./lightModelCore.ts');
 assert.doesNotMatch(core, /from '\.\/lightModel\.ts'/, 'the core never imports the grounded model statically');
@@ -394,7 +396,7 @@ for (const [file, src] of [['lighting.ts', lighting], ['sky.ts', sky], ['post.ts
 const grounded = read('./lightModel.ts');
 assert.doesNotMatch(grounded.replace(/^import type [^;]+;$/gm, ''), /^import /m, 'the grounded model has no runtime import');
 assert.match(core, /import\('\.\/lightModel\.ts'\)/, 'the core loads it on demand');
-assert.match(read('./battleAtmosphereAccess.ts'), /Promise\.all\(\[loadRuntime\(\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/, 'with the battle atmosphere\'s covered acquisition');
+assert.match(read('./battleAtmosphereAccess.ts'), /ask\(groundedLightChunk, entry\), ask\(cloudscapeChunk, entry\)/, 'with the battle atmosphere\'s prepare');
 assert.match(read('../main.ts'), /await Promise\.all\(\[import\('\.\/dev\/shotRuntime\.ts'\), loadGroundedLightModel\(\), loadCloudscapeLayers\(\)\]\)/,
   'and the capture staging (the census and the map probes stage maps without the battle atmosphere)');
 assert.equal(EXPOSURE_REFERENCE_ILLUMINANCE, 3.0);

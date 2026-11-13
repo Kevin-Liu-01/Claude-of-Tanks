@@ -102,6 +102,42 @@ assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery p
   }), /requires every recovery port/, 'a non-callable notice port is refused');
 }
 
+{
+  // (2026-11-02 audit F3 review) The recovery's own Garage return fails once: the cover still comes down (it stayed up
+  // for good over a frozen 'failed' return, with no Esc and no notice), and the return notice offers the return again.
+  const events = [];
+  let garageAttempts = 0;
+  let returnRetry = null;
+  const entryLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const recovering = createSoloBattleEntryRuntime({
+    lifecycle: entryLifecycle,
+    loading: { async begin() { throw new Error('world build failed'); } },
+    battleLoad: { showPending: () => events.push('cover'), hide: async () => { events.push('hide'); } },
+    audio: { loadingOn: () => {} },
+    enterGarage: async () => {
+      garageAttempts += 1;
+      events.push(`garage:${garageAttempts}`);
+      if (garageAttempts === 1) throw new Error('restore failed');
+    },
+    nextFrame: async () => {},
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+    reportError: (message) => events.push(`report:${message}`),
+    presentFailure: () => events.push('entry-notice'),
+    presentReturnFailure: (error, retry) => { events.push(`return-notice:${error.message}`); returnRetry = retry; },
+  });
+  await recovering.beginSelected();
+  assert.deepEqual(events, ['cover', 'report:[battle] entry failed', 'garage:1',
+    'report:[battle] entry recovery return failed', 'hide', 'return-notice:restore failed'],
+  'a failed recovery return still releases the cover, then says so with its retry (not the entry notice)');
+  assert.equal(entryLifecycle.renderingCovered, false, 'the entry no longer covers rendering');
+  assert.equal(entryLifecycle.pending, false, 'and the latch is free');
+  assert.equal(typeof returnRetry, 'function');
+  returnRetry();
+  for (let index = 0; index < 6; index += 1) await Promise.resolve();
+  assert.equal(garageAttempts, 2, 'the notice\'s retry runs the return again');
+  assert.deepEqual(events.slice(-1), ['garage:2'], 'a retry that succeeds opens nothing more');
+}
+
 for (const outcome of ['success', 'import-failure', 'paint-failure']) {
   const rejectImport = outcome !== 'success';
   const events = [];
@@ -253,10 +289,58 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   await make(() => null).beginSelected({ mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' });
   assert.deepEqual(covers[0], ['cover', { mapId: 'alpine', modeId: 'frontline_assault', campaign: true, campaignOperationId: 'iron_ridge' }]);
 }
+// (round 2, app-flow review 2) The scene's edge decides a start before its announcement, its intent and its cover, at
+// the press and again after a return wait (canTakeScene; main: the app lifecycle's edge table). A start from the Studio
+// (the __DEBUG.beginSoloBattle hook) covered and loaded its world over the Studio, and only the solo start refused
+// studio -> battle after that load, whose recovery then ran a Garage return under the open Studio; a start queued behind
+// a return resumed with no check, so a Studio opened meanwhile was covered and loaded over as well.
+{
+  let scene = 'studio';
+  const events = [];
+  const make = (whenGarageSettled = () => null) => {
+    const latch = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+    const entry = createSoloBattleEntryRuntime({
+      lifecycle: latch,
+      loading: { begin: async () => { events.push(`load:${scene}`); } },
+      battleLoad: { showPending: () => events.push(`cover:${scene}`), hide: async () => {} },
+      audio: { loadingOn() {} }, enterGarage: () => events.push('garage'), nextFrame: async () => {},
+      isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+      reportError: () => events.push('error'),
+      announce: () => events.push(`announce:${scene}`), recordIntent: () => events.push(`intent:${scene}`),
+      whenGarageSettled, canTakeScene: () => scene !== 'studio',
+    });
+    return { entry, latch };
+  };
+  const fromStudio = make();
+  await fromStudio.entry.beginSelected({});
+  await fromStudio.entry.begin('m1a1_abrams_hc', 'desert');
+  assert.deepEqual(events, [], 'a start over the Studio is refused before anything announces, covers or loads');
+  assert.equal(fromStudio.latch.entrySerial, 0, 'and takes no entry latch');
+  scene = 'garage';
+  let settle;
+  const returning = new Promise((resolve) => { settle = resolve; });
+  const queued = make(() => returning);
+  const pending = queued.entry.beginSelected({});
+  await Promise.resolve();
+  scene = 'studio'; // something opened the Studio while the start waited on the return
+  settle();
+  await pending;
+  assert.deepEqual(events, [], 'a start that waited is refused once the scene it waited for is not the Garage\'s to hand over');
+  scene = 'garage';
+  await make().entry.beginSelected({});
+  assert.deepEqual(events, ['announce:garage', 'intent:garage', 'cover:garage', 'load:garage'], 'from the Garage the start runs');
+}
 const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null, options\?: SoloBattleLoadingStartOptions\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
   'the composition names the map the intent will consume, from the same pending map the loading owner falls back to');
 // (2026-10-26, the owner: "fix team lists in loading state") the cover lists both planned teams from its first frame
 assert.match(pendingComposition, /describePendingMap:[\s\S]{0,400}plannedCardTeams\(specId, \{/, 'the pending cover plans the battle\'s teams');
+
+// (improve-271 plan 034) the solo countdown opens the Frontline brief once per sortie (its show runs every count frame):
+// latched in the countdown's show, the latch reset when the count rolls out and when the Garage takes the screen
+assert.match(pendingComposition, /if \(game\.gameMode === 'frontline_assault' && !briefShownForCountdown\) \{\s*briefShownForCountdown = true;\s*if \(!missionBrief\.isShowing\(\)\) missionBrief\.show\(/,
+  'the countdown opens the brief only when the sortie has not shown it');
+assert.match(pendingComposition, /bus\.on\('battle:rollout', \(\) => \{ briefShownForCountdown = false; \}\);/, 'the latch resets when the count rolls out');
+assert.match(pendingComposition, /missionBrief\.hide\(\);\s*briefShownForCountdown = false;/, 'and when the Garage takes the screen');
 
 console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');

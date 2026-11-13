@@ -6,7 +6,11 @@
 //     and builds every URL from the address the server really bound: never `localhost`, which can resolve to an IPv6
 //     bind while 127.0.0.1 at that port belongs to another checkout's server (the hazard muzzle-bore-probe documented);
 //   - waits up to 180 s for the first navigation and retries a load that timed out once.
-// COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and COT_NAV_RETRIES (0 disables the retry) override the defaults.
+// COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and COT_NAV_RETRIES (0 disables the retry) override the defaults, and a tool's
+// own defaults where it keeps any (pageLoadBudget). (round 8 Y8, sweep s1-13) They are read here and nowhere else: a tool
+// with a knob of its own (sfx-smoke's and audio-mix-balance's COT_PAGE_TIMEOUT_MS, weapon-readout's private reads) was a
+// second name for one budget, which an operator raising COT_NAV_TIMEOUT_MS under load never reached
+// (tool-page-load.selftest's census).
 
 export const NAV_TIMEOUT_MS = 180_000;
 export const READY_TIMEOUT_MS = 60_000;
@@ -21,14 +25,16 @@ function budgetEnvironment() {
   return { COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS, COT_NAV_RETRIES };
 }
 
-/** The navigation and ready budgets: the overrides over the defaults (`readyTimeoutMs` is the tool's own default). */
-export function pageLoadBudget({ readyTimeoutMs = READY_TIMEOUT_MS, env = budgetEnvironment() } = {}) {
-  const retries = env.COT_NAV_RETRIES;
+/** The navigation and ready budgets and the retries: the overrides over the tool's own defaults (`navTimeoutMs`,
+ * `readyTimeoutMs`, `retries`; the fleet's where it names none). */
+export function pageLoadBudget({ navTimeoutMs = NAV_TIMEOUT_MS, readyTimeoutMs = READY_TIMEOUT_MS, retries = NAV_RETRIES,
+  env = budgetEnvironment() } = {}) {
+  const tries = env.COT_NAV_RETRIES;
   return {
-    navTimeoutMs: positive(env.COT_NAV_TIMEOUT_MS) ?? NAV_TIMEOUT_MS,
+    navTimeoutMs: positive(env.COT_NAV_TIMEOUT_MS) ?? navTimeoutMs,
     readyTimeoutMs: positive(env.COT_READY_TIMEOUT_MS) ?? readyTimeoutMs,
-    retries: retries === undefined || retries === '' || !Number.isFinite(Number(retries))
-      ? NAV_RETRIES : Math.max(0, Math.floor(Number(retries))),
+    retries: tries === undefined || tries === '' || !Number.isFinite(Number(tries))
+      ? retries : Math.max(0, Math.floor(Number(tries))),
   };
 }
 

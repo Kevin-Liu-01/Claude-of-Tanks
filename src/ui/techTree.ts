@@ -186,6 +186,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   root.hidden = true;
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
+  // (improve-271 plan 026) the tree takes the focus a board press or an open leaves on no node, so its keys stay its own
+  root.tabIndex = -1;
   root.innerHTML =
     `<header class="tt-head">` +
     `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"${datumAttr('nation')}></h1></div>` +
@@ -805,11 +807,26 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       zoomTo(kind === 'in' ? zoom * ZOOM_STEP : kind === 'out' ? zoom / ZOOM_STEP : 1);
     });
   }
+  // (272) a trackpad pinch reports 60-120 wheel events a second, and each re-laid every node and the wire: the board
+  // follows once a frame, at the latest target (a wheel's deltas add up) and pointer
+  let pendingZoom: { value: number; x: number; y: number } | null = null;
+  let zoomFrame = 0;
+  function zoomSoon(value: number, clientX: number, clientY: number): void {
+    if (pendingZoom) { pendingZoom.value = value; pendingZoom.x = clientX; pendingZoom.y = clientY; }
+    else pendingZoom = { value, x: clientX, y: clientY };
+    if (zoomFrame) return;
+    zoomFrame = requestAnimationFrame(() => {
+      zoomFrame = 0;
+      const target = pendingZoom;
+      pendingZoom = null;
+      if (target) zoomTo(target.value, target.x, target.y);
+    });
+  }
   // ctrl/⌘ + wheel, and a trackpad pinch (which the browser reports as one), zoom at the pointer; a plain wheel scrolls.
   board.addEventListener('wheel', (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
-    zoomTo(zoom * Math.exp(-event.deltaY * 0.002), event.clientX, event.clientY);
+    zoomSoon((pendingZoom?.value ?? zoom) * Math.exp(-event.deltaY * 0.002), event.clientX, event.clientY);
   }, { passive: false });
 
   // A press that travels pans the board (any pointer, from a node too); two touches pinch-zoom about their midpoint.
@@ -824,6 +841,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   };
   board.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
+    // a pan or a press on blank board keeps the keyboard in the tree (the page body would hand it to the Garage)
+    if (!root.contains(document.activeElement)) root.focus({ preventScroll: true });
     if (!pointers.size) swallowClick = false;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.size === 2) {
@@ -841,7 +860,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     point.y = event.clientY;
     if (pinch && pointers.size >= 2) {
       const now = spread();
-      if (pinch.distance > 0) zoomTo(pinch.zoom * now.distance / pinch.distance, now.x, now.y);
+      if (pinch.distance > 0) zoomSoon(pinch.zoom * now.distance / pinch.distance, now.x, now.y);
       swallowClick = true;
       return;
     }
@@ -974,7 +993,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       paint();
       reveal(selectedId, true);
       markOverflow();
-      buttons.get(selectedId)?.focus({ preventScroll: true });
+      const node = buttons.get(selectedId);
+      if (node) node.focus({ preventScroll: true });
+      else root.focus({ preventScroll: true });
     },
     close,
     isOpen: () => open,

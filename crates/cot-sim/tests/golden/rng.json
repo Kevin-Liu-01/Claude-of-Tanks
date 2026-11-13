@@ -2,7 +2,7 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/game/stateCore.ts",
- "sourceSha256": "067f0f7640d229291573906503f4bf41e04449d5ae033cb9f22b8693ab740edb",
+ "sourceSha256": "18627bea4808ef482d0c79d93e350347ac6c8ff05ef82d80eacbd4895c5bb517",
  "cases": [
   {
    "seed": 0,

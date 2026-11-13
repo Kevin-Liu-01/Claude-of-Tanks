@@ -64,6 +64,7 @@ const maintainedStandaloneTools = new Set([
   'tools/armor-zone-plates-report.mjs', // 263 (armor-highlight-262-zones): the zone plates' fleet report before a flip of the flag (CPU, run by hand)
   'tools/roof-pocket-census.mjs', // 263 (vehicles-leclerc-false-roofs-262): the turret roof-pocket census (--ids | --all, --gate; CPU, run by hand)
   'tools/gun-face-split-table.mjs', // 266 (gunface-span-265): the gun-face split's fleet table, frontal turret hits moved per id (CPU, run by hand)
+  'tools/wreck-census.mjs', // wrecks-270: every map's placed hulks, their states, clearances and in-view repeats (Node, run by hand)
 ]);
 // 2026-09-23: the marketing generators are governed too (owner cleanup ruling:
 // a generator stays only while a document or manifest cites it).

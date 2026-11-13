@@ -55,6 +55,8 @@ export interface PavedSurfaceConfig {
   squareArc?: readonly [number, number];
   /** (built-env-270) the Low tier paves the streets in their class (asphalt, setts, patched) instead of the R layer's print */
   low?: boolean;
+  /** (built-env-270b) the Low tier paves the catalogue's paths in their class too (asphalt, setts, patched, concrete) */
+  lowPaths?: boolean;
 }
 
 /**

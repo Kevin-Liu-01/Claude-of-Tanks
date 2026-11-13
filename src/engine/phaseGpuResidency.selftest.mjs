@@ -39,6 +39,7 @@ assert.equal(await residency.resume(), true,
 assert.equal(renders, 1, 'one real covered frame restores renewable allocations');
 assert.equal(frames, 1);
 assert.deepEqual(residency.diagnostics(), {
+  phase: 'resident',
   suspended: false,
   releases: 1,
   resumes: 1,

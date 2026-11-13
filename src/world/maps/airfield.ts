@@ -35,6 +35,7 @@
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // The airfield's buildings: authored sites in rotation pairs about the runway's centre, so each half holds the same
 // cover (the roadside builder handed its plan out in road order: ten buildings along the south taxiway, six along the
@@ -310,7 +311,7 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
+    tankWrecks: WRECK_CASTS.airfield,
     // (the map-content lane, 2026-10-09, landed by the maps lane's Kestrel rebuild) the aprons' floodlight masts and the
     // holding apron's (landmarks/airfieldWorks.ts floodMast), rotation pairs about the runway's centre
     landmarks: [

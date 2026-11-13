@@ -22,6 +22,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
+import { intraClipCycleS, type GunAutoloader } from './fireCycleFloor.ts';
 import type {
   BallisticShellSpec,
   ShellEntity,
@@ -87,6 +88,10 @@ export interface DamageShell extends ShellEntity<DamageShellSpec> {
   /** A roof station's round (sim/auxiliarySystems.ts): the authority lays it on where the target will be in its own
    * time, so lag compensation never rewinds it (server/match/lagCompensation.ts). */
   roofStation?: boolean;
+  /** (270) a rotary gun's round between two full ones (fireCycleFloor.ts createRotaryShotThinning): simulated whole, but
+   * no tracer draws it and no viewer's shell rows carry it (its hit and impact are events), so a rotary gun's rounds in
+   * flight cost the floor's density on the wire and in the tracers. */
+  thinned?: boolean;
   /** Survives screen-piercing across fixed steps; scoped to each target. */
   weaponModuleRolls?: Map<string, Set<ModuleId>>;
 }
@@ -102,11 +107,8 @@ export interface DamageGunSpec {
   primaryGuided?: boolean;
   launcherMuzzles?: readonly LauncherMuzzle[];
   shells?: DamageShellSpec[];
-  autoloader?: {
-    magazineSize: number;
-    fullReloadS?: number;
-    intraClipS?: number;
-  } | null;
+  /** a rotary gun's (`rotary`) floor is one tick, below every other gun's (fireCycleFloor.ts) */
+  autoloader?: GunAutoloader | null;
 }
 
 export interface DamageTankSpec {
@@ -214,6 +216,8 @@ export interface DamageTarget {
   spec: DamageTankSpec & { armor: DamageArmorModel };
   state: DamageTankState;
   combat: CombatState;
+  /** False while a mode holds the hull out of play (a rescued AC-130 escort, a benched wave hostile); absent is active. */
+  modeActive?: boolean;
 }
 
 export type PlateHit = ArmorPlateIntersection;
@@ -671,6 +675,15 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
   m.state = m.hp <= 0 ? 'red' : m.hp <= m.maxHp * 0.5 ? 'yellow' : 'ok';
   if (m.state !== 'red' || prev !== 'red') m.repairT = 0;
   return m.state;
+}
+
+/**
+ * Set a module's hit points (floored at 0) and derive its stage through refreshModuleState: the module law's one writer
+ * for code outside this file (sim/impact.ts crashes and lethal rams; 2026-11-02 audit M6 — impact.ts re-implemented it).
+ */
+export function setModuleHp(m: CombatModuleState, hp: number): ModuleStateName {
+  m.hp = Math.max(0, hp);
+  return refreshModuleState(m);
 }
 
 /**
@@ -2177,6 +2190,8 @@ export function resolveHeBurst(
   for (const tank of tanks) {
     if (direct && tank === directTarget) continue;
     if (tank.combat.destroyed) continue;
+    // a hull out of play takes no splash, as the direct trace skips it (improve-271 plan 011)
+    if (tank.modeActive === false) continue;
     const event = resolveHeSplashTarget(shell, burstPoint, tank, radiusM, dmgRoll, rng);
     if (event) events.push(event);
   }
@@ -2503,7 +2518,7 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
     beginMagazineReload(combatState, spec);
     return;
   }
-  const totalS = Math.max(0.05, Number(autoloader.intraClipS) || spec.gun.reloadS);
+  const totalS = intraClipCycleS(autoloader, spec.gun.reloadS);
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
   combatState.reload.kind = 'intraClip';

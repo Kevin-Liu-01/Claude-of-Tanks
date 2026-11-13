@@ -21,6 +21,7 @@ import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/re
 import { settleCatalogCuts } from './maps/railKit.ts'; // (integ/226: props.ts settles the catalog's cut halls after the catalog pass)
 import { bindStructureSpans, describeStructure, tagStructureVertices } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
+import { worldBuildKey } from './destructibles.ts';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const emptyBuckets = () => Object.fromEntries(names.map(name => [name, []]));
@@ -356,6 +357,8 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
   settleCatalogCuts,
+  // (2026-11-02 audit R2) a structure's measures queue under its world's build key (props.ts worldKey = worldBuildKey(cfg))
+  worldBuildKey,
 };
 // The map-revival lane (2026-10-05): Orchard Valley adopts the Chouf kit (maps/regional/chouf.ts), which rebuilds the
 // placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry
@@ -365,6 +368,7 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   // (2026-10-07, Orchard round 4: the square's closers are the Chouf kit's planned sites; this fixture places the bathhouse alone)
   const P = { maxSpread: 1.7, ...config.props, architecture: undefined, plan: ['bathhouse'], plannedSites: undefined };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
+  const worldKey = worldBuildKey(config);
   const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);
   const buckets = Object.fromEntries(${JSON.stringify(names)}.map(name => [name, []]));

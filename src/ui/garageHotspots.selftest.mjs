@@ -177,4 +177,44 @@ const [gx, gy] = at(dot('gun'));
 assert.ok(Math.abs(gx - px) < 1 && Math.abs(gy - py) < 1, `the gun's dot sits on the barrel (${gx},${gy} vs ${px.toFixed(1)},${py.toFixed(1)})`);
 offTheTank(rigged, 'rigged tank');
 
+// 2026-11-02 audit (05-ui-2 #9): a model that shows no hull yet is measured again at a bounded cadence (it used to be
+// traversed on every frame), shows its callouts once its hull arrives, and new facts measure the tank again.
+{
+  const filling = new Object3D();
+  let traversals = 0;
+  const traverse = filling.traverse.bind(filling);
+  filling.traverse = (visit) => { traversals += 1; return traverse(visit); };
+  filling.updateMatrixWorld(true);
+  hotspots.setFacts(facts);
+  hotspots.frame(camera, filling, true);
+  assert.equal(layer.hidden, true, 'no hull: no callouts');
+  const perMeasure = traversals;
+  assert.ok(perMeasure > 0, 'it was measured');
+  traversals = 0;
+  for (let frame = 0; frame < 60; frame++) hotspots.frame(camera, filling, true);
+  assert.ok(traversals <= perMeasure * 2,
+    `an empty model is measured once per 30 frames, not every frame (${traversals / perMeasure} measures in 60 frames)`);
+  const late = new Mesh(new BoxGeometry(3.6, 2.4, 9), new MeshBasicMaterial());
+  late.position.set(0, 1.2, 0);
+  filling.add(late);
+  filling.updateMatrixWorld(true);
+  for (let frame = 0; frame < 31; frame++) hotspots.frame(camera, filling, true);
+  assert.equal(layer.hidden, false, 'its hull arrived: the callouts show within the cadence');
+  // new facts measure the tank again (a model whose parts landed after its first measurement)
+  traversals = 0;
+  hotspots.frame(camera, filling, true);
+  assert.equal(traversals, 0, 'a measured tank is not traversed per frame');
+  hotspots.setFacts(facts);
+  hotspots.frame(camera, filling, true);
+  assert.ok(traversals > 0, 'new facts measure it again');
+  // and the plates stand only on the vehicle their figures describe (the frame hook in garage.ts and its caller in
+  // main.ts: a switch still landing past the pedestal's grace keeps the previous model on the stage)
+  const { readFileSync } = await import('node:fs');
+  const garage = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+  assert.match(garage, /const described = !modelSpecId \|\| !hotspotFactsSpecId \|\| modelSpecId === hotspotFactsSpecId;\n\s+hotspots\.frame\(camera, described \? model : null,/);
+  assert.match(garage, /hotspotFactsSpecId = spec\.id;\n\s+setHotspotFacts\(\{/);
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  assert.match(main, /garage\.frameHotspots\(camera, pedestal\.switchPending \? null : pedestal\.current\?\.root \?\? null,\s+pedestal\.current\?\.specId \?\? null\)/);
+}
+
 console.log('garageHotspots.selftest: four callouts from the tank\'s own geometry, a dot on each part and its plate off the tank, by transform, on the overview only');

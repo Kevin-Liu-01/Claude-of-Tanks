@@ -128,7 +128,7 @@ if (process.argv[2] === '--child') {
   const lines = [];
   let report = null;
   const browser = await launchGuardedBrowser(puppeteer, LAUNCH, {
-    ...SMALL, label: 'browser-guard-selftest', exit: false, log: (line) => lines.push(line), logFile: join(scratch, 'guard.log'),
+    ...SMALL, label: 'browser-guard-selftest', exit: false, releaseHolds: [lock], log: (line) => lines.push(line), logFile: join(scratch, 'guard.log'),
     onTrip: (value) => { report = value; },
   });
   const guard = browserGuardOf(browser);

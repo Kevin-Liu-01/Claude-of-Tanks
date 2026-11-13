@@ -15,6 +15,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { markDatum } from './dom.ts';
 import { vehicleName } from './killSourceIdentity.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
+import { setBodyFlag } from './bodyFlags.ts';
 
 type WatchHudView = 'off' | 'drone' | 'ride' | 'drive';
 
@@ -247,7 +248,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       const root = document.documentElement;
       if (state.view === 'off') {
         if (root.dataset.watch) delete root.dataset.watch;
-        document.body.classList.remove('cot-spectating');
+        setBodyFlag('cot-spectating', 'watch', false);
         bar.hidden = true;
         shown.view = '';
         return;
@@ -255,7 +256,8 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       if (root.dataset.watch !== state.view) {
         root.dataset.watch = state.view;
         // flying, the battle HUD's own-tank furniture is off (its spectator rule); riding and driving, it is the tank's
-        document.body.classList.toggle('cot-spectating', state.view === 'drone');
+        // (the class's reasons, bodyFlags.ts: the battle HUD's spectate bar holds its own, 2026-11-02 audit F8)
+        setBodyFlag('cot-spectating', 'watch', state.view === 'drone');
       }
       // flying, the plate names the drone, or the tank its orbit is locked on
       const locked = state.view === 'drone' && state.locked && !!state.tank;
@@ -308,7 +310,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       bar.remove();
       rail.remove();
       delete document.documentElement.dataset.watch;
-      document.body.classList.remove('cot-spectating');
+      setBodyFlag('cot-spectating', 'watch', false);
     },
   };
 }

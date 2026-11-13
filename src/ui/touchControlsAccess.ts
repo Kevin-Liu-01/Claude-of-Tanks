@@ -1,7 +1,7 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 /** Retryable owner for the battle-only mobile control surface. */
 import type { ActionId } from '../game/input.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface TouchControlsInput {
   isTouchLayout(): boolean;
@@ -50,21 +50,10 @@ export function createTouchControlsAccess(
   loaders: TouchControlsLoaders = DEFAULT_LOADERS,
 ): TouchControlsAccess {
   let current: TouchControlsRuntime | null = null;
-  let pending: Promise<TouchControlsRuntime> | null = null;
-
-  const preload = (): Promise<TouchControlsRuntime> => {
-    if (current) return Promise.resolve(current);
-    if (pending) return pending;
-    const request = loaders.controls().then((module) => {
-      current = module.createTouchControls(options);
-      return current;
-    }).catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
-    });
-    pending = request;
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => loaders.controls().then((module) => (current = module.createTouchControls(options))));
+  const preload = (): Promise<TouchControlsRuntime> => chunk.load();
 
   return {
     preload,

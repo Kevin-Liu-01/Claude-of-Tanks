@@ -50,6 +50,7 @@ import type { CloudscapeConfig } from './cloudscapes.ts';
 import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload } from './volumetricClouds.ts';
 import { bakeCloudNoise, bakeCloudNoiseKindSteps } from './cloudNoise.ts';
 import { reportWorkerRefused } from './workerRefusal.ts';
+import { createSharedInstall } from './sharedInstall.ts';
 
 type ColorTriple = readonly [number, number, number];
 type VectorPair = readonly [number, number];
@@ -1820,6 +1821,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   // slices beside it, and whichever delivers a kind first installs it (one bake of them all is seconds of main thread).
   let cloudNoiseSettled = !volumetricClouds;
   const cloudNoiseUpload: CloudNoiseUpload = {};
+  // (2026-11-02 audit R3) the noise worker past its deadline keeps working beside the slices; once every kind is in
+  // (from either side) it is terminated, so a worker that never delivers does not live for the page's life
+  let cloudNoiseWorker: Worker | null = null;
+  const retireCloudNoiseWorker = (): void => {
+    if (!cloudNoiseWorker || !CLOUD_NOISE_KINDS.every((kind) => cloudNoiseUpload[kind])) return;
+    cloudNoiseWorker.terminate();
+    cloudNoiseWorker = null;
+  };
   const installCloudNoise = (): void => {
     if (!volumetricClouds) return;
     volumetricClouds.setNoise(cloudNoiseUpload);
@@ -1836,6 +1845,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         reportWorkerRefused();
         return null;
       }
+      cloudNoiseWorker = worker;
       const deadline = createDeferredDeadline<void>(12000, () => {
         console.warn('[sky] cloud noise worker timed out; baking the rest on the main thread in slices beside it');
         cloudNoiseSettled = true;
@@ -1847,20 +1857,21 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         }
         if (CLOUD_NOISE_KINDS.every((kind) => cloudNoiseUpload[kind])) {
           worker.terminate();
+          cloudNoiseWorker = null;
           if (deadline.settle(undefined)) cloudNoiseSettled = true;
         }
       };
       worker.onerror = (error) => {
         console.warn('[sky] cloud noise worker failed; baking on the main thread:', error.message);
         reportWorkerRefused();
-        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseWorker = null; cloudNoiseSettled = true; }
       };
       try {
         worker.postMessage({});
       } catch (error) {
         console.warn('[sky] cloud noise worker could not start; baking on the main thread:', errorMessage(error));
         reportWorkerRefused();
-        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+        if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseWorker = null; cloudNoiseSettled = true; }
       }
       return deadline.promise;
     })();
@@ -1873,6 +1884,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       for (const kind of CLOUD_NOISE_KINDS) cloudNoiseUpload[kind] ??= bake[kind];
     }
     cloudNoiseSettled = true;
+    retireCloudNoiseWorker();
     installCloudNoise();
   };
   /** The same fallback a slice at a time, a frame between slices; a kind the worker delivers meanwhile ends its bake. */
@@ -1896,6 +1908,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       installCloudNoise();
     }
     cloudNoiseSettled = true;
+    retireCloudNoiseWorker();
   };
 
   // Per-deck flags keep a mid-flight synchronous activation idempotent.
@@ -1927,16 +1940,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   };
   // the decks' chunked install in flight: the sky's presentation leaves them to it rather than bake them in one task
   let decksInstall: Promise<void> | null = null;
-  let chunkedInstall: Promise<void> | null = null;
+  // (2026-11-02 audit R3) one install of each kind in flight, joined by every caller, yielding through the newest
+  // caller whose tick is still live (sharedInstall.ts): a superseded covered load's rejected tick fails that caller
+  // alone; the old `??=` memo handed every joiner the first caller's tick and its fate
+  const texturesInstall = createSharedInstall((tick) => installCloudTexturesChunked(tick));
+  const decksShared = createSharedInstall((tick) => installCloudDecksChunked(tick), (job) => { decksInstall = job; });
   /** Await off-main FBM, then install at most one canvas texture per tick: the decks, then the volumetric layer. */
-  const ensureCloudTexturesChunked = (tick?: () => Promise<void>): Promise<void> => {
-    chunkedInstall ??= installCloudTexturesChunked(tick).finally(() => { chunkedInstall = null; });
-    return chunkedInstall;
-  };
-  const ensureCloudDecksChunked = (tick?: () => Promise<void>): Promise<void> => {
-    decksInstall ??= installCloudDecksChunked(tick).finally(() => { decksInstall = null; });
-    return decksInstall;
-  };
+  const ensureCloudTexturesChunked = (tick?: () => Promise<void>): Promise<void> => texturesInstall(tick);
+  const ensureCloudDecksChunked = (tick?: () => Promise<void>): Promise<void> => decksShared(tick);
   const installCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
     // (2026-10-26) the decks first: waiting on the noise worker first held the decks, and the boot's Garage behind them
     await ensureCloudDecksChunked(tick);
@@ -2133,26 +2144,6 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
   };
 
-  // Sourced-HDRI environment override (experiment flag; null = procedural
-  // bake, the shipping configuration). Set to an equirect .hdr URL to test.
-  const HDRI_ENV_URL: string | null = null;
-  let hdriPromise: Promise<THREE.DataTexture> | null = null;
-  const loadHdriEnvironment = (url: string): void => {
-    if (!hdriPromise) {
-      hdriPromise = import('three/examples/jsm/loaders/RGBELoader.js')
-        .then(({ RGBELoader }) => new RGBELoader().loadAsync(url));
-    }
-    hdriPromise.then((tex) => {
-      withEnvironmentRenderState(renderer, () => environments.install(
-        null, () => environmentGenerator().fromEquirectangular(tex),
-        Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
-        () => enforceEnvValidity(renderer, scene),
-      ));
-    }).catch((error: RuntimeValue) => console.warn(
-      '[sky] HDRI env failed, procedural bake kept —', errorMessage(error),
-    ));
-  };
-
   // Round 65: the environment of the physically based dome — a second box sharing the dome's material (the
   // LUT and every uniform by reference) inside PMREMGenerator's far plane; the Preetham bake stays the fallback.
   if (atmosphereLuts) {
@@ -2210,16 +2201,6 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // Refresh their renderer lifetime before baking reflections from the dome.
       refreshAtmosphere();
       atmosphereKeySuffix = environmentKeySuffix();
-      // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
-      // scene.environment instead of the procedural-sky bake. Judged worse —
-      // the HDRI's baked-in sun cannot track the per-map sun azimuth /
-      // elevation driving the CSM, so specular highlights detach from the
-      // shadow direction on 3 of 4 maps. Flag kept for future re-testing
-      // with per-map matched HDRIs.
-      if (HDRI_ENV_URL) {
-        loadHdriEnvironment(HDRI_ENV_URL);
-        return;
-      }
       // MOBILE r4: some iOS GPUs poison the PMREM bake (NaN texels) and the
       // IBL term blackens every lit material (proven on-device by the r3
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the

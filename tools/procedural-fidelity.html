@@ -189,7 +189,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
     // the hull objects (station tops 2.7-2.9 read hull-side), so scored
     // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
     componentMasks:false } },
-  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
+  // 270 (Main 2026-11-06, BUILD-STANDARD §E excision): the print without the two spare TOW rounds and the launch tube
+  // modelled on the ground beside the hull, which widened the file to 5.525 raw against the vehicle's 3.063 and so
+  // scaled the whole Bradley x0.653 under the loader's width fit. Recipe and provenance:
+  // docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json (tools/oracle-excision.mjs).
+  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv_excised.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4_otco is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6m_arrafi.glb shows a Leopard 2A6M (fleet id leo2a6m): re-register it there later.
   // §5.248 germany round row addition: fused whole-shell pairs (Object_3/4
   // both carry hull+turret+gun; Object_5 = vlo running-gear band) — NO
@@ -215,6 +219,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // +0.12 on t72b3m and 0.45 / -0.16 on t72bu, but ~1.27 / +0.62 on the print, whose PT-91 keeps the T-72M1 hull.
   // Fitting it would copy that error (docs/references/tanks/pt91_twardy.md).
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
+  // 270 (owner 2026-11-05): the T95's print, width-registered to the published 4.37 m; a fused print, so whole masks only.
+  t95: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/tanks/community/t95_doomturtle_haphazard.glb', fixedMount:true, componentMasks:false, paintUntextured:true, yawOffset:Math.PI } },
   // release 262: "Challenger 3 TD MBT" by Jeyhun1985 (CC-BY-4.0; sha256 3a4b3fbbe52aad3e…), the TD's measurement oracle
   // (docs/references/tanks/challenger3_td.md). An OBJ conversion: unnamed material-merged nodes. The turret is
   // Object_24 and 25 (the turret's material groups) and the gun's Object_20 also carry the turret basket and breech
@@ -252,13 +258,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // them on their photo packet (docs/references/photos/t64-20261031.json, tools/photo-reference-policy.mjs).
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
-  c1_ariete_proto_serie1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
-  // C2/AMV is authored as an upgrade package on the same C1 chassis. Reuse
-  // the supplied Arrafi print for the shared hull/running-gear comparison;
-  // C2-only armor remains a procedural delta rather than an external model.
-  c2_ariete_proto: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
+  // 268 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): c1_ariete_proto_serie1 and c2_ariete_proto are rebuilt from photographs as the 1986-88 C1 prototype and the C2 prototype (profiles/italy.ts buildArieteMkSteps), and k1e1 as the K1E1 (profiles/k1e1.ts). Their oracles show other variants: ariete_c1_arrafi.glb the series C1 Ariete, k1a1_kojf.glb the K1A1 (fleet id k1a1). Fidelity is first-party-unregistered, N/A; stage A takes them on their photo packets (docs/references/photos/, tools/photo-reference-policy.mjs) and the blind photo critic is their visual bar. The oracle files and the gate records are untouched.
   // Carro 45t: owner-approved roof redesign, docs/references/concepts/carro45t-roof-20260929.json.
-  k1e1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
   // t90a_burlak_proto (267, Main's ruling): the T-90A X source's hull under the Burlak X source's turret
   // (tools/t90-x-reference-overrides.ts); the AW print t-90a_burlak_armored_warfare.glb is retired as its gate oracle.
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
@@ -365,13 +366,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // credit; docs/ATTRIBUTION.md "AFV oracle drop"). Oracle only — the
   // playable stays procedural. Print carries a real turret split
   // (turret_lod, 25mm fused in it) + textures.
-  m2a2_bradley: {
-    source:'glb',
-    glb:{
-      path:'/models/tanks/community/m2_bradley_ifv.glb',
-      turretNode:'^turret_lod$', autoPivot:true,
-    },
-  },
+  // 270 (Main 2026-11-06: "The comparison registration follows the owner's swap"; the owner 2026-11-05: "the m3a2 bradley
+  // USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2 bradley"): this print's turret is the
+  // one buildBradleySourceTurretIfv measures, which the M3A2 carries since 269, so the registration moved from
+  // m2a2_bradley to m3a2_bradley unchanged (file, turret node, yaw, autoPivot). m2a2_bradley carries the classic turret
+  // (profiles/bradleyClassicTurret.ts, rebuilt as an ODS turret in 269), which no registered model shows: it is not
+  // registered here, and stage A takes it on its photo packet (docs/references/photos/m2a2-bradley-20261106.json,
+  // tools/photo-reference-policy.mjs).
+  m3a2_bradley: { source:'glb', glb:{ path:'/models/tanks/community/m2_bradley_ifv.glb', turretNode:'^turret_lod$', autoPivot:true } },
   // AFV lane NEW VEHICLE (owner drop 2026-08-06): 42manako SPz Puma
   // (CC-BY-4.0, ATTRIBUTION.md "SPz Puma oracle drop"). Oracle only — the
   // playable stays procedural (modern3.ts). Real articulated split in the
@@ -466,14 +468,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // repaired). Configs are the retired registrations verbatim.
   // 264 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): leo2a4 is rebuilt on the release-262 Leopard 2 hull (fidelity first-party-unregistered, N/A; the blind photo critic is its visual bar). Its oracle leo2a6_buh.glb shows a Leopard 2A6 (fleet id leo2a6): re-register it there later.
   // 267 (Main ruling 2026-10-28: "where a rebuild's registered oracle shows a different (later) variant, unregister it"): kf51_evo is rebuilt as the Eurosatory KF51 EVO (profiles/kf51Evo.ts) and kf51_u is the KF51-U (fidelity first-party-unregistered, N/A; the blind photo critic is their visual bar). Their oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator (fleet id kf51_panther, scored on its own source).
-  // chieftain3 (graduated 2026-08-04, the 18th — UK's first): retired
-  // userdrops5 registration — measurement-only (Z-up print).
-  chieftain3: {
-    source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/chieftain5.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      pitchOffset:-Math.PI/2, paintUntextured:true },
-  },
+  // chieftain3 (graduated 2026-08-04, the 18th — UK's first) measured against the retired userdrops5 print
+  // (recovered/chieftain5.glb) until 271: the print lay on its nose in the gate frame (reference height 10.79 m, hull
+  // 2.19 m). It is registered to the Mk 5 X source it is built on (second-wave-x-reference-overrides.ts, Main 271).
   // m1a1_abrams_hc (graduated 2026-08-04, the 17th): retired specs.ts SEPv2
   // registration — measurement-only.
   m1a2_legacy: {
@@ -896,6 +893,9 @@ function visibleBox(root) {
     if (!isRenderNode(o) || !baseVisible.get(o) || hiddenRoofFittings?.has(o)) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
+    // a mesh whose every triangle was set aside (271: a whip mesh of its own, all of it in its antenna span) keeps an
+    // empty box, whose infinite corners would make the whole box infinite
+    if (o.geometry.boundingBox.isEmpty()) return;
     local.copy(o.geometry.boundingBox);
     if (o.isInstancedMesh) {
       for (let i=0; i<o.count; i++) {

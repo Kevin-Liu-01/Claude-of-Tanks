@@ -289,15 +289,19 @@ export function disposeObject3DResources(
 /**
  * (battle-spikes-253) disposeObject3DResources in steps: the root detached and both resource sets collected first, then
  * `perStep` disposals a step (the dormant battlefield's release disposed a whole world in one task: nav-perf's room leave,
- * 1.0 s). Drained, the same disposals in the same order.
+ * 1.0 s). Drained, the same disposals in the same order. (2026-11-02 audit R1) A paced caller hands `next(roots)` the
+ * roots that began sharing resources since the release started (a world cached between its slices): theirs are kept too.
  */
 export function* disposeObject3DResourcesSteps(
   root: Object3D | null | undefined,
   { preserveRoots = [], onDispose = null }: ResourceDisposalOptions = {},
   perStep = 48,
-): Generator<void, ResourceDisposalReceipt, void> {
+): Generator<void, ResourceDisposalReceipt, readonly Object3D[] | undefined> {
   const keep = createResourceBag();
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
+  const keepLate = (late: readonly Object3D[] | undefined): void => {
+    if (late) for (const lateRoot of late) collectTreeResources(lateRoot, keep);
+  };
 
   const owned = createResourceBag();
   // Batched/instanced meshes may own private GPU textures that are not
@@ -312,7 +316,7 @@ export function* disposeObject3DResourcesSteps(
     onDispose?.('geometry', geometry);
     geometry.dispose?.();
     geometries += 1;
-    if (++done % perStep === 0) yield;
+    if (++done % perStep === 0) keepLate(yield);
   }
   let materials = 0;
   for (const material of owned.materials) {
@@ -320,7 +324,7 @@ export function* disposeObject3DResourcesSteps(
     onDispose?.('material', material);
     material.dispose?.();
     materials += 1;
-    if (++done % perStep === 0) yield;
+    if (++done % perStep === 0) keepLate(yield);
   }
   let textures = 0;
   for (const texture of owned.textures) {
@@ -328,7 +332,7 @@ export function* disposeObject3DResourcesSteps(
     onDispose?.('texture', texture);
     texture.dispose?.();
     textures += 1;
-    if (++done % perStep === 0) yield;
+    if (++done % perStep === 0) keepLate(yield);
   }
   return { objects, geometries, materials, textures };
 }

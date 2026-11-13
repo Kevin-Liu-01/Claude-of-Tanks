@@ -97,6 +97,9 @@ interface ShapedMudguardOptions {
   readonly support?: boolean;
   /** Hang the guard from the hull stock above its top edge once the profile is done (P.hangMudguard). */
   readonly hang?: boolean;
+  /** (270, default 'hull') the slot the painted hanger joins: a guard hung ahead of the armour (the Type 87's at its
+   *  fenders' tips) takes 'hullEquipment', out of the armoured hull's measured box. */
+  readonly supportSlot?: string;
 }
 
 interface SharedMudguardReceipt {
@@ -320,6 +323,8 @@ interface FittingOptions {
   head?: readonly [number, number, number];
   window?: readonly [number, number];
   roundHead?: boolean;
+  /** roofSight: a sight housing of the vehicle's own shape, drawn in place of the column and head (270, the BMP-3). */
+  housing?: (parts: FittingParts) => void;
 }
 
 interface FittingParts {
@@ -1238,7 +1243,7 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
   const attachedSupport = options.support ?? !options.geometry;
   if (attachedSupport) {
     const supportY = options.y + height / 2 - Math.max(0.012, height * 0.035);
-    P.add('hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
+    P.add(options.supportSlot ?? 'hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
       options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
   }
 
@@ -3935,6 +3940,10 @@ function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
   const [hx, hy, hz] = opts.head ?? [0.34, 0.168, 0.34];
   const [wx, wy] = opts.window ?? [0.24, 0.084];
   const parts = fitParts();
+  if (opts.housing) {
+    opts.housing(parts);
+    return fitAssemble('roofSight', parts, opts);
+  }
   parts.add('detail', cylY(colR, colR2, colH, 20), 0, colH / 2, 0);
   const headY = colH + hy / 2 - 0.006;
   // a round head (the Leclerc's HL-70) or a squared one (the AMX-40's), its window on the front, its lid on top

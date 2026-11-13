@@ -2,6 +2,7 @@ interface BattlePhasePolicyOptions {
   getPhase(): string;
   hasResult(): boolean;
   hasControllablePlayer(): boolean;
+  /** The kill-cam replay's own flag (killcam.ts `active`, the one owner: killcamScreen.ts), never an edge-fed copy. */
   isKillcamActive(): boolean;
   isBattleLoadVisible(): boolean;
 }

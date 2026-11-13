@@ -9,6 +9,7 @@
  * and tools) the full catalogs are resident and nothing loads.
  */
 import { localeDictionary, registerLocaleDictionary, type CatalogLocale } from './i18nDictionaries.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type Slice = Readonly<Record<string, string>>;
 type SliceLoader = (locale: CatalogLocale) => Promise<{ default: Slice }>;
@@ -23,14 +24,13 @@ export async function extendResidentDictionaries(load: SliceLoader): Promise<voi
   locales.forEach((locale, index) => registerLocaleDictionary(locale, { ...localeDictionary(locale), ...slices[index]!.default }));
 }
 
-/** Make a slice resident once (concurrent callers share the request); a failed chunk fetch stays retryable. */
+/** Make a slice resident once (concurrent callers share the request); a failed chunk fetch stays retryable: (2026-11-02
+ *  audit R6, round 2 U35) one app/lazyChunk.ts chunk per slice, asked again under the one policy (at once after one failure,
+ *  then past its backoff; a removed chunk shows the reload action), not at once by every call. */
 export function residentSlice(modules: SliceModules): () => Promise<void> {
-  let request: Promise<void> | null = null;
+  const slice = createLazyChunk(() => extendResidentDictionaries((locale) => modules[locale]()));
   return () => {
     if (!import.meta.env) return Promise.resolve();
-    return request ??= extendResidentDictionaries((locale) => modules[locale]()).catch((error: unknown) => {
-      request = null;
-      throw error;
-    });
+    return slice.load();
   };
 }

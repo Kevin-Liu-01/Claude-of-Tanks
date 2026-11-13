@@ -3,6 +3,7 @@
 import type { BufferGeometry } from 'three';
 import { authoredTreeStations, type AuthoredTreeFeature, type AuthoredTreeRecord } from './authoredTreePlacement.ts';
 import type { CollisionRecord } from './collision.ts';
+import { moveConcealerDisc } from './concealerIndex.ts';
 import type { HeightField } from './terrain.ts';
 import { overlapsStructureClearance, type StructureClearance } from './vegetationClearance.ts';
 import { planRiverLanding, type RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -213,7 +214,7 @@ function moveTidalTree(tree: AuthoredTreeRecord, obstacle: CollisionRecord, conc
   obstacle.min[0] += dx; obstacle.max[0] += dx; obstacle.min[1] += dy; obstacle.max[1] += dy;
   obstacle.min[2] += dz; obstacle.max[2] += dz;
   obstacle.shape2.cx = x; obstacle.shape2.cz = z;
-  concealer.x = x; concealer.z = z;
+  moveConcealerDisc(concealer, x, z); // (round 2 Q13) the canopy index learns of the move
 }
 
 /** Construction-only one-for-one allocation transfer; no RNG or new trees. */

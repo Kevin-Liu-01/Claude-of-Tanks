@@ -270,6 +270,18 @@ roof stations' machine guns and 30 mm cannons; every row when the roster is
 unknown or in the Gun Game); our own reports and our loader's machinery load
 and are pinned once our hull is known.
 
+A fast gun is heard by its cadence (2026-11-11, release 272; `src/game/shotCadence.ts`, the one cap the audio, the
+effects, the camera and the phone read). Each round's crack plays up to the simulation's floor, 20 a second; a rotary
+gun's rounds between are silent. A gun firing sustained (rounds under 0.25 s apart) rings each crack for a short grain
+(0.3-1 s), its punch, distant boom (under a close report), breech and feed once each 0.15 s, its echo once each 0.45 s,
+and a burst's hull strikes on one target once each 0.1 s. A round with no simulation clock (a replay's, the Studio's)
+and any gun slower than 0.45 s a round are heard as before, voice for voice (`shotCadence.selftest`).
+The same audit (the lane's evidence `AUDIT.md`) bounded the other bursts the engine heard: a fast gun's rounds on the
+world strike once each 0.1 s per shooter (an airstrike's strafe in full); a held empty trigger clicks once a press; a
+fast gun's hit calls keep their queued moment instead of waiting for the burst to pause (crewRadio `burst`); a hull
+going straight back to the ground it just left within 0.4 s keeps its track loops; one prop break reported twice in a
+frame plays once; and a hull's landings come at most every 0.3 s.
+
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
 and at most 22 % of their body below 100 Hz (see Sound effects below). Under
@@ -628,13 +640,13 @@ its army's register. Two parts:
 
 | Moment | Crew |
 |---|---|
-| Our sight settles (0.35 s) on a spotted enemy, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our sight settles (0.35 s) on an enemy the player sees, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
 | Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
-| Our kill left no spotted enemy within 1.5 km | "Target. Cease fire." |
+| Our kill left no enemy the player sees within 1.5 km | "Target. Cease fire." |
 | A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
 | Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
 | ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
-| Our drone: under 10 s of battery, 85 % of its link, recalled home, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled and parked on its dock, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
 | An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
 | Reversing within 6 s of a hit or of being seen | "Backing up." |
 | Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
@@ -656,7 +668,27 @@ the engine through each mode's opening and endings too. A network seat hears
 the same calls: the presentation now relays the authority's `drone_down` as
 `drone:down` (it had no case and was dropped), and the jump call reads the
 frame's airborne state rather than `tank:jump`, which a network seat never
-raises.
+raises. "Friendly extracted" alone is the solo seat's call: the authority stops
+sending a hull that leaves the field, so a network seat never sees an escort's
+rescued life. "An enemy the player sees" is the game's one visibility
+rule (`src/game/playerVisibility.ts`, as the HUD draws it), not the team's
+spot. The crew is silent behind the pause menu, a network battle's included:
+its opening cuts the line on the air and the queue, each of its edges cancels
+the calls the crew had armed (a kill heard behind it arms no cease fire for
+the resume; a recalled drone that docks behind it is not called recovered,
+nor an enemy's smoke popped behind it called, at the resume), and the radio
+takes no line while it is open
+(`crewProcedure.selftest.mjs`). The crew's own calls are our tank's only while
+the player drives it: a watched battle's seat its brain drives makes none of
+the per-life or sighting calls (the fire command, cease fire, re-engage, the
+drone, APS, crushes, the Juggernaut sighted), while the mode's calls in the
+table above are the side's news and still play there, as the engine's own
+mode calls do. Each seat the watcher takes starts a new life, as a respawn
+does, with that hull's own radio set (a set broken while its brain drove it
+sounds broken) and its own fire alarm (the last seat's stops). The drone's
+calls follow the authority's flight view: "Drone recovered." when a recalled
+airframe is parked on its dock (`returnS` run out), never at the loss of one
+(`recallS` is only the recall's gate at launch).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
@@ -803,6 +835,23 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
 6. **Manifest**. `build-sfx.mjs` writes `src/audio/sfxManifest.generated.ts`
    (group, variant count, durations, channels, rate, loop points, size) and the
    incremental state `tools/audio/.sfx-manifest.json`.
+7. **Commit** (`sfxBank.mjs`, 2026-11-08). Each asset's rebuild is one
+   transaction: its candidates master and are judged in a new folder of the
+   ignored `.qa-dev/sfx-stage/`, and only when at least one ships does the bank
+   move in (the old take files aside, the new ones in, stale indices gone) and
+   its manifest entry and verdict of record change. A rebuild that ships
+   nothing (every candidate refused by the ear proxy or under the loudness
+   floor, a pin that names no take, a step that throws, a swap that fails and
+   is rolled back) is refused: the shipped files and both records stay as they
+   were and the run exits 1. A bank that ships fewer than its `variants` is a
+   warning. The three records are written after every committed asset, so a run
+   that crashes between assets leaves them true to the disk. A swap that does
+   not finish (a kill inside it, or its undo or the records' write failing)
+   leaves the old take files in its stage's `prev/`: the run throws naming it,
+   and every later run keeps that stage and names it at start until it is
+   deleted (restore the bank from `prev/` or git first if `sfxVerdicts`
+   disagrees), whatever its pid: a rebuild never removes a stage folder it did
+   not make.
 
 **Gun reports** (2026-10-02). The owner heard firing as old film or gamey
 blasts, and the files agreed: the cannon reports swelled to their loudest
@@ -924,11 +973,23 @@ crew-lines.json ─┐                    crew-voices.json
    intercom chain, so it can degrade with the radio module.
 
 `--dry` counts the takes whose first attempt is not cached and their
-characters (speech bills a credit per character) without calling the API.
+characters (speech bills a credit per character) without calling the API,
+planned exactly as the build plans them (`voicePlan.mjs` planLine).
 `--append` keeps every line's shipped takes and builds only the takes the
 script added after them: a rebuild re-picks among a take's cached attempts and
 re-encodes it, so a line that gains a take would otherwise churn the ones
 already approved (the Afrikaans "Laai nou." came back a different attempt).
+File `<line>_<n>` is always the script's take n, the take its caption shows
+(2026-11-08): a take whose request or master fails, that comes back empty, or
+that a budget or quota stop cut short under the bar (its attempts ended before
+all of them ran, or its cut pass never started) ends its line there, so the
+pack stays an aligned prefix (the soundAssets and captions receipts fail on the
+short pack) and an `--append` rerun resumes at that take. A take whose attempts
+and cuts all ran ships its best attempt, under the bar or not (flagged below
+0.34), even when another line's stop lands while it is being cut
+(`voicePlan.mjs` pickTake).
+`--append` keeps by count, not by words: a take whose words change is rebuilt
+without it (`--lines <id>`).
 
 ### Rounds
 
@@ -1307,7 +1368,7 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   audition) against its 500k cap.
 - **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
   owner: "make a lot better sounds for everything ... all the special
-  moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
+  moodes". The audit (kept outside the repository)
   ranked 30 findings by how often a player hears them; the fixes go through
   exhaustive tables, so a new ground, gearbox, drive, hull class, mode, mode
   event, map or spot fails typecheck or `worldSounds.selftest.mjs` until it is
@@ -1356,9 +1417,10 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   Leaving the garage ends its scene on the battle phase edge: the battle's
   scene waits for the reveal or the rollout, and until then the hangar's bed
   and workshop spots ran on under the loading screen
-  (`battleEntryAmbience.selftest.mjs` drives a solo start, an online
-  activation and a rematch, and holds every battle-phase assignment to its
-  edge). The explosions carry the ear proxy's `explosion` class and sit on the
+  (`ambienceTeardown.selftest.mjs` drives a solo start, an online
+  activation, a rematch and a cold boot's online battle down the app
+  lifecycle's one phase writer; round 8 Y3 folded 269's
+  `battleEntryAmbience.selftest.mjs` into it). The explosions carry the ear proxy's `explosion` class and sit on the
   verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
   loudest take (the loudness receipt's momentary maximum), so a gate no longer
   rides on the take the seeded stream drew. The first `sfx-smoke` on the boom
@@ -1544,7 +1606,7 @@ below is the short form.
 | Task | Steps |
 |---|---|
 | Add a sound | Add a catalog entry → `npm run audio:sfx:generate -- --ids <id>` → `npm run audio:sfx:build -- --ids <id>` → play it from the engine (and add a cue override if its group default does not fit) → `node src/audio/soundAssets.selftest.mjs` (it checks every engine reference exists in the manifest) |
-| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
+| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` (a rebuild that ships nothing keeps the old bank and exits 1) |
 | Add or change a voice line | Edit `crew-lines.json` (all 38 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |

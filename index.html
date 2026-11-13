@@ -650,6 +650,8 @@
     // graphics driver that refused, or a connection that is merely slow. The
     // terminal outcomes are beaconed to the telemetry sink (telemetryErrorEndpoint
     // below) with the same anonymous session id the module client reuses.
+    // (2026-11-02 audit S3) the boot's ready flag here is window.__COT_BOOT_READY, the product latch's page mirror
+    // (src/app/bootReadiness.ts); window.__GAME_READY is the harnesses' and nothing in the page reads it.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 2;
@@ -773,7 +775,7 @@
           const sink = document.querySelector && document.querySelector('meta[name="cot-telemetry"]');
           const endpoint = telemetryErrorEndpoint(sink && sink.getAttribute('data-url'), location.hostname);
           const body = JSON.stringify({ v: 2, sid: window.__COT_TELEMETRY_SID, build, kind: 'error', stage: event.stage,
-            code: event.code, outcome: event.outcome, ready: !!window.__GAME_READY, ms: Date.now() - loadedAt,
+            code: event.code, outcome: event.outcome, ready: !!window.__COT_BOOT_READY, ms: Date.now() - loadedAt,
             error: { message: event.message, frames: event.frames, code: event.reason } });
           const nav = globalThis.navigator;
           if (nav && typeof nav.sendBeacon === 'function' && nav.sendBeacon(endpoint, body)) return;
@@ -863,7 +865,7 @@
       }
 
       function showNotice(reason) {
-        if (halted || navigating || leaving || window.__GAME_READY) return;
+        if (halted || navigating || leaving || window.__COT_BOOT_READY) return;
         surfaceOwned = true;
         const stage = document.getElementById('cot-boot-stage');
         if (stage) stage.textContent = describe(reason).text;
@@ -873,14 +875,16 @@
         surfaceOwned = true;
         const verdict = describe(reason);
         const stage = document.getElementById('cot-boot-stage');
-        let retry = document.getElementById('cot-boot-retry');
+        // after the reveal, the one reload action already raised (2026-11-02 audit R6, round 2 U35: every chunk lazyChunk.ts
+        // found removed, and every gone preload, appended another fixed button over the last)
+        let retry = document.getElementById('cot-boot-retry') || document.getElementById('cot-runtime-retry');
         if (stage) stage.textContent = verdict.text;
         const boot = document.getElementById('cot-boot');
         if (boot) boot.dataset.stop = verdict.kind;
         // bootScreen removes its DOM after entry. A post-boot network failure
         // still needs a visible recovery action if the one automatic reload
         // has already been spent.
-        if (!retry && window.__GAME_READY) {
+        if (!retry && window.__COT_BOOT_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
           retry.textContent = MESSAGES.reload;
@@ -895,7 +899,7 @@
           retry.onclick = () => reload(`manual:${reason}`);
           // the one way forward takes the focus, unless the player is already somewhere; never in the running game, where
           // a key meant for the Garage or a battle would press it
-          if (!window.__GAME_READY && (!document.activeElement || document.activeElement === document.body)) retry.focus({ preventScroll: true });
+          if (!window.__COT_BOOT_READY && (!document.activeElement || document.activeElement === document.body)) retry.focus({ preventScroll: true });
         }
         if (!terminalBeaconSent) {
           terminalBeaconSent = true;
@@ -942,7 +946,7 @@
 
       function recover(reason) {
         if (halted || navigating || leaving || recoveryScheduled) return;
-        if (window.__GAME_READY) { recoverAfterReady(reason); return; }
+        if (window.__COT_BOOT_READY) { recoverAfterReady(reason); return; }
         if (!canAutoRecover()) {
           deferredRecoveryReason = reason;
           showRetry(reason);
@@ -980,22 +984,22 @@
       }
       // Both document watchdogs measure silence: every arrival re-arms them.
       function armDocumentWatchdogs() {
-        if (window.__GAME_READY || navigating || halted) return;
+        if (window.__COT_BOOT_READY || navigating || halted) return;
         clearDocumentWatchdogs();
         lastArmedAt = Date.now();
         noticeTimer = setTimeout(() => {
-          if (window.__GAME_READY || halted) return;
+          if (window.__COT_BOOT_READY || halted) return;
           showRetry('timeout');
         }, WATCHDOG_NOTICE_MS);
         recoverTimer = setTimeout(() => {
-          if (window.__GAME_READY || halted) return;
+          if (window.__COT_BOOT_READY || halted) return;
           if (state().count < MAX_AUTO_RELOADS) recover('timeout');
           else showRetry('timeout');
         }, WATCHDOG_RECOVER_MS);
       }
 
       function progress(stage = 'unknown', fromModule = true) {
-        if (window.__GAME_READY || navigating || halted) return;
+        if (window.__COT_BOOT_READY || navigating || halted) return;
         if (fromModule) {
           moduleOwnsStage = true;
           lastStage = String(stage);
@@ -1004,10 +1008,10 @@
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
         stageTimer = setTimeout(() => {
-          if (!window.__GAME_READY) showNotice(`stall:${stage}`);
+          if (!window.__COT_BOOT_READY) showNotice(`stall:${stage}`);
         }, STAGE_NOTICE_MS);
         stageRecoveryTimer = setTimeout(() => {
-          if (!window.__GAME_READY) recover(`stall:${stage}`);
+          if (!window.__COT_BOOT_READY) recover(`stall:${stage}`);
         }, STAGE_RECOVER_MS);
         armDocumentWatchdogs();
       }
@@ -1079,7 +1083,7 @@
           if (typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function') {
             let seen = 0;
             const poll = setInterval(() => {
-              if (window.__GAME_READY || navigating) { clearInterval(poll); return; }
+              if (window.__COT_BOOT_READY || navigating) { clearInterval(poll); return; }
               const entries = performance.getEntriesByType('resource');
               if (entries.length > seen) { noteNetworkProgress(entries.slice(seen)); seen = entries.length; }
             }, 2000);
@@ -1097,11 +1101,11 @@
       }
 
       function isBootDocumentException(event) {
-        if (window.__GAME_READY || event.target !== window || !event.error) return false;
+        if (window.__COT_BOOT_READY || event.target !== window || !event.error) return false;
         const filename = String(event.filename || '');
         // Browsers may omit filename/stack details for a module that throws
         // while its entry graph is evaluating. A real Error on the window
-        // before GAME_READY belongs to this document; cross-origin resource
+        // before the boot is ready belongs to this document; cross-origin resource
         // failures expose no Error object and extension URLs are rejected.
         if (!filename) return true;
         try {
@@ -1122,7 +1126,7 @@
         const node = event.target;
         const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
         const message = String(event.message || '');
-        const bootRuntime = !window.__GAME_READY
+        const bootRuntime = !window.__COT_BOOT_READY
           && (isSameOriginGameCode(`${event.filename || ''} ${event.error?.stack || ''}`)
             || isBootDocumentException(event));
         if (moduleScript || bootRuntime || /module script|dynamically imported module|module preload/i.test(message)) {
@@ -1133,7 +1137,7 @@
       addEventListener('unhandledrejection', (event) => {
         if (halted) return;
         const message = String(event.reason && (event.reason.message || event.reason) || '');
-        const bootRuntime = !window.__GAME_READY
+        const bootRuntime = !window.__COT_BOOT_READY
           && isSameOriginGameCode(`${message} ${event.reason?.stack || ''}`);
         if (bootRuntime || /module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
           noteFailure(`${message} ${event.reason?.stack || ''}`);
@@ -1141,7 +1145,7 @@
         }
       });
       const resumeDeferredRecovery = () => {
-        if (window.__GAME_READY || navigating || halted) return;
+        if (window.__COT_BOOT_READY || navigating || halted) return;
         if (deferredRecoveryReason && canAutoRecover()) {
           const reason = deferredRecoveryReason;
           deferredRecoveryReason = '';
@@ -1154,7 +1158,7 @@
       addEventListener('online', resumeDeferredRecovery);
       addEventListener('click', (event) => {
         const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
-        if (!link || window.__GAME_READY || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey
+        if (!link || window.__COT_BOOT_READY || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey
           || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;
         clearTimeout(leaving);
         leaving = setTimeout(() => { leaving = 0; }, LEAVE_MS);
@@ -1163,11 +1167,11 @@
         if (!event.persisted || !leaving) return;
         clearTimeout(leaving);
         leaving = 0;
-        if (!window.__GAME_READY && !halted && !navigating) progress(lastStage, false);
+        if (!window.__COT_BOOT_READY && !halted && !navigating) progress(lastStage, false);
       });
 
       const health = setInterval(() => {
-        if (!window.__GAME_READY) return;
+        if (!window.__COT_BOOT_READY) return;
         clearInterval(health);
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
@@ -1183,7 +1187,7 @@
           }
         } catch (_) { /* cosmetic */ }
         setTimeout(() => {
-          if (!window.__GAME_READY || window.__CHUNK_RECOVERY_PENDING) return;
+          if (!window.__COT_BOOT_READY || window.__CHUNK_RECOVERY_PENDING) return;
           try { sessionStorage.removeItem(KEY); } catch (_) { /* storage may be blocked */ }
         }, STABLE_READY_MS);
       }, 500);

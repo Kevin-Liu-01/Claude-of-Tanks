@@ -70,6 +70,8 @@ const expect = {
   fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
   // (227, the maps lane: Copper Mesa's R6 on lane B's pieces) the shaft yard, a piece of its own that stays where it lies
   headframe: ['winding-house', 'deck-rail', 'sheave-l', 'sheave-r', 'shaft-yard', 'ropes', 'rope-l', 'rope-r', 'frame', 'bin-legs', 'ore-bin'],
+  // (amberford-lavoir-272) the fontaine's pillar at the spring end, the roof on its tie beams
+  lavoir: ['fontaine', 'roof'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
 assert.deepEqual(names('fountain', { style: 'markt' }), ['figure'], 'the Marktbrunnen\'s saint');
@@ -164,6 +166,22 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.ok(!kit.damaged(a, damageSeed(a.seed, 1), damaged).hides.some((h) => h.piece), 'nothing of the statue goes at the first damage');
   const ob = describe('obelisk');
   assert.deepEqual(seam(ob).damaged(ob, damageSeed(ob.seed, 1), writers()).hides.filter((h) => h.piece).map((h) => h.piece), ['finial']);
+}
+{
+  // (amberford-lavoir-272) the lavoir, as Amberford places it: the fontaine's pillar goes at the first damage, the roof and
+  // its tie beams at the breach, slumped down where they stood (inside the walls, below the eaves), every triangle of them
+  const params = { length: 10, depth: 6, bays: 3, spring: 'right', steps: 2.2 };
+  const a = describe('lavoir', params, null, 'landmark', true);
+  assert.equal(a.kit, 'lavoir', 'the lavoir is the set-piece kit\'s');
+  const kit = seam(a), own = landmarkPiecesOf(build('lavoir', params));
+  assert.deepEqual(kit.damaged(a, damageSeed(a.seed, 1), writers()).hides.filter((h) => h.piece).map((h) => h.piece), ['fontaine'], 'the fontaine at the first damage');
+  assert.ok(!kit.breach(a, holeSpec(a, 1), writers()).hides.some((h) => h.piece), 'a strike takes nothing off');
+  const out = writers();
+  // (the breach lays the damaged stage's pieces too, as a late joiner's settled stages do)
+  assert.deepEqual(kit.breach(a, holeSpec(a, 0), out).hides.filter((h) => h.piece).map((h) => h.piece), ['fontaine', 'roof'], 'the roof at the breach');
+  const roof = own.find((p) => p.name === 'roof'), fontaine = own.find((p) => p.name === 'fontaine'), laid = runsOf(out, 'rubble');
+  assert.equal(laid.reduce((n, r) => n + r.t.length / 3, 0), roof.triangles + fontaine.triangles, 'the pieces\' own triangles, every one');
+  assert.ok(maxY(laid) < roof.min[1], `slumped below where it stood (${maxY(laid).toFixed(2)} < ${roof.min[1].toFixed(2)})`);
 }
 {
   // a tank ruptures toward the blow: the cut in its shell on that side, the petals, the dark inside, the spill

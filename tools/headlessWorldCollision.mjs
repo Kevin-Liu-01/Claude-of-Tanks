@@ -161,7 +161,7 @@ export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, veget
   const field = terrain.createHeightField(terrainSeed, config);
   const flora = vegetation.createVegetation(field, engine, vegetationSeed, config);
   const dressing = props.createProps(field, engine, propsSeed, config, flora);
-  inspect?.({ mapId, flora, dressing });
+  inspect?.({ mapId, flora, dressing, field });
   const obstacles = [...dressing.obstacles, ...flora.treeObstacles];
   return packWorldCollision({
     obstacles,

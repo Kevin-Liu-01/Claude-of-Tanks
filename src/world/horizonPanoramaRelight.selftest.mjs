@@ -32,14 +32,14 @@ import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { resolveHorizonLightingGains } from './maps/horizon.ts';
 import { battleTimePreset } from '../engine/battleAtmosphereRuntime.ts';
 import {
-  OVERCAST_DIRECT_CUT_SHARED, authoredSunOf, loadGroundedLightModel, resolveLightModel, resolveOvercast,
+  OVERCAST_DIRECT_CUT_SHARED, authoredSunOf, importGroundedLightModel, resolveLightModel, resolveOvercast,
 } from '../engine/lightModelCore.ts';
 import { skyPresetToAtmosphere } from '../engine/atmosphere.ts';
 import { CpuAtmosphere, LEGACY_DEFAULT_PRESET, cpuSummary, skyVisible } from '../engine/atmosphere.test-support.mjs';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma } from '../engine/hazeLaw.ts';
 import { closingBrace, parseGlsl, runGlsl, runGlslFunction, stripComments } from './glslSubset.test-support.mjs';
 
-await loadGroundedLightModel();
+await importGroundedLightModel();
 const P = HORIZON_PANORAMA;
 const LUM = [0.2126, 0.7152, 0.0722];
 const lum = (c) => c[0] * LUM[0] + c[1] * LUM[1] + c[2] * LUM[2];

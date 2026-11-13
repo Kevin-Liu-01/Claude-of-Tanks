@@ -13,7 +13,10 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { readinessExpression } from './game-readiness.mjs';
+// (round 8 Y5 s6-04) the pad's state words from their owners; page functions get them as arguments
+import { PAD_PHONE_STATE, PAD_SEAT_STATE } from './pad-states.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -51,7 +54,7 @@ padServer.on('upgrade', (request, socket, head) => { if (!pads.handleUpgrade(req
 await new Promise((done) => padServer.listen(0, '127.0.0.1', done));
 const padService = `ws://127.0.0.1:${padServer.address().port}`;
 
-const lock = createCaptureLock();
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 let vite = null;
 let browser = null;
 let phoneBrowser = null;
@@ -62,7 +65,7 @@ try {
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }
-  await lock.acquire(4 * 60 * 60 * 1000, { lockClass: 'timing', command: 'tools/couch-e2e.browser.mjs' });
+  captureHold = await openCaptureHold({ label: 'couch-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/couch-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
@@ -81,7 +84,8 @@ try {
   await cdp.send('Network.enable');
   cdp.on('Network.webSocketCreated', ({ url }) => desktopRequests.push(url));
   await desktop.goto(`${origin}/?nosplash=1&tier=desktop&padService=${encodeURIComponent(padService)}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await desktop.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  // the one readiness owner (tools/game-readiness.mjs; docs/AUTOMATION-PATHS.md), as pad-e2e waits
+  await desktop.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   check('unopened: nothing reaches the pairing service', !desktopRequests.some((url) => url.startsWith(padService) || url.startsWith(padService.replace('ws:', 'http:'))));
   deadline();
 
@@ -111,7 +115,7 @@ try {
     await page.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
     await page.tap('.pad-form button[type="submit"]');
     await page.evaluate((o) => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: o.beta, gamma: o.gamma })), orientation(0));
-    await page.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 60_000 });
+    await page.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 60_000 }, PAD_PHONE_STATE.live);
     report.joinMs.push(Date.now() - opened);
     const seat = Number(/(\d+)/.exec(await page.$eval('.pad-link', (el) => el.textContent))?.[1] ?? 0);
     pages.push({ page, seat });
@@ -119,7 +123,8 @@ try {
   check('every phone joins with one Start tap and names its seat', pages.every((p, i) => p.seat === i + 1), pages.map((p) => p.seat).join(','));
   check('the first four phones each join in under 20 s', report.joinMs.slice(0, 4).every((ms) => ms < 20_000), report.joinMs.map((ms) => `${(ms / 1000).toFixed(1)} s`).join(', '));
   await desktop.bringToFront();
-  await desktop.waitForFunction((n) => document.querySelectorAll('.cot-couch-seat[data-state="here"]').length === n, { timeout: 30_000 }, phones);
+  await desktop.waitForFunction((n, here) => document.querySelectorAll(`.cot-couch-seat[data-state="${here}"]`).length === n, { timeout: 30_000 },
+    phones, PAD_SEAT_STATE.here);
   check('the lobby lights every seat', true, `${phones} seats`);
   await (await desktop.$('.cot-couch-modal'))?.screenshot({ path: resolve(outDir, 'desktop-lobby.png') });
 
@@ -127,7 +132,8 @@ try {
   report.step = 'battle';
   if (phones > 4) await desktop.evaluate(() => document.querySelector('.cot-couch-sides [data-value="teams"]')?.click());
   await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
-  await desktop.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.couch && window.__DEBUG.game.preBattleS <= 0,
+  // the countdown over in the couch battle (controlsReleased: the lifecycle's own state, not the phase and the countdown)
+  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`,
     { timeout: 300_000, polling: 250 });
   const seated = await desktop.evaluate(() => window.__DEBUG.game.couch.seats.map(({ seat, entity }) => ({ seat, id: entity.id, team: entity.team, bot: !!entity.aiCtl })));
   report.seated = seated;
@@ -224,7 +230,7 @@ try {
   try { await vite?.close(); } catch { /* gone */ }
   await pads.close().catch(() => {});
   await new Promise((done) => padServer.close(done));
-  lock.release();
+  await captureHold?.release();
 }
 const failed = report.failure || Object.values(report.checks).some((entry) => !entry.ok);
 console.log(failed ? 'couch-e2e: FAIL' : 'couch-e2e: PASS');

@@ -65,6 +65,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const failures = [];
 let checks = 0;
@@ -157,7 +158,7 @@ async function boot(mode, { stubNoLock, denyFirst = 0, width, height }) {
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await waitForBootLoaded(page, { timeout: 90000 });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -243,8 +244,9 @@ async function runMode(mode, { stubNoLock, width, height }) {
   // ceiling (cold first entry measures ~10 s)
   let phase = 'garage';
   try {
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 20000 });
-    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 20000 });
+    // (2026-11-02 audit S3) the battle is on screen: the lifecycle's own edge (tools/game-readiness.mjs), where the phase
+    // then the loader's class read early when the class came after the phase; the two 20 s ceilings as one
+    await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 40000 });
     phase = 'battle';
   } catch (_) {
     phase = await page.evaluate(() => window.__DEBUG.game.phase);
@@ -635,7 +637,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
     check(mode, 'rebound fire key (F) fires a shell', firedAfter === firedBefore + 1,
       `player shells ${firedBefore} -> ${firedAfter}`);
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+    await waitForBootLoaded(page, { timeout: 90000 });
     const persisted = await page.evaluate(() => window.__DEBUG.input.getBinding('fire', 0));
     check(mode, 'fire rebind persists across reload', persisted === 'KeyF', `fire=${persisted}`);
     await page.evaluate(() => window.__DEBUG.input.resetBindings());
@@ -734,8 +736,9 @@ async function runDenyRetryMode() {
   await page.mouse.click(btn.cx, btn.cy);
   let phase = 'garage';
   try {
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 20000 });
-    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 20000 });
+    // (2026-11-02 audit S3) the battle is on screen: the lifecycle's own edge (tools/game-readiness.mjs), where the phase
+    // then the loader's class read early when the class came after the phase; the two 20 s ceilings as one
+    await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 40000 });
     phase = 'battle';
   } catch (_) {
     phase = await page.evaluate(() => window.__DEBUG.game.phase);

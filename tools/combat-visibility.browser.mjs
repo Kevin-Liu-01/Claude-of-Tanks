@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {acquireCaptureLock,releaseCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
-await acquireCaptureLock(60000);
+hold = await openCaptureHold({ label: 'combat-visibility', timeoutMs: 60000 });
 let browser,server;const errors=[],out='.qa-dev/combat-visibility';mkdirSync(out,{recursive:true});
 try{
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5208,strictPort:true,hmr:false}});await server.listen();
@@ -22,4 +23,4 @@ try{
  }
  assert.deepEqual(errors,[]);writeFileSync(`${out}/report.json`,JSON.stringify({pass:true,reports},null,2));
  console.log(JSON.stringify(reports));
-}finally{await browser?.close();await server?.close();releaseCaptureLock();}
+}finally{await browser?.close();await server?.close();await hold?.release();}

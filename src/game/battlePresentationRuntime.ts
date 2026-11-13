@@ -19,17 +19,32 @@ import type { BattleClientAccess } from './battleClientAccess.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import { watchRevealsAll, type GameState } from './stateCore.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 // The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
 // (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
 // (boot-static-closure, the bundle budget). It loads with the battle's FX graph — the FX gate in main.ts awaits
 // loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
+// (2026-11-02 audit R6/F2) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, and the FX gate awaits it, so
+// one failed chunk stopped every later battle, Studio and shot frame. The visual is presentation: a failure resolves
+// (no tank carries a mount yet), and the next ask (the next FX gate, an aerial tank's frame) loads it.
 let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
-let missionAttachmentVisualLoad: Promise<void> | null = null;
+const missionAttachmentVisual = createLazyChunk(() => import('./missionAttachmentVisual.ts').then((module) => {
+  syncMissionAttachment = module.syncMissionAttachment;
+}, (error: unknown) => {
+  console.warn('[mission attachment] the visual did not load (no mount drawn until it does):', error);
+  throw error;
+}));
+let missionAttachmentAsk: Promise<void> | null = null;
+let missionAttachmentAsked: Promise<void> | null = null;
 export function loadMissionAttachmentVisual(): Promise<void> {
-  return missionAttachmentVisualLoad ??= import('./missionAttachmentVisual.ts').then((module) => {
-    syncMissionAttachment = module.syncMissionAttachment;
-  });
+  const request = missionAttachmentVisual.load();
+  // the same settled promise until the load's state moves: an aerial tank asks every frame and allocates nothing
+  if (request !== missionAttachmentAsked) {
+    missionAttachmentAsked = request;
+    missionAttachmentAsk = request.then(() => undefined, () => undefined);
+  }
+  return missionAttachmentAsk!;
 }
 
 interface TankState {
@@ -152,6 +167,13 @@ interface BattlePresentationRuntimeOptions {
   isNetworkMatchActive(): boolean;
   getPedestalVisual(): object | null;
   isCinematicActive(): boolean;
+  /**
+   * The other views' cameras this frame (couch mode's split screen: every pane but seat 1's, whose camera is `camera`),
+   * or none: a hull's detail is every view's (the nearest view's distance, visible in any view).
+   */
+  getExtraViews?(): readonly PerspectiveCamera[] | null;
+  /** How much sooner a hull takes its far meshes (couch mode's small panes, game/couchPanes.ts couchPaneDetail); 1 else. */
+  getLodBias?(): number;
 }
 
 /**
@@ -169,6 +191,8 @@ export function createBattlePresentationRuntime({
   isNetworkMatchActive,
   getPedestalVisual,
   isCinematicActive,
+  getExtraViews,
+  getLodBias,
 }: BattlePresentationRuntimeOptions): BattlePresentationRuntime {
   // A tank outside a generous camera guard band cannot contribute a visible
   // articulated pose. Keep authoritative state and FX at their existing
@@ -259,12 +283,25 @@ export function createBattlePresentationRuntime({
     presented: PresentedTankState,
   ): boolean => {
     if (entity.isPlayer || game.phase !== 'battle') return true;
+    if (inView(entity, presented, camera)) return true;
+    const extra = getExtraViews?.();
+    if (extra) for (let i = 0; i < extra.length; i++) if (inView(entity, presented, extra[i])) return true;
+    return false;
+  };
+  const inView = (entity: TankEntity, presented: PresentedTankState, view: PerspectiveCamera): boolean => {
     detailScreenPosition.copy(presented.pos);
     detailScreenPosition.y += entity.spec.dims.heightM * 0.5;
-    detailScreenPosition.project(camera);
+    detailScreenPosition.project(view);
     return detailScreenPosition.z >= -1.2 && detailScreenPosition.z <= 1.2
       && Math.abs(detailScreenPosition.x) <= 1.35
       && Math.abs(detailScreenPosition.y) <= 1.45;
+  };
+  /** The nearest view's distance to a hull (the camera's, or a split-screen pane's nearer one). */
+  const nearestViewDistance = (pos: PresentedTankState['pos']): number => {
+    let d = camera.position.distanceTo(pos);
+    const extra = getExtraViews?.();
+    if (extra) for (let i = 0; i < extra.length; i++) d = Math.min(d, extra[i].position.distanceTo(pos));
+    return d;
   };
 
   const syncModeEnergy = (entity: TankEntity, dtFrame: number | undefined, active: boolean): boolean => {
@@ -322,7 +359,7 @@ export function createBattlePresentationRuntime({
   ): number => {
     const state = entity.state as TankState;
     const visual = entity.visual as TankVisual;
-    const viewDistanceM = camera.position.distanceTo(presented.pos);
+    const viewDistanceM = nearestViewDistance(presented.pos);
     const detailVisible = isDetailVisible(entity, presented);
     const wasDetailVisible = entity._wasDetailVisible;
     entity._wasDetailVisible = detailVisible;
@@ -358,7 +395,7 @@ export function createBattlePresentationRuntime({
       visual.syncFromState(
         state,
         presentationDt,
-        detailVisible ? viewDistanceM * lodDistanceScale(camera) : viewDistanceM,
+        detailVisible ? viewDistanceM * lodDistanceScale(camera) * (getLodBias?.() ?? 1) : viewDistanceM,
         presented,
         detailVisible,
       );

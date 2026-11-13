@@ -29,6 +29,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync } from 'node:fs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const failures = [];
 let checks = 0;
@@ -96,7 +97,7 @@ async function boot({ stubNoLock }) {
     }
   }, stubNoLock);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   await sleep(1200);
   return { page, pageErrors };
 }

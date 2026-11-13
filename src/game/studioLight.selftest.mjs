@@ -312,7 +312,7 @@ assert.equal(runtime.plan, null);
   const core = await import('../engine/lightModelCore.ts');
   const { skyPresetToAtmosphere } = await import('../engine/atmosphere.ts');
   const { getMapConfig, MAP_IDS } = await import('../world/maps/index.ts');
-  await core.loadGroundedLightModel();
+  await core.importGroundedLightModel();
   const resolve = (sky) => {
     const preset = { ...DEFAULT_SKY_PRESET, ...sky }, atmo = skyPresetToAtmosphere(preset);
     const irr = [0.05, 0.08, 0.14].map((v) => v * (preset.skyIntensity ?? 1));

@@ -13,6 +13,7 @@
  * noise nobody registered (every receipt, every other caller), is painted where it stands.
  */
 import type { SurfacePaintJob, SurfacePaintReply, SurfacePaintRequest } from './surfacePaintWorker.ts';
+import { createWorkerCalls, type WorkerCallPort, type WorkerCallTimers } from '../workerCalls.ts';
 
 export type { SurfacePaintRequest } from './surfacePaintWorker.ts';
 
@@ -29,7 +30,12 @@ export function surfacePaintKey(request: SurfacePaintRequest): string {
   }
 }
 
-type PaintWorkerPort = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror'>;
+type PaintWorkerPort = WorkerCallPort;
+
+/** (improve-271) How long the worker may stay silent while it holds a print (ms): the page's single-job workers' 15 s
+ *  (materialPainterWorkerClient.ts). Past it, or on an error, every print it holds fails and is painted where it is
+ *  taken (props.ts awaits a taken print with no deadline of its own), and nothing more is posted to it. */
+const SURFACE_PAINT_SILENCE_MS = 15_000;
 
 export interface SurfacePaintPrefetch {
   /** The print painted ahead for these exact arguments, or null (paint it where it stands). */
@@ -73,42 +79,47 @@ export function startSurfacePaints(
     type: 'module', name: 'cot-surface-paint',
   }),
   now: () => number = () => performance.now(),
+  timers?: WorkerCallTimers,
 ): SurfacePaintPrefetch | null {
   if (!requests.length) return null;
   const startedAt = now();
   const stats = { planned: 0, taken: 0, missed: 0, failed: 0, doneMs: 0, settledTaken: 0 };
-  const waiting = new Map<number, { key: string; resolve: (b: Record<string, unknown>) => void; reject: (e: Error) => void }>();
   const byKey = new Map<string, Promise<Record<string, unknown>>>();
   // a print taken synchronously is this prefetch's no more: neither an asynchronous take nor disposal sees it
   const owner = { onSettledTaken: (key: string) => { stats.settledTaken++; byKey.delete(key); } };
-  let worker: PaintWorkerPort | null = makeWorker();
-  const failAll = (message: string): void => {
-    for (const w of waiting.values()) w.reject(new Error(message));
-    waiting.clear();
-  };
-  worker.onmessage = (event: MessageEvent<SurfacePaintReply>) => {
-    const reply = event.data, entry = waiting.get(reply?.id);
-    if (!entry) return;
-    waiting.delete(reply.id);
-    stats.doneMs = Math.round(now() - startedAt);
-    if (reply.ok) {
-      // a print nobody has asked for yet is also a settled one a painter may take synchronously; the first taker wins
-      if (byKey.has(entry.key)) settledPrints.set(entry.key, { buffers: reply.buffers, owner });
-      entry.resolve(reply.buffers);
-    } else { stats.failed++; entry.reject(new Error(reply.message)); }
-  };
-  worker.onerror = (event) => { stats.failed += waiting.size; failAll((event as ErrorEvent).message || 'Surface paint worker failed'); };
+  let disposed = false;
+  const calls = createWorkerCalls<SurfacePaintReply>({
+    name: 'Surface paint worker',
+    spawn: makeWorker,
+    idOf: (reply) => reply?.id,
+    silenceMs: SURFACE_PAINT_SILENCE_MS,
+    timers,
+  });
+  calls.warm();
   let id = 0;
   const post = (more: readonly SurfacePaintRequest[]): void => {
     for (const request of more) {
       const key = surfacePaintKey(request);
-      if (!worker || byKey.has(key)) continue;
+      if (!calls.available || byKey.has(key)) continue;
       const jobId = ++id;
-      const promise = new Promise<Record<string, unknown>>((resolve, reject) => { waiting.set(jobId, { key, resolve, reject }); });
+      let resolve: (b: Record<string, unknown>) => void = () => {}, reject: (e: Error) => void = () => {};
+      const promise = new Promise<Record<string, unknown>>((res, rej) => { resolve = res; reject = rej; });
       promise.catch(() => {});
       byKey.set(key, promise);
+      const posted = calls.post(jobId, { ...request, id: jobId } as SurfacePaintJob, undefined, {
+        reply: (reply) => {
+          stats.doneMs = Math.round(now() - startedAt);
+          if (reply.ok) {
+            // a print nobody has asked for yet is also a settled one a painter may take synchronously; the first taker wins
+            if (byKey.has(key)) settledPrints.set(key, { buffers: reply.buffers, owner });
+            resolve(reply.buffers);
+          } else { stats.failed++; reject(new Error(reply.message)); }
+          return true;
+        },
+        fail: (error) => { if (!disposed) stats.failed++; reject(error); },
+      });
+      if (!posted) { byKey.delete(key); continue; }
       stats.planned++;
-      worker.postMessage({ ...request, id: jobId } as SurfacePaintJob);
     }
   };
   post(requests);
@@ -126,8 +137,8 @@ export function startSurfacePaints(
     dispose() {
       for (const key of byKey.keys()) if (settledPrints.get(key)?.owner === owner) settledPrints.delete(key);
       byKey.clear();
-      failAll('Surface paint prefetch disposed');
-      if (worker) { worker.onmessage = worker.onerror = null; worker.terminate(); worker = null; }
+      disposed = true;
+      calls.dispose(new Error('Surface paint prefetch disposed'));
     },
     get stats() { return stats; },
   };

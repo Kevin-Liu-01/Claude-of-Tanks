@@ -758,7 +758,7 @@
       }
     ]
   },
-  "geometryHash": "216073b7",
+  "geometryHash": "bfd652b1",
   "metadataHash": "b4b1cfe9",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -776,7 +776,7 @@
     "roles": {
       "fittingPaint": 4,
       "opticGlass": 4,
-      "gunmetal": 14,
+      "gunmetal": 16,
       "wheelTire": 2,
       "wheelDish": 7,
       "wheelInset": 1,
@@ -818,15 +818,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28262,
-      "sha256": "e6d92a1cfd561c2446d54dc312e5facf509909ef56bc3431e9c96273288ee750",
+      "bytes": 28282,
+      "sha256": "c4898f9ad669e075b09b79139b79f967add29e2bc6d9c9382f520e4e46f6169f",
       "thumbnail": {
         "file": "thumbs/magach3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11460,
-        "sha256": "13598adbf0229f646b44f3e802ad8f54466f5a5b36020461e49bc164e62b9934"
+        "bytes": 11458,
+        "sha256": "b3b68aab77a97c39f07ca1de59fee858d3380c2b7279987be5aec35cf5300791",
+        "frame": [23,115,227,249]
       }
     },
     "top": {
@@ -842,8 +843,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12570,
-      "sha256": "d4149d091fb43bb7eb8dcdf2c95f86fad3a69cbf42e2b36a12845f16930bcfc4"
+      "bytes": 12580,
+      "sha256": "fbab733d4f6656962d55bc3487b5d6639de9ad800ee24aacfedf1c34cde08848"
     },
     "topSilhouette": {
       "file": "magach3_top_silhouette.png",
@@ -859,31 +860,31 @@
       "height": 128,
       "mime": "image/png",
       "bytes": 4320,
-      "sha256": "f054efad1ccee5ddfeab992ea5af037e83120ec7511f682bf676523668740f05"
+      "sha256": "a9ca6075f0ab06b17b40f1ce4c59e1c08ebd3bf3205e2bf6ec407cc82af9a9fa"
     },
     "armorSide": {
       "file": "magach3_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28586,
-      "sha256": "c76b018a4750d6fb7b30cdb51d4d30607ea5e805ec4b5907b7e88f2b8986dce7"
+      "bytes": 28568,
+      "sha256": "a6a8ad8f6ec1087d20d4997cac1f3090755f40c8c039bd3e4f9650df8f58c672"
     },
     "modulesSide": {
       "file": "magach3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28964,
-      "sha256": "9a10b71c69e0a7badd918c3d373084b6f374840b477712a2a40602876a5b0353"
+      "bytes": 28982,
+      "sha256": "cb4c73b4a8c72d957251eaaa977fe93a1428a6d8df08284caf151ea351c9a848"
     },
     "crewSide": {
       "file": "magach3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28488,
-      "sha256": "c0e7e96dabaf785a92aae3eccbe6b81bd4ba75db3dc821aab6bbcac52d233a88"
+      "bytes": 28490,
+      "sha256": "7e198a427e2f7512ee16bfa386f9902b9de86f6dd3519cee1149f00cc6e5db1b"
     },
     "markings": {
       "file": "magach3_markings.png",

@@ -10,7 +10,7 @@ import { registerHooks } from 'node:module';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript-compiler-api';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 
 const TOOL = fileURLToPath(import.meta.url), ROOT = resolve(dirname(TOOL), '..');
 const requestedRoot = process.env.COT_PROPS_PROFILE_ROOT ?? process.argv.find(arg => arg.startsWith('--root='))?.slice(7) ?? ROOT;
@@ -268,7 +268,8 @@ export function registerProfileCancellation(getChild, emitter = process) {
   let interrupted = false;
   const interrupt = () => { interrupted = true; getChild()?.kill('SIGTERM'); };
   emitter.on('SIGINT', interrupt); emitter.on('SIGTERM', interrupt);
-  return { isInterrupted: () => interrupted,
+  // interrupt(): the same stop for the capture hold's own (past the cap with a waiter; round 2 U38)
+  return { isInterrupted: () => interrupted, interrupt: () => interrupt(),
     dispose() { emitter.off('SIGINT', interrupt); emitter.off('SIGTERM', interrupt); } };
 }
 
@@ -285,13 +286,16 @@ async function run(output) {
     errors: [], captureQueueTimeoutMs: 45 * 60 * 1000 };
   const write = () => writeFileSync(join(output, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   write();
-  const lock = createCaptureLock(); let refresh, child;
+  let hold; let child;
   const cancellation = registerProfileCancellation(() => child);
   console.log(`[props-build-profile] pid=${process.pid} stage=capture_lock output=${output}`);
   try {
-    await lock.acquire(report.captureQueueTimeoutMs);
+    hold = await openCaptureHold({ label: 'props-build-profile', timeoutMs: report.captureQueueTimeoutMs, signals: [] /* its own SIGINT/SIGTERM handler stops the run and writes the report */ });
+    // the hold's own stop (past the cap with a waiter) stops the worker as a signal does (round 2 U38)
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString();
-    refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted before CPU acquisition');
     assert.deepEqual(sourceIdentity(), report.identity, 'Pinned source changed while queued');
     report.control = await runWorker('control', output, owner => { child = owner; }); write();
@@ -307,7 +311,7 @@ async function run(output) {
     report.requestedAtoms = report.profile.atoms.filter(atom => [21, 64, 82].includes(atom.index));
   } catch (error) { report.errors.push(String(error)); }
   finally {
-    clearInterval(refresh); lock.release(); report.captureLeaseReleased = true;
+    await hold?.release(); report.captureLeaseReleased = true;
     cancellation.dispose();
     report.finishedAt = new Date().toISOString();
     report.ok = !cancellation.isInterrupted() && report.errors.length === 0 && report.exactOrdinalMapping && report.outputIdentityVerified;

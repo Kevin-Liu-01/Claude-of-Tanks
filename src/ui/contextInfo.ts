@@ -162,6 +162,13 @@ function resolveValue<T>(value: LiveValue<T>, fallback: T): T {
 }
 
 /** Create an icon button that opens a rich shared modal dossier. */
+/** The info dossiers open now (improve-271 plan 026: the Garage closes them when it hides). */
+const openInfoModals = new Set<ModalController>();
+/** Close every open info dossier at once, giving no focus back (its screen is going away). */
+export function closeContextInfo(): void {
+  for (const open of [...openInfoModals]) open.close({ restoreFocus: false, immediate: true });
+}
+
 export function createInfoButton({
   guide, vehicle = null, label, title, text = '', json = null, className = '', eyebrow = '',
   subtitle = '', size = 'large', image = null, images = null,
@@ -188,8 +195,8 @@ export function createInfoButton({
       subtitle: resolveValue(subtitle, ''),
       size,
       className: 'cot-info-dialog',
-      onOpen: () => button.setAttribute('aria-expanded', 'true'),
-      onClose: () => button.setAttribute('aria-expanded', 'false'),
+      onOpen: () => { button.setAttribute('aria-expanded', 'true'); if (modal) openInfoModals.add(modal); },
+      onClose: () => { button.setAttribute('aria-expanded', 'false'); if (modal) openInfoModals.delete(modal); },
     });
     if (json) {
       copyButton = document.createElement('button');
@@ -313,6 +320,7 @@ export function createInfoButton({
     ensureModal().open({ trigger: button });
   });
   button.disposeInfo = () => {
+    if (modal) openInfoModals.delete(modal);
     modal?.dispose();
     modal = null;
     copyButton = null;

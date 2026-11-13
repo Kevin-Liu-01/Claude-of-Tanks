@@ -15,7 +15,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os, { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import {
   GARAGE_FIVE, RECEIPT_WARM_PASS, WARM_SWITCH_BUDGET, checkWarmSwitchBudget, classifySwitches,
   garageSwitchUrl, heaviestHullsFromCensus, normalizeStages, percentile, renderProfileMarkdown,
@@ -112,26 +113,24 @@ console.log('garage-switch-probe.selftest part 1: helper contracts and negative 
 // A browser profile of warm/cold switches is only evidence on a machine that is not oversubscribed: with the one-minute
 // load above 1.5× the CPU count (landing chains beside lanes and other sessions' suites, 2026-09-26: the probe died
 // at six minutes under load 107 on 18 CPUs) part 2 is reported as skipped — the lane proved the budgets on a quiet
-// machine and the receipt asserts them whenever the machine is quiet.
+// machine and the receipt asserts them whenever the machine is quiet. 272: a skip exits STARVED (tools/selftest-verdict.mjs),
+// never 0, so the runner lists it apart and never caches it as a PASS of the budgets it did not measure.
 const loadPerCpu = os.loadavg()[0] / Math.max(1, os.cpus().length);
 if (loadPerCpu > 1.5) {
-  console.log(`garage-switch-probe.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs — part 2 (the browser profile) skipped; part 1 passed`);
-  process.exit(0);
+  console.log(`garage-switch-probe.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs — part 2 (the browser profile) not measured (STARVED); part 1 passed`);
+  process.exit(SELFTEST_STARVED_EXIT);
 }
-const lock = createCaptureLock();
-await lock.acquire(45 * 60 * 1000);
+let hold;
+hold = await openCaptureHold({ label: 'garage-switch-probe.selftest', timeoutMs: 45 * 60 * 1000 });
 // 2026-09-26: the gate above is read BEFORE the lock wait — a receipt that queued on a quiet machine can be handed the
 // lock an hour later under load 100+ (a perf lane's runs re-claiming it between polls) and then profile into its own
 // watchdog. Re-read the load once the lock is held; skip the same way, releasing the lock for the next claimant.
 const loadPerCpuAfterWait = os.loadavg()[0] / Math.max(1, os.cpus().length);
 if (loadPerCpuAfterWait > 1.5) {
-  console.log(`garage-switch-probe.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs after the lock wait — part 2 (the browser profile) skipped; part 1 passed`);
-  lock.release();
-  process.exit(0);
+  console.log(`garage-switch-probe.selftest: load ${os.loadavg()[0].toFixed(1)} on ${os.cpus().length} CPUs after the lock wait — part 2 (the browser profile) not measured (STARVED); part 1 passed`);
+  await hold?.release();
+  process.exit(SELFTEST_STARVED_EXIT);
 }
-const refresh = setInterval(() => lock.refresh(), 30000);
-refresh.unref();
-process.once('exit', () => lock.release());
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-switch-receipt-vite-'));
 let report;
 try {
@@ -140,8 +139,7 @@ try {
     log: (line) => console.log(line),
   });
 } finally {
-  clearInterval(refresh);
-  lock.release();
+  await hold?.release();
   rmSync(cacheDir, { recursive: true, force: true });
 }
 const rendered = renderProfileMarkdown(report);

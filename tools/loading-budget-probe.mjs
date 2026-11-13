@@ -29,6 +29,7 @@
 
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { assertAutomationPath, requestAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
 import { build, createServer, preview } from 'vite';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os, { tmpdir } from 'node:os';
@@ -312,15 +313,11 @@ async function openPage(search = '', { transitions = false } = {}) {
     };
   }, Math.min(50, stallLimitMs));
   if (transitions) {
-    // The app intentionally skips presentation fades under webdriver. These
-    // scenarios measure the real player-facing transition, while nosplash=1
-    // still bypasses only the initial keypress gate.
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(Navigator.prototype, 'webdriver', {
-        configurable: true,
-        get: () => false,
-      });
-    });
+    // The app intentionally skips presentation fades on the harness path. These
+    // scenarios measure the real player-facing transition (the player's path,
+    // src/app/automationPath.ts), while nosplash=1 still bypasses only the
+    // initial keypress gate.
+    await requestAutomationPath(page, 'player');
   }
   await page.setViewport(deviceTier === 'mobile'
     // Loading throughput is compared at one physical pixel per CSS pixel.
@@ -354,8 +351,10 @@ async function openPage(search = '', { transitions = false } = {}) {
   await page.goto(`${baseUrl}${search}`, {
     waitUntil: 'domcontentloaded', timeout: pageTimeoutMs,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: pageTimeoutMs });
+  await waitForBootLoaded(page, { timeout: pageTimeoutMs });
   const readyWallMs = Date.now() - startedAt;
+  // (2026-11-02 audit S3) the fades are measured on the player's path, or the scenario fails by name
+  if (transitions) await assertAutomationPath(page, 'player', { label: `loading-budget-probe ${search || '/'}` });
   return { context, page, errors, readyWallMs };
 }
 

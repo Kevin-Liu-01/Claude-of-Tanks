@@ -6,11 +6,11 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 const arg=(key,fallback)=>process.argv.find(v=>v.startsWith(`--${key}=`))?.slice(key.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/garage-mobile'));await mkdir(out,{recursive:true});
-const lease=createCaptureLock();await lease.acquire();const refresh=setInterval(()=>lease.refresh(),30000);
+let hold;hold = await openCaptureHold({ label: 'garage-mobile', timeoutMs: 10 * 60 * 1000 });
 let server,browser;const reports=[],errors=[];
 try{
  server=await createServer({server:{host:'127.0.0.1',port:0,hmr:false}});await server.listen();
@@ -115,7 +115,7 @@ try{
   }catch(e){errors.push(`${name}/${step}: ${e.stack}`);await page.screenshot({path:resolve(out,`${name}-${step}-FAIL.png`)});}
   await context.close();
  }
-}finally{await browser?.close();await server?.close();clearInterval(refresh);lease.release();await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));}
+}finally{await browser?.close();await server?.close();await hold?.release();await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));}
 const failed=reports.filter(r=>r.issues.length);console.log(`${reports.length} checks; ${failed.length} layout/accessibility failures; ${errors.length} errors.`);
 for(const r of failed)console.error(r.name,r.label,r.issues);for(const e of errors)console.error(e);
 if(failed.length||errors.length)process.exitCode=1;

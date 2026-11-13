@@ -23,6 +23,7 @@ import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.m
 import { selectChasePose } from './visual-census-views.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'map-ambience-shots';
 
@@ -105,7 +106,7 @@ async function warmMapPage(browser, baseUrl, mapId, { width, height }) {
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
   await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__SHOTS && !!window.__DEBUG`, { timeout: 900000, polling: 1000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });

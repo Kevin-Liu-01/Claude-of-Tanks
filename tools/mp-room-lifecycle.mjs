@@ -12,7 +12,7 @@
  *   node tools/mp-room-lifecycle.mjs --rooms=ws://127.0.0.1:8791 --origin=http://127.0.0.1:0     wrangler dev of cloudflare/rooms
  *   node tools/mp-room-lifecycle.mjs --rooms=wss://cot-rooms.kk23907751.workers.dev --only=a,b,c,f,g    the deployed Worker
  *     (the site Origin header for wss:// unless --origin says otherwise; rooms are created and left, nothing is deployed)
- *   --only=a,b2,c   --skip=d,e     scenario groups (a letter) or ids       --slow    the 30 s / 60 s budgets too (b2, c3, c4, d4)
+ *   --only=a,b2,c   --skip=d,e     scenario groups (a letter) or ids       --slow    the 30-90 s budgets too (b2, c3, c4, d4)
  *   --json                          the report as JSON on stdout (the table goes to stderr)
  *
  * Scenarios: a the creator leaves an empty lobby; b1/b2 the creator leaves / drops with seats present (a seat leaving
@@ -30,6 +30,7 @@ import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/m
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { verifySeatToken } from '../server/match/seatToken.ts';
+import { HOST_STATE, MATCH_PHASE, ROOM_CLIENT_PHASE, ROOM_MATCH_STATUS, ROOM_PHASE, SESSION_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const SITE_ORIGIN = 'https://cot.kevinliu.studio';
 const LOCAL_SECRET = 'mp-room-lifecycle-seat-secret-0123456789abcdef';
@@ -284,7 +285,7 @@ async function playingMatch(s, specs, { watcher = false } = {}) {
   await s.step('start', 15_000, first.headless.room.start());
   await s.step('every seat entered the match', 10_000, () => entries.every((entry) => entry.headless.session.round));
   await s.step('every seat welcomed by the host', 20_000, () => entries.every((entry) => entry.headless.session.match?.welcome));
-  await s.step('the room is playing', 15_000, () => entries.every((entry) => entry.headless.room.room?.phase === 'playing'));
+  await s.step('the room is playing', 15_000, () => entries.every((entry) => entry.headless.room.room?.phase === ROOM_PHASE.playing));
   return { entries, code: room.roomCode };
 }
 
@@ -298,7 +299,7 @@ async function newSeatStarts(s, code, { adminBudgetMs = SLACK_MS } = {}) {
   await s.step('ready', 10_000, p4.headless.room.setReady(true));
   await s.step('the new seat starts a new match', 15_000, p4.headless.room.start());
   await s.step('its match_start names it', 10_000, () => p4.headless.room.matchStart?.hostId === 'p4');
-  await s.step('its host is live and the room is playing', 20_000, () => p4.headless.session.matchHost?.state === 'live' && p4.headless.room.room?.phase === 'playing');
+  await s.step('its host is live and the room is playing', 20_000, () => p4.headless.session.matchHost?.state === HOST_STATE.live && p4.headless.room.room?.phase === ROOM_PHASE.playing);
   return p4;
 }
 
@@ -309,12 +310,12 @@ async function runScenario(id, s) {
       const room = await s.step('create', 10_000, p1.create({ ...lobbyRoom(s), settings: { teamSize: 1, mapId: 'verdant', botsFill: true } }));
       const t0 = performance.now();
       await s.step('the creator leaves', 10_000, p1.leave());
-      s.check(p1.phase === 'closed' && p1.lastClosedReason === 'left_room', `the creator's client closed (${p1.phase}/${p1.lastClosedReason})`);
+      s.check(p1.phase === ROOM_CLIENT_PHASE.closed && p1.lastClosedReason === 'left_room', `the creator's client closed (${p1.phase}/${p1.lastClosedReason})`);
       const p2 = s.lobbySeat('p2', 'Late');
       const joined = await s.step('a new seat joins the same code', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       s.resolution(performance.now() - t0, 'joined, admin, started');
       s.check(joined.adminId === 'p2' && p2.isAdmin, `the next seat owns the room (admin ${joined.adminId})`);
-      s.check(joined.players.length === 1 && joined.phase === 'waiting', `an empty waiting room, one seat (${joined.phase}, ${joined.players.length})`);
+      s.check(joined.players.length === 1 && joined.phase === ROOM_PHASE.waiting, `an empty waiting room, one seat (${joined.phase}, ${joined.players.length})`);
       await s.step('ready', 10_000, p2.setReady(true));
       await s.step('the new owner starts', 15_000, p2.start());
       await s.step('its match_start names it', 10_000, () => p2.matchStart?.hostId === 'p2');
@@ -362,10 +363,10 @@ async function runScenario(id, s) {
       await s.step('the room sees the dropped seat', SLACK_MS, () => p1.room?.players.find((player) => player.id === 'p3')?.connected === false);
       await s.step('the host reports the countdown', 10_000, reportAs(p1, 'countdown', 30));
       await s.step('the host reports playing', 10_000, reportAs(p1, 'playing', 120));
-      await s.step('the room is playing on every seat', SLACK_MS, () => p1.room?.phase === 'playing' && p2.room?.phase === 'playing');
+      await s.step('the room is playing on every seat', SLACK_MS, () => p1.room?.phase === ROOM_PHASE.playing && p2.room?.phase === ROOM_PHASE.playing);
       s.resolution(performance.now() - t0, 'playing');
       await s.step('the host reports the verdict', 10_000, reportAs(p1, 'ended', 900, { result: 'alpha', reason: 'elimination' }));
-      await s.step('the room is back in the lobby with the result', SLACK_MS, () => p1.room?.phase === 'waiting' && p1.room.lastResult?.result === 'alpha' && p2.statuses.some((status) => status.status === 'ended'));
+      await s.step('the room is back in the lobby with the result', SLACK_MS, () => p1.room?.phase === ROOM_PHASE.waiting && p1.room.lastResult?.result === 'alpha' && p2.statuses.some((status) => status.status === ROOM_MATCH_STATUS.ended));
       s.check(p2.room.players.find((player) => player.id === 'p3')?.connected === false, 'the dropped seat is still held (its lease runs from the end)');
       s.cleanup(async () => { await p2.leave(); await p1.leave(); });
       return;
@@ -384,9 +385,9 @@ async function runScenario(id, s) {
       s.check(change.hostSecret && !p3.hostChanges.find((entry) => entry.generation === 2).hostSecret, 'the secret reaches the new host alone');
       s.check(performance.now() - t0 >= ROOM_HOST_DISCONNECT_GRACE_MS - 250, 'the election waited out the grace');
       await s.step('the successor reports playing', 10_000, reportAs(p2, 'playing', 200));
-      await s.step('the room is playing under the successor', SLACK_MS, () => p3.room?.phase === 'playing' && p3.room.host.hostId === 'p2');
+      await s.step('the room is playing under the successor', SLACK_MS, () => p3.room?.phase === ROOM_PHASE.playing && p3.room.host.hostId === 'p2');
       await s.step('the successor reports the verdict', 10_000, reportAs(p2, 'ended', 1000, { result: 'bravo', reason: 'elimination' }));
-      await s.step('back in the lobby', SLACK_MS, () => p3.room?.phase === 'waiting' && p3.statuses.some((status) => status.status === 'ended'));
+      await s.step('back in the lobby', SLACK_MS, () => p3.room?.phase === ROOM_PHASE.waiting && p3.statuses.some((status) => status.status === ROOM_MATCH_STATUS.ended));
       s.cleanup(async () => { await p3.leave(); await p2.leave(); });
       return;
     }
@@ -404,7 +405,7 @@ async function runScenario(id, s) {
       const change = p2.hostChanges.find((entry) => entry.generation === 2);
       s.check(change.hostId === 'p2' && change.reason === 'timeout', `the silent host's peer takes over (${change.hostId}, ${change.reason})`);
       await s.step('the successor ends the match', 10_000, reportAs(p2, 'ended', 100, { result: 'draw', reason: 'time_limit' }));
-      await s.step('back in the lobby', SLACK_MS, () => p1.room?.phase === 'waiting');
+      await s.step('back in the lobby', SLACK_MS, () => p1.room?.phase === ROOM_PHASE.waiting);
       s.cleanup(async () => { await p2.leave(); await p1.leave(); });
       return;
     }
@@ -421,11 +422,11 @@ async function runScenario(id, s) {
       let hostAlive = true;
       const reporter = (async () => { let tick = 0; while (hostAlive) { try { await reportAs(p1, tick === 0 ? 'loading' : 'countdown', tick); } catch { /* the match may be over */ } tick += 60; await sleep(5000); } })();
       const budget = DEFAULT_RECONNECT.windowMs + SLACK_MS * 2;
-      await s.step(`the peer's session gives up within the ${DEFAULT_RECONNECT.windowMs} ms link window`, budget, () => p2.headless.session.phase === 'lost');
+      await s.step(`the peer's session gives up within the ${DEFAULT_RECONNECT.windowMs} ms link window`, budget, () => p2.headless.session.phase === SESSION_PHASE.lost);
       s.resolution(performance.now() - t0, 'session lost');
       const stats = p2.headless.session.stats();
-      s.check(stats.phase === 'lost', `the session is terminal (${stats.phase})`);
-      s.check(p1.room?.phase === 'starting', `the room never left starting on the hanging host's reports (${p1.room?.phase})`);
+      s.check(stats.phase === SESSION_PHASE.lost, `the session is terminal (${stats.phase})`);
+      s.check(p1.room?.phase === ROOM_PHASE.starting, `the room never left starting on the hanging host's reports (${p1.room?.phase})`);
       hostAlive = false;
       s.cleanup(async () => { await reporter; try { await reportAs(p1, 'ended', 0, { result: 'draw', reason: 'host_hung' }); } catch { /* done */ } await p2.headless.room.leave(); await p1.leave(); });
       return;
@@ -444,16 +445,16 @@ async function runScenario(id, s) {
       const t0 = performance.now();
       if (id === 'd1') {
         await leave(p2, 'peer p2'); await leave(p3, 'peer p3');
-        s.check(p1.headless.session.matchHost?.state === 'live', 'the host plays on with bots');
+        s.check(p1.headless.session.matchHost?.state === HOST_STATE.live, 'the host plays on with bots');
         await leave(p1, 'the host, last');
       } else if (id === 'd2') {
         await leave(p1, 'the host, first');
-        await s.step('a peer is elected and hosts', ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live');
-        await s.step('the other peer is live on the new host', 20_000, () => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2' && p3.headless.session.stats().p2p?.migrating === false);
+        await s.step('a peer is elected and hosts', ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => p2.headless.session.role === SESSION_ROLE.host && p2.headless.session.matchHost?.state === HOST_STATE.live);
+        await s.step('the other peer is live on the new host', 20_000, () => p3.headless.session.match?.phase === MATCH_PHASE.live && p3.headless.session.stats().p2p?.hostId === 'p2' && p3.headless.session.stats().p2p?.migrating === false);
         // a Garage return declines (`unable`) before the seat leaves: the room elects on the decline, at once (P1b); the leave finds the host already moved
         s.check(['declined', 'left'].includes(p2.headless.room.hostChanges.at(-1)?.reason), `the departure elected at once (${p2.headless.room.hostChanges.at(-1)?.reason})`);
         await leave(p2, 'the second host');
-        await s.step('the last peer hosts', ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => p3.headless.session.role === 'host' && p3.headless.session.matchHost?.state === 'live');
+        await s.step('the last peer hosts', ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => p3.headless.session.role === SESSION_ROLE.host && p3.headless.session.matchHost?.state === HOST_STATE.live);
         await leave(p3, 'the last seat');
       } else {
         await leave(p1, 'the only seat');
@@ -473,7 +474,7 @@ async function runScenario(id, s) {
       const t0 = performance.now();
       for (const entry of [p2, p3, p1]) { entry.headless.room.disconnect('tab closed'); s.retire(entry); }
       // the room hears nothing more from any commander: the host grace loses the match; the seats are held for their leases
-      await s.step(`the match is lost within the ${ROOM_HOST_DISCONNECT_GRACE_MS} ms grace`, ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => watcher.room?.phase === 'waiting' && watcher.room.lastResult?.reason === 'match_lost' && watcher.statuses.some((status) => status.status === 'lost'));
+      await s.step(`the match is lost within the ${ROOM_HOST_DISCONNECT_GRACE_MS} ms grace`, ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => watcher.room?.phase === ROOM_PHASE.waiting && watcher.room.lastResult?.reason === 'match_lost' && watcher.statuses.some((status) => status.status === ROOM_MATCH_STATUS.lost));
       s.resolution(performance.now() - t0, 'match lost, room waiting');
       s.check(watcher.room.players.filter((player) => !player.connected).length === 3, `the dropped seats are held for their ${ROOM_SEAT_DISCONNECT_TTL_MS} ms leases`);
       await s.step('the watcher leaves', 10_000, watcher.leave());
@@ -491,8 +492,8 @@ async function runScenario(id, s) {
       s.retire(p1);
       await s.step(`host_changed within the ${ROOM_HOST_DISCONNECT_GRACE_MS} ms grace`, ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS, () => p2.headless.room.hostChanges.some((change) => change.generation === 2));
       const electedMs = performance.now() - t0;
-      await s.step('the willing successor hosts', 20_000, () => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live' && p2.headless.session.match?.phase === 'live');
-      await s.step('the other peer is live on it', 20_000, () => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2' && p3.headless.session.stats().p2p?.migrating === false);
+      await s.step('the willing successor hosts', 20_000, () => p2.headless.session.role === SESSION_ROLE.host && p2.headless.session.matchHost?.state === HOST_STATE.live && p2.headless.session.match?.phase === MATCH_PHASE.live);
+      await s.step('the other peer is live on it', 20_000, () => p3.headless.session.match?.phase === MATCH_PHASE.live && p3.headless.session.stats().p2p?.hostId === 'p2' && p3.headless.session.stats().p2p?.migrating === false);
       s.resolution(performance.now() - t0, `elected ${Math.round(electedMs)} ms, every seat live`);
       s.check(p2.headless.session.stats().p2p?.migrating === false, 'nobody is left migrating');
       s.cleanup(async () => { for (const entry of [p3, p2]) { await entry.headless.session.leaveMatch('done'); await entry.headless.room.leave(); } });
@@ -507,13 +508,13 @@ async function runScenario(id, s) {
       // the contract: the last resort is elected at the grace, says it cannot host, and the room ends the match at once
       // (before 2026-09-30 the room kept it as a host that never reported and the peers waited out the 30 s report budget)
       const budget = ROOM_HOST_DISCONNECT_GRACE_MS + ROOM_MATCH_REPORT_STALE_AFTER_MS + SLACK_MS * 2;
-      await s.step('the peer reaches a terminal state', budget, () => p2.headless.session.phase === 'lost' || p2.headless.session.phase === 'lobby');
+      await s.step('the peer reaches a terminal state', budget, () => p2.headless.session.phase === SESSION_PHASE.lost || p2.headless.session.phase === SESSION_PHASE.lobby);
       s.resolution(performance.now() - t0, `terminal (${p2.headless.session.phase})`);
       const elected = p2.headless.room.hostChanges.find((change) => change.generation === 2);
       s.check(!!elected && elected.hostId === 'p2', `the last resort was elected (${elected?.hostId})`);
-      s.check(p2.headless.room.statuses.some((status) => status.status === 'lost'), 'the room ended the match as lost');
+      s.check(p2.headless.room.statuses.some((status) => status.status === ROOM_MATCH_STATUS.lost), 'the room ended the match as lost');
       s.check(p2.headless.session.stats().p2p?.migrating !== true, 'the peer is not left migrating');
-      await s.step('the room is back in the lobby', SLACK_MS, () => p2.headless.room.room?.phase === 'waiting' && p2.headless.room.room.host.hostId === null);
+      await s.step('the room is back in the lobby', SLACK_MS, () => p2.headless.room.room?.phase === ROOM_PHASE.waiting && p2.headless.room.room.host.hostId === null);
       const withinGrace = (performance.now() - t0) < ROOM_HOST_DISCONNECT_GRACE_MS + SLACK_MS;
       s.note('withinGrace', withinGrace);
       s.check(withinGrace, `resolved within the grace plus slack (${Math.round(performance.now() - t0)} ms), not the report budget`);
@@ -525,7 +526,7 @@ async function runScenario(id, s) {
       const t0 = performance.now();
       const bogus = await s.step('a bogus code is refused', 10_000, rejects(p.join({ roomCode: 'ZZZZZZ', selection: { specId: 'm1a1_abrams_hc' } }), 'room_not_found'));
       s.check(bogus === true, `bogus code: ${bogus === true ? 'room_not_found' : bogus}`);
-      s.check(p.phase === 'idle', `the client is free again (${p.phase})`);
+      s.check(p.phase === ROOM_CLIENT_PHASE.idle, `the client is free again (${p.phase})`);
       const malformed = await s.step('a malformed code is refused before any socket', 5_000, rejects(p.join({ roomCode: 'NOPE', selection: { specId: 'm1a1_abrams_hc' } }), 'invalid_room_code'));
       s.check(malformed === true, `malformed code: ${malformed === true ? 'invalid_room_code' : malformed}`);
       s.resolution(performance.now() - t0, 'clean refusals');
@@ -538,7 +539,7 @@ async function runScenario(id, s) {
       await s.step('start', 15_000, p1.start());
       await s.step('match_start', 10_000, () => p1.matchStart);
       await s.step('the host reports playing', 10_000, reportAs(p1, 'playing', 60));
-      await s.step('the room is playing', SLACK_MS, () => p1.room?.phase === 'playing');
+      await s.step('the room is playing', SLACK_MS, () => p1.room?.phase === ROOM_PHASE.playing);
       const t0 = performance.now();
       const p2 = s.lobbySeat('p2', 'Latecomer');
       const commander = await s.step('a commander joining a playing room is refused', 10_000, rejects(p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }), 'room_locked'));
@@ -547,7 +548,7 @@ async function runScenario(id, s) {
       s.check(spectator === true, `spectator: ${spectator === true ? 'room_locked' : spectator}`);
       s.resolution(performance.now() - t0, 'refused as room_locked (spectators too)');
       await s.step('the host ends the match', 10_000, reportAs(p1, 'ended', 600, { result: 'alpha', reason: 'elimination' }));
-      await s.step('the room waits again', SLACK_MS, () => p1.room?.phase === 'waiting');
+      await s.step('the room waits again', SLACK_MS, () => p1.room?.phase === ROOM_PHASE.waiting);
       await s.step('the latecomer joins the lobby', 10_000, p2.join({ roomCode: room.roomCode, selection: { specId: 't90am' } }));
       s.cleanup(async () => { await p2.leave(); await p1.leave(); });
       return;
@@ -560,12 +561,12 @@ async function runScenario(id, s) {
       const twin = s.lobbySeat('p1', 'Creator', { storage });
       const joined = await s.step('the same seat joins again from a second client with its capability', 10_000, twin.join({ roomCode: room.roomCode }));
       s.check(joined.players.length === 1, `one seat, not two (${joined.players.length})`);
-      await s.step('the first client is retired', SLACK_MS, () => p1.phase === 'closed');
+      await s.step('the first client is retired', SLACK_MS, () => p1.phase === ROOM_CLIENT_PHASE.closed);
       s.check(p1.lastClosedReason === 'resume_denied', `the retired client learns why (${p1.lastClosedReason})`);
       const stranger = s.lobbySeat('p1', 'Impostor');
       const refused = await s.step('a stranger with the same id and no capability is refused', 10_000, rejects(stranger.join({ roomCode: room.roomCode }), 'resume_denied'));
       s.check(refused === true, `stranger: ${refused === true ? 'resume_denied' : refused}`);
-      s.check(twin.phase === 'joined', `the seat's real client stays (${twin.phase})`);
+      s.check(twin.phase === ROOM_CLIENT_PHASE.joined, `the seat's real client stays (${twin.phase})`);
       s.resolution(performance.now() - t0, 'one seat, one socket');
       s.cleanup(() => twin.leave());
       return;
@@ -591,7 +592,7 @@ async function runScenario(id, s) {
       const actor = own.roomService.rooms.get(room.roomCode);
       await actor.tick();
       await s.step('the seat hears the expiry', SLACK_MS, () => closedReasons.includes('expired'));
-      s.check(p1.phase === 'closed', `the client is closed (${p1.phase})`);
+      s.check(p1.phase === ROOM_CLIENT_PHASE.closed, `the client is closed (${p1.phase})`);
       s.check(actor.snapshot === null && actor.empty, 'the actor is empty with no deadline');
       s.check(actor.nextDeadline() === null, `no alarm remains (${actor.nextDeadline()})`);
       const late = new RoomClient({ endpoint: own.url, player: { id: 'p1', name: 'Creator' }, storage: memoryStorage(), clientBuild: 'lifecycle', transport: { createSocket: s.createSocket } });
@@ -611,7 +612,7 @@ async function runScenario(id, s) {
         const room = await s.step(`room ${index + 1} created`, 10_000, seat.create(lobbyRoom(s)));
         codes.push(room.roomCode);
         await s.step(`room ${index + 1} left`, 10_000, seat.leave());
-        s.check(seat.phase === 'closed' && seat.lastClosedReason === 'left_room', `client ${index + 1} closed (${seat.phase})`);
+        s.check(seat.phase === ROOM_CLIENT_PHASE.closed && seat.lastClosedReason === 'left_room', `client ${index + 1} closed (${seat.phase})`);
       }
       s.resolution(performance.now() - t0, '20 rooms');
       if (s.local) {

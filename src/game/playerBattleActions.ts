@@ -1,6 +1,7 @@
 import { strikeView, type AirStrikeKind } from './strikeViewState.ts';
+import type { AirSupportView, StrikeRefusal } from './strikeOrder.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { EventBus } from './stateCore.ts';
+import { couchSeatsActive, type EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { ActionId } from './input.ts';
 import {
@@ -69,9 +70,12 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   timeS: number;
   player: TEntity | null;
   /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off; Air Support carries its call-ins. */
-  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null; airSupport?: object | null } | null;
-  /** A couch battle (game/couchSeats.ts): phones drive every seat through the input stage, the page's keys no tank. */
+  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null; airSupport?: object | null; couch?: object | null } | null;
+  /** A couch battle (game/couchSeats.ts): phones drive every seat through the input stage, the page's keys no tank, while
+   *  that battle runs (stateCore.ts couchSeatsActive). */
   couch?: object | null;
+  /** The mode's view for the player (Air Support: its ledger, its refusals and the strikes; sim/airSupport.ts). */
+  matchModeState?: { air?: AirSupportView | null } | object | null;
 }
 
 interface ActionInput {
@@ -96,7 +100,10 @@ interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
   network: NetworkActionPort;
   /** Air Support's call-ins in the strip's order (sim/matchRuleset.ts AIR_STRIKE_KINDS) and each one's action bit
    *  (sim/playerActions.ts AIR_STRIKE_BITS): ports, so the policy stays free of the sim. */
-  strikes: { readonly kinds: readonly AirStrikeKind[]; bit(kind: AirStrikeKind): number };
+  strikes: { readonly kinds: readonly AirStrikeKind[]; bit(kind: AirStrikeKind): number;
+    /** Why a call of `kind` at a mark `rangeM` out would be refused now (sim/strikeCall.ts strikeCallBlocker; null: it
+     *  would be taken). */
+    blocker(air: AirSupportView | null, kind: AirStrikeKind, rangeM: number): StrikeRefusal | null };
   isSettingsOpen(): boolean;
 }
 
@@ -113,8 +120,6 @@ const SHELL_ACTIONS = ['shell1', 'shell2', 'shell3'] as const;
 const STRIKE_ACTION_NAMES = Object.freeze({
   recon: 'strikeRecon', artillery: 'strikeArtillery', strafe: 'strikeStrafe', bomb: 'strikeBomb', gunship: 'strikeGunship',
 } as const satisfies Record<AirStrikeKind, string>);
-/** A call locks the reticle (and holds the binoculars up) this long (s). */
-const STRIKE_LOCK_S = 0.9;
 const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 
 function hasLiveCombat<TEntity extends BattleActionEntity>(
@@ -156,11 +161,18 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     disposeCallbacks.push(input.onAction(action, listener));
   };
 
+  /** The last cannon round the player was on (the ATGM toggle returns to it), or -1 before any selection. */
+  let atgmReturnSlot = -1;
+  /** The round the player asked for. On a network client every snapshot row rewrites combat.shellSlot with the
+   * authority's slot, which lags a pick still on its way, while input.shellSlot keeps the pick until the authority moves
+   * (mp/presentation/battlePresentation.ts): the toggle and its return slot read the pick, as the HUD's tile did. */
+  const requestedShellSlot = (player: { combat: ActionCombat; input?: { shellSlot?: number } | null }): number =>
+    player.input?.shellSlot ?? player.combat.shellSlot;
   const battleInputAllowed = (): boolean =>
-    game.phase === 'battle' && !game.couch && !isSettingsOpen();
+    game.phase === 'battle' && !couchSeatsActive(game) && !isSettingsOpen();
   const livePlayer = (): (TEntity & { combat: ActionCombat }) | null => {
     // a couch battle's player is seat 1's tank: its phone acts for it, never a key or a HUD button on the shared screen
-    if (game.couch) return null;
+    if (couchSeatsActive(game)) return null;
     const player = game.player;
     return hasLiveCombat(player) ? player : null;
   };
@@ -205,15 +217,39 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     if (!strikeView.open && battleInputAllowed() && livePlayer()) setStrikeView(true);
     bus.emit('ui:click', {});
   });
+  // The order (game/strikeOrder.ts owns its transitions): a press the authority's own rule refuses is refused at the
+  // plate with its reason; one it would take is sent, and the plate reads CALLED only once the authority took it (its
+  // strike_called names our crew) or the refusal it sent back. The range is the authority's: the hull to the aim point
+  // the call carries (sim/hullActions.ts strike).
+  const airView = (): AirSupportView | null => (game.matchModeState as { air?: AirSupportView | null } | null | undefined)?.air ?? null;
+  const markRangeM = (player: TEntity): number => {
+    const aim = (player.input as { aimPoint?: { x: number; z: number } | null }).aimPoint;
+    const pos = (player.state as { pos?: { x: number; z: number } } | null)?.pos;
+    return aim && pos ? Math.hypot(aim.x - pos.x, aim.z - pos.z) : Number.NaN;
+  };
   listen('ui:strikeCall', () => {
     const player = strikeView.open && battleInputAllowed() ? livePlayer() : null;
-    if (!player || game.timeS < strikeView.lockedUntilS) return;
-    if (!strikeView.ready) { bus.emit('ui:strikeDenied', { kind: strikeView.kind }); return; }
+    if (!player) return;
     const kind = strikeView.kind;
+    const blocker = strikes.blocker(airView(), kind, markRangeM(player));
+    const pressed = strikeView.order.press(game.timeS, kind, blocker);
+    if (pressed === 'busy') return;
+    if (pressed === 'denied') { bus.emit('ui:strikeDenied', { kind, reason: blocker }); return; }
     if (network.isActive()) network.queueAction(STRIKE_ACTION_NAMES[kind]);
     else player.input.auxiliaryBits = (player.input.auxiliaryBits || 0) | strikes.bit(kind);
-    strikeView.lockedUntilS = game.timeS + STRIKE_LOCK_S;
-    bus.emit('ui:strikeCalled', { kind });
+  });
+  listen('mode:strike_called', (payload) => {
+    const call = payload as { callerId?: RuntimeValue; kind?: RuntimeValue; strikeId?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || call?.callerId !== player.id || !strikes.kinds.includes(call.kind as AirStrikeKind)) return;
+    if (strikeView.order.accepted(game.timeS, call.kind as AirStrikeKind, Number(call.strikeId))) bus.emit('ui:strikeCalled', { kind: call.kind });
+  });
+  listen('mode:strike_denied', (payload) => {
+    // (the authority's refusal is heard by the audio engine's own listener: no second ui:strikeDenied sound here)
+    const refusal = payload as { id?: RuntimeValue; kind?: RuntimeValue; reason?: RuntimeValue } | null;
+    const player = game.player;
+    if (!player || refusal?.id !== player.id || !strikes.kinds.includes(refusal.kind as AirStrikeKind)) return;
+    strikeView.order.refused(game.timeS, refusal.kind as AirStrikeKind, String(refusal.reason) as StrikeRefusal);
   });
   onAction('strikeView', () => bus.emit('ui:strikeViewToggle', {}));
   onAction('fire', () => { if (strikeView.open) bus.emit('ui:strikeCall', {}); });
@@ -244,12 +280,37 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:specialAction', { pad: typeof code === 'string' && code.startsWith('Pad') });
   });
 
-  // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (hud.ts: the guided
-  // round, then back to the cannon round it left)
+  // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (the guided round, then
+  // back to the cannon round it left)
   onAction('atgm', () => {
     if (!battleInputAllowed()) return;
     bus.emit('ui:atgmToggle', {});
     bus.emit('ui:click', {});
+  });
+  // (2026-11-02 audit F8) the toggle is decided here, from the game's own state, for the key and the HUD's tile alike: it
+  // was the HUD tile's (a slot latch kept in presentation state), so Q did nothing until the HUD chunk loaded. A struck
+  // (empty) launcher does nothing, as its disabled tile did.
+  listen('ui:atgmToggle', () => {
+    if (!battleInputAllowed()) return;
+    const player = livePlayer();
+    if (!player) return;
+    const shells = player.spec.gun.shells;
+    const missile = rules.guidedMissileSlot(player.spec);
+    if (missile < 0 || !shells.some((shell) => !shell.guided)) return;
+    if (requestedShellSlot(player) !== missile) {
+      if (rules.hasAmmunition(player.combat, missile)) bus.emit('ui:shellSelect', { slot: missile });
+      return;
+    }
+    // (U23, round 2) the way back: a hull whose system is the guided missile has the sim's memory of the round it left,
+    // kept for every way onto the missile (the pad's LB selects it in activateGuidedMissile, with no ui:shellSelect, and
+    // ui:shellSelect below records it too); a hull whose system is its suspension has only the last pick seen here
+    const action = player.specialAction;
+    const cannonRound = (slot: number | undefined): slot is number =>
+      Number.isInteger(slot) && slot! >= 0 && slot! < shells.length && shells[slot!]?.guided !== true;
+    const remembered = action?.kind === 'guided_missile' ? action.previousShellSlot : atgmReturnSlot;
+    const back = cannonRound(remembered) ? remembered
+      : cannonRound(atgmReturnSlot) ? atgmReturnSlot : Math.max(0, shells.findIndex((shell) => !shell.guided));
+    bus.emit('ui:shellSelect', { slot: back });
   });
 
   for (const action of ['smoke','lights','roofGun'] as const) {
@@ -324,6 +385,10 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = livePlayer();
     if (!player || !Number.isInteger(requestedSlot) || requestedSlot < 0) return;
     const slot = Math.min(player.spec.gun.shells.length - 1, requestedSlot | 0);
+    // the cannon round a guided selection leaves, by any key (the ATGM toggle's way back): the player's pick, never a
+    // lagging row's slot (an MP client's digit then Q would return to the round the digit left)
+    const current = requestedShellSlot(player);
+    if (player.spec.gun.shells[current]?.guided !== true) atgmReturnSlot = current;
     if (!rules.hasAmmunition(player.combat, slot)) {
       bus.emit('ui:ammoSelectionDenied', {
         slot,
@@ -334,9 +399,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
     const action = player.specialAction;
     if (action?.kind === 'guided_missile' && slot === action.missileSlot
-        && player.combat.shellSlot !== action.missileSlot
-        && player.spec.gun.shells[player.combat.shellSlot]?.guided !== true) {
-      action.previousShellSlot = player.combat.shellSlot;
+        && current !== action.missileSlot
+        && player.spec.gun.shells[current]?.guided !== true) {
+      action.previousShellSlot = current;
     }
     if (rules.selectShell(player.combat, slot, player.spec) === false) {
       bus.emit('ui:ammoSelectionDenied', {
@@ -469,6 +534,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   return {
     shellCards,
     setTank(spec) {
+      atgmReturnSlot = -1; // a slot of the last tank's loadout means nothing on this one
       lastShells = spec.gun.shells;
       lastSpec = spec as { id?: string; era?: string; role?: string };
       shellCards.length = 0;
@@ -499,6 +565,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       return shellCards.length === 0 || ((card?.count ?? 0) | 0) > 0;
     },
     resetConsumables() {
+      // a battle's start: no call of the last battle's (its lock, its pending verdict) holds in this one
+      strikeView.order.reset();
       // a life's cooldowns and charges are the tank's own (game/soloConsumables.ts createSoloConsumables at spawn); the
       // tray learns its items: the page battle's tank carries them, and a network battle's are the ones the host derives
       // the same way (the saved loadout within the mode's gate; sim/authoritativeMatch.ts consumableLoadoutFor)

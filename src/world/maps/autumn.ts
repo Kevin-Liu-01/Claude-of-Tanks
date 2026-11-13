@@ -32,6 +32,7 @@ import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -426,6 +427,8 @@ export default {
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
     architecture: BUILDING_STYLES.autumn.kit,
+    // buildings-271 R4: the doorsteps (world/doorstepDressing.ts): pots, a bench, casks, logs and a cart by Amberford's 113 doors
+    doorsteps: 150,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
@@ -442,6 +445,17 @@ export default {
     // the rise the town stands on: a long farmhouse steps its plinth over up to 2.1 m of fall (the default 1.7 refused two)
     maxSpread: 2.1,
     monument: true, // the market cross on the square
+    // (amberford-lavoir-272, 2026-11-10; the owner: "new special buildings ... integrated with the whole identity of the
+    // map") the village lavoir (src/world/landmarks/village.ts lavoir): the covered wash-house of a Moselle village, cut
+    // into the rise on the place's south-west quarter (civic/plans/autumn.ts la-place: the market's corner) between the
+    // bots' line down the inn's front and the coach road's south arm, its arcade to the coach road, the well before its low
+    // end. The spring rises at its uphill (south) end into the fontaine and the beasts' trough, the rill runs out of its
+    // low end; its floor is terraced over the rise, a flight up to the middle arch. Set into the finished place (veto):
+    // nothing else on the map moves. Seated clear of the place's corridors by 1.4 m (evidence probe-seat3).
+    landmarks: [
+      { kind: 'lavoir', x: -114.25, z: 74.5, yawDeg: 90, ground: 'veto', name: 'the lavoir on the place',
+        params: { length: 10, depth: 6, bays: 3, spring: 'right', steps: 2.2 } },
+    ],
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
       // the inn and yard at the south end of the bridge: the brawl for the crossing
@@ -484,7 +498,7 @@ export default {
     // tanks) + harvest-season logistics dressing
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.autumn,
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 8, // the harvest is in — stubble plots + standing rows on both banks

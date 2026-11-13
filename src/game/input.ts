@@ -239,7 +239,8 @@ export interface InputLayer {
   virtualActive(): boolean;
   isTouchLayout(): boolean;
   getSettings(): InputSettings;
-  setSetting(key: keyof InputSettings, value: RuntimeValue): void;
+  /** (272) `persist` false: in force now, stored by a later call (a slider's drag stores once, on its release) */
+  setSetting(key: keyof InputSettings, value: RuntimeValue, persist?: boolean): void;
   /** Release every toggled hold action (hold-or-toggle): the player can no longer use them. */
   releaseToggles(): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
@@ -831,6 +832,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   let lockAttemptCounts = true; // a refusal of the current attempt is evidence the page cannot lock
   let lockAttemptRefused: ((retryInMs: number) => void) | null = null; // the current attempt's onRefused
   let lockHeld = false;       // the canvas held the lock at the last pointerlockchange
+  // (round 5 Q2) A lock lands a task after its request: an attempt releaseLock withdrew before its answer has its lock
+  // released as it lands (a later request supersedes the withdrawal). -1: none.
+  let lockEngagedAttempt = 0; // attempt id whose lock last engaged
+  let lockWithdrawnAttempt = -1;
   let lockExitMs = -Infinity; // when the canvas last lost the lock
   // Cursor-aim point: the last cursor position over the game canvas. Menus
   // (setEnabled(false)), a press on anything else and focus loss forget it, so
@@ -872,6 +877,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (refused) refused(Math.max(0, Math.ceil(lockExitMs + LOCK_REFUSAL_WINDOW_MS - nowMillis())));
   }
   function noteLockEngaged() {
+    lockEngagedAttempt = lockAttemptSeq;
     lockAttemptRefused = null;
     lockDenyStreak = 0;
     lockHardDenied = false;
@@ -1147,6 +1153,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (held) noteLockEngaged();
     else if (lockHeld) lockExitMs = nowMillis();
     lockHeld = held;
+    if (held && lockWithdrawnAttempt === lockAttemptSeq) {
+      lockWithdrawnAttempt = -1;
+      document.exitPointerLock?.(); // (round 5 Q2) its caller gave the cursor back before it landed
+    }
   });
 
   const isHeld = (actionId: ActionId) => (togglesOn(actionId) ? toggled.has(actionId) :
@@ -1420,7 +1430,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *  field lands on 0.2, never on the silent default (the old `+value || 1`
      *  treated 0 as falsy and quietly reset the field to 1.0×). The default
      *  is reserved for genuinely non-numeric input (NaN). */
-    setSetting(key, value) {
+    setSetting(key, value, persist = true) {
       const num = (fallback: number, lo: number, hi: number) => {
         const n = Number(value);
         return clamp(Number.isFinite(n) ? n : fallback, lo, hi);
@@ -1451,7 +1461,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       }
       else if (isCameraNumericKey(key)) settings[key] = clampChaseSetting(key, value);
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
-      saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
+      if (persist) saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
     },
 
     releaseToggles() {
@@ -1628,9 +1638,15 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       return out;
     },
 
-    /** Release pointer lock if held. */
+    /** Release pointer lock if held. (round 5 Q2) An attempt still in flight (requested, not yet locked or refused)
+     *  is withdrawn: its lock is released as it lands, so a caller that gives the cursor back right after asking (a
+     *  battle start refused after a Garage return's wait, a Settings panel opening) never finds the lock over it. */
     releaseLock() {
-      if (api.isLocked() && document.exitPointerLock) document.exitPointerLock();
+      if (api.isLocked()) {
+        if (document.exitPointerLock) document.exitPointerLock();
+      } else if (lockAttemptSeq !== lockEngagedAttempt && lockAttemptSeq !== lockDeniedAttempt) {
+        lockWithdrawnAttempt = lockAttemptSeq;
+      }
     },
   };
 

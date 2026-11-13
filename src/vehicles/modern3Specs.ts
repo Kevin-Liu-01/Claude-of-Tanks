@@ -96,6 +96,46 @@ function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
   ring.max = [ring.max[0] + offsetX, ring.max[1], ring.max[2]];
 }
 
+/** The Bradley hull and the source turret measured from the owner's supplied model (docs/references/tanks/
+ * m2a2_bradley.md; modern3.ts BRADLEY_HULL, BRADLEY_TURRET). 269 (owner 2026-11-05: "the m3a2 bradley USA should be m2a2
+ * bradley, and our current m2a2 bradley usa should be the m3a2 bradley"): the source turret is the M3A2's and the M2A2
+ * carries the classic turret over the same hull (m3a2BradleySpecs.ts). The M2A2 row below still holds these as the
+ * family's base. */
+export function bradleySourceArmorInput(): Parameters<typeof modernArmor>[0] {
+  return {
+    // AFV r1 rebuild (42manako oracle envelope, docs/references/vertex/
+    // m2a2_bradley.json): hull roof 1.90 with the tall two-man turret
+    // cluster to 2.98; ring plane 1.895 at the print's own z -0.45 seat.
+    // 268: the owner's supplied model registered at the 6.55 m hull (docs/references/tanks/m2a2_bradley.md): deck
+    // 2.06 (was 1.90), track top 1.16 (0.95), hull half-width over the skirts 1.70 (1.635), the ring 0.14 m right of
+    // centre at z -0.40 on the deck (was [0, 1.895, -0.45]), the gun line at 2.525, 6 cm right of the turret centre
+    // (gunPivot [-0.075, 0.375, 0.60] -> [-0.06, 0.465, 0.60]), the M242 to the source's muzzle at world z 2.37
+    // (barrelLenM 2.30 -> 2.17).
+    hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
+    // gun x -0.075: the print's fused M242 plan band reads x -0.15..0.0
+    // (r3c gate-frame re-measure; the r2 "-0.11 tube center" put my tube
+    // 0.04 left of its band and lit an extra plan-turret column).
+    turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.465, 0.60],
+    barrelLenM: 2.17, barrelRadM: 0.038,
+    // aluminum + spaced appliqué: everything overmatched by tank guns (§6.2)
+    glacis: [40, 60, 60], lower: [40, 50, 50], side: [30, 30, 30],
+    skirt: [25, 30, 60], rear: 25, roof: 20,
+    // (268: the source turret's roof plate at 0.77 over the ring, its hatch rings to 0.93, the sight head to 1.13)
+    tw: 0.98, tFrontZ: 1.15, tRearZ: -1.20, tH: 0.77,
+    cheek: [35, 60, 60], tSide: [30, 30, 30], tRear: 25, tRoof: 20,
+    mantlet: [40, 60, 60], loader: false,
+  };
+}
+/** The source-turret build's published dims and silhouette reads. Published: the 3.28 m base width and the 6.55 m
+ * length (armyrecognition A2 hull/skirts; the old 3.61 appliqué-stack datum made the width-anchored harness inflate the
+ * 42manako oracle +11.5 % on every axis). OWNER BRADLEY ORDER (2026-08-17) dims true-up: the flank dressing (attached
+ * skirt course + bow closures) re-frames the silhouette reads, so silhouette* carry the dressed build's gate actuals (m3a3
+ * §5.306 convention); §5.365: 2.83 is the seated p95 under the §5.361 rig-anchor law. */
+export function bradleySourceDims(): FleetTankSpec['dims'] {
+  return { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98,
+    silhouetteWidthM: 3.25, silhouetteHullLengthM: 6.28, silhouetteOverallLengthM: 6.25, silhouetteHeightM: 2.83 };
+}
+
 // ---------------------------------------------------------------------------
 // The spec table (values per modern-roster.md sections cited above)
 // ---------------------------------------------------------------------------
@@ -320,44 +360,11 @@ const MODERN3_SPECS = {
         shell('M792 HEI-T', 'HE', 25, 8, 8, 50, 1100, { reloadS: 0.42, count: 300 }),
       ],
     },
-    // dims reconciliation (AFV r1, packet "Oracle status"): widthM rides the
-    // PUBLISHED BASE 3.28 datum (armyrecognition A2 hull/skirts) — the old
-    // 3.61 appliqué-stack datum made the width-anchored harness inflate the
-    // 42manako oracle +11.5% on every axis (safeScale is uniform). The print
-    // itself reads 3.236 as loaded (-1.3%, its untouched anchor axis). The
-    // appliqué READ stays in the dressing, inside the 3.28 dims band.
-    // OWNER BRADLEY ORDER (2026-08-17) dims true-up: the flank dressing
-    // (attached skirt course + bow closures) re-frames the silhouette reads
-    // — silhouette* rows carry the dressed build's honest gate actuals
-    // (m3a3 §5.306 convention); published rows keep the 3.28 datum / 6.55.
-    dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98,
-      silhouetteWidthM: 3.25, silhouetteHullLengthM: 6.28,
-      // §5.365: 2.98 was tuned against the §5.356 pivot-lifted render; the
-      // §5.361 rig-anchor law re-seats the turret — 2.83 is the seated p95.
-      silhouetteOverallLengthM: 6.25, silhouetteHeightM: 2.83 },
-    armor: modernArmor({
-      // AFV r1 rebuild (42manako oracle envelope, docs/references/vertex/
-      // m2a2_bradley.json): hull roof 1.90 with the tall two-man turret
-      // cluster to 2.98; ring plane 1.895 at the print's own z -0.45 seat.
-      // 268: the owner's supplied model registered at the 6.55 m hull (docs/references/tanks/m2a2_bradley.md): deck
-      // 2.06 (was 1.90), track top 1.16 (0.95), hull half-width over the skirts 1.70 (1.635), the ring 0.14 m right of
-      // centre at z -0.40 on the deck (was [0, 1.895, -0.45]), the gun line at 2.525, 6 cm right of the turret centre
-      // (gunPivot [-0.075, 0.375, 0.60] -> [-0.06, 0.465, 0.60]), the M242 to the source's muzzle at world z 2.37
-      // (barrelLenM 2.30 -> 2.17).
-      hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
-      // gun x -0.075: the print's fused M242 plan band reads x -0.15..0.0
-      // (r3c gate-frame re-measure; the r2 "-0.11 tube center" put my tube
-      // 0.04 left of its band and lit an extra plan-turret column).
-      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.465, 0.60],
-      barrelLenM: 2.17, barrelRadM: 0.038,
-      // aluminum + spaced appliqué: everything overmatched by tank guns (§6.2)
-      glacis: [40, 60, 60], lower: [40, 50, 50], side: [30, 30, 30],
-      skirt: [25, 30, 60], rear: 25, roof: 20,
-      // (268: the source turret's roof plate at 0.77 over the ring, its hatch rings to 0.93, the sight head to 1.13)
-      tw: 0.98, tFrontZ: 1.15, tRearZ: -1.20, tH: 0.77,
-      cheek: [35, 60, 60], tSide: [30, 30, 30], tRear: 25, tRoof: 20,
-      mantlet: [40, 60, 60], loader: false,
-    }),
+    // 269 (bradleySourceArmorInput): this row is the Bradley family's base, the source turret's datums and reads, which
+    // the M3A2 and every clone of the M2A2 (the Ukrainian M2A3, the Warrior family, the AMX-10Ps, Dardo, Marder 2) take.
+    // The M2A2's own classic turret datums are set on it in m3a2BradleySpecs.ts, after those clones register.
+    dims: bradleySourceDims(),
+    armor: modernArmor(bradleySourceArmorInput()),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#525f45',
       patches: ['#23261f', '#4a3a2c'],

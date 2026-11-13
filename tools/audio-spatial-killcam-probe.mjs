@@ -14,6 +14,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { rmSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const fail = (msg) => { throw new Error(msg); };
@@ -84,7 +85,7 @@ try {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) pageErrors.push(msg.text());
   });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   await page.mouse.click(640, 360); // real user gesture -> AudioContext.resume
   await sleep(250);
   await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));

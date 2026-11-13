@@ -1,3 +1,4 @@
+import { createLazyChunk, type LazyChunk } from '../app/lazyChunk.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import type { FleetGroup } from './fleetManifest.ts';
 import { COMBAT_ANATOMY_GROUP_LOADERS } from './combatAnatomyLoaders.generated.ts';
@@ -12,29 +13,25 @@ type CalibrationGroup = FleetGroup | 'core';
 const CORE_GROUP: CalibrationGroup = 'core';
 const GROUP_LOADERS: Readonly<Record<string, CalibrationGroupLoader>> =
   COMBAT_ANATOMY_GROUP_LOADERS;
-const pendingGroups = new Map<CalibrationGroup, Promise<void>>();
-const readyGroups = new Set<CalibrationGroup>();
+// (2026-11-02 audit R6) each group one lazyChunk (app/lazyChunk.ts), the policy the fleet's kit, groups and fills follow
+// beside it in ensureTankBuilder: a failed chunk is asked again by the next ensure (it was at once and without a bound)
+const groupLoads = new Map<CalibrationGroup, LazyChunk<void>>();
 
 function groupForId(id: string): CalibrationGroup {
   return FLEET_GROUP_BY_ID[id] || CORE_GROUP;
 }
 
 function ensureCombatAnatomyGroup(group: CalibrationGroup): Promise<void> {
-  if (readyGroups.has(group)) return Promise.resolve();
-  let pending = pendingGroups.get(group);
-  if (!pending) {
+  let chunk = groupLoads.get(group);
+  if (!chunk) {
     const load = GROUP_LOADERS[group];
     if (!load) return Promise.reject(new Error(`Unknown combat anatomy group: ${group}`));
-    pending = load().then((module) => {
+    chunk = createLazyChunk(() => load().then((module) => {
       registerCombatAnatomyCalibrations(module.COMBAT_ANATOMY_CALIBRATIONS);
-      readyGroups.add(group);
-    }).catch((error) => {
-      pendingGroups.delete(group);
-      throw error;
-    });
-    pendingGroups.set(group, pending);
+    }));
+    groupLoads.set(group, chunk);
   }
-  return pending;
+  return chunk.load();
 }
 
 export function ensureCombatAnatomyCalibration(specId: string): Promise<void> {
@@ -60,5 +57,5 @@ export function ensureAllCombatAnatomyGroups(): Promise<void> {
 }
 
 export function isCombatAnatomyCalibrationReady(specId: string): boolean {
-  return hasCombatAnatomyCalibration(specId) || readyGroups.has(groupForId(specId));
+  return hasCombatAnatomyCalibration(specId) || groupLoads.get(groupForId(specId))?.state === 'ready';
 }

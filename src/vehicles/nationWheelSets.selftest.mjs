@@ -106,6 +106,14 @@ expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('bmpt_t
 // the Gepard rides the Leopard 1A5's
 expect('tunguska_m', 'bmp3m_dragun125'); expect('pantsir_s1', 'bmp3m_dragun125'); expect('pgz95', 'ztz100'); expect('pgz09', 'ztz100');
 expect('gepard_1a2', 'leo2a4'); assert.equal(resolveNationWheel(TANK_SPECS.gepard_1a2).donor, resolveNationWheel(TANK_SPECS.leo1a5).donor);
+// 269: the second air-defence round draws its base hulls' wheels (the K30 the Korean IFV standard, the K1A1 wheel)
+for (const [id, base] of [['type87_aw', 'type74'], ['marksman_t55', 't55a'], ['itpsv_leopard2', 'leo2a4'], ['lvkv9040', 'cv90_mk4'],
+  ['pza_loara', 'pt91a_twardy']]) {
+  assert.equal(resolveNationWheel(TANK_SPECS[id]).donor, resolveNationWheel(TANK_SPECS[base]).donor, `${id} draws ${base}'s wheel`);
+}
+expect('k30_biho', 'k1e1');
+// 269: the M163 VADS draws the US M113A3's wheel (the same M113 running gear)
+assert.equal(resolveNationWheel(TANK_SPECS.m163_vads).donor, resolveNationWheel(TANK_SPECS.m113a3).donor, 'm163_vads draws m113a3\'s wheel');
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');

@@ -85,7 +85,22 @@ Studio picture passes must stay out of the battle composer: never import
 The entry chunk is budgeted (`tools/bundle-budget.mjs` entryRaw): one map's
 sky data loads with that map's world, never statically from `sky.ts`. The
 Moon's land mask (`earthLandMask.ts`) goes through `earthLandAccess.ts`, which
-`world/map.ts` awaits before the world exists.
+`world/map.ts` awaits before the world exists. It, the grounded light model
+(`battleAtmosphereAccess.ts` `groundedLightChunk`; `loadGroundedLightModel` is
+the capture staging's) and the cloudscapes (`cloudPresets.ts`) are
+`app/lazyChunk.ts` chunks: the Studio asks them on every sun-dial move, with
+the atmosphere runtime and the map's air (`world/mapAmbienceAccess.ts`), and a
+failure is asked again only under the policy's backoff. A battle's entry asks
+the runtime, the light model, the cloudscapes, the map's air and, for a sky
+that draws the Earth, the land mask at once whatever that backoff
+(`prepare(..., { entry: true })`). A Studio apply waits on a first ask only,
+never a re-ask; what it lit without is its prepare's `landing`, and the Studio
+lights the same light again once that lands (`game/studio.ts`
+prepareAtmosphere, `{ relight: true }`), once per apply however many land
+together; a relight's landing leaves out a part its light was lit with.
+`app/lazyChunkSites.selftest.mjs` EDGE_ASKS holds these edge asks to their
+listed callers, the relight in the spellings it reads (the option by name as
+an object key, studio.ts's pass-throughs by their arity, the port's `how`).
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO

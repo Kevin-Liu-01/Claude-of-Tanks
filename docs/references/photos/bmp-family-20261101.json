@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "bmp3_rok": {
+      "name": "BMP-3 (ROK)",
+      "authority": "The owner, 2026-11-01: \"now update the ... bmp 3 rok, bwp-1 ...\". Release 268 (item/italy-korea-bmp-267) rebuilt it as the BMP-3 in Republic of Korea Army service on the fleet's own BMP-3 hull (profiles/afvFamily.ts buildBMP3Hull, shared with bmp3) under its existing ROK turret, from photographs, with no 3D model to follow; it won its blind A/B against the previous build 2-0 (Opus high, Sonnet high, round bmpr2). Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified: no owner model exists for this configuration.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:BMP-3_ROKA_%EC%A0%9C3%EA%B8%B0%EA%B0%91%EC%97%AC%EB%8B%A8.jpg",
+        "https://commons.wikimedia.org/wiki/File:BMP-3_-_ETIF-2010_(1).jpg",
+        "https://commons.wikimedia.org/wiki/File:BMP-3_-_ETIF-2010_(4).jpg",
+        "https://commons.wikimedia.org/wiki/File:BMP-3_(2).jpg",
+        "https://commons.wikimedia.org/wiki/File:BMP-3_infantry_fighting_vehicle_at_Engineering_Technologies_2012_03.jpg",
+        "https://commons.wikimedia.org/wiki/File:BMP-3_infantry_fighting_vehicle_at_Engineering_Technologies_2012_04.jpg",
+        "https://en.wikipedia.org/wiki/BMP-3"
+      ],
+      "widthM": 3.234,
+      "overallLengthM": 7.234,
+      "tallestM": 3.255,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the fender ledges (the published BMP-3's 3.15 m). Length from the stern to the 2A70's muzzle with the gun forward (the published 7.14 m hull). Tallest is the tip of the longer whip antenna; the body stands 2.80 m at the sight drum. The spec's calibre is the 30 mm 2A72, the game's main weapon; the drawn 100 mm 2A70 shares the mantlet. The ROK Army photograph (3rd Armoured Brigade) is the followed vehicle; the Russian BMP-3 photographs give the views it lacks.",
+      "caliberMm": 30,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    },
+    "bwp1": {
+      "name": "BWP-1 (RCWS-30)",
+      "authority": "The owner, 2026-11-01: \"now update the ... bmp 3 rok, bwp-1 ...\". Release 268 (item/italy-korea-bmp-267) rebuilt it as the Polish BWP-1 modernisation demonstrator carrying the Rafael RCWS-30 unmanned station (MSPO 2004), on the fleet's BMP-1/BMP-2 boat hull (profiles/bmpBoatHull.ts, shared with bmp2) with the station of profiles/bwp1Rcws30.ts, from photographs, with no 3D model to follow; it won its blind A/B against the previous build 2-0 (Opus high, Sonnet high, round bmpr2). Stage A's photo route through this packet is proposed to Main in the 268 READY. Numerical 3D comparison remains unverified: no owner model exists for this configuration.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:MSPO2004_PICT0105_BWP1_RCWS30.JPG",
+        "https://commons.wikimedia.org/wiki/File:MSPO2004_PICT0102_BWP1_RCWS30_s.JPG",
+        "https://commons.wikimedia.org/wiki/File:BWP-1_at_the_Muzeum_Polskiej_Techniki_Wojskowej_in_Warsaw_(1).JPG",
+        "https://commons.wikimedia.org/wiki/File:BWP-1_at_the_Muzeum_Polskiej_Techniki_Wojskowej_in_Warsaw_(2).JPG",
+        "https://commons.wikimedia.org/wiki/File:BWP-1_at_the_Muzeum_Polskiej_Techniki_Wojskowej_in_Warsaw_(3).JPG",
+        "https://en.wikipedia.org/wiki/BMP-1"
+      ],
+      "widthM": 3.048,
+      "overallLengthM": 6.764,
+      "tallestM": 2.645,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the bolted appliqué on the fender bins (the published BMP-1's 2.94 m is over the hull). Length from the stern doors to the bow with the 30 mm traversed forward (the published BMP-1's 6.74 m). Tallest is the tip of the whip antenna; the station's sight head stands 2.60 m. The RCWS-30 is unmanned: the gunner sits in the hull (internalLayoutRegistry.ts bwp1Rcws30), and the station carries one Spike-LR canister on its side arm.",
+      "caliberMm": 30,
+      "launcherTubes": 1,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": true,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    }
+  }
+}

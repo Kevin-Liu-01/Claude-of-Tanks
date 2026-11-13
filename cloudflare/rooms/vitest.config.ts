@@ -9,17 +9,31 @@ import { defineConfig } from 'vitest/config';
  *            with STUN alone while the secrets are unset; the phone controller's pairing (test/pad.test.ts).
  *   relay  — wrangler.relay.test.jsonc (a fake Cloudflare TURN key, an eight-hour lease asked for): the relay
  *            credentials minted inside the room for seated players only (test/relay.test.ts, 2026-10-02, §13.14).
+ * A test's timeout is a hang guard, not a speed bound (round 3 B14, 2026-11-06): the four files run at once, each in its
+ * own Workers runtime (one Miniflare per pool worker), sharing only the CPU. The keepalive case (an eviction, five object
+ * round trips, some 270 frames) took about a second idle, 3 s alone at load 63 and 14 s in a full run at load 150; in
+ * round two's full runs at load 250-420 it timed out at the old 20 s, and the 28-seat and admin-migration cases took
+ * 13-14 s. Those runs do not tell which of two causes timed it out: its own time on a starved runtime, which only this
+ * timeout bounds now, or a hang reproduced on 92f415e879 (round 4 F9), its envelope flood handled across the room's rate
+ * window, which left the socket open while the case sat on the close. The floods hold Date still (round 3), which
+ * removes the hang at any load, and a close that never comes fails by name (client.ts closedWithin). At load 110-130
+ * (round 5 Q0, f60d0aa200) all 31 cases passed in five full runs under round two's 20 s timeout (round two gave the
+ * 28-seat case its own 40 s; the runs held it to 20 s, and it took 1.9-6.4 s): the keepalive case in 0.7-2.6 s, the
+ * slowest (admin migration, the 24 h expiry) in 10-11 s, 10 s of it the runtime's wait on a client close sent without a
+ * status. At load 139-155 the 28-seat case, without a timeout of its own since round three, took 16.9 s, so the 90 s
+ * stays the bound on a case's own time.
  */
+const TEST_TIMEOUT_MS = 90_000;
 export default defineConfig({
   test: {
     projects: [
       {
         plugins: [cloudflareTest({ wrangler: { configPath: './wrangler.test.jsonc' } })],
-        test: { name: 'rooms', include: ['test/rooms.test.ts', 'test/p2p.test.ts', 'test/pad.test.ts'], testTimeout: 20_000 },
+        test: { name: 'rooms', include: ['test/rooms.test.ts', 'test/p2p.test.ts', 'test/pad.test.ts'], testTimeout: TEST_TIMEOUT_MS },
       },
       {
         plugins: [cloudflareTest({ wrangler: { configPath: './wrangler.relay.test.jsonc' } })],
-        test: { name: 'relay', include: ['test/relay.test.ts'], testTimeout: 20_000 },
+        test: { name: 'relay', include: ['test/relay.test.ts'], testTimeout: TEST_TIMEOUT_MS },
       },
     ],
   },

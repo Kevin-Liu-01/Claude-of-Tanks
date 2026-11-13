@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { primeShadowCascades } from './shadowPrime.ts';
 import { markVehicleShadowDetail } from './nearVehicleShadowDetail.ts';
+import { installArticulatedShadowBatch } from './articulatedShadowBatch.ts';
+import { markShadowOnly } from './renderLayers.ts';
 import { createLighting } from './lighting.ts';
 import { setPresetName } from './quality.ts';
 
@@ -734,7 +736,7 @@ await withFixture(async (f) => {
 });
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-  const recovery = main.slice(main.indexOf('async onRestored() {'), main.indexOf('// Some mobile browsers discard'));
+  const recovery = main.slice(main.indexOf('async onRestored(signal: AbortSignal) {'), main.indexOf('// Some mobile browsers discard'));
   assert.ok(recovery.indexOf('lighting.invalidateShadowMaps();') >= 0
     && recovery.indexOf('lighting.invalidateShadowMaps();') < recovery.indexOf('applyGraphicsRecovery();'),
   'context owner invalidates shadow readiness before any quality or covered restore work');
@@ -812,5 +814,143 @@ await withFixture(async (f) => {
   assert.deepEqual(sizes, [3, 2, 1, 1],
     'p1-p3 (one new variant), cut and p4 (cut new), disp (new), and a plain caster with normals (new): one new variant a batch');
 }
+
+// (2026-11-02 audit R4) the prime holds the lights' shadow flags across its awaits: a failure gives back only the flags
+// that still hold the prime's own false (another owner's write during an await stands), and only from the prime that
+// still holds the light (an overlapping newer prime inherits the original snapshot instead of the older prime's false)
+await withFixture(async (f) => {
+  const original = f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]);
+  const reason = new Error('superseded');
+  await assert.rejects(f.run({ yieldBeforeCascade(index) {
+    if (index !== 1) return;
+    f.lights[0].shadow.autoUpdate = true; // the live scheduler / a forced update during the await
+    f.lights[0].shadow.needsUpdate = true;
+    throw reason;
+  } }), (error) => error === reason);
+  assert.deepEqual([f.lights[0].shadow.autoUpdate, f.lights[0].shadow.needsUpdate], [true, true],
+    'another owner\'s write during the prime\'s await stands');
+  assert.deepEqual([f.lights[1].shadow.autoUpdate, f.lights[1].shadow.needsUpdate], original[1],
+    'the flags the prime still held go back to the snapshot');
+});
+await withFixture(async (f) => {
+  const original = f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]);
+  const gate = () => { let open; const promise = new Promise((resolve) => { open = resolve; }); return { promise, open }; };
+  const firstGate = gate(), secondGate = gate();
+  const firstFail = new Error('first superseded'), secondFail = new Error('second failed');
+  const first = f.run({ async yieldBeforeCascade(index) { if (index === 1) { await firstGate.promise; throw firstFail; } } });
+  const firstDone = first.then(() => null, (error) => error);
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+  const second = f.run({ async yieldBeforeCascade(index) { if (index === 1) { await secondGate.promise; throw secondFail; } } });
+  const secondDone = second.then(() => null, (error) => error);
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+  firstGate.open();
+  assert.equal(await firstDone, firstFail);
+  assert.deepEqual(f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]), [[false, false], [false, false]],
+    'the older prime, superseded, leaves the newer prime\'s held flags alone');
+  secondGate.open();
+  assert.equal(await secondDone, secondFail);
+  assert.deepEqual(f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]), original,
+    'the newer prime restores the flags from before either prime');
+});
+
+// (2026-11-02 audit R4, review round 2) the caster warm's batches give back the flags that stood when each batch began,
+// never the collection's snapshot from before the warm's awaits. An articulated shadow batch that takes authored proxies
+// over at a yield between two batches keeps them off: no later warm batch or final cascade draws them beside it, they
+// are still off after the prime, and only the batch's dispose gives them back. Another owner's writes during a yield
+// stand. (Before: every later batch wrote the pre-await true back and the sources cast beside the batch for its life.)
+{
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const lights = [new THREE.DirectionalLight(), new THREE.DirectionalLight()];
+  for (const light of lights) { light.castShadow = true; scene.add(light); }
+  const prior = new THREE.WebGLRenderTarget(4, 4);
+  const target = { value: prior, face: 0, mip: 0 };
+  const renders = [];
+  let articulated = null;
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial();
+  const plain = Array.from({ length: 3 }, (_, index) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `plain-${index}`;
+    mesh.castShadow = true;
+    scene.add(mesh);
+    return mesh;
+  });
+  const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+  const depthMaterial = new THREE.MeshDepthMaterial();
+  const proxyGeometry = new THREE.BoxGeometry();
+  proxyGeometry.clearGroups();
+  const rig = new THREE.Group();
+  scene.add(rig);
+  const sources = Array.from({ length: 2 }, (_, index) => {
+    const source = markShadowOnly(new THREE.Mesh(proxyGeometry, proxyMaterial));
+    source.name = `late-proxy-${index}`;
+    source.castShadow = true;
+    source.customDepthMaterial = depthMaterial;
+    source.userData.authoredShadowProxy = true;
+    source.position.set(index * 4, 0, -10);
+    rig.add(source);
+    return source;
+  });
+  scene.updateMatrixWorld(true);
+  const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
+    info: {},
+    shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
+    getContext: () => ({ isContextLost: () => false }),
+    getRenderTarget: () => target.value,
+    getActiveCubeFace: () => target.face,
+    getActiveMipmapLevel: () => target.mip,
+    setRenderTarget(next, face = 0, mip = 0) { Object.assign(target, { value: next, face, mip }); },
+    render(activeScene, activeCamera) {
+      renders.push({ batched: !!articulated, sourcesCasting: sources.filter((source) => source.castShadow).length });
+      renderer.shadowMap.render(lights, activeScene, activeCamera);
+    },
+  });
+  let yields = 0;
+  let castAtInstall = null;
+  await primeShadowCascades({ renderer, scene, camera, lights, count: lights.length,
+    casterWarmup: { maxCastersPerBatch: 1,
+      yieldBeforeBatch() {
+        yields += 1;
+        if (yields !== 2) return;
+        castAtInstall = sources.map((source) => source.castShadow);
+        articulated = installArticulatedShadowBatch(rig, sources);
+        // another owner's writes during the same yield (a wreck's caster switched off, a cull flag changed)
+        plain[2].castShadow = false;
+        plain[1].frustumCulled = false;
+      } } });
+  assert.deepEqual(castAtInstall, [true, true], 'the batch takes the proxies over between two warm batches');
+  assert.equal(articulated?.isBatchedMesh, true, 'the articulated batch installed');
+  const after = renders.filter((render) => render.batched);
+  assert.ok(after.length >= 3, 'warm batches and both final cascades rendered after the install');
+  assert.deepEqual(after.map((render) => render.sourcesCasting), after.map(() => 0),
+    'no prime render after the install draws the sources beside the batch');
+  assert.deepEqual(sources.map((source) => source.castShadow), [false, false], 'the batch still holds its proxies off after the prime');
+  assert.equal(plain[2].castShadow, false, 'another owner\'s castShadow write during a yield stands');
+  assert.equal(plain[1].frustumCulled, false, 'another owner\'s frustumCulled write during a yield stands');
+  assert.deepEqual([plain[0].castShadow, plain[0].frustumCulled], [true, true], 'an untouched caster is restored');
+  articulated.dispose();
+  assert.deepEqual(sources.map((source) => source.castShadow), [true, true], 'the batch\'s dispose gives the proxies back');
+  for (const resource of [geometry, material, proxyMaterial, depthMaterial, proxyGeometry, prior]) resource.dispose();
+}
+
+// (review round 2) a near-detail caster an owner holds off (castShadowHolds.ts) is not forced to cast in its warm batch
+await withFixture(async (f) => {
+  const { holdCastShadowOff, releaseCastShadowHold } = await import('./castShadowHolds.ts');
+  f.addCaster('seen', 3);
+  const hull = new THREE.Group();
+  f.scene.add(hull);
+  const cut = f.addCaster('detail-cut', 3, { parent: hull, castShadow: false });
+  cut.material.map = new THREE.Texture();
+  cut.material.alphaTest = 0.5;
+  markVehicleShadowDetail(hull, { detail: [cut], proxies: [] });
+  const owner = {};
+  holdCastShadowOff(cut, owner);
+  await f.run({ casterWarmup: { maxCastersPerBatch: 8 } });
+  assert.ok(f.cohorts.every((cohort) => !cohort.includes('detail-cut')), 'the held detail mesh casts in no prime render');
+  assert.equal(cut.castShadow, false);
+  releaseCastShadowHold(cut, owner);
+  f.restored(true);
+});
 
 console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; a hull\'s near shadow detail warms where it brings a new variant');

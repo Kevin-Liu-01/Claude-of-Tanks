@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions } from './native-browser-launch.mjs';
 
 const FILES = {
@@ -29,11 +29,11 @@ const server = createServer((request, response) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 
-const lock = createCaptureLock();
+let hold;
 const report = { chrome: null, steps: [] };
 let browser;
 try {
-  await lock.acquire(45 * 60_000, { lockClass: 'render' });
+  hold = await openCaptureHold({ label: 'offline-import-probe', timeoutMs: 45 * 60_000, lockClass: 'render' });
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
     executablePath: process.argv.find((arg) => arg.startsWith('--chrome='))?.slice(9)
       ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args: ['--disable-gpu'] }),
@@ -71,7 +71,7 @@ try {
   await page.close();
 } finally {
   if (browser) await browser.close();
-  lock.release();
+  await hold?.release();
   server.close();
 }
 const out = process.argv.find((arg) => arg.startsWith('--out='))?.slice(6);

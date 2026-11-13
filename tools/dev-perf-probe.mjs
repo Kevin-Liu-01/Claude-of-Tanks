@@ -11,6 +11,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -222,7 +223,7 @@ try {
   const bootStarted = Date.now();
   armWatchdog('game-ready-or-battle-open');
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true && window.__DEV_TRACE?.enabled === true', { timeout: 240000 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__DEV_TRACE?.enabled === true`, { timeout: 240000 });
   await page.bringToFront();
   readyWallMs = Date.now() - bootStarted;
   // Preserve boot events/long tasks before the play window gets a fresh clock.
@@ -262,7 +263,7 @@ try {
     await page.evaluate((rate) => window.__DEV_TRACE.mark('probe:cpu-throttle', { rate }), selected.cpuRate);
   }
   await page.waitForFunction(
-    'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
+    readinessExpression('controlsReleased'),
     { timeout: openTimeoutMs, polling: 50 });
   disarmWatchdog();
   if (cpuProfileEnabled && !profilerRunning) {

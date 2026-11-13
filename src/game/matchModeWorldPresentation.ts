@@ -8,7 +8,7 @@ import {
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
 import { createProvingRangeDressing, type ProvingRangeDressing } from './provingRangeDressing.ts';
-import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
+import { objectiveMarkersFor, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
 import {
   badgeLetter, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
   laneLetter, OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter, type ObjectiveSide,
@@ -372,10 +372,46 @@ export function createMatchModeWorldPresentation(
     if (!sprite) return;
     const material = sprite.material as THREE.SpriteMaterial;
     const texture = iconTexture(key, paint);
+    sprite.userData.iconKey = key;
     if (material.map !== texture) {
       material.map = texture;
       material.needsUpdate = true;
     }
+  };
+  // (improve-271 plan 023) a sprite already wearing `key` needs no paint closure this frame
+  const needsIcon = (sprite: THREE.Sprite | undefined, key: string): boolean => !!sprite && sprite.userData.iconKey !== key;
+  const FLAG_KEYS: Readonly<Record<ObjectiveSide, string>> = { own: 'flag:own', enemy: 'flag:enemy', neutral: 'flag:neutral', contested: 'flag:contested' };
+  const GOAL_KEYS: Readonly<Record<ObjectiveSide, string>> = { own: 'goal:own', enemy: 'goal:enemy', neutral: 'goal:neutral', contested: 'goal:contested' };
+  // the markers' views, rebuilt only when the one derivation hands over a new array: spawn, zone/sector and lane marks
+  // with their icon keys, in derivation order
+  let derivedFrom: readonly ObjectiveMarker[] | null = null;
+  const spawnMarks: ObjectiveMarker[] = [];
+  const spawnKeys: string[] = [];
+  const zoneMarks: ObjectiveMarker[] = [];
+  const zoneKeys: string[] = [];
+  const laneMarks: ObjectiveMarker[] = [];
+  const laneKeys: string[] = [];
+  const laneLabels: string[] = [];
+  const deriveViews = (marks: readonly ObjectiveMarker[]): boolean => {
+    if (marks === derivedFrom) return false;
+    derivedFrom = marks;
+    spawnMarks.length = spawnKeys.length = zoneMarks.length = zoneKeys.length = 0;
+    laneMarks.length = laneKeys.length = laneLabels.length = 0;
+    for (const mark of marks) {
+      if (mark.kind === 'spawn') {
+        spawnMarks.push(mark);
+        spawnKeys.push(`spawn:${mark.side}`);
+      } else if (mark.kind === 'zone' || mark.kind === 'sector') {
+        zoneMarks.push(mark);
+        zoneKeys.push(`${mark.kind}:${mark.side}:${mark.label ?? ''}:${mark.status ?? ''}`);
+      } else if (mark.kind === 'lane') {
+        const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
+        laneMarks.push(mark);
+        laneLabels.push(label);
+        laneKeys.push(`lane:${label}`);
+      }
+    }
+    return true;
   };
   let beaconGeometry: THREE.CylinderGeometry | null = null;
   // additive light column: the objective is visible from across the map
@@ -761,16 +797,19 @@ export function createMatchModeWorldPresentation(
     lineWorks = null;
   };
 
-  const updateLineWorks = (state: MatchModePresentationState): void => {
+  const updateLineWorks = (state: MatchModePresentationState, changed: boolean): void => {
     const lines = Math.min(state.zones.length, LINE_WORKS.lines);
     if (!lines) return;
     if (lineWorks && lineWorks.lines !== lines) disposeLineWorks();
-    if (!lineWorks) lineWorks = buildLineWorks(lines);
-    const signature = state.zones.slice(0, lines)
-      .map((zone) => `${zone.x.toFixed(2)}:${zone.z.toFixed(2)}`).join('|');
-    if (lineWorks.signature !== signature) {
-      fillLineWorks(lineWorks, state);
-      lineWorks.signature = signature;
+    if (!lineWorks) { lineWorks = buildLineWorks(lines); changed = true; }
+    // (improve-271 plan 023) the sectors' places are read again only when the mode state changed
+    if (changed) {
+      const signature = state.zones.slice(0, lines)
+        .map((zone) => `${zone.x.toFixed(2)}:${zone.z.toFixed(2)}`).join('|');
+      if (lineWorks.signature !== signature) {
+        fillLineWorks(lineWorks, state);
+        lineWorks.signature = signature;
+      }
     }
     lineWorks.group.visible = true;
   };
@@ -806,7 +845,9 @@ export function createMatchModeWorldPresentation(
       marker.userData.flagVisual?.update(timeS);
       if (flag.status === 'home') marker.position.y = flag.baseY;
       tintTeam(marker, side);
-      setIcon(marker.userData.icon, `flag:${side}`, (ctx, c) => drawPennant(ctx, c - 14, c + 8, 92, sideColor(side)));
+      if (needsIcon(marker.userData.icon, FLAG_KEYS[side])) {
+        setIcon(marker.userData.icon, FLAG_KEYS[side], (ctx, c) => drawPennant(ctx, c - 14, c + 8, 92, sideColor(side)));
+      }
       fadeByViewer(marker);
       const base = bases[index];
       if (base) {
@@ -823,30 +864,33 @@ export function createMatchModeWorldPresentation(
     }
   };
 
-  const updateSpawns = (state: MatchModePresentationState, markers: readonly ObjectiveMarker[]): void => {
+  const updateSpawns = (state: MatchModePresentationState): void => {
     // in the world only a revive point is worth a beacon; the map marks every spawn
     if (!state.respawns) return;
-    const spawnMarks = markers.filter((marker) => marker.kind === 'spawn');
     if (!spawnMarks.length) return;
     const groups = buildSpawns();
-    for (const mark of spawnMarks) {
-      const spawn = state.spawns.find((entry) => entry.x === mark.x && entry.z === mark.z);
+    for (let markIndex = 0; markIndex < spawnMarks.length; markIndex++) {
+      const mark = spawnMarks[markIndex]!;
+      let spawn: MatchModePresentationState['spawns'][number] | undefined;
+      for (const entry of state.spawns) if (entry.x === mark.x && entry.z === mark.z) { spawn = entry; break; }
       const group = groups[spawn?.team === 'bravo' ? 1 : 0];
       if (!group) continue;
       group.visible = true;
       group.position.set(mark.x, spawn?.y ?? (options.groundHeight?.(mark.x, mark.z) ?? 0), mark.z);
       fitObjectiveSurface(group.children[0] as THREE.Mesh, group.position.x, group.position.y, group.position.z, options.groundHeight);
       tintTeam(group, mark.side);
-      setIcon(group.userData.icon, `spawn:${mark.side}`, (ctx, c) =>
-        drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side), mark.side === 'enemy' ? 'enemy' : 'own'));
+      if (needsIcon(group.userData.icon, spawnKeys[markIndex]!)) {
+        setIcon(group.userData.icon, spawnKeys[markIndex]!, (ctx, c) =>
+          drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side), mark.side === 'enemy' ? 'enemy' : 'own'));
+      }
       fadeByViewer(group);
     }
   };
 
-  const updateZones = (state: MatchModePresentationState, marks: readonly ObjectiveMarker[]): void => {
+  const updateZones = (state: MatchModePresentationState): void => {
     const markers = buildZones();
-    const zoneMarks = marks.filter((mark) => mark.kind === 'zone' || mark.kind === 'sector');
-    for (const [index, zone] of state.zones.entries()) {
+    for (let index = 0; index < state.zones.length; index++) {
+      const zone = state.zones[index]!;
       const marker = markers[index];
       if (!marker) break;
       marker.visible = true;
@@ -896,14 +940,16 @@ export function createMatchModeWorldPresentation(
       }
       const label = mark.label ?? '';
       const status = mark.status ?? '';
-      setIcon(marker.userData.icon, `${mark.kind}:${mark.side}:${label}:${status}`, (ctx, c) => {
-        drawHexBadge(ctx, c, c, 46, {
-          fill: sideFill(mark.side), stroke: sideColor(mark.side), ringWidth: 9,
-          dashed: mark.side === 'contested' || status === 'locked',
+      if (needsIcon(marker.userData.icon, zoneKeys[index]!)) {
+        setIcon(marker.userData.icon, zoneKeys[index]!, (ctx, c) => {
+          drawHexBadge(ctx, c, c, 46, {
+            fill: sideFill(mark.side), stroke: sideColor(mark.side), ringWidth: 9,
+            dashed: mark.side === 'contested' || status === 'locked',
+          });
+          drawGlyphLetter(ctx, label, badgeLetter(c, c, 46, OBJECTIVE_PALETTE.chalk, spriteLetter), "700 48px 'Cot UI', sans-serif");
+          if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor(mark.side));
         });
-        drawGlyphLetter(ctx, label, badgeLetter(c, c, 46, OBJECTIVE_PALETTE.chalk, spriteLetter), "700 48px 'Cot UI', sans-serif");
-        if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor(mark.side));
-      });
+      }
       fadeByViewer(marker);
     }
   };
@@ -929,7 +975,9 @@ export function createMatchModeWorldPresentation(
       marker.lookAt(midX, midY, midZ);
       const side = sideOf(goal.team, state);
       marker.userData.markerMaterial?.color.setHex(sideHex(side));
-      setIcon(marker.userData.icon, `goal:${side}`, (ctx, c) => drawGoalGlyph(ctx, c, c, 44, sideColor(side), sideFill(side)));
+      if (needsIcon(marker.userData.icon, GOAL_KEYS[side])) {
+        setIcon(marker.userData.icon, GOAL_KEYS[side], (ctx, c) => drawGoalGlyph(ctx, c, c, 44, sideColor(side), sideFill(side)));
+      }
       fadeByViewer(marker);
     }
   };
@@ -958,7 +1006,8 @@ export function createMatchModeWorldPresentation(
       if (marker.userData.heal) marker.userData.heal.visible = pickup.kind === 'heal';
       if (marker.userData.ammo) marker.userData.ammo.visible = pickup.kind === 'ammo';
       const kind = pickup.kind === 'heal' ? 'heal' : 'ammo';
-      setIcon(marker.userData.icon, `pickup:${kind}`, (ctx, c) => drawPickupGlyph(ctx, c, c, 44, kind));
+      const key = kind === 'heal' ? 'pickup:heal' : 'pickup:ammo';
+      if (needsIcon(marker.userData.icon, key)) setIcon(marker.userData.icon, key, (ctx, c) => drawPickupGlyph(ctx, c, c, 44, kind));
       fadeByViewer(marker);
     }
   };
@@ -987,21 +1036,23 @@ export function createMatchModeWorldPresentation(
     return laneMarkers;
   };
 
-  const updateLanes = (marks: readonly ObjectiveMarker[]): void => {
-    const lanes = marks.filter((mark) => mark.kind === 'lane');
-    const markers = buildLanes(lanes.length);
-    for (const [index, mark] of lanes.entries()) {
-      const marker = markers[index];
+  const updateLanes = (): void => {
+    const markers = buildLanes(laneMarks.length);
+    for (let index = 0; index < laneMarks.length; index++) {
+      const mark = laneMarks[index]!;
+      const marker = markers[index]!;
       marker.visible = true;
       marker.position.set(mark.x, options.groundHeight?.(mark.x, mark.z) ?? 0, mark.z);
       fitObjectiveSurface(marker.children[0] as THREE.Mesh, marker.position.x, marker.position.y, marker.position.z, options.groundHeight);
       // over the field the lane's board reads its range (the minimap's smaller board keeps the lane's number)
-      const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
-      const size = label.length > 2 ? 36 : 46;
-      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => {
-        drawLaneGlyph(ctx, c, c, 44);
-        drawGlyphLetter(ctx, label, laneLetter(c, c, 44, spriteLetter), `700 ${size}px system-ui, sans-serif`);
-      });
+      const label = laneLabels[index]!;
+      if (needsIcon(marker.userData.icon, laneKeys[index]!)) {
+        const size = label.length > 2 ? 36 : 46;
+        setIcon(marker.userData.icon, laneKeys[index]!, (ctx, c) => {
+          drawLaneGlyph(ctx, c, c, 44);
+          drawGlyphLetter(ctx, label, laneLetter(c, c, 44, spriteLetter), `700 ${size}px system-ui, sans-serif`);
+        });
+      }
       fadeByViewer(marker, LANE_MAX_GROWTH);
       const icon = marker.userData.icon;
       if (icon) icon.position.y = LANE_BOARD_FOOT_M + icon.scale.y / 2;
@@ -1017,26 +1068,27 @@ export function createMatchModeWorldPresentation(
     root.visible = true;
     hideAll();
     // one derivation shared with the minimap: sides from the viewer's team,
-    // zone letters / sector numbers and statuses, spawn marks per mode
-    const marks = objectiveMarkers(state);
+    // zone letters / sector numbers and statuses, spawn marks per mode (retained: derived once per change of the mode
+    // state, its views and icon keys with it; improve-271 plan 023)
+    const changed = deriveViews(objectiveMarkersFor(state, timeS));
     if (state.id === 'capture_the_flag') updateFlags(state, timeS);
-    else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') updateZones(state, marks);
+    else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') updateZones(state);
     else if (state.id === 'frontline_assault') {
-      updateZones(state, marks);
-      updateLineWorks(state);
+      updateZones(state);
+      updateLineWorks(state, changed);
     }
     else if (state.id === 'turbo_ball') updateTurboBall(state, timeS);
     // Caches coexist with objectives (Mars has both zones and drops).
     // Keep their lifecycle independent of the exclusive objective dispatch.
     if (state.pickups.length || state.id === 'endless_horde') updatePickups(state, timeS);
     if (state.range) {
-      updateLanes(marks);
+      updateLanes();
       rangeDressing ??= createProvingRangeDressing(root, options);
       rangeDressing.update(state.range);
     } else rangeDressing?.update(null);
     // (the proving ground's firing line has its start board and the map's mark: no revive beacon round the player's own
     // hull, whose full-strength team ring flooded the tarmac at every start and reset)
-    if (!state.range) updateSpawns(state, marks);
+    if (!state.range) updateSpawns(state);
     // Air Support (air-support-270): the call-ins' aircraft and their marks on the ground (airSupportWorld.ts)
     if (state.air) {
       airWorld ??= createAirSupportWorld(root, options);

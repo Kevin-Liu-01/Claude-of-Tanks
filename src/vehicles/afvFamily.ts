@@ -225,9 +225,11 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   bwp1: variant('bwp1', 'bmp2', {
     name: 'BWP-1 (Bojowy Wóz Piechoty 1)', nation: 'Poland', number: 'BWP-1',
     base: '#3f4a3e', weather: '#535d4d', patches: ['#28312b', '#5d5948', '#706750'],
-    dims: { hullLengthM: 6.90, overallLengthM: 7.12, widthM: 3.45, heightM: 3.02,
-      silhouetteHullLengthM: 6.61, silhouetteOverallLengthM: 6.72,
-      silhouetteWidthM: 3.45, silhouetteHeightM: 2.82 },
+    // 267 round 2: the as-built envelope of the BMP-1 hull with the appliqué and the RCWS-30 (the 30 mm muzzle stays
+    // inside the bow; height to the station's head, whips excluded)
+    dims: { hullLengthM: 6.76, overallLengthM: 6.76, widthM: 3.05, heightM: 2.60,
+      silhouetteHullLengthM: 6.76, silhouetteOverallLengthM: 6.76,
+      silhouetteWidthM: 3.05, silhouetteHeightM: 2.60 },
     trackWidthM: 0.44,
     stats: { hp: 1850, enginePowerHp: 720, weightTons: 32.0, topSpeedKmh: 68,
       reverseSpeedKmh: 28, hullTraverseDegS: 48, turretTraverseDegS: 60, gunPitchDegS: 46 },
@@ -309,7 +311,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     // returns and the wave's equipment suite (TOW twin-box, ISU, CIV drum,
     // bustle, glacis appliqué, coax) re-seats on it. Print
     // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
-    // are scattered — the browser gate poses it correctly).
+    // are scattered — the browser gate poses it correctly). 269 (owner: "redesign the m3a3 bradley turret"): that print,
+    // the owner's low_poly_m3a3_bradley.glb, loads assembled under three's GLTFLoader in Node (its loose parts are the
+    // TOW rounds and a launch tube modelled beside the hull); the A3 turret is measured from it and the Ukrainian M2A3
+    // (profiles/bradleyA3Turret.ts).
     id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', role: 'ifv',
     // Tier X reconnaissance support: materially lower durability than the
     // T-90-based Terminator, paid back through fast acquisition, a modern
@@ -320,14 +325,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
-    // Preserve full front/side depression with the lower gun seat. Only the
-    // aft hatch sector needs a mechanical stop, shared by game and Gallery.
-    // 2026-10-20 follow-up (tools/gun-depression-sweep.mjs, nationalGunClearance.selftest.mjs): the barrel over the
-    // front quarter's hull edge and external armour at 17-39 (-7.9 at 32) and the aft stop from 148. Dead ahead the
-    // full forward depression stays: the barrel keeps 37 mm there; the mantlet's underside passes 11 mm over the roof at
-    // -9 across the front 39 degrees, where the selftest holds the barrel alone.
-    gunPitchByYawDeg: [[0, -9], [17, -9], [22, -8.5], [29, -8.4], [32, -7.9], [35, -8], [39, -9], [148, -9], [158, -5.2],
-      [159, -5], [180, -5]],
+    // Preserve full front/side depression. Only the aft hatch sector needs a mechanical stop, shared by game and Gallery.
+    // 269 (the A3 turret on the A2 shell and trunnion, the gun line 7.3 cm higher; tools/gun-depression-sweep.mjs): the
+    // front quarter keeps full depression with no mount conflict, and only the raised troop roof aft holds a stop from 160.
+    gunPitchByYawDeg: [[0, -9], [158, -9], [161, -7.7], [162, -7.4], [166, -7.4], [180, -7.8]],
     gun: {
       caliberMm: 25, reloadS: 0.33, baseAccuracy: 0.25, aimTimeS: 1.05,
       soundProfile: 'm242-bushmaster',
@@ -335,8 +336,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       shells: [
         shell('M919 APFSDS-T', 'APFSDS', 25, 185, 170, 70, 1345,
           { pen2000Mm: 155, reloadS: 0.33, count: 300 }),
+        // 269 (owner: "a launcher aonn its other sdie"): a second twin launcher on the turret's right, four ready tubes
+        // (launcherTubes 2 -> 4); the ten rounds carried are unchanged
         shell('BGM-71F TOW-2B', 'HEAT', 152, 1050, 1050, 700, 195,
-          { reloadS: 2.8, count: 10, guided: true, soundProfile: 'tow-launch', launcherTubes: 2 }),
+          { reloadS: 2.8, count: 10, guided: true, soundProfile: 'tow-launch', launcherTubes: 4 }),
         shell('M792 HEI-T', 'HE', 25, 8, 8, 62, 1100,
           { pen2000Mm: 8, reloadS: 0.33, count: 300 }),
       ],
@@ -344,20 +347,29 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     // §5.306 base revert: the pre-§5.286 declared dims return with the
     // buildBradley base (silhouette* rows are that base's honest-measured
     // values; re-trued against the hybrid build at gate time).
+    // 2026-11-06 (270, Main: "The spec describes what we build"): silhouetteHeightM 3.05 -> 3.41, the drawn height as the
+    // gate's dims row measures it (procedural-fidelity.html heightM: body top 3.4098 to roof-fittings top 3.4177 at the
+    // gate's width fit). The 269 A3 turret and the owner's order of 2026-11-05 ("make the m3a3 special by having a munch of
+    // extra optics tech and a launcher aonn its other sdie and a bunch of extra boxes") raised it: the LRAS3-pattern
+    // sensor head over the gunner's hatch, the camera pods and the rear-corner posts stand over the 3.05 m roof line.
     dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.61, heightM: 3.73,
       silhouetteHullLengthM: 6.71, silhouetteOverallLengthM: 6.70,
-      silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
+      silhouetteWidthM: 3.61, silhouetteHeightM: 3.41 },
     armor: ifvArmor({
       // 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop 0.95 ->
-      // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (profiles/bradleyScoutTurretShell.ts
-      // BRADLEY_SCOUT_TURRET_PIVOT, was [0.04, 1.895, -0.36]); the M242 to the M2's muzzle at world z 2.37 (barrelLenM
+      // 1.16, roofY 1.90 -> 2.06; the A3 ring on the M2's datum (modern3.ts BRADLEY_TURRET_RING, was
+      // [0.04, 1.895, -0.36]); the M242 to the M2's muzzle at world z 2.37 (barrelLenM
       // 2.30 -> 1.99, the drawn tube 2.42 -> 1.99).
+      // 269: the A3 turret on the family's measured A2 shell (profiles/bradleyA3Turret.ts): the M242 on the A2's trunnion,
+      // 0.305 m under the 0.77 roof as both A3 sources carry it (gunPivot [-0.06, 0.392, 0.78] -> [-0.06, 0.465, 0.60]),
+      // to the same muzzle at world z 2.37 (barrelLenM 1.99 -> 2.17); the turret envelope is the shell's, as the M2A2's
+      // (tw 0.85 -> 0.98, tFrontZ 1.00 -> 1.15, tRearZ -1.10 -> -1.20, tH 0.90 -> 0.77).
       hl: 3.27, hw: 1.70, inW: 0.95, floor: 0.45, trkTop: 1.16, roofY: 2.06,
-      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.392, 0.78],
-      barrelLenM: 1.99, barrelRadM: 0.038,
+      turretPivot: [-0.14, 2.06, -0.40], gunPivot: [-0.06, 0.465, 0.60],
+      barrelLenM: 2.17, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,
-      tw: 0.85, tFrontZ: 1.00, tRearZ: -1.10, tH: 0.90,
+      tw: 0.98, tFrontZ: 1.15, tRearZ: -1.20, tH: 0.77,
       cheek: [40, 70, 80], tSide: [35, 40, 45], tRear: 25, tRoof: 20,
       mantlet: [45, 70, 80],
     }),
@@ -590,5 +602,21 @@ AFV_FAMILY_SPECS.bmpt_terminator.armor.turretPlates =
   AFV_FAMILY_SPECS.bmpt_terminator.armor.turretPlates.filter((plate) => plate.kind !== 'era');
 
 applyEscortFieldKitArmor(AFV_FAMILY_SPECS.upior,ESCORT_FIELD_KITS.upior);
+
+// 267: the ROK BMP-3 stands on the BMP-3 hull (profiles/afvFamily.ts buildBMP3ROK): its ring moves to the bmp3 ring
+// (was the BMP-2 donor's [0, 1.66, 0.03]); the trunnion is its own turret's, as drawn and as the combat rig already
+// records it (was the donor's [0, 0.285, 0.55]). The barrel datum stays.
+AFV_FAMILY_SPECS.bmp3_rok.armor.turretPivot = [...AFV_FAMILY_SPECS.bmp3.armor.turretPivot];
+AFV_FAMILY_SPECS.bmp3_rok.armor.gunPivot = [0, 0.34, 0.62];
+// 267 round 2: its hull plates take the BMP-3 hull's faces (bmp3's plates of the same name: the hull it draws) and keep
+// their own protection (physical, KE and CE millimetres and kind), so shots meet plates where the hull is.
+for (const rokPlate of AFV_FAMILY_SPECS.bmp3_rok.armor.hullPlates) {
+  const bmp3Plate = AFV_FAMILY_SPECS.bmp3.armor.hullPlates.find((candidate) => candidate.name === rokPlate.name);
+  if (!bmp3Plate) throw new Error(`bmp3_rok hull plate ${rokPlate.name} has no BMP-3 face`);
+  rokPlate.verts = structuredClone(bmp3Plate.verts);
+}
+// 267: the BWP-1's RCWS-30 carries its cradle between the yoke cheeks of its strut frame (profiles/bwp1Rcws30.ts); the
+// trunnion follows the drawn station (was the BMP-2 donor's [0, 0.285, 0.55]; the old turret drew it at [0, 0.40, 0.60]).
+AFV_FAMILY_SPECS.bwp1.armor.gunPivot = [0, 0.55, 0.10];
 
 registerFleetSpecs(registries, AFV_FAMILY_IDS, AFV_FAMILY_SPECS);

@@ -2577,7 +2577,7 @@
       }
     ]
   },
-  "geometryHash": "d88d8623",
+  "geometryHash": "4ac01461",
   "metadataHash": "6260b66e",
   "presentationAnchor": {
     "xM": 0,
@@ -2595,7 +2595,7 @@
     "roles": {
       "fittingPaint": 5,
       "opticGlass": 4,
-      "gunmetal": 13,
+      "gunmetal": 15,
       "wheelTire": 2,
       "wheelDish": 7,
       "wheelInset": 1,
@@ -2637,15 +2637,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34934,
-      "sha256": "53779cecb760efd0287ae0474205c2dfa6faacee1eaebacb86b038f990a6f726",
+      "bytes": 34840,
+      "sha256": "16acbf8752d46a4bd87e0897930b95e238251391c8825285d999f0bd7382b896",
       "thumbnail": {
         "file": "thumbs/magach6b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13364,
-        "sha256": "88d5be694fa67fabb2947496b3c8b0d67ec1f432b815b6fe5c103ae62dffb8b2"
+        "bytes": 13376,
+        "sha256": "cd43d307176864c67c00c5ce68d329e130e4fecc409190d1ac7e478cb90ac164",
+        "frame": [22,104,227,249]
       }
     },
     "top": {
@@ -2661,8 +2662,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14500,
-      "sha256": "7e4a6f7f92e0d52fea29b6f1d4131d834c897da9e3444dd62662fd45368b4400"
+      "bytes": 14522,
+      "sha256": "a56ff0456c0f7f7178de8fae38b3657060b2bf4fd7d1590a158626324c10be48"
     },
     "topSilhouette": {
       "file": "magach6b_top_silhouette.png",
@@ -2677,32 +2678,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4762,
-      "sha256": "9c93b48e9031b3a5073e49f1d8636d2fe3a50db603830860dddc0665c64e267f"
+      "bytes": 4757,
+      "sha256": "44cb338be8c58b449bf85d91d21efef3d77dacb2ce688e8f7fe2e1ee1b9cd700"
     },
     "armorSide": {
       "file": "magach6b_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31812,
-      "sha256": "0ec73ce1577f80e63c3a5faebb7683efd81609c7798d8f522d93c7f0cbce9c2a"
+      "bytes": 31870,
+      "sha256": "728e41fb6ba45b1a510e182bbef0da6f9f66b0f2ce42e9eab1f836f55eb35029"
     },
     "modulesSide": {
       "file": "magach6b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32052,
-      "sha256": "b60a4c2c5eefa228d020411f93b3b55fe6852693bf44c550dc2c4f277d4da2cb"
+      "bytes": 32166,
+      "sha256": "6dbea69ac6930738446a0cd0a6d7bc0d6fcbdae3e14b3af3ca15d6696ed684a1"
     },
     "crewSide": {
       "file": "magach6b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29584,
-      "sha256": "ac6a166081ccdf0e183a3b6d0fd728815f2c1d9ddb82eb00500313433929f914"
+      "bytes": 29646,
+      "sha256": "4e3393ae36f759d7f760aa9bfb87a18f0695b64093a6715e04c84a71d3079b6d"
     },
     "markings": {
       "file": "magach6b_markings.png",

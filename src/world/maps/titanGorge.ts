@@ -40,6 +40,7 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
@@ -206,7 +207,7 @@ export default {
     hedgehogs: 24, sandbagLines: 26,
     // the map-vehicles lane (2026-10-06, the period ruling): the American West in the 1960s: the M60A1, M48, M551
     // and M47
-    tankWrecks: { era: 'cold-war', count: 8, debris: true, ids: ['m60a1', 'm48a5_patton', 'm551_sheridan', 'm47_patton'] },
+    tankWrecks: WRECK_CASTS.titan_gorge,
     inhabit: {
       stalls: 3, benches: 1, coreClutter: 24, drums: 14, pots: 7,
       trucks: 8, jeeps: 6, drumClusters: 8, camps: 6, modernClutter: 30,

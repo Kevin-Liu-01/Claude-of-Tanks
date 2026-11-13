@@ -90,7 +90,8 @@ export interface RubbleBodies {
   update(): void;
   shiftTime(delta: number): void;
   reset(): void;
-  stats(): { bodies: number; awake: number; waiting: number; live: number; settled: number; meshes: number };
+  /** `clockS`: the bodies' own clock (the pool's time: see update) */
+  stats(): { bodies: number; awake: number; waiting: number; live: number; settled: number; meshes: number; clockS: number };
   readonly pool: DebrisPhysics;
 }
 
@@ -193,8 +194,13 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
   // pieces leave its walls, they never start inside one; the neighbours' walls and every other record stay solid
   const passUntil = new Map<number, number>();
   const PASS_S = 6;
-  /** The fx clock as of the last throw or update (the pass windows run on it). */
-  let clockS = o.now();
+  /**
+   * (2026-11-02 audit R7) The bodies' clock: the fx clock's deltas less what the pool could not step (under ~15 fps, past
+   * a 0.25 s delta: debrisPhysics droppedS). A body's release, its give-up and its building's pass window run on it, so
+   * they keep the pool's time; on the fx clock a delayed body came due before the pool let it go and was given up on (it
+   * vanished at low frame rates). A rebase of the fx clock never moves it (shiftTime moves only `last`).
+   */
+  let clockS = 0;
   let bound: RigidEnvironment | null = null;
   let wrapped: RigidEnvironment | null = null;
   function environment(): RigidEnvironment | null {
@@ -283,7 +289,6 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       const reserved = inWorld + pool.stats().waiting;
       if (reserved >= capacity && sleepers <= reserved - capacity) return false;
       pool.bind(env);
-      clockS = o.now();
       if (structureIdx !== undefined && structureIdx >= 0) passUntil.set(structureIdx, clockS + Math.max(0, delayS) + PASS_S);
       // the palette piece is about a unit on its longest side: its body is the box of its own extents at this scale
       const hx = Math.max(0.02, e[0] * lx * 0.5), hy = Math.max(0.02, e[1] * ly * 0.5), hz = Math.max(0.02, e[2] * lz * 0.5);
@@ -303,7 +308,8 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       bm.slotHandle[index] = handle;
       bm.mesh.setColorAt(index, _c.setRGB(r, g, b));
       if (bm.mesh.instanceColor) bm.mesh.instanceColor.needsUpdate = true;
-      const body: LiveBody = { mesh: bm, index, sx: lx, sy: ly, sz: lz, releaseAt: o.now() + Math.max(0, delayS), still: 0 };
+      // its release on the bodies' clock, as the pool's own (its time at its last step, plus the delay)
+      const body: LiveBody = { mesh: bm, index, sx: lx, sy: ly, sz: lz, releaseAt: clockS + Math.max(0, delayS), still: 0 };
       live.set(handle, body);
       if (delayS > 0) { bm.mesh.setMatrixAt(index, HIDDEN); bm.mesh.instanceMatrix.needsUpdate = true; }
       else if (pool.framePoseAt(handle, pose)) write(body, pose);
@@ -313,17 +319,25 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       const now = o.now();
       const dt = now - last;
       last = now;
-      clockS = now;
-      if (!live.size) return;
+      // (no body: an empty pool, nothing to keep time with; the pass windows still age)
+      if (!live.size) { if (dt > 0) clockS += dt; return; }
       if (dt > 0) {
         const env = environment();
-        if (env) { pool.bind(env); pool.advance(dt); }
+        // (no environment: the bodies wait, and so does their clock)
+        if (env) {
+          pool.bind(env);
+          clockS += dt;
+          const droppedBefore = pool.droppedS();
+          pool.advance(dt);
+          clockS -= pool.droppedS() - droppedBefore;
+        }
       }
+      const at = clockS;
       for (const [handle, body] of live) {
-        if (now < body.releaseAt) continue;
+        if (at < body.releaseAt) continue;
         if (!pool.inWorld(handle)) {
           // due but the pool had no slot for it: hidden, and given up on after a moment (never hung where it was born)
-          if (now - body.releaseAt > 0.25) {
+          if (at - body.releaseAt > 0.25) {
             live.delete(handle);
             pool.release(handle);
             body.mesh.slotHandle[body.index] = -1;
@@ -340,16 +354,16 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       }
     },
     shiftTime(delta) {
+      // the fx clock moved: the next delta is taken from its new reading (the bodies' clock, their releases and the pass
+      // windows are their own)
       last += delta;
-      clockS += delta;
-      for (const [k, v] of passUntil) passUntil.set(k, v + delta);
-      for (const body of live.values()) body.releaseAt += delta;
     },
     reset() {
       pool.reset();
       live.clear();
       passUntil.clear();
       settled = 0;
+      clockS = 0;
       for (const bm of meshes.values()) {
         bm.mesh.count = 0;
         bm.mesh.visible = false;
@@ -361,7 +375,7 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
     },
     stats() {
       const s = pool.stats();
-      return { bodies: s.bodies, awake: s.awake, waiting: s.waiting, live: live.size, settled, meshes: meshes.size };
+      return { bodies: s.bodies, awake: s.awake, waiting: s.waiting, live: live.size, settled, meshes: meshes.size, clockS };
     },
   };
 }

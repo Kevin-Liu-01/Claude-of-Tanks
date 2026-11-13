@@ -738,6 +738,8 @@ function scaleTrackShapes(shapes: readonly TrackShape[] | undefined, scale: Armo
  * @throws {Error} on unknown id
  */
 export function getSpec(id: string): FleetTankSpec {
+  // own keys only (improve-271, plan 039): "constructor" or "__proto__" is an unknown id, not Object's own member
+  if (!Object.hasOwn(TANK_SPECS, id)) throw new Error(`Unknown tank id: ${id}`);
   const s = TANK_SPECS[id];
   if (!s) throw new Error(`Unknown tank id: ${id}`);
   return s;

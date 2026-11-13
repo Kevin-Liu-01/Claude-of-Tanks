@@ -22,6 +22,7 @@ import { VehicleMesh, linearHex, material, vehicleWeathering } from './maps/vehi
 import { planGroundedObbPose } from './propPlacement.ts';
 import type { HeightField } from './terrain.ts';
 import { keepStreams } from './geometryStreams.ts';
+import type { WreckState } from './wreckStates.ts';
 
 const STEEL = material('steel', [0.07, 0.064, 0.058], 0.7, 0.4, 0, 1);
 const STEEL_DARK = material('steel', [0.035, 0.032, 0.03], 0.75, 0.35, 0, 1);
@@ -52,6 +53,11 @@ interface WreckDebrisOptions {
   /** The hulk's ground contact in its frame [minX, maxX, minZ, maxZ] (wrecks.ts WreckBake.contact): the debris lies round
    *  it, the thrown track off one side of it. */
   contact?: readonly [number, number, number, number];
+  /** (wrecks-270) The hulk's damage state: a stripped, cut-up or half-buried hulk has no track lying out (salvaged with
+   *  the rest, or under the drift). */
+  state?: WreckState;
+  /** (wrecks-270) The side a track_thrown hulk lost its track on (wrecks.ts WreckBake.thrownSide): its run lies there. */
+  thrownSide?: number;
 }
 
 function mulberry32(a: number): () => number {
@@ -207,9 +213,12 @@ export function buildWreckDebris(seed: number, opts: WreckDebrisOptions = {}): W
     pieces.push({ kind, geo: made.geo, x, z, yaw, hw: made.hw, hl: made.hl });
   };
   // the thrown track: off one side, from the rear sprocket, in short runs snaking back and out
-  const side = rng() < 0.5 ? -1 : 1;
+  const drawn = rng() < 0.5 ? -1 : 1;
+  const side = opts.thrownSide ? Math.sign(opts.thrownSide) : drawn;
   let x = side * ((side > 0 ? cx1 : -cx0) + 0.45), z = cz0 + 0.6, heading = Math.PI + side * (0.25 + rng() * 0.3);
-  const runs = modern ? 4 : 3;
+  // a thrown track lies out its whole run; none where the hulk was stripped, cut up or buried
+  const keepsTrack = opts.state !== 'stripped' && opts.state !== 'scrap_cut' && opts.state !== 'half_buried';
+  const runs = !keepsTrack ? 0 : opts.state === 'track_thrown' ? (modern ? 7 : 6) : modern ? 4 : 3;
   for (let k = 0; k < runs; k++) {
     const shoes = 3 + ((rng() * 2) | 0);
     const made = trackRun(rng, modern, shoes, seed + serial++);

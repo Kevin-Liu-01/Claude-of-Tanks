@@ -49,15 +49,20 @@ function whipsCounted(record, { triangles, boxes, tallest }) {
   return top < tip ? null : `a station's source top (${top} m) reaches a whip (over ${tip.toFixed(2)} m)`;
 }
 const whipIds = Object.keys(FUSED_ANTENNA_BOXES).sort();
-assert.deepEqual(whipIds, ['centurion3', 'centurion5_2', 'strv81', 't90ms_tagil'], 'the Centurions rebuilt to the Strv 81 print; the T-90MS');
-const WHIP_SPANS = { strv81: [2.8, 4.3, 136], t90ms_tagil: [2.2, 3.0, 60] };
+assert.deepEqual(whipIds, ['centurion3', 'centurion5_2', 'chieftain3', 'strv81', 't90ms_tagil'],
+  'the Centurions rebuilt to the Strv 81 print; the Mk 3 on the Chieftain Mk 5 X source (271); the T-90MS');
+const WHIP_SPANS = { strv81: [2.8, 4.3, 136], chieftain5: [2.1, 3.9, 150], t90ms_tagil: [2.2, 3.0, 60] };
 for (const id of whipIds) {
-  const family = id.startsWith('centurion') ? 'strv81' : id;
+  const family = id.startsWith('centurion') ? 'strv81' : id === 'chieftain3' ? 'chieftain5' : id;
   assert.ok(SOURCE_WORLD_FRAMES[id], `${id}: boxes need a certified frame`);
   if (family === 'strv81') {
     assert.equal(SECOND_WAVE_X_REFERENCE_OVERRIDES[id]?.glb?.path, '/models/community-candidates/strv81_x_source.glb', `${id}: the certified Strv 81 print`);
     assert.equal(SOURCE_WORLD_FRAMES[id], SOURCE_WORLD_FRAMES.strv81, `${id}: one family frame`);
     assert.equal(FUSED_ANTENNA_BOXES[id], FUSED_ANTENNA_BOXES.strv81, `${id}: the print's boxes`);
+  }
+  if (family === 'chieftain5') {
+    assert.equal(SECOND_WAVE_X_REFERENCE_OVERRIDES[id]?.glb?.path, '/models/community-candidates/chieftain5_x_source.glb', `${id}: the certified Mk 5 X source`);
+    assert.equal(SOURCE_WORLD_FRAMES[id], SOURCE_WORLD_FRAMES.chieftain5, `${id}: one source frame`);
   }
   const { boxes, triangles } = FUSED_ANTENNA_BOXES[id], [low, high, census] = WHIP_SPANS[family];
   assert.equal(triangles, census, `${id}: the census' ${census} whip triangles`);

@@ -5,21 +5,22 @@ import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const out=resolve('.qa-dev/challenger-assembly'); mkdirSync(out,{recursive:true});
-const lock=createCaptureLock(); let server,browser,refresh;
+let hold; let server,browser;
 const report={pass:false,garage:[],errors:[]};
 try {
-  await lock.acquire(10800000); refresh=setInterval(()=>lock.refresh(),30000);
+  hold = await openCaptureHold({ label: 'challenger-assembly', timeoutMs: 10800000 });
   server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:0,hmr:false,watch:{ignored:['**/*']}}});
   await server.listen(); const port=server.httpServer.address().port;
   browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
   const page=await browser.newPage(); page.on('pageerror',e=>report.errors.push(e.message));
   await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
   await page.goto(`http://127.0.0.1:${port}/?qa=1&nosplash=1`,{waitUntil:'domcontentloaded',timeout:180000});
-  await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG?.pedestalOnStage,{timeout:240000});
+  await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,{timeout:240000});
   await page.waitForSelector('#cot-boot',{hidden:true,timeout:60000});
   for (const [index,id] of ['challenger3_proto','challenger3','challenger3_proto'].entries()) {
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);
@@ -67,5 +68,5 @@ try {
   console.log('PASS Challenger 3/Prototype live Garage, articulated stock, and cached return');
 } finally {
   writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));
-  clearInterval(refresh);await browser?.close();await server?.close();lock.release();
+  await browser?.close();await server?.close();await hold?.release();
 }

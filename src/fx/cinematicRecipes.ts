@@ -26,6 +26,8 @@ export interface Puff {
   pos: Vec3; vel: Vec3; life: number; size0: number; size1: number;
   rot: number; rotVel: number; col0: Vec3; col1: Vec3; alpha: number;
   grav: number; birthOffset: number;
+  /** the emitter's world velocity the puff is born with (m/s): a moving muzzle's smoke (particles.ts PuffOptions.carry) */
+  carry?: Vec3;
 }
 export interface Streak {
   pos: Vec3; vel: Vec3; life: number; width: number; stretch: number;
@@ -166,6 +168,10 @@ function hexRgb(out: Vec3, hex: number): Vec3 {
 
 // Allocation-free scratch records reused by every recipe.
 const P: Puff = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0 };
+/** a muzzle blast's propellant: born with the muzzle's motion (muzzleBlast sets its carry), which the propellant pool
+ *  sheds (EFFECT_ATTACHMENT_POLICY.muzzleSmoke); its own scratch, so no other puff ever inherits a shooter's motion */
+const PM: Puff & { carry: Vec3 } = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, size0: 1, size1: 2, rot: 0, rotVel: 0, col0: [0, 0, 0], col1: [0, 0, 0], alpha: 1, grav: 0, birthOffset: 0,
+  carry: [0, 0, 0] };
 const S: Streak = { pos: [0, 0, 0], vel: [0, 0, 0], life: 1, width: 0.03, stretch: 0.02, grav: -9.8, col: [1, 1, 1], alpha: 1, seed: 0, birthOffset: 0 };
 const C: Chunk = { pos: [0, 0, 0], vel: [0, 0, 0], life: 2, axis: [0, 1, 0], spin: 6, scale: 0.15, groundY: 0, hot: 0, seed: 0, birthOffset: 0 };
 const J: Jet & { carry: Vec3 } = { pos: [0, 0, 0], axis: [0, 1, 0], life: 0.2, width: 0.4, len0: 0.5, len1: 3, seed: 0, col: [1, 1, 1], alpha: 1,
@@ -177,6 +183,7 @@ const ZERO_VEL: Readonly<Vec3> = [0, 0, 0];
 /** what a muzzle blast's bright parts carry of the firing muzzle's motion (EFFECT_ATTACHMENT_POLICY.muzzleFlash) */
 const _mCarry: Vec3 = [0, 0, 0];
 const MUZZLE_FLASH_CARRY = shooterVelocityGain('muzzleFlash');
+const MUZZLE_SMOKE_CARRY = shooterVelocityGain('muzzleSmoke');
 
 function set3(out: Vec3, x: number, y: number, z: number): Vec3 { out[0] = x; out[1] = y; out[2] = z; return out; }
 
@@ -204,14 +211,14 @@ function puff(
   ctx: CineCtx, pool: PuffPool,
   x: number, y: number, z: number, vx: number, vy: number, vz: number,
   life: number, size0: number, size1: number, col0: Vec3, col1: Vec3,
-  alpha: number, grav: number, birthOffset: number, rotVel = (ctx.rng() - 0.5) * 2,
+  alpha: number, grav: number, birthOffset: number, rotVel = (ctx.rng() - 0.5) * 2, o: Puff = P,
 ): void {
-  set3(P.pos, x, y, z); set3(P.vel, vx, vy, vz);
-  P.life = life; P.size0 = size0; P.size1 = size1;
-  P.rot = ctx.rng() * TAU; P.rotVel = rotVel;
-  set3(P.col0, col0[0], col0[1], col0[2]); set3(P.col1, col1[0], col1[1], col1[2]);
-  P.alpha = alpha; P.grav = grav; P.birthOffset = birthOffset + ctx.shift;
-  ctx.sink.puff(pool, P);
+  set3(o.pos, x, y, z); set3(o.vel, vx, vy, vz);
+  o.life = life; o.size0 = size0; o.size1 = size1;
+  o.rot = ctx.rng() * TAU; o.rotVel = rotVel;
+  set3(o.col0, col0[0], col0[1], col0[2]); set3(o.col1, col1[0], col1[1], col1[2]);
+  o.alpha = alpha; o.grav = grav; o.birthOffset = birthOffset + ctx.shift;
+  ctx.sink.puff(pool, o);
 }
 
 function streak(
@@ -330,7 +337,8 @@ const SNOW_DUST = Object.freeze({ life: 0.45, size: 0.62, lift: 0.4, alpha: 0.7,
  * metres of the ground — the blast fan of dust and grit thrown off the terrain,
  * leaving a haze that hangs for seconds. `vel` is the firing muzzle's world
  * velocity (subjectPointVelocity): the fireball, flash disc and sparks leave
- * with it, the propellant, dust and grit stay world-space and trail.
+ * with it; the propellant ring and gas cone are born with it and shed it within
+ * a tenth of a second, then trail; the dust and grit stay world-space.
  */
 export function muzzleBlast(
   ctx: CineCtx, px: number, py: number, pz: number, dx: number, dy: number, dz: number, caliberMm: number,
@@ -339,6 +347,7 @@ export function muzzleBlast(
   const r = ctx.rng;
   const s = clamp(caliberMm / 120, 0.35, 1.45);
   const c = set3(_mCarry, vel[0] * MUZZLE_FLASH_CARRY, vel[1] * MUZZLE_FLASH_CARRY, vel[2] * MUZZLE_FLASH_CARRY);
+  set3(PM.carry, vel[0] * MUZZLE_SMOKE_CARRY, vel[1] * MUZZLE_SMOKE_CARRY, vel[2] * MUZZLE_SMOKE_CARRY);
   const u: Vec3 = _a, v: Vec3 = _b;
   basis(dx, dy, dz, u, v);
   // incandescent fireball (fire pool: additive, short); calmer at night so a
@@ -380,7 +389,7 @@ export function muzzleBlast(
     puff(ctx, 'psmoke', px + dx * 0.9 * s + cx * 0.3, py + dy * 0.9 * s + cy * 0.3, pz + dz * 0.9 * s + cz * 0.3,
       cx * sp + dx * fwd, cy * sp + dy * fwd + 0.35, cz * sp + dz * fwd,
       2.4 + r() * 1.8, (1.3 + r() * 0.5) * s, (5.0 + r() * 1.8) * s,
-      PROP0, PROP1, 0.16 + r() * 0.06, 0.22, -r() * 0.03);
+      PROP0, PROP1, 0.16 + r() * 0.06, 0.22, -r() * 0.03, (r() - 0.5) * 2, PM);
   }
   // forward gas cone: smoke pushed down the bore line (eight broad, overlapping cards, not eighteen scattered ones)
   for (let i = 0; i < 8; i++) {
@@ -393,7 +402,7 @@ export function muzzleBlast(
     puff(ctx, 'psmoke', px + dx * 0.8, py + dy * 0.8, pz + dz * 0.8,
       cx * sp, cy * sp + 0.3, cz * sp,
       2.0 + r() * 1.8, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.2) * s,
-      PROP0, PROP1, 0.14 + r() * 0.06, 0.25, -r() * 0.05);
+      PROP0, PROP1, 0.14 + r() * 0.06, 0.25, -r() * 0.05, (r() - 0.5) * 2, PM);
   }
   // unburnt propellant sparks spat down range
   for (let i = 0; i < 16; i++) {

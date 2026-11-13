@@ -213,4 +213,37 @@ overlay.dispose();
   turretOverlay.dispose();
 }
 
-console.log('armorAimOverlay.selftest: zone tables, mantlet footprints, scope-owned paint on every enemy, frames, bounded sampling and cleanup passed');
+// 2026-11-02 audit (01-game-1 item 11): a bake that clear() cut off (the Garage return) is baked again by the vehicle's
+// next prime. The latch was set when the bake was queued and never forgotten, so a pooled hull (battleVisualPool.ts
+// keeps up to two across battles) stayed half-baked for the session, the geometries the bake never reached without
+// their zone attribute.
+{
+  const pooled = makeTarget('overlay-pooled', 12);
+  const paintMaterial = new THREE.MeshStandardMaterial();
+  paintMaterial.userData.appearanceRole = 'armorPaint';
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), paintMaterial);
+  plate.position.set(0, 1, 0);
+  pooled.visual.root.children[0].add(plate);
+  pooled.visual.root.updateMatrixWorld(true);
+  const zoned = () => Object.keys(plate.geometry.attributes).length > 3;
+  const realNow = performance.now;
+  const firstBattle = createArmorAimOverlay();
+  firstBattle.prime(pooled);
+  // the overlay is on, but the battle ends before a frame's share reaches the bake (a clock past its slice)
+  let clock = 0;
+  performance.now = () => (clock += 10);
+  firstBattle.update({ enabled: true, scoped: false, targets: [], shellSpec, muzzle: new THREE.Vector3(), nowMs: 0 });
+  performance.now = realNow;
+  assert.ok(pooled.visual.root.userData.armorPaintPanels, 'the bake was queued');
+  firstBattle.clear();
+  assert.equal(zoned(), false, 'the bake was cut off before it reached the plate');
+  assert.equal(pooled.visual.root.userData.armorPaintPanels, undefined, 'a cut-off bake leaves no stats behind');
+  // the next battle takes the pooled hull and bakes it
+  firstBattle.prime(pooled);
+  await firstBattle.bakePanels(pooled, async () => {});
+  assert.equal(zoned(), true, 'the pooled hull is baked by its next prime (it was refused for the session)');
+  assert.equal(pooled.visual.root.userData.armorPaintPanels?.geometries, 1);
+  firstBattle.dispose();
+}
+
+console.log('armorAimOverlay.selftest: zone tables, mantlet footprints, scope-owned paint on every enemy, frames, bounded sampling and cleanup passed; a bake cut off by clear() is baked again');

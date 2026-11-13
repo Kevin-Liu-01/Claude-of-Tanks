@@ -558,7 +558,7 @@ function captureContext(seed) {
     // capped against the ground's at a low sun (a veil, not a sheet)
     assert.match(mat.vertexShader, /float big = lowB \* smoothstep\( 0\.15, 0\.45, scr \) \* \( 1\.0 - smoothstep\( 12\.0, 18\.0, distance\( center, cameraPosition \) \) \);/,
       'a low body filling the screen near the camera is marked');
-    assert.match(mat.vertexShader, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \);/, 'and thins hard');
+    assert.match(mat.vertexShader, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \* bodyThin \);/, 'and thins hard (and, dust-orient-271, by its body\'s silhouette)');
     assert.match(mat.fragmentShader, /col \*= mix\( 1\.0, min\( 1\.0, 2\.0 \* bgL \/ max\( cL, 1e-4 \) \), lowS \);/,
       'a low body is never lit brighter than twice the ground');
     assert.match(mat.fragmentShader, /a \*= 1\.0 - 0\.3 \* lowS \* \( 1\.0 - smoothstep\( 0\.12, 0\.4, uSunDir\.y \) \);/,

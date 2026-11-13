@@ -34,6 +34,11 @@ write('src/listing.selftest.mjs', "import { readdirSync } from 'node:fs';\nreadd
 write('src/url.selftest.mjs', "const page = `http://127.0.0.1:${1}/tools/page.html`;\n");
 write('src/icons.selftest.mjs', "const icon = new URL(`../public/icons/${id}.webp`, import.meta.url);");
 write('tools/page.html', '<html>page</html>');
+// (272) literals that look like paths but carry a NUL or another control character (a git -z listing in a fixture,
+// tools/asset-provenance.selftest.mjs's 'src/vehicles/d.ts\0') are data, not inputs: hashing one threw and stopped
+// every lane's tanks group
+write('src/nul.selftest.mjs', "import { b } from './b.ts';\nconst listing = 'src/a.ts\\0src/b.ts\\0';\n"
+  + "const tab = 'src/b.ts\\tsrc/a.ts';\nconst joined = new URL(`../src/x\\u0001${b}.ts`, import.meta.url);\n");
 
 const cacheDir = join(root, 'cache');
 const make = (overrides = {}) => createSelftestCache({ root, cacheDir, env: {}, argv: [], nodeVersion: 'v-test', ...overrides });
@@ -58,6 +63,16 @@ assert.ok(rel(make(), 'src/url.selftest.mjs').includes('tools/page.html'), 'a de
 // put all of src/ui into every capture tool's key); a member that appears changes the key, another file does not
 assert.deepEqual(rel(make(), 'src/icons.selftest.mjs'), ['public/icons/x.webp', 'src/icons.selftest.mjs'],
   'templated data URLs observe the files their pattern matches');
+{
+  const scanned = collectSelftestInputs(readFileSync(join(root, 'src/nul.selftest.mjs'), 'utf8'), 'nul.selftest.mjs');
+  const candidates = [...scanned.specifiers, ...scanned.imports, ...scanned.joined.flat(),
+    ...scanned.dynamic.flatMap((entry) => [entry.prefix, entry.suffix])];
+  assert.deepEqual(candidates.filter((value) => /[\u0000-\u001f\u007f]/.test(value)), [],
+    'a literal with a NUL or another control character is never a path candidate');
+  assert.deepEqual(rel(make(), 'src/nul.selftest.mjs'), ['src/b.ts', 'src/nul.selftest.mjs'],
+    'such literals key nothing (and hashing them never throws); the real import still does');
+  assert.ok(make().inputKey('src/nul.selftest.mjs').key, 'the receipt is keyed');
+}
 const iconsKey = make().inputKey('src/icons.selftest.mjs').key;
 write('public/icons/notes.md', 'not an icon');
 assert.equal(make().inputKey('src/icons.selftest.mjs').key, iconsKey, 'a file the pattern cannot match is not an input');

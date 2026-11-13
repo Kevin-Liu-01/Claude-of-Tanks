@@ -65,7 +65,7 @@ assert.match(garageSource, /<span class="plus" aria-hidden="true">\+<\/span><spa
   'an empty slot is labelled');
 assert.equal((garageSource.match(/magazineFigures\(spec\.gun, eqM\.reload\)/g) || []).length, 2,
   'the magazine figures show in the overview and the firepower station');
-assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*noteHeroModel\(model\);\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+assert.match(garageSource, /frameHotspots\(camera, model, modelSpecId = null\) \{\s*noteHeroModel\(model\);\s*if \(!calloutsShown \|\| !hotspots\) return;/,
   'no frame projects the callouts while they are off');
 assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
 assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
@@ -140,7 +140,7 @@ assert.match(garageSource,
 assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
   'Garage listens for the boot fade before revealing first-visit chrome');
 assert.match(garageSource,
-  /Promise\.all\(\[import\('\.\/heroCard\.ts'\), import\('\.\/heroCard\.css'\)\]\)[\s\S]*?mountRosterHeroCards\(cardsEl, cardById, selectedId, \(id\) => legacyPortraits\(\[id\]\)\)[\s\S]*?\.then\(legacyPortraits, \(\) => legacyPortraits\(\[\.\.\.cardById\.keys\(\)\]\)\)/,
+  /heroCardChunk\.load\(\)[\s\S]*?mountRosterHeroCards\(cardsEl, cardById, selectedId, \(id\) => legacyPortraits\(\[id\]\)\)[\s\S]*?\.then\(legacyPortraits, \(\) => legacyPortraits\(\[\.\.\.cardById\.keys\(\)\]\)\)/,
   'garage cards take their hero layers from the lazy hero chunk and keep the packaged portrait when it is unavailable');
 assert.match(garageSource,
   /<span class="hc-tier" aria-hidden="true">\$\{tierChipHTML\(tier\)\}<\/span>/,
@@ -488,8 +488,8 @@ assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\
   'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
 assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,
   'a marked trigger\'s press reloads the page once it is online (the kit\'s pressFailed)');
-assert.match(garageSource, /if \(recordOpening \|\| reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
-assert.match(garageSource, /if \(techTreeOpening \|\| reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
+assert.match(garageSource, /if \(reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
 assert.match(garageSource, /reportLoadFailure\('cot-techtree-load', t\('garage\.techTree\.loadError'\),\s*\[techTreeTrigger, root\.querySelector<HTMLElement>\('\[data-mobile-nav="techTree"\]'\)\]\)/,
   'the tech tree\'s failure marks the bar\'s trigger and the phone menu\'s');
 assert.match(await readFile(new URL('./components/components.css', import.meta.url), 'utf8'),

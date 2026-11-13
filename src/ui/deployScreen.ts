@@ -5,6 +5,7 @@
 // its state and every choice; this module reads them through the host and adds its controls to the markup. It imports
 // only modules that already stand in chunks of their own: a module the entry also imports (the profile, the kit, the load
 // estimate) comes through the host, or the bundler splits it off the entry into one more request at boot.
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import type { AiDifficulty } from '../game/input.ts';
 import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
@@ -25,15 +26,6 @@ const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
   frontier_basin: '/media/deploy-r1/op-05-1280.webp',
   delta_crossing: '/media/deploy-r1/op-06-1280.webp',
 });
-
-/**
- * The modes with a plate background of their own (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows):
- * the core modes' a 1600x900 cut of the still their card shows, the others the media lane's HUD-free battle frames. A
- * mode without one shows its tile picture, and so does every mode under reduced data (the mode picker has loaded the
- * tiles already).
- */
-const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'drone', 'turbo_ball',
-  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'proving_ground']);
 
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }
@@ -226,7 +218,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   function settle(): void {
     if (fading || !wanted || !menu.classList.contains('open')) return;
     const mode = wanted;
-    const url = PLATE_ART.has(mode) && !saveData() ? `/media/deploy-r1/${mode}-1600.webp` : host.modeArt(mode);
+    // every mode's plate background (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows; the core modes'
+    // a 1600x900 cut of their card's still, the others the media lane's HUD-free battle frames: deployModeArt.selftest);
+    // under reduced data its tile picture, which the mode picker has loaded already
+    const url = saveData() ? host.modeArt(mode) : `/media/deploy-r1/${mode}-1600.webp`;
     if (front?.getAttribute('src') === url) return;
     fading = true;
     const outgoing = front;
@@ -281,12 +276,13 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     if (tier) host.setRoving(tierGroup, tier);
   }
   // the drawer and its data load with the first map to draw (they share the HUD's glyph modules: their own chunk)
-  let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and no map drew
+  // its objectives again for the session; the next map drawn asks again
+  const drawer = createLazyChunk(() => import('./deployObjectives.ts'));
   function drawObjectives(): void {
     const mapId = host.selectedMap(), mode = host.selectedMode();
     if (!menu.classList.contains('open') || mapId === 'random') return;
-    drawer ??= import('./deployObjectives.ts');
-    void drawer.then(({ drawDeployObjectives }) => drawDeployObjectives(objectives, mapId, mode)).catch(() => { /* the bare map */ });
+    void drawer.load().then(({ drawDeployObjectives }) => drawDeployObjectives(objectives, mapId, mode)).catch(() => { /* the bare map */ });
   }
   // the campaign tab's plate (the direction's 04-deploy plate, for an operation): the one in focus over its
   // battlefield, its brief, the enemy formation's flag, its clock, difficulty and stars, its opening objectives on the
@@ -323,8 +319,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     if (!mm) return;
     const canvas = createUiCanvas(mm, '').canvas;
     // the frontline's opening objectives (the drawer and its data load with the first map to draw)
-    drawer ??= import('./deployObjectives.ts');
-    void drawer.then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
+    void drawer.load().then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
       ? drawDeployObjectives(canvas, op.mapId, 'frontline_assault') : undefined)).catch(() => { /* the bare map */ });
   }
   // a row under the pointer or the keyboard briefs its operation

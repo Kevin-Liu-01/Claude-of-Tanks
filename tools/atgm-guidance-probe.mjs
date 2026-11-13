@@ -7,6 +7,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { existsSync } from 'node:fs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const port = 7860 + Math.floor(Math.random() * 80);
 const server = await createServer({
@@ -43,7 +44,7 @@ try {
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
   page.on('pageerror', (error) => pageErrors.push(String(error)));
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
 
   await page.evaluate(async () => {
     const D = window.__DEBUG;

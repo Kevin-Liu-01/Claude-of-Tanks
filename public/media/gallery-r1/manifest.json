@@ -1,0 +1,4094 @@
+{
+ "libraryId": "claude-of-tanks-gallery-r1",
+ "schemaVersion": 1,
+ "tankIdSchema": 3,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The owner's loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual's archive show them (src/ui/galleryShots.ts GALLERY_SHOTS); `loading` lists the ones the loading screens rotate after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still's focal aims a crop at its hero tank.",
+ "generatedBy": "tools/media-r5/loading-media.mjs",
+ "sources": "the 4K stills of the Scene Studio renders under shots/media-r5/site50/elevated-269 (each item's source names its file, its revision the commit it was rendered on)",
+ "dimensions": {
+  "width": 1920,
+  "height": 1080
+ },
+ "count": 78,
+ "loading": [
+  "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",
+  "s294-sepv3-copper-mesa-herolow-f33-m271-r14",
+  "s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14",
+  "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14",
+  "s199-m1a2-x-desert-herolow-m271-r14",
+  "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
+  "s120-type10-skybridge-herolow-v3-m271-r14",
+  "s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14",
+  "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14",
+  "s202-kf51-panther-copper-mesa-herohigh-m271-r14",
+  "s267-t90a-vladimir-caldera-herohigh-fb-m271-r14",
+  "s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14",
+  "s307-sepv2-airfield-herolow-m271-r14",
+  "s47-ironworks-crane-herolow-fb-m271-r14",
+  "s190-t90am-frontier-herolow-own-m271-r14",
+  "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14"
+ ],
+ "items": [
+  {
+   "id": "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",
+   "group": "close",
+   "map": "copper_mesa",
+   "hour": "day",
+   "focal": "27% 55%",
+   "title": {
+    "en": "Copper Mesa Mine: M1A1 Abrams SA v T-72B3M obr. 2016",
+    "zh": "铜台地矿场：M1A1 Abrams SA 对 T-72B3M obr. 2016"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a1_abrams_sa",
+     "displayName": "M1A1 Abrams SA"
+    },
+    {
+     "role": "ally",
+     "id": "m1a1_abrams_aim",
+     "displayName": "M1A1 Abrams AIM"
+    },
+    {
+     "role": "ally",
+     "id": "m1a1_abrams_fep",
+     "displayName": "M1A1 Abrams FEP"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14.webp",
+   "bytes": 352776,
+   "sha256": "f5fde49ab79677eb85ea8087272fa266ecbac837f2033eb5162aadc807c16054",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14/stills/copper_mesa-landscape-2160p-still-873ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14-640.webp",
+     "bytes": 29920,
+     "sha256": "853a184dfacc403873870e1b37a3d5fff7856116bf0cb9c329b058ab142d202c"
+    }
+   ]
+  },
+  {
+   "id": "s294-sepv3-copper-mesa-herolow-f33-m271-r14",
+   "group": "close",
+   "map": "copper_mesa",
+   "hour": "day",
+   "focal": "66% 60%",
+   "title": {
+    "en": "Copper Mesa Mine: M1A2 Abrams SEPv3",
+    "zh": "铜台地矿场：M1A2 Abrams SEPv3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a2_abrams_sepv3",
+     "displayName": "M1A2 Abrams SEPv3"
+    },
+    {
+     "role": "ally",
+     "id": "x1a2_carcara",
+     "displayName": "CCL X1A2 Carcará"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s294-sepv3-copper-mesa-herolow-f33-m271-r14.webp",
+   "bytes": 290442,
+   "sha256": "13adcd1188294af59eea99b9ac25ce083fc54e733626d9913cb0a97d0c85b1db",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s294-sepv3-copper-mesa-herolow-f33-m271-r14/stills/copper_mesa-landscape-2160p-still-3733ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s294-sepv3-copper-mesa-herolow-f33-m271-r14-640.webp",
+     "bytes": 28878,
+     "sha256": "9f834d34b357563dc9f2644fac0113f98fa706bd59617cfa8b6ca93f5bb67801"
+    }
+   ]
+  },
+  {
+   "id": "s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14",
+   "group": "close",
+   "map": "saltwind",
+   "hour": "morning",
+   "focal": "70% 55%",
+   "title": {
+    "en": "Saltwind Narrows: T-90MS Tagil",
+    "zh": "盐风海峡：T-90MS Tagil"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90ms_tagil",
+     "displayName": "T-90MS Tagil"
+    },
+    {
+     "role": "ally",
+     "id": "m41dk1",
+     "displayName": "M41 DK-1"
+    },
+    {
+     "role": "ally",
+     "id": "leo1a3dk",
+     "displayName": "Leopard 1A3 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14.webp",
+   "bytes": 331714,
+   "sha256": "5ab29b8ffb4dbfc0b892e8f567bb170ca77f1452d4f7c7e57bf79b8ee971a38c",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14/stills/saltwind-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14-640.webp",
+     "bytes": 29442,
+     "sha256": "d89a30bd7e94edb58b8aa00885308c828e247a8586d723742525c9bc9c5c4e37"
+    }
+   ]
+  },
+  {
+   "id": "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14",
+   "group": "close",
+   "map": "urban",
+   "hour": "day",
+   "focal": "31% 62%",
+   "title": {
+    "en": "Steinburg: Leopard 2A3 v T-90A",
+    "zh": "斯泰因堡：Leopard 2A3 对 T-90A"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a3_b4",
+     "displayName": "Leopard 2A3"
+    },
+    {
+     "role": "ally",
+     "id": "leo2a4_v",
+     "displayName": "Leopard 2A4 V"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    }
+   ],
+   "path": "/media/gallery-r1/s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14.webp",
+   "bytes": 385378,
+   "sha256": "45c202ca7f1c3a3bd6bf36ce1b2aa18a421d8c7c0ce4b3123968fe04f9de958f",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14/stills/urban-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14-640.webp",
+     "bytes": 30822,
+     "sha256": "1dcf49eb9402ef4d3ca2f0b8510675f357e0000ee214f3bf24c9cdeccc3a6d46"
+    }
+   ]
+  },
+  {
+   "id": "s199-m1a2-x-desert-herolow-m271-r14",
+   "group": "close",
+   "map": "desert",
+   "hour": "day",
+   "focal": "36% 60%",
+   "title": {
+    "en": "Sirocco Wadi: M1A2 Abrams",
+    "zh": "西罗科旱谷：M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    },
+    {
+     "role": "ally",
+     "id": "m551a1_tts",
+     "displayName": "M551A1 TTS"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s199-m1a2-x-desert-herolow-m271-r14.webp",
+   "bytes": 204092,
+   "sha256": "0ef166f4b6ce9fcb0269e74e6c6f3a10bf85c0023e0bd84bd915161fd1c4ae29",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s199-m1a2-x-desert-herolow-m271-r14/stills/desert-landscape-2160p-still-2300ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s199-m1a2-x-desert-herolow-m271-r14-640.webp",
+     "bytes": 21650,
+     "sha256": "92cd6ae485c55d899bd61041b64a999b4614505d557b1fc0f1e1a00401d1b2fa"
+    }
+   ]
+  },
+  {
+   "id": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14",
+   "group": "close",
+   "map": "mars",
+   "hour": "day",
+   "focal": "41% 60%",
+   "title": {
+    "en": "Olympus Basin: T-72B3M Bulat-M",
+    "zh": "奥林匹斯盆地：T-72B3M Bulat-M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t72b3m_bulat_m",
+     "displayName": "T-72B3M Bulat-M"
+    },
+    {
+     "role": "ally",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "ally",
+     "id": "t90a_vladimir",
+     "displayName": "T-90A Vladimir"
+    },
+    {
+     "role": "ally",
+     "id": "bmp3m_dragun125",
+     "displayName": "BMP-3M Dragun 125"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/gallery-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp",
+   "bytes": 292844,
+   "sha256": "7452ae420ab78c2a19ad8927d5ad3bc14e274d6e8a12ef0a7384eac284139503",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14/stills/mars-landscape-2160p-still-3633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14-640.webp",
+     "bytes": 29756,
+     "sha256": "a5400fbf344ca6575e1830f78e7ef44f9c7ae456e9f5b6dbbcea0b2a6208d100"
+    }
+   ]
+  },
+  {
+   "id": "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
+   "group": "close",
+   "map": "reservoir",
+   "hour": "day",
+   "focal": "64% 60%",
+   "title": {
+    "en": "Highland Reservoir: Leopard 2A7V",
+    "zh": "高地水库：Leopard 2A7V"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a7v",
+     "displayName": "Leopard 2A7V"
+    },
+    {
+     "role": "ally",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14.webp",
+   "bytes": 234616,
+   "sha256": "f4626d0bd9783d005460c89dc0cc6a4f3d29ac5e9a0e3d3a9f40971d6eddba78",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14/stills/reservoir-landscape-2160p-still-3333ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14-640.webp",
+     "bytes": 23166,
+     "sha256": "3af4cd74627dbf058fe5f87bc6615b4f027098763c2e75ac15942b79a2261862"
+    }
+   ]
+  },
+  {
+   "id": "s120-type10-skybridge-herolow-v3-m271-r14",
+   "group": "close",
+   "map": "skybridge",
+   "hour": "day",
+   "focal": "39% 60%",
+   "title": {
+    "en": "Skybridge Chasm: Type 10",
+    "zh": "天桥裂谷：Type 10"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type10",
+     "displayName": "Type 10"
+    },
+    {
+     "role": "ally",
+     "id": "type90_kyumaru",
+     "displayName": "STC-1"
+    },
+    {
+     "role": "ally",
+     "id": "type74",
+     "displayName": "Type 74"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s120-type10-skybridge-herolow-v3-m271-r14.webp",
+   "bytes": 213448,
+   "sha256": "5f56f844d40ce84c3584d97de0059da3e196a7062fe794cf408dd397e431c4da",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s120-type10-skybridge-herolow-v3-m271-r14/stills/skybridge-landscape-2160p-still-3300ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s120-type10-skybridge-herolow-v3-m271-r14-640.webp",
+     "bytes": 21880,
+     "sha256": "673fc8b180d45f0d1254f6ffdb5f531045e8e701bbcb47e58a8711d973afd8b8"
+    }
+   ]
+  },
+  {
+   "id": "s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14",
+   "group": "close",
+   "map": "monsoon",
+   "hour": "golden",
+   "focal": "43% 55%",
+   "title": {
+    "en": "Monsoon Ridge: Leopard 2A4M",
+    "zh": "季风雨脊：Leopard 2A4M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a4m",
+     "displayName": "Leopard 2A4M"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3_zubr",
+     "displayName": "T-72B3 Zubr"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    }
+   ],
+   "path": "/media/gallery-r1/s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14.webp",
+   "bytes": 460834,
+   "sha256": "56b86f3fa6e7bc56fe9dca65edf067750501e32aa73133cc38b1d6733855ed3b",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14/stills/monsoon-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14-640.webp",
+     "bytes": 34112,
+     "sha256": "92ab4d324b402f5a19678ea629e3ed483c9690b9730377646524a38ede42af49"
+    }
+   ]
+  },
+  {
+   "id": "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14",
+   "group": "close",
+   "map": "coastal",
+   "hour": "day",
+   "focal": "72% 60%",
+   "title": {
+    "en": "Saltmere Bay: T-90M Proryv v Challenger 3 TD (RWS)",
+    "zh": "盐沼湾：T-90M Proryv 对 Challenger 3 TD (RWS)"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "ally",
+     "id": "christian2",
+     "displayName": "Christian II"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "foe",
+     "id": "challenger3_td_rws",
+     "displayName": "Challenger 3 TD (RWS)"
+    }
+   ],
+   "path": "/media/gallery-r1/s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14.webp",
+   "bytes": 373266,
+   "sha256": "2f74c98b79176a111754f11a8d5b87c7b2289a140338ee6aaabe83c96906bf94",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14/stills/coastal-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14-640.webp",
+     "bytes": 31072,
+     "sha256": "7074c86cba3b60a739e81af807c4b4d1e5c6d715c4f91b75cc3cc6d56b239dcb"
+    }
+   ]
+  },
+  {
+   "id": "s202-kf51-panther-copper-mesa-herohigh-m271-r14",
+   "group": "close",
+   "map": "copper_mesa",
+   "hour": "golden",
+   "focal": "43% 42%",
+   "title": {
+    "en": "Copper Mesa Mine: KF51 Panther",
+    "zh": "铜台地矿场：KF51 Panther"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "kf51_panther",
+     "displayName": "KF51 Panther"
+    },
+    {
+     "role": "ally",
+     "id": "m1a1",
+     "displayName": "M1A1 Abrams"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s202-kf51-panther-copper-mesa-herohigh-m271-r14.webp",
+   "bytes": 529608,
+   "sha256": "7b3f502fd7b4cb1b9e01563d09b1b3ba4dbe9c22208e05acd95bbc460075ffc0",
+   "width": 1920,
+   "height": 1080,
+   "quality": 82,
+   "source": "s202-kf51-panther-copper-mesa-herohigh-m271-r14/stills/copper_mesa-landscape-2160p-still-4640ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s202-kf51-panther-copper-mesa-herohigh-m271-r14-640.webp",
+     "bytes": 55474,
+     "sha256": "e74cc06c676a1df73a2c6fa197bfa720ab6e5d7860f5450c5859446ef1a13202"
+    }
+   ]
+  },
+  {
+   "id": "s267-t90a-vladimir-caldera-herohigh-fb-m271-r14",
+   "group": "close",
+   "map": "caldera",
+   "hour": "morning",
+   "focal": "74% 48%",
+   "title": {
+    "en": "Obsidian Caldera: T-90A Vladimir",
+    "zh": "黑曜石火山口：T-90A Vladimir"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90a_vladimir",
+     "displayName": "T-90A Vladimir"
+    },
+    {
+     "role": "ally",
+     "id": "t72bu",
+     "displayName": "T-72BU"
+    },
+    {
+     "role": "ally",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "leo1a5",
+     "displayName": "Leopard 1A5"
+    },
+    {
+     "role": "foe",
+     "id": "m60a3",
+     "displayName": "M60A3"
+    }
+   ],
+   "path": "/media/gallery-r1/s267-t90a-vladimir-caldera-herohigh-fb-m271-r14.webp",
+   "bytes": 594644,
+   "sha256": "8b82f5b31b453be120dcc28d07389c757bd527273c1d72150b567d0748a4e86d",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s267-t90a-vladimir-caldera-herohigh-fb-m271-r14/stills/caldera-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s267-t90a-vladimir-caldera-herohigh-fb-m271-r14-640.webp",
+     "bytes": 43678,
+     "sha256": "218c9e468837d35329dfa291a27b3fa0a4b09a86765d8dcd088797971ded843b"
+    }
+   ]
+  },
+  {
+   "id": "s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14",
+   "group": "close",
+   "map": "longleaf",
+   "hour": "sunset",
+   "focal": "64% 47%",
+   "title": {
+    "en": "Longleaf Crossing: T-90MS obr. 2011 v ZTZ-20",
+    "zh": "长叶渡口：T-90MS obr. 2011 对 ZTZ-20"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90ms_2011",
+     "displayName": "T-90MS obr. 2011"
+    },
+    {
+     "role": "ally",
+     "id": "ee_t3_osorio",
+     "displayName": "EE-T3 Osório"
+    },
+    {
+     "role": "foe",
+     "id": "ztz20",
+     "displayName": "ZTZ-20"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    }
+   ],
+   "path": "/media/gallery-r1/s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14.webp",
+   "bytes": 258890,
+   "sha256": "f4ecb5e59263058bb89fbdd678f34d86aa1738a23286f6e4441b5ec7123485be",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14/stills/longleaf-landscape-2160p-still-900ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14-640.webp",
+     "bytes": 24142,
+     "sha256": "34045d399e6de7e3a0e09368f65a82287a3d2811c96b4c2b020462ffc78c7b30"
+    }
+   ]
+  },
+  {
+   "id": "s307-sepv2-airfield-herolow-m271-r14",
+   "group": "close",
+   "map": "airfield",
+   "hour": "day",
+   "focal": "43% 60%",
+   "title": {
+    "en": "Kestrel Airfield: M1A2 Abrams SEPv2",
+    "zh": "红隼机场：M1A2 Abrams SEPv2"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a2_abrams_sepv2",
+     "displayName": "M1A2 Abrams SEPv2"
+    },
+    {
+     "role": "ally",
+     "id": "m48a3_patton",
+     "displayName": "M48A3 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s307-sepv2-airfield-herolow-m271-r14.webp",
+   "bytes": 281572,
+   "sha256": "ebab4273af23593f538dd8d327ca8618ea151cc97978fe1b1de1c29243a1d66d",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s307-sepv2-airfield-herolow-m271-r14/stills/airfield-landscape-2160p-still-3900ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s307-sepv2-airfield-herolow-m271-r14-640.webp",
+     "bytes": 28504,
+     "sha256": "93b1c8368a1abd2057ab94f00cc8d5100b0860398502afe201f56caf8463d21d"
+    }
+   ]
+  },
+  {
+   "id": "s47-ironworks-crane-herolow-fb-m271-r14",
+   "group": "close",
+   "map": "foundry",
+   "hour": "night",
+   "focal": "53% 55%",
+   "title": {
+    "en": "Ironworks: T-90A Burlak",
+    "zh": "钢铁厂：T-90A Burlak"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90a_burlak",
+     "displayName": "T-90A Burlak"
+    },
+    {
+     "role": "ally",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "ally",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata"
+    },
+    {
+     "role": "ally",
+     "id": "t90a_burlak",
+     "displayName": "T-90A Burlak"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a5",
+     "displayName": "Leopard 2A5"
+    }
+   ],
+   "path": "/media/gallery-r1/s47-ironworks-crane-herolow-fb-m271-r14.webp",
+   "bytes": 342184,
+   "sha256": "4adac02604eabd71ebd4e07f2e4add1ad89ab964e64be557aca9f404934bf4ea",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s47-ironworks-crane-herolow-fb-m271-r14/stills/foundry-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s47-ironworks-crane-herolow-fb-m271-r14-640.webp",
+     "bytes": 41416,
+     "sha256": "6e5ef343eec303c88c7939325959ff33921c5465a2a2b82edbd34197bb9031df"
+    }
+   ]
+  },
+  {
+   "id": "s190-t90am-frontier-herolow-own-m271-r14",
+   "group": "close",
+   "map": "frontier",
+   "hour": "morning",
+   "focal": "26% 58%",
+   "title": {
+    "en": "Frontier Basin: T-90AM",
+    "zh": "边疆盆地：T-90AM"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90am",
+     "displayName": "T-90AM"
+    },
+    {
+     "role": "ally",
+     "id": "ua_m1a1",
+     "displayName": "M1A1 SA (Ukraine)"
+    },
+    {
+     "role": "ally",
+     "id": "t80u_zoria",
+     "displayName": "T-80U Zoria"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s190-t90am-frontier-herolow-own-m271-r14.webp",
+   "bytes": 370020,
+   "sha256": "6a58c768496c507a35ba6438091f7dd28b0f872a038a6121fd9afc9a4f35dc54",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s190-t90am-frontier-herolow-own-m271-r14/stills/frontier-landscape-2160p-still-4500ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s190-t90am-frontier-herolow-own-m271-r14-640.webp",
+     "bytes": 33624,
+     "sha256": "7a578494906c962a1ac49ad955f8d59953816744c04a6e27f845b70556d6f1bf"
+    }
+   ]
+  },
+  {
+   "id": "s219-amx56-oasis-herolow-fb-m271-r14",
+   "group": "close",
+   "map": "oasis",
+   "hour": "day",
+   "focal": "34% 65%",
+   "title": {
+    "en": "Sunscar Oasis: AMX 56",
+    "zh": "日痕绿洲：AMX 56"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "amx56",
+     "displayName": "AMX 56"
+    },
+    {
+     "role": "ally",
+     "id": "t72bu",
+     "displayName": "T-72BU"
+    },
+    {
+     "role": "ally",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "m60a3",
+     "displayName": "M60A3"
+    },
+    {
+     "role": "foe",
+     "id": "chieftain3",
+     "displayName": "Chieftain Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo1a5",
+     "displayName": "Leopard 1A5"
+    }
+   ],
+   "path": "/media/gallery-r1/s219-amx56-oasis-herolow-fb-m271-r14.webp",
+   "bytes": 195414,
+   "sha256": "38b868b138050418cfa5fcd020ce75fb53983c27ecf5da99e4cc234be8d8590d",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s219-amx56-oasis-herolow-fb-m271-r14/stills/oasis-landscape-2160p-still-1333ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s219-amx56-oasis-herolow-fb-m271-r14-640.webp",
+     "bytes": 19884,
+     "sha256": "ecfdfb12a223978102d47657b8778f5cc7f4435f8d2f9b3db6af5f56d44a9fd6"
+    }
+   ]
+  },
+  {
+   "id": "s157-leo2-revolution-delta-herolow-own-fb-m271-r14",
+   "group": "close",
+   "map": "delta",
+   "hour": "golden",
+   "focal": "36% 55%",
+   "title": {
+    "en": "Jade River Delta: Leopard 2 Revolution",
+    "zh": "翡翠江三角洲：Leopard 2 Revolution"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2_revolution",
+     "displayName": "Leopard 2 Revolution"
+    },
+    {
+     "role": "ally",
+     "id": "k1e1",
+     "displayName": "K1E1"
+    },
+    {
+     "role": "ally",
+     "id": "k1a1",
+     "displayName": "K1A1"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s157-leo2-revolution-delta-herolow-own-fb-m271-r14.webp",
+   "bytes": 535710,
+   "sha256": "1ca3b39588f87db54ba167bffd75852e5b6d4f924994bcfe182f071655f45ac6",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s157-leo2-revolution-delta-herolow-own-fb-m271-r14/stills/delta-landscape-2160p-still-4533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s157-leo2-revolution-delta-herolow-own-fb-m271-r14-640.webp",
+     "bytes": 43566,
+     "sha256": "4fa78f9f100f56042702e719308d1f6553732a5ca369fdf840406dd3a7791696"
+    }
+   ]
+  },
+  {
+   "id": "s105-merkava4-trophy-copper-mesa-duel-low-t70-m271-r14",
+   "group": "close",
+   "map": "copper_mesa",
+   "hour": "day",
+   "focal": "32% 50%",
+   "title": {
+    "en": "Copper Mesa Mine: Merkava Mk 4 Trophy v T-90M Proryv",
+    "zh": "铜台地矿场：Merkava Mk 4 Trophy 对 T-90M Proryv"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "merkava4_trophy",
+     "displayName": "Merkava Mk 4 Trophy"
+    },
+    {
+     "role": "ally",
+     "id": "merkava3d",
+     "displayName": "Merkava Mk 3D"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s105-merkava4-trophy-copper-mesa-duel-low-t70-m271-r14.webp",
+   "bytes": 435936,
+   "sha256": "c0ecc511d38adfb998606329d4b3e8a3cd85cd52a1e7709929768e608bdf789e",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s105-merkava4-trophy-copper-mesa-duel-low-t70-m271-r14/stills/copper_mesa-landscape-2160p-still-4000ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s105-merkava4-trophy-copper-mesa-duel-low-t70-m271-r14-640.webp",
+     "bytes": 34300,
+     "sha256": "9a90661228515f685acd14a3e795d80ad200799cc25984ebe2f66d06d846ca70"
+    }
+   ]
+  },
+  {
+   "id": "s107-puma-s1-desert-duel-low-t70-t3100-dx18-tk32-m271-r14",
+   "group": "close",
+   "map": "desert",
+   "hour": "morning",
+   "focal": "30% 48%",
+   "title": {
+    "en": "Sirocco Wadi: Puma S1 v T-80U",
+    "zh": "西罗科旱谷：Puma S1 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "puma_s1",
+     "displayName": "Puma S1"
+    },
+    {
+     "role": "ally",
+     "id": "merkava4",
+     "displayName": "Merkava Mk 4"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    }
+   ],
+   "path": "/media/gallery-r1/s107-puma-s1-desert-duel-low-t70-t3100-dx18-tk32-m271-r14.webp",
+   "bytes": 408788,
+   "sha256": "f9b9bc5ae4fd322b4488f66f470dfeb2842d6eb5a8984d217033624154f9a8f4",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s107-puma-s1-desert-duel-low-t70-t3100-dx18-tk32-m271-r14/stills/desert-landscape-2160p-still-3100ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s107-puma-s1-desert-duel-low-t70-t3100-dx18-tk32-m271-r14-640.webp",
+     "bytes": 35056,
+     "sha256": "68fdcde9b32ad7a653b4a19ea3bb39d7398800af05456e87c04aebac2347c993"
+    }
+   ]
+  },
+  {
+   "id": "s276-strv105-fjord-reel-m271-r14",
+   "group": "close",
+   "map": "fjord",
+   "hour": "golden",
+   "focal": "90% 55%",
+   "title": {
+    "en": "Nordhavn Fjord: Strv 105 and UDES 03",
+    "zh": "诺德港峡湾：Strv 105 与 UDES 03"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv105",
+     "displayName": "Strv 105"
+    },
+    {
+     "role": "ally",
+     "id": "udes03",
+     "displayName": "UDES 03"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s276-strv105-fjord-reel-m271-r14.webp",
+   "bytes": 387306,
+   "sha256": "0748fc240e1da7e15729544c478e9af1aed9494b1aa3f090f202958086325eb1",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s276-strv105-fjord-reel-m271-r14/stills/fjord-landscape-2160p-still-4500ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s276-strv105-fjord-reel-m271-r14-640.webp",
+     "bytes": 30784,
+     "sha256": "25579f2a9a05e110a64def913dd9b27420d3625f37ce60ee0c4438ddc7721941"
+    }
+   ]
+  },
+  {
+   "id": "s118-type10b-skybridge-reel-m271-r14",
+   "group": "close",
+   "map": "skybridge",
+   "hour": "day",
+   "focal": "74% 60%",
+   "title": {
+    "en": "Skybridge Chasm: Type 10B and Type 10",
+    "zh": "天桥裂谷：Type 10B 与 Type 10"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type10b",
+     "displayName": "Type 10B"
+    },
+    {
+     "role": "ally",
+     "id": "type10",
+     "displayName": "Type 10"
+    },
+    {
+     "role": "ally",
+     "id": "raiju_ifv",
+     "displayName": "Raijū IFV"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s118-type10b-skybridge-reel-m271-r14.webp",
+   "bytes": 341396,
+   "sha256": "b64a4c4a3e1049be2964ef3c987d485efa6005196f8f5509f9a4c57a95f7da07",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s118-type10b-skybridge-reel-m271-r14/stills/skybridge-landscape-2160p-still-4640ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s118-type10b-skybridge-reel-m271-r14-640.webp",
+     "bytes": 33346,
+     "sha256": "a08dd0666c4b99dc1e74a0f7266f9afa6d7e5e12090d78fe556ab323223ceee2"
+    }
+   ]
+  },
+  {
+   "id": "s100-merkava2b-badlands-reel-fb-m271-r14",
+   "group": "close",
+   "map": "badlands",
+   "hour": "day",
+   "focal": "80% 65%",
+   "title": {
+    "en": "Redrock Divide: Merkava Mk 2B and Merkava Mk 1B",
+    "zh": "红岩分界：Merkava Mk 2B 与 Merkava Mk 1B"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "merkava2b",
+     "displayName": "Merkava Mk 2B"
+    },
+    {
+     "role": "ally",
+     "id": "merkava1b",
+     "displayName": "Merkava Mk 1B"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    }
+   ],
+   "path": "/media/gallery-r1/s100-merkava2b-badlands-reel-fb-m271-r14.webp",
+   "bytes": 274788,
+   "sha256": "cebe6f252b5a88587e041e6e45e451fcbcc9b1fa8b893c59d8f9508b15991e78",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s100-merkava2b-badlands-reel-fb-m271-r14/stills/badlands-landscape-2160p-still-3833ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s100-merkava2b-badlands-reel-fb-m271-r14-640.webp",
+     "bytes": 27156,
+     "sha256": "d133ca91c0c81f49b92d7a5bef0cb3e773350251330536ebc01efe98214b9826"
+    }
+   ]
+  },
+  {
+   "id": "s154-t90sm-steppe-reel-fb-m271-r14",
+   "group": "close",
+   "map": "steppe",
+   "hour": "day",
+   "focal": "12% 53%",
+   "title": {
+    "en": "Tarkhan Steppe: T-90SM obr. 2013 and T-72B3M obr. 2022",
+    "zh": "塔尔罕草原：T-90SM obr. 2013 与 T-72B3M obr. 2022"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90sm_2013",
+     "displayName": "T-90SM obr. 2013"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2022",
+     "displayName": "T-72B3M obr. 2022"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    }
+   ],
+   "path": "/media/gallery-r1/s154-t90sm-steppe-reel-fb-m271-r14.webp",
+   "bytes": 338978,
+   "sha256": "c18683abc858d5bc7173a5c91bdc6cbe9f35a293d237f079aecb7168a68879b4",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s154-t90sm-steppe-reel-fb-m271-r14/stills/steppe-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s154-t90sm-steppe-reel-fb-m271-r14-640.webp",
+     "bytes": 27900,
+     "sha256": "fd650690ee03fbbd9a4c37417234e01dba3ea5471c31f1faa678e4756cd8665c"
+    }
+   ]
+  },
+  {
+   "id": "s72-amx10p-orchard-reel-m271-r14",
+   "group": "close",
+   "map": "orchard",
+   "hour": "day",
+   "focal": "80% 55%",
+   "title": {
+    "en": "Orchard Valley: AMX-10P and AMX-10P 25",
+    "zh": "果园谷：AMX-10P 与 AMX-10P 25"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "amx10p",
+     "displayName": "AMX-10P"
+    },
+    {
+     "role": "ally",
+     "id": "amx10p_25",
+     "displayName": "AMX-10P 25"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s72-amx10p-orchard-reel-m271-r14.webp",
+   "bytes": 302862,
+   "sha256": "31ed88ce623716a1192056cb5ca45bdcb443f0ef2126317213c7eebe735cf465",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s72-amx10p-orchard-reel-m271-r14/stills/orchard-landscape-2160p-still-4500ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s72-amx10p-orchard-reel-m271-r14-640.webp",
+     "bytes": 26670,
+     "sha256": "4f4d52a3f7952db32cba6f605bcbc79c4c5a662abaaea698db00eafe8cecd6d6"
+    }
+   ]
+  },
+  {
+   "id": "s84-leo1a5-polders-reel-m271-r14",
+   "group": "close",
+   "map": "polders",
+   "hour": "day",
+   "focal": "19% 55%",
+   "title": {
+    "en": "Tidegate Polders: Leopard 1A5 and MBT-70",
+    "zh": "潮闸圩田：Leopard 1A5 与 MBT-70"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo1a5",
+     "displayName": "Leopard 1A5"
+    },
+    {
+     "role": "ally",
+     "id": "jpz_e100",
+     "displayName": "Jagdpanzer E100"
+    },
+    {
+     "role": "ally",
+     "id": "mbt70",
+     "displayName": "MBT-70"
+    },
+    {
+     "role": "ally",
+     "id": "marder1a3",
+     "displayName": "Schützenpanzer Marder 1A3"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s84-leo1a5-polders-reel-m271-r14.webp",
+   "bytes": 384484,
+   "sha256": "7a324ee408568b970e23d27cc54d12395a52564072d2c24e3d4154e6bf30c3e6",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s84-leo1a5-polders-reel-m271-r14/stills/polders-landscape-2160p-still-5400ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s84-leo1a5-polders-reel-m271-r14-640.webp",
+     "bytes": 40388,
+     "sha256": "0d39d6c3bcd5e98e71896d8fd1ff5c5d3d7b48e0746f3ea9acbf282cd7005ddd"
+    }
+   ]
+  },
+  {
+   "id": "s173-challenger1-saltwind-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "saltwind",
+   "hour": "day",
+   "focal": "84% 45%",
+   "title": {
+    "en": "Saltwind Narrows: Challenger 1 Mk 2 v T-72B obr. 1987",
+    "zh": "盐风海峡：Challenger 1 Mk 2 对 T-72B obr. 1987"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "challenger1_mk2",
+     "displayName": "Challenger 1 Mk 2"
+    },
+    {
+     "role": "ally",
+     "id": "warrior_tes_h",
+     "displayName": "Warrior TES(H)"
+    },
+    {
+     "role": "ally",
+     "id": "chieftain5",
+     "displayName": "Chieftain Mk 5"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s173-challenger1-saltwind-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 498026,
+   "sha256": "c2fae57d310e3e28293d27ef6287df878c8c72d891313b835f333d48e8007d15",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s173-challenger1-saltwind-duel-drone-tm95-f33-m271-r13/stills/saltwind-landscape-2160p-still-1333ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s173-challenger1-saltwind-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 40106,
+     "sha256": "3243b4309f3a1cbd6597e7da2a6b16d77c4707479aef2953fe8121eb5a322874"
+    }
+   ]
+  },
+  {
+   "id": "vs11-desert-osorio-t90m-drone-tm40-m271-r13",
+   "group": "elevated",
+   "map": "desert",
+   "hour": "day",
+   "focal": "23% 58%",
+   "title": {
+    "en": "Sirocco Wadi: EE-T1 Osório (120) v T-90M Proryv",
+    "zh": "西罗科旱谷：EE-T1 Osório (120) 对 T-90M Proryv"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "osorio_p2",
+     "displayName": "EE-T1 Osório (120)"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/vs11-desert-osorio-t90m-drone-tm40-m271-r13.webp",
+   "bytes": 397340,
+   "sha256": "5a2eb420d6ba43937d2f26a56a86e08b8f273fad4154e74ab65cd2d44f212463",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs11-desert-osorio-t90m-drone-tm40-m271-r13/stills/desert-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs11-desert-osorio-t90m-drone-tm40-m271-r13-640.webp",
+     "bytes": 29388,
+     "sha256": "7a7c6592b128745828ce93e1a4f44f8c55bd8b3a73309f3ecaf5b93a07e0d932"
+    }
+   ]
+  },
+  {
+   "id": "vs15-oasis-magach6b-t72b3-drone-tm20-new-herohigh-m271-r13",
+   "group": "elevated",
+   "map": "oasis",
+   "hour": "day",
+   "focal": "34% 42%",
+   "title": {
+    "en": "Sunscar Oasis: Magach 6B v T-72B3",
+    "zh": "日痕绿洲：Magach 6B 对 T-72B3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "magach6b",
+     "displayName": "Magach 6B"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    },
+    {
+     "role": "wreck",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    }
+   ],
+   "path": "/media/gallery-r1/vs15-oasis-magach6b-t72b3-drone-tm20-new-herohigh-m271-r13.webp",
+   "bytes": 237870,
+   "sha256": "0909559a0960d392093693a40d4e5c9fb31e8bac2d0555e2a845189f20ea4966",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs15-oasis-magach6b-t72b3-drone-tm20-new-herohigh-m271-r13/stills/oasis-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs15-oasis-magach6b-t72b3-drone-tm20-new-herohigh-m271-r13-640.webp",
+     "bytes": 18018,
+     "sha256": "a91cb37c1082a5ef415b5dbb74de50c54583493791dd7088ecbdce9d553c763d"
+    }
+   ]
+  },
+  {
+   "id": "vs24-railyard-magach7c-t72b3-drone-tm20-m271-r13",
+   "group": "elevated",
+   "map": "railyard",
+   "hour": "night",
+   "focal": "16% 55%",
+   "title": {
+    "en": "Cinder Junction: Magach 7C v T-72B3",
+    "zh": "灰渣枢纽：Magach 7C 对 T-72B3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "magach7c",
+     "displayName": "Magach 7C"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    }
+   ],
+   "path": "/media/gallery-r1/vs24-railyard-magach7c-t72b3-drone-tm20-m271-r13.webp",
+   "bytes": 454612,
+   "sha256": "05e1e29614237c066c4e2dc1e86634de68b0355cdda8deb65c85444f24884c8b",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs24-railyard-magach7c-t72b3-drone-tm20-m271-r13/stills/railyard-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs24-railyard-magach7c-t72b3-drone-tm20-m271-r13-640.webp",
+     "bytes": 41458,
+     "sha256": "d710aac4897d09c0f450fc9fa6b20204225c587a9d3ef7b78409b2caab1c05ec"
+    }
+   ]
+  },
+  {
+   "id": "s285-pt84-sokol-orchard-duel-drone-tm70-f33-m271-r13",
+   "group": "elevated",
+   "map": "orchard",
+   "hour": "day",
+   "focal": "78% 52%",
+   "title": {
+    "en": "Orchard Valley: PT-84 Sokół v T-72B3M obr. 2016",
+    "zh": "果园谷：PT-84 Sokół 对 T-72B3M obr. 2016"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "pt84_sokol",
+     "displayName": "PT-84 Sokół"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s285-pt84-sokol-orchard-duel-drone-tm70-f33-m271-r13.webp",
+   "bytes": 596838,
+   "sha256": "7e1ae02ce088b7a7826ec00d467a4906c06723e48ce14dd3a2c2edbc4eb66e29",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s285-pt84-sokol-orchard-duel-drone-tm70-f33-m271-r13/stills/orchard-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s285-pt84-sokol-orchard-duel-drone-tm70-f33-m271-r13-640.webp",
+     "bytes": 52378,
+     "sha256": "6a05b0d27600f042d906add77cc2cf06344fad4d1577d74a0a14dbd79221994b"
+    }
+   ]
+  },
+  {
+   "id": "s304-magach7c-caldera-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "caldera",
+   "hour": "day",
+   "focal": "80% 50%",
+   "title": {
+    "en": "Obsidian Caldera: Magach 7C v T-62MV-1",
+    "zh": "黑曜石火山口：Magach 7C 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "magach7c",
+     "displayName": "Magach 7C"
+    },
+    {
+     "role": "ally",
+     "id": "merkava1b",
+     "displayName": "Merkava Mk 1B"
+    },
+    {
+     "role": "ally",
+     "id": "magach6b",
+     "displayName": "Magach 6B"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s304-magach7c-caldera-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 538898,
+   "sha256": "5230e0aef9552bbe171698eb24326f4b4d7b9a04285b23dddba02b23c6d55c33",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s304-magach7c-caldera-duel-drone-tm95-f33-m271-r13/stills/caldera-landscape-2160p-still-3233ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s304-magach7c-caldera-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 35906,
+     "sha256": "818eb6e8133d32ab108f243ce9fc54743418f15611642581f0f8f6fad5e467ac"
+    }
+   ]
+  },
+  {
+   "id": "s64-type59-alpine-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "alpine",
+   "hour": "golden",
+   "focal": "19% 57%",
+   "title": {
+    "en": "Glacier Pass: Type 59 v M48A5 Patton",
+    "zh": "冰川关：Type 59 对 M48A5 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type59",
+     "displayName": "Type 59"
+    },
+    {
+     "role": "foe",
+     "id": "type74",
+     "displayName": "Type 74"
+    },
+    {
+     "role": "foe",
+     "id": "m48a5_patton",
+     "displayName": "M48A5 Patton"
+    }
+   ],
+   "path": "/media/gallery-r1/s64-type59-alpine-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 499994,
+   "sha256": "9ea061aef48bc74cd3d2e26e0b0ec0169f2cc388d5acfd2e27232c82d457398a",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s64-type59-alpine-duel-drone-t70-f33-m271-r13/stills/alpine-landscape-2160p-still-4333ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s64-type59-alpine-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 38562,
+     "sha256": "683fe2405e4e379acf67255c9a831b446edf98387338837d96a20b7d677490c3"
+    }
+   ]
+  },
+  {
+   "id": "s173-challenger1-saltwind-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "saltwind",
+   "hour": "day",
+   "focal": "16% 52%",
+   "title": {
+    "en": "Saltwind Narrows: Challenger 1 Mk 2 v T-72B obr. 1987",
+    "zh": "盐风海峡：Challenger 1 Mk 2 对 T-72B obr. 1987"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "challenger1_mk2",
+     "displayName": "Challenger 1 Mk 2"
+    },
+    {
+     "role": "ally",
+     "id": "warrior_tes_h",
+     "displayName": "Warrior TES(H)"
+    },
+    {
+     "role": "ally",
+     "id": "chieftain5",
+     "displayName": "Chieftain Mk 5"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s173-challenger1-saltwind-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 483234,
+   "sha256": "4689083ec3e529f61b021249198be635a05fc56f02678aab69eb40d89165bbcd",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s173-challenger1-saltwind-duel-drone-t70-f33-m271-r13/stills/saltwind-landscape-2160p-still-1333ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s173-challenger1-saltwind-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 34662,
+     "sha256": "6effff6a01e53c855ed40e2eb63a3f07ce9278a4ca41a5d1c0d8bb704acd6d2c"
+    }
+   ]
+  },
+  {
+   "id": "s211-t62mv1-foundry-drone-new-drone-f33-m271-r13",
+   "group": "elevated",
+   "map": "foundry",
+   "hour": "day",
+   "focal": "50% 55%",
+   "title": {
+    "en": "Ironworks: T-62 obr. 1975 and T-64BV1",
+    "zh": "钢铁厂：T-62 obr. 1975 与 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t62_1975",
+     "displayName": "T-62 obr. 1975"
+    },
+    {
+     "role": "ally",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "ally",
+     "id": "t72bu_1989",
+     "displayName": "T-72BU obr. 1989"
+    },
+    {
+     "role": "foe",
+     "id": "m60a3",
+     "displayName": "M60A3"
+    },
+    {
+     "role": "foe",
+     "id": "chieftain3",
+     "displayName": "Chieftain Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo1a5",
+     "displayName": "Leopard 1A5"
+    }
+   ],
+   "path": "/media/gallery-r1/s211-t62mv1-foundry-drone-new-drone-f33-m271-r13.webp",
+   "bytes": 355902,
+   "sha256": "3389f7c62b37afcced823053748f3635c0318e94c4ae964b9049376243ba6cda",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s211-t62mv1-foundry-drone-new-drone-f33-m271-r13/stills/foundry-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s211-t62mv1-foundry-drone-new-drone-f33-m271-r13-640.webp",
+     "bytes": 37972,
+     "sha256": "1c50365cfee3fac81c6b26c84f2a30c6a9ece6d2ef761cc1d0641051838b8a5a"
+    }
+   ]
+  },
+  {
+   "id": "vs26-coastal-cv9035dk-bmp3-ridge-m271-r13",
+   "group": "elevated",
+   "map": "coastal",
+   "hour": "day",
+   "focal": "27% 52%",
+   "title": {
+    "en": "Saltmere Bay: CV9035 DK v BMP-3",
+    "zh": "盐沼湾：CV9035 DK 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv9035dk",
+     "displayName": "CV9035 DK"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3"
+    }
+   ],
+   "path": "/media/gallery-r1/vs26-coastal-cv9035dk-bmp3-ridge-m271-r13.webp",
+   "bytes": 335302,
+   "sha256": "448639d9082182710b73ae8bcbbbf192a1de059f5c9a695d1c0408263b26a91d",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs26-coastal-cv9035dk-bmp3-ridge-m271-r13/stills/coastal-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs26-coastal-cv9035dk-bmp3-ridge-m271-r13-640.webp",
+     "bytes": 27028,
+     "sha256": "839d87fb3a1169428f028b271af59d38ca8d88d936c6e108947552bb3a3fc9c8"
+    }
+   ]
+  },
+  {
+   "id": "s206-m60a1-desert-drone-m271-r13",
+   "group": "elevated",
+   "map": "desert",
+   "hour": "day",
+   "focal": "61% 55%",
+   "title": {
+    "en": "Sirocco Wadi: M60A1 Patton and M47 Patton",
+    "zh": "西罗科旱谷：M60A1 Patton 与 M47 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m60a1",
+     "displayName": "M60A1 Patton"
+    },
+    {
+     "role": "ally",
+     "id": "m47_patton",
+     "displayName": "M47 Patton"
+    },
+    {
+     "role": "ally",
+     "id": "m48a5_patton",
+     "displayName": "M48A5 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s206-m60a1-desert-drone-m271-r13.webp",
+   "bytes": 342214,
+   "sha256": "282c4c1c05833b638cb8747a3523943e5b2619f878b27d10b0955690b04913f8",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s206-m60a1-desert-drone-m271-r13/stills/desert-landscape-2160p-still-940ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s206-m60a1-desert-drone-m271-r13-640.webp",
+     "bytes": 25694,
+     "sha256": "101feedf30cef7817926462092986b30c4057dc7a7f63b58c196475d07937f14"
+    }
+   ]
+  },
+  {
+   "id": "s276-strv105-fjord-ridge-m271-r13",
+   "group": "elevated",
+   "map": "fjord",
+   "hour": "golden",
+   "focal": "77% 62%",
+   "title": {
+    "en": "Nordhavn Fjord: Strv 105 and UDES 03",
+    "zh": "诺德港峡湾：Strv 105 与 UDES 03"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv105",
+     "displayName": "Strv 105"
+    },
+    {
+     "role": "ally",
+     "id": "udes03",
+     "displayName": "UDES 03"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s276-strv105-fjord-ridge-m271-r13.webp",
+   "bytes": 479132,
+   "sha256": "162aecf7848d6042ee134b9cbb7fa67bada58bd4825cfc16e613e775266d5774",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s276-strv105-fjord-ridge-m271-r13/stills/fjord-landscape-2160p-still-4640ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s276-strv105-fjord-ridge-m271-r13-640.webp",
+     "bytes": 32436,
+     "sha256": "c8533f1ccdba6918f708f1bbe4579b1d8337851bd82ff5e1926421054e983fd3"
+    }
+   ]
+  },
+  {
+   "id": "s307-m41a3-airfield-drone-m271-r13",
+   "group": "elevated",
+   "map": "airfield",
+   "hour": "day",
+   "focal": "47% 63%",
+   "title": {
+    "en": "Kestrel Airfield: M41A3 Walker Bulldog and M48A3 Patton",
+    "zh": "红隼机场：M41A3 Walker Bulldog 与 M48A3 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m41a3",
+     "displayName": "M41A3 Walker Bulldog"
+    },
+    {
+     "role": "ally",
+     "id": "m48a3_patton",
+     "displayName": "M48A3 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s307-m41a3-airfield-drone-m271-r13.webp",
+   "bytes": 497002,
+   "sha256": "fc9871dc73be2058f716bfa9d9b980833b1775a4939706e3faeecf46202bd0bd",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s307-m41a3-airfield-drone-m271-r13/stills/airfield-landscape-2160p-still-940ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s307-m41a3-airfield-drone-m271-r13-640.webp",
+     "bytes": 44782,
+     "sha256": "18039cd77cf0e753101b57a4b840c9a6a1ba86342af03fa86f70e031cf2999a5"
+    }
+   ]
+  },
+  {
+   "id": "vs04-railyard-leclerc-t14-drone-m271-r13",
+   "group": "elevated",
+   "map": "railyard",
+   "hour": "night",
+   "focal": "12% 53%",
+   "title": {
+    "en": "Cinder Junction: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata"
+    }
+   ],
+   "path": "/media/gallery-r1/vs04-railyard-leclerc-t14-drone-m271-r13.webp",
+   "bytes": 456214,
+   "sha256": "1cd3c80deda081fe2bf16ec56065f6b095b6e4b404ec89e4485592b25880ff6e",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs04-railyard-leclerc-t14-drone-m271-r13/stills/railyard-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs04-railyard-leclerc-t14-drone-m271-r13-640.webp",
+     "bytes": 38474,
+     "sha256": "bdfe6661c6947352718ac182b069eedd84b4bb073f7a00f2527cec9b4876c90c"
+    }
+   ]
+  },
+  {
+   "id": "vs14-railyard-tamoyo3-t14-drone-tm40-m271-r13",
+   "group": "elevated",
+   "map": "railyard",
+   "hour": "night",
+   "focal": "20% 60%",
+   "title": {
+    "en": "Cinder Junction: MB-3 Tamoyo 3 v T-14 Armata",
+    "zh": "灰渣枢纽：MB-3 Tamoyo 3 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "tamoyo3",
+     "displayName": "MB-3 Tamoyo 3"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata"
+    }
+   ],
+   "path": "/media/gallery-r1/vs14-railyard-tamoyo3-t14-drone-tm40-m271-r13.webp",
+   "bytes": 454622,
+   "sha256": "018f2ea9568d321ae8c022cac7f94bd79263bcbaf28c82e17e0307d72517b7c4",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs14-railyard-tamoyo3-t14-drone-tm40-m271-r13/stills/railyard-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs14-railyard-tamoyo3-t14-drone-tm40-m271-r13-640.webp",
+     "bytes": 44012,
+     "sha256": "68852c232949e0fe9f5348eb0d4aa18066fd7640e7007a744f22cf3c348212e5"
+    }
+   ]
+  },
+  {
+   "id": "s108-sabra-mk2-x-caldera-duel-drone-t95-f33-m271-r13",
+   "group": "elevated",
+   "map": "caldera",
+   "hour": "day",
+   "focal": "20% 50%",
+   "title": {
+    "en": "Obsidian Caldera: Sabra Mk 2 v T-90M Proryv",
+    "zh": "黑曜石火山口：Sabra Mk 2 对 T-90M Proryv"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "sabra_mk2",
+     "displayName": "Sabra Mk 2"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s108-sabra-mk2-x-caldera-duel-drone-t95-f33-m271-r13.webp",
+   "bytes": 495098,
+   "sha256": "ce5b69f9cd3d1aca982b3b8ac57ffc08184d764ab186b88bbd2d0c3d608703ff",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s108-sabra-mk2-x-caldera-duel-drone-t95-f33-m271-r13/stills/caldera-landscape-2160p-still-2773ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s108-sabra-mk2-x-caldera-duel-drone-t95-f33-m271-r13-640.webp",
+     "bytes": 32886,
+     "sha256": "cb91d13083aeead3f84891fc827a78a61cc819931b0688713fc1003bac253951"
+    }
+   ]
+  },
+  {
+   "id": "s263-bm-oplot-m-caldera-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "caldera",
+   "hour": "day",
+   "focal": "81% 48%",
+   "title": {
+    "en": "Obsidian Caldera: T-84BM Oplot-M v T-72B3M obr. 2016",
+    "zh": "黑曜石火山口：T-84BM Oplot-M 对 T-72B3M obr. 2016"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "bm_oplot_m",
+     "displayName": "T-84BM Oplot-M"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s263-bm-oplot-m-caldera-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 557346,
+   "sha256": "1fb5a5a42e3b181911432b6aaf1d31e2162efd7d305a702c5ddaca067639cc86",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s263-bm-oplot-m-caldera-duel-drone-tm95-f33-m271-r13/stills/caldera-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s263-bm-oplot-m-caldera-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 35862,
+     "sha256": "cf77619869dd35a0222f4d0c3390f88e5294af06ce04f3541cf5d63132bd799d"
+    }
+   ]
+  },
+  {
+   "id": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "copper_mesa",
+   "hour": "golden",
+   "focal": "82% 50%",
+   "title": {
+    "en": "Copper Mesa Mine: ZTZ-99A2 Qinglong v M1A2 Abrams",
+    "zh": "铜台地矿场：ZTZ-99A2 Qinglong 对 M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "ztz99a2_qinglong",
+     "displayName": "ZTZ-99A2 Qinglong"
+    },
+    {
+     "role": "ally",
+     "id": "type96_72_long",
+     "displayName": "Type 96-72 Lóng (Concept)"
+    },
+    {
+     "role": "ally",
+     "id": "ztz99_longwei",
+     "displayName": "ZTZ-99 Longwei"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 601112,
+   "sha256": "43afa336e4bcbafb744d8333925eec02559329117c93a15132291204fe38052c",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm95-f33-m271-r13/stills/copper_mesa-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 53216,
+     "sha256": "ad4b5222f042f4f4e3e5efd9ed90c05c0e869598536d46718e26a8636b72d1ab"
+    }
+   ]
+  },
+  {
+   "id": "s154-t90sm-steppe-ridge-fb-m271-r13",
+   "group": "elevated",
+   "map": "steppe",
+   "hour": "day",
+   "focal": "53% 63%",
+   "title": {
+    "en": "Tarkhan Steppe: T-90SM obr. 2013 and T-72B3M obr. 2016",
+    "zh": "塔尔罕草原：T-90SM obr. 2013 与 T-72B3M obr. 2016"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90sm_2013",
+     "displayName": "T-90SM obr. 2013"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2022",
+     "displayName": "T-72B3M obr. 2022"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    }
+   ],
+   "path": "/media/gallery-r1/s154-t90sm-steppe-ridge-fb-m271-r13.webp",
+   "bytes": 552918,
+   "sha256": "b23f195f512d7f7fd6b03c3adbcde6325fa69dc35247f85273f3373350e3fff9",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s154-t90sm-steppe-ridge-fb-m271-r13/stills/steppe-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s154-t90sm-steppe-ridge-fb-m271-r13-640.webp",
+     "bytes": 33088,
+     "sha256": "c073ede938cd06a75fae12196c313207629f3ebb72a158b353e168379fda135b"
+    }
+   ]
+  },
+  {
+   "id": "vs12-verdant-leo2a5dk-t80u-drone-m271-r13",
+   "group": "elevated",
+   "map": "verdant",
+   "hour": "day",
+   "focal": "80% 57%",
+   "title": {
+    "en": "Verdant Fields: Leopard 2A5 DK v T-80U",
+    "zh": "翠野原：Leopard 2A5 DK 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a5dk",
+     "displayName": "Leopard 2A5 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    }
+   ],
+   "path": "/media/gallery-r1/vs12-verdant-leo2a5dk-t80u-drone-m271-r13.webp",
+   "bytes": 430582,
+   "sha256": "286b2489540c899707361ce5e568579ddb7f7d5cd18eb409c8e963ee9c570329",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs12-verdant-leo2a5dk-t80u-drone-m271-r13/stills/verdant-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs12-verdant-leo2a5dk-t80u-drone-m271-r13-640.webp",
+     "bytes": 30554,
+     "sha256": "8b885abd1e709eef4d9f6e7b27aa425e78b5ecd0341ded41236458fdaec3d799"
+    }
+   ]
+  },
+  {
+   "id": "vs22-verdant-leo1a3dk-t62-drone-new-crane-m271-r13",
+   "group": "elevated",
+   "map": "verdant",
+   "hour": "day",
+   "focal": "80% 50%",
+   "title": {
+    "en": "Verdant Fields: Leopard 1A3 DK v T-62MV-1",
+    "zh": "翠野原：Leopard 1A3 DK 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo1a3dk",
+     "displayName": "Leopard 1A3 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    }
+   ],
+   "path": "/media/gallery-r1/vs22-verdant-leo1a3dk-t62-drone-new-crane-m271-r13.webp",
+   "bytes": 446414,
+   "sha256": "8ed72c7d884361192f8b12f79aa6558416a5627a5f35daa1e9c1ca22d0d83766",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs22-verdant-leo1a3dk-t62-drone-new-crane-m271-r13/stills/verdant-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs22-verdant-leo1a3dk-t62-drone-new-crane-m271-r13-640.webp",
+     "bytes": 29298,
+     "sha256": "6a1cd885ba17a3bcad790ea0b47418e72680e37d9eb2e5e5e2c891dedd88a33b"
+    }
+   ]
+  },
+  {
+   "id": "s211-t62mv1-foundry-duel-drone-t95-m271-r13",
+   "group": "elevated",
+   "map": "foundry",
+   "hour": "day",
+   "focal": "19% 62%",
+   "title": {
+    "en": "Ironworks: T-62 obr. 1975 v Chieftain Mk 3",
+    "zh": "钢铁厂：T-62 obr. 1975 对 Chieftain Mk 3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t62_1975",
+     "displayName": "T-62 obr. 1975"
+    },
+    {
+     "role": "ally",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "ally",
+     "id": "t72bu_1989",
+     "displayName": "T-72BU obr. 1989"
+    },
+    {
+     "role": "foe",
+     "id": "m60a3",
+     "displayName": "M60A3"
+    },
+    {
+     "role": "foe",
+     "id": "chieftain3",
+     "displayName": "Chieftain Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo1a5",
+     "displayName": "Leopard 1A5"
+    }
+   ],
+   "path": "/media/gallery-r1/s211-t62mv1-foundry-duel-drone-t95-m271-r13.webp",
+   "bytes": 360602,
+   "sha256": "98ef6f1672e8c63d6980e27cfdabb1264fe47c37b6f9f47ec7eeef7a01a4f660",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s211-t62mv1-foundry-duel-drone-t95-m271-r13/stills/foundry-landscape-2160p-still-5300ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s211-t62mv1-foundry-duel-drone-t95-m271-r13-640.webp",
+     "bytes": 31026,
+     "sha256": "f384ff553ccdc9a33318b12b2f572686721181271ef970ef423c99034f0ba3ad"
+    }
+   ]
+  },
+  {
+   "id": "s270-t72b3m-xuanwu-delta-duel-drone-tm95-new-crane-f33-m271-r13",
+   "group": "elevated",
+   "map": "delta",
+   "hour": "day",
+   "focal": "78% 52%",
+   "title": {
+    "en": "Jade River Delta: T-72B3M Xuanwu v Type 10",
+    "zh": "翡翠江三角洲：T-72B3M Xuanwu 对 Type 10"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t72b3m_xuanwu",
+     "displayName": "T-72B3M Xuanwu"
+    },
+    {
+     "role": "foe",
+     "id": "type10",
+     "displayName": "Type 10"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    }
+   ],
+   "path": "/media/gallery-r1/s270-t72b3m-xuanwu-delta-duel-drone-tm95-new-crane-f33-m271-r13.webp",
+   "bytes": 510962,
+   "sha256": "d9fed72697caa66b990f5bf0b7085204da17ddfa3d7979c93065c2edc1f4bdf0",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s270-t72b3m-xuanwu-delta-duel-drone-tm95-new-crane-f33-m271-r13/stills/delta-landscape-2160p-still-873ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s270-t72b3m-xuanwu-delta-duel-drone-tm95-new-crane-f33-m271-r13-640.webp",
+     "bytes": 43710,
+     "sha256": "f33c7e8fb12bdcc5b90389f9f87ff0bc9b9c207ef021f613b57430e125f1cfed"
+    }
+   ]
+  },
+  {
+   "id": "s271-vt4a1-baihu-delta-duel-drone-t70-new-herohigh-f33-m271-r13",
+   "group": "elevated",
+   "map": "delta",
+   "hour": "golden",
+   "focal": "30% 52%",
+   "title": {
+    "en": "Jade River Delta: VT-4A1 Baihu v Type 10",
+    "zh": "翡翠江三角洲：VT-4A1 Baihu 对 Type 10"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "vt4a1_baihu",
+     "displayName": "VT-4A1 Baihu"
+    },
+    {
+     "role": "ally",
+     "id": "vt4a1_baihu",
+     "displayName": "VT-4A1 Baihu"
+    },
+    {
+     "role": "foe",
+     "id": "type10",
+     "displayName": "Type 10"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    }
+   ],
+   "path": "/media/gallery-r1/s271-vt4a1-baihu-delta-duel-drone-t70-new-herohigh-f33-m271-r13.webp",
+   "bytes": 520500,
+   "sha256": "f89f45fd519d3f7214fa214c0b8ebba7000287c3ac5eda2f74f9809adf19bb41",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s271-vt4a1-baihu-delta-duel-drone-t70-new-herohigh-f33-m271-r13/stills/delta-landscape-2160p-still-1933ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s271-vt4a1-baihu-delta-duel-drone-t70-new-herohigh-f33-m271-r13-640.webp",
+     "bytes": 34836,
+     "sha256": "9ad368f9506b42a1712980651a182d7fe13fe50172c5a0abd3274d870df208a8"
+    }
+   ]
+  },
+  {
+   "id": "s276-strv105-fjord-duel-drone-t95-f33-m271-r13",
+   "group": "elevated",
+   "map": "fjord",
+   "hour": "golden",
+   "focal": "16% 58%",
+   "title": {
+    "en": "Nordhavn Fjord: Strv 105 v T-64BV1",
+    "zh": "诺德港峡湾：Strv 105 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv105",
+     "displayName": "Strv 105"
+    },
+    {
+     "role": "ally",
+     "id": "udes03",
+     "displayName": "UDES 03"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s276-strv105-fjord-duel-drone-t95-f33-m271-r13.webp",
+   "bytes": 588688,
+   "sha256": "be8546c8d20b4009a64f4b3def88e86a5539d490e80b1bd8865833bbf2765cb1",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s276-strv105-fjord-duel-drone-t95-f33-m271-r13/stills/fjord-landscape-2160p-still-873ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s276-strv105-fjord-duel-drone-t95-f33-m271-r13-640.webp",
+     "bytes": 46232,
+     "sha256": "eff1b4be5e2edfccb17021d44a0f9ae30096df1df59aab34c87ec0a275446817"
+    }
+   ]
+  },
+  {
+   "id": "s206-m60a1-desert-ridge-m271-r13",
+   "group": "elevated",
+   "map": "desert",
+   "hour": "day",
+   "focal": "57% 63%",
+   "title": {
+    "en": "Sirocco Wadi: M60A1 Patton and M47 Patton",
+    "zh": "西罗科旱谷：M60A1 Patton 与 M47 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m60a1",
+     "displayName": "M60A1 Patton"
+    },
+    {
+     "role": "ally",
+     "id": "m47_patton",
+     "displayName": "M47 Patton"
+    },
+    {
+     "role": "ally",
+     "id": "m48a5_patton",
+     "displayName": "M48A5 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s206-m60a1-desert-ridge-m271-r13.webp",
+   "bytes": 331944,
+   "sha256": "562607f29de3444a98eea9fd204d4368d6268e4066566565439971b2073c3960",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s206-m60a1-desert-ridge-m271-r13/stills/desert-landscape-2160p-still-1300ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s206-m60a1-desert-ridge-m271-r13-640.webp",
+     "bytes": 27044,
+     "sha256": "5e3ea004d02ca25bcc53433bd72b9d4bb662d7391df9f1f4c18f25ba293c5f65"
+    }
+   ]
+  },
+  {
+   "id": "s271-vt4a1-baihu-delta-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "delta",
+   "hour": "golden",
+   "focal": "82% 62%",
+   "title": {
+    "en": "Jade River Delta: VT-4A1 Baihu v Type 10",
+    "zh": "翡翠江三角洲：VT-4A1 Baihu 对 Type 10"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "vt4a1_baihu",
+     "displayName": "VT-4A1 Baihu"
+    },
+    {
+     "role": "ally",
+     "id": "vt4a1_baihu",
+     "displayName": "VT-4A1 Baihu"
+    },
+    {
+     "role": "foe",
+     "id": "type10",
+     "displayName": "Type 10"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    }
+   ],
+   "path": "/media/gallery-r1/s271-vt4a1-baihu-delta-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 532804,
+   "sha256": "4b493ae8bf02d715bbd631e7bd30f15e96f900cbecb987201737677b9201b188",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s271-vt4a1-baihu-delta-duel-drone-tm95-f33-m271-r13/stills/delta-landscape-2160p-still-1933ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s271-vt4a1-baihu-delta-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 46956,
+     "sha256": "10848191ca39917a5565553dfb94b5a2698082e7227a76e41da96024ac5b8aec"
+    }
+   ]
+  },
+  {
+   "id": "s273-centurion5-1-aus-airfield-drone-new-herohigh-f33-m271-r13",
+   "group": "elevated",
+   "map": "airfield",
+   "hour": "golden",
+   "focal": "53% 42%",
+   "title": {
+    "en": "Kestrel Airfield: Centurion Mk 5/1 (Aust) pair",
+    "zh": "红隼机场：两辆 Centurion Mk 5/1 (Aust)"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "centurion5_1_aus",
+     "displayName": "Centurion Mk 5/1 (Aust)"
+    },
+    {
+     "role": "ally",
+     "id": "centurion5_1_aus",
+     "displayName": "Centurion Mk 5/1 (Aust)"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    }
+   ],
+   "path": "/media/gallery-r1/s273-centurion5-1-aus-airfield-drone-new-herohigh-f33-m271-r13.webp",
+   "bytes": 316046,
+   "sha256": "d547b0ae6cd7146ad6b0be8d02e62ab76952f56e5993c619ebbaf9cbfce756a1",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s273-centurion5-1-aus-airfield-drone-new-herohigh-f33-m271-r13/stills/airfield-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s273-centurion5-1-aus-airfield-drone-new-herohigh-f33-m271-r13-640.webp",
+     "bytes": 28664,
+     "sha256": "c017b3d0daf470cd401c8df68a9d05f134d3d9ed3889d79a50da3b08e443408f"
+    }
+   ]
+  },
+  {
+   "id": "s96-marder2-autumn-crane-m271-r13",
+   "group": "elevated",
+   "map": "autumn",
+   "hour": "day",
+   "focal": "53% 55%",
+   "title": {
+    "en": "Amberford: Marder 2 and Leopard 2A5",
+    "zh": "安伯福：Marder 2 与 Leopard 2A5"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "marder2",
+     "displayName": "Marder 2"
+    },
+    {
+     "role": "ally",
+     "id": "leo2a5",
+     "displayName": "Leopard 2A5"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s96-marder2-autumn-crane-m271-r13.webp",
+   "bytes": 529532,
+   "sha256": "b7257c9566d6166e66c19f9de1d1ecbe4e13c1c32198bede8b900296c8959fae",
+   "width": 1920,
+   "height": 1080,
+   "quality": 82,
+   "source": "s96-marder2-autumn-crane-m271-r13/stills/autumn-landscape-2160p-still-940ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s96-marder2-autumn-crane-m271-r13-640.webp",
+     "bytes": 51360,
+     "sha256": "b8334af0f780659d5713a0ab6dc52ea5b2cc20272970cb30969b8c98baf8a73b"
+    }
+   ]
+  },
+  {
+   "id": "s134-t72m1-jaguar-longleaf-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "longleaf",
+   "hour": "golden",
+   "focal": "18% 55%",
+   "title": {
+    "en": "Longleaf Crossing: T-72M1 Jaguar v T-90A",
+    "zh": "长叶渡口：T-72M1 Jaguar 对 T-90A"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t72m1_jaguar",
+     "displayName": "T-72M1 Jaguar"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3_zubr_ii",
+     "displayName": "T-72B3 Zubr II"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    }
+   ],
+   "path": "/media/gallery-r1/s134-t72m1-jaguar-longleaf-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 432732,
+   "sha256": "e0b8d91942b8ed1bab530de1d1192fadbaba6798263eab4a364ae21072002f95",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s134-t72m1-jaguar-longleaf-duel-drone-t70-f33-m271-r13/stills/longleaf-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s134-t72m1-jaguar-longleaf-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 32154,
+     "sha256": "20bc70b9fc2ec1e106d46d16f8c87a3903733ee860a0135f733f80553d0964ae"
+    }
+   ]
+  },
+  {
+   "id": "s256-christian2-reservoir-drone-f33-m271-r13",
+   "group": "elevated",
+   "map": "reservoir",
+   "hour": "morning",
+   "focal": "53% 55%",
+   "title": {
+    "en": "Highland Reservoir: Christian II and CV9035 DK",
+    "zh": "高地水库：Christian II 与 CV9035 DK"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "christian2",
+     "displayName": "Christian II"
+    },
+    {
+     "role": "ally",
+     "id": "cv9035dk",
+     "displayName": "CV9035 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s256-christian2-reservoir-drone-f33-m271-r13.webp",
+   "bytes": 552112,
+   "sha256": "8965315e03387713091eabc6d4510b6c796074e6fe2feee6e138839ba7841a44",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s256-christian2-reservoir-drone-f33-m271-r13/stills/reservoir-landscape-2160p-still-4133ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s256-christian2-reservoir-drone-f33-m271-r13-640.webp",
+     "bytes": 43848,
+     "sha256": "0f71767dd8cf6aa9a0b26f1001b85e6be90c24aa4a0e1723bdbc2a8366c1ba8f"
+    }
+   ]
+  },
+  {
+   "id": "s284-pt84-orzel-reservoir-duel-drone-t45-f33-m271-r13",
+   "group": "elevated",
+   "map": "reservoir",
+   "hour": "golden",
+   "focal": "16% 60%",
+   "title": {
+    "en": "Highland Reservoir: PT-84 Orzeł v T-72B3M obr. 2016",
+    "zh": "高地水库：PT-84 Orzeł 对 T-72B3M obr. 2016"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "pt84_orzel",
+     "displayName": "PT-84 Orzeł"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3_zubr_ii",
+     "displayName": "T-72B3 Zubr II"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s284-pt84-orzel-reservoir-duel-drone-t45-f33-m271-r13.webp",
+   "bytes": 561578,
+   "sha256": "ca1af5a14b44e5bd4c3dab12ce9a1a99b72b4b8e7166987bba9719b99f6948f9",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s284-pt84-orzel-reservoir-duel-drone-t45-f33-m271-r13/stills/reservoir-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s284-pt84-orzel-reservoir-duel-drone-t45-f33-m271-r13-640.webp",
+     "bytes": 46922,
+     "sha256": "63bdb6fbebd43e58839dec197a380e972b358ecef1f582f8b26d163e4cba8a5e"
+    }
+   ]
+  },
+  {
+   "id": "s264-bm-oplot-t-titan-gorge-duel-drone-t95-f33-m271-r13",
+   "group": "elevated",
+   "map": "titan_gorge",
+   "hour": "day",
+   "focal": "23% 50%",
+   "title": {
+    "en": "Titan Gorge: T-84BM Oplot-T v T-80U",
+    "zh": "泰坦峡谷：T-84BM Oplot-T 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "bm_oplot_t",
+     "displayName": "T-84BM Oplot-T"
+    },
+    {
+     "role": "ally",
+     "id": "t64b1v_2022",
+     "displayName": "T-64B1V mod. 2022"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    }
+   ],
+   "path": "/media/gallery-r1/s264-bm-oplot-t-titan-gorge-duel-drone-t95-f33-m271-r13.webp",
+   "bytes": 541898,
+   "sha256": "c752732a9d6312d9f2a297c8c8a22a41de99c6670eefb801303b20694f44b740",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s264-bm-oplot-t-titan-gorge-duel-drone-t95-f33-m271-r13/stills/titan_gorge-landscape-2160p-still-2733ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s264-bm-oplot-t-titan-gorge-duel-drone-t95-f33-m271-r13-640.webp",
+     "bytes": 44802,
+     "sha256": "492b6e08b0b69fe6bdf62520f9830d4b0f3f9b43d7ec94b511520a18d76da08f"
+    }
+   ]
+  },
+  {
+   "id": "s154-t90sm-steppe-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "steppe",
+   "hour": "day",
+   "focal": "19% 57%",
+   "title": {
+    "en": "Tarkhan Steppe: T-90SM obr. 2013 v M1A2 Abrams",
+    "zh": "塔尔罕草原：T-90SM obr. 2013 对 M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90sm_2013",
+     "displayName": "T-90SM obr. 2013"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_2022",
+     "displayName": "T-72B3M obr. 2022"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    }
+   ],
+   "path": "/media/gallery-r1/s154-t90sm-steppe-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 472218,
+   "sha256": "d24a74727623994e3dd10d21b88457f7bd66bb0e9194b54a929ea8f9e21dcec2",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s154-t90sm-steppe-duel-drone-t70-f33-m271-r13/stills/steppe-landscape-2160p-still-873ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s154-t90sm-steppe-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 38114,
+     "sha256": "71a7fded1f7c2c89c4aa1ad8209f29033c485a351f20f2538b74055678ab3667"
+    }
+   ]
+  },
+  {
+   "id": "s298-leo1a5dk-saltwind-duel-drone-t95-f33-m271-r13",
+   "group": "elevated",
+   "map": "saltwind",
+   "hour": "morning",
+   "focal": "22% 55%",
+   "title": {
+    "en": "Saltwind Narrows: Leopard 1A5 DK v T-64BV1",
+    "zh": "盐风海峡：Leopard 1A5 DK 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo1a5dk",
+     "displayName": "Leopard 1A5 DK"
+    },
+    {
+     "role": "ally",
+     "id": "m41dk1",
+     "displayName": "M41 DK-1"
+    },
+    {
+     "role": "ally",
+     "id": "leo1a3dk",
+     "displayName": "Leopard 1A3 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s298-leo1a5dk-saltwind-duel-drone-t95-f33-m271-r13.webp",
+   "bytes": 560048,
+   "sha256": "d537a0a0d1caa5f51a0c1337b2a912711a37d5fbcc1234b9c8ec81ae4bf9f1a5",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s298-leo1a5dk-saltwind-duel-drone-t95-f33-m271-r13/stills/saltwind-landscape-2160p-still-1233ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s298-leo1a5dk-saltwind-duel-drone-t95-f33-m271-r13-640.webp",
+     "bytes": 44706,
+     "sha256": "c9fd51178041ed4dbaee8be10ebad33af0de5e75cc7968b95b9d41af73f1cf81"
+    }
+   ]
+  },
+  {
+   "id": "s150-t90a-vladimir-steppe-duel-drone-tm95-f33-m271-r13",
+   "group": "elevated",
+   "map": "steppe",
+   "hour": "day",
+   "focal": "82% 50%",
+   "title": {
+    "en": "Tarkhan Steppe: T-90A obr. 2006 v Challenger 1 Mk 3",
+    "zh": "塔尔罕草原：T-90A obr. 2006 对 Challenger 1 Mk 3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90a_2006",
+     "displayName": "T-90A obr. 2006"
+    },
+    {
+     "role": "ally",
+     "id": "t90a_2006",
+     "displayName": "T-90A obr. 2006"
+    },
+    {
+     "role": "foe",
+     "id": "challenger1_mk3",
+     "displayName": "Challenger 1 Mk 3"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    }
+   ],
+   "path": "/media/gallery-r1/s150-t90a-vladimir-steppe-duel-drone-tm95-f33-m271-r13.webp",
+   "bytes": 472136,
+   "sha256": "9df47f181164038943f3a157284133675db84693b05c00d027a6882330073ed7",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s150-t90a-vladimir-steppe-duel-drone-tm95-f33-m271-r13/stills/steppe-landscape-2160p-still-1933ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s150-t90a-vladimir-steppe-duel-drone-tm95-f33-m271-r13-640.webp",
+     "bytes": 41772,
+     "sha256": "7c6b1738302e36822ffd7cbaedf004df671997d4cc3523b61623e6a0b3beabe3"
+    }
+   ]
+  },
+  {
+   "id": "vs26-coastal-cv9035dk-bmp3-crane-m271-r13",
+   "group": "elevated",
+   "map": "coastal",
+   "hour": "day",
+   "focal": "26% 55%",
+   "title": {
+    "en": "Saltmere Bay: CV9035 DK v BMP-3",
+    "zh": "盐沼湾：CV9035 DK 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv9035dk",
+     "displayName": "CV9035 DK"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3"
+    }
+   ],
+   "path": "/media/gallery-r1/vs26-coastal-cv9035dk-bmp3-crane-m271-r13.webp",
+   "bytes": 279166,
+   "sha256": "9dbd64c45faf24b14ef359aacb08988ef0bb8f9f3a468caddcc7e49a20ed9448",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs26-coastal-cv9035dk-bmp3-crane-m271-r13/stills/coastal-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs26-coastal-cv9035dk-bmp3-crane-m271-r13-640.webp",
+     "bytes": 22126,
+     "sha256": "1c97d3ba119f844da029d7b1fcb06964b954b3ad9fe22dca3dcd229b798ef0ba"
+    }
+   ]
+  },
+  {
+   "id": "s307-m41a3-airfield-ridge-m271-r13",
+   "group": "elevated",
+   "map": "airfield",
+   "hour": "day",
+   "focal": "50% 67%",
+   "title": {
+    "en": "Kestrel Airfield: M41A3 Walker Bulldog and M48A3 Patton",
+    "zh": "红隼机场：M41A3 Walker Bulldog 与 M48A3 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m41a3",
+     "displayName": "M41A3 Walker Bulldog"
+    },
+    {
+     "role": "ally",
+     "id": "m48a3_patton",
+     "displayName": "M48A3 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s307-m41a3-airfield-ridge-m271-r13.webp",
+   "bytes": 545832,
+   "sha256": "aaf88255a6f7b8419895ba0f287178544c3b5f358d7f216c9f14e48e6e9aacde",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s307-m41a3-airfield-ridge-m271-r13/stills/airfield-landscape-2160p-still-940ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s307-m41a3-airfield-ridge-m271-r13-640.webp",
+     "bytes": 37562,
+     "sha256": "2d143109304fdbe648903ccc98f1c3ebbb18cac8acd22f0311a649a105c80ed6"
+    }
+   ]
+  },
+  {
+   "id": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "copper_mesa",
+   "hour": "golden",
+   "focal": "14% 50%",
+   "title": {
+    "en": "Copper Mesa Mine: ZTZ-99A2 Qinglong v M1A2 Abrams",
+    "zh": "铜台地矿场：ZTZ-99A2 Qinglong 对 M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "ztz99a2_qinglong",
+     "displayName": "ZTZ-99A2 Qinglong"
+    },
+    {
+     "role": "ally",
+     "id": "type96_72_long",
+     "displayName": "Type 96-72 Lóng (Concept)"
+    },
+    {
+     "role": "ally",
+     "id": "ztz99_longwei",
+     "displayName": "ZTZ-99 Longwei"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 571854,
+   "sha256": "08e9e46b8a24f98772e6c99df3af25c433996ac4ccb99722130e7e6367b25bbd",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-t70-f33-m271-r13/stills/copper_mesa-landscape-2160p-still-2633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 50944,
+     "sha256": "611e49c2217e7caa249fb803fad046eb1ea16c4fd9c584729d5e3cb22775bbb6"
+    }
+   ]
+  },
+  {
+   "id": "s203-m47-patton-badlands-drone-new-herohigh-f33-m271-r13",
+   "group": "elevated",
+   "map": "badlands",
+   "hour": "morning",
+   "focal": "34% 42%",
+   "title": {
+    "en": "Redrock Divide: M47 Patton and M46 Patton",
+    "zh": "红岩分界：M47 Patton 与 M46 Patton"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m47_patton",
+     "displayName": "M47 Patton"
+    },
+    {
+     "role": "ally",
+     "id": "m46_patton",
+     "displayName": "M46 Patton"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    }
+   ],
+   "path": "/media/gallery-r1/s203-m47-patton-badlands-drone-new-herohigh-f33-m271-r13.webp",
+   "bytes": 450186,
+   "sha256": "b704194b5166560282072323f7908027e5646e15d67a68618b05196ae7c8357a",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s203-m47-patton-badlands-drone-new-herohigh-f33-m271-r13/stills/badlands-landscape-2160p-still-1833ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s203-m47-patton-badlands-drone-new-herohigh-f33-m271-r13-640.webp",
+     "bytes": 36892,
+     "sha256": "a455bcba56ae08a72d7730606706168127733a354036b362fcfd01989fa8cacd"
+    }
+   ]
+  },
+  {
+   "id": "vs29-alpine-m41a3-t62-drone-m271-r13",
+   "group": "elevated",
+   "map": "alpine",
+   "hour": "morning",
+   "focal": "69% 58%",
+   "title": {
+    "en": "Glacier Pass: M41A3 Walker Bulldog v T-62MV-1",
+    "zh": "冰川关：M41A3 Walker Bulldog 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m41a3",
+     "displayName": "M41A3 Walker Bulldog"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    }
+   ],
+   "path": "/media/gallery-r1/vs29-alpine-m41a3-t62-drone-m271-r13.webp",
+   "bytes": 328488,
+   "sha256": "4d74e0cb4204e3206039794b70efd500da7e4e8f28de76afa8700a528180d5d9",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs29-alpine-m41a3-t62-drone-m271-r13/stills/alpine-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs29-alpine-m41a3-t62-drone-m271-r13-640.webp",
+     "bytes": 25658,
+     "sha256": "f91e3bed18efe583cb732be748fa4eeb231cfb2a575b95921b0e3395bd1712a4"
+    }
+   ]
+  },
+  {
+   "id": "s190-ua-t84-oplot-m-frontier-drone-new-herohigh-f33-m271-r13",
+   "group": "elevated",
+   "map": "frontier",
+   "hour": "morning",
+   "focal": "27% 55%",
+   "title": {
+    "en": "Frontier Basin: T-84U Oplot and M1A1 SA (Ukraine)",
+    "zh": "边疆盆地：T-84U Oplot 与 M1A1 SA (Ukraine)"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t84bm_oplot_m",
+     "displayName": "T-84U Oplot"
+    },
+    {
+     "role": "ally",
+     "id": "ua_m1a1",
+     "displayName": "M1A1 SA (Ukraine)"
+    },
+    {
+     "role": "ally",
+     "id": "t80u_zoria",
+     "displayName": "T-80U Zoria"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3m_2016",
+     "displayName": "T-72B3M obr. 2016"
+    }
+   ],
+   "path": "/media/gallery-r1/s190-ua-t84-oplot-m-frontier-drone-new-herohigh-f33-m271-r13.webp",
+   "bytes": 542328,
+   "sha256": "a29fc34f7e65e424438096f815eb74d0fe16d69f55e1e886c55bf5ba55821451",
+   "width": 1920,
+   "height": 1080,
+   "quality": 86,
+   "source": "s190-ua-t84-oplot-m-frontier-drone-new-herohigh-f33-m271-r13/stills/frontier-landscape-2160p-still-1533ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s190-ua-t84-oplot-m-frontier-drone-new-herohigh-f33-m271-r13-640.webp",
+     "bytes": 51186,
+     "sha256": "8f4fcba26ed7a5eaf252e81081d97ace3d3b4c97ebb93976a110fcd7604fe5bd"
+    }
+   ]
+  },
+  {
+   "id": "s275-olifant-mk2-alpine-drone-m271-r13",
+   "group": "elevated",
+   "map": "alpine",
+   "hour": "night",
+   "focal": "57% 62%",
+   "title": {
+    "en": "Glacier Pass: Olifant Mk 2 pair",
+    "zh": "冰川关：两辆 Olifant Mk 2"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "olifant_mk2",
+     "displayName": "Olifant Mk 2"
+    },
+    {
+     "role": "ally",
+     "id": "olifant_mk2",
+     "displayName": "Olifant Mk 2"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    }
+   ],
+   "path": "/media/gallery-r1/s275-olifant-mk2-alpine-drone-m271-r13.webp",
+   "bytes": 249900,
+   "sha256": "169a5fa2c1d9f4db9aa42e8459ec648cf532b366cf8b847e83edac8ff936ad08",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s275-olifant-mk2-alpine-drone-m271-r13/stills/alpine-landscape-2160p-still-940ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s275-olifant-mk2-alpine-drone-m271-r13-640.webp",
+     "bytes": 22856,
+     "sha256": "86d325eb019790cfdc587cbe8866692a8ff2a1f59e4760ad5b19467b583dcb34"
+    }
+   ]
+  },
+  {
+   "id": "s152-t90m-whiteout-duel-drone-tm70-f33-m271-r13",
+   "group": "elevated",
+   "map": "whiteout",
+   "hour": "golden",
+   "focal": "89% 42%",
+   "title": {
+    "en": "Whiteout Station: T-90AM v M1A2 Abrams",
+    "zh": "白茫站：T-90AM 对 M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90am",
+     "displayName": "T-90AM"
+    },
+    {
+     "role": "ally",
+     "id": "t72b3m_bulat_m",
+     "displayName": "T-72B3M Bulat-M"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/gallery-r1/s152-t90m-whiteout-duel-drone-tm70-f33-m271-r13.webp",
+   "bytes": 301676,
+   "sha256": "dee88d5955717f68f752652a19f65d2051ac09cd6338781b61ffb9f3dfe623ef",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s152-t90m-whiteout-duel-drone-tm70-f33-m271-r13/stills/whiteout-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s152-t90m-whiteout-duel-drone-tm70-f33-m271-r13-640.webp",
+     "bytes": 28164,
+     "sha256": "18fccb125685224fd62bb99e3e22eee32f2ae98be9f4f528762689962ee4c052"
+    }
+   ]
+  },
+  {
+   "id": "s300-leo2a5dk-skybridge-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "skybridge",
+   "hour": "day",
+   "focal": "15% 52%",
+   "title": {
+    "en": "Skybridge Chasm: Leopard 2A5 DK v T-80U",
+    "zh": "天桥裂谷：Leopard 2A5 DK 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a5dk",
+     "displayName": "Leopard 2A5 DK"
+    },
+    {
+     "role": "ally",
+     "id": "cv9035dk",
+     "displayName": "CV9035 DK"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s300-leo2a5dk-skybridge-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 596614,
+   "sha256": "76f8019c5feb1190530fa3dcc9fb2852f6c8903206f643c92f8d060db7c9004f",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s300-leo2a5dk-skybridge-duel-drone-t70-f33-m271-r13/stills/skybridge-landscape-2160p-still-873ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s300-leo2a5dk-skybridge-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 43768,
+     "sha256": "d9a7f03129a1d625a9c9cf33fb61f36ece013410951fec91f5cc6032f9fc94a8"
+    }
+   ]
+  },
+  {
+   "id": "vs02-verdant-challenger-t80u-ridge-m271-r13",
+   "group": "elevated",
+   "map": "verdant",
+   "hour": "day",
+   "focal": "81% 53%",
+   "title": {
+    "en": "Verdant Fields: Challenger 3 v T-80U",
+    "zh": "翠野原：Challenger 3 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "challenger3",
+     "displayName": "Challenger 3"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    }
+   ],
+   "path": "/media/gallery-r1/vs02-verdant-challenger-t80u-ridge-m271-r13.webp",
+   "bytes": 423046,
+   "sha256": "850d6d71635d70b87975ca10f54d0d794535f6c6213d1dad84552816e8553690",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "vs02-verdant-challenger-t80u-ridge-m271-r13/stills/verdant-landscape-2160p-still-7000ms-e12ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/vs02-verdant-challenger-t80u-ridge-m271-r13-640.webp",
+     "bytes": 30766,
+     "sha256": "5cf08cdcbf183908bfe978588066c554a9bf649f6737905a186ab79ca2128bd2"
+    }
+   ]
+  },
+  {
+   "id": "s86-leo2a4-longleaf-duel-drone-tm45-f33-m271-r13",
+   "group": "elevated",
+   "map": "longleaf",
+   "hour": "day",
+   "focal": "80% 55%",
+   "title": {
+    "en": "Longleaf Crossing: Leopard 2A2 v T-72B obr. 1987",
+    "zh": "长叶渡口：Leopard 2A2 对 T-72B obr. 1987"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a2",
+     "displayName": "Leopard 2A2"
+    },
+    {
+     "role": "ally",
+     "id": "jpz_e100",
+     "displayName": "Jagdpanzer E100"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s86-leo2a4-longleaf-duel-drone-tm45-f33-m271-r13.webp",
+   "bytes": 608566,
+   "sha256": "1ef13c035daa1463e16fe0811ce53f398b2ae038fb2c522e309721267387720c",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s86-leo2a4-longleaf-duel-drone-tm45-f33-m271-r13/stills/longleaf-landscape-2160p-still-4573ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s86-leo2a4-longleaf-duel-drone-tm45-f33-m271-r13-640.webp",
+     "bytes": 38992,
+     "sha256": "c2db8d19328be9e94ebb7c5514f3543e735e99e92b5a6cc7aafe41a3ea75930a"
+    }
+   ]
+  },
+  {
+   "id": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm45-f33-m271-r13",
+   "group": "elevated",
+   "map": "copper_mesa",
+   "hour": "golden",
+   "focal": "84% 57%",
+   "title": {
+    "en": "Copper Mesa Mine: ZTZ-99A2 Qinglong v M1A2 Abrams",
+    "zh": "铜台地矿场：ZTZ-99A2 Qinglong 对 M1A2 Abrams"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "ztz99a2_qinglong",
+     "displayName": "ZTZ-99A2 Qinglong"
+    },
+    {
+     "role": "ally",
+     "id": "type96_72_long",
+     "displayName": "Type 96-72 Lóng (Concept)"
+    },
+    {
+     "role": "ally",
+     "id": "ztz99_longwei",
+     "displayName": "ZTZ-99 Longwei"
+    },
+    {
+     "role": "foe",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther"
+    },
+    {
+     "role": "foe",
+     "id": "m1a2_abrams",
+     "displayName": "M1A2 Abrams"
+    }
+   ],
+   "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm45-f33-m271-r13.webp",
+   "bytes": 515028,
+   "sha256": "95a2a285e6161585c70139861f1a4f8e857f6e6396c54349bd67330ecde2428e",
+   "width": 1920,
+   "height": 1080,
+   "quality": 82,
+   "source": "s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm45-f33-m271-r13/stills/copper_mesa-landscape-2160p-still-1233ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s272-ztz99a2-qinglong-copper-mesa-duel-drone-tm45-f33-m271-r13-640.webp",
+     "bytes": 55582,
+     "sha256": "237dd62f7f07ea897044e611aad2dedee55d4cbf85c2c4e0d25311480a9791ac"
+    }
+   ]
+  },
+  {
+   "id": "s265-t64b1v-2022-cliffbridge-duel-drone-t45-new-elevhigh-f33-m271-r13",
+   "group": "elevated",
+   "map": "cliffbridge",
+   "hour": "day",
+   "focal": "34% 42%",
+   "title": {
+    "en": "Aegis Crossing: T-64B1V mod. 2022 v T-80U",
+    "zh": "神盾渡口：T-64B1V mod. 2022 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t64b1v_2022",
+     "displayName": "T-64B1V mod. 2022"
+    },
+    {
+     "role": "ally",
+     "id": "ua_m1a2_abrams",
+     "displayName": "M1A2 Abrams UA"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv"
+    }
+   ],
+   "path": "/media/gallery-r1/s265-t64b1v-2022-cliffbridge-duel-drone-t45-new-elevhigh-f33-m271-r13.webp",
+   "bytes": 520676,
+   "sha256": "7b860361901c4cb2dc70ed4d0c57751290cfdbffce458fe46117b91fcea6207d",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s265-t64b1v-2022-cliffbridge-duel-drone-t45-new-elevhigh-f33-m271-r13/stills/cliffbridge-landscape-2160p-still-1733ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s265-t64b1v-2022-cliffbridge-duel-drone-t45-new-elevhigh-f33-m271-r13-640.webp",
+     "bytes": 34498,
+     "sha256": "86125f959ebbd7717a90afe0873e7755affc1543db898a4fd4b1f12c46936626"
+    }
+   ]
+  },
+  {
+   "id": "s86-leo2a4-longleaf-duel-drone-t45-f33-m271-r13",
+   "group": "elevated",
+   "map": "longleaf",
+   "hour": "day",
+   "focal": "16% 55%",
+   "title": {
+    "en": "Longleaf Crossing: Leopard 2A2 v T-72B obr. 1987",
+    "zh": "长叶渡口：Leopard 2A2 对 T-72B obr. 1987"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a2",
+     "displayName": "Leopard 2A2"
+    },
+    {
+     "role": "ally",
+     "id": "jpz_e100",
+     "displayName": "Jagdpanzer E100"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    }
+   ],
+   "path": "/media/gallery-r1/s86-leo2a4-longleaf-duel-drone-t45-f33-m271-r13.webp",
+   "bytes": 549122,
+   "sha256": "b6705b3ec0e5f801a3927a9bbb55babeaa311a9d9fc544e4101a1183cb2926a0",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s86-leo2a4-longleaf-duel-drone-t45-f33-m271-r13/stills/longleaf-landscape-2160p-still-2733ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s86-leo2a4-longleaf-duel-drone-t45-f33-m271-r13-640.webp",
+     "bytes": 36954,
+     "sha256": "b9d2eb382049da4f5d3b5117aa3ab736eb185bdb1539dc34caa839f7b46bb7b8"
+    }
+   ]
+  },
+  {
+   "id": "s257-pt64-tur-ruinspires-duel-drone-t70-f33-m271-r13",
+   "group": "elevated",
+   "map": "ruinspires",
+   "hour": "day",
+   "focal": "16% 60%",
+   "title": {
+    "en": "Ruinspires: PT-64 Tur v T-72B3",
+    "zh": "废墟尖塔：PT-64 Tur 对 T-72B3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "pt64_tur",
+     "displayName": "PT-64 Tur"
+    },
+    {
+     "role": "ally",
+     "id": "pt64_tur",
+     "displayName": "PT-64 Tur"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3"
+    },
+    {
+     "role": "foe",
+     "id": "t90a",
+     "displayName": "T-90A"
+    }
+   ],
+   "path": "/media/gallery-r1/s257-pt64-tur-ruinspires-duel-drone-t70-f33-m271-r13.webp",
+   "bytes": 554128,
+   "sha256": "9203fde9c9b80c766ae9fe4e2f7505554339c65d3e1a3d0bd28fbb31a09724d6",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s257-pt64-tur-ruinspires-duel-drone-t70-f33-m271-r13/stills/ruinspires-landscape-2160p-still-1933ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s257-pt64-tur-ruinspires-duel-drone-t70-f33-m271-r13-640.webp",
+     "bytes": 33916,
+     "sha256": "1db2082351bce8c560c19126ba9176bfffba26614d37f4f3b7408237176c8c0d"
+    }
+   ]
+  },
+  {
+   "id": "s293-tamoyo3-badlands-duel-drone-t45-f33-m271-r13",
+   "group": "elevated",
+   "map": "badlands",
+   "hour": "day",
+   "focal": "19% 57%",
+   "title": {
+    "en": "Redrock Divide: MB-3 Tamoyo 3 v T-64BV1",
+    "zh": "红岩分界：MB-3 Tamoyo 3 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "tamoyo3",
+     "displayName": "MB-3 Tamoyo 3"
+    },
+    {
+     "role": "ally",
+     "id": "x1_pioneiro",
+     "displayName": "CCL X1 Pioneiro"
+    },
+    {
+     "role": "foe",
+     "id": "t72b_1987",
+     "displayName": "T-72B obr. 1987"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1"
+    }
+   ],
+   "path": "/media/gallery-r1/s293-tamoyo3-badlands-duel-drone-t45-f33-m271-r13.webp",
+   "bytes": 375626,
+   "sha256": "dca8130d430e578baa695da82f1ac97e989e7e90ef3b8c5db5abac5ba6a7ad93",
+   "width": 1920,
+   "height": 1080,
+   "quality": 90,
+   "source": "s293-tamoyo3-badlands-duel-drone-t45-f33-m271-r13/stills/badlands-landscape-2160p-still-1633ms-e2ms.png",
+   "revision": "b5b7bef4669852e23929ffdc2409e837189a7c33",
+   "rungs": [
+    {
+     "width": 640,
+     "height": 360,
+     "quality": 80,
+     "path": "/media/gallery-r1/s293-tamoyo3-badlands-duel-drone-t45-f33-m271-r13-640.webp",
+     "bytes": 29886,
+     "sha256": "134ad0537dcb6c8702d99a9f9b437f05b562c8d251adc9a28502b881d080d786"
+    }
+   ]
+  }
+ ]
+}

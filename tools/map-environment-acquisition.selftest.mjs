@@ -542,8 +542,8 @@ for (const port of [49152, 51999]) {
 assert.match(tool, /page\.goto\(`http:\/\/127\.0\.0\.1:\$\{port\}/, 'navigation uses the resolved server address');
 const closeStart = tool.lastIndexOf('} finally {\n  try {\n    if (browser)');
 assert.ok(closeStart > 0);
-const closeOwned = new AsyncFunction('browser', 'server', 'clearInterval', 'releaseCaptureLock', 'lockRefresher',
-  `try {} ${tool.slice(closeStart + 2)}`);
+// (round 2 U38) the hold is capture-hold.mjs openCaptureHold's: its release is the last step, after the browser and server
+const closeOwned = new AsyncFunction('browser', 'server', 'hold', `try {} ${tool.slice(closeStart + 2)}`);
 for (const mode of ['dev', 'preview', 'browser-error', 'server-error', 'none']) {
   const calls = [];
   const browser = mode === 'none' ? null : { async close() {
@@ -555,11 +555,11 @@ for (const mode of ['dev', 'preview', 'browser-error', 'server-error', 'none']) 
     : { httpServer: { close(done) {
       calls.push('preview'); done(mode === 'server-error' ? new Error('server close failed') : undefined);
     } } };
-  const closing = closeOwned(browser, server, () => calls.push('timer'), () => calls.push('lock'), 1);
+  const closing = closeOwned(browser, server, { release: async () => { calls.push('lock'); } });
   if (mode.endsWith('-error')) await assert.rejects(closing, /close failed/);
   else await closing;
-  assert.deepEqual(calls, mode === 'none' ? ['timer', 'lock']
-    : ['browser', mode === 'dev' ? 'dev' : 'preview', 'timer', 'lock']);
+  assert.deepEqual(calls, mode === 'none' ? ['lock']
+    : ['browser', mode === 'dev' ? 'dev' : 'preview', 'lock']);
 }
 assert.ok(tool.indexOf('evaluateOnNewDocument(primePinnedSceneStorage') < tool.indexOf('page.goto('));
 assert.ok(tool.includes('if (prior) await page.evaluate(applyTimingCamera, prior.state.camera)'));

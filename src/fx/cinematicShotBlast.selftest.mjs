@@ -22,6 +22,7 @@ function blast(size, cause, atS = [6]) {
     explosionLight: new THREE.PointLight(0xff7f38, 0, 13, 2), explosionPeak: 520,
     groundY: () => 0, explosionFlashAgeS: () => 1e9, flashExplosion: () => {},
     setLateFxActive: () => {}, setColumnCap: () => {}, setLightTintShading: () => {}, setMuzzleExposure: () => {}, stampTrackPrint: () => {},
+    setClockShift: () => {},
   };
   const cin = createStudioCinematics({ port, scene: new THREE.Scene(), light: null, palette: () => 'verdant', seed: () => 5000 });
   cin.setQuality('cinematic');

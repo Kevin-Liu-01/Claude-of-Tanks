@@ -59,7 +59,7 @@ let releasedCells=0;
 for(const id of ['m1a1_abrams_hc','t90am','xk2_black_panther','m551_sheridan','kv2','jpz_e100']) {
   await ensureTankBuilder(id);
   for(const pop of [false,true]) {
-    const baked=bakeTankWreck(null,id,{seed:91234,pop});
+    const baked=bakeTankWreck(null,id,{seed:91234,state:pop?'turret_blown_off':'burnt_out'});
     assert.ok(baked,`${id} bakes`);
     assert.ok(baked.solids.length>=1 && baked.solids.length<=10,`${id}: bounded solid bodies (the hull's columns and the turret)`);
     const placed=placeWreckCollision(baked.solids,new THREE.Matrix4());

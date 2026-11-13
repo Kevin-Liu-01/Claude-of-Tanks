@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { createObstacleGrid, setObbShape } from '../world/collision.ts';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import ts from 'typescript-compiler-api';
+import * as THREE from 'three';
+import { createObstacleGrid, setCircleShape, setObbShape } from '../world/collision.ts';
+import { createFelledTrees } from '../world/felledTrees.ts';
 import { createStudioCrushes, planStudioCrushes } from './studioCrush.ts';
 
 // A hull on a straight track: x fixed, z from z0 at speed (m/s), facing +Z.
@@ -121,5 +126,126 @@ assert.deepEqual(bursts, ['pole'], 'and hands its burst back');
 calls.length = 0;
 crushes.settleTo(world, 2500);
 assert.deepEqual(calls, ['reset', 'fencerail:settled:ram', 'pole:prop', 'run 1.6'], 'a seek lays the records settled and runs the pole\'s fall out');
+
+// (round 2 U28, review) The felled trees' fall driver (felledTrees.ts): the Studio's timeline takes the falls of the world
+// it plans on and gives them back to the world's own update as it leaves. A world left on the timeline would, in every
+// later battle, down a trunk's collision and its canopy while the tree itself never fell.
+{
+  const said = [];
+  const recording = { ...world, setFallDriver: (d) => said.push(d), setCrushSweeps: (on) => said.push(on ? 'sweeps on' : 'sweeps off') };
+  const applier = createStudioCrushes();
+  applier.setPlan(recording, fast);
+  assert.deepEqual(said, ['timeline'], 'a plan takes the world\'s falls for the timeline');
+  applier.setPlan(recording, []);
+  assert.deepEqual(said, ['timeline', 'timeline'], 'a new plan on the same world keeps them');
+  applier.restore(recording);
+  assert.deepEqual(said, ['timeline', 'timeline', 'sweeps on', 'frame'], 'leaving gives them back to the world\'s update');
+  applier.setPlan(null, []);
+  applier.restore(null); // no world: nothing to declare
+}
+// studio.ts's own crush plan (syncCrushPlan, crushPlanCurrent, advanceCrushes, releaseCrushes, compiled from the source)
+// over two battlefields whose felled trees are real (felledTrees.ts behind the page world's seams, map.ts)
+{
+  const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
+  const source = ts.createSourceFile('studio.ts', studioSource, ts.ScriptTarget.Latest, true);
+  const names = new Set(['crushPlanCurrent', 'syncCrushPlan', 'advanceCrushes', 'releaseCrushes']);
+  const nodes = [];
+  (function visit(node) {
+    if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) nodes.push(node);
+    ts.forEachChild(node, visit);
+  })(source);
+  assert.equal(nodes.length, 4, 'the Studio\'s crush plan functions');
+  // the Studio's crush state, declared beside the functions as it is there; what else they read is a port below (an
+  // unknown name reads undefined, or a no-op where it is called, so a later dependency runs this case unchanged)
+  const STATE = new Set(['crushes', 'crushStoryboard', 'crushWorld', 'crushSpecs', 'pressHulls']);
+  const free = new Set(), called = new Set(), declared = new Set();
+  const visitNames = (node) => {
+    if (ts.isTypeNode(node)) return;
+    if (ts.isIdentifier(node)) {
+      const parent = node.parent;
+      const declares = (ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isFunctionDeclaration(parent)
+        || ts.isFunctionExpression(parent) || ts.isBindingElement(parent)) && parent.name === node;
+      const key = (ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent))
+        && parent.name === node;
+      if (declares) declared.add(node.text);
+      else if (!key && !ts.isBindingElement(parent)) free.add(node.text);
+      if (ts.isCallExpression(parent) && parent.expression === node) called.add(node.text);
+    }
+    ts.forEachChild(node, visitNames);
+  };
+  nodes.forEach(visitNames);
+  for (const name of [...free]) if (declared.has(name) || STATE.has(name) || name in globalThis) free.delete(name);
+
+  const pose = (m) => m.elements.map((v) => v.toFixed(9)).join();
+  /** A battlefield with one tree on the hull's lane (z = 10) and its real felled-tree owner. */
+  function battlefield() {
+    const tree = { x: 0, z: 10, mat: new THREE.Matrix4().makeTranslation(0, 0, 10), fallH: 8, fallR: 0.3 };
+    const record = setCircleShape({ min: [-0.3, 0, 9.7], max: [0.3, 8, 10.3], crushable: true, treeIdx: 0, kind: 'tree' }, 0, 10, 0.3);
+    const felled = createFelledTrees({ trees: [tree], records: [record], concealers: [], heightField: { getHeightAt: () => 0 },
+      write() {}, poseChanged() {}, standingChanged() {} });
+    return {
+      tree, record, felled, sweeps: true, upright: pose(tree.mat),
+      queryObstacles: createObstacleGrid([record]), crushables: [],
+      update: (dt) => felled.advance(dt, 'frame'), // the frame's update (vegetation.ts update)
+      advanceToppledVegetation: (dt) => felled.advance(dt, 'timeline'),
+      advanceDestruction: (dt) => felled.advance(dt, 'timeline'),
+      crushObstacle: (ob, dx, dz, _speed, _cause, options) => felled.fell(ob, dx, dz, options?.settled),
+      crushProp: () => false,
+      resetDestructibles: () => felled.restoreAll(),
+      setCrushSweeps(on) { this.sweeps = on; },
+      setFallDriver: (driver) => felled.setDriver(driver),
+    };
+  }
+  let current = null;
+  const noop = () => {};
+  const ports = {
+    // one hull on a track up the lane at 9 m/s: its nose meets the tree at about 690 ms
+    storyboard: { durationMs: 3000 }, clockMs: 0, DEG: Math.PI / 180, actors: [{ spec: { dims: { hullLengthM: 7 } } }],
+    actorTrackFor: () => ({ keys: [] }),
+    sampleActorTrack: (_keys, tMs, out) => { out.x = 0; out.z = 9 * tMs / 1000; out.facingDeg = 0; return true; },
+    tankContactRect: () => ({ halfLength: 3.5, halfWidth: 1.8, centerX: 0, centerZ: 0 }),
+    _crushSample: {}, planStudioCrushes, pressBetween: noop, PRESS_STEP_MS: 1000 / 60, getWorld: () => current, crushBurst: noop,
+  };
+  for (const name of free) if (!(name in ports)) ports[name] = called.has(name) ? noop : undefined;
+  const code = stripTypeScriptTypes(`
+    function make(ports, createStudioCrushes) {
+      const { ${Object.keys(ports).join(',')} } = ports;
+      const crushes = createStudioCrushes();
+      let crushStoryboard = null, crushWorld = null;
+      const crushSpecs = [], pressHulls = [];
+      ${nodes.map((node) => node.getText(source)).join('\n')}
+      return { advanceCrushes, releaseCrushes };
+    }
+  `);
+  const studio = new Function('ports', 'createStudioCrushes', `${code}\nreturn make(ports, createStudioCrushes);`)(ports, createStudioCrushes);
+
+  const alpha = battlefield(), bravo = battlefield();
+  current = alpha;
+  studio.advanceCrushes(0, 1000); // playback over the overrun: the tree falls on the timeline
+  assert.equal(alpha.felled.driver, 'timeline', 'the Studio\'s battlefield: the timeline drives its falls');
+  assert.equal(alpha.sweeps, false, 'its sweeps off');
+  assert.ok(alpha.tree.crushed && alpha.felled.falling === 1, 'the overrun felled the tree, its fall in flight');
+  const midFall = pose(alpha.tree.mat);
+  alpha.update(1 / 60);
+  assert.equal(pose(alpha.tree.mat), midFall, 'the page\'s frame leaves the timeline\'s fall alone');
+
+  current = bravo; // the scene moves to another battlefield
+  studio.advanceCrushes(1000, 1000 + 1000 / 60);
+  assert.equal(alpha.felled.driver, 'frame', 'the battlefield the Studio left: its falls are its update\'s again');
+  assert.equal(alpha.sweeps, true, 'its sweeps on');
+  assert.ok(!alpha.tree.crushed && pose(alpha.tree.mat) === alpha.upright, 'its tree stands');
+  alpha.crushObstacle(alpha.record, 0, 1); // a later battle on it fells the tree
+  alpha.update(1 / 60);
+  assert.notEqual(pose(alpha.tree.mat), alpha.upright, 'and that battle\'s fall moves with the frame');
+  assert.equal(bravo.felled.driver, 'timeline', 'the new battlefield is the timeline\'s');
+  assert.ok(bravo.tree.crushed, 'its tree felled by the same plan');
+
+  studio.releaseCrushes(); // the Studio exits
+  assert.equal(bravo.felled.driver, 'frame', 'the exit gives the last battlefield back');
+  assert.ok(bravo.sweeps && !bravo.tree.crushed, 'its sweeps on, its tree standing');
+  bravo.crushObstacle(bravo.record, 0, 1);
+  bravo.update(1 / 60);
+  assert.notEqual(pose(bravo.tree.mat), bravo.upright, 'its next battle\'s fall moves with the frame');
+}
 
 console.log('studioCrush.selftest: pass');

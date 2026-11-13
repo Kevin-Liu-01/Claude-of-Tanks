@@ -4,6 +4,7 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, 
 import { createGaragePhasePresentationRuntime } from '../game/garagePhasePresentationRuntime.ts';
 import { SHOT_VIEWS } from './shotContract.ts';
 import { setShotView } from './shotRuntime.ts';
+import { createStudioLeftWorld } from '../world/studioLeftWorld.test-support.mjs';
 
 const beforeRecipe = new Error('fixture reached the recipe boundary');
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
@@ -154,6 +155,18 @@ for (const name of SHOT_VIEWS) {
   fixture.assertOwned();
 }
 
+// (2026-11-02 audit F1 review) a still over the Studio's scene (studio -> shot is no edge) is refused before the
+// showroom, the shot mode or the capture veil move: the phase write used to throw after them
+{
+  const refused = createFixture();
+  refused.context.game.phase = 'studio';
+  refused.setTarget('garage');
+  await assert.rejects(setShotView('garage', refused.context),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'shot');
+  assert.equal(refused.events.includes('shot:true'), false, 'the shot mode never moved');
+  assert.equal(refused.context.game.phase, 'studio');
+}
+
 // Cold Garage, Garage→battle, cached same-map battle, map-switch battle, then
 // battle→Garage: the recipe and every later paint see one presentation owner.
 const complete = createFixture();
@@ -174,6 +187,43 @@ assert.equal(complete.dressing.visible, true);
 assert.equal(complete.restoreCount, 1, 'desktop return renews the released Garage buffers once');
 assert.equal(complete.disposeCount, 1, 'cached battle captures do not repeatedly release Garage buffers');
 assert.equal(complete.phase.diagnostics().gpu.suspended, false);
+
+// (round 2 U28) a still's battle starts from an intact world: the world's own reset (map.ts resetDestructibles: felled
+// trees, broken props, the last battle's traces) runs before the shot's setupBattle, on a fresh and on a cached world
+{
+  const fresh = createFixture();
+  const order = [];
+  const switchMap = fresh.context.switchMap;
+  fresh.context.switchMap = async (mapId) => {
+    await switchMap(mapId);
+    fresh.world.resetDestructibles = () => order.push('reset-destructibles');
+  };
+  fresh.context.setupBattle = () => order.push('setup-battle');
+  for (const name of ['battlefield', 'battlefield']) {
+    fresh.setTarget(name);
+    await setShotView(name, fresh.context);
+  }
+  assert.deepEqual(order, ['reset-destructibles', 'setup-battle', 'reset-destructibles', 'setup-battle'],
+    'the last battle\'s felled trees and broken props stand again before each shot\'s battle (before: setupBattle only)');
+}
+
+// (round 3 A7/M4) a still on a battlefield the Studio planned crushes on and never gave back (its teardown threw before
+// releaseCrushes): the shot's battle takes the falls and the sweeps, as a battle start does
+{
+  const fresh = createFixture();
+  const left = createStudioLeftWorld();
+  const switchMap = fresh.context.switchMap;
+  fresh.context.switchMap = async (mapId) => {
+    await switchMap(mapId);
+    const { setFallDriver, setCrushSweeps, resetDestructibles } = left.world;
+    Object.assign(fresh.world, { setFallDriver, setCrushSweeps, resetDestructibles });
+  };
+  fresh.context.setupBattle = () => {};
+  fresh.setTarget('battlefield');
+  await setShotView('battlefield', fresh.context);
+  assert.equal(left.fallsWithUpdate(), true, 'a tree felled in the still\'s battle falls with its frames');
+  assert.equal(left.world.sweeps, true, 'the still\'s crush sweeps run');
+}
 
 // Use the real phase GPU owner and real geometry disposal events. Captures on
 // both device policies must renew the suspended phase before reporting ready,
