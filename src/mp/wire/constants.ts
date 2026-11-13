@@ -35,7 +35,12 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end. Round 3 (2026-11-05, unreleased with
 // it, so no further bump): WELCOME ends with a u32 battleId, RESUME_HINT with a varint of the row's body bits, and HOLD
 // (type 22) is new (README.md).
-export const WIRE_VERSION = 11;
+// 12 (improve-271 plan 020, release 273): a delta's mode-state JSON or smoke text equal to its acknowledged baseline's is
+// not resent. With HAS_MODE_STATE the mode state's varint length 0 means the baseline's (a mode state is a JSON object,
+// never empty); the meta's smoke text is written with its length plus one, 0 meaning the baseline's. No flag bit (bit 7
+// of SNAPSHOT_FLAGS stays free). Every mode but Standard sent its whole mode state to every viewer in every snapshot: in
+// Capture the Flag it was most of a viewer's snapshot bytes although it rarely changes (codec.ts KEEPS_BASELINE).
+export const WIRE_VERSION = 12;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -68,7 +73,9 @@ export const WIRE_VERSION = 11;
 // judges a restart by it, round 3 A3), the resume hint's body bits (ResumeHintMessage.flags: the new host seats the hint's
 // contact and body mode as a row's, round 3 A14) and the held seat's HOLD notice (HoldMessage: a host that holds a HELLO
 // through its boot or its resume hold says how long, round 3 B1/X6).
-export const PROTOCOL_VERSION = 12; // wire 11 (destroyed falls, unseen rounds, the battle id, hint body bits, HOLD) and the round-2/3 migration handover
+// 13 (improve-271 plan 020, release 273): wire 12, a snapshot's mode state and smoke text kept from its baseline: a 272 tab
+// and a 273 tab never share a match.
+export const PROTOCOL_VERSION = 13; // wire 12 (a mode state or smoke text kept from the baseline)
 
 export const TICK_HZ = 60;
 /**

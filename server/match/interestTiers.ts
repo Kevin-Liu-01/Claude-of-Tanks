@@ -54,13 +54,15 @@ const MIN_ROW_BUDGET_BYTES = 160;
 
 /**
  * A viewer's row budget per snapshot (bytes): the host's uplink target divided among `viewers` at `snapshotHz`, less a
- * snapshot's overhead, never under MIN_ROW_BUDGET_BYTES. At 14v14 (28 viewers, 20 Hz) about 670 B, which only bursts
- * reach; at 63 viewers about 180 B, which stretches the mid and far tiers.
+ * snapshot's overhead and the JSON blobs this snapshot sends (`blobBytes`: the mode-state JSON and the smoke text, which
+ * wire 12 sends only when they differ from the baseline's, improve-271 plan 020; neither is part of the fixed overhead),
+ * never under MIN_ROW_BUDGET_BYTES. At 14v14 (28 viewers, 20 Hz) about 670 B, which only bursts reach; at 63 viewers about
+ * 180 B, which stretches the mid and far tiers.
  */
-export function snapshotRowBudgetBytes(viewers: number, snapshotHz: number, uplinkTargetBps = HOST_UPLINK_TARGET_BPS): number {
+export function snapshotRowBudgetBytes(viewers: number, snapshotHz: number, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, blobBytes = 0): number {
   if (!(uplinkTargetBps > 0) || !Number.isFinite(uplinkTargetBps)) return Infinity;
   const perSnapshot = uplinkTargetBps / Math.max(1, viewers) / Math.max(1, snapshotHz) / 8;
-  return Math.max(MIN_ROW_BUDGET_BYTES, Math.floor(perSnapshot - SNAPSHOT_OVERHEAD_BYTES));
+  return Math.max(MIN_ROW_BUDGET_BYTES, Math.floor(perSnapshot - SNAPSHOT_OVERHEAD_BYTES - Math.max(0, blobBytes)));
 }
 
 const NEAR_SQ = INTEREST_NEAR_M * INTEREST_NEAR_M;

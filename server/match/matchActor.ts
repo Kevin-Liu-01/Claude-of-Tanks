@@ -400,6 +400,9 @@ interface ActorClient {
   closing: boolean;
   /** The rounds this client's frames showed that left its view in flight (round 2 U31; bounded, round 3 A13). */
   unseenMarks: UnseenShellMarks;
+  /** The mode-state JSON and smoke text of this viewer's previous frame: a string equal to it is (usually) not resent (wire 12). */
+  sentModeStateJson: string | null;
+  sentSmokeJson: string;
 }
 
 /**
@@ -1033,8 +1036,19 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const vy = viewer ? viewer.state.pos.y : 0;
     const vz = viewer ? viewer.state.pos.z : 0;
     beginSnapshot(interest);
+    // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
+    if (frameMetaTick !== tick) { frameMeta = captureMeta(metaWithResumedClock(meta), ended); frameMetaTick = tick; }
+    const modeStateJson = meta?.modeState ? JSON.stringify(meta.modeState) : null;
+    // (improve-271 plan 020) the JSON blobs this snapshot sends spend the rows' budget first. Wire 12 does not resend a string
+    // equal to the viewer's baseline's; the publisher picks that baseline (and a keyframe) after the build, so the estimate
+    // is the strings that changed since this viewer's previous frame, in UTF-16 units plus a length prefix (no encode here)
+    const smokeJson = frameMeta!.smokeJson ?? '';
+    const blobBytes = (modeStateJson !== null && modeStateJson !== client.sentModeStateJson ? modeStateJson.length + 2 : 0)
+      + (smokeJson && smokeJson !== client.sentSmokeJson ? smokeJson.length + 3 : 0);
+    client.sentModeStateJson = modeStateJson;
+    client.sentSmokeJson = smokeJson;
     // the rows that must be fresh go first and spend the budget; the due mid and far rows queue for what is left
-    let budget = rowBudgetBytes;
+    let budget = blobBytes > 0 && rowBudgetBytes !== Infinity ? snapshotRowBudgetBytes(clients.size, snapshotHz, uplinkTargetBps, blobBytes) : rowBudgetBytes;
     let queued = 0;
     for (const entity of viewEntities) {
       const entityId = entityIdOf.get(entity.id);
@@ -1112,8 +1126,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const unseenShells = frameView === 'snapshot' ? undefined : client.unseenMarks.frame(tick, viewQuantizedShells, viewShellSources);
     viewQuantizedShells.length = 0;
     viewShellSources.length = 0;
-    // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
-    if (frameMetaTick !== tick) { frameMeta = captureMeta(metaWithResumedClock(meta), ended); frameMetaTick = tick; }
     const margin = client.input.marginTicks;
     return {
       tick,
@@ -1130,7 +1142,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       shells,
       ...(unseenShells ? { unseenShells } : {}),
       viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,
-      modeStateJson: meta?.modeState ? JSON.stringify(meta.modeState) : null,
+      modeStateJson,
     };
   }
 
@@ -1341,7 +1353,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       publisher: createViewerPublisher({ keyframeSlotTicks: keyframeSlotFor(claims.seat), snapshotEveryTicks }),
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
-      rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
+      rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false, sentModeStateJson: null, sentSmokeJson: '',
       unseenMarks: createUnseenShellMarks(),
     };
     clients.set(client, true);
