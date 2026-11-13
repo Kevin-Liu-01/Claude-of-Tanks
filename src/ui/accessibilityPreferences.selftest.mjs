@@ -345,7 +345,7 @@ const consumers = [
   ['src/engine/cameraRig.ts', /A11Y\.shake \* \(0\.0011[\s\S]*Math\.pow\(trauma, 1\.6\) \* A11Y\.shake[\s\S]*recoil \* A11Y\.shake[\s\S]*fovKick \* A11Y\.shake/, 'the camera: sway, trauma shake, recoil kick and FOV punch'],
   ['src/game/killcam.ts', /Math\.exp\(-pb\.itWall \/ 0\.3\) \* A11Y\.shake/, 'the kill cam shake'],
   ['src/game/killcam.ts', /cotKcFlash\{0%\{opacity:calc\(\.62\*var\(--cot-flash-scale,1\)\)/, 'the kill cam shock flash'],
-  ['src/fx/effects.ts', /state\.peak \* Math\.pow\(k, state\.pow \|\| 2\) \* A11Y\.flash/, 'the muzzle and blast lights'],
+  ['src/fx/effects.ts', /let v = pulseLevel\(state, age\) \* A11Y\.flash/, 'the muzzle and blast lights (applyLight, through the one level law pulseLevel)'],
   ['src/fx/effects.ts', /\* muzzleCardScale \* appliedCardFlash/, 'the additive flash and jet cards'],
   ['src/engine/volumetricClouds.ts', /\(1 - 0\.25 \* k\) \* A11Y\.flash/, 'lightning'],
   ['src/ui/hud.ts', /\(1 - paint\.age \/ 0\.25\) \* A11Y\.flash/, 'the incoming-hit bloom'],

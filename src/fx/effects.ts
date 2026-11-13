@@ -848,16 +848,33 @@ const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 const MUZZLE_LIGHT_HEX = 0xffe4c4, MUZZLE_NIGHT_HEX = 0xffb06a;
 /** the muzzle light's attack (s; applyLight's r7 note) */
 const MUZZLE_LIGHT_ATTACK_S = 0.042;
-/** (271) the most of its peak a gun's pulse reaches (its attack x its pow-2 decay over MUZZLE_LIGHT_S: ~0.52), for the
- *  near field of its own gun (engine/muzzleNearField.ts) */
-const MUZZLE_LIGHT_ENVELOPE_MAX = (() => {
-  let most = 0;
-  for (let i = 1; i < 256; i++) {
-    const t = MUZZLE_LIGHT_S * i / 256;
-    most = Math.max(most, Math.pow(1 - t / MUZZLE_LIGHT_S, 2) * THREE.MathUtils.smoothstep(t, 0, MUZZLE_LIGHT_ATTACK_S));
+/** (272) The level law of a muzzle or blast light's pulse at `age` (s), as a fraction of its peak: its decay over `dur` (s)
+ *  at exponent `pow`. The one law of a pulse's level (pulseLevel), of the light it shows (applyLight) and of its gun's near
+ *  field (muzzleEnvelopeMax). */
+function pulseDecayK(age: number, dur: number, pow: number): number {
+  return Math.pow(Math.max(0, 1 - age / dur), pow || 2);
+}
+/** the muzzle light's attack at `age` (s): 0 when its pulse is born, 1 from MUZZLE_LIGHT_ATTACK_S on (applyLight) */
+function muzzleAttackK(age: number): number {
+  return THREE.MathUtils.smoothstep(age, 0, MUZZLE_LIGHT_ATTACK_S);
+}
+/** muzzleEnvelopeMax's last answer: every gun's pulse decays at the muzzle light's own MUZZLE_LIGHT_S and pow 2 */
+const lastEnvelope = { dur: NaN, pow: NaN, most: 0 };
+/** (271) The most of its peak a gun's pulse reaches (~0.52 at MUZZLE_LIGHT_S and pow 2), for the near field of its own gun
+ *  (engine/muzzleNearField.ts): (272) the top of the law the light shows it by, its attack x its decay (muzzleAttackK x
+ *  pulseDecayK), over the pulse's own `dur` and `pow`, so a change to either law or to the pulse's decay moves the light
+ *  and its gun's near field together. */
+function muzzleEnvelopeMax(dur: number, pow: number): number {
+  if (dur !== lastEnvelope.dur || pow !== lastEnvelope.pow) {
+    let most = 0;
+    for (let i = 1; i < 256; i++) {
+      const t = dur * i / 256;
+      most = Math.max(most, pulseDecayK(t, dur, pow) * muzzleAttackK(t));
+    }
+    lastEnvelope.dur = dur; lastEnvelope.pow = pow; lastEnvelope.most = most;
   }
-  return most;
-})();
+  return lastEnvelope.most;
+}
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -1574,6 +1591,33 @@ function* createFxSteps(
     return particles.getTime() - state.bornAt;
   }
 
+  /** A pulse's own level at `age` (s): its peak on its decay (cd, pulseDecayK; before the Accessibility flash, the muzzle
+   *  light's attack and the blast light's flicker, which applyLight lays on it). */
+  function pulseLevel(state: LightState, age: number): number {
+    return state.peak * pulseDecayK(age, state.dur, state.pow);
+  }
+
+  /**
+   * (272) Whether the pulse burning in `state` outranks a new pulse of `peak` (cd, as flashLight takes it): its own level
+   * now (pulseLevel) is the brighter, both sides before the Accessibility flash. A spent or reset pulse (level 0) or a
+   * dimmer one does not. The roof-gun flash port asked the light's intensity instead: the attack ramp
+   * (MUZZLE_LIGHT_ATTACK_S) holds that under the level through a pulse's first 42 ms (at 0 in the frame it is born), replay
+   * suppression holds it at 0, the Accessibility flash scaled that side only, and applyLight wrote it a frame back. So a
+   * roof gun's small pulse took a bigger pulse's light, place and gun's near field through that pulse's attack, under a
+   * replay suppression and in the first frame after it; and against that guard a decaying pulse now hands the light over
+   * one frame sooner where its level crosses the new peak (its level now, not the intensity of the frame before), at the
+   * default flash of 1; below it the old guard passed the light sooner, once the level fell under peak / flash.
+   *   Every other read of a light's intensity shows the light as it is and decides no yield (effectAttachments.selftest
+   * pins that no comparison of one in this file is with anything but a constant): applyLight's near-field publish,
+   * writeLocalLights and its spot lights, the replay-suppression report, and engine/vehicleGroundOcclusion.ts
+   * packGroundKeyLights (the registered lamps, this muzzle light among them, by intensity > 1e-3). The explosion light's
+   * reads of a burning pulse go by its age (lightAge < dur, where pulseLevel > 0): writeLocalLights' blast,
+   * updateWreckLight and cinematicFx through explosionFlashAgeS.
+   */
+  function pulseOutranks(state: LightState, peak: number): boolean {
+    return pulseLevel(state, Math.max(0, lightAge(state))) > peak;
+  }
+
   function applyLight(state: LightState): void {
     if (replaySuppressed) {
       state.light.intensity = 0;
@@ -1589,13 +1633,13 @@ function* createFxSteps(
       state.light.position.copy(state.origin).addScaledVector(c, Math.max(0, age));
     }
     // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
-    let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
+    let v = pulseLevel(state, age) * A11Y.flash;
     // r7 fire-moment exposure wash (critic: "at ignition the flash glow +
     // dust veil bleach the firing tank and ~half the frame to cream"): the
     // muzzle light ATTACKS over ~40 ms instead of stamping full peak on the
     // ignition frame — t=0/17 ms keep the hull camo legible, while the
     // composed 50 ms frame (and the 60 ms petal beat) still catch ~full peak.
-    if (state.light === muzzleLight) v *= THREE.MathUtils.smoothstep(age, 0.0, MUZZLE_LIGHT_ATTACK_S);
+    if (state.light === muzzleLight) v *= muzzleAttackK(age);
     // r6: fire is never a steady lamp — the blast light carries a two-band
     // flicker past its initial pop so the floor pool visibly LIVES while it
     // collapses (the static-stain fix's motion half).
@@ -1623,7 +1667,7 @@ function* createFxSteps(
     if (state.light !== muzzleLight || !(bore.lengthSq() > 1e-8)) return;
     const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
     gunNear.bore.copy(bore).normalize();
-    gunNear.radius = muzzleNearRadiusM(state.peak * MUZZLE_LIGHT_ENVELOPE_MAX * A11Y.flash, rig?.sunIntensity ?? 4.5);
+    gunNear.radius = muzzleNearRadiusM(state.peak * muzzleEnvelopeMax(state.dur, state.pow) * A11Y.flash, rig?.sunIntensity ?? 4.5);
     applyLight(state);
   }
 
@@ -6938,7 +6982,8 @@ function* createFxSteps(
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
     // (240) a roof gun's flash lights its mount as any gun of its bore does (muzzleLightPulse: a 12.7 mm round a ~30 cd
-    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
+    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning,
+    // (272) by that pulse's own level (pulseOutranks), also in the frame it is born
     flash: (p,d,caliber,id) => {
       subjectPointVelocity(id != null ? subjectFor(id) : null, p.x, p.z, _shotVel);
       // (272) a roof gun's rounds by its station's cadence on the match clock (the Studio's timeline clock flashes each)
@@ -6947,7 +6992,7 @@ function* createFxSteps(
       const lightK = spawnMuzzleFlash(p,d,caliber,0,1,_shotVel,cadence === 'flicker');
       const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
-      if (!(muzzleLight.intensity > peak)) {
+      if (!pulseOutranks(lightStates[0], peak)) {
         // (271) a refused pulse (a non-finite place) binds no near field: the pulse still burning stays its own gun's
         if (cadence === 'full' ? flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range, _shotVel)
           : holdMuzzleLight(p, peak, pulse.range, _shotVel)) boundGunNearField(lightStates[0], d);

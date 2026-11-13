@@ -65,8 +65,27 @@ The muzzle light sits 0.15 m behind its own gun's muzzle, so that gun's forward
 faces would take hundreds of suns: a gun's pulse claims its near field
 (`boundGunNearField`, `engine/muzzleNearField.ts`), which every cascade-shadow
 material bounds at `MUZZLE_NEAR_SUN_K` x the sun within a capsule round that gun.
-A new gun pulse of the muzzle light calls it too; the hull, ground and other
-vehicles keep the bare light.
+A new gun pulse of the muzzle light calls it too, only when `flashLight`
+returned true: a refused pulse binds nothing, and the pulse still burning stays
+its own gun's. `effectAttachments.selftest` drives every caller's lit and
+refused shot and counts the callers, so a new site joins its list. The hull,
+ground and other vehicles keep the bare light. A site that yields to a brighter
+pulse still burning (the roof-gun flash port) asks `pulseOutranks`, the pulse's
+own level now with neither side under the Accessibility flash, never the
+light's intensity: the attack ramp holds that under the level for 42 ms, a
+replay suppression zeroes it, the flash scales it and it was written a frame
+back. Against the old intensity guard a decaying pulse hands the light over one
+frame sooner at its crossing at the default flash of 1 (below it the old guard
+passed the light sooner, once the level fell under peak / flash). `effectAttachments.selftest` pins that every
+comparison of a light's intensity in `effects.ts` is with a constant. The
+intensity reads left show the light as it is and decide no yield: applyLight's
+near-field publish, `writeLocalLights` and its spot lights, the suppression
+report, and `engine/vehicleGroundOcclusion.ts` `packGroundKeyLights` (lamps by
+`light.intensity > 1e-3`). The explosion light's reads of a burning pulse go by
+its age (`lightAge < dur`): `writeLocalLights`' blast, `updateWreckLight` and
+`cinematicFx` through `explosionFlashAgeS`. The pulse's level law
+(`pulseDecayK`, `muzzleAttackK`) also sizes its gun's near field
+(`muzzleEnvelopeMax`), so a change to it moves both.
 A fast gun's flash goes by its cadence (`game/shotCadence.ts`, release 272): the full flash
 and its smoke once each 0.15 s per weapon, the rounds between only their core cards at their
 own barrel, and a sustained gun's muzzle light held (relit each round past its attack, never

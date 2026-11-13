@@ -14,6 +14,21 @@ const SUN = 4.5, FLOOR = 0.0625;
 /** three's falloff with the 0.25 m floor (renderer.ts), x the near-field factor: the light's irradiance per candela */
 const reach = (offset, bore, radius) => muzzleNearFieldFactor(offset, bore, radius) / Math.max(offset.lengthSq(), FLOOR);
 
+// --- (272) the near field starts unpublished. This block runs before anything in this process publishes: three's
+// `new Vector4()` is (0, 0, 0, 1), which read as a published 1 m near field at the origin on the default bore with no
+// owner, so no release could clear it.
+{
+  const uniforms = sharedUniforms();
+  assert.equal(uniforms.uCotMuzzleSeat.value.w, 0, "before any publish no gun's near field is published");
+  releaseMuzzleNearField({});
+  assert.equal(uniforms.uCotMuzzleSeat.value.w, 0, 'a release with nothing published leaves it unpublished');
+  const owner = {};
+  publishMuzzleNearField(owner, new THREE.Vector3(1, 2, 3), new THREE.Vector3(1, 0, 0), 2.5);
+  assert.equal(uniforms.uCotMuzzleSeat.value.w, 2.5, 'a publish binds its radius');
+  releaseMuzzleNearField(owner);
+  assert.equal(uniforms.uCotMuzzleSeat.value.w, 0, "its owner's release unpublishes it");
+}
+
 // --- the radius: the peak's irradiance on the gun is MUZZLE_NEAR_SUN_K x the sun, a night sun counts as a dusk one
 {
   const peak = 460 * 0.976 * 0.521; // a 120 mm gun's pulse at its envelope's top

@@ -36,8 +36,9 @@ const MUZZLE_NEAR_SUN_FLOOR = 2;
 const FALLOFF_FLOOR_M2 = 0.0625;
 
 const UNIFORMS = {
-  /** xyz the burning gun pulse's light (world), w its near-field radius (m; 0 while no gun's pulse burns) */
-  uCotMuzzleSeat: { value: new THREE.Vector4() },
+  /** xyz the burning gun pulse's light (world), w its near-field radius (m; 0 while no gun's pulse burns). (272) It starts
+   *  unpublished: three's `new Vector4()` is (0, 0, 0, 1), a 1 m near field at the origin that no owner could release. */
+  uCotMuzzleSeat: { value: new THREE.Vector4(0, 0, 0, 0) },
   /** the pulse's line of fire (world, unit) */
   uCotMuzzleBore: { value: new THREE.Vector3(0, 0, 1) },
 };

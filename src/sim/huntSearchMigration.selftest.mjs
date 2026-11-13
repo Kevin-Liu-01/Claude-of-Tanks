@@ -85,8 +85,11 @@ function hostFrame(actor, tick, era) {
     meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: sim.entities.map((e) => captureEntityRow(e, actor.wireIdOf(e.id), era, tick)),
     shells: [], viewer: null, modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
 }
-/** A case is built only when its resume took that path: a newest frame newer than the keyframe, with the mode state. */
-const throughNewestFrame = (state, keyframe) => state.frame.tick > (keyframe?.tick ?? Infinity) && typeof state.frame.modeStateJson === 'string';
+/** A case is built only when its resume carries that path's inputs: a newest frame newer than the keyframe, with the mode
+ *  state, over a mode checkpoint (applyResumeState restores one only when the resume carries it; checkpointAtNewestFrame
+ *  rewrites a checkpoint with a mode), as reviveMigration.selftest's throughNewestFrame. */
+const throughNewestFrame = (state, keyframe) => state.frame.tick > (keyframe?.tick ?? Infinity) && typeof state.frame.modeStateJson === 'string'
+  && !!state.modeCheckpoint?.mode;
 const newestText = (state, keyframe) => `the newest frame (tick ${state.frame.tick}, mode state ${state.frame.modeStateJson ? 'carried' : 'missing'}) `
   + `against the keyframe (tick ${keyframe?.tick})`;
 
