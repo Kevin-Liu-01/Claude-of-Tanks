@@ -3139,7 +3139,7 @@ export function createAudio({
   /**
    * What the battle's play has laid down (round 4 E6b review r2): its one-shot calls and their clocks, its watermarks on
    * the battle's sim clock, the module states and rounds it told, and the own hull's last look. A network battle's restart
-   * opens a new battle (the session's decision, battlePresentation.ts resetSettledWorld), so restartLives runs this too, and
+   * opens a new battle (owner approved 2026-11-13; battlePresentation.ts resetSettledWorld), so restartLives runs this too, and
    * a field added here is reset at a restart as at a battle's start. Before, the restart kept them: a smoke screen launched
    * in the restarted battle before the abandoned battle's last launch time was silent (lastSmokeBorn is on the sim clock,
    * which restarts at 0), a module state the abandoned battle told stood (moduleStates: the restarted battle's same break

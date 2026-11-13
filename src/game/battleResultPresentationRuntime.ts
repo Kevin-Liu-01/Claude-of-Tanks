@@ -427,8 +427,8 @@ export function createBattleResultPresentationRuntime({
     dropDeathFlow();
   };
 
-  // (round 4 E6b) A network battle restarted under this seat opens a new battle (the session's decision; Kevin may
-  // overrule): the battle start's own reset (startOver), so its ending reads only its facts (the director's last kill,
+  // (round 4 E6b) A network battle restarted under this seat opens a new battle (owner approved 2026-11-13): the
+  // battle start's own reset (startOver), so its ending reads only its facts (the director's last kill,
   // zone, flag, goal and wave: a restarted battle that ended on time framed the abandoned battle's last wreck) and the
   // player's death flow is its own again (a death beat pending at the restart played its replay over the restarted
   // battle; a seat whose death cam had run got none, and no death replay at the verdict, when it died again). It runs
@@ -465,8 +465,8 @@ export function createBattleResultPresentationRuntime({
   // live, no replay and no ally chase (the killcam starts it only from a death flow) until the next wave, and a verdict
   // on such a death got the wreck orbit instead of its kill cam (owner 2026-09-21: "if u die before end it shows a kill
   // cam of that end"). The revive ends the life that latch belongs to, as the killcam's listener ends its lethal chain,
-  // so the death cam re-arms (round 6 V5 keeps it; Kevin may overrule: origin/main 268 ran only a hull's first death
-  // flow in a room).
+  // so the death cam re-arms (round 6 V5 keeps it, owner approved 2026-11-13; origin/main 268 ran only a hull's first
+  // death flow in a room).
   // In a mode with a respawn timer the flow never starts (update's `revives`), so this is a no-op there. Only this
   // seat's hull counts: inside its death window every other revive (Horde's arrivals and wave start, Frontline's bot
   // allies and reinforcements) tells the same event with its own id.

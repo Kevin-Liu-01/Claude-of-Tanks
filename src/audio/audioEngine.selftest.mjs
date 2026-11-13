@@ -253,6 +253,13 @@ assert.ok(names.includes('smoke_launcher') && names.includes('smoke_burst'), `sm
 since = mark();
 bus.emit('tank:ram', { aId: 'me', bId: 'ally', pos: [10, 1, 20], closingMps: 7, dmgA: 50, dmgB: 50 });
 assert.ok(logSince(since).some((e) => e.n === 'ram_heavy'));
+// S2 (owner approved 2026-11-13): a teammate contact as the drivers report it (zero damage) keeps the crunch and the
+// cab's knock, as any contact on our own hull (onTankRam has no team gate before the knock)
+ctx.advance(1);
+since = mark();
+bus.emit('tank:ram', { aId: 'me', bId: 'ally', pos: [10, 1, 20], closingMps: 4, dmgA: 0, dmgB: 0, aIsPlayer: true });
+names = logSince(since).map((e) => e.n);
+assert.ok(names.includes('ram_light') && names.includes('nonpen_interior'), `a teammate contact: the crunch and the cab's knock (${names})`);
 
 // Hull clunks: one per real stop, never one per frame a lay flickers or a servo hunts.
 since = mark();

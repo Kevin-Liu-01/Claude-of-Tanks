@@ -2001,8 +2001,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     recordCombatantRevived(combatant(p.id));
   });
   // (round 3 merge review r1; round 4 E6b) a network battle restarted under this seat (battlePresentation.ts
-  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (the session's decision;
-  // Kevin may overrule), so the report starts over as at a battle's start (reset(): shots, hits, damage both ways, the
+  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (owner approved
+  // 2026-11-13), so the report starts over as at a battle's start (reset(): shots, hits, damage both ways, the
   // combatants' kills, deaths and life, the kill ledger, the timeline, the spotting assists). Before, only the dead were
   // revived, and the report of the battle that ended added the abandoned battle's shots, damage and kills to its own.
   bus.on('battle:restarted', () => api.reset());

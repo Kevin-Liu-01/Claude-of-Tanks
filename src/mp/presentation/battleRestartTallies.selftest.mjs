@@ -1,6 +1,6 @@
 // Proof (implicit state machine audit, round 4 E6b, 2026-11-06): a network battle restart opens a new battle for every
-// per-battle record. Decision (the session's, under the owner's standing "I approve everything: decide, act"; Kevin may
-// overrule): the HUD's kill counts and the battle report start over at the restart, and the service record and the
+// per-battle record. Decision (the session's, under the owner's standing "I approve everything: decide, act"; owner
+// approved 2026-11-13): the HUD's kill counts and the battle report start over at the restart, and the service record and the
 // career record take only the battle that ends, so the abandoned battle adds nothing. Every owner resets on the one
 // restart edge the presentation tells once ('battle:restarted', battlePresentation.ts resetSettledWorld; battleRestartReset
 // case 6 pins once), through the reset its battle start runs:

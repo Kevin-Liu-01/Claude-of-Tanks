@@ -727,8 +727,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     battle.killShots.delete(id);
   });
   // (round 3 merge review r1; round 4 E6b) A network battle restarted under this seat (battlePresentation.ts
-  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (the session's decision;
-  // Kevin may overrule): the record takes only the battle that ends. Its tracking starts over (begin) on the same vehicle
+  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (owner approved
+  // 2026-11-13): the record takes only the battle that ends. Its tracking starts over (begin) on the same vehicle
   // and map, in the battle it already reached: no kill, damage, shot, streak, chain, spot or medal of the abandoned battle
   // counts, this seat is alive, no hull carries the abandoned battle's damage and no earlier round is any hull's killing
   // shot. Before, only the lives were renewed, and the battle that ended was recorded with the abandoned battle's kills,
