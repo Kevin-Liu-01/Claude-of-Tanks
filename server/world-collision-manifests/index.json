@@ -229,10 +229,10 @@
       "concealers": 0
     },
     "cliffbridge": {
-      "bytes": 2180938,
-      "sha256": "fb83d2533cccbfdc1ffe9718fe5b3e32470a10dfe4f07c979f2e64e53adc4360",
+      "bytes": 2185815,
+      "sha256": "ad77d7c289847e8ed9d554f627a6e7987564e104edb9cdf4b37ee9d9c6da11b6",
       "obstacles": 6753,
-      "colliders": 7827,
+      "colliders": 7831,
       "concealers": 5379
     }
   },
@@ -463,10 +463,10 @@
         "concealers": 0
       },
       "cliffbridge": {
-        "bytes": 2180938,
-        "sha256": "fb83d2533cccbfdc1ffe9718fe5b3e32470a10dfe4f07c979f2e64e53adc4360",
+        "bytes": 2185815,
+        "sha256": "ad77d7c289847e8ed9d554f627a6e7987564e104edb9cdf4b37ee9d9c6da11b6",
         "obstacles": 6753,
-        "colliders": 7827,
+        "colliders": 7831,
         "concealers": 5379
       }
     }
