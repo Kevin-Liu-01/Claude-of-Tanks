@@ -898,6 +898,47 @@ order, the run first) and `?treeCullOrder=sorted` (the run front to back from th
 whether the swaps' instance order costs the GPU; the default is the swaps. Re-measure GPU time on the current tree
 before relying on the triangle saving: until the `tree-cull` toggle's A/B says the GPU gains, the cull ships off.
 
+## Far tree impostors: one pool (2026-11-13, world-pools-impostors-273)
+
+The draw census (`tools/draw-census.mjs`: every `renderBufferDirect` call of whole frames charged to its object's world
+subtree, name and material, main and shadow passes apart; an instanced call with count 0 is a submission, not a draw)
+put a held battle frame at 270 to 320 color-pass draws on six maps (desktop High, 14 v 14, bots frozen and hidden,
+1920x1080). The far tree impostors drew one quad pool per species and far variant (8 on a four-species map), and as many
+again for the trees adopted over the red line, the horizon ring's forest and the hinterland. The quads differed only in
+four per-vertex constants (the species' first atlas row, the mirror flag, the variants baked, the elevated row) and the
+needle share. `TreeImpostorLibrary.poolGeometry` now makes one quad with those as instanced attributes (`aImpCell`,
+`aImpNeedle`), written with each slot (`cellOf`, `needleOf`; vegetation.ts `writeImpostorCell`, the static owners'
+`fillTreeImpostorCells`): the battlefield's far tier, each adopted batch, the ring forest and the hinterland draw one pool
+each. Same program, same per-instance values, same instance data; no per-frame work is added (the slot writes carry
+five floats more), and the pool's capacity is the living trees' (one far slot a tree), half the memory of a pool per
+species and far variant at the species' full count.
+
+Measured: the draw census against this branch's base (origin/main 8a036d66ff), production builds, desktop High, 14 v 14, every bot
+frozen and hidden, 1920x1080 (draw counts are exact; the shadow passes are unchanged: the far tier casts nothing):
+
+| map | chase: color-pass draws base → new | overview: base → new |
+| --- | ---: | ---: |
+| Verdant | 304 → 291 (−13) | 201 → 188 (−13) |
+| Monsoon | 318 → 303 (−15) | 207 → 192 (−15) |
+| Autumn | 298 → 284 (−14) | 194 → 180 (−14) |
+
+No per-frame work is added, so the change cannot cost frame time; a wall-clock A/B on this shared Mac (load 15–37, the
+frame-budget probe and a thread-CPU trace of the render loop) could not resolve a 13–15-draw saving either way.
+
+Rendered proof (`tools/world-pools-truth.mjs`; fixed cameras, temporal AA held, the clouds' history frozen, the wind
+clock set, each frame rendered and read back in one task): the battlefield's impostor layout as the base drew it (one pool per species and far variant: 2 shared pools → 16),
+rebuilt in the page from the shared pools' own instance data and drawn in the same scene state, against the merged
+pools, at four poses (chase, overview, bird, side) on Verdant, Monsoon and Autumn. The A/A floor (the frame twice) is 0 px
+at every pose; restoring the merged pools returns 0 px. The two layouts differ by 0 px at 9 of the 12 poses and by 2–4 px
+(max 21/255) at Verdant's overview and Monsoon's chase and overview, every one inside a mass of distant crowns: two
+species' quads tying at a cutout edge, whose draw order the merge interleaves (foliage edges). The ring forest's merged
+pool was checked the same way on Verdant and Monsoon (2026-11-12, item/world-pools-272): 0 px outside the same crown
+edges. The hinterland's pool is built by the same pool geometry and cell fill.
+
+The destructible props' batches (one `BatchedMesh` per shared material, another 30 to 40 draws) wait on their own gate
+(item/world-pools-272): they add per-render work (the members' streams mirrored, the instances culled and ordered), so
+they ship only where their main-thread cost is shown below the submission cost they save.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
