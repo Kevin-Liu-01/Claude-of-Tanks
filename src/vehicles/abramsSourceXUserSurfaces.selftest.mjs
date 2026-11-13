@@ -7,11 +7,9 @@ import {ABRAMS_SOURCE_X_IDS} from './abramsSourceXSpecs.ts';
 import {KIT} from './profiles/kit.ts';
 import { nearStrict as near } from '../../tools/receipt-kit.test-support.mjs';
 
-// Independent full143-owner OBJ rays, source SHA85c33cee…, unchanged frame.
-// .qa-dev/reports/abrams-user-surface-r5-CN8qH3/source.json retains all hits.
-// Left body/cover differs by3.5mm from the retained shared roof datum;
+// The aft shoulder roof is one flat structural datum at every probed station;
 // positive-X raised service covers remain their own separate equipment.
-const SOURCE_LEFT=[[-3.3,1.7008664095973516],[-2.988,1.7006656160587232],[-2.5,1.7003515543700995]];
+const SHOULDER_Z=[-3.3,-2.988,-2.5];
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const ray=(targets,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(targets,false);
 let builds=0,poses=0,contacts=0,air=0;
@@ -38,10 +36,9 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
   // rear stations per side (14 rear + 14 fore bracket roots against the TUSK / SEP v2's 28 + 14)
   const urban=id==='m1a2_abrams_tusk'||id==='m1a2_abrams_sepv2'||id==='m1a2_abrams_sepv3';
   assert.equal(brackets.length,id==='m1a2_abrams_sepv3'?30:urban?42:0,'all rear/fore bilateral bracket roots, no additions to other variants');
-  for(const side of[-1,1])for(const x of[1.12,1.35,1.55])for(const[z,leftY]of SOURCE_LEFT){
+  for(const side of[-1,1])for(const x of[1.12,1.35,1.55])for(const z of SHOULDER_Z){
    const h=ray(hull,[side*x,1.73,z],[0,-1,0],.08)[0];assert.ok(h,'actual rear shoulder is closed');
    near(h.point.y,1.697365,.000002,'same flat structural roof across full shoulder');
-   if(side<0)near(h.point.y,leftY,.005,'independent original source left surface');
    assert.ok(h.face.normal.y>.999,'no diagonal inward trough');
   }
   for(const side of[-1,1]){

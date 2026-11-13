@@ -22,7 +22,7 @@ disposal cannot change another tank or a retained template. Exceptional
 recipes bypass the cache and preserve the original constructor's behavior.
 
 No authored geometry, triangle count, model registry, armor profile or material
-policy is changed. No source models, experiments, generated tank asset sweep
+policy is changed. No experiments, generated tank asset sweep
 or temporary QA files belong in this checkpoint.
 
 ## Verification

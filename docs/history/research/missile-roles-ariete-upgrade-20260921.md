@@ -58,13 +58,11 @@ C1/C2 open-pixel totals improve to 14/30 from 263/177 before this repair,
 with zero open views. No hole allowance was raised. The 20 C2 reactive
 cassettes each have an explicit physical surface and removable visual stock.
 
-All non-target icon images and manifest rows are retained from main. Source
-models remain ignored local comparison inputs and do not enter the shipped
-runtime. The American concept and Griffin 50 mm share their revised hull and running
+All non-target icon images and manifest rows are retained from main. The American concept and Griffin 50 mm share their revised hull and running
 gear exactly, covered by HIGH/LOW preservation tests. The final owner
 correction lengthens both hulls 10% and reduces both turrets 10%; wheel
 radii and weapon calibers remain unchanged. See the
-[proportion correction](griffin-proportions-20260921.md).
+[proportion correction](../../tank-generation/history/griffin-proportions-20260921.md).
 
 The final roof correction retains the K2 Black Panther X fitting's exact receiver,
 barrel, cradle and ammunition housing, uniformly scaled to 70%. It is entirely
@@ -90,7 +88,7 @@ real obstruction negatives. Both quality levels pass all 820 clearance poses.
   muzzle bores and barrel circularity pass. All 202 anatomy and marking records
   and 606 technical diagrams pass the complete anatomy check.
 - Type checking and both public/private production builds pass. The public
-  strip audit contains 202 playable registrations and zero GLB-sourced models.
+  strip audit contains 202 playable registrations, all procedural.
 - The pretest lifecycle passes all 402 entries. Core completes all 680 entries;
   its sole stale catalog assertion passes a focused rerun through the same test
   runner after explicitly accounting for Viper's one new paint. Both historical

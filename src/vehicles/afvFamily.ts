@@ -1,9 +1,8 @@
 import {applyEscortFieldKitArmor} from './escortFieldKitArmor.ts';
 import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
-// Owner-supplied AFV/IFV oracle registrations.
+// AFV/IFV registrations.
 //
-// The GLBs remain local comparison material only. Runtime vehicles are
-// first-party procedural constructions in profiles/afvFamily.ts, inheriting
+// Runtime vehicles are first-party procedural constructions in profiles/afvFamily.ts, inheriting
 // complete certified hull/suspension rigs and publishing their own gameplay
 // identity here.
 //

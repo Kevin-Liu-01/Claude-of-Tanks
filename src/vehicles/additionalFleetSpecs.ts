@@ -382,8 +382,8 @@ const SPECS: FleetTankSpec[] = [
       // plus mandatory ghillie cover measures a 3.18 m P95 envelope.
       dims: { heightM: 3.18 }, community: null, visual: { number: '34' } }),
   // DUAL-GATE GRADUATE (2026-07-31, commit 0f5cd55): m60a1's procedural build
-  // passed geometry min 90.7 + shaded parity min 9/10 — the recovered GLB is
-  // retired and the procedural model ships EVERYWHERE (local + public), so no
+  // passed geometry min 90.7 + shaded parity min 9/10 — the procedural model
+  // ships EVERYWHERE (local + public), so no
   // publicVisualFallback: its own regenerated icons are legal to distribute.
   withoutSkirts(make('leo1a5', 'm60a1', 'M60A1 Patton', 'USA',
     { hp: 2050, weightTons: 49.7, topSpeedKmh: 50, reverseSpeedKmh: 16,
@@ -757,8 +757,8 @@ for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_
   SPECS.push(milan);
 }
 
-// Register only first-party procedural gameplay rows. Historical source assets
-// are offline comparison inputs and have no runtime registration path.
+// Register only first-party procedural gameplay rows; nothing else has a
+// runtime registration path.
 for (const spec of SPECS) {
   tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);

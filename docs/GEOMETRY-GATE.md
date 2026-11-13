@@ -375,7 +375,7 @@ against a hash-pinned export of the original authored `leo2_revolution` at
 commit `da5e0cf0af4e4ddf7a29ec78d7e1c120ce12755b`. Its report must say
 `comparisonPurpose: preservation`, never imply real-world accuracy, and carry
 the original commit and verified baseline hash. See the exact export and
-provenance procedure in [the Revolution source packet](history/research/leopard-revolution-source.md).
+provenance procedure in [the Revolution source packet](tank-generation/history/leopard-revolution-source.md).
 
 This preservation mode is stricter about change: **every view and component
 must reach 99**. It does not independently normalize either model's scale or

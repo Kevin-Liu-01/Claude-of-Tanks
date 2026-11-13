@@ -159,7 +159,7 @@ explicit finite bodywork addition, not a performance improvement.
 
 The precursor passed the existing shoulder returns, rear folded hull,
 Western X geometry, Western X ERA binding and fleet mudguard registration
-tests, typecheck and public build (174 procedural playables, zero GLB-sourced).
+tests, typecheck and public build (174 playables, all procedural).
 Current corrected results are recorded below when complete.
 Full anatomy update/check and targeted composed release
 belong to the parent's final combined tree and remain pending; no inherited

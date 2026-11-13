@@ -43,5 +43,5 @@ linear owner-requested review, not an independent critic score.
 The shadow coverage fixture applies the inverse transpose of the fixed 1.10
 hull stretch to its original caliper direction. Its historical source-stock
 measurement, coverage tolerances and three-shadow-draw budget remain unchanged.
-See the [combined qualification record](missile-roles-ariete-upgrade-20260921.md)
+See the [combined qualification record](../../history/research/missile-roles-ariete-upgrade-20260921.md)
 for regression, anatomy and build results.

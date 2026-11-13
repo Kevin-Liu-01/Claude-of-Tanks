@@ -3,7 +3,7 @@
 Status: **candidate; not release-qualified or published** (2026-09-08).
 
 The finite receiving-plane details and original after-capture evidence below
-are superseded by the [2 mm cap/flange correction](merkava3d-front-return-finite-plane-correction.md).
+are superseded by the [2 mm cap/flange correction](../../history/research/merkava3d-front-return-finite-plane-correction.md).
 The original source study, failed controls and receipts remain historical
 evidence; they are not silently relabeled as the corrected runtime.
 

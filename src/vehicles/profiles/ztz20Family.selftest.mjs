@@ -42,7 +42,7 @@ for (const [id, want] of Object.entries(expected)) {
   const spec = TANK_SPECS[id];
   assert.equal(spec.name, want.name); assert.equal(spec.nation, 'China'); assert.equal(spec.era, 'next-generation');
   assert.equal(vehicleEraForId(id), 'next-generation'); assert.equal(FLEET_GROUP_BY_ID[id], 'modern2');
-  assert.equal(MODEL_SOURCE[id].source, 'procedural', `${id}: the oracle never enters the runtime`);
+  assert.equal(MODEL_SOURCE[id].source, 'procedural', `${id}: no external geometry enters the runtime`);
   assert.equal(spec.gun.caliberMm, want.caliber); assert.equal(displayTier(id), want.tier);
   assert.deepEqual(spec.armor.turretPivot, [...ZTZ20_DATUMS.turretPivot], `${id}: one turret ring for the family`);
   const design = firstPartyConcept(id);

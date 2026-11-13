@@ -108,7 +108,7 @@ import {
 } from './vehicleMarkings.ts';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
-// createTank (see the seam near the GLB-swap block). Procedural/metrology
+// createTank (see the seam near the mesh-swap block). Procedural/metrology
 // builds skip it by default so parity boards measure bare silhouettes;
 // presentation callers may explicitly opt in with decor:true.
 import {
@@ -2643,7 +2643,7 @@ function trackBandGeo(
 // ~0.3 MB a battle frame here; they return Math.hypot's exact bits, scalarHypot.ts).
 // This is mathematically identical for the
 // non-indexed procedural/extracted belts and preserves averaged normals for
-// indexed sourced belts, but removes one of the largest live CPU samples in a
+// indexed belts, but removes one of the largest live CPU samples in a
 // full battle (28 animated bands at the near-camera gear cadence).
 function recomputeTrackNormals(
   geometry: THREE.BufferGeometry,
@@ -4344,7 +4344,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Nation road-wheel standard (owner 2026-09-22, "standardize our wheels across NATIONS"): a non-donor
   // hull's authored road-wheel face is replaced by its nation donor's construction at the hull's own radius,
   // never narrower than its authored tire width nor wider than its standard cap envelope; donor, period and
-  // community hulls keep their own wheel code.
+  // placeholder hulls keep their own wheel code.
   const nationWheel: NationWheelResolution = resolveNationWheel(builderSpec);
   const standardizedWheels = nationWheel.kind === 'standard';
   validateReturnRollerDimensions(cfg);
@@ -5294,7 +5294,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           for (const [gp, end] of endWheels) {
             // body + dark stay directly under hullG (never a wrapper Group:
             // modelLoader.applySwap hides procedural Mesh/LOD/InstancedMesh children
-            // on GLB swap — a Group would survive and leave orphaned wheels).
+            // on a mesh swap — a Group would survive and leave orphaned wheels).
             addEndWheel(gp, end);
           }
         };
@@ -7889,7 +7889,7 @@ function buildCanonical(P: TankBuilderPort, id: string): void {
 }
 
 // Recovered variants should fall back to the closest articulated family
-// model, not the generic box placeholder, when their candidate GLB fails the
+// model, not the generic box placeholder, when their own build fails the
 // quality gate. Follow visualBase/variantOf chains with cycle protection.
 function resolveBuilder(specId: string, spec: FactoryTankSpec): TankBuilder | null {
   const seen = new Set<string>();
@@ -7906,11 +7906,9 @@ function resolveBuilder(specId: string, spec: FactoryTankSpec): TankBuilder | nu
   return null;
 }
 
-// COMMUNITY TANKS: cheap generic stand-in for GLB-sourced vehicles with no
-// hand-built procedural model. Rough hull slab + turret box + gun tube sized
-// off the spec so the silhouette is sane for the frames before the GLB swap
-// lands (modelLoader hides these meshes on success; on failure the vehicle
-// still reads as a tank).
+// PLACEHOLDER TANKS: cheap generic stand-in for vehicles with no hand-built
+// procedural model. Rough hull slab + turret box + gun tube sized off the
+// spec so the silhouette is sane and the vehicle still reads as a tank.
 function buildCommunityPlaceholder(P: TankBuilderPort): void {
   const d = P.spec.dims;
   const a = P.spec.armor;
@@ -10598,7 +10596,7 @@ export function* createTankRuntimeSteps(
     // Small sub-gear protrusions (tilted approach-ramp pad corners graze
     // ~1.6 cm under the flat run) stay IGNORED: seating them would float the
     // whole visible contact run to protect one grouser tip. Gearless builds
-    // (community placeholder) trust the scan outright.
+    // (the generic placeholder) trust the scan outright.
     let bottomYM: number;
     if (gearCG) {
       bottomYM = gearCG.bottomYM;
@@ -10650,7 +10648,7 @@ export function* createTankRuntimeSteps(
   // damage.ts, ai.ts weak-spot probes, main.ts HUD, killcam snapshots) sees
   // the real track shape. Deterministic per spec (gear cfg is authored data;
   // camoSeed/quality never move wheels), so re-attachment on every build is
-  // an idempotent overwrite. Gearless builds (community GLB placeholders)
+  // an idempotent overwrite. Gearless builds (generic placeholders)
   // publish nothing and keep the legacy plate+AABB path untouched.
   // (249) A combat-rig row hands the builders an authoring copy of the armor (authoringRigSpec); the prisms go onto the
   // shared combat armor as well, which the copy's writes never reached (every such tank fought without track prisms).
@@ -11127,10 +11125,10 @@ export function* createTankRuntimeSteps(
   let popYaw0 = 0;
   let popTrailAcc = 0;               // trail emission cursor along the arc
   // Pre-wreck turret seat, captured at setDestroyed time. The spec's
-  // armor.turretPivot is only where the PROCEDURAL turret sits — a GLB swap
+  // armor.turretPivot is only where the PROCEDURAL turret sits — a mesh swap
   // re-seats turretG on the model's real ring (t90am: y 1.607 z -1.042 vs
   // spec 1.4/0.15). The pop arc, settle pose and resetDestroyed all key off
-  // this captured seat so GLB turrets launch from and restore to their true
+  // this captured seat so swapped turrets launch from and restore to their true
   // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
   const wreckSeat = new THREE.Vector3(
     armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
@@ -11261,7 +11259,7 @@ export function* createTankRuntimeSteps(
 
   function captureWreckMaterials(): void {
     // Capture at the intact -> destroyed edge so later-added decoration and
-    // GLB-swapped meshes participate in the burn and can be restored exactly.
+    // swapped meshes participate in the burn and can be restored exactly.
     originalMats.length = 0;
     if (geometryOnly) return;
     root.traverse((object) => {
@@ -12202,7 +12200,7 @@ export function* createTankRuntimeSteps(
       // "half-and-half wreck split on a mesh seam" at 1.5 s, and could fly a
       // pristine painted BARREL on a charred popped turret). Every rendered
       // MeshStandardMaterial mesh — turret, barrel/recoil group, hull, gear,
-      // GLB or procedural — gets its own material wrapped with the burn
+      // swapped or procedural — gets its own material wrapped with the burn
       // mask; the char then sweeps top-down over ~2.4 s as one continuous
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
@@ -12220,8 +12218,8 @@ export function* createTankRuntimeSteps(
       startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
-      // it askew. GLB and procedural tanks share the exact same sequence
-      // (the GLB turret node is re-parented into turretG at swap time).
+      // it askew. Swapped and procedural tanks share the exact same sequence
+      // (a swapped turret node is re-parented into turretG at swap time).
       launchDestroyedTurret(!!(opts && opts.pop), ageS0, !!opts && typeof opts.ageS === 'number');
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
@@ -12259,7 +12257,7 @@ export function* createTankRuntimeSteps(
      * played ("a pause that can get long until the destroying actually
      * happens"). Called from warmCombatPipeline for every battle tank (the
      * final scene compile then builds the programs behind the loading
-     * screen); the GLB swap pipeline installs the same hook on staged
+     * screen); the mesh swap pipeline installs the same hook on staged
      * materials pre-compile. Idempotent (applyBurnHook self-guards); a
      * disarmed hook is exact-identity output (mix factors are 0).
      */
@@ -12270,7 +12268,7 @@ export function* createTankRuntimeSteps(
     prewarmBurn() {
       if (destroyed) return [];
       root.traverse((o) => {
-        // perf-r2d: NODE-HIDDEN meshes are hooked too — conditional GLB
+        // perf-r2d: NODE-HIDDEN meshes are hooked too — conditional
         // addon parts (TUSK rails/camo variants, addon_keep hardware) are
         // visibility-toggled and used to miss the hook here, so their
         // '|burn-r6' cacheKey variants linked on the kill frame instead of
@@ -12349,7 +12347,7 @@ export function* createTankRuntimeSteps(
       reopenInteriorFills();
       if (wasWreck) {
         // restore the EXACT captured visibility (never a blanket `true` —
-        // that resurrected hidden placeholder hulls over GLB models, r4)
+        // that resurrected hidden placeholder hulls over swapped models, r4)
         for (const [mesh, mat, wasVisible] of originalMats) {
           mesh.material = mat;
           mesh.visible = wasVisible !== false;
@@ -12358,7 +12356,7 @@ export function* createTankRuntimeSteps(
         // (perf-250) the captured visibility may be the far copies' from before the wreck: the mode as it stands now
         if (farMergeRuns.length) applyFarMerge(farMergeMode.far);
         // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
-        // the spec pivot is only where the procedural turret sits; a GLB
+        // the spec pivot is only where the procedural turret sits; a mesh
         // swap seats turretG on the model's real ring (t90am restaged 1.21 m
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
@@ -12473,7 +12471,7 @@ export function* createTankRuntimeSteps(
         if (!ownsTree) return;
         if (isVehicleMesh(o)) disposeOwnedFittingGeometry(o.geometry);
         if (isVehicleMesh(o)) releaseStaticMergeParts(o);
-        // PERF (performance_budget r3): kit-merged GLB geometry is baked
+        // PERF (performance_budget r3): kit-merged geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.
         if (isVehicleMesh(o) && o.userData.__kitMerged && o.geometry) o.geometry.dispose();

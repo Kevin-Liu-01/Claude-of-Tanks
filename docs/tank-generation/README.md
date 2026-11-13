@@ -56,7 +56,7 @@ owner corrections, successes, rejected methods, and scope changes.
   Both retain historical August methods and thresholds. For **new reference-backed
   builds**, apply the newer **92-point** exemplar requirement from
   [vehicle instructions](../../src/vehicles/SKILL.md) and the
-  [second-wave contract](../history/research/source-x-second-wave.md), not the legacy 90 floor.
+  [second-wave contract](history/source-x-second-wave.md), not the legacy 90 floor.
 - The newer supplied-file workflow freezes a **source-only rigid transform plus
   at most one declared uniform unit/size scale**. Old per-axis oracle warps,
   percentile-driven source reshaping, mask-only furniture, or score-counterweight

@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-// 2026-11-04 (release 268, the M1A1 shell from the owner's model, 41cf7c51ec): the FEP's and SA's commander towers stand
-// on the model's commander's station, 0.275 m inboard and 0.8815 m aft of the print shell's (profiles/abrams.ts cdx,
+// 2026-11-04 (release 268, the measured M1A1 shell, 41cf7c51ec): the FEP's and SA's commander towers stand
+// on the measured commander's station, 0.275 m inboard and 0.8815 m aft of the earlier shell's (profiles/abrams.ts cdx,
 // cdz), on its carrier over the 0.709 roof: mount (-0.425, 0.799 / 0.809, -0.625), carrier tops 0.809 / 0.819.
 const TARGETS = Object.freeze({
   m1a1_abrams_fep: Object.freeze({

@@ -1,7 +1,8 @@
 // The tank-generation checks (owner, 2026-11-12: outside 3D models are comparison bases while a lane builds or fixes a
 // tank, never a test). Each is the comparison tooling's own check; none is a receipt, so npm test, test:heavy,
 // test:lane, tank:release:check and the release gate never run one. A lane runs them by hand: `npm run gen:checks`
-// (tools/tank-generation-checks.mjs, which also holds this list equal to the tools/*.gencheck.mjs on disk).
+// (tools/tank-generation-checks.mjs, which also holds this list equal to the tools/*.gencheck.mjs and
+// src/vehicles/profiles/*.gencheck.mjs on disk). The profile ones probe a build at points measured on a comparison model.
 // docs/TEST-AUDIT.md lists them under "Tank-generation checks".
 export const GENERATION_CHECKS = Object.freeze([
   'tools/ares-apc-x-reference.gencheck.mjs',
@@ -35,4 +36,13 @@ export const GENERATION_CHECKS = Object.freeze([
   'tools/source-openings-policy.gencheck.mjs',
   'tools/source-world-registration.gencheck.mjs',
   'tools/source-x-oracle.gencheck.mjs',
+  'src/vehicles/profiles/t90AXSmoke.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXAAContainers.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXApsHousings.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXCastUnderside.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXCheekLeaves.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXRearStowage.gencheck.mjs',
+  'src/vehicles/profiles/t90AwXRemainingRoof.gencheck.mjs',
+  'src/vehicles/profiles/t90SMXLeftSmokeMounts.gencheck.mjs',
+  'src/vehicles/profiles/t90SMXSmoke.gencheck.mjs',
 ]);

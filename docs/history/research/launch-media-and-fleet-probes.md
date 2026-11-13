@@ -5,7 +5,6 @@ capture queue. Run them from the repository root; do not acquire another queue
 lease around them. Keep their output under ignored `.qa-dev/` or `shots/` paths.
 Freeze the served public build while capturing. FFmpeg and Chromium are required;
 the score tools also require the licensed Apple Loops installed on this host.
-Source comparison models never enter these recordings.
 
 ## Media production
 

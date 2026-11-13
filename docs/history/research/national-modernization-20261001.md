@@ -37,7 +37,7 @@ Baseline: 6a72e1fc6. This batch remains local and uncommitted; it has not been p
 | Type checking and final production build | PASS | `typecheck.log`, `finished-build.log`, `qualification-final.json` |
 | Full 16-vehicle release gate | BLOCKED at source scoring | `release.log` |
 
-The full release attempt stops source scoring because comparison files for t72b3m, t62mv1_x, and ua_t64bv are unavailable. BMPT has no local reference and no numerical fidelity result. These four source comparisons remain unverified; their complete strict release standards are not claimed as passed. The 12 explicitly approved original concepts use their frozen design datums rather than numerical real-vehicle comparison, and all twelve passed their separate strict standard. No source-comparison exception was inferred from earlier approvals for unrelated vehicles.
+The full release attempt stops source scoring because comparison records for t72b3m, t62mv1_x, and ua_t64bv are unavailable. BMPT has no local reference and no numerical fidelity result. These four source comparisons remain unverified; their complete strict release standards are not claimed as passed. The 12 explicitly approved original concepts use their frozen design datums rather than numerical real-vehicle comparison, and all twelve passed their separate strict standard. No source-comparison exception was inferred from earlier approvals for unrelated vehicles.
 
 The full suite was not rerun unbounded because of the previously observed memory runaway in awSecondWaveGeometry.selftest.mjs. Focused regression results do not represent a full-suite pass.
 

@@ -53,7 +53,7 @@ assert.deepEqual(m2.gun.launcherMuzzles.map(({ x, y, z, frame }) => [x, y, z, fr
 const packet = JSON.parse(readFileSync(new URL('../../../docs/references/photos/m2a2-bradley-20261106.json', import.meta.url), 'utf8'));
 const target = packet.targets[CLASSIC];
 assert.equal(target.test, 'src/vehicles/profiles/m3a2Bradley.selftest.mjs');
-assert.deepEqual(Object.keys(packet.targets), [CLASSIC], `the packet holds the ${CLASSIC} only (${ID} has its 3D oracle)`);
+assert.deepEqual(Object.keys(packet.targets), [CLASSIC], `the packet holds the ${CLASSIC} only (${ID} is not in this packet)`);
 
 for (const quality of ['high', 'low']) {
   const m3a2 = createTank(ID, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });

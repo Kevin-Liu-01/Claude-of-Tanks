@@ -718,7 +718,7 @@ const _firedEv: ShellFiredEvent = {
  * @param {object} game game state
  * @param {string} playerSpecId chosen TankId
  * @param {object} world World (§2.7)
- * @param {{random?:boolean}} [opts] COMMUNITY TANKS: random=true shuffles the
+ * @param {{random?:boolean}} [opts] FULL POOL: random=true shuffles the
  *   enemy roster from the full pool (garage-started battles); default keeps
  *   the deterministic core-8 staging (boot, screenshot contract).
  * @returns {void}
@@ -1113,7 +1113,7 @@ export function setupBattle(
   wreckTurrets.gravity = 9.81 * (Number.isFinite(game.ruleset.gravityScale) ? game.ruleset.gravityScale : 1);
   wreckTurrets.bind(wreckEnvironmentFor(world, ground.field));
 
-  // COMMUNITY TANKS: field the participants; park everyone else (hidden,
+  // FULL POOL: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
