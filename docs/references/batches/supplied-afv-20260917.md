@@ -209,9 +209,9 @@ These are diagnostic receipts, not publication approvals:
   native near/far material contract and unchanged parked/moving upload cadence
   are covered by `runningGearCadence.selftest.mjs`.
 - Independent findings remain in
-  `docs/history/research/regional-source-independent-critic-20260918.md`,
+  `docs/tank-generation/history/regional-source-independent-critic-20260918.md`,
   `docs/history/research/physical-bore-independent-critic-20260918.md`, and
-  `docs/history/research/ajax-track-wrap-independent-diagnosis-20260918.md`.
+  `docs/tank-generation/history/ajax-track-wrap-independent-diagnosis-20260918.md`.
   Failed and superseded images are retained privately with hashes.
 
 The pending assembled-source and roof-weapon choices above still prevent final
@@ -396,7 +396,7 @@ is reported as a complete `npm test` pass; another full run follows this round.
 Griffin's crew layout has two hull stations backed by the cited manufacturer
 interview, with source-specific uncertainty retained. The four new internal
 layout families have primary source trails and explicitly inferred station
-locations; see `docs/history/research/supplied-layout-source-audit-20260918.md`.
+locations; see `docs/tank-generation/history/supplied-layout-source-audit-20260918.md`.
 
 All thirteen completed 27 real-pointer selections per surface in Gallery,
 desktop Garage and mobile graphics tier Garage, with no convergence, resource
@@ -685,7 +685,7 @@ actual source stations, finite contact, a displaced-sheet control and sampled
 moving-track air. All 18 gear meshes per quality remain exact. The preceding
 fill's selected HIGH/LOW costs are 79,812/47,928 triangles, within the unchanged
 80,000/75% limits; final generated costs remain to be checked. Detailed evidence
-is in [the Ajax repair report](../../history/research/ajax-rear-flap-20260918.md).
+is in [the Ajax repair report](../../tank-generation/history/ajax-rear-flap-20260918.md).
 All three focused fixtures are registered; the final manifest has 1,060 checks.
 
 The second diagnostic post run passes all 42 files with zero source/tool drift.
@@ -891,7 +891,7 @@ The metadata is corrected. Kurganets also now has separate Kornet and Bulat
 selection, inventory and reload channels. The three-slot loadout is main-gun
 AP, Kornet and Bulat; Bulat's nominal70mm/effect tuning is explicitly gameplay
 inference rather than a measured caliber or a thermobaric simulation. The
-[source-bound independent audit](../../history/research/supplied-13-caliber-independent-audit-20260918.md)
+[source-bound independent audit](../../tank-generation/history/supplied-13-caliber-independent-audit-20260918.md)
 records all13 configurations, including the remaining stated uncertainties.
 
 Fresh all13 weapon/selector checks,27-IFV balance, full-fleet balance and29
@@ -937,7 +937,7 @@ visual hold remains unresolved. No complete anatomy check, final composed
 release or new full-suite PASS is claimed by that pipeline. The validator
 requires a final visual-ready record before starting those jobs.
 
-The [bounded publication audit](../../history/research/supplied-fleet-publication-review-20260918.md)
+The [bounded publication audit](../../tank-generation/history/supplied-fleet-publication-review-20260918.md)
 found no additional runtime/source-boundary blocker. It verified that source
 binaries and private captures remain excluded, new profiles remain demand
 loaded, and numerical gates are unchanged. Exact staging hashes must be

@@ -4,7 +4,7 @@ The owner's 2026-09-20 request closes the central entrance with a fitted door.
 The source measurements below remain unchanged, but their open-door native
 pose and fifteen-witness policy are historical. The current eighteen-witness
 policy protects the retained bay behind the closed leaf; see the
-[current repair record](merkava-camo-repairs-20260920.md).
+[current repair record](../../history/research/merkava-camo-repairs-20260920.md).
 
 The independent final-r2 review found a false closed rear mission volume, a flush rear hull slab, and an inaccurate roof equipment layout. This bounded repair replaces those authored approximations using scalar measurements of the unchanged supplied model. The previous running gear, bow straps, folded rear guards and their hidden track relief remain intact. Trophy, Namer and the two original Merkava X branches are protected by native geometry/material parity and the authenticated historical reconstruction.
 

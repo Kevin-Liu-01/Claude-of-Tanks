@@ -2,7 +2,7 @@
 // will no longer look so chungus"): the KV-2 is laid out from published dimensions, the D 50/5 sheet, a five-view drawing
 // and museum photographs (docs/references/tanks/kv2.md, its gap table). This receipt measures the build against those
 // datums by casting rays at the hull's and the turret's own stock, so a later edit that drifts back toward the
-// print-era slab (a deck-level fender, a full-width deck, a fat mantlet) fails here with the number it moved.
+// earlier slab (a deck-level fender, a full-width deck, a fat mantlet) fails here with the number it moved.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';

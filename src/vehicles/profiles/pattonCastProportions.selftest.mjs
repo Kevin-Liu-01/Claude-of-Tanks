@@ -22,9 +22,9 @@ import { properSurfaceCrossings, shellEdgeTopology } from '../../../tools/base-s
 /** Published figures (m) and the gear the sources give each mark. */
 const SOURCES = {
   m46_patton: { hullLength: 6.358, width: 3.513, turretWidth: [1.90, 2.10], castHeight: [0.84, 1.00], rollers: 5, tension: true, glacis: [44, 48], device: 'm3a1' },
-  // the T42 casting's width has no published figure: the gate's reference model measures 2.20 m over the flanks
+  // the T42 casting's width has no published figure: the gate's reference measures 2.20 m over the flanks
   m47_patton: { hullLength: 6.358, width: 3.512, turretWidth: [1.95, 2.25], castHeight: [0.95, 1.15], rollers: 3, tension: true, glacis: [58, 62], device: 'm36' },
-  // the owner's model's envelope (3.721 m over the left fender bar and the tracks on its 2.953 m centres), the source
+  // the measured envelope (3.721 m over the left fender bar and the tracks on its 2.953 m centres), the
   // ruler the gate measures it by
   m48a5_patton: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: false, glacis: [55, 65] },
   // release 266: the M48 marks on the A5's castings, with their own running gear (docs/references/tanks/<id>.md): the A3
@@ -87,7 +87,7 @@ for (const [id, src] of Object.entries(SOURCES)) {
     const trunnion = gunRig.getWorldPosition(new THREE.Vector3());
     assert.ok(Math.abs(trunnion.y - receipt.trunnion[0]) < 1e-6 && Math.abs(trunnion.z - receipt.trunnion[1]) < 1e-6,
       `${id}: the gun rig at its trunnion (${trunnion.y.toFixed(4)}, ${trunnion.z.toFixed(4)}) vs ${receipt.trunnion.join(', ')}`);
-    if (id === 'm48a5_patton') assert.deepEqual(receipt.trunnion, [1.921, 1.7616], 'the M48A5 bore at the source model\'s 1.921 m');
+    if (id === 'm48a5_patton') assert.deepEqual(receipt.trunnion, [1.921, 1.7616], 'the M48A5 bore at its measured 1.921 m');
     const muzzle = new THREE.Vector3();
     tank.root.getObjectByName('rig_muzzle')?.getWorldPosition(muzzle);
     assert.ok(Math.abs(muzzle.z - hullBox.min.z - spec.dims.overallLengthM) < 0.12,
@@ -110,7 +110,7 @@ assert.ok(m46.turretL / m46.turretW < 1.40, `the M46's short Pershing casting ($
 assert.ok(m48.turretW > m46.turretW + 0.25 && m48.turretL / m48.turretW < 1.40, 'the M48A5\'s wide egg dome');
 console.log('pattonCastProportions: the M46, M47, M48A5 and the M48 marks\' castings, hulls and running gear hold their sources PASS');
 
-// Release 266 photo packets (Main, 2026-10-29 ~11:00: stage A for photo-built marks with no oracle through a per-id
+// Release 266 photo packets (Main, 2026-10-29 ~11:00: stage A for photo-built marks through a per-id
 // packet and the photo-critic PASS): each mark's as-built envelope, the whole tank's bounds as the packet check reads
 // them, within the packet's 3%
 for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {

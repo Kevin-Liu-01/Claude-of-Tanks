@@ -135,7 +135,7 @@ Mask-derived rows use paired identical measurements in the source-only fixed fra
 
 ## Post-main round9 — independent detail corrections
 
-The official14 critic reviewed every prior image and returned **FAIL** (detail minimum7.5/10). Its historical source-specific findings are preserved in `docs/history/research/regional-source-independent-critic-20260918.md`; that result is not superseded by a silhouette pass.
+The official14 critic reviewed every prior image and returned **FAIL** (detail minimum7.5/10). Its historical source-specific findings are preserved in `docs/tank-generation/history/regional-source-independent-critic-20260918.md`; that result is not superseded by a silhouette pass.
 
 Source-only connected-part bounds and rear/driver rays are retained in `kf41-detail-measure.json`, `kf41-surface-detail-rays.json` and `kf41-driver-right-rays.json`. Round9 corrects the source +X driver cover, paired polygonal turret hatch covers/hinges, eight diagonal fasteners per cheek, recessed central ramp, and two outboard rear louver panels. Ramp and rear wings are closed actual hull solids; no backing slab fills the source recess.
 
@@ -224,7 +224,7 @@ All capture commands exit0 and rig parity isOK. The builder spot-viewed the fres
 
 ## Round18 independent shaded review checkpoint — 2026-09-18
 
-An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/history/research/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/kf41_lynx_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
+An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/tank-generation/history/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/kf41_lynx_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
 
 
 ## Round21 actual-filled evidence refresh — 2026-09-18

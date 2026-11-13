@@ -65,7 +65,7 @@ for (const [id, donorId, name, nation, tier] of expected) {
   assert.equal(spec.dims.overallLengthM, ABRAMS_SOURCE_X_MEASUREMENTS.overallLengthM);
   assert.equal(spec.dims.heightM, donor.dims.heightM, 'published height is not fit to the candidate');
   assert.ok(Object.keys(spec.dims).every((key) => !key.startsWith('silhouette')),
-    `${id}: no inherited source silhouette result`);
+    `${id}: no inherited silhouette result`);
 }
 
 // Exercise isolated construction and repeated realistic pre-finalization sync.

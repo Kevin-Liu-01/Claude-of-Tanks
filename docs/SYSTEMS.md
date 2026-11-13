@@ -1022,8 +1022,8 @@ Changes should preserve these invariants:
 - no durable fact exists only in a transient event;
 - no expensive cosmetic burst blocks critical state;
 - no ready player changes locked selections;
-- no playable loads comparison GLB geometry;
-- no public build ships quarantined source assets;
+- no playable loads model-file geometry;
+- no public build ships a 3D model file;
 - no public presentation route preloads the game module graph;
 - no new round inherits the previous result.
 

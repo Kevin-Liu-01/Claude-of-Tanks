@@ -421,7 +421,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),
   merkava2d: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
-  // The Mk 3C/D oracle turrets have deep undercuts and rear chain racks that
+  // The Mk 3C/D turrets have deep undercuts and rear chain racks that
   // leave no broad ray-stable flank at the generic mid-height seat.  Their
   // IDF markings instead use separate, physically ray-seated skirt plates:
   // right-forward on 3C and left-rear on 3D.

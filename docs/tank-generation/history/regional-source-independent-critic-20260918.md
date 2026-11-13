@@ -691,7 +691,7 @@ Coverage checkpoint:364 actual regional official-view images across preserved re
 
 ## Type96 r4 causal follow-up — shared wheel shader, 2026-09-18
 
-The prior weak/flat wheel read is now causally attributed to the shared ambient/readability hook. Actual full-scene FrontSide rays reach 125.172mm recess on all six camera-facing wheels; no covering stock found. Same-paint hook removal restores cast relief, while texture removal changes at most4 RGB units. Both brightness floors interact; removing only one is insufficient. No geometry or palette repair is justified by this finding. See [independent diagnosis](type96-wheel-shading-independent-diagnosis-20260918.md) for exact A/B originals, hashes, raw ray witnesses and a bounded material-role fix recommendation. Existing r4 visual verdict remains historical, not retroactively passed.
+The prior weak/flat wheel read is now causally attributed to the shared ambient/readability hook. Actual full-scene FrontSide rays reach 125.172mm recess on all six camera-facing wheels; no covering stock found. Same-paint hook removal restores cast relief, while texture removal changes at most4 RGB units. Both brightness floors interact; removing only one is insufficient. No geometry or palette repair is justified by this finding. See [independent diagnosis](../../history/research/type96-wheel-shading-independent-diagnosis-20260918.md) for exact A/B originals, hashes, raw ray witnesses and a bounded material-role fix recommendation. Existing r4 visual verdict remains historical, not retroactively passed.
 
 
 ## ZTZ100 r6 detail correction — FAIL every-view9, 14/14 images viewed
@@ -1087,7 +1087,7 @@ Coverage checkpoint:588 actual regional official-view images across preserved re
 
 ## ZTZ r10 loaded final — 2026-09-18
 
-All14 actually viewed and hash-verified; scoped assembled fit/detail/static seating9 in every view. Three-bay inclined screen resolves r9 rear mismatch; actual source measurement supersedes the earlier ventilation interpretation. Full per-view links and limits: [independent r10 report](ztz-r10-independent-review-20260918.md). QA receipt: `.qa-dev/tank-run/independent-regional-review/ztz-r10-final-review.json`. Prior failure remains preserved. Coverage checkpoint:602 actual regional official-view images across revisions, not602 qualified runtime states.
+All14 actually viewed and hash-verified; scoped assembled fit/detail/static seating9 in every view. Three-bay inclined screen resolves r9 rear mismatch; actual source measurement supersedes the earlier ventilation interpretation. Full per-view links and limits: [independent r10 report](../../history/research/ztz-r10-independent-review-20260918.md). QA receipt: `.qa-dev/tank-run/independent-regional-review/ztz-r10-final-review.json`. Prior failure remains preserved. Coverage checkpoint:602 actual regional official-view images across revisions, not602 qualified runtime states.
 
 ## Final filled Europe/AFT r21 independent review — 2026-09-18
 

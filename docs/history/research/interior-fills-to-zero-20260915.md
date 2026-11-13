@@ -51,4 +51,4 @@ before a regeneration is trusted.
     node tools/tank-sealed-check.selftest.mjs
 
 The release check (`npm run tank:release:check -- --ids=… --gate`) carries the sealed and
-watertight steps for the oracle ids.
+watertight steps for the registered ids.

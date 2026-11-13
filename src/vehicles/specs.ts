@@ -327,13 +327,10 @@ TANK_SPECS.t90m_proryv.visual.number = '623';
 // ===========================================================================
 // FIRST-PARTY PROCEDURAL EXPANSION TANKS.
 //
-// These gameplay rows began life beside isolated third-party measurement
-// references, but the selectable models are now repository-authored
-// procedural builds.  Reference credits belong in ATTRIBUTION/reference
-// tooling, never on a playable spec: a `community` field used to make the UI
-// imply that the reference mesh itself was shipping.  The owner-only roster
-// finalizer below enforces that distinction after every extension pack loads.
-// Armor models are parametric balance layouts, not copied mesh payloads.
+// The selectable models are repository-authored procedural builds. Credits
+// belong in ATTRIBUTION, never on a playable spec: the owner-only roster
+// finalizer below drops any `community` field after every extension pack
+// loads. Armor models are parametric balance layouts.
 // ===========================================================================
 
 
@@ -425,7 +422,7 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
       tFrontMm: 75, tSideMm: 75, tRearMm: 75, mantletMm: 110,
     }),
     visual: {
-      // r2: authored darker under the community paint-path lift (is7 note) —
+      // r2: authored darker under the legacy paint-path lift (is7 note) —
       // the '#3e4a2e' 4BO rendered as pale flat sage on the pedestal
       scheme: 'solid', base: '#37412a', weather: '#404b33', patches: [],
       marking: 'number', number: '2', trackWidthM: 0.7,
@@ -567,7 +564,7 @@ export const MODEL_SOURCE: ModelSourceRegistry = {
  * targets, killcam shader bands and ghost anatomy — traceTank simply skips
  * them when trackShapes is present, and every armor model WITHOUT
  * trackShapes (headless probes, hand-built selftest models, gearless
- * community placeholders) keeps the legacy path bit-identical.
+ * generic placeholders) keeps the legacy path bit-identical.
  *
  * `hulls` comes from the running gear actually built for this spec
  * (buildRunningGear publishes {x0,x1,poly} per unit — wheel positions/radii

@@ -1,6 +1,5 @@
 import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
-// Owner-supplied September 2026 comparison builds. The source files are
-// quarantined authoring inputs; playable geometry remains first-party and
+// September 2026 fleet additions. Playable geometry is first-party and
 // procedural in independent profile modules.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import {
@@ -95,7 +94,7 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
 }
 
 /** Game tuning starts from established fleet peers; the weapon family still
- * follows the supplied vehicle. These are balance values, not real ballistics. */
+ * follows the vehicle. These are balance values, not real ballistics. */
 function applySourceArmament(spec: FleetTankSpec): void {
   const cannonPeers: Readonly<Record<string, string>> = {
     bmp3m_dragun125: 'ztz99a2', cv90105_tml: 'leo1a5', sabra_mk2: 'merkava3_baz',
@@ -163,7 +162,7 @@ function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   spec.gun.shells = [spec.gun.shells[0], kornet, bulat];
 }
 
-/** The supplied K21 carries two auxiliary launch canisters. Missile damage,
+/** The K21 carries two auxiliary launch canisters. Missile damage,
  * speed and reload use the established Type 89 gameplay channel; they are not
  * claimed measurements of the source hardware. Keep the 40 mm APFSDS and HE
  * channels within the existing three-slot selector and carry two ready rounds. */

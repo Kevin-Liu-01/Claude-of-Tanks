@@ -1,6 +1,6 @@
 import { buildObject148Prototype } from './profiles/object148Prototype.ts';
 // src/vehicles/modern2.ts — HD procedural builders + specs for the modern
-// roster expansion, wave 2 (docs/history/research/modern-roster.md):
+// roster expansion, wave 2 (docs/tank-generation/history/modern-roster.md):
 //   leo2a2  Leopard 2A4        (§9,  priority 3)
 //   t80uk    T-80U              (§15, priority 3)
 //   leclerc_s2 Leclerc S2         (§20, priority 3)
@@ -282,8 +282,8 @@ const MALACHIT = { keReduction: 0.25, ceFlatMm: 450 };
 // MBT-70: all three crewmen rode in the turret and the 152 mm launcher fed
 // from the rear turret magazine.  Start with the shared MBT plate topology,
 // then replace the conventional hull-driver arrangement with that defining
-// internal layout.  The comparison GLB is an authoring oracle only; these
-// volumes are authored against the procedural geometry below.
+// internal layout.  These volumes are authored against the procedural
+// geometry below.
 function mbt70Armor() {
   const armor = mbtArmor({
     hl: 3.70, hw: 1.74, roofY: 1.57, trkTop: 1.11, floor: 0.42,
@@ -686,9 +686,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
 };
 
 // France-family expansion (2026-08-15).  Both playables are first-party
-// procedural derivatives of the accepted Leclerc construction.  The owner
-// GLBs are measurement/visual oracles only and are never registered here as
-// runtime sources.  XLR carries the SCORPION-era passive protection package;
+// procedural derivatives of the accepted Leclerc construction.  XLR carries the SCORPION-era passive protection package;
 // AMX 56 is the heavier ERA/gun-plant branch requested from the second
 // Leclerc oracle.
 {

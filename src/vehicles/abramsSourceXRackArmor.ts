@@ -1,5 +1,5 @@
 // First-party rack collision, expressed by the same sparse manufacturing
-// dimensions as the independently authored native rack. No source mesh,
+// dimensions as the independently authored native rack. No mesh,
 // renderer, profile factory or sampled triangle payload enters spec boot.
 import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import { ABRAMS_SOURCE_X_FRAME } from './abramsSourceXDatums.ts';

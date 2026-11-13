@@ -1,7 +1,7 @@
 # Merkava family 262 — run packet
 
 Working record for the release 262 Merkava family rebuild, kept to the
-[run-packet template](../../tank-generation/templates/run-packet.md). Per-mark source identity, datums and gap
+[run-packet template](../templates/run-packet.md). Per-mark source identity, datums and gap
 tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 [Mk 2B](../../references/tanks/merkava2b.md), [Mk 2D](../../references/tanks/merkava2d.md),
 [Mk 3C](../../references/tanks/merkava3c.md), [Mk 3D Baz](../../references/tanks/merkava3_baz.md),

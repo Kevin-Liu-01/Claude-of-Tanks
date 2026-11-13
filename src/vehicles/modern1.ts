@@ -1,7 +1,7 @@
 // src/vehicles/modern1.ts — spec row of the first modern MBT roster wave.
 // Vehicle: leo2a4 (Leopard 2A6). The T-72B3 and Merkava IVm rows this pack
 // used to register as delisted family donors moved to donorSpecs.ts on
-// 2026-09-23 (hidden-fleet cleanup). Specs per docs/history/research/modern-roster.md §8.
+// 2026-09-23 (hidden-fleet cleanup). Specs per docs/tank-generation/history/modern-roster.md §8.
 // challenger2/challenger_3 moved to profiles/challenger.ts (§5.75 family-module
 // split). The canonical builders left on 2026-10-01: the Leopard family
 // profile owns leo2a4 in every factory, and the t72b3/merkava4 donors were

@@ -1,5 +1,5 @@
 // Independent source scalar calipers, not source topology or runtime geometry.
-// See docs/history/research/ariete-rear-openings-20260921.md for evidence and limits.
+// See docs/tank-generation/history/ariete-rear-openings-20260921.md for evidence and limits.
 import {isLatticeCellCenter,latticeSubpixelCenter,scanMatchesLatticeCells} from './contig-grid.mjs';
 // The approved rear-coupler air as hull-frame lattice cells [kx, kz] of the §B2 raster (tools/contig-grid.mjs:
 // cell k spans [k, k + 1) x 6 cm from the tank root, never from the AABB), per scan quality.

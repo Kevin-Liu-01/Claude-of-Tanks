@@ -200,7 +200,7 @@ const HANG_S = 1800;
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
+/** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent inputs), by
  *  step: never recorded as run. Stamped with their reason when the step names it (268: current until what would make
  *  them runnable moves), else left due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
@@ -377,7 +377,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
   const skipped = run.skipped ?? {};
-  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned oracle, a page error) is stamped with its
+  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned input, a page error) is stamped with its
   // reason, so it reads current until what would make it runnable moves; one it cannot name stays due
   const stamps = {}, unnamed = [];
   for (const [id, why] of Object.entries(skipped)) {

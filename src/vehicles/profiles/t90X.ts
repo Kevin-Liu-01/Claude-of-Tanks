@@ -1686,7 +1686,7 @@ function modernMasts(P: TankBuilderPort,d: Datum,sm: boolean): void {
   // DVE-BS wind sensor: the source model's 92-108 mm post is kept for the
   // exemplar geometry gate (t90m 93.1/92 with it, 90.8 without); the real
   // mast is slimmer and reads better, recorded as an owner decision in
-  // docs/research/fleet-visual-standard-20260911.md.
+  // docs/tank-generation/history/fleet-visual-standard-20260911.md.
   onTurret(P,d,'turretDetail',cylY(.046,.482,12),x,2.260,z);
   onTurret(P,d,'turretDetail',cylY(.046,.092,12),x,2.541,z);
   onTurret(P,d,'turretDetail',cylY(.05396,.042,20).scale(1,1,1.364),.20521,2.608,z);

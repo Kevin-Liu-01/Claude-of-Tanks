@@ -405,7 +405,7 @@
   "href": "/docs/build#topic-section-6",
   "title": "Land only integrated proof",
   "chapter": "How the game was built",
-  "text": "A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing. The public build then proves route isolation and strips non-distributable comparison material. This keeps the playable site, source tree, documentation, and main branch describing the same game."
+  "text": "A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing. The public build then proves route isolation and writes a provenance receipt that hashes every file of its source tree. This keeps the playable site, source tree, documentation, and main branch describing the same game."
  },
  {
   "href": "/docs/simulation",
@@ -459,13 +459,13 @@
   "href": "/docs/models#topic-section-1",
   "title": "Research and reference intake",
   "chapter": "Procedural model pipeline",
-  "text": "A model round begins with source photographs, published dimensions, plan and side references, or a comparison mesh when its license permits authoring use. The source is an oracle for recognizable shape, not a playable asset and not an automatic truth when the reference itself is wrong. Proportion comes first: hull length and width, turret station, roof height, gun length, wheel count, track course, and major armor masses must read correctly before small fittings are added."
+  "text": "A model round begins with source photographs, published dimensions, and plan and side references of the real vehicle. The references guide recognizable shape; they are not an automatic truth when a reference itself is wrong. Proportion comes first: hull length and width, turret station, roof height, gun length, wheel count, track course, and major armor masses must read correctly before small fittings are added."
  },
  {
   "href": "/docs/models#topic-section-2",
   "title": "Build the visible machine from parts",
   "chapter": "Procedural model pipeline",
-  "text": "Procedural builders assemble hull plates, turret shells, mantlets, barrels, running gear, optics, hatches, smoke launchers, baskets, antennas, armor kits, and stowage from reusable geometry and material vocabulary. Station-section measurements keep front, middle, and rear masses faithful instead of stretching one generic box. Camouflage-aware structural parts and neutral mechanical parts use explicit roles. Comparison GLBs never become a hidden production fallback."
+  "text": "Procedural builders assemble hull plates, turret shells, mantlets, barrels, running gear, optics, hatches, smoke launchers, baskets, antennas, armor kits, and stowage from reusable geometry and material vocabulary. Station-section measurements keep front, middle, and rear masses faithful instead of stretching one generic box. Camouflage-aware structural parts and neutral mechanical parts use explicit roles."
  },
  {
   "href": "/docs/models#topic-section-3",

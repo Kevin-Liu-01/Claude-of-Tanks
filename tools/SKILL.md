@@ -288,12 +288,12 @@ and cache return. Repeat against production after a manual deployment and inspec
 its screenshots. A pushed commit, gallery render or null-context factory build
 does not prove that the player's Garage is running the correction; retain the
 served version with the result. See `docs/DEPLOYS.md` for deployment ownership.
-Reference-backed new tanks and ground-up rebuilds must register the exemplar
-quality bar in `procedural-fidelity.html`: every whole silhouette view and the
-aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that
-floor quality-bar-aware through geometry packets and `tank-standard-check`;
-never replace it with a favorable average or waive it because component masks
-are unavailable on a fused source mesh.
+Outside 3D models are tank-generation comparison bases only (owner, 2026-11-12). The source
+comparison (`geometry-gate.mjs`), the silhouette page (`procedural-fidelity.html`) and their
+checks (`*.gencheck.mjs`, `npm run gen:checks`) are build references a lane runs by hand; no
+receipt, `test:heavy` suite, `tank-standard-check` stage or `tank:release:check` step reads a
+model. A lane building against one holds the exemplar bar there (every whole silhouette view and
+the aggregate at 92) without a favorable average.
 The §B2 contiguity scan reads `contig-grid.mjs`: a 6 cm lattice fixed in the
 vehicle frame and re-binned at all nine sub-cell phases, so an add-on that only
 moves the AABB cannot hide or reveal a gap. Never frame a scan from the AABB;
