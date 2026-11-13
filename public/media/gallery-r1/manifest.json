@@ -5,7 +5,7 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The owner's loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual's archive show them (src/ui/galleryShots.ts GALLERY_SHOTS); `loading` lists the ones the loading screens rotate after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still's focal aims a crop at its hero tank.",
+ "description": "The owner's loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual's archive show them (src/ui/galleryShots.ts GALLERY_SHOTS), and the loading screens rotate some of them after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still's focal aims a crop at its hero tank.",
  "generatedBy": "tools/media-r5/loading-media.mjs",
  "sources": "the 4K stills of the Scene Studio renders under shots/media-r5/site50/elevated-269 (each item's source names its file, its revision the commit it was rendered on)",
  "dimensions": {
@@ -13,24 +13,6 @@
   "height": 1080
  },
  "count": 78,
- "loading": [
-  "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",
-  "s294-sepv3-copper-mesa-herolow-f33-m271-r14",
-  "s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14",
-  "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14",
-  "s199-m1a2-x-desert-herolow-m271-r14",
-  "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
-  "s120-type10-skybridge-herolow-v3-m271-r14",
-  "s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14",
-  "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14",
-  "s202-kf51-panther-copper-mesa-herohigh-m271-r14",
-  "s267-t90a-vladimir-caldera-herohigh-fb-m271-r14",
-  "s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14",
-  "s307-sepv2-airfield-herolow-m271-r14",
-  "s47-ironworks-crane-herolow-fb-m271-r14",
-  "s190-t90am-frontier-herolow-own-m271-r14",
-  "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14"
- ],
  "items": [
   {
    "id": "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",

@@ -62,10 +62,10 @@ for (const { mapId, asset } of minimapAssets) {
 
 // Since round 14 (2026-10-12) the Garage gallery's featured stills are the site fifty's (owner: "replace the old media
 // with all my new ones"), picked in tools/media-r5/site-media/picks.json `featured`. Since 2026-11-11 the loading screens
-// rotate the boot pick and then picks.json `loading`: the stills the owner picked from his loading-screen gallery (its
-// close-ups, then any elevated stills; 2026-11-04: "for loading screens we need to use these elevated scenes"), each a
-// 1920x1080 webp of the gallery's one collection, public/media/gallery-r1 (tools/media-r5/loading-media.mjs; 272: the
-// loading list sits on top of it and loading-r1 is retired), with its battlefield and its caption in both catalogs.
+// rotate the boot pick and then picks.json `loading.stills`, in the owner's order: Garage stills, and stills of his
+// loading-screen gallery (2026-11-04: "for loading screens we need to use these elevated scenes"), each a 1920x1080 webp
+// of the gallery's one collection, public/media/gallery-r1 (tools/media-r5/loading-media.mjs; 272: loading-r1 is
+// retired), with its battlefield and its caption in both catalogs.
 const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
 const siteStills = `/media/${sitePicks.collection}/stills/`;
 // a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still; or
@@ -82,16 +82,13 @@ assert.equal(sitePicks.featured[0], bootPicks[0], 'the boot pick leads the Garag
 assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garage still carries the boot derivative');
-// the loading picks: the first sixteen close-ups of the gallery (owner 2026-11-11, on the full rotation sheet: "only need
-// 1-16 for the loading screen"), no elevated still; a still he
-// drops leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
-const loadingPicks = [...sitePicks.loading.close, ...sitePicks.loading.elevated];
-assert.equal(sitePicks.loading.close.length, 16, 'the gallery\'s first sixteen close-ups');
-assert.equal(sitePicks.loading.elevated.length, 0, 'no elevated still');
-// (owner 2026-11-11, on the pass sheet: "the one with space background should come later") the Olympus Basin still
-// closes the rotation's order, after the other fifteen in the gallery's order
-assert.equal(sitePicks.loading.close.at(-1), 's143-ru-t72b3m-modern-mars-herolow-fb-m271-r14',
-  'the space-background still comes last');
+// the loading picks (owner 2026-11-13, on the sheet of the old loop and the gallery: "lets do S C D K L M 17 25 2 6 12 9
+// 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22"): five stills of the old loop, then twenty-four of the gallery; a
+// still he drops leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
+const loadingPicks = sitePicks.loading.stills;
+const garagePicks = new Map(sitePicks.featured.filter((pick) => pick.id).map((pick) => [pick.id, pick]));
+assert.equal(loadingPicks.length, 29, 'twenty-nine stills follow the boot pick');
+assert.ok(loadingPicks.slice(0, 5).every((id) => garagePicks.has(id)), 'five stills of the old loop open the rotation');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
 const loadingDir = new URL(`../../public/media/${sitePicks.gallery.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));
@@ -99,6 +96,8 @@ const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadi
 assert.ok(!existsSync(new URL('../../public/media/loading-r1/', import.meta.url)), 'loading-r1 is retired: its stills are the gallery\'s');
 assert.equal(sitePicks.loading.collection, undefined, 'the loading picks are a list on the gallery, not a collection');
 const loadingItems = new Map(loadingManifest.items.map((item) => [item.id, item]));
+assert.ok(loadingPicks.every((id) => loadingItems.has(id) !== garagePicks.has(id)), 'each loading pick is a gallery still or a Garage still');
+const loadingImg = (id) => loadingItems.get(id)?.path ?? pickImg(garagePicks.get(id));
 assert.equal(LOADING_SHOTS.length, loadingPicks.length, 'every loading pick rotates');
 assert.equal(TRANSITION_SHOTS.length, 1 + loadingPicks.length, 'the rotation is the boot pick and the loading picks');
 assert.deepEqual(TRANSITION_SHOTS.slice(1), LOADING_SHOTS, 'the loading stills follow the boot pick');
@@ -119,24 +118,28 @@ assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
   'the featured preview must be materially smaller than its gallery source');
 assert.deepEqual(
   TRANSITION_SHOTS.map((shot) => shot.img),
-  [pickImg(bootPicks[0]), ...loadingPicks.map((id) => loadingItems.get(id)?.path)],
-  'the transition-screen rotation is the boot pick, then the loading picks in the gallery\'s order',
+  [pickImg(bootPicks[0]), ...loadingPicks.map(loadingImg)],
+  'the transition-screen rotation is the boot pick, then the loading picks in the owner\'s order',
 );
-// the gallery's manifest lists the loading picks; each is one of its 1920x1080 webps, its bytes and sha256 in the
-// manifest, rendered on a recorded commit, and rotates with its own battlefield, its focal and its caption in both catalogs
+// a Garage pick rotates as the Garage shows it; a gallery pick is one of the gallery's 1920x1080 webps, its bytes and
+// sha256 in the manifest, rendered on a recorded commit, and rotates with its own battlefield, its focal and its caption
+// in both catalogs
 {
   const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
   const catalogs = {
     en: JSON.parse(await readFile(new URL('./i18nCatalog.en-US.json', import.meta.url), 'utf8')),
     zh: JSON.parse(await readFile(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8')),
   };
-  assert.deepEqual(loadingManifest.loading, loadingPicks, 'the gallery\'s manifest lists the loading picks, in order');
   assert.deepEqual(loadingManifest.dimensions, { width: 1920, height: 1080 });
   const files = new Set(await readdir(loadingDir));
-  for (const id of loadingPicks) assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);
   const close = new Set(sitePicks.gallery.close);
   for (const [n, id] of loadingPicks.entries()) {
     const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
+    if (!item) {
+      assert.deepEqual(shot, FEATURED_SHOTS.find((garage) => garage.img === shot.img), `${id}: as the Garage shows it`);
+      continue;
+    }
+    assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);
     assert.equal(item.path, `/media/${sitePicks.gallery.collection}/${id}.webp`);
     assert.ok(item.group === (close.has(id) ? 'close' : 'elevated'), `${id}: its gallery section (${item.group})`);
     const file = await readFile(new URL(`${id}.webp`, loadingDir));
@@ -157,8 +160,9 @@ assert.deepEqual(
     assert.ok(item.tanks.some((tank) => tank.role === 'hero' && item.title.en.includes(tank.displayName)), `${id}: its caption names its hero`);
   }
   for (const [locale, catalog] of Object.entries(catalogs)) {
-    assert.equal(Object.keys(catalog).filter((key) => key.startsWith('media.loading.title.')).length, loadingPicks.length,
-      `the ${locale} catalog holds a caption for each loading still and no other`);
+    assert.equal(Object.keys(catalog).filter((key) => key.startsWith('media.loading.title.')).length,
+      loadingPicks.filter((id) => loadingItems.has(id)).length,
+      `the ${locale} catalog holds a caption for each gallery still the rotation names and no other`);
   }
 }
 const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
@@ -274,11 +278,12 @@ assert.match(bootHtml,
   'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
 // (2026-11-03, the owner's boot pick, a published versus still; 2026-11-11, the owner's loading-screen gallery) the
-// rotation is the boot pick and the loading collection's stills, no other picture
+// rotation is the boot pick, the gallery's stills and (2026-11-13) the Garage's, no other picture
 const versusPaths = new Set([...versusItems.values()].map((item) => item.path));
 const loadingPaths = new Set([...loadingItems.values()].map((item) => item.path));
-assert.ok(FEATURED_IMAGES.every((img) => versusPaths.has(img) || loadingPaths.has(img)),
-  'only the published versus stills (the boot pick) and the loading collection\'s stills may enter the loading-screen rotation');
+const garagePaths = new Set(FEATURED_SHOTS.map((shot) => shot.img));
+assert.ok(FEATURED_IMAGES.every((img) => versusPaths.has(img) || loadingPaths.has(img) || garagePaths.has(img)),
+  'only the published versus stills (the boot pick), the gallery\'s stills and the Garage\'s may enter the loading-screen rotation');
 assert.ok(FEATURED_SHOTS.every((shot) => !loadingPaths.has(shot.img)), 'the Garage gallery keeps its own twenty');
 assert.deepEqual(FEATURED_SHOTS.map((shot) => shot.img), sitePicks.featured.map(pickImg),
   'the Garage gallery shows the picks, in their order');

@@ -2,8 +2,8 @@
 // The owner's loading-screen gallery as one collection, public/media/gallery-r1 (owner 2026-11-04: "for loading screens we
 // need to use these elevated scenes"; 2026-11-11: "only need 1-16 for the loading screen", then "we can also add all 78 to
 // the galleries and other image areas"). tools/media-r5/site-media/picks.json `gallery` names its 78 stills in the
-// gallery's order, its close-ups and then its elevated stills; `loading` is a list on top of it, the stills the loading
-// screens rotate after the boot pick (272, Main: one collection, so loading-r1 retired). Each still ships as one
+// gallery's order, its close-ups and then its elevated stills; picks.json `loading`, the loading screens' rotation, names
+// some of them (272, Main: one collection, so loading-r1 retired). Each still ships as one
 // 1920x1080 webp of at most 600 KB, encoded at q90 (a busy scene steps down to q86, then q82) from its 4K render,
 // <masters>/<id>/stills/<one>.png, through the master filter (master-filter.mjs), and its smaller rungs (gallery.rungs:
 // the 640 cards); the render's cinema-receipt.json holds its scene. manifest.json records, per still, its map and hour,
@@ -11,9 +11,9 @@
 // battlefield's catalog name, then the hero and the tank its scene pairs it with: "A v B" for a foe, "A and B" for an
 // ally, "A pair" for two of one vehicle, the hero alone for a solo; names are public/icons/tank-assets/ rows'
 // label.displayName at this tree's tank-id schema, never an id), its tanks, the render's revision and source file, and
-// the webps' bytes and sha256; and `loading`, the loading list. Nothing is written unless every pick has its render.
+// the webps' bytes and sha256. Nothing is written unless every pick has its render.
 // Files in the folder that no pick names are removed. site-media-wire.mjs wires it (--only=gallery: galleryShots.ts;
-// --only=loading: the rotation and its captions); src/ui/galleryShots.selftest.mjs and loadingScreens.selftest.mjs hold
+// --only=loading: the rotation's gallery stills and their captions); src/ui/galleryShots.selftest.mjs and loadingScreens.selftest.mjs hold
 // the result.
 //   node tools/media-r5/loading-media.mjs [--masters <dir>] [--jobs <n>] [--cache <dir>] [--plan | --dry]
 // --plan prints each pick's render and caption and encodes nothing; --cache keeps the encodes between runs.
@@ -44,8 +44,6 @@ const FOCAL = PICKS.focal;
 const FOCAL_RE = /^(?:[1-9]\d)% (?:[1-9]\d)%$/;
 // the smaller rungs each still ships beside its 1920 file ({ width, quality }: the 640 cards)
 const RUNGS = PICKS.rungs ?? [];
-// the loading screens' list on top of the collection: gallery stills, in the rotation's order
-const LOADING = [...ALL_PICKS.loading.close, ...ALL_PICKS.loading.elevated];
 const MASTERS = resolve(ROOT, option('masters') ?? PICKS.masters);
 const JOBS = Math.max(1, Number(option('jobs') ?? 6));
 const OUT = join(ROOT, 'public/media', PICKS.collection);
@@ -159,11 +157,6 @@ async function encodeRungs(id, png, cache) {
 
 const picks = [...PICKS.close.map((id) => [id, 'close']), ...PICKS.elevated.map((id) => [id, 'elevated'])];
 if (new Set(picks.map(([id]) => id)).size !== picks.length) throw new Error('loading-media: a still is picked twice');
-const gallery = new Set(picks.map(([id]) => id));
-const strays = LOADING.filter((id) => !gallery.has(id));
-if (strays.length || new Set(LOADING).size !== LOADING.length) {
-  throw new Error(`loading-media: the loading list takes each gallery still once (${strays.join(', ') || 'a still twice'})`);
-}
 // --plan: each pick's render and caption, nothing encoded
 if (argv.includes('--plan')) {
   let ready = 0;
@@ -230,17 +223,16 @@ const manifest = {
   author: PROJECT_CREATOR,
   copyright: PROJECT_COPYRIGHT,
   license: FIRST_PARTY_LICENSE,
-  description: 'The owner\'s loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual\'s archive show them (src/ui/galleryShots.ts GALLERY_SHOTS); `loading` lists the ones the loading screens rotate after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still\'s focal aims a crop at its hero tank.',
+  description: 'The owner\'s loading-screen gallery, all of it, in its order (its close-ups, then its elevated stills): each a scene staged in the Scene Studio and rendered at 4K by the game engine, at 1920 and its smaller rungs. The battle galleries and the manual\'s archive show them (src/ui/galleryShots.ts GALLERY_SHOTS), and the loading screens rotate some of them after the boot pick (src/ui/featuredShots.ts LOADING_SHOTS). Each still\'s focal aims a crop at its hero tank.',
   generatedBy: relative(ROOT, fileURLToPath(import.meta.url)),
   sources: `the 4K stills of the Scene Studio renders under ${PICKS.masters} (each item's source names its file, its revision the commit it was rendered on)`,
   dimensions: { width: WIDTH, height: HEIGHT },
   count: items.length,
-  loading: LOADING,
   items,
 };
 const total = items.reduce((sum, i) => sum + i.bytes, 0);
 const rungTotal = items.reduce((sum, i) => sum + (i.rungs ?? []).reduce((s2, r) => s2 + r.bytes, 0), 0);
-console.log(`loading-media: ${items.length} stills (${LOADING.length} on the loading screens), ${(total / 1048576).toFixed(2)} MB${rungTotal ? ` + ${(rungTotal / 1048576).toFixed(2)} MB of rungs` : ''} -> ${relative(ROOT, OUT)}${DRY ? ' (dry run: nothing written)' : ''}`);
+console.log(`loading-media: ${items.length} stills,${(total / 1048576).toFixed(2)} MB${rungTotal ? ` + ${(rungTotal / 1048576).toFixed(2)} MB of rungs` : ''} -> ${relative(ROOT, OUT)}${DRY ? ' (dry run: nothing written)' : ''}`);
 if (!DRY) {
   mkdirSync(OUT, { recursive: true });
   for (const f of readdirSync(OUT)) {

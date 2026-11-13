@@ -5986,5 +5986,13 @@
   "tutorial.garage.kit.bodyTouch": "三个槽位：维修包、急救包和灭火器。战斗中点击对应按钮即可使用。",
   "tutorial.battle.minimap.bodyTouch": "你的队友和所有被发现的敌人都显示在这里，各用本方颜色。",
   "tutorial.tips.done.title": "准备就绪",
-  "tutorial.tips.done.body": "教程到此结束，可随时在设置中重新观看。现在选一辆坦克，点击“出战”。"
+  "tutorial.tips.done.body": "教程到此结束，可随时在设置中重新观看。现在选一辆坦克，点击“出战”。",
+  "media.loading.title.s107PumaS1DesertDuelLowT70T3100Dx18Tk32M271R14": "西罗科旱谷：Puma S1 对 T-80U",
+  "media.loading.title.s100Merkava2bBadlandsReelFbM271R14": "红岩分界：Merkava Mk 2B 与 Merkava Mk 1B",
+  "media.loading.title.s105Merkava4TrophyCopperMesaDuelLowT70M271R14": "铜台地矿场：Merkava Mk 4 Trophy 对 T-90M Proryv",
+  "media.loading.title.s118Type10bSkybridgeReelM271R14": "天桥裂谷：Type 10B 与 Type 10",
+  "media.loading.title.s276Strv105FjordReelM271R14": "诺德港峡湾：Strv 105 与 UDES 03",
+  "media.loading.title.s84Leo1a5PoldersReelM271R14": "潮闸圩田：Leopard 1A5 与 MBT-70",
+  "media.loading.title.s72Amx10pOrchardReelM271R14": "果园谷：AMX-10P 与 AMX-10P 25",
+  "media.loading.title.vs04RailyardLeclercT14DroneM271R13": "灰渣枢纽：Leclerc SXXI 对 T-14 Armata"
 }

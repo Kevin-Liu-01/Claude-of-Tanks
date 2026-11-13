@@ -1902,26 +1902,38 @@
     }
   ],
   "loading": {
-    "about": "The loading screens' rotation after the boot pick (featured[0]): a list on top of the owner's loading-screen gallery (`gallery`, public/media/gallery-r1; 272, Main: one collection, so loading-r1 retired). The owner, 2026-11-04: \"for loading screens we need to use these elevated scenes\"; on the full rotation sheet (2026-11-11): \"only need 1-16 for the loading screen\", the gallery's first sixteen close-ups, in its order but for the Olympus Basin still, which comes last (\"the one with space background should come later\"); `elevated` stays for an elevated still he picks later. tools/media-r5/loading-media.mjs records the list in the gallery's manifest; site-media-wire.mjs --only=loading wires src/ui/featuredShots.ts LOADING_SHOTS (the gallery's files, each still's focal) and each still's caption. The Garage gallery stays `featured`.",
-    "close": [
-      "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",
+    "about": "The loading screens' rotation after the boot pick (featured[0]), in its order: the owner's pick (2026-11-13, from the sheet of the old loop and his loading-screen gallery: \"lets do S C D K L M 17 25 2 6 12 9 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22\"), five stills of the old loop (`featured` ids: their Garage files and captions) and then twenty-four of the gallery (`gallery` ids: public/media/gallery-r1, each still's focal and its caption from the gallery's manifest). site-media-wire.mjs --only=loading wires src/ui/featuredShots.ts LOADING_SHOTS. The Garage gallery stays `featured`.",
+    "stills": [
+      "s29-fjord-road-kill",
+      "s13-farm-race",
+      "s49-orchard-sunset",
+      "s37-river-village",
+      "s39-lakeside-village",
+      "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14",
+      "s107-puma-s1-desert-duel-low-t70-t3100-dx18-tk32-m271-r14",
+      "s100-merkava2b-badlands-reel-fb-m271-r14",
       "s294-sepv3-copper-mesa-herolow-f33-m271-r14",
       "s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14",
-      "s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14",
-      "s199-m1a2-x-desert-herolow-m271-r14",
-      "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
-      "s120-type10-skybridge-herolow-v3-m271-r14",
+      "s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14",
       "s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14",
-      "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14",
-      "s202-kf51-panther-copper-mesa-herohigh-m271-r14",
+      "s105-merkava4-trophy-copper-mesa-duel-low-t70-m271-r14",
+      "s118-type10b-skybridge-reel-m271-r14",
+      "s276-strv105-fjord-reel-m271-r14",
       "s267-t90a-vladimir-caldera-herohigh-fb-m271-r14",
+      "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14",
+      "s120-type10-skybridge-herolow-v3-m271-r14",
+      "s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14",
       "s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14",
+      "s199-m1a2-x-desert-herolow-m271-r14",
       "s307-sepv2-airfield-herolow-m271-r14",
+      "s84-leo1a5-polders-reel-m271-r14",
+      "s72-amx10p-orchard-reel-m271-r14",
+      "s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14",
       "s47-ironworks-crane-herolow-fb-m271-r14",
-      "s190-t90am-frontier-herolow-own-m271-r14",
-      "s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14"
-    ],
-    "elevated": []
+      "vs04-railyard-leclerc-t14-drone-m271-r13",
+      "s202-kf51-panther-copper-mesa-herohigh-m271-r14",
+      "s190-t90am-frontier-herolow-own-m271-r14"
+    ]
   },
   "gallery": {
     "about": "The owner's loading-screen gallery, all of it (2026-11-11: \"we can also add all 78 to the galleries and other image areas\"): its 26 close-ups and 52 elevated stills in the gallery's order (the loading picks before the loading screens kept sixteen, 3896c1d4d3), rendered at 4K on b5b7bef466. tools/media-r5/loading-media.mjs builds public/media/gallery-r1 (1920 and a 640 rung each), the one collection: `loading` is a list on top of it; site-media-wire.mjs --only=gallery writes src/ui/galleryShots.ts, which the Garage's slideshow and the manual's archive wall show. `focal` aims each still's crop at its hero tank (CSS object-position, two digits each; x centres the hero in a 390x844 portrait crop), read off each still (the scene's projection is a hint only: the renders shake the camera); LOADING_SHOTS takes its stills' focal here. `openers` names the still a Garage's slideshow opens on, by the battlefield the Garage stands on (Frosthollow, which the gallery lacks, keeps its featured still).",
