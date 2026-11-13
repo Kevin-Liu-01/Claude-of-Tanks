@@ -371,9 +371,15 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // 2026-11-11 (integrator 271.2, the Air Support fix's re-pin at integ/271.2's build): game +1,501 B brotli, cn +1,483 B;
   //   requests +4 on both (air-support-runs-272's strike order, strike runs and strike call modules on the boot path, not
   //   folded under the live-fix ruling: the fold is owed with 271's); the entry +172 B.
-  game: { brotliBytes: 1239907, requests: 139, entryBrotliBytes: 259628 },
-  cn: { brotliBytes: 1285814, requests: 140, entryBrotliBytes: 259628 },
-  gallery: { brotliBytes: 785129, requests: 81 },
+  // 2026-11-12 (integrator 272, the single end re-pin at integ/272's release build 465cd86573): game +10,800 B brotli,
+  //   cn +10,962 B, Gallery +5,215 B; requests game and cn +7, Gallery +2. The new boot chunks against live 271.2:
+  //   chaseStart (couch-panes-272 0669e4783f), fireCycleFloor (m163-rotary-272 db35064ff4; on the Gallery too), and five
+  //   modules already on main that now split into shared chunks of their own under 272's new importers: weaponHitKind
+  //   (fire-fx-debounce-272's audio cadence), lodDistanceScale (also on the Gallery), aerialVision, droneMotion and
+  //   battleHudFrameRuntime. The entry -9,572 B (those modules left it), pinned at its measure.
+  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 250056 },
+  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 250056 },
+  gallery: { brotliBytes: 790344, requests: 83 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },
   notFound: { brotliBytes: 18734, requests: 7 },
