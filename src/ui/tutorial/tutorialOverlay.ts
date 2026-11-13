@@ -7,6 +7,11 @@
  * surface stack on purpose (transientSurfaceRegistry.selftest.mjs OFF_STACK_EXEMPT): it must never close or replace
  * the surface whose control it lights, and a press on that control must reach it.
  *
+ * The dim is inert (272, the owner on the preview: a click on the dimmed Garage launched Test Drive). Four transparent
+ * blockers tile the screen round the lit control's hole (one covers it all when nothing is lit) and swallow every press,
+ * wheel and touch, so only the lit control and the card take the pointer; a battle step the player acts on (dim off)
+ * puts none down. The runner guards the keyboard the same way (tutorialRunner.ts).
+ *
  * The square follows its control: a resize, any scroll, the control's own resize, and a slow re-check (the HUD and the
  * Garage re-render their controls) re-measure it, and it writes only when the box moved. A control that is not on
  * screen leaves the card alone in the middle. The card stands in the middle, or above or below the control when the
@@ -64,6 +69,9 @@ export interface OverlayHandlers {
 }
 
 const PAD = 6; // px of glow room round the control
+/** What the dim swallows: every press, release, click, wheel and touch on it. */
+const BLOCKED_EVENTS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'wheel',
+  'touchstart', 'touchmove', 'touchend'] as const;
 const RECHECK_MS = 400;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: Element): HTMLElementTagNameMap[K] {
@@ -104,6 +112,15 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
   el('div', 'cot-tut-scrim', root);
   const spot = el('div', 'cot-tut-spot', root);
   const pulse = el('span', 'cot-tut-pulse', spot);
+  // the blockers: above, below, left of and right of the hole (above alone covers the screen when nothing is lit)
+  const blockers = [0, 1, 2, 3].map(() => {
+    const block = el('div', 'cot-tut-block', root);
+    block.setAttribute('aria-hidden', 'true');
+    for (const type of BLOCKED_EVENTS) {
+      block.addEventListener(type, (event) => { event.stopPropagation(); if (event.cancelable) event.preventDefault(); }, { passive: false });
+    }
+    return block;
+  });
   const card = el('section', 'cot-tut-card', root);
   card.setAttribute('aria-live', 'polite');
   const head = el('div', 'cot-tut-head', card);
@@ -153,8 +170,8 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       if (element) resizeObserver?.observe(element);
     }
     const rect = visibleRect(element);
-    const key = rect ? `${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)},${Math.round(rect.height)}` : '';
     const dim = !view.dim ? 'clear' : rect ? 'spot' : 'full';
+    const key = `${window.innerWidth}x${window.innerHeight}|${dim}|${rect ? `${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)},${Math.round(rect.height)}` : ''}`;
     if (root.dataset.dim !== dim) root.dataset.dim = dim;
     if (key === lastKey) return;
     lastKey = key;
@@ -165,7 +182,28 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       spot.style.height = `${Math.round(rect.height + PAD * 2)}px`;
       spot.style.transform = `translate(${Math.round(rect.left - PAD)}px,${Math.round(rect.top - PAD)}px)`;
     }
+    tile(dim, rect);
     place(rect);
+  }
+
+  /** The blockers round the hole (none while the field stays clear for a battle step the player acts on). */
+  function tile(dim: string, rect: DOMRect | null): void {
+    const W = window.innerWidth, H = window.innerHeight;
+    const boxes: Array<[number, number, number, number] | null> = dim === 'clear' ? [null, null, null, null]
+      : !rect ? [[0, 0, W, H], null, null, null]
+        : (() => {
+          const l = Math.max(0, Math.round(rect.left - PAD)), t = Math.max(0, Math.round(rect.top - PAD));
+          const r = Math.min(W, Math.round(rect.right + PAD)), b = Math.min(H, Math.round(rect.bottom + PAD));
+          return [[0, 0, W, t], [0, b, W, H - b], [0, t, l, b - t], [r, t, W - r, b - t]];
+        })();
+    boxes.forEach((box, i) => {
+      const block = blockers[i]!;
+      block.hidden = !box || box[2] <= 0 || box[3] <= 0;
+      if (block.hidden || !box) return;
+      block.style.transform = `translate(${box[0]}px,${box[1]}px)`;
+      block.style.width = `${box[2]}px`;
+      block.style.height = `${box[3]}px`;
+    });
   }
 
   const onScroll = (): void => measure();
