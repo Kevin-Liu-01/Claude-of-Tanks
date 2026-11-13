@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { createBus } from './stateCore.ts';
-import { AIR_STRIKE_KINDS, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, couchRulesetFor, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 
 function createInput() {
@@ -153,7 +153,7 @@ const actions = createPlayerBattleActions({
   bus,
   input,
   rules,
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind], blocker: () => null },
   isSettingsOpen: () => settingsOpen,
   network: {
     isActive: () => networkActive,
@@ -347,8 +347,11 @@ settingsOpen=true;input.press('aerialVision');assert.equal(viewEvents(),beforeVi
 settingsOpen=false;
 
 // couch mode (docs/COUCH-MODE.md): seat 1's phone drives the tank the battle names its player, through the input stage;
-// the shared screen's keys and HUD buttons act on no tank, so a press never lands twice or on the wrong seat
+// the shared screen's keys and HUD buttons act on no tank, so a press never lands twice or on the wrong seat. (round 8 Y1
+// s2-01) Only while that battle runs: a couch battle plays the couch rules (setupBattle couchRulesetFor), and a session
+// left under another ruleset (a network round's) blocks nothing (stateCore.ts couchSeatsActive)
 {
+  game.ruleset = couchRulesetFor(matchRulesetFor('standard'));
   game.couch = { sides: 'together', seats: [{ seat: 1, entity: player }] };
   player.input.auxiliaryBits = 0;
   const routed = () => events.filter((e) => e.event.startsWith('ui:')).length;
@@ -361,6 +364,11 @@ settingsOpen=false;
   bus.emit('ui:magazineReload', {});
   assert.deepEqual([localCalls.length, networkCalls.length, player.combat.shellSlot, player.input.auxiliaryBits],
     [beforeLocal, beforeNetwork, slot, 0], 'a HUD button acts on no seat\'s tank');
+  game.ruleset = matchRulesetFor('standard');
+  input.press('smoke');
+  assert.equal(player.input.auxiliaryBits, 64, 'a session left under another battle\'s ruleset blocks no key');
+  player.input.auxiliaryBits = 0;
+  game.ruleset = undefined;
   game.couch = null;
 }
 actions.dispose();

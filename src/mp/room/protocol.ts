@@ -115,8 +115,11 @@ export const ROOM_RESUME_TOKEN_RE = /^[a-f0-9]{64}$/;
 
 export type RoomMode = 'private' | 'lan';
 export type RoomTeam = 'alpha' | 'bravo' | 'spectator';
-export type RoomPhase = 'waiting' | 'starting' | 'playing';
-export type RoomMatchStatus = 'starting' | 'playing' | 'ended' | 'lost';
+/** (2026-11-02 audit S3) runtime lists: the multiplayer harnesses import them (tools/mp-states.mjs) */
+export const ROOM_PHASES = Object.freeze(['waiting', 'starting', 'playing'] as const);
+export type RoomPhase = typeof ROOM_PHASES[number];
+export const ROOM_MATCH_STATUSES = Object.freeze(['starting', 'playing', 'ended', 'lost'] as const);
+export type RoomMatchStatus = typeof ROOM_MATCH_STATUSES[number];
 export type RoomResult = 'alpha' | 'bravo' | 'draw';
 
 export interface RoomPlayer {
@@ -147,7 +150,13 @@ export interface RoomSettings {
   /** Empty team slots up to teamSize are filled with authority bots at start. */
   botsFill: boolean;
   allowTeamSwitch: boolean;
+  /** No fresh join now: the admin's lock, or a round starting or playing (derived by roomPolicy `joinLocked`). */
   locked: boolean;
+  /**
+   * The admin's `set_locked` switch (audit M2, 2026-11-02). Absent in a room written before it: RoomActor.restore reads
+   * it from `locked` while the room waits, and as unlocked mid-round (round 2 U6).
+   */
+  adminLocked?: boolean;
   arrangement: TeamArrangement | null;
   campaignOperationId: string | null;
 }
@@ -610,7 +619,10 @@ export function parseRoomRoute(pathname: string): { code: string; match: boolean
  * service; a host silent for this long without leaving is treated like a dropped host (three poll intervals).
  */
 export const ROOM_MATCH_REPORT_STALE_AFTER_MS = 3 * ROOM_MATCH_POLL_MS;
-/** The host reports at least this often (every phase change too); half the staleness budget stays for a slow tab. */
+/**
+ * The host reports at least this often (every phase change too): 30 s. The staleness budget is three of these (90 s), so
+ * a slow tab may miss two reports.
+ */
 export const ROOM_MATCH_REPORT_INTERVAL_MS = ROOM_MATCH_POLL_MS;
 /** A verdict reason in a report is one short token (`elimination`, `time_limit`, …). */
 export const ROOM_MAX_VERDICT_REASON_CHARS = 64;

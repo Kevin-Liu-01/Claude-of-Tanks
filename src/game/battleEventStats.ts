@@ -12,6 +12,7 @@ export class BattleKillLedger {
   }
   count(id: string): number { return this.counts.get(id) ?? 0; }
   respawn(id: string): void { this.dead.delete(id); }
+  /** A new battle: a battle's start, and a network battle's restart (round 4 E6b: no abandoned battle's kill counts). */
   clear(): void { this.counts.clear(); this.dead.clear(); }
 }
 

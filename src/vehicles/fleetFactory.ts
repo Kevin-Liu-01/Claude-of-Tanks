@@ -20,7 +20,7 @@ import {
   ensureVehicleMarkingSeatsForIds,
   isVehicleMarkingSeatsReady,
 } from './vehicleMarkingSeatLoader.ts';
-import { ensureAllInteriorFills, ensureInteriorFills } from './interiorFills.ts';
+import { ensureAllInteriorFills, ensureInteriorFills, isInteriorFillsReady } from './interiorFills.ts';
 import {
   ensureAllCombatAnatomyGroups,
   ensureCombatAnatomyCalibration,
@@ -36,6 +36,7 @@ import {
   type VehicleProfileRecord,
 } from './profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk, type LazyChunk } from '../app/lazyChunk.ts';
 
 type GroupLoader = () => Promise<object | void>;
 type TankVisual = ReturnType<typeof createTankCore>;
@@ -84,26 +85,22 @@ export function battleStaticDrawMerge(_specId: string): NonNullable<CreateTankOp
 }
 
 let profileKit: ProfileBuildFunctions | null = null;
-let factoryReady = false;
-let factoryReadyPromise: Promise<void> | null = null;
+// (2026-11-02 audit R6) the kit and every group are one lazyChunk each (app/lazyChunk.ts): a failed chunk is asked
+// again by the next ensure, as these loads always were. They are default-policy chunks, not openers, so a failed module
+// is asked again at once after one failure, then past its backoff, never offline (an opener's chunk, a failed
+// stylesheet and a removed chunk are terminal; round 4 E9: the older memos that differ are named in
+// app/lazyChunkSites.selftest.mjs KNOWN)
+const factoryKit = createLazyChunk(() => import('./profiles/kit.ts').then((kit) => {
+  configureTankFactory({
+    canonicalBuilderPacks: [],
+    profiledBuilders: {},
+    fittings: kit.FITTINGS,
+  });
+  profileKit = kit;
+}));
 
 function ensureFactoryReady(): Promise<void> {
-  if (factoryReady) return Promise.resolve();
-  if (!factoryReadyPromise) {
-    factoryReadyPromise = import('./profiles/kit.ts').then((kit) => {
-      configureTankFactory({
-        canonicalBuilderPacks: [],
-        profiledBuilders: {},
-        fittings: kit.FITTINGS,
-      });
-      profileKit = kit;
-      factoryReady = true;
-    }).catch((error) => {
-      factoryReadyPromise = null;
-      throw error;
-    });
-  }
-  return factoryReadyPromise;
+  return factoryKit.load();
 }
 
 function registerProfiles(profiles: VehicleProfileRecord): void {
@@ -137,6 +134,7 @@ const GROUP_LOADERS = Object.freeze({
   southAfrica: () => import('./profiles/southAfrica.ts').then((mod) => registerProfiles(mod.SOUTH_AFRICA_PROFILES)),
   australia: () => import('./profiles/australia.ts').then((mod) => registerProfiles(mod.AUSTRALIA_PROFILES)),
   m41: () => import('./profiles/m41.ts').then((mod) => registerProfiles(mod.M41_PROFILES)),
+  t95: () => import('./profiles/t95.ts').then((mod) => registerProfiles(mod.T95_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),
@@ -158,6 +156,7 @@ const GROUP_LOADERS = Object.freeze({
   k2X: () => import('./profiles/k2X.ts').then((mod) => registerProfiles(mod.K2_X_PROFILES)),
   kf51X: () => import('./profiles/kf51X.ts').then((mod) => registerProfiles(mod.KF51_X_PROFILES)),
   t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
+  russia152: () => import('./profiles/russia152.ts').then((mod) => registerProfiles(mod.RUSSIA_152_PROFILES)),
   kurganetsX: () => import('./profiles/kurganetsX.ts')
     .then((mod) => registerProfiles(mod.KURGANETS_X_PROFILES)),
   fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ warrior_tes_h: { build: mod.buildFv510MilanX } })),
@@ -241,24 +240,34 @@ const GROUP_LOADERS = Object.freeze({
   gepard: () => import('./profiles/gepard.ts').then((mod) => registerProfiles(mod.GEPARD_PROFILES)),
   chineseAirDefense: () => import('./profiles/chineseAirDefense.ts')
     .then((mod) => registerProfiles(mod.CHINESE_AIR_DEFENSE_PROFILES)),
+  // 269: the second air-defence round
+  type87: () => import('./profiles/type87.ts').then((mod) => registerProfiles(mod.TYPE87_PROFILES)),
+  marksman: () => import('./profiles/marksman.ts').then((mod) => registerProfiles(mod.MARKSMAN_PROFILES)),
+  lvkv9040: () => import('./profiles/lvkv9040.ts').then((mod) => registerProfiles(mod.LVKV9040_PROFILES)),
+  k30Biho: () => import('./profiles/k30Biho.ts').then((mod) => registerProfiles(mod.K30_BIHO_PROFILES)),
+  loara: () => import('./profiles/loara.ts').then((mod) => registerProfiles(mod.LOARA_PROFILES)),
+  m163: () => import('./profiles/m163.ts').then((mod) => registerProfiles(mod.M163_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
-const groupPromises = new Map<FleetGroup, Promise<void>>();
-const readyGroups = new Set<FleetGroup>();
+const groupLoads = new Map<FleetGroup, LazyChunk<void>>();
 const tankSpecs = TANK_SPECS;
 
-function ensureGroup(group: FleetGroup | undefined): Promise<void> {
-  if (!group || readyGroups.has(group)) return ensureFactoryReady();
-  let pending = groupPromises.get(group);
-  if (!pending) {
-    pending = ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => {
-      readyGroups.add(group);
-    }).catch((error) => {
-      groupPromises.delete(group);
-      throw error;
-    });
-    groupPromises.set(group, pending);
+/** A group's own chunk (it registers into the kit, so it is asked only once the kit is in). */
+function groupLoad(group: FleetGroup): LazyChunk<void> {
+  let load = groupLoads.get(group);
+  if (!load) {
+    load = createLazyChunk(() => GROUP_LOADERS[group]().then(() => undefined));
+    groupLoads.set(group, load);
   }
-  return pending;
+  return load;
+}
+
+// (round 2 U35) the kit first, outside the group's chunk: a group whose chunk wrapped the kit failed with the kit's error
+// on every ask while the kit was out, so its own count and backoff grew without its chunk ever being fetched, and once
+// the kit was back it kept failing at once with that stale error until its own backoff passed (up to a minute)
+function ensureGroup(group: FleetGroup | undefined): Promise<void> {
+  if (!group) return ensureFactoryReady();
+  const chunk = groupLoad(group);
+  return chunk.state === 'ready' ? chunk.load() : ensureFactoryReady().then(() => chunk.load());
 }
 
 export function ensureTankBuilder(specId: string): Promise<void> {
@@ -272,7 +281,9 @@ export function ensureTankBuilder(specId: string): Promise<void> {
   });
 }
 
-let ridingPartsPrebuildAsked = false;
+// the riding stations' prebuild chunk: a failed import is asked again by a later ask (it latched before its import, so
+// one failure lost the prebuild for the session); the prebuild itself starts once (ridingPartsPrebuild.ts)
+const ridingPartsPrebuild = createLazyChunk(() => import('./ridingPartsPrebuild.ts'));
 
 export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
   const groups = new Set<FleetGroup>();
@@ -289,9 +300,8 @@ export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
     for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
     // the first ask for builders ahead of their builds starts the riding stations' off-thread prebuild, these tanks
     // first (UI-LOCKDOWN E): every such ask comes after the Garage's first tank, and its chunk loads only here
-    if (!ridingPartsPrebuildAsked && typeof Worker === 'function') {
-      ridingPartsPrebuildAsked = true;
-      void import('./ridingPartsPrebuild.ts').then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
+    if (typeof Worker === 'function') {
+      void ridingPartsPrebuild.load().then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
     }
   });
 }
@@ -307,12 +317,16 @@ export function ensureFullFleet(): Promise<void> {
   });
 }
 
+/** Whether everything ensureTankBuilder(specId) awaits is resident: the kit, the group, the marking seats, the
+ *  calibration and (2026-11-02 audit R6) the interior fills, which it skipped. A build that passes it finalizes the
+ *  spec's combat anatomy first (idempotent), so a build never runs ahead of the ensure's own finalize. */
 export function isTankBuilderReady(specId: string): boolean {
   const group = FLEET_GROUP_BY_ID[specId];
-  return factoryReady
-    && (!group || readyGroups.has(group))
+  return factoryKit.state === 'ready'
+    && (!group || groupLoad(group).state === 'ready')
     && isVehicleMarkingSeatsReady(specId)
-    && isCombatAnatomyCalibrationReady(specId);
+    && isCombatAnatomyCalibrationReady(specId)
+    && isInteriorFillsReady(specId);
 }
 
 export function createTank(
@@ -323,6 +337,7 @@ export function createTank(
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
+  finalizeCombatAnatomy(tankSpecs[specId]);
   return createTankCore(specId, engineCtx, opts);
 }
 
@@ -335,8 +350,13 @@ export function createTankSteps(
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
+  finalizeCombatAnatomy(tankSpecs[specId]);
   return createTankCoreSteps(specId, engineCtx, opts);
 }
+
+// (2026-11-02 audit R6) the client's chunk under the one lazy-chunk policy: a failed import leaves those tanks in-line and
+// the next stepped build asks again
+const decorPlanClient = createLazyChunk(() => import('./decorPlanClient.ts'));
 
 /**
  * Stage 2b pass 1 (UI-LOCKDOWN E): the decor worker's planner, for a stepped build whose driver awaits the waits it
@@ -346,7 +366,7 @@ export function createTankSteps(
  */
 export function offThreadDecorPlanner(): DecorPlanner | null {
   if (typeof Worker !== 'function') return null;
-  const client = import('./decorPlanClient.ts');
+  const client = decorPlanClient.load();
   client.then(({ startDecorWorker }) => startDecorWorker(), () => {});
   return (args) => client.then(({ planDecoration }) => planDecoration(args));
 }

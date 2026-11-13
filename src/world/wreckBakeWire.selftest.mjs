@@ -154,7 +154,7 @@ if (!process.argv.includes('--fixtures-only')) {
   const { ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
   const { bakeTankWreck } = await import('./wrecks.ts');
   assert.equal(typeof globalThis.document, 'undefined', 'production bakes remain DOM-free');
-  for (const recipe of [...RECIPES, { specId: 'm551_sheridan', seed: 1326, pop: true }]) {
+  for (const recipe of [...RECIPES, { specId: 'm551_sheridan', seed: 1326, state: 'turret_blown_off' }]) {
     await ensureTankBuilder(recipe.specId);
     const baked = bakeTankWreck({}, recipe.specId, recipe);
     assert.ok(baked, `${recipe.specId}: real synchronous bake succeeds`);

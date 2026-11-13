@@ -34,20 +34,28 @@ export interface PadActorPorts {
   iceServers(): Promise<{ iceServers: PadIceServer[]; relay: boolean }>;
 }
 
-/** One phone's seat: its number (1 in a pairing), its token's hash, its live socket and its share of the relay. */
+/** One phone's seat: its number (1 in a pairing), its token's hash, its live socket, its share of the relay and its ICE
+ *  window (272: kept with the seat, so a resumed socket does not reset it; absent in a state stored before 272). */
 export interface PadSeat {
   seat: number;
   token: string;
   socket: string | null;
   relayUsed: number;
+  ice?: Window;
 }
+
+/** A pairing's phase: `waiting` until a phone joins, then `paired` for the rest of its life. It never goes back (round 8
+ *  Y5 s3-07): a lobby whose phones all left is still a code someone saw, so its desktop keeps PAD_DESKTOP_GRACE_MS; only
+ *  a code nobody joined dies with its desktop. `#joined` is its one writer. */
+export const PAD_ACTOR_PHASES = ['waiting', 'paired'] as const;
+export type PadActorPhase = (typeof PAD_ACTOR_PHASES)[number];
 
 export interface PadActorState {
   version: 2;
   code: string;
   /** `pair`: one desktop and one phone; `lobby`: one desktop and up to PAD_LOBBY_SEATS phones. */
   kind: 'pair' | 'lobby';
-  phase: 'waiting' | 'paired';
+  phase: PadActorPhase;
   createdAt: number;
   /** pair waiting: the code's expiry; otherwise the pairing's longest life. */
   expiresAt: number;
@@ -57,6 +65,8 @@ export interface PadActorState {
   desktopSocket: string | null;
   desktopAwaySince: number | null;
   seats: PadSeat[];
+  /** The desktop's ICE window (272; absent in a state stored before it). */
+  desktopIce?: Window;
 }
 
 /** The state before lobbies: one phone's token, socket and the pairing's relay count. */
@@ -87,13 +97,26 @@ interface Window { start: number; count: number }
 const PAIR_SOCKETS = 3;
 const LOBBY_SOCKETS = 1 + PAD_LOBBY_SEATS + 2;
 
+/** A deep copy of the stored state (its seats and ICE windows are objects). */
+function copyState(state: PadActorState): PadActorState {
+  return {
+    ...state, ...(state.desktopIce ? { desktopIce: { ...state.desktopIce } } : {}),
+    seats: state.seats.map((seat) => ({ ...seat, ...(seat.ice ? { ice: { ...seat.ice } } : {}) })),
+  };
+}
+
+/** The window after one more request, or null when it is spent (a window older than windowMs starts again). */
+function admitWindow(window: Window | undefined, now: number, limit: number, windowMs: number): Window | null {
+  const current = !window || now - window.start >= windowMs ? { start: now, count: 0 } : window;
+  return current.count >= limit ? null : { start: current.start, count: current.count + 1 };
+}
+
 export class PadActor {
   readonly code: string;
   #ports: PadActorPorts;
   #state: PadActorState | null = null;
   #sockets = new Map<string, PadSocketRecord>();
   #signals = new Map<string, Window>();
-  #ice = new Map<string, Window>();
   #relaySecond = new Map<string, Window>();
   #relaySpentSent = new Set<number>();
   #relayUnpersisted = 0;
@@ -106,13 +129,13 @@ export class PadActor {
   /** The durable state, or null when this code holds nothing. */
   exportState(): PadActorState | null {
     const state = this.#state;
-    return state ? { ...state, seats: state.seats.map((seat) => ({ ...seat })) } : null;
+    return state ? copyState(state) : null;
   }
 
   /** Restore a stored state (a version-1 pairing becomes the same pairing with one seat). */
   restore(state: PadActorState | PadActorStateV1 | null): void {
     if (!state || state.code !== this.code) { this.#state = null; return; }
-    if (state.version === 2) { this.#state = { ...state, seats: state.seats.map((seat) => ({ ...seat })) }; return; }
+    if (state.version === 2) { this.#state = copyState(state); return; }
     if (state.version !== 1) { this.#state = null; return; }
     this.#state = {
       version: 2, code: state.code, kind: 'pair', phase: state.phase, createdAt: state.createdAt, expiresAt: state.expiresAt,
@@ -132,7 +155,7 @@ export class PadActor {
 
   /** True when a desktop may take this code (`/pad/new`, `/pad/lobby`): nothing is held here. */
   get vacant(): boolean { return this.#state === null; }
-  get phase(): 'vacant' | 'waiting' | 'paired' { return this.#state?.phase ?? 'vacant'; }
+  get phase(): 'vacant' | PadActorPhase { return this.#state?.phase ?? 'vacant'; }
   get liveSockets(): number { return this.#sockets.size; }
   /** The most sockets this code holds at once (the host refuses an upgrade past it). */
   get socketCap(): number { return this.#state?.kind === 'lobby' ? LOBBY_SOCKETS : PAIR_SOCKETS; }
@@ -143,7 +166,8 @@ export class PadActor {
     if (!state) return null;
     let next = state.expiresAt;
     if (state.joinUntil !== null) next = Math.min(next, state.joinUntil);
-    if (state.phase === 'paired' && state.desktopAwaySince !== null) next = Math.min(next, state.desktopAwaySince + PAD_DESKTOP_GRACE_MS);
+    // a desktop away has its grace whatever its seats do meanwhile (a code nobody joined never gets here: it ends at once)
+    if (state.desktopAwaySince !== null) next = Math.min(next, state.desktopAwaySince + PAD_DESKTOP_GRACE_MS);
     return next;
   }
 
@@ -159,6 +183,8 @@ export class PadActor {
     const state = this.#state;
     const now = this.#ports.now();
     if (!state) { this.#refuse(socketId, 'unknown'); return; }
+    // a desktop away past its grace is gone, however late its alarm runs: no phone is seated to be dropped at once
+    if (state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) { this.#refuse(socketId, 'unknown'); return; }
     if (state.kind === 'pair' && (state.phase !== 'waiting' || now >= state.expiresAt || state.seats.length)) {
       this.#refuse(socketId, 'unknown');
       return;
@@ -172,10 +198,7 @@ export class PadActor {
     while (state.seats.some((seat) => seat.seat === seatNumber)) seatNumber++;
     state.seats.push({ seat: seatNumber, token: this.#ports.sha256Hex(token), socket: socketId, relayUsed: 0 });
     state.seats.sort((a, b) => a.seat - b.seat);
-    if (state.phase === 'waiting') {
-      state.phase = 'paired';
-      if (state.kind === 'pair') state.expiresAt = state.createdAt + PAD_PAIR_MAX_MS;
-    }
+    this.#joined(state);
     this.#sockets.set(socketId, { id: socketId, role: 'phone', seat: seatNumber });
     this.#ports.send(socketId, state.kind === 'lobby' ? { t: 'joined', token, seat: seatNumber } : { t: 'joined', token });
     this.#ports.send(socketId, { t: 'peer', state: state.desktopSocket ? 'here' : 'away' });
@@ -235,11 +258,20 @@ export class PadActor {
           ...(lobby && !desktop ? { seat: seat.seat } : {}) });
         return;
       case 'ice': {
-        if (state.phase !== 'paired' && !(desktop && lobby)) { this.#ports.send(socketId, { t: 'error', code: 'not_paired' }); return; }
-        if (!this.#admit(this.#ice, socketId, desktop && lobby ? PAD_ICE_LIMIT + PAD_LOBBY_SEATS : PAD_ICE_LIMIT, PAD_ICE_WINDOW_MS)) {
+        // relay credentials only for a peer connection that can exist: a pairing with its phone, a lobby with at least
+        // one phone joined (an empty lobby is `waiting`). The window is the side's, not the socket's: the desktop's, or
+        // the phone's seat's, kept in the stored state so a resumed socket or a restored host does not reset it. A
+        // lobby's desktop needs one credential per peer connection: PAD_ICE_LIMIT per phone joined.
+        const phoneSeat = desktop ? null : this.#seatOf(record);
+        if (state.phase !== 'paired' || (!desktop && !phoneSeat)) { this.#ports.send(socketId, { t: 'error', code: 'not_paired' }); return; }
+        const limit = desktop && lobby ? PAD_ICE_LIMIT * state.seats.length : PAD_ICE_LIMIT;
+        const window = admitWindow(desktop ? state.desktopIce : phoneSeat!.ice, this.#ports.now(), limit, PAD_ICE_WINDOW_MS);
+        if (!window) {
           this.#ports.send(socketId, { t: 'error', code: 'rate_limit' });
           return;
         }
+        if (desktop) state.desktopIce = window; else phoneSeat!.ice = window;
+        this.#ports.persist();
         const role = record.role;
         void this.#ports.iceServers().then((grant) => {
           // a socket that left or was replaced while the grant was minted receives nothing
@@ -274,13 +306,13 @@ export class PadActor {
   handleClose(socketId: string): void {
     const record = this.#sockets.get(socketId);
     this.#sockets.delete(socketId);
-    this.#signals.delete(socketId); this.#ice.delete(socketId);
+    this.#signals.delete(socketId);
     for (const key of [...this.#relaySecond.keys()]) if (key === socketId || key.startsWith(`${socketId}#`)) this.#relaySecond.delete(key);
     const state = this.#state;
     if (!record || !state) return;
     if (record.role === 'desktop' && state.desktopSocket === socketId) {
       state.desktopSocket = null;
-      // nobody can use an unseen code
+      // nobody can use an unseen code (one no phone ever joined); a code a phone joined keeps its desktop's grace
       if (state.phase === 'waiting') { this.#end('desktop_left'); return; }
       state.desktopAwaySince = this.#ports.now();
       for (const seat of state.seats) if (seat.socket) this.#ports.send(seat.socket, { t: 'peer', state: 'away' });
@@ -301,14 +333,15 @@ export class PadActor {
     const now = this.#ports.now();
     if (state.kind === 'pair' && state.phase === 'waiting' && now >= state.expiresAt) { this.#end('expired'); return; }
     if (state.kind === 'lobby' && state.joinUntil !== null && now >= state.joinUntil) {
-      // a lobby nobody joined expires; one with seats only stops admitting
+      // a lobby with no seat when its window lapses (nobody joined, or everyone left) expires; one with seats only stops
+      // admitting
       if (!state.seats.length) { this.#end('expired'); return; }
       state.joinUntil = null;
       if (state.desktopSocket) this.#ports.send(state.desktopSocket, { t: 'lobby', open: false, until: null, seats: state.seats.length });
       this.#changed();
     }
     if ((state.phase === 'paired' || state.kind === 'lobby') && now >= state.expiresAt) { this.#end('too_long'); return; }
-    if (state.phase === 'paired' && state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) {
+    if (state.desktopAwaySince !== null && now >= state.desktopAwaySince + PAD_DESKTOP_GRACE_MS) {
       this.#end('desktop_left');
       return;
     }
@@ -332,6 +365,14 @@ export class PadActor {
     return true;
   }
 
+  /** The phase's one move: the first phone that joins makes the code `paired` (a pairing's code then lives its longest
+   *  life). Nothing moves it back. */
+  #joined(state: PadActorState): void {
+    if (state.phase !== 'waiting') return;
+    state.phase = 'paired';
+    if (state.kind === 'pair') state.expiresAt = state.createdAt + PAD_PAIR_MAX_MS;
+  }
+
   /** The seat a desktop's message names: a lobby's by number, a pairing's only phone. */
   #seatFor(seatNumber: number | undefined): PadSeat | null {
     const state = this.#state!;
@@ -353,7 +394,7 @@ export class PadActor {
   }
 
   /** A lobby seat leaves (the phone's own end, or the desktop let it go): its socket is told and closed, its token
-   *  forgotten, its number free again. */
+   *  forgotten, its number free again. The lobby stays `paired` with no seat (round 8 Y5 s3-07): its code was seen. */
   #release(seat: PadSeat, reason: 'ended' | 'removed'): void {
     const state = this.#state!;
     state.seats = state.seats.filter((entry) => entry !== seat);
@@ -363,7 +404,6 @@ export class PadActor {
       this.#ports.send(seat.socket, { t: 'end', reason });
       this.#ports.close(seat.socket, reason);
     }
-    if (!state.seats.length) state.phase = 'waiting';
     this.#tellDesktop(seat.seat, 'gone');
     this.#changed();
   }
@@ -395,7 +435,8 @@ export class PadActor {
     record.role = 'phone';
     record.seat = seat.seat;
     seat.socket = socketId;
-    this.#ports.send(socketId, { t: 'resumed' });
+    // a lobby phone hears its seat again, as on its join (a reloaded page knew none)
+    this.#ports.send(socketId, state.kind === 'lobby' ? { t: 'resumed', seat: seat.seat } : { t: 'resumed' });
     this.#ports.send(socketId, { t: 'peer', state: state.desktopSocket ? 'here' : 'away' });
     this.#tellDesktop(seat.seat, 'here');
     this.#changed();
@@ -438,7 +479,7 @@ export class PadActor {
       this.#ports.close(socketId, reason);
     }
     this.#sockets.clear();
-    this.#signals.clear(); this.#ice.clear(); this.#relaySecond.clear(); this.#relaySpentSent.clear();
+    this.#signals.clear(); this.#relaySecond.clear(); this.#relaySpentSent.clear();
     this.#state = null;
     this.#changed();
   }

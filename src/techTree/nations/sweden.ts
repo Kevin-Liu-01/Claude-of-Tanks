@@ -31,6 +31,8 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
     node({ id: 'cv90105_tml', tier: 2, line: 'cv90', lane: 3, parents: ['udes03'], slot: 'line' }),
     node({ id: 'cv90', tier: 4, line: 'cv90', lane: 2, parents: ['cv90105_tml'], slot: 'line' }),
     node({ id: 'cv9040c', tier: 4, line: 'cv90', lane: 3, parents: ['cv90'], slot: 'line' }),
+    // 269: the Lvkv 9040, the CV90's air-defence variant, at V straight on from the CV90 (lane 2 is clear from V to VIII)
+    node({ id: 'lvkv9040', tier: 5, line: 'cv90', lane: 2, parents: ['cv90'], slot: 'line' }),
     node({
       id: 'cv90_mk4', tier: 7, line: 'cv90', lane: 3, parents: ['cv9040c'], slot: 'line',
       builds: ['cv90_mk4_concept'],

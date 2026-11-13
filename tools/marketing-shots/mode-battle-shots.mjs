@@ -14,7 +14,7 @@
 //        before every slot, so slots can be added, reordered or removed while the run waits for the lock)
 //     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=7613] [--cache-dir=<dir>]
 //        [--base=http://127.0.0.1:<port>] [--hold-max-min=9] [--headroom-gb=8] [--dpr=2] [--lock-timeout-min=600]
-//        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double]
+//        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double] [--ready-timeout-s=240]
 //   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...] [--alt="what the frame shows"]
 //   node tools/marketing-shots/mode-battle-shots.mjs --sheet=modes/standard   (rebuild a slot's contact sheets)
 //
@@ -24,8 +24,9 @@
 //
 // Shared machine rules (2026-10-12): every capture takes the shared capture lock (tools/capture-lock.mjs) with a
 // normal ticket, holds it for at most --hold-max-min minutes before releasing it (and re-queueing at the back) so
-// other jobs interleave, and closes its Chrome while it waits; a memory-guard WARN or a `headroom can-start`
-// refusal waits, a PAUSE stops the run; one Chrome and one dev server.
+// other jobs interleave, and closes its Chrome while it waits; a `headroom can-start` refusal or the coordinator's quiet
+// window waits; one Chrome and one dev server. (2026-11-02 audit S4: the memory guard's PAUSE and WARN files are retired,
+// no memory gates; a leftover PAUSE stopped this run and a WARN held it for up to --gate-wait-min. They are not read.)
 
 import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
@@ -34,10 +35,10 @@ import { spawnSync } from 'node:child_process';
 import {
   appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, statSync, writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+import { ticketAt } from '../capture-lock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -184,12 +185,12 @@ if (opt('sheet')) {
 }
 
 // ------------------------------------------------------------------------------------------------ machine guards
-const MEMGUARD = join(homedir(), 'cot-launch-state', 'memguard');
-// The coordinator's quiet window (2026-10-14): ~/cot-launch-state/QUIET ("<epoch> <owner> <reason>"), refreshed while it
+// The coordinator's quiet window (2026-10-14): the file COT_QUIET_FILE names ("<epoch> <owner> <reason>"), refreshed while it
 // stands, stale after 35 minutes untouched (the same rule as shots/media-r5/tmp/quiet-wait.zsh). While it is live no new
 // browser run starts: the gate waits without a ticket, an acquisition gives its turn back, and a hold ends at the next
 // slot boundary.
-const QUIET = join(homedir(), 'cot-launch-state', 'QUIET');
+// (272) the path comes from the environment; unset, there is no quiet window
+const QUIET = process.env.COT_QUIET_FILE || null;
 function quietLive() {
   try { return Date.now() - statSync(QUIET).mtimeMs < 35 * 60 * 1000; } catch { return false; }
 }
@@ -199,14 +200,12 @@ function quietLabel() {
 async function machineGate(label, gb) {
   let quietWaited = 0;
   for (let waited = 0; ; waited += 30) {
-    if (existsSync(join(MEMGUARD, 'PAUSE'))) throw Object.assign(new Error('memory guard PAUSE: stopping'), { code: 'PAUSE' });
-    const warn = existsSync(join(MEMGUARD, 'WARN'));
     const quiet = quietLive();
     let headroomOk = true;
     const headroom = spawnSync('headroom', ['can-start', '--gb', String(gb), '--label', label], { encoding: 'utf8' });
     if (!headroom.error && headroom.status === 1) headroomOk = false;
     if (!quiet && quietWaited) { log(`quiet window over after ${quietWaited}s`); quietWaited = 0; }
-    if (!warn && headroomOk && !quiet) return;
+    if (headroomOk && !quiet) return;
     if (quiet) {
       // a quiet window is the coordinator's and does not count against --gate-wait-min
       if (quietWaited % 600 === 0) log(`waiting: quiet window live (${quietLabel()}) (${quietWaited}s)`);
@@ -215,16 +214,17 @@ async function machineGate(label, gb) {
       await sleep(30000);
       continue;
     }
-    // a WARN can last hours on a shared machine (swap from other sessions): wait it out without a ticket or a server
+    // a headroom refusal: wait it out without a ticket or a server
     const limitS = Number(opt('gate-wait-min', '240')) * 60;
-    if (waited >= limitS) throw Object.assign(new Error(`machine busy for ${limitS / 60} min (WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'})`), { code: 'BUSY' });
-    if (waited % 600 === 0) log(`waiting: memory guard WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'} (${waited}s)`);
+    if (waited >= limitS) throw Object.assign(new Error(`machine busy for ${limitS / 60} min (headroom hold)`), { code: 'BUSY' });
+    if (waited % 600 === 0) log(`waiting: headroom hold (${waited}s)`);
     await sleep(30000);
   }
 }
 
 // ------------------------------------------------------------------------------------------------ lock and browser
-const lock = createCaptureLock();
+// one capture hold at a time (tools/capture-hold.mjs openCaptureHold: refresh, the cap, signals, the release at exit)
+let captureHold = null;
 // --ticket-stamp=<ms>: the first acquisition rejoins the queue at that place (capture-lock ticketAt), for a run that
 // replaces one of this lane's own queued runs (its stamp, from the waiting ticket's name). Normal band only: the
 // priority bands (the cinema's 1791397979999, perf's 1791397983200x) are refused.
@@ -234,7 +234,6 @@ if (firstTicketStamp != null && !(Number.isSafeInteger(firstTicketStamp) && firs
   process.exit(2);
 }
 let heldSince = 0;
-let lockRefresh = null;
 let browser = null;
 const holds = [];
 const holdLog = join(OUT, 'lock-holds.jsonl');
@@ -262,28 +261,25 @@ async function takeLock(label) {
     await machineGate(label, Number(opt('headroom-gb', '8')));
     log(`queueing for the capture lock (normal ticket) for ${label}`);
     const asked = Date.now();
-    // the stamped place is kept until a hold actually starts: a turn given back (quiet window, WARN) rejoins at it
+    // the stamped place is kept until a hold actually starts: a turn given back (quiet window) rejoins at it
     const place = firstTicketStamp ? { ticket: ticketAt(firstTicketStamp) } : {};
-    await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000, place);
+    captureHold = await openCaptureHold({ label: 'mode-battle-shots', timeoutMs: Number(opt('lock-timeout-min', '600')) * 60 * 1000, ...place,
+      teardown: async () => { await closeBrowser(); await stopServer(); } });
     heldSince = Date.now();
-    lockRefresh = setInterval(() => lock.refresh(), 30000);
     log(`lock held after ${Math.round((heldSince - asked) / 1000)} s in the queue`);
-    // the machine may have changed while we queued: a PAUSE stops the run, a WARN gives the turn back and waits
-    if (existsSync(join(MEMGUARD, 'PAUSE'))) {
-      await dropLock('memory guard PAUSE at acquisition');
-      throw Object.assign(new Error('memory guard PAUSE at acquisition'), { code: 'PAUSE' });
-    }
+    // a quiet window that began while we queued gives the turn back and waits
     if (quietLive()) { await dropLock(`quiet window at acquisition (${quietLabel()})`); continue; }
-    if (!existsSync(join(MEMGUARD, 'WARN'))) { firstTicketStamp = null; return; }
-    await dropLock('memory guard WARN at acquisition');
+    firstTicketStamp = null;
+    return;
   }
 }
 async function dropLock(reason) {
   if (!heldSince) return;
   await closeBrowser();
   await stopServer();
-  clearInterval(lockRefresh);
-  lock.release();
+  const released = captureHold;
+  captureHold = null;
+  await released?.release();
   const ms = Date.now() - heldSince;
   const hold = { startedAt: new Date(heldSince).toISOString(), ms, reason };
   holds.push(hold);
@@ -292,8 +288,6 @@ async function dropLock(reason) {
   log(`lock released after ${(ms / 60000).toFixed(1)} min (${reason}); this run ${(holds.reduce((a, h) => a + h.ms, 0) / 60000).toFixed(1)} min`);
   heldSince = 0;
 }
-process.on('exit', () => { if (heldSince) lock.release(); });
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { if (heldSince) lock.release(); process.exit(130); });
 
 // ------------------------------------------------------------------------------------------------ the run
 const queueFile = opt('queue') ? resolve(ROOT, opt('queue')) : null;
@@ -316,6 +310,8 @@ async function nextSlot() {
 }
 
 const holdMaxMs = Number(opt('hold-max-min', '9')) * 60 * 1000;
+// --ready-timeout-s: the page's budget to load and report the game ready (a loaded machine needs more than the default)
+const readyMs = Number(opt('ready-timeout-s', '240')) * 1000;
 const port = Number(opt('port', '7613'));
 let server = null;
 let base = opt('base');
@@ -384,9 +380,7 @@ try {
     mkdirSync(slotDir(slot), { recursive: true });
     writeFileSync(join(slotDir(slot), 'run.json'), `${JSON.stringify(result, null, 1)}\n`);
     log(`${slot}: ${result.count ?? 0} candidates in ${result.wallS} s${result.error ? ' (ERROR)' : ''}${result.notes?.length ? `; notes: ${result.notes.join(' | ')}` : ''}`);
-    if (existsSync(join(MEMGUARD, 'PAUSE'))) { stopReason = 'memory guard PAUSE'; break; }
-    if (existsSync(join(MEMGUARD, 'WARN'))) await dropLock('memory guard WARN');
-    else if (quietLive()) await dropLock(`quiet window (${quietLabel()})`);
+    if (quietLive()) await dropLock(`quiet window (${quietLabel()})`);
   }
 } finally {
   await dropLock('run end');
@@ -448,8 +442,8 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
     }
 
     const t0 = Date.now();
-    await page.goto(`${baseUrl}/?nosplash=1${recipe.query || ''}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-    await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG && !!window.__MB, { timeout: 240000, polling: 250 });
+    await page.goto(`${baseUrl}/?nosplash=1${recipe.query || ''}`, { waitUntil: 'domcontentloaded', timeout: readyMs });
+    await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG && !!window.__MB, { timeout: readyMs, polling: 250 });
     await page.evaluate(() => window.__MB.attach());
     log(`${slot}: game ready in ${Math.round((Date.now() - t0) / 1000)} s; starting ${battle.gameMode} on ${battle.mapId} at ${hour} in ${battle.specId}`);
 

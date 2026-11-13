@@ -644,7 +644,25 @@ async function checkHoldCap() {
   assert.deepEqual(steps, ['before: held', 'resumed']);
   assert.deepEqual(order, ['timing', 'render again'], 'it holds again once that hold is done');
   assert.equal(long.heldClass, 'render', 'with its class kept');
-  long.release();
+  // (round 2 U38 review) a signal withdraws the re-queue: a SIGTERM there left the open hold's caller blocked in its
+  // checkpoint, its finally never run. The ticket leaves the queue, afterResume never runs, and it rejects holding nothing.
+  await settle(700);
+  const again = take(other, 'timing again', order, { lockClass: 'timing' });
+  await until('the second timing ticket queues', () => readdirSync(join(root, 'cap.queue')).some((name) => name.endsWith('.t')));
+  const withdraw = new AbortController(), withdrawn = [];
+  const requeued = long.checkpoint({ signal: withdraw.signal, afterResume: async () => { withdrawn.push('resumed'); } })
+    .then(() => 'held again', (error) => error);
+  await again.done;
+  await until('the yield re-queues', () => readdirSync(join(root, 'cap.queue')).some((name) => name.endsWith('.t')));
+  withdraw.abort(Object.assign(new Error('SIGTERM: the process is stopping'), { code: 'CAPTURE_HOLD_SIGNAL' }));
+  const outcome = await Promise.race([requeued, settle(3_000).then(() => 'still queued')]);
+  if (outcome === 'still queued') { other.release(); await requeued; long.release(); } // no withdraw: let it end, then fail
+  assert.equal(outcome?.code, 'CAPTURE_HOLD_SIGNAL', `the withdrawn re-queue rejects with the signal's reason (${outcome?.message ?? outcome})`);
+  assert.deepEqual(withdrawn, [], 'afterResume never runs');
+  assert.equal(long.held, false, 'and the instance holds nothing');
+  assert.deepEqual(readdirSync(join(root, 'cap.queue')).filter((name) => /\.[tw]$/.test(name)), [], 'its ticket left the queue');
+  assert.ok(logs.some((m) => /re-queue after its yield was withdrawn/.test(m)), 'and it says so');
+  other.release();
   const records = readFileSync(logFile, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
   assert.ok(records.some((r) => r.e === 'release' && /^hold cap: yielded/.test(r.reason ?? '')), 'the hold log says why it yielded');
   assert.ok(records.some((r) => r.e === 'hold' && r.lockClass === 'render' && r.members === 1 && r.capMs === 600));

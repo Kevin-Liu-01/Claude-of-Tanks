@@ -7,12 +7,12 @@
  *   node tools/battle-entry-sweep.mjs <url> [options]          a deployment (production, a preview, a dev server)
  *   node tools/battle-entry-sweep.mjs --dist=<dir> [options]   a built dist, served from this process
  *
- * Why this exists. The covered solo entry runs its battle scene watchdog only outside automation
- * (main.ts scheduleBlackWatchdog: `if (!navigator.webdriver)`), so every headless smoke that leaves webdriver true
- * skips the probe that refuses a player's entry ("Battlefield scene watchdog could not validate a healthy frame"),
- * and a deploy smoke on one map (Verdant) never saw a map-specific refusal. Every run here reports
- * navigator.webdriver false, pins the solo time of day, and enters through __DEBUG.beginSoloBattle — the player's
- * covered path: loader, deployment warm, the scene watchdog, reveal.
+ * Why this exists. The covered solo entry runs its battle scene watchdog only on the player's path (src/app/automationPath.ts;
+ * before 2026-11-03, only while navigator.webdriver was false), so every headless smoke on the harness path skips the
+ * probe that refuses a player's entry ("Battlefield scene watchdog could not validate a healthy frame"), and a deploy
+ * smoke on one map (Verdant) never saw a map-specific refusal. Every run here asks for the player's path (and hides the
+ * driver, so a build before that owner takes it too), checks the page took it, pins the solo time of day, and enters
+ * through __DEBUG.beginSoloBattle — the player's covered path: loader, deployment warm, the scene watchdog, reveal.
  *
  * Per run it records the entry outcome, the battle watchdog row (window.__GL_DIAG.sceneWatchdogs: band, scale,
  * verdict, timings), the light model, the rescue bag, the load and warm traces, console errors, and screenshots after
@@ -63,6 +63,7 @@ import { createReadStream, existsSync, mkdirSync, mkdtempSync, statSync, writeFi
 import { loadavg, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertAutomationPath, readinessExpression } from './game-readiness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const WATCHDOG_THRESHOLD = 6;
@@ -207,8 +208,10 @@ async function main() {
   const launch = () => launchGuardedBrowser(puppeteer, {
     headless: flag('headful') ? false : 'new', protocolTimeout: 600000, ...(executablePath ? { executablePath } : {}),
     ...(fresh === 'browser' ? { userDataDir: mkdtempSync(path.join(tmpdir(), 'cot-sweep-profile-')) } : {}),
+    // (2026-11-02 audit S3) a deployment may predate src/app/automationPath.ts, which ignores the player's request and
+    // takes the harness path under navigator.webdriver: the driver is hidden so every build takes the player's path
     args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
-      '--autoplay-policy=no-user-gesture-required', `--window-size=${vw},${vh + 120}`],
+      '--autoplay-policy=no-user-gesture-required', `--window-size=${vw},${vh + 120}`, '--disable-blink-features=AutomationControlled'],
     defaultViewport: null,
   });
 
@@ -234,8 +237,9 @@ async function main() {
     await p.setViewport({ width: vw, height: vh, deviceScaleFactor: 1 });
     p.setDefaultTimeout(entryTimeoutMs);
     await p.evaluateOnNewDocument((presetName) => {
-      // The covered solo entry skips its scene watchdog under automation: report what a player's browser reports.
-      Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+      // The covered solo entry skips its scene watchdog on the harness path: ask for the player's path
+      // (src/app/automationPath.ts; tools/game-readiness.mjs) so it reports what a player's browser reports.
+      window.__COT_AUTOMATION = 'player';
       try {
         localStorage.setItem('cot.telemetry', 'off');
         if (presetName) localStorage.setItem('cot.gfxPreset', presetName);
@@ -277,7 +281,9 @@ async function main() {
     const t0 = Date.now();
     const res = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180000 });
     if (!res || res.status() >= 400) throw new Error(`document status ${res?.status()}`);
-    await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG && window.__DEBUG.game?.phase === "garage"', { timeout: 180000, polling: 250 });
+    await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 180000, polling: 250 });
+    // the scene watchdog runs only on the player's path: a page that took the harness path fails here by name
+    report.automation ??= await assertAutomationPath(page, 'player', { label: 'battle-entry-sweep' });
     report.version ??= await page.evaluate(() => document.querySelector('meta[name="application-version"]')?.content ?? null);
     bootedTime = time;
     bootedControl = control;
@@ -431,7 +437,7 @@ async function main() {
       if (row.entry === 'revealed' && fresh === 'none') {
         try {
           await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-          await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 120000, polling: 250 });
+          await page.waitForFunction(readinessExpression('garage'), { timeout: 120000, polling: 250 });
         } catch { try { await page.close(); } catch { /* closed */ } page = null; }
       }
     }

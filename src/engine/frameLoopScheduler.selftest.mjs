@@ -417,6 +417,26 @@ for (const badEntry of [NaN, Infinity, -Infinity, -500, 14.9]) {
   assert.equal(harness.frames.size, 1, 'completed callbacks release the queue latch');
 }
 
+// (2026-11-02 audit R3, decided; round 2 Q14 pins it) a VISIBLE but unfocused window is backgrounded on purpose: a solo
+// battle's sim advances only with presented ticks, so clicking away (a second screen beside the game included) pauses
+// it instead of running the sim unattended. No animation frame, no render tick, until focus returns.
+{
+  const harness = createHarness();
+  harness.scheduler.schedule();
+  assert.equal(harness.frames.size, 1, 'a focused visible page owns one animation frame');
+  harness.setFocused(false); // visible: only the focus moves (another window, a second screen)
+  harness.listeners.get('blur')();
+  assert.equal(harness.frames.size, 0, 'a visible unfocused window gives its animation frame up');
+  harness.scheduler.schedule();
+  for (let at = 50; at <= 1000; at += 50) { harness.setNow(at); harness.fireTimer(); }
+  assert.equal(harness.frames.size, 0, 'and asks for none while unfocused');
+  assert.equal(harness.ticks.length, 0, 'no presented tick: a solo battle stands still');
+  harness.setFocused(true);
+  harness.listeners.get('focus')();
+  assert.equal(harness.frames.size, 1, 'focus back: one fresh animation frame');
+  harness.scheduler.dispose();
+}
+
 {
   const harness = createHarness();
   harness.scheduler.schedule();
@@ -689,11 +709,14 @@ assert.equal(runInNewContext(`${garageBoot}\ngaragePresentationDirty = false;
 function garageActivityFixture(harness, phase, legacy = false, paints = null) {
   const game = { phase }, effects = [], listeners = new Map();
   const callbacks = `${garageInvalidate}\n${garageActivity}`;
-  const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '') : callbacks;
+  // (2026-11-02 audit F1) Garage input reads the screen's phase (appLifecycle.screenPhase): the Garage behind the
+  // battle report is not the screen; here the screen and the scene agree
+  const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '')
+    .replaceAll("  if (appLifecycle.screenPhase !== 'garage') return;\n", '') : callbacks;
   const api = runInNewContext(`${garageBoot}\n${body}\n${garageListeners}
     ({ invalidate: () => invalidateGaragePresentation(),
        isDirty: () => garagePresentationDirty, clearDirty: () => { garagePresentationDirty = false; } });`, {
-    game, frameLoop: harness.scheduler, performance: { now: () => 1234 },
+    game, appLifecycle: { get screenPhase() { return game.phase; } }, frameLoop: harness.scheduler, performance: { now: () => 1234 },
     garageFramePacer: { noteActivity: at => effects.push(['pacer', at]) },
     lighting: { setStaticPresentationDormant: value => effects.push(['lighting', value]) },
     garageDressingScheduler: { noteActivity: () => effects.push(['dressing']) },

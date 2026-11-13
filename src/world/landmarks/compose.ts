@@ -470,6 +470,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         }
       }
     } catch (error) {
+      // (2026-11-02 audit R1) a skipped piece publishes nothing: the records it had already pushed (a throw in its
+      // description, after the collision went in) come back out with its parts, or they stood as invisible collision
+      ctx.obstacles.length = obstacleStart;
+      ctx.colliders.length = colliderStart;
       for (const geometry of partList(parts)) geometry.dispose();
       for (const geometry of collisionOf?.made ?? []) geometry.dispose();
       skip(`collision: ${(error as Error).message}`);

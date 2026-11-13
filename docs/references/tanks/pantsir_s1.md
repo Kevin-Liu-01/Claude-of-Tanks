@@ -36,7 +36,8 @@
 
 The 96K6 Pantsir-S1 combat module on the tracked GM-352M1E chassis, the Engineering Technologies 2012 vehicle
 (01-15) and MAKS 2013 (16): the front tracking radar's round dome, the rear flat search radar panel, two six-tube 57E6
-banks and the two 2A38M guns, plain Russian green.
+banks and the two 2A38M guns. The photographed vehicle is plain Russian green; the game paints it in a Russian
+tri-colour blotch (owner 2026-11-05).
 
 ## Published numbers
 
@@ -64,7 +65,7 @@ banks and the two 2A38M guns, plain Russian green.
 | SAM | 57E6: 380 dmg, 25 mm, 1,300 m/s, 12 rounds, 12 tubes, 3.0 s, `tow-launch` | the Linebacker's Stinger handling; the 57E6's peak speed |
 | Fire control | 0.25 accuracy, 1.05 s aim (0.99 after recon) | |
 | Fire axes | twin, x = +/-0.725 m in the gun frame (round 3: bores 0.15 m apart): each 2A38M's inner bore (barrel groups 0 and 1) | builder R, gm352Layout.ts PANTSIR |
-| Paint | stock `national_ru`, spec coat the same | the photographs' solid green |
+| Paint | stock `paint_pantsir_s1` (Russian Blotch Woodland: khaki `#8c7a55` and black `#24271f` blotches over green `#4b5a36`, `blotch`, scale 0.7), spec coat the same | the Pantsir-S1's Russian tri-colour; owner 2026-11-05: "tunguska and pantsir need camos" (the tracked prototype's photographs show plain green, the former `national_ru`) |
 | Marking | hull left anchor, number 421 | |
 | View / camouflage | 455 m, 0.215 / 0.185 | |
 

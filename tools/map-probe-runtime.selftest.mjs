@@ -172,15 +172,17 @@ for (const file of virtualFiles) {
   for (const m of readFileSync(path.join(ROOT, file), 'utf8').matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](virtual:[^'"]+)['"]/g)) virtualImports.add(m[1]);
 }
 assert.ok(virtualImports.has('virtual:cot-i18n-studio/en-US'), 'the scan finds the Studio string slices');
-// A dynamic import the scan proves dead is still registered when its module is served (sky.ts's RGBELoader, 2026-10-21):
-// every dynamic import of three or its addons is in the prebundle's include list.
+// A dynamic import the scan proves dead is still registered when its module is served (sky.ts's HDRI loader, 2026-10-21;
+// that experiment is gone since 272): every dynamic import of three or its addons is in the prebundle's include list.
+const DYNAMIC_THREE = /\bimport\(\s*['"](three(?:\/[^'"]+)?)['"]\s*\)/g;
+assert.deepEqual([..."x = import('three/examples/jsm/loaders/HDRLoader.js'); y = import( \"three\" );".matchAll(DYNAMIC_THREE)].map((m) => m[1]),
+  ['three/examples/jsm/loaders/HDRLoader.js', 'three'], 'the scan reads an addon and a bare dynamic import of three');
 const dynamicThree = new Set();
 const dynamicFiles = execFileSync('git', ['grep', '-I', '-l', '-F', '--untracked', '--threads', '4', '-e', "import('three", '--', 'src',
   ':!*.selftest.mjs', ':!*.d.ts', ':!*.test-support.mjs'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 for (const file of dynamicFiles) {
-  for (const m of readFileSync(path.join(ROOT, file), 'utf8').matchAll(/\bimport\(\s*['"](three(?:\/[^'"]+)?)['"]\s*\)/g)) dynamicThree.add(m[1]);
+  for (const m of readFileSync(path.join(ROOT, file), 'utf8').matchAll(DYNAMIC_THREE)) dynamicThree.add(m[1]);
 }
-assert.ok(dynamicThree.has('three/examples/jsm/loaders/RGBELoader.js'), 'the scan finds sky.ts\'s HDRI loader');
 for (const id of dynamicThree) {
   assert.ok(id === 'three' || serverOptions.optimizeDeps.include.includes(id), `the probe prebundles ${id} (a dynamic import)`);
 }

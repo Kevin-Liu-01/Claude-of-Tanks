@@ -6,15 +6,21 @@ import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
+import { createRamTally, judgeRams } from './soakRams.test-support.mjs';
 
-const MAPS = MAP_IDS;
+// COT_BOT_SOAK_MAPS=verdant,steppe runs a capped section (the whole soak is an owner-run receipt, about 2 min a map).
+// Each map keeps its place in MAP_IDS for its seed and bot ids, so a capped map plays the whole soak's battle on that
+// map (round 3 B8: the list's own index gave steppe alone seed 9000, a battle the whole soak never plays).
+const MAPS = process.env.COT_BOT_SOAK_MAPS
+  ? process.env.COT_BOT_SOAK_MAPS.split(',').filter((id) => MAP_IDS.includes(id)) : MAP_IDS;
+assert.ok(MAPS.length > 0, 'the soak runs at least one map');
 const SPECS = ALL_TANK_IDS
   .filter((id) => ['light', 'medium', 'heavy'].includes(getSpec(id).role))
   .slice(0, 6);
 assert.equal(SPECS.length, 6, 'bot soak requires six mobile registered tanks');
 
-for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
-  const mapId = MAPS[mapIndex];
+for (const mapId of MAPS) {
+  const mapIndex = MAP_IDS.indexOf(mapId);
   const players = SPECS.map((specId, index) => ({
     id: `bot-${mapIndex}-${index}`,
     specId,
@@ -36,17 +42,15 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
   const stuckSeconds = new Map(match.entities.map((entity) => [entity.id, 0]));
   const maxStuckSeconds = new Map(match.entities.map((entity) => [entity.id, 0]));
   const teamById = new Map(match.entities.map((entity) => [entity.id, entity.team]));
-  let alliedRamEvents = 0;
+  // the ally gate and the per-ram viewer check (soakRams.test-support.mjs; soakRams.selftest drives them over real rams)
+  const ramTally = createRamTally();
   let yieldFrames = 0;
 
   for (let tick = 0; tick < 90 * 60 && !match.result; tick++) {
     match.step({ dt: 1 / 60, inputs: new Map() });
     if ((tick + 1) % 60 !== 0) continue;
     const snapshot = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60 });
-    for (const event of snapshot.events) {
-      if (event.type === 'tank_ram' &&
-          teamById.get(event.aId) === teamById.get(event.bId)) alliedRamEvents++;
-    }
+    judgeRams(match, teamById, snapshot, tick, ramTally);
     match.afterSnapshotBroadcast();
     for (const entity of match.entities) {
       const distance = entity.state.pos.distanceTo(initial.get(entity.id));
@@ -67,8 +71,9 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
   const worstStuck = Math.max(...maxStuckSeconds.values());
   assert.ok(mobileBots >= 4, `${mapId}: at least four of six bots must make route progress`);
   assert.ok(worstStuck <= 12, `${mapId}: deliberate-drive stall exceeded 12 s (${worstStuck})`);
-  assert.equal(alliedRamEvents, 0, `${mapId}: teammate contact must never become a damaging ram`);
-  console.log(`${mapId}: mobile=${mobileBots}/6 worstStuck=${worstStuck}s allyRams=0 yields=${yieldFrames} result=${match.result || 'live'}`);
+  assert.equal(ramTally.alliedContacts, 0, `${mapId}: bots give allies right of way: no teammate contact at ram speed (${ramTally.alliedContacts})`);
+  assert.equal(ramTally.viewerFaults, 0, `${mapId}: a ram must reach no viewer outside it that does not see both hulls`);
+  console.log(`${mapId}: mobile=${mobileBots}/6 worstStuck=${worstStuck}s rams=${ramTally.rams} allyRams=0 ramViews=${ramTally.viewerChecks} ramViewerFaults=0 yields=${yieldFrames} result=${match.result || 'live'}`);
 }
 
 // Live close-contact calibration: four normal bots drive, turn, fire physical

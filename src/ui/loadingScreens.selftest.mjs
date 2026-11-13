@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile, stat } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
@@ -7,6 +9,7 @@ import ts from 'typescript-compiler-api';
 import {
   FEATURED_IMAGES,
   FEATURED_SHOTS,
+  LOADING_SHOTS,
   TRANSITION_SHOTS,
   featuredShotForMap,
   nextFeaturedShot,
@@ -57,8 +60,12 @@ for (const { mapId, asset } of minimapAssets) {
     `${mapId} must ship a non-placeholder supersampled tactical-map asset`);
 }
 
-// Since round 14 (2026-10-12) the featured stills are the site fifty's (owner: "replace the old media with all my new
-// ones"), picked in tools/media-r5/site-media/picks.json: the takes with battlefields rotate on the loading screens.
+// Since round 14 (2026-10-12) the Garage gallery's featured stills are the site fifty's (owner: "replace the old media
+// with all my new ones"), picked in tools/media-r5/site-media/picks.json `featured`. Since 2026-11-11 the loading screens
+// rotate the boot pick and then picks.json `loading`: the stills the owner picked from his loading-screen gallery (its
+// close-ups, then any elevated stills; 2026-11-04: "for loading screens we need to use these elevated scenes"), each a
+// 1920x1080 webp of the gallery's one collection, public/media/gallery-r1 (tools/media-r5/loading-media.mjs; 272: the
+// loading list sits on top of it and loading-r1 is retired), with its battlefield and its caption in both catalogs.
 const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
 const siteStills = `/media/${sitePicks.collection}/stills/`;
 // a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still; or
@@ -69,19 +76,41 @@ const pickImg = (pick) => (pick.versus ? versusItems.get(pick.versus).path
   : `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`);
 const pickBoot = (pick) => (pick.versus ? versusItems.get(pick.bootVersus ?? pick.versus).rungs.find((rung) => rung.width === 1280).path
   : `${siteStills}${pick.id}-boot.webp`);
-const pickedTransitions = sitePicks.featured.filter((pick) => pick.maps?.length);
+const bootPicks = sitePicks.featured.filter((pick) => pick.boot);
+assert.equal(bootPicks.length, 1, 'one featured pick opens the boot splash');
+assert.equal(sitePicks.featured[0], bootPicks[0], 'the boot pick leads the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
-assert.equal(TRANSITION_SHOTS.length, pickedTransitions.length, 'only the picks with battlefields rotate');
+assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garage still carries the boot derivative');
+// the loading picks: the first sixteen close-ups of the gallery (owner 2026-11-11, on the full rotation sheet: "only need
+// 1-16 for the loading screen"), no elevated still; a still he
+// drops leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
+const loadingPicks = [...sitePicks.loading.close, ...sitePicks.loading.elevated];
+assert.equal(sitePicks.loading.close.length, 16, 'the gallery\'s first sixteen close-ups');
+assert.equal(sitePicks.loading.elevated.length, 0, 'no elevated still');
+// (owner 2026-11-11, on the pass sheet: "the one with space background should come later") the Olympus Basin still
+// closes the rotation's order, after the other fifteen in the gallery's order
+assert.equal(sitePicks.loading.close.at(-1), 's143-ru-t72b3m-modern-mars-herolow-fb-m271-r14',
+  'the space-background still comes last');
+assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
+const loadingDir = new URL(`../../public/media/${sitePicks.gallery.collection}/`, import.meta.url);
+const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));
+// one collection (272, Main): the loading stills are the gallery's files, and the old loading-r1 folder is gone
+assert.ok(!existsSync(new URL('../../public/media/loading-r1/', import.meta.url)), 'loading-r1 is retired: its stills are the gallery\'s');
+assert.equal(sitePicks.loading.collection, undefined, 'the loading picks are a list on the gallery, not a collection');
+const loadingItems = new Map(loadingManifest.items.map((item) => [item.id, item]));
+assert.equal(LOADING_SHOTS.length, loadingPicks.length, 'every loading pick rotates');
+assert.equal(TRANSITION_SHOTS.length, 1 + loadingPicks.length, 'the rotation is the boot pick and the loading picks');
+assert.deepEqual(TRANSITION_SHOTS.slice(1), LOADING_SHOTS, 'the loading stills follow the boot pick');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.equal(
   TRANSITION_SHOTS[0].img,
-  pickImg(pickedTransitions[0]),
+  pickImg(bootPicks[0]),
   'the boot pick must remain the first transition-screen option',
 );
 assert.equal(
   TRANSITION_SHOTS[0].bootImg,
-  pickBoot(pickedTransitions[0]),
+  pickBoot(bootPicks[0]),
   'the featured panel must retain its screen-sized preview derivative',
 );
 const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
@@ -90,9 +119,48 @@ assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
   'the featured preview must be materially smaller than its gallery source');
 assert.deepEqual(
   TRANSITION_SHOTS.map((shot) => shot.img),
-  pickedTransitions.map(pickImg),
-  'the transition-screen rotation is the picks, in their order',
+  [pickImg(bootPicks[0]), ...loadingPicks.map((id) => loadingItems.get(id)?.path)],
+  'the transition-screen rotation is the boot pick, then the loading picks in the gallery\'s order',
 );
+// the gallery's manifest lists the loading picks; each is one of its 1920x1080 webps, its bytes and sha256 in the
+// manifest, rendered on a recorded commit, and rotates with its own battlefield, its focal and its caption in both catalogs
+{
+  const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
+  const catalogs = {
+    en: JSON.parse(await readFile(new URL('./i18nCatalog.en-US.json', import.meta.url), 'utf8')),
+    zh: JSON.parse(await readFile(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8')),
+  };
+  assert.deepEqual(loadingManifest.loading, loadingPicks, 'the gallery\'s manifest lists the loading picks, in order');
+  assert.deepEqual(loadingManifest.dimensions, { width: 1920, height: 1080 });
+  const files = new Set(await readdir(loadingDir));
+  for (const id of loadingPicks) assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);
+  const close = new Set(sitePicks.gallery.close);
+  for (const [n, id] of loadingPicks.entries()) {
+    const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
+    assert.equal(item.path, `/media/${sitePicks.gallery.collection}/${id}.webp`);
+    assert.ok(item.group === (close.has(id) ? 'close' : 'elevated'), `${id}: its gallery section (${item.group})`);
+    const file = await readFile(new URL(`${id}.webp`, loadingDir));
+    assert.deepEqual(webpDimensions(file), [1920, 1080], `${id}: a 1920x1080 webp`);
+    assert.ok(file.length > 50_000 && file.length <= 600 * 1024, `${id}: ${file.length} B, between 50 KB and 600 KB`);
+    assert.equal(file.length, item.bytes, `${id}: the manifest's bytes`);
+    assert.equal(createHash('sha256').update(file).digest('hex'), item.sha256, `${id}: the manifest's sha256`);
+    assert.match(item.revision, /^[0-9a-f]{40}$/, `${id}: the commit it was rendered on`);
+    assert.ok(MAP_IDS.includes(item.map), `${id}: ${item.map} is a battlefield`);
+    assert.equal(shot.img, item.path);
+    assert.deepEqual(shot.maps, [item.map], `${id}: it rotates as its own battlefield`);
+    assert.equal(shot.focal, item.focal, `${id}: its focal, aimed at its hero tank`);
+    assert.equal(shot.capKey, `media.loading.title.${camel(id)}`, `${id}: its caption key`);
+    for (const [locale, catalog] of Object.entries(catalogs)) {
+      assert.equal(catalog[shot.capKey], item.title[locale], `${id}: its ${locale} caption`);
+      assert.ok(item.title[locale].startsWith(catalog[`map.${item.map}`]), `${id}: its ${locale} caption names its battlefield first`);
+    }
+    assert.ok(item.tanks.some((tank) => tank.role === 'hero' && item.title.en.includes(tank.displayName)), `${id}: its caption names its hero`);
+  }
+  for (const [locale, catalog] of Object.entries(catalogs)) {
+    assert.equal(Object.keys(catalog).filter((key) => key.startsWith('media.loading.title.')).length, loadingPicks.length,
+      `the ${locale} catalog holds a caption for each loading still and no other`);
+  }
+}
 const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
 const bootSource = await readFile(new URL('./bootScreen.ts', import.meta.url), 'utf8');
 assert.match(bootHtml, /id="cot-boot-hero" data-hero-state="idle"/,
@@ -205,11 +273,13 @@ assert.match(bootHtml,
   /@media \(width < 768px\) \{\s*\.cot-boot-inner \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-// (2026-11-03, the owner's boot pick, and 11-04: loading screens from the elevated versus rounds) or a published
-// versus still
+// (2026-11-03, the owner's boot pick, a published versus still; 2026-11-11, the owner's loading-screen gallery) the
+// rotation is the boot pick and the loading collection's stills, no other picture
 const versusPaths = new Set([...versusItems.values()].map((item) => item.path));
-assert.ok(FEATURED_IMAGES.every((img) => (img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)) || versusPaths.has(img)),
-  'only the site fifty\'s stills and the published versus stills may enter the loading-screen rotation');
+const loadingPaths = new Set([...loadingItems.values()].map((item) => item.path));
+assert.ok(FEATURED_IMAGES.every((img) => versusPaths.has(img) || loadingPaths.has(img)),
+  'only the published versus stills (the boot pick) and the loading collection\'s stills may enter the loading-screen rotation');
+assert.ok(FEATURED_SHOTS.every((shot) => !loadingPaths.has(shot.img)), 'the Garage gallery keeps its own twenty');
 assert.deepEqual(FEATURED_SHOTS.map((shot) => shot.img), sitePicks.featured.map(pickImg),
   'the Garage gallery shows the picks, in their order');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 0,
@@ -324,8 +394,9 @@ assert.match(mainSource, /createCombatWarmComposition\(\{/,
 assert.match(battleWarmSource,
   /function warmStudioEffects[\s\S]{0,1400}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1400}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
+// (2026-11-02 audit F9: the build takes its session's token first, 600 for the line)
 assert.match(studioSource,
-  /async function replaceLoadActors\([\s\S]{0,500}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
+  /async function replaceLoadActors\([\s\S]{0,600}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
   'Studio actor replacement must yield before and between full-quality procedural actors');
 // Validate the scheduler binding and awaited call in the actual load function.
 // Input validation and comments may grow without changing the scheduling contract.
@@ -379,7 +450,7 @@ assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
 assert.match(mainSource, /hideHud: \(\) => currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
   'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
-  /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
+  /actors\.push\(a\);[\s\S]{0,260}if \(!sceneLoad\.held\) bindStoryboardTracks\(\)/, // (round 2 U36) the load's session holder
   'Studio batch loads must not rebuild timeline bindings for every intermediate actor');
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
@@ -692,8 +763,10 @@ assert.match(hudSource,
 assert.match(deploymentShadowWarmSource,
   /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
+// (integration, engine-gpu's audit R4 castShadow holds: their note and hold loop sit between the signature and the batch's
+// render, 1,321 characters where the base had 1,004)
 assert.match(deploymentShadowWarmSource,
-  /async function warmCasterBatches\([\s\S]{0,1200}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
+  /async function warmCasterBatches\([\s\S]{0,1600}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
   'deployment shadows must upload caster resources in bounded depth-only batches');
 assert.match(deploymentShadowWarmSource,
   /const observeRender: ObserveShadowWarm = \(phase, index, light, render = shadowOnlyWarm\)/,
@@ -704,8 +777,10 @@ assert.match(deploymentShadowWarmSource,
 assert.match(deploymentShadowWarmSource,
   /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}observeRender\('geometry-upload', index\+\+, light, warmRender\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
   'deployment geometry must upload through one shared shader and always restore production materials');
+// (integration: since engine-gpu's audit R4 the casters come back through their named holds, castShadowHolds.ts
+// releaseCastShadowHold, which restores what the warm's holds wrote)
 assert.match(deploymentShadowWarmSource,
-  /function restoreCasterState\([\s\S]{0,240}object\.castShadow = true;[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
+  /function restoreCasterState\([\s\S]{0,400}(?:object\.castShadow = true;|releaseCastShadowHold\(object, state\);)[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
   'deployment shadow warming must restore every caster and pinned LOD state');
 assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,100}restoreCasterState\(casterState\);[\s\S]{0,60}primed = true/,
@@ -760,7 +835,8 @@ assert.match(playerFrameInputSource,
 assert.doesNotMatch(battleRolloutSource, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(soloBattleEntrySource,
-  /enterGarage\(\);\s*lifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
+  // (2026-11-02 audit F3 review) a recovery return that failed has no Garage to paint; a restored one still paints first
+  /await enterGarage\(\);\s*returned = true;[\s\S]{0,240}lifecycle\.uncoverRendering\(\);\s*if \(returned\) await nextFrame\(\);\s*await battleLoad\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 // A room start mounts its opaque cover synchronously (the intent cover) before the composition chunk's first await.
 assert.match(intentCoverSource, /coverRendering\(\);\s*resetRoundState\(game\);\s*battleLoad\.show\(\{/,

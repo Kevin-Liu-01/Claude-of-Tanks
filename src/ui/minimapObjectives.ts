@@ -11,7 +11,7 @@
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
 import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
-import { strikeFootprint } from '../sim/airSupport.ts';
+import { runFootprint } from '../sim/strikeRuns.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
 
@@ -56,9 +56,11 @@ export interface ObjectiveMarker {
    * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike: the call-in's kind.
    */
   status?: string;
-  /** strike: its footprint (a circle's radius, or a lane's half length and half width along `heading`), the seconds
-   *  until it lands (0 once it does) and whether it is the viewer's own call */
+  /** strike: its footprint (sim/strikeRuns.ts runFootprint: a circle's radius, an ellipse's semi-axis along `heading` with
+   *  `acrossM` across it, or a lane's half length and half width along `heading`), the seconds until it lands (0 once it
+   *  does) and whether it is the viewer's own call */
   radiusM?: number;
+  acrossM?: number;
   halfLengthM?: number;
   halfWidthM?: number;
   heading?: number;
@@ -206,13 +208,13 @@ function strikeMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, 
   if (!air) return;
   for (const strike of air.strikes) {
     if (strike.downedS != null || air.nowS >= strike.endS) continue;
-    const footprint = strikeFootprint(AIR_SUPPORT_RULES, strike.kind);
+    const footprint = runFootprint(AIR_SUPPORT_RULES, strike.kind);
     const countdownS = Math.max(0, strike.landsS - air.nowS);
     out.push({
       kind: 'strike', x: strike.x, z: strike.z, side: objectiveSide(strike.team, perspective), status: strike.kind,
       heading: strike.heading, countdownS, mine: !!strike.mine, pulse: countdownS > 0, priority: 3,
-      ...(footprint.shape === 'circle' ? { radiusM: footprint.radiusM }
-        : { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }),
+      ...(footprint.shape === 'lane' ? { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }
+        : footprint.shape === 'ellipse' ? { radiusM: footprint.alongM, acrossM: footprint.acrossM } : { radiusM: footprint.radiusM }),
     });
   }
 }
@@ -233,6 +235,33 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   out.sort((a, b) => a.priority - b.priority);
   return out;
 }
+
+// (improve-271 plan 023) the one derivation, retained: the world presentation (every rendered frame) and the minimap
+// (15 to 30 Hz) read the same markers without rebuilding, sorting and keying them per frame. A room's mode state is a new
+// object per snapshot; the local battle's controller state is ONE object mutated in place each fixed step, so the key is
+// the state's reference with the battle clock the step advances (game.timeS) and the viewing side (a watched battle's
+// seat change can flip it between steps).
+let retainedState: ObjectiveStateView | null = null;
+let retainedTimeS = Number.NaN;
+let retainedTeam: ObjectiveTeamId = 'alpha';
+let retainedMarkers: readonly ObjectiveMarker[] = [];
+let retainedRevision = 0;
+/** The markers for `state` at battle time `timeS`, derived once per change; callers must not mutate the array. */
+export function objectiveMarkersFor(state: ObjectiveStateView | null | undefined, timeS: number): readonly ObjectiveMarker[] {
+  if (!state) return EMPTY_MARKERS;
+  const team = perspectiveOf(state);
+  if (state !== retainedState || !Object.is(timeS, retainedTimeS) || team !== retainedTeam) {
+    retainedState = state;
+    retainedTimeS = timeS;
+    retainedTeam = team;
+    retainedMarkers = objectiveMarkers(state);
+    retainedRevision++;
+  }
+  return retainedMarkers;
+}
+/** Which derivation objectiveMarkersFor last returned: a change means the markers were derived again. */
+export function objectiveMarkersRevision(): number { return retainedRevision; }
+const EMPTY_MARKERS: readonly ObjectiveMarker[] = Object.freeze([]);
 
 /** The markers a mode places on the team spawns themselves (the map skips its generic base rings then). */
 export function markersStandOnSpawns(markers: readonly ObjectiveMarker[]): boolean {

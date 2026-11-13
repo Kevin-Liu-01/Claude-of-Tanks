@@ -14,6 +14,7 @@
 import type { BufferGeometry } from 'three';
 import { rawFloats, rawIndices } from '../../rawAttributes.ts';
 import type { FaceName, Vec3 } from '../../destructionKit.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 type Rgb = [number, number, number];
 type ShellParts = Readonly<Record<string, readonly BufferGeometry[]>>;
@@ -620,6 +621,7 @@ export interface WallPieceReading {
  * the damage reading (damage.ts describeRuin) takes them as built instead of reading them back off the merged parts.
  */
 let ruinWalls: WallPieceReading[] | null = null;
+registerBuildScope('shell.ruinWalls', () => ruinWalls !== null); // (2026-11-02 audit R1: buildScopes.ts)
 export function withRuinWalls<T>(build: () => T): [T, WallPieceReading[]] {
   const prior = ruinWalls, walls: WallPieceReading[] = [];
   ruinWalls = walls;

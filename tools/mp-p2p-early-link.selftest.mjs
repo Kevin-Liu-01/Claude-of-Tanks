@@ -19,6 +19,7 @@ import { MatchSession } from '../src/mp/session/matchSession.ts';
 import { RecordingPresentation } from '../src/mp/presentation/adapter.ts';
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
+import { MATCH_PHASE, ROOM_MATCH_STATUS, SESSION_ROLE, TRANSPORT_STATE } from './mp-states.mjs';
 
 const SECRET = 'mp-p2p-early-link-seat-secret-0123456789abcdef';
 const LOAD_MS = 1500;
@@ -99,10 +100,10 @@ async function playingRoom(prefix, host = {}) {
   await until(() => a.room.room?.players.every((player) => player.ready), 'both ready', 10_000);
   await a.room.start();
   await until(() => a.session.match?.welcome && b.session.match?.welcome, 'both welcomed', 30_000);
-  const hostSeat = a.session.role === 'host' ? a : b;
+  const hostSeat = a.session.role === SESSION_ROLE.host ? a : b;
   const peer = hostSeat === a ? b : a;
   assert.equal(peer.session.role, 'peer');
-  await until(() => peer.room.room?.match?.status === 'playing', 'the match playing', 15_000, () => JSON.stringify(peer.room.room?.match));
+  await until(() => peer.room.room?.match?.status === ROOM_MATCH_STATUS.playing, 'the match playing', 15_000, () => JSON.stringify(peer.room.room?.match));
   return [hostSeat, peer];
 }
 
@@ -113,7 +114,7 @@ try {
   // ---- a starting match keeps the late link; a re-entry into the running match opens it beside the load
   stage = 'room 1';
   const [host, peer] = await playingRoom('e');
-  const firstRole = peer.events.find((event) => event.kind === 'role' && event.role === 'peer');
+  const firstRole = peer.events.find((event) => event.kind === 'role' && event.role === SESSION_ROLE.peer);
   assert.ok(firstRole && firstRole.at >= peer.rounds[0].resolvedAt, `the starting match's link began after the presentation (${Math.round(firstRole?.at - peer.rounds[0].resolvedAt)} ms)`);
 
   stage = 're-entry';
@@ -137,14 +138,14 @@ try {
   assert.equal(peerTransportOf(peer).signalStats.sent, 1, 'one offer made the link');
   assert.equal(peer.session.stats().p2p.hostId, host.id);
   assert.notEqual(peer.session.phase, 'lost');
-  await until(() => peer.session.match?.phase === 'live', 'the re-entered seat live', 10_000);
+  await until(() => peer.session.match?.phase === MATCH_PHASE.live, 'the re-entered seat live', 10_000);
 
   // ---- an entry abandoned during its load closes its early link at once
   stage = 'abandon';
   await peer.session.leaveMatch('returned_to_garage');
   peer.loadMs = LOAD_MS;
   const abandoning = peer.session.enterMatch(peer.room.matchStart).catch((error) => error);
-  await until(() => !!peerTransportOf(peer) && peerTransportOf(peer).state !== 'idle', 'the early link started', 5_000);
+  await until(() => !!peerTransportOf(peer) && peerTransportOf(peer).state !== TRANSPORT_STATE.idle, 'the early link started', 5_000);
   const early = peerTransportOf(peer);
   peer.abandoned = true;
   await peer.session.leaveMatch('returned_to_garage');
@@ -165,7 +166,7 @@ try {
   await until(() => !!shortPeer.session.match?.welcome, 'welcomed after its early link was closed', 15_000, () => JSON.stringify({ link: linkOf(shortPeer), state: peerTransportOf(shortPeer)?.state, match: shortPeer.session.match?.stats() }));
   const relinks = peerTransportOf(shortPeer).stats.reconnects;
   assert.ok(relinks >= 1, `the host's window closed the early link and it re-linked (${relinks})`);
-  await until(() => shortPeer.session.match?.phase === 'live', 'live on the short host', 10_000);
+  await until(() => shortPeer.session.match?.phase === MATCH_PHASE.live, 'live on the short host', 10_000);
   assert.notEqual(shortPeer.session.phase, 'lost');
 
   console.log(`mp-p2p-early-link.selftest: a starting match links after its load; a re-entry's link opened ${Math.round(openedAfterMs)} ms into a ${LOAD_MS} ms load with no frame sent, the WELCOME ${Math.round(welcomeAfterLoadMs)} ms after the load on one offer; an abandoned entry closed its early link; a ${400} ms HELLO window closed one (${relinks} re-link) and the seat was still welcomed`);

@@ -64,7 +64,8 @@ for (const take of siteTakes) {
   assert.ok(take.title.en && take.title.zh && take.short.en && take.short.zh, `${take.id}: titled in both languages`);
 }
 assert.match(panel, /sceneLinkPath\(take\.scene\)/, 'a preset loads only this site\'s own files, as a scene link does');
-assert.match(panel, /\.then\(\(json\) => S\.load\(json\)\)/, 'a preset stages through the Studio\'s own load, as Load JSON does');
+// (2026-11-02 audit F9) with the session it was chosen in: a take fetched after an exit is refused, never re-entering
+assert.match(panel, /\.then\(\(json\) => S\.load\(json, \{ owner \}\)\)/, 'a preset stages through the Studio\'s own load, as Load JSON does');
 // (261, the template browser) a fleet take is a tank template and the shelf lists the scenes: the fleet's takes stay in
 // the browser, out of the default list
 assert.match(templates, /if \(take\.group === 'fleet' && take\.vehicle\) \{[\s\S]{0,120}?kind: 'tank'/, 'a fleet take is a tank template');

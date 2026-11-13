@@ -1,4 +1,5 @@
 import { Vector3, type Camera } from 'three';
+import { isPlayerVisible, type PlayerVisibilityGame, type VisibilityHull } from '../game/playerVisibility.ts';
 
 type AudioListenerKind =
   | 'camera'
@@ -17,13 +18,17 @@ export interface AudioListenerPose {
 
 interface AudioTank {
   id: string;
+  team?: string;
+  /** A network battle's actor: whether the authority sent it this frame. */
+  networkVisible?: boolean;
   state?: { pos?: Vector3 } | null;
   spec?: { dims?: { heightM?: number } } | null;
   /** Drone mode: the tank's FPV drone, while `active` flying at x, y, z. */
   aerial?: { kind?: string; active?: boolean; x?: number; y?: number; z?: number } | null;
 }
 
-interface AudioGame {
+/** The battle as the listener reads it, and what the player sees in it (src/game/playerVisibility.ts). */
+interface AudioGame extends PlayerVisibilityGame {
   player: AudioTank | null;
   tanks: readonly AudioTank[];
   tankById: ReadonlyMap<string, AudioTank>;
@@ -41,7 +46,9 @@ interface AudioKillcam {
 }
 
 interface AudioMixer {
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[], shells?: readonly unknown[]): void;
+  /** `visible`: whether the player sees a hull of `tanks` (the crew names only what it shows). */
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[], shells?: readonly unknown[],
+    visible?: (hull: VisibilityHull) => boolean): void;
 }
 
 interface ListenerPoseRuntimeOptions {
@@ -50,6 +57,12 @@ interface ListenerPoseRuntimeOptions {
   rig: AudioRig;
   killcam: AudioKillcam;
   audio: AudioMixer;
+  /**
+   * Couch mode's split screen (docs/COUCH-MODE.md, "Panes' HUD and sound"): the seat the room hears the battle as, and
+   * its pane camera's facing (src/app/couchPaneViews.ts listenerFocus: the most recent shooter's solo mix); null to hear
+   * it as the page's player.
+   */
+  focus?: () => { readonly entity: AudioTank; readonly forward: Vector3 } | null;
 }
 
 export interface ListenerPoseRuntime {
@@ -70,6 +83,7 @@ export function createListenerPoseRuntime({
   rig,
   killcam,
   audio,
+  focus,
 }: ListenerPoseRuntimeOptions): ListenerPoseRuntime {
   const tankPosition = new Vector3();
   const dronePosition = new Vector3();
@@ -81,13 +95,19 @@ export function createListenerPoseRuntime({
     ownerId: null,
     scoped: false,
   };
+  // what the player sees, the one rule (round 8 Y3 s1-02): made once, read by the engine for each hull of each frame
+  const visible = (hull: VisibilityHull): boolean => isPlayerVisible(game, hull);
 
   return {
     pose,
     update(dtSeconds, inBattle, killcamActive): void {
       camera.getWorldDirection(forward);
       let entity: AudioTank | null | undefined = null;
-      if (inBattle && !killcamActive && !killcam.isActive()) {
+      const seat = inBattle && !killcamActive ? focus?.() ?? null : null;
+      if (seat) {
+        entity = seat.entity;
+        forward.copy(seat.forward);
+      } else if (inBattle && !killcamActive && !killcam.isActive()) {
         const spectateId = killcam.spectate.active ? killcam.spectate.targetId : null;
         entity = spectateId ? game.tankById.get(spectateId) : game.player;
       }
@@ -106,16 +126,16 @@ export function createListenerPoseRuntime({
           ? entity.spec.dims.heightM * 0.68
           : 1.6;
         pose.pos = tankPosition;
-        pose.kind = killcam.spectate.active ? 'spectated-tank' : 'player-tank';
+        pose.kind = killcam.spectate.active && !seat ? 'spectated-tank' : 'player-tank';
         pose.ownerId = entity.id;
-        pose.scoped = rig.mode === 'SNIPER' && camera.userData.scoped === true;
+        pose.scoped = !seat && rig.mode === 'SNIPER' && camera.userData.scoped === true;
       } else {
         pose.pos = camera.position;
         pose.kind = killcamActive || killcam.isActive() ? 'killcam-camera' : 'camera';
         pose.ownerId = null;
         pose.scoped = false;
       }
-      audio.update(dtSeconds, pose, game.tanks, game.shells);
+      audio.update(dtSeconds, pose, game.tanks, game.shells, visible);
     },
   };
 }

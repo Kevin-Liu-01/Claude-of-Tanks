@@ -9,6 +9,8 @@ import {
   startReload,
   tickReload,
 } from './damage.ts';
+import { FIRE_CYCLE_FLOOR_S, ROTARY_FIRE_CYCLE_FLOOR_S, createRotaryShotThinning } from './fireCycleFloor.ts';
+import { SIM_DT } from './movement.ts';
 
 function makeSpec(overrides = {}) {
   const base = {
@@ -207,6 +209,52 @@ function makeSpec(overrides = {}) {
   assert.equal(combat.magazine.rounds, 1);
   assert.equal(combat.reload.totalS, 0.05,
     'invalid intra-magazine duration clamps while rounds remain in the magazine');
+}
+
+// release 270, the rotary floor (fireCycleFloor.ts): a gun marked `rotary` cycles once a tick, the fixed step itself, and
+// the step that ticks the reload before it fires fires it again on the next tick: one round a tick, 60 a second. The same
+// authored cycle on a gun without the mark stays at the 0.05 s floor, three ticks.
+{
+  assert.equal(ROTARY_FIRE_CYCLE_FLOOR_S, SIM_DT, 'the rotary floor is the simulation step');
+  assert.equal(FIRE_CYCLE_FLOOR_S, 0.05, 'every other gun keeps its floor');
+  const shotsInOneSecond = (autoloader) => {
+    const spec = makeSpec({ gun: { reloadS: 2, autoloader, shells: [{ name: 'M53 API', type: 'AP', caliberMm: 20 }] } });
+    const combat = createCombatState(spec);
+    let shots = 0;
+    for (let tick = 0; tick < 60; tick++) {
+      tickReload(combat, SIM_DT);
+      if (combat.reload.t > 0 || combat.magazine.rounds <= 0) continue;
+      shots++;
+      startPostShotReload(combat, spec);
+    }
+    return { shots, combat };
+  };
+  const rotary = shotsInOneSecond({ magazineSize: 300, intraClipS: SIM_DT, fullReloadS: 2, rotary: true });
+  assert.equal(rotary.shots, 60, 'a rotary gun fires once a tick');
+  assert.equal(rotary.combat.reload.totalS, SIM_DT, 'its cycle is the step');
+  assert.equal(rotary.combat.magazine.rounds, 240, 'one round of the burst a tick');
+  assert.equal(shotsInOneSecond({ magazineSize: 300, intraClipS: 0, fullReloadS: 2, rotary: true }).combat.reload.totalS,
+    2, 'an unauthored rotary cycle falls back to the gun reload above the floor');
+  const held = shotsInOneSecond({ magazineSize: 300, intraClipS: SIM_DT, fullReloadS: 2 });
+  assert.equal(held.shots, 20, 'the same cycle without the mark: every third tick');
+  assert.equal(held.combat.reload.totalS, 0.05, 'held at the 0.05 s floor');
+  assert.equal(shotsInOneSecond({ magazineSize: 300, intraClipS: SIM_DT, fullReloadS: 2, rotary: false }).shots, 20,
+    'rotary is opt-in');
+}
+
+// ... and its presentation at the floor's density (createRotaryShotThinning): the flash, report and kick of every third
+// round at one round a tick; a gun at the floor is never thinned; shooters apart; a clock run back starts over
+{
+  const thin = createRotaryShotThinning();
+  const full = [];
+  for (let tick = 0; tick < 60; tick++) if (!thin('m163_a', tick * SIM_DT)) full.push(tick);
+  assert.equal(full.length, 20, 'one round in three in full');
+  assert.deepEqual(full.slice(0, 4), [0, 3, 6, 9], 'every third tick');
+  const floor = createRotaryShotThinning();
+  for (let shot = 0; shot < 40; shot++) assert.equal(floor('gepard', shot * FIRE_CYCLE_FLOOR_S), false, 'the floor in full');
+  assert.equal(thin('m163_b', 59 * SIM_DT), false, 'another shooter in full');
+  assert.equal(thin('m163_a', 0), false, 'a new battle starts the shooter over');
+  assert.equal(thin('m163_a', SIM_DT), true, '... and thins from there');
 }
 
 {

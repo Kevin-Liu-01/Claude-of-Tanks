@@ -40,7 +40,9 @@ for(const [label,g]of Object.entries({oldKnee,oldClosure,oldReturn,oldTail,oldM4
  assert.ok(properSurfaceCrossings(shellPart(g)).length>0,`${label}: malformed historic faces are detected`);
  assert.throws(()=>intact(shellPart(g),label));g.dispose();
 }
-const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',chieftain3:'return',chieftain_mk9:'return',abramsx:'tail',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
+// 268: the Chieftain Mk 3 and Mk 9 'return' family left with the retired uk.ts upper turret (chieftainMarksX.ts builds them
+// on the Mk 5 X castings); the historic oldReturn fixture above still proves the malformed faces are detected.
+const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',abramsx:'tail',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
 let checked=0;
 for(const [id,family]of Object.entries(families))for(const quality of ['high','low']){
  const emissions=[];
@@ -50,12 +52,11 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
   const parts=emissions.map(p=>({...p,part:shellPart(p.g)})).filter(({bucket,site,part:p,g})=>{
    if(family==='bow')return bucket==='hull'&&site.includes('buildHullBody (')&&p.bounds.min.z>3.11&&p.bounds.max.z>3.42&&p.size.x>1.79&&p.size.x<1.81;
    if(family==='closure')return bucket==='turret'&&site.includes('buildLeclercTurretStage1 (')&&p.size.x>.399&&p.size.x<.401&&p.bounds.max.y>.554&&p.bounds.max.y<.556;
-   if(family==='return')return bucket==='turret'&&site.includes('buildChieftainUpper2026TurretStage4 (')&&p.size.x>.299&&p.size.x<.301;
    if(family==='objectReturn')return bucket==='hullExternalArmor'&&g.userData.object695==='module-rear-chamfer';
    if(family==='shoulder')return bucket==='hullExternalArmor'&&site.includes('hullPackage (')&&p.size.z>6.499&&p.size.z<6.501;
    return bucket==='turret'&&site.includes('axArmorLayer (')&&p.bounds.min.z< -2.43&&p.bounds.max.z< -1.95;
   });
-  assert.equal(parts.length,{bow:1,closure:4,return:2,tail:4,objectReturn:2,shoulder:2}[family],`${id}/${quality}: complete actual stock remains`);
+  assert.equal(parts.length,{bow:1,closure:4,tail:4,objectReturn:2,shoulder:2}[family],`${id}/${quality}: complete actual stock remains`);
   for(const {part:p}of parts){
    intact(p,`${id}/${quality}`);checked++;
    if(family==='bow'){
@@ -67,11 +68,6 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
     near(p.bounds.min.y,.285,'closure backing floor');near(p.bounds.max.y,.555,'retained visible roof datum');
     const outer=p.vertices.filter(v=>Math.abs(Math.abs(v[0])-1.4)<1e-6);assert.equal(outer.length,4);
     near(Math.max(...outer.map(v=>v[1]))-Math.min(...outer.map(v=>v[1])),.01,'finite 10 mm outboard closure depth');
-   }
-   if(family==='return'){
-    near(Math.min(...p.vertices.map(v=>Math.abs(v[0]))),.13,'gun aperture boundary');
-    near(Math.max(...p.vertices.map(v=>Math.abs(v[0]))),.43,'retained outside return boundary');
-    near(p.bounds.min.z,.58,'retained rear return');near(p.bounds.max.z,1.48,'retained return front');
    }
    if(family==='objectReturn'){
     // The owner-approved vehicleSizePolicy applies the existing 90% scale.
@@ -93,7 +89,7 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
     assert.ok(Math.max(...rear.map(v=>v[1]))<=.100001,'retained rear roof datum');
    }
   }
-  if(['return','objectReturn','shoulder'].includes(family))near(mirroredSurfaceError(parts[0].part,parts[1].part).maxM,0,'reflected aperture return');
+  if(['objectReturn','shoulder'].includes(family))near(mirroredSurfaceError(parts[0].part,parts[1].part).maxM,0,'reflected aperture return');
   if(family==='tail'){
    const roof=Math.max(...parts.flatMap(({part:p})=>p.vertices.filter(v=>Math.abs(v[2]+2.441)<1e-6).map(v=>v[1])));near(roof,.1,'original rear exterior roof remains');
    // The rear-only fix must not create a full-width bridge across the

@@ -103,10 +103,10 @@ async function runFixture(control) {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig } = await import('./maps/index.ts');
   const { ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
-  const { wreckPool } = await import('./wrecks.ts');
+  const { wreckDonorsFor } = await import('./wreckRoster.ts');
   globalThis.fetch = async url => new Response(readFileSync(url));
   await preloadPropModels();
-  await Promise.all(wreckPool('modern').map(id => ensureTankBuilder(id)));
+  await Promise.all(wreckDonorsFor('delta').map(id => ensureTankBuilder(id)));
   installFixtureCanvas();
   const config = getMapConfig('delta');
   const props = createProps(createHeightField(1337, config), {

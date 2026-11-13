@@ -108,7 +108,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'In this fleet the T-90 and T-90M wheels are one construction (the T-90M X source-pressed face); the older T-series hulls draw it through the standard.' }),
   t90am: Object.freeze({ donor: 't90am', self: ['t90a', 't90a_vladimir', 't90m', 't90sm'], pattern: 'pressed-six', construction: 't90-pressed-source-face',
     note: 'Fleet pressed six-rib disc under the T-90 X source-pressed face: six-hole plate, rim ring, hub and bolt heads (t90X.ts).' }),
-  object148_proto: Object.freeze({ donor: 'object148_proto', self: ['object148_proto', 't14_armata'], pattern: 'armored-hub-six', construction: 't14-armoured-hub',
+  object148_proto: Object.freeze({ donor: 'object148_proto', self: ['object148_proto', 't14_armata', 't14_152'], pattern: 'armored-hub-six', construction: 't14-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (t14X.ts draws the generic stock); no other Russian next-generation MBT hull exists.' }),
   // 262 (owner 2026-10-27, via Main: the true T-64s get "the T-64's distinctive small road wheels, six a side, with
   // their internal shock absorption, and the thin track"): the T-64 family draws its own construction natively.
@@ -266,8 +266,21 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 268: the PLA air-defence pair roll on solid dished wheels with a raised hub (photos), China's MBT standard, not the IFV ribs
   pgz95: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a raised hub → China MBT standard (ZTZ-100 recessed web)' },
   pgz09: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a bolted hub → China MBT standard (ZTZ-100 recessed web)' },
+  // 269: the second air-defence round rides its base vehicles' running gear, so each draws its base hull's wheel, not its
+  // nation's IFV wheel (the Marksmen are filed under the UK, the turret's maker; their hulls are the T-55's and the
+  // Leopard 2A4's). The Lvkv 9040 (Sweden's IFV rule, the CV90's) and the K30 (South Korea's IFV rule, the K1A1 wheel
+  // the Korean IFV hulls draw) need no exception.
+  type87_aw: { donor: 'type10_tk_x', reason: '269: the Type 74 hull under an SPAA turret keeps the Type 74\'s Type 10 face' },
+  marksman_t55: { donor: T54_STARFISH_WHEELS ? 'type59' : 't90_1992',
+    reason: '269: the ItPsv 90 is a T-55 hull: the T-55A\'s wheel (the period starfish while T54_STARFISH_WHEELS holds)' },
+  itpsv_leopard2: { donor: 'leo2a4', reason: '269: the ItPsv Leopard 2 is a Leopard 2A4 hull → Germany MBT donor (the 2A4\'s)' },
+  pza_loara: { donor: 'pl01', reason: '269: the PT-91 MBT hull under an SPAA turret → Poland MBT donor (the PT-91 Twardy\'s)' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
+  // release 269: the 152 mm line's T-80-family and T-90-type running gear
+  object292: { donor: 't90_1992', reason: 'the T-80U X hull and running gear (profiles/object292X.ts) → the T-80 family\'s older T-series donor' },
+  object477_molot: { donor: 't90_1992', reason: 'the Molot runs on the T-80UD\'s running gear (Apukhtin) → the T-80 family\'s donor' },
+  object195: { donor: 't90am', reason: 'the Object 195\'s road wheels are the T-90\'s (btvt) → the T-90M wheel' },
   ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },
   t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
@@ -308,7 +321,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */
 export const PERIOD_WHEEL_HULLS: readonly string[] = Object.freeze([
-  'jpz_e100', 'kv2',
+  'jpz_e100', 'kv2', 't95',
 ]);
 
 interface NationWheelSpec {

@@ -363,7 +363,11 @@ export async function restoreGarageGpuPipeline({
     post.render(simDt);
     settleFrameMs = Math.round(now() - settleFrameAt);
   } finally {
-    lighting.setStaticPresentationDormant(true);
+    // (2026-11-02 audit R4) the static latch goes back to the Garage only while this restore is still the Garage's: an
+    // abandoned one (Battle Again, a capture that staged its battlefield) leaves it to the phase that replaced it, which
+    // derives it every frame (mainFrameRuntime.ts renderPresentation); before, its finally froze every cascade after the
+    // next phase had started (the 2026-10-08 frozen-cascade incident)
+    if (!isCurrent || isCurrent()) lighting.setStaticPresentationDormant(true);
   }
 
   return {

@@ -34,6 +34,7 @@ import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
 import { CAPTURE_QUEUE_DIR, createCaptureLock, ticketAt } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { grassSettled } from './frame-budget-probe.mjs';
@@ -219,7 +220,7 @@ async function bootPage(browser, baseUrl, device) {
 async function stageMap(entry, mapId) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__SHOTS && !!window.__DEBUG`, { timeout: 900000, polling: 1000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });
@@ -308,10 +309,13 @@ async function main(argv) {
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
     await stageMap(entry, mapId);
   };
+  // Chrome closes before the lock goes (2026-11-02 audit S4: the release came first on every way out, so the next holder's
+  // GPU work overlapped a closing browser), then the preview servers, which do not draw
   const close = async () => {
+    if (browser) await browser.close().catch(() => {});
+    browser = null;
     if (held) lock.release();
     held = false;
-    if (browser) await browser.close().catch(() => {});
     for (const server of servers.values()) await server.close().catch(() => {});
   };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {

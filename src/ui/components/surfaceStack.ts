@@ -51,6 +51,9 @@ export function planPress(top: (Box & { readonly modal?: boolean }) | undefined,
 }
 
 const stack: TransientSurface[] = [];
+// The control each open surface was opened from (2026-11-02 audit F5): a page that hides owns the surfaces opened from it
+// even when their box lives elsewhere (a picker menu's popover in the body's top layer, a body-level modal).
+const openers = new WeakMap<TransientSurface, Node | null>();
 const boxOf = (surface: TransientSurface): Box => ({
   contains: (node) => !!node && (!!surface.element()?.contains(node) || !!surface.owns?.(node)),
 });
@@ -58,6 +61,13 @@ const boxOf = (surface: TransientSurface): Box => ({
 /** The ids open now, bottom to top (the census's read). */
 export function openSurfaceIds(): readonly string[] {
   return stack.map((surface) => surface.id);
+}
+
+/** Whether a modal surface (one with its own scrim) is open, other than the one named `exceptId` (2026-11-02 audit F5:
+ *  the stack is the one truth for "a modal is open"; modal.ts isAnyModalOpen reads it). */
+export function modalSurfaceOpen(exceptId?: string): boolean {
+  for (const surface of stack) if (surface.modal && surface.id !== exceptId) return true;
+  return false;
 }
 
 /**
@@ -75,6 +85,20 @@ export function openSurface(surface: TransientSurface, opener?: Node | null): vo
     old.close('replace');
   }
   stack.push(surface);
+  openers.set(surface, from ?? null);
+}
+
+/**
+ * Whether `node` is `surface`'s: inside its box or its controls, or inside a surface standing on it (opened from it, wherever
+ * its box lives: a body-level modal). A surface that closes when the focus leaves it asks this, so the focus a surface it
+ * opened takes is not a leave (272: Deploy's focusout read the couch lobby's focus as one, closed Deploy, and the lobby
+ * went with it: a real press on Couch opened the lobby and closed it a frame later).
+ */
+export function surfaceHolds(surface: TransientSurface, node: Node | null): boolean {
+  const at = stack.indexOf(surface);
+  if (at < 0) return boxOf(surface).contains(node);
+  for (let i = at; i < stack.length; i++) if (boxOf(stack[i]).contains(node)) return true;
+  return false;
 }
 
 /** `surface` closed (its own close, or the stack's): the surfaces standing on it close with it. */
@@ -83,6 +107,41 @@ export function closeSurface(surface: TransientSurface): void {
   if (at < 0) return;
   const above = stack.splice(at);
   for (const old of above.slice(1).reverse()) old.close('replace');
+}
+
+/**
+ * A page that hides takes its surfaces with it (2026-11-02 audit F5): every open surface whose box is inside `root`, or
+ * that was opened from a control inside it, closes, the top first, as a replacement does (no focus goes back to a page
+ * that is gone). Without it a surface left open under a hidden page kept its place, and the next Escape (the battle's
+ * pause) was spent on it. Returns how many closed.
+ */
+export function closeSurfacesWithin(root: { contains(node: Node | null): boolean }): number {
+  let closed = 0;
+  for (const surface of [...stack].reverse()) {
+    if (!stack.includes(surface)) continue;
+    const element = surface.element();
+    const opener = openers.get(surface) ?? null;
+    if (!(element && root.contains(element)) && !(opener && root.contains(opener))) continue;
+    closeSurface(surface);
+    surface.close('replace');
+    closed += 1;
+  }
+  return closed;
+}
+
+// a resize, a rotation or a page change that hides an open surface (the phone's menu on a wide window) closes it: none
+// stands open unseen
+const sweep = (): void => {
+  for (const surface of [...stack].reverse()) {
+    const element = surface.element();
+    if (!stack.includes(surface) || !element || element.getClientRects().length) continue;
+    closeSurface(surface);
+    surface.close('replace');
+  }
+};
+/** Close every open surface that no longer shows (a page that hid under it): the resize sweep, on demand. */
+export function sweepHiddenSurfaces(): void {
+  if (stack.length) sweep();
 }
 
 /** A native modal <dialog> (a public page's trailer, its archive, its library) on the stack while it is open: opening it
@@ -119,16 +178,7 @@ function install(): void {
     stack.pop();
     top!.close('outside');
   }, true);
-  // a resize or a rotation that hides an open surface (the phone's menu on a wide window) closes it: none stands open unseen.
   // The sweep runs a frame after the resize and again once the page's layout has changed (responsiveLayout.ts)
-  const sweep = (): void => {
-    for (const surface of [...stack].reverse()) {
-      const element = surface.element();
-      if (!stack.includes(surface) || !element || element.getClientRects().length) continue;
-      closeSurface(surface);
-      surface.close('replace');
-    }
-  };
   let resizeFrame = 0;
   window.addEventListener('resize', () => {
     if (resizeFrame || !stack.length) return;

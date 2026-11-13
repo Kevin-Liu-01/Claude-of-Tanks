@@ -100,6 +100,19 @@ function driver(P: TankBuilderPort): void {
   boxSpan(P, -.102, .103, 1.466, 1.531, 1.923, 1.931, 'hullDark');
 }
 
+/** The early marks' engine deck (the Mk 3: "less deck covers and access covers" than the late Mk 3 and Mk 5,
+ * armortek forum): two broad louvred covers over the engine instead of three, one plain forward plate across the deck
+ * without its separate side covers and their hinges, and the same transverse bar. Same plate thicknesses and heights. */
+function earlyEngineDeck(P: TankBuilderPort): void {
+  for (const [x1, x2] of [[-.8932, -.0080], [.0080, .8941]]) {
+    boxSpan(P, x1, x2, 1.674, 1.714, -3.204, -2.500);
+    boxSpan(P, x1 + .003, x2 - .003, 1.714, 1.7281, -3.201, -2.501);
+    for (let i = 0; i < 7; i++) boxSpan(P, x1 + .07, x2 - .07, 1.7281, 1.7381, -3.12 + i * .095, -3.085 + i * .095, 'hullDark');
+  }
+  boxSpan(P, -.8923, .8932, 1.6618, 1.6778, -2.4792, -1.45);
+  boxSpan(P, -.8313, .8322, 1.690, 1.7433, -2.3762, -2.3412);
+}
+
 function engineDeck(P: TankBuilderPort): void {
   for (const [x1, x2] of [[-.8932, -.4388], [-.4226, .4235], [.4396, .8941]]) {
     boxSpan(P, x1, x2, 1.674, 1.714, -3.204, -2.500);
@@ -142,13 +155,14 @@ function stern(P: TankBuilderPort): void {
   for (const x of [-.217, .185]) P.addEquipment('hullDetail', KIT.box(.0072, .0896, .1506), x, 1.6456, -3.5835);
 }
 
-export function addChieftain5XSourceHullEquipment(P: TankBuilderPort): void {
+/** `early`: the Mk 3's hull (chieftain5X.ts), with the early engine deck. */
+export function addChieftain5XSourceHullEquipment(P: TankBuilderPort, early = false): void {
   for (const side of [-1, 1]) {
     foreFlap(P, side);
     upperBins(P, side);
   }
   bowLamps(P);
   driver(P);
-  engineDeck(P);
+  if (early) earlyEngineDeck(P); else engineDeck(P);
   stern(P);
 }

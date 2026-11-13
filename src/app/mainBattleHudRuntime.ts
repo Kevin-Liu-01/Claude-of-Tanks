@@ -61,7 +61,10 @@ export function createMainBattleHudRuntime(
 
   const veil = (hidden: boolean): void => {
     const hud = currentHud();
-    if (hud?.root) hud.root.style.display = hidden ? 'none' : '';
+    // (2026-11-02 audit F8) the HUD decides its root's display from its mode and this veil (hud.ts setVeiled): writing
+    // the style here raced applyMode (a scope flip undid the veil; a veil lifted after the Garage return showed it)
+    if (typeof hud?.setVeiled === 'function') hud.setVeiled(hidden);
+    else if (hud?.root) hud.root.style.display = hidden ? 'none' : '';
     if (hud?.shotInfo?.statsRoot) {
       hud.shotInfo.statsRoot.style.visibility = hidden ? 'hidden' : '';
     }

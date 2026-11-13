@@ -106,7 +106,8 @@ function compose({ network = false, list = tanks, mode = 'standard', getTeamRost
     },
     emitPause: (paused) => bus.emit('ui:pause', { on: paused }),
   });
-  const rollout = createBattleRolloutRuntime({ game, bus, audio, getHud: () => null, defaultPreBattleSeconds: 3 });
+  // (2026-11-02 audit F1) the battle's one rollout edge is the frame runtime's latch, as main composes it
+  const rollout = createBattleRolloutRuntime({ game, rollout: () => { frames.rollout(false); }, audio, getHud: () => null, defaultPreBattleSeconds: 3 });
   let nowMs = 0;
   // 30 frames a second: the count, the ramps and the waits are in seconds
   const frame = (dt = FRAME_S) => {

@@ -1,7 +1,7 @@
 /**
  * collapseRuin.ts — a collapsed building leaves a ruin, never a raft (destruction lane, 2026-10-16; the owner ruled flat
  * rafts out; the LOOKS r2 sweep's anti-raft check: 145 placed structure kinds whose collapse stood under 25 % of their
- * intact height, ~/cot-launch-state/streams/looks/sweep/BELOW2.md).
+ * intact height).
  *
  * Every kit's collapse (destructionKit.ts StructureDamageKit.collapse: the default kit and the regional ones) runs
  * through `keepRuinStanding` from the world seam (structureDamageSeam.ts). The kit writes what it writes; this pass

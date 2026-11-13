@@ -123,10 +123,36 @@ await test('cancelled idle callback cannot terminate a newly active job', async 
   const second = f.client.paint(request('second')); staleIdle();
   assert.equal(worker.terminated, 0); worker.reply(); assert.ok(await second); f.client.dispose();
 });
-await test('absolute timeout drains active and queued jobs and disables retries', async () => {
+// 2026-11-02 audit R6: the deadline ran from paint() (a queued job's wait counted: 16 queued, or a laptop asleep mid-bake,
+// tripped it) and one timeout disabled the worker for the session; it runs from dispatch now, and a failure leaves the
+// next bake a fresh worker until three fail in a row (src/workerClientHealth.ts)
+await test('a deadline runs from dispatch, not from the queue', async () => {
+  const f = fixture({ timeoutMs: 7 }); const a = f.client.paint(request()), b = f.client.paint(request('queued'));
+  const deadlines = () => f.timers.filter(timer => timer.delay === 7);
+  assert.equal(deadlines().length, 1, 'the queued job has no clock running yet');
+  f.workers[0].reply(); assert.ok(await a);
+  assert.equal(deadlines().length, 2, 'its clock starts at its turn');
+  assert.equal(deadlines()[0].cancelled, true);
+  f.workers[0].reply(); assert.equal((await b).identity, 'queued'); f.client.dispose();
+});
+await test('a timeout drains what the worker held and the next bake starts a fresh worker', async () => {
   const f = fixture({ timeoutMs: 7 }); const a = f.client.paint(request()), b = f.client.paint(request('queued'));
   f.fire(7); assert.deepEqual(await Promise.all([a, b]), [null, null]); released(f.workers[0]);
-  assert.equal(await f.client.paint(request('later')), null); assert.equal(f.workers.length, 1);
+  assert.equal(f.client.available(), true, 'one timeout does not turn the worker off for the session');
+  const later = f.client.paint(request('later')); assert.equal(f.workers.length, 2);
+  f.workers[1].reply(); assert.equal((await later).identity, 'later');
+  f.client.dispose(); assert.ok(f.timers.every(timer => timer.cancelled));
+});
+await test('three failures in a row leave the client unavailable; a success starts the count again', async () => {
+  const f = fixture({ timeoutMs: 7 });
+  for (let i = 0; i < 2; i++) { const job = f.client.paint(request()); f.workers.at(-1).onerror(); assert.equal(await job, null); }
+  const good = f.client.paint(request('good')); f.workers.at(-1).reply(); assert.ok(await good);
+  for (let i = 0; i < 2; i++) { const job = f.client.paint(request()); f.fire(7); assert.equal(await job, null); }
+  assert.equal(f.client.available(), true, 'two since the success');
+  const third = f.client.paint(request()); f.workers.at(-1).onmessageerror(); assert.equal(await third, null);
+  assert.equal(f.client.available(), false);
+  const count = f.workers.length;
+  assert.equal(await f.client.paint(request('after')), null); assert.equal(f.workers.length, count, 'no worker after that');
   assert.ok(f.timers.every(timer => timer.cancelled));
 });
 for (const event of ['onerror', 'onmessageerror']) await test(`${event} drains all owners`, async () => {

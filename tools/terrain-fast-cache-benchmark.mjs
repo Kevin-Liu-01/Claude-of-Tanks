@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 
 const terrainSource = readFileSync(new URL('../src/world/terrain.ts', import.meta.url), 'utf8');
 // Immutable pre-change cache from ff68c3d6c; never regenerate from the live source.
@@ -133,7 +134,7 @@ function summarize(runs, phase) {
     counts: runs[0][phase].counts };
 }
 
-async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
+async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100, between = async () => {} } = {}) {
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 9);
   assert.ok(Number.isInteger(hotRepeats) && hotRepeats >= 1 && hotRepeats <= 200);
   const [THREE, { createHeightField }, { default: winter }] = await Promise.all([
@@ -154,6 +155,8 @@ async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
   const runs = { tile: [], vertex: [] };
   // The first pair warms code/JIT only; every measured cold run owns a fresh cache.
   for (let round = -1; round < rounds; round++) {
+    // between rounds (round 2 U38): the hold's refresh, cap check and signals run, and a stopped hold ends the run here
+    await between();
     for (const mode of round % 2 === 0 ? ['tile', 'vertex'] : ['vertex', 'tile']) {
       const cache = createCacheExperiment(mode, field.getHeightAt);
       const ray = createTerrainRayExperiment(THREE, field, cache.getHeightAtFast);
@@ -192,11 +195,11 @@ async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
 
 export async function runWinterCacheBenchmark({ lock = createCaptureLock(), measure = benchmarkWinterCache } = {}) {
   console.error('terrain fast cache benchmark: waiting for shared FIFO');
-  try {
-    await lock.acquire(30 * 60 * 1000);
+  // the one hold wrapper (round 2 U38): refresh, the cap, signals and the release after the measurement
+  return withCaptureHold(async ({ between }) => {
     console.error('terrain fast cache benchmark: FIFO acquired; Node-only measurement');
-    return await measure();
-  } finally { lock.release(); }
+    return measure({ between });
+  }, { label: 'terrain-fast-cache-benchmark', lock, timeoutMs: 30 * 60 * 1000, log: (line) => console.error(line) });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

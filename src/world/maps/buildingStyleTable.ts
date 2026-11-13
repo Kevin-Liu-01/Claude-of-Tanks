@@ -16,6 +16,7 @@
 import type { MapId } from './mapIds.ts';
 import type { ArchitectureId } from './regional/index.ts';
 import type { BuildingVariation } from './regional/appearance.ts';
+import type { MapSetting } from './buildingTypes.ts';
 
 /** A roof form the place builds (house.ts RoofKind plus the forms the kits lay in their own code). */
 export type RoofForm = 'gable' | 'hip' | 'halfhip' | 'flat' | 'shed' | 'vault' | 'dome' | 'sawtooth' | 'pyramid' | 'curved' | 'mansard';
@@ -25,6 +26,8 @@ type Range = readonly [number, number];
 
 export interface BuildingStyleRow {
   readonly kit: ArchitectureId;
+  /** the years the map shows and the cultures of its place: which building types it may place (buildingTypes.ts) */
+  readonly setting: MapSetting;
   /** the forms the place's buildings take (the kit's commonest among them) and the pitch of the pitched ones */
   readonly roof: { readonly forms: readonly RoofForm[]; readonly pitchDeg: Range | null };
   readonly core: WallCore;
@@ -54,6 +57,7 @@ export interface BuildingStyleRow {
 export const BUILDING_STYLES = {
   verdant: {
     kit: 'kolkhoz',
+    setting: { years: [1943, 1943], cultures: ['orthodox'] },
     roof: { forms: ['hip', 'gable'], pitchDeg: [25, 48] },
     core: 'adobe', storeys: [1, 2], storeyM: [2.2, 3.2], bayM: [1.6, 3.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -62,6 +66,7 @@ export const BUILDING_STYLES = {
   },
   desert: {
     kit: 'ksar',
+    setting: { years: [1900, 1999], cultures: ['islamic', 'arab'] },
     roof: { forms: ['vault', 'flat', 'dome'], pitchDeg: null },
     core: 'adobe', storeys: [1, 4], storeyM: [2, 3.2], bayM: null,
     weathering: { damp: 0.25, moss: 0.05 }, wear: 0.15,
@@ -72,6 +77,7 @@ export const BUILDING_STYLES = {
   },
   winter: {
     kit: 'goral',
+    setting: { years: [1945, 1945], cultures: [] },
     roof: { forms: ['gable', 'halfhip'], pitchDeg: [45, 60] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.4, 3.2],
     weathering: { damp: 0.7, moss: 0.55 }, wear: 0.3,
@@ -83,6 +89,7 @@ export const BUILDING_STYLES = {
   },
   urban: {
     kit: 'franconian',
+    setting: { years: [1945, 1945], cultures: ['central-europe'] },
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [45, 60] },
     core: 'masonry', storeys: [2, 5], storeyM: [2.8, 3.6], bayM: [1.6, 2.8],
     weathering: { damp: 0.5, moss: 0.4 }, wear: 0.25,
@@ -95,6 +102,7 @@ export const BUILDING_STYLES = {
   },
   coastal: {
     kit: 'breton',
+    setting: { years: [1944, 1944], cultures: [] },
     roof: { forms: ['gable'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.6, 4.8],
     weathering: { damp: 0.95, moss: 0.8 }, wear: 0.25,
@@ -106,6 +114,7 @@ export const BUILDING_STYLES = {
   },
   autumn: {
     kit: 'lorrain',
+    setting: { years: [1944, 1944], cultures: [] },
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 3.2], bayM: [1.4, 2.8],
     weathering: { damp: 0.75, moss: 0.45 }, wear: 0.3,
@@ -116,6 +125,7 @@ export const BUILDING_STYLES = {
   },
   steppe: {
     kit: 'tselina',
+    setting: { years: [1954, 1970], cultures: ['orthodox', 'islamic'] },
     roof: { forms: ['gable', 'hip', 'flat', 'shed'], pitchDeg: [18, 32] },
     core: 'adobe', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.8, 3.4],
     weathering: { damp: 0.4, moss: 0.15 }, wear: 0.25,
@@ -127,6 +137,7 @@ export const BUILDING_STYLES = {
   },
   railyard: {
     kit: 'ruhr',
+    setting: { years: [1945, 1945], cultures: ['central-europe'] },
     roof: { forms: ['gable', 'shed', 'sawtooth', 'flat'], pitchDeg: [15, 45] },
     core: 'masonry', storeys: [1, 4], storeyM: [3, 5], bayM: [2, 4.5],
     weathering: { damp: 0.7, moss: 0.1 }, wear: 0.2,
@@ -135,6 +146,7 @@ export const BUILDING_STYLES = {
   },
   frontier: {
     kit: 'hessian',
+    setting: { years: [1950, 1989], cultures: ['central-europe'] },
     roof: { forms: ['gable', 'halfhip'], pitchDeg: [42, 55] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.4, 3.2], bayM: [1.2, 2.8],
     weathering: { damp: 0.85, moss: 0.55 }, wear: 0.22,
@@ -145,6 +157,7 @@ export const BUILDING_STYLES = {
   },
   fjord: {
     kit: 'nordland',
+    setting: { years: [1940, 1940], cultures: ['nordic'] },
     roof: { forms: ['gable'], pitchDeg: [30, 45] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3], bayM: [1.4, 3],
     weathering: { damp: 0.7, moss: 0.45 }, wear: 0.3,
@@ -156,6 +169,7 @@ export const BUILDING_STYLES = {
   },
   delta: {
     kit: 'bengal',
+    setting: { years: [1971, 1971], cultures: ['islamic'] },
     roof: { forms: ['gable', 'hip', 'curved', 'flat'], pitchDeg: [20, 35] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 3.2], bayM: [1.6, 3.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -167,6 +181,7 @@ export const BUILDING_STYLES = {
   },
   badlands: {
     kit: 'wadirum',
+    setting: { years: [2020, 2026], cultures: ['islamic', 'arab'] },
     roof: { forms: ['flat'], pitchDeg: null },
     core: 'adobe', storeys: [1, 2], storeyM: [2.8, 3.2], bayM: [1.8, 4],
     // (Main 11-06: lost its one fresh judge 1–9 under the pair rule, so the whole map reverts to its base look: the kit's
@@ -177,6 +192,7 @@ export const BUILDING_STYLES = {
   },
   monsoon: {
     kit: 'kohima',
+    setting: { years: [1944, 1944], cultures: [] },
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 3.4], bayM: [1.6, 4.6],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -187,6 +203,7 @@ export const BUILDING_STYLES = {
   },
   alpine: {
     kit: 'savoyard',
+    setting: { years: [1945, 1945], cultures: [] },
     roof: { forms: ['gable'], pitchDeg: [25, 40] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.3, 3], bayM: [1.4, 3.4],
     weathering: { damp: 0.95, moss: 0.5 }, wear: 0.3,
@@ -198,6 +215,7 @@ export const BUILDING_STYLES = {
   },
   caldera: {
     kit: 'kyushu',
+    setting: { years: [1900, 1999], cultures: [] },
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [25, 50] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.4, 4.4], bayM: [0.9, 2.2],
     weathering: { damp: 0.7, moss: 0.45 }, wear: 0.22,
@@ -206,6 +224,7 @@ export const BUILDING_STYLES = {
   },
   foundry: {
     kit: 'saar',
+    setting: { years: [1945, 1945], cultures: ['central-europe'] },
     roof: { forms: ['gable', 'sawtooth', 'flat', 'shed'], pitchDeg: [15, 40] },
     core: 'masonry', storeys: [1, 4], storeyM: [3.2, 8], bayM: [2.4, 6],
     weathering: { damp: 0.6, moss: 0.15 }, wear: 0.4,
@@ -214,6 +233,7 @@ export const BUILDING_STYLES = {
   },
   ruinspires: {
     kit: 'sarajevo',
+    setting: { years: [1992, 1996], cultures: ['islamic', 'orthodox', 'central-europe'] },
     roof: { forms: ['hip', 'flat', 'gable'], pitchDeg: [25, 55] },
     core: 'masonry', storeys: [2, 18], storeyM: [2.8, 3.8], bayM: [1.4, 3.2],
     weathering: { damp: 0.7, moss: 0.3 }, wear: 0.5,
@@ -222,6 +242,7 @@ export const BUILDING_STYLES = {
   },
   blackglass: {
     kit: 'shanghai',
+    setting: { years: [1937, 1937], cultures: [] },
     roof: { forms: ['gable', 'flat', 'hip'], pitchDeg: [20, 35] },
     core: 'masonry', storeys: [2, 4], storeyM: [3, 4], bayM: [1.4, 2.8],
     weathering: { damp: 0.85, moss: 0.35 }, wear: 0.3,
@@ -230,6 +251,7 @@ export const BUILDING_STYLES = {
   },
   titan_gorge: {
     kit: 'navajo',
+    setting: { years: [1900, 1999], cultures: [] },
     roof: { forms: ['flat', 'dome', 'gable'], pitchDeg: [15, 30] },
     core: 'adobe', storeys: [1, 2], storeyM: [2.4, 3.2], bayM: [1.8, 4],
     weathering: { damp: 0.4, moss: 0.03 }, wear: 0.15,
@@ -241,6 +263,7 @@ export const BUILDING_STYLES = {
   },
   skybridge: {
     kit: 'glencanyon',
+    setting: { years: [1957, 1966], cultures: [] },
     roof: { forms: ['flat', 'gable', 'hip'], pitchDeg: [15, 25] },
     core: 'concrete', storeys: [1, 3], storeyM: [2.5, 4.5], bayM: [1.6, 7],
     weathering: { damp: 0.2, moss: 0.02 }, wear: 0.18,
@@ -252,6 +275,7 @@ export const BUILDING_STYLES = {
   },
   polders: {
     kit: 'polder',
+    setting: { years: [1944, 1944], cultures: [] },
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.5, 3.2], bayM: [1.4, 4.2],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -262,6 +286,7 @@ export const BUILDING_STYLES = {
   },
   copper_mesa: {
     kit: 'queenstown',
+    setting: { years: [1893, 1994], cultures: [] },
     roof: { forms: ['gable', 'hip', 'shed'], pitchDeg: [20, 35] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 4], bayM: [1.6, 3.4],
     weathering: { damp: 0.6, moss: 0.3 }, wear: 0.25,
@@ -273,6 +298,7 @@ export const BUILDING_STYLES = {
   },
   airfield: {
     kit: 'hostomel',
+    setting: { years: [2022, 2022], cultures: ['orthodox'] },
     roof: { forms: ['flat', 'vault', 'gable', 'hip'], pitchDeg: [5, 40] },
     core: 'masonry', storeys: [1, 5], storeyM: [2.3, 3.3], bayM: [0.8, 3],
     weathering: { damp: 0.55, moss: 0.25 }, wear: 0.45,
@@ -284,6 +310,7 @@ export const BUILDING_STYLES = {
   },
   oasis: {
     kit: 'siwa',
+    setting: { years: [1900, 1999], cultures: ['islamic', 'arab'] },
     roof: { forms: ['flat'], pitchDeg: null },
     core: 'adobe', storeys: [1, 3], storeyM: [2.4, 3], bayM: null,
     weathering: { damp: 0.12, moss: 0 }, wear: 0.2,
@@ -292,6 +319,7 @@ export const BUILDING_STYLES = {
   },
   whiteout: {
     kit: 'arctic',
+    setting: { years: [1980, 1989], cultures: [] },
     roof: { forms: ['flat', 'vault', 'dome'], pitchDeg: null },
     core: 'masonry', storeys: [1, 2], storeyM: [2.6, 4], bayM: [2, 5],
     weathering: { damp: 0.25, moss: 0 }, wear: 0.1,
@@ -300,6 +328,7 @@ export const BUILDING_STYLES = {
   },
   orchard: {
     kit: 'chouf',
+    setting: { years: [1900, 1999], cultures: ['islamic', 'arab'] },
     roof: { forms: ['hip', 'flat'], pitchDeg: [20, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [3, 4], bayM: [1.2, 4],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
@@ -310,6 +339,7 @@ export const BUILDING_STYLES = {
   },
   longleaf: {
     kit: 'longleaf',
+    setting: { years: [1941, 1941], cultures: [] },
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 45] },
     core: 'masonry', storeys: [1, 2], storeyM: [2.8, 3.6], bayM: [1.6, 5.4],
     weathering: { damp: 0.65, moss: 0.35 }, wear: 0.3,
@@ -321,6 +351,7 @@ export const BUILDING_STYLES = {
   },
   mangrove: {
     kit: 'mekong',
+    setting: { years: [1960, 1969], cultures: [] },
     roof: { forms: ['gable', 'hip'], pitchDeg: [25, 40] },
     core: 'masonry', storeys: [1, 1], storeyM: [2.4, 3], bayM: [1.6, 4],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -332,6 +363,7 @@ export const BUILDING_STYLES = {
   },
   saltwind: {
     kit: 'dalmatian',
+    setting: { years: [1900, 1999], cultures: [] },
     roof: { forms: ['gable'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.2], bayM: [1.4, 3],
     weathering: { damp: 0.45, moss: 0.25 }, wear: 0.3,
@@ -342,6 +374,7 @@ export const BUILDING_STYLES = {
   },
   reservoir: {
     kit: 'eifel',
+    setting: { years: [1944, 1945], cultures: ['central-europe'] },
     roof: { forms: ['gable', 'hip', 'halfhip'], pitchDeg: [40, 55] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.4, 3.2], bayM: [1.2, 2.8],
     weathering: { damp: 0.8, moss: 0.5 }, wear: 0.2,
@@ -352,6 +385,7 @@ export const BUILDING_STYLES = {
   },
   mars: {
     kit: 'olympus',
+    setting: { years: [2100, 2100], cultures: [] },
     roof: { forms: ['flat', 'vault'], pitchDeg: null },
     core: 'concrete', storeys: [1, 2], storeyM: [2.5, 4], bayM: null,
     weathering: { damp: 0.05, moss: 0 }, wear: 0.05,
@@ -360,6 +394,7 @@ export const BUILDING_STYLES = {
   },
   moon: {
     kit: 'littrow',
+    setting: { years: [2046, 2046], cultures: [] },
     roof: { forms: ['vault', 'flat'], pitchDeg: null },
     core: 'concrete', storeys: [1, 2], storeyM: [2.5, 4], bayM: null,
     weathering: { damp: 0, moss: 0 }, wear: 0.15,
@@ -368,6 +403,7 @@ export const BUILDING_STYLES = {
   },
   cliffbridge: {
     kit: 'andalusian',
+    setting: { years: [1900, 1999], cultures: [] },
     roof: { forms: ['gable', 'hip'], pitchDeg: [18, 30] },
     core: 'masonry', storeys: [1, 3], storeyM: [2.6, 3.4], bayM: [1.4, 3.4],
     weathering: { damp: 0.35, moss: 0.3 }, wear: 0.18,

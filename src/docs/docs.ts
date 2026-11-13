@@ -90,13 +90,14 @@ function mountArchiveMotionInfo(): Promise<unknown> {
   return archiveMotionPromise;
 }
 
-/** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it). */
+/** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it); the wall shows
+ *  the owner's gallery after the battlefield photographs (mediaArchive.ts, 2026-11-11), and its limit counts it. */
 function mountArchiveBody(): Promise<unknown> {
   archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchiveTakes.ts'),
     import('../presentation/mediaArchive.css')])
     .then(([{ mountMediaArchive }, { takeTitle }]) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
-      { mode: 'wall', limit: 330, filters: false, takeTitle },
+      { mode: 'wall', limit: 408, filters: false, takeTitle },
     ));
   return archiveMountPromise;
 }

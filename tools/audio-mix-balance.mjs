@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // audio-mix-balance.mjs — browser gate for the mix itself (src/audio/audioEngine.ts):
 // what a player actually hears, measured on the master output through the
 // __COT_AUDIO PCM tap with every settings channel at its default.
@@ -49,13 +49,16 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { loudestTakes } from './audio/held-takes.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
-const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 120000;
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 120 s, COT_READY_TIMEOUT_MS)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS } = pageLoadBudget({ readyTimeoutMs: 120000 });
 
 function writeWav(path, i16, sampleRate) {
   const dataBytes = i16.length * 2;
@@ -137,10 +140,7 @@ function shotAnatomy(i16, sampleRate, masterLevel) {
   return { riseMs: a.riseMs, decayDb: +decayDb.toFixed(1), e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
 }
 
-await acquireLock(30 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'audio-mix-balance', timeoutMs: 30 * 60 * 1000 });
 
 const viteCacheDir = resolve('/tmp', `cot-audio-mix-vite-${process.pid}`);
 process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
@@ -173,8 +173,8 @@ try {
   await page.setViewport({ width: 1280, height: 720 });
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: PAGE_MS });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+  await waitForBootLoaded(page, { timeout: READY_MS });
   await page.mouse.click(640, 360);
   await page.waitForFunction('window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.3', { timeout: 30000 });
   // Default mix, as a fresh player has it.
@@ -314,7 +314,7 @@ try {
   // 5) The drone: flying it, the listener rides it and its motors lead. A fresh Drone battle, captured before
   //    the bots engage: docked in the tank, then in flight.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'drone' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "drone"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "drone"`, { timeout: 180000, polling: 250 });
   await page.evaluate(() => window.__COT_AUDIO.preload(['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost']));
   await sleep(1500);
   const docked = await capture('drone_docked', 2000);
@@ -343,7 +343,7 @@ try {
 
   // 6) The AC-130: the opener, the cabin and the howitzer inside it.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'ac130' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "ac130"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "ac130"`, { timeout: 180000, polling: 250 });
   await sleep(1500);
   const gunshipFrom = await page.evaluate(() => (window.__COT_AUDIO.sfxLog.at(-1)?.seq ?? 0));
   await page.evaluate(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;
@@ -367,8 +367,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
   await browser.close().catch(() => {});
   await server.close().catch(() => {});
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 console.log(report.errors.length ? '[mix] FAIL' : '[mix] GREEN');
 process.exit(report.errors.length ? 1 : 0);

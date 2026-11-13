@@ -68,6 +68,12 @@ export interface DebrisPhysics {
   setHulls(tanks: readonly (WreckTurretTank | null | undefined)[]): void;
   /** Advance by the caller's clock delta (s): fixed steps; returns the interpolation alpha for framePoseAt. */
   advance(dtS: number): number;
+  /**
+   * (2026-11-02 audit R7) The clock delta the pool has given up since its reset (s): past MAX_STEPS_PER_ADVANCE steps an
+   * advance (under ~15 fps) and beyond a 0.25 s delta. Whatever ages pieces on the caller's clock subtracts it, so the
+   * pieces and their bodies keep one time.
+   */
+  droppedS(): number;
   /** A piece's authoring-frame pose interpolated to this frame; false for an unknown handle. */
   framePoseAt(handle: number, out: Float64Array | number[]): boolean;
   /** Whether a piece's body sleeps: come to rest, or a resting piece still waiting for its release (a waiting piece
@@ -85,6 +91,9 @@ export interface DebrisPhysics {
   /** Drop everything (a new battle, a Studio scene load). */
   reset(): void;
   stats(): { bodies: number; awake: number; waiting: number; handles: number; timeS: number };
+  /** (improve-271, plan 016) The bodies the pool can take now: its free slots and the sleepers that would give way (a
+   *  piece asleep awaiting its release never does). */
+  room(): number;
 }
 
 export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisPhysics {
@@ -114,6 +123,7 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
   let handles = 0;
   let timeS = 0;
   let accumulator = 0;
+  let dropped = 0;
   /**
    * (destruction-slabs 227 round 4; the engineering critic's badlands #0 slab thrown to y = 212 m, saltwind #0's hip ends
    * launched 15 m over the roof at 17-42 m/s in one step, no hit reported) what the solver gives a body in one step is never
@@ -152,10 +162,18 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     r[2] = z + 2 * (qx * cy - qy * cx);
   }
 
+  /** A sleeper that may give way: never a piece asleep awaiting its release (a collapse's panel standing where it stood
+   *  until its time; frozen there it would hang over the heap). improve-271, plan 016. */
+  function evictable(slot: number): boolean {
+    if (!world.active[slot] || !world.asleep[slot]) return false;
+    const handle = slotHandle[slot]!;
+    return handle < 0 || handleResting[handle] !== 1;
+  }
+
   function evictOldestSleeper(): boolean {
     let oldest = -1, age = -1;
     for (let slot = 0; slot < capacity; slot++) {
-      if (!world.active[slot] || !world.asleep[slot]) continue;
+      if (!evictable(slot)) continue;
       if (world.age[slot] > age) { age = world.age[slot]; oldest = slot; }
     }
     if (oldest < 0) return false;
@@ -305,7 +323,9 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     },
     advance(dtS) {
       if (!(dtS > 0)) return alpha;
-      accumulator += Math.min(dtS, 0.25);
+      const taken = Math.min(dtS, 0.25);
+      dropped += dtS - taken;
+      accumulator += taken;
       let steps = 0;
       while (accumulator >= RIGID_STEP_S && steps < MAX_STEPS_PER_ADVANCE) {
         releaseDue();
@@ -322,7 +342,10 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
         accumulator -= RIGID_STEP_S;
         steps++;
       }
-      if (steps === MAX_STEPS_PER_ADVANCE && accumulator > RIGID_STEP_S) accumulator = RIGID_STEP_S * 0.5;
+      if (steps === MAX_STEPS_PER_ADVANCE && accumulator > RIGID_STEP_S) {
+        dropped += accumulator - RIGID_STEP_S * 0.5;
+        accumulator = RIGID_STEP_S * 0.5;
+      }
       alpha = Math.min(1, accumulator / RIGID_STEP_S);
       return alpha;
     },
@@ -359,8 +382,11 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     release(handle) {
       if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return;
       const slot = handleSlot[handle];
-      if (slot !== HANDLE_NONE) { world.remove(slot); slotHandle[slot] = HANDLE_NONE; } else waiting--;
-      if (handleResting[handle]) { handleResting[handle] = 0; waiting--; }
+      // counted in `waiting` once: outside the world, or in it asleep awaiting its release (plan 016: a resting piece
+      // outside the world was counted off twice, and releaseDue then stopped looking at every later piece)
+      if (slot === HANDLE_NONE || handleResting[handle]) waiting--;
+      if (slot !== HANDLE_NONE) { world.remove(slot); slotHandle[slot] = HANDLE_NONE; }
+      handleResting[handle] = 0;
       handleLive[handle] = 0;
       handleSlot[handle] = HANDLE_NONE;
       handleShape[handle] = null;
@@ -373,10 +399,16 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       handleSlot.fill(HANDLE_NONE);
       slotHandle.fill(HANDLE_NONE);
       handleShape.fill(null);
-      waiting = 0; handles = 0; nextHandle = 0; timeS = 0; accumulator = 0; alpha = 1;
+      waiting = 0; handles = 0; nextHandle = 0; timeS = 0; accumulator = 0; alpha = 1; dropped = 0;
     },
+    droppedS() { return dropped; },
     stats() {
       return { bodies: world.count, awake: world.awakeCount, waiting, handles, timeS };
+    },
+    room() {
+      let n = 0;
+      for (let slot = 0; slot < capacity; slot++) if (!world.active[slot] || evictable(slot)) n++;
+      return n;
     },
   };
   return pool;

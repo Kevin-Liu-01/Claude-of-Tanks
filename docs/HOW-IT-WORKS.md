@@ -288,11 +288,9 @@ gun parallax and could lay multiplayer barrels high. The authority still owns
 traverse, elevation/depression, muzzle position, dispersion, hits, damage,
 spotting, and victory.
 
-LAN/private WebRTC splits traffic:
-
-- reliable ordered control: handshake, lobby/room state, combat events, ping,
-  errors, and leave;
-- unordered zero-retransmit state: replaceable live input and 20 Hz snapshots.
+LAN/private WebRTC carries every message on one reliable, ordered data channel
+per seat (`match`): handshake, lobby/room state, live input, 20 Hz snapshots,
+combat events, ping, errors, and leave.
 
 Snapshots use compact encoding, acknowledgements, deltas, and periodic
 keyframes. Remote tanks use adaptive buffered interpolation with bounded

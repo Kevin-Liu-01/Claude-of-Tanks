@@ -24,6 +24,7 @@
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { FURNACE_LINE_ADDITIONS } from './saarWorksPlan.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
@@ -161,9 +162,10 @@ export default {
     // (the map-revival lane, 2026-10-06, wave 137: the critics read the Nissen hut as a poly-tunnel out of place in a German
     // works; the recorded one beside the west street becomes a brick office of about its footprint, and the pool
     // offers it no more)
+    // (buildings-271, the building types' years: no radio-relay hut before 1950, so the March 1945 works' pool offers none)
     destructibleBuildings: [
       'transformershed', 'motorpool', 'checkpointhut',
-      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+      'securityoffice', 'servicegarage', 'corneroffice',
     ],
     townLightPlanSwaps: { quonsethut: 'securityoffice' },
     tacticalBeats: [
@@ -197,7 +199,7 @@ export default {
     hedgehogs: 36, sandbagLines: 28,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.foundry,
     inhabit: {
       stalls: 1, benches: 5, coreClutter: 42, drums: 24,
       trucks: 10, jeeps: 6, drumClusters: 11, camps: 2, modernClutter: 46,

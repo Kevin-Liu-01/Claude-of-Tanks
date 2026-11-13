@@ -2,13 +2,17 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import {
   EFFECT_ATTACHMENT_POLICY,
+  MUZZLE_SMOKE_CARRY_DRAG,
+  MUZZLE_SMOKE_CARRY_DRAG_MIN,
+  shooterCarryDrag,
   shooterVelocityGain,
   subjectPointVelocity,
   syncSubjectEmitterAnchor,
 } from './effectAttachments.ts';
 
 function near(actual, expected, label, eps = 1e-6) {
-  if (Math.abs(actual - expected) > eps) {
+  // NaN-strict: a NaN on either side fails
+  if (!(Math.abs(actual - expected) <= eps)) {
     throw new Error(`${label}: expected ${expected}, got ${actual}`);
   }
 }
@@ -65,7 +69,7 @@ if (unresolved.pos.join(',') !== '1,2,3') throw new Error('unresolved emitter mo
 const requiredFamilies = [
   'burningColumn', 'impactDecal', 'trackDust', 'engineExhaust',
   'guidedMissileBody', 'guidedMissileTrail', 'turretPopTrail', 'muzzleFlash',
-  'muzzleRing', 'muzzleLight', 'muzzleSmoke', 'impactParticles', 'destructionParticles',
+  'muzzleRing', 'muzzleLight', 'muzzleSmoke', 'muzzleGroundDust', 'rocketIgnitionSmoke', 'impactParticles', 'destructionParticles',
   'destroyedTankColumn', 'terrainScorch', 'trackPrint', 'propBreak',
   'propCrush', 'loosePropHit',
 ];
@@ -156,17 +160,30 @@ console.log('effect attachment selftest passed');
 }
 
 // (fleet review 2026-11-03: s272 ztz99a2_qinglong, s86 leo2a4, s271 vt4a1_baihu) a tank firing at 15 m/s showed its
-// flash a third of the barrel back: every muzzle part was born world-fixed and the hull drove on. The policy says which
-// parts ride the muzzle; this holds the battle flash, its ring and light, and the Studio's cinematic blast to it.
+// flash a third of the barrel back: every muzzle part was born world-fixed and the hull drove on. (Loading-screen
+// critics 2026-11-08: s39 Leopard 2A7V head-on, s286 Monsoon) the propellant left world-fixed sat ~1.2 m back along the
+// barrel at 80 ms and hung over the firing tank's own turret. The policy says which parts ride the muzzle and which are
+// born with its motion and shed it; this holds the battle flash on both tiers (pools and the media layer), its ring and
+// light, and the Studio's cinematic blast to it.
 {
   for (const family of ['muzzleFlash', 'muzzleRing', 'muzzleLight']) {
     if (EFFECT_ATTACHMENT_POLICY[family] !== 'shooter-velocity-burst' || shooterVelocityGain(family) !== 1) {
       throw new Error(`${family} must leave with the shooter's velocity`);
     }
   }
-  if (EFFECT_ATTACHMENT_POLICY.muzzleSmoke !== 'world-space-burst' || shooterVelocityGain('muzzleSmoke') !== 0) {
-    throw new Error('muzzle smoke must stay world-space and trail a moving tank');
+  if (EFFECT_ATTACHMENT_POLICY.muzzleSmoke !== 'shooter-velocity-shed-burst' || shooterVelocityGain('muzzleSmoke') !== 1) {
+    throw new Error('muzzle smoke must be born with the shooter\'s velocity and shed it');
   }
+  for (const family of ['muzzleGroundDust', 'rocketIgnitionSmoke']) {
+    if (EFFECT_ATTACHMENT_POLICY[family] !== 'world-space-burst' || shooterVelocityGain(family) !== 0) {
+      throw new Error(`${family} must stay world-space`);
+    }
+  }
+  // the shed rate: the medium's own drag where it is fast enough, else the pooled cards' 0.1 s; nothing else is shed
+  near(shooterCarryDrag('muzzleSmoke', 0.9), MUZZLE_SMOKE_CARRY_DRAG, 'a weak pool sheds the carry at MUZZLE_SMOKE_CARRY_DRAG');
+  near(shooterCarryDrag('muzzleSmoke', 4.2), 4.2, 'a medium with strong drag sheds the carry by its own drag');
+  near(shooterCarryDrag('muzzleFlash', 0.6), 0.6, 'a bright part keeps its carry under its pool\'s drag');
+  if (!(MUZZLE_SMOKE_CARRY_DRAG >= MUZZLE_SMOKE_CARRY_DRAG_MIN)) throw new Error('the pooled shed rate must meet the floor');
 
   // the carried point's velocity: hull speed along yaw, vertical speed, and the yaw rate swinging the muzzle
   const vel = [0, 0, 0];
@@ -175,10 +192,15 @@ console.log('effect attachment selftest passed');
   subjectPointVelocity({ state: { yaw: Math.PI / 2, speed: -4 } }, 0, 0, vel);
   near(vel[0], -4, 'reversing along +x yaw'); near(vel[2], 0, 'no sideways drift', 1e-9);
   if (subjectPointVelocity(null, 0, 0, vel) || vel.some((v) => v !== 0)) throw new Error('an unresolved shooter carries nothing');
-  // the jet pool's GPU half: a jet's origin is carried linearly (jets have no drag), so it stays on a moving brake
+  // the GPU halves: a jet's origin is carried linearly (jets have no drag), so it stays on a moving brake; a propellant
+  // card sheds its carry from the shot (a card born pre-aged takes it from the shot, not from its early birth)
   const particlesSource = fs.readFileSync(new URL('./particles.ts', import.meta.url), 'utf8');
   if (!particlesSource.includes('vec3 tipPos = aPB.xyz + aCV * age + axis * ( u * len );')) {
     throw new Error('the jet shader must carry each jet with its emitter (aCV)');
+  }
+  if (!particlesSource.includes('float carriedAge = max( age - aCV.w, 0.0 );') ||
+    !particlesSource.includes('wpos += aCV.xyz * ( ( 1.0 - exp( -uCarryDrag * carriedAge ) ) / uCarryDrag );')) {
+    throw new Error('the puff shader must shed a carried velocity from the shot (FX_CARRY)');
   }
   subjectPointVelocity({ state: { yaw: 0, speed: 900 } }, 0, 0, vel);
   if (Math.hypot(...vel) > 40 + 1e-9) throw new Error(`a teleport's one-tick speed must be bounded (${Math.hypot(...vel)})`);
@@ -186,13 +208,17 @@ console.log('effect attachment selftest passed');
   const { createRequire } = await import('node:module');
   const { createFx } = await import('./effects.ts');
   const { muzzleBlast } = await import('./cinematicRecipes.ts');
+  const { volumePositionAt } = await import('./volumeMedia.ts');
   const { createCanvas } = createRequire(import.meta.url)('@napi-rs/canvas');
   const documentBefore = Object.getOwnPropertyDescriptor(globalThis, 'document');
   globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
-  const YAW = 0.4, SPEED = 15, AGE = 0.05;
+  const YAW = 0.4, SPEED = 15, AGE = 0.05, MEDIA_AT = 0.3;
   const fwd = [Math.sin(YAW), 0, Math.cos(YAW)];
   const muzzle0 = [fwd[0] * 5.5, 2.3, fwd[2] * 5.5];
   const shotVel = fwd.map((f) => f * SPEED);
+  const flashCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleFlash'));
+  const smokeCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleSmoke'));
+  const groundCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleGroundDust'));
   /** One 120 mm shot from a hull at `speed` along YAW: every particle pool, then the ring and light AGE later. */
   function fire(speed) {
     const handlers = new Map();
@@ -207,19 +233,24 @@ console.log('effect attachment selftest passed');
     const resolve = (id) => (id === 'h1' ? shooter : null);
     fx.update(1 / 60, [], camera, resolve);
     bus.emit('shell:fired', { shellId: 1, shooterId: 'h1', shellType: 'HEAT', caliberMm: 120, muzzlePos: muzzle0, dir: fwd });
-    fx.update(0, [], camera, resolve); // the media layer uploads its bodies on the frame
-    const pools = {};
-    const instanced = []; // every instanced draw in traversal order: the particle pools and the media layer
-    scene.traverse((o) => {
-      const attrs = {};
-      for (const [key, attr] of Object.entries(o.geometry?.attributes ?? {})) {
-        if (attr.isInstancedBufferAttribute) attrs[key] = Float32Array.from(attr.array);
-      }
-      if (!Object.keys(attrs).length) return;
-      const entry = { name: o.name, attrs, count: o.geometry.instanceCount, drag: o.material?.uniforms?.uDrag?.value ?? 0 };
-      instanced.push(entry);
-      if (o.name.startsWith('particles:')) (pools[o.name.slice(10)] ??= []).push(entry);
-    });
+    fx.update(0, [], camera, resolve);
+    /** every instanced draw in traversal order (the particle pools, the media layer, chunks, marks), and the pools */
+    const snapshot = () => {
+      const pools = {}, instanced = [];
+      scene.traverse((o) => {
+        const attrs = {};
+        for (const [key, attr] of Object.entries(o.geometry?.attributes ?? {})) {
+          if (attr.isInstancedBufferAttribute) attrs[key] = Float32Array.from(attr.array);
+        }
+        if (!Object.keys(attrs).length) return;
+        const u = o.material?.uniforms;
+        const entry = { name: o.name, attrs, count: o.geometry.instanceCount, drag: u?.uDrag?.value ?? 0, carryDrag: u?.uCarryDrag?.value };
+        instanced.push(entry);
+        if (o.name.startsWith('particles:')) (pools[o.name.slice(10)] ??= []).push(entry);
+      });
+      return { pools, instanced };
+    };
+    const { pools, instanced } = snapshot();
     fx.update(AGE, [], camera, resolve);
     const ring = [];
     const light = [];
@@ -227,11 +258,20 @@ console.log('effect attachment selftest passed');
       if (o.name === 'fx:muzzleRing' && o.visible) ring.push(o.position.clone());
       if (o.name === 'fx:muzzleLight') light.push(o.position.clone());
     });
-    return { pools, instanced, ring, light };
+    // the media layer uploads only its live bodies: by 0.3 s every gas and dust body of the shot is born and none gone
+    fx.update(MEDIA_AT - AGE, [], camera, resolve);
+    const media = snapshot().instanced.find((e) => e.name === 'fx-volume-media');
+    // the shot's instant on the particle clock: the core card is born at the shot
+    return { pools, instanced, ring, light, media, shotT: pools.flash[0].attrs.aPB[3] };
   }
+  const muzzleAt = (t) => muzzle0.map((m, k) => m + shotVel[k] * t);
+  /** lag (m) behind a moving muzzle t s after the shot, against a still gun's card at the same place relative to its muzzle */
+  const lagOf = (stillP, movingP, t) => Math.hypot(...[0, 1, 2].map((k) => (movingP[k] - muzzleAt(t)[k]) - (stillP[k] - muzzle0[k])));
+  const report = [];
   try {
     // desktop tier first (the media layer takes the propellant gas and ground dust), then the phone tier, whose pooled
-    // propellant mass, smoke ring, wisps and ground dust must stay world-space (the tier resolves once per process)
+    // propellant mass, smoke ring and wisps leave with the muzzle and whose ground dust stays (the tier resolves once
+    // per process)
     const still = fire(0), moving = fire(SPEED);
     const windowBefore = Object.getOwnPropertyDescriptor(globalThis, 'window');
     globalThis.window = { location: { search: '?tier=mobile' } };
@@ -243,50 +283,108 @@ console.log('effect attachment selftest passed');
     } finally {
       if (windowBefore) Object.defineProperty(globalThis, 'window', windowBefore); else delete globalThis.window;
     }
-    const flashCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleFlash'));
-    const smokeCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleSmoke'));
-    /** pool -> [velocity attribute, its item size, the carry the policy says it takes] */
-    const expect = { flash: ['aVL', 4, flashCarry], fire: ['aVL', 4, flashCarry], sparks: ['aVL', 4, flashCarry],
-      jet: ['aCV', 3, flashCarry], psmoke: ['aVL', 4, smokeCarry], smoke: ['aVL', 4, smokeCarry], dust: ['aVL', 4, smokeCarry] };
-    for (const [pool, [key, size, carry]] of Object.entries(expect)) {
-      const a = still.pools[pool]?.[0], b = moving.pools[pool]?.[0];
-      if (!a || !b || a.count !== b.count) throw new Error(`${pool}: the shot must fill the same slots still and moving`);
-      if (['flash', 'fire', 'sparks', 'jet'].includes(pool) && a.count === 0) throw new Error(`${pool}: the shot emitted nothing`);
-      for (let i = 0; i < a.count; i++) {
-        for (let k = 0; k < 3; k++) {
-          near(b.attrs.aPB[i * 4 + k] - a.attrs.aPB[i * 4 + k], 0, `${pool}[${i}] is born at the same muzzle point`);
-          const base = key === 'aCV' ? a.attrs.aCV[i * 3 + k] : 0;
-          if (key === 'aCV' && base !== 0) throw new Error(`a still muzzle's jet must carry nothing (${pool}[${i}])`);
-          near(b.attrs[key][i * size + k] - a.attrs[key][i * size + k], carry[k], `${pool}[${i}] carries ${carry[k]} on axis ${k}`, 1e-4);
+    /** bright pool -> [velocity attribute, its item size]: born at the same muzzle point, carrying the flash's gain */
+    const bright = { flash: ['aVL', 4], fire: ['aVL', 4], sparks: ['aVL', 4], jet: ['aCV', 3] };
+    for (const [tier, a0, b0] of [['desktop', still, moving], ['phone', phoneStill, phoneMoving]]) {
+      for (const [pool, [key, size]] of Object.entries(bright)) {
+        const a = a0.pools[pool]?.[0], b = b0.pools[pool]?.[0];
+        if (!a || !b || a.count !== b.count) throw new Error(`${tier} ${pool}: the shot must fill the same slots still and moving`);
+        if (a.count === 0) throw new Error(`${tier} ${pool}: the shot emitted nothing`);
+        for (let i = 0; i < a.count; i++) {
+          for (let k = 0; k < 3; k++) {
+            near(b.attrs.aPB[i * 4 + k] - a.attrs.aPB[i * 4 + k], 0, `${tier} ${pool}[${i}] is born at the same muzzle point`);
+            if (key === 'aCV' && a.attrs.aCV[i * 3 + k] !== 0) throw new Error(`a still muzzle's jet must carry nothing (${pool}[${i}])`);
+            near(b.attrs[key][i * size + k] - a.attrs[key][i * size + k], flashCarry[k], `${tier} ${pool}[${i}] carries ${flashCarry[k]} on axis ${k}`, 1e-4);
+          }
         }
       }
     }
+
+    // phone tier: the pooled propellant (mass, smoke ring, plume, wisps) is born at the same place with the same air
+    // velocity, and carries the muzzle's motion apart (aCV), from the shot, shed at the pool's carry rate
+    const pa = phoneStill.pools.psmoke[0], pb = phoneMoving.pools.psmoke[0];
+    if (!(pa.count > 0) || pa.count !== pb.count) throw new Error('the phone tier must pool its propellant smoke, still and moving alike');
+    near(pb.carryDrag, shooterCarryDrag('muzzleSmoke', pb.drag), 'the propellant pool sheds the carry at the policy rate');
+    if (!(pb.carryDrag > pb.drag)) throw new Error('the propellant pool\'s own drag is the weak one the carry must not ride on');
+    let phoneLag80 = 0, phoneTrail500 = Infinity;
+    const cardPos = (e, i, t, shotT) => {
+      const A = e.attrs, j = i * 4;
+      const age = shotT + t - A.aPB[j + 3];
+      const k = Math.max(e.drag, 1e-4), sc = (1 - Math.exp(-k * age)) / k;
+      const ca = Math.max(age - A.aCV[j + 3], 0), kc = e.carryDrag, cs = (1 - Math.exp(-kc * ca)) / kc;
+      return [0, 1, 2].map((d) => A.aPB[j + d] + A.aVL[j + d] * sc + A.aCV[j + d] * cs + (d === 1 ? 0.5 * A.aC0[j + 3] * age * age : 0));
+    };
+    for (let i = 0; i < pa.count; i++) {
+      const j = i * 4;
+      for (let k = 0; k < 4; k++) {
+        near(pb.attrs.aPB[j + k] - pa.attrs.aPB[j + k], 0, `phone psmoke[${i}] is born at the same place and time`);
+        near(pb.attrs.aVL[j + k] - pa.attrs.aVL[j + k], 0, `phone psmoke[${i}] keeps the same air velocity`);
+      }
+      for (let k = 0; k < 3; k++) {
+        near(pa.attrs.aCV[j + k], 0, `a still muzzle's propellant carries nothing (${i})`);
+        near(pb.attrs.aCV[j + k], smokeCarry[k], `phone psmoke[${i}] carries ${smokeCarry[k]} on axis ${k}`, 1e-4);
+      }
+      // pre-aged at birth (a cloud already formed at the shot): the carry starts at the shot, not at the early birth
+      near(pb.attrs.aCV[j + 3], Math.max(0, phoneMoving.shotT - pb.attrs.aPB[j + 3]), `phone psmoke[${i}] carries from the shot`, 1e-5);
+      phoneLag80 = Math.max(phoneLag80, lagOf(cardPos(pa, i, 0.08, phoneStill.shotT), cardPos(pb, i, 0.08, phoneMoving.shotT), 0.08));
+      phoneTrail500 = Math.min(phoneTrail500, lagOf(cardPos(pa, i, 0.5, phoneStill.shotT), cardPos(pb, i, 0.5, phoneMoving.shotT), 0.5));
+    }
+
+    // desktop tier: the media layer's propellant gas and brake lobes are born with the muzzle's motion (a puff born after
+    // the shot from where the muzzle is then) and shed it by their own drag; its ground dust is untouched. The media
+    // draw is depth-sorted, so its bodies are matched by their seeded birth, life and size.
+    const ma = still.media, mb = moving.media;
+    if (!ma || !mb || ma.count !== mb.count || !(ma.count > 0)) throw new Error('the desktop media layer must take the muzzle blast');
+    const keyOf = (e, i) => `${e.attrs.aPB[i * 4 + 3]}|${e.attrs.aVL[i * 4 + 3]}|${e.attrs.aSZ[i * 4 + 1]}`;
+    const byKey = new Map();
+    for (let i = 0; i < mb.count; i++) byKey.set(keyOf(mb, i), i);
+    if (byKey.size !== mb.count) throw new Error('the media bodies must be told apart by birth, life and size');
+    let gas = 0, ground = 0, mediaLag80 = 0, mediaTrail500 = Infinity;
+    const shotT = still.shotT;
+    const recOf = (e, i) => [...e.attrs.aPB.subarray(i * 4, i * 4 + 4), ...e.attrs.aVL.subarray(i * 4, i * 4 + 4), ...e.attrs.aDY.subarray(i * 4, i * 4 + 4)];
+    const bodyAt = (rec, t, at) => { const out = [0, 0, 0]; volumePositionAt(rec, 0, 0, 0, at + t - rec[3], out); return out; };
+    for (let i = 0; i < ma.count; i++) {
+      const n = byKey.get(keyOf(ma, i));
+      if (n === undefined) throw new Error(`media body ${i} has no moving twin`);
+      const isGas = ma.attrs.aPB[i * 4 + 1] > 1.2; // born at the muzzle (2.3 m), not off the ground
+      const carry = isGas ? smokeCarry : groundCarry;
+      const late = ma.attrs.aPB[i * 4 + 3] - shotT;
+      for (const key of Object.keys(ma.attrs)) {
+        const size = ma.attrs[key].length / ma.attrs.aPB.length * 4;
+        for (let k = 0; k < size; k++) {
+          const d = mb.attrs[key][n * size + k] - ma.attrs[key][i * size + k];
+          const want = key === 'aVL' && k < 3 ? carry[k] : key === 'aPB' && k < 3 ? carry[k] * late : 0;
+          near(d, want, `media ${isGas ? 'gas' : 'ground dust'} ${i}.${key}[${k}]`, 1e-3);
+        }
+      }
+      if (!isGas) { ground++; continue; }
+      gas++;
+      const ra = recOf(ma, i), rb = recOf(mb, n);
+      if (!(ra[8] >= MUZZLE_SMOKE_CARRY_DRAG_MIN)) throw new Error(`the media gas's drag must shed the carry itself (${ra[8]} /s)`);
+      if (late > 0.08) continue;
+      mediaLag80 = Math.max(mediaLag80, lagOf(bodyAt(ra, 0.08, shotT), bodyAt(rb, 0.08, shotT), 0.08));
+      mediaTrail500 = Math.min(mediaTrail500, lagOf(bodyAt(ra, 0.5, shotT), bodyAt(rb, 0.5, shotT), 0.5));
+    }
+    if (gas !== Math.round(6 + 3 * 1) + 2 || !(ground > 0)) throw new Error(`the media blast: ${gas} gas bodies, ${ground} of ground dust`);
+
     // every other instanced draw (the smoke and dust pools, chunks, marks) is untouched by the shooter's motion
-    const bright = new Set(['particles:flash', 'particles:fire', 'particles:sparks', 'particles:jet']);
+    const handled = new Set(['particles:flash', 'particles:fire', 'particles:sparks', 'particles:jet', 'particles:psmoke', 'fx-volume-media']);
     for (const [tier, a0, b0] of [['desktop', still, moving], ['phone', phoneStill, phoneMoving]]) {
       if (a0.instanced.length !== b0.instanced.length) throw new Error(`${tier}: the two shots must build the same draws`);
-      let trailing = 0;
+      let untouched = 0;
       a0.instanced.forEach((a, n) => {
         const b = b0.instanced[n];
-        if (bright.has(a.name)) return;
-        trailing += a.count;
+        if (handled.has(a.name)) return;
+        untouched += a.count;
         for (const key of Object.keys(a.attrs)) {
           if (a.attrs[key].some((v, i) => v !== b.attrs[key][i])) {
             throw new Error(`${tier}: ${a.name || `draw ${n}`}.${key} must not move with the shooter`);
           }
         }
       });
-      if (tier === 'phone' && !(phoneStill.pools.psmoke[0].count > 0 && trailing > 0)) {
-        throw new Error('the phone tier must leave its pooled propellant smoke to trail');
-      }
+      if (tier === 'phone' && !(untouched > 0)) throw new Error('the phone tier must leave its pooled ground dust to stay');
     }
-    for (const pool of ['flash', 'fire', 'sparks', 'jet']) {
-      const a = phoneStill.pools[pool][0], b = phoneMoving.pools[pool][0];
-      const [key, size] = pool === 'jet' ? ['aCV', 3] : ['aVL', 4];
-      for (let i = 0; i < a.count; i++) {
-        for (let k = 0; k < 3; k++) near(b.attrs[key][i * size + k] - a.attrs[key][i * size + k], flashCarry[k], `phone ${pool}[${i}] carry`, 1e-4);
-      }
-    }
+
     // the core 100 ms on, through the puff shader's drag: in the muzzle's frame it sits where a still gun's does
     const displace = (v, grav, age, drag) => {
       const k = Math.max(drag, 1e-4), sc = (1 - Math.exp(-k * age)) / k;
@@ -299,11 +397,17 @@ console.log('effect attachment selftest passed');
     };
     const t = 0.1;
     const stillCore = corePos(still, t), movingCore = corePos(moving, t);
-    const muzzleNow = muzzle0.map((m, k) => m + shotVel[k] * t);
-    const offset = Math.hypot(...[0, 1, 2].map((k) => (movingCore[k] - muzzleNow[k]) - (stillCore[k] - muzzle0[k])));
-    const worldFixedLag = Math.hypot(...[0, 1, 2].map((k) => stillCore[k] - (muzzleNow[k] + stillCore[k] - muzzle0[k])));
+    const offset = lagOf(stillCore, movingCore, t);
+    const worldFixedLag = lagOf(stillCore, stillCore, t);
     if (!(offset < 0.08)) throw new Error(`the core must ride the muzzle at 15 m/s (${offset.toFixed(3)} m off at 100 ms)`);
     if (!(worldFixedLag > 1.4)) throw new Error(`the world-fixed reference must show the old lag (${worldFixedLag.toFixed(3)} m)`);
+    // the propellant at 80 ms keeps near the muzzle (1.2 m world-fixed), and by 500 ms trails the hull, not riding along
+    const fixed80 = SPEED * 0.08, drove500 = SPEED * 0.5;
+    for (const [what, lag80, trail500] of [['desktop media gas', mediaLag80, mediaTrail500], ['phone propellant', phoneLag80, phoneTrail500]]) {
+      if (!(lag80 <= 0.5)) throw new Error(`${what}: ${lag80.toFixed(3)} m behind a still gun's place at 80 ms (target ≤ 0.5; world-fixed ${fixed80.toFixed(2)})`);
+      if (!(trail500 >= 0.4 * drove500)) throw new Error(`${what}: only ${trail500.toFixed(2)} m behind at 500 ms (the hull drove ${drove500} m): it rides along`);
+      report.push(`${what} ${lag80.toFixed(2)} m at 80 ms, ${trail500.toFixed(2)} m at 500 ms`);
+    }
     // the pressure ring and the muzzle light ride the bore by their own policy rows
     if (still.ring.length !== 1 || moving.ring.length !== 1) throw new Error('one muzzle ring must be live 50 ms after the shot');
     if (still.light.length !== 1 || moving.light.length !== 1) throw new Error('the muzzle light must be found');
@@ -313,18 +417,348 @@ console.log('effect attachment selftest passed');
       near(moving.ring[0][axis] - still.ring[0][axis], shotVel[k] * AGE * ringK, `ring rides the muzzle (${axis})`, 1e-4);
       near(moving.light[0][axis] - still.light[0][axis], shotVel[k] * AGE * lightK, `light rides the muzzle (${axis})`, 1e-4);
     }
-    console.log(`effectAttachments.selftest: a 15 m/s shot's core rides its muzzle (${offset.toFixed(3)} m vs ${worldFixedLag.toFixed(2)} m world-fixed at 100 ms)`);
+    console.log(`effectAttachments.selftest: a 15 m/s shot's core rides its muzzle (${offset.toFixed(3)} m vs ${worldFixedLag.toFixed(2)} m world-fixed at 100 ms); ` +
+      `its propellant keeps near it and trails (${report.join('; ')}; world-fixed ${fixed80.toFixed(2)} m at 80 ms)`);
   } finally {
     if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
   }
 
-  // the Studio's cinematic blast layered over it: fireball, flash disc and sparks carry, propellant, dust and grit stay
+  // (round 8 Y6, s4-05) one writer of the muzzle light's pulse: a shot whose muzzle point is not finite (the
+  // black-screen-228 RC6 case flashLight's guard refuses) lights nothing and leaves the pulse burning where it was. The
+  // carry was a second writer (carryLight) its callers ran even when the guard refused the pulse: another gun's pulse,
+  // still burning, took the new shooter's velocity and slid off its gun, and a turning shooter's NaN velocity (a NaN muzzle
+  // x or z through the yaw-rate swing) parked the light at a NaN place every frame after, past a battle reset. (The phone
+  // tier resolved above holds for the rest of the process; the light's path is the same on every tier.)
+  {
+    globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+    try {
+      /** Gun a (10 m/s along +Z) fires; then, in the same frame (inside MUZZLE_LIGHT_S), gun b's shot does what `second`
+       *  says; the muzzle light 50 ms on, and again after a battle reset and one more frame. */
+      const lightAfter = (second) => {
+        const handlers = new Map();
+        const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+        const scene = new THREE.Scene();
+        const fx = createFx({ anisotropy: 4, scene }, { getHeightAt: () => 0 }, { seed: 91 });
+        fx.bindBus(bus);
+        scene.add(fx.group);
+        const camera = new THREE.PerspectiveCamera();
+        camera.position.set(-12, 4, 6); camera.lookAt(0, 2, 4); camera.updateMatrixWorld();
+        const a = { visual: {}, state: { pos: new THREE.Vector3(0, 0, 0), yaw: 0, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        // gun b drives along -X (yaw -90 deg) 20 m off, turning or not as the case asks
+        const b = { visual: {}, state: { pos: new THREE.Vector3(20, 0, 0), yaw: -Math.PI / 2, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
+        fx.update(1 / 60, [], camera, resolve);
+        bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: 120, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
+        second?.(bus, fx, b);
+        fx.update(0.05, [], camera, resolve);
+        const light = fx.group.getObjectByName('fx:muzzleLight');
+        const now = light.position.clone();
+        fx.resetAll();
+        fx.update(1 / 60, [], camera, resolve);
+        return { now, reset: light.position.clone() };
+      };
+      const alone = lightAfter(null);
+      const same = (run, label) => {
+        if (![...run.now.toArray(), ...run.reset.toArray()].every(Number.isFinite)) {
+          throw new Error(`${label}: the muzzle light is at a non-finite place (${run.now.toArray()}; after a reset ${run.reset.toArray()})`);
+        }
+        for (const k of ['x', 'y', 'z']) near(run.now[k], alone.now[k], `${label}: the light stays on gun a's pulse (${k})`, 1e-6);
+      };
+      // gun b, still on its course, fires with a NaN muzzle height: its velocity is finite, and a's pulse took it
+      same(lightAfter((bus) => bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120,
+        muzzlePos: [14.5, NaN, 0], dir: [-1, 0, 0] })), 'a refused cannon pulse (NaN muzzle height)');
+      // gun b, turning, fires with a NaN muzzle x: its swing makes its velocity NaN, and the light went to NaN
+      same(lightAfter((bus, fx, b) => {
+        b.state.yawRate = 0.5;
+        bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120, muzzlePos: [NaN, 2.3, 0], dir: [-1, 0, 0] });
+      }), 'a refused cannon pulse from a turning gun (NaN muzzle x)');
+      // a rocket's ignition (fx.muzzleFlash's rocket path) lights the same pulse
+      same(lightAfter((bus, fx, b) => {
+        b.state.yawRate = 0.5;
+        fx.muzzleFlash(new THREE.Vector3(NaN, 2.3, 0), new THREE.Vector3(-1, 0, 0), 80, true, 'b');
+      }), 'a refused rocket pulse from a turning launcher (NaN muzzle x)');
+      console.log('effectAttachments.selftest: a refused muzzle-light pulse leaves the burning one where it was (no slide, no NaN, none after a reset)');
+    } finally {
+      if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
+    }
+  }
+
+  // (round 8 H9, the 271 merge) a gun's near field (engine/muzzleNearField.ts) binds only to a pulse flashLight lit. Gun a's
+  // pulse burns and its near field names a's bore; a frame later gun b's pulse is refused by flashLight's finite guard (a
+  // non-finite muzzle place) at each of the three sites that bind a near field: the roof-gun flash port, muzzleFlash and
+  // composeFiringMoment. The near field's first shape (b5b7bef466, before the lit gate) bound b's bore to a's pulse after
+  // the refusal, so a's gun lost its bound and b's line of fire took a's light. The near field keeps a's radius, bore and
+  // seat, and a battle reset releases it. A lit pulse from the same site binds its own gun (the control: each site reaches
+  // the bind), and a lit rocket pulse binds no gun (composeFiringMoment's `!rocket`).
+  //   What each check catches (mutants, never committed): the bore, a site without the lit gate (m1-m3; the radius comes
+  // back from a's peak, the seat from a's light); the radius, a's field unbound by the refusal (m5); the seat, a refused
+  // pulse that moves the light (m6); atReset, a reset without the release (m4; the next frame's applyLight releases it
+  // anyway); the rocket run, composeFiringMoment without `!rocket` (m7); the count of callers, a fourth one (m9).
+  //   The roof port lights its pulse only over a burning pulse no brighter than its peak (effects.ts pulseOutranks). So
+  // there gun a fires the roof gun's own bore: the lit shot follows a dimmer pulse, and the refused shot reaches
+  // flashLight's finite guard (behind a burning 120 mm pulse the port would refuse both before flashLight). Gun b fires a
+  // frame after gun a at every site, so a's near field is published when b fires (firesIntoA).
+  //   (272) The roof port's guard once read the light's intensity, which a's attack ramp holds at 0 in the frame a's
+  // pulse is born, so a roof shot in that frame took a 120 mm pulse's light. The same-frame case below pins the fix: the
+  // light keeps a's place, a's peak and a's near field (red on the intensity guard), and after a spent 120 mm pulse the
+  // roof gun still lights and binds its own. A source pin keeps every comparison of a light's intensity in effects.ts
+  // with a constant, and at a reduced Accessibility flash the hand-overs are flash 1's (the guard scales neither side).
+  {
+    globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+    try {
+      const { attachMuzzleNearField } = await import('../engine/muzzleNearField.ts');
+      const { auxiliaryCapabilities } = await import('../vehicles/auxiliaryInventory.ts');
+      const { A11Y } = await import('../ui/accessibilityPreferences.ts');
+      const { DEFAULT_ACCESSIBILITY, applyAccessibility, normalizeAccessibility } = await import('../ui/accessibilitySettings.ts');
+      // (272) the near field starts unpublished, read on a fresh instance of its module as a page boots it: this process's
+      // own was published and released by the blocks above, which leaves w at 0 whatever it started as (three's
+      // `new Vector4()` is (0, 0, 0, 1), a published 1 m field at the origin on the default bore that no owner releases)
+      const booted = { uniforms: {}, fragmentShader: '' };
+      (await import('../engine/muzzleNearField.ts?boot')).attachMuzzleNearField(booted);
+      if (booted.uniforms.uCotMuzzleSeat.value.w !== 0) {
+        throw new Error(`a booted near field must start unpublished (w ${booted.uniforms.uCotMuzzleSeat.value.w}, bore ${booted.uniforms.uCotMuzzleBore.value.toArray()})`);
+      }
+      /** the published near field, as a lit program binds it */
+      const shared = { uniforms: {}, fragmentShader: '' };
+      attachMuzzleNearField(shared);
+      const seat = shared.uniforms.uCotMuzzleSeat.value, bore = shared.uniforms.uCotMuzzleBore.value;
+      const ROOF_SPEC = { id: 'm1a1' }, roofGun = auxiliaryCapabilities(ROOF_SPEC)?.guns[0];
+      if (!roofGun) throw new Error('the m1a1 must carry a roof gun for the flash port');
+      /** Gun a (`aCaliberMm`, line of fire +Z) fires on the battle path; `framesToB` frames of `hz` on (1: while its pulse
+       *  burns; 0: in the frame it is born, before any update ages it), gun b (line of fire -X, its roof gun on the hull
+       *  root) does what `second` says; two frames on, the published near field and the muzzle light, and again after a
+       *  battle reset and after one more frame. `roofFrames`: the frames after a's shot in which b's roof station fired. */
+      const nearFieldAfter = (second, aCaliberMm, framesToB = 1, hz = 60) => {
+        const handlers = new Map();
+        const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+        const scene = new THREE.Scene();
+        let clock = 0;
+        const root = new THREE.Group();
+        root.rotation.y = -Math.PI / 2; // the roof gun's line of fire: -X
+        root.position.set(20, 0, 0);
+        const gun = new THREE.Object3D();
+        gun.name = roofGun.name;
+        gun.position.set(0, 2.4, 0);
+        root.add(gun);
+        scene.add(root);
+        const a = { id: 'a', visual: {}, state: { pos: new THREE.Vector3(0, 0, 0), yaw: 0, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        const b = { id: 'b', spec: ROOF_SPEC, visual: { root },
+          combat: { auxiliary: { gunYaw: 0, gunPitch: 0, shots: 0 } },
+          state: { pos: root.position, yaw: -Math.PI / 2, speed: 10, yawRate: 0, verticalSpeed: 0 } };
+        let frames = 0, aFrame = 0;
+        const roofFrames = [];
+        const fx = createFx({ anisotropy: 4, scene }, { getHeightAt: () => 0 },
+          { seed: 91, auxiliaryEntities: () => [b], auxiliaryTime: () => clock,
+            auxiliaryReport: (id) => { if (id === 'b') roofFrames.push(frames - aFrame); } });
+        fx.bindBus(bus);
+        scene.add(fx.group);
+        const camera = new THREE.PerspectiveCamera();
+        camera.position.set(-12, 4, 6); camera.lookAt(0, 2, 4); camera.updateMatrixWorld();
+        const resolve = (id) => (id === 'a' ? a : id === 'b' ? b : null);
+        const frame = () => { frames++; clock += 1 / hz; fx.update(1 / hz, [], camera, resolve); };
+        frame(); // the roof station is prepared on its first frame
+        // (272) nothing is published before gun a fires, so a near field that names a's bore afterwards is a's own (the
+        // default bore (0, 0, 1) is A_BORE). In this receipt it guards against a field an earlier run or block left
+        // published; the boot state is the fresh instance's check above (and muzzleNearField.selftest's first block)
+        if (seat.w !== 0) throw new Error(`no gun's near field may be published before gun a fires (w ${seat.w}, bore ${bore.toArray()})`);
+        bus.emit('shell:fired', { shellId: 1, shooterId: 'a', shellType: 'HEAT', caliberMm: aCaliberMm, muzzlePos: [0, 2.3, 5.5], dir: [0, 0, 1] });
+        aFrame = frames;
+        for (let i = 0; i < framesToB; i++) frame();
+        const atB = { w: seat.w, bore: bore.clone() };
+        second?.(bus, fx, b, root);
+        // two frames: the roof station fires inside a frame, and a pulse lit there burns from the next one
+        frame(); frame();
+        const light = fx.group.getObjectByName('fx:muzzleLight');
+        const now = { w: seat.w, bore: bore.clone(), seat: new THREE.Vector3(seat.x, seat.y, seat.z), light: light.position.clone(),
+          intensity: light.intensity };
+        fx.resetAll();
+        const atReset = seat.w;
+        frame();
+        return { ...now, atB, atReset, after: seat.w, roofFrames };
+      };
+      const A_BORE = new THREE.Vector3(0, 0, 1), B_BORE = new THREE.Vector3(-1, 0, 0);
+      /** a near field bound to `axis` (NaN-strict: a NaN radius or bore fails) */
+      const names = (field, axis, eps) => field.w > 0 && field.bore.distanceTo(axis) <= eps;
+      /** gun a's pulse alone, by its calibre and when b would fire: what a refused or outranked shot of b's must leave */
+      const aloneBy = new Map();
+      const aloneFor = (aCaliberMm, framesToB = 1, hz = 60) => {
+        const key = `${aCaliberMm} mm, b ${framesToB} frames on at ${hz} Hz, flash ${A11Y.flash}`;
+        if (!aloneBy.has(key)) {
+          const alone = nearFieldAfter(null, aCaliberMm, framesToB, hz);
+          // in the frame it is born the pulse is not yet lit (its attack), so it publishes from the next one
+          if ((framesToB > 0 && !names(alone.atB, A_BORE, 1e-9)) || !names(alone, A_BORE, 1e-9)) {
+            throw new Error(`gun a's burning pulse (${key}) must publish its own near field (w ${alone.atB.w} then ${alone.w}, bore ${alone.bore.toArray()})`);
+          }
+          aloneBy.set(key, alone);
+        }
+        return aloneBy.get(key);
+      };
+      const firesIntoA = (run, label) => {
+        if (!names(run.atB, A_BORE, 1e-9)) {
+          throw new Error(`${label}: gun a's near field must be published when gun b fires (w ${run.atB.w}, bore ${run.atB.bore.toArray()})`);
+        }
+      };
+      const keepsA = (run, aCaliberMm, label) => {
+        const alone = aloneFor(aCaliberMm);
+        firesIntoA(run, label);
+        // the radius first: a released field (w 0) keeps the last publisher's bore and seat, which name nothing
+        near(run.w, alone.w, `${label}: the near field keeps gun a's radius`, 1e-9);
+        if (!(run.bore.distanceTo(A_BORE) <= 1e-9)) {
+          throw new Error(`${label}: the near field must still name gun a's bore (got ${run.bore.toArray()}, b's is ${B_BORE.toArray()})`);
+        }
+        if (!(run.seat.distanceTo(run.light) <= 1e-6 && run.light.distanceTo(alone.light) <= 1e-6)) {
+          throw new Error(`${label}: the near field's seat must stay gun a's burning light (${run.seat.toArray()} vs ${alone.light.toArray()})`);
+        }
+        if (run.atReset !== 0 || run.after !== 0) {
+          throw new Error(`${label}: a battle reset must release the near field (${run.atReset} at the reset, ${run.after} a frame on)`);
+        }
+      };
+      const bindsB = (run, label) => {
+        firesIntoA(run, label);
+        if (!names(run, B_BORE, 1e-6)) {
+          throw new Error(`${label}: a lit pulse must bind its own gun's near field (w ${run.w}, bore ${run.bore.toArray()})`);
+        }
+      };
+      /** the three sites: gun a's bore, and gun b's shot at a finite muzzle or at a non-finite one flashLight refuses */
+      const sites = {
+        'the roof-gun flash port': {
+          aCaliberMm: roofGun.caliberMm,
+          shot: (finite) => (bus, fx, b, root) => {
+            // the station's mount at a non-finite place: its muzzle is not finite, its line of fire is (a non-finite hull
+            // would poison the mount's rotation too, and a non-finite line of fire binds nothing on either shape)
+            if (!finite) root.getObjectByName(roofGun.name).position.x = NaN;
+            b.combat.auxiliary.shots++;
+          },
+        },
+        muzzleFlash: {
+          aCaliberMm: 120,
+          shot: (finite) => (bus) => bus.emit('shell:fired', { shellId: 2, shooterId: 'b', shellType: 'HEAT', caliberMm: 120,
+            muzzlePos: [finite ? 14.5 : NaN, 2.3, 0], dir: [-1, 0, 0] }),
+        },
+        composeFiringMoment: {
+          aCaliberMm: 120,
+          shot: (finite) => (bus, fx) => fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(finite ? 14.5 : NaN, 2.3, 0),
+            dir: new THREE.Vector3(-1, 0, 0), caliberMm: 120, tracerType: 'HEAT', ageS: 0 }),
+        },
+      };
+      // every caller of boundGunNearField is one of these sites: a new one joins `sites` with its lit and refused shots.
+      // Counted as every use of the name outside comments but its definition, so a call spelled `boundGunNearField (`
+      // or made through an alias counts too
+      const code = effectsSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      const binders = [...code.matchAll(/\bboundGunNearField\b/g)].length - [...code.matchAll(/\bfunction\s+boundGunNearField\b/g)].length;
+      if (binders !== Object.keys(sites).length) {
+        throw new Error(`effects.ts binds a gun's near field at ${binders} sites; this case drives ${Object.keys(sites).length} (add the new site's lit and refused shots)`);
+      }
+      // (272) no site yields to a burning pulse by a light's intensity, which the attack ramp, a replay suppression and the
+      // Accessibility flash hold off the pulse's level and which was written a frame back: such a site asks the pulse's own
+      // level (pulseOutranks). Every comparison of a light's intensity in effects.ts is with a constant (is it lit at all)
+      const constant = /^-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i;
+      const byIntensity = (text) => [
+        ...[...text.matchAll(/\.intensity\s*[<>]=?\s*([^\s;),&|?:]+)/g)],
+        ...[...text.matchAll(/([\w$.[\]]+)\s*[<>]=?\s*[\w$.[\]]*\.intensity\b/g)],
+      ].filter((m) => !constant.test(m[1])).map((m) => m[0]);
+      for (const old of ['if (!(muzzleLight.intensity > peak)) {', 'if (peak >= lightStates[0].light.intensity) return;']) {
+        if (byIntensity(old).length !== 1) throw new Error(`the intensity pin must catch a yield by the light's intensity (${old})`);
+      }
+      if (byIntensity(code).length) {
+        throw new Error(`effects.ts compares a light's intensity with a pulse (${byIntensity(code).join('; ')}): a site that yields to a burning pulse asks pulseOutranks`);
+      }
+      for (const [site, { aCaliberMm, shot }] of Object.entries(sites)) {
+        bindsB(nearFieldAfter(shot(true), aCaliberMm), `${site} (a lit pulse)`);
+        keepsA(nearFieldAfter(shot(false), aCaliberMm), aCaliberMm, `${site} (a refused pulse)`);
+      }
+      // a composed rocket's pulse is lit (the light leaves gun a for the launcher) and releases a's near field: it binds
+      // no gun, as muzzleFlash's rocket ignition binds none
+      const rocket = nearFieldAfter((bus, fx) => fx.composeFiringMoment({ muzzlePos: new THREE.Vector3(14.5, 2.3, 0),
+        dir: new THREE.Vector3(-1, 0, 0), caliberMm: 80, tracerType: 'HEAT', ageS: 0, rocket: true }), 120);
+      firesIntoA(rocket, 'composeFiringMoment (a lit rocket pulse)');
+      if (!(rocket.light.x > 10) || rocket.w !== 0) {
+        throw new Error(`composeFiringMoment (a lit rocket pulse): the rocket's pulse lights its launcher and binds no gun (light x ${rocket.light.x}, w ${rocket.w}, bore ${rocket.bore.toArray()})`);
+      }
+      // (272) a roof shot in the frame a 120 mm pulse is born: the port's guard asks the burning pulse's own level
+      // (pulseOutranks), so the muzzle light keeps gun a's pulse: its place, its peak (the light's intensity two frames on,
+      // as a's pulse alone gives it) and its gun's near field (radius and bore). At 60 Hz and on a 240 Hz display, where
+      // the roof port fires 4 ms into a's attack ramp (a guard that scaled a's level by the ramp let the roof gun in there).
+      // After a spent 120 mm pulse the roof gun still lights and binds its own; after a dimmer pulse it does too (the roof
+      // port's lit control above).
+      const roofLit = sites['the roof-gun flash port'].shot(true), SPENT_FRAMES = 10;
+      for (const hz of [60, 240]) {
+        const label = `the roof-gun flash port (in the frame a 120 mm pulse is born, ${hz} Hz)`;
+        const born = aloneFor(120, 0, hz), run = nearFieldAfter(roofLit, 120, 0, hz);
+        if (run.roofFrames.length !== 1 || run.roofFrames[0] !== 1) {
+          throw new Error(`${label}: the roof station must fire in the first update after a's shot (fired after ${run.roofFrames} frames)`);
+        }
+        if (!(run.light.distanceTo(born.light) <= 1e-6)) {
+          throw new Error(`${label}: the muzzle light must stay at gun a's pulse (${run.light.toArray()} vs ${born.light.toArray()})`);
+        }
+        near(run.intensity, born.intensity, `${label}: the muzzle light keeps gun a's peak`, 1e-9);
+        near(run.w, born.w, `${label}: the near field keeps gun a's radius`, 1e-9);
+        if (!(run.bore.distanceTo(A_BORE) <= 1e-9 && run.seat.distanceTo(run.light) <= 1e-6)) {
+          throw new Error(`${label}: the near field must still name gun a's bore and light (bore ${run.bore.toArray()}, seat ${run.seat.toArray()})`);
+        }
+      }
+      const spentLabel = 'the roof-gun flash port (after a spent 120 mm pulse)';
+      const spent = nearFieldAfter(roofLit, 120, SPENT_FRAMES);
+      if (spent.roofFrames.length !== 1 || spent.roofFrames[0] !== SPENT_FRAMES + 1 || spent.atB.w !== 0) {
+        throw new Error(`${spentLabel}: the roof station fires once after a's pulse is spent (fired after ${spent.roofFrames} frames; a's w ${spent.atB.w} then)`);
+      }
+      if (!names(spent, B_BORE, 1e-6) || !(spent.light.x > 10)) {
+        throw new Error(`${spentLabel}: the roof gun's pulse must light and bind its own gun (w ${spent.w}, bore ${spent.bore.toArray()}, light ${spent.light.toArray()})`);
+      }
+      // (272) the guard compares the burning pulse's level and the new peak both before the Accessibility flash, so at the
+      // flash the settings set below 1 (50 %) the roof shot's hand-overs are flash 1's. A roof shot in the frame a pulse is
+      // born meets it a frame old: a 12.7 mm pulse (its level then ~1.4x the 7.62 mm roof shot's peak, under twice it) keeps
+      // the light and its near field (a guard that scaled the burning side by the flash, as the light's intensity is, gave
+      // the roof gun the light), and a pulse of the roof gun's own bore (~0.78x, over half) gives the light to the roof gun
+      // (a guard that scaled the new side kept it)
+      const a11yProps = new Map();
+      const a11yRoot = { dataset: {}, style: { setProperty: (k, v) => a11yProps.set(k, String(v)), removeProperty: (k) => a11yProps.delete(k),
+        getPropertyValue: (k) => a11yProps.get(k) ?? '' } };
+      try {
+        for (const flash of [1, 0.5]) {
+          applyAccessibility(normalizeAccessibility({ flash }), a11yRoot);
+          if (A11Y.flash !== flash) throw new Error(`the settings must put the Accessibility flash at ${flash} (got ${A11Y.flash})`);
+          const heldLabel = `the roof-gun flash port (a 12.7 mm pulse born that frame, Accessibility flash ${flash})`;
+          const held = nearFieldAfter(roofLit, 12.7, 0), heldAlone = aloneFor(12.7, 0);
+          if (held.roofFrames.length !== 1 || held.roofFrames[0] !== 1) {
+            throw new Error(`${heldLabel}: the roof station must fire in the first update after a's shot (fired after ${held.roofFrames} frames)`);
+          }
+          if (!(held.light.distanceTo(heldAlone.light) <= 1e-6)) {
+            throw new Error(`${heldLabel}: the muzzle light must stay at gun a's pulse (${held.light.toArray()} vs ${heldAlone.light.toArray()})`);
+          }
+          near(held.intensity, heldAlone.intensity, `${heldLabel}: the muzzle light keeps gun a's level`, 1e-9);
+          near(held.w, heldAlone.w, `${heldLabel}: the near field keeps gun a's radius`, 1e-9);
+          if (!(held.bore.distanceTo(A_BORE) <= 1e-9)) throw new Error(`${heldLabel}: the near field must still name gun a's bore (${held.bore.toArray()})`);
+          const takenLabel = `the roof-gun flash port (a pulse of its own bore born that frame, Accessibility flash ${flash})`;
+          const taken = nearFieldAfter(roofLit, roofGun.caliberMm, 0);
+          if (taken.roofFrames.length !== 1 || !names(taken, B_BORE, 1e-6) || !(taken.light.x > 10)) {
+            throw new Error(`${takenLabel}: the roof gun's pulse must light and bind its own gun (fired after ${taken.roofFrames} frames; w ${taken.w}, bore ${taken.bore.toArray()}, light ${taken.light.toArray()})`);
+          }
+        }
+      } finally {
+        applyAccessibility(DEFAULT_ACCESSIBILITY, a11yRoot);
+      }
+      if (A11Y.flash !== 1) throw new Error(`the Accessibility flash must be back at 1 (${A11Y.flash})`);
+      console.log('effectAttachments.selftest: a refused pulse binds no near field at any of its three sites (gun a keeps its radius, bore and seat; a reset releases it), and a rocket binds none');
+      console.log('effectAttachments.selftest: a roof shot in the frame a 120 mm pulse is born leaves the muzzle light to that pulse (place, peak, near field); after a spent pulse it lights its own; at a 50 % Accessibility flash it yields as at 100 % (neither side scaled); no light\'s intensity decides a yield');
+    } finally {
+      if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
+    }
+  }
+
+  // the Studio's cinematic blast layered over it: fireball, flash disc and sparks carry; the propellant ring and gas cone
+  // are born with the muzzle's motion apart from their air velocity (the propellant pool sheds it); dust and grit stay
   const cine = (muzzleVel) => {
     let a = 0x5eed;
     const rng = () => { a = (a + 0x6D2B79F5) | 0; let x = Math.imul(a ^ (a >>> 15), 1 | a); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
     const out = { fire: [], psmoke: [], dust: [], streak: [], chunk: [], jet: [] };
+    const carried = { psmoke: [], dust: [] };
     const sink = {
-      puff: (pool, o) => (out[pool] ??= []).push([...o.vel]),
+      puff: (pool, o) => {
+        (out[pool] ??= []).push([...o.vel]);
+        (carried[pool] ??= []).push([...(o.carry ?? [0, 0, 0])]);
+        (carried.birth ??= []).push(o.birthOffset);
+      },
       streak: (o) => out.streak.push([...o.vel]),
       chunk: (o) => out.chunk.push([...o.vel]),
       jet: (o) => out.jet.push([...(o.carry ?? [0, 0, 0])]),
@@ -333,15 +767,24 @@ console.log('effect attachment selftest passed');
     const ctx = { sink, world: { groundY: () => 0, tone, water: () => 0 }, env: { night: 0, nowS: 0 }, rng, shift: 0,
       pulse() {}, addEmitter() {}, scorch() {}, shockRing() {} };
     muzzleBlast(ctx, muzzle0[0], muzzle0[1], muzzle0[2], fwd[0], fwd[1], fwd[2], 120, muzzleVel);
-    return out;
+    return { ...out, carried };
   };
   const a = cine([0, 0, 0]), b = cine(shotVel);
-  const k = shooterVelocityGain('muzzleFlash'), ks = shooterVelocityGain('muzzleSmoke');
-  for (const [kind, gain] of [['fire', k], ['streak', k], ['jet', k], ['psmoke', ks], ['dust', ks], ['chunk', ks]]) {
+  const k = shooterVelocityGain('muzzleFlash'), kg = shooterVelocityGain('muzzleGroundDust');
+  for (const [kind, gain] of [['fire', k], ['streak', k], ['jet', k], ['psmoke', 0], ['dust', kg], ['chunk', kg]]) {
     if (!a[kind].length || a[kind].length !== b[kind].length) throw new Error(`cinematic ${kind}: the blast must emit the same parts`);
     for (let i = 0; i < a[kind].length; i++) {
       for (let j = 0; j < 3; j++) near(b[kind][i][j] - a[kind][i][j], shotVel[j] * gain, `cinematic ${kind}[${i}] carry`, 1e-9);
     }
   }
-  console.log('effectAttachments.selftest: the cinematic muzzle blast carries its bright parts and leaves its smoke');
+  if (a.carried.birth.some((v, i) => v !== b.carried.birth[i])) throw new Error('cinematic: the carry must not move a puff\'s birth');
+  for (const [kind, gain] of [['psmoke', shooterVelocityGain('muzzleSmoke')], ['dust', kg]]) {
+    for (let i = 0; i < a.carried[kind].length; i++) {
+      for (let j = 0; j < 3; j++) {
+        near(a.carried[kind][i][j], 0, `cinematic ${kind}[${i}]: a still muzzle carries nothing`);
+        near(b.carried[kind][i][j], shotVel[j] * gain, `cinematic ${kind}[${i}] is born with the muzzle's motion`, 1e-9);
+      }
+    }
+  }
+  console.log('effectAttachments.selftest: the cinematic muzzle blast carries its bright parts and its propellant, and leaves its dust');
 }

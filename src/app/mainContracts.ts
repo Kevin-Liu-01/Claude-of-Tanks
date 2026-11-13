@@ -78,7 +78,6 @@ declare global {
     __BATTLE_REVEAL?: RuntimeValue;
     __BOOT_MS?: number;
     __BOOT_TIMINGS?: Record<string, number>;
-    __GAME_READY?: boolean;
     __GARAGE_ENTRY?: RuntimeValue;
     /** perf-246: the battle-end Garage warm's counters (src/app/battleEndGarageWarm.ts). */
     __GARAGE_PREWARM?: RuntimeValue;

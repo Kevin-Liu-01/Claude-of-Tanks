@@ -197,11 +197,14 @@ try {
         const file = portraitSet.has(id) ? thumbnailPath(id) : null;
         if (file && existsSync(file)) sources[id] = `data:image/webp;base64,${readFileSync(file).toString('base64')}`;
       }
+      // 270: a whip-equipped card is held to its whip-free frame, recorded beside its thumbnail (icons-page.html)
+      const frames = Object.fromEntries(Object.keys(sources).map((id) => [id, manifest?.tanks?.[id]?.assets?.angle?.thumbnail?.frame ?? null]));
       if (Object.keys(sources).length) {
         Object.assign(portraitAudit, await page.evaluate(
-          (ids, idSources) => window.__AUDIT_PORTRAITS(ids, idSources),
+          (ids, idSources, idFrames) => window.__AUDIT_PORTRAITS(ids, idSources, idFrames),
           Object.keys(sources),
           sources,
+          frames,
         ));
       }
     } finally {

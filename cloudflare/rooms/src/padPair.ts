@@ -18,6 +18,7 @@ import type { PadActorState, PadSocketRecord } from '../../../src/pad/padActor.t
 import { PAD_KEEPALIVE_REQUEST, PAD_KEEPALIVE_RESPONSE, PAD_MAX_MESSAGE_BYTES, normalizePadCode } from '../../../src/pad/padProtocol.ts';
 import type { PadEndReason, PadHostMessage } from '../../../src/pad/padProtocol.ts';
 import { allowedOrigin, isWebSocketUpgrade, json } from './util.ts';
+import { endEvent, mayDeallocate } from './eventEnd.ts';
 
 interface PadAttachment extends PadSocketRecord {
   version: 1;
@@ -47,11 +48,14 @@ export class PadPair extends DurableObject<Env> {
   #alarmWanted: number | null | undefined = undefined;
   #pendingCloses: Array<{ ws: WebSocket; reason: string }> = [];
   #relay: RelayIssuer | null = null;
+  #schemaReady = false;
+  /** Whether the storage holds anything since it was last deallocated (the Room object's latch: deleteAll once). */
+  #storageUsed = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PAD_KEEPALIVE_REQUEST, PAD_KEEPALIVE_RESPONSE));
-    this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS pad_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
+    this.#ensureSchema();
     const row = this.ctx.storage.sql.exec<{ data: string }>('SELECT data FROM pad_state WHERE id=1').toArray()[0];
     let state: PadActorState | null = null;
     if (row) { try { state = JSON.parse(row.data) as PadActorState; } catch { state = null; } }
@@ -69,6 +73,19 @@ export class PadPair extends DurableObject<Env> {
       }
     }
     this.ctx.blockConcurrencyWhile(async () => { this.#nextAlarm = await this.ctx.storage.getAlarm(); });
+  }
+
+  /** The state table, made again after a deallocation (a code drawn again on a live object persists into it). */
+  #ensureSchema(): void {
+    if (this.#schemaReady) return;
+    this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS pad_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL)');
+    this.#schemaReady = true;
+    this.#storageUsed = true;
+  }
+
+  /** Every event ends here (eventEnd.ts): the alarm applied after the work, the retired sockets closed whatever happened. */
+  #endEvent<T>(work: () => T | Promise<T>): Promise<T> {
+    return endEvent(work, { applyAlarm: () => this.#applyAlarm(), flushCloses: () => this.#flushCloses() });
   }
 
   #activate(code: string): PadActor {
@@ -109,6 +126,7 @@ export class PadPair extends DurableObject<Env> {
   }
 
   #persist(): void {
+    this.#ensureSchema();
     const state = this.#actor?.exportState() ?? null;
     if (!state) { this.ctx.storage.sql.exec('DELETE FROM pad_state WHERE id=1'); return; }
     this.ctx.storage.sql.exec('INSERT INTO pad_state (id,data) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data', JSON.stringify(state));
@@ -120,11 +138,17 @@ export class PadPair extends DurableObject<Env> {
     if (wanted === null) {
       if (this.#nextAlarm !== null) await this.ctx.storage.deleteAlarm();
       this.#nextAlarm = null;
-      // a code that holds nothing and has no live socket deallocates
-      if (this.#actor?.vacant && this.ctx.getWebSockets().length === 0) await this.ctx.storage.deleteAll();
+      // a code that holds nothing and has no live socket deallocates, once (eventEnd.ts mayDeallocate, the Room's rule)
+      const actor = this.#actor;
+      if (mayDeallocate({ holdsState: !actor || !actor.vacant, actorSockets: actor?.liveSockets ?? 0, alarmWanted: false, storageUsed: this.#storageUsed })) {
+        await this.ctx.storage.deleteAll();
+        this.#schemaReady = false;
+        this.#storageUsed = false;
+      }
       return;
     }
     if (this.#nextAlarm === null || Math.abs(wanted - this.#nextAlarm) > 250) {
+      this.#storageUsed = true;
       await this.ctx.storage.setAlarm(wanted);
       this.#nextAlarm = wanted;
     }
@@ -144,20 +168,20 @@ export class PadPair extends DurableObject<Env> {
     if ((route.kind === 'new' || route.kind === 'lobby') && !actor.vacant) return json({ error: 'pad_code_held' }, 409);
     // the desktop, its phone or a lobby's phones, and sockets resuming (PadActor.socketCap)
     if (this.ctx.getWebSockets().length >= actor.socketCap) return json({ error: 'pad_full' }, 429);
-    const pair = new WebSocketPair();
-    const ws = pair[1];
-    const socketId = crypto.randomUUID();
-    this.ctx.acceptWebSocket(ws);
-    this.#sockets.set(socketId, ws);
-    this.#ids.set(ws, socketId);
-    if (route.kind === 'new') actor.openDesktop(socketId);
-    else if (route.kind === 'lobby') actor.openLobby(socketId);
-    else if (route.kind === 'join') actor.openJoin(socketId);
-    else actor.openResume(socketId);
-    if (this.#sockets.has(socketId)) this.#attach(ws, socketId, route.code);
-    await this.#applyAlarm();
-    this.#flushCloses();
-    return new Response(null, { status: 101, webSocket: pair[0] });
+    return this.#endEvent(() => {
+      const pair = new WebSocketPair();
+      const ws = pair[1];
+      const socketId = crypto.randomUUID();
+      this.ctx.acceptWebSocket(ws);
+      this.#sockets.set(socketId, ws);
+      this.#ids.set(ws, socketId);
+      if (route.kind === 'new') actor.openDesktop(socketId);
+      else if (route.kind === 'lobby') actor.openLobby(socketId);
+      else if (route.kind === 'join') actor.openJoin(socketId);
+      else actor.openResume(socketId);
+      if (this.#sockets.has(socketId)) this.#attach(ws, socketId, route.code);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    });
   }
 
   async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer): Promise<void> {
@@ -168,22 +192,21 @@ export class PadPair extends DurableObject<Env> {
       return;
     }
     const text = typeof data === 'string' ? data : data.byteLength > PAD_MAX_MESSAGE_BYTES ? null : new TextDecoder().decode(data);
-    actor.handleMessage(socketId, text ?? 'x'.repeat(PAD_MAX_MESSAGE_BYTES + 1));
-    if (this.#sockets.has(socketId)) this.#attach(ws, socketId, actor.code);
-    await this.#applyAlarm();
-    this.#flushCloses();
+    await this.#endEvent(() => {
+      actor.handleMessage(socketId, text ?? 'x'.repeat(PAD_MAX_MESSAGE_BYTES + 1));
+      if (this.#sockets.has(socketId)) this.#attach(ws, socketId, actor.code);
+    });
   }
 
   async webSocketClose(ws: WebSocket, code = 1000, reason = ''): Promise<void> {
-    const socketId = this.#ids.get(ws);
-    if (socketId) {
+    await this.#endEvent(() => {
+      const socketId = this.#ids.get(ws);
+      if (!socketId) return;
       this.#sockets.delete(socketId);
       this.#ids.delete(ws);
       this.#actor?.handleClose(socketId);
       try { ws.close(code, reason); } catch { /* closed, or a code the runtime refuses to echo */ }
-    }
-    await this.#applyAlarm();
-    this.#flushCloses();
+    });
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
@@ -192,8 +215,6 @@ export class PadPair extends DurableObject<Env> {
 
   async alarm(): Promise<void> {
     this.#nextAlarm = null;
-    this.#actor?.tick();
-    await this.#applyAlarm();
-    this.#flushCloses();
+    await this.#endEvent(() => { this.#actor?.tick(); });
   }
 }

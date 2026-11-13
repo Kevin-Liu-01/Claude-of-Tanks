@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { CAMO_CATALOG_PATTERN_IDS } from '../vehicles/materials.ts';
 import { camoTagNation } from '../vehicles/camoPolicy.ts';
 import { CAMO_KINDS, camoKindOf, camoPickerFilters, camoPickerItems } from './camoPicker.ts';
@@ -55,5 +56,13 @@ assert.ok(!camoPickerItems(CAMO_CATALOG_PATTERN_IDS, 'Ukraine', words, { custom:
 
 // the chips
 assert.deepEqual(camoPickerFilters(words).map((filter) => filter.id), [...CAMO_KINDS]);
+
+// every paint the picker draws has its name in each locale (owner 11-11: six signatures, the Longwei four and both AMX-10P, had none, so their
+// swatches read "camoPattern.sig_ztz99a2_qinglong", one unbreakable word that pushed the docked grid 73-109 px sideways)
+for (const locale of ['en-US', 'zh-CN']) {
+  const catalog = JSON.parse(readFileSync(new URL(`./i18nCatalog.${locale}.json`, import.meta.url), 'utf8'));
+  const unnamed = CAMO_CATALOG_PATTERN_IDS.filter((id) => id !== 'auto' && id !== 'custom' && !catalog[`camoPattern.${id}`]);
+  assert.deepEqual(unnamed, [], `every catalog paint has a camoPattern name in ${locale}`);
+}
 
 console.log(`camoPicker selftest: PASS (${items.length} swatches: ${CAMO_KINDS.map((kind) => `${kind} ${counts[kind]}`).join(', ')})`);

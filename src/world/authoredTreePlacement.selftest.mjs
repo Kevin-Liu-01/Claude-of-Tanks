@@ -6,7 +6,7 @@ import { createHeightField } from './terrain.ts';
 import { mulberry32, treeRichness } from './vegetation.ts';
 import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { treeRootDecalRadius, treeRootDecalAreaM2 } from './treeGrounding.ts';
-import { setToppleAxis, settledToppleAngle } from './topple.ts';
+import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
@@ -120,17 +120,14 @@ const decals = new Function('THREE', 'mulberry32', 'treeRootDecalRadius', 'treeR
     return group.children[0];
   }`)}`)(THREE, mulberry32, treeRootDecalRadius, treeRootDecalAreaM2);
 
-const crushStart = source.indexOf('  function crushTree('), crushEnd = source.indexOf('  function updateTreeCrush(', crushStart);
-const topple = new Function('THREE', 'setToppleAxis', 'settledToppleAngle',
-  `return ${stripTypeScriptTypes(`function lifecycle(trees, treeObstacles, heightField) {
-    const treeCrushAnims = [], _tcax = new THREE.Vector3();
-    const writeTreeSlot = () => { throw new Error('Unpartitioned tree must not upload'); };
-    const nearMeshes = {}, farMeshes = {};
-    let nearTierHeightVersion = 0; // (the near tier's height cache: resetToppled bumps it)
-    let nearCullStale = false; // (the near pools' view cull: crushTree and resetToppled mark its runs stale)
-    ${source.slice(crushStart, crushEnd)}
-    return { crushTree, resetToppled, treeCrushAnims };
-  }`)}`)(THREE, setToppleAxis, settledToppleAngle);
+// (2026-11-02 audit M9) the felled-tree transition vegetation.ts runs (felledTrees.ts), on the relocated trees
+const topple = (trees, treeObstacles, heightField) => {
+  const felled = createFelledTrees({ trees, records: treeObstacles, concealers: [], heightField,
+    write: (t) => { if (t.slot >= 0 || t.fslot >= 0) throw new Error('Unpartitioned tree must not upload'); },
+    poseChanged() {}, standingChanged() {} });
+  return { crushTree: (ob, dx, dz) => felled.fell(ob, dx, dz), resetToppled: () => felled.restoreAll(),
+    get treeCrushAnims() { return felled._falls; } };
+};
 
 function assertRoots(before, after, hf) {
   const a = decals(before.trees, hf), b = decals(after.trees, hf);

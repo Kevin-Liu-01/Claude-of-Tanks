@@ -1,4 +1,5 @@
 import type { MatchModeEntity, MatchModeResult } from './matchModes.ts';
+import { setModeMultiplier } from './consumableRules.ts';
 
 import * as detMath from './detMath.ts';
 export const ESCORT_RULES = Object.freeze({ hpScale:.9, reloadScale:2, speedScale:.65, radiusM:26 });
@@ -7,15 +8,16 @@ export interface EscortState {
   x:number; y:number; z:number;
 }
 /** Ground troops use the normal navigation, combat and destruction simulation.
- * Arrival is spatial, never a timer pretending that the convoy moved. */
-export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Entity[], destination:{x:number;y:number;z:number}, setActive:(entity:Entity,active:boolean)=>void) {
+ * Arrival is spatial, never a timer pretending that the convoy moved. `rescue` takes an extracted hull off the field:
+ * the mode controller's life transition (matchModes.ts setLife 'rescued', audit M4), the hull's one life writer. */
+export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Entity[], destination:{x:number;y:number;z:number}, rescue:(entity:Entity)=>void) {
   const friends=entities.filter(e=>e.bot && e.team!=='bravo' && e.team!=='enemy');
   const rescued=new Set<string>();
   const starting=new Map(friends.map(e=>[e.id,Math.max(1,detMath.hypot(e.state.pos.x-destination.x,e.state.pos.z-destination.z))]));
   const state:EscortState={...destination,total:friends.length,alive:friends.length,rescued:0,required:Math.max(1,Math.ceil(friends.length/2)),progress:0};
   for(const friend of friends){
     friend.combat.maxHp=Math.max(1,Math.round(friend.combat.maxHp*ESCORT_RULES.hpScale));friend.combat.hp=friend.combat.maxHp;
-    const mults=friend.combat.equipMults??(friend.combat.equipMults={});mults.reload=(mults.reload??1)*ESCORT_RULES.reloadScale;
+    setModeMultiplier(friend.combat,'escort','reload',ESCORT_RULES.reloadScale); // a mode layer (audit M5): items keep it
   }
   function update():void {
     let alive=0,progress=0;
@@ -28,7 +30,7 @@ export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Ent
     }
     state.alive=alive;state.rescued=rescued.size;state.progress=friends.length?progress/friends.length:0;
   }
-  function hideRescued(friend:Entity):void { friend.modeActive=false;friend.state.speed=0;setActive(friend,false); }
+  function hideRescued(friend:Entity):void { rescue(friend); }
   return {
     state,
     step(timeS:number,limitS:number):MatchModeResult|null {

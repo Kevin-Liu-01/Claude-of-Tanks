@@ -83,6 +83,21 @@ export function botCamoRoll(matchSeed: number, index: number, mapId: string): Bo
 }
 
 /**
+ * Every bot's paint in a planned match (round 8 Y1 s4-06): the one roll-index rule. A bot's roster index is the number of
+ * seated hulls (every seat but a spectator's) plus its place among the bots, in plan order: the match actor seats those
+ * first, then the bots (server/match/matchActor.ts), and the authority rolls each at its index (sim/authoritativeMatch.ts
+ * botCamoRoll(seed, entities.length, mapId)). A bot that already carries its paint (a resumed roster's) keeps it. The
+ * match actor stamps each bot's paint from it, and a client's guess before the WELCOME (mp/session/browserComposition.ts,
+ * its roster prebuild) reads the same rule, so the guess cannot drift from the roll.
+ */
+export function planBotPaints(seats: readonly { readonly team: string }[], bots: readonly { readonly camo?: string | null }[],
+  matchSeed: number, mapId: string): BotCamo[] {
+  let index = 0;
+  for (const seat of seats) if (seat.team !== 'spectator') index++;
+  return bots.map((bot, ordinal) => (bot.camo === 'auto' || bot.camo === 'factory' ? bot.camo : botCamoRoll(matchSeed, index + ordinal, mapId)));
+}
+
+/**
  * A chosen scheme's spotting bonus on a map: 'auto' always, 'factory' when the vehicle's stock scheme (`stockPattern`)
  * fits, any other scheme when it fits; an unknown id earns nothing.
  */

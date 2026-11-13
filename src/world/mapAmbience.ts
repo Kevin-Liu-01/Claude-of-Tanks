@@ -78,6 +78,10 @@ const BASE_FOV_DEG = 60;
 /** Camera height over the ground where the air fades out (the gunship's and the drone's views). */
 const AERIAL_FADE_M: readonly [number, number] = [55, 90];
 
+/** (dust-orient-271) a streak's own path off the mean wind (rad): its seeded turn (uniform ±spread), a slow gust's swing
+ *  over it, and its hop (the climb or drop against the speed along the ground). */
+export const AMBIENCE_STREAK_TURN = Object.freeze({ spread: 0.3, swing: 0.15, hop: 0.25 });
+
 const VERTEX = /* glsl */ `
 attribute vec4 aSeed;
 attribute vec4 aRand;
@@ -175,6 +179,16 @@ void main() {
   mvPosition = viewMatrix * vec4( wp, 1.0 );
 #elif defined( MOTION_STREAK )
   vec3 vel = cls < 0.5 ? uVel * 0.8 : ( cls < 1.5 ? uVel : uVel * 1.22 );
+  // (dust-orient-271, the owner 2026-11-09 looking down on Redrock: the blown grit "all like parallel with each other")
+  // every grain was drawn along the one mean wind, a combed field of dashes from above. Each grain keeps its own path: an
+  // eddy turns it off the mean wind (its own ±${AMBIENCE_STREAK_TURN.spread.toFixed(2)} rad, swinging another
+  // ±${AMBIENCE_STREAK_TURN.swing.toFixed(2)} on a slow gust) and its hop lifts or drops it, so the wind is the field's
+  // tendency, not every streak's bearing
+  float turn = ( fract( aRand.x * 9.71 + aSeed.w * 3.17 ) - 0.5 ) * ${(2 * AMBIENCE_STREAK_TURN.spread).toFixed(2)}
+    + ${AMBIENCE_STREAK_TURN.swing.toFixed(2)} * sin( t * ( 0.45 + 0.5 * aSeed.w ) + ph * 2.3 );
+  float tc = cos( turn ), ts = sin( turn );
+  vel = vec3( vel.x * tc - vel.z * ts, vel.y + length( vel.xz ) * ${AMBIENCE_STREAK_TURN.hop.toFixed(2)} * sin( t * wf * 0.9 + ph * 1.3 ),
+    vel.x * ts + vel.z * tc );
   // wisps, not a dash field: each streak its own length and weight, and a slow gust swelling and fading it
   float lenK = 0.45 + 1.1 * fract( aRand.x * 5.3 + aSeed.w );
   a *= ( 0.45 + 0.55 * fract( aRand.y * 3.7 ) ) * ( 0.3 + 0.7 * smoothstep( -0.2, 0.9, sin( t * ( 0.6 + aSeed.w ) + ph * 3.0 ) ) );

@@ -501,12 +501,6 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-s
   .cot-garage .cot-deploy-tank .cot-card{display:none;}
   .cot-garage .cot-deploy-tank .head b img{display:block;}
 }
-.cot-garage .cot-battle-menu.open [data-battle-launch]{display:flex;align-items:center;justify-content:space-between;width:100%;height:66px;min-height:0;
-  padding:0 var(--s5);border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);
-  color:var(--btn-primary-ink);cursor:pointer;}
-.cot-garage .cot-deploy-go{display:flex;align-items:center;gap:var(--s4);font:700 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-label-s);
-  text-transform:uppercase;}
-.cot-garage .cot-deploy-go svg{width:20px;height:20px;}
 /* the estimate beside its key (.deploy span) */
 .cot-garage .cot-deploy-end{display:flex;align-items:center;gap:var(--s3);font:500 var(--fs-13)/1 var(--font-body);}
 /* the keys the screen answers (.hints), for a keyboard */
@@ -514,21 +508,30 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-s
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);color:var(--ink-3);}
 .cot-garage .cot-deploy-keys>span{display:inline-flex;align-items:center;gap:var(--s2);}
 @media (pointer:coarse){.cot-garage .cot-deploy-keys{display:none;}}
-@media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}}
-.cot-garage .cot-battle-menu.open [data-battle-launch]:active{background:var(--btn-primary-press);box-shadow:none;}
-.cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
-/* Watch (watch-mode-243): the secondary beside Deploy in one row, at its height */
-.cot-garage .cot-deploy-acts{display:flex;align-items:stretch;gap:var(--s3);min-width:0;}
-.cot-garage .cot-battle-menu.open .cot-deploy-acts [data-battle-launch]{flex:1;width:auto;min-width:0;}
-.cot-garage .cot-battle-menu.open [data-battle-watch]{display:flex;align-items:center;gap:var(--s3);flex:none;height:66px;padding:0 var(--s5);border:0;
-  border-radius:var(--control-radius);background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring);
-  color:var(--ink-1);cursor:pointer;font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-garage .cot-battle-menu.open [data-battle-watch] svg{width:20px;height:20px;}
-@media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:var(--btn-secondary-ring-hover);}}
-.cot-garage .cot-battle-menu.open [data-battle-watch]:disabled{opacity:.4;cursor:default;}
-.cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] [data-battle-watch]{display:none;}
-/* a solo practice mode (the range) has nothing to watch: Deploy takes the row (the flex above outranked [hidden]) */
-.cot-garage .cot-battle-menu.open [data-battle-watch][hidden]{display:none;}
+/* the action row (.deploy): Couch and Watch are the kit's secondary and Deploy its primary (components.css .cot-c-btn), so
+   the three share one height, radius, glyph size, label face and the kit's hover, press, focus and unavailable states;
+   the row sets only their size and Deploy's weight (owner 2026-11-11: Couch read as a placeholder from another kit) */
+.cot-garage .cot-deploy-acts{--deploy-act-h:66px;display:flex;align-items:stretch;gap:var(--s3);min-width:0;}
+.cot-garage .cot-deploy-acts>.cot-c-btn{--h:var(--deploy-act-h);flex:none;gap:var(--s3);padding:0 var(--s5);
+  font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);}
+.cot-garage .cot-deploy-acts>.cot-c-btn svg{width:20px;height:20px;flex:none;}
+@media (hover:hover){.cot-garage .cot-deploy-acts>.cot-c-btn--secondary:hover:not(:disabled){box-shadow:var(--btn-secondary-ring-hover);}}
+/* Deploy, the one primary, fills the row: its edge is the kit's bevel (a lit top, a shaded foot) under the lift, and a
+   press sinks it (the lift goes, the kit's drop and darker fill) */
+.cot-garage .cot-deploy-acts>.cot-c-btn--primary{flex:1;min-width:0;justify-content:space-between;
+  box-shadow:var(--btn-primary-lift);}
+.cot-garage .cot-deploy-acts>.cot-c-btn--primary:active{box-shadow:var(--btn-primary-bevel);}
+.cot-garage .cot-deploy-go{display:flex;align-items:center;gap:var(--s3);min-width:0;font:700 var(--fs-28)/1 var(--font-display);
+  letter-spacing:var(--track-label);}
+.cot-garage .cot-deploy-acts>.cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
+/* focus: the kit's ring outside the button, on any fill (the menu's inset outline was lost in Deploy's accent) */
+.cot-garage .cot-deploy-acts>.cot-c-btn:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+.cot-garage .cot-deploy-acts>.cot-c-btn--primary:focus-visible{box-shadow:var(--btn-primary-focus);}
+/* unavailable (Couch outside its modes, Watch where nothing can be watched): the kit's own, its ring kept on this row;
+   Couch names why on hover (garage.ts couchOff, the kit's hover tip) */
+.cot-garage .cot-deploy-acts>.cot-c-btn:disabled{box-shadow:var(--ring-2);}
+/* a solo practice mode (the range) has nothing to watch or share: Deploy takes the row */
+.cot-garage .cot-deploy-acts>.cot-c-btn[hidden]{display:none;}
 
 /* ---- folded layouts: the direction's phone Deploy (91-phone-deploy.html): the bar, the ways to play as pills, the
    modes as rows with the chosen one opened over its picture, the plate under them, Deploy docked at the bottom ---- */
@@ -565,6 +568,9 @@ body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-ke
 /* (its foot stands clear of the dock's fade too: a 390 px tall phone's floor of 200 px set the chosen last card's ring and
    name under it, r45) */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-modes{flex:none;height:clamp(160px,min(52dvh,100dvh - 190px - var(--s5)),520px);min-height:0;margin-bottom:var(--s3);}
+/* a phone held upright gives the plate's head and its first row of rules the room above the dock's fade (at 390x844 the
+   rules' labels sat under it at rest, r272); the picker still shows its third row's edge, so it reads as scrolling */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-modes{height:clamp(160px,min(49dvh,100dvh - 190px - var(--s5)),520px);}
 /* the head's last battle again, as "Again" (91's .bar .again), and the Deploy bar's estimate */
 .cot-garage .cot-deploy-again .short{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again{order:1;margin:0 0 0 auto;}
@@ -592,13 +598,12 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-me
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{flex:none;padding:0;background:none;box-shadow:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank .cot-card{width:96px;height:58px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank :is(.info,.chg){display:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-launch]{flex:1;height:58px;padding:0 var(--s5);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{flex:1;gap:var(--s2);}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]{height:58px;padding:0 var(--s4);}
-/* a phone's dock holds the tank, Watch and Deploy: Watch is its glyph (its name stays its accessible name) */
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]>span{position:absolute;width:1px;height:1px;overflow:hidden;
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{--deploy-act-h:58px;flex:1;min-width:0;gap:var(--s2);}
+/* a phone's dock holds the tank, Couch, Watch and Deploy: Couch and Watch are their glyphs on square keys (their names
+   stay their accessible names) */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts>.cot-c-btn--secondary{width:var(--h);padding:0;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts>.cot-c-btn--secondary>span{position:absolute;width:1px;height:1px;overflow:hidden;
   clip-path:inset(50%);white-space:nowrap;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-deploy-acts{flex:1;min-width:0;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-go{font-size:var(--fs-24);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s3);padding:var(--s3);}
 /* a phone's Launch takes its own line under the operation, so every row's text keeps the row's width */
@@ -626,10 +631,12 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{display:none;}
   .cot-garage .cot-deploy-tank .head b img{display:block;}
   .cot-garage .cot-deploy-tank .head b>span{white-space:normal;overflow-wrap:anywhere;}
-  .cot-garage .cot-battle-menu.open [data-battle-launch]{padding:0 var(--s4);}
-  .cot-garage .cot-deploy-go{gap:var(--s3);font-size:var(--fs-20);}
+  .cot-garage .cot-deploy-acts>.cot-c-btn--primary{padding:0 var(--s4);}
+  .cot-garage .cot-deploy-go{font-size:var(--fs-20);}
   .cot-garage .cot-deploy-end{display:none;}
-  .cot-garage .cot-battle-menu.open [data-battle-watch]{padding:0 var(--s4);font-size:var(--fs-15);}
+  /* Couch and Watch keep their glyphs on square keys, so Deploy keeps its word clear of its edge (900x700, r272) */
+  .cot-garage .cot-deploy-acts>.cot-c-btn--secondary{width:var(--h);padding:0;}
+  .cot-garage .cot-deploy-acts>.cot-c-btn--secondary>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
   body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-deploy-brief{grid-template-columns:minmax(0,1fr);}
   .cot-garage .cot-deploy-brief-mm{display:none;}
   .cot-garage .cot-deploy-brief-name{font-size:var(--fs-20);}

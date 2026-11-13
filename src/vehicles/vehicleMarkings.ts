@@ -132,6 +132,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   chieftain_mk10: anchor('turret', 'right', .40, .40, .24, 1),
   t72b3: anchor('turret', 'left', .31, .33, .24, -1),
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
+  t95: anchor('hull', 'right', 0.62, 0.42, 0.26, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),
   type90: anchor('hull', 'left', .24, .82, .24, 1),
   type90b: anchor('hull', 'left', .24, .82, .24, 1), // the Type 90's hull seat (type90)
@@ -182,6 +183,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t90m: anchor('turret', 'left', .1509, .5880, .24, 1),
   t90sm: anchor('turret', 'left', .14, .65, .24, 1),
   t14_armata: anchor('turret', 'left', .22, .60, .24, 1),
+  // release 269: the 152 mm line (the 292 on its welded box's flank, the Molot and the 195 on their skirts, the T-14 152
+  // where the T-14 carries it)
+  object292: anchor('turret', 'left', .62, .50, .24, 1),
+  object477_molot: anchor('hull', 'left', .42, .55, .24, 1),
+  object195: anchor('hull', 'left', .45, .55, .26, 1),
+  t14_152: anchor('turret', 'left', .22, .60, .24, 1),
   leo2a7v: anchor('hull', 'left', .192, .493, .24, 1),
   leo2a6m: anchor('hull', 'left', .192, .493, .22, 1),
   leo2a5m: anchor('hull', 'right', .655, .54, .22, -1),
@@ -314,7 +321,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   carro45t: anchor('turret', 'right', 0.46, 0.47, 0.24, -1),
   c1_ariete_preserie: anchor('turret', 'left', 0.41, 0.45, 0.25, 1),
   c1_ariete_proto_serie1: anchor('turret', 'right', 0.43, 0.41, 0.23, -1),
-  c2_ariete_proto: anchor('turret', 'left', 0.45, 0.40, 0.23, 1),
+  // 269 (the C2 prototype's new turret, profiles/arieteProtoTurret.ts): its walls carry the add-on boxes and the smoke
+  // rows; the insignia seats on the bare wall over the row, the designation aft of it on the wall plate behind the row
+  // (round 2, blind A/B arieter269t: the designation had found the roof's eave ahead, "a plate on the roof"; the deeper
+  // boxes then drew the insignia onto the roof's slope, so the anchor stands on the wall over the row)
+  c2_ariete_proto: anchor('turret', 'right', 0.28, 0.53, 0.23, -1),
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
@@ -329,6 +340,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m113a1_fsv: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
   // (269: the US M113A3's star and number on its bare left hull side, as the FSV's)
   m113a3: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  // (269: the M163 VADS's on the same bare left hull side of the M741; photo 03 carries the division's patch there)
+  m163_vads: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
   m113a1_mrv: anchor('turret', 'left', 0.35, 0.45, 0.22, 1),
   m113as4: anchor('turret', 'left', 0.30, 0.50, 0.20, 1),
   // the kangaroo on the turret's forward flank, as on the 2024-26 photographs
@@ -463,7 +476,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
   // turret cheeks that remain clear of weapons, sights and missile boxes.
-  bmp3_rok: anchor('turret', 'right', 0.43, 0.46, 0.21, -1),
+  // round 269: the ROK fit's radio mast, its bracket and the stowage bin crowd the left flank; the right flank (plain
+  // on the ROK photographs) takes both markings, on its flat side plate and the rear quarter (was 'right', 0.43, 0.46)
+  bmp3_rok: anchor('turret', 'left', 0.43, 0.52, 0.21, -1),
   ua_m2a3_bradley: anchor('hull', 'left', 0.39, 0.63, 0.24, 1),
   bmpt_terminator2: anchor('turret', 'right', 0.36, 0.48, 0.21, -1),
   // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —
@@ -483,6 +498,16 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   gepard_1a2: anchor('turret', 'left', 0.78, 0.75, 0.24, 1),
   pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  // 269: the second air-defence round. The photographs carry the numbers on the hull: the Type 87's "96-5192" plates
+  // (its turret sides carry the guns), the ItPsv 90's "Ps465-22" on the hull side (photo 01), the K30's "312" (photo 01)
+  // and the Loara's "370" (photo 02) on the hull front's flank, the Lvkv 9040's unit lozenge on the hull side (photo 01,
+  // the CV90's anchor); the guns and radars ride the turret sides
+  type87_aw: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  marksman_t55: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  itpsv_leopard2: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  lvkv9040: anchor('hull', 'left', .52, .58, .20, 1), // the CV90 Mk IV hull's (cv90_mk4)
+  k30_biho: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pza_loara: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).

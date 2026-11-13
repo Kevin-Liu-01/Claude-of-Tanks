@@ -129,9 +129,9 @@ parts (monsoon):
 | steppe | 0.95 / 2.79 | 1.23 / 2.27 | 27.2 KB/s |
 | monsoon | 1.11 / 2.68 | 1.68 / 4.17 | 29.1 KB/s |
 
-Budget: p95 ≤ 6 ms. Wire sizes (`src/mp/wire/wire.selftest`): full row 44 B,
-moving delta row 16 B, 28-entity keyframe with the viewer section 1473 B,
-input frame 57 B. A spectator sees all 28 rows; a seated player sees its team
+Budget: p95 ≤ 6 ms. Wire sizes (`src/mp/wire/wire.selftest`, wire 11): full row 43 B,
+moving delta row 16 B, 28-entity keyframe with the viewer section 1458 B,
+input frame 60 B. A spectator sees all 28 rows; a seated player sees its team
 plus spotted enemies, so its egress is lower.
 
 `tools/mp-soak.mjs` (28 clients, server in a child process, winter, 60 ± 20 ms,

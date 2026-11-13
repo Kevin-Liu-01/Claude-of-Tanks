@@ -152,7 +152,8 @@ export function createAmbienceDirector({ mixer, library, pool, random, getBellTo
       heardNight = null;
       battleMode = battle;
       const ids = sceneAssets(next, battle);
-      library.pin(ids);
+      // the scene's own pins: a new scene replaces the last one's, and nothing else
+      library.pin(ids, true, 'scene');
       void library.load(ids);
       startLoop(next.bed, next.bedDb);
       if (next.layer) startLoop(next.layer.asset, next.layer.db);

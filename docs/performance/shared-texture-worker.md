@@ -35,11 +35,19 @@ shader submission have separate costs.
 ## Limits and fallback
 
 One lazily created module worker processes requests serially. It has at most
-16 pending requests, a 15-second absolute queue/work deadline, and a five-second
-idle shutdown. Failure, malformed messages and unsupported Worker/OffscreenCanvas
-features use the original main-thread painter. The base material draws no text,
-so the worker loads no font (glacis-269 removed the Chakra Petch load; tank
-markings bake on the main thread from Glacis outlines).
+16 pending requests and a five-second idle shutdown. Each job has a 15-second
+deadline that starts when the worker takes it (its turn at the serial queue),
+never when it was queued, so a long queue or a laptop that slept mid-bake does
+not fail a healthy worker. A failure (that deadline, the worker's error or
+messageerror, or a reply that does not answer its job) closes the worker and
+settles every job it held with the original main-thread painter; the next bake
+starts a fresh worker. Three failures in a row, with no success between them,
+leave the client unavailable for the document, and one success starts the count
+again (src/workerClientHealth.ts, 2026-11-02 audit R6). Unsupported
+Worker/OffscreenCanvas features use the main-thread painter from the start.
+The base material draws no text, so the worker loads no font (glacis-269
+removed the Chakra Petch load; tank markings bake on the main thread from
+Glacis outlines).
 
 `disposeMaterialPainterWorker` drains pending callers and terminates only its
 owned worker. Failed private canvases/textures are released without publishing

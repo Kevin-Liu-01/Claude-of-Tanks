@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
+import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a
@@ -9,6 +10,8 @@ const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   'landingImpactMps', '_autoTraverse'] as const;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
+/** Where the hit/recoil rock rode until audit M9 (2026-11-02; presentation only since): kept so the layout stands. */
+const RESERVED_ROCK_VALUES = 4;
 // version 2 (impact physics, 2026-09-25): the pure least-squares pitch the settle residuals are measured against
 // version 4 (physics lane, 2026-10-03): the gravity tip of a hull overhanging its loaded contacts (_terr.tipPitch /
 // tipRoll), which the attitude step reads before the support solve re-derives it
@@ -46,8 +49,12 @@ const VALUE_COUNT = VERSION_7_COUNT + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 8191;
 
+/** The layout's current version and length (the wire names them, src/mp/match/movementCheckpoint.ts: one codec). */
+export const MOVEMENT_PREDICTION_STATE_VERSION = 9;
+export const MOVEMENT_PREDICTION_STATE_VALUES = VALUE_COUNT;
+
 interface MovementPredictionState {
-  version: 9;
+  version: typeof MOVEMENT_PREDICTION_STATE_VERSION;
   values: number[];
   flags: number;
 }
@@ -79,7 +86,8 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._spring, SPRING);
   append(values, state._terr, TERRAIN);
   append(values, state._susp, ROCK);
-  append(values, state._flinch, ROCK);
+  // four reserved values: the hull's hit/recoil rock until audit M9 made it the visual's own; written as zeros
+  values.push(0, 0, 0, 0);
   append(values, state._ride, RIDE);
   append(values, state.trackScroll, TRACK);
   append(values, state._sup, SUPPORT);
@@ -103,7 +111,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
     (state._body.bodyRest & 3) << 11;
-  return { version: 9, values, flags };
+  return { version: MOVEMENT_PREDICTION_STATE_VERSION, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -123,17 +131,18 @@ export function applyMovementPredictionState(
   offset = restore(state._spring, SPRING, values, offset);
   offset = restore(state._terr, TERRAIN, values, offset);
   offset = restore(state._susp, ROCK, values, offset);
-  offset = restore(state._flinch, ROCK, values, offset);
+  offset += RESERVED_ROCK_VALUES; // the retired hit/recoil rock (audit M9): read past, never applied
   offset = restore(state._ride, RIDE, values, offset);
   offset = restore(state.trackScroll, TRACK, values, offset);
   offset = restore(state._sup, SUPPORT, values, offset);
   state._ride.supportY = flags & 1 ? values[offset] : NaN;
   state._body.landingBlendS = values[offset + 1];
   state._rollover.elapsedS = values[offset + 2];
-  state._ride.grounded = !!(flags & 2);
-  state._body.tumbling = !!(flags & 4);
+  // both copies of ground contact from the checkpoint, the integrator's truth (whatever the row said)
+  setHullGrounded(state, !!(flags & 2));
   state._body.dynamicSupport = !!(flags & 8);
-  state._body.autoRighting = !!(flags & 16);
+  // the rigid phase and the righting torque against the overturn the row set (hullBodyMode.ts keeps the mode legal)
+  restoreHullBodyMode(state, state.overturned, !!(flags & 4), !!(flags & 16));
   state._rollover.expired = !!(flags & 32);
   state.atGunLimit = !!(flags & 64);
   state.gunLimitSpec = !!(flags & 128);

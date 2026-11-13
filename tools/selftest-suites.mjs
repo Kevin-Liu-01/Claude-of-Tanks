@@ -41,6 +41,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/droneLaunch.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/fx/droneReturn.selftest.mjs',
+    // round 8 Y6 s4-02 (fix-up r1): the solo step's drone:down reaches the FX runtime keyed to its shell: no flight home
+    'src/fx/droneDownedSolo.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
     'src/app/garageModePreviewRuntime.selftest.mjs',
@@ -74,6 +76,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
     'src/game/gunshipAirframe.selftest.mjs',
+    // 2026-11-02 audit R6 (review round 2): a failed airframe chunk is asked past the policy's backoff by its sync and the
+    // lens guns, which ask every frame (it was asked again on every frame)
+    'src/game/gunshipAirframeLoadFailure.selftest.mjs',
     // (ac130-barrels-230, the owner) the guns beside the gimbal lens: seen firing and recoiling, their rounds, missile and
     // smoke leaving their muzzles
     'src/fx/gunshipLens.selftest.mjs',
@@ -87,11 +92,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
+    'src/game/strikeOrder.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
+    'src/sim/strikeRuns.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
     // 2026-10-14 (owner): the drone recall, only from the drone's feed; it flies home and lands; a shorter recall cooldown
     'src/sim/droneRecall.selftest.mjs',
+    // 2026-11-02 audit M4: a carrier's revive retires its airframe in flight; a restored airframe keeps its velocity
+    'src/sim/droneLife.selftest.mjs',
     'src/mp/host/droneRecallWire.selftest.mjs',
     'src/fx/droneRecallReturn.selftest.mjs',
     'src/ui/droneControlState.selftest.mjs',
@@ -100,6 +111,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/aerialCamera.selftest.mjs',
     'src/sim/sixModesAuthority.selftest.mjs',
   'src/mp/host/sixModesMigration.selftest.mjs',
+    'src/mp/host/objectiveModesMigration.selftest.mjs', // 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff
+    'src/mp/host/combatMigration.selftest.mjs', // 2026-11-02 audit M1: reload channels, module hp, fires, magazines, consumables, smoke and pillboxes survive a host handoff; a newer frame's rows win, mode stamps hold
+    'src/mp/host/reviveMigration.selftest.mjs', // 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh life and is not revived again
+    'src/mp/host/resumeAging.selftest.mjs', // 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row's to the resume frame too
+    'src/mp/host/resumeHullBody.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host restores each hull's ground contact, body mode, spring and ride from its row
+    'src/mp/host/migrationExtrasSize.selftest.mjs', // 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore is unchanged
+    'src/mp/host/resumeSmoke.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host keeps standing smoke screens; a resumed host's frames carry them on the battle clock
+    'src/mp/host/modeEventKeyframe.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migration keyframe follows a mode event within a housekeeping beat, not the 2 s cadence
+    'src/mp/host/modeFrameReconcile.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host resumes the score, zones, flags and ball as the seat's newest frame shows them
+    'src/mp/host/resumePhase.selftest.mjs', // 2026-11-02 audit M1: a migrated countdown counts on, an ended match stays ended, an unreadable keyframe never restarts a battle
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
@@ -176,6 +197,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
     'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
+    // 269: the second air-defence round: the Type 87 on the Type 74 hull, the Marksman turret on the T-55 and Leopard 2A4,
+    // the Lvkv 9040 on the CV90 Mk 4, the K30 Biho on its K200 hull, the PZA Loara on the PT-91: frames, bores, sweeps
+    'src/vehicles/profiles/type87.selftest.mjs',
+    'src/vehicles/profiles/marksman.selftest.mjs',
+    'src/vehicles/profiles/lvkv9040.selftest.mjs',
+    'src/vehicles/profiles/k30Biho.selftest.mjs',
+    'src/vehicles/profiles/loara.selftest.mjs',
+    // 269: the M163 VADS on the M113 builder's M741: its frame, the Vulcan's rotor and its spin, the sweeps
+    'src/vehicles/profiles/m163.selftest.mjs',
+    // 2026-11-06: the owner's air-defence firepower (airDefenseFirepower.ts): the floor cycle, the output, the rounds, the racks
+    'src/vehicles/airDefenseFirepower.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
@@ -212,6 +244,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
     // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
     'src/vehicles/profiles/australia.selftest.mjs',
+    // the 152 mm line (owner 2026-11-04: "make a new russian tank called object 195"): the Object 292, the Object 477 Molot,
+    // the Object 195 and the T-14 152 in Russia's tree, tiers and photo packet at both qualities, each one's guns and kit
+    'src/vehicles/profiles/russia152.selftest.mjs',
+    // 2026-11-08 round 8 s5-05: a variant built on a donor's build (the Australian and Ukrainian M1A1s, donorBuild.ts)
+    // wears its own suit whatever row the donor has; its id is its own again after the donor build; two suited low builds
+    // and a plain one, 6.8 s CPU at load 50 (2 s of it the fleet import)
+    'src/vehicles/variantIdentity.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
@@ -230,12 +269,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
+    // 2026-11-02 audit M4: a red roof-gun module silences the station without throwing its switch; the repair restores it
+    'src/sim/roofGunRepair.selftest.mjs',
     'src/vehicles/detachedGear.selftest.mjs',
     'src/vehicles/weaponDamageVisuals.selftest.mjs',
     'src/game/objectiveSurface.selftest.mjs',
     'src/vehicles/externalWeapons.selftest.mjs',
     'src/vehicles/missileConceptMarkings.selftest.mjs',
     'src/game/missilePresentation.selftest.mjs',
+    // round 8 Y1 s5-01: one barrel owner for twin cannons: the authority names and fires each mouth, solo and the screens agree
+    'src/sim/twinMuzzleParity.selftest.mjs',
+    // round 8 Y1 s5-01 (review r1): the same mouths on the page's own step (MANUAL 'sims': a page import and a world)
+    'src/game/twinMuzzleSolo.selftest.mjs',
     'tools/first-party-concept-policy.selftest.mjs',
     'src/vehicles/arieteModernSpecs.selftest.mjs',
     'src/vehicles/suppliedSourceArmorRegistration.selftest.mjs',
@@ -318,6 +363,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/publicBuildEnv.selftest.mjs',
     'tools/vercel-output-immutable.selftest.mjs',
     'tools/typescriptToolchain.selftest.mjs',
+    // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
+    'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
@@ -355,6 +402,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/gate-stowage.selftest.mjs',
     // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
     'tools/gate-oracle-pins.selftest.mjs',
+    // 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision
+    // recipe; the M3A3 registers its pinned excised print
+    'tools/oracle-width-audit.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
@@ -475,15 +525,22 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
     'src/sim/consumableRules.selftest.mjs',
+    // 2026-11-02 audit M5: equipMults as named layers (equipment, mode stamps, consumables); the boss keeps x0.5 through items
+    'src/sim/modeMultiplierLayers.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
+    // 2026-11-02 audit M5: a mode weapon swap (Gun Game, the AC-130) repoints the cannon channel with the rest
+    'src/sim/modeWeaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
+    // 2026-11-02 audit A7 (round 3, U28 x Studio teardown): a teardown step that throws skips none of the rest (the crushes' release)
+    'src/game/studioTeardown.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
     'src/game/studioSceneShare.selftest.mjs',
     'src/ui/studioPlanView.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
     'src/game/studioFilmSupport.selftest.mjs',
+    'src/game/studioFilmHolds.selftest.mjs', // 2026-11-02 audit U30 (round 2): a film entry that throws gives its governor and temporal-AA holds back
     'src/engine/filmDepthProbe.selftest.mjs',
     'src/game/studioFilmMux.selftest.mjs',
     'src/game/studioFilmAudio.selftest.mjs',
@@ -493,6 +550,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
     'src/ui/studioQueue.selftest.mjs',
+    // 2026-11-02 audit F9: Clear during a queue run skips no job, Export film waits for the queue, a hidden sound lane stops
+    'src/ui/studioPanelBusy.selftest.mjs',
+    // 2026-11-02 audit X9 (round 3, R6/Q17): the field-frames archive's failed sheet closes it, says so once and marks its button;
+    // its next press reloads, never over the Studio's running work
+    'src/ui/studioArchiveOpener.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',
@@ -506,6 +568,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
     'src/fx/killLight.selftest.mjs',
+    'src/fx/absenceGrace.selftest.mjs', // 2026-11-02 audit F10: a round missing from a frame has not ended (tracers, trails, wires, drones)
+    'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding; a hull's event point on the hull where it stands (round 4 merge review r2), never measured from a hidden network hull's last sample (round 5 U16)
+    'src/fx/heRoundRecords.selftest.mjs', // 2026-11-02 audit U31/U33 (round 2): an HE round's records outlast other rounds and a rebase; a late ground expiry keeps its marks; (round 5 U11) a record keeps its grace after its round's last drawn frame
+    'src/fx/replayVeil.selftest.mjs', // 2026-11-02 audit U31 (round 2): the killcam's suppression hides the FX veil, never an owner's own flag (the lens guns)
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
     // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
@@ -573,7 +639,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
     // 268: the M3A2 under the classic turret (its photo packet fixture)
     'src/vehicles/profiles/m3a2Bradley.selftest.mjs',
-    'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',
     'src/vehicles/profiles/ifvMantletAndBow.selftest.mjs',
@@ -592,6 +657,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/launcherOrigins.selftest.mjs',
     'src/vehicles/ifvReplicas.selftest.mjs',
+    // 2026-11-08 round 8 s5-04: the Redback's gun is the Puma S1's registration-time gun, whenever its pack evaluates
+    'src/vehicles/redbackRegistrationGun.selftest.mjs',
     'src/vehicles/europePhotoIfvs.selftest.mjs',
   'src/vehicles/amx10p.selftest.mjs',
     'src/vehicles/staggeredTrackGround.selftest.mjs',
@@ -836,6 +903,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
+    // 2026-11-02 audit S5: cinema's lease-over exit is its own number, not the selftests' STARVED 75
+    'tools/media-production/lease-exit.selftest.mjs',
     'tools/media-r5/motion-type.selftest.mjs',
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
@@ -844,6 +913,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
+    // 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes
+    'tools/media-r5/site-loops-resume.selftest.mjs',
+    // 2026-11-02 audit S4: the media lane's payback to the normal band, one rule for the lab and the finals
+    'tools/media-r5/priority-yield.selftest.mjs',
     // brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds,
     // one still per page)
     'src/presentation/mediaPlayer.selftest.mjs',
@@ -898,18 +971,50 @@ export const SELFTEST_SUITES = Object.freeze({
     // 267: test:lane's red classes (OWN, INHERITED, FLAKY) and the base results kept by input fingerprint
     'tools/lane-reds.selftest.mjs',
     'tools/release.selftest.mjs',
+    // 2026-11-02 audit S5: a live deploy recorded before verify, an owned cache lock, each Worker's commit on record
+    'tools/release-record.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    // 2026-11-02 audit S4: one acquire per instance (no leaked render slot, no wait on its own pid) and nested holds
+    'tools/capture-lock-reentry.selftest.mjs',
+    // 2026-11-02 audit S4: a lock class taken by default (exclusive) is said and recorded; the media renderers name theirs
+    'tools/capture-lock-class.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-11-02 audit S4: one owner of a hold's cap, budget, grace and yield (withCaptureHold, runWarmHold)
+    'tools/capture-hold-phases.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
     // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
+    // 2026-11-02 audit S4: a trip that keeps the process running releases only the holds its caller names
+    'tools/browser-guard-holds.selftest.mjs',
+    // 2026-11-02 audit B16 (round 3): a guarded launch hands puppeteer handleSIGINT false, so a hold's unwind and a tool's own
+    // SIGINT handler run on Ctrl-C as on SIGTERM; with no other owner SIGINT still exits 130 and kills the browser
+    'tools/browser-launch-sigint.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
+    // 2026-11-02 audit S4: the capture-hold census (no retired memory-guard gate; the hold wrapper and its direct acquirers)
+    'tools/capture-hold-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
+    // 2026-11-02 audit S4: the probe mutex has an owner (a dead holder's reaped, a live or shell holder's never)
+    'tools/session-mutex.selftest.mjs',
+    // 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit 77 on a wait
+    'tools/with-capture-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    // 2026-11-02 audit A5 (round 3): a cap stop mid-unit leaves the unit for the next run (exit 3) in each acquireProbeLocks
+    // caller (frame-budget-probe, battle-memory-probe, battle-spike-census and its gate, shadow-cache-truth, time-to-battle)
+    'tools/probe-unit-stop.selftest.mjs',
+    // 2026-11-02 audit F12/E10 (round 4): turret-parent-audit, marketing-shots/shoot and studio-example-videos, on a stand-in
+    // lock and browser (mock clock), yield at the cap inside their graces, keep what finished past a stop (exit 3) and exit
+    // 128 + n on a signal
+    'tools/long-hold-users.selftest.mjs',
+    // round 8 Y8 (sweep s6-01): cloud-sky-shots on the hold wrapper, one owner per unit, on a stand-in browser and a private
+    // lock: browsers closed before the release (way out, a failure, a cap yield, SIGTERM), a first unit failed while queued
+    // opened again, a launch past its unit's budget closed as it comes back; the cap on a mock clock (a unit in flight shot
+    // inside its grace, stopped past it; a refused re-queue counted), a unit past its budget never recorded, a first unit
+    // queued past its budget shot warm
+    'tools/cloud-sky-shots.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
@@ -926,6 +1031,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
+    // before the unlock, and a budget that tears down before it exits
+    'tools/chain-lifecycle.selftest.mjs',
+    // round 8 Y10 s6-06: a regen chain's stop reaches its rows read (the read runs in the chain's groups, awaited), and
+    // a rows read outside a chain ends with its caller or its runner's signal. Real processes: ~11-13 s of wall at load ~50,
+    // up to ~45 s at load ~220 (process starts and real waits; ~1.7 s of CPU)
+    'tools/changed-only/rowsReadStop.selftest.mjs',
     // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
     'tools/combat-anatomy-parts.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
@@ -936,6 +1048,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
+    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet in any part, a removed chunk or an opener terminal;
+    // a module asked again past a backoff capped at a minute, with no budget)
+    'src/app/lazyChunk.selftest.mjs',
+    // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
+    // hand-made memo or failure-cleared latch; a default-policy load of several parts settles them with importAll; every
+    // lazy stylesheet is held and has one owner per document; (round 4 F2 review) the lifecycle-edge asks (backoff:
+    // false, entry: true, the Studio relight in the spellings it reads) held to their callers, (round 5 U8) with
+    // relights planted on a per-move path that it must name
+    'src/app/lazyChunkSites.selftest.mjs',
+    // 2026-11-02 audit R6 (review round 2): the hero cards' one load keeps a failed heroCard.css for every surface
+    'src/ui/heroCardChunk.selftest.mjs',
+    // 2026-11-02 audit R6: a failed notice kit or battle notice region chunk is asked again by the next battle notice
+    'src/ui/battleNoticesLoadFailure.selftest.mjs',
+    // 2026-11-02 audit R6: a failed paint is painted again (three in a row at most); no DOM still caches its null
+    'src/vehicles/paintCaches.selftest.mjs',
+    // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode
+    'src/ui/cachedFailures.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): no Gallery anatomy scene is disposed mid-link, so every prepare settles
+    'src/gallery/anatomyViewLinkDispose.selftest.mjs',
+    // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
+    'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
@@ -968,7 +1101,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
+    // 2026-11-02 audit R3: the preset broadcast's one owner (isolated, never nested) and governor steps under a recovery cap
+    'src/engine/qualityBroadcast.selftest.mjs',
     'src/engine/temporalAA.selftest.mjs',
+    // 2026-11-02 audit R4: one temporal-AA owner; a Studio film holds it off and restores nothing stale
+    'src/engine/temporalAaHolds.selftest.mjs',
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',
@@ -980,6 +1117,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/lensFlare.selftest.mjs',
     'src/engine/cinemaPost.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
+    // 2026-11-02 audit R3: the governor's suspension as named holds (a restore mid-load, a film across a load release)
+    'src/engine/adaptiveHolds.selftest.mjs',
+    // 2026-11-02 audit R4: the governor's tier-down warmup is each workload's, measured from its reset
+    'src/engine/governorWarmup.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
     'src/engine/sceneSourcePass.selftest.mjs',
@@ -989,6 +1130,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: a tiny parent waits in one first-layout recovery instead of rebuilding it every 250 ms
+    'src/engine/viewportRecovery.selftest.mjs',
     // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
     // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
     // before every yield, and the repro harness's summary arithmetic
@@ -999,6 +1142,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
@@ -1009,10 +1153,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/garageFramePacer.selftest.mjs',
     'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/phaseGpuResidency.selftest.mjs',
+    // 2026-11-02 audit R5: the Garage GPU restore is a state; a suspend or context loss during it is kept, overlapping
+    // restores share one upload
+    'src/engine/phaseGpuResidencyRestoreRace.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
+    // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list); (round
+    // 3 B5) its scenario drives the drones, the gunship, the auxiliary systems, wires and the composer, and V8's block
+    // coverage measures its reach: an fx-clock site it never runs that is not in its named KNOWN_UNREACHED list fails it,
+    // and so does a listed site it now runs; (round 4 F7) a key names one site, and a clock handed under another name and
+    // a read of the shared uTime uniform are sites; an unloaded src/fx module that reads the clock fails it, and so does a
+    // stamp moved twice; its scenario drives the Studio cinematic layer and a round drawn past its record's bound
+    // (round 5 U11: the record the drawn round's renewal keeps is walked at the rebase); (round 5 U12) it leaves the
+    // two houses' destruction, what it stamps wherever that lives and the sites only it reaches, to the census whole
+    // (next)
+    'src/fx/fxClockStampCensus.selftest.mjs',
+    // 2026-11-02 audit U12 (round 5): the census whole, with the two houses' destruction the default receipt leaves out
+    // (manual: fx)
+    'src/fx/fxClockStampCensusFull.selftest.mjs',
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
@@ -1045,13 +1206,29 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
+    // 2026-11-02 audit R5: each pedestal visual's residency is declared (lent stays lent until the return adopts it)
+    'src/game/garagePedestalResidency.selftest.mjs',
     'src/game/garageCamoTryOn.selftest.mjs',
     'src/ui/camoPicker.selftest.mjs',
+    // 272: the first-game tutorial's steps, strings, media and claims (every tip held to the simulation), and its record
+    'src/ui/tutorial/tutorialSteps.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
     // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
     // every surface the source opens registered with its owner and its place
     'src/ui/components/surfaceStack.selftest.mjs',
+    // 2026-11-02 audit F5: a hidden page takes its surfaces with it; the stack is the one "a modal is open" truth
+    'src/ui/components/surfaceStackOwnership.selftest.mjs',
+    // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
+    'src/ui/garageOpenState.selftest.mjs',
+    // 2026-11-02 audit Q11/U24 (round 2): the ready wait rides the boot latch's edge; a read runs no waiter (the callouts once)
+    'src/ui/gameReady.selftest.mjs',
+    // 2026-11-02 audit U24 (round 2): a first show waits under the boot splash only while it covers; the return sweeps
+    // the battle's hidden surfaces
+    'src/ui/garageShow.selftest.mjs',
+    // 2026-11-02 audit U24 / 05-ui-2 #6 (round 2): the consumables wait survives a layout sweep; a tank change or the
+    // room's lock closes the picker
+    'src/ui/garageConsumablesPicker.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
@@ -1078,6 +1255,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageVariants.selftest.mjs',
     'src/game/garageWallLayout.selftest.mjs',
     'src/ui/garageArchitecture.selftest.mjs',
+    // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
+    'src/ui/garageArchitectureRecords.selftest.mjs',
+    // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
+    'src/ui/garagePrewarmCancel.selftest.mjs',
+    // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose
+    'src/ui/garageVariantReveal.selftest.mjs',
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
@@ -1086,7 +1269,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #4: a failed surface set leaves once unheld and reloads; per-handle render listeners
+    'src/ui/garageTextureResidency.selftest.mjs',
     'src/ui/garageDisplayAtlas.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #5: a failed display atlas load is asked for again by the next display
+    'src/ui/garageDisplayAtlasRetry.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
     // garage 231 (2026-10-21): the slideshow's CRT clear of every deck, rail, column, structure and kit piece
@@ -1105,8 +1292,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // round 8 Y1 s2-01: a couch battle's seats end with it (the Garage return, a network activation): the online round drives
+    'src/game/couchSessionLifecycle.selftest.mjs',
+    // round 8 Y1 s2-01 (review r1): the same three battles seated by the page's setupBattle (MANUAL 'sims')
+    'src/game/couchSessionBattle.selftest.mjs',
+    'src/game/soloModeVerdict.selftest.mjs', // 2026-11-02 audit M3: a solo verdict the mode did not reach latches its controller (Zone Control scores no more in the hold)
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
+    // round 8 Y1 s2-02: the first live step plans every route still pending (a slow warm drives as the eager battle)
+    'src/game/openingRouteRollout.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
     // 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget.
@@ -1122,6 +1316,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/optionalProduction.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
     'src/presentation/notFound.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the 404 search asks once, never offline; a failure marks the field, its press reloads
+    'src/presentation/notFoundSearchLoad.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'tools/marketing-shots/og-images.selftest.mjs',
     // og-r2: a tank link shares its tank (the table, the cards, the rewrite)
@@ -1214,6 +1410,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
+    // 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled cable)
+    'src/vehicles/decorLivedIn.selftest.mjs',
+    // 270 (Main 2026-11-06: "the dock is a mission add-on, so it finds clear deck"): no mission seat over a stowage rack
+    'src/vehicles/stowageRackSeats.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
@@ -1271,17 +1471,26 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/circular-cap-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
+    'src/workerCalls.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
     'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/deploymentShadowWarm.selftest.mjs',
+    // 2026-11-02 audit R4: named castShadow holds (the covered warm and an articulated batch give back only their own)
+    'src/engine/castShadowHolds.selftest.mjs',
     'src/engine/deploymentUploadPrograms.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
     'src/engine/capabilityGate.selftest.mjs',
     'src/engine/capabilityGateCache.selftest.mjs',
+    // 2026-11-02 audit R3: a worker refusal seen before confirm() is this boot's answer only (no 14-day record)
+    'src/engine/capabilityGateRefusal.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: an abandoned Garage restore never re-freezes the cascades; the enclosure apart from the far sleep
+    'src/engine/shadowLatchOwners.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
+    'src/game/battleEntryReveal.selftest.mjs', // 2026-11-02 audit F2: the reveal has exits; entry edges and serial (F3 waits)
+    'src/game/soloBattleEntryAnnounce.selftest.mjs', // 2026-11-02 audit F2/F3: every solo start announces; waits for a return
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
     'src/game/soloBattleFxReadiness.selftest.mjs',
     'src/game/deploymentFxPrograms.selftest.mjs',
@@ -1293,8 +1502,25 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleWarmRuntime.selftest.mjs',
     'src/game/combatWarmCoordinator.selftest.mjs',
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
+    'src/game/deferredWarmReceipt.selftest.mjs', // 2026-11-02 audit S3: the deferred warm receipt declares running/finished/failed/cancelled
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
+    'src/game/studioEntrySuperseded.selftest.mjs', // 2026-11-02 audit R1: an entry its exit abandons mid-build settles silently
+    'src/game/studioEntryHandBack.selftest.mjs', // 2026-11-02 audit IR1 (round 2): a failed entry's Garage is announced once, by its return
+    // 2026-11-02 audit A10 (round 3, U36): a scene link whose entry an exit took back, whose build failed after its session
+    // ended, or that was pasted into a Studio an exit closed while it decoded, loads and says nothing in the Studio entered again
+    'src/game/studioLinkSession.selftest.mjs',
+    // 2026-11-02 audit F9: one Studio session (phase, tokens, cancels, held work); an exit during a map switch, a load, a
+    // light change or a film export lands nothing after the teardown
+    'src/game/studioSession.selftest.mjs',
+    // 2026-11-02 audit A10 (round 3 review r1): an undo whose session ended before its build failed is no step in a later Studio
+    'src/game/studioSessionExit.selftest.mjs',
+    // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
+    'src/game/studioTransport.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a Studio light never waits on a re-ask and is lit again once what it was
+    // applied without lands (light model, cloudscapes, atmosphere runtime, map air); never after its session or in a take;
+    // (round 5 U8) once per apply however many land together, a skipped landing leaving it to the next
+    'src/game/studioLightLanding.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
@@ -1310,8 +1536,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelObstacleQuery.selftest.mjs',
     // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
     'src/game/soloKernelMemoryGrowth.selftest.mjs',
+    // 2026-11-02 audit S2: a solo battle's kernel choice is made once at its setup (kernels landing before its first step
+    // carry the next battle, never half of this one)
+    'src/game/soloKernelChoice.selftest.mjs',
+    // 2026-11-02 audit X10 (round 3): the solo battle entry waits for its chunk's world kernels (bounded), so a first
+    // battle is not set up on the TypeScript by a race with its own load
+    'src/game/soloKernelEntry.selftest.mjs',
     // dev-battle-freeze: the dev battle hold (__DEBUG.battleHold) keeps a solo battle alive and still; off, the step byte for byte
     'src/game/devBattleHold.selftest.mjs',
+    // round 8 Y1 s2-05 (review r1): the hold's edges and the undo's answers on the page's own battle (MANUAL 'sims')
+    'src/game/devBattleHoldEdges.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
@@ -1335,6 +1569,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageTankLifecycle.selftest.mjs',
     'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleAgainAction.selftest.mjs',
+    'src/game/garageReturnState.selftest.mjs', // 2026-11-02 audit F3: explicit return state, named busy refusals, no polling
+    'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
+    'src/app/bootReadiness.selftest.mjs', // 2026-11-02 audit S3: a product boot latch; the harness flag is its write-only mirror
+    'src/app/automationPath.selftest.mjs', // 2026-11-02 audit S3: one automation reader, an explicit player path, the tools census
+    'tools/game-readiness.selftest.mjs', // 2026-11-02 audit S3: one readiness probe over the published lifecycle; hand-built waits listed
+    'src/game/networkVerdictPhase.selftest.mjs', // 2026-11-02 audit F1: a network verdict owns its time; its report follows the hold
+    'src/game/battleEntryIntent.selftest.mjs', // 2026-11-02 audit F2: one solo intent record; a room world never inherits it
     'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',
@@ -1342,11 +1583,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liveHeightFieldProxy.selftest.mjs',
     'src/world/worldBuildCoordinator.selftest.mjs',
     'src/world/worldActivationRuntime.selftest.mjs',
+    'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
+    // 2026-11-02 audit U26 (round 2): an orphaned build is speculative again, a superseded warm hides its world at once
+    'src/world/worldActivationOrphans.selftest.mjs',
+    'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
+    'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
+    'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset
+    // 2026-11-02 audit R6 (round 2 U35): a failed map module transfer no longer fails every later world build
+    'src/world/worldModuleLoadFailure.selftest.mjs',
+    'src/world/worldBuildCloseContracts.selftest.mjs', // 2026-11-02 audit R1: vegetation closes on cancel; ring stage kept; no late atlas draw
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/world/terrainStreaming.selftest.mjs',
     'src/world/terrainSplatFields.selftest.mjs',
+    'src/world/terrainPresetListeners.selftest.mjs', // 2026-11-02 audit R1: a closed terrain build leaves no preset listener
     'src/world/textureUploadOrientation.selftest.mjs',
     'src/world/normalMapOrientation.selftest.mjs',
     'src/world/roadPathStyles.selftest.mjs',
@@ -1361,6 +1612,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
+    'src/fx/volumeCardBody.selftest.mjs', // dust-orient-271: a media card's aspect is its body's shape in the world, never the screen's
     'src/fx/structureStages.selftest.mjs',
     // destruction-slabs 227 round 3: what a building's damage leaves hanging comes down (a roof's chimney and ladder, a mill's
     // sails, a loose room or face piece)
@@ -1412,6 +1664,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/muzzleNearField.selftest.mjs', // 271: a gun's muzzle light reaches its own gun through a near field
+    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's report, flash, light and kick by its cadence; a slow gun's as before
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
@@ -1432,6 +1685,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle;
+    // (round 3 A4) under the lazy-chunk policy, never per Studio sun-dial move
+    'src/engine/battleAtmosphereChunkReask.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2): a battle entry asks the light model, the cloudscapes and the atmosphere runtime at
+    // once whatever the backoff a Studio drag raised; a Studio light apply keeps the backoff and never awaits a stalled re-ask
+    'src/engine/battleAtmosphereEntryAsk.selftest.mjs',
+    // 2026-11-02 audit R6 (round 5 U8 review): a sky part in flight is a prepare's landing, a relight's too while it
+    // is not installed; a relight leaves out a part installed before its light applied, and any other prepare keeps it
+    'src/engine/battleAtmosphereLanding.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a Moon battle entered inside the backoff a Studio drag raised binds the
+    // Earth's land mask (its entry asks it at once), not the all-sea placeholder
+    'src/engine/earthLandEntryAsk.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
     'tools/night-fixture-census.selftest.mjs',
@@ -1446,10 +1711,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
+    // 2026-11-02 audit R3: one cloud install in flight, each caller its own fate; the noise worker retired after the fallback
+    'src/engine/sharedInstall.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
     // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
     'src/engine/earthLandAccess.selftest.mjs',
+    // 2026-11-02 audit A4 (round 3, U35): the Moon's land mask is asked again under the lazy-chunk policy, never per Studio
+    // sky apply (forty dial applies after a failure ask nothing inside the backoff, none offline)
+    'src/engine/earthLandReask.selftest.mjs',
     'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
@@ -1459,6 +1729,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-11-02 audit R3: a restored context re-bakes the GPU-only noise volumes; a layer disposed mid-link bakes nothing
+    'src/engine/volumetricCloudsLifetime.selftest.mjs',
     // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
     // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
     'src/engine/cloudsBan.selftest.mjs',
@@ -1485,6 +1757,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
     'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-11-02 audit R3: after the worker fails, its unanswered bakes and every later one run on the main thread
+    'src/engine/structureGroundOcclusionFallback.selftest.mjs',
     // 2026-10-17 (the SKY lane, 227 SKY-03): a thin deck's aureole — the solids' soft shadow under Whiteout's stratus
     'src/engine/structureAureole.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
@@ -1500,8 +1774,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
+    // 2026-11-02 audit R3: one restoration at a time (aborted by a newer loss), the loss counted first, a typed outcome
+    'src/engine/contextRestoreOwner.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
+    // 2026-11-02 audit R4: the rescue ladder reverts only its own writes (a newer owner's null stands, no retired texture)
+    'src/engine/watchdogStageOwners.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',
@@ -1519,6 +1797,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
     'src/engine/shadowDepthKinds.selftest.mjs', // 2026-10-12: one shadow depth material per caster kind (the perf stream)
+    // 2026-11-02 audit R6 (round 2 U35): a failed caster-kind or static-cache chunk is asked again past the policy's backoff
+    'src/engine/shadowChunkLoadFailure.selftest.mjs',
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
@@ -1542,6 +1822,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',
     'src/audio/sfxVerdicts.selftest.mjs',
+    // 2026-11-08 state-machine round 8 (Y9 s1-11): a sound-effect bank rebuild is one transaction: staged and judged
+    // outside public/, swapped in when one take ships, else refused with the shipped bank and its records kept
+    'tools/audio/sfxBank.selftest.mjs',
+    // 2026-11-08 state-machine round 8 (Y9 s1-12): a crew line's file n is its script take n; a failed take ends the
+    // line at its aligned prefix and --append resumes there; --dry plans as the build does
+    'tools/audio/voicePlan.selftest.mjs',
     'src/audio/propSounds.selftest.mjs',
     'src/audio/destructionSounds.selftest.mjs',
     // 2026-11-03 (world-sfx-269): the vehicles, the world and the modes sound of what they are (exhaustive tables, the
@@ -1549,10 +1835,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/worldSounds.selftest.mjs',
     // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
     'src/audio/reverbSends.selftest.mjs',
-    // 2026-11-04 (world-sfx-269): nothing of the hangar after the battle phase edge, on every entry path
-    'src/audio/battleEntryAmbience.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
+    // 2026-11-02 audit F11: failed assets retried after a backoff, owned pins (the battle warm replaces its own only)
+    'src/audio/assetLibraryRetry.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
+    // 2026-11-02 audit F11: an interrupted transmission takes its scheduled release click, crackle and static swell with it
+    'src/audio/crewRadioInterrupt.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
     // 2026-11-03 (impact-materials-269): every impact sounds of what it struck; only steel rings
@@ -1560,6 +1848,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
+    // round 8 Y3 (the 269 crew procedure's machines): the crew's battle and life on the engine's edges (the pause silences
+    // the net; a fresh gun is loaded; a kill's cease fire and a drone's recovery die with our tank), what the player sees
+    'src/audio/crewProcedure.selftest.mjs',
+    // round 8 Y3 s1-02: what the player sees is one rule (the seat's eyes and the radio share on the real spotting, the
+    // network's word, the watch and couch reveals), and the audio listener hands it to the engine
+    'src/game/playerVisibility.selftest.mjs',
     // (crew-lines-269) every mode's crew calls, the AC-130 crew's, the team counts by deathsAreFinal
     'src/audio/voiceLines.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
@@ -1569,12 +1863,28 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/countdownAudio.selftest.mjs',
     // 2026-10-14: every vehicle's countdown bank is the one its rig plays (the warm resolves each hull from its whole spec)
     'src/audio/presenceFamilies.selftest.mjs',
+    // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
+    // and presentations, facts before the graph, the lazy carry)
+    'src/audio/battleMode.selftest.mjs',
+    // 2026-11-02 audit Q16 (round 2): sfx-smoke's synthetic deaths, read from the tool, revive first and are heard once a life
+    // (round 3 B9: the tool's own scene loop and volley run on the real engine, cut from its source)
+    'src/audio/sfxSmokeDeaths.selftest.mjs',
+    // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
+    // battle's ambience intent is per battle); round 8 Y3 s1-06: nothing of the hangar after the battle edge on every
+    // entry path (269's world-sfx receipt, battleEntryAmbience, folded in)
+    'src/audio/ambienceTeardown.selftest.mjs',
+    // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
+    'src/audio/wantedLoops.selftest.mjs',
+    // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed; a mode
+    // respawn starts the hull's module states whole (round 4 merge review r1)
+    'src/audio/audioLatches.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
     'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
+    'src/mp/transport/transportLifecycle.selftest.mjs', // 2026-11-02 audit M2: one retry timer per reconnect; a reopened WebRTC link hears signals; the swap names its state
     'src/mp/match/clock.selftest.mjs',
     'src/mp/match/inputStream.selftest.mjs',
     'src/mp/match/snapshotStream.selftest.mjs',
@@ -1583,6 +1893,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    // 2026-11-02 audit M8: wire 10's TUMBLING and STACKED flags; the clients' hull copies split tank contacts as the authority
+    'src/mp/match/hullBodyRow.selftest.mjs',
     'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/migrationStore.selftest.mjs', // 242 security round 2 (3a55e00a60); in no suite since
@@ -1598,10 +1910,24 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
     'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
+    // round 8 Y2 (s4-04): each seat holds the sealed boot configuration from its WELCOME on (sealed once, sent with the
+    // WELCOME); a roster fallback keeps a present player's room loadout and gives a departed one's hull the defaults
+    'src/mp/host/matchHostCore.selftest.mjs',
+    'src/mp/host/hostRuntimeStates.selftest.mjs', // 2026-11-02 audit M1/M3: a stopped or failed host stays so on a late ready; a core whose actor ended is stopped
     'src/mp/host/hostStandby.selftest.mjs', // 2026-10-14 the MP stream: a standby host thread boots on the world it prepared (§13.21)
+    // 2026-11-02 audit round 5 Q1 (review r2): the host's fetch of the world kernels has a bound (HOST_KERNELS_FETCH_MS): a
+    // request with no answer, or a body stalled after its headers, is aborted and the boot goes live on the TypeScript,
+    // its ready 'timeout'
+    'src/mp/host/hostKernelsFetch.selftest.mjs',
     'src/sim/preparedAuthorityGround.selftest.mjs', // 2026-10-14 the MP stream: a prepared navigation ground plays digest for digest as a fresh one (§13.21)
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
+    'src/mp/host/resumeHoldClocks.selftest.mjs', // 2026-11-02 audit M1: a held seat's stall clock allows the resume hold; a seat whose link closed is not counted back
+    'src/mp/host/holdNotice.selftest.mjs', // 2026-11-02 audit round 3 B1/X6: a host that holds a HELLO says how long (HOLD); a kept host's and its own seat wait, a silent host's stalls at its announced end and release margin (virtual time moves only once the core's real async work has settled); round 4 F0: the host runtime tells every link its boot hold from its main thread, idle or booting, so a peer behind a Worker evaluating 8 s, or one whose HELLO reaches the runtime before start(), is told at its HELLO
+    // 2026-11-02 audit U1 (round 2; round 3 A3): a client follows a host that restarts the battle (clocks re-anchored, inputs admitted, the abandoned battle's
+    // retained state dropped), told by the battle's id at the WELCOME: a plain reconnect's late first snapshot restarts nothing, a restart after its countdown is seen
+    'src/mp/match/timelineRestart.selftest.mjs',
+    'src/mp/host/battleIdentity.selftest.mjs', // 2026-11-02 audit round 3 A3: a match's first battle is 0, a fallback restart names its own, a resume keeps it to its WELCOMEs; a real client told by the restarted core's WELCOME drops the old battle's keyframe
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
@@ -1612,6 +1938,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
+    'src/mp/presentation/wreckCause.selftest.mjs', // 2026-11-02 audit F10: a late cook-off cause reaches the wreck; a respawn forgets the last life's cause
+    'src/mp/presentation/settledFalls.selftest.mjs', // 2026-11-02 audit U27: a late joiner's settled props lie as they fell (wire 11 falls, withheld as their events are), a withheld one along its own heading (one prop in 64 hashes to +Z), not every one toward +Z
+    'src/mp/presentation/battleRestartReset.selftest.mjs', // 2026-11-02 audit round 3 X5: a battle restart stands the old battle's settled props, structures and heaps on the seat, and the effects' stages on the bus; the restarted battle lays and draws its own; review r1: it takes the world as every battle start does (resetWorldForBattle)
+    'src/mp/presentation/battleRestartLives.selftest.mjs', // 2026-11-02 audit round 3 merge review r1: a battle restart is a new life for every hull in every per-life listener (the killcam's chase, the audio engine's death latches, alarm and wrecks, the service record, the presentation's actors; round 4 E4: whole, hull points and modules, review r2: the living hulls' visuals and the audio's module states and battle play too; the HUD and report case moved to battleRestartTallies)
+    'src/mp/presentation/respawnRevive.selftest.mjs', // 2026-11-02 audit round 4 E6a: a hull a mode revives out of this seat's view is alive and whole on the seat (through the real MatchClient); a revive under a held wreck row leaves the life to the rows, and is settled once no row reaches the hull (review r1)
+    'src/mp/presentation/battleRestartTallies.selftest.mjs', // 2026-11-02 audit round 4 E6b: a battle restart opens a new battle for every per-battle record (the real HUD's kill counts, feed, sixth sense, contact memory and consumable tray, its report, the service record, the career record, the result flow's ending facts, death flow and camera with the real killcam (review r2), the medal toasts)
+    'src/mp/presentation/unseenRounds.selftest.mjs', // 2026-11-02 audit U31: a round that left the view in flight is named unseen (wire 11) and held by the effects, not ended; A13 (round 3): a 512-round burst still encodes, a drone whose hold ends unseen never flies home
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
@@ -1624,22 +1957,39 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/roomLock.selftest.mjs', // 2026-11-02 audit M2: the admin's lock outlives rounds; a start re-reads the room after its host answers
     'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
+    'src/mp/room/roomClientLeave.selftest.mjs', // 2026-11-02 audit M2: a leave while reconnecting leaves on the resume; a disconnect keeps no stale host
     // 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model and QR
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
     'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
+    'src/pad/padReadyBuzz.selftest.mjs', // round 8 Y5 s3-06: no loaded buzz through a pause or after the link leaves live; the seat is the link's
     'src/pad/padPhoneHalf.selftest.mjs', // phone-feel-269: no desktop-only export rides to the phone's page
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
+    'src/pad/padLobbyResume.selftest.mjs', // round 8 Y5 s3-07/s3-08: the real lobby and actor in memory: a TV blink keeps a joined lobby, a setOpen while away lands (app-couch's Start, s3-09), the roll call lets go of a seat that left, an ICE ask a closed socket dropped is asked again, couchLobby's paint while away is pinned, the setOpen queue sends a waiting ask with the first code, the newest ask wins, a sent ask (a Reopen that met a closing socket) is never sent again and a window that lapsed while away stays closed
+    'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
+    'src/game/couchPanes.selftest.mjs', // couch-panes-272: the split screen's grids, equal panes, the HUD scale and its priority tiers
+    'src/engine/chaseStart.selftest.mjs', // couch-panes-272: the chase camera's first look follows the hull's pitch (no GUN TRAVEL LIMIT at a slope spawn)
+    // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
+    'src/app/couchRuntime.selftest.mjs',
+    // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's
+    'src/app/couchOpener.selftest.mjs',
+    // round 8 Y4 (ROUND8 amendment 4): a couch battle's Battle Again on the page's setupBattle is a couch battle (MANUAL 'sims')
+    'src/game/couchRematch.selftest.mjs',
+    // round 8 Y4 s3-05: one phone pause rule (open, or close with no relock) for the single pairing and every couch seat
+    'src/ui/phonePause.selftest.mjs',
     'src/pad/qr.selftest.mjs',
     'server/rooms/localPadService.selftest.mjs',
+    'server/rooms/roomEvents.selftest.mjs', // 2026-11-02 audit S1: Room and PadPair end every event through one end and deallocate by one rule
+    'server/rooms/lanServices.selftest.mjs', // 2026-11-02 audit S1: a LAN room runs its events in order and owns its timer and p2p host; a pairing is removed only as itself
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
@@ -1654,15 +2004,30 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-stepdown.selftest.mjs',
     'tools/mp-p2p-early-link.selftest.mjs', // 2026-10-20 item/mp-rejoin-229: a running match's re-entry links beside its load
     'tools/mp-room-lifecycle.selftest.mjs',
+    'tools/mp-states.selftest.mjs', // 2026-11-02 audit S3: the MP harnesses take the protocol's state words from their owners
+    'tools/pad-states.selftest.mjs', // round 8 Y5 s6-04: the pad harnesses take the pad's state words from their owners
     'src/mp/session/browserComposition.selftest.mjs',
+    // round 8 Y1 s1-04 (review r2): the composition's loader start, played on the real audio engine: a rematch loads in silence
+    'src/mp/session/roundLoaderAmbience.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',
+    'src/mp/session/playMenuAdapterSeat.selftest.mjs', // 2026-11-02 audit F6: a close during the limit check cancels the attempt; a released seat's round names its owner
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',
     'src/mp/session/matchSessionEntryReports.selftest.mjs', // 2026-10-13 MP plan step 8: the loading host reports until its actor does
     'src/mp/session/hostHeadroom.selftest.mjs', // 2026-10-13 MP plan step 10: a slow tab declines to host while it waits in the room
     'src/mp/session/matchSessionHandOff.selftest.mjs', // 2026-10-13 MP plan step 11: a hosting tab going away hands its match on at once
+    'src/mp/session/matchSessionRematchHost.selftest.mjs', // 2026-11-02 audit M2: a host's in-place rematch never declines its own next round
+    'src/mp/session/matchSessionDecline.selftest.mjs', // 2026-11-02 audit M2: a host decline lasts its match; a seat that cannot host says so again
+    'src/mp/session/matchSessionRole.selftest.mjs', // 2026-11-02 audit M2: the session's p2p role is one declared state; a finished host hands nothing on
+    'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
+    // 2026-11-03 integration IR11 (audit M1 x M2): an elected seat with no state of a running battle declines through the role machine and setDecline
+    'src/mp/session/matchSessionFallbackDecline.selftest.mjs',
+    'src/mp/session/matchSessionLiveHostFailure.selftest.mjs', // 2026-11-02 audit Q2 (round 2): a live host whose thread fails hands the match on at once (an unable decline, the hosting role left)
+    'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
+    'src/mp/session/matchSessionEntry.selftest.mjs', // 2026-11-02 audit M2: a leave cancels a loading entry; a re-sent match_start joins it
+    'src/mp/session/matchSessionTimers.selftest.mjs', // 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',
@@ -1675,6 +2040,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/roomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
+    'src/ui/playMenuSeat.selftest.mjs', // 2026-11-02 audit F6: the Play menu's seat is one declared state; the handoff stops the hidden lobby
     'src/mp/session/compositionAccess.selftest.mjs',
     'src/mp/session/intentCover.selftest.mjs',
     'src/mp/session/lobbyPreloader.selftest.mjs',
@@ -1705,17 +2071,24 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/unseenShellMarks.selftest.mjs', // 2026-11-02 audit A13 (round 3): a viewer's unseen rounds stay within the wire's 256, ascending, every departure named in its frame; F4/E11 (round 4): no storage made again per frame (new-space bytes under --expose-gc), a kept frame keeps its own names
+    'server/match/skipStarvation.selftest.mjs', // 2026-11-02 audit S1: a viewer withheld snapshots past the starvation limit is closed; a transient skip is not
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/matchPhase.selftest.mjs', // 2026-11-02 audit M3: one match phase through the ending hold to the stop; a clock verdict freezes the mode controller
+    'src/sim/verdictHold.selftest.mjs', // 2026-11-04 round 2 U4: through the ending hold a falling crate lands, the ball comes down, a carried flag rides its carrier; nothing scores
+    'src/sim/verdictBallShot.selftest.mjs', // 2026-11-06 round 3 A1: a round in flight at the clock verdict flies through the Turbo Ball on the authority's step; no hit, touch or launch
+    'server/match/actorEnds.selftest.mjs', // 2026-11-02 audit M3: a self-stopped actor leaves the service, a failed WELCOME detaches, a roster change follows its batch
     'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
     'tools/starvation-meter.selftest.mjs', // 267: the soak's starvation meter on driven clocks
     'server/authoritativeBots.selftest.mjs',
+    'server/soakRams.selftest.mjs', // 2026-11-06 round 3 B8: the bot soak's ally gate and per-ram viewer check judge a staged battle with rams (the soak's own battles had none)
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     // 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their
@@ -1734,6 +2107,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
+    // 2026-11-02 audit M4: a revive is a life boundary for lag compensation's pose history (no rewind into a wreck's pose)
+    'server/match/lagCompensationLife.selftest.mjs',
     'src/sim/movement.selftest.mjs',
     // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
     'src/sim/trackContact.selftest.mjs',
@@ -1742,8 +2117,19 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    'src/sim/ramModuleLaw.selftest.mjs', // 2026-11-02 audit M6: one module law, and a lethal ram's module damage on both drivers
+    // 2026-11-06 round 5 S2 (audit M6 ram rule after the 268 merge): a teammate ram deals nothing on the solo step or a room's
+    // authority, and its report reaches the page's bus, the audio and the paired phone with no damage event or cue (MANUAL:
+    // sims, tools/selftest-tiers.mjs); its default-tier half holds the two events' listeners in src and the phone's cue
+    'src/sim/teammateRam.selftest.mjs',
+    'src/sim/teammateRamListeners.selftest.mjs',
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
+    // (2026-11-02 audit M6: and what each team sees, tick for tick — spotting through one factory)
     'src/sim/driverStepParity.selftest.mjs',
+    // 2026-11-06 round 4 F8 (audit M6 spotting parity): the solo spotting reads the gated kit (combat.equip), as the authority's
+    'src/sim/spottingKitParity.selftest.mjs',
+    'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
+    'src/game/battleExitLedgers.selftest.mjs', // 2026-11-04 round 2 U13: the crush press and ram cooldowns leave with their battle at the Garage return
     // 268 (couch mode): one seat's input stage, the authority's and the local seats' alike
     'src/sim/playerInputStage.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
@@ -1751,13 +2137,25 @@ export const SELFTEST_SUITES = Object.freeze({
     // the game's own rigid bodies, and a dead hull's turret as one.
     'src/sim/rigidBody.selftest.mjs',
     'src/sim/wreckTurrets.selftest.mjs',
+    // 2026-11-02 audit 11-sim-2 #9: one owner for a wreck turret's phase; revived, benched and parked hulls, a full world, reset
+    'src/sim/wreckTurretLifecycle.selftest.mjs',
     'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
     'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
+    'src/vehicles/wreckLifecycle.selftest.mjs', // 2026-11-02 audit F10: one wreck state per visual: cook-off upgrade, reset cursors, disposed latch
+    // 2026-11-08 round 8 s5-02: the wreck's dispose move undoes the gun's crumple (no bent copy leaks at an MP match's end);
+    // four battle builds, 5.4 s CPU at load 50 (2 s of it the fleet import)
+    'src/vehicles/wreckDispose.selftest.mjs',
+    'src/vehicles/wreckTurretMode.selftest.mjs', // 2026-11-02 audit F10: one declared turret mode; late physics hands over to the authority
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
+    'src/sim/hullLifeParity.selftest.mjs', // 2026-11-02 audit M6: a revive's crash memory and the rollover gate, alike on both drivers
+    // 2026-11-02 audit M8: one owner for the hull body mode; no overturned or righting latch outside the rigid phase
+    'src/sim/hullBodyMode.selftest.mjs',
+    // 2026-11-02 audit M8: ground contact's two copies have one writer, a checkpoint restore included
+    'src/sim/groundContactCopies.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
@@ -1782,7 +2180,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    // 2026-11-02 audit M4: a hull the mode keeps off the field is neither spotted nor spotting; the linger ends on time
+    'src/sim/spottingLife.selftest.mjs',
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
+    'src/sim/flagCarrierReveal.selftest.mjs', // Main's ruling on audit finding 53 (2026-11-09): the flag carrier is a named reveal
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage law
@@ -1798,6 +2199,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
+    // 2026-11-02 audit S2: the overlay's clock as a state: reset unsets it (no heap starts on the last battle's time), and
+    // a risen ground keeps its lattice cache while the clock runs
+    'src/sim/terrainOverlayClock.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionLogBudget.selftest.mjs', // 243 security C3: the destruction log's budget
@@ -1810,6 +2214,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
     'src/sim/hiddenWorldEvents.selftest.mjs',
+    'src/sim/botEvents.selftest.mjs', // 2026-11-02 audit M6: shots, hits and blocked shots reach the bots through one delivery on both drivers
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',
@@ -1852,6 +2257,15 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
+    // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected). It also pins
+    // the CTF raid's and Frontline's attack stages across a migration (fix-up r3 and the residual, [6]): a lone raider
+    // or attacker goes in when the old host sends it, a window-revived raider stages afresh, a revived attacker keeps
+    // its plan
+    'src/sim/huntSearchMigration.selftest.mjs',
+    // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
+    // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
+    'src/sim/modeLife.selftest.mjs',
     'src/sim/honestHunt.selftest.mjs',
     'src/sim/frontlineDefenders.selftest.mjs',
     'src/sim/flagBots.selftest.mjs',
@@ -1868,6 +2282,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/nationIndex.selftest.mjs',
     'src/mp/room/roomBots.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
+    // round 8 Y10 s6-07: the aggression harness's stand read at each sample's tick from one speed (no edge sample gained
+    // or dropped), and a planted control that ends done after the sample past its stand or unproven with its cause
+    'tools/mode-aggression-stand.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
     'src/sim/provingGround.selftest.mjs',
@@ -1910,8 +2327,30 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.pivotRoll.selftest.mjs',
     // 2026-10-09 (gameplay lane): an escalated stuck recovery releases the careful rules for 10 s (Blackglass 38001).
     'src/game/ai.wedgeRelease.selftest.mjs',
+    // 2026-11-02 audit M7: the drive owners, doctrine starts and drive layers run from declared tables in the old order
+    'src/game/ai.driveOwner.selftest.mjs',
+    // 2026-11-02 audit M7: every mode change runs the exit actions of the mode it leaves (a flank's count, a cover roll)
+    'src/game/ai.modeExit.selftest.mjs',
+    // 2026-11-02 audit M7: the waypoints carry their writer; a route ending where the mission's does is not the mission's
+    'src/game/ai.routeOwner.selftest.mjs',
+    // 2026-11-02 audit M7: news between ticks lands at the next update in one declared order (any telling, one bot)
+    'src/game/ai.eventOrder.selftest.mjs',
+    // 2026-11-02 audit M7: a brain Watch mode hands back resumes from the hull as it stands (no burst, shot or spike)
+    'src/game/ai.watchResume.selftest.mjs',
+    // 2026-11-02 audit M7 (round 6 V4): the hand-back's cases that repeat ai.watchResume's, split off it, and the walk's
+    // last point under a deck the field publishes (MANUAL bots)
+    'src/game/ai.watchResumeLevels.selftest.mjs',
+    // 2026-11-02 audit M7: both drivers apply the bots' news at the end of the fire-and-shells phase; teammates read it
+    'src/game/ai.newsFlush.selftest.mjs',
+    // 2026-11-02 audit M7 (round 2 U18): the authority's revive hands the bot's brain back (no progress spike on the new
+    // life); round 3 M3: so does a migrated host's restore (no progress spike or burst on its first tick)
+    'src/game/ai.reviveResume.selftest.mjs',
+    // 2026-11-02 audit M7 (round 2 U18, split off in round 3 B17): the solo battle's revive hands the bot's brain back
+    'src/game/ai.reviveResumeSolo.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
+    // (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the commander's
+    // forward-only life, the session's halt)
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/serviceRecord.selftest.mjs',
@@ -1928,18 +2367,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
     'src/game/consumableLoadout.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the consumables' smoke table is asked again under the lazy-chunk policy, never per hover
+    'src/ui/garageSmokeTableLoad.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
+    // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's (round 3 B9: the pad's LB through the sim's own
+    // activateGuidedMissile)
+    'src/game/atgmToggle.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
     // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
     'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
+    // 2026-11-02 audit R6/F2: a failed deferred-warm or mission-attachment chunk no longer fails every later battle
+    'src/app/battleEntryLoadFailure.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
+    'src/app/programOriginWatch.selftest.mjs', // 2026-11-02 audit F2: one shared draw wrapper; any stop order restores it
+    'src/app/mainFlowPorts.selftest.mjs', // 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
@@ -1947,6 +2395,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
     'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
+    'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; a capped warm-hold limit; one countdown writer
+    'src/game/battleWarmHold.selftest.mjs', // 2026-11-02 audit F2: one warm-hold owner; a successor never inherits a stale warm
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
     'src/game/ammoSelectionPresentation.selftest.mjs',
@@ -1958,6 +2408,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamGhostPolicy.selftest.mjs',
     'src/game/killcamPresentation.selftest.mjs',
     'src/game/killcamObserverInput.selftest.mjs',
+    'src/game/killcamWreckReceipt.selftest.mjs', // 2026-11-02 audit F10: a restaged wreck, victim or attacker, keeps its look and its authority's turret pose
     // watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig
     'src/game/watchController.selftest.mjs',
     // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
@@ -1965,6 +2416,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // (watch-drone-244) Take control in every watchable mode: the boss, a convert, a carrier, revives, a drone; AC-130 and rooms
     'src/game/watchTakeover.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
+    'src/game/battleResultBeatClock.selftest.mjs', // 2026-11-02 audit F4: death and ending beats hold through a pause
+    'src/game/deathFlowExits.selftest.mjs', // 2026-11-02 audit round 5 U4: every exit that ends the player's death flow (a teardown, a fresh or left Watch seat, a mode's revive) leaves the result runtime owing no hand-back and no late replay; a revive hands the HUD and camera back and re-arms the death flow, at its row or its next death's event (real runtime, rig, killcam and watch controller)
+    'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',
@@ -1972,7 +2426,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/impactDecals.selftest.mjs',
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
-    'src/gallery/viewGlyphs.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',
     'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',
@@ -2003,15 +2456,24 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
     'src/vehicles/materialQuality.selftest.mjs',
+    // 2026-11-02 audit R5: one paint owner for a shared camo entry (A-B-A, sync over chunked, private promotion), release
+    // by identity
+    'src/vehicles/camoPaintOwner.selftest.mjs',
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
+    // 2026-11-08 round 8 s5-09: a lettered decal's re-bake when 'Cot UI' loads: one predicate (paintDecal's), one waiter
+    // (decal()'s) that redraws and uploads together, kept past its set's dispose (a copied material still draws it)
+    'src/vehicles/decalFontWaiter.selftest.mjs',
     'src/vehicles/decorKitTextureSelection.selftest.mjs',
     'src/vehicles/wreckBurn.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
+    // 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on a
+    // wheel turns, and rides the suspension, with it (tankFactoryCore seatWheelDressing)
+    'src/vehicles/wheelDressing.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
@@ -2065,6 +2527,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
+    // 269: a rotary cannon's rotor spinning while it fires (gunRotorSpin.ts, the M163 VADS's Vulcan)
+    'src/vehicles/gunRotorSpin.selftest.mjs',
+    // 2026-11-02 audit M9: the hit/recoil hull rock is the visual's own spring; the sim never reads or carries it
+    'src/vehicles/hullFlinchPresentation.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
     'src/game/garageDressingFleet.selftest.mjs',
@@ -2085,6 +2551,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainContactSurface.selftest.mjs',
     // 2026-10-25 (workstream #3, the Rust core's flagged kernels): the WebAssembly contact surface and grids, bit for bit
     'src/world/wasmWorldKernels.selftest.mjs',
+    // 2026-11-02 audit S2: the kernels' cross-call protocols checked per call (write-once lattice, walk ids, a hull's
+    // query/begin/samples, grid handles), on the package and at the seam
+    'src/world/wasmKernelProtocols.selftest.mjs',
+    // 2026-11-02 audit S2, round 2 U37: every refusal names the call it refused (the code is the last checked call's), a
+    // refused sample's NaN and a replayed crater the kernel refused throw at the seam, a heap rises from its given start
+    'src/world/wasmKernelRefusals.selftest.mjs',
+    // 2026-11-02 audit S2: the kernel's copy of the match's ground is a binding (bound twice, rebound, unbound: each change
+    // once), and a heap laid on a clock that ran before the bind rises on it on both
+    'src/world/wasmGroundMirror.selftest.mjs',
     // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
     'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
@@ -2171,6 +2646,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/frontlineAtmosphere.selftest.mjs',
     // 2026-10-22: the map's air — the per-map table, tier and time gates, seeded cards, the pinned frame
     'src/world/mapAmbience.selftest.mjs',
+    // 2026-11-02 audit R6 (round 4 F2 review): a battle entry asks the map's air at once whatever the backoff a Studio
+    // drag raised; a Studio light apply waits on its first ask only, never on or for a re-ask
+    'src/world/mapAmbienceEntryAsk.selftest.mjs',
     'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
@@ -2239,6 +2717,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
+    // buildings-271 (Main 2026-11-08, for the ground lane): each regional building's plinth, eave, apron and doors in world
+    // metres from the live plans, deterministic, its doors on their plinths facing out; counts pinned on Autumn and Caldera
+    'src/world/buildingContacts.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/rockCollision.selftest.mjs', // 2026-10-07 the hitbox lane: a stone's colliders from its own mesh
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground
@@ -2439,6 +2920,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // 2026-11-02 audit M9: the height field's build modes are scoped (a throwing read keeps the live field's cuttings)
+    'src/world/terrainBuildModes.selftest.mjs',
     // the map-revival lane (Skybridge round 4): Lake Powell's arm and Glen Canyon Dam in the battlefield
     'src/world/maps/reservoirDam.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
@@ -2453,6 +2936,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hinterland/hinterlandLandforms.selftest.mjs',
     // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
     'src/world/hinterland/hinterlandMesh.selftest.mjs',
+    'src/world/hinterland/hinterlandLifetime.selftest.mjs', // 2026-11-02 audit R1: the world owns its Hinterland; ring fallback; one root
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
@@ -2473,11 +2957,15 @@ export const SELFTEST_SUITES = Object.freeze({
     // through a gap, sky through the building or inside-out face — held to its ledger row
     'tools/building-integrity-check.selftest.mjs',
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
+    'src/world/maps/mapBuildScopes.selftest.mjs', // 2026-11-02 audit R1: kit build slots in one registry, asserted at yields; no cross-build latches
     'src/world/maps/regional/phoneIdentity.selftest.mjs', // 2026-10-08: a phone's kit builds draw the desktop's streams and solids (DESTRUCTION.md §8.4)
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     // buildings-270 (2026-11-05): the building-style table — one row per battlefield, its map's kit, measured against the
     // kit's houses, with its photographs; and each building's look from its row's variation, no two neighbours alike
     'src/world/maps/buildingStyleTable.selftest.mjs',
+    // buildings-271 (2026-11-06, Main: a type wrong for the place cannot be placed): every building type's years and cultures,
+    // every map's setting, and every generic type a map places fitting it
+    'src/world/maps/buildingTypes.selftest.mjs',
     'src/world/maps/regional/appearance.selftest.mjs',
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
@@ -2502,6 +2990,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
     'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
+    'src/world/propsShellPoolCancel.selftest.mjs', // 2026-11-02 audit R1: a cancelled props build stops its shell pool's workers
     'src/world/brokenVehiclePool.selftest.mjs', // perf-248: pooled broken vehicle bodies equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
@@ -2511,8 +3000,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/destructibleRenderPolicy.selftest.mjs',
     'src/world/destructibles.selftest.mjs',
+    // 2026-11-02 audit R2: a map's trench variant registers and queues its measures as its own world (build key)
+    'src/world/destructibleWorldKey.selftest.mjs',
+    // 2026-11-02 audit R2: what a cached world carried into the next battle (Studio sweeps, the toss stream, water, sward)
+    'src/world/battleResetLeftovers.selftest.mjs',
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
+    // 2026-11-02 audit M9: one crush transition for a destructible's records in the page and headless worlds, the guards
+    'src/world/crushRecords.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/maps/utilityPoles.selftest.mjs', // 2026-10-14 props lane A (#21): each region's line (its pole, its timber, its conductors on its insulators)
     'src/world/wrecks.selftest.mjs',
@@ -2522,6 +3017,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
     'src/world/maps/coursedWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the brick-print field walls by region, legacy collision and fit
     'src/world/maps/adobeWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the mud field walls by region on the legacy section, legacy collision and fit
+    'src/world/maps/kitBuildLatch.selftest.mjs', // 2026-11-02 audit R2: the wall and fence kits' bands and fit throw when read before their build
     'src/world/maps/terraceRisers.selftest.mjs', // 2026-10-16 props lane A #6: the village terraces' risers built along their contours
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
@@ -2529,6 +3025,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
+    // wrecks-270 (2026-11-05): one donor baked in each of the eight damage states
+    'src/world/wreckStates.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
     // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
     'src/world/wreckCrumple.selftest.mjs',
@@ -2557,6 +3055,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckWorkerFallback.selftest.mjs', // 2026-10-09: a failed or silent wreck worker never fails the props build
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
+    'src/world/felledTrees.selftest.mjs',
+    // 2026-11-02 audit U28 (round 2): the world's crush owns a felled tree's records and canopy; the Studio declares the falls' driver
+    'src/world/felledTreeOwners.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
+    'src/world/concealerIndex.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
@@ -2586,6 +3090,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/minimapAssetRuntime.selftest.mjs',
     'src/ui/touchControlsAccess.selftest.mjs',
     'src/ui/settingsAccess.selftest.mjs',
+    'src/ui/battleInputOwner.selftest.mjs', // 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play)
+    // 2026-11-02 audit IR15 (round 2): the kill-cam replay's own flag is the one screen fact the input owner reads
+    'src/game/killcamScreen.selftest.mjs',
+    // 2026-11-02 audit A9 (round 3): a replay that throws while built, in onDone or in a restore still clears its flag,
+    // emits killcam:done (the input owner's edge) and lifts its fade; the real controller and the real input owner
+    'src/game/killcamReplayLifecycle.selftest.mjs',
+    'src/ui/battleReportGate.selftest.mjs', // 2026-11-02 audit F4: the report gate holds for every presentation, decides again
+    'src/ui/battleReportGateHud.selftest.mjs', // 2026-11-02 audit F4: shotInfo's report gate through the real HUD (replay, stale decision)
     'src/ui/hudMagazine.selftest.mjs',
     // 2026-10-17 (owner): out of ammo, every reload indicator shows its empty state; unlimited rounds never run dry
     'src/ui/hudAmmoOut.selftest.mjs',
@@ -2595,6 +3107,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    'src/ui/hudConsumableTray.selftest.mjs', // 2026-11-02 audit M4: a revive refills the tray (the state, or the own respawn)
+    'src/ui/roofGunTile.selftest.mjs', // 2026-11-05 round 2 U9: the roof-gun tile marks a switched-on red gun silenced, takes the switch off, refuses only on
+    'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
@@ -2621,6 +3136,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
+    // the gallery lane (2026-11-11): the owner's whole loading-screen gallery, public/media/gallery-r1 and galleryShots.ts
+    'src/ui/galleryShots.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
@@ -2650,6 +3167,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
+    'src/ui/touchClimbRelease.selftest.mjs', // 2026-11-02 audit F8: leaving the battle releases a held climb
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',
@@ -2693,6 +3211,14 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
+    // 2026-11-02 audit X8 (round 3): the audio mixer's chunk is asked again under the lazy-chunk policy, never per press
+    // (thirty presses after a failed transfer ask nothing inside the backoff, none offline)
+    'src/audio/lazyAudioMixerChunk.selftest.mjs',
+    // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
+    // 'interrupted' resumes like 'suspended')
+    'src/audio/audioDevice.selftest.mjs',
+    // 2026-11-02 audit F11: one device across the facade and a mixer built before any gesture; a rebound mixer listens once
+    'src/audio/audioHandoff.selftest.mjs',
     'src/vehicles/profiles/centurionFamily.selftest.mjs',
     'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
@@ -2703,6 +3229,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // Patton continuity, low-turret and M48 roof-seating receipts
     'src/vehicles/profiles/pattonCastProportions.selftest.mjs',
     'src/vehicles/profiles/pattonGunClearance.selftest.mjs',
+    // release 268: the photo-route rebuilds (the C1 and C2 Ariete prototypes, the K1E1, the K2B, the BMP-3 (ROK) and
+    // the BWP-1 under the RCWS-30) hold their packets
+    'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',
@@ -2716,6 +3245,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/decorPlanWire.selftest.mjs',
+    // 2026-11-02 audit R6: one worker-client pattern (a deadline from dispatch, messageerror, a fresh worker after a failure)
+    'src/vehicles/workerClients.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
@@ -2738,6 +3269,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
+    // 272: every mode's picture (Deploy tile and plate, the landing's and the Field Manual's still); Air Support shipped blank
+    'src/ui/deployModeArt.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
@@ -2758,12 +3291,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
     'tools/garage-roster-settle.browser.selftest.mjs',
+    // 2026-11-11 (camo-picker-layout-272): the Garage's paint sheet opens on whole rows that fill it, with every name
+    // inside its swatch and no sideways scroll, docked and on a phone
+    'tools/camo-sheet-layout.browser.selftest.mjs',
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
     // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
     // it, at the tool's 1024x640 and a desktop's 1440x900
     'tools/mp-rooms-entry.browser.selftest.mjs',
+    // 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby and
+    // Deploy open, by mouse at 1920x1080 and 1200x819 and by touch at 390x844
+    'tools/couch-open.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program

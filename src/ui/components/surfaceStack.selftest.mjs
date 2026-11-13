@@ -4,7 +4,7 @@
 // Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { closeSurface, openSurface, openSurfaceIds, planOpen, planPress } from './surfaceStack.ts';
+import { closeSurface, openSurface, openSurfaceIds, planOpen, planPress, surfaceHolds } from './surfaceStack.ts';
 
 // stand-in nodes and boxes: a node is a path, a box holds the paths under its own
 const at = (path) => ({ path });
@@ -70,6 +70,24 @@ assert.deepEqual(openSurfaceIds(), []);
 closeSurface(settings);
 assert.deepEqual(openSurfaceIds(), [], 'closing a closed surface changes nothing');
 
+// (272) a surface's own: its box, its controls, and every surface standing on it, wherever that one's box lives (the couch
+// lobby, a body-level modal opened from Deploy: Deploy's focusout read the lobby's focus as a leave and closed both)
+const deploy = surface('deploy', 'garage/deploy', 'garage/mode');
+const lobby = surface('couch-lobby', 'body/couch');
+assert.equal(surfaceHolds(deploy, at('garage/deploy/couch')), true, 'closed: its box is its own');
+assert.equal(surfaceHolds(deploy, at('body/couch/close')), false, 'closed: nothing stands on it');
+openSurface(deploy, at('garage/mode'));
+openSurface(lobby, at('garage/deploy/couch'));
+assert.deepEqual(openSurfaceIds(), ['deploy', 'couch-lobby'], 'the lobby opened from Deploy stands on it');
+assert.equal(surfaceHolds(deploy, at('body/couch/close')), true, 'the focus the lobby takes stays Deploy\'s');
+assert.equal(surfaceHolds(deploy, at('garage/mode')), true, 'its controls are its own');
+assert.equal(surfaceHolds(deploy, at('header/gear')), false, 'the page beside it is not');
+assert.equal(surfaceHolds(lobby, at('garage/deploy/couch')), false, 'what a surface stands on is not its own');
+assert.equal(surfaceHolds(deploy, null), false);
+closeSurface(deploy);
+assert.deepEqual(openSurfaceIds(), [], 'and the lobby still closes with Deploy');
+assert.equal(surfaceHolds(deploy, at('body/couch/close')), false, 'closed again: the lobby is not its own');
+
 // 3. The page's keys (source): one Escape and one outside press in the window's capture, ahead of the page's own; the
 // census reads the open ids.
 const source = readFileSync(new URL('./surfaceStack.ts', import.meta.url), 'utf8');
@@ -85,4 +103,4 @@ assert.match(source, /const sweep = \(\): void => \{[\s\S]*?element\.getClientRe
   'a resize that hides an open surface closes it');
 assert.match(source, /window\.addEventListener\('cot:layoutchange', \(\) => \{ if \(stack\.length\) sweep\(\); \}\);/, 'so does a change of layout');
 
-console.log('surfaceStack.selftest: one surface per level (replace, stand on, close with its children), the outside press and Escape PASS');
+console.log('surfaceStack.selftest: one surface per level (replace, stand on, close with its children, hold what stands on them), the outside press and Escape PASS');

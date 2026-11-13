@@ -1,7 +1,9 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../game/appLifecycle.ts';
 import { awaitMapCaptureReadiness, type CaptureWorld } from './mapCaptureReadiness.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../world/battleWorldReset.ts';
 import type { ShotViewName } from './shotContract.ts';
 import type {
   ShotBus,
@@ -127,7 +129,7 @@ interface ForcedAim {
   [key: string]: RuntimeValue;
 }
 
-interface RuntimeShotWorld extends ShotWorld, CaptureWorld {
+interface RuntimeShotWorld extends ShotWorld, CaptureWorld, BattleResetWorld {
   mapId: string;
   config: {
     shot: {
@@ -271,6 +273,10 @@ async function ensureShotWorld(
   context.setWorldDormant(false);
   context.setCamoBiome(mapId);
   context.applyCamoPatterns();
+  // (round 2 U28) a still's battle starts from an intact world, as a battle does (soloBattleStartRuntime.ts): setupBattle
+  // leaves a world that owns its destruction to its own reset, so a shot after a battle kept that battle's felled trees
+  // (round 3 A7/M4) through the battle edge's one reset (world/battleWorldReset.ts): the falls and sweeps the battle's too
+  resetWorldForBattle(world);
   context.setupBattle(context.game, playerSpecId, world);
   context.resetCombatWarm();
   context.buildShellCards(context.game.player.spec);
@@ -391,12 +397,15 @@ export async function setShotView(
     context.preloadArmorAimOverlay(),
   ]);
 
+  // (2026-11-02 audit F1 review) a still never takes a Studio's scene: refuse before the showroom or the shot mode move
+  assertAppPhaseTransition(context.game as { phase: AppPhase }, 'shot', 'shot:view');
   context.showroom.stop();
   context.setShotMode(true);
   context.setCaptureHidden(true);
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
-  context.game.phase = 'shot';
+  // (2026-11-02 audit F1) the one phase writer: a still is announced (phase:change) like every other phase
+  transitionAppPhase(context.game as { phase: AppPhase }, 'shot', { reason: 'shot:view' });
   // Use the ordinary phase owner: battlefield captures must detach the whole
   // workshop (including its archive timer), not merely hide its DOM panels.
   context.setGarageSpots(name === 'garage');

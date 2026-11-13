@@ -54,4 +54,32 @@ assert.ok(blasts.length > 0, 'the bomb bursts');
 for (const [, timeS] of blasts) assert.ok(timeS >= called[2].landsS - 1e-9, `nothing lands before the warning (${timeS} < ${called[2].landsS})`);
 assert.ok(enemy.combat.hp < hpBefore || enemy.combat.destroyed, 'the bomb on the mark hurts the hull under it');
 assert.ok(air.pointsOf('pilot') <= R.points.cap - R.bomb.cost + 20, 'the call was paid for');
-console.log(`airSupportSolo: the solo step calls, fires and lands a GBU-12 ${(blasts[0][1] - called[2].landsS).toFixed(3)} s after its ${R.bomb.warningS} s warning; ${hpBefore} -> ${Math.round(enemy.combat.hp)} hp`);
+
+// ---- (improve-271 plan 032) a later Air Support battle on the same page game aims at its own ground and announces its
+// rounds on its own bus: the fire context the first battle built must not keep that battle's world and bus
+const fieldOf = (height) => {
+  const field = { reads: 0, getHeightAt: () => { field.reads++; return height; }, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) };
+  return field;
+};
+const worldA = { heightField: fieldOf(0), raycast: () => null }, worldB = { heightField: fieldOf(50), raycast: () => null };
+const logA = [], logB = [];
+const busA = createBus((name, payload) => { if (name === 'mode:strike_round') logA.push(payload); });
+const busB = createBus((name, payload) => { if (name === 'mode:strike_round') logB.push(payload); });
+let enemyY = 0;
+const stepOn = (world, stepBus) => { simStep(game, stepBus, world, null, collider); enemy.state.pos.set(0, enemyY, 150); };
+// the first battle above stepped this game on its own world and bus; the next battle, on world B, is the same page game
+const savedB = air.capture(); savedB.points = [['pilot', R.points.cap], ['e1', 0]]; air.restore(savedB);
+for (let n = 0; n < 10; n++) stepOn(worldA, busA);
+for (const t of game.tanks) t.state.pos.y = 50;
+enemyY = 50;
+pilot.input.aimPoint.set(0, 50, 150);
+pilot.input.auxiliaryBits = AIR_STRIKE_BITS.artillery;
+const readsA = worldA.heightField.reads;
+for (let n = 0; n < 60 * 12; n++) stepOn(worldB, busB);
+assert.equal(logA.length, 0, 'no round of the second battle is announced on the first battle\'s bus');
+assert.ok(logB.length > 0, `the second battle's rounds are announced on its own bus (${logB.length})`);
+assert.ok(worldB.heightField.reads > 0, 'the rounds aim at the second battle\'s ground');
+// (the first world's field is still read by its own deformation wrapper's owner only while it steps: none after the switch)
+assert.equal(worldA.heightField.reads, readsA, `nothing of the second battle samples the first battle's ground (${worldA.heightField.reads - readsA} reads)`);
+
+console.log(`airSupportSolo: the solo step calls, fires and lands a GBU-12 ${(blasts[0][1] - called[2].landsS).toFixed(3)} s after its ${R.bomb.warningS} s warning; ${hpBefore} -> ${Math.round(enemy.combat.hp)} hp; a second battle on another world aims its ${logB.length} rounds at its own ground and announces them on its own bus`);

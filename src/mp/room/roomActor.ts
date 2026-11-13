@@ -286,6 +286,10 @@ export class RoomActor {
   restore(state: RoomActorState): void {
     if (!isRecord(state) || state.v !== 1 || state.roomCode !== this.roomCode) throw new Error('invalid room actor state');
     this.room = state.room;
+    // A room written before the admin lock had its own field (audit M2) kept that lock in `locked`. While the room waits,
+    // `locked` is exactly the admin's switch (the round's lock was cleared at every match end and aborted start); a room
+    // written mid-round cannot tell them apart, and its round end cleared both before the split (round 2 U6).
+    if (this.room) this.room.settings.adminLocked ??= this.room.phase === 'waiting' && this.room.settings.locked === true;
     this.resumeHashes = new Map(Object.entries(state.resumeHashes ?? {}));
     this.chat = (state.chat ?? []).slice();
     this.chatSeq = state.chatSeq ?? 0;
@@ -904,13 +908,30 @@ export class RoomActor {
     }
     const startedAt = this.ports.now();
     this.startInFlight = false;
+    // The room as it is now, not as it was before the await (audit M2, 2026-11-02): the p2p host answers within a
+    // microtask, but a match service answers later, and where the actor's host does not hold the room's other events
+    // behind this one (a Durable Object's input gate opens across a non-storage await, such as a match service's fetch)
+    // a leave, a kick or the room's expiry can land inside the await. The LAN service's per-room queue
+    // (server/rooms/localRoomService.ts serialize()) holds them until the start settles. A seat that left gets no
+    // token; a room that went, or that nobody of the plan is left in, records nothing.
+    const seats = this.room === room && room.phase === 'starting'
+      ? plan.seats.filter((seat) => room.players.some((player) => player.id === seat.playerId))
+      : [];
+    if (!seats.length) {
+      if (this.room === room) abortStart(room, startedAt);
+      void Promise.resolve(this.ports.matchHost.stop(this.roomCode)).catch(() => { /* the host may already have let it go */ });
+      this.log('warn', 'start abandoned: the room changed while the match host started', { match: matchId, room: this.room === room });
+      if (this.room === room) { this.persist(); this.broadcastState(); }
+      if (this.sockets.has(socket.id)) this.send(socket.id, publicRoomError(new RoomError('match_host_unavailable'), requestId));
+      return;
+    }
     this.matchUrl = matchUrl;
     recordMatch(room, { id: matchId, round: plan.round, mapId: plan.mapId, seed: plan.seed, startedAt }, startedAt);
     this.matchTokens.clear();
     const expiresAt = startedAt + ROOM_SEAT_TOKEN_TTL_MS;
     // A p2p match's tokens are signed with the per-match secret only its host receives; a service verifies with the room's.
     const signingSecret = this.p2p ? this.hostSecretFor(matchId) : this.ports.seatSecret;
-    for (const seat of plan.seats) {
+    for (const seat of seats) {
       const claims: SeatClaims = {
         v: 1, roomId: this.roomCode, seat: seat.seat, playerId: seat.playerId, name: seat.name.slice(0, 32) || seat.playerId,
         team: seat.team, specId: seat.specId, iat: startedAt, exp: expiresAt,

@@ -3,16 +3,17 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 
-// Gallery packets from 2026-09-29. These are actual rendered face bounds in
-// rig_hull's neutral frame, not metadata assertions or unstable face indices.
-// 231 (gun-hull-fleet batch 2b, 121b2d7e7d): the turrets ride a ring 44 mm higher (every patch y +.044) and their lower
-// edges stop at 0.20 local, so the cheek ramp's foot is trimmed to 1.870 (main-reds-259, measured on 257 abccee56a1)
+// Actual rendered face bounds in rig_hull's neutral frame, not metadata assertions or unstable face indices.
+// 269 (the owner, 2026-11-03: "make the c1 arietee proto annd c2 ariete hhave completeely new turrets"): the old turret's
+// bins, stack and cheek ramp are gone with it; the patches are the new turret's (profiles/arieteProtoTurret.ts, shared
+// by both marks): its right wall, its left cheek face, the rear stowage box's rear face and the two rear-roof eave boxes,
+// measured on the r269 build (r269/turrets/scripts/patchprobe.mjs), identical at high and low quality.
 const patches = [
-  ['right fore bin', [1.1704, 1.8304, 1.023], [1.5796, 2.2176, 1.023]],
-  ['left aft bin', [-1.606, 1.8304, -.4026], [-1.606, 2.3166, .2706]],
-  ['left fore bin', [-1.606, 1.8304, .3674], [-1.606, 2.2176, .9966]],
-  ['left stack', [-.9405, 1.79212, -.03388], [-.9405, 2.69588, .16588]],
-  ['left cheek ramp', [-.935, 1.870, 1.155], [-.528, 2.299, 1.826]],
+  ['right wall', [-1.408, 1.87, -2.255], [-1.408, 2.486, 0.385]],
+  ['left cheek face', [0.605, 1.8065, 1.51119], [1.353, 2.40612, 2.2518]],
+  ['rear stowage box', [-1.276, 1.969, -2.805], [1.276, 2.442, -2.805]],
+  ['right eave box', [-1.375, 2.607, -2.2], [-1.122, 2.64, -1.155]],
+  ['left eave box', [1.122, 2.607, -2.145], [1.375, 2.64, -1.265]],
 ];
 function descendantOf(object, parent) {
   for (let at = object; at; at = at.parent) if (at === parent) return true;
@@ -64,16 +65,19 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
         samples.push({ ...sample, label, turretPoint: turret.worldToLocal(sample.mesh.localToWorld(sample.point.clone())) });
       }
     }
-    // The lid used to be buried underneath both its own box and the crown.
-    const rayOrigin = hull.localToWorld(new THREE.Vector3(-.6215, 3.2, .022));
+    // 269: the roof's crown between the hatches is the first thing a ray down meets there, on the turret (it was the old
+    // turret's roof cover, buried under its box and the crown before release 231)
+    // (269 round 2: the C2's ghillie net, refitted to the new roof, lies 7.7 mm over the crown here; the ray reads the
+    // first surface under the suit, the suit's own fit being ghillieSuit.selftest.mjs's)
+    const rayOrigin = hull.localToWorld(new THREE.Vector3(0, 3.2, -.44));
     const ray = new THREE.Raycaster(rayOrigin, new THREE.Vector3(0, -1, 0));
     const lid = ray.intersectObject(tank.root, true).find(hit =>
-      hit.object.isMesh && !hit.object.userData.shadowOnly && hit.object.visible);
-    assert.ok(lid && descendantOf(lid.object, turret), `${id}/${quality}: visible roof cover rotates`);
+      hit.object.isMesh && !hit.object.userData.shadowOnly && hit.object.visible && !/_ghillie_/.test(hit.object.name));
+    assert.ok(lid && descendantOf(lid.object, turret), `${id}/${quality}: visible roof rotates`);
     const lidHeight = hull.worldToLocal(lid.point.clone()).y;
-    // (231: the turret on its ring 44 mm higher, 2.5465 -> 2.5905)
-    assert.ok(Math.abs(lidHeight - 2.5905) < .001,
-      `${id}/${quality}: cover is visible above the crown (actual ${lidHeight})`);
+    // (269: the new roof's crown, 0.86 m over the ring seat in the builder's frame: (1.44 + 0.86) x 1.10)
+    assert.ok(Math.abs(lidHeight - 2.53) < .001,
+      `${id}/${quality}: the roof's crown is visible (actual ${lidHeight})`);
 
     const fixedDeck = hull.localToWorld(new THREE.Vector3(0, 1.76, -2.6));
     for (const degrees of [-66, -8, 2, 90, 180]) {
@@ -90,4 +94,4 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     tank.dispose();
   }
 }
-console.log('arieteTurretOwnership: marked bins, stack, fairing and visible roof lid follow both prototype turrets at high/low quality');
+console.log('arieteTurretOwnership: the new turrets\' walls, cheek, rear box, roof boxes and visible roof follow both prototype turrets at high/low quality');

@@ -290,8 +290,7 @@ export function noteGraphicsContextLoss(): void {
 }
 /** Apply relief only once the context is usable; loss handlers must not upload. */
 export function applyGraphicsRecovery(): void {
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 /**
@@ -566,10 +565,111 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
 };
 
+/**
+ * The couch tier (docs/COUCH-MODE.md "The couch tier"): the big screen's split view draws one view per seated player,
+ * so each view carries about a pane's share of the picture. Ultra Low's world and sky cuts (the light world, the
+ * cheapest terrain splat, no marched clouds, no bloom, no AO, no shafts or flare) at one raster sample per CSS pixel.
+ * It is never a menu choice: the couch runtime asks for it (setCouchTier) before a split couch battle's world builds,
+ * since the light world is read at world build, and lets it go when that battle ends.
+ */
+const COUCH_PRESET: QualityPreset = Object.freeze({
+  label: 'Couch',
+  ambience: 0,
+  msaaSamples: 0,
+  tallGrass: 0.1,
+  maxPixelRatio: 1.0,
+  dynMin: 1.0,
+  nativeDynMin: 0.75,
+  rcasMinScale: 0.4,
+  aoScale: 0,
+  bloomScale: 0.35,
+  bloom: false,
+  volumetricClouds: false,
+  terrainLite: true,
+  lightWorld: true,
+  shadowMapSizes: [1024, 1024, 512, 512] as const,
+  shadowMaxFar: 240,
+});
+
+/**
+ * The couch tier's share of a pane (game/couchPanes.ts couchPaneDetail): its raster, its sward and its cascades follow
+ * the pane's size. Plain numbers, so the engine reads no game module.
+ */
+export interface CouchTierDetail {
+  readonly renderScale: number;
+  readonly density: number;
+  readonly shadowReachM: number;
+  readonly shadowMapSize: number;
+}
+let couchTier: QualityPreset | null = null;
+let couchTierKey = '';
+/** The couch tier in force (set by the couch split view, never by a menu). */
+export function couchTierActive(): boolean {
+  return couchTier !== null;
+}
+/** Ask for the couch tier for a pane of `detail` (true: a whole screen's), or let it go (false); every preset listener
+ *  hears a change (post.ts, lighting.ts). */
+export function setCouchTier(on: boolean | CouchTierDetail): void {
+  const detail = on === true ? { renderScale: 1, density: 1, shadowReachM: COUCH_PRESET.shadowMaxFar, shadowMapSize: 1024 } : on || null;
+  const key = detail ? `${detail.renderScale}:${detail.density}:${detail.shadowReachM}:${detail.shadowMapSize}` : '';
+  if (key === couchTierKey) return;
+  couchTierKey = key;
+  couchTier = detail ? Object.freeze({
+    ...COUCH_PRESET,
+    maxPixelRatio: COUCH_PRESET.maxPixelRatio * detail.renderScale,
+    tallGrass: (COUCH_PRESET.tallGrass ?? 0) * detail.density,
+    shadowMaxFar: detail.shadowReachM,
+    shadowMapSizes: [detail.shadowMapSize, detail.shadowMapSize, detail.shadowMapSize / 2, detail.shadowMapSize / 2] as const,
+  }) : null;
+  broadcastPreset();
+}
+
 export const PRESET_ORDER: readonly DesktopPresetName[] = ['ultralow', 'low', 'medium', 'high', 'ultra'];
 export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-ultralow', 'mobile-low', 'mobile', 'mobile-high'];
 
 const listeners = new Set<PresetListener>();
+
+// ---------------------------------------------------------------------------
+// (2026-11-02 audit R3) THE PRESET BROADCAST'S ONE OWNER. The effective preset resolves by a declared priority
+// (resolvePresetName): (1) the device tier picks the ladder (a phone resolves from its mobile choice, never a desktop
+// one); (2) the desired preset is the stored explicit choice, or on Auto min(hardware cap, session auto tier); (3) a
+// context loss in this tab caps it one rung below what was running. The recovery cap is one-way for the tab session by
+// decision: a device reset is stronger evidence than frame rate, so only an explicit choice or ?gfxreset clears it.
+// Writers (setPresetName, setMobilePresetName, reportSustainedOverload/Recovery, applyGraphicsRecovery) publish only
+// through broadcastPreset, which
+//  - runs synchronously: every listener has seen the new preset when the writer returns (post.ts relies on it: its
+//    own listener resets the governor inside the governor's tier step, with the carried raster set);
+//  - isolates listeners: one that throws is reported and the rest still run, so no module is left on the old preset;
+//  - never nests: a listener that changes the preset again restarts the pass with the newest preset, so every
+//    listener ends on the same one, in registration order.
+// ---------------------------------------------------------------------------
+const MAX_PRESET_PASSES = 4;
+let broadcasting = false;
+let rebroadcast = false;
+
+function reportListenerFailure(error: unknown): void {
+  try { console.error('[quality] a preset listener failed; the others still ran', error); } catch (_) { /* consoleless */ }
+}
+
+function broadcastPreset(): void {
+  if (broadcasting) { rebroadcast = true; return; }
+  broadcasting = true;
+  try {
+    for (let pass = 0; pass < MAX_PRESET_PASSES; pass++) {
+      rebroadcast = false;
+      const preset = getPreset();
+      for (const fn of listeners) {
+        try { fn(preset); } catch (error) { reportListenerFailure(error); }
+        if (rebroadcast) break;
+      }
+      if (!rebroadcast) return;
+    }
+    reportListenerFailure(new Error(`preset listeners kept changing the preset for ${MAX_PRESET_PASSES} passes`));
+  } finally {
+    broadcasting = false;
+    rebroadcast = false;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // ADAPTIVE AUTO TIER (perf-r2e, owner report: "someone with a weaker laptop
@@ -679,8 +779,11 @@ export function resolveAutoTier(): AutoTier {
 export function reportSustainedOverload(): boolean {
   if (getDeviceTier() === 'mobile') return false;
   if (getStoredChoice() !== 'auto') return false;
-  const cur = resolveAutoTier();
-  const i = AUTO_ORDER.indexOf(cur);
+  // (2026-11-02 audit R3) the step is one rung below the preset actually running: with a recovery cap binding, a step
+  // of the auto tier alone left the running preset unchanged, yet reported a cut (the governor then measured a tier
+  // trial of nothing and every listener rebuilt for the same preset)
+  const cur = resolvePresetName();
+  const i = AUTO_ORDER.indexOf(cur as AutoTier);
   if (i <= 0) return false;
   const next = AUTO_ORDER[i - 1];
   if (!next) return false;
@@ -688,8 +791,7 @@ export function reportSustainedOverload(): boolean {
   try {
     console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
   } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
   return true;
 }
 
@@ -698,7 +800,12 @@ export function canRecoverAutoTier(): boolean {
   if (getDeviceTier() === 'mobile' || getStoredChoice() !== 'auto') return false;
   const currentIndex = AUTO_ORDER.indexOf(resolveAutoTier());
   const ceilingIndex = AUTO_ORDER.indexOf(heuristicAutoCap() ?? 'high');
-  return currentIndex >= 0 && currentIndex < ceilingIndex;
+  if (!(currentIndex >= 0 && currentIndex < ceilingIndex)) return false;
+  // (2026-11-02 audit R3) a recovery cap at or below the current auto tier binds: raising the auto tier would change
+  // nothing that runs (the cap is one-way for the tab session; see broadcastPreset)
+  const recovery = graphicsRecoveryPreset();
+  return !(recovery && PRESET_ORDER.includes(recovery as DesktopPresetName)
+    && PRESET_ORDER.indexOf(recovery as DesktopPresetName) <= PRESET_ORDER.indexOf(AUTO_ORDER[currentIndex]));
 }
 
 /**
@@ -715,8 +822,7 @@ export function reportSustainedRecovery(): boolean {
   try {
     console.info(`[quality] sustained stability at '${current}' — auto tier restored to '${next}'`);
   } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
   return true;
 }
 
@@ -771,13 +877,13 @@ export function setMobilePresetName(name: string): void {
   if (!MOBILE_PRESET_ORDER.includes(name as MobilePresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 const autoVariants = new Map<PresetName, QualityPreset>();
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin and autoNativeDynMin floors) */
 export function getPreset(): QualityPreset {
+  if (couchTier) return couchTier;
   const name = resolvePresetName();
   const preset = PRESETS[name];
   if ((preset.autoDynMin === undefined && preset.autoNativeDynMin === undefined) || getStoredChoice() !== 'auto') return preset;
@@ -810,12 +916,12 @@ export function setPresetName(name: string): void {
   // live governor to re-evaluate instead of resurrecting an earlier dip.
   _sessionAutoTier = null;
   try { window.localStorage.removeItem(LS_AUTO_TIER); } catch (_) { /* ok */ }
-  const preset = getPreset();
-  for (const fn of listeners) fn(preset);
+  broadcastPreset();
 }
 
 /**
- * Subscribe to live preset changes. Returns an unsubscribe function.
+ * Subscribe to live preset changes (through broadcastPreset, the broadcast's one owner). Returns an unsubscribe
+ * function; a module with a shorter life than the page calls it on dispose.
  * @param {(preset: object) => void} fn
  * @returns {() => void}
  */

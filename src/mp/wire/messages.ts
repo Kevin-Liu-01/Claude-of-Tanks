@@ -96,6 +96,12 @@ export interface ResumeHintMessage {
   roll: number;
   turretYaw: number;
   gunPitch: number;
+  /**
+   * The row's body bits (round 3 A14, protocol 12; ENTITY_FLAGS AIRBORNE, OVERTURNED, AUTO_RIGHTING, TUMBLING, STACKED,
+   * src/mp/match/hullBodyRow.ts; absent on the producer side: 0): the new host seats the hint's ground contact and body
+   * mode as it seats a row's (authorityRow.ts applyAuthorityRow), never from its height.
+   */
+  flags?: number;
 }
 
 export interface RosterEntry {
@@ -133,6 +139,13 @@ export interface WelcomeMessage {
   /** JSON text of the match ruleset (sim/matchRuleset.ts shape). */
   rulesetJson: string;
   roster: RosterEntry[];
+  /**
+   * The battle this host plays (round 3 A3, protocol 12; u32, absent on the producer side: 0): 0 for a match's first
+   * battle, kept by every host that resumes it (the sealed keyframe carries it, migrationState.ts), a fresh value when a
+   * host restarts it from its spawns (migrationState.ts migrationFallback). A client that followed another battle id
+   * drops what it retained of that battle (MatchClient receiveWelcome).
+   */
+  battleId?: number;
 }
 
 /** Full quantized state of one entity as the wire carries it. */
@@ -264,6 +277,8 @@ export interface SnapshotPacket {
   meta: SnapshotMeta;
   /** Keyframe: the whole destroyed list; delta: indices destroyed since the baseline. */
   destroyed: number[];
+  /** Each `destroyed` index's fall (wire 11, sim/obstacleFall.ts), in its order; absent or short: none for every one. */
+  destroyedFalls?: number[];
   /** Keyframe: the whole destruction log; delta: the entries after the baseline's `destructionBase` (destructionLog.ts). */
   destruction: DestructionLogEntry[];
   /** The log length the entries follow (0 in a keyframe). */
@@ -272,6 +287,8 @@ export interface SnapshotPacket {
   /** Entity ids present in the baseline but hidden now (delta only). */
   removed: number[];
   shells: ShellRow[];
+  /** Rounds this viewer was shown that left its view still in flight (wire 11; see SnapshotFrame.unseenShells). */
+  unseenShells?: readonly number[];
   viewer: ViewerState | null;
   /** JSON text of the mode presentation state, or null in standard mode. */
   modeStateJson: string | null;
@@ -288,10 +305,29 @@ export interface SnapshotFrame {
   meta: SnapshotMeta;
   /** Sorted destroyed obstacle indices (persistent within the round). */
   destroyed: number[];
+  /**
+   * How each `destroyed` index fell, in its order (wire 11, round 2 U27; sim/obstacleFall.ts): the cause and direction
+   * as this viewer may read them, what a seat that did not see a fall lays the prop with. Absent, or not as long as
+   * `destroyed`: none for every index (a ram along the prop's own heading, sim/obstacleFall.ts withheldObstacleFall, as a
+   * withheld live event lays it). Falls take only the room a frame leaves (destroyedSet.ts writeDestroyedFalls): a
+   * decoded frame may hold none where its host's held some.
+   */
+  destroyedFalls?: number[];
   /** The destruction log so far (persistent within the round, append-only; absent reads as empty). */
   destruction?: DestructionLogEntry[];
   entities: EntityRow[];
   shells: ShellRow[];
+  /**
+   * The rounds (ShellRow ids, ascending) this viewer was shown that left its view still in flight (wire 11, round 2 U31):
+   * the authority hides a round with its shooter, so a round absent from `shells` is either ended or unseen, and only the
+   * authority can tell which. Each is named for UNSEEN_SHELL_MARK_TICKS after it left, whatever happens to it then (its
+   * end stays the authority's), so a lost snapshot does not lose the mark; a mark ends sooner only when its round is in
+   * view again, or when a burst of departures past MAX_SHELLS (the most named) takes its place (round 3 A13). Absent:
+   * none. Read-only, and typed so: on the authority the list is server/match/unseenShellMarks.ts's, never written once a
+   * frame holds it, and frames with the same names share it (round 4 E11: a frame kept as a delta baseline keeps its own
+   * names).
+   */
+  unseenShells?: readonly number[];
   viewer: ViewerState | null;
   modeStateJson: string | null;
 }
@@ -334,9 +370,20 @@ export interface ErrorMessage {
   detail: string;
 }
 
+/**
+ * Sent before the WELCOME by a host that holds the seat's HELLO (round 3 B1/X6, protocol 12): through its boot, before its
+ * actor runs (the host runtime on its main thread, matchHost.ts bootHoldNotice; round 4 F0), or its resume hold
+ * (matchHostCore.ts noticeHeld). `holdMs`: the most it will hold from now. The seat's stall clock waits that long and a
+ * release margin, at most 33 s together, before it counts (MatchClient receiveHold); a later notice replaces an earlier one.
+ */
+export interface HoldMessage {
+  type: typeof MESSAGE_TYPE.HOLD;
+  holdMs: number;
+}
+
 type ClientMessage =
   | HelloMessage | InputMessage | SnapshotAckMessage | PingMessage | ChatMessage | LeaveMessage | ResumeHintMessage;
 type ServerMessage =
-  | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage;
+  | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage | HoldMessage;
 export type WireMessage = ClientMessage | ServerMessage;
 

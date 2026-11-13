@@ -188,12 +188,23 @@ export interface DamagePanelController {
   root: HTMLElement;
   prepareTankMasks(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): Promise<boolean>;
   setTank(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): void;
+  /** The battle is over (2026-11-02 audit, 04-ui-1 #7: the Garage return's clearBattle under the veil, and phase:change
+   *  'garage'): a pending mask retry is cancelled, a build still in flight is ignored when it lands, and the panel lets
+   *  go of the battle's tank, its masks and its visual until the next setTank, which starts afresh. Idempotent. */
+  clear(): void;
+  /** The battle is leaving while its screens stay up (the Garage return's clearBattle with keepScreens: a mid-battle
+   *  Leave, a report that prepares the Garage behind it; integration review r1): a pending mask retry is cancelled, a
+   *  build still in flight is ignored when it lands, and the battle's visual is let go (it moves to the Garage pedestal),
+   *  but the tank and its masks stay, so the panel still paints until clear(). Idempotent. */
+  release(): void;
   update(combat: DamagePanelCombatState): void;
   setPose(hullYaw?: number | null, turretYaw?: number | null, camYaw?: number | null): void;
   setTurretYaw(yaw?: number | null): void;
   setEquipment(ids: readonly string[] | null): void;
   debugState(): {
     masksReady: boolean;
+    /** Whether the panel holds a battle visual to clone for its masks (setTank's; clear lets it go). */
+    holdsSourceVisual: boolean;
     hullPhi: number;
     gunPhi: number;
     specId: string | null;
@@ -1167,6 +1178,30 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       draw();
     },
 
+    // (integration review r1) the half of clear() a teardown that keeps the screens needs at once: no retry or late build
+    // for the last battle's tank, and no hold on its visual while the Garage adopts it; the plan stays painted
+    release() {
+      cancelMaskRetry();
+      maskRequestSerial += 1;
+      maskSourceVisual = null;
+    },
+
+    // (2026-11-02 audit, 04-ui-1 item 7) the controller had no teardown: after a battle a pending retry still fired for
+    // the last battle's tank (a mask build the comment above sizes at 700-1,000 ms, in the Garage), and maskSourceVisual
+    // kept that tank's visual until the next battle
+    clear() {
+      cancelMaskRetry();
+      maskRequestSerial += 1;
+      maskAttempt = 0;
+      maskFailureCode = null;
+      maskSourceVisual = null;
+      spec = null;
+      masks = null;
+      tints = null;
+      anchors = null;
+      lastDrawSig = null;
+    },
+
     /**
      * Refresh the panel from the live combat state (call every frame).
      * DOM (HP bar and fire state) refreshes cheaply every call; the canvas
@@ -1237,6 +1272,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     debugState() {
       return {
         masksReady: !!(masks && tints),
+        holdsSourceVisual: maskSourceVisual !== null,
         hullPhi: hullPhi(),
         gunPhi: gunPhi(),
         specId: spec ? spec.id : null,

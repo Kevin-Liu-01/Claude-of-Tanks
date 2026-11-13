@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 interface PerfHudRuntime {
   update(dtMs: number): void;
   toggle(): void;
@@ -38,28 +39,20 @@ export function createPerfDiagnosticsAccess(
   if (typeof load !== 'function') throw new TypeError('performance diagnostics require a loader');
 
   let runtime: PerfDiagnosticsRuntime | null = null;
-  let pending: Promise<PerfDiagnosticsRuntime> | null = null;
   let captureHidden = false;
   let desiredVisible = false;
   let telemetryProvider: (() => RuntimeValue) | null = null;
 
-  const preload = (): Promise<PerfDiagnosticsRuntime> => {
-    if (runtime) return Promise.resolve(runtime);
-    if (pending) return pending;
-    const request = load().then((loaded) => {
-      runtime = loaded;
-      pending = null;
-      loaded.hud.setCaptureHidden(captureHidden);
-      loaded.hud.setVisible(desiredVisible);
-      if (telemetryProvider) loaded.hud.setTelemetryProvider(telemetryProvider);
-      return loaded;
-    });
-    pending = request;
-    request.catch(() => {
-      if (pending === request) pending = null;
-    });
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => load().then((loaded) => {
+    runtime = loaded;
+    loaded.hud.setCaptureHidden(captureHidden);
+    loaded.hud.setVisible(desiredVisible);
+    if (telemetryProvider) loaded.hud.setTelemetryProvider(telemetryProvider);
+    return loaded;
+  }));
+  const preload = (): Promise<PerfDiagnosticsRuntime> => chunk.load();
 
   const setVisible = (visible: boolean): void => {
     desiredVisible = !!visible;

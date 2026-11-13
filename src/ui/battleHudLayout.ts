@@ -6,7 +6,8 @@ import {
 } from './mouseNoticePlan.ts';
 import { scratchCanvas } from './uiCanvas.ts';
 import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
-import { battleSightShift, onBattleSightShift, publishBattleBands, type BattleBandBox } from './battleSight.ts';
+import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn, publishBattleBands as publishBandsIn,
+  type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
@@ -63,8 +64,8 @@ const PIPS_GAP = 6;
 const CORNER_GAP = 12;
 const WIDE_TOP_WIDTHS = new Set(['laptop', 'desktop']);
 const WIDE_TOP_HEIGHTS = new Set(['standard', 'tall']);
-const wideTop = (touch: boolean) => !touch && WIDE_TOP_WIDTHS.has(document.body.dataset.cotWidth ?? '')
-  && WIDE_TOP_HEIGHTS.has(document.body.dataset.cotHeight ?? '');
+const wideTop = (touch: boolean, body: HTMLElement) => !touch && WIDE_TOP_WIDTHS.has(body.dataset.cotWidth ?? '')
+  && WIDE_TOP_HEIGHTS.has(body.dataset.cotHeight ?? '');
 
 export const MAX_BATTLE_NOTIFICATIONS = 8;
 /** Whole 26px rows, separated by 3px, within the available lane (a stacked lane's rows: FEED_STACK_PITCH). */
@@ -272,9 +273,9 @@ const PANEL_VAR_SCOPE = '.cot-range-card,.cot-room-chat';
 const PANEL_VAR_STYLE_ID = 'cot-hud-panel-vars';
 /** The declaration of the panels' rule (its style element made once a document), or null where the document has no
  *  style sheets (the Node receipts' stand-ins): the body then carries them, as before. */
-function panelVarDeclaration(): CSSStyleDeclaration | null {
-  if (typeof document.getElementById !== 'function' || !document.head) return null;
-  const sheet = ensureStyle(PANEL_VAR_STYLE_ID, `${PANEL_VAR_SCOPE}{}`, 'surfaces').sheet;
+function panelVarDeclaration(doc: Document): CSSStyleDeclaration | null {
+  if (typeof doc.getElementById !== 'function' || !doc.head) return null;
+  const sheet = ensureStyle(PANEL_VAR_STYLE_ID, `${PANEL_VAR_SCOPE}{}`, 'surfaces', doc).sheet;
   const layer = sheet?.cssRules[sheet.cssRules.length - 1] as CSSLayerBlockRule | undefined;
   return (layer?.cssRules?.[0] as CSSStyleRule | undefined)?.style ?? null;
 }
@@ -348,15 +349,15 @@ const RIGHT_LANE_COVERS = '.cot-si-cardhost:not(:empty),.cot-si-log.open';
  *  outside the root (.cot-hints, .cot-medal-toasts, the network strip) are body children of their own. */
 const HUD_QUERY_SKIPS = '.cot-garage,#cot-icon-sprite,.cot-play';
 /** A document stand-in without its body's children (the receipts') is queried whole. */
-function hudHosts(): HTMLCollection | null {
-  return document.body?.children ?? null;
+function hudHosts(doc: Document): HTMLCollection | null {
+  return doc.body?.children ?? null;
 }
 /** hudQueryAll(selector) less the HUD_QUERY_SKIPS screens, in document order: each body child that is not
  *  one of them, then its matches (Element.querySelectorAll matches against the whole document, so a combinator still
  *  reads the ancestors above it). */
-export function hudQueryAll<E extends Element = Element>(selector: string): E[] {
-  const hosts = hudHosts();
-  if (!hosts) return Array.from(document.querySelectorAll<E>(selector));
+export function hudQueryAll<E extends Element = Element>(selector: string, doc: Document = document): E[] {
+  const hosts = hudHosts(doc);
+  if (!hosts) return Array.from(doc.querySelectorAll<E>(selector));
   const out: E[] = [];
   for (let i = 0; i < hosts.length; i++) {
     const host = hosts[i];
@@ -367,10 +368,11 @@ export function hudQueryAll<E extends Element = Element>(selector: string): E[] 
   }
   return out;
 }
+const hudQueryAllIn = <E extends Element = Element>(selector: string, doc: Document): E[] => hudQueryAll<E>(selector, doc);
 /** hudQuery(selector) less the HUD_QUERY_SKIPS screens: the first match in document order. */
-export function hudQuery<E extends Element = Element>(selector: string): E | null {
-  const hosts = hudHosts();
-  if (!hosts) return document.querySelector<E>(selector);
+export function hudQuery<E extends Element = Element>(selector: string, doc: Document = document): E | null {
+  const hosts = hudHosts(doc);
+  if (!hosts) return doc.querySelector<E>(selector);
   for (let i = 0; i < hosts.length; i++) {
     const host = hosts[i];
     if (host.matches(HUD_QUERY_SKIPS)) continue;
@@ -381,7 +383,20 @@ export function hudQuery<E extends Element = Element>(selector: string): E | nul
   return null;
 }
 
+const hudQueryIn = <E extends Element = Element>(selector: string, doc: Document): E | null => hudQuery<E>(selector, doc);
+
 export function installBattleHudLayout(root: HTMLElement): void {
+  // (couch panes, docs/COUCH-MODE.md) the layout's document is its root's: a split-screen pane's HUD lays out in, reads
+  // and flags its own pane's document (its bands, its body's flags and variables), never the page's
+  // (a receipt's stand-in root has no document of its own: the global one)
+  const document = root.ownerDocument ?? globalThis.document;
+  const window = (document?.defaultView ?? globalThis.window) as Window & typeof globalThis;
+  const hudQueryAll = <E extends Element = Element>(selector: string): E[] => hudQueryAllIn<E>(selector, document);
+  const hudQuery = <E extends Element = Element>(selector: string): E | null => hudQueryIn<E>(selector, document);
+  // the sight's place and the bands the chase framing reads are this document's (battleSight.ts, per view)
+  const battleSightShift = (): number => sightShiftIn(document);
+  const publishBattleBands = (bands: Parameters<typeof publishBandsIn>[0]): void => publishBandsIn(bands, document);
+  const onBattleSightShift = (listener: () => void): (() => void) => onSightShiftIn(listener, document);
   let frame = 0;
   const observed = new Set<Element>();
   const attributes = new WeakMap<Element, Map<string, string | null>>();
@@ -542,7 +557,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // copy to "CONTROL 2" at 844x390, gauntlet r7)
       width: objectiveWidth(score?.width || 344) };
     let seat = '';
-    if (node && score && wideTop(touch)) {
+    if (node && score && wideTop(touch, document.body)) {
       writeObjective('corner', objectivePlace);
       const box = node.getBoundingClientRect();
       if (box.width > 0 && box.right <= score.left - CORNER_GAP) seat = 'corner';
@@ -1035,7 +1050,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     reuseReads = !touch;
     // a new window size (a resize, a keyboard, a toolbar) is a new plan input
     if (width * 65536 + height !== lastSize) planInputs = true;
-    const tray = width < 1000 ? 'stacked' : 'inline';
+    // (couch-panes-272: a split-screen pane keeps the solo HUD's sizes, Kevin's "dont squish the uis": its tray stays the
+    // TV's inline one, and the pane gives up parts by priority where they do not fit, src/app/couchPaneViews.ts)
+    const tray = width < 1000 && !document.body.hasAttribute('data-couch-pane') ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     // r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): a mouse layout's inline tray,
     // centred, moves right until it keeps the gap the damage panel keeps from the gauge (TRAY_GAUGE_GAP)
@@ -1084,7 +1101,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // the team strip under the score (hudTeamPips.ts), where it shows; the objective under the score sits under it
     // (where the top is wide; elsewhere the strip is the zone chips alone, hung under the objective plate, which stays on the
     // score plate's edge: gauntlet r3)
-    const wide = wideTop(touch);
+    const wide = wideTop(touch, document.body);
     setBodyVar('--hud-pips-top', `${Math.round(scoreBottom + PIPS_GAP)}px`);
     const pips = wide ? read('.cot-pips.show') : null;
     const objectiveSeat = seatObjective(touch, width, height, map, score, pips);
@@ -1947,6 +1964,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': rosterHeights[0],
       'roster-right-height': rosterHeights[1],
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
+      // the ammo rack's centre line: the binoculars' call-in row stands on it (airSupportHud.css, gauntlet g7: centred on
+      // the window, the row stood 140 px off the keys and the rack below it at 1024x600)
+      'tray-x': ammo ? ammo.left + ammo.width / 2 : width / 2,
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
       'ribbon-top': ribbonTop,
@@ -1978,7 +1998,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,
       'chat-height': stack.chatHeight,
     };
-    const panelVars = panelVarDeclaration() ?? document.body.style;
+    const panelVars = panelVarDeclaration(document) ?? document.body.style;
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
       // (a centre and a centred left are written exact: a floored one sets its element up to 1 px off the centre line)

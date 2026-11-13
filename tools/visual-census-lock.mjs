@@ -17,9 +17,21 @@
 // 2026-10-21 (item 233): the FIFO lock directory itself is taken, refreshed, released and reaped through
 // capture-lock.mjs's owned holds (an owner token; refresh/release only act on their own hold; only a dead owner's lock
 // is reaped), so this lock cannot remove another session's hold either.
-import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+//
+// 2026-11-02 (audit S4): the session mutex is an owned lock directory too (capture-lock.mjs claimSessionMutex: an owner
+// token with the pid and its start time, and the `pid` file older readers take). A dead owner's mutex is reaped; a legacy
+// one (a `pid` file only) once that pid is dead and the mutex is older than probeDeadGraceMs; a bare directory with
+// neither (a shell holder's mkdir) is never reaped: the old rule reaped it 60 s on, under a live shell holder.
+//
+// Round 2 U38: a census started under the session mutex's own holder (`tools/with-session-mutex.mjs $SP/probe.lock --
+// node tools/visual-census.mjs --probe-lock=$SP/probe.lock`) waited behind its own parent: the mutex has a live owner, so
+// it is never reaped, and the patient head waited 20 min, then stepped behind until its timeout. When the mutex's live
+// owner is an ancestor of this process (capture-lock sessionMutexHeldByAncestor, as frame-budget-probe's acquireProbeLocks
+// does) the lock nests in it: held for this acquire, never released by it.
+import { mkdirSync, readdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { claimOwnedLock, reapDeadLock, refreshOwnedLock, releaseOwnedLock } from './capture-lock.mjs';
+import { claimOwnedLock, claimSessionMutex, reapDeadLock, reapDeadSessionMutex, refreshOwnedLock, releaseOwnedLock,
+  releaseSessionMutex, sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
@@ -66,7 +78,8 @@ export function createPoliteCaptureLock({
   probeDeadGraceMs = PROBE_DEAD_GRACE_MS,
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
-  let fifoHold = null, probeHeld = false;
+  // probeNested: the session mutex is an ancestor's (round 2 U38), held for this acquire and never released by it
+  let fifoHold = null, probeHold = null, probeNested = false;
   const arrived = Date.now();
   const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > ticketStaleMs; } catch { return false; } };
   // 2026-10-03: a waiter renews its own ticket and restores it if another waiter reaped it, as capture-lock.mjs does;
@@ -96,22 +109,33 @@ export function createPoliteCaptureLock({
     }
     return own;
   };
-  const tryMkdir = (dir) => { try { mkdirSync(dir); return true; } catch { return false; } };
   // 2026-10-03: a session mutex whose holder died without releasing it (a SIGKILL, a crash) stayed busy for good, and
-  // every lane's captures queued behind it until someone deleted it by hand. A mutex past the grace age whose recorded
-  // pid is gone, or that never got its pid, is reaped; a live holder's mutex never is.
-  const reapDeadProbe = () => {
-    let mtimeMs;
-    try { mtimeMs = statSync(probeDir).mtimeMs; } catch (error) { return error.code === 'ENOENT'; }
-    if (Date.now() - mtimeMs <= probeDeadGraceMs) return false;
-    let pid = NaN;
-    try { pid = parseInt(readFileSync(join(probeDir, 'pid'), 'utf8'), 10); } catch { /* no pid: its holder died before writing it */ }
-    if (Number.isFinite(pid) && pidAlive(pid)) return false;
-    try { rmSync(probeDir, { recursive: true, force: true }); } catch { return false; }
-    log(`reaped a dead holder's session mutex (pid ${Number.isFinite(pid) ? pid : 'never written'})`);
-    return true;
+  // every lane's captures queued behind it until someone deleted it by hand. A dead owner's mutex is reaped (capture-lock
+  // reapDeadSessionMutex); a live holder's mutex never is.
+  // whether the mutex's live holder is an ancestor, asked once per holder (its directory and pid), not on every poll: a
+  // patient head polls every 2 s, and a walk that finds no ancestor reads every level of the ppid chain
+  let ancestorMemo = null;
+  const heldByAncestor = () => {
+    const state = sessionMutexState(probeDir);
+    if (state.state !== 'live' || !(state.pid > 1)) return false;
+    const key = `${state.id}:${state.pid}`;
+    if (ancestorMemo?.key !== key) ancestorMemo = { key, held: sessionMutexHeldByAncestor(probeDir) };
+    return ancestorMemo.held;
   };
-  const dropProbe = () => { if (probeHeld) { probeHeld = false; try { rmSync(probeDir, { recursive: true, force: true }); } catch { /* gone */ } } };
+  const takeProbe = () => {
+    if (heldByAncestor()) {
+      if (!probeNested) log('the session mutex is held by an ancestor of this process: nested in it');
+      probeNested = true;
+      return true;
+    }
+    probeHold = claimSessionMutex(probeDir);
+    if (!probeHold && reapDeadSessionMutex(probeDir, { graceMs: probeDeadGraceMs, log })) {
+      log('reaped a dead holder\'s session mutex');
+      probeHold = claimSessionMutex(probeDir);
+    }
+    return probeHold !== null;
+  };
+  const dropProbe = () => { const releasing = probeHold; probeHold = null; probeNested = false; if (releasing) releaseSessionMutex(releasing, { log }); };
 
   async function acquire(timeoutMs = 10 * 60 * 1000) {
     const started = Date.now();
@@ -127,7 +151,7 @@ export function createPoliteCaptureLock({
           reapDeadLock(lockDir); // a dead owner's lock, also while an older copy's head waits behind it
           await sleep(headPollMs);
         }
-        let gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+        let gotProbe = takeProbe();
         // the patient head: keep the place while the session mutex is busy (the FIFO lock untouched), up to the cap
         if (!gotProbe && patientHeadMs > 0) {
           const waitSince = Date.now();
@@ -139,7 +163,7 @@ export function createPoliteCaptureLock({
             if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
             // (an older ticket can reappear ahead — a waiter restoring its first place — and then it goes first)
             if (head(ticket) !== ticket) { lostHead = true; break; }
-            gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+            gotProbe = takeProbe();
           }
           if (gotProbe) log(`the session mutex freed after ${Math.round((Date.now() - waitSince) / 1000)} s at the head`);
           else if (lostHead) {
@@ -149,12 +173,10 @@ export function createPoliteCaptureLock({
               if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
               await sleep(headPollMs);
             }
-            gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
+            gotProbe = takeProbe();
           } else log(`the patient head waited ${Math.round((Date.now() - waitSince) / 60000)} min for the session mutex: stepping behind`);
         }
         if (gotProbe) {
-          probeHeld = true;
-          writeFileSync(join(probeDir, 'pid'), String(process.pid));
           const headSince = Date.now();
           for (;;) {
             if ((fifoHold = claimOwnedLock(lockDir, { ticket }))) break;
@@ -190,6 +212,6 @@ export function createPoliteCaptureLock({
       dropProbe();
       return released;
     },
-    get held() { return fifoHold !== null && probeHeld; },
+    get held() { return fifoHold !== null && (probeHold !== null || probeNested); },
   };
 }

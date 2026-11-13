@@ -16,6 +16,11 @@ function nestedSelftests(source) {
   return imports;
 }
 
+function statementCount(source) {
+  return ts.createSourceFile('test.mjs', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS).statements.length;
+}
+assert.deepEqual([statementCount(''), statementCount('// only a comment\n/* and a block */\n'), statementCount('assert.ok(true);')], [0, 0, 1]);
+
 assert.deepEqual(nestedSelftests(`// import './comment.selftest.mjs';\nconst text = "import './string.selftest.mjs'";`), []);
 assert.deepEqual(nestedSelftests(`import './static.selftest.mjs';\nawait import(\n'./dynamic.selftest.mjs'\n);`),
   ['./static.selftest.mjs', './dynamic.selftest.mjs']);
@@ -45,18 +50,23 @@ assert.deepEqual(SELFTEST_SUITES.core.slice(0,2),[
 
 let total = 0;
 const listed = [];
+// 272: a registered receipt with no statement (empty, or comments only) passes without asserting anything; the
+// 2026-10-07 merge emptied three that way and the suite counted them as coverage for a month.
+const empty = [];
 for (const [name, files] of Object.entries(SELFTEST_SUITES)) {
   assert.ok(files.length > 0, name + ' suite is empty');
   assert.equal(new Set(files).size, files.length, name + ' suite has duplicate entries');
   for (const file of files) {
     assert.match(file, /\.mjs$/, file + ' is not an executable check');
     assert.ok(existsSync(file), file + ' does not exist');
+    if (file.endsWith('.selftest.mjs') && !statementCount(readFileSync(file, 'utf8'))) empty.push(file);
     if (file.endsWith('.selftest.mjs')) assert.deepEqual(nestedSelftests(readFileSync(file, 'utf8')), [],
       file + ': do not execute other registered self-tests; extract shared fixtures into test-support modules');
   }
   listed.push(...files);
   total += files.length;
 }
+assert.deepEqual(empty, [], 'registered receipts with no code (restore them from history or retire them):\n' + empty.join('\n'));
 assert.equal(new Set(listed).size, listed.length,
   'a regression check must have exactly one lifecycle owner');
 

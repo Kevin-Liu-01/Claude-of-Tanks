@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { EventBus } from './stateCore.ts';
+import { battleCountdownState, transitionBattleCountdown } from './preBattleCountdown.ts';
 
 interface BattleRolloutGame {
   preBattleS: number;
@@ -16,7 +16,11 @@ interface BattleRolloutAudio {
 
 interface BattleRolloutRuntimeOptions {
   game: BattleRolloutGame;
-  bus: EventBus;
+  /**
+   * (2026-11-02 audit F1) The battle's one rollout edge (the battle frame runtime's latch, battleFrameRuntime.ts
+   * `rollout`): a battle opened at 0 rolls out through it, so the count's own fall to 0 can never emit a second.
+   */
+  rollout(): void;
   audio: BattleRolloutAudio;
   getHud(): BattleRolloutHud | null;
   defaultPreBattleSeconds: number;
@@ -29,12 +33,12 @@ interface BattleRolloutRuntime {
 /** Presents the first controllable battle frame without moving its camera. */
 export function createBattleRolloutRuntime({
   game,
-  bus,
+  rollout,
   audio,
   getHud,
   defaultPreBattleSeconds,
 }: BattleRolloutRuntimeOptions): BattleRolloutRuntime {
-  if (!game || !bus || typeof bus.emit !== 'function' || !audio
+  if (!game || typeof rollout !== 'function' || !audio
     || typeof audio.resume !== 'function' || typeof audio.ambientOn !== 'function'
     || typeof getHud !== 'function' || !Number.isFinite(defaultPreBattleSeconds)
     || defaultPreBattleSeconds < 0) {
@@ -46,11 +50,12 @@ export function createBattleRolloutRuntime({
       if (!Number.isFinite(preBattleSeconds) || preBattleSeconds < 0) {
         throw new TypeError('battle rollout countdown must be finite and non-negative');
       }
-      if (game.preBattleS === Infinity) game.preBattleS = preBattleSeconds;
+      // (audit F1) the countdown's owner opens an armed count only; a running or open count is never reopened
+      transitionBattleCountdown(game, 'open', preBattleSeconds);
       getHud()?.preBattleCountdown(game.preBattleS);
       audio.resume();
       audio.ambientOn(true);
-      if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
+      if (battleCountdownState(game.preBattleS) === 'open') rollout();
     },
   });
 }

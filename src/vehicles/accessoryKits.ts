@@ -845,6 +845,211 @@ export function buildCargoVariant(variant: string, P: AccessoryPainter, colours:
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Crew kit (release 269, lane abrams-bradley-269)
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The crew-kit vocabulary (release 269; the owner, 2026-11-05: "add a bunch of extra decorations annd tank props and boxes
+ * and bags and other soldier reuqipment onn all of these bradleys and m1a1s"): the boxes and rolls crews strap into an
+ * Abrams's bustle rack and onto a Bradley's hull, at their issue sizes. decorations.ts `crewkit` builds these and, for any
+ * other name, the fleet cargo variant of that name (buildCargoVariant), so a curated crew load mixes both vocabularies.
+ */
+export const CREW_KIT_VARIANTS = Object.freeze(['ammo-can-stack', 'mre-stack', 'water-case', 'mat-roll', 'sleep-system',
+  'assault-pack'] as const);
+/** The crew-kit pieces whose fabric sags over uneven support (decorations.ts sagsOnSupport). */
+export const CREW_KIT_SOFT: ReadonlySet<string> = new Set(['mat-roll', 'sleep-system', 'assault-pack']);
+
+/** A painter that seats what it paints turned `ry` about Y and moved to (x, y, z); a cinch station turns with it. */
+function seatedPainter(P: AccessoryPainter, x: number, y: number, z: number, ry = 0, rx = 0): AccessoryPainter {
+  const put = (g: THREE.BufferGeometry): THREE.BufferGeometry => place(g, x, y, z, rx, ry, 0);
+  const c = Math.cos(ry), s = Math.sin(ry);
+  return {
+    detail: P.detail, rng: P.rng, fabric: P.fabric,
+    paint: (g, rgb, ao) => P.paint(put(g), rgb, ao),
+    cloth: (g, tone, rgb) => P.cloth(put(g), tone, rgb),
+    strap: (g, tone) => P.strap(put(g), tone),
+    cinch: (g, at, across, tone) => P.cinch(put(g), [x + at[0] * c + at[1] * s, z - at[0] * s + at[1] * c],
+      [across[0] * c + across[1] * s, -across[0] * s + across[1] * c], tone),
+    burlap: (g, tone) => P.burlap(put(g), tone),
+    steel: (g, tone) => P.steel(put(g), tone),
+    wood: (g, tone, rgb) => P.wood(put(g), tone, rgb),
+    trim: (g, tone) => P.trim(put(g), tone),
+    rubber: (g, tone) => P.rubber(put(g), tone),
+    kit: (g, tone) => P.kit(put(g), tone),
+    lens: (g) => P.lens(put(g)),
+    net: (g, tone) => P.net(put(g), tone),
+    leaves: (g) => P.leaves(put(g)),
+  };
+}
+
+/**
+ * A pressed steel ammunition can standing on its base, `len` along X: the body, the gasketed lid, the lid's latch lever on
+ * the +X end and the carry handle folded flat on the lid (a stacked can lies on it), two pressed ribs (near level). The
+ * M2A1 (.50) is 305 x 155 x 188 mm, the M19A1 (7.62 mm) 280 x 95 x 178 mm. Lighter than hardCase: a stack of three costs
+ * about 500 triangles near.
+ */
+function ammoCan(P: AccessoryPainter, len: number, d: number, h: number, rgb: RGB): void {
+  const bodyH = h * 0.82, lidH = h - bodyH;
+  P.paint(place(moldedBox(len, bodyH, d, 0.008, 1, 0.004), 0, bodyH / 2, 0), rgb, 0.3);
+  P.paint(place(moldedBox(len * 1.012, lidH, d * 1.03, 0.008, 1, 0.005), 0, bodyH + lidH / 2, 0), scaleRgb(rgb, 1.07), 0.22);
+  if (!near(P)) return;
+  P.paint(place(block(0.016, h * 0.42, d * 0.36), len / 2 + 0.008, h * 0.7, 0), scaleRgb(rgb, 0.86), 0.3);   // latch lever
+  P.steel(place(block(len * 0.42, 0.007, 0.016), 0, h + 0.0035, 0), 0.5);                              // folded handle
+  for (const side of [-1, 1]) P.paint(place(block(len * 0.6, 0.022, 0.006), 0, bodyH * 0.55, side * (d / 2 + 0.003)), scaleRgb(rgb, 1.08), 0.3);
+}
+
+/**
+ * One fibreboard MRE case (12 meals; 410 x 250 x 255 mm, release 269's brief) standing on y = 0, long side along X: soft
+ * corners, a taped seam over the top, two polypropylene bands round it and the black stencil panel on a long face.
+ */
+function mreCase(P: AccessoryPainter, tone: number): void {
+  const w = 0.41, h = 0.25, d = 0.255;
+  const board: RGB = [0.47 * tone, 0.37 * tone, 0.235 * tone];
+  P.paint(place(moldedBox(w, h, d, 0.006, 1, 0.004), 0, h / 2, 0), board, 0.3);
+  if (!near(P)) return;
+  P.paint(place(block(w + 0.002, 0.003, 0.055), 0, h + 0.0015, 0), scaleRgb(board, 1.12), 0.2);        // tape seam
+  for (const x of [-w * 0.27, w * 0.27]) P.paint(place(block(0.013, h + 0.006, d + 0.006), x, h / 2, 0), [0.62, 0.58, 0.47], 0.2);
+  P.paint(place(block(0.15, 0.075, 0.003), -0.01, h * 0.56, d / 2 + 0.0015), [0.07, 0.07, 0.065], 0.1);  // stencil panel
+}
+
+/**
+ * A crew-kit piece (CREW_KIT_VARIANTS) in the piece frame (origin on its support, +Y up), every random draw before any
+ * detail branch. A stack of two .50 cans with a 7.62 can laid across them; two MRE cases, the top one turned on the
+ * bottom one; a shrink-wrapped case of 24 half-litre bottles (390 x 260 x 200 mm); a closed-cell foam sleeping mat rolled
+ * under two bungees (580 mm wide, 170 mm across); a sleeping bag in its compression sack (400 mm, 280 mm across); a slim
+ * three-day assault pack lying on its back panel.
+ */
+export function buildCrewKit(variant: string, P: AccessoryPainter, colours: EquipmentColours, rackStyle: CanRackStyle = 'nato'): void {
+  const r = [P.rng(), P.rng(), P.rng(), P.rng()];
+  switch (variant) {
+  case 'ammo-can-stack': {
+    const gap = 0.012, d50 = 0.155, h50 = 0.188;
+    for (const [k, side] of [[0, -1], [1, 1]] as const) {
+      ammoCan(seatedPainter(P, (r[k] - 0.5) * 0.024, 0, side * (d50 / 2 + gap / 2), (r[k + 1] - 0.5) * 0.04), 0.305, d50, h50, colours.ammoCase);
+    }
+    // the 7.62 mm can laid on its side across both (its 95 mm depth stands up, its length runs along Z): rolled onto
+    // its side about its length, then turned across the pair and set on their folded handles
+    const d762 = 0.095, h762 = 0.178;
+    const across = seatedPainter(P, 0.01 + (r[2] - 0.5) * 0.03, h50 + 0.007, 0, Math.PI / 2 + (r[3] - 0.5) * 0.12);
+    ammoCan(seatedPainter(across, 0, d762 / 2, -h762 / 2, 0, Math.PI / 2), 0.28, d762, h762, scaleRgb(colours.ammoCase, 0.94));
+    break;
+  }
+  case 'mre-stack':
+    mreCase(P, 0.94 + r[0] * 0.12);
+    mreCase(seatedPainter(P, (r[1] - 0.5) * 0.05, 0.25, (r[2] - 0.5) * 0.04, (r[3] - 0.5) * 0.16), 0.9 + r[0] * 0.14);
+    break;
+  case 'water-case': {
+    // the film over the bottles' bodies, the four rows' shoulders under it, and the 24 caps (near level)
+    const w = 0.39, d = 0.26, body = 0.15, film: RGB = [0.5, 0.56, 0.58];
+    P.paint(place(moldedBox(w, body, d, 0.022, 1, 0.012), 0, body / 2, 0), film, 0.26);
+    const rowZ = [-0.0975, -0.0325, 0.0325, 0.0975];
+    for (const z of rowZ) P.paint(roundBar([-w / 2 + 0.012, body - 0.004, z], [w / 2 - 0.012, body - 0.004, z], 0.03, 6), scaleRgb(film, 1.08), 0.2);
+    if (near(P)) {
+      for (const z of rowZ) for (let i = 0; i < 6; i++) {
+        const x = -w / 2 + 0.0325 + i * 0.065;
+        P.paint(place(block(0.026, 0.024, 0.026), x, body + 0.03, z, 0, Math.PI / 4, 0), [0.74, 0.76, 0.72], 0.15);
+      }
+    }
+    break;
+  }
+  case 'mat-roll': {
+    // closed-cell foam: smooth, firm, flat-ended, in coyote, olive or black, squeezed by two bungee cords
+    const seed = 400 + Math.floor(r[0] * 9973);
+    const foam: RGB = ([[0.42, 0.35, 0.23], [0.27, 0.29, 0.18], [0.1, 0.1, 0.095]] as RGB[])[Math.floor(r[1] * 3) % 3];
+    const len = 0.58 * (0.95 + r[2] * 0.1), rad = 0.085;
+    const spec: FabricSpec = { len, hw: rad, hh: rad * 0.97, exponent: 2, endScale: 0.97, endLength: 0.02, flatten: 0.08,
+      wrinkle: 0.006, seg: near(P) ? 12 : 8, stations: 4, cinch: [-len * 0.3, len * 0.3], cinchDepth: 0.07, cinchWidth: 0.018,
+      seed, detail: P.detail };
+    const body = place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0);
+    body.computeBoundingBox();
+    const lift = -body.boundingBox!.min.y;
+    P.paint(place(body, 0, lift, 0), foam, 0.28);
+    for (const z of spec.cinch ?? []) {
+      P.cinch(place(place(fabricStrap(spec, z, 0.012, 0.004), 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0), [z, 0], [0, 1], 0.3);
+    }
+    if (near(P)) {
+      for (const end of [-1, 1] as const) {
+        P.paint(place(place(rolledEndSpiral(rad * 0.94, end * len / 2, end, 14, 3.2), 0, 0, 0, 0, Math.PI / 2, 0), 0, lift, 0),
+          scaleRgb(foam, 0.62), 0.1);
+      }
+    }
+    break;
+  }
+  case 'assault-pack': {
+    // a three-day assault pack (460 x 300 x 170 mm) lying on its back panel, slim enough to hang on a rail: the main bag
+    // under two compression straps, a flat pocket sewn on its face, a carry loop at its top end (about 300 triangles)
+    const seed = 470 + Math.floor(r[2] * 9973), n = bagNoise(seed, 0xa55);
+    const w = 0.3 * (0.95 + 0.1 * n(0)), len = 0.46 * (0.95 + 0.1 * n(1)), h = 0.165 * (0.92 + 0.14 * n(2));
+    const fabric = fabricFamily(P, 0, seed), tone = 0.6 + r[1] * 0.08;
+    const main: FabricSpec = { len, hw: w / 2, hh: h / 2, exponent: 3.6, endScale: 0.8, endLength: 0.12, flatten: 0.42,
+      wrinkle: 0.03, seg: 8, stations: 4, cinch: [-len * 0.16, len * 0.2], cinchDepth: 0.08, seed };
+    const { top } = bag(P, main, [0, 0, 0], 0, tone, fabric, 0.5);
+    const pocket: FabricSpec = { len: len * 0.42, hw: w * 0.34, hh: h * 0.18, exponent: 4, endScale: 0.85, endLength: 0.15,
+      flatten: 0.5, wrinkle: 0.025, seg: 6, stations: 3, seed: seed + 5, detail: P.detail };
+    P.cloth(place(fabricBody(pocket), -len * 0.1, top - h * 0.1, 0, 0, Math.PI / 2, 0), tone * 0.9, fabric);
+    webbingLoop(P, len * 0.42, top - h * 0.3, 0, w * 0.4, 0.025, Math.PI / 2);
+    break;
+  }
+  case 'sleep-system': {
+    const seed = 450 + Math.floor(r[0] * 9973);
+    const spec: FabricSpec = { len: 0.4, hw: 0.14, hh: 0.13, exponent: 2.3, endScale: 0.74, endLength: 0.14, flatten: 0.22,
+      wrinkle: 0.07, seg: 12, stations: 6, cinch: [-0.11, 0.11], cinchDepth: 0.13, seed };
+    bag(P, spec, [0, 0, 0], (r[1] - 0.5) * 0.12, 0.62 + r[2] * 0.08, fabricFamily(P, 0, seed), 0.42, (r[3] - 0.5) * 0.5);
+    break;
+  }
+  default:
+    buildCargoVariant(variant, P, colours, undefined, rackStyle);
+  }
+}
+
+/** A cargo net's node grid: nx nodes across X (w) by nz along Z (len), centred on the piece origin. */
+export interface CargoNetGrid { readonly nx: number; readonly nz: number; readonly w: number; readonly len: number }
+
+/**
+ * A webbing cargo net over a load (release 269): its cords run node to node over an nx x nz grid at the heights the
+ * placement measured over the load (`nodeY`, row-major, i across X fastest), so the net lies on every bag and case it
+ * holds and pulls down between them; the near level draws each cord as a three-sided 16 mm strand, the coarse level as
+ * a flat band facing up. Olive webbing on the painted-hardware draw.
+ */
+export function buildCargoNet(P: AccessoryPainter, grid: CargoNetGrid, nodeY: ArrayLike<number>): void {
+  const { nx, nz, w, len } = grid;
+  const at = (i: number, k: number): THREE.Vector3 =>
+    new THREE.Vector3(-w / 2 + (i / (nx - 1)) * w, nodeY[k * nx + i], -len / 2 + (k / (nz - 1)) * len);
+  const positions: number[] = [];
+  const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3(), lift = new THREE.Vector3(), t = new THREE.Vector3();
+  const rCord = 0.0055;
+  const cord = (a: THREE.Vector3, b: THREE.Vector3): void => {
+    t.subVectors(b, a).normalize();
+    side.crossVectors(t, up).normalize();
+    lift.crossVectors(side, t).normalize();
+    if (!near(P)) {
+      // a flat band facing up (two triangles)
+      const s = side.clone().multiplyScalar(rCord);
+      const p = [a.clone().sub(s), a.clone().add(s), b.clone().add(s), b.clone().sub(s)];
+      positions.push(...p[0].toArray(), ...p[1].toArray(), ...p[2].toArray(), ...p[0].toArray(), ...p[2].toArray(), ...p[3].toArray());
+      return;
+    }
+    // three strands round the cord's line: up, and down to either side
+    const ring = [0, 1, 2].map((j) => {
+      const ang = (j / 3) * Math.PI * 2;
+      return lift.clone().multiplyScalar(Math.cos(ang) * rCord).addScaledVector(side, Math.sin(ang) * rCord);
+    });
+    for (let j = 0; j < 3; j++) {
+      const r0 = ring[j], r1 = ring[(j + 1) % 3];
+      const a0 = a.clone().add(r0), a1 = a.clone().add(r1), b0 = b.clone().add(r0), b1 = b.clone().add(r1);
+      // wound to face out of the cord
+      positions.push(...a0.toArray(), ...b1.toArray(), ...b0.toArray(), ...a0.toArray(), ...a1.toArray(), ...b1.toArray());
+    }
+  };
+  for (let k = 0; k < nz; k++) for (let i = 0; i < nx - 1; i++) cord(at(i, k), at(i + 1, k));
+  for (let i = 0; i < nx; i++) for (let k = 0; k < nz - 1; k++) cord(at(i, k), at(i, k + 1));
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  P.strap(withBoxUV(geometry), 0.5);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // Other shared stowage kits
 // ---------------------------------------------------------------------------------------------------------------
 

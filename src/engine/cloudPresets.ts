@@ -18,6 +18,7 @@ import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
 import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 import { lightTune } from './lightModelCore.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -346,20 +347,31 @@ export interface CloudscapeEnv {
 }
 type CloudscapeResolver = (legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scape: CloudscapeConfig) => CloudLayerPreset;
 let cloudscape: CloudscapeResolver | null = null;
-let cloudscapeLoad: Promise<void> | null = null;
+// (round 3 A4) the cloudscape's chunk under the one lazy-chunk policy (app/lazyChunk.ts). Its memo was cleared on a
+// failure and asked again at once by the next call, and the battle atmosphere's prepare asks it on every call, which the
+// Studio makes once per sun-dial or slider move: after one failed transfer every move asked again, offline too.
+// (round 4 F2) Exported for the battle atmosphere's prepare (battleAtmosphereAccess.ts), whose entry asks it at once
+// whatever the backoff and whose Studio applies never await its re-ask (the Studio lights again once it lands)
+export const cloudscapeChunk = createLazyChunk((): Promise<void> => import('./cloudscapeLayer.ts').then((module) => {
+  cloudscape = module.cloudscapeLayer({
+    rules: CLOUD_LAYER_RULES, weather: CLOUD_WEATHER_RULES, regimes: CLOUDSCAPE_REGIMES, contrailMax: CLOUD_CONTRAIL_MAX,
+    clamp, tintOf, hexToLinear, neutralWeather, cloudNightAmount, cloudTimeOfDay,
+  });
+}));
+/** (round 5 U8) Whether the cloudscape is installed: the load installs it a moment before cloudscapeChunk reads 'ready'
+ *  (battleAtmosphereAccess.ts: a relight's landing). */
+export function cloudscapeLayersInstalled(): boolean {
+  return cloudscape !== null;
+}
 /**
  * 2026-10-02 (the boot weight): a map's cloudscape (its regime, its knobs, the time of day, the weather beyond the
  * slab) lights only a battlefield, so it loads behind the battle entry (cloudscapeLayer.ts: the battle atmosphere's
- * acquisition and the capture staging await it); the Garage's open destinations read the deck derivation alone. Never
- * rejects: a failed chunk keeps the deck derivation and the next call retries.
+ * prepare and the capture staging await it); the Garage's open destinations read the deck derivation alone. Never
+ * rejects: a failed chunk keeps the deck derivation, and a later call asks again as the lazy-chunk policy allows (at once
+ * after one failure, then past its backoff, never offline).
  */
 export function loadCloudscapeLayers(): Promise<void> {
-  return cloudscapeLoad ??= import('./cloudscapeLayer.ts').then((module) => {
-    cloudscape = module.cloudscapeLayer({
-      rules: CLOUD_LAYER_RULES, weather: CLOUD_WEATHER_RULES, regimes: CLOUDSCAPE_REGIMES, contrailMax: CLOUD_CONTRAIL_MAX,
-      clamp, tintOf, hexToLinear, neutralWeather, cloudNightAmount, cloudTimeOfDay,
-    });
-  }, () => { cloudscapeLoad = null; });
+  return cloudscapeChunk.load().then(undefined, () => undefined);
 }
 
 /** Derive the layer from a sky preset; the cloudscape refines it, an authored `cloudLayer` override wins field by field. */

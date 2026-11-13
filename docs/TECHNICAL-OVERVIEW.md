@@ -411,8 +411,9 @@ those values enter match policy.
 ### 8.2 State delivery
 
 Snapshots are published at 20 Hz while authority continues at 60 Hz. WebRTC
-uses a replaceable unordered state channel and an ordered reliable control and
-event channel. Ordered WebSocket delivery coalesces obsolete pending state so
+carries every message on one reliable, ordered data channel per seat (`match`,
+docs/MULTIPLAYER-V2.md §13.7), with the channel's buffered amount as backpressure.
+Ordered WebSocket delivery coalesces obsolete pending state so
 old snapshots do not block current control traffic.
 
 Snapshot codecs use per-peer baselines, deltas, acknowledgements, and periodic

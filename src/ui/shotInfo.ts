@@ -1,4 +1,4 @@
-import { weaponHitKind } from '../game/weaponHitKind.ts';
+import { isRapidFireHit, weaponHitKind } from '../game/weaponHitKind.ts';
 import { hullPointsRemoved } from '../game/hullPointsRemoved.ts';
 import { shouldShowShotReadout, keepMissileDirectHit, MissileBlastLedger } from './shotReadoutPolicy.ts';
 import { BattleKillLedger, FiredRoundLedger } from '../game/battleEventStats.ts';
@@ -22,6 +22,8 @@ import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, escapeHtml, markDatum } from './dom.ts';
 import { NoticeQueue } from './components/notice.ts';
+import { battleInputOwnerFor } from './battleInputOwner.ts';
+import { createBattleReportGate } from './battleReportGate.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
   damageFigureMarkup, hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -1057,7 +1059,8 @@ export function mergeEndRosterRow(
  * @param {{on:Function,emit:Function}} bus event bus (§1.5)
  * @returns {{root:HTMLElement,statsRoot:HTMLElement,setPlayer:Function,reset:Function,hideStats:Function,toggleLog:Function}}
  */
-export function createShotInfo(bus: EventBus): ShotInfoRuntime {
+/** `mount`: where the end screen's root goes (the HUD's own document's body: a split-screen pane's, hud.ts HudView). */
+export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body): ShotInfoRuntime {
   ensureFonts();
   ensureStyle('cot-si-style', SI_CSS, 'surfaces');
 
@@ -1101,7 +1104,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   toastHost.setAttribute('role', 'status');
   toastHost.setAttribute('aria-live', 'polite');
   const statsRoot = el('div', 'cot-si-stats');
-  document.body.appendChild(statsRoot);
+  mount.appendChild(statsRoot);
   // END SCREEN renders into statsRoot so the integration seams keep holding:
   // main.ts veilHud() toggles this exact element around the kill-cam, and
   // the kill-cam parity veil CSS addresses `.cot-si-stats`.
@@ -1377,8 +1380,40 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     return card;
   }
 
+  // (272, the owner: "debounce ... anywhere debouncing makes sense") a fast gun's penetrations on one target repaint the
+  // card at most once a CARD_BURST_GAP_MS: the burst's first at once, its latest when the window ends (an air-defence
+  // gun's burst rebuilt the card, its schematic and its damage figure twenty times a second). A main gun's card, and a
+  // fast gun's first on a new target, paint as before.
+  const CARD_BURST_GAP_MS = 150;
+  const lastBurstCard = { attackerId: null as string | null | undefined, targetId: null as string | null | undefined, at: -Infinity };
+  let burstCard: { ev: ShotHitEvent; cls: HitOutcomePresentation } | null = null;
+  let burstCardTimer: ReturnType<typeof setTimeout> | null = null;
   function clearCardTimers(): void {
     clearTimeout(primaryFadeTimer); clearTimeout(primaryRemoveTimer);
+    // (272) a newer card, or a reset, supersedes a burst's card still waiting for its window
+    if (burstCardTimer) { clearTimeout(burstCardTimer); burstCardTimer = null; }
+    burstCard = null;
+  }
+  function heldForBurst(ev: ShotHitEvent, cls: HitOutcomePresentation): boolean {
+    if (!isRapidFireHit(ev)) { lastBurstCard.at = -Infinity; return false; }
+    const now = performance.now();
+    const sinceMs = now - lastBurstCard.at;
+    if (sinceMs >= CARD_BURST_GAP_MS || lastBurstCard.attackerId !== ev.attackerId || lastBurstCard.targetId !== ev.targetId) {
+      lastBurstCard.attackerId = ev.attackerId; lastBurstCard.targetId = ev.targetId; lastBurstCard.at = now;
+      return false;
+    }
+    burstCard = { ev, cls };
+    if (!burstCardTimer) {
+      burstCardTimer = setTimeout(() => {
+        burstCardTimer = null;
+        const held = burstCard;
+        burstCard = null;
+        if (!held || isTouchBattleLayout() || logOpen) return;
+        lastBurstCard.at = performance.now();
+        paintCard(held.ev, held.cls);
+      }, CARD_BURST_GAP_MS - sinceMs);
+    }
+    return true;
   }
   /**
    * The card's figure, beside the outcome: the hull points the shot took off (owner 2026-10-31, "should show the amount u
@@ -1413,6 +1448,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       if (card && currentPrimary) showMissileBlast(card, currentPrimary);
       return;
     }
+    if (heldForBurst(ev, cls)) return;
+    paintCard(ev, cls);
+  }
+  function paintCard(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     currentPrimary = ev;
     clearCardTimers();
     while (cardHost.firstChild) cardHost.firstChild.remove();
@@ -1428,7 +1467,22 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   // ---------- 2. collapsible log ----------
+  // (272) the open log follows a burst at most once a LOG_RENDER_GAP_MS: the first hit at once, the rest of the burst when
+  // the window ends (every hit of an air-defence gun's burst rebuilt every row of the battle's received log, twenty times a
+  // second). A hit after a pause renders at once, as before.
+  const LOG_RENDER_GAP_MS = 100;
+  let logRenderedAt = -Infinity;
+  let logRenderTimer: ReturnType<typeof setTimeout> | null = null;
+  function refreshLog(): void {
+    if (!logOpen) return;
+    const sinceMs = performance.now() - logRenderedAt;
+    if (sinceMs >= LOG_RENDER_GAP_MS) { renderLog(); return; }
+    if (logRenderTimer) return;
+    logRenderTimer = setTimeout(() => { logRenderTimer = null; if (logOpen) renderLog(); }, LOG_RENDER_GAP_MS - sinceMs);
+  }
   function renderLog(): void {
+    logRenderedAt = performance.now();
+    if (logRenderTimer) { clearTimeout(logRenderTimer); logRenderTimer = null; }
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
     sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
@@ -1823,7 +1877,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     allShots.push({ ev, cls: outcome });
     showCard(ev, outcome);
-    if (logOpen) renderLog();
+    refreshLog();
   }
 
   function recordIncomingHit(ev: ShotHitEvent): void {
@@ -1847,7 +1901,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       zone: ev.zone || '',
     });
     showToast(ev, outcome);
-    if (logOpen) renderLog();
+    refreshLog();
   }
 
   bus.on('shell:fired', (payload) => {
@@ -1946,6 +2000,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     killLedger.respawn(p.id);
     recordCombatantRevived(combatant(p.id));
   });
+  // (round 3 merge review r1; round 4 E6b) a network battle restarted under this seat (battlePresentation.ts
+  // 'battle:restarted'): every hull stands at its spawn again, and the restart opens a new battle (the session's decision;
+  // Kevin may overrule), so the report starts over as at a battle's start (reset(): shots, hits, damage both ways, the
+  // combatants' kills, deaths and life, the kill ledger, the timeline, the spotting assists). Before, only the dead were
+  // revived, and the report of the battle that ended added the abandoned battle's shots, damage and kills to its own.
+  bus.on('battle:restarted', () => api.reset());
 
   // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
   // state.ts emits battle:ended in the very sim step the player dies, but
@@ -1953,65 +2013,18 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // the report synchronously buried the still-playing slow-mo flight and the
   // whole 7 s x-ray hold under the full-screen DEFEAT panel (z 71 over the
   // replay's z 60; r6 critical). Stat ACCUMULATION stays on battle:ended;
-  // RENDERING is buffered and flushed when the replay releases the screen
-  // (killcam:done — emitted by src/game/killcam.ts on finish, skip and cancel
-  // alike). The no-replay path flushes after one animation frame + macrotask:
-  // killcam:begin is emitted synchronously inside begin(), which runs either
-  // in the same task as battle:ended (live loop) or in the next main-loop
-  // frame (debug fastForward emitted the event outside the loop), so by
-  // decision time "a replay owns the screen" is a settled fact, never a race.
-  // A watchdog past the longest possible replay (3.4 s flight + 7 s hold +
-  // slack) guarantees a stuck replay can never eat the report.
-  let kcReplayActive = false;
-  // battle endings (2026-09-25): a camera beat (time's up, objective orbit, wreck orbit) owns the screen
-  // exactly like a replay — 'ending:begin' / 'ending:done' from the result presentation runtime
-  let endingBeatActive = false;
-  let pendingReport: EndScreenResult | null = null; // buffered battle:ended result ('' is valid)
-  let reportFlushTimer: TimerHandle | null = null;
-  let reportWatchdog: TimerHandle | null = null;
-  const REPORT_MAX_WAIT_MS = 16000;
-
-  function clearReportBuffer(): void {
-    pendingReport = null;
-    if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
-    if (reportWatchdog) { clearTimeout(reportWatchdog); reportWatchdog = null; }
-  }
-
-  function flushReport(): void {
-    if (pendingReport === null) return;
-    const result = pendingReport;
-    clearReportBuffer();
-    renderStats(result);
-  }
-
-  function scheduleReportFlush(): void {
-    const decide = () => {
-      if (pendingReport === null) return;
-      if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
-      if (!kcReplayActive && !endingBeatActive) { flushReport(); return; }
-      // replay owns the screen: killcam:done flushes; watchdog backstops
-      if (!reportWatchdog) reportWatchdog = setTimeout(flushReport, REPORT_MAX_WAIT_MS);
-    };
-    // one full frame first (the main loop's end-flow, which starts the
-    // replay, runs inside the next animation frame), then a macrotask so the
-    // decision runs after that frame's synchronous work completes
-    requestAnimationFrame(() => setTimeout(decide, 0));
-    // rAF-throttled fallback (hidden tab): decide anyway — a throttled tab
-    // renders no replay frames either, so flushing early shows nothing wrong
-    if (reportFlushTimer) clearTimeout(reportFlushTimer);
-    reportFlushTimer = setTimeout(decide, 600);
-  }
-
-  bus.on('killcam:begin', () => { kcReplayActive = true; });
-  bus.on('killcam:done', () => {
-    kcReplayActive = false;
-    if (pendingReport !== null && !endingBeatActive) flushReport();
+  // RENDERING waits on the report gate (battleReportGate.ts, 2026-11-02 audit F4):
+  // it decides after the frame that arms the verdict's close, holds while the
+  // battle input owner (battleInputOwner.ts) says a replay, an ending beat or the
+  // menu owns the screen, decides again when that ends, and renders a held report
+  // on battle:presented (the result presentation's hand-off, end overlay built).
+  const inputOwner = battleInputOwnerFor(bus);
+  const reportGate = createBattleReportGate<EndScreenResult>({
+    holdReason: () => (inputOwner.state === 'presentation' || inputOwner.state === 'menu' ? inputOwner.state : null),
+    render: (result) => renderStats(result),
   });
-  bus.on('ending:begin', () => { endingBeatActive = true; });
-  bus.on('ending:done', () => {
-    endingBeatActive = false;
-    if (pendingReport !== null && !kcReplayActive) flushReport();
-  });
+  inputOwner.onChange(() => reportGate.ownerChanged());
+  bus.on('battle:presented', () => reportGate.presented());
 
   bus.on('battle:ended', (payload) => {
     const p = eventPayload<BattleEndedEvent | null>(payload);
@@ -2042,8 +2055,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       gameMode: typeof p.gameMode === 'string' && p.gameMode ? p.gameMode : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
-    pendingReport = p ? (p.result || '') : '';
-    scheduleReportFlush();
+    reportGate.ended(p ? (p.result || '') : ''); // ('' is valid)
   });
   // the mode's objective moments for the timeline (sim/matchModes.ts via state.ts: zone, flag, goal)
   bus.on('mode:zone_captured', (payload) => {
@@ -2092,7 +2104,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {
-      clearReportBuffer();
+      reportGate.clear();
       endScreen.hide();
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
@@ -2102,7 +2114,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     reset() {
       // Activation may reset immediately after warming this roster. Immutable
       // spec-keyed preparation survives UI reset; a new warm supersedes it.
-      clearReportBuffer();
+      reportGate.clear();
       while (cardHost.firstChild) cardHost.firstChild.remove();
       clearToasts();
       clearCardTimers(); currentPrimary = null; missileBlasts.clear();

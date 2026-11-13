@@ -23,12 +23,23 @@
 // The volumetric layer is put at scene time 0 and settled (settleForCapture) and frozen for each frame, so every build
 // draws the same drift; the phone tier draws its baked decks. Frames land in <out>/<job>/frames/<unit>-<pose>.webp (q92) and
 // every unit's receipt in <out>/<job>/manifest-<tag>.json (a run resumes).
+//
+// (round 8 Y8, sweep s6-01) The hold is the one wrapper's (tools/capture-hold.mjs withCaptureHold): it queues with the
+// first unit staging (`prepare`), refreshes, owns the cap's yield (checkpoint() between units, a grace of one unit's
+// budget and a minute so a unit in flight at the cap finishes), answers SIGTERM, SIGINT and SIGHUP (128 + n), and runs the teardown
+// (every browser of the run closed) before the release on every way out. The tool's own acquire, signal handlers and
+// close() helper are gone: the census (tools/capture-hold-census.selftest.mjs) refuses them. A staging failure while
+// queued is the unit's failure, not the run's: the hold opens that unit again (a throwing prepare ended the whole run
+// with nothing shot, and a resumed run put the same unit first again). Each unit has one owner (createUnitRun below):
+// its states, its budget and its abort, its browser and page its own; the boot waits on the readiness probe
+// (tools/game-readiness.mjs). tools/cloud-sky-shots.selftest.mjs drives the run on a stand-in browser and a private lock,
+// and the cap (its yield, its grace, its stop) on a mock clock.
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { freezePage, startViteChild, thawPage, withCaptureHold } from './capture-hold.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 import { isMainModule, mapProbeLaunchOptions, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
@@ -142,9 +153,9 @@ function pageBattlePose({ yaw }) {
   return { cam: D.camera.position.toArray(), dir: D.camera.getWorldDirection(new V()).toArray(), fov: D.camera.fov };
 }
 
-async function bootPage(browser, baseUrl, device, garageVariant = null, query = '', tune = null, cloudTime = 0) {
-  const page = await browser.newPage();
-  const errors = [];
+/** Boot `entry`'s page (a fresh page its unit opened) on `baseUrl` for `device`. */
+async function bootPage(entry, baseUrl, device, garageVariant = null, query = '', tune = null, cloudTime = 0) {
+  const { page, errors } = entry;
   const d = DEVICES[device];
   await page.setViewport({ width: d.width, height: d.height, deviceScaleFactor: d.deviceScaleFactor, isMobile: d.isMobile, hasTouch: d.hasTouch });
   await page.evaluateOnNewDocument((spec, preset, variant, lightTune, captureTime) => {
@@ -163,13 +174,15 @@ async function bootPage(browser, baseUrl, device, garageVariant = null, query = 
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
   await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&${d.query}${query ? `&${query}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-  return { page, errors, stage: null };
 }
 
-async function stageUnit(entry, unit) {
+async function stageUnit(entry, unit, { timeoutMs }) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  // (round 8 Y8) the settled Garage through the readiness probe (a 'before' dist that predates the lifecycle answers with
+  // its legacy predicate), then the capture hooks, each wait inside the unit's budget
+  await page.waitForFunction(readinessExpression('garage'), { timeout: timeoutMs, polling: 1000 });
+  await page.waitForFunction('!!window.__SHOTS && !!window.__DEBUG', { timeout: timeoutMs, polling: 1000 });
   if (unit.kind === 'garage') {
     await page.waitForFunction((id) => {
       const s = window.__GARAGE_WORKSHOP?.stats();
@@ -199,39 +212,185 @@ async function stageUnit(entry, unit) {
   entry.unit = unit;
 }
 
-async function frame(page, file) {
+async function frame(page, file, pause) {
   const clouds = await page.evaluate(pageSettleClouds);
-  await sleep(600);
+  await pause(600);
   // (Main, 2026-11-04, the disk: WebP at q92, the same encoding on every build so a pair stays matched)
   await page.screenshot({ path: file, type: 'webp', quality: 92 });
   await page.evaluate(pageThawClouds);
   return clouds;
 }
 
-async function shootUnit(entry, options, frames) {
+async function shootUnit(entry, options, frames, pause) {
   const { page, unit, stage } = entry;
   await page.bringToFront();
-  await sleep(1500);
+  await pause(1500);
   const receipt = { stage, poses: {} };
   if (unit.kind === 'garage') {
     const file = path.join(frames, `garage-${unit.id}-yard.webp`);
-    receipt.poses.yard = { clouds: await frame(page, file), file: path.basename(file) };
+    receipt.poses.yard = { clouds: await frame(page, file, pause), file: path.basename(file) };
   } else {
     for (const name of options.poses) {
       const resolved = name === 'battle' ? await page.evaluate(pageBattlePose, { yaw: stage.player.yaw })
         : await page.evaluate(pageSkyPose, name === 'horizon'
           ? { player: stage.player, eye: 6, yawOff: 0, elev: 0.122, fov: 70 }
           : { player: stage.player, eye: 6, yawOff: 0.35, elev: 0.61, fov: 70, antiSun: true });
-      await sleep(900);
+      await pause(900);
       const file = path.join(frames, `${unit.id}-${name}.webp`);
-      receipt.poses[name] = { resolved, clouds: await frame(page, file), file: path.basename(file) };
+      receipt.poses[name] = { resolved, clouds: await frame(page, file, pause), file: path.basename(file) };
     }
   }
   receipt.errors = entry.errors.splice(0);
   return receipt;
 }
 
-async function main(argv) {
+// ---- a unit's life, one owner (round 8 Y8, sweep s6-01) ----------------------------------------------------------------
+// The loop raced each unit against a ten-minute sleep and never stopped the loser, which ran on against the run's shared
+// `browser` and `entry`: past its budget it could launch a second guarded Chrome beside the loop's (`browser ??= await
+// launch()` assigns after its await, over the browser the next unit launched) or stage over the next unit's page. Now each
+// unit's run owns its state, its budget and its abort: the budget (or its hold's stop) ends it and aborts its signal, and
+// whoever runs it (the loop, the prepare) closes its page at once, so every wait on that page rejects; its page is its
+// own; it takes its browser from the run's pool, which launches nothing for an aborted unit and closes a launch that
+// comes back after the abort; and a unit past its budget never records (a page call can still answer while its page
+// closes). The first end stands: a later move (the stopped work's own failure) is ignored, and a move the table does not
+// list throws by name.
+//   staging  → warm (staged and frozen while the hold is queued: the prepare) | shooting
+//   warm     → shooting | staging (its frozen page lost its game: staged afresh on a fresh page)
+//   shooting → shot
+//   any live state → failed (its work threw) | timeout (its budget ran out) | stopped (its hold was stopped)
+export const UNIT_STATES = Object.freeze(['staging', 'warm', 'shooting', 'shot', 'failed', 'timeout', 'stopped']);
+const ENDS = Object.freeze(['failed', 'timeout', 'stopped']);
+export const UNIT_EDGES = Object.freeze({
+  staging: Object.freeze(['warm', 'shooting', ...ENDS]),
+  warm: Object.freeze(['shooting', 'staging', ...ENDS]),
+  shooting: Object.freeze(['shot', ...ENDS]),
+  shot: Object.freeze([]), failed: Object.freeze([]), timeout: Object.freeze([]), stopped: Object.freeze([]),
+});
+const ENDED = new Set(['shot', ...ENDS]);
+/** A unit is ten minutes at most, its staging included: a stuck page never holds the lock past its cap. */
+export const UNIT_BUDGET_MS = 600_000;
+
+/** The unit's next state for a move from `from` to `to`: `to`, or null once the unit has ended (its end stands). */
+export function nextUnitState(from, to) {
+  if (!UNIT_STATES.includes(from) || !UNIT_STATES.includes(to)) throw new TypeError(`${TOOL}: no unit state ${UNIT_STATES.includes(from) ? to : from}`);
+  if (ENDED.has(from)) return null;
+  if (!UNIT_EDGES[from].includes(to)) throw new Error(`${TOOL}: a unit cannot move ${from} -> ${to}`);
+  return to;
+}
+
+/**
+ * The run's browsers: the one the units share (recycled after eight pages and after any unit that did not shoot) and
+ * every browser a unit launched, which the hold's teardown closes before the release. A unit takes the shared browser
+ * with its signal: refused once that aborted, and a launch that comes back after it is closed at once, never shared.
+ * Closed (the teardown), the pool launches nothing and closes what still comes back.
+ */
+export function createBrowserPool(launch) {
+  const open = new Set();
+  let current = null, pages = 0, closed = false;
+  const shut = async (browser) => {
+    open.delete(browser);
+    if (current === browser) { current = null; pages = 0; }
+    await browser.close().catch(() => {});
+  };
+  return {
+    get pages() { return pages; },
+    async take(signal) {
+      signal.throwIfAborted();
+      if (closed) throw new Error('the run\'s browsers are closed');
+      if (!current) {
+        const browser = await launch();
+        open.add(browser);
+        if (closed || signal.aborted || current) {
+          await shut(browser);
+          signal.throwIfAborted();
+          if (closed) throw new Error('the run\'s browsers are closed');
+        } else current = browser;
+      }
+      pages++;
+      return current;
+    },
+    /** Close the shared browser (the next unit launches a fresh one). */
+    async retire() { if (current) await shut(current); },
+    async closeAll() { closed = true; await Promise.all([...open].map(shut)); },
+  };
+}
+
+/** One unit's run (see above). `arm(holdSignal)` starts a budget for its next part: the staging while queued, or the
+ *  hold's part, which the hold's stop ends too. `ended` resolves with its end. */
+function createUnitRun({ job, unit }, { pool, servers, budgetMs }) {
+  const controller = new AbortController();
+  let state = 'staging', entry = null, failure = null, timer = null, detach = null, settle;
+  const ended = new Promise((done) => { settle = done; });
+  const disarm = () => { clearTimeout(timer); timer = null; detach?.(); detach = null; };
+  const move = (to) => {
+    const next = nextUnitState(state, to);
+    if (next === null) return false;
+    state = next;
+    if (ENDED.has(next)) { disarm(); settle(next); }
+    return true;
+  };
+  const end = (to, error) => {
+    if (!move(to)) return false;
+    failure = error ?? null;
+    if (to !== 'shot') controller.abort(error ?? new Error(`${unit.key} ${to}`));
+    return true;
+  };
+  return {
+    get state() { return state; },
+    get signal() { return controller.signal; },
+    get entry() { return entry; },
+    get failure() { return failure; },
+    ended,
+    move,
+    end,
+    arm(holdSignal = null) {
+      disarm();
+      timer = setTimeout(() => end('timeout', new Error(`past its ${(budgetMs / 1000).toFixed(0)} s budget`)), budgetMs);
+      if (holdSignal) {
+        const stop = () => end('stopped', new Error(`its hold was stopped (${holdSignal.reason?.message ?? holdSignal.reason})`));
+        if (holdSignal.aborted) { stop(); return; }
+        holdSignal.addEventListener('abort', stop, { once: true });
+        detach = () => holdSignal.removeEventListener('abort', stop);
+      }
+    },
+    /** Its budget stops (a warm unit waits for its hold frozen). */
+    pause() { disarm(); },
+    /** A fresh page of the pool's shared browser, booted and staged. */
+    async open() {
+      const { signal } = controller;
+      const browser = await pool.take(signal);
+      const page = await browser.newPage();
+      entry = { page, errors: [], stage: null };
+      if (signal.aborted) { await page.close().catch(() => {}); signal.throwIfAborted(); }
+      await bootPage(entry, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '', job.tune ?? null,
+        job.cloudTime ?? 0);
+      signal.throwIfAborted();
+      await stageUnit(entry, unit, { timeoutMs: budgetMs });
+      signal.throwIfAborted();
+    },
+    async closePage() {
+      const page = entry?.page;
+      if (page) await page.close().catch(() => {});
+    },
+  };
+}
+
+/** Run `work` as `run`'s part; resolves with the state it left the run in: the work's own (warm, shot), its failure, or
+ *  the budget's or the hold's end, whichever comes first (a failure after that end is the stop's echo: ignored). The
+ *  caller closes the run's page as soon as it resolves (the one page close: every wait the stopped work still has on it
+ *  rejects). */
+function settleRun(run, work) {
+  const done = work().then(() => run.state, (error) => { run.end('failed', error); return run.state; });
+  return Promise.race([done, run.ended]);
+}
+
+/**
+ * Shoot every unit the manifests lack. `deps` (tools/cloud-sky-shots.selftest.mjs): `launcher` (puppeteer), `startServer`
+ * (startViteChild), `hold` (laid over the hold's options: a private lock, its log), `unitBudgetMs`, `pause` (the fixed
+ * settle waits), `freeGb`, `log`. Resolves to the exit code: 0 when every unit was shot.
+ */
+export async function main(argv, { launcher = puppeteer, startServer = startViteChild, hold = {}, unitBudgetMs = UNIT_BUDGET_MS, pause = sleep,
+  freeGb: free = freeGb, log = console.log } = {}) {
   const options = parse(argv);
   for (const job of options.jobs) {
     job.frames = path.join(options.out, job.name, 'frames');
@@ -246,97 +405,118 @@ async function main(argv) {
     ...job.maps.map((id) => ({ job, unit: { kind: 'map', id, key: id } })),
     ...job.garage.map((id) => ({ job, unit: { kind: 'garage', id, key: `garage-${id}` } })),
   ]).filter(({ job, unit }) => !job.manifest.units[unit.key]);
-  if (!units.length) { console.log(`[${TOOL}] every unit is shot`); return 0; }
+  if (!units.length) { log(`[${TOOL}] every unit is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
+  const say = (line) => log(`[${label}] ${stamp()} ${line}`);
   setBrowserGuardContext({ hold: label });
-  const lock = createCaptureLock();
   const servers = new Map();
-  for (const dist of new Set(options.jobs.map((job) => job.dist))) {
-    servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
-  }
-  let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
-  const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   // every unit on a fresh page (2026-11-04: a page reused for a build's next map hung staging it for half an hour, and one
   // warmed long before its hold came back without its game)
-  const openUnit = async ({ job, unit }) => {
-    browser ??= await launch();
-    pagesSinceLaunch++;
-    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '', job.tune ?? null, job.cloudTime ?? 0);
-    await stageUnit(entry, unit);
-  };
-  const close = async () => {
-    if (held) lock.release();
-    held = false;
-    if (browser) await browser.close().catch(() => {});
-    for (const server of servers.values()) await server.close().catch(() => {});
-  };
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
-    process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
-  }
+  const pool = createBrowserPool(() => launchGuardedBrowser(launcher, {
+    ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 }));
+  const context = { pool, servers, budgetMs: unitBudgetMs };
+  const failedLine = (run, { job, unit }) => `${job.name} ${unit.key} failed: ${String(run.failure?.message ?? run.failure).slice(0, 200)}`
+    + (run.entry?.errors?.length ? `; page errors: ${run.entry.errors.slice(0, 3).join(' | ').slice(0, 400)}` : '');
   let shot = 0, failed = 0;
   try {
-    await lock.acquire(options.waitHours * 3600 * 1000, {
-      lockClass: 'render', prepare: async () => { await openUnit(units[0]); session = await freezePage(entry.page); },
-    });
-    held = true;
-    for (let i = 0; i < units.length; i++) {
-      const { job, unit } = units[i];
-      const free = freeGb(options.out);
-      if (free < DISK_FLOOR_GB) {
-        console.log(`[${label}] ${stamp()} ${free.toFixed(1)} GB free, under the ${DISK_FLOOR_GB} GB floor: stopping before ${job.name} ${unit.key}`);
-        failed++;
-        break;
-      }
-      const started = Date.now();
-      let outcome = 'failed';
-      try {
-        // the whole unit — its staging too — within ten minutes, so a stuck page never holds the lock past its cap
-        const shooting = (async () => {
+    for (const dist of new Set(options.jobs.map((job) => job.dist))) {
+      servers.set(dist, await startServer({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
+    }
+    await withCaptureHold(async ({ prepared, signal, checkpoint }) => {
+      // the first unit staged while queued: shot from its frozen page, or (its staging failed) opened again here
+      let warm = prepared?.run?.state === 'warm' ? prepared : null;
+      if (prepared?.run && !warm) say(`${failedLine(prepared.run, units[0])} (staging it while queued); opening it again in the hold`);
+      for (let i = 0; i < units.length; i++) {
+        const { job, unit } = units[i];
+        if (signal.aborted) {
+          say(`the hold was stopped (${signal.reason?.message ?? signal.reason}): ${units.length - i} unit(s) left for the next run`);
+          failed += units.length - i;
+          break;
+        }
+        const disk = free(options.out);
+        if (disk < DISK_FLOOR_GB) {
+          say(`${disk.toFixed(1)} GB free, under the ${DISK_FLOOR_GB} GB floor: stopping before ${job.name} ${unit.key}`);
+          failed++;
+          break;
+        }
+        const started = Date.now();
+        const run = warm?.run ?? createUnitRun(units[i], context);
+        const session = warm?.session ?? null;
+        warm = null;
+        run.arm(signal);
+        const outcome = await settleRun(run, async () => {
           if (session) {
-            await thawPage(entry.page, session);
-            session = null;
+            await thawPage(run.entry.page, session);
             // a page warmed long before its hold can come back without its game: stage it again on a fresh page
-            const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+            const live = await run.entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
             if (unit.kind === 'map' && live !== unit.id) {
-              console.log(`[${label}] ${stamp()} ${job.name} ${unit.key}: the warm page lost its game (${live}); staging afresh`);
-              await entry.page.close().catch(() => {});
-              await openUnit(units[i]);
+              say(`${job.name} ${unit.key}: the warm page lost its game (${live}); staging afresh`);
+              await run.closePage();
+              run.move('staging');
+              await run.open();
             }
-          } else await openUnit(units[i]);
-          await entry.page.bringToFront();
-          const receipt = await shootUnit(entry, { poses: job.poses }, job.frames);
+          } else await run.open();
+          run.move('shooting');
+          await run.entry.page.bringToFront();
+          const receipt = await shootUnit(run.entry, { poses: job.poses }, job.frames, pause);
+          run.signal.throwIfAborted(); // a unit past its budget never records
           receipt.ms = Date.now() - started;
           job.manifest.units[unit.key] = receipt;
           writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-          return 'shot';
-        })();
-        shooting.catch(() => {});
-        outcome = await Promise.race([shooting, sleep(600_000).then(() => 'timeout')]);
-      } catch (error) {
-        console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} failed: ${String(error?.message ?? error).slice(0, 200)}`
-          + (entry?.errors?.length ? `; page errors: ${entry.errors.slice(0, 3).join(' | ').slice(0, 400)}` : ''));
-      } finally {
-        if (entry) await entry.page.close().catch(() => {});
-        entry = null;
+          run.move('shot');
+        });
+        await run.closePage();
+        if (outcome === 'shot') {
+          shot++;
+          say(`${job.name} ${unit.key} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${units.length}`);
+        } else {
+          failed++;
+          if (outcome === 'failed') say(failedLine(run, units[i]));
+          say(`${job.name} ${unit.key} ${outcome}`);
+        }
+        if (pool.pages >= 8 || outcome !== 'shot') await pool.retire();
+        if (i < units.length - 1) {
+          let cp;
+          try { cp = await checkpoint(); } catch (error) {
+            say(`the cap yield did not hold again (${error?.message ?? error}): ${units.length - i - 1} unit(s) left for the next run`);
+            failed += units.length - i - 1;
+            break;
+          }
+          if (cp?.yielded) say(`yielded at the cap, held again after ${((cp.waitedMs ?? 0) / 60000).toFixed(1)} min at the back`);
+        }
       }
-      if (outcome === 'shot') {
-        shot++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${units.length}`);
-      } else {
-        failed++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} ${outcome}`);
-      }
-      if ((pagesSinceLaunch >= 8 || outcome !== 'shot') && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
-      if (i < units.length - 1) {
-        const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
-        if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
-      }
-    }
+    }, {
+      label, lockClass: 'render', timeoutMs: options.waitHours * 3600 * 1000,
+      // a unit in flight at the cap is given its whole budget, and a minute to close its page and browser, before the stop
+      graceSeconds: unitBudgetMs / 1000 + 60,
+      // the first unit stages while the ticket waits; its failure is the unit's (the hold opens it again), never the run's
+      prepare: async () => {
+        const run = createUnitRun(units[0], context);
+        run.arm();
+        let session = null;
+        const reached = await settleRun(run, async () => {
+          await run.open();
+          session = await freezePage(run.entry.page);
+          run.signal.throwIfAborted();
+          run.pause();
+          run.move('warm');
+        });
+        if (reached === 'warm') return { run, session };
+        await run.closePage();
+        await pool.retire();
+        return { run };
+      },
+      // every browser of the run closes before the release, whichever way the hold ends
+      teardown: () => pool.closeAll(),
+      // an idle browser never waits out a yield beside the next holder's work
+      onYield: () => pool.retire(),
+      ...hold,
+    });
   } finally {
-    await close();
+    await pool.closeAll(); // a hold that never held (its wait ran out) closes what its prepare launched
+    for (const server of servers.values()) await server.close().catch(() => {});
   }
-  console.log(`[${label}] ${shot} unit(s) shot, ${failed} failed`);
+  log(`[${label}] ${shot} unit(s) shot, ${failed} failed`);
   return failed ? 1 : 0;
 }
 

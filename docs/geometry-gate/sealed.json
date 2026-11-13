@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-07T14:52:42.826Z",
+ "generatedAt": "2026-11-09T16:17:23.557Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -236,7 +236,7 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 82,
-   "seeThroughPx": 72,
+   "seeThroughPx": 404,
    "netSeeThroughPx": 0,
    "tris": 83592,
    "frame": [
@@ -244,6 +244,18 @@
     1.6,
     0.15,
     4.3
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "release 268 bmp3_rok draws the fleet BMP-3 hull, whose soot marking seats read as see-through edge pixels exactly as on bmp3 (ledger 418)",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 72,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "bmp3m_dragun125": {
@@ -399,7 +411,7 @@
    "openViews": 0,
    "insideOutPx": 278,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3877,
+   "netSeeThroughPx": 683,
    "tris": 111764,
    "frame": [
     0,
@@ -416,6 +428,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4003
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "release 268 rebuilt C2 prototype (owner 2026-11-01) carries its own ghillie suit entry (ghillieFleetSuits.ts), the declared netting moved with the new turret and hull (base already read 3298 against 3877)",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3877
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "270 the lane trimmed the C2 prototype suit on blind A/B findings (flank and rear drapes removed, roof net inside the outline, garnish thinned), so its netting shrinks 2626 to 683 px",
+     "by": "italy-korea-bmp-267",
+     "date": "2026-11-09",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2626
      }
     }
    ]
@@ -728,7 +760,7 @@
   },
   "chieftain_mk10": {
    "sealed": true,
-   "openPx": 73,
+   "openPx": 0,
    "openViews": 0,
    "insideOutPx": 208,
    "seeThroughPx": 0,
@@ -745,15 +777,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 304,
+   "insideOutPx": 171,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 89370,
+   "tris": 112475,
    "frame": [
-    0,
-    1.45,
-    1.65,
-    6.1
+    0.05,
+    2.1,
+    1.7,
+    6.2
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "rebuilt on the chieftain_mk10 castings and kit, its build frame is that row's frame [0.05, 2.1, 1.7, 6.2], and its smoke tubes are now closed lathes (0 open px)",
+     "by": "italy-korea-bmp-267",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.45,
+       1.65,
+       6.1
+      ]
+     },
+     "to": [
+      0.05,
+      2.1,
+      1.7,
+      6.2
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "cv90": {
@@ -813,14 +881,36 @@
    "openPx": 20,
    "openViews": 0,
    "insideOutPx": 346,
-   "seeThroughPx": 10,
-   "netSeeThroughPx": 3690,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 3222,
    "tris": 55053,
    "frame": [
     0,
     2.1,
     0.05,
     4.6
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "269 cv9040c-269: the pair rebuilt on the measured cv90 builder, the field net re-laid on the new hull and turret (blind A/B 4/4)",
+     "by": "kevinliu",
+     "date": "2026-11-06",
+     "from": {
+      "seeThroughPx": 10,
+      "netSeeThroughPx": 3690
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "271 cv9040c-269 photo reconcile: the field net certified inside the side fittings (maxHalfWidth 1.73, it reached 1.81) and the Bofors at 3.00 m from the trunnion (Main 2026-11-08)",
+     "by": "kevinliu",
+     "date": "2026-11-09",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3494
+     }
+    }
    ]
   },
   "cv90_mk4": {
@@ -1001,15 +1091,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 224,
-   "seeThroughPx": 217,
+   "insideOutPx": 172,
+   "seeThroughPx": 167,
    "netSeeThroughPx": 0,
-   "tris": 94974,
+   "tris": 84537,
    "frame": [
     0,
-    1.35,
+    2.05,
     1.05,
-    5.5
+    5.7
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 268 K1E1 rebuild from photographs carries the two turret whip antennas the photographs show, their tips at 4.14 m set the build's census frame",
+     "by": "kevinliu",
+     "date": "2026-11-02",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 217,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.35,
+       1.05,
+       5.5
+      ]
+     },
+     "to": [
+      0,
+      2.05,
+      1.05,
+      5.7
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 210,
+      "seeThroughViews": 12,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "k21": {
@@ -3615,17 +3741,53 @@
   },
   "t90a_2006": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 214,
-   "seeThroughPx": 4,
+   "insideOutPx": 154,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 112626,
+   "tris": 119198,
    "frame": [
     0,
-    1.6,
-    0.45,
-    6.2
+    2,
+    1.3,
+    6.5
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "the 267-268 T-90 rebuilds' measured 125 mm guns (muzzles at z 6.9-7.4 m) and roof whips outgrew the rows' pre-rebuild frames, and main 2fda70a158 builds the same boxes",
+     "by": "kevinliu",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 4,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.6,
+       0.45,
+       6.2
+      ]
+     },
+     "to": [
+      0,
+      2,
+      1.3,
+      6.5
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "t90a_burlak": {
@@ -3764,21 +3926,57 @@
    ]
   },
   "t90sm_2013": {
-   "sealed": false,
-   "openPx": 18,
-   "openViews": 1,
-   "openViewNames": [
-    "cube_0_0_-1"
-   ],
-   "insideOutPx": 116,
-   "seeThroughPx": 3,
+   "sealed": true,
+   "openPx": 8,
+   "openViews": 0,
+   "insideOutPx": 83,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 123938,
+   "tris": 139666,
    "frame": [
     0,
-    1.3,
-    1.45,
-    5.7
+    1.65,
+    1.5,
+    6.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "the 267-268 T-90 rebuilds' measured 125 mm guns (muzzles at z 6.9-7.4 m) and roof whips outgrew the rows' pre-rebuild frames, and main 2fda70a158 builds the same boxes",
+     "by": "kevinliu",
+     "date": "2026-11-08",
+     "from": {
+      "sealed": false,
+      "openPx": 18,
+      "openViews": 1,
+      "openViewNames": [
+       "cube_0_0_-1"
+      ],
+      "seeThroughPx": 3,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.3,
+       1.45,
+       5.7
+      ]
+     },
+     "to": [
+      0,
+      1.65,
+      1.5,
+      6.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 14,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "tos1a_tagil": {
@@ -5104,13 +5302,25 @@
    "openViews": 0,
    "insideOutPx": 338,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2411,
+   "netSeeThroughPx": 1308,
    "tris": 53148,
    "frame": [
     0,
     2.1,
     0.05,
     4.6
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "269 cv9040c-269: the pair rebuilt on the measured cv90 builder, the field net re-laid on the new hull and turret (blind A/B 4/4)",
+     "by": "kevinliu",
+     "date": "2026-11-06",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2411
+     }
+    }
    ]
   },
   "t49": {
@@ -5449,7 +5659,7 @@
    "openViews": 0,
    "insideOutPx": 40,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 7983,
+   "netSeeThroughPx": 8189,
    "tris": 122352,
    "frame": [
     0,
@@ -5466,6 +5676,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 7669
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "270 turret suit roof moved back to the bustle face on the 268 M1A1 shell (bfdaf8e1ef) so the declared netting grows 7983 to 8189 px",
+     "by": "kevinliu",
+     "date": "2026-11-08",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 7983
      }
     }
    ]
@@ -5513,6 +5733,111 @@
     2.05,
     -0.25,
     3.8
+   ]
+  },
+  "type87_aw": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 432,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 66574,
+   "frame": [
+    0,
+    2.3,
+    0,
+    5
+   ]
+  },
+  "k30_biho": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 344,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 67204,
+   "frame": [
+    0,
+    2.45,
+    -0.05,
+    4.5
+   ]
+  },
+  "lvkv9040": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 574,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 57884,
+   "frame": [
+    0.05,
+    1.7,
+    0.15,
+    4.3
+   ]
+  },
+  "pza_loara": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 134,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 76492,
+   "frame": [
+    0,
+    2.65,
+    0.1,
+    4.9
+   ]
+  },
+  "marksman_t55": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 68,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 62040,
+   "frame": [
+    0,
+    2.45,
+    0.6,
+    5.2
+   ]
+  },
+  "itpsv_leopard2": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 502,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 99483,
+   "frame": [
+    0,
+    2.55,
+    0.5,
+    5.8
+   ]
+  },
+  "m163_vads": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 404,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 69037,
+   "frame": [
+    0,
+    2.55,
+    -0.2,
+    4.1
    ]
   },
   "semel": {
@@ -5717,6 +6042,81 @@
     1.95,
     -0.05,
     4.9
+   ]
+  },
+  "object292": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 12,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 112985,
+   "frame": [
+    0,
+    1.9,
+    1.65,
+    6
+   ]
+  },
+  "object477_molot": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 103,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 115260,
+   "frame": [
+    0,
+    1.6,
+    1.7,
+    6.1
+   ]
+  },
+  "object195": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 63,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 157560,
+   "frame": [
+    0,
+    1.9,
+    1.25,
+    6.2
+   ]
+  },
+  "t14_152": {
+   "sealed": true,
+   "openPx": 4,
+   "openViews": 0,
+   "insideOutPx": 40,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 4236,
+   "tris": 111451,
+   "frame": [
+    0,
+    1.9,
+    1.2,
+    6.3
+   ]
+  },
+  "t95": {
+   "sealed": true,
+   "openPx": 6,
+   "openViews": 0,
+   "insideOutPx": 210,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 151844,
+   "frame": [
+    0,
+    1.65,
+    0,
+    6.2
    ]
   }
  }

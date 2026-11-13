@@ -513,7 +513,7 @@
       }
     ]
   },
-  "geometryHash": "ad54f9b9",
+  "geometryHash": "451fb78a",
   "metadataHash": "0aa1c4e2",
   "presentationAnchor": {
     "xM": -0.0005,
@@ -531,7 +531,7 @@
     "roles": {
       "fittingPaint": 4,
       "opticGlass": 4,
-      "gunmetal": 14,
+      "gunmetal": 16,
       "wheelTire": 2,
       "wheelDish": 7,
       "wheelInset": 1,
@@ -574,15 +574,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24914,
-      "sha256": "891d73bfbc85ebe0ae59c9305e1060060928e61ab7a9b55e7f6144cd2244cbfc",
+      "bytes": 24896,
+      "sha256": "42056a99f133d701b093617964dd03e930f0f30fc81d1705fb58b06e66def315",
       "thumbnail": {
         "file": "thumbs/m48a3_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10384,
-        "sha256": "057b1db03cacc6509bbca719fd250d8c1bbe0cab434d32c65addab364ea13f2d"
+        "bytes": 10370,
+        "sha256": "1fdacff747be37b0552aac70186c0ed78cb36ac3cd30eae18c58426780e4a8b7",
+        "frame": [23,109,226,249]
       }
     },
     "top": {
@@ -590,16 +591,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11068,
-      "sha256": "cca893fb8aa20c5e51ce0f5144db1c1d2ad3bbe190a7102a0341ef74ee1db5cb"
+      "bytes": 11062,
+      "sha256": "1fa2c144fb7a7e2ff58be5d985267a2cc61ba94e61f45296b11913a2bc8395cb"
     },
     "side": {
       "file": "m48a3_patton_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12592,
-      "sha256": "66caaeda7582d8684fd6ea74a09e5003f01684430b94b215d37964565e25c496"
+      "bytes": 12560,
+      "sha256": "0a6d32eee66471225bfbb8c4e8426530047911c6df41b0f044a8c269f8cbee79"
     },
     "topSilhouette": {
       "file": "m48a3_patton_top_silhouette.png",
@@ -622,24 +623,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29136,
-      "sha256": "a731e2d4d6fd61240cafc73777304d2a0f0ae080d407e32d715980cadc618dcd"
+      "bytes": 29220,
+      "sha256": "4962166deca479a7ed041e8e14b9b3a86805fbb38b91205c5d770175598f9a45"
     },
     "modulesSide": {
       "file": "m48a3_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29622,
-      "sha256": "c36c0ac1922f568bb931640a621301e57c6a024b3e300e1f02ef60f138cd1ed8"
+      "bytes": 29596,
+      "sha256": "f992b1913a2f1341bd204de122640c888cac5560176adf227618687fafb25d83"
     },
     "crewSide": {
       "file": "m48a3_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26944,
-      "sha256": "cdd36b2bfeda34022caa5f4af308198e11b57e5808d11d4a719459a020ade31a"
+      "bytes": 26892,
+      "sha256": "581055bbe09bd51fb7b015b22758f4f25ece0414a47248cc3190d46a92f5cb16"
     },
     "markings": {
       "file": "m48a3_patton_markings.png",

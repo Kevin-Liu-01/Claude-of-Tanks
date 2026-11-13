@@ -4,18 +4,19 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.ts';
 
-function countPanelCarrierFaces(mesh, carrierXM = 1.115) {
-  const position = mesh.geometry.getAttribute('position');
-  let count = 0;
-  for (let i = 0; i < position.count; i += 3) {
-    const vertices = [0, 1, 2].map((offset) => new THREE.Vector3(
-      position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)));
-    if (!vertices.every((vertex) => Math.abs(Math.abs(vertex.x) - carrierXM) < 1e-5)) continue;
-    const centroid = vertices[0].clone().add(vertices[1]).add(vertices[2]).multiplyScalar(1 / 3);
-    if (centroid.y > 0.15 && centroid.y < 0.58
-        && centroid.z > -2.45 && centroid.z < -1.10) count += 1;
+// 269: the new turret's walls (profiles/arieteProtoTurret.ts) on their recorded plane, both sides
+function countWallFaces(mesh, wallXM) {
+  const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+  const sides = new Set();
+  for (let i = 0; i < (index?.count ?? position.count); i += 3) {
+    const vertices = [0, 1, 2].map((offset) => new THREE.Vector3().fromBufferAttribute(position,
+      index ? index.getX(i + offset) : i + offset));
+    if (!vertices.every((vertex) => Math.abs(Math.abs(vertex.x) - wallXM) < 1e-5)) continue;
+    if (Math.sign(vertices[0].x) === Math.sign(vertices[1].x) && Math.sign(vertices[1].x) === Math.sign(vertices[2].x)) {
+      sides.add(Math.sign(vertices[0].x));
+    }
   }
-  return count;
+  return sides.size;
 }
 
 function countPreserieGlacisRearFaces(mesh, rearStationZM) {
@@ -148,16 +149,28 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     `${id}: rear terminal reduction is recorded against the original wheel`);
   assert.equal(arieteGear.linkedCourseAdjusted, true, `${id}: linked track course was regenerated`);
 
-  const panel = turret.userData.arieteSidePanelReceipt;
-  assert.equal(panel.owner, 'turret', `${id}: both marked panels belong to the articulated turret`);
-  assert.equal(panel.formerInnerFaceXM, 1.40, `${id}: receipt records the former floating seat`);
-  assert.equal(panel.innerFaceXM, 1.115, `${id}: panel inner faces move onto the bustle carrier`);
-  assert.ok(panel.carrierOverlapM >= 0.01, `${id}: panels overlap the carrier by at least 10 mm`);
-  assert.equal(panel.maxSupportGapM, 0, `${id}: no daylight remains below either panel`);
-  assert.equal(panel.rackSupportArmsPerSide, 3, `${id}: outer rack is tied to the re-seated panel`);
-  assert.equal(panel.rearBasketBridgesPerSide, 1, `${id}: aft panel is returned into the basket frame`);
-  assert.ok(countPanelCarrierFaces(turretArmor, 1.115 * 1.1) >= 4,
-    `${id}: both panel inner faces exist on the recorded carrier plane`);
+  // 269 (the owner, 2026-11-03: "make the c1 arietee proto annd c2 ariete hhave completeely new turrets"): the old
+  // turret's bustle side panels, racks and baskets are gone with it; the new turret (profiles/arieteProtoTurret.ts, from
+  // the C1 and C2 photographs and the series C1 print's turret shell) publishes its measured plan instead
+  const shell = turret.userData.arieteProtoTurretReceipt;
+  assert.equal(shell?.revision, 'r269-photo-turret', `${id}: the photograph-built turret replaced the old one`);
+  assert.equal(shell.owner, 'turret', `${id}: the new turret belongs to the articulated turret`);
+  assert.equal(shell.followsTurretYaw, true, `${id}: the new turret follows the turret's yaw`);
+  // (the armour template's turret half-width, modern3Specs.ts tw 1.28: the regenerated anatomy fits its plates to them)
+  assert.equal(shell.wallHalfWidthM, 1.28, `${id}: its walls stand on the armour template's turret width`);
+  assert.ok(shell.cheekRakeDeg >= 45 && shell.cheekRakeDeg <= 55,
+    `${id}: the cheek faces rake back as the photographs show (${shell.cheekRakeDeg} deg from vertical)`);
+  assert.ok(shell.cheekSweepDeg >= 12 && shell.cheekSweepDeg <= 22, `${id}: the cheek faces sweep back into an arrow plan`);
+  assert.ok(shell.cheekTipZM - shell.stowageRearZM > 4.4 && shell.cheekTipZM - shell.stowageRearZM < 4.8,
+    `${id}: the turret's length is the photographs' 4.6 m class`);
+  assert.equal(shell.maxSupportGapM, 0, `${id}: no daylight under any part of the new turret`);
+  assert.equal(shell.smokeTubesPerSide, 4, `${id}: four smoke tubes a side`);
+  assert.equal(countWallFaces(turretArmor, shell.wallHalfWidthM * 1.1), 2,
+    `${id}: both walls exist on the recorded plane`);
+  if (id === 'c1_ariete_proto_serie1') {
+    assert.equal(shell.c1CheekEra, 16, 'C1 keeps its release-240 cheek ERA, four by two a side');
+    assert.equal(hullRig.userData.arieteC1EraReceipt.turretCheekCassettes, 16, 'C1 cheek ERA is on its receipt');
+  }
 
   const equipment = turret.userData.arieteEquipmentReceipt;
   if (id === 'c1_ariete_proto_serie1') {
@@ -170,8 +183,10 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
       'C1 does not inherit the C2 remote tower');
   } else {
     assert.equal(equipment.remoteControlled, true, 'C2 roof weapon is remotely controlled');
-    assert.equal(equipment.remoteWeaponSide, 'right', 'C2 remote tower is right mounted');
-    assert.equal(equipment.rotatingShoulderModules, 4, 'all four marked shoulder modules are turret owned');
+    // 269 (C2 photographs 3 and 5): the loader's shielded gun stands on the turret's left, ahead of his hatch
+    assert.equal(equipment.remoteWeaponSide, 'left', 'C2 roof gun is left mounted');
+    // (269 round 3: three flank modules a side, the photographs' row)
+    assert.equal(equipment.rotatingShoulderModules, 6, 'all six marked flank modules are turret owned');
     assert.equal(equipment.rotatingApuAssembly, true, 'marked rear APU assembly is turret owned');
     const remoteRws = turret.getObjectByName('arieteC2RemoteRws');
     assert.ok(remoteRws, 'C2 T-90-style automated tower is present');
@@ -184,18 +199,22 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     assert.equal(era.turretCheekCarrier, 'forward-face',
       'C2 cheek ERA is seated on the marked forward cheek rather than its roof or outer wall');
     assert.equal(era.turretCheekSides, 2, 'C2 protects both turret cheeks symmetrically');
-    assert.equal(era.turretCheekRows, 2, 'C2 forward cheek field has two continuous rows');
-    assert.equal(era.turretCheekColumnsPerSide, 5,
-      'C2 forward cheek field has five columns on each side');
+    // 269 (C2 photographs 3 and 5): each cheek's front is one row, an inner plate beside the gun and the main plate
+    assert.equal(era.turretCheekRows, 1, 'C2 forward cheek field is one row of plates');
+    assert.equal(era.turretCheekColumnsPerSide, 2,
+      'C2 forward cheek field has its inner and main plate on each side');
     assert.ok(era.turretCheekForwardNormalDotMin > 0.70,
       'every C2 cheek cassette follows a strongly forward-facing carrier normal');
-    assert.equal(era.turretCheekCassettes, 20, 'C2 carries dense paired cheek courses');
-    assert.equal(era.turretSideCassettes, 16, 'C2 carries two complete turret-side courses');
-    assert.equal(era.turretBustleCassettes, 12, 'C2 carries paired aft bustle courses');
-    assert.equal(era.totalTurretCassettes, 48, 'C2 turret receives substantially denser ERA');
+    // 269 (C2 photographs 1-5, the new turret): two front plates a side, a side plate over each cheek module and a faced
+    // plate on each of the two wall boxes a side; the photographs show no plates on the bustle
+    assert.equal(era.turretCheekCassettes, 4, 'C2 carries two front plates on each cheek');
+    // (269 round 3: the flank's two boxes became the photographs' three separate modules a side)
+    assert.equal(era.turretSideCassettes, 8, 'C2 carries a cheek side module and three faced flank modules a side');
+    assert.equal(era.turretBustleCassettes, 0, 'C2 bustle carries no add-on plates');
+    assert.equal(era.totalTurretCassettes, 12, 'C2 turret carries twelve add-on plates');
     // (release 240: the profile run's raked end bays keep their upper row only: 52 -> 48)
     assert.equal(era.sideSkirtCassettes, 48, 'C2 skirts carry two rows across the 13 bays, one on the raked end bays');
-    assert.equal(era.totalCassettes, 96, 'C2 upgrade contains ninety-six seated cassettes');
+    assert.equal(era.totalCassettes, 60, 'C2 upgrade contains sixty seated plates (48 on the skirts)');
     const hullExternalArmor = hullRig.getObjectByName('hullExternalArmor');
     assert.ok(hullExternalArmor?.geometry, 'C2 skirt ERA uses the hull external-armor mesh');
     hullExternalArmor.geometry.computeBoundingBox();

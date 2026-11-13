@@ -768,6 +768,8 @@ export class VolumetricCloudLayer {
   private lastSceneDepth: THREE.Texture | null = null;
   private context: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
   private rendererInfo: THREE.WebGLRenderer['info'] | null = null;
+  /** (2026-11-02 audit R3) set by dispose(): a link that settles later bakes and warms nothing. */
+  private disposed = false;
   private readonly scratch = new THREE.Vector3();
   /** The camera's world position: the composite dome's centre every frame. */
   private readonly domeAnchor = new THREE.Vector3();
@@ -1096,14 +1098,30 @@ export class VolumetricCloudLayer {
     return this.active && (this.preset?.shadowPattern ?? 0) > 0 && (this.preset?.coverage ?? 0) > 0;
   }
 
-  private refreshLifetime(): void {
+  /**
+   * Adopt the renderer's lifetime; false when this frame must draw nothing. (2026-11-02 audit R3) the three noise
+   * volumes are GPU-baked render targets with no CPU image: a restored context re-creates them empty, and the layer
+   * marched empty volumes until a reload. A renewed lifetime (not the first adoption) drops them and bakes them again
+   * on the new context (as skyEnvironmentCache does for the environment). (Round 2 U30) in that same frame while the
+   * context is live: the first frame after a restore is the restore's own confirm frame (main.ts onRestored's
+   * post.render(0), still under the context-loss cover), so the main-thread bake (its program links, its 3D passes) is
+   * hidden there; deferred to the next frame it was the first one the player saw, a hitch right after the recovery.
+   */
+  private refreshLifetime(): boolean {
     const context = this.renderer.getContext();
-    if (context !== this.context || this.renderer.info !== this.rendererInfo) {
-      this.context = context;
-      this.rendererInfo = this.renderer.info;
-      this.resetHistory();
-      for (const c of this.bsm) c.valid = false;
-    }
+    if (context === this.context && this.renderer.info === this.rendererInfo) return true;
+    const renewed = this.rendererInfo !== null;
+    this.context = context;
+    this.rendererInfo = this.renderer.info;
+    this.resetHistory();
+    for (const c of this.bsm) c.valid = false;
+    if (!renewed || !this.volumes) return true;
+    for (const rt of this.volumes.targets) rt.dispose();
+    this.volumes = null;
+    this.bindNoise();
+    // a context lost again draws nothing; the next live frame's ensureVolumes() bakes
+    if (context?.isContextLost?.()) return false;
+    return this.ensureVolumes();
   }
 
   private resize(width: number, height: number): void {
@@ -1468,8 +1486,7 @@ export class VolumetricCloudLayer {
       this.dropCloudShade();
       return;
     }
-    this.refreshLifetime();
-    if (this.context?.isContextLost()) { this.dome.visible = false; this.releaseSceneDepth(); return; }
+    if (!this.refreshLifetime() || this.context?.isContextLost()) { this.dome.visible = false; this.releaseSceneDepth(); return; }
     this.syncTier();
     // 2026-10-14 (the SKY lane; the horizons lane's bird frames over Polders, 400 m up and 1.3 km off the centre: the
     // cloud field cut by straight walls with a clear hole over the map): the dome was a 3.4 km sphere about the world
@@ -1928,6 +1945,8 @@ export class VolumetricCloudLayer {
       if (this.linkPending === pending) this.linkPending = null;
       geometry.dispose();
       quadGeometry.dispose();
+      // (2026-11-02 audit R3) a layer disposed while its programs linked bakes no volumes (a GPU leak) and warms nothing
+      if (this.disposed) { bake?.dispose(); return; }
       if (bake) {
         // the bake's programs are linked: its draws read no link synchronously (a failed bake leaves ensureVolumes to retry)
         if (!this.volumes) {
@@ -1972,6 +1991,7 @@ export class VolumetricCloudLayer {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.dropCloudShade();
     for (const rt of this.history) rt.dispose();
     this.trace.dispose();

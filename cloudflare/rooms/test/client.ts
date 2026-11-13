@@ -12,6 +12,13 @@ export const origin = 'https://cot.kevinliu.studio';
 const clients: Client[] = [];
 let requestSequence = 0;
 export const token = (seed: string): string => seed.repeat(64).slice(0, 64);
+/**
+ * How long a receipt may take to arrive: a liveness bound, never a speed assertion (no case waits for one to lapse).
+ * Round 3 B14 (2026-11-06): a full run puts four files on the Workers runtime at once (two projects, files in parallel);
+ * on a machine at load 250-420 that runtime took seconds for what it does in milliseconds alone or idle, so the old 3 s
+ * failed the chat flood in full runs and passed it alone.
+ */
+export const RECEIPT_WAIT_MS = 15_000;
 
 export class Client {
   readonly messages: Message[] = [];
@@ -34,8 +41,25 @@ export class Client {
     this.closed = new Promise((resolve) => socket.addEventListener('close', resolve, { once: true }));
     clients.push(this);
   }
+  /**
+   * The close the room owes this socket (a rate limit), within a receipt's wait: one that never comes fails here, by
+   * name, not as the case's timeout. Round 4 F9 (2026-11-06): an envelope flood handled across the room's rate window
+   * (roomActor.ts handleMessage restarts the count when the window turns) never closes the socket, and the keepalive case
+   * sat on `closed` until the runner gave up at 20 s: reproduced on 92f415e879's case at any load by handling half the
+   * flood, letting the window turn, then the rest. The floods hold Date still for that (round 3 B14). Whether this hang
+   * or the case's own time on a starved runtime made round two's timeouts at load 250-420 is not known
+   * (vitest.config.ts).
+   */
+  closedWithin(what: string, timeoutMs = RECEIPT_WAIT_MS): Promise<CloseEvent> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`${what}: the socket is still open after ${timeoutMs} ms (${this.messages.length} envelopes and ${this.raw.length} raw frames received)`));
+      }, timeoutMs);
+      void this.closed.then((event) => { clearTimeout(timer); resolve(event); });
+    });
+  }
   /** Wait until at least `count` raw text frames arrived. */
-  rawCount(count: number, timeoutMs = 3_000): Promise<number> {
+  rawCount(count: number, timeoutMs = RECEIPT_WAIT_MS): Promise<number> {
     if (this.raw.length >= count) return Promise.resolve(this.raw.length);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.waiters.delete(waiter); reject(new Error(`Expected ${count} raw frames, received ${this.raw.length}`)); }, timeoutMs);
@@ -48,7 +72,7 @@ export class Client {
       this.waiters.add(waiter);
     });
   }
-  next(predicate: (message: Message) => boolean, timeoutMs = 3_000): Promise<Message> {
+  next(predicate: (message: Message) => boolean, timeoutMs = RECEIPT_WAIT_MS): Promise<Message> {
     const existing = this.messages.find(predicate);
     if (existing) return Promise.resolve(existing);
     return new Promise((resolve, reject) => {

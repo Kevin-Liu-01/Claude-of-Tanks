@@ -6,6 +6,7 @@
 // First-party tooling: Kevin B. Liu.
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
+import { constants } from 'node:os';
 
 /** Seconds of CPU from ps's `time` column ([[dd-]hh:]mm:ss.ss). */
 export function psCpuSeconds(text = '') {
@@ -39,7 +40,9 @@ export function budgetVerdict({ cpuS, budgetS, idleS, hangS, wallS }) {
  * pollMs, graceMs) while the caller blocks on it; `options` are execFileSync's, and `command`'s output is the caller's.
  * Throws past the budget (named on stderr) or the hang cap, and on any other failure. One mechanism with the chain's
  * own children: the kernel's CPU limit (ulimit -t) never stopped a node child that node had spawned (Main's probes,
- * 2026-11-02: 3 s of CPU on a 1 s limit, exit 0), so the rows read ran unbounded.
+ * 2026-11-02: 3 s of CPU on a 1 s limit, exit 0), so the rows read ran unbounded. For callers outside a chain only: the
+ * caller's event loop is held while it runs, so a chain reads through its own child groups instead (fingerprint.mjs
+ * readRowsAsync). The runner stops the child's tree when it is signalled or when its caller dies (round 8 Y10 s6-06).
  */
 export function budgetedSync(command, args, { budgetS, hangS, pollMs, graceMs, ...options }) {
   return execFileSync(process.execPath, [import.meta.filename, JSON.stringify({ budgetS, hangS, pollMs, graceMs }), command, ...args], options);
@@ -90,17 +93,63 @@ export function watchChild(pid, { budgetS, hangS = 1800, pollMs = 15_000, graceM
   };
 }
 
+/** Every live member of `rootPid`'s process tree, by exact pid ([rootPid] when ps fails). */
+export async function treePids(rootPid) {
+  const rows = await psRows();
+  return rows ? treeCpu(rows, rootPid).pids : [rootPid];
+}
+
+/** How often the runner checks that its caller still lives (process.ppid). */
+const ORPHAN_POLL_MS = 1000;
+
 // The runner budgetedSync starts: `node childBudget.mjs <limits JSON> <command> [args...]`. The child shares its stdio,
 // so its output reaches the caller as it writes it; a child stopped by its watch exits 1 with the verdict on stderr.
+// (round 8 Y10 s6-06) The runner and its child stay in the caller's process group (a terminal's ^C reaches all three),
+// and the runner owns one stop, 'watching' -> 'stopping', entered once by whichever comes first:
+//   - the watch's verdict (budget or hang): the watch stops the tree, exit 1;
+//   - a stop signal sent to the runner (TERM, INT, HUP): forwarded to the child's tree by exact pids, KILL after graceMs,
+//     exit 128 + the signal's number (before, the runner died at once and left its child running);
+//   - its caller's death (process.ppid changed: a caller blocked in execFileSync runs no handler, so a SIGTERM or SIGKILL
+//     to it ends it at once): TERM to the child's tree, KILL after graceMs, exit 1 (before, the child ran on unowned).
+// A second signal while stopping sends KILL at once.
 const isEntry = (() => { try { return realpathSync(process.argv[1] ?? '') === import.meta.filename; } catch { return false; } })();
 if (isEntry) {
   const [limits, command, ...args] = process.argv.slice(2);
+  const { graceMs = 15_000, ...watchLimits } = JSON.parse(limits);
+  const callerPid = process.ppid;
+  // a caller that died closed the pipes the runner writes to: a failed write must not end the runner before its stop
+  for (const stream of [process.stdout, process.stderr]) stream.on('error', () => {});
+  const say = (line) => { try { process.stderr.write(`${line}\n`); } catch { /* the caller is gone */ } };
   const child = spawn(command, args, { stdio: 'inherit' });
-  const watch = watchChild(child.pid, { ...JSON.parse(limits), onStop: (verdict) => process.stderr.write(`${command} stopped: ${verdict.message}\n`) });
-  child.on('error', (error) => { watch.stop(); process.stderr.write(`${command}: ${error.message}\n`); process.exit(1); });
+  let phase = 'watching', stopSignal = null;
+  /** watching -> stopping, once; false when a stop already began. */
+  const enterStop = (reason) => {
+    if (phase !== 'watching') return false;
+    phase = 'stopping';
+    say(`${command} stopped: ${reason}`);
+    return true;
+  };
+  const signalTree = async (signal) => {
+    const pids = await treePids(child.pid);
+    for (const member of pids) { try { process.kill(member, signal); } catch { /* gone */ } }
+    if (signal !== 'SIGKILL') setTimeout(() => { for (const member of pids) { try { process.kill(member, 'SIGKILL'); } catch { /* gone */ } } }, graceMs).unref();
+  };
+  const watch = watchChild(child.pid, { ...watchLimits, graceMs, onStop: (verdict) => { enterStop(verdict.message); } });
+  for (const name of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+    process.on(name, () => {
+      if (!enterStop(`${name} to the runner (pid ${process.pid})`)) { void signalTree('SIGKILL'); return; }
+      stopSignal = name;
+      void signalTree(name);
+    });
+  }
+  const orphanCheck = setInterval(() => {
+    if (process.ppid !== callerPid && enterStop(`its caller (pid ${callerPid}) is gone`)) void signalTree('SIGTERM');
+  }, ORPHAN_POLL_MS);
+  child.on('error', (error) => { clearInterval(orphanCheck); watch.stop(); say(`${command}: ${error.message}`); process.exit(1); });
   child.on('close', (status, signal) => {
+    clearInterval(orphanCheck);
     watch.stop();
-    if (signal && !watch.verdict) process.stderr.write(`${command} stopped by ${signal}\n`);
-    process.exit(watch.verdict || status === null ? 1 : status);
+    if (signal && phase === 'watching') say(`${command} stopped by ${signal}`);
+    process.exit(stopSignal ? 128 + (constants.signals[stopSignal] ?? 15) : phase === 'stopping' || status === null ? 1 : status);
   });
 }

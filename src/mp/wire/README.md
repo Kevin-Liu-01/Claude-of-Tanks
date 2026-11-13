@@ -41,27 +41,28 @@ Client → server
 | Type | Layout |
 |---|---|
 | `HELLO` (1) | `u16 protocolVersion`, `u32 capabilities` (`HELLO_CAPABILITY` bits), `string token ≤ 1024`, `string clientBuild ≤ 64` |
-| `INPUT` (2) | `u32 clientTick` (tick of the newest control), `u32 snapshotAckTick` (newest assembled snapshot or `NO_TICK`), `u8 interpDelayMs` (the client's interpolation delay, used for lag compensation), `u8 count` (1..3), then `count` controls oldest first; control `i` is for tick `clientTick − count + 1 + i`. Control: `i8 throttle`, `i8 steer` (±127 = ±1), `u8 flags` (`CONTROL_FLAGS`: FIRE_HELD, BRAKE, AIM_LOCKED), `u16 aimYaw` (turn), `i16 aimPitch` (±32767 = ±π/2), `u16 aimDistance` (5 cm units), `u8 shellSlot` (0..2), `u16 fireSeq`, `u16 actionSeq`, `u8 actionBits` (`ACTION_BITS`). 15 B per control; a full frame is 57 B (3.4 KB/s at 60 frames/s, 1.7 KB/s at 30). |
+| `INPUT` (2) | `u32 clientTick` (tick of the newest control), `u32 snapshotAckTick` (newest assembled snapshot or `NO_TICK`), `u8 interpDelayMs` (the client's interpolation delay, used for lag compensation), `u8 count` (1..3), then `count` controls oldest first; control `i` is for tick `clientTick − count + 1 + i`. Control: `i8 throttle`, `i8 steer` (±127 = ±1), `u8 flags` (`CONTROL_FLAGS`: FIRE_HELD, BRAKE, AIM_LOCKED), `u16 aimYaw` (turn), `i16 aimPitch` (±32767 = ±π/2), `u16 aimDistance` (5 cm units), `u8 shellSlot` (0..2), `u16 fireSeq`, `u16 actionSeq`, `u16 actionBits` (`ACTION_BITS`, thirteen bits). 16 B per control; a full frame is 60 B (3.6 KB/s at 60 frames/s, 1.8 KB/s at 30). |
 | `SNAPSHOT_ACK` (3) | `u32 tick` — the newest assembled snapshot, or `NO_TICK` to drop the baseline and request a keyframe (for viewers that send no INPUT, and for any client recovering from a missing delta baseline). |
 | `PING` (4) | `u32 clientTimeMs`, `u32 snapshotAckTick` |
 | `CHAT` (5) | `string text ≤ 960 B` (≤ 240 chars after the server's normalization) |
 | `LEAVE` (6) | `u8 reason` (`CLOSE_REASON`) |
-| `RESUME_HINT` (7) | `u32 tick`, `3 × i32` position mm, `2 × i16` speed / vertical speed cm/s, `5 × u16` yaw, pitch, roll, turretYaw, gunPitch (turns). Sent once after the HELLO of a resumed link (a host migration): the viewer's own newest authority row from the host it lost. The actor applies it only to a hull it restored from the sealed migration keyframe, only when the row is newer than the restored one, and only within the distance the hull could have driven since — pose fields alone, never combat state; a client never places itself (protocol 2, P3b). |
+| `RESUME_HINT` (7) | `u32 tick`, `3 × i32` position mm, `2 × i16` speed / vertical speed cm/s, `5 × u16` yaw, pitch, roll, turretYaw, gunPitch (turns). Sent once after the HELLO of a resumed link (a host migration): the viewer's own newest authority row from the host it lost. The actor applies it only to a hull it restored from the sealed migration keyframe, only when the row is newer than the restored one, and only within the distance the hull could have driven since — its pose and its body bits (the flags below) alone, never combat state; a client never places itself (protocol 2, P3b). Then `varint flags` (protocol 12, round 3 A14): the row's body bits (`ENTITY_FLAGS` AIRBORNE, OVERTURNED, AUTO_RIGHTING, TUMBLING, STACKED; at most `ENTITY_FLAG_BITS` bits); the actor seats the hint's ground contact and body mode from them as it seats a row's (`authorityRow.ts applyAuthorityRow`). |
 
 Server → client
 
 | Type | Layout |
 |---|---|
-| `WELCOME` (16) | `u16 protocolVersion`, `u8 tickHz` (60), `u8 snapshotHz` (the host's rate for the near tier: 20 by default, any divisor of the tick rate — the client adopts it), `u8 seat`, `u8 entityId` (`NO_ENTITY` for spectators), `u8 team`, `u32 serverTick`, `u32 serverTimeMs`, `u32 seed`, `u32 capabilities` (the subset the server honours), `string roomId`, `string mapId`, `string mode`, `string rulesetJson ≤ 4096` (the `MatchRuleset` the match plays by), `u8 rosterCount`, roster entries: `u8 entityId`, `u8 seat`, `u8 team`, `u8 flags` (bit0 bot, bit1 connected, bit2 a bot wearing AUTO paint: the authority's roll, `sim/camoPaint.ts` botCamoRoll; a bot without it wears its stock scheme, a seat never sets it), `string playerId`, `string name`, `string specId`. |
+| `WELCOME` (16) | `u16 protocolVersion`, `u8 tickHz` (60), `u8 snapshotHz` (the host's rate for the near tier: 20 by default, any divisor of the tick rate — the client adopts it), `u8 seat`, `u8 entityId` (`NO_ENTITY` for spectators), `u8 team`, `u32 serverTick`, `u32 serverTimeMs`, `u32 seed`, `u32 capabilities` (the subset the server honours), `string roomId`, `string mapId`, `string mode`, `string rulesetJson ≤ 4096` (the `MatchRuleset` the match plays by), `u8 rosterCount`, roster entries: `u8 entityId`, `u8 seat`, `u8 team`, `u8 flags` (bit0 bot, bit1 connected, bit2 a bot wearing AUTO paint: the authority's roll, `sim/camoPaint.ts` botCamoRoll; a bot without it wears its stock scheme, a seat never sets it), `string playerId`, `string name`, `string specId`. Then `u32 battleId` (protocol 12, round 3 A3): the battle this host plays, 0 for a match's first battle, kept by every host that resumes it (the sealed keyframe carries it), new when a host restarts it from its spawns; a client that followed another battle id drops what it retained of that battle. |
 | `SNAPSHOT` (17) | See below. |
 | `EVENT` (18) | `u32 tick`, `u8 count ≤ 64`, entries: `u8 kind` (`EVENT_KIND_NAMES` index, or 255 followed by `string kind ≤ 64`), then the payload: wire 8, `varint length ≤ 4096` and a tagged binary object (`eventPayload.ts`, below); wire 7 and before, `string json ≤ 4096`. Reliable one-shots: the authority's `shell_fired`, `shell_hit`, `shell_impact`, `tank_destroyed`, `tank_spotted`, `module_state`, `world_prop_destroyed`, `match_*`, ammo/consumable/magazine/special-action denials and the server's `chat`, `roster` and `admin` events. Payloads are the authority's event records (ids are the roster's `playerId` strings), each decoding to exactly the object `JSON.parse` gives for it serialized with its numbers at four decimals. |
 | `PONG` (19) | `u32 clientTimeMs` (echo), `u32 serverTimeMs`, `u32 serverTick` |
 | `CLOSE` (20) / `ERROR` (21) | `u8 reason` (`CLOSE_REASON`), `string detail ≤ 240`. CLOSE precedes the socket close; ERROR is non-fatal (a rejected input or chat). |
+| `HOLD` (22) | `u32 holdMs` (protocol 12, round 3 B1/X6). Before the WELCOME: the host holds this seat's HELLO (through its boot, or a migrated host's resume hold) and answers within `holdMs` from now. The seat's stall clock waits that long and a release margin more (`HOLD_RELEASE_MARGIN_MS`, the WELCOME's way out through the host's main thread; 33 s at most) before it counts; a later notice replaces an earlier one. During the boot, until its actor runs, the host runtime tells every link, its own seat's and each peer's, from the main thread whatever its Worker is doing (`matchHost.ts bootHoldNotice`: what is left of its boot bound, then the hold, `hostProtocol.ts bootHoldNoticeMs`; round 4 F0); in the resume hold the core tells what is left of it (`matchHostCore.ts noticeHeld`). A dedicated server never sends it. |
 
 ## SNAPSHOT
 
 ```
-u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT)
+u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT, HAS_DESTRUCTION, HAS_UNSEEN_SHELLS, HAS_DESTROYED_FALLS)
 u32 baseTick (NO_TICK on keyframes), u32 ackedInputTick, u16 ackedFireSeq, u16 ackedActionSeq
 i8 inputMarginTicks (how many ticks early the newest input arrived; negative = late; 127 = unknown)
 u8 phase, u16 countdownMs, u32 battleTimeMs, u8 verdict, [string verdictReason if HAS_VERDICT], u32 destructibleRevision
@@ -69,7 +70,10 @@ destroyed set (keyframe: every destroyed obstacle index; delta: indices destroye
 u8 entityCount, entity rows ...
 u8 removedCount, u8 entityId ... (entities in the baseline that are hidden now)
 u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 vel dm/s, u8 shellType, u8 flags (GUIDED)
+[HAS_UNSEEN_SHELLS] varint count (1..256), u16 shell id ... strictly ascending (wire 11: below)
 [HAS_VIEWER] viewer section, [HAS_MODE_STATE] string modeStateJson ≤ 8192
+[HAS_DESTRUCTION] u32 destructionBase, destruction log entries (destructionLog.ts)
+[HAS_DESTROYED_FALLS] u8 fall per index the destroyed set names, in its order (wire 11: below; always the last field)
 ```
 
 An *index list* is `varint count`, then the first index and the gaps
@@ -77,8 +81,9 @@ An *index list* is `varint count`, then the first index and the gaps
 
 A *destroyed set* (wire 6, 2026-10-13, `destroyedSet.ts`) is `u8 form`, then either form 0, an index list without a
 cap (indices 0..65535), or form 1, `varint byteLength` and a bitset (bit `i & 7` of byte `i >> 3` per destroyed index,
-the last byte holding a set bit) — whichever is smaller; at most 8 KB for any legal set. Wire 5 wrote an index list
-capped at 4,096 and its encoder threw past it (below Monsoon's 9,119 crushable props), failing every later keyframe.
+the last byte holding a set bit) — whichever is smaller; at most 8,195 B for any legal set (the set alone: the destroyed
+falls below take only the room a frame leaves). Wire 5 wrote an index list capped at 4,096 and its encoder threw past it
+(below Monsoon's 9,119 crushable props), failing every later keyframe.
 
 The *viewer section*'s movement checkpoint (wire 7, 2026-10-15, the MP stream): `u8 movementVersion` with its high bit
 (0x80) set marks a masked checkpoint, written only on a delta whose baseline frame holds a viewer on the same checkpoint
@@ -94,6 +99,33 @@ prop it has not seen fall at its final pose, silently, and leaves a prop whose `
 the presentation to that event. A host that resumes a match from a migration keyframe restores the keyframe's list
 into its own world and continues `destructibleRevision` from the keyframe's value; the revision never restarts at
 zero inside a match.
+
+The *destroyed falls* (wire 11, round 2 of the 2026-11-02 audit, U27; `destroyedSet.ts writeDestroyedFalls`) are the
+frame's last field, behind `SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS`: one fall byte per index the frame's set names, in the set's
+ascending order (a keyframe's whole list, a delta's additions). The flag is clear, and nothing follows, when every fall is
+none or when the falls would carry the frame past `MAX_MESSAGE_BYTES`: falls are presentation only and `none` is a legal
+fall, so they take only the room the frame leaves and never stop a keyframe that encodes without them (the C3 hazard the
+destruction log's budget answers). A fall byte (`src/sim/obstacleFall.ts`) is the cause in bits 6–7 (0 none, 1 ram, 2 shell;
+a blast fells as a shell) and the heading of the fall, `atan2(dx, dz)` in 64ths of a turn, in bits 0–5 (0 with none). A
+client that did not see a prop fall lays it with its fall instead of a ram toward +Z. The authority withholds a fall from
+a viewer as it withholds the live `world_prop_destroyed` event's cause and direction: a hull source's fall reads only to
+that hull's team (and to spectators), the other team reads none. A none lays the prop as a ram along its own heading
+(`obstacleFall.ts withheldObstacleFall`: a fixed hash of its index, the same on every seat), the lay the withheld live
+event gets too, so a seat that watched the fall and a seat that joined after it lay the prop alike; never direction
+(0, 0), which the world's hinge (`src/world/topple.ts`) lays toward +Z. A list restored from a migration keyframe carries
+none (the keyframe names indices only).
+
+The *unseen shells* (wire 11, U31) are the rounds this viewer was shown that left its view while the authority still flies
+them: the authority hides a round with its shooter, and a view holds at most 256, so a round's absence alone cannot tell
+an end from a spotting loss. The actor names each one for `UNSEEN_SHELL_MARK_TICKS` (half a second) from the frame it left,
+whatever becomes of it, so a lost snapshot loses no mark and the mark never tells a hidden round's end; a round that ended
+is never named, and a round in view again is named no longer. A frame names at most 256 (`MAX_SHELLS`, the list's
+bound; round 3 A13, `server/match/unseenShellMarks.ts`): a round that leaves while 256 are named takes the place of the
+mark made longest ago (ties: the lowest id), so a burst of departures can end a mark before its half second, but every
+round that leaves in flight is named at least in the frame it left. The client's presentation reports a named exit to
+the effects as `shell:unseen`, which hold the round out of view for three seconds (a tracer's belt place, a missile's
+trail and wire, a drone's airframe) instead of ending it. A drone whose hold runs out while it is still unseen is dropped
+where it was, with no flight home (round 3 A13, `src/fx/dronePresentation.ts` `held`): its end went unseen.
 
 **Entity row** = `u8 entityId`, `varint mask` (`ROW_GROUP` bits), then the
 present groups in bit order:
@@ -113,12 +145,12 @@ present groups in bit order:
 | 10 | GUN_RELOAD | 4 | remaining, total of the gun channel; absent when the status mirror bit is set |
 | 11 | MAGAZINE | 2 | rounds `u8`, capacity `u8` (the reticle's multi-round indicator) |
 | 12 | AMMO | 3–6 | three varints |
-| 13 | STATUS | 2 | `u16`: bits 0–1 reloadKind, 2–3 gunReloadKind, 4–5 shellSlot, 6 gunReloadMirrors, 7–15 `ENTITY_FLAGS` |
+| 13 | STATUS | 1–3 | `varint` (wire 10; `u16` before): bits 0–1 reloadKind, 2–3 gunReloadKind, 4–5 shellSlot, 6 gunReloadMirrors, 7–17 `ENTITY_FLAGS` (bit 16 TUMBLING, the hull's rigid phase; bit 17 STACKED, the hull supported by another hull or elevated above its own static support) |
 | 14 | ERA_ADD | var | index list of ERA cassettes spent since the baseline |
 | 15 | ERA_RESET | var | index list replacing the spent set (keyframes; a revive) |
 | 16 | AGE | var | `varint` packet tick − the tick the row was captured at; present only when the row predates its packet (protocol 2, P3b interest tiers) |
 
-A keyframe row carries groups 0, 2, 3, 4, 6–9, 11–13 (44 B for a typical
+A keyframe row carries groups 0, 2, 3, 4, 6–9, 11–13 (43 B for a typical
 tank), plus GUN_RELOAD when the gun channel differs from the main reload
 channel and ERA_RESET when cassettes are spent. A delta row carries only the
 groups that changed against the baseline row (a tank driving on rough ground
@@ -239,3 +271,28 @@ Nothing else in the layout moved. The snapshot encoder writes the same bytes fro
 (`codec.ts encodeSnapshotFrame`, `rows.ts writeEntityRowDelta`), and a client merges sorted patches into its baseline
 without maps (`applySnapshotPacket`), with the same frames. Receipts: `eventPayload.selftest.mjs`, and in
 `wire.selftest.mjs` the direct encoder against the packet path and the merged apply against the general algorithm.
+
+### The tumbling and stacked row flags (wire 10, 2026-11-02, audit M8)
+
+`WIRE_VERSION` 10, `PROTOCOL_VERSION` 11: `ENTITY_FLAGS` gains `TUMBLING` (bit 9), the hull's rigid phase
+(`src/sim/hullBodyMode.ts`; `OVERTURNED` and `AUTO_RIGHTING` are its sub-states), and `STACKED` (bit 10), the hull
+bearing on another hull (`tankBodyContacts.ts hullBearsOnBody`: a roof rest, the contact pass's support, or riding above
+its own static support). The row's STATUS word, now 18 bits, is a varint (1 byte for a row with no flags, 2 up to
+`AIRBORNE`, 3 with a body-mode or stack bit; the `u16` took 2 always). Before, a client rebuilt the tumble as
+overturned-or-righting and judged a stack from a support cache its copy of the hull never filled (zero, from the copy's
+creation at the origin), so the prediction world's tank contacts and the authority's split the same pair: a plain tumble
+or a roof rest below 0.5 m of world height was a supported hull to the client, and any hull standing higher was a stack,
+hill traffic included. `src/mp/match/hullBodyRow.ts` packs the bits on the authority and restores them onto every client
+copy. Receipt: `src/mp/match/hullBodyRow.selftest.mjs`. `STACKED` is the dynamic-contact term (`hullBearsOnBody`), so a
+plain jump more than 0.5 m up sets it as well.
+
+### Destroyed falls and unseen shells (wire 11, 2026-11-05, round 2 of the 2026-11-02 audit)
+
+`WIRE_VERSION` 11, `PROTOCOL_VERSION` 12: `SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS` ends a frame with its destroyed set's falls,
+and `SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS` adds the unseen-shells list after the shells (both described under SNAPSHOT above).
+A keyframe costs one byte per listed prop when any fall is readable and the falls fit what the frame leaves (Monsoon's
+whole crushable field: 8,928 B); a delta costs a byte per prop it adds; a frame with no readable fall or no unseen round
+costs nothing for it. `destroyedSet.selftest` builds the worst keyframes: Monsoon with every fall readable beside a full
+destruction log, mode state, shell and unseen list carries its falls, and every legal index down sends none and still
+encodes. Receipts: `src/mp/presentation/settledFalls.selftest.mjs`,
+`src/mp/presentation/unseenRounds.selftest.mjs`.

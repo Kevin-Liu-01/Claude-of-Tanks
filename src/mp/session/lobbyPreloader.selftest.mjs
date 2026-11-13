@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createLobbyPreloader } from './lobbyPreloader.ts';
+import { GAME_MODE_IDS } from '../../sim/gameModeCatalog.ts';
+import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 
 const calls = [];
 const mapRequests = [];
@@ -83,7 +85,27 @@ const callsBeforeBattlePacket = calls.slice();
 assert.equal(preloader.preload(waiting), false, 'live battle packets cannot start garage work');
 assert.deepEqual(calls, callsBeforeBattlePacket, 'live battle packets cannot build or cancel worlds');
 
-console.log('lobbyPreloader.selftest: coalescing, retry, roster delta and map intent passed');
+// (improve-271 plan 036) a room whose mode plays a terrain variant prefetches that variant's world (its own cache key),
+// never the standard battlefield the battle would not use; a Standard room keeps the bare id
+{
+  const variantMode = GAME_MODE_IDS.find((mode) => terrainVariantFor(mode));
+  assert.ok(variantMode, 'a mode plays a terrain variant');
+  const key = `verdant#${terrainVariantFor(variantMode)}`;
+  const seen = [];
+  const variantPreloader = createLobbyPreloader({
+    getGamePhase: () => 'garage', preloadPresentation: async () => {}, preloadVisuals: async () => {},
+    preloadBattleModules: async () => {}, ensureTankBuilders: async () => {}, loadWorldModule: async () => {},
+    cancelBackgroundWorldBuildsExcept: (mapId) => seen.push(`cancel:${mapId}`),
+    prefetchWorld: (mapId) => { seen.push(`map:${mapId}`); },
+  });
+  variantPreloader.preload({ ...waiting, mapId: 'verdant', gameMode: variantMode });
+  assert.deepEqual(seen, [`cancel:${key}`, `map:${key}`], `a ${variantMode} room prefetches and keeps its variant world (${seen})`);
+  seen.length = 0;
+  variantPreloader.preload({ ...waiting, mapId: 'verdant', gameMode: 'standard' });
+  assert.deepEqual(seen, ['cancel:verdant', 'map:verdant'], 'a Standard room prefetches the bare map');
+}
+
+console.log('lobbyPreloader.selftest: coalescing, retry, roster delta and map intent passed; a variant mode prefetches its variant world');
 
 phase='garage';
 const beforeAircraft=calls.filter(c=>c.startsWith('builders:')).length;

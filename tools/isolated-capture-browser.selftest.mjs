@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 
 const closeOrder = ['browser:close', 'server:close', 'cache:close'];
@@ -192,4 +195,98 @@ for (const name of ['geometry-gate', 'track-clip-audit', 'tank-standard-check',
     `${name}: no unguarded shared-cache acquisition`);
 }
 
-console.log('isolated-capture-browser: startup/callback failures, independent cleanup, primary errors, unchanged options, concurrent ownership, capture holds (warm while queued) and five release callers pass');
+// (round 2 U39) a SIGTERM to a held run: the hold's signal owner tears down, releases and exits, so this function's finally
+// never runs. On the lane head the teardown closed only the browser, leaving the Vite server and the cot-release-vite-*
+// optimizer cache behind (the base's puppeteer path had cleaned both up). A child process holds a private lock with stand-in
+// server and browser and a real cache directory under a private root; it must leave neither.
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-isolated-signal-'));
+  try {
+    const marks = join(root, 'marks');
+    const script = `
+      import { mkdirSync, writeFileSync } from 'node:fs';
+      import { join } from 'node:path';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { withIsolatedCaptureBrowser } from ${JSON.stringify(new URL('./isolated-capture-browser.mjs', import.meta.url).href)};
+      const root = ${JSON.stringify(root)}, marks = ${JSON.stringify(marks)};
+      mkdirSync(marks);
+      const mark = (name) => writeFileSync(join(marks, name), '');
+      const lock = createCaptureLock({ lockDir: join(root, 'lock'), queueDir: join(root, 'queue'), log: () => {} });
+      await withIsolatedCaptureBrowser({ root }, {}, () => { console.log('held'); setInterval(() => {}, 1000); return new Promise(() => {}); }, {
+        temporaryDirectory: () => root,
+        createViteServer: async () => ({ async listen() {}, async close() { mark('server-closed'); } }),
+        launchBrowser: async () => ({ async close() { mark('browser-closed'); } }),
+        logCleanupError: (resource, error) => console.error('cleanup', resource, String(error)),
+        capture: { lock, waitMs: 60_000, label: 'signal-probe' },
+      });`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const closed = new Promise((done) => child.once('close', (code, signal) => done({ code, signal })));
+    for (let i = 0; i < 2400 && !out.includes('held') && child.exitCode === null; i++) await new Promise((done) => setTimeout(done, 25));
+    assert.ok(out.includes('held'), `the child holds its private lock: ${err.slice(-600)}`);
+    assert.equal(readdirSync(root).filter((name) => name.startsWith('cot-release-vite-')).length, 1, 'its optimizer cache exists while held');
+    child.kill('SIGTERM');
+    const end = await closed;
+    assert.deepEqual(end, { code: 143, signal: null }, `the signal owner exits 128 + 15: ${err.slice(-600)}`);
+    assert.ok(existsSync(join(marks, 'browser-closed')), 'the browser closed');
+    assert.ok(existsSync(join(marks, 'server-closed')), 'the Vite server closed before the exit');
+    assert.deepEqual(readdirSync(root).filter((name) => name.startsWith('cot-release-vite-')), [], 'and the optimizer cache is gone');
+    assert.equal(existsSync(join(root, 'lock')), false, 'the lock is released');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// (round 3 B16) the same on SIGINT, through the real launch path: launchGuardedBrowser and @puppeteer/browsers' own launch
+// with puppeteer-core's defaults (a node child stands in for Chrome). puppeteer's SIGINT listener killed the browser and
+// called process.exit(130) right after the hold's signal owner began its teardown, which stopped at its first await (the
+// browser's close): the Vite server and the cot-release-vite-* cache were left behind on Ctrl-C.
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-isolated-sigint-'));
+  try {
+    const marks = join(root, 'marks');
+    const script = `
+      import { mkdirSync, writeFileSync } from 'node:fs';
+      import { join } from 'node:path';
+      import { launch } from ${JSON.stringify(import.meta.resolve('@puppeteer/browsers'))};
+      import { launchGuardedBrowser } from ${JSON.stringify(new URL('./browser-launch.mjs', import.meta.url).href)};
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { withIsolatedCaptureBrowser } from ${JSON.stringify(new URL('./isolated-capture-browser.mjs', import.meta.url).href)};
+      const root = ${JSON.stringify(root)}, marks = ${JSON.stringify(marks)};
+      mkdirSync(marks);
+      const mark = (name) => writeFileSync(join(marks, name), '');
+      const puppeteerLike = { launch: async ({ args = [], handleSIGINT = true, handleSIGTERM = true, handleSIGHUP = true }) => {
+        const proc = launch({ executablePath: process.execPath, args: ['-e', 'setInterval(() => {}, 1000)', '--', ...args],
+          handleSIGINT, handleSIGTERM, handleSIGHUP });
+        return { process: () => proc.nodeProcess, close: async () => { await proc.close(); mark('browser-closed'); } };
+      } };
+      const lock = createCaptureLock({ lockDir: join(root, 'lock'), queueDir: join(root, 'queue'), log: () => {} });
+      await withIsolatedCaptureBrowser({ root }, {}, () => { console.log('held'); setInterval(() => {}, 1000); return new Promise(() => {}); }, {
+        temporaryDirectory: () => root,
+        createViteServer: async () => ({ async listen() {}, async close() { mark('server-closed'); } }),
+        launchBrowser: (options) => launchGuardedBrowser(puppeteerLike, options, { label: 'stand-in', intervalMs: 60_000 }),
+        logCleanupError: (resource, error) => console.error('cleanup', resource, String(error)),
+        capture: { lock, waitMs: 60_000, label: 'sigint-probe' },
+      });`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const closed = new Promise((done) => child.once('close', (code, signal) => done({ code, signal })));
+    for (let i = 0; i < 2400 && !out.includes('held') && child.exitCode === null; i++) await new Promise((done) => setTimeout(done, 25));
+    assert.ok(out.includes('held'), `the child holds its private lock: ${err.slice(-600)}`);
+    child.kill('SIGINT');
+    const end = await closed;
+    assert.deepEqual(end, { code: 130, signal: null }, `the signal owner exits 128 + 2: ${err.slice(-600)}`);
+    assert.ok(existsSync(join(marks, 'browser-closed')), 'the browser closed');
+    assert.ok(existsSync(join(marks, 'server-closed')), 'the Vite server closed before the exit');
+    assert.deepEqual(readdirSync(root).filter((name) => name.startsWith('cot-release-vite-')), [], 'and the optimizer cache is gone');
+    assert.equal(existsSync(join(root, 'lock')), false, 'the lock is released');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+console.log('isolated-capture-browser: startup/callback failures, independent cleanup, primary errors, unchanged options, concurrent ownership, capture holds (warm while queued), a SIGTERM or SIGINT that leaves no server or cache, and five release callers pass');

@@ -13,6 +13,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const port = 5200 + Math.floor(Math.random() * 700);
 const server = await createServer({
@@ -46,7 +47,7 @@ const pass = (msg) => console.log(`[spot]   ok: ${msg}`);
 
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  await waitForBootLoaded(page, { timeout: 90000 });
 
   // ---- 1. garage camo picker + live repaint --------------------------------
   const picker = await page.evaluate(() => {

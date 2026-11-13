@@ -73,8 +73,8 @@ import {
 } from './engine/quality.ts';
 import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
 import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
-import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
-import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { createBattleAtmosphereAccess, loadGroundedLightModel } from './engine/battleAtmosphereAccess.ts';
+import { EXPOSURE_REFERENCE_ILLUMINANCE } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
@@ -103,6 +103,7 @@ import {
   type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
 import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
+import { createProgramOriginWatcher, type ProgramOriginRenderer } from './app/programOriginWatch.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -165,6 +166,7 @@ import {
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { classifyChunkFailure } from './app/lazyImportRetry.ts';
+import { createLazyChunk, type LazyChunk } from './app/lazyChunk.ts';
 import {
   GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
@@ -216,6 +218,7 @@ import {
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
+import { automationMode, harnessPath } from './app/automationPath.ts';
 import type {
   BotPressureTelemetry,
   CombatTelemetryOptions,
@@ -227,7 +230,7 @@ import type { DriveTestControllerOptions } from './dev/driveTestController.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
-import { createInput } from './game/input.ts';
+import { createInput, labelForCode, labelForPadButton } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
@@ -242,6 +245,10 @@ import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
+import { togglePhonePause } from './ui/phonePause.ts';
+import { setBodyFlag } from './ui/bodyFlags.ts';
+import { openCouchWhenCurrent } from './app/couchOpener.ts';
+import { chaseStartPitch } from './engine/chaseStart.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -251,12 +258,21 @@ import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds, planBattleSeats,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
-import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { isPlayerVisible } from './game/playerVisibility.ts';
+import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
+import { bootReadiness } from './app/bootReadiness.ts';
+import {
+  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun, TUTORIAL_ON,
+} from './ui/tutorial/tutorialRecord.ts';
+import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
+import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
+import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -306,7 +322,6 @@ const startupIntent = createStartupIntent(globalThis.location);
 const STUDIO_BOOT_INTENT = startupIntent.studioRequested;
 const STUDIO_BOOT_MAP = startupIntent.studioMapId;
 
-const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
@@ -679,7 +694,6 @@ worldRuntime = createWorldActivationRuntime<
   publishActivationTrace: (trace) => { window.__WORLD_LOAD = trace; },
   publishMinimapTrace: (trace) => { window.__MINIMAP_LOAD = trace; },
 });
-const worldCache = worldRuntime.cache;
 const residentLimits = worldRuntime.resourceLimits;
 const worldPrefetchStats = worldRuntime.prefetchStats;
 if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
@@ -697,7 +711,13 @@ function worldRaycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistan
 // recorder used in development. The recorder remains a lazy chunk and has
 // zero listeners/frame work for ordinary players; the explicit QA URL gives
 // remote/mobile testers an optimized-build trace they can export themselves.
-const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navigator.webdriver;
+// (2026-11-02 audit S3) the page's automation path, read in one place (src/app/automationPath.ts): `driven` installs the
+// QA surfaces (a boot decision), harnessPath() says whether to take the shortcuts (no entry gate, no veils, no scene
+// watchdogs; read where each one is decided). Only an explicit request picks the path, never navigator.webdriver: a
+// tool's browser asks for the harness path, a player-path receipt for the player's. Published read-only for receipts
+// (window.__AUTOMATION_PATH), beside the lifecycle.
+const automationAtBoot = automationMode();
+const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || automationAtBoot.driven;
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
   ? (await import('./dev/perfTrace.ts')).createDevTrace({
@@ -719,6 +739,21 @@ const game: MainGameState = createGameState<
 // Completed matches remain the ordinal base. Independent session entropy keeps
 // reloads/abandoned battles from replaying the same roster at that ordinal.
 game.battleCount = battleOrdinalBase();
+// (2026-11-02 audit F1) the app's one lifecycle: every game.phase writer goes through transitionAppPhase, which checks
+// the edge and announces phase:change here; tools read the derived state from window.__APP_LIFECYCLE (read-only)
+// (round 2 U40) the boot's reader from the start: the boot screen and its latch exist before the lifecycle, so the
+// lifecycle never reads 'garage' while main's module still evaluates under the splash
+const appLifecycle = createAppLifecycle({
+  game,
+  announce: (announcement) => bus.emit('phase:change', announcement),
+  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
+  readers: { isBooting: () => !bootReadiness.ready || boot.gated },
+});
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__APP_LIFECYCLE', { configurable: true, get: () => appLifecycle.snapshot() });
+  // (audit S3) the automation path this page runs (tools/game-readiness.mjs records it with every receipt)
+  Object.defineProperty(window, '__AUTOMATION_PATH', { configurable: true, get: () => automationMode() });
+}
 // Medals and achievements read the battle from the same state in solo and network play.
 installServiceRecord(bus, {
   playerId: () => game.player?.id ?? null,
@@ -765,8 +800,16 @@ spawnTanks(game, engineCtx);
 // The covered entry warm awaits it before the wreck dances (burnt bakes copy
 // the camo canvases, so paint must be final first).
 let camoSweepP = Promise.resolve();
-let battleWarmPending = false;
-let battleWarmGeneration = 0;
+// (2026-11-02 audit F2) the countdown's warm hold: armed by a deployment for its generation, lifted only by that
+// generation's release, superseded at once by an invalidation (src/game/battleWarmHold.ts)
+const battleWarmHold = createBattleWarmHold();
+/**
+ * The warm ports' setPending(false, generation): lift that generation's hold, and only it (round 2 U20: the adapter
+ * dropped the caller's generation and released the current one, so a stale caller lifted its successor's hold). A
+ * caller with no generation (the combat warm's load failure, checked current first; a renderer reset) means the
+ * current one.
+ */
+const releaseWarmHold = (pending: boolean, generation: number = battleWarmHold.generation): void => { if (!pending) battleWarmHold.release(generation); };
 let sceneWatchdogEntryGeneration = 0;
 let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = null;
 
@@ -801,28 +844,13 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string):
-  { readonly origins: readonly string[]; stop(): void } {
-  const origins: string[] = [];
-  const previous = renderer.renderBufferDirect;
-  const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
-    const before = renderer.info.programs?.length ?? 0;
-    previous.call(this, camera, drawScene, geometry, material, object, group);
-    if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
-      const path: string[] = [material.type];
-      for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
-    }
-  };
-  renderer.renderBufferDirect = watched;
-  let stopped = false;
-  const stop = (): void => {
-    if (stopped) return;
-    stopped = true;
-    if (renderer.renderBufferDirect === watched) renderer.renderBufferDirect = previous;
-  };
-  setTimeout(stop, ORIGIN_WATCH_MS);
-  return { origins, stop };
+// (2026-11-02 audit F2) one shared wrapper, removed when the last watch stops (src/app/programOriginWatch.ts): each
+// watch used to wrap whatever was on top, and two stopped in arm order left one on every draw for good
+const programOriginWatcher = createProgramOriginWatcher(
+  renderer as unknown as ProgramOriginRenderer<THREE.Material, THREE.Object3D>, { watchMs: ORIGIN_WATCH_MS },
+);
+function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): ProgramOriginWatch {
+  return programOriginWatcher.watch(annotate);
 }
 /**
  * (2026-10-27, the room-stalls lane) The Garage return's lateLinks receipt (programReceipt.ts): the programs linked after
@@ -890,9 +918,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       seed: 5000,
       auxiliaryEntities: () => onlineMatchActive() ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
-      auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
-        : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-          || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+      // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the night lighting and the crew read it
+      auxiliaryVisible: entity => isPlayerVisible(game, entity),
       auxiliaryReport: (id,p,caliberMm) => bus.emit('auxiliary:fired',{id,x:p.x,y:p.y,z:p.z,caliberMm}),
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
@@ -1116,13 +1143,22 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 });
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
-let pendingCampaignOperationId: string | null = null;
+// (2026-11-02 audit F2) the current solo entry's intent — its battlefield variant, campaign operation and watched
+// flag — as one record every solo entry replaces whole once accepted (soloBattleEntry's recordIntent, retries included;
+// src/game/battleEntryIntent.ts)
+const battleEntryIntent = createBattleEntryIntent();
+// (improve-271 plan 034) the solo countdown opens the brief once per sortie: set when it opens it, reset when the count
+// rolls out and when the Garage takes the screen, so the BRIEF button can dismiss it during the count and a long warm
+// hold never re-opens a brief that had faded
+let briefShownForCountdown = false;
+bus.on('battle:rollout', () => { briefShownForCountdown = false; });
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
   if (active) {
     battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide();
+    briefShownForCountdown = false;
     lighting.setBattleLitSet(false);
   }
   garagePhasePresentation.setActive(active);
@@ -1286,13 +1322,14 @@ const pedestal = createGaragePedestalRuntime({
 // still start at the press. Wheel and resize move the view itself, so they wake it at once.
 let garageActivityAfterPaint = false;
 const noteGarageViewActivity = () => {
-  if (game.phase !== 'garage') return;
+  // (audit F1) activity over the battle report, or under a return's veil, is not the Garage's
+  if (appLifecycle.screenPhase !== 'garage') return;
   invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
 };
 const noteGarageActivity = () => {
-  if (game.phase !== 'garage') return;
+  if (appLifecycle.screenPhase !== 'garage') return;
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
   if (garageActivityAfterPaint) return;
@@ -1386,20 +1423,22 @@ function switchMap(mapId: string) {
 // battle world is the map's 'assault-trenches' variant (its own cache entry);
 // only covered battle loads take it (never the garage staging area, Studio or
 // minimap captures), and the flag clears when the battle returns to the garage.
-let pendingTerrainVariant: 'assault-trenches' | null = null;
 function ensureWorld(
   mapId?: string | null,
   onProgress?: ((fraction: number, label: string) => void) | null,
-  opts?: WorldActivationOptions | null,
+  opts?: (Omit<WorldActivationOptions, 'terrainVariant'> & { terrainVariant?: BattleTerrainVariant }) | null,
 ) {
   // Every battle-context ensure (covered entry, then the battle owner's own
   // re-ensure) builds the variant; Studio and minimap captures (services off,
   // no covered atmosphere) and the garage staging area (switchMap) keep the
   // standard map.
   const battleContext = opts?.atmosphere === 'covered-battle' || opts?.services !== false;
-  // an explicit variant (network rooms) wins; the solo entries leave theirs in pendingTerrainVariant
-  const terrainVariant = opts?.terrainVariant ?? (pendingTerrainVariant && battleContext ? pendingTerrainVariant : null);
-  return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...(opts ?? {}), terrainVariant } : opts);
+  // (audit F2) an explicit variant wins, null included (a network room's standard battlefield): only a build that
+  // names none takes the solo entry's, so a solo Frontline choice never carves trenches into a room's world
+  const terrainVariant = battleEntryIntent.resolveTerrainVariant(opts?.terrainVariant, battleContext);
+  if (!opts) return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { terrainVariant } : opts);
+  const { terrainVariant: _requested, ...activation } = opts;
+  return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...activation, terrainVariant } : activation);
 }
 
 /**
@@ -1465,7 +1504,10 @@ const garageMaps = [
 // the lobby's Garage presence loads with the menu and the battle composition loads on the first start,
 // both behind explicit multiplayer intent, so the solo boot path never imports src/mp.
 let multiplayerLobby: LobbyIntent | null = null;
-const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lobbyIntent.ts').then(({ createLobbyIntent }) => {
+// (round 2 U35 review) the lobby's chunk under the one lazy-chunk policy (app/lazyChunk.ts): every Play intent asks the
+// menu's module, which joins it, so a failed transfer was asked again at once by each intent
+const lobbyIntentChunk = createLazyChunk(() => import('./mp/session/lobbyIntent.ts'));
+const loadMultiplayerLobby = (): Promise<LobbyIntent> => lobbyIntentChunk.load().then(({ createLobbyIntent }) => {
   multiplayerLobby ??= createLobbyIntent({
     getMenu: () => playSurface.getMenuPromise(),
     setGarageStatus: (status) => garage.setRoomStatus(status),
@@ -1543,16 +1585,18 @@ const playSurface = createPlaySurfaceRuntime({
   ]),
 });
 
-// Battle entry owns the play modal's visibility. Every player-facing entry
-// path emits this event, so first matches, retained-room rematches,
-// and solo all dismiss the operation picker before the next painted frame.
+// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the network roster
+// its round, and the solo entry owner every solo start it accepts: the Garage BATTLE button's press, whose announcement
+// the press hands it (round 4 F1), the Play menu, the campaign ladder, a failure notice's retry; 2026-11-02 audit F2),
+// so first matches, retained-room rematches and solo all dismiss the operation picker before the next painted frame.
+// (The debug entry still skips it.)
 // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
 // adoption) before the mode preview's clear, which leaves a parked skin alone
+// (audit F2) The scene watchdog's per-entry reset moved to the entry lifecycle's acceptance (onEntry below), which
+// always precedes the start that arms it; here it depended on this event arriving before the arm.
 bus.on('ui:battleStart', () => {
-  sceneWatchdogEntryGeneration++;
   if(pedestal.current)parkGarageTankEnergyVisual(pedestal.current.root);
   garageModePreview.clear();
-  coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
@@ -1598,13 +1642,17 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       .then(() => invalidateGaragePresentation());
     multiplayerLobby?.syncSelection();
   },
-  onBattle: (specId, mapId, options) => (
-    beginLocalBattleEntry(specId, mapId, options)
-  ), // loading screen owns entry
+  onBattle: (specId, mapId, options, announce) => (
+    beginLocalBattleEntry(specId, mapId, options, announce)
+  ), // loading screen owns entry (round 4 F1: and runs the press's announcement once it accepts the start)
+  // (round 3 B2, review r1) the press asks the entry before it announces: a refused one shows the way out, never a
+  // battle start that does not follow (the pointer lock grabbed over a failed return's notice)
+  refusesBattle: () => soloBattleEntry.refuses(),
+  // (round 8 Y4 s3-03) a lazy Garage opener: the lobby opens only over the Garage that asked (its ticket), and a chunk that
+  // did not arrive rejects to the press, which reports it under the loaders' policy (garage.ts)
   onCouch: (request) => {
-    void Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')])
-      .then(([runtime, lobby]) => lobby.openCouchLobby(runtime, request))
-      .catch((error) => console.error('[couch] the lobby failed to open', error));
+    return openCouchWhenCurrent({ ticket: request.ticket, load: () => Promise.all([couchOwner.preload(), import('./ui/couchLobby.ts')]),
+      open: ([runtime, lobby]) => lobby.openCouchLobby(runtime, request) });
   },
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
@@ -1760,7 +1808,7 @@ garage.setDecorativeWorkGate(() => battleLoad.covering);
 // STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
 // through the studio ctx below) and battle→garage. Headless probes never see
-// it (navigator.webdriver ⇒ synchronous no-op, per the screenshot contract).
+// it (the harness path ⇒ synchronous no-op, per the screenshot contract; src/app/automationPath.ts).
 const transition = createTransition();
 
 // --- audio --------------------------------------------------------------------
@@ -1882,8 +1930,10 @@ const killcamAccess = createKillcamAccess({
       getFx: () => fxRuntimeAccess.current,
       prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
       battleLightsActive: () => !garageLightsUp,
+      // (2026-11-02 audit, 02-game-2 #5) the ally chase never orbits behind Settings, in production too
+      isSettingsOpen: () => settings.isOpen(),
     }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination',
-      'battleLightsActive']));
+      'battleLightsActive', 'isSettingsOpen']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -2005,9 +2055,8 @@ const nightLighting = createNightLightingAccess({
   getCameraForward: () => camera.getWorldDirection(_nightCameraForward),
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
-  isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
-    : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
-      || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
+  // (round 8 Y3/Y4) the one visibility rule (src/game/playerVisibility.ts), as the auxiliary effects and the crew read it
+  isEntityVisible: (entity) => isPlayerVisible(game, entity),
   // (local-fps-266) a battle's lit set is fixed with the night pool's: the hemisphere and the anti-sun fill leave it where
   // they hold 0 (the Garage's switch, setGarageSpots, takes them back)
   fixLitSet: () => lighting.setBattleLitSet(true),
@@ -2057,8 +2106,8 @@ const combatWarmComposition = createCombatWarmComposition({
     if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
     return battleVisuals;
   },
-  getGeneration: () => battleWarmGeneration,
-  setPending: (pending: boolean) => { battleWarmPending = pending; },
+  getGeneration: () => battleWarmHold.generation,
+  setPending: releaseWarmHold,
   prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
   prepareModeVisuals: () => battlePresentation.prepareModeVisuals(),
@@ -2096,11 +2145,15 @@ renderer.userData.contextRecovery = {
   onLost() {
     graphicsContextLost = true;
     garagePhasePresentation.invalidateGpu();
-    post.setAdaptiveSuspended(true);
+    // (2026-11-02 audit R3) the context's own governor hold: a restore releases only this one, never a covered load's
+    post.setAdaptiveHold('context-lost', true);
   },
-  async onRestored() {
+  async onRestored(signal: AbortSignal) {
     const restoredInfo = renderer.info;
-    const isCurrentRestoration = () => renderer.info === restoredInfo && !renderer.getContext().isContextLost();
+    // (2026-11-02 audit R3) a newer loss aborts this restoration (contextRecovery.ts), and the next one starts only
+    // after this one stops at a checkpoint below
+    const isCurrentRestoration = () => !signal.aborted && renderer.info === restoredInfo
+      && !renderer.getContext().isContextLost();
     // CPU depth-texture objects survive a WebGL reset; their previous contents
     // do not. Invalidate them before any dormant Garage can accept a partial warm.
     lighting.invalidateShadowMaps();
@@ -2124,7 +2177,9 @@ renderer.userData.contextRecovery = {
       const recoveredReturn = await garageReturn.recoverAfterContextRestore(isCurrentRestoration);
       if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
       if (game.phase === 'garage') {
-        if (!recoveredReturn) await garagePhasePresentation.restoreGpu();
+        // (2026-11-02 audit R3) the Garage GPU restore checks this restoration's currency between its stages, so a
+        // newer loss stops it at its next checkpoint rather than letting it upload to the end beside the next one
+        if (!recoveredReturn) await garagePhasePresentation.restoreGpu(isCurrentRestoration);
         if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
         garagePresentationDirty = false;
       }
@@ -2134,7 +2189,7 @@ renderer.userData.contextRecovery = {
     post.render(0);
     if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     graphicsContextLost = false;
-    post.setAdaptiveSuspended(false);
+    post.setAdaptiveHold('context-lost', false);
     // Some mobile browsers discard the outstanding rAF when the WebGL device
     // is reclaimed. The loop's queued latch would then stay true forever even
     // though no callback exists. Cancel/re-arm explicitly after restoration;
@@ -2151,7 +2206,7 @@ bus.on('phase:change', () => post.resetAdaptiveResolution());
 // Map construction, roster painting and shader compilation intentionally
 // create long frames behind an opaque screen. They are loading throughput,
 // not gameplay performance, so exclude them from the live quality governor.
-bus.on('ui:battleStart', () => post.setAdaptiveSuspended(true));
+bus.on('ui:battleStart', () => post.setAdaptiveHold('loading', true));
 
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)
@@ -2185,12 +2240,16 @@ const battleEndingCamera = createBattleEndingCamera({
 });
 const battleResultPresentation = createBattleResultPresentationRuntime({
   game,
+  bus,
   killcam,
   rig,
   veilHud,
   showEndOverlay: endOverlay.show,
   emitPresented: (result: RuntimeValue) => bus.emit('battle:presented', { result }),
-  exitPointerLock: () => { document.exitPointerLock?.(); },
+  // (round 6 V6) through the input layer, whose releaseLock also withdraws a request still in flight (input.ts, round 5
+  // Q2): a canvas recapture asked in the frame before the verdict lands a task later, after document.exitPointerLock
+  // had nothing to release, and held the pointer over the result. `input` is built below; the port runs at a verdict.
+  exitPointerLock: () => { input.releaseLock(); },
   recordFlow: (receipt: RuntimeValue) => { debugFlags.lastEndFlow = receipt; },
   ending: {
     camera: battleEndingCamera,
@@ -2283,8 +2342,6 @@ async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
 }
-// perf-246: bound once the Garage return owner exists (below); settings is composed first.
-let garageAwaitingHandoff = (): boolean => false;
 const settings = createSettingsAccess({
   input,
   bus,
@@ -2293,10 +2350,12 @@ const settings = createSettingsAccess({
   isBattleActive: battlePhase.canOpenBattleSettings,
   isSpectating: () => !!killcam.spectate?.active,
   // perf-246: a Garage prepared behind the battle report is still the battle's end to the player: its Esc menu
-  // leaves (the handoff) and the Garage gear stays hidden until the handoff.
-  canLeaveBattle: () => battlePhase.canLeaveBattle() || garageAwaitingHandoff(),
+  // leaves (the handoff) and the Garage gear stays hidden until the handoff. (audit F1) Both read the screen's phase,
+  // the one the lifecycle last announced: a return still under its veil, or one that failed before its handoff, keeps
+  // the battle's Leave (which retries the return) and hides the Garage gear.
+  canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  gearVisible: () => battlePhase.isGarage() && !garageAwaitingHandoff(),
+  gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
   // livePaused from (kill-cam replays close the panel themselves; the end
@@ -2383,7 +2442,8 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
+    blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
@@ -2410,6 +2470,9 @@ const battlePresentation = createBattlePresentationRuntime({
   game,
   camera,
   scene,
+  // a couch battle's split screen: every pane's camera (src/app/couchPaneViews.ts), so no pane's hulls lose their detail
+  getExtraViews: () => couchOwner.current?.extraViews() ?? null,
+  getLodBias: () => couchOwner.current?.lodBias() ?? 1,
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
@@ -2456,29 +2519,31 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
-      // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay)
+      // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay); (round 4 F2) the
+      // entry asks the atmosphere's chunks and the map's air at once whatever the backoff a Studio drag raised
       const provingTime = game.ruleset?.provingGround?.timeOfDay;
-      await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times);
+      await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times, { entry: true });
       await frontline.prepare(game.battleCount, game.mapId);
-      await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime());
+      await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime(), undefined, { entry: true });
     },
     prepareNightLighting: () => nightLighting.prepare(),
     runSceneWatchdog: async (assertCurrent: () => void) => {
       assertCurrent();
       const run = coveredBattleWatchdog;
       coveredBattleWatchdog = null;
-      // Keep the established webdriver opt-out; real covered controls own
+      // Keep the established harness opt-out (src/app/automationPath.ts); real covered controls own
       // exactly one request armed by startBattle, never a second delayed probe.
-      if (navigator.webdriver) return;
+      if (harnessPath()) return;
       if (!run) throw new Error('Covered battle scene watchdog was not armed');
       const result = await run();
       assertCurrent();
       return result;
     },
     awaitProgramLinks: awaitRendererProgramLinks,
-    getGeneration: () => battleWarmGeneration,
-    advanceGeneration: () => ++battleWarmGeneration,
-    setPending: (pending: boolean) => { battleWarmPending = pending; },
+    getGeneration: () => battleWarmHold.generation,
+    // the deployment's arm is its hold (its setPending(true) has nothing left to do)
+    advanceGeneration: () => battleWarmHold.arm(),
+    setPending: releaseWarmHold,
     setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
     devTrace,
   }),
@@ -2500,7 +2565,7 @@ input.onAction('networkPanel', () => { onlineMatch.current?.toggleStatusPanel();
 input.onAction('leaveBattle', () => {
   const v2 = onlineMatch.current;
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
-  if (battlePhase.canLeaveBattle() || garageAwaitingHandoff()) settings.open();
+  if (appLifecycle.screenPhase === 'battle') settings.open();
 });
 // The proving ground (v2 progression, 2026-10-17): R resets the range, Y switches moving targets; the range card's buttons
 // say the same through the bus. Inert in every other battle (a network battle's local session never plays the range).
@@ -2532,7 +2597,8 @@ const PRE_BATTLE_HOLD_S = 5;
 const MIN_VISIBLE_PRE_BATTLE_S = 3; // countdown 2026-09-13: always a whole 3-2-1 after the loader (was 2)
 const battleRollout = createBattleRolloutRuntime({
   game,
-  bus,
+  // (2026-11-02 audit F1) the battle's one rollout edge is the battle frame runtime's latch (composed below)
+  rollout: () => { battleFrame.rollout(false); },
   audio,
   getHud: currentHud,
   defaultPreBattleSeconds: PRE_BATTLE_HOLD_S,
@@ -2551,6 +2617,13 @@ const battleRollout = createBattleRolloutRuntime({
 const battleEntryLifecycle = createBattleEntryLifecycle({
   nextFrame,
   wakeFrameLoop: () => frameLoop.restart(),
+  // (audit F2) every accepted entry supersedes the previous entry's scene watchdog before its start can arm one
+  onEntry: () => { sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
+  // (audit F2) a reveal waits only for a battle that can still present a frame, and counts only the time the frame
+  // owner can present one: a live context and a scheduler that is not backgrounded (its own focus rule: a window that
+  // lost focus stays `visible` but runs no tick, frameLoopScheduler.ts isBackgrounded)
+  canReveal: () => game.phase === 'battle',
+  isPresentable: () => !graphicsContextLost && frameLoop.presenting,
   // sides (2026-09-18): a 14 v 14 or 1 v 41 field compiles more programs on its first frame than the 7 v 7 budget allows
   revealTimeoutMs: () => revealTimeoutForField(game.tanks.length),
   getRevealContext: () => ({
@@ -2610,7 +2683,7 @@ const soloBattleStart = createSoloBattleStartAccess({
         const entryGeneration = ++sceneWatchdogEntryGeneration;
         const requestedWorld = currentWorld();
         coveredBattleWatchdog = null;
-        if (!navigator.webdriver) {
+        if (!harnessPath()) {
           const isCurrentBattleWatchdog = () => game.phase === 'battle' && !studio.active && currentWorld() === requestedWorld
             && sceneWatchdogEntryGeneration === entryGeneration;
           const watchdog: Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs'> = {
@@ -2661,7 +2734,6 @@ const soloBattleStart = createSoloBattleStartAccess({
         setGarageSpots(active);
         setGarageSunTrim(active);
       },
-      emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
       emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
       rig,
       stopShowroom: () => showroom.stop(),
@@ -2687,7 +2759,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
     getMapThumb: (mapId: string) => battleBackdrop(mapId),
-    hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
+    // (round 2 U26) the class owner's answer: a world built under another quality class is rebuilt, not reused
+    hasCachedWorld: (mapId: string) => worldRuntime.isReusable(mapId),
     getWorld: () => {
       const world = currentWorld();
       if (!world) throw new Error('solo battle loading requires an active world');
@@ -2764,7 +2837,8 @@ function prepareBattleRevealCamera() {
   if (game.ruleset?.watch && watchOwner.current?.prepareReveal()) return;
   if (!game.player || !game.player.state) return;
   rig.release();
-  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  rig.snapArcade(2, game.player.state.yaw, chaseStartPitch((game.player.state as { _spring?: { pitch?: number } })._spring?.pitch,
+    (game.player.spec as { gunDepressionDeg?: number } | undefined)?.gunDepressionDeg));
 }
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees: a network round's actors and the solo roster both
@@ -2781,6 +2855,18 @@ function resolveFxSubject(id: string) {
  * import is retryable, which is essential for first-visit clients on unstable mobile connections.
  */
 function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
+  // (round 2, app-flow) the room's launch takes the scene first: a Studio open in this tab leaves, then the launch runs
+  // as from the Garage (its cover in that task)
+  // (round 3 B2, review r1) a launch the owed Garage refused shows the way out as a solo start does (the menu's status
+  // line alone named an unsettled Garage, and Rejoin was refused the same way); a round the room's session entered fails
+  // at 'scene' instead, whose covered restore runs the return again (room.enterGarage: enterGarageWithExit)
+  const handOver = takeSceneForRound();
+  if (handOver) {
+    return handOver.then(() => beginMultiplayerV2Battle(request), (error: RuntimeValue) => {
+      offerOwedGarageReturn();
+      throw error;
+    });
+  }
   const current = onlineMatch.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
@@ -2790,6 +2876,45 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
       await networkBattleIntentCover.releaseAfterFailure();
       throw error;
     });
+}
+
+/**
+ * (round 2, app-flow) The one owner of a network round's scene hand-over, decided before the round covers, loads or
+ * announces anything (the room's launch above, and every round the composition enters: its room port). A round takes a
+ * seat into battle from whatever phase the page is in, and the edge table refuses studio -> battle: the activation
+ * refused it only after the round had covered the screen and loaded its world over the Studio. A Studio open in this
+ * tab leaves first (its exit, to the Garage, awaited: a match the seat readied for takes it there; that Garage return
+ * releases no network presentation, so the round waiting here survives it); then the app lifecycle's edge decides, so a
+ * Studio that could not leave refuses the round here: its Garage return failed before the Garage took the scene (the
+ * edge), or after (review 2: the return's state; no Garage to hand over, its notice the screen). Null when the scene
+ * can hand over now: nothing waits, so a launch's cover still lands in its own task.
+ * (round 3 B2) From every other phase too: a Garage return in flight (a Leave's veil fading in, its entry) settles first,
+ * as a solo start waits for it, so the round's cover lands under the still-opaque veil; then battleSceneRefusal decides.
+ * A round in phase 'garage' covered, loaded and revealed under a failed return's notice, whose Retry then disposed it.
+ * A refusal is a rejection, so the composition fails the round at its 'scene' stage.
+ */
+function takeSceneForRound(): Promise<void> | null {
+  const settle = (): Promise<void> | null => {
+    const returning = garageReturn.whenSettled();
+    if (returning) return returning.then(() => settle() ?? undefined);
+    const refusal = battleSceneRefusal('network-round');
+    return refusal ? Promise.reject(refusal) : null;
+  };
+  if (game.phase !== 'studio') return settle();
+  return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => settle() ?? undefined);
+}
+
+/**
+ * (round 3 B2) The one rule a battle takes the scene by, solo or network, once no Garage return is in flight: the app
+ * lifecycle's edge table, then the return (garageReturn.owesGarage: a failed return, whose notice is the screen and
+ * whose Retry tears down a battle loaded under it, or one a context change cut short over the Garage's scene, which the
+ * context recovery retries). Null when the scene may hand over; otherwise the refusal, unthrown (the solo start refuses
+ * as busy, a network round fails at 'scene').
+ */
+function battleSceneRefusal(reason: string): Error | null {
+  if (!canTransitionAppPhase(game, 'battle')) return new AppPhaseTransitionError(game.phase, 'battle', reason);
+  if (garageReturn.owesGarage) return new GarageScreenUnsettledError('returning', `${reason}: a Garage return still owes the screen`);
+  return null;
 }
 
 /** The composition's modules (one list: a returning tab's boot loads the same chunks ahead of its entry, lever 3c). */
@@ -2829,8 +2954,12 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           setGarageStatus: (status) => garage.setRoomStatus(status),
           emitRoomState: (payload) => bus.emit('network:roomState', payload),
           clearInput: () => input.setEnabled(false),
-          enterGarage: () => garageReturn.enter(),
-          returnToGarage: () => garageReturn.leave(),
+          // (audit F3 review) the covered restore after a failed join: a failed return says so and offers its retry
+          enterGarage: enterGarageWithExit,
+          // (round 2 U20) the room's own returns take the Leave's exit as well (a bare leave() froze a failed one)
+          returnToGarage: returnRoomToGarage,
+          // (round 2, app-flow) every round takes the scene before its cover: a Studio open in this tab leaves first
+          takeSceneForRound,
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
         },
@@ -2948,8 +3077,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           // weather. Early world warming compiles a different light variant;
           // retain world/services here and the covered real-frame gates below.
           // batch 27: a Frontline Assault room carves the trench variant on every client
+          // (audit F2) the room's variant is passed whole, null included: a standard room never inherits a solo leftover
           loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant: 'assault-trenches' | null = null) => (
-            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', ...(terrainVariant ? { terrainVariant } : {}) })
+            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', terrainVariant })
           ),
           recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
           rememberRound,
@@ -2990,9 +3120,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           atmosphere: async (initial) => {
             const seed = typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined;
             const mapId = currentWorld()?.mapId ?? game.mapId;
-            await battleAtmosphere.prepare(seed, mapId);
+            await battleAtmosphere.prepare(seed, mapId, undefined, { entry: true }); // (round 4 F2) an entry asks at once
             await frontline.prepare(seed, mapId);
-            await mapAmbience.prepare(seed, mapId, battleAmbienceTime());
+            await mapAmbience.prepare(seed, mapId, battleAmbienceTime(), undefined, { entry: true });
           },
           terrain: () => {
             const world = currentWorld();
@@ -3227,7 +3357,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!waiting) hud?.setPreBattleRules(game.ruleset.mode === normalizeGameMode(game.gameMode) ? game.ruleset : matchRulesetFor(normalizeGameMode(game.gameMode)));
             // campaign slice 5: the brief opens with the countdown and fades a few seconds into play
             if (!waiting && game.gameMode === 'frontline_assault') {
-              missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
+              missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
             }
           },
           setGarageLighting: (active: boolean) => {
@@ -3269,16 +3399,12 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           resetBattleResult: () => battleResultPresentation.reset(),
           setGarageSpots,
           setGarageSunTrim,
-          emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
           emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
           stopShowroom: () => showroom.stop(),
         },
       },
     };
 }
-
-/** The last solo entry was a watched battle (Battle Again watches again). */
-let lastEntryWatched = false;
 
 /** A solo battle's both teams as the load card draws them, planned before its world (rosterState.planBattleSeats). */
 function plannedCardTeams(specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) {
@@ -3294,21 +3420,18 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
  * A local battle (solo quick battle, campaign, Proving Ground, Watch, the Jev opponent): the local driver. The shared core
  * steps on the page (game/state.ts simStep), with input, the fixed step and the render in one frame. No match client,
  * prediction, interpolation, input-delay buffer, loopback, room or wire message: nothing from src/mp (the owner,
- * 2026-10-29: "rubberbanding on a LOCAL game"; RUST-ENGINE-DECISION §7 step 5, the solo sim Worker, is retired;
+ * 2026-10-29: "rubberbanding on a LOCAL game"; the solo sim Worker, step 5 of the kernel decision, is retired;
  * docs/ARCHITECTURE.md "One core, two drivers", tools/driver-boundaries.selftest.mjs).
  */
 function beginLocalBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
+  announcePress?: () => void,
 ) {
-  // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
-  // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
-  // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
-  pendingCampaignOperationId = options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null;
-  lastEntryWatched = options?.watch === true;
-  return soloBattleEntry.begin(specId, mapId, options);
+  // (the entry records its own intent once accepted: soloBattleEntry's recordIntent below; and runs the Garage press's
+  // announcement then, round 4 F1. The debug hook passes none: its battles announce nothing, as before)
+  return soloBattleEntry.begin(specId, mapId, options, announcePress);
 }
 
 /** A local battle in the selected vehicle: the Play menu's solo start and the campaign ladder's operations. */
@@ -3319,14 +3442,14 @@ function beginLocalBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = terrainVariantFor(gameMode);
-  // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
-  pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
+  // campaign slice 5: the mission brief names the ladder operation when the sortie came from it (the entry records
+  // its intent once accepted: soloBattleEntry's recordIntent below; a menu or ladder start is never a watched battle)
+  const operationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
-  const operation = campaignOperationById(pendingCampaignOperationId);
+  const operation = campaignOperationById(operationId);
   return soloBattleEntry.beginSelected({
     // Mars changes the rules and sky on the selected battlefield.
-    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
+    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: operationId,
   });
 }
 
@@ -3368,13 +3491,18 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
+    // The damage panel (audit 04-ui-1 item 7, IR4, review r1): every teardown releases it at once (no mask retry or late
+    // build for the last battle's tank, no hold on the visual the Garage pedestal adopts) and keeps its plan painted
+    // while the screens stay up; under the veil clear() drops the tank and its masks.
     clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       watchOwner.current?.stop();
+      currentDamagePanel()?.release();
       if (keepScreens) return;
+      currentDamagePanel()?.clear();
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       currentHud()?.setMode?.('hidden');
@@ -3396,9 +3524,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     closeMatch: (reason: string) => { onlineMatch.current?.closeMatch(reason); },
   },
   warm: {
-    invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
+    invalidate: () => { battleWarmHold.invalidate(); sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
     cancel: cancelDeferredCombatWarm,
-    setPending: (pending: boolean) => { battleWarmPending = pending; },
+    setPending: releaseWarmHold,
   },
   work: {
     noteActivity: () => garageDressingScheduler.noteActivity(),
@@ -3429,20 +3557,21 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   ui: {
     setGarageSpots,
     setGarageSunTrim,
-    emitGaragePhase: () => bus.emit('phase:change', { phase: 'garage' }),
     hideEndOverlay: endOverlay.hide,
     exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
     hideHud: () => currentHud()?.setMode?.('hidden'),
     showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
-    triggerBattle: () => {
-      // Battle Again replays the entry it follows: a watched battle is watched again (the Deploy foot's Watch)
-      const button = document.querySelector<HTMLButtonElement>(lastEntryWatched ? '[data-battle-watch]' : '.cot-battle');
-      if (!button || button.disabled) return false;
-      button.click();
-      return true;
-    },
+    // Battle Again replays the entry it follows through the Garage's own press, never a click on a button (round 8 Y4
+    // s3-04): a watched battle is watched again, a couch battle starts again with the phones here (or, with none, opens
+    // the couch lobby), any other entry is the BATTLE press (src/game/battleEntryIntent.ts replayBattleEntry)
+    triggerBattle: () => replayBattleEntry(battleEntryIntent, {
+      replay: (entry) => garage.replayEntry(entry),
+      couch: () => couchOwner.current,
+      openCouchLobby: () => garage.openCouch(),
+      seatName: (n) => t('pad.seat', { n }),
+    }),
   },
   audio,
   transition,
@@ -3465,11 +3594,91 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   },
   isBattleEntryPending: () => battleEntryLifecycle.pending,
   isBattleEntryCovering: () => battleLoad.covering,
+  // (audit F3) Battle Again waits on the entry lifecycle's own edges, never a poll
+  whenBattleEntrySettled: () => battleEntryLifecycle.whenSettled(),
+  whenBattleEntryCovering: () => battleEntryLifecycle.whenCovered(),
     publishTrace: (trace: RuntimeValue) => { window.__GARAGE_ENTRY = trace; },
   }),
 });
 const enterGarage = garageReturn.enter;
-garageAwaitingHandoff = () => garageReturn.awaitingHandoff;
+/**
+ * (2026-11-02 audit F3 review) The Garage return failure notice, with its one action: a failed return keeps Garage
+ * frames suppressed ('failed'), so the notice and its retry are the player's way out. Demand-loaded like every notice.
+ */
+const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Promise<void> => {
+  // (audit F3 review) a return cut short by another presentation (it owns the scene) or a graphics-context change (the
+  // context recovery retries it) is not a failure: its notice opened over the battle that took the scene, and its Retry
+  // cleared that battle or raced the recovery into 'The newer Garage return is not ready'. (The code check, not an
+  // import: the return implementation stays off the boot graph.)
+  if (Reflect.get(Object(error), 'code') === 'garage_return_superseded') {
+    console.info('[garage return] superseded:', Reflect.get(Object(error), 'message'));
+    return Promise.resolve();
+  }
+  // (round 5 Q2, review r1) the notice is the way out, so the cursor is freed before it opens: a lock a press asked for
+  // while it waits for this return (holdPointerLock, released by its own refusal only after this notice) or one the
+  // battle held (a room's return that failed before its screen's exitPointerLock). releaseLock also withdraws a request
+  // still in flight.
+  input.releaseLock();
+  return import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
+    .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
+};
+/**
+ * (round 2 U20) The one return exit every return caller takes after a rejection, decided by the return's declared
+ * state, never by the caller's error: a return left 'failed' (Garage frames suppressed, the screen still owed) says so
+ * and offers `retry`. A busy refusal (the other operation holds the return), a superseded return ('superseded':
+ * another presentation took the scene, or the context recovery retries it) and a return that never began (its veil
+ * taken over first) owe the player nothing. True when the notice opened.
+ */
+const exitFailedGarageReturn = (error: RuntimeValue, retry: () => void): boolean => {
+  if (garageReturn.state !== 'failed' || Reflect.get(Object(error), 'code') === 'garage_return_busy') return false;
+  console.error('[garage return] return failed', error);
+  void presentGarageReturnFailure(error, retry);
+  return true;
+};
+/**
+ * Every return caller that has no failure exit of its own (the Studio's exit, the room's covered restore) gets the
+ * Leave's: a return that failed and still owes the screen says so and offers the return again ('failed' → 'entering').
+ * The caller still sees the rejection.
+ */
+const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: RuntimeValue) => {
+  exitFailedGarageReturn(error, retryGarageReturn);
+  throw error;
+});
+const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
+/**
+ * (round 3 B2, review r1) A battle the owed Garage refused (battleSceneRefusal: garageReturn.owesGarage) is never a
+ * silent no-op: the refusal brings back the return's way out. A failed return's notice closes by its X, Escape or a press
+ * beside it, which runs nothing, and the return stays 'failed' until a return lands, so every refused start reopens the
+ * notice with its Retry (the return again). A return a context change cut short over the Garage's scene is the context
+ * recovery's: only a return writes the 'garage' phase, and onRestored above retries it before it clears
+ * graphicsContextLost, so while it owes the Garage the graphics are lost and the recovery's notice is the screen
+ * (round 4 E13: the start no longer runs the return beside it for graphics live over such a return, a state the
+ * product never holds). No refused start announced anything: the Garage press asks before it does anything (garage.ts
+ * refusesBattle), and a start refused after a return wait runs no announcement, its press's included (round 4 F1).
+ */
+const offerOwedGarageReturn = (): void => {
+  if (garageReturn.owesGarage && garageReturn.state === 'failed') {
+    void presentGarageReturnFailure(garageReturn.failure, retryGarageReturn);
+  }
+};
+/**
+ * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the
+ * Leave, with the same exit, whose retry is that Leave again. The room still sees the rejection (it reports it, and
+ * opens its own failure notice only after a return that landed).
+ */
+const returnRoomToGarage = (): Promise<void> => garageReturn.leave().catch((error: RuntimeValue) => {
+  exitFailedGarageReturn(error, () => { void returnRoomToGarage().catch(() => { /* its notice is the exit */ }); });
+  throw error;
+});
+// (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
+// (round 2, app-flow) and every network round from its start until it reveals or its covered restore lands: a round
+// the room's session entered (a later match_start while the room is kept) runs outside the entry lifecycle's run, and
+// the lifecycle read 'garage' under its loader, so F8, the Studio button and Window.__STUDIO.load opened over it
+appLifecycle.setReaders({
+  isEntryCovering: () => (battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered))
+    || onlineMatch.current?.entering === true,
+  isReturnOwed: () => garageReturn.state !== 'idle',
+});
 // perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
 // battle, off the boot graph; it registers itself as the report's backdrop owner (src/ui/reportBackdrop.ts).
 let battleEndGarageWarmLoad: Promise<void> | null = null;
@@ -3496,7 +3705,8 @@ const loadBattleEndGarageWarm = (): void => {
   });
 };
 bus.on('ui:battleStart', loadBattleEndGarageWarm);
-bus.on('phase:change', loadBattleEndGarageWarm);
+// (audit F1: the Studio and stills announce their phase now; only a battle needs the battle-end warm)
+bus.on('phase:change', (payload) => { if (Reflect.get(Object(payload), 'phase') === 'battle') loadBattleEndGarageWarm(); });
 const leaveBattleToGarage = (): Promise<void> => {
   const v2 = onlineMatch.current;
   if (v2?.active && battleEntryLifecycle.pending) {
@@ -3504,7 +3714,19 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
-  return garageReturn.leave();
+  // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
+  // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection
+  return garageReturn.leave().catch((error: RuntimeValue) => {
+    // (audit F3 review, round 2 U20) the return's state decides (exitFailedGarageReturn): a failed return says so and
+    // offers the Leave again; a Leave refused as busy, cut short by another presentation or a context change, or whose
+    // veil was taken over before its work ran opens no notice (the code check, not an import: the return
+    // implementation stays off the boot graph)
+    if (exitFailedGarageReturn(error, () => { void leaveBattleToGarage(); })) return;
+    const code = Reflect.get(Object(error), 'code');
+    if (code === 'garage_return_busy' || code === 'garage_return_superseded') {
+      console.info('[garage return] Leave ignored:', Reflect.get(Object(error), 'message'));
+    } else console.error('[garage return] Leave failed', error);
+  });
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
   lifecycle: battleEntryLifecycle,
@@ -3512,6 +3734,37 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   battleLoad,
   audio,
   enterGarage,
+  // (2026-11-02 audit F2) the Play menu's and the campaign ladder's starts announce their battle like the Garage button
+  announce: (payload) => bus.emit('ui:battleStart', payload),
+  // (audit F3) a start accepted while a Garage return is in flight waits for it instead of racing its restore
+  whenGarageSettled: () => garageReturn.whenSettled(),
+  // (round 2, app-flow) a network round the room's session entered (outside the entry latch) keeps the screen
+  isNetworkRoundEntering: () => onlineMatch.current?.entering === true,
+  // (round 2, app-flow review 2) the edge table decides a start before its announcement and cover, at the press and after
+  // a return wait: over the Studio (the __DEBUG.beginSoloBattle hook) it covered and loaded, refused only after the load
+  // (round 3 B2) and a return that still owes the Garage: a start queued behind a failed Leave loaded under its notice
+  canTakeScene: () => battleSceneRefusal('solo-start') === null,
+  // (round 3 B2, review r1) and a refused start shows the way out: a closed notice left the BATTLE button doing nothing
+  presentSceneRefusal: () => offerOwedGarageReturn(),
+  // (round 5 Q2) a start that waits for a return asks for the pointer lock inside its press (Chrome refuses one with no
+  // user activation, about 5 s, after the player's Esc) and gives it back if refused. fromUi: its refusal is not counted
+  // toward cursor aim; the announcement's own request, every entry's, still is
+  holdPointerLock: () => {
+    input.requestLock({ fromUi: true });
+    return () => input.releaseLock();
+  },
+  // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
+  // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
+  // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.
+  recordIntent: (options) => battleEntryIntent.begin({
+    terrainVariant: terrainVariantFor(options?.gameMode), // the mode's battlefield, as the authority builds it
+    // a campaign operation (the ladder, or launched from the Deploy screen) names its sortie: its brief and its map
+    campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
+    // a watched battle (the Deploy foot's Watch): Battle Again watches again
+    watched: options?.watch === true,
+    // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
+    couch: options?.couch ? { sides: options.couch.sides, view: options.couch.view === 'split' ? 'split' : 'shared' } : null,
+  }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
@@ -3542,6 +3795,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     if (reload) garage.noteBattleLoadFailed();
     return import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, reload ? null : retry));
   },
+  // (audit F3 review) the recovery's own return failed: the return notice, whose retry runs the return again
+  presentReturnFailure: (error, retry) => presentGarageReturnFailure(error, retry),
   onFailure: (error) => entryTelemetry.send({
     kind: 'entry_result', mode: 'solo', outcome: 'failed', code: 'entry_failed', error: describeError(error, location.origin),
   }),
@@ -3551,7 +3806,11 @@ const battleAgainAction = createBattleAgainAction({
   action: (trigger) => garageReturn.battleAgain(trigger),
   loadFailure: () => import('./ui/garageReturnFailure.ts'),
   getPhase: () => game.phase,
-  getEntryGeneration: () => sceneWatchdogEntryGeneration,
+  // (audit F2) the entry's identity is the entry lifecycle's serial: a spectator switch or a watchdog re-arm is not
+  // a new battle and no longer suppresses a failed Battle Again's notice
+  getEntryGeneration: () => battleEntryLifecycle.entrySerial,
+  // (audit F3 review) a Battle Again that left the return 'failed' (its skipped restore threw) offers the return again
+  getRetry: () => (garageReturn.state === 'failed' ? retryGarageReturn : null),
   getRoom: () => onlineMatch.current?.room ?? null,
   reportError: (message, error) => console.error(message, error),
 });
@@ -3583,7 +3842,7 @@ bus.on('network:roomState', (payload) => { multiplayerLobby?.handleRoomState(pay
 bus.on('ui:missionBrief', () => {
   if (game.phase !== 'battle' || game.gameMode !== 'frontline_assault') return;
   if (missionBrief.isShowing()) { missionBrief.hide(); return; }
-  missionBrief.show({ operationId: game.campaignOperationId ?? pendingCampaignOperationId, mapId: game.mapId, durationS: 14 });
+  missionBrief.show({ operationId: game.campaignOperationId ?? battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: 14 });
 });
 bus.on('ui:campaignNext', (payload) => {
   const request = payload && typeof payload === 'object' ? payload as { operationId?: unknown; mapId?: unknown } : null;
@@ -3592,7 +3851,7 @@ bus.on('ui:campaignNext', (payload) => {
   if (!operationId || !mapId) return;
   void battleAgainAction.run(() => {
     void beginLocalBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
-    return true;
+    return 'started';
   });
 });
 
@@ -3670,10 +3929,33 @@ const couchOwner = createLazyRuntimeOwner(
     camera,
     paused: () => settings.isOpen(),
     shellCode: shellTypeCode,
-    togglePause: () => { if (battlePhase.isBattle()) settings.toggle(); },
+    // (round 8 Y4 s3-05) the one phone pause rule (its resume never relocks the pointer), while the couch battle's phones
+    // drive (round 8 merge review r1: the session, its couch rules and the battle phase; the lobby outlives its battles, so
+    // a seated phone pauses no network round after the session ended and no keyboard battle): a dead seat 1 must not take
+    // Pause from the other seats (isBattleActive is seat 1's own battle settings)
+    togglePause: () => togglePhonePause(settings, () => couchSeatsActive(game)),
     emit: (type, payload) => bus.emit(type, payload),
     on: (type, listener) => bus.on(type, listener),
-    setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
+    // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other
+    // owner's reason strips it; both writes happen only on a change (the runtime asks every frame)
+    setSpectating: (on) => { setBodyFlag('cot-spectating', 'couch', on); currentHud()?.setCouchView(on); },
+    // the split screen (src/app/couchPaneViews.ts): each pane's camera, aim and HUD are made of the page's own parts
+    paneViews: {
+      game,
+      camera,
+      canvas: () => renderer.domElement,
+      post,
+      rig: { heightField: hfProxy, raycast: worldRaycast, getCameraSettings: () => input.getSettings() },
+      aim: { worldRaycast, computeDispersion: (spec, state, distanceM) => computeDispersionRadM(spec, state, distanceM) },
+      input,
+      bus,
+      loadHud: () => Promise.all([import('./ui/hud.ts'), import('./ui/damagePanel.ts')]).then(([hud, damagePanel]) => ({ hud, damagePanel })),
+      detailFoci: (points) => currentWorld()?.setTerrainDetailFoci?.(points),
+      minimap: () => {
+        const src = currentHud()?.exportMinimapBackground('image/png');
+        return src ? { heightField: hfProxy, src } : null;
+      },
+    },
   }),
 );
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
@@ -3688,7 +3970,9 @@ bus.on('watch:change', (payload) => {
   panel?.setTank(entity.spec, entity.visual);
   panel?.setEquipment(entity.equip ?? null);
 });
-const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
+const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio,
+  // a couch battle's split screen: the room hears the most recent shooter's solo mix (src/app/couchPaneViews.ts)
+  focus: () => couchOwner.current?.listenerFocus() ?? null });
 const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
@@ -3771,21 +4055,24 @@ const battleFrame = createBattleFrameRuntime({
     pump: onlinePump.pump,
   },
   countdown: {
-    isWarmPending: () => battleWarmPending,
+    isWarmPending: () => battleWarmHold.pending,
     advance: advancePreBattleCountdown,
     show: (seconds: number, warmPending = false) => {
       currentHud()?.preBattleCountdown(seconds, warmPending);
       // batch 19: the rules of engagement sit under the count (Standard shows none)
       currentHud()?.setPreBattleRules(game.ruleset);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
-      if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
-        missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
+      if (game.gameMode === 'frontline_assault' && !briefShownForCountdown) {
+        briefShownForCountdown = true;
+        if (!missionBrief.isShowing()) missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
     // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
     rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
     // the running count's whole seconds (the audio ticks 3, 2, 1)
     second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
+    // (audit F1) the warm hold outlasted its limit: the count ran on without it
+    holdExpired: (heldSeconds: number) => console.warn(`[warm] the countdown's warm hold passed ${Math.round(heldSeconds)} s; rolling out without it`),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,
@@ -3844,7 +4131,8 @@ const mainFrame = createMainFrameRuntime({
       garageModePreview.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
     },
   },
-  garageOverlay: { frame: () => garage.frameHotspots(camera, pedestal.switchPending ? null : pedestal.current?.root ?? null) },
+  garageOverlay: { frame: () => garage.frameHotspots(camera, pedestal.switchPending ? null : pedestal.current?.root ?? null,
+    pedestal.current?.specId ?? null) },
   networkSession: onlinePump,
   garageFramePacer,
   battleFrame,
@@ -3856,14 +4144,19 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  // (269, the second solo battle at 97%) a Garage restore covers Garage frames only: a battle that took the screen from a
-  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them
-  isPresentationRestoreCovering: () => game.phase === 'garage' && (garagePhasePresentation.restoringGpu || garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true),
+  // (269, the second solo battle at 97%) a Garage GPU restore covers no battle frame: a battle that took the screen from a
+  // Leave's restore still running owns its frames by its own cover, and its reveal waits for one of them. (round 8 Y4
+  // s3-01) It still covers the shot runtime's own Garage restore, which runs in the phase 'shot'. The return's own
+  // suppression is its declared state (2026-11-02 audit F3), never the diagnostic trace fields, and covers Garage frames.
+  isPresentationRestoreCovering: () => (game.phase !== 'battle' && garagePhasePresentation.restoringGpu) || (game.phase === 'garage' && garageReturn.current?.framesSuppressed === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
   // Watch's cameras, else a couch battle's shared camera, own the frame (the chase rig then stands down)
   watchFrame: (dt) => (watchOwner.current?.frame(dt) ?? false) || (couchOwner.current?.frame(dt) ?? false),
+  // a couch battle's split screen draws one pane per seat (docs/COUCH-MODE.md phase 2)
+  renderViews: (dt, wallDt) => couchOwner.current?.renderViews(dt, wallDt) ?? false,
+  splitHud: () => !!couchOwner.current?.paneViews && game.result == null,
   killcam,
   veilHud,
   worldFramePresentation,
@@ -3925,9 +4218,11 @@ invalidateGaragePresentation = () => {
 onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier(); });
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
-    pendingTerrainVariant = null;
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
-    pendingCampaignOperationId = null;
+    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows; round 8 Y4
+    // s3-04: and its couch, so a couch battle's Battle Again stays a couch battle)
+    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched,
+      couch: battleEntryIntent.couch });
     clearMatchSession(game);
   }
   frameLoop.restart();
@@ -4029,8 +4324,8 @@ window.__SHOTS = {
   /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
   async battleTime(time: 'day' | 'sunset' | 'night') {
-    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
-    await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime());
+    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time], { entry: true });
+    await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime(), undefined, { entry: true });
     return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },
 };
@@ -4122,13 +4417,19 @@ await bootStage('post', async () => {
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
 const studioLinks = (): NodeListOf<Element> => document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]');
-let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+// (2026-11-02 audit R6) an opener's chunk under the one lazy-chunk policy (app/lazyChunk.ts): the Studio's entry marks its
+// links and their next press reloads; the rule the hand-made `??=` memo kept, now declared
+let studioLightRuntime: LazyChunk<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
+// the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk.
+// (2026-11-02 audit R6, review round 2) An opener's chunk (app/lazyChunk.ts): studioAccess forgets a failed load, so a
+// Garage intent's background preload that lost studioPanel.css was asked again by the press, and Vite's preload, which
+// never adds a failed sheet again, let the Studio open unstyled. Kept, the press fails, marks the links and reloads next.
+const studioModule = createLazyChunk(() => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),
+  import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+  .then(([module]) => module), { opener: true });
 const studioAccess = createStudioAccess({
-  // the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk
-  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),
-    import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
-    .then(([module]) => module),
+  loadModule: () => studioModule.load(),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
@@ -4148,16 +4449,31 @@ const studioAccess = createStudioAccess({
       }
     },
     setWorldDormant,
-    setGarageSpots, setGarageSunTrim, enterGarage,
+    // (audit F9) a Studio battlefield build an exit outlived activates its world when it lands (awake, under its own sky
+    // and sun): while the Garage still owns the screen, its own presentation comes back (the world asleep, its sky and trim).
+    // (round 2 IR1) The lifecycle says whether it does: 'garage' is the settled Garage screen, never a return that still
+    // owes it (in flight, handed off, skipped, superseded, or failed with its notice and Retry: that return restores the
+    // Garage itself); and no battle entry is being assembled from it, nor Battle Again's lease running
+    restoreGarageWorld: () => {
+      if (appLifecycle.state !== 'garage' || battleEntryLifecycle.pending || battleLoad.covering || garageReturn.transitioning) return;
+      void garageEnvironmentPresentation.activate(selectedGarageVariantId);
+    },
+    // (audit F3 review) the Studio's exit: a failed return says so and offers its retry, instead of a frozen Garage
+    setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,
     // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
     // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
     // world's baked horizon light on exit.
     prepareStudioAtmosphere: async (
       time: import('./game/studioLight.ts').StudioTimeOfDay,
       light: import('./game/studioLight.ts').StudioLight | null = null,
+      owner?: { current(): boolean },
+      how?: { readonly relight?: boolean; readonly landed?: () => void },
     ) => {
-      await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
-      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+      // (round 4 F2 review) a Studio apply never waits on a re-ask (the runtime's, the light model's, the cloudscapes',
+      // the air's): what it lit without is its landing, and the Studio lights again once that lands (`how.landed`, its
+      // own guarded change); that relight applies the battle light and the Studio's plan again (`how.relight`)
+      const atmosphere = await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day'], how?.relight ? { relight: true } : undefined);
+      studioLightRuntime ??= createLazyChunk(() => import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
         const runtime = createStudioLightRuntime({
           scene,
           getWorld: currentWorld,
@@ -4177,12 +4493,20 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
-      }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
-      const applied = await (await studioLightRuntime).apply(time, light);
-      // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
+      }), { opener: true }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
+      const runtime = await studioLightRuntime.load();
+      // (audit F9) a Studio session that ended while this prepared lights nothing: its exit restored the battlefield
+      if (owner && !owner.current()) return null;
+      if (how?.relight) runtime.restore(); // (its plan applies again over the battle light the relight applied)
+      const applied = runtime.apply(time, light);
+      // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock; (round 3 A10) an air whose
+      // import lands after the session ended applies nothing: that exit's restore stays the last word
       mapAmbience.setDensityOverride(1);
-      await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);
-      return applied;
+      const air = await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time, owner);
+      for (const landing of [atmosphere?.landing, air?.landing]) {
+        if (landing && how?.landed) void landing.then((landed) => { if (landed) how.landed?.(); });
+      }
+      return owner && !owner.current() ? null : applied; // (its light came before that session's restore)
     },
     setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),
     restoreStudioAtmosphere: () => {
@@ -4211,7 +4535,9 @@ const studioAccess = createStudioAccess({
     borrowLight: () => sniperFill.light,
   }),
   // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
-  getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
+  // (audit F1) the lifecycle's state: F8 and the Studio button open only over a settled Garage screen (never behind
+  // the battle report, under a return's veil or over a battle entry's cover)
+  getPhase: () => appLifecycle.state,
   keyTarget: window,
   // the Garage's Studio links read busy while the Studio's code loads (garage.css)
   onPending: (pending) => {
@@ -4276,7 +4602,7 @@ if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
 
 const driveTestRequested = import.meta.env.DEV
   || debugModeRequested()
-  || navigator.webdriver;
+  || automationAtBoot.driven;
 const driveTestController = createDriveTestAccess({
   enabled: driveTestRequested,
   options: () => ({
@@ -4329,7 +4655,7 @@ if (diagnosticsRequested) {
       getSelectedSpecId: () => selectedVehicle.id,
       getWatchController: () => watchOwner.current?.controller ?? null,
       getPedestalCacheIds: () => [...pedestal.cacheIds],
-      getWorldCacheIds: () => [...worldCache.keys()],
+      getWorldCacheIds: () => worldRuntime.residentIds(), // (round 2 U26) build ids, a retired world's under its own
       getResidentLimits: () => ({ ...residentLimits }),
       getBattleVisualPoolStats: () => battleVisualPool.stats(),
       getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
@@ -4392,7 +4718,7 @@ await bootStage('ready', null);
 // full checks for diagnosis runs).
 relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
-// ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
+// ?nosplash / the harness path). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
 const entryReady = boot.ready(() => audio.prepare());
 if (pendingRoomInvitePromise) {
@@ -4425,8 +4751,63 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
     playSurface.prepareMenu();
   }));
 }
+// 272: the first-game tutorial (app/tutorialAccess.ts): a new player's first Garage, first battle and the strategy tips
+// after it, replayable from Settings and from the Field Manual (/?tutorial=1). The boot reads only its record
+// (ui/tutorial/tutorialRecord.ts): the tutorial's access loads while a chapter could still run, or on a replay, so a
+// player who finished or skipped it, or who played before it existed, loads nothing more. A test drive or a room
+// invite boots past the Garage: the tutorial waits for the Garage's next showing.
+const tutorialReplay = readTutorialReplay(location.href);
+if (tutorialReplay.asked) {
+  try { history.replaceState(history.state, '', tutorialReplay.cleaned); } catch { /* the address keeps it */ }
+}
+let tutorialEntryPassed = false;
+const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').then(({ createTutorialAccess }) => createTutorialAccess({
+  record: {
+    read: () => readTutorialRecord(), due: (chapter) => tutorialChapterDue(chapter),
+    mark: (chapter, outcome) => markTutorialChapter(chapter, outcome), reset: () => resetTutorialRecord(),
+  },
+  on: (event, listener) => bus.on(event, listener),
+  inputKind: () => (input.isTouchLayout() ? 'touch' : input.isPadConnected() ? 'pad' : 'keyboard'),
+  keyLabel: (action) => (input.isPadConnected() && !input.isTouchLayout()
+    ? labelForPadButton(input.getPadBinding(action)) : labelForCode(input.getBinding(action))),
+  codeLabel: labelForCode,
+  playerPosition: () => {
+    const pos = game.phase === 'battle' ? game.player?.state?.pos : null;
+    return pos ? { x: pos.x, z: pos.z } : null;
+  },
+  onGarage: () => tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending,
+  isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
+    && !game.ruleset?.provingGround,
+  preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+})));
+const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
+  tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));
+};
+// the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
+bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
+bus.on('ui:replayTutorial', () => { if (TUTORIAL_ON) withTutorial((access) => access.replay()); });
+void entryReady.then(() => {
+  tutorialEntryPassed = true;
+  if (testDriveSpecId || pendingRoomInvitePromise) {
+    if (tutorialMayRun()) withTutorial(() => { /* resident for the Garage's next showing */ });
+    return;
+  }
+  if (tutorialReplay.asked && TUTORIAL_ON) withTutorial((access) => access.replay());
+  else if (tutorialMayRun()) withTutorial((access) => access.garageShown());
+}).catch(() => { /* the entry gate's own failure is reported where it is awaited */ });
+// receipts read the chapter and step showing; a diagnostics page (dev, ?debug=1, automation) may also start a chapter
+// directly (tools/tutorial.browser.mjs walks Skip from every step without fighting a battle per step)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
+  if (diagnosticsRequested) {
+    Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
+      value: (chapter: 'garage' | 'battle' | 'tips') => withTutorial((access) => access.debugStart(chapter)) });
+  }
+}
 garageBootDone = true;
-window.__GAME_READY = true;
+// (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts); it writes window.__GAME_READY, the harness
+// mirror the tools wait on, which product code never reads
+bootReadiness.markReady();
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
@@ -4475,9 +4856,9 @@ if (STUDIO_BOOT_INTENT) {
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
 // probe yet renders the REAL scene's lit meshes black. Sample the actual
 // garage frame shortly after ready; if the lit band reads black, shadows-off
-// rescue + recompile (deviceDiag.ts). Skipped under webdriver so harness
+// rescue + recompile (deviceDiag.ts). Skipped on the harness path so harness
 // captures stay deterministic; a second check runs at battle start.
-if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce')) {
+if (!harnessPath() || new URLSearchParams(location.search).has('diagforce')) {
   const garageWatchdogGeneration = sceneWatchdogEntryGeneration;
   const garageWatchdogWorld = currentWorld();
   const isCurrentGarage = () => game.phase === 'garage' && !studio.active && !battleEntryLifecycle.pending

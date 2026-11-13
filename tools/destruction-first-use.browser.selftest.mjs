@@ -15,8 +15,9 @@ import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const MAP = arg('map', 'urban');
@@ -25,13 +26,12 @@ const JSON_OUT = arg('json', null);
 const VIEW = { width: 1280, height: 720 };
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-const lock = createCaptureLock();
+let hold;
 const report = { map: MAP, spec: SPEC, errors: [] };
-let server, browser, refresh;
+let server, browser;
 try {
   // counts programs, times nothing: a render hold
-  await lock.acquire(45 * 60_000, { place: 'destruction-first-use', lockClass: 'render' });
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'destruction-first-use.browser.selftest', timeoutMs: 45 * 60_000, place: 'destruction-first-use', lockClass: 'render' });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 60_000, protocolTimeout: 300_000,
@@ -50,12 +50,11 @@ try {
   });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&debug=1&telemetry=off&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`, { timeout: 300_000, polling: 250 });
   await page.evaluate((specId, mapId) => {
     setTimeout(() => { window.__dfuEntryAt = performance.now(); window.__DEBUG.beginSoloBattle({ specId, mapId }); }, 0);
   }, SPEC, MAP);
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on'),
-    { timeout: 420_000, polling: 100 });
+  await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 420_000, polling: 100 });
   // the entry's length to the reveal (what the covered warm costs; loaded-machine wall time, a guide only)
   report.entryMs = await page.evaluate(() => Math.round(performance.now() - window.__dfuEntryAt));
   // every program made from here, with the draw (or compile) that made it
@@ -173,8 +172,7 @@ try {
   console.log('destruction-first-use.browser.selftest: the first destruction linked no FX program after the reveal PASS');
 } finally {
   if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
-  clearInterval(refresh);
   await browser?.close().catch(() => {});
   await server?.close().catch(() => {});
-  try { lock.release(); } catch { /* the hold is reaped once this process exits */ }
+  try { await hold?.release(); } catch { /* the hold is reaped once this process exits */ }
 }

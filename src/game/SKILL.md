@@ -82,7 +82,10 @@ reason, the deciding objective from observed mode events, the beat clock and
 skip), `battleEndingCamera.ts` poses its camera beats through the rig, and
 `killcamSelection.ts` is the pure final-kill replay policy the killcam reads;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
-facade; `killcam.ts` owns replay presentation, while `studio.ts` renders the
+facade; `killcam.ts` owns replay presentation, and its `active` flag is the one
+"a replay owns the screen" fact (`killcamScreen.ts` publishes it on the bus: the
+battle input owner, the audio overlay and the phase policy read it, never a copy
+fed by `killcam:begin`/`killcam:done`), while `studio.ts` renders the
 Scene Studio and `studioTimeline.ts` owns its strict JSON-safe storyboard and
 allocation-free camera/actor sampling contract. The Studio film renderer is
 `studioFilmPlan.ts` (pure film block, speed ramps, monotone cut-aware shutter

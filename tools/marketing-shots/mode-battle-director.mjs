@@ -719,7 +719,10 @@ export function installModeBattleDirector() {
         'html.mb-hud-noreticle .cot-hud > .cot-ret,html.mb-hud-noreticle .cot-hud > .cot-hitmark{visibility:hidden!important}',
         'html.mb-hud-hidden .cot-hud,html.mb-hud-hidden .cot-dp,html.mb-hud-hidden .cot-si-stats,',
         'html.mb-hud-hidden .cot-hints,html.mb-hud-hidden .cot-medal-toasts,html.mb-hud-hidden #cot-perfhud,',
-        'html.mb-hud-hidden .cot-touch,html.mb-hud-hidden .cot-mode-status,html.mb-hud-hidden .cot-mp-strip{display:none!important}',
+        'html.mb-hud-hidden .cot-touch,html.mb-hud-hidden .cot-mode-status,html.mb-hud-hidden .cot-mp-strip,',
+        // Air Support's own surfaces (airSupportHud.css): the strike rack and dock, the binoculars, the warning
+        'html.mb-hud-hidden .cot-strike-rack,html.mb-hud-hidden .cot-strike-dock,html.mb-hud-hidden .cot-binoculars,',
+        'html.mb-hud-hidden .cot-strike-view,html.mb-hud-hidden .cot-strike-warning{display:none!important}',
         // the opt-in frame-rate/link readout (hud.ts .cot-net, the perf meter setting) is telemetry, not the player's HUD
         '#cot-perfhud,.cot-debug-hud,.cot-hud .cot-net{display:none!important}',
       ].join('');

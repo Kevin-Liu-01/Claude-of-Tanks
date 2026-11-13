@@ -12,6 +12,10 @@ import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
 import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+// (built-env-270b) the material's paved open grounds read the built-environment row: the real table and codes too
+import { PAVED_GROUND_MAX, builtEnvironmentFor } from './maps/builtEnvironmentTable.ts';
+import { ROAD_SURFACE_CODE } from './roadSurfaces.ts';
+import * as detMath from '../sim/detMath.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the b1c6629a3 pre-pacing splatFields, with sha256
@@ -78,7 +82,7 @@ function fixture({ closeThrows = false } = {}) {
     ...['createShoreAt', 'foldFieldSteps', 'buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
-    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
+    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'groundSurfaceUniformValues', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', 'builtEnvironmentFor', 'PAVED_GROUND_MAX', 'ROAD_SURFACE_CODE', 'detMath', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
@@ -129,7 +133,8 @@ function fixture({ closeThrows = false } = {}) {
     texture.image = { pixels: pixels.slice(), width: size, height: size };
     state.uploads.push({ pixels: texture.image.pixels, size, options });
     return texture;
-  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS);
+  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, groundSurfaceUniformValues, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf, LAND_BAKE_LAYERS,
+    builtEnvironmentFor, PAVED_GROUND_MAX, ROAD_SURFACE_CODE, detMath);
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };
   const height = { _layout: { spawns: { player: { x: 0, z: 0 } }, terrain: {} } };
   return { api, state, engine, height, dispose(group) {

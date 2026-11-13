@@ -1,9 +1,9 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   BattleVisualEntity,
   BattleVisualStreamer,
   BattleVisualStreamerOptions,
 } from './battleVisualStreamer.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type StreamerModule = Pick<
   typeof import('./battleVisualStreamer.ts'),
@@ -34,21 +34,10 @@ export function createBattleVisualStreamerAccess<
 ): BattleVisualStreamerAccess<TGame['tanks'][number]> {
   type Entity = TGame['tanks'][number];
   let current: BattleVisualStreamer<Entity> | null = null;
-  let pending: Promise<BattleVisualStreamer<Entity>> | null = null;
-
-  const preload = (): Promise<BattleVisualStreamer<Entity>> => {
-    if (current) return Promise.resolve(current);
-    if (pending) return pending;
-    const request = loaders.load().then((module) => {
-      current = module.createBattleVisualStreamer(options);
-      return current;
-    }).catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
-    });
-    pending = request;
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => loaders.load().then((module) => (current = module.createBattleVisualStreamer(options))));
+  const preload = (): Promise<BattleVisualStreamer<Entity>> => chunk.load();
 
   return {
     preload,

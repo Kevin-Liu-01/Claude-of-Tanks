@@ -13,6 +13,8 @@ import { tankThumbUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { uiIconSVG } from './uiIcons.ts';
+// by namespace: a copy of this file on a tree without the session holder still loads, and fails at its assertion
+import * as studioSessionModule from '../game/studioSession.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
 // outside this test: only user intent, asynchronous locking and exact export
@@ -93,7 +95,7 @@ const productionPreset = (id) => presets.find((preset) => preset.id === id);
 const context = { document, window, Event, createPickerMenu, createTemplateSheet, pickerText, PRODUCTION_PRESETS: presets, productionAspect, productionPreset,
   productionShotNames: (preset) => preset.shots, sequenceTemplates, takeTemplates, getLocale: () => locale, console, Promise, Error, fetch,
   sceneLinkPath, t, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys,
-  tankThumbUrl };
+  tankThumbUrl, createSessionHolder: studioSessionModule.createSessionHolder };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteTakes = siteTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;
@@ -103,6 +105,9 @@ const S = {
   getSpecInfo: id => { if (!SPEC_NAMES[id]) throw new Error(`unknown vehicle ${id}`); return { name: SPEC_NAMES[id] }; },
   _internal: { actors: [{}] }, fxTimeMs: 0, durationMs: 12000, playing: false, selectedShotId: 'a',
   recordingStatus: () => ({ active: false, supported: true }),
+  // the Studio's one busy reading (studioSession.ts StudioBusy): its recording, or whatever a case holds it with
+  held: null,
+  busy() { return this.recordingStatus().active ? 'recording' : this.held; },
   getStoryboard: () => ({ shots: [{ id: 'a', label: 'Opening', tMs: 0 }, { id: 'b', label: 'Tracking', tMs: 4000 }] }),
   directProduction: options => { calls.push(['stage', options]); return new Promise((resolve, reject) => { resolveStage = resolve; rejectStage = reject; }); },
   capture: options => { calls.push(['capture', options]); },
@@ -114,7 +119,16 @@ const S = {
   addCameraShot() { calls.push(['saveCamera']); },
   setProductionFormat(format) { this.productionFormat = format; calls.push(['format', format]); },
   applyProductionCamera(rig) { calls.push(['rig', rig]); }, setCamera(camera) { calls.push(['camera', camera]); },
-  load(json) { calls.push(['load', json]); return Promise.resolve(json); },
+  // the Studio's session (studioSession.ts): a token goes stale once its session ends; load refuses a stale owner. A case
+  // moves sessionGeneration on for an exit and the next entry
+  sessionGeneration: 1,
+  sessionToken() {
+    const issued = this.sessionGeneration;
+    const current = () => issued === this.sessionGeneration;
+    return { generation: issued, current, ended: () => !current(),
+      check() { if (!current()) throw Object.assign(new Error('The Studio session ended'), { name: 'AbortError' }); } };
+  },
+  load(json, options) { options?.owner?.check(); calls.push(['load', json]); return Promise.resolve(json); },
 };
 const root = new Element('div'), dock = new Element('div'); root.append(dock);
 const panelSource = readFileSync(new URL('./studioPanel.ts', import.meta.url), 'utf8');
@@ -128,7 +142,11 @@ assert.equal(integratedGroups.length, 5);
 for (const id of integratedGroups) { const group = new Element('section'); group.dataset.group = id; dock.append(group); }
 // what an action did reaches the Studio's toast (the kit's notices), never a status line of the panel's own
 const notices = [];
-const panel = context.mount(S, root, dock, () => calls.push(['refresh']), { notice: (...args) => notices.push(args) });
+// the Studio app's host reading (studioPanel.ts hostBusy): its render queue's run, a time or sun change, and the Studio's own
+let hostHeld = false;
+const panel = context.mount(S, root, dock, () => calls.push(['refresh']), {
+  notice: (...args) => notices.push(args), busy: () => hostHeld || S.busy() !== null,
+});
 const all = () => root.querySelectorAll('*');
 const byData = (key, value = '') => all().find(element => element.dataset[key] === value);
 const byText = text => all().find(element => element.tagName === 'button' && element.textContent === text);
@@ -235,6 +253,106 @@ stage.fire('click'); rejectStage(new Error('GPU unavailable')); await tick();
 assert.equal(stage.disabled, false, 'staging releases its controls on rejection');
 assert.deepEqual(notices.at(-1), ['GPU unavailable', 'error'], 'a failure is the toast\'s error');
 assert.ok(!all().some(element => /production-status/.test(element.className ?? '')), 'the panel keeps no status line of its own');
+// (2026-11-02 audit F9) one scene replacement at a time: a take still loading holds the Director's staging (staging once
+// checked only itself, and the last of the two to finish won)
+{
+  const stagesBefore = calls.filter(call => call[0] === 'stage').length;
+  byData('siteTake', 's01-street').fire('click');
+  assert.equal(stage.disabled, true, 'Stage waits while a take loads');
+  sheet.options.onChoose(sheet.opened.at(-1).items.find((item) => item.id === 'seq:one'));
+  assert.equal(calls.filter(call => call[0] === 'stage').length, stagesBefore, 'a sequence chosen while a take loads stages nothing');
+  await tick(); await tick();
+  assert.equal(stage.disabled, false, 'the loaded take releases Stage');
+}
+// (2026-11-02 audit F9) a take whose scene is still being fetched when the Studio exits belongs to the closed session: it
+// is never loaded (load() entered the Studio again over the Garage), and its cancel is no error toast
+{
+  const loadsBefore = calls.filter(call => call[0] === 'load').length;
+  const noticesBefore = notices.length;
+  byData('siteTake', 's01-street').fire('click');
+  S.sessionGeneration++; // the exit, while the take's scene is fetched
+  await tick(); await tick();
+  assert.equal(calls.filter(call => call[0] === 'load').length, loadsBefore, 'the closed session\'s take loads nothing');
+  assert.ok(!notices.slice(noticesBefore).some((entry) => entry[1] === 'error'), 'a cancel is no failure');
+  assert.equal(byData('siteTake', 's01-street').disabled, false, 'the take releases its controls');
+}
+// (2026-11-03 audit F9) the Director reads the host's holders with its own: a render queue's run (its still at every shot
+// captures each shot a frame after selecting it) or the Studio's own (a light change, a battlefield change) holds Stage,
+// the shelf's takes, the browser, the frame and Record, and an idle host releases them
+for (const [name, hold, release] of [
+  ['a queue run', () => { hostHeld = true; }, () => { hostHeld = false; }],
+  ['a light change', () => { S.held = 'light'; }, () => { S.held = null; }],
+  ['a battlefield change', () => { S.held = 'map'; }, () => { S.held = null; }],
+]) {
+  hold(); panel.refresh();
+  const stagesBefore = calls.filter(call => call[0] === 'stage').length;
+  const fetchesBefore = fetches.length, openedBefore = sheet.opened.length, videosBefore = calls.filter(call => call[0] === 'video').length;
+  for (const element of [stage, byData('siteTake', 's01-street'), byData('productionBrowse'), byText('Record film')]) {
+    assert.equal(element.disabled, true, `${element.textContent || element.dataset.siteTake || 'the browser'} waits during ${name}`);
+  }
+  assert.equal(byData('productionFormat', 'landscape').disabled, true, `the frame waits during ${name}`);
+  // and the paths that do not pass through a button ask too
+  sheet.options.onChoose(sheet.opened.at(-1).items.find((item) => item.id === 'seq:one'));
+  sheet.options.onChoose(sheet.opened.at(-1).items.find((item) => item.id === 'take:s01-street'));
+  panel.openTemplates();
+  await tick();
+  assert.equal(calls.filter(call => call[0] === 'stage').length, stagesBefore, `no staging during ${name}`);
+  assert.equal(fetches.length, fetchesBefore, `no take fetched during ${name}`);
+  assert.equal(sheet.opened.length, openedBefore, `the browser stays shut during ${name}`);
+  assert.equal(calls.filter(call => call[0] === 'video').length, videosBefore);
+  release(); panel.refresh();
+  assert.equal(stage.disabled, false, `Stage is back once ${name} ends`);
+}
+// (round 2 U36, review r2) The Director's staging and its take load belong to the session they began in. The panel is
+// built once per page: a plain flag set by a staging whose cold build an exit outlived (directProduction still pending,
+// rejected only once the world runtime's build returns) held Stage, the shelf, the browser, the frame and Record, and the
+// host's undo, in the Studio entered again until it settled. That Studio finds the Director free at once and stages its
+// own; the dead staging's end says nothing there and releases nothing of the live one. The same for a take whose load
+// an exit outlived.
+{
+  const stagesBefore = calls.filter(call => call[0] === 'stage').length;
+  const noticesBefore = notices.length;
+  stage.fire('click'); // the staging's build outlives the exit
+  const endDead = rejectStage;
+  assert.equal(panel.busy(), true, 'the staging holds the Director');
+  S.sessionGeneration++; // the exit, and the Studio entered again
+  panel.refresh();
+  assert.equal(panel.busy(), false, 'the Studio entered again is not held by the closed session\'s staging');
+  for (const element of [stage, byData('siteTake', 's01-street'), byData('productionBrowse'), byText('Record film')]) {
+    assert.equal(element.disabled, false, `${element.textContent || element.dataset.siteTake || 'the browser'} is free after the closed session's staging`);
+  }
+  assert.equal(byData('productionFormat', 'landscape').disabled, false, 'and the frame');
+  stage.fire('click'); // the live session's own staging
+  const endLive = resolveStage;
+  assert.equal(calls.filter(call => call[0] === 'stage').length, stagesBefore + 2, 'a staging of its own runs at once');
+  endDead(Object.assign(new Error('Battlefield activation for desert was superseded by a later request'), { name: 'WorldActivationSuperseded' }));
+  await tick();
+  assert.deepEqual(notices.slice(noticesBefore).filter((entry) => entry[1] === 'error'), [],
+    'the dead staging\'s end says nothing in the Studio entered again');
+  assert.equal(panel.busy(), true, 'and releases nothing of the live staging');
+  assert.equal(stage.disabled, true, 'whose Stage still waits');
+  endLive(); await tick();
+  assert.equal(panel.busy(), false, 'the live staging\'s end frees the Director');
+}
+// (round 2 U36, review r2) and a take whose load outlives the exit
+{
+  const load = S.load;
+  const pendingLoads = [];
+  S.load = (json, options) => { options?.owner?.check(); calls.push(['load', json]); return new Promise((resolve, reject) => { pendingLoads.push({ resolve, reject }); }); };
+  try {
+    byData('siteTake', 's01-street').fire('click'); await tick(); await tick();
+    assert.equal(pendingLoads.length, 1, 'the take\'s load is in flight');
+    assert.equal(panel.busy(), true, 'the take holds the Director');
+    S.sessionGeneration++;
+    panel.refresh();
+    assert.equal(panel.busy(), false, 'the Studio entered again is not held by the closed session\'s take');
+    assert.equal(byData('siteTake', 's01-street').disabled, false, 'its takes are free at once');
+    const takeNotices = notices.length;
+    pendingLoads[0].reject(Object.assign(new Error('Battlefield activation for urban was superseded by a later request'), { name: 'WorldActivationSuperseded' }));
+    await tick();
+    assert.deepEqual(notices.slice(takeNotices).filter((entry) => entry[1] === 'error'), [], 'the dead take\'s end says nothing there');
+  } finally { S.load = load; }
+}
 byText('Capture PNG').fire('click'); await tick();
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'capture')[1]), JSON.stringify({ width: 2160, height: 3840, download: true }));
 byText('Record film').fire('click'); await tick();
@@ -270,4 +388,4 @@ for (const preset of PRODUCTION_PRESETS.map((entry) => entry.id)) {
       `the studio-r1 manifest carries ${preset}'s ${width} x ${height} frame`);
   }
 }
-console.log('studioProductionPanel.selftest: workspace selection, the templates (shelf, browser, every tank\'s take), staging races, exports, transport, recording locks and localization passed');
+console.log('studioProductionPanel.selftest: workspace selection, the templates (shelf, browser, every tank\'s take), staging races, the host\'s busy reading, a staging or take an exit outlived holding no Studio entered again, exports, transport, recording locks and localization passed');

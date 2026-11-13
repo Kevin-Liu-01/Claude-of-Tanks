@@ -10,7 +10,8 @@ import {censusEquipment} from '../../../tools/source-equipment-policy.mjs';
 import {LINEBACKER_TURRET_SCALE as T,LINEBACKER_MOUTHS,LINEBACKER_LAUNCHER as L} from '../m6LinebackerLayout.ts';
 import {measureBradleyGunClearance,measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 import {minimumMechanicalGunPitch} from '../../sim/gunPitchLimits.ts';
-import {BRADLEY_SCOUT_TURRET_PIVOT,placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
+import {placeBradleyA3CheekEra} from './bradleyA3Turret.ts';
+import {BRADLEY_TURRET as A2} from '../modern3.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
 
@@ -32,7 +33,8 @@ assert.equal(spec.name,'M6 Linebacker');
 assert.equal(spec.gun.shells.filter(s=>s.guided).length,1);
 const missile=spec.gun.shells.find(s=>s.guided);
 assert.equal(missile.type,'HE','Stinger is fragmentation, not the Bradley donor’s anti-tank HEAT');
-assert.equal(missile.launcherTubes,4);assert.equal(missile.count,12);
+assert.equal(missile.launcherTubes,4);assert.equal(missile.count,36); // 272: three loads of the 12 stowed (airDefenseFirepower.ts)
+assert.deepEqual(spec.gun.launcherSalvo,{rounds:4,intervalS:.15},'the four-tube rack fires whole');
 assert.ok(missile.pen100Mm<25,'no inherited TOW penetration');
 assert.equal(spec.gun.launcherMuzzles.length,4);
 assert.equal([...spec.armor.hullPlates,...spec.armor.turretPlates].some(p=>p.kind==='era'),false,
@@ -187,67 +189,59 @@ for(const quality of ['high','low']){
     const clearance=measureBradleyGunClearance(scout);
     assert.ok(clearance.minimum>.005,`${quality}: lowered gun clears actual hull triangles, including fill and recoil: ${JSON.stringify(clearance)}`);
     near(minimumMechanicalGunPitch(getSpec('m3a3_bradley'),0),-9*Math.PI/180,1e-12,'M3 full forward depression retained');
-    // 2026-11-02 (268): the M242 runs to the M2's muzzle (2.42 -> 1.99 m) over the source's raised troop roof; the
-    // unrestricted gun's intrusion at this bearing is 68 mm now (was over 70), so the control's threshold moves to 60 mm
-    assert.ok(measureGunHullClearance(scout,{minimumHullY:1.7,pitchDegrees:[-9],yawDegrees:[163.55],recoilDistances:[0]}).minimum<-.060,
+    // 2026-11-05 (269): the A3 turret stands on the family's A2 shell and trunnion (profiles/bradleyA3Turret.ts), its gun
+    // line 7.3 cm higher than the 268 scout turret's; the unrestricted gun's intrusion at this bearing is 32 mm (was 68),
+    // so the control's threshold moves to 25 mm (it was 60 for 68)
+    assert.ok(measureGunHullClearance(scout,{minimumHullY:1.7,pitchDegrees:[-9],yawDegrees:[163.55],recoilDistances:[0]}).minimum<-.025,
       'lowering without the rear mechanical stop really intersects the aft hatch');
     assert.ok(measureBradleyGunClearance(scout,{negativeControl:true}).minimum<-.04,
       'old low trunnion is a real collision, not a vacuous clearance pass');
     console.log(`M3 ${quality}: gun/hull minimum ${(clearance.minimum*1000).toFixed(1)} mm across ${clearance.poses} poses.`);
-    const turret=scout.root.getObjectByName('rig_turret');scout.root.updateMatrixWorld(true);
-    const pivot=scout.root.getObjectByName('rig_gun').position;
+    const turret=scout.root.getObjectByName('rig_turret'),gun=scout.root.getObjectByName('rig_gun');scout.root.updateMatrixWorld(true);
+    const pivot=gun.position;
     for(let i=0;i<3;i++)near(pivot.getComponent(i),getSpec('m3a3_bradley').armor.gunPivot[i],1e-8,'gun datum matches combat frame');
-    for(const side of [-1,1]){
-      const origin=turret.localToWorld(pivot.clone());
-      const bearing=new Raycaster(origin,new Vector3(side,0,0),0,.5).intersectObject(scout.root.getObjectByName('turret'))[0];
-      assert.ok(bearing,'each rotary axle has a fixed bearing');
-      near(bearing.distance,.29,.001,'70 mm axle insertion into bearing');
-    }
-    const ray=new Raycaster(turret.localToWorld(new Vector3(-.06,.252,1.10)),new Vector3(0,0,-1),0,1.5);
-    const hit=ray.intersectObject(scout.root.getObjectByName('turret'))[0];
-    assert.ok(hit,'M3 rear bulkhead');assert.ok(turret.worldToLocal(hit.point.clone()).z<0,'M3 gun has an actual elevation cutout');
-    const body=scout.root.getObjectByName('turret'),external=scout.root.getObjectByName('turretExternalArmor');
-    // Native FrontSide rays must land on the new finite roof, not the floor
-    // under an open slot. Both qualities and yawed ownership are exercised.
-    for(const yaw of [0,Math.PI/2,Math.PI]) {
-      turret.rotation.y=yaw;scout.root.updateMatrixWorld(true);
-      for(const x of [-.37,-.18,.04,.25])for(const z of [-.07,.12,.34,.51,.58]) {
-        const a=new Vector3(x,1,z),origin=turret.localToWorld(a.clone());
-        const roof=new Raycaster(origin,new Vector3(0,-1,0),0,.6).intersectObject(body)[0];
-        assert.ok(roof,`${quality}: closed roof at ${x}/${z}, yaw ${yaw}`);
-        const local=turret.worldToLocal(roof.point.clone());
-        assert.ok(local.y>.53&&local.y<.69,`${quality}: ray hits roof, not compartment floor`);
-        assert.ok(roof.face.normal.y>(z>.2?.8:0),`outward roof/plinth surface at ${x}/${z}: ${roof.face.normal.toArray()}`);
-      }
-    }
-    turret.rotation.y=0;
-    // No pitching barrel or mantlet vertex may enter the finite roof panel.
-    const gun=scout.root.getObjectByName('rig_gun');
-    for(let pitch=-9;pitch<=30;pitch+=3) {
+    // (269: the scout turret's journal bearings, elevation cutout and roof-panel sweep left with it.) The A2 trunnion
+    // drum fills the open gun bay between the cheeks: across the full -9..+30 sweep every gun vertex ahead of the turret
+    // face and under the roof stays inside the bay, its drum ends 30 mm from the cheek faces.
+    let bay=Infinity;
+    for(let pitch=-9;pitch<=30;pitch+=3){
       gun.rotation.x=-pitch*Math.PI/180;scout.root.updateMatrixWorld(true);
       gun.traverse(o=>{
-        if(!o.isMesh||o.userData.shadowOnly||o.userData.authoredShadowProxy)return;
+        if(!o.isMesh||o.userData.shadowOnly||o.userData.authoredShadowProxy||/InteriorFill/.test(o.name))return;
         const a=o.geometry.attributes.position;
-        for(let i=0;i<a.count;i++) {
+        for(let i=0;i<a.count;i++){
           const v=turret.worldToLocal(o.localToWorld(new Vector3().fromBufferAttribute(a,i)));
-          if(v.x<=-.42||v.x>=.30||v.z<=-.11||v.z>=.60)continue;
-          const top=v.z<=.48?.735-(v.z+.11)*.045/.59:.690-(v.z-.48)*.20;
-          assert.ok(v.y<(top-.065)*.8||v.y>top*.8,
-            `${quality}: gun intersects roof at pitch ${pitch}, ${v.toArray()}`);
+          if(v.z<A2.faceZ||v.z>A2.beakZ||v.y>A2.roofY)continue;
+          bay=Math.min(bay,v.x-A2.bayLeftX,A2.bayRightX-v.x);
         }
       });
     }
     gun.rotation.x=0;scout.root.updateMatrixWorld(true);
+    near(bay,.030,.002,`${quality}: the gun's sweep stays in the bay between the cheeks`);
+    const body=scout.root.getObjectByName('turret'),external=scout.root.getObjectByName('turretExternalArmor');
+    // Native FrontSide rays land on the closed roof plate (0.77 m over the ring), not the floor under an open slot. Both
+    // qualities and yawed ownership are exercised.
+    for(const yaw of [0,Math.PI/2,Math.PI]) {
+      turret.rotation.y=yaw;scout.root.updateMatrixWorld(true);
+      for(const x of [-.37,-.18,.04,.25])for(const z of [-.07,.12,.34,.51,.58]) {
+        const origin=turret.localToWorld(new Vector3(x,1.2,z));
+        const roof=new Raycaster(origin,new Vector3(0,-1,0),0,.8).intersectObject(body)[0];
+        assert.ok(roof,`${quality}: closed roof at ${x}/${z}, yaw ${yaw}`);
+        near(turret.worldToLocal(roof.point.clone()).y,A2.roofY,1e-4,`${quality}: ray hits the roof plate, not compartment floor`);
+        assert.ok(roof.face.normal.y>.8,`outward roof surface at ${x}/${z}: ${roof.face.normal.toArray()}`);
+      }
+    }
+    turret.rotation.y=0;scout.root.updateMatrixWorld(true);
     for(const side of [-1,1]){
       const probes=[];
-      placeBradleyScoutCheekEra(side,(x,y,z,rx,ry,rz)=>{
+      placeBradleyA3CheekEra(side,(x,y,z,rx,ry,rz)=>{
         const normal=new Vector3(0,0,1).applyEuler(new Euler(rx,ry,rz));
-        // 268: the cassettes are placed in the hull frame about the A3 ring datum (BRADLEY_SCOUT_TURRET_PIVOT, was 1.895/-0.36)
-        const origin=turret.localToWorld(new Vector3(x,y-BRADLEY_SCOUT_TURRET_PIVOT[1],z-BRADLEY_SCOUT_TURRET_PIVOT[2]).addScaledVector(normal,.20));
-        const probe=new Raycaster(origin,normal.negate(),0,.26);
+        // 269: the BRAT tiles are placed turret-local on the cheek plate (the ODS appliqué, 35 mm proud of the cheek)
+        const origin=turret.localToWorld(new Vector3(x,y,z).addScaledVector(normal,.20));
+        const probe=new Raycaster(origin,normal.negate(),0,.30);
         const backing=probe.intersectObject(body)[0],cassette=probe.intersectObject(external)[0];
         assert.ok(backing&&cassette,'each cheek cassette has visible stock and a real body backing');
-        near(backing.distance,.23175,.008,'cassette back is seated within 8 mm of its sloped cheek');
+        near(backing.distance,.235,.008,'cassette back is seated within 8 mm of its cheek plate');
         assert.ok(cassette.distance<backing.distance-.06,'cassette protrudes from the shell');
         probes.push({probe,distance:cassette.distance,backingDistance:backing.distance});
       });

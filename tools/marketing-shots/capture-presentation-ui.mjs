@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
 // Capture the public Gallery, Scene Studio, and responsive mobile command deck
 // that sit beside tools/screenshot.mjs's deterministic game-state views in the
 // presentation-r1 archive.
@@ -12,6 +12,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -29,10 +30,7 @@ const outDir = resolve(opt('out', collection === 'feature-evidence'
   : 'shots/presentation-r1/ui-raw'));
 mkdirSync(outDir, { recursive: true });
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'capture-presentation-ui', timeoutMs: 20 * 60 * 1000 });
 
 const port = 7800 + Math.floor(Math.random() * 400);
 const server = await createServer({
@@ -85,17 +83,17 @@ try {
     {
       id: 'studio', width: 1920, height: 1080, dpr: 1,
       path: '/?studio=1', settleMs: 4500,
-      ready: () => window.__GAME_READY === true && window.__STUDIO && getComputedStyle(document.querySelector('.cot-studio')).display !== 'none',
+      ready: `${BOOT_LOADED_EXPRESSION} && !!window.__STUDIO && getComputedStyle(document.querySelector('.cot-studio')).display !== 'none'`,
     },
     {
       id: 'mobile', width: 430, height: 932, dpr: 1, path: '/', settleMs: 1600,
-      ready: () => window.__GAME_READY === true,
+      ready: BOOT_LOADED_EXPRESSION,
     },
   ];
   const featureTargets = [
     {
       id: 'garage_4k', width: 1920, height: 1080, dpr: 2, path: '/', settleMs: 2800,
-      ready: () => window.__GAME_READY === true,
+      ready: BOOT_LOADED_EXPRESSION,
       setup: { kind: 'garage' },
     },
     {
@@ -108,13 +106,13 @@ try {
     {
       id: 'studio_action_4k', width: 1920, height: 1080, dpr: 2,
       path: '/?studio=1&map=urban&nogate=1', settleMs: 2200,
-      ready: () => window.__GAME_READY === true && window.__STUDIO?.active === true,
+      ready: `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`,
       setup: { kind: 'studio-scene', scene: sourceStudioScene },
     },
     {
       id: 'mechanic_mbt70_missile_4k', width: 1920, height: 1080, dpr: 2,
       path: '/?studio=1&map=steppe&nogate=1', settleMs: 1000,
-      ready: () => window.__GAME_READY === true && window.__STUDIO?.active === true,
+      ready: `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`,
       setup: {
         kind: 'studio-scene',
         scene: {
@@ -133,7 +131,7 @@ try {
     {
       id: 'mechanic_strv_suspension_4k', width: 1920, height: 1080, dpr: 2,
       path: '/?studio=1&map=railyard&nogate=1', settleMs: 1200,
-      ready: () => window.__GAME_READY === true && window.__STUDIO?.active === true,
+      ready: `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`,
       studioCapture: true,
       setup: {
         kind: 'strv-suspension',
@@ -199,6 +197,5 @@ try {
 } finally {
   if (browser) await browser.close();
   await server.close();
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }

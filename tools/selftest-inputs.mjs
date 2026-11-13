@@ -10,6 +10,11 @@ export const SELFTEST_ROOT_DIRS = Object.freeze(['src', 'tools', 'docs', 'public
 const FILE_LITERAL = new RegExp(`^(?:\\.{1,2}/|/?(?:${SELFTEST_ROOT_DIRS.map(name => name.replace(/\./g, '\\.')).join('|')})/)`
   + '|^[\\w.-]+\\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js)$');
 const URL_PATH = /\/(?:src|tools|public|docs)\/[\w./-]+\.[\w]+/g;
+// (272) A value holding a NUL or any other control character names no file: a git -z listing or a tab-separated row in a
+// fixture is data. Hashing one threw (a path with a NUL) and stopped every lane's tanks group, so no such value is ever a
+// path candidate: not a literal, an import, a joined segment or a template's prefix or suffix.
+const NOT_A_PATH = /[\u0000-\u001f\u007f]/;
+const pathLike = (value) => typeof value === 'string' && !NOT_A_PATH.test(value);
 const BROAD_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync', 'readdirSync', 'readdir', 'opendirSync', 'opendir',
   'glob', 'globSync', 'createServer']);
 // A listing names the files a module reads by walking a tree, not by path (2026-10-20, 228p: runtimeStyles' readdir over
@@ -27,6 +32,7 @@ export function collectSelftestInputs(text, filename) {
   const specifiers = new Set(), imports = new Set(), environment = new Set(), joined = [], dynamic = [], scans = [];
   let broad = false, browser = false, git = false, opaqueImport = false, opaqueEnvironment = false, spawns = false;
   const addLiteral = value => {
+    if (!pathLike(value)) return;
     if (FILE_LITERAL.test(value)) specifiers.add(value);
     for (const match of value.matchAll(URL_PATH)) specifiers.add(match[0]);
   };
@@ -155,6 +161,8 @@ export function collectSelftestInputs(text, filename) {
     // git's listings (ls-files, grep, a name-only diff) count where the module runs git at all
     if (git) scans.push(...gitListings);
   }
-  return { specifiers: [...specifiers], imports: [...imports], environment: [...environment],
-    joined, dynamic, broad, browser, git, opaqueImport, opaqueEnvironment, spawns, scans };
+  return { specifiers: [...specifiers].filter(pathLike), imports: [...imports].filter(pathLike), environment: [...environment],
+    joined: joined.filter((segments) => segments.every(pathLike)),
+    dynamic: dynamic.filter((entry) => pathLike(entry.prefix) && pathLike(entry.suffix)),
+    broad, browser, git, opaqueImport, opaqueEnvironment, spawns, scans };
 }

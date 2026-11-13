@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // VISUAL EVALUATOR driver (owner directive 2026-08-03: "strong visual
 // evaluators … correct angles … exact geometries … rounded structures").
 // Runs tools/visual-evaluator-page.html at the OFFICIAL critic camera set and
@@ -21,10 +21,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
-await acquireLock(30 * 60 * 1000);
-process.on('exit', releaseLock);
-const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-refresher.unref();
+const hold = await openCaptureHold({ label: 'visual-evaluator', timeoutMs: 30 * 60 * 1000 });
 
 const argOf = (k) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
 const SELFTEST = process.argv.includes('--selftest');
@@ -106,6 +103,6 @@ try {
   await browser.close();
   await server.close();
   rmSync(cacheDir, { recursive: true, force: true });
-  releaseLock();
+  await hold.release();
 }
 process.exit(exitCode);

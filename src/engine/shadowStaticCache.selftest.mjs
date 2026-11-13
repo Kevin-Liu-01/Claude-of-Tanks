@@ -372,6 +372,37 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
     assert.ok(!staticPass.drawn.includes('fracture-face') && dynamicPass.drawn.includes('fracture-face'), 'switched off: the rubble draws every frame');
   } finally { delete globalThis.window; }
 }
+// (round 2 U31) a nest inside the nest: the fx root holds its lights and the veil its visuals are made under (the
+// killcam's suppression hides the veil): the settled rubble under the veil still joins the static layer, and the veil
+// hidden takes it and the falling body out of both layers
+{
+  const f = fixture();
+  const fx = new THREE.Group(); fx.name = 'fx'; fx.userData.staticShadowNest = true;
+  const veil = new THREE.Group(); veil.name = 'fx-replay-veil'; veil.userData.staticShadowNest = true;
+  const settled = new THREE.Group(); settled.name = 'fx-settled'; settled.userData.staticShadowRoot = true;
+  const face = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  face.castShadow = true; face.name = 'fracture-face';
+  face.userData.cotShadowEpochOf = f.crate;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  body.castShadow = true; body.name = 'fracture-body';
+  settled.add(face);
+  veil.add(settled, body);
+  fx.add(veil);
+  f.scene.add(fx);
+  const cache = createShadowStaticCache();
+  settle(f, cache);
+  let r = frame(f, cache);
+  let [staticPass, dynamicPass] = renders(r.log);
+  assert.deepEqual(staticPass.drawn, ['terrain', 'trees', 'moored-hull', 'crate', 'fracture-face'], 'the rubble under the veil in the static layer');
+  assert.deepEqual(dynamicPass.drawn, ['tank-proxy', 'fracture-body'], 'the falling body under the veil stays dynamic');
+  r = frame(f, cache);
+  assert.deepEqual(renders(r.log).map((e) => e.drawn), [['tank-proxy', 'fracture-body']], 'a still frame: the rubble from the copy');
+  r = frame(f, cache, { mutate: () => { veil.visible = false; } });
+  [staticPass, dynamicPass] = renders(r.log);
+  assert.ok(!staticPass.drawn.includes('fracture-face') && !dynamicPass.drawn.includes('fracture-body'), 'the veil hidden: neither layer draws it');
+  r = frame(f, cache, { mutate: () => { veil.visible = true; } });
+  assert.ok(renders(r.log)[0].drawn.includes('fracture-face'), 'shown again, the rubble is back in the static layer');
+}
 
 // ---------------------------------------------------------------------------------------------- scoped re-renders
 // (battle-spikes-253) a bounded content change re-renders only the cascades whose box its bounds meet

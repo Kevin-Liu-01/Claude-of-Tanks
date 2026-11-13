@@ -390,7 +390,7 @@ try {
   // Independent immutable prop archive and fleet-builder preparation. Both
   // finish before either producer starts its captured deterministic RNG.
   await Promise.all([preloadPropModels(),
-    ...resolveWreckRoster(config.props.tankWrecks.era,config.props.tankWrecks.ids).map(id=>ensureTankBuilder(id)),
+    ...resolveWreckRoster(config.props.tankWrecks.ids).map(id=>ensureTankBuilder(id)),
   ]);
   let results;
   {

@@ -27,7 +27,7 @@
 // `--root=<dir>` evaluates another checkout (a report on another branch's diff); `--base=integ` and the integration
 // suggestion as in lane mode; the command exits with its parent and on SIGTERM/SIGINT/SIGHUP/SIGALRM.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { MANUAL_SUITES, STALE_GUARDS, manualSuiteFiles } from './selftest-tiers.mjs';
 import { balanceChanges, balanceInputs, builderMoves, builderObservables, builderPaths, changedMaps, changedPaths, changedTankIds,
@@ -50,6 +50,8 @@ export const RECEIPT_FILE = /\.(selftest|test-support)\.mjs$/;
 export const readsReceiptFile = (cache, root, textOf) => (file, path) => !RECEIPT_FILE.test(path) || path === file
   || cache.runSetOf(resolve(root, file)).has(resolve(root, path)) || textOf(file).includes(path)
   || Boolean(cache.observedOf?.(file)?.reads.has(path));
+/** The regional kits' own receipts (world suite): the lane runs them itself when its diff touches a kit (Main, 2026-11-08). */
+const REGIONAL_KIT_RECEIPTS = Object.freeze(['regionalArchitecture', 'facade', 'phoneIdentity'].map((name) => `src/world/maps/regional/${name}.selftest.mjs`));
 const list = (items, count = 5) => `${items.slice(0, count).join(', ')}${items.length > count ? `, +${items.length - count} more` : ''}`;
 const CLASS_WORDS = { armour: 'armour', gun: 'gun', hp: 'HP', mobility: 'mobility', size: 'size', role: 'role', new: 'new', removed: 'removed' };
 
@@ -242,6 +244,14 @@ async function main(argv) {
   const rows = recommend({ readers, balance, hits, builders, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred,
     subsetWallMs: (files) => simulateWall(files, runMsOf).wallMs });
   for (const line of reportLines(rows)) console.log(line);
+  // (Main, 2026-11-08) the regional kits' own receipts sit in the world suite (each over a minute of CPU alone:
+  // regionalArchitecture ~380 s, facade ~160 s, phoneIdentity ~100 s), so test:lane never selects them and a kit
+  // regression landed unseen on main. A diff that touches a kit names them for the lane to run itself before READY.
+  const kitPaths = diff.paths.filter((path) => path.split(sep).join('/').startsWith('src/world/maps/regional/'));
+  if (kitPaths.length) {
+    console.log(`[test:recommend] lane runs before READY: ${kitPaths.length} regional kit ${kitPaths.length === 1 ? 'path' : 'paths'} changed (${list(kitPaths, 3)}); the kits' receipts are in the world suite, which test:lane never selects`);
+    console.log(`    npm run test:heavy -- world --only=${REGIONAL_KIT_RECEIPTS.join(',')}`);
+  }
   console.log('[test:recommend] Main relays this to the owner; the owner triggers npm run test:heavy.');
   if (value('json')) writeFileSync(resolve(value('json')), JSON.stringify({ base, mergeBase: diff.mergeBase, changed: diff.paths.length,
     rows, balance, hits, builders, ids: Object.fromEntries(idChanges.ids), core: idChanges.core,

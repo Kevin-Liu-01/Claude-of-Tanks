@@ -12,13 +12,15 @@ import {
   packRecordOccluders, prismSkyOcclusion, sgoRectOf, shapeFootprint,
 } from './structureGroundOcclusionBake.ts';
 import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
-import { loadGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
+import { importGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
 import { deriveSun, OVERCAST_DIRECT_CUT } from './lightModel.ts';
 import { skyPresetToAtmosphere } from './atmosphere.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { createCollisionManifestLoader } from '../../server/collisionManifestLoader.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
+import * as THREE from 'three';
+import { createStructureGroundOcclusion } from './structureGroundOcclusionRuntime.ts';
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -149,7 +151,7 @@ assert.match(runtime, /new Worker\(new URL\('\.\/structureGroundOcclusionWorker\
 assert.match(runtime, /renderer\.copyTextureToTexture\(src, texture, null, new THREE\.Vector2\(i0, j0\)\)/, 'a re-bake patches in place');
 
 // ---- 5. the thin deck's beam (cloudscapes.ts deckBeam)
-await loadGroundedLightModel();
+await importGroundedLightModel();
 const irr = [0.11, 0.125, 0.16];
 const whiteout = getMapConfig('whiteout');
 // (the Whiteout round, after wave 342a) Whiteout's stratus passes a quarter of the beam, at or under the snow relief's limit;
@@ -185,4 +187,84 @@ assert.equal(getMapConfig('winter').clouds?.deckBeam, undefined, 'Frosthollow: c
 // (2026-10-16: Cinder Junction on cumulus — no deck, so no deck beam)
 assert.equal(getMapConfig('railyard').clouds?.deckBeam, undefined, 'Cinder Junction: cumulus, no deck beam');
 
-console.log(`structureGroundOcclusion.selftest: Lambert's law (infinite wall, box, deck), the ${SGO_SIZE}² raster (base wrap, seamless wall foot, region re-bake), Whiteout's occluders, the pass and its wiring, the thin deck's beam, every map PASS`);
+// ---- 7. the worker's deadline (improve-271, plan 017; src/workerCalls.ts): a worker that never answers, or that fails,
+// leaves the bakes to the main thread, the whole raster in idle slices equal to the one-shot bake; an answering worker
+// bakes everything and the main thread nothing
+{
+  let now = 0, serial = 0;
+  const live = new Map();
+  const workerTimers = {
+    set(callback, ms) { const h = ++serial; live.set(h, { at: now + ms, callback }); return h; },
+    clear(h) { live.delete(h); },
+    advance(ms) { now += ms; for (const [h, t] of [...live]) if (t.at <= now && live.delete(h)) t.callback(); },
+  };
+  class FakeWorker {
+    constructor(mode) { this.mode = mode; this.posted = []; this.terminated = 0; this.onmessage = this.onerror = this.onmessageerror = null; }
+    postMessage(msg) { this.posted.push(msg); if (this.mode === 'answer') queueMicrotask(() => this.answer(msg)); }
+    answer(msg) {
+      const r = bakeStructureGroundOcclusion(msg.packed, msg.rect);
+      this.onmessage?.({ data: { id: msg.id, rg: r.rg, rect: r.rect, parts: r.parts, ms: r.ms } });
+    }
+    terminate() { this.terminated++; }
+  }
+  const sgoGroup = new THREE.Group();
+  new THREE.Scene().add(sgoGroup);
+  const records = () => [structuredClone(house), structuredClone(tree), structuredClone(kerb), structuredClone(broken)];
+  const sameAsFull = (handle) => Buffer.compare(Buffer.from(handle.texture.image.data), Buffer.from(full.rg)) === 0;
+
+  // control: an answering worker (its one-texel request first) bakes the raster; nothing is baked here
+  const answering = new FakeWorker('answer');
+  const control = createStructureGroundOcclusion(records(), { group: sgoGroup, makeWorker: () => answering, workerTimers });
+  assert.deepEqual(answering.posted[0].rect, [0, 0, 1, 1], 'a one-texel request ahead of the bakes');
+  assert.equal(await control.whenReady(), true);
+  assert.ok(control.stats.worker && sameAsFull(control), 'the worker\'s raster landed');
+  assert.equal(live.size, 0, 'no deadline armed once it answered');
+  control.dispose();
+
+  // (a) a worker that never answers: at the sky's 3 s the bake moves here, sliced, and the raster is the one-shot bake's
+  const silent = new FakeWorker('silent');
+  let slices = 0, slowestMs = 0;
+  const idleBefore = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (cb) => setTimeout(() => {
+    slices++;
+    const t0 = performance.now();
+    cb({ timeRemaining: () => Math.max(0, 8 - (performance.now() - t0)) });
+  }, 0);
+  try {
+    const handle = createStructureGroundOcclusion(records(), { group: sgoGroup, makeWorker: () => silent, workerTimers });
+    workerTimers.advance(2999);
+    assert.equal(handle.ready, false, 'not before the deadline');
+    workerTimers.advance(1);
+    assert.equal(silent.terminated, 1, 'the silent worker is terminated');
+    assert.equal(await handle.whenReady(), true, 'ready from the main thread\'s bake');
+    assert.ok(!handle.stats.worker && sameAsFull(handle), 'the sliced raster equals the one-shot bake');
+    assert.ok(slices > 1, `the whole raster in idle slices (${slices})`);
+    slowestMs = handle.stats.sliceMs;
+    handle.dispose();
+  } finally {
+    if (idleBefore) globalThis.requestIdleCallback = idleBefore; else delete globalThis.requestIdleCallback;
+  }
+  console.log(`  plan 017: the main thread's whole-raster bake ran in ${slices} idle slices; the largest slice's bake ${slowestMs.toFixed(1)} ms`);
+
+  // (b) a worker that fails after its raster: a later re-bake (a destroyed house) lands though the worker is gone
+  const failing = new FakeWorker('answer');
+  const live2 = records();
+  const handle = createStructureGroundOcclusion(live2, { group: sgoGroup, makeWorker: () => failing, workerTimers });
+  assert.equal(await handle.whenReady(), true);
+  failing.onerror({ message: 'gone' });
+  assert.equal(failing.terminated, 1);
+  const postedBefore = failing.posted.length;
+  const at = (i, j) => handle.texture.image.data[(j * SGO_SIZE + i) * 2];
+  const footI = Math.floor((14.1 + SGO_HALF_M) / SGO_TEXEL_M), footJ = Math.floor((26.25 + SGO_HALF_M) / SGO_TEXEL_M);
+  assert.ok(at(footI, footJ) >> 1 > 0, 'the house shades its wall foot');
+  live2[0].dead = true;
+  handle.setInstant(true);
+  handle.update(1);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(at(footI, footJ) >> 1, 0, 'the destroyed house\'s shade is re-baked away on the main thread');
+  assert.equal(handle.stats.rebakes, 1);
+  assert.equal(failing.posted.length, postedBefore, 'nothing posted to the dead worker');
+  handle.dispose();
+}
+
+console.log(`structureGroundOcclusion.selftest: Lambert's law (infinite wall, box, deck), the ${SGO_SIZE}² raster (base wrap, seamless wall foot, region re-bake), Whiteout's occluders, the pass and its wiring, the thin deck's beam, every map, the worker's deadline and sliced fallback (plan 017) PASS`);

@@ -58,7 +58,7 @@ assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolve
 // ------------------------------------------------------------------------------------------------ the 257 order
 // Owner 2026-10-26 (257): "fix tank ordering. we need more tier 9s, stuff like leopard 2a6m,2a5, m1a2s, like these are all
 // powerful tanks". The shown tier follows a capability score (stats against the vehicle's own class, generation, era and
-// the 251 tier; ~/cot-launch-state/streams/tech-tree/RETIER-257.md), with the owner's anchors. These rules hold whatever
+// the 251 tier; the release-257 re-tier study), with the owner's anchors. These rules hold whatever
 // the scores: the anchors, the owner's Japan and Korea rulings, the T-90 line and the equal-rank lineages never stepping
 // down, an upgrade never below its base, and a prototype never above its production type.
 assert.deepEqual(['leo2a5', 'leo2a6', 'leo2a6m', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_tusk'].map(displayTier),
@@ -149,6 +149,26 @@ for (const file of sources) {
   assert.doesNotMatch(text, /progression\/|ratedTier|tierNote/, `${file} reaches nothing of the progression work`);
 }
 
+// ------------------------------------------------------------------------------------------------ keyboard (improve-271 plan 026)
+// The tree owns the keyboard while it is open: it takes the focus a board press or an open leaves on no node, the Garage
+// yields every key to a shown modal box outside its root (the page body's focus included), and the Garage's hide()
+// closes the tree and the info dossiers (neither outlives it over the cover or a battle)
+{
+  const tree = readFileSync(new URL('../ui/techTree.ts', import.meta.url), 'utf8');
+  assert.match(tree, /root\.setAttribute\('aria-modal', 'true'\);\s*(?:\/\/[^\n]*\n\s*)*root\.tabIndex = -1;/, 'the tree root takes focus');
+  assert.match(tree, /board\.addEventListener\('pointerdown', \(event\) => \{\s*if \(event\.button !== 0\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(!root\.contains\(document\.activeElement\)\) root\.focus\(\{ preventScroll: true \}\);/,
+    'a board press keeps the keyboard in the tree');
+  assert.match(tree, /if \(node\) node\.focus\(\{ preventScroll: true \}\);\s*else root\.focus\(\{ preventScroll: true \}\);/, 'an open with no node focuses the tree');
+  const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+  assert.match(garage, /function onKey\(e: KeyboardEvent\): void \{\s*if \(!api\.isOpen\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(foreignModalOpen\(\)\) return;/,
+    'the Garage yields every key to an open foreign modal surface first');
+  assert.match(garage, /function foreignModalOpen\(\): boolean \{\s*for \(const box of document\.querySelectorAll<HTMLElement>\('\[aria-modal="true"\]'\)\) \{\s*if \(!root\.contains\(box\) && box\.getClientRects\(\)\.length > 0\) return true;/,
+    'a foreign modal is any shown aria-modal box outside the Garage');
+  assert.match(garage, /hide\(\) \{[\s\S]{0,600}techTreeScreen\?\.close\(\{ restoreFocus: false \}\);\s*closeContextInfo\(\);/, 'hide() closes the tree and the dossiers');
+  assert.match(garage, /techTreeScreen = screen;\s*screen\.open\(opener\);/, 'the open tree is kept for hide()');
+  assert.match(garage, /if \(techTreeScreen === screen\) techTreeScreen = null;/, 'and let go when it closes');
+}
+
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
@@ -234,6 +254,11 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
 // (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
 // special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+// 269 (the second air-defence round; tiers by capability on the coordinator's suggestion): the Type 87 SPAAG at V on
+// Japan's STB-1 to Type 10 line off the Type 74 (lane 1); the UK's new Marksman line off the Chieftain Mk 10 on lane 5,
+// the Marksman (T-55) at V and the ItPsv Leopard 2 at VI after it; the Lvkv 9040 at V straight on from Sweden's CV90
+// (lane 2); the K30 Biho at V off South Korea's BMP-3 (ROK), lane 2 under the K21; the PZA Loara at VI off Poland's
+// PT-91A Twardy (lane 1). (Pinned be0f063a807fb64f on the air-defence side.)
 // 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
 // the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
 // lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
@@ -243,5 +268,13 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
 // tree's special lane at II.
 // 269 integration (2026-11-06): + the US M113A3 at II in the US special lane.
-assert.equal(digest, 'adc19a052d506677', `tree content changed: re-pin to ${digest} if deliberate`);
+// 270 (the owner 2026-11-05; Main's tier ruling the same day): the T95 with its fictional 152 mm on the US special lane at II. Merged onto 269 (2026-11-08): re-pinned with the 268 and 269 trees; the T95 moves to the US special line's lane 2 (the M113A3 holds lane 1 at II).
+// 270 (item/twin-aa-269): the second air-defence round (above) and the M163 VADS in the US tree's special lane at IV,
+// after the M113A3 on its lane 1 (the owner, 2026-11-04: "also add the m163 VADS"); the merge of main 72addd0635
+// (release 269): both sides' trees together. (Pinned 3a59594b312e8b40 at the merge.)
+// 271 (integration): the T95 (270) and the twin-aa round's trees together; re-pinned at the merge (6a5a7ecd456ca7fd).
+// russia-152 (main 3f31c66abc): Russia's 152 mm line on from the T-80U along its row (Object 292 VII, Object 477
+// Molot IX, Object 195 X) with the T-14 152 beside the Object 195 at X (Main's tiers, 2026-11-04); its own pin was
+// 7c47bfa998d2369b. 271 (integration): merged after the twin-aa round; re-pinned at the merge (98286838a838e422).
+assert.equal(digest, '98286838a838e422', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

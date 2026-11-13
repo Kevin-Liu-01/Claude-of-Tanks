@@ -1,6 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { uniqueIds } from './id-list.mjs';
 // RENDER-TRUTH AUDIT driver (BUILD-STANDARD §C.1, owner order 2026-08-06;
 // law banked 1017339, yaw-stranded amendment 8e1de63). Official fleet tool:
@@ -31,11 +31,8 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-// ---- cot-shots FIFO lock (track-clip-audit protocol: 15-digit tickets) ----
-
-process.on('exit', releaseLock);
-const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-refresher.unref();
+// ---- cot-shots FIFO lock: one hold per tank, through the one hold wrapper (tools/capture-hold.mjs openCaptureHold,
+// 2026-11-02 audit U38, round 3: refresh, cap, signals and the release at exit in one place) ----
 
 // ---- CLI ----
 const arg = (k) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
@@ -125,7 +122,7 @@ try {
       const page = await auditPage(browser);
       for (const id of chunk) {
         // one FIFO ticket per tank (§C.1 amendment): live lanes interleave
-        await acquireLock(45 * 60 * 1000);
+        const hold = await openCaptureHold({ label: 'winding-audit', timeoutMs: 45 * 60 * 1000 });
         try {
           lastPageError = null;
           const qs = [`id=${encodeURIComponent(id)}`, `size=${S}`];
@@ -152,7 +149,7 @@ try {
           results.push({ id, error: (lastPageError || e.message).slice(0, 200) });
           console.log(`[winding-audit] ${id.padEnd(18)} ERROR ${(lastPageError || e.message).slice(0, 120)}`);
         } finally {
-          releaseLock();
+          await hold.release();
         }
       }
     } finally {
@@ -197,5 +194,4 @@ try {
   if (errs.length) process.exitCode = process.exitCode || 1;
 } finally {
   await server.close();
-  releaseLock();
 }

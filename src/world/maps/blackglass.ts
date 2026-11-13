@@ -7,6 +7,7 @@ import { createMarshChannel } from './marshChannel.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS, TOWN_ROW_PLANS } from './townPlans.generated.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -142,7 +143,7 @@ export default {
     ],
     destructibleBuildings: [
       'motorpool', 'transformershed', 'commandtent', 'checkpointhut',
-      'servicegarage', 'relaystation', 'corneroffice',
+      'servicegarage', 'corneroffice',
     ],
     tacticalBeats: [
       { id: 'sunken-exchange', role: 'brawl', x: -58, z: 42, yawDeg: 45,
@@ -220,7 +221,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.blackglass,
     inhabit: {
       stalls: 0, benches: 6, coreClutter: 38, drums: 22,
       trucks: 11, jeeps: 7, drumClusters: 10, camps: 4, modernClutter: 42,
