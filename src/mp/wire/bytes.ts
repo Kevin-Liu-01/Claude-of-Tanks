@@ -133,14 +133,17 @@ export class ByteWriter {
     this.bytes[this.cursor++] = remaining;
   }
 
-  /** varint byte length + UTF-8 bytes, bounded by maxBytes. */
-  string(value: string, maxBytes: number): void {
+  /**
+   * varint byte length + UTF-8 bytes, bounded by maxBytes. `lengthBias` is added to the written length, so the lengths
+   * below it stay free as markers (wire 12: a smoke text's 0 is "the baseline's", ByteReader.stringOfLength).
+   */
+  string(value: string, maxBytes: number, lengthBias = 0): void {
     if (typeof value !== 'string') throw new WireError('range', 'string field must be a string');
     const encoded = utf8Encoder.encode(value);
     if (encoded.byteLength > maxBytes) {
       throw new WireError('bad_length', `string exceeds ${maxBytes} bytes (${encoded.byteLength})`);
     }
-    this.varint(encoded.byteLength);
+    this.varint(encoded.byteLength + lengthBias);
     this.raw(encoded);
   }
 
@@ -236,7 +239,11 @@ export class ByteReader {
   }
 
   string(maxBytes: number): string {
-    const length = this.varint();
+    return this.stringOfLength(this.varint(), maxBytes);
+  }
+
+  /** The UTF-8 string of `length` bytes that follows (its length prefix already read, the caller's markers handled). */
+  stringOfLength(length: number, maxBytes: number): string {
     if (length > maxBytes) throw new WireError('bad_length', `string length ${length} exceeds ${maxBytes}`);
     this.need(length);
     const slice = this.bytes.subarray(this.cursor, this.cursor + length);

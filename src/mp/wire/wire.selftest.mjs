@@ -653,3 +653,90 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(dupBytes).error?.code, 'invalid_message', 'a duplicate row out of order is refused');
   console.log(`wire.selftest: the merge-walk apply equals the general algorithm on ${checked} deltas, shuffled and over unsorted baselines`);
 }
+
+// ------------------------------------------------------------ wire 12: a mode state or smoke text kept from the baseline (improve-271 plan 020)
+// A delta whose mode-state JSON or smoke text equals its acknowledged baseline's sends a length 0 in its place and the
+// decoder copies the baseline's; a changed string is sent; a keyframe carries both; a client whose baseline is older than
+// the previous frame (it missed one) still ends with the right strings, because the delta is against that baseline.
+{
+  const { encodeSnapshotFrame } = await import('./codec.ts');
+  const stateA = JSON.stringify({ id: 'capture_the_flag', score: { alpha: 1, bravo: 0 }, flags: [{ team: 'alpha', x: 12.5, z: -40 }], playerAmmo: 40 });
+  const stateB = JSON.stringify({ id: 'capture_the_flag', score: { alpha: 2, bravo: 0 }, flags: [{ team: 'alpha', x: 12.5, z: -40 }], playerAmmo: 39 });
+  const smokeA = JSON.stringify([{ x: 100.5, y: 3, z: -20.25, yaw: 1.5, born: 812.5 }]);
+  const smokeB = JSON.stringify([{ x: 100.5, y: 3, z: -20.25, yaw: 1.5, born: 812.5 }, { x: 140, y: 3, z: -22, yaw: 1.4, born: 830 }]);
+  const withStrings = (frame, modeStateJson, smokeJson) => {
+    const meta = { ...frame.meta };
+    if (smokeJson) meta.smokeJson = smokeJson; else delete meta.smokeJson;
+    return { ...frame, modeStateJson, meta };
+  };
+  const decodeAgainst = (bytes, baseline) => decodeMessage(bytes, { resolveBaseline: (tick) => (baseline && baseline.tick === tick ? baseline : null) });
+  // which strings a delta kept: decoded against a baseline whose strings are decoys, a kept string comes back as the decoy
+  const DECOY_STATE = '{"decoy":1}', DECOY_SMOKE = '[{"decoy":1}]';
+  const keptOf = (bytes, baseline) => {
+    if (!baseline) return { state: false, smoke: false };
+    const decoyed = decodeAgainst(bytes, { ...withStrings(baseline, baseline.modeStateJson == null ? null : DECOY_STATE, baseline.meta.smokeJson ? DECOY_SMOKE : '') });
+    assert.ok(decoyed.ok, decoyed.ok ? '' : decoyed.error.message);
+    return { state: decoyed.message.modeStateJson === DECOY_STATE, smoke: decoyed.message.meta.smokeJson === DECOY_SMOKE };
+  };
+  const check = (frame, baseline, label) => {
+    const bytes = encodeSnapshotFrame(frame, baseline);
+    assert.deepEqual(bytes, encodeMessage(buildSnapshotPacket(frame, baseline), baseline), `${label}: the packet path writes the same bytes`);
+    const decoded = decodeAgainst(bytes, baseline);
+    assert.ok(decoded.ok, `${label}: ${decoded.ok ? '' : decoded.error.message}`);
+    const result = applySnapshotPacket(decoded.message, baseline);
+    assert.equal(result.modeStateJson, frame.modeStateJson, `${label}: the mode state`);
+    assert.equal(result.meta.smokeJson ?? '', frame.meta.smokeJson ?? '', `${label}: the smoke text`);
+    return { bytes, result, kept: keptOf(bytes, baseline) };
+  };
+  let cases = 0;
+  for (let n = 0; n < 40; n++) {
+    const key = withStrings(randomFrame(6000 + n * 100, int(0, 20)), stateA, smokeA);
+    const keyframe = check(key, null, 'keyframe');
+    // kept: both restored, the delta shorter by both strings (each costs its one-byte marker)
+    const same = withStrings(evolveFrame(key, key.tick + 3), stateA, smokeA);
+    const unchanged = check(same, keyframe.result, 'unchanged');
+    assert.deepEqual(unchanged.kept, { state: true, smoke: true }, 'both unchanged strings kept');
+    const sent = encodeMessage(buildSnapshotPacket(withStrings(same, `${stateA} `, `${smokeA} `), keyframe.result), keyframe.result);
+    assert.equal(unchanged.bytes.byteLength + stateA.length + smokeA.length + 2, sent.byteLength, 'a kept string costs its marker alone');
+    // changed: sent whole
+    const changed = withStrings(evolveFrame(same, same.tick + 3), stateB, smokeB);
+    const moved = check(changed, unchanged.result, 'changed');
+    assert.deepEqual(moved.kept, { state: false, smoke: false }, 'changed strings are sent');
+    // one changed, one not: the two are independent
+    const half = withStrings(evolveFrame(changed, changed.tick + 3), stateB, smokeA);
+    assert.deepEqual(check(half, moved.result, 'half').kept, { state: true, smoke: false }, 'only the unchanged one kept');
+    const otherHalf = withStrings(evolveFrame(changed, changed.tick + 3), stateA, smokeB);
+    assert.deepEqual(check(otherHalf, moved.result, 'other half').kept, { state: false, smoke: true });
+    // a client that missed `half`: its acknowledged baseline is `changed` (stateB, smokeB); the next frame against it
+    const next = withStrings(evolveFrame(half, half.tick + 3), stateB, smokeA);
+    assert.deepEqual(check(next, moved.result, 'against an older baseline').kept, { state: true, smoke: false },
+      'compared with the acknowledged baseline, never the previous frame');
+    // no mode state, no smoke: nothing to keep; a mode state appearing over a baseline without one is sent
+    const none = check(withStrings(evolveFrame(next, next.tick + 3), null, ''), moved.result, 'none');
+    assert.deepEqual(none.kept, { state: false, smoke: false });
+    const appears = check(withStrings(evolveFrame(none.result, none.result.tick + 3), stateA, ''), none.result, 'appears');
+    assert.deepEqual(appears.kept, { state: false, smoke: false });
+    // a kept string without its baseline is a missing baseline, never an empty string
+    const orphan = decodeMessage(unchanged.bytes, { resolveBaseline: () => null });
+    assert.equal(orphan.ok, false);
+    assert.equal(orphan.error.code, 'missing_baseline');
+    // a kept mode state over a baseline that has none is forged
+    const forged = decodeAgainst(unchanged.bytes, withStrings(keyframe.result, null, smokeA));
+    assert.equal(forged.ok ? 'ok' : forged.error.code, 'invalid_message', 'a kept mode state its baseline lacks');
+    cases += 8;
+  }
+  // a keyframe never keeps: the marker where its smoke length is refused (the smoke length is the meta's last field)
+  const bare = withStrings(randomFrame(9500, 0), null, '');
+  bare.meta = { ...bare.meta, verdict: 0, verdictReason: '' };
+  bare.destroyed = []; bare.destruction = []; bare.shells = []; bare.viewer = null;
+  const keyBytes = encodeSnapshotFrame(bare, null);
+  // header 2, tick 4, time 4, flags 1, baseTick 4, acked 4+2+2, margin 1, phase 1, countdown 2, time 4, verdict 1, revision 4
+  const smokeAt = 2 + 4 + 4 + 1 + 4 + 4 + 2 + 2 + 1 + 1 + 2 + 4 + 1 + 4;
+  assert.equal(keyBytes[smokeAt], 1, 'no smoke is length 0 plus one');
+  const forgedKey = keyBytes.slice(); forgedKey[smokeAt] = 0;
+  assert.equal(decodeMessage(forgedKey).error?.code, 'invalid_message', 'a keyframe never keeps its smoke text');
+  // an empty mode state cannot be written: its length 0 is the marker
+  assert.throws(() => encodeSnapshotFrame({ ...bare, modeStateJson: '' }, null), (error) => error instanceof WireError && error.code === 'range');
+  assert.equal(WIRE_VERSION, 12, 'the layout moved: wire 12');
+  console.log(`wire.selftest: wire 12 keeps an unchanged mode state and smoke text and restores them from the acknowledged baseline (${cases} cases)`);
+}
