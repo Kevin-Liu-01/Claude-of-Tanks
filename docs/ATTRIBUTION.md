@@ -1116,6 +1116,28 @@ of real-world fidelity. Its pinned SHA-256 is
   ignored, SHA-256 `6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386`: the same geometry rescaled 1.10
   and shifted 0.2145 m, untextured); it never ships either.
 
+## Measured-datum sources credited 2026-11-12 (owner: keep the credits)
+
+The playable builds below carry station and datum numbers measured on these models while their lanes built them
+(comparison bases in tank generation only; no mesh, material, texture or render of any of them ships). They had no row
+here until 2026-11-12, when the owner chose to keep crediting every model a shipped build's numbers were measured from.
+
+- **Chieftain Mk-5 Main Battle Tank** by Muhamad Mirza Arrafi,
+  https://sketchfab.com/3d-models/chieftain-mk-5-main-battle-tank-1afc838ca30c4dac99c15e731d0d2ab8, CC-BY-4.0 per the
+  file's embedded metadata (the source page carries a `createdwithai` tag), file SHA-256
+  `a7cb7c9ab877635d204f96f359e84f2da8b59298bf09f2eeaeeecd4205725169`. Measured datums in
+  `src/vehicles/profiles/chieftain5XSource*.ts` and `chieftainXFoundation.ts` (`chieftain5`, `chieftain_mk9`,
+  `chieftain_mk10`); provenance in [the frame plan](references/tanks/chieftain5_x.source-frame-plan.md).
+- **[OD]ZTZ-20 Test-3** by EXcaliburK117 (https://sketchfab.com/EXcalibur117),
+  https://sketchfab.com/3d-models/odztz-20-test-3-1df862f8ae2b4616ac6d2748f0487958, CC-BY-4.0. Measured scalars in
+  `src/vehicles/profiles/ztz20Family.ts` (`ztz100`, `ztz100_prototype` and the family); provenance in
+  [the family packet](references/tanks/ztz20.md).
+- **Merkava Mk.4M Barak (Armored Warfare)** by KojfDiscord (https://sketchfab.com/KojfDiscord),
+  https://sketchfab.com/3d-models/merkava-mk4m-barak-armored-warfare-07e3570bdfaa451d8fb16bdd2e7d88fe, CC-BY-4.0 string
+  in the file's metadata; the title names a commercial game, so provenance is inconclusive under the same rule as the
+  KojfDiscord series above. Raw SHA-256 `81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5`. Measured
+  datums in the `merkava4_barak` build; provenance in [its packet](references/tanks/merkava4_barak.md).
+
 ## Marder 2 photographic authoring reference (2026-09-29)
 
 The separate Marder 2 roster addition uses
