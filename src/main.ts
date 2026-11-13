@@ -261,6 +261,7 @@ import { clearMatchSession, couchSeatsActive, createBus, createGameState, watchR
 import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
+import { openSurfaceIds } from './ui/components/surfaceStack.ts';
 import {
   markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
 } from './ui/tutorial/tutorialRecord.ts';
@@ -4748,6 +4749,15 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     return pos ? { x: pos.x, z: pos.z } : null;
   },
   onGarage: () => tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending,
+  // (272) the chapter's screen: the Garage is gone the moment a battle's entry or its loading veil starts, the battle
+  // when its phase ends; Settings or any transient surface the step did not open covers either
+  screen: (chapter) => {
+    const covered = settings.isOpen() || openSurfaceIds().length > 0;
+    if (chapter === 'battle') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
+    const garageLive = tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending
+      && !document.querySelector('.cot-bl.on');
+    return !garageLive ? 'gone' : covered ? 'covered' : 'live';
+  },
   isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
     && !game.ruleset?.provingGround,
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
