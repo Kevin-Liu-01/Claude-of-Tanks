@@ -16,7 +16,7 @@ The seven bodywork IDs are `t90a_burlak_x`, `leo2a5_x`, `leo2a6_x`,
 panels use camouflage-aware materials, and the Merkava shoulder/end returns
 have finite receiving stock. Scope, source fidelity, finite-contact and
 historical-preservation evidence are maintained in
-[the seven-tank packet](seven-tank-bodywork-integration-20260909.md).
+[the seven-tank packet](../../history/research/seven-tank-bodywork-integration-20260909.md).
 
 The two Leopards each gain four real return rollers per side with finite
 painted shafts. Full-stroke fit, stock clearance, retained road-wheel/body

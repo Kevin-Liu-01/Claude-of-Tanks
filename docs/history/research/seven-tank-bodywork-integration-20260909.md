@@ -99,8 +99,7 @@ based on `d0d01a903` plus eighteen scoped commits ending at `95e50fe3e`.
 The current closeout below integrates that scoped work onto `508bb19b0`,
 retaining subsequent wreck `geometryOnly` paint skipping and the optional
 outer-band carrier seam. The separate fourteen-ID style branch and unfinished
-roller-fit ancestry remain excluded. Local oracle files are comparison inputs,
-not publication assets.
+roller-fit ancestry remain excluded.
 
 Comparator startup failures were independently traced to HTTP 504
 `Outdated Optimize Dep`: worktrees shared a node_modules optimizer cache.
@@ -123,7 +122,7 @@ fidelity or composed release checks.
 These are preserved intermediate failures, not the current release status.
 The complete nine-ID integration, including these seven tanks, subsequently
 passed all 858 ordered checks and both builds; see the authoritative
-[nine-tank release](nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass).
+[nine-tank release](../../tank-generation/history/nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass).
 
 The isolated `codex/bodywork-closeout-r1` candidate at `1415c90fe` is based on
 published main `508bb19b0`. Fresh full-fleet anatomy update/check completed:

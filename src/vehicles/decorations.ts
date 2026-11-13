@@ -40,8 +40,8 @@ import { resolveTankId, tankSeedId } from './tankIdAliases.ts';
 //  * PERF: static decor merges into ONE BufferGeometry per material family
 //    per parent group (≈4-9 added draws/tank), budgeted ≤ 3000 added
 //    triangles per tank, castShadow OFF (the fleet's shadow proxies carry
-//    silhouettes; per-mesh casters are swept off on both procedural and GLB
-//    paths), LOD-wrapped at the same 150 m greeble horizon tankFactory uses.
+//    silhouettes; per-mesh casters are swept off on every build
+//    path), LOD-wrapped at the same 150 m greeble horizon tankFactory uses.
 //  * WRECKS: decor materials are per-visual MeshStandardMaterials chained
 //    through the same ambient-floor hook pattern createTankMaterials uses,
 //    so tankFactory.setDestroyed's existing traversal wraps them with the
@@ -5426,8 +5426,8 @@ function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFold
 /**
  * Attach the decoration kit to a built tank visual.
  *
- * Called by tankFactory's seam (procedural tanks: at build; GLB tanks: after
- * the model swap so anchors probe the REAL rendered geometry). Idempotent per
+ * Called by tankFactory's seam (at build, so anchors probe the REAL rendered
+ * geometry). Idempotent per
  * root. Never throws — cosmetics must not take down a build.
  *
  * @param {object} a
@@ -8121,8 +8121,8 @@ function* attachDecorPlanSteps(
     resources.completeGeometry(merged);
     const mesh = new THREE.Mesh(merged, materials.get(matKey));
     mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
-    // PERF: the fleet's shadow story is proxy-based (procedural proxies /
-    // GLB buildShadowProxy) with per-mesh casters swept off — decor
+    // PERF: the fleet's shadow story is proxy-based (procedural proxies)
+    // with per-mesh casters swept off — decor
     // follows the same contract. receiveShadow keeps the kit grounded.
     mesh.castShadow = false;
     mesh.receiveShadow = true;

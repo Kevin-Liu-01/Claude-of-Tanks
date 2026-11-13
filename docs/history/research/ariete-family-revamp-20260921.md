@@ -44,7 +44,7 @@ empty-fork equipment conflict remains documented in the C1 reference packet.
 
 The new C2 is an explicitly authored family derivative. It uses the enlarged
 C1 structure and prescribed primary datums, with photo-informed C2 equipment.
-There is no supplied C2 3D comparison model and no invented source score.
+The C2 has no separate comparison basis and no invented score.
 Its separate frozen concept contract requires the same physical, visual,
 performance, anatomy, and release checks as other playable additions.
 
@@ -175,13 +175,13 @@ wrapped headings, held/imported poses, and unchanged vehicles without the field.
 ### Retained source openings
 
 The two raw rear continuity cells in HIGH and LOW are genuine tow-coupler air.
-The [bounded opening record](ariete-rear-openings-20260921.md) preserves their
+The [bounded opening record](../../tank-generation/history/ariete-rear-openings-20260921.md) preserves their
 raw failure counts and requires the authenticated source, each quality's actual
 raster, and complete finite stock/air witnesses. There are no unexpected cells.
 The source corroborates only the retained C2 rear assembly, not the C2 design
 as a whole. Small inherited collar/shank contour differences remain disclosed.
 
-The separate [sealed-surface calibration](ariete-sealed-scale-20260921.md)
+The separate [sealed-surface calibration](../../tank-generation/history/ariete-sealed-scale-20260921.md)
 uses the immutable historical C1 geometry enlarged by exactly 1.12. Its 196
 classified pixels, rather than the candidate's lower 192, define the new
 scale-aware reference. Independent review traced all 42 scale-added cells to

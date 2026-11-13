@@ -1,5 +1,5 @@
-// Release 264 (Main's ruling on the Challenger 3 TD's front hull, packet r12): the oracle draws a Hydrogas unit at every
-// station (Object_17: a web from over the wheel to a 0.61 m sill ahead of it and the pivot block) and no arm under it,
+// Release 264 (Main's ruling on the Challenger 3 TD's front hull, packet r12): the measured hull carries a Hydrogas unit at every
+// station (a web from over the wheel to a 0.61 m sill ahead of it and the pivot block) and no arm under it,
 // so the TD's units stand on that casting and the moving suspension keeps out from under them. On both ids at both
 // qualities: every station carries its unit on both sides (the block's sill at the tub wall and at the track lane's
 // inner edge), no vertex of the arms or their bosses inboard of the track lane (|x| 1.203) stands under the 0.61 m sill,
@@ -66,4 +66,4 @@ for (const id of ['challenger3_td', 'challenger3_td_rws']) for (const quality of
     console.log(`${id}/${quality}: units at 6 stations a side; the suspension inboard of the track lane stays over ${lowest.toFixed(3)} m`);
   } finally { tank.dispose(); }
 }
-console.log('challenger3TdSuspension: the oracle\'s Hydrogas units, the arms in the track lane\'s shadow, wheel clearance and a moved-arm negative');
+console.log('challenger3TdSuspension: the measured Hydrogas units, the arms in the track lane\'s shadow, wheel clearance and a moved-arm negative');

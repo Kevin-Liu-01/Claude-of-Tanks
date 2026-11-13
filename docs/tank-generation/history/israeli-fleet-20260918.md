@@ -25,8 +25,8 @@ scores are rewritten as passing results.
 Full fleet generation passed at `87e8e9526`, with all thirty selected asset
 files generated and presentation alignment passing. The actual final
 fourteen-view independent inspections nevertheless hold all three models for
-source component corrections: [Trophy and Barak](israeli-final-r2-independent-visual-review-20260919.md),
-and [Namer](namer-final-canonical-independent-review-20260919.md). The numerical
+source component corrections: [Trophy and Barak](../../history/research/israeli-final-r2-independent-visual-review-20260919.md),
+and [Namer](../../history/research/namer-final-canonical-independent-review-20260919.md). The numerical
 gates do not substitute for these visual checks. The attempted Garage pairs
 also exposed a capture timing problem during the normal idle camera return;
 those failed pairs are preserved and will be replaced using a passive wait

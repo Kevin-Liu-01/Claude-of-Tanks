@@ -1,4 +1,4 @@
-import {assertNoPhotoOverride} from './photo-reference-policy.mjs';
+import {isPhotoReference} from './photo-reference-policy.mjs';
 import { uniqueIds } from './id-list.mjs';
 import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // tools/geometry-gate.mjs — THE authoritative geometric gate.
@@ -16,7 +16,7 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 //
 // Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check] [--repin] [--absent=skip] [--skipped=<file>] [--oracles-only]
 //   [--prune] [--registry=<file>]
-// --repin (npm run gate:repin): a requested registered id whose oracle file is missing stops the run before anything is
+// --repin (npm run gen:repin): a requested registered id whose oracle file is missing stops the run before anything is
 // measured or written, instead of recording an unavailable row over its measured one; an id the page cannot measure
 // keeps its previous ledger row, marked with the error as repinError.
 // --absent=skip (the changed-only gate step, 267): a registered id whose oracle file is missing here is skipped, its record
@@ -40,7 +40,7 @@ import puppeteer from 'puppeteer';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
-import { mergeLedgerRow, missingOraclesError, oraclePinError, rosterLedgerRows, unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { assertNoPhotoOverride, mergeLedgerRow, missingOraclesError, oraclePinError, rosterLedgerRows, unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { ORACLE_PINS } from './oracle-pins.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
@@ -84,7 +84,7 @@ const oracleRecordOf = (id) => {
 };
 function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars) {
   const registered = new Set(referenceIds);
-  assertNoPhotoOverride(requested??[],registered);
+  assertNoPhotoOverride(requested??[],registered,isPhotoReference);
   const available = new Set(referenceIds.filter((id) => filesOf(id).length && filesOf(id).every((file) => {
     const localPath = localAssetPath(file);
     return localPath && fs.existsSync(localPath);

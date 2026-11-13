@@ -1419,7 +1419,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // KILL-HITCH FIX: studio actors are not game.tanks, so they miss
     // warmCombatPipeline's burn prewarm — install the disarmed burn hook now
     // so setActorState('wrecked'/'turret-popped') never pays first-use
-    // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
+    // program compiles mid-beat. (Mesh swaps re-hook in the swap pipeline.)
     if (visual.prewarmBurn) visual.prewarmBurn();
     let owner: StudioActor | null = null;
     if (visual.setGroundSampler) {

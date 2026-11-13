@@ -12,7 +12,7 @@ complete twelve-stage/947-test frozen release and sixteen-test final-main
 integration. See [the exact scope](t14-roller-release-20260910.md); K2 remains
 separately held, and country-matched T-14 track thickness remains open.
 Read [the current recovery boundary](tank-work-object-store-followup-20260909.md)
-and [the fourteen-tank certificate](fourteen-tank-recovery-release-20260910.md)
+and [the fourteen-tank certificate](../../history/research/fourteen-tank-recovery-release-20260910.md)
 before describing these as uncommitted or unpublished. The retained tables are
 dated forensic snapshots, not an instruction to replay their branches.
 
@@ -61,11 +61,11 @@ private-build phases unrun. Known failures remain documented in
 - Ignored QA was inspected only for identified candidate worktrees. No GPU,
   native capture, tests, anatomy, asset generation or full release was rerun.
 
-Read alongside [the prior WIP inventory](fleet-wip-recovery-20260908.md),
+Read alongside [the prior WIP inventory](../../history/research/fleet-wip-recovery-20260908.md),
 [the published nine-tank boundary](nine-tank-bodywork-rollers-integration-20260909.md),
-and [the seven-bodywork evidence](seven-tank-bodywork-integration-20260909.md).
+and [the seven-bodywork evidence](../../history/research/seven-tank-bodywork-integration-20260909.md).
 The separately owned canvas/smoke recovery is documented in
-[its recovery note](side-fender-recovery-20260909.md).
+[its recovery note](../../history/research/side-fender-recovery-20260909.md).
 
 W below means /Users/kevinliu/.codex/worktrees/. Every W-relative directory
 in the next table existed and was inspected. Unless noted, its tracked and

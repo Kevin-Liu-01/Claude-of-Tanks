@@ -139,10 +139,10 @@ function createRosterEntity(specId: string, id: string, seed: number, matchReinf
     },
     visual: null,
     // True when the rendered running gear lacks a complete wheel + belt
-    // terrain-conformance layer. Some comparison GLBs remain rigid; newer
-    // imports publish __glbConformingGear after both layers are discovered.
+    // terrain-conformance layer. Some swapped visuals remain rigid; newer
+    // ones publish __glbConformingGear after both layers are discovered.
     rigidGear: false,
-    // gameplay_feel r7: measured GLB contact footprint (null = procedural
+    // gameplay_feel r7: measured contact footprint (null = procedural
     // spec fractions). Stamped with rigidGear — see measureContactGeom.
     contactGeom: null,
     _camoSeed: seed,
@@ -161,8 +161,8 @@ function createRosterEntity(specId: string, id: string, seed: number, matchReinf
  */
 
 export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
-  // COMMUNITY TANKS: build entities for the FULL pool (core roster + sourced
-  // community vehicles). A battle fields 8 of them (setupBattle picks the
+  // FULL POOL: build entities for every pool entry (core roster + the rest
+  // of the fleet). A battle fields 8 of them (setupBattle picks the
   // participants); the rest sit hidden with null state/combat.
   //
   // PERF (performance_budget r4): visuals are built LAZILY. Baking a vehicle's
@@ -197,7 +197,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   //
   // LOADING PERF (boot r9): the PLAYER's visual used to be built right here,
   // on the boot-critical path — a full hero-tier build (~300-400 ms: 2048²
-  // texture bake + geometry + GLB swap kick) for a tank the garage never
+  // texture bake + geometry + mesh swap kick) for a tank the garage never
   // renders (the pedestal hero is a separate visual; battle visuals are
   // guaranteed by warmCombatPipeline before any battlefield frame). It now
   // streams in with the rest of the staged roster via the post-ready idle
@@ -514,14 +514,14 @@ function randomBattleCandidates(
 }
 
 /**
- * COMMUNITY TANKS: pick this battle's participants — the player plus the
+ * FULL POOL: pick this battle's participants — the player plus the
  * non-player slots. BATTLE-AI r7 (7v7): every RANDOM battle (all garage
  * entries go through startBattle's random:true) fields 13 non-players so the
  * teams split player+6 vs 7. The deterministic staged battle (boot /
  * screenshot contract) keeps the core 8 — killcam_xray and the establishing
  * shots are framed against that roster and no player ever sees it as a
  * battle. `randomize` shuffles the whole pool (seeded per battle) so random
- * rosters include community vehicles.
+ * rosters reach the whole pool.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
 /** Eras a campaign formation may draw from around the player's: contemporaries only, never WW2 against modern
@@ -653,7 +653,7 @@ export function pickBattleParticipants(
   const enemySlots = slots != null && Number.isFinite(slots) ? Math.max(1, Math.floor(slots)) : randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
   // debug roster bypasses the seeded shuffle/era matchmaking so the perf
-  // gate measures a PINNED worst-case lineup (all multi-mesh GLB heavies)
+  // gate measures a PINNED worst-case lineup (all multi-mesh heavies)
   // instead of whatever the pool happens to draw — the round-2 critic
   // measured 1095 worst-frame draw calls on one random roster and 470 on
   // another, on the identical build. Debug/tooling only (perfprobe).

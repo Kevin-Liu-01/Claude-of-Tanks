@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { MANUAL_SUITES, MERGED_RECEIPTS, MUST_KEEP, RETIRED_RECEIPTS, defaultTierFiles, manualSuiteOf, namedIds } from './selftest-tiers.mjs';
+import { GENERATION_CHECKS } from './generation-checks.mjs';
 import { MAX_SELFTEST_WORKERS, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
 import { receiptRunTimes, TOOLS_ROOT } from './test-diff.mjs';
 
@@ -155,6 +156,14 @@ export function documentText({ rows }, s) {
     lines.push('| Receipt | Run (s) | Decision | Reason | Coverage now |', '|---|---:|---|---|---|');
     for (const row of list) lines.push(`| \`${row.file}\` | ${seconds(row.ms)} | ${row.decision}${row.suite ? ` (${row.suite})` : ''} | ${row.reason} | ${row.coverage} |`);
   }
+  lines.push('', `## Tank-generation checks (${GENERATION_CHECKS.length}, not receipts)`, '',
+    'The owner, 2026-11-12: outside 3D models "are only used for building tanks as comparison bases in tank generation", and '
+    + 'nothing tests against them. The comparison tooling\'s own checks (the geometry comparison and its policy, the silhouette '
+    + 'fidelity page, the comparison-model pins and registry, source openings, assemblies and frames) left the receipt registry '
+    + 'that day, renamed `*.gencheck.mjs`: npm test, `test:heavy`, `test:lane`, tank:release:check and the release gate never run '
+    + 'them, and a lane runs them by hand with `npm run gen:checks` while it uses a comparison tool. The standard check\'s openings '
+    + 'and roof-weapon stages now read the build alone (`tools/approved-openings.selftest.mjs`, `src/vehicles/roofWeaponPolicy.selftest.mjs`).', '');
+  for (const file of GENERATION_CHECKS) lines.push(`- \`${file}\``);
   return lines.join('\n') + '\n';
 }
 

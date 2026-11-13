@@ -97,8 +97,8 @@ try {
   } finally {expected.dispose();}
 } finally {tank.dispose();}
 
-// Actual added faces remain on the original suspension entries. Source
-// outboard tire/hub witnesses are independent local-oracle measurements;
+// Actual added faces remain on the original suspension entries. The outboard
+// tire/hub faces are recorded witness positions the build is held to;
 // the wider shoe envelope is not used as a target for wheel-face growth.
 for(const [id,sourceFaceX] of [['t90a',1.7089],['t90m',1.66133],['t90sm',1.6334]]) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});

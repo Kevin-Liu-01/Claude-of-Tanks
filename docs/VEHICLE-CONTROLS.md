@@ -133,8 +133,8 @@ fingerprint. The frozen expectations are not rewritten. The focused decoration
 staging test verifies matching synchronous/staged output and resource cleanup.
 
 The broader selected-vehicle release check cannot certify source fidelity:
-registered comparison models for KF41 Lynx X, KF51 X, T-14 X and Ariete C1 X
-are unavailable locally, as is the Leopard 1A5 comparison model. All eight
+the registered comparison records for KF41 Lynx X, KF51 X, T-14 X, Ariete C1 X
+and Leopard 1A5 are unavailable locally. All eight
 vehicles selected across the two release checks pass their sealed-hull gates.
 The scoped complexity audit retains 14 existing violations and six existing
 `unknown` annotations in legacy builders; comparison against the base revision
@@ -199,5 +199,5 @@ with no browser errors; its 9,572 objective samples match the terrain fit, and
 moving the tank leaves settled debris stationary. Type checking, new-owner
 complexity gates, focused damage/repair/network tests and the public build pass.
 The selected M1A2, Bradley and T-14 hull-closure checks pass. Their broader
-release gate is not green: the M1A2 and Bradley comparison models are unavailable
+release gate is not green: the M1A2 and Bradley comparison records are unavailable
 locally. This work is not pushed or deployed.

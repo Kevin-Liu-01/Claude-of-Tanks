@@ -416,7 +416,6 @@ await assert.rejects(runSelftestFile('bad-launch.mjs', {
 assert.equal(listening(spawnSignals), 0);
 
 assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
-  'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
@@ -456,7 +455,7 @@ const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
 assert.deepEqual(registered.events, [`[selftests] actual-registry: ${SELFTEST_OWNED_LEASE_FILES.length + 2} files`, 'acquire', 'cpu', 'release',
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
-const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
+const oldRegistry = actualRegistryFixture(['tools/cloud-history.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
   /runner must release/);
 assert.equal(oldRegistry.held, false, 'the old nested-lock failure still releases owned runner resources');

@@ -1,7 +1,7 @@
 # Fixed-guard finish history bridge — 2026-09-08
 
 Status: **test-only candidate; seven focused tests passed**. This changes no
-playable geometry, finish, armor metadata, source model, or release threshold.
+playable geometry, finish, armor metadata, reference, or release threshold.
 The final combined bodywork release remains required.
 
 The seven-vehicle bodywork candidate at `ca475a6bf9309aebde45e683c3c234828488fdac`
@@ -38,7 +38,7 @@ shared camouflage texture and exact spatial UVs; that check was not weakened.
 
 Private failed receipts are retained in the isolated bridge worktree under
 `.qa-dev/history-before-MrwGj8/` and `.qa-dev/history-after-2uJvRD/`. These local
-QA artifacts and comparison inputs are not publication assets.
+QA artifacts are not publication assets.
 
 The intermediate A6 failure is retained in `.qa-dev/history-after-3ZiHjU/`
 and `.qa-dev/history-after-v2.log`. The final complete seven-file pass is in

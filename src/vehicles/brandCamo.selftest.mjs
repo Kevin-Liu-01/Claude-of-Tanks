@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createCanvas, loadImage, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
-import { paintBrandCamo, paintBrandMark } from './brandCamoPainter.ts';
+import { layoutBrandCamo, MARK_RADIUS, paintBrandCamo, paintBrandMark } from './brandCamoPainter.ts';
 import { OPENAI_BRAND_PATH, X_BRAND_PATH, GEMINI_BRAND_PATH, GT_BRAND_PATH } from './brandCamoMarks.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
@@ -12,8 +12,8 @@ Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
 const sha = data => createHash('sha256').update(data).digest('hex');
 const pixels = canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
 const sources = [
-  // 272 (owner: "for my gt camo, use our new gt logo!"): the globe replaces the GT monogram (gt-mark.svg) as the source.
-  ['gt', 'gt-globe-logo-light.svg', 'f48245a0a672ff75c149f32b8f8510c0c3c3b8e74442746aedc6dff17177b909', GT_BRAND_PATH],
+  // 272 (owner: "used this new logo for both"): the General Translation symbol replaces the globe and the monogram.
+  ['gt', 'gt-symbol.svg', '855a421a9a5288d7e2b4275ebafcb57fb5d25a8b59b69cb6ef57d4409941b665', GT_BRAND_PATH],
   ['openai', 'openai-blossom-guideline.svg', '01485e70cea6df8422f5abc643fbbd3c153442cc41da0e7d8e7451801ebf26e2', OPENAI_BRAND_PATH],
   ['xai', 'x-logo.svg', 'dd46f96b6f47fcd33683b79ddfaf3daca1d4f8aeba3c0f2bde1584c69cc699d4', X_BRAND_PATH],
   ['gemini', 'gemini-sparkle-v002.svg', '01821494593b81ffd7da0e08287d4735304ff6292a6903453328b9d17cf38799', GEMINI_BRAND_PATH],
@@ -37,7 +37,7 @@ for (const [brand, file, hash, path] of sources) {
   const native = createCanvas(256, 256);
   paintBrandMark(native.getContext('2d'), brand, 128, 128, 200);
   const viewBox = brand === 'openai' ? '109.28628 188.44128 342.01344 342.01344'
-    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : brand === 'gt' ? '-49.92 -49.92 355.84 355.84' : '-3.92 -3.92 35.84 35.84';
+    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : brand === 'gt' ? '-176.34 -176.34 839.68 839.68' : '-3.92 -3.92 35.84 35.84';
   const defs = bytes.toString().match(/<defs>[\s\S]*?<\/defs>/)?.[0] || '';
   const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${viewBox}" fill="white">${tag}${defs}</svg>`;
   const reference = createCanvas(256, 256);
@@ -56,10 +56,13 @@ for (const [brand, file, hash, path] of sources) {
   substitute.getContext('2d').fillRect(28, 28, 200, 200);
   assert.ok(alphaAgreement(pixels(substitute), pixels(reference)) < .9, 'solid generic substitute is rejected');
   if (brand === 'gt') {
-    // the globe is open line-work: a filled disc of the same diameter (207.5 of 278 native units) is not the mark
+    // the symbol is a 487-unit circle with the G and T cut out: a filled disc of the same diameter is not the mark
     const disc = createCanvas(256, 256), ctx = disc.getContext('2d');
-    ctx.beginPath(); ctx.arc(128, 128, 200 * 207.5 / 278 / 2, 0, Math.PI * 2); ctx.fill();
-    assert.ok(alphaAgreement(pixels(disc), pixels(reference)) < .7, 'gt: the globe keeps its counters, not a filled disc');
+    ctx.beginPath(); ctx.arc(128, 128, 200 * 243.5 / 656, 0, Math.PI * 2); ctx.fill();
+    assert.ok(alphaAgreement(pixels(disc), pixels(reference)) < .7, 'gt: the symbol keeps its cuts, not a filled disc');
+    assert.match(tag, /fill-rule="evenodd"/, 'gt: the source symbol is even-odd');
+    assert.match(readFileSync(new URL('./brandCamoPainter.ts', import.meta.url), 'utf8'), /brand === 'gt' \? 'evenodd'/,
+      'gt: the painter fills the symbol with its own even-odd rule');
   }
 }
 const painter = createMaterialPainter(createCanvas);
@@ -122,6 +125,75 @@ assert.equal(hashes.size, 8, 'eight paints render as independently distinct fini
   const source = readFileSync(new URL('./brandCamoPainter.ts', import.meta.url), 'utf8');
   assert.ok(!/for \(let row = 0; row < 2/.test(source), 'no fixed two-by-two grid remains');
   assert.match(source, /sprinkle/, 'the sprinkle pass is part of the composition');
+}
+// 272 (owner: "for the gt camo, dont make the logo keep overlapping with other logos"): no two stamps overlap, on the
+// tile or across its wrapped seam, for every brand finish that shares the layout. Checked two independent ways, and the
+// same checks fail on the placement 272 shipped (random positions with no spacing rule).
+{
+  const mulberry = (seed) => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const tile = 256;
+  // shortest distance on the torus, written here rather than imported so the receipt does not trust the painter
+  const torus = (a, b) => {
+    const dx = Math.min(Math.abs(a.x - b.x) % tile, tile - Math.abs(a.x - b.x) % tile);
+    const dy = Math.min(Math.abs(a.y - b.y) % tile, tile - Math.abs(a.y - b.y) % tile);
+    return Math.hypot(dx, dy);
+  };
+  const circleHits = stamps => {
+    let hits = 0;
+    for (let i = 0; i < stamps.length; i++) for (let j = i + 1; j < stamps.length; j++) {
+      if (torus(stamps[i], stamps[j]) < stamps[i].radius + stamps[j].radius) hits++;
+    }
+    return hits;
+  };
+  // every stamp alone on its own tile, wrapped as the painter wraps it; a pixel inked by two stamps is an overlap
+  const pixelHits = (brand, stamps) => {
+    const count = new Uint8Array(tile * tile);
+    for (const stamp of stamps) {
+      const canvas = createCanvas(tile, tile), ctx = canvas.getContext('2d');
+      for (const ox of [-tile, 0, tile]) for (const oy of [-tile, 0, tile]) {
+        paintBrandMark(ctx, brand, stamp.x + ox, stamp.y + oy, stamp.size, stamp.rotation, 1);
+      }
+      const data = pixels(canvas);
+      for (let p = 0; p < count.length; p++) if (data[p * 4 + 3] > 0) count[p]++;
+    }
+    return count.reduce((n, c) => n + (c > 1 ? 1 : 0), 0);
+  };
+  // the placement 272 shipped, rng for rng: hero, four jittered mediums, a sprinkle, no spacing rule
+  const shippedLayout = (brand, rng) => {
+    const out = [], add = (x, y, size, rotation) => out.push({ x, y, size, rotation, radius: size * MARK_RADIUS[brand] });
+    add(tile * (0.3 + rng() * 0.4), tile * (0.3 + rng() * 0.4), tile * (0.46 + rng() * 0.12), (rng() - 0.5) * 0.5);
+    const cell = tile / 2;
+    for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {
+      add((gx + 0.5 + (rng() - 0.5) * 0.6) * cell, (gy + 0.5 + (rng() - 0.5) * 0.6) * cell, cell * (0.40 + rng() * 0.14), (rng() - 0.5) * 0.6);
+    }
+    const sprinkles = 6 + Math.floor(rng() * 4);
+    for (let i = 0; i < sprinkles; i++) { add(rng() * tile, rng() * tile, tile * (0.045 + rng() * 0.045), (rng() - 0.5) * 1.2); rng(); }
+    return out;
+  };
+  for (const brand of ['gt', 'openai', 'xai', 'gemini']) {
+    // the bounding circle holds the whole mark at any rotation
+    for (const rotation of [0, 0.4, 0.8, 1.2]) {
+      const canvas = createCanvas(512, 512); paintBrandMark(canvas.getContext('2d'), brand, 256, 256, 400, rotation);
+      const data = pixels(canvas); let outside = 0;
+      for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
+        if (data[(y * 512 + x) * 4 + 3] > 0 && Math.hypot(x + 0.5 - 256, y + 0.5 - 256) > 400 * MARK_RADIUS[brand] + 1) outside++;
+      }
+      assert.equal(outside, 0, `${brand}: no ink outside the bounding circle at rotation ${rotation}`);
+    }
+    let shippedCircles = 0, shippedPixels = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const stamps = layoutBrandCamo(tile, brand, mulberry(seed));
+      assert.ok(stamps.length >= 11, `${brand} seed ${seed}: the composition keeps eleven or more stamps (${stamps.length})`);
+      assert.equal(circleHits(stamps), 0, `${brand} seed ${seed}: no two bounding circles intersect, seam included`);
+      assert.equal(pixelHits(brand, stamps), 0, `${brand} seed ${seed}: no pixel is inked by two stamps, seam included`);
+      const sizes = stamps.map(stamp => stamp.size);
+      assert.ok(Math.max(...sizes) / Math.min(...sizes) > 4, `${brand} seed ${seed}: hero, medium and sprinkle sizes remain`);
+      const shipped = shippedLayout(brand, mulberry(seed));
+      shippedCircles += circleHits(shipped); shippedPixels += pixelHits(brand, shipped);
+    }
+    assert.ok(shippedCircles > 0 && shippedPixels > 0,
+      `${brand}: the same checks catch the placement 272 shipped (${shippedCircles} circle pairs, ${shippedPixels} px)`);
+  }
 }
 for (const scheme of ['mono', 'carbon', 'prism', 'digital', 'stripes']) {
   const canvas = createCanvas(64, 64), ctx = canvas.getContext('2d');

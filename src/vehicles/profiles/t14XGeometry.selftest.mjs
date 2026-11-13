@@ -160,8 +160,8 @@ function sightCavityChecks(root) {
 function cornerPartitionChecks(turret) {
   const triangles = (turret.geometry.index?.count ?? turret.geometry.attributes.position.count) / 3;
   assert.ok(triangles < 5000, 'active source facets must not expand into the former82k redundant structural triangles');
-  // This is an implementation-invariance check, not the source-fidelity
-  // oracle: the independent fixed source rays above remain authoritative.
+  // This is an implementation-invariance check, not the fidelity
+  // check: the independent fixed rays above remain authoritative.
   // Stop before the separately retained outboard return can occlude the cell.
   for (const side of [-1, 1]) for (let a = 0; a <= 16; a++) for (let b = 0; b <= 16; b++) {
     const x = .995 + a / 16 * .315, y = 2.025 + b / 16 * .270;
@@ -170,8 +170,8 @@ function cornerPartitionChecks(turret) {
   }
 }
 
-// Independent scalar oracle, from the owner's source study (not builder
-// metadata). Material-fused source nodes cannot support honest component
+// Independent fixed scalar datums (not builder
+// metadata). Material-fused nodes cannot support honest component
 // silhouette masks, so explicit occupied/empty-space probes are essential.
 for (const quality of ['high', 'low']) {
   const tank = createTank('t14_armata', null, { quality, proceduralOnly: true, geometryReceipt: true });

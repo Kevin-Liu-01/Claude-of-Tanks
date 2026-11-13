@@ -9,6 +9,9 @@
 //     has driven 20 m, fire when the gun fires, shells when another loads (real input: W held, a press on the canvas or
 //     the touch Fire button, the shell key); the rest by Next. --clip records the battle chapter (webm).
 //  --mode=tips: the strategy tips on the Garage, shot step by step.
+//  --mode=guard: a click on a live control in the dim and the Garage's hotkeys change nothing at any Garage step;
+//     Settings hides the card until it closes; a battle started from elsewhere leaves no card (the chapter resumes on
+//     the Garage's next showing); Enter on the Deploy step is Deploy (the battle chapter follows).
 //  --mode=checks: Skip from every step of every chapter (the card's button, Esc in the Garage, Backspace in battle) leaves
 //     no overlay and records every chapter skipped; Settings' Replay row and /?tutorial=1 replay (the flag leaves the
 //     address); a returning player's boot shows nothing and loads no tutorial module.
@@ -228,6 +231,111 @@ try {
   report.checks.finalRecord = await record(page);
   assert.deepEqual(report.checks.finalRecord, { garage: 'done', battle: 'done', tips: 'done' }, 'every chapter done');
 
+  } else if (MODE === 'guard') {
+  // 5. The guard (272 blocker, the owner on the preview: a click on the dimmed Garage launched a Proving Ground battle and
+  //    left the Deploy card and its box over the loading screen). (a) At every Garage step a click on a live control in
+  //    the dim, and the Garage's hotkeys, change nothing. (b) Every screen change the step did not ask for leaves no
+  //    card or box: a battle started from elsewhere closes the chapter and keeps its place (it resumes there on the
+  //    Garage's next showing), Settings and another surface hide it until they close, and Enter on the Deploy step is
+  //    Deploy (the battle chapter follows).
+  const page = await openPage(context, `/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`);
+  const guard = { dimClicks: [], hotkeys: [], screens: {} };
+  report.checks.guard = guard;
+  const phase = () => page.evaluate(() => window.__DEBUG?.game?.phase ?? null);
+  const loading = () => page.evaluate(() => !!document.querySelector('.cot-bl.on') || window.__DEBUG?.game?.phase === 'battle');
+  const shown = () => page.evaluate(() => {
+    const root = document.querySelector('.cot-tut');
+    if (!root) return { present: false, open: false, spot: false };
+    const style = getComputedStyle(root);
+    return { present: true, open: root.classList.contains('is-open') && style.display !== 'none', spot: root.classList.contains('has-spot') };
+  });
+  // (a) the dim and the hotkeys, step by step
+  let s = await waitStep(page, (x) => x?.step === 'garage.welcome', 120_000);
+  for (;;) {
+    if (flag('screens-only')) break;
+    await sleep(700);
+    const target = await page.evaluate(() => {
+      const root = document.querySelector('.cot-tut');
+      const spot = root?.classList.contains('has-spot') ? root.querySelector('.cot-tut-spot')?.getBoundingClientRect() : null;
+      const card = root?.querySelector('.cot-tut-card')?.getBoundingClientRect();
+      const inside = (r, x, y, pad = 8) => !!r && x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+      const live = [...document.querySelectorAll('button, [role="button"], a[href], .cot-card')].filter((el) => {
+        if (el.closest('.cot-tut')) return false;
+        const r = el.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return false;
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        return !inside(spot, x, y) && !inside(card, x, y) && getComputedStyle(el).visibility !== 'hidden';
+      });
+      // the owner's click: Test Drive when it is on screen, else the first live control in the dim
+      const pick = live.find((el) => /test drive|试驾/i.test(el.textContent ?? '')) ?? live[0];
+      if (!pick) return null;
+      const r = pick.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), label: (pick.textContent ?? '').trim().slice(0, 40) || pick.className };
+    });
+    if (target) {
+      if (touch) await page.touchscreen.tap(target.x, target.y); else await page.mouse.click(target.x, target.y);
+      await sleep(1800);
+      const after = { step: (await stepNow(page))?.step ?? null, phase: await phase(), loading: await loading() };
+      guard.dimClicks.push({ step: s.step, clicked: target.label, ...after });
+      console.log(`[tutorial] dim click at ${s.step} on "${target.label}": step ${after.step}, phase ${after.phase}, loading ${after.loading}`);
+      assert.ok(after.step === s.step && after.phase === 'garage' && !after.loading, `${s.step}: a click in the dim ("${target.label}") changes nothing`);
+    }
+    if (!touch) {
+      for (const key of ['KeyT', 'KeyB', 'Space', 'KeyG', 'Digit1', 'KeyM']) await page.keyboard.press(key);
+      await sleep(1200);
+      const after = { step: (await stepNow(page))?.step ?? null, phase: await phase(), loading: await loading() };
+      guard.hotkeys.push({ step: s.step, ...after });
+      assert.ok(after.step === s.step && after.phase === 'garage' && !after.loading, `${s.step}: the Garage's hotkeys change nothing`);
+    }
+    if (s.step === 'garage.deploy') break;
+    await press(page, '.cot-tut-next');
+    const was = s.step;
+    s = await waitStep(page, (x) => !!x && x.step !== was);
+  }
+  // (b) screen changes. Settings over the Garage: the card hides while it is open and comes back on the same step.
+  await page.evaluate(() => window.__TUTORIAL_START('garage'));
+  s = await waitStep(page, (x) => x?.step === 'garage.welcome');
+  await press(page, '.cot-tut-next');
+  s = await waitStep(page, (x) => x?.step === 'garage.tank');
+  await page.evaluate(() => document.querySelector('.cot-gear')?.click());
+  await sleep(1500);
+  const underSettings = await shown();
+  // close it with its own X (Escape would open it again: the menu key toggles the panel)
+  await page.evaluate(() => document.querySelector('.cot-settings.open .cot-set-close')?.click());
+  await sleep(1500);
+  const afterSettings = { ...(await shown()), step: (await stepNow(page))?.step ?? null,
+    settingsOpen: await page.evaluate(() => !!document.querySelector('.cot-settings.open')) };
+  assert.ok(!afterSettings.settingsOpen, 'Settings closed by its X');
+  guard.screens.settings = { underSettings, afterSettings };
+  assert.ok(!underSettings.open, 'Settings over the Garage: no card or box on it');
+  assert.ok(afterSettings.open && afterSettings.step === 'garage.tank', 'Settings closed: the card is back on its step');
+  // a battle the step did not ask for: the card leaves with the Garage, the chapter keeps its place
+  // the owner's case: the Garage's Test Drive (a Proving Ground battle), started from outside the step
+  await page.evaluate(() => { const g = window.__DEBUG.garage; if (typeof g?.testDrive === 'function') g.testDrive(); else window.__DEBUG.beginSoloBattle({}); });
+  await page.waitForFunction(() => !!document.querySelector('.cot-bl.on') || window.__DEBUG?.game?.phase === 'battle', { timeout: 300_000, polling: 100 });
+  const onLoading = await shown();
+  await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
+  await sleep(1500);
+  const inBattle = { ...(await shown()), chapter: (await stepNow(page))?.chapter ?? null, record: await record(page) };
+  guard.screens.otherBattle = { onLoading, inBattle };
+  assert.ok(!onLoading.open, 'a battle started from elsewhere: no card on its loading screen');
+  assert.ok(!inBattle.open && inBattle.record?.garage === undefined, 'no tutorial in a Proving Ground battle, and the Garage chapter is still to finish');
+  await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
+  const resumed = await waitStep(page, (x) => x?.chapter === 'garage', 300_000);
+  guard.screens.resumed = resumed;
+  assert.equal(resumed.step, 'garage.tank', 'back on the Garage, the chapter resumes where it left off');
+  // Enter on the Deploy step is Deploy: the Garage chapter is done and the battle chapter follows
+  if (!touch) {
+    for (;;) { const cur = await stepNow(page); if (cur?.step === 'garage.deploy') break; await press(page, '.cot-tut-next'); await waitStep(page, (x) => !!x && x.step !== cur.step); }
+    await sleep(700);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !!document.querySelector('.cot-bl.on') || window.__DEBUG?.game?.phase === 'battle', { timeout: 300_000, polling: 100 });
+    const enterLoading = await shown();
+    const battle = await waitStep(page, (x) => x?.chapter === 'battle', 900_000);
+    guard.screens.enterDeploy = { onLoading: enterLoading, battle, record: await record(page) };
+    assert.ok(!enterLoading.open, 'Enter on Deploy: no Garage card on the loading screen');
+    assert.equal(guard.screens.enterDeploy.record?.garage, 'done', 'Enter on Deploy finishes the Garage chapter');
+  }
   } else {
   // 4. The checks: Skip from every step of every chapter, the replays, a returning player.
   const page = await openPage(context, `/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`);

@@ -13,7 +13,7 @@ The unchanged 6,531,532-byte GLB has SHA-256
 `a7cb7c9ab877635d204f96f359e84f2da8b59298bf09f2eeaeeecd4205725169`.
 It declares glTF 2.0, generator `Sketchfab-16.59.0`, author Muhamad Mirza
 Arrafi and CC-BY-4.0. Those embedded claims do not establish upstream rights.
-The earlier [inventory](../../history/research/second-wave-west-inventory.md) records
+The earlier [inventory](../../tank-generation/history/second-wave-west-inventory.md) records
 the live source page's `createdwithai` tag. Owner-directed likeness to this
 file is not a claim that its proportions, anatomy or apertures are historically
 accurate. Existing local-only source-media restrictions remain unchanged.

@@ -7,7 +7,7 @@ import {KIT} from './profiles/kit.ts';
 const material=new T.MeshBasicMaterial({side:T.FrontSide});
 const rearRay=(meshes,x,y,far=.6)=>new T.Raycaster(new T.Vector3(x,y,-4.1),new T.Vector3(0,0,1),0,far).intersectObjects(meshes,false);
 const ray=(meshes,p,d,far)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false);
-const near=(a,b,label,tolerance=.000003)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<tolerance,`${label}: ${a}, source ${b}`);
+const near=(a,b,label,tolerance=.000003)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<tolerance,`${label}: ${a}, pinned ${b}`);
 function closedLeaf(g){const p=g.attributes.position,edges=new Map();let volume=0;
  assert.equal(p.count,96,'32 independently closed triangles, including concealed receiving cap');
  for(let i=0;i<p.count;i+=3){const v=[0,1,2].map(k=>new T.Vector3().fromBufferAttribute(p,i+k));
@@ -19,9 +19,8 @@ function closedLeaf(g){const p=g.attributes.position,edges=new Map();let volume=
  assert.ok(volume>1e-6,'real positive-volume stock');
  for(const e of edges.values())assert.deepEqual(e,{count:2,balance:0},'exact paired outward edges');
 }
-// Independent complete-source OBJ 85c33cee…29, source2/3 connected leaves.
-// These first-hit rays were retained before authoring (LBeuVI receipt), not
-// calculated from the candidate stations. Near-inner tests include the bevel.
+// Recorded witness faces of the eight connected hinge leaves (fixed numbers the
+// build is held to). Near-inner tests include the bevel.
 const leafWitnesses=[
  [-1,1.420965075,-1.032450033,1.436441839],
  [-1,1.348205030,-1.032450033,1.364334787],
@@ -49,64 +48,64 @@ for(const quality of ['high','low']){
   tank.root.updateMatrixWorld(true);const physical=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!/marking|shadow/i.test(m.name))physical.push(m);});
   const nonLeaves=beforeRows.filter(p=>p.tag!=='hinge-leaf');
   // 2026-10-01 (owner: retire frozen pins): the pinned sha256 of these 127 pre-edit primitives is gone; the
-  // fleet geometry ledger owns whole-tank change detection. Their census and every source witness below stay.
+  // fleet geometry ledger owns whole-tank change detection. Their census and every recorded witness below stay.
   assert.equal(nonLeaves.length,127,'all grids/blades/frames retained');
   const leaves=stock.filter(m=>m.name==='hinge-leaf'),walls=stock.filter(m=>m.name==='receiving-sidewall');
   assert.equal(leaves.length,8);
   for(let i=0;i<leaves.length;i++){
    const leaf=leaves[i],[side,y,x,top]=leafWitnesses[i];closedLeaf(leaf.geometry);
    for(const z of[-3.951,-3.941,-3.931]){
-    near(ray([leaf],[x,top+.004,z],[0,-1,0],.012)[0]?.point.y,top,'source tapered receiving top');
+    near(ray([leaf],[x,top+.004,z],[0,-1,0],.012)[0]?.point.y,top,'tapered receiving top');
    }
    const expectedX=side===1?1.121579166:-1.064779159;
-   for(const yy of[y-.008,y,y+.008])near(ray([leaf],[side*1.16,yy,-3.951],[-side,0,0],.15)[0]?.point.x,expectedX,'source rounded outer nose');
+   for(const yy of[y-.008,y,y+.008])near(ray([leaf],[side*1.16,yy,-3.951],[-side,0,0],.15)[0]?.point.x,expectedX,'rounded outer nose');
    // Opposed finite surface rays prove a real overlapping stock interval,
    // rather than AABB overlap or a ray originating inside the material.
    const leafInner=ray([leaf],[0,y,-3.94],[side,0,0],1.2)[0];
    const wallOuter=ray(walls,[side*1.16,y,-3.94],[-side,0,0],.15)[0];
    assert.ok(leafInner&&wallOuter);
-   near(side*(wallOuter.point.x-leafInner.point.x),.00051,'source0.51mm leaf-to-wall lap');
+   near(side*(wallOuter.point.x-leafInner.point.x),.00051,'0.51 mm leaf-to-wall lap');
    // The rounded end does not fill its rectangular corner. This is a
-   // leaf-stock-only negative witness (other real source hardware may sit ahead).
+   // leaf-stock-only negative witness (other real hardware may sit ahead).
    assert.equal(ray([leaf],[side*(side===1?1.123:1.0662),y,-3.97],[0,0,1],.022).length,0,'unfilled rounded nose corner');
   }
   for(let i=0;i<3;i++){
    assert.equal(stock.filter(m=>m.name===`screen-${i}-horizontal`).length,12,'twelve physical horizontal wires per bay');
-   assert.equal(stock.filter(m=>m.name===`screen-${i}-vertical`).length,[5,7,7][i],'source unequal vertical screen census');
+   assert.equal(stock.filter(m=>m.name===`screen-${i}-vertical`).length,[5,7,7][i],'unequal vertical screen census');
   }
   assert.equal(stock.filter(m=>m.name==='side-folded-blade').length,12,'six substantial folds per outside bay');
   assert.equal(stock.filter(m=>m.name==='central-blade').length,3,'three taller central blades');
-  // Complete original source2/3 first rearward intersections. Sparse plane
-  // sections define the original analytic fold; these are held-out heights.
+  // Recorded first rearward intersections of the folded blades. Sparse plane
+  // sections define the analytic fold; these are held-out heights.
   for(const [x,y,z]of [[.55,1.1,-3.89561859],[.55,1.2,-3.85919973],[.55,1.3,-3.91955031],
    [.55,1.4,-3.88333178],[-.8,1.1,-3.91103423],[-.8,1.2,-3.87365640],
    [-.8,1.3,-3.93464968],[-.8,1.4,-3.89846192],[0,1.3,-3.93664726],[0,1.4,-3.80533336]]){
    const hits=rearRay(stock,x,y);assert.ok(hits.length,`actual FrontSide folded stock ${x}/${y}`);
-   assert.ok(Math.abs(hits[0].point.z-z)<.004,`independent source blade face ${x}/${y}: ${hits[0].point.z}`);
+   assert.ok(Math.abs(hits[0].point.z-z)<.004,`recorded blade face ${x}/${y}: ${hits[0].point.z}`);
   }
   for(const [x,y,z]of [[.55,.998517,-3.985885],[-.8,.998662,-3.992195],[0,1.124281,-3.987840]]){
    const hits=rearRay(stock,x,y,.2);assert.ok(hits.length);assert.ok(Math.abs(hits[0].point.z-z)<.0003,'physical wire rear face');
   }
-  // Actual open wire cells retain depth before the source blade. They are
+  // Actual open wire cells retain depth before the blade. They are
   // not painted dark patches on a solid backplate, in either quality.
   for(const meshes of [stock,physical])for(const [x,y]of [[.55,1.11],[-.8,1.11],[0,1.11]])
    assert.equal(rearRay(meshes,x,y,.145).length,0,'full-scene 145mm deep screen aperture');
   for(const x of [-1.027,1.032]){
    assert.ok(rearRay(stock,x,1.24,.22).length,'actual receiving sidewall');
-   // Complete original143-owner FrontSide source has no stock on the old
-   // purported seat ray: Z−3.97 is behind the actual sidewall. Retain that air.
-   for(const meshes of[stock,hull,physical])assert.equal(ray(meshes,[x,1.24,-3.97],[Math.sign(x),0,0],.10).length,0,'source-confirmed old seat is real air');
+   // No stock on the old purported seat ray: Z−3.97 is behind the actual
+   // sidewall. Retain that air.
+   for(const meshes of[stock,hull,physical])assert.equal(ray(meshes,[x,1.24,-3.97],[Math.sign(x),0,0],.10).length,0,'the old seat is real air');
   }
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');assert.ok(turret&&gun);
   for(const[yaw,pitch]of[[0,0],[.63,-.12],[Math.PI,.23]]){
    turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
    for(const[side,y]of leafWitnesses){const h=ray(physical,[side*1.16,y,-3.951],[-side,0,0],.15)[0];
-    near(h?.point.x,side===1?1.121579166:-1.064779159,'actual posed hull-owned source leaf');
+    near(h?.point.x,side===1?1.121579166:-1.064779159,'actual posed hull-owned leaf');
     assert.equal(h.object.name,'hullDetail','not turret/gun-owned');}
-   for(const x of[-1.027,1.032])assert.equal(ray(physical,[x,1.24,-3.97],[Math.sign(x),0,0],.10).length,0,'posed complete-source air retained');
+   for(const x of[-1.027,1.032])assert.equal(ray(physical,[x,1.24,-3.97],[Math.sign(x),0,0],.10).length,0,'posed air retained');
   }
   for(const m of stock){m.geometry.computeBoundingBox();const b=m.geometry.boundingBox;
-   assert.ok(b.min.z> -4.011&&b.max.z< -3.60&&b.min.y>.94&&b.max.y<1.63,'grille-only source bounded extent');}
+   assert.ok(b.min.z> -4.011&&b.max.z< -3.60&&b.min.y>.94&&b.max.y<1.63,'grille-only bounded extent');}
  }finally{tank?.dispose();for(const m of [...stock,...hull])m.geometry.dispose();registerProfiledBuilders({m1a2_abrams_sepv2:buildAbramsX});}
 }
-material.dispose();console.log('Abrams rear grilles PASS:high/low6poses,8closed asymmetric source leaves,0.51mm wall laps,127 non-leaf primitives,3unequal screens/15blades/source held-outs and real air');
+material.dispose();console.log('Abrams rear grilles PASS:high/low6poses,8 closed asymmetric leaves,0.51mm wall laps,127 non-leaf primitives,3unequal screens/15blades/recorded faces and real air');

@@ -144,7 +144,7 @@ Mask-derived rows use paired identical measurements in the source-only fixed fra
 
 ## Independent review checkpoint
 
-The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/history/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
+The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/tank-generation/history/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
 
 ## Post-main round13 — physical wheels, cupola windows and split rear face
 

@@ -41,7 +41,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, write
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, readRowsAsync, recordStep, refreshComponents,
-  resolveChanged, stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
+  resolveChanged, stampedInKeys, toolchainChange, toolchainOf, unexplainedIds, writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { cpuChildCommand } from './changed-only/childPriority.mjs';
 import { watchChild } from './changed-only/childBudget.mjs';
@@ -200,7 +200,7 @@ const HANG_S = 1800;
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
+/** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent inputs), by
  *  step: never recorded as run. Stamped with their reason when the step names it (268: current until what would make
  *  them runnable moves), else left due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
@@ -320,12 +320,12 @@ function idsScope(definition, fullState, state) {
   return { mode: maps.length ? 'ids' : 'none', ids: maps, reasons: { '*': ['--ids: the maps casting them as wreck donors'] } };
 }
 
-/** --ids after its first pass, with a table: what the resolver still finds due among the ids (or their donor maps). */
+/** --ids after its first pass, with a table: what the resolver still finds due among the ids (or their donor maps),
+ *  each judged by its own keys (272: a roster change marked the whole fleet, the ids just recorded included, every pass). */
 function idsResolve(definition, fullState, state) {
-  const scope = new Set(idsScope(definition, fullState, state).ids);
-  const due = resolveChanged(state, readManifest(root), { steps: [definition.name] })[definition.name];
-  const ids = due.ids.filter((id) => scope.has(id));
-  return { mode: ids.length ? 'ids' : 'none', ids, reasons: due.reasons };
+  const scope = idsScope(definition, fullState, state).ids;
+  const due = resolveChanged(state, readManifest(root), { steps: [definition.name], only: scope })[definition.name];
+  return { mode: due.ids.length ? 'ids' : 'none', ids: due.ids, reasons: due.reasons };
 }
 
 /**
@@ -377,7 +377,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
   const skipped = run.skipped ?? {};
-  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned oracle, a page error) is stamped with its
+  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned input, a page error) is stamped with its
   // reason, so it reads current until what would make it runnable moves; one it cannot name stays due
   const stamps = {}, unnamed = [];
   for (const [id, why] of Object.entries(skipped)) {
@@ -452,7 +452,10 @@ async function cpuFixpoint(firstPassFull) {
   const left = resolveChanged(state, readManifest(root), { steps: CPU_FIXPOINT_STEPS.filter(selected) });
   const moving = Object.entries(left).filter(([, entry]) => entry.mode !== 'none');
   if (moving.length && !DRY) {
-    throw new Error(`CPU steps still moving after ${MAX_PASSES} passes: ${moving.map(([name, entry]) => `${name}[${entry.ids.slice(0, 8).join(',')}]`).join(' ')}`);
+    // (272) mode, count and why: "controls[m1a1,...]" (the first 8 of a whole-fleet "full 311 (roster)") read as 8 ids moving
+    const why = (entry) => (entry.reasons['*'] ?? [...new Set(Object.values(entry.reasons).flat())]).slice(0, 3).join('; ');
+    throw new Error(`CPU steps still moving after ${MAX_PASSES} passes: ${moving.map(([name, entry]) =>
+      `${name} ${entry.mode} ${entry.ids.length} [${entry.ids.slice(0, 8).join(',')}${entry.ids.length > 8 ? ',...' : ''}] (${why(entry)})`).join(' ')}`);
   }
 }
 
@@ -571,14 +574,16 @@ try {
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
     const worldNames = NO_WORLD ? [] : WORLD_NAMES.filter(selected);
     if (worldNames.length && !state.world) throw new Error(`this tree has no world rows (${state.errors.join('; ') || 'no map registry'})`);
-    summary.final = { ...resolveChanged(state, readManifest(root), { steps: names }),
-      ...(worldNames.length ? resolveChanged(state.world, readManifest(root), { steps: worldNames }) : {}) };
+    // --ids answers for its own ids (and the maps it ran), each by its own keys: other ids may still be due (a roster
+    // change among them), which the plain chain resolves
+    const only = IDS ? [...new Set([...IDS, ...summary.runs.filter((run) => WORLD_NAMES.includes(run.step)).flatMap((run) => run.ids)])] : null;
+    summary.final = { ...resolveChanged(state, readManifest(root), { steps: names, only }),
+      ...(worldNames.length ? resolveChanged(state.world, readManifest(root), { steps: worldNames, only }) : {}) };
     if (IDS) {
-      // --ids answers for its own ids (and the maps it ran): other ids may still be due, which the plain chain resolves
-      const mine = new Set([...IDS, ...summary.runs.filter((run) => WORLD_NAMES.includes(run.step)).flatMap((run) => run.ids)]);
       for (const [name, entry] of Object.entries(summary.final)) {
-        const ids = TABLE_CURRENT ? entry.ids.filter((id) => mine.has(id)) : [];
-        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_CURRENT ? {} : { unrecorded: true }) };
+        const ids = TABLE_CURRENT ? entry.ids : [];
+        // (272) the resolver's reasons stay with the ids: the summary used to write `reasons: {}` (due for nothing)
+        summary.final[name] = { ...entry, mode: ids.length ? 'ids' : 'none', ids, ...(TABLE_CURRENT ? {} : { reasons: {}, unrecorded: true }) };
       }
       if (!TABLE_CURRENT) log(`[regen] ${UNRECORDED}: no rows recorded, no final resolve; run the release check for these ids next`);
     }
@@ -593,6 +598,9 @@ try {
       if (!entry.ids.length) entry.mode = 'none';
       log(`[regen] final ${name}: ${notRunnable.length} id(s) not runnable here stay due (${notRunnable.slice(0, 6).join(', ')})`);
     }
+    // (272) an id due for no reason is a resolver or summary bug, never a state to report as due
+    const unexplained = unexplainedIds(summary.final);
+    if (unexplained.length) throw new Error(`final resolve marks ids due without a reason: ${unexplained.slice(0, 12).join(' ')}`);
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
     for (const [name, entry] of Object.entries(summary.final)) {
       const stamped = Object.keys(entry.stamped ?? {}).length;

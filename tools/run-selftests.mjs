@@ -20,7 +20,6 @@ import { admissionOrder, createRuntimeIndex, DURATION_SNAPSHOT_URL, durationSnap
 // before acquisition. Those ordinary tests run under the runner's lease only
 // with COT_SELFTEST_CPU_LEASE=1 (selftestCpuLease); by default they take none.
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
-  'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',

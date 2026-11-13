@@ -108,8 +108,8 @@ function gunAndAirChecks(tank,label) {
     near(top(mount,0,z),y,.003,`${label}: actual pitched boot roof ${z}`);
   const cage=tank.root.getObjectByName('turretOpenLattice');
   assert.ok(cage?.isMesh,`${label}: actual semantic open lattice`);
-  // Complete source includes sagging cables from cage_turret_12_1. The old
-  // frame-only oracle falsely called (.11,1.86) and (.38,1.83) empty slots.
+  // The measured cage includes sagging cables. The old
+  // frame-only check falsely called (.11,1.86) and (.38,1.83) empty slots.
   for(const [x,y]of[[.02,1.84],[.11,1.90],[.38,1.88],[-.36,1.83]])
     assert.ok(!hit(cage,v(x,y,-2.6),v(0,0,1),.35),`${label}: held-out rear cage slot ${x}`);
   for(const [x,y,z]of[[.11,1.86,-2.470823],[.38,1.83,-2.471500]])

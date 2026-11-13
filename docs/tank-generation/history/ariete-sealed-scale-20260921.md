@@ -50,7 +50,7 @@ The existing gate still requires sealed status and limits regressions above this
 
 ## Evidence
 
-- Durable scalar/per-pixel receipt: `docs/history/research/ariete-sealed-scale-20260921.json`, SHA256 `f66da442333e6bc00101802cc15d037a86d930bad2cc4cebae61c2176505c81d`.
+- Durable scalar/per-pixel receipt: `docs/tank-generation/history/ariete-sealed-scale-20260921.json`, SHA256 `f66da442333e6bc00101802cc15d037a86d930bad2cc4cebae61c2176505c81d`.
 - Complete local proof: `.qa-dev/ariete-integration/sealed/replay-r1/summary.json`, with six result JSONs and diagnostic PNGs beside it; exact hash is recorded in the durable receipt.
 - Native triangle dumps: `.qa-dev/ariete-integration/sealed/{baseline,current}-tris.json`; exact input/file hashes and before/after source inventories are retained.
 - Original failed release: `.qa-dev/ariete-family/release-r1.log`; hash retained in the durable receipt.
