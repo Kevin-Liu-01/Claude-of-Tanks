@@ -302,4 +302,4 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 console.log(JSON.stringify({ receipts, lobeTriangles, budget: budgetRows }));
-console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, impostor pools (2 draws / species, 2 tris / far tree) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, deterministic bake inputs, lobes without a renderer and on mobile PASS');
+console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, one impostor pool for every species and far variant (1 draw, 2 tris / far tree, the cell and needle share per instance) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, deterministic bake inputs, lobes without a renderer and on mobile PASS');
