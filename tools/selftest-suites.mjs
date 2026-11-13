@@ -1843,6 +1843,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadioInterrupt.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/turretRingGrind.selftest.mjs', // 273: a damaged turret ring's grind is one held loop, faded at its edges
     // 2026-11-03 (impact-materials-269): every impact sounds of what it struck; only steel rings
     'src/audio/impactMaterials.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',

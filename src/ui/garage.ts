@@ -1900,9 +1900,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       button.setAttribute('aria-hidden', String(!available));
     }
   };
-  const queueCarouselAffordances = () => requestAnimationFrame(syncCarouselAffordances);
+  // (273) one sync a frame however many asks it gets (the window's resize, the strip's own, a selection): each ask used to
+  // queue a frame of its own
+  let carouselFrame = 0;
+  const queueCarouselAffordances = (): void => {
+    if (carouselFrame) return;
+    carouselFrame = requestAnimationFrame(() => { carouselFrame = 0; syncCarouselAffordances(); });
+  };
   cardsEl.addEventListener('scroll', syncCarouselAffordances, { passive: true });
-  window.addEventListener('resize', queueCarouselAffordances);
   // the strip's own width also settles without a window resize (the bar's fonts, the battle card beside it), and the fit
   // follows it
   if (typeof ResizeObserver === 'function') new ResizeObserver(queueCarouselAffordances).observe(cardsEl);
@@ -1971,7 +1976,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (back.offsetWidth === widths[0] && on.offsetWidth === widths[1]) break;
     }
   };
-  const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
+  // (273) one sync a frame, as the carousel's
+  let countryRailFrame = 0;
+  const queueCountryRailAffordances = (): void => {
+    if (countryRailFrame) return;
+    countryRailFrame = requestAnimationFrame(() => { countryRailFrame = 0; syncCountryRailAffordances(); });
+  };
   // a nation's count changes its width (a search's "0", a filter's tally): the rail measures again where the flags moved
   const countryChipResize = typeof ResizeObserver === 'function' ? new ResizeObserver(queueCountryRailAffordances) : null;
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
@@ -1994,7 +2004,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     chipsEl.scrollLeft = target;
     syncCountryRailAffordances();
   }, { passive: false });
-  window.addEventListener('resize', queueCountryRailAffordances);
 
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
@@ -2060,7 +2069,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       statsEl.style.removeProperty('--cot-dossier-tail-fade');
     }
   };
-  window.addEventListener('resize', syncScrollFades);
   statsEl.addEventListener('scroll', syncScrollFades, { passive: true });
   requestAnimationFrame(syncScrollFades);
   // A scrolling paint grid stands a whole number of rows tall, so the sheet never ends on a sliced row (the gauntlet
@@ -2093,11 +2101,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // swatch's picture takes the row's height (showroom.css)
     if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false, document.body.dataset.cotPanels === 'persistent', CAMO_FIT_SHRINK_PX));
   };
-  window.addEventListener('resize', fitCamoRows);
-  window.addEventListener('resize', () => {
-    const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .cot-c-picker__grid');
-    if (grid) holdGridHeight(grid, fitPickerGrid);
-  });
+  // (273) The window's resize, once a frame (viewportRuntime's pending-flag pattern): a dragged window edge fires it more
+  // often than frames, and its five listeners each measured the Garage, three of them writing the layout and reading it
+  // back on the spot. The grids' whole rows first (they set heights), then the reads they settle: the paint sheet's and
+  // the dossier's fades, the carousel's and the nation rail's affordances.
+  let resizeFrame = 0;
+  const queueGarageResize = (): void => {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      fitCamoRows();
+      const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .cot-c-picker__grid');
+      if (grid) holdGridHeight(grid, fitPickerGrid);
+      syncScrollFades();
+      syncCarouselAffordances();
+      syncCountryRailAffordances();
+    });
+  };
+  window.addEventListener('resize', queueGarageResize);
   // The dossier's flex height can settle after the first animation frame,
   // so window resize alone is insufficient to keep the fade affordance true.
   function observeScrollFadeSize(): void {

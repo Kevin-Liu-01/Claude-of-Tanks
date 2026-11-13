@@ -281,6 +281,9 @@ world strike once each 0.1 s per shooter (an airstrike's strafe in full); a held
 fast gun's hit calls keep their queued moment instead of waiting for the burst to pause (crewRadio `burst`); a hull
 going straight back to the ground it just left within 0.4 s keeps its track loops; one prop break reported twice in a
 frame plays once; and a hull's landings come at most every 0.3 s.
+A damaged turret ring grinds as one held loop while the turret slews on it (release 273): faded in at the slew's edge,
+held through a servo's flicker, faded out 0.12 s after the slew stops, the ring is repaired or our hull is destroyed
+(`turretRingGrind.selftest`); a 0.6 s cut of the loop used to restart every 0.2 s, each start a click.
 
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
