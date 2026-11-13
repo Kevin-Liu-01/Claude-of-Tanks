@@ -23,6 +23,8 @@ import { POLDERS_VILLAGE } from './poldersVillage.ts'; // the maps lane, 2026-10
 
 /** The farm court's settlement rect (terrain.village below). */
 const VILLAGE = { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 };
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** The polder's dykes (step 1): embankments with level crests (landformGeology.ts profile 'dyke'). */
 const DYKE = { profile: 'dyke' as const, crest: 0.25 };
@@ -309,7 +311,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Zeeland polder kit (maps/regional/polder.ts)
-    architecture: 'polder',
+    architecture: BUILDING_STYLES.polders.kit,
     sourcedPalette: 'coastal',
     // The landmarks lane (2026-10-05; src/world/landmarks/): the old land in the west keeps its brick tower mills, the new
     // polders in the east were drained by the steel windmotors — one stellingmolen on the field drain's east bank, one at
@@ -388,7 +390,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true, yardClutterClear: true, hedgehogsAtApproaches: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.polders,
     // (step 3) the free-standing garden runs in planks, the polder kit's own yard fence (waves 183–184)
     inhabit: { stalls: 2, benches: 3, coreClutter: 18, bales: 12, stooks: 12, troughs: 2, laundry: 3, handcarts: 3, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },

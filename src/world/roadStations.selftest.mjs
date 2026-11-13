@@ -26,8 +26,8 @@ const names = ['placeFenceRun', 'scatterDestructibles', 'fenceRun', 'placeRoadFe
   // (2026-10-07, the map-vehicles lane) a road cart's station refuses a seat past the carts' tilt cap
   'cartGroundPose'];
 // (destruction-350) the placed-hulk budget is a const of the props build's own scope: the extracted road wrecks read it
-// as production sets it
-const wreckBudgetMatch = /const WRECK_TRIS_BUDGET = (\d+);/.exec(source);
+// as production sets it (wrecks-270: a map reverted whole to base keeps main's budget; the fixture is a lane cast)
+const wreckBudgetMatch = /const WRECK_TRIS_BUDGET = baseWrecks \? \d+ : (\d+);/.exec(source);
 assert.ok(wreckBudgetMatch, 'the props build sets its placed-hulk budget');
 const definitions = names.map(name => {
   assert.ok(functions.has(name), `execute the actual production ${name}`);
@@ -46,7 +46,7 @@ const factory = new Function('deps', `
   const noVeg = heightField._noVeg, v = L.village, town = P?.town ? { ...v, ...P.town } : v, placedB = [], seed = fixtureSeed;
   const frng = mulberry32(seed + 606);
   const junction = { x: 0, z: 0 };
-  const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0, WRECK_TRIS_BUDGET = ${wreckBudgetMatch[1]};
+  const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0, WRECK_TRIS_BUDGET = ${wreckBudgetMatch[1]}, baseWrecks = false;
   // (props lane A, #14, 2026-10-14) a toppled post is the map's own lamp fallen (streetForms.ts toppledLamp), seated in the
   // baked bucket: the fixture records where it lies, as it recorded the old dark bar
   const mapId = 'fixture', streetLampFormOf = () => null, conformYardPiece = () => {};
@@ -167,7 +167,8 @@ for (let i = 1; i < physicalPoles.utilityPolePlacements.length; i++) {
 for (const stage of stages) {
   const before = fixture(originalLayout), after = fixture(completedLayout), naked = fixture(layout(extended));
   for (const item of [before, after, naked]) {
-    const result = item.methods[stage]();
+    // (wrecks-270) the road pass places up to the quota its caller gives it: here the fixture's whole wreckCount
+    const result = item.methods[stage](...(stage === 'placeRoadWrecks' ? [5] : []));
     if (result?.next) [...result];
   }
   for (const key of ['records', 'poles', 'utilityPolePlacements', 'wreckRecords', 'fenceRuns', 'fallenLamps', 'draws']) {

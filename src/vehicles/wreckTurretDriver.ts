@@ -45,21 +45,53 @@ export interface WreckTurretDriverOptions {
   landing(x: number, y: number, z: number, speedMps: number): void;
 }
 
+/**
+ * (2026-11-02 audit F10) Who poses a kill's turret, as one declared mode (it was four closure flags):
+ *  - inactive:     no kill (or a vehicle with no turret body);
+ *  - pending:      begun; the first update decides (an authority's pose, else our own body);
+ *  - local:        no authority: our own body thrown from the seat (a composition, the Studio, a killcam's victim);
+ *  - awaiting:     an authority will send the poses: the turret holds where it is until the first one;
+ *  - external:     drawn at the authority's pose every frame it speaks;
+ *  - continuation: the authority went quiet mid-flight (a killcam froze the simulation): our body carries its motion
+ *                  on, and gives way the moment it speaks again.
+ * An authority declared before the kill (awaitExternal or a pose while inactive) holds for the next begin; reset()
+ * clears it.
+ */
+export type WreckTurretDriverMode = 'inactive' | 'pending' | 'local' | 'awaiting' | 'external' | 'continuation';
+
 export interface WreckTurretDriver {
   /**
    * The kill: the hull's root and the turret's seat as they stand now. `explicitAge` (a composer's frozen age) runs
-   * the local body to that age at once; without it the driver waits a frame for an authoritative pose.
+   * the local body to that age at once (unless an authority was declared: its pose places the turret); without it the
+   * driver waits a frame for an authoritative pose.
    */
   begin(pop: boolean, seat: THREE.Vector3, explicitAge: number | null): void;
-  /** An authoritative turret frame pose for this frame ([x, y, z, qx, qy, qz, qw], world), or null. */
+  /**
+   * An authoritative turret frame pose ([x, y, z, qx, qy, qz, qw], world), drawn at the next update; null: none this
+   * frame (a pose not yet drawn still stands). Before a kill it declares the authority for the next one.
+   */
   setExternal(pose: ArrayLike<number> | null): void;
-  /** An authority will send this turret's pose (a body-carrying host): hold the seat until it does, never simulate. */
+  /**
+   * An authority will send this turret's pose (a body-carrying host): hold the turret until it does, never simulate.
+   * Valid before begin (it holds for the next kill) as after it.
+   */
   awaitExternal(): void;
+  /**
+   * (2026-11-02 audit F10) A late cook-off cause on a plain kill (wreckLifecycle.ts 'upgrade'): the trail from now on,
+   * and a turret this driver throws itself goes again with the cook-off's launch law. An authority's turret flies as
+   * its authority threw it.
+   */
+  upgradePop(): void;
   /** Place the turret for wreck age `ageS` (fx clock), `adv` seconds after the last call. Returns true while it flies. */
   update(ageS: number, adv: number): boolean;
   /** The turret's world position (frame origin) as last placed, into `out`; false before a placement. */
   worldPosition(out: THREE.Vector3): boolean;
+  /** The frame pose last placed into `out` (7) while an authority holds this turret; false when none holds it or no
+   *  pose was placed (the killcam re-wrecks a restaged victim where its authority had the turret). */
+  heldPose(out: Float64Array): boolean;
   reset(): void;
+  /** Who poses the turret now. */
+  readonly mode: WreckTurretDriverMode;
   /** Placing a kill's turret now. */
   readonly active: boolean;
   /** This vehicle has a turret body (a casemate has none: the factory's own pose stands). */
@@ -70,7 +102,9 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   const profile: WreckTurretProfile | null = (() => {
     try { return wreckTurretProfile(o.spec, 1); } catch { return null; }
   })();
-  let active = false;
+  let mode: WreckTurretDriverMode = 'inactive';
+  /** an authority declared before the kill (awaitExternal, or a pose while inactive): the next begin awaits it */
+  let authorityNext = false;
   let pop = false;
   // the turret frame at the kill: world pose and scale, and the offset of the drawn group's seat within it
   const deathRoot = new THREE.Matrix4();
@@ -87,7 +121,6 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   // the authoritative pose of this frame
   const external = new Float64Array(7);
   let externalFresh = false;
-  let externalSeen = false;
   // the local body
   let world: RigidWorld | null = null;
   let localSlot = -1;
@@ -107,6 +140,8 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
   const _m = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _local = new THREE.Matrix4(), _off = new THREE.Matrix4();
   const _rootWorld = new THREE.Matrix4();
   const placed = new THREE.Vector3();
+  /** the frame pose last placed (heldPose) */
+  const placedPose = new Float64Array(7);
   let hasPlaced = false;
   // trail and landing state
   let trailAcc = 0;
@@ -240,22 +275,26 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
     _local.multiplyMatrices(_inv, _m);
     _local.decompose(o.turret.position, o.turret.quaternion, o.turret.scale);
     placed.set(framePose[0], framePose[1], framePose[2]);
+    for (let k = 0; k < 7; k++) placedPose[k] = framePose[k];
     hasPlaced = true;
   }
 
   const driver: WreckTurretDriver = {
-    get active() { return active; },
+    get mode() { return mode; },
+    get active() { return mode !== 'inactive'; },
     drives: !!profile?.shape,
     begin(popped, seat, explicitAge) {
-      active = !!profile?.shape;
+      const authority = authorityNext;
+      authorityNext = false;
+      mode = !profile?.shape ? 'inactive' : authority ? 'awaiting' : 'pending';
       pop = popped;
-      externalFresh = false;
-      externalSeen = false;
+      // a pose the authority sent before the kill (declared with it) is the kill's first
+      if (!authority) externalFresh = false;
       extLastAge = -1; extPrevAge = -1;
       world = null; localSlot = -1; localDone = false; trackLength = 0; localSteps = 0; localStartAge = 0;
       trailAcc = 0; prevY = NaN; prevVy = 0; landingCooldown = 0; lastAge = -1; hasPlaced = false;
       gunStart = o.gun.rotation.x; gunAge = 0;
-      if (!active || !profile) return;
+      if (mode === 'inactive' || !profile) return;
       rootWorld(deathRoot);
       deathRoot.decompose(_p, _q, deathRootScale);
       scale = deathRootScale.x || 1;
@@ -271,8 +310,12 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       lastTrail.copy(startPos);
       lastPos.copy(startPos);
       if (explicitAge !== null && explicitAge > 0) {
+        // the gun lies dead at a composer's later age whoever poses the turret
+        o.gun.rotation.x = WRECK_GUN_DROOP_RAD;
+        if (mode === 'awaiting') { gunAge = 1; return; }
         // a composer's later age (a staged still mid-flight): the local body now, to that age. At age 0 the turret
         // stands on its seat: the first update decides (an authority's pose, a killcam's track, or our own body)
+        mode = 'local';
         startLocal(false, explicitAge);
         advanceLocal(explicitAge);
         if (sampleLocal(explicitAge)) place();
@@ -281,20 +324,37 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       }
     },
     setExternal(pose) {
-      if (!pose) { externalFresh = false; return; }
+      if (!pose) return;
       for (let k = 0; k < 7; k++) external[k] = pose[k];
       externalFresh = true;
-      externalSeen = true;
+      if (mode === 'inactive') authorityNext = true;
     },
-    awaitExternal() { externalSeen = true; },
+    awaitExternal() {
+      if (mode === 'inactive') { authorityNext = true; return; }
+      if (mode === 'pending' || mode === 'local') mode = 'awaiting';
+    },
+    upgradePop() {
+      if (mode === 'inactive' || pop) return;
+      pop = true;
+      // our own launch (no authority, no continuation of one): thrown again from the seat on the next update
+      if (mode === 'pending' || mode === 'local') {
+        world = null; localSlot = -1; localDone = false; trackLength = 0; localSteps = 0; localStartAge = 0; trailAcc = 0;
+      }
+    },
+    heldPose(out) {
+      if (!hasPlaced || (mode !== 'external' && mode !== 'awaiting' && mode !== 'continuation')) return false;
+      for (let k = 0; k < 7; k++) out[k] = placedPose[k];
+      return true;
+    },
     update(ageS, adv) {
-      if (!active) return false;
+      if (mode === 'inactive') return false;
       let have = false;
       if (externalFresh) {
         for (let k = 0; k < 7; k++) framePose[k] = external[k];
         externalFresh = false;
         have = true;
-        // the authority speaks again: any continuation of ours gives way to it
+        // the authority speaks (again): any body of ours gives way to it
+        mode = 'external';
         if (world) { world = null; localSlot = -1; trackLength = 0; }
         if (ageS > extLastAge + 1e-6) {
           for (let k = 0; k < 7; k++) extPrev[k] = extLast[k];
@@ -302,13 +362,15 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
           for (let k = 0; k < 7; k++) extLast[k] = external[k];
           extLastAge = ageS;
         }
-      } else if (!externalSeen) {
+      } else if (mode === 'pending' || mode === 'local') {
         // no authority speaks for this turret: the local body (lazy: the first frame without one)
+        mode = 'local';
         startLocal(false, ageS);
         advanceLocal(ageS);
         have = sampleLocal(ageS);
-      } else if (extLastAge >= 0 && ageS > extLastAge + 1e-6 && adv > 0) {
+      } else if ((mode === 'external' || mode === 'continuation') && extLastAge >= 0 && ageS > extLastAge + 1e-6 && adv > 0) {
         // the authority went quiet while our clock runs (a killcam froze the simulation): carry its motion on
+        mode = 'continuation';
         startLocal(true, ageS);
         advanceLocal(ageS);
         have = sampleLocal(ageS);
@@ -355,9 +417,9 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       return true;
     },
     reset() {
-      active = false;
+      mode = 'inactive';
+      authorityNext = false;
       externalFresh = false;
-      externalSeen = false;
       world = null;
       localSlot = -1;
       trackLength = 0;

@@ -12,6 +12,8 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 /** The fractured blocks' conglomerate (sceneryRocks.ts 'breccia': its clasts the pebbles): Queenstown's pink and
@@ -162,7 +164,7 @@ export default {
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
-    architecture: 'queenstown',
+    architecture: BUILDING_STYLES.copper_mesa.kit,
     sourcedPalette: 'foundry',
     // (round 2, the gauntlet's wave 117: more of the town — the second warehouse and depot seats are cottage rows)
     // (round 3: the town authored lot by lot, QUEENSTOWN_TOWN above; no roadside plan)
@@ -190,7 +192,7 @@ export default {
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
     // AS1
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5_2', 'leo1a5'] },
+    tankWrecks: WRECK_CASTS.copper_mesa,
     inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 6, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: the town stood in the east corner and 42 % of the playable square lay more than 30 m from

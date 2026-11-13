@@ -1436,24 +1436,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18152,
-      "sha256": "a52ee6b6ef4f4bcb8c380018921143e0c433ef2f57509d9e6458550f278aa3b0"
+      "bytes": 18200,
+      "sha256": "7e7f8dc4a0556664d09f550aa0da4bb582b67c7863405c431751c9a35b759e61"
     },
     "modulesSide": {
       "file": "leo2a6m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18194,
-      "sha256": "ef6bad5f429c2dbf07712bcd2e363741937f9ea6bccdecfbb403e5df642419cb"
+      "bytes": 18214,
+      "sha256": "7431f73bea387aa08bdd635239e41868ace85259a4eeb4083def525d48734ff1"
     },
     "crewSide": {
       "file": "leo2a6m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15930,
-      "sha256": "400a0eaa69030b42116f8e30c6b0c5f5634e8d539212ea155afb3c75d403d636"
+      "bytes": 15926,
+      "sha256": "6d0305ed7afb77e1e6c427af77bc5fc3066265f007248b01ca8543854cc72f43"
     },
     "angle": {
       "file": "leo2a6m_angle.webp",
@@ -1468,7 +1468,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11498,
-        "sha256": "95206b184879c92ba1b75de6b976ea74b6e9bac676e35de36e09c1b6bf59de30"
+        "sha256": "95206b184879c92ba1b75de6b976ea74b6e9bac676e35de36e09c1b6bf59de30",
+        "frame": [20,123,228,249]
       }
     },
     "top": {
@@ -1484,8 +1485,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10892,
-      "sha256": "91d6720bae55a30aa722c589a4d408f2b5420202263769209f1c31aeae115341"
+      "bytes": 10890,
+      "sha256": "ad0c7c8f533feb4911875786a9e32cba9502491699468b51a1f95c5101ba5d4f"
     },
     "topSilhouette": {
       "file": "leo2a6m_top_silhouette.png",
@@ -1508,8 +1509,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34116,
-      "sha256": "05fecf85f6bb73bf8f37acaa1544ed305534880d21c294fe2170940ee27997a5"
+      "bytes": 31276,
+      "sha256": "cd4381119626a55fc2457d55f7667551acdb238acae8e2071bc3ab5abfb7c9f3"
     },
     "technicalLabels": {
       "file": "leo2a6m_technical.json",

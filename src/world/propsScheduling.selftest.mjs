@@ -10,6 +10,8 @@ import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './ro
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
+import { WRECK_STATES, WRECK_VIEW_M, statesForSite, wreckLook } from './wreckStates.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -44,9 +46,10 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
     args.push(values);
     return yield* nested;
   }
+  // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    'bakeTankWreckSteps', wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake);
+    'bakeTankWreckSteps', 'assertNoBuildScopeOpen', wrapper + '\nreturn createPropsAsync;')(build, acquire,
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake, assertNoBuildScopeOpen);
   return { run, events, runtime, args };
 }
 
@@ -233,7 +236,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
 }
 
 {
-  const calls = [], request = { specId: 't90am', options: { seed: 2002, pop: true }, result: null };
+  const calls = [], request = { specId: 't90am', options: { seed: 2002, state: 'burnt_out' }, result: null };
   const baked = {};
   const client = {
     prepare() {},
@@ -262,7 +265,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const failure = new Error('worker transfer failed');
   let disposed = 0;
   const client = { prepare() {}, async bake() { throw failure; }, dispose() { disposed++; } };
-  const request = { specId: 'xk2_black_panther', options: { seed: 7, pop: true }, result: null };
+  const request = { specId: 'xk2_black_panther', options: { seed: 7, state: 'turret_blown_off' }, result: null };
   const fallback = { specId: 'xk2_black_panther', mainThread: true };
   const acquired = [];
   const f = fixture([{ fine: true, wreckBake: request }], async (id) => { acquired.push(id); }, undefined, client,
@@ -285,8 +288,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
   const calls = [];
   const client = { prepare() { calls.push('prepare'); }, async bake(id) { calls.push(['bake', id]); return { id }; },
     dispose() { calls.push('disposed'); } };
-  const planned = { specId: 'm60a2', options: { seed: 2002, pop: true }, result: null };
-  const unplanned = { specId: 'xk2_black_panther', options: { seed: 2133, pop: false }, result: null };
+  const planned = { specId: 'm60a2', options: { seed: 2002, state: 'overturned' }, result: null };
+  const unplanned = { specId: 'xk2_black_panther', options: { seed: 2133, state: 'burnt_out' }, result: null };
   const prefetch = { take: (specId) => (specId === 'm60a2' ? Promise.resolve({ id: 'planned' }) : null) };
   const f = fixture([{ fine: true, progress: false, wreckBake: planned }, { fine: true, progress: false, wreckBake: unplanned }],
     undefined, undefined, client);
@@ -337,20 +340,20 @@ for (const failureAt of ['tick', 'import', 'generator']) {
     code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
-  const abandoned = bake('xk2_black_panther', true);
+  const abandoned = bake('xk2_black_panther', 'turret_blown_off');
   const step = abandoned.next().value;
-  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true, remnant: 0x4e5834 });
+  assert.deepEqual(step.wreckBake.options, { seed: 2002, state: 'turret_blown_off', remnant: 0x4e5834 });
   step.wreckBake.result = { geo, shadowGeo };
   abandoned.return();
   assert.deepEqual(disposed, [geo, shadowGeo]);
   assert.equal(cache.size, 0);
   disposed.length = 0;
-  const adopted = bake('xk2_black_panther', true);
+  const adopted = bake('xk2_black_panther', 'turret_blown_off');
   adopted.next().value.wreckBake.result = { geo, shadowGeo };
   assert.deepEqual(adopted.next(), { done: true, value: { geo, shadowGeo } });
   assert.deepEqual(disposed, [], 'cache owns successful transfer');
   assert.equal(cache.size, 1);
-  assert.equal(bake('xk2_black_panther', true).next().done, true, 'cached recipe never queues a duplicate worker job');
+  assert.equal(bake('xk2_black_panther', 'turret_blown_off').next().done, true, 'cached recipe never queues a duplicate worker job');
 }
 
 {
@@ -438,7 +441,8 @@ for (const failureStage of ['tick', 'builder']) {
 // Exercise the actual nested placement generator. Only geometry/terrain/bake
 // dependencies are small fixtures; donor selection and success/rejection
 // ordering below are production source, not a second selection algorithm.
-const placementStart = source.indexOf('      function* placeWreck(');
+// (wrecks-270) from the donor-and-state picker the placement calls
+const placementStart = source.indexOf('      function chooseWreckBake(');
 const placementEnd = source.indexOf('\n      let placedW = 0;', placementStart);
 assert.ok(placementStart > 0 && placementEnd > placementStart);
 const placementSource = stripTypeScriptTypes(source.slice(placementStart, placementEnd));
@@ -456,8 +460,10 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     ...outputs, pool: wreckCast,
     wCfg: { debris: false, ...(authored ? { ids: wreckCast } : {}) },
     wrng() { state.randomCalls++; return random(); },
-    *bakeFor(specId, pop) {
-      state.bakes.push({ specId, pop });
+    // (wrecks-270) a hulk's bake is its donor and damage state; the picker keeps the bakes already standing in view
+    castStates: WRECK_STATES, statesForSite, wreckLook, WRECK_VIEW_M, placedBakes: [],
+    *bakeFor(specId, wreckState) {
+      state.bakes.push({ specId, state: wreckState });
       try { yield { fine: true, stage: 'fixture-bake' }; return state.nullBake ? null : baked; }
       finally { state.bakeDrains++; }
     },
@@ -482,11 +488,15 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
     // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
     deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
+    // nor nearer a spawn than the spawn floor (wrecks-270): the fixture's spawns stand far off
+    L: { spawns: { player: { x: 1e9, z: 1e9 }, enemies: [] } }, WRECK_SPAWN_CLEAR_M: 36,
     // (sealed lane 2026-10-10) a placed hulk's drawn footprint for the parked vehicles' seat passes (props.ts
     // wreckDrawnFootprints): the fixture runs no seat pass
     pushWreckDrawnFootprint() {},
     // nor is it built as a 180-degree pair (2026-10-11, PropsMapConfig.rotationalCentre: no twin hulks)
     P: {},
+    // (wrecks-270, Main 11-07) the fixture's map is the lane's own cast, not one reverted whole to base
+    baseWrecks: false,
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
@@ -497,8 +507,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
   return { ...api, state, outputs };
 }
 
-function attemptWreck(f) {
-  const steps = f.placeWreck(12, 24, 0.3), checkpoints = [];
+function attemptWreck(f, x = 12, z = 24) {
+  const steps = f.placeWreck(x, z, 0.3, 'roadside'), checkpoints = [];
   try {
     let step = steps.next();
     while (!step.done) { checkpoints.push(step.value); step = steps.next(); }
@@ -523,8 +533,10 @@ function assertRejectedWreckRetry(code = placementSource) {
     'null bake retries the same donor after rejected terrain');
   assertNoPlacement(f);
   f.state.nullBake = false;
+  // (wrecks-270, 11-09) each donor on its own seat 10 m apart: props.ts hulkMeetsTallSolid refuses a hulk through one
+  // placed before it, so a second hulk on the first one's seat is (rightly) rejected
   for (const [index, id] of wreckCast.entries()) {
-    assert.deepEqual(attemptWreck(f), { placed: true, selected: id });
+    assert.deepEqual(attemptWreck(f, 12 + index * 10, 24), { placed: true, selected: id });
     assert.equal(f.selectedSlots(), index + 1, 'only a completed placement consumes one slot');
   }
   assert.deepEqual(f.outputs.tankWreckSpots.map(spot => spot.specId), wreckCast,
@@ -543,17 +555,17 @@ assertRejectedWreckRetry();
 
 // Restore the observed defect in memory: selection itself consumed the slot.
 // The same functional assertion must reject this exact old ordering.
-const selection = 'pool[wreckPickSerial % pool.length]';
+const selection = 'pool[(wreckPickSerial + tries + d) % pool.length]';
 const commitSelection = '        wreckPickSerial++;';
 assert.equal(placementSource.split(selection).length, 2);
 assert.equal(placementSource.split(commitSelection).length, 2);
 const rejectedSelectionControl = placementSource.replace(selection,
-  'pool[wreckPickSerial++ % pool.length]').replace(commitSelection, '');
+  'pool[(wreckPickSerial++ + tries + d) % pool.length]').replace(commitSelection, '');
 assert.throws(() => assertRejectedWreckRetry(rejectedSelectionControl), assert.AssertionError,
   'pre-fix attempt-based selection fails the actual placement regression');
 
 for (const cancelAt of ['builder', 'bake']) {
-  const f = placementFixture(), steps = f.placeWreck(12, 24, 0.3);
+  const f = placementFixture(), steps = f.placeWreck(12, 24, 0.3, 'roadside');
   assert.equal(steps.next().value.tankBuilder, wreckCast[0]);
   if (cancelAt === 'bake') assert.equal(steps.next().value.stage, 'fixture-bake');
   steps.return();
@@ -571,14 +583,40 @@ const seededRandom = new Function(stripTypeScriptTypes(source.slice(rngStart, rn
   .replace('export ', '') + '\nreturn mulberry32;')();
 {
   const random = seededRandom(2911), expectedRandom = seededRandom(2911);
-  const f = placementFixture({ authored: false, random }), expected = [];
+  // (wrecks-270) the cast's donors in turn, each with a state the site shows from one draw; hulks a view apart
+  const f = placementFixture({ authored: false, random }), expected = [], roadside = statesForSite('roadside');
   for (let i = 0; i < 8; i++) {
-    const specId = wreckCast[(expectedRandom() * wreckCast.length) | 0];
-    expected.push({ specId, pop: expectedRandom() < 0.45 });
-    assert.deepEqual(attemptWreck(f), { placed: true, selected: specId });
+    const specId = wreckCast[i % wreckCast.length];
+    expected.push({ specId, state: roadside[(expectedRandom() * roadside.length) | 0] });
+    assert.deepEqual(attemptWreck(f, 12 + i * 2 * WRECK_VIEW_M, 24), { placed: true, selected: specId });
   }
-  assert.deepEqual(f.state.bakes, expected, 'unauthored donors and pop poses retain seeded RNG order');
-  assert.equal(f.state.randomCalls, 16, 'fallback consumes one selection draw and one pose draw');
+  assert.deepEqual(f.state.bakes, expected, 'donors in turn and their states retain seeded RNG order');
+  assert.equal(f.state.randomCalls, 8, 'each placement consumes one state draw');
+}
+{
+  // (wrecks-270, the repeat critic) hulks in one view take a look not already standing there while the site has one,
+  // then a state not already standing there; the donors still go in turn, only the state moves on; once every roadside
+  // state stands in view, one is shared
+  const f = placementFixture({ authored: false, random: () => 0 }), roadside = statesForSite('roadside');
+  const looks = new Set(roadside.map(wreckLook));
+  for (let i = 0; i < roadside.length + 1; i++) {
+    assert.deepEqual(attemptWreck(f, 12 + i * 10, 24), { placed: true, selected: wreckCast[i % wreckCast.length] });
+  }
+  const states = f.state.bakes.map((b) => b.state);
+  assert.equal(new Set(states.slice(0, looks.size).map(wreckLook)).size, looks.size,
+    'each hulk in one view takes a look not yet standing there while the site has one');
+  assert.equal(new Set(states.slice(0, roadside.length)).size, roadside.length,
+    'then a state not yet standing there');
+  assert.ok(roadside.includes(states[roadside.length]), 'a state is shared only once every state stands');
+  const noLook = placementFixture({ authored: false, random: () => 0,
+    code: placementSource.replace(': looksInView.has(wreckLook(state)) ? 1 : 0', ': 0') });
+  for (let i = 0; i < looks.size; i++) attemptWreck(noLook, 12 + i * 10, 24);
+  assert.ok(new Set(noLook.state.bakes.map((b) => wreckLook(b.state))).size < looks.size,
+    'control: without the look rule two hulks in view share a look');
+  const control = placementFixture({ authored: false, random: () => 0,
+    code: placementSource.replace('const rank = donorRank + (', 'const rank = 0 * (') });
+  for (let i = 0; i < 3; i++) attemptWreck(control, 12 + i * 10, 24);
+  assert.equal(new Set(control.state.bakes.map((b) => b.state)).size, 1, 'control: without the rule one state repeats in view');
 }
 
 // Execute the entire unchanged decal owner, including conformed geometry,
@@ -681,6 +719,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     lowStones: { *collectScuffs() {}, releasePendingDiscs() {}, layScuffs() {} },
     // (b44) the contact layer's own material: a multiplicative darkening of the ground (props.ts), sliced with its helper
     contactDarkeningMaterial: contactMaterialFromSource(),
+    // (ground-269) the street-row aprons' hook toward the ground-surface table's town floor (a shader hook: no draw here)
+    apronGroundTableHook: () => {},
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],
@@ -954,6 +994,6 @@ for (const [operation, stage, next] of [
   assert.ok(op > 0 && checkpoint > op && checkpoint < source.indexOf(next, op), stage);
 }
 assert.match(source, /baked = yield\* bakeTankWreckSteps/, 'headless path still uses the cooperative bake');
-assert.match(source, /const baked = yield\* bakeFor\(specId, pop\)/);
+assert.match(source, /const baked = yield\* bakeFor\(specId, state\)/);
 assert.match(source, /finally \{[\s\S]*disposeWreckBakeCache\(\);/);
 console.log('propsScheduling.selftest: real wrapper cadence, cleanup, completed-work boundaries and placement-committed wreck selection pass');

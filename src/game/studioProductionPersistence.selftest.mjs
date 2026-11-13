@@ -12,11 +12,14 @@ import { isStudioTime, normalizeStudioLight, studioTimeFor } from './studioLight
 // theirs; the sandbox gets the same two names the module imports.
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
+import { createSessionHolder, createStudioSession, studioBusy } from './studioSession.ts';
 
 // Execute the real serialization, loading and reframing callers, retaining
 // authored camera positions. A recipe-only round trip misses private format state.
 const source = ts.createSourceFile('studio.ts', readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
-const names = new Set(['stateJson', 'actorStateJson', 'pictureStateEntry', 'load', 'setProductionFormat', 'directProduction']);
+// (2026-11-03 audit F9) and the one busy reading the production entry points ask
+const names = new Set(['stateJson', 'actorStateJson', 'pictureStateEntry', 'load', 'setProductionFormat', 'directProduction', 'busy',
+  'busyFlags', 'productionBusy']); // (round 2) busy() ranks the flags busyFlags() reads
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
@@ -26,11 +29,19 @@ visit(source);
 assert.equal(functions.length, names.size);
 const create = new Function('ports', `
   const {createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
-    NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, sceneInCurrentTankIds, TANK_IDS} = ports;
+    NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, sceneInCurrentTankIds, TANK_IDS, session, studioBusy,
+    createSessionHolder} = ports;
+  session.open(session.beginEntry()); // an open Studio: the build checks its session after every await
+  const t=key=>key;
   let picture=NEUTRAL_PICTURE, pictureApplied=0;
   const applyPictureRuntime=()=>{pictureApplied++;};
-  let sceneFilm=null; const filmRenderer={active:false}, getFilm=()=>sceneFilm;
-  let productionFormat='landscape', productionLoading=false, loading=false, recording=false;
+  let sceneFilm=null, filmExport=null; const filmRenderer={active:false}, getFilm=()=>sceneFilm;
+  let productionFormat='landscape', productionOwnsLoad=false, recording=false;
+  let filming=false, mapChange=null;
+  // (round 2 U36) the Studio's session-owned holders
+  const sceneLoad=createSessionHolder(), staging=createSessionHolder(), historyRestore=createSessionHolder();
+  const relighting=createSessionHolder();
+  let releaseLight=null;
   let storyboard={shots:[],durationMs:8000}, clockMs=0, timeScale=0, timeOfDay='day', selectedShotId=null;
   let camera={pos:[0,4,-10],lookAt:[0,1.7,0],fov:40,rollDeg:0}, map='verdant', replacements=0, refreshed=[];
   const actors=[], effectLog=[], sceneMeta={seed:5000};
@@ -44,7 +55,8 @@ const create = new Function('ports', `
   const setStoryboard=next=>{storyboard=structuredClone(next);};
   const pauseTimeline=()=>{}, invalidate=()=>{}, r2=v=>v;
   const panel={refreshAll:()=>refreshed.push(productionFormat)};
-  const setMap=async id=>{map=id;}, ensureLoadMap=async json=>setMap(json.map||'verdant');
+  let mapGate=null;
+  const setMap=async id=>{if(mapGate)await mapGate;map=id;}, ensureLoadMap=async json=>{await setMap(json.map||'verdant'); return session.token();};
   const setTimeOfDay=async time=>{timeOfDay=time;};
   const replaceLoadActors=async()=>{replacements++;};
   const loadedStoryboard=json=>structuredClone(json.storyboard||{shots:[],durationMs:8000});
@@ -58,11 +70,15 @@ const create = new Function('ports', `
   const selectActor=()=>{},setRailVisible=()=>{};
   const post={};
   ${stripTypeScriptTypes(functions.join('\n'))}
-  return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied})};
+  return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied}),
+    setFilming:(value)=>{filming=value;},
+    setLightChanges:(value)=>{releaseLight?.();releaseLight=value?relighting.take(session.token()):null;},
+    holdMap:()=>{let release;mapGate=new Promise((resolve)=>{release=resolve;});return ()=>{mapGate=null;release();};}};
 `);
 const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
   NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, isStudioTime, normalizeStudioLight, studioTimeFor,
-  normalizeStudioFx, studioFxState, sceneInCurrentTankIds, TANK_IDS, Vector3 });
+  normalizeStudioFx, studioFxState, sceneInCurrentTankIds, TANK_IDS, Vector3, session: createStudioSession(), studioBusy,
+  createSessionHolder });
 for (const format of ['portrait', 'square', 'landscape']) {
   const recipe = createProductionScene({ presetId:'steel-pursuit', format }, () => 0);
   assert.equal(recipe.productionFormat, format, 'CLI recipes carry their actual framing');
@@ -110,4 +126,37 @@ assert.equal(runtime.stats().replacements, replaced, 'an invalid picture fails b
 assert.equal(runtime.stats().pictureApplied, applied);
 await runtime.load(legacy);
 assert.equal('picture' in runtime.stateJson(), false, 'loading a scene without a picture resets it to neutral');
-console.log('studioProductionPersistence: real save/load/direct/preset format round trips, legacy defaults, UI refresh, picture round trip and invalid-input isolation pass');
+// (2026-11-02 audit F9) a staging sequence holds the scene through its battlefield change: a take or a JSON file loaded
+// meanwhile is refused, not raced (the last to finish won, and the panel could name the loser as staged)
+{
+  const releaseMap = runtime.holdMap();
+  const staging = runtime.directProduction({ presetId: 'desert-crossfire', format: 'landscape' });
+  await Promise.resolve();
+  const replacedBefore = runtime.stats().replacements;
+  const raced = runtime.load(legacy).then(() => 'loaded', (error) => error.message);
+  const answer = await Promise.race([raced, new Promise((resolve) => { setImmediate(() => resolve('waiting on the staging')); })]);
+  assert.match(answer, /studio\.error\.loadInFlight/, 'a load during a staging is refused at once');
+  assert.equal(runtime.stats().replacements, replacedBefore, 'and replaces nothing');
+  releaseMap();
+  const staged = await staging;
+  assert.equal(staged.productionFormat, 'landscape', 'the staging finishes as its own scene');
+  await runtime.load(legacy);
+}
+// (2026-11-03 audit F9) the production entry points ask the one busy reading: a reframe under an open film or beside a
+// light change is ignored (the film renders the framing it opened with), and a staging is refused before it stages
+{
+  const framed = runtime.stateJson(), replacedBefore = runtime.stats().replacements;
+  runtime.setFilming(true);
+  runtime.setProductionFormat(framed.productionFormat === 'landscape' ? 'portrait' : 'landscape');
+  assert.deepEqual(runtime.stateJson(), framed, 'no reframe under an open film');
+  await assert.rejects(runtime.directProduction({ presetId: 'desert-crossfire', format: 'landscape' }), /studio\.error\.finishFilm/,
+    'a staging under an open film is refused');
+  runtime.setFilming(false);
+  runtime.setLightChanges(1);
+  runtime.setProductionFormat(framed.productionFormat === 'landscape' ? 'portrait' : 'landscape');
+  assert.deepEqual(runtime.stateJson(), framed, 'no reframe beside a light change');
+  await assert.rejects(runtime.directProduction({ presetId: 'desert-crossfire', format: 'landscape' }), /studio\.error\.busy/);
+  runtime.setLightChanges(0);
+  assert.equal(runtime.stats().replacements, replacedBefore, 'and nothing was replaced');
+}
+console.log('studioProductionPersistence: real save/load/direct/preset format round trips, legacy defaults, UI refresh, picture round trip, invalid-input isolation and the busy refusals pass');

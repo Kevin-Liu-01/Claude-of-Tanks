@@ -10555,24 +10555,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26452,
-      "sha256": "7ff07a5bb359bc151a9eabfba97ec9d5791aed01f91cdffe7c4cd22d0aee2d3e"
+      "bytes": 26486,
+      "sha256": "388105ca6d3d6d1136333b3e96c6a67db31e4a016ed897b0e3ae9ffa15737259"
     },
     "modulesSide": {
       "file": "c2_ariete_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26704,
-      "sha256": "558051ca679cd244abcddcf0a2de9cf15548774bcc691900649f9ac12a427a53"
+      "bytes": 26698,
+      "sha256": "29a4e1dfff49cefcd4d833cf22193503dfa7f7267e1226d6280f06ad84632239"
     },
     "crewSide": {
       "file": "c2_ariete_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24380,
-      "sha256": "9000fa90318cfca87a1d6efe3dab67446479c51fecfc1d8e8c8f2e673f9117d1"
+      "bytes": 24392,
+      "sha256": "2dff4617fb243021748a295e281df7ec55772d8d68baaadb25c178d4b7b1f483"
     },
     "angle": {
       "file": "c2_ariete_angle.webp",
@@ -10587,7 +10587,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 9904,
-        "sha256": "3d71bd756f2a6e0602ef782e90a49fcf68a5555cd516d867be8d2efff69b31a5"
+        "sha256": "3d71bd756f2a6e0602ef782e90a49fcf68a5555cd516d867be8d2efff69b31a5",
+        "frame": [22,124,226,248]
       }
     },
     "top": {
@@ -10603,8 +10604,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10118,
-      "sha256": "ababc198e2e7b720c67aab6333beb40652d0154073f3bb2d5a372b2f151d104e"
+      "bytes": 10136,
+      "sha256": "2e6b1cdb106b2d64efe07681fc652729a7ca461884288fab46d89b578f701627"
     },
     "topSilhouette": {
       "file": "c2_ariete_top_silhouette.png",
@@ -10627,8 +10628,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35451,
-      "sha256": "9490ad9c6e3ff24de04ee82a934d22c1ad6afc82aa25f93de5c548220a06bc9f"
+      "bytes": 32291,
+      "sha256": "3a399df9749c87632f30b58daeb3bc2f79e286aae9992038eb581e7d0917ec83"
     },
     "technicalLabels": {
       "file": "c2_ariete_technical.json",

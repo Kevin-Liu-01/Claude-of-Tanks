@@ -83,13 +83,21 @@ function runNode(root, args) {
   });
 }
 
+// The linter this checkout runs, or why there is none (272): the gate has no other lint step, so an install without
+// Oxlint (one that predates the lockfile's) fails the typecheck instead of passing it unlinted.
+export function linterOf(root, exists = existsSync) {
+  const oxlint = resolve(root, 'node_modules/oxlint/bin/oxlint');
+  return exists(oxlint) ? { oxlint, missing: null }
+    : { oxlint: null, missing: 'typecheck: oxlint is not installed in this node_modules: lint skipped, so typecheck fails (run npm ci)' };
+}
+
 // Run as a command, compared by real path: a checkout reached through a symlink must never skip this silently.
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
   const started = Date.now();
   const elapsed = () => `${((Date.now() - started) / 1000).toFixed(1)} s`;
-  const oxlint = resolve(root, 'node_modules/oxlint/bin/oxlint');
-  const lint = existsSync(oxlint) ? runNode(root, [oxlint, '--format', 'unix']).then((run) => ({ ...run, seconds: elapsed() })) : null;
+  const linter = linterOf(root);
+  const lint = linter.oxlint ? runNode(root, [linter.oxlint, '--format', 'unix']).then((run) => ({ ...run, seconds: elapsed() })) : null;
   const compile = await runNode(root, [resolve(root, 'node_modules/@typescript/native/bin/tsc'),
     '-p', 'tsconfig.json', '--noEmit', '--pretty', 'false', '--noUnusedLocals', '--noUnusedParameters']);
   if (compile.error) throw compile.error;
@@ -104,7 +112,8 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 1;
   }
   if (!lint) {
-    console.log('typecheck: oxlint is not installed in this node_modules (npm ci installs it): lint skipped');
+    process.stderr.write(`${linter.missing}\n`);
+    process.exitCode = 1;
   } else {
     const linted = await lint;
     if (linted.error) throw linted.error;

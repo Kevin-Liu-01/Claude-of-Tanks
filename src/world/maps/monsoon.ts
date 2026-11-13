@@ -17,6 +17,8 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // Rainwater follows the lower saddle into the eastern floodplain; the
 // original western/eastern bowls remain anchors along one continuous run.
 // (the ground lane, 2026-10-17; MASTER #15, the critics: "a decal pasted on the valley" — at the default 1.15 spacing its
@@ -167,7 +169,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Kohima 1944 kit (maps/regional/kohima.ts)
-    architecture: 'kohima',
+    architecture: BUILDING_STYLES.monsoon.kit,
     // (the maps lane, 2026-10-14: the plan is Kohima's own, KOHIMA_TOWN above; the roadside plan's 26 buildings stood as 16
     // on the saddle; was ['ruin', 'chapel', 'bathhouse', 'marketRow', ... 26 entries])
     plan: [],
@@ -204,7 +206,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceFrontageClear: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.monsoon,
     inhabit: {
       stalls: 4, benches: 3, coreClutter: 26, pots: 5, laundry: 4,
       handcarts: 4, carts: 3, trucks: 6, jeeps: 5, drumClusters: 6,

@@ -4,6 +4,10 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import { createMobileBattleInputAccess } from './mobileBattleInputAccess.ts';
 import { createBus } from './stateCore.ts';
 
+// (2026-11-02 audit R6, round 2 U35) the auto-aim chunk is one app/lazyChunk.ts chunk: after two failures in a row the
+// next ask waits the policy's 2 s backoff (the lazy chunks' default clock)
+let clock = 0;
+performance.now = () => clock;
 const bus = createBus();
 const camera = new PerspectiveCamera();
 let touchLayout = false;
@@ -83,6 +87,9 @@ assert.equal(touchLoads, 1);
 assert.equal(autoAimLoads, 2);
 assert.equal(access.getAutoAim(), null);
 failAutoAim = false;
+await assert.rejects(access.preload(), /simulated auto-aim chunk failure/, 'inside the backoff the kept failure, with no new transfer');
+assert.equal(autoAimLoads, 2);
+clock += 2_000;
 const first = access.preload();
 const joined = access.preload();
 assert.equal(first, joined, 'concurrent touch entry paths join one request');

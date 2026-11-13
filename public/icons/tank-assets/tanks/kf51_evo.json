@@ -2619,7 +2619,7 @@
       }
     ]
   },
-  "geometryHash": "85d2ca70",
+  "geometryHash": "dfa08159",
   "metadataHash": "9afd197e",
   "presentationAnchor": {
     "xM": 0,
@@ -2636,7 +2636,7 @@
     "issues": [],
     "roles": {
       "wheelTire": 2,
-      "wheelDish": 10,
+      "wheelDish": 11,
       "wheelInset": 4,
       "suspensionLink": 1,
       "suspensionJoint": 1,
@@ -2644,9 +2644,9 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
+      "gunmetal": 15,
       "armorPaint": 12,
       "hullRubber": 1,
-      "gunmetal": 12,
       "opticGlass": 3,
       "unclassified": 19,
       "gearShadow": 1,
@@ -2678,15 +2678,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29548,
-      "sha256": "2d56b1da617c4c62e2349b273ac2ac98dde820640d27806cd31233af00788698",
+      "bytes": 29540,
+      "sha256": "06ffe4124de65731104531b7a33af743a637245cba40cb7bee762607d98507d4",
       "thumbnail": {
         "file": "thumbs/kf51_evo_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11832,
-        "sha256": "0077dc1288bd063dc1f9ddce78370c25054db449592158524745b28e65fba58d"
+        "bytes": 11836,
+        "sha256": "73969251536ffc1cb557217d535f8772bc4b7deb8c0988b77d90f4592b84eb34",
+        "frame": [14,89,227,250]
       }
     },
     "top": {
@@ -2694,16 +2695,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10466,
-      "sha256": "cd8230256e7928575e1311492168adadd3e156a8f2bdf4f1a2b0e7427c7aabbd"
+      "bytes": 10458,
+      "sha256": "4bb116652ed533ac125be0c3f2ca8bd3d60e77e4259e50d5719857e6c40fa13f"
     },
     "side": {
       "file": "kf51_evo_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11200,
-      "sha256": "690c8c987719c2c1fba4f79a072921224edd3194ef6b4b35606de25bc4b56688"
+      "bytes": 11144,
+      "sha256": "c0b8e0fcc4b649afaedef00e6b933f4461140f9ac4596952ed2f5809bc85c022"
     },
     "topSilhouette": {
       "file": "kf51_evo_top_silhouette.png",
@@ -2726,32 +2727,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24292,
-      "sha256": "035e0224e66f5b0ece7e3d29a81bc43aed0f95bbc8289ecf28866a5edcceec41"
+      "bytes": 24296,
+      "sha256": "97423b95d615fd81f9e89424fdc32e7c96d35d905204261ea09c68ba48dc97e5"
     },
     "modulesSide": {
       "file": "kf51_evo_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26254,
-      "sha256": "34c7d06428c336f409b33097b0d0c3f27b1d5b160b6444cf03c9f4f4820f34f0"
+      "bytes": 26262,
+      "sha256": "7be22f5c992a36b65dc00cef0f18558fded473c827030321a7e6a1e95b84a06a"
     },
     "crewSide": {
       "file": "kf51_evo_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23196,
-      "sha256": "6cbb93e1ae2d98100aad5d4f8f7e66d5507266572ee97a8e3395b0e41fec42dc"
+      "bytes": 22286,
+      "sha256": "19e3325e734d26f5af6f0e1752847f5727056e49ddd12186d9cd5f2897bdf35d"
     },
     "markings": {
       "file": "kf51_evo_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32998,
-      "sha256": "74eff430c243193c5526cecdcf6cafeb68fc0f60d3d1221fb3db1e94c7bbc3b7"
+      "bytes": 31276,
+      "sha256": "e19df5e9e9d0b65315be92387110492a03a405909a11d7b9f26b24b5fea91e52"
     },
     "technicalLabels": {
       "file": "kf51_evo_technical.json",

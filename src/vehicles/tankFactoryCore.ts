@@ -8,6 +8,7 @@ import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
 import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import { createGunRotorSpin, findGunRotor } from './gunRotorSpin.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
 // No top-level side effects; all randomness seeded; time arrives via
@@ -52,7 +53,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS, ARMOR_PAINT_ZONE_ATTRIBUTE, armorPaintMode,
 } from './materials.ts';
-import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { bendGeometry, cutAtKink, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
@@ -123,7 +124,10 @@ import {
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
-import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import { createWreckTurretDriverIfLoaded, preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
+import {
+  isWreckState, tankWreckMove, tankWreckNext, type TankWreckEvent, type TankWreckMove, type TankWreckState,
+} from './wreckLifecycle.ts';
 import type { WreckTurretDriver } from './wreckTurretDriver.ts';
 import {
   bakeTurretRigScale, isTurretSectionFrame, TURRET_SECTION_SCALE_KEY, turretSectionScaleOf, type TurretSectionScale,
@@ -384,6 +388,35 @@ interface WheelSpinner {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   r: number;
   side: Side;
+}
+
+/** A part a profile authored in the hull frame that may sit on a wheel (RunningGearUnit.seatWheelDressing). */
+export interface WheelDressingPart {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  appearanceRole?: string;
+  name: string;
+}
+
+/** A profile's suspension arm on a road wheel: it turns on its hull pivot so its hub end stays on the travelling axle. */
+interface WheelArmFollower {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  wheel: WheelEntry;
+  pivotY: number;
+  pivotZ: number;
+  /** pivot to axle at rest (hull frame) */
+  dy0: number;
+  dz0: number;
+  /** the gear's published scale over its authored frame: the wheel's travel (off) is authored (seatWheelDressing) */
+  travelScale?: number;
+}
+
+/** An arm's pose for its wheel's travel, as the gear's own links (updateSuspensionLinks): its geometry lies along local
+ * +Z from its pivot; it is aimed at the axle and stretched to it. */
+function poseWheelArm(arm: WheelArmFollower): void {
+  const dy = arm.dy0 + (arm.wheel.thrown ? 0 : (arm.wheel.off || 0) * (arm.travelScale ?? 1));
+  arm.mesh.rotation.x = Math.atan2(-dy, arm.dz0);
+  arm.mesh.scale.z = Math.hypot(dy, arm.dz0) / Math.hypot(arm.dy0, arm.dz0);
 }
 
 interface SpinnerBatchItem {
@@ -707,7 +740,6 @@ interface TankPoseState {
   turretYaw: number;
   gunPitch: number;
   trackScroll: { l: number; r: number };
-  _flinch?: VisualSpringState;
   _susp?: Pick<VisualSpringState, 'p' | 'r'>;
   _swayEst?: number;
 }
@@ -873,6 +905,9 @@ export interface RunningGearUnit {
     material: THREE.Material,
     layer?: Omit<WheelFaceLayer, 'geometry' | 'material'>,
   ): THREE.InstancedMesh | null;
+  /** Seats each part that lies on one of this unit's wheels on that wheel, so it turns (and rides the suspension) with
+   * it; returns the parts that lie on none. */
+  seatWheelDressing(parts: readonly WheelDressingPart[]): WheelDressingPart[];
 }
 
 interface TankRig {
@@ -1357,14 +1392,29 @@ export interface TankVisual {
   setWeaponModuleState(module: string, state: ModuleStateName): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
-  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** `lateCause` (2026-11-02 audit F10): the kill's cause arriving after this wreck was laid (a network peer's event
+   *  after its row's flag): a pop then upgrades a young plain wreck to the cook-off (wreckLifecycle.ts). Any other
+   *  repeat on a wreck does nothing. */
+  setDestroyed(options?: { pop?: boolean; ageS?: number; lateCause?: boolean }): void;
+  /** (2026-11-02 audit F10) The wreck as its one declared state (wreckLifecycle.ts): intact, plain, cook-off, disposed. */
+  wreckState(): TankWreckState;
+  /** (2026-11-02 audit F10) This visual's life: bumped by every reset and its disposal, so a beat deferred for one life
+   *  (an FX timer's wreck, fx/effects.ts) never lands on the next. */
+  wreckLife(): number;
   /**
    * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
    * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
    */
   setWreckTurretPose(pose: ArrayLike<number> | null): void;
-  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here. */
+  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here.
+   *  Before the kill it holds for the next wreck (resetDestroyed clears it). */
   awaitWreckTurretPose(): void;
+  /** (2026-11-02 audit F10) The wreck turret's frame pose [x, y, z, qx, qy, qz, qw] as its authority last had it placed,
+   *  into `out`; false when no authority holds the turret (the killcam re-wrecks a restaged victim there). */
+  wreckTurretHeldPose(out: Float64Array): boolean;
+  /** (round 2 U32) Whether an authority poses this wreck's turret (awaited, placed, or carried on from its last pose):
+   *  a fresh kill's awaited host pose counts before any placement (the killcam's receipt declares it again). */
+  wreckTurretAuthority(): boolean;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   /**
@@ -1942,6 +1992,48 @@ export const FAR_MERGE_RETURN_M = 27;
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
+/** Wheel dressing (seatWheelDressing): a part may reach this far past a wheel's outer face, start this far inboard of
+ * its inner face, and stand at most this far proud of the outer face with its innermost point, and still be the
+ * wheel's (the Challenger 2's idler hub rings stand 3 cm proud of the idler; a skirt's bolts stand clear of it). */
+const WHEEL_DRESSING_OUTBOARD_M = 0.10;
+const WHEEL_DRESSING_INBOARD_M = 0.005;
+const WHEEL_DRESSING_FACE_GAP_M = 0.035;
+/** ...and may stand this far past the wheel's drawn rim (the M41's profile tyre band rounds a wheel drawn smaller). */
+const WHEEL_DRESSING_RIM_M = 0.03;
+/** ...and, on a road wheel, be centred on its axle to within this or reach its outer face plane to within that. */
+const WHEEL_DRESSING_HUB_M = 0.025;
+const WHEEL_DRESSING_FACE_DEPTH_M = 0.005;
+/** A part within this of a static part's surface is fixed to the hull, not the wheel's. */
+const WHEEL_DRESSING_CONTACT_M = 0.005;
+/** A profile's suspension arm (seatWheelDressing): a bar at most this long along the axle, its outer side within this of
+ * the wheel's outer face and reaching to within this of its inner face (the Tamoyo 3's arms end 5 cm inboard of the
+ * wheel; tub strakes and belly shoulders stop 18 cm or more short of it), one end within this of the axle (or a
+ * quarter of the wheel's radius) and the other no further out than this. */
+const WHEEL_ARM_SPAN_M = 0.15;
+const WHEEL_ARM_FACE_M = 0.02;
+const WHEEL_ARM_INBOARD_M = 0.10;
+const WHEEL_ARM_HUB_M = 0.06;
+const WHEEL_ARM_REACH_M = 1.2;
+
+/** Whether some vertex of `a` lies within `d` of a triangle of `b` (one frame; `near` is a's box grown by d). */
+function geometryTouches(a: THREE.BufferGeometry, b: THREE.BufferGeometry, d: number, near: THREE.Box3): boolean {
+  const pa = a.getAttribute('position'), pb = b.getAttribute('position'), index = b.index;
+  if (!pa || !pb) return false;
+  const triangle = new THREE.Triangle(), box = new THREE.Box3(), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const count = index ? index.count : pb.count;
+  for (let t = 0; t + 2 < count; t += 3) {
+    triangle.a.fromBufferAttribute(pb, index ? index.getX(t) : t);
+    triangle.b.fromBufferAttribute(pb, index ? index.getX(t + 1) : t + 1);
+    triangle.c.fromBufferAttribute(pb, index ? index.getX(t + 2) : t + 2);
+    box.setFromPoints([triangle.a, triangle.b, triangle.c]).expandByScalar(d);
+    if (!box.intersectsBox(near)) continue;
+    for (let i = 0; i < pa.count; i++) {
+      p.fromBufferAttribute(pa, i);
+      if (box.containsPoint(p) && triangle.closestPointToPoint(p, q).distanceToSquared(p) <= d * d) return true;
+    }
+  }
+  return false;
+}
 function lodWrap(
   parent: THREE.Object3D,
   obj: THREE.Object3D,
@@ -5011,6 +5103,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // separate cleanly from the scheme-painted road wheels.
   const spinners: WheelSpinner[] = [];
   const spinnerInstances: SpinnerBatchRecord[] = [];
+  const armFollowers: WheelArmFollower[] = [];
   const sprocketWrap = endpointWrap(sprocket, trackWrapClearanceM(trackTh));
   const idlerWrap = endpointWrap(idler, trackWrapClearanceM(trackTh));
   const bandOuterR = sprocketWrap + trackTh / 2;
@@ -5899,12 +5992,270 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     recomputeTrackNormals(geo);
   }
 
+  // 2026-11-04 (owner: "be careful of decorating wheels, they have to be part of and move with the actual wheels
+  // themselves. check all tanks for anything like this"): dressing a profile authored in the hull frame on one of this
+  // unit's wheels (a hub cap, a bolt ring, a face disc, a tyre band) rides that wheel. 43 hulls had it standing still in
+  // the hull buckets: the Pattons', M41s' and Osorios' road-wheel hub rings, the Challenger 2's, KV-2's, M1s' and
+  // AbramsX's sprocket and idler faces, rings and bolts (tools/wheel-dressing-audit.mjs). A part is a wheel's when every
+  // vertex lies within WHEEL_DRESSING_RIM_M of the wheel's rim, from its inner face to WHEEL_DRESSING_OUTBOARD_M past its
+  // outer face, it reaches that face (its innermost point at most WHEEL_DRESSING_FACE_GAP_M proud of it), on a road wheel
+  // or a roller it is also the hub's or on the outer face, and it touches nothing fixed to the hull. A sprocket's or an
+  // idler's dressing turns as a spinner of its own; a road wheel's or a return roller's is an instanced layer on its wheel
+  // (the same dressing on several wheels shares one), turning and riding the suspension with it. A suspension arm drawn
+  // from a road wheel's hub to a hull pivot turns on that pivot to follow the wheel's travel. Returns the rest.
+  const seatWheelDressing = (parts: readonly WheelDressingPart[]): WheelDressingPart[] => {
+    if (!parts.length) return [];
+    interface Seat {
+      side: Side; x: number; y: number; z: number; r: number; axIn: number; axOut: number;
+      entry?: WheelEntry; end?: { kind: 'sprocket' | 'idler'; spinR: number };
+    }
+    const seats: Seat[] = [];
+    const radialOf = (b: THREE.Box3): number => Math.max(b.max.y, -b.min.y, b.max.z, -b.min.z);
+    const span = (seat: Seat, minX: number, maxX: number, radial: number): void => {
+      seat.r = Math.max(seat.r, radial);
+      seat.axIn = Math.min(seat.axIn, seat.side > 0 ? minX : -maxX);
+      seat.axOut = Math.max(seat.axOut, seat.side > 0 ? maxX : -minX);
+    };
+    // road wheels and return rollers: every layer drawn on a wheel (its hub is the layer's frame; a layer's outset and
+    // offsets move it off the hub: addRoadWheelLayerUnchecked)
+    const bySource = new Map<WheelEntry, Seat>();
+    for (const { im, list } of made) {
+      if (/Spindles?$/.test(im.name)) continue;                     // a roller's fixed axle stock, not a wheel
+      if (!im.geometry.boundingBox) im.geometry.computeBoundingBox();
+      const b = im.geometry.boundingBox!;
+      for (const e of list) {
+        const source = e.suspensionSource || e;
+        let seat = bySource.get(source);
+        if (!seat) {
+          seat = { side: source.x < 0 ? -1 : 1, x: source.x, y: source.y, z: source.z, r: 0,
+            axIn: Infinity, axOut: -Infinity, entry: source };
+          bySource.set(source, seat);
+          seats.push(seat);
+        }
+        span(seat, e.x + b.min.x, e.x + b.max.x, radialOf(b) + Math.hypot(e.y - source.y, e.z - source.z));
+      }
+    }
+    // sprockets and idlers, where their spinners are seated
+    const ends = [[sg, sprocket, 'sprocket', sprocketSpinR], [ig, idler, 'idler', idlerSpinR]] as const;
+    for (const [gp, end, kind, spinR] of ends) {
+      for (const side of [-1, 1] as const) {
+        const x = side * (xcForSide(side) + endpointAxleOutset(end, side)), scaleX = endpointAxialScale(end, side);
+        const seat: Seat = { side, x, y: end.y, z: end.z, r: 0, axIn: Infinity, axOut: -Infinity, end: { kind, spinR } };
+        for (const stock of [gp.body, gp.dark]) {
+          const geometry = side < 0 ? stockMirrors?.get(stock) ?? stock : stock;
+          if (!geometry.boundingBox) geometry.computeBoundingBox();
+          const b = geometry.boundingBox!;
+          const x0 = x + b.min.x * scaleX, x1 = x + b.max.x * scaleX;
+          span(seat, Math.min(x0, x1), Math.max(x0, x1), radialOf(b));
+        }
+        seats.push(seat);
+      }
+    }
+    // The gear as it stands now (hull = gs * authored + gt). A profile may scale its whole build after the gear is made
+    // (applyAdvancedIfvScale: the Raiju, the CV90s and the Puma are authored at real size and published at 90 %), which
+    // scales the parts and every gear mesh but not the gear's own numbers the seats read: the seats are moved into the
+    // frame the parts and wheels stand in (the parts themselves are not touched), and what is made here is laid out in it.
+    const frameOf = made[0]?.im ?? spinnerInstances[0]?.batch ?? null;
+    const gs = frameOf ? frameOf.scale.y : 1, gt = frameOf ? frameOf.position : null;
+    if (gt && (gs !== 1 || gt.x !== 0 || gt.y !== 0 || gt.z !== 0)) for (const seat of seats) {
+      seat.x = gs * seat.x + gt.x; seat.y = gs * seat.y + gt.y; seat.z = gs * seat.z + gt.z; seat.r *= gs;
+      seat.axIn = gs * seat.axIn + seat.side * gt.x; seat.axOut = gs * seat.axOut + seat.side * gt.x;
+    }
+    const rest: WheelDressingPart[] = [];
+    const onSeat = new Map<Seat, WheelDressingPart[]>();
+    const chosen = new Map<WheelDressingPart, { seat: Seat; snap: boolean }>();
+    for (const part of parts) {
+      const position = part.geometry.getAttribute('position');
+      if (!position?.count) { rest.push(part); continue; }
+      if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+      const pb = part.geometry.boundingBox!;
+      let best: Seat | null = null, bestD = Infinity, snap = false;
+      for (const seat of seats) {
+        const lo = seat.side > 0 ? pb.min.x : -pb.max.x, hi = seat.side > 0 ? pb.max.x : -pb.min.x;
+        const reach = seat.r + WHEEL_DRESSING_RIM_M;
+        if (lo < seat.axIn - WHEEL_DRESSING_INBOARD_M || hi > seat.axOut + WHEEL_DRESSING_OUTBOARD_M
+          || lo > seat.axOut + WHEEL_DRESSING_FACE_GAP_M || pb.min.y < seat.y - reach || pb.max.y > seat.y + reach
+          || pb.min.z < seat.z - reach || pb.max.z > seat.z + reach) continue;
+        // inside the rim. On a road wheel or a roller it is also the hub's (centred on the axle: a cap, a ring, an axle, a
+        // knuckle, a tyre band) or stands on the outer face (a bolt); a hull pivot seen through a deep dish is neither and
+        // stays the hull's (the Challenger 2's hydrogas pivots). A sprocket or an idler is open between its toothed rings:
+        // whatever lies in it turns with it (the Tamoyo's tooth crown).
+        let inside = true;
+        for (let i = 0; i < position.count && inside; i++) {
+          const dy = position.getY(i) - seat.y, dz = position.getZ(i) - seat.z;
+          inside = dy * dy + dz * dz <= reach * reach;
+        }
+        // its middle's distance off the axle (the box's: a lathe's or a torus's seam vertices bias a vertex mean)
+        const d = Math.hypot((pb.min.y + pb.max.y) / 2 - seat.y, (pb.min.z + pb.max.z) / 2 - seat.z);
+        // a ring or a cap about the axle authored off it — round (its box square across the axle), with the axle inside
+        // it — is the hub's: the Pattons' and M41s' hub rings sit 1.7 cm above the axle the gear seats, and the M48A5's
+        // left-side rings 10 cm behind its staggered left wheels; it is put on the axle so it turns true
+        const sy = pb.max.y - pb.min.y, sz = pb.max.z - pb.min.z;
+        const ring = d > 0 && Math.abs(sy - sz) <= 0.1 * Math.max(sy, sz)
+          && seat.y > pb.min.y && seat.y < pb.max.y && seat.z > pb.min.z && seat.z < pb.max.z;
+        const onFace = hi >= seat.axOut - WHEEL_DRESSING_FACE_DEPTH_M, onHub = d <= WHEEL_DRESSING_HUB_M || ring;
+        if (inside && (seat.end || onFace || onHub) && d < bestD) { best = seat; bestD = d; snap = ring; }
+      }
+      if (best) chosen.set(part, { seat: best, snap }); else rest.push(part);
+    }
+    // a suspension arm a profile drew from a road wheel's hub out to a hull pivot (the Challenger 2's hydrogas arms, the
+    // Bernardini X1's and Tamoyo 3's trailing bars): a bar at most WHEEL_ARM_SPAN_M along the axle that reaches the
+    // wheel, one end within WHEEL_ARM_HUB_M (or a quarter of the radius) of the axle and the other from 0.6 radius to
+    // WHEEL_ARM_REACH_M out. It is not fixed to the hull for the contact rule below: it travels with its wheel.
+    const armsOf = new Map<Seat, WheelDressingPart[]>();
+    for (let i = rest.length - 1; i >= 0; i--) {
+      const part = rest[i]!, position = part.geometry.getAttribute('position');
+      if (!position?.count) continue;
+      const pb = part.geometry.boundingBox!;
+      let best: Seat | null = null, bestNear = Infinity;
+      for (const seat of seats) {
+        if (!seat.entry?.road) continue;
+        const lo = seat.side > 0 ? pb.min.x : -pb.max.x, hi = seat.side > 0 ? pb.max.x : -pb.min.x;
+        if (hi > seat.axOut + WHEEL_ARM_FACE_M || hi < seat.axIn - WHEEL_ARM_INBOARD_M || hi - lo > WHEEL_ARM_SPAN_M) continue;
+        let near = Infinity, far = 0;
+        for (let v = 0; v < position.count; v++) {
+          const radial = Math.hypot(position.getY(v) - seat.y, position.getZ(v) - seat.z);
+          near = Math.min(near, radial); far = Math.max(far, radial);
+        }
+        if (near > Math.max(WHEEL_ARM_HUB_M, 0.25 * seat.r) || far < 0.6 * seat.r || far > WHEEL_ARM_REACH_M) continue;
+        if (near < bestNear) { best = seat; bestNear = near; }
+      }
+      if (!best) continue;
+      rest.splice(i, 1);
+      const list = armsOf.get(best);
+      if (list) list.push(part); else armsOf.set(best, [part]);
+    }
+    // what is fixed to the hull stays the hull's: a part touching a static part (a skirt's trim strip in front of the M1's
+    // sprocket, the swing arm a Challenger 2 pivot carries) is not a wheel's
+    const grown = new THREE.Box3();
+    const fixedToHull = (part: WheelDressingPart): boolean => {
+      grown.copy(part.geometry.boundingBox!).expandByScalar(WHEEL_DRESSING_CONTACT_M);
+      return rest.some((other) => {
+        const ob = other.geometry.boundingBox ?? (other.geometry.computeBoundingBox(), other.geometry.boundingBox!);
+        return ob.intersectsBox(grown) && geometryTouches(part.geometry, other.geometry, WHEEL_DRESSING_CONTACT_M, grown);
+      });
+    };
+    for (let changed = true; changed;) {                        // a bolt on a fixed strip is fixed too
+      changed = false;
+      for (const [part] of chosen) {
+        if (!fixedToHull(part)) continue;
+        chosen.delete(part);
+        rest.push(part);
+        changed = true;
+      }
+    }
+    for (const [part, { seat, snap }] of chosen) {
+      const pb = part.geometry.boundingBox!;
+      if (snap) part.geometry.translate(0, seat.y - (pb.min.y + pb.max.y) / 2, seat.z - (pb.min.z + pb.max.z) / 2);
+      const list = onSeat.get(seat);
+      if (list) list.push(part); else onSeat.set(seat, [part]);
+    }
+    // one geometry per wheel and finish, in the wheel's frame
+    const roadLayers = new Map<string, { geometry: THREE.BufferGeometry; part: WheelDressingPart; seats: Seat[] }>();
+    for (const [seat, list] of onSeat) {
+      const finishes = new Map<string, WheelDressingPart[]>();
+      for (const part of list) {
+        const key = `${part.material.uuid}|${part.appearanceRole ?? ''}|${part.name}`;
+        const same = finishes.get(key);
+        if (same) same.push(part); else finishes.set(key, [part]);
+      }
+      for (const [key, same] of finishes) {
+        const geometry = mergeAll(same.map((part) => part.geometry));
+        geometry.translate(-seat.x, -seat.y, -seat.z);
+        const { material, appearanceRole, name } = same[0]!;
+        if (seat.end) {
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.name = name;
+          mesh.userData.runningGear = true;
+          mesh.userData.runningGearUnitId = runningGearUnitId;
+          mesh.userData.wheelDressingOf = seat.end.kind;
+          if (appearanceRole) mesh.userData.appearanceRole = appearanceRole;
+          mesh.position.set(seat.x, seat.y, seat.z);
+          mesh.castShadow = false;
+          mesh.receiveShadow = true;
+          hullG.add(mesh);
+          disposables.push(geometry);
+          spinners.push({ mesh, r: seat.end.spinR, side: seat.side });
+          continue;
+        }
+        // the same dressing on several wheels (to the millimetre, in each wheel's frame) is one layer over them all
+        const position = geometry.getAttribute('position').array;
+        let hash = 2166136261;
+        for (let i = 0; i < position.length; i++) hash = Math.imul(hash ^ Math.round(position[i]! * 1000), 16777619);
+        const layerKey = `${key}|${seat.entry!.road}|${position.length}|${hash >>> 0}`;
+        const layer = roadLayers.get(layerKey);
+        if (layer) { layer.seats.push(seat); geometry.dispose(); } else roadLayers.set(layerKey, { geometry, part: same[0]!, seats: [seat] });
+      }
+    }
+    for (const { geometry, part, seats: on } of roadLayers.values()) {
+      const list = on.map((seat) => ({ ...seat.entry!, suspensionSource: seat.entry! }));
+      // its instances are the wheels' authored stations, so the layer takes the gear's frame (as the wheels' own layers)
+      if (gs !== 1) geometry.scale(1 / gs, 1 / gs, 1 / gs);
+      const im = mkInst(geometry, part.material, list, part.appearanceRole, part.name);
+      if (gt) { im.position.copy(gt); im.scale.setScalar(gs); }
+      for (let i = 0; i < list.length; i++) {
+        _m.makeTranslation(list[i]!.x, list[i]!.y + (list[i]!.suspensionSource.off || 0), list[i]!.z);
+        im.setMatrixAt(i, _m);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      im.userData.wheelDressing = true;
+      im.userData.wheelDressingOf = on[0]!.entry!.road ? 'road' : 'roller';
+      disposables.push(geometry);
+    }
+    // each wheel's arms turn on one pivot: the far end of its longest arm part (where its hull mount sits)
+    for (const [seat, list] of armsOf) {
+      let pivotY = seat.y, pivotZ = seat.z, longest = 0;
+      for (const part of list) {
+        const position = part.geometry.getAttribute('position');
+        const radial = (v: number): number => Math.hypot(position.getY(v) - seat.y, position.getZ(v) - seat.z);
+        let far = 0;
+        for (let v = 0; v < position.count; v++) far = Math.max(far, radial(v));
+        if (far <= longest) continue;
+        longest = far;
+        let y = 0, z = 0, n = 0;
+        for (let v = 0; v < position.count; v++) if (radial(v) >= 0.85 * far) { y += position.getY(v); z += position.getZ(v); n++; }
+        pivotY = y / n; pivotZ = z / n;
+      }
+      const finishes = new Map<string, WheelDressingPart[]>();
+      for (const part of list) {
+        const key = `${part.material.uuid}|${part.appearanceRole ?? ''}|${part.name}`;
+        const same = finishes.get(key);
+        if (same) same.push(part); else finishes.set(key, [part]);
+      }
+      for (const same of finishes.values()) {
+        // laid along local +Z from the pivot (the rest arm turned onto it), so a turn and a z stretch pose it
+        const geometry = mergeAll(same.map((part) => part.geometry));
+        geometry.translate(0, -pivotY, -pivotZ).rotateX(-Math.atan2(-(seat.y - pivotY), seat.z - pivotZ));
+        const { material, appearanceRole, name } = same[0]!;
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = name.replace('gearWheelDressing_', 'gearWheelArm_');
+        mesh.position.set(0, pivotY, pivotZ);
+        mesh.userData.runningGear = true;
+        mesh.userData.runningGearUnitId = runningGearUnitId;
+        mesh.userData.wheelArm = true;
+        mesh.userData.wheelArmLengthM = Math.hypot(seat.y - pivotY, seat.z - pivotZ);   // its axle end: local (x, 0, length)
+        mesh.userData.wheelArmRestDy = seat.y - pivotY;
+        mesh.userData.wheelArmRestDz = seat.z - pivotZ;
+        if (appearanceRole) mesh.userData.appearanceRole = appearanceRole;
+        mesh.castShadow = false;
+        mesh.receiveShadow = true;
+        const arm: WheelArmFollower = { mesh, wheel: seat.entry!, pivotY, pivotZ, dy0: seat.y - pivotY, dz0: seat.z - pivotZ,
+          ...(gs !== 1 ? { travelScale: gs } : {}) };
+        poseWheelArm(arm);
+        hullG.add(mesh);
+        disposables.push(geometry);
+        armFollowers.push(arm);
+      }
+    }
+    return rest;
+  };
   const gearUnit = createRunningGearRuntime({
-    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer,
+    seatWheelDressing, xcForSide,
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   });
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
@@ -5951,6 +6302,7 @@ interface RunningGearRuntimeEnv {
   suspWheels: Record<Side, WheelEntry[]>;
   suspensionLinks: SuspensionLinkRig;
   addRoadWheelLayer: RunningGearUnit['addRoadWheelLayer'];
+  seatWheelDressing: RunningGearUnit['seatWheelDressing'];
   xcForSide: (side: Side) => number;
   relayWheel: (relay: EndRelay, ws: WheelEntry[]) => WheelEntry | null;
   layRelay: (relay: EndRelay, arr: BandPositions, restPos: ArrayLike<number>, liveZ: number, liveY: number) => boolean;
@@ -5988,6 +6340,7 @@ interface RunningGearRuntimeEnv {
   linkMeshes: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[];
   spinners: WheelSpinner[];
   spinnerInstances: SpinnerBatchRecord[];
+  armFollowers: WheelArmFollower[];
   bandBasePos: THREE.TypedArray;
   bandRestPos: Partial<Record<Side, Float32Array>>;
   bandBase: Record<Side, ArrayLike<number>>;
@@ -6007,11 +6360,12 @@ interface BandInfluence {
 
 export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
   const {
-    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer,
+    seatWheelDressing, xcForSide,
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   } = env;
   // A covered return run is still a complete physical chain. Older builds
@@ -6355,6 +6709,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
     }],
     addRoadWheelLayer,
+    seatWheelDressing,
     roadWheelLayout: {
       xc, wheelY, wheelR, wheelZs: [...wheelZs],
       ...sideStationReceipt,
@@ -6415,6 +6770,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       }
       updateGearSurface(l, r);
       updateSuspensionLinks(suspensionLinks);
+      for (const arm of armFollowers) poseWheelArm(arm);
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);
@@ -6638,6 +6994,12 @@ export function combineGearUnits(units: RunningGearUnit[]): RunningGearUnit {
         result = entry.addRoadWheelLayer(geometry, material, layer) ?? result;
       }
       return result;
+    },
+    // each unit seats what lies on its own wheels; what none takes stays the hull's
+    seatWheelDressing(parts) {
+      let rest: WheelDressingPart[] = [...parts];
+      for (const unit of units) rest = unit.seatWheelDressing(rest);
+      return rest;
     },
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
     updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
@@ -9129,6 +9491,92 @@ function* buildTankCoreSteps(
     }));
   }
 
+  // 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on a
+  // wheel rides it (RunningGearUnit.seatWheelDressing). A hull bucket's part goes whole and before the census and the
+  // merge; a profile's own static running-gear mesh (one face-dressing mesh spans every end wheel) gives up the faces
+  // that lie on a wheel. A camouflaged bucket's part takes the scheme's wheel paint (the merge's camo projection is the
+  // hull's; a turning part cannot carry it); a running-gear bucket's keeps its finish role. Parts with a job of their own
+  // (ERA, module visuals, mudguards, lenses, stowage, launchers, damage spans) stay where they are.
+  if (P.gear) {
+    const gear = P.gear;
+    const kept = new Set<THREE.BufferGeometry>([...moduleVisualParts.keys(), ...mudguardParts.map((m) => m.part)]);
+    const parts: WheelDressingPart[] = [];
+    const home = new Map<WheelDressingPart, string>();
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const definition = BUCKET_DEF[bucket];
+      if (!definition || definition[0] !== 'hullG' || !list.length) continue;
+      const matKey = definition[1], camo = CAMO_BUCKETS.has(bucket);
+      const material = camo ? mats.wheels ?? mats.hull
+        : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : matKey === 'weaponSteel' ? mats.dark : mats[matKey];
+      if (!material) continue;
+      const appearanceRole = bucket === 'hullRunningGearDark' ? 'gunmetal' : bucket === 'hullRunningGearTrack' ? 'trackSteel'
+        : bucket === 'hullRunningGearDetail' || camo ? 'wheelDish' : undefined;
+      for (const geometry of list) {
+        if (kept.has(geometry) || destructiblePartCluster.has(geometry) || Object.keys(geometry.userData).length) continue;
+        const part: WheelDressingPart = { geometry, material, appearanceRole, name: `gearWheelDressing_${bucket}` };
+        parts.push(part);
+        home.set(part, bucket);
+      }
+    }
+    const statics: THREE.Mesh[] = [];
+    hullG.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.userData.runningGear === true
+        && mesh.userData.runningGearUnitId === undefined && !Array.isArray(mesh.material)) statics.push(mesh);
+    });
+    const faces = new Map<WheelDressingPart, THREE.Mesh>();
+    for (const mesh of statics) {
+      // each connected piece (a disc, a ring, a bolt), in the hull frame; seated pieces leave the mesh, the rest stays
+      mesh.updateWorldMatrix(true, false);
+      const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert().multiply(mesh.matrixWorld);
+      const flat = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+      flat.applyMatrix4(toHull);
+      const position = flat.getAttribute('position'), triangles = Math.floor(position.count / 3);
+      const parent = Array.from({ length: triangles }, (_, t) => t);
+      const find = (t: number): number => { while (parent[t] !== t) t = parent[t] = parent[parent[t]!]!; return t; };
+      const firstAt = new Map<string, number>();
+      for (let v = 0; v < triangles * 3; v++) {
+        const key = `${Math.round(position.getX(v) * 1e4)},${Math.round(position.getY(v) * 1e4)},${Math.round(position.getZ(v) * 1e4)}`;
+        const t = (v / 3) | 0, seen = firstAt.get(key);
+        if (seen === undefined) firstAt.set(key, t); else parent[find(t)] = find(seen);
+      }
+      const pieces = new Map<number, number[]>();
+      for (let t = 0; t < triangles; t++) {
+        const root = find(t), list = pieces.get(root);
+        if (list) list.push(t); else pieces.set(root, [t]);
+      }
+      for (const list of pieces.values()) {
+        const piece = new THREE.BufferGeometry();
+        for (const [name, attribute] of Object.entries(flat.attributes)) {
+          const size = attribute.itemSize, source = attribute.array as Float32Array;
+          const array = new Float32Array(list.length * 3 * size);
+          list.forEach((t, k) => array.set(source.subarray(t * 3 * size, (t + 1) * 3 * size), k * 3 * size));
+          piece.setAttribute(name, new THREE.BufferAttribute(array, size, attribute.normalized));
+        }
+        const part: WheelDressingPart = { geometry: piece, material: mesh.material as THREE.Material,
+          appearanceRole: mesh.userData.appearanceRole as string | undefined, name: `gearWheelDressing_${mesh.name || 'mesh'}` };
+        parts.push(part);
+        faces.set(part, mesh);
+      }
+      flat.dispose();
+    }
+    const rest = new Set(gear.seatWheelDressing(parts));
+    for (const part of parts) {
+      const bucket = home.get(part);
+      if (bucket && !rest.has(part)) buckets[bucket] = buckets[bucket]!.filter((geometry) => geometry !== part.geometry);
+    }
+    for (const mesh of statics) {
+      const left = parts.filter((part) => faces.get(part) === mesh && rest.has(part));
+      const total = parts.filter((part) => faces.get(part) === mesh).length;
+      if (left.length === total) { for (const part of left) part.geometry.dispose(); continue; }
+      mesh.geometry.dispose();
+      if (!left.length) { mesh.removeFromParent(); continue; }
+      const remaining = mergeAll(left.map((part) => part.geometry));
+      remaining.applyMatrix4(new THREE.Matrix4().copy(hullG.matrixWorld).invert().multiply(mesh.matrixWorld).invert());
+      mesh.geometry = remaining;
+      disposables.push(remaining);
+    }
+  }
   if (finalPartCensus) for (const [bucket, list] of Object.entries(buckets)) for (const part of list) finalPartCensus(bucket, part);
 
   yield* coreCheckpoint(coreYield);
@@ -10129,6 +10577,7 @@ export function* createTankRuntimeSteps(
     presentationTrackFloorYM, ownsTree,
   } = env;
   let { launcherCursor } = env;
+  const launcherCursorAtBuild = launcherCursor;
   const continuousRootFloor = (): number | undefined => {
     const floor = P.gear?.continuousShoeFloorYM;
     if (floor !== undefined) assertShoeFloorFrame(hullG, root.scale);
@@ -10212,6 +10661,10 @@ export function* createTankRuntimeSteps(
   }
 
   // ---- state ----
+  // (2026-11-02 audit F10) the wreck: one declared state, moved only by moveWreck below (wreckLifecycle.ts); `destroyed`
+  // mirrors "a wreck stands" for the readers that only ask that
+  let wreckState: TankWreckState = 'intact';
+  let wreckLife = 0;
   let destroyed = false;
   let recoilT = 1e9;
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
@@ -10222,6 +10675,10 @@ export function* createTankRuntimeSteps(
   let recoilRollAmp = 0;             // §5.362 twin-plant kick: roll dip onto the firing side
   let recoilBarrelIndex = -1;        // independently animated firing tube, -1 = shared recoilG
   let muzzleAltCursor = 0;           // §5.362 fallback shot alternator (no-index callers)
+  // 269: a rotary cannon's barrel cluster (the M163's Vulcan) turns while it fires: kicked with each recoil kick,
+  // advanced on the recoil stroke's fx-clock step (gunRotorSpin.ts); null on every gun without a tagged rotor
+  const gunRotor = findGunRotor(recoilG);
+  const gunRotorSpin = gunRotor ? createGunRotorSpin(gunRotor) : null;
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
   // by the SHARED FX CLOCK's forward motion since the previous call (see
@@ -10257,6 +10714,12 @@ export function* createTankRuntimeSteps(
   // invisible from the normal chase orbit even though it was scale-plausible.
   const RAPID_BACK = 0.045, RAPID_HOLD = 0.055, RAPID_RETURN = 0.18;
   const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
+  // 2026-11-06 (the owner's air-defence firepower, airDefenseFirepower.ts): a twin whose tubes alternate faster than this
+  // stroke (each tube refires every tubes x cycle) takes the stroke in that time, so each tube is back in battery for its
+  // own next shot. Every slower mount, and every single tube, keeps the stroke above.
+  const RAPID_STROKE_S = RAPID_BACK + RAPID_HOLD + RAPID_RETURN;
+  const RAPID_CYCLE_S = Math.min(Number(spec.gun?.autoloader?.intraClipS) || Infinity,
+    ...((spec.gun?.shells || []).filter((round) => !round.guided).map((round) => Number(round.reloadS || spec.gun.reloadS) || Infinity)));
   // §5.362 tube census: only a real tube riding rig_recoil may slide.
   // Use the original length heuristic or verified short-tube stock below.
   // Casemates print their cannon into
@@ -10306,15 +10769,52 @@ export function* createTankRuntimeSteps(
   let sway = 0;                      // turn-lean roll (rad), smoothed
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
-  // Hit/recoil impulses accumulate here and are routed into the SIM's flinch
-  // mirror (state._flinch, integrated by movement.ts) on the next
-  // syncFromState — the terrain-contact support solve then clears the ground
-  // at the flinched pose too (a 1-2° large-caliber rock over a 3.5 m
-  // half-length used to dip a track end ~10 cm past the 1.5 cm margin).
-  // The local flinchP/flinchR oscillator remains ONLY as a fallback for
-  // staged/ghost states without the mirror (killcam ghosts, garage poses).
+  // Hit/recoil impulses accumulate here until the next syncFromState steps this
+  // spring on the fx clock. It is presentation only (audit M9, 2026-11-02): the
+  // sim never reads it, so it rocks every state the visual draws (a solo sim
+  // state, a multiplayer presented state or mirror, a ghost) and never writes
+  // one. It used to be routed into the sim's state._flinch, which only the solo
+  // page sim integrated (at render cadence) and no multiplayer state ever did.
+  // A 1-2° large-calibre rock over a 3.5 m half-length dips a track end ~10 cm,
+  // so the root rises by the rock's own corner drop (flinchContactLift) and the
+  // wheels conform at that lifted pose.
   let pendFlinchPV = 0, pendFlinchRV = 0;
   const FLINCH_W = 13, FLINCH_Z = 0.32;
+  const FLINCH_MAX_STEP_S = 1 / 60, FLINCH_MAX_ADVANCE_S = 2;
+  let flinchLift = 0;                // root rise (m) that keeps the rocked contact rectangle at its seat
+  const flinchLiftPose: TankPoseState = {
+    pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, yawRate: 0, speed: 0, turretYaw: 0, gunPitch: 0,
+    trackScroll: { l: 0, r: 0 },
+  };
+  /** How far the rock lowers the contact rectangle's lowest-going corner below where the unrocked pose (root pitch
+   * `rx`, roll `rz`, as root.rotation.x/z) holds it: the root rises that much, so every corner stays at or above its
+   * seat. Euler 'YXZ': a hull-local point's height over the root is (x sin z + y cos z) cos x - z' sin x. */
+  function flinchContactLift(rx: number, rz: number): number {
+    if (!contactGeom || (flinchP === 0 && flinchR === 0)) return 0;
+    const ca0 = Math.cos(rx), sa0 = Math.sin(rx), cc0 = Math.cos(rz), sc0 = Math.sin(rz);
+    const ca1 = Math.cos(rx + flinchP), sa1 = Math.sin(rx + flinchP);
+    const cc1 = Math.cos(rz + flinchR), sc1 = Math.sin(rz + flinchR);
+    const y = contactGeom.bottomYM;
+    let lift = 0;
+    for (let corner = 0; corner < 4; corner++) {
+      const x = corner & 1 ? contactGeom.halfWidM : -contactGeom.halfWidM;
+      const z = contactGeom.zCenterM + (corner & 2 ? contactGeom.halfLenM : -contactGeom.halfLenM);
+      const drop = ((x * sc0 + y * cc0) * ca0 - z * sa0) - ((x * sc1 + y * cc1) * ca1 - z * sa1);
+      if (drop > lift) lift = drop;
+    }
+    return lift * root.scale.y;
+  }
+  /** The pose the wheels conform at while the rock lifts the root (scratch, no allocation). */
+  function liftedPose(renderState: TankPoseState): TankPoseState {
+    flinchLiftPose.pos.x = renderState.pos.x;
+    flinchLiftPose.pos.y = renderState.pos.y + flinchLift;
+    flinchLiftPose.pos.z = renderState.pos.z;
+    flinchLiftPose.yaw = renderState.yaw;
+    flinchLiftPose.visualPitch = renderState.visualPitch;
+    flinchLiftPose.visualRoll = renderState.visualRoll;
+    flinchLiftPose.trackScroll = renderState.trackScroll;
+    return flinchLiftPose;
+  }
   // Suspension spring: restrained pitch/roll movement layered on the sim's
   // stiff 4-corner attitude — squat on accel, dive on braking, settle over ruts.
   // Works in visualPitch/visualRoll space (nose-up positive / right-down
@@ -10673,6 +11173,32 @@ export function* createTankRuntimeSteps(
     });
   }
   let turretFlying = false;
+  /** (2026-11-02 audit F10) this wreck asked for the physics once (an authority's pose arrived before it had loaded) */
+  let turretDriverRequested = false;
+  function requestTurretDriver(): void {
+    if (turretDriverRequested || geometryOnly) return;
+    turretDriverRequested = true;
+    // the loader reports a failure itself, and a later wreck may ask again (wreckTurretDriverLoader.ts)
+    void preloadWreckTurretDriver().catch(() => undefined);
+  }
+  /**
+   * (2026-11-02 audit F10) The body driver for an authority's turret: made now if the physics has loaded (asked for if
+   * not, on a wreck). A wreck that fell back to the scripted arc (its kill came before the physics) hands its turret to
+   * the body once it has: back on its seat at the kill's yaw, the frame the driver measures from, then placed at the
+   * authority's pose on the next update, so the turret drawn and the turret shells meet agree.
+   */
+  function authorityTurretDriver(): WreckTurretDriver | null {
+    if (!turretDriver) ensureTurretDriver();
+    if (!turretDriver) { if (destroyed) requestTurretDriver(); return null; }
+    if (destroyed && turretDriver.drives && !turretDriver.active) {
+      popActive = false;
+      turretG.position.copy(wreckSeat);
+      turretG.rotation.set(0, popYaw0, 0);
+      turretG.scale.copy(wreckSeatScale);
+      turretDriver.begin(wreckState === 'cookoff', wreckSeat, null);
+    }
+    return turretDriver;
+  }
 
   /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
   function settleTurret() {
@@ -10822,13 +11348,16 @@ export function* createTankRuntimeSteps(
     if (!span) return;
     const bend = planBend(span.zMin, span.zMax, rng, pop);
     if (!bend) return;
+    // the plan the gun took, in its frame (wreckGunBend.selftest holds every drawn piece to it)
+    gunG.userData.wreckBend = bend;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
       // (f17, 218: articulatedShadowBatchIntegration) the authored shadow proxies are never mutated: the articulated
       // shadow batch holds their packed copies, so the bend stays on the drawn gun
       if (object.userData.authoredShadowProxy) return;
       toGun.multiplyMatrices(gunInv, object.matrixWorld);
-      const bent = object.geometry.clone();
+      // cut along the crease first: a long tube with corners only at its ends bends as a straight chord beside the rest
+      const bent = cutAtKink(object.geometry, bend, toGun);
       bendGeometry(bent, bend, toGun, toGun.clone().invert());
       bent.computeBoundingBox();
       bent.computeBoundingSphere();
@@ -10862,6 +11391,7 @@ export function* createTankRuntimeSteps(
       if (bent !== original) bent.dispose();
     }
     liveBentGun.length = 0;
+    delete gunG.userData.wreckBend;
   }
 
   function startWreckPresentation(ageS: number): void {
@@ -10918,6 +11448,44 @@ export function* createTankRuntimeSteps(
     popScale = pop ? 1 : 0.22;
     popActive = true;
     popT = ageS;
+    popTrailAcc = 0;
+    applyPop();
+  }
+
+  /** The one writer of wreckState and its `destroyed` mirror (wreckLifecycle.ts): the move this event makes. */
+  function moveWreck(event: TankWreckEvent): TankWreckMove {
+    const move = tankWreckMove(wreckState, event, wreckAge);
+    wreckState = tankWreckNext(wreckState, move, event.kind === 'destroy' && event.pop);
+    destroyed = isWreckState(wreckState);
+    if (move === 'reset' || move === 'dispose') wreckLife++;
+    return move;
+  }
+
+  /** setDestroyed's entry (wreckLifecycle.ts): true when a new wreck is to be laid. A young plain wreck's late cook-off
+   *  cause (`lateCause`, named only by the network presentation) upgrades it here; every other repeat, and a disposed
+   *  visual, does nothing. */
+  function enterWreck(opts: { pop?: boolean; lateCause?: boolean } | undefined): boolean {
+    const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop), lateCause: !!(opts && opts.lateCause) });
+    if (move === 'upgrade') upgradeToCookOff();
+    return move === 'wreck';
+  }
+
+  /**
+   * (2026-11-02 audit F10) A young plain wreck learns it was a cook-off (a network peer: the row's DESTROYED flag
+   * landed before the tank_destroyed event that carries the cause): the cook-off's char spread and gun bend, and its
+   * turret thrown as a cook-off's. A body the authority owns flies as the authority threw it (only its trail changes);
+   * a turret thrown here goes again from its seat (a plain kill's hop is a few centimetres: no visible jump).
+   */
+  function upgradeToCookOff(): void {
+    burnU.uBurnK.value.z = BURN_SPREAD_COOKOFF_S;
+    resetLiveCrumple();
+    planLiveCrumple(true);
+    if (turretDriver?.active) { turretDriver.upgradePop(); return; }
+    turretG.position.copy(wreckSeat);
+    turretG.rotation.set(0, popYaw0, 0);
+    popScale = 1;
+    popActive = true;
+    popT = 0;
     popTrailAcc = 0;
     applyPop();
   }
@@ -11035,9 +11603,9 @@ export function* createTankRuntimeSteps(
       const presentationState = presentationStateValue == null
         ? null
         : requireTankPoseState(presentationStateValue);
-      // The authority state remains the mutation target for queued recoil /
-      // flinch impulses. A presentation state is a read-only, allocation-free
-      // interpolated view used only for transforms and running-gear phase.
+      // Neither state is ever written: queued recoil / flinch impulses drive the
+      // visual's own spring (audit M9). A presentation state is a read-only,
+      // allocation-free interpolated view used for transforms and running-gear phase.
       const renderState = presentationState || state;
       const syncFromStateAssemblyStage1 = (): void => {
         if (battleDetailGroups.length) {
@@ -11134,35 +11702,25 @@ export function* createTankRuntimeSteps(
         }
       };
       syncFromStateGunStage1();
-      // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
-      // Sim-mirrored path (terrain-contact guard): route pending impulses
-      // into state._flinch and RENDER the sim's values — movement.ts
-      // integrates the oscillator once per fixed tick and support-solves
-      // pos.y against this exact pose, so a hit can never rock a track end
-      // below the heightfield. Fallback path self-integrates as before.
+      // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll, the
+      // visual's own spring (audit M9) stepped on the fx clock like the other
+      // self-timed timelines, in steps short enough to stay stable.
       const syncFromStateAssemblyStage3 = (): void => {
-        if (state._flinch) {
-          if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
-            state._flinch.pv += pendFlinchPV;
-            state._flinch.rv += pendFlinchRV;
-            pendFlinchPV = pendFlinchRV = 0;
-          }
-          flinchP = renderState._flinch ? renderState._flinch.p : state._flinch.p;
-          flinchR = renderState._flinch ? renderState._flinch.r : state._flinch.r;
-        } else {
-          if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
-            flinchPV += pendFlinchPV;
-            flinchRV += pendFlinchRV;
-            pendFlinchPV = pendFlinchRV = 0;
-          }
-          if (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0) {
-            flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * dt;
-            flinchP += flinchPV * dt;
-            flinchRV += (-FLINCH_W * FLINCH_W * flinchR - 2 * FLINCH_Z * FLINCH_W * flinchRV) * dt;
-            flinchR += flinchRV * dt;
-            if (Math.abs(flinchP) + Math.abs(flinchPV) + Math.abs(flinchR) + Math.abs(flinchRV) < 1e-4) {
-              flinchP = flinchR = flinchPV = flinchRV = 0;
-            }
+        if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
+          flinchPV += pendFlinchPV;
+          flinchRV += pendFlinchRV;
+          pendFlinchPV = pendFlinchRV = 0;
+        }
+        let left = Math.min(Math.max(0, adv), FLINCH_MAX_ADVANCE_S);
+        while (left > 1e-9 && (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0)) {
+          const h = Math.min(left, FLINCH_MAX_STEP_S);
+          left -= h;
+          flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * h;
+          flinchP += flinchPV * h;
+          flinchRV += (-FLINCH_W * FLINCH_W * flinchR - 2 * FLINCH_Z * FLINCH_W * flinchRV) * h;
+          flinchR += flinchRV * h;
+          if (Math.abs(flinchP) + Math.abs(flinchPV) + Math.abs(flinchR) + Math.abs(flinchRV) < 1e-4) {
+            flinchP = flinchR = flinchPV = flinchRV = 0;
           }
         }
       };
@@ -11191,6 +11749,9 @@ export function* createTankRuntimeSteps(
         }
         root.rotation.set(-(renderState.visualPitch + suspP) + flinchP, renderState.yaw,
           renderState.visualRoll + suspR + sway + flinchR, 'YXZ');
+        // the sim seated the tracks at the unrocked pose: the rock pivots the hull on them, not through the ground
+        flinchLift = flinchContactLift(-(renderState.visualPitch + suspP), renderState.visualRoll + suspR + sway);
+        if (flinchLift > 0) root.position.y = renderState.pos.y + flinchLift;
       };
       syncFromStateAssemblyStage4();
       const syncFromStateAssemblyStage5 = (): void => {
@@ -11300,7 +11861,8 @@ export function* createTankRuntimeSteps(
           // gameplay_feel r5: conform at the EXACT rendered attitude (see the
           // conform() jsdoc) — root.rotation was just set from these terms.
             gearSettling = !!P.gear.conform(
-              renderState, groundSampler, gearPitch, gearRoll, gearStepDt, root.scale.x,
+              flinchLift > 0 ? liftedPose(renderState) : renderState, groundSampler, gearPitch, gearRoll, gearStepDt,
+              root.scale.x,
             );
           }
           P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
@@ -11334,9 +11896,10 @@ export function* createTankRuntimeSteps(
       // §5.362: per-shot stroke profile — cannon recuperate cycle vs the
       // short autocannon-belt shudder (selected by recoilKick's impulseScale
       // contract; see the RAPID_* constants note).
-      const rBack = recoilRapid ? RAPID_BACK : REC_BACK;
-      const rHold = recoilRapid ? RAPID_HOLD : REC_HOLD;
-      const rReturn = recoilRapid ? RAPID_RETURN : REC_RETURN;
+      const rapidFit = recoilRapid && barrelGs.length > 1 ? Math.min(1, RAPID_CYCLE_S * barrelGs.length / RAPID_STROKE_S) : 1;
+      const rBack = recoilRapid ? RAPID_BACK * rapidFit : REC_BACK;
+      const rHold = recoilRapid ? RAPID_HOLD * rapidFit : REC_HOLD;
+      const rReturn = recoilRapid ? RAPID_RETURN * rapidFit : REC_RETURN;
       const syncFromStateAssemblyStage8 = (): void => {
         if (recoilT < rBack + rHold + rReturn) {
           const syncFromStateAssemblyCourse1 = (): void => {
@@ -11400,6 +11963,8 @@ export function* createTankRuntimeSteps(
         }
       };
       syncFromStateAssemblyStage8();
+      // 269: the rotary cluster spins up while the shots come and coasts down after them (gunRotorSpin.ts)
+      if (gunRotorSpin) gunRotorSpin.advance(adv);
       // The stabilized sight direction may exceed a fixed casemate's bearing
       // under cosmetic roll/flinch. Keep its actual trunnion inside the same
       // mechanical traverse window used by movement; never change state aim.
@@ -11463,10 +12028,12 @@ export function* createTankRuntimeSteps(
         const index = muzzleIndex ?? launcherCursor++;
         return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;
       }
+      gunRotorSpin?.kick();
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
-      recoilPendingScale = recoilScale;
+      // a second shot before the next frame adds its rock to the pending one (hitFlinch caps the sum), never replaces it
+      recoilPendingScale = recoilPending ? recoilPendingScale + recoilScale : recoilScale;
       recoilPending = true;
       if (spec.gun.fixedLaunchCanisters) {
         // An indexed missile launch leaves its tube and cradle seated.
@@ -11523,8 +12090,8 @@ export function* createTankRuntimeSteps(
       // impulse (a 120 mm shot now peaks ~2.4 deg of hull pitch, readable
       // side-on at 13 m; incoming-hit flinches still arrive at mag <= 2).
       const imp = Math.min(mag, 3.2) * 0.18;
-      // Accumulate; syncFromState routes into the sim mirror (state._flinch)
-      // so the terrain-contact solve accounts for the rock (see above).
+      // Accumulate into the visual's own spring, which syncFromState steps on the fx clock (audit M9: presentation only;
+      // no sim state is written and the terrain-contact solve never reads the rock).
       pendFlinchPV += f * imp;       // frontal hit rocks the nose up/back
       pendFlinchRV += r * imp * 0.8;
     },
@@ -11612,7 +12179,7 @@ export function* createTankRuntimeSteps(
      *   (screenshot composers freeze mid-flight). Default: settled pose.
      */
     setDestroyed(opts) {
-      if (destroyed) return;
+      if (!enterWreck(opts)) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
       if (gearLodActive) setGearLod(false);
@@ -11629,7 +12196,6 @@ export function* createTankRuntimeSteps(
       const restoreDetachedBattleDetails = battleDetailGroups.length > 0
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
-      destroyed = true;
       captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
@@ -11660,12 +12226,29 @@ export function* createTankRuntimeSteps(
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 
-    setWreckTurretPose(pose) { if (destroyed) turretDriver?.setExternal(pose); },
+    setWreckTurretPose(pose) {
+      if (!pose || wreckState === 'disposed') return;
+      authorityTurretDriver()?.setExternal(pose);
+    },
 
-    awaitWreckTurretPose() { if (destroyed) turretDriver?.awaitExternal(); },
+    awaitWreckTurretPose() {
+      if (wreckState === 'disposed') return;
+      authorityTurretDriver()?.awaitExternal();
+    },
+
+    wreckTurretHeldPose(out) { return destroyed && !!turretDriver && turretDriver.heldPose(out); },
+
+    wreckTurretAuthority() {
+      const mode = destroyed && turretDriver ? turretDriver.mode : 'inactive';
+      return mode === 'awaiting' || mode === 'external' || mode === 'continuation';
+    },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
+
+    wreckState() { return wreckState; },
+
+    wreckLife() { return wreckLife; },
 
     /**
      * Install the burn-mask shader hook (DISARMED, uBurnT -1) on every
@@ -11759,10 +12342,12 @@ export function* createTankRuntimeSteps(
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      // (2026-11-02 audit F10) a disposed visual stops here (the three above are idempotent and touch no GPU resource)
+      const wasWreck = destroyed;
+      if (moveWreck({ kind: 'reset' }) !== 'reset') return;
       turretRing.hide();
       reopenInteriorFills();
-      if (destroyed) {
-        destroyed = false;
+      if (wasWreck) {
         // restore the EXACT captured visibility (never a blanket `true` —
         // that resurrected hidden placeholder hulls over GLB models, r4)
         for (const [mesh, mat, wasVisible] of originalMats) {
@@ -11782,6 +12367,7 @@ export function* createTankRuntimeSteps(
         gunG.rotation.x = 0;
       }
       turretDriver?.reset();
+      turretDriverRequested = false;
       turretFlying = false;
       burnU.uBurnT.value = -1; // disarm the burn mask (clones stay cached)
       burnU.uBurnGlow.value = 0;
@@ -11791,6 +12377,7 @@ export function* createTankRuntimeSteps(
       popTrailAcc = 0;
       popScale = 1;
       recoilT = 1e9;
+      gunRotorSpin?.stop();
       recoilPending = false;
       recoilScale = 1;
       recoilPendingScale = 1;
@@ -11798,6 +12385,11 @@ export function* createTankRuntimeSteps(
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
+      // (2026-11-02 audit F10) the shot cursors and the clocks a rematch must not inherit
+      muzzleAltCursor = 0;
+      launcherCursor = launcherCursorAtBuild;
+      lastFxS = null;
+      gearAccumDt = 0;
       recoilG.position.z = 0;
       recoilG.rotation.z = 0;
       for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
@@ -11806,6 +12398,7 @@ export function* createTankRuntimeSteps(
       mats.burnt.emissiveIntensity = 0.018;
       flinchP = flinchR = flinchPV = flinchRV = 0;
       pendFlinchPV = pendFlinchRV = 0;
+      flinchLift = 0;
       suspP = suspR = 0;
       if (P.gear && P.gear.setBroken) {
         P.gear.setBroken('trackL', false);
@@ -11833,8 +12426,6 @@ export function* createTankRuntimeSteps(
     resetForGaragePresentation() {
       this.resetDestroyed();
       groundSampler = null;
-      gearAccumDt = 0;
-      lastFxS = null;
       root.rotation.set(0, 0, 0, 'YXZ');
       turretG.rotation.set(0, 0, 0);
       gunG.rotation.set(0, 0, 0);
@@ -11857,7 +12448,15 @@ export function* createTankRuntimeSteps(
     dispose() {
       equipmentDamage.dispose();
       turretRing.dispose();
+      // (2026-11-02 audit F10) latched (the two above are idempotent): a second dispose, and any late wreck or reset after
+      // it, does nothing more
+      if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
+      turretDriver?.reset();
       reopenInteriorFills();
+      // (2026-11-08 round 8 s5-02) the dispose move undoes the gun's crumple as reset does: its bent copies die here and
+      // the originals are back on their meshes before the battle pool's release compares them (a wreck disposed with no
+      // reset, an MP match's end or a Studio removal, leaked every copy; wreckDispose.selftest)
+      resetLiveCrumple();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.

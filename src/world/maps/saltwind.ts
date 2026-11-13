@@ -21,6 +21,8 @@
 import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import coastal from './coastal.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 export default {
   id: 'saltwind', name: 'Saltwind Narrows',
   blurb: 'A limestone fishing coast bends around a sheltered bay below dry scrub terraces',
@@ -141,7 +143,7 @@ export default {
   },
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
-    architecture: 'dalmatian',
+    architecture: BUILDING_STYLES.saltwind.kit,
     // The landmarks lane (2026-10-05; src/world/landmarks/towers.ts campanile): the village's free-standing Venetian
     // campanile, as Rab's, Hvar's and Korcula's stand apart from their churches — on the bay's axis between the village
     // square and the market crossroads (the map's mirror line, so it stands for both halves), its door toward the square:
@@ -201,7 +203,7 @@ export default {
     haystacks: 8, rocks: 188, outcrops: 30, craters: 48, rubblePiles: 12, cropFields: 4, sandbagLines: 14, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Dalmatia in the 1990s: the M-84's parent T-72M1, the
     // T-55 (its Type 59 copy) and the BMP
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
+    tankWrecks: WRECK_CASTS.saltwind,
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the karst. Bare limestone

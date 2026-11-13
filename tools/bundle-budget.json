@@ -1,58 +1,58 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held.",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build.",
   "headroom": 0.03,
   "pages": {
     "game": {
-      "requests": 128,
-      "raw": 4634084,
-      "gzip": 1422322,
-      "brotli": 1197469,
+      "requests": 151,
+      "raw": 4965235,
+      "gzip": 1531089,
+      "brotli": 1288229,
       "inlineCss": 5174,
-      "entryRaw": 925630,
-      "entryBrotli": 256325
+      "entryRaw": 932364,
+      "entryBrotli": 257558
     },
     "home": {
-      "requests": 8,
-      "raw": 112620,
-      "gzip": 33031,
-      "brotli": 29448,
+      "requests": 9,
+      "raw": 113992,
+      "gzip": 33490,
+      "brotli": 29855,
       "inlineCss": 976
     },
     "docs": {
-      "requests": 12,
-      "raw": 150645,
-      "gzip": 43319,
-      "brotli": 38052,
+      "requests": 13,
+      "raw": 151830,
+      "gzip": 43701,
+      "brotli": 38424,
       "inlineCss": 954
     },
     "gallery": {
-      "requests": 75,
-      "raw": 2989908,
-      "gzip": 899789,
-      "brotli": 754933,
+      "requests": 86,
+      "raw": 3229073,
+      "gzip": 973099,
+      "brotli": 814055,
       "inlineCss": 980
     },
     "notFound": {
-      "requests": 7,
-      "raw": 68490,
-      "gzip": 21385,
-      "brotli": 18975,
+      "requests": 8,
+      "raw": 69792,
+      "gzip": 21832,
+      "brotli": 19366,
       "inlineCss": 803
     },
     "cn": {
-      "requests": 129,
-      "raw": 4796972,
-      "gzip": 1479178,
-      "brotli": 1243225,
+      "requests": 152,
+      "raw": 5135050,
+      "gzip": 1590095,
+      "brotli": 1335680,
       "inlineCss": 5534,
-      "entryRaw": 925630,
-      "entryBrotli": 256325
+      "entryRaw": 932364,
+      "entryBrotli": 257558
     },
     "pad": {
-      "requests": 14,
-      "raw": 109947,
-      "gzip": 39885,
-      "brotli": 35451,
+      "requests": 15,
+      "raw": 111761,
+      "gzip": 40524,
+      "brotli": 36064,
       "inlineCss": 877
     }
   }

@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const option = name => process.argv.slice(2).find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const base = option('url'), revision = option('revision'), output = option('out');
@@ -17,8 +18,8 @@ const out = resolve(output), url = new URL(base);
 await mkdir(out, { recursive: false }); // Never replace previous evidence.
 const acquisitionSha256 = createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex');
 const report = { ok: false, url: url.href, revision, acquisitionSha256, samples: [], errors: [] };
-const lock = createCaptureLock();
-let browser, refresh;
+let hold;
+let browser;
 try {
   const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(30000) });
   assert.ok(response.ok, `Garage HTTP ${response.status}`);
@@ -28,8 +29,7 @@ try {
   assert.ok(report.entry, 'Require a bundled production entry');
   assert.ok(report.version?.endsWith(`+g${revision.slice(0, 9)}`),
     `Served ${report.version}; expected clean revision ${revision.slice(0, 9)}. A push is not a deployment.`);
-  await lock.acquire(45 * 60 * 1000);
-  refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
+  hold = await openCaptureHold({ label: 'griffin-viper-garage-probe', timeoutMs: 45 * 60 * 1000 });
   browser = await launchGuardedBrowser(puppeteer, { headless: true,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
@@ -39,7 +39,7 @@ try {
   // quality, camouflage and resource ownership stay on the normal Garage path.
   url.searchParams.set('qa', '1'); url.searchParams.set('nosplash', '1');
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction(() => window.__GAME_READY && window.__DEBUG?.pedestalOnStage,
+  await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,
     { timeout: 120000 });
   await page.waitForSelector('#cot-boot', { hidden: true, timeout: 30000 });
   await page.waitForFunction(() => window.__GARAGE_WORKSHOP?.stats().architecture?.presented,
@@ -119,7 +119,7 @@ try {
   try { await browser?.close(); }
   catch (error) { report.ok = false; report.errors.push(`Browser cleanup: ${error}`); process.exitCode = 1; }
   finally {
-    clearInterval(refresh); lock.release();
+    await hold?.release();
     await writeFile(`${out}/receipt.json`, JSON.stringify(report, null, 2));
   }
 }

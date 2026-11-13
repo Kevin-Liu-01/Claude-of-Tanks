@@ -9,9 +9,13 @@
  *   1  bitset: varint byte length, then bit (i & 7) of byte (i >> 3) set for each index i — a dense set (one bit per
  *              obstacle up to the highest felled: Monsoon's whole field is 1,169 bytes).
  * Indices run 0..MAX_DESTROYED_INDEX (every committed collision manifest holds fewer than 10,000 obstacles); the
- * largest possible set is 8 KB as a bitset, so the encoder never throws on a legal set, however long the match.
+ * largest possible set is 8,195 B as a bitset, so the set's encoder never throws on a legal set, however long the match.
+ * The set shares its keyframe's 64 KB with the rows, the shells, the mode state and the destruction log (whose budget,
+ * src/sim/destructionMatch.ts, leaves the rest about 28 KB); the falls below take only the room all of them leave.
  */
 import { WireError, type ByteReader, type ByteWriter } from './bytes.ts';
+import { MAX_MESSAGE_BYTES } from './constants.ts';
+import { isObstacleFallCode } from '../../sim/obstacleFall.ts';
 
 /** The highest obstacle index a destroyed set may name. */
 export const MAX_DESTROYED_INDEX = 0xffff;
@@ -84,4 +88,46 @@ export function readDestroyedSet(reader: ByteReader): number[] {
     return out;
   }
   throw new WireError('range', `unknown destroyed set form ${form}`);
+}
+
+/**
+ * Each listed index's fall (wire 11, 2026-11-05, round 2 of the 2026-11-02 audit, U27; src/sim/obstacleFall.ts): one fall
+ * byte per index the frame's set names, in the set's ascending order, as the frame's last field, behind
+ * SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS. The falls are presentation only and `none` is a legal fall, so they take only the
+ * room the frame has left: a frame whose falls would carry it past MAX_MESSAGE_BYTES sends none (the flag stays clear) and
+ * encodes exactly as it would without them. Falls never cost a frame a byte it does not carry, and never stop a keyframe
+ * (the C3 hazard, src/sim/destructionMatch.ts DESTRUCTION_LOG_BUDGET_BYTES). A frame whose falls are all none carries none.
+ * Monsoon's whole crushable field down is 8,928 B of falls and fits beside every other section at its bound (a 64,523 B
+ * keyframe, destroyedSet.selftest); a frame they do not fit (every legal index down: 64 KB of falls) sends none, and its
+ * viewer lays each of those props along its own heading (sim/obstacleFall.ts withheldObstacleFall), as the other team's
+ * viewers lay a withheld fall.
+ */
+
+/**
+ * Write `count` falls (`falls`, aligned with the set the frame wrote) when any is not none and they fit what the message
+ * has left after `writer.length` bytes; returns whether they were written (the caller sets the flag).
+ */
+export function writeDestroyedFalls(writer: ByteWriter, falls: readonly number[] | null, count: number): boolean {
+  if (count <= 0 || !falls) return false;
+  let any = false;
+  for (let position = 0; position < count; position++) {
+    const code = falls[position] ?? 0;
+    if (!isObstacleFallCode(code)) throw new WireError('range', `destroyed fall ${code} is no fall code`);
+    if (code !== 0) any = true;
+  }
+  if (!any || writer.length + count > MAX_MESSAGE_BYTES) return false;
+  for (let position = 0; position < count; position++) writer.u8(falls[position] ?? 0);
+  return true;
+}
+
+/** The falls of a set of `count` indices (the frame's flag is set: one byte each). */
+export function readDestroyedFalls(reader: ByteReader, count: number): number[] {
+  if (count <= 0) throw new WireError('invalid_message', 'destroyed falls follow no destroyed index');
+  const out: number[] = new Array(count);
+  for (let position = 0; position < count; position++) {
+    const code = reader.u8();
+    if (!isObstacleFallCode(code)) throw new WireError('range', 'destroyed fall out of range');
+    out[position] = code;
+  }
+  return out;
 }

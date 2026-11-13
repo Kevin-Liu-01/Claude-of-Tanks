@@ -25,10 +25,11 @@
 // still moments. Outputs: shots/media-r5/site50/renders/{films,stills}/<id>/, shots/media-r5/site50/deliver/<id>/;
 // --tag=<round> writes renders-<round>/ and deliver-<round>/ instead, so every round's renders stay (owner 2026-10-03).
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
-import { CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR } from '../capture-lock.mjs';
+import { yieldToNormalHolds } from './priority-yield.mjs';
+import { CINEMA_LEASE_OVER_EXIT } from '../media-production/lease-exit.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
@@ -79,13 +80,9 @@ const yieldHolds = Math.max(0, Number(flags['yield-holds'] ?? 2));
 const fifo2 = flags['yield-fifo2'] ?? null;
 const fifo2Holds = () => { try { const n = Number(JSON.parse(readFileSync(fifo2, 'utf8')).holds); return Number.isFinite(n) ? n : null; } catch { return null; } };
 let fifo2Base = null;
-const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
 // Only a normal-band hold pays a yield (2026-10-13: the fleet finals counted perf's priority-band holds as the yields
-// they owed, so for over an hour no normal ticket got the lock while chain16 ran; lab.mjs has classed holds this way
-// since 2026-10-12). A ticket's name starts with its 15-digit stamp: a priority ticket is stamped back in time, a normal
-// one at about the moment it joined. A new hold is classed by the ticket that left the queue within three seconds of it.
-const PRIORITY_AGE_MS = 24 * 3600 * 1000;
-const queueTickets = () => { try { return new Map(readdirSync(CAPTURE_QUEUE_DIR).filter((n) => n.endsWith('.t')).map((n) => [n, Number(n.slice(0, 15))])); } catch { return new Map(); } };
+// they owed, so for over an hour no normal ticket got the lock while chain16 ran). The rule is lab.mjs's too, one copy in
+// tools/media-r5/priority-yield.mjs (2026-11-02 audit S4).
 // The share changes overnight without a restart (the coordinator's pacing, 2026-10-08: two holds of the capture service
 // per media hold until 05:00, one after, and none during push 7's browser receipts): renders/yield-holds, when present,
 // replaces --yield-holds at every lease, and while renders/pause exists no new lease starts.
@@ -108,43 +105,14 @@ async function yieldGpu() {
   const yieldHolds = Math.floor(yieldOwed + 1e-9);
   if (!yieldHolds) { console.log(`[finals] lease ${leaseNo}: no yield owed (${holdsWanted()} a lease)`); return; }
   yieldOwed -= yieldHolds;
-  const seen = new Set(), skipped = new Set(), pending = new Map(), began = Date.now();
-  let freeSince = Date.now(), served = 0, readAt = 0, tickets = queueTickets(), left = [];
-  for (;;) {
-    if (stopping) return;
-    const id = holdId(), now = queueTickets(), t = Date.now();
-    // the tickets that left the queue in the last five seconds ([stamp, when]); a new hold is classed by the ticket
-    // that left within three seconds of it (its owner's), waiting up to three seconds for that ticket to go
-    for (const [name, at] of tickets) if (!now.has(name)) left.push([at, t]);
-    left = left.filter(([, at]) => t - at < 5000);
-    tickets = now;
-    if (id && !seen.has(id) && !skipped.has(id) && !pending.has(id)) pending.set(id, t);
-    for (const [hold, first] of pending) {
-      const owners = left.filter(([, at]) => Math.abs(at - first) < 3000);
-      if (!owners.length && t - first < 3000) continue;
-      const priority = owners.length > 0 && owners.every(([at]) => at < t - PRIORITY_AGE_MS);
-      (priority ? skipped : seen).add(hold);
-      pending.delete(hold);
-    }
-    if (id) freeSince = t;
-    if (fifo2 && t - readAt > 5000) {
-      readAt = t;
-      const count = fifo2Holds();
-      // (a relaunch counts from its first look; a restarted runner counts from zero again)
-      if (count != null && (fifo2Base == null || count < fifo2Base)) fifo2Base = count;
-      served = count != null ? count - fifo2Base : 0;
-    }
-    if ((fifo2 ? served : seen.size) >= yieldHolds) break;
-    // with the lock free a minute and no normal ticket waiting (five minutes at most), the finals go on
-    const free = id ? 0 : t - freeSince;
-    const normalWaiting = [...now.values()].some((at) => at >= t - PRIORITY_AGE_MS);
-    if ((free > 60000 && !normalWaiting) || free > 300000) break;
-    await new Promise(resolve => setTimeout(resolve, 200));
-  }
-  const given = fifo2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${seen.size} normal-band in all)`
-    : `${seen.size} of ${yieldHolds} normal-band hold${yieldHolds === 1 ? '' : 's'}`;
-  const passed = skipped.size ? `, ${skipped.size} priority-band hold${skipped.size === 1 ? '' : 's'} (perf, media) passed by` : '';
-  console.log(`[finals] lease ${leaseNo}: yielded to ${given}${passed} in ${((Date.now() - began) / 60000).toFixed(1)} min; rejoining the queue at ${stamp} ${new Date().toTimeString().slice(0, 8)}`);
+  const paid = await yieldToNormalHolds({ holds: yieldHolds, fifo2: fifo2 ? fifo2Holds : null, fifo2Base, stopped: () => stopping });
+  fifo2Base = paid.fifo2Base;
+  if (paid.stopped) return;
+  const { served, normal, priority } = paid;
+  const given = fifo2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${normal} normal-band in all)`
+    : `${normal} of ${yieldHolds} normal-band hold${yieldHolds === 1 ? '' : 's'}`;
+  const passed = priority ? `, ${priority} priority-band hold${priority === 1 ? '' : 's'} (perf, media) passed by` : '';
+  console.log(`[finals] lease ${leaseNo}: yielded to ${given}${passed} in ${(paid.waitedMs / 60000).toFixed(1)} min; rejoining the queue at ${stamp} ${new Date().toTimeString().slice(0, 8)}`);
 }
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));
@@ -252,7 +220,7 @@ async function renderJobs(label, all, file) {
     if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
     if (fifo2) fifo2Base = fifo2Holds() ?? fifo2Base;
     if (stopping) throw new Error(`stopped by a signal in ${label}`);
-    if (code === 75 && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
+    if (code === CINEMA_LEASE_OVER_EXIT && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
     if (code === 0) continue; // every job rendered: the next pass finds nothing pending
     const newly = jobs.filter(j => !done(j) && errorsOf(j).length);
     if (!newly.length) throw new Error(`${label} failed (${code})`);

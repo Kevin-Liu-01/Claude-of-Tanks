@@ -78,7 +78,12 @@ export function applyPlayerInput(
   entity.input.aimLocked = !!input.aimLocked;
   entity.input.actionBits = input.actionBits | 0;
   const shellSlot = rackSlot(entity, input.shellSlot);
-  if (shellSlot !== entity.combat.shellSlot) {
+  // The refusal latch (_deniedShellSlot: none, or the empty slot whose refusal was said) is a request's, not the hull's
+  // (round 8 Y1 s2-10): a request of the slot held or a slot taken ends it, so a seat that turns back to its round and
+  // asks for the empty one again is told again; while one request is held it is told once.
+  if (shellSlot === entity.combat.shellSlot) {
+    if (entity._deniedShellSlot !== undefined) entity._deniedShellSlot = undefined;
+  } else {
     if (selectShell(entity.combat, shellSlot, entity.spec)) {
       entity._deniedShellSlot = undefined;
     } else {

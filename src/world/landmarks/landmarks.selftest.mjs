@@ -27,6 +27,7 @@ import { LANDMARK_KINDS, isDressingPiece, landmarkClearances, landmarkFootprint,
 import { composeLandmarks, hasStructure, landmarkObjectiveDiscs } from './compose.ts';
 import { PartSink, REGIONAL_BUCKETS, streamFrom } from '../maps/regional/geometry.ts';
 import { archedFace } from './kit.ts';
+import { landmarkPiecesOf } from './pieces.ts';
 import { auditStructureAssembly } from '../maps/structureAssemblyAudit.ts';
 import { deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
 import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, hullPassesObstacleTop, pointInsideCollisionRecord } from '../collision.ts';
@@ -132,6 +133,7 @@ const VARIANTS = {
   trussBridge: [{ spans: 2, span: 60 }],
   lighthouse: [{ paint: 'green', base: 'rock' }],
   khan: [{ form: 'arcade', width: 30 }],
+  lavoir: [{ length: 10, depth: 6, spring: 'right', steps: 2.2 }],
   fountain: [{ style: 'ottoman', radius: 2.6 }, { style: 'markt', radius: 2.6 }],
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
   quay: [{ length: 24, depth: 10, top: 1.0 }],
@@ -229,6 +231,50 @@ for (const kind of KINDS) {
     built++; total += tris;
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------- lavoir
+// (amberford-lavoir-272) Amberford's lavoir is cut into a bank: its floor stands over the ground inside its walls (the
+// open arcade never shows the ground through it), the flight up to the middle arch reaches the ground before it, the
+// spring's trough sits at the uphill end, and its roof and the fontaine's pillar are the named pieces the damage kit takes.
+check('lavoir on a bank', () => {
+  const params = { length: 10, depth: 6, spring: 'right', steps: 2.2 };
+  const bank = (lx, lz) => Math.max(0, 1.4 * (0.5 - lz / 12) + 0.1 * lx / 10);
+  const a = build('lavoir', params, { ground: bank, groundFall: 1.5 });
+  const flat = build('lavoir', params);
+  const each = (parts, fn) => {
+    for (const g of geometries(parts)) {
+      const p = g.getAttribute('position');
+      for (let i = 0; i < p.count; i++) fn(p.getX(i), p.getY(i), p.getZ(i));
+    }
+  };
+  // the highest vertex where `test` holds, under the arcade's springing (the roof over it is not the floor)
+  const top = (parts, test) => { let y = -Infinity; each(parts, (x, py, z) => { if (py < 3 && test(x, z)) y = Math.max(y, py); }); return y; };
+  // the floor's paving (inside the walls, under the basin's kerb) stands over the bank's highest ground inside the walls
+  let inside = 0;
+  for (let x = -4.4; x <= 4.4; x += 0.4) for (let z = -2.4; z <= 2.4; z += 0.4) inside = Math.max(inside, bank(x, z));
+  // (the paving is one box: its top read at its front corners, past the walls' and the flight's reach)
+  const floorAt = (parts) => top(parts, (x, z) => Math.abs(x) > 5.2 && Math.abs(x) < 5.4 && z > 3.28 && z < 3.32);
+  assert.ok(floorAt(a.parts) >= inside + 0.1, `the terraced floor ${floorAt(a.parts).toFixed(2)} over the ground inside ${inside.toFixed(2)}`);
+  assert.ok(Math.abs(floorAt(flat.parts) - 0.25) < 1e-6, 'on flat ground the floor is the step over it it always was');
+  // the flight: its lowest tread a riser over the ground at its foot, every tread within the plan's run
+  const foot = bank(0, 3.3 + 1.1), flight = (x, z) => Math.abs(x) < 1.7 && z > 3.35 && z < 6;
+  let far = -Infinity;
+  each(a.parts, (x, y, z) => { if (y < 3 && flight(x, z)) far = Math.max(far, z); });
+  const lowest = top(a.parts, (x, z) => flight(x, z) && z > far - 0.01);
+  assert.ok(far <= 3.3 + 2.2 + 1e-6, `the flight (to z ${far.toFixed(2)}) within its run`);
+  assert.ok(lowest > foot && lowest - foot <= 0.2, `the flight's lowest tread ${lowest.toFixed(2)} a riser over its foot ${foot.toFixed(2)}`);
+  assert.ok(top(flat.parts, flight) <= 0.25 + 1e-6, 'on flat ground the flight is no higher than the floor\'s step');
+  // the spring end: the trough past the +x end wall (spring 'right'), the rill's drain past the -x
+  assert.ok(top(a.parts, (x) => x > 5.6 && x < 6.0) > floorAt(a.parts) + 0.5, 'the abreuvoir stands past the spring end');
+  assert.ok(top(a.parts, (x) => x < -5.6) < floorAt(a.parts), 'the rill and its drain lie low past the far end');
+  // the named pieces: the roof at the breach (it slumps where it stands), the fontaine at the first damage
+  const pieces = Object.fromEntries((landmarkPiecesOf(a.parts) ?? []).map((p) => [p.name, p]));
+  assert.deepEqual(Object.keys(pieces).sort(), ['fontaine', 'roof']);
+  assert.equal(pieces.roof.at, 'breached'); assert.equal(pieces.roof.fall, 'slump');
+  assert.equal(pieces.fontaine.at, 'damaged');
+  assert.ok(pieces.roof.min[1] > floorAt(a.parts) + 3, 'the roof piece is the roof and its tie beams, over the arcade');
+  for (const g of [...geometries(a.parts), ...geometries(flat.parts)]) g.dispose();
+});
 
 // ---------------------------------------------------------------------------------------------------------- gates
 /** A deck over a passage stands at least this high (m): where the arch's shell over it does (below), far over the step a

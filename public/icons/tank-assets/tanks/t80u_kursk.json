@@ -1791,7 +1791,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10518,
-        "sha256": "e19e942e79cf114400cc690b487e5d4c35320fe0fe610f16db4c2772becff942"
+        "sha256": "e19e942e79cf114400cc690b487e5d4c35320fe0fe610f16db4c2772becff942",
+        "frame": [19,121,226,249]
       }
     },
     "top": {
@@ -1807,8 +1808,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10504,
-      "sha256": "640fa34f00d06a3b18daa02b9e5810f2f5278000955d338b8049365f8e88b08c"
+      "bytes": 10514,
+      "sha256": "d1540d6b347d7ebd364abb83f2b77b419b635c8f12bfcf86fa28c458234a7e33"
     },
     "topSilhouette": {
       "file": "t80u_kursk_top_silhouette.png",
@@ -1831,32 +1832,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25702,
-      "sha256": "6330be5f1e67a868a720cffe854388eaadfec01f0c914c6cc8f3fa5e3932c831"
+      "bytes": 25758,
+      "sha256": "a487246a5133ac9ee4cfd526988262aaf16e6f2bad190100ff51bba209c9c89f"
     },
     "modulesSide": {
       "file": "t80u_kursk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24898,
-      "sha256": "e0d5f4f393aa046f7e8a777dab7c5f003251c4f510974814236a92534d6cdee9"
+      "bytes": 24908,
+      "sha256": "3e785281290b77dd9824567b93c0df9cc86e21fda887b2ae12df323baec903fc"
     },
     "crewSide": {
       "file": "t80u_kursk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22934,
-      "sha256": "13bbbad9980011000e388935c6ac4954bbd8b908b79ed0d1479914577878a95a"
+      "bytes": 22888,
+      "sha256": "8c81c16a07512cd01bfcec1dd74b75e0cdca568bbbc9f49395c2fff777bc661b"
     },
     "markings": {
       "file": "t80u_kursk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36655,
-      "sha256": "7e648b84d61ead182a365d64b1dd9ccde4e0481de3b5e12e1fb8ad6f3b67676b"
+      "bytes": 34330,
+      "sha256": "4cd389b69ee08de76ede1f74adb79acf4398824e13bc6971d172928ae023966b"
     },
     "technicalLabels": {
       "file": "t80u_kursk_technical.json",

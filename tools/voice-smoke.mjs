@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // voice-smoke.mjs — play-path smoke for the national crew radio
 // (src/audio/crewRadio.ts, packs in public/audio/voice/<lang>/).
 //
@@ -10,12 +10,12 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //      'ru') and its pack decodes with zero failures;
 //   2. the battle envelope plays through the game bus: a re-driven
 //      garage→battle edge announces battle_start, the presented victory
-//      announces victory;
+//      announces victory (while the battle behind the smoke is live);
 //   3. combat lines driven through the bus reach the radio: a spot (plain or
 //      by bearing), track loss, reload done, sixth sense and a penetration;
 //   4. the crew-voice setting switches live: 'english' → en-US, back to
 //      'national' → ru;
-//   5. all 13 crew packs decode and are audible through the radio chain,
+//   5. every crew pack (the 17 national and the 21 with no country) decodes and is audible through the radio chain,
 //      band-limited like an intercom (one PCM capture per language);
 //   6. zero page console errors (known-unrelated tankFactory wheel-sync
 //      errors quarantined, same as tools/audio-probe.mjs).
@@ -28,8 +28,10 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
 import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const LANGUAGES = CREW_LANGUAGES;
 const outDir = resolve('shots/voice-smoke');
@@ -63,10 +65,7 @@ function analyze(i16, sampleRate) {
   return { rms, rmsDb: rms > 0 ? 20 * Math.log10(rms) : -Infinity, highShare, lowShare };
 }
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'voice-smoke', timeoutMs: 20 * 60 * 1000 });
 
 const port = 7600 + Math.floor(Math.random() * 300);
 // A private dep cache: node_modules (and its .vite) can be shared between checkouts.
@@ -107,13 +106,16 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; one retry of a failed load,
+  // COT_NAV_RETRIES): its cold private vite cache took past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs, retries } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
+      await waitForBootLoaded(page, { timeout: readyTimeoutMs });
       break;
     } catch (err) {
-      if (attempt >= 1) throw err;
+      if (attempt >= retries) throw err;
       console.warn(`[voice-smoke] load attempt failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
     }
@@ -123,7 +125,9 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
+  // the battle behind the smoke held alive and still for the whole run (src/dev/battleHold.ts): its bots never end it in
+  // defeat (one run lost it at ~260 s of ~520 s) and never fire, so no hit call of theirs crosses the lines driven here
+  await page.evaluate(() => { window.__DEBUG.battleHold.set(true); return window.__DEBUG.startBattle('t90am'); });
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
@@ -207,8 +211,10 @@ try {
     { id: window.__P.playerId, module: 'trackL', state: 'red' })), { gapMs: 5000 })) {
     fail('track loss never called');
   }
+  // The loader calls a finished reload on 35 % of them (audioEngine, prob 0.35) and the battle's own calls can hold the
+  // net: four tries missed it in about one run in five, ten leave about 1 %.
   if (!await untilSaid(['reloaded'], () => page.evaluate(() => window.__P.emit('player:reload',
-    { t: 0, total: 7, kind: 'shell', caliberMm: 125, progress: 1, done: true })))) {
+    { t: 0, total: 7, kind: 'shell', caliberMm: 125, progress: 1, done: true })), { attempts: 10 })) {
     fail('reload done never called');
   }
   if (!await untilSaid(['sixth_sense'], () => page.evaluate(() => window.__P.emit('player:spotted',
@@ -264,6 +270,34 @@ try {
   if (ui.stored !== 'en-US' || ui.lang !== 'en-US') fail(`Sound tab "English" did not persist and switch (stored ${ui.stored}, crew ${ui.lang})`);
   if (ui.back !== 'ru') fail(`Sound tab "National" did not return the crew to ru (${ui.back})`);
 
+  // 2b) battle END while the battle behind the smoke is live: victory over the fanfare. The frame loop services the
+  //     radio queue, and once that battle has ended its result presentation can hold the frames (mainFrameRuntime's
+  //     covering veils): a smoke that outlives it (the sweep below takes minutes on a loaded machine) heard no victory
+  //     in two runs, while the engine plays it in Node however the battle ended. The sweep's forced lines need no
+  //     frames, so it runs after.
+  const behind = await page.evaluate(() => ({ phase: window.__DEBUG.game.phase, result: window.__DEBUG.game.result ?? null,
+    timeS: +(window.__DEBUG.game.timeS ?? 0).toFixed(1) }));
+  report.battleBehind = behind;
+  if (behind.result) fail(`the battle behind the smoke ended (${behind.result} at ${behind.timeS} s) before its result step`);
+  await page.evaluate(() => window.__P.emit('battle:ended', { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
+  await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
+  // The result waits its 0.4 s and any call on air (the battle behind it keeps talking): give it up to 8 s, not a fixed
+  // 2.6 s.
+  await page.waitForFunction(() => window.__COT_AUDIO.voiceLog.some((v) => v.id === 'victory'), { timeout: 8000, polling: 100 })
+    .catch(() => {});
+  // Checked now: the radio log keeps its last 64 calls, and the sweep adds 38 and the battle's own.
+  const envelope = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));
+  // The battle behind can still end inside that window (a run on 11-08 heard the player's crew go down, then its own
+  // defeat presented over the smoke's victory): that is staging, named as such, not a radio that dropped the line.
+  const after = await page.evaluate(() => ({ result: window.__DEBUG.game.result ?? null,
+    timeS: +(window.__DEBUG.game.timeS ?? 0).toFixed(1) }));
+  report.battleBehindAfter = after;
+  for (const id of ['battle_start', 'victory']) {
+    if (envelope.includes(id)) continue;
+    if (id === 'victory' && after.result) fail(`the battle behind the smoke ended (${after.result} at ${after.timeS} s) inside the result window: staging, rerun`);
+    else fail(`bus event never played voice line: ${id}`);
+  }
+
   // 5) every pack through the radio chain, isolated from the rest of the mix.
   await page.evaluate(() => window.__P.emit('ui:volumes', { master: 0.8, engine: 0, combat: 0, ambience: 0, ui: 0, voice: 1 }));
   await sleep(600);
@@ -274,7 +308,11 @@ try {
       { timeout: 20000 }, lang,
     ).then(() => true, () => false);
     if (!ok) { fail(`${lang}: pack did not decode`); continue; }
-    await page.evaluate(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.startTap(6); });
+    const t0 = await page.evaluate(() => {
+      window.__COT_AUDIO.clearVoiceQueue();
+      window.__COT_AUDIO.startTap(6);
+      return window.__COT_AUDIO.ctx.currentTime;
+    });
     await sleep(120);
     await page.evaluate(() => window.__COT_AUDIO.sayVoice('enemy_spotted'));
     await sleep(2300);
@@ -284,9 +322,16 @@ try {
     const bytes = Buffer.from(b64, 'base64');
     const i16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2);
     writeWav(join(outDir, `${lang}.wav`), i16, sampleRate);
-    const a = analyze(i16, sampleRate);
-    const last = await page.evaluate(() => window.__COT_AUDIO.voiceLog.at(-1) || null);
-    report.languages[lang] = { rmsDb: +a.rmsDb.toFixed(1), highShare: +a.highShare.toFixed(4), lowShare: +a.lowShare.toFixed(4), line: last };
+    // The battle runs on behind the capture and its crew keeps calling (a missile warning, enemy smoke): find our
+    // line among the calls keyed in the window rather than taking the last one, and measure the span it played.
+    const heard = await page.evaluate((t) => window.__COT_AUDIO.voiceLog.filter((v) => v.t >= t), t0);
+    const last = heard.find((v) => v.id === 'enemy_spotted') ?? heard.at(-1) ?? null;
+    const span = last && last.id === 'enemy_spotted'
+      ? i16.subarray(Math.max(0, Math.floor((last.t - t0) * sampleRate)) * 2, Math.ceil((last.t - t0 + last.dur) * sampleRate) * 2)
+      : i16;
+    const a = analyze(span.length >= 8192 ? span : i16, sampleRate);
+    report.languages[lang] = { rmsDb: +a.rmsDb.toFixed(1), highShare: +a.highShare.toFixed(4), lowShare: +a.lowShare.toFixed(4), line: last,
+      others: heard.filter((v) => v !== last).map((v) => `${v.id}/${v.lang}`) };
     console.log(`[voice-smoke] ${lang.padEnd(5)} rms ${a.rmsDb.toFixed(1).padStart(6)} dBFS  >6k ${(a.highShare * 100).toFixed(1)}%  <150 ${(a.lowShare * 100).toFixed(1)}%  ${last ? `${last.id}/${last.lang}` : '(no line)'}`);
     if (!last || last.lang !== lang || last.id !== 'enemy_spotted') fail(`${lang}: the line did not play from its own pack (${last ? `${last.id}/${last.lang}` : 'none'})`);
     if (a.rms < 0.003) fail(`${lang}: radio line inaudible (${a.rmsDb.toFixed(1)} dBFS)`);
@@ -294,15 +339,14 @@ try {
     if (a.lowShare > 0.12) fail(`${lang}: radio low cut missing (${(a.lowShare * 100).toFixed(1)}% below 150 Hz)`);
   }
   await page.evaluate(() => window.__COT_AUDIO.forceCrewLanguage(null));
+  // One pack is held at a time (crewRadio.setLanguage drops the one it leaves): the national crew's pack decodes again
+  // after the sweep.
+  await page.waitForFunction('window.__COT_AUDIO.crewLanguage === "ru" && window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 })
+    .catch(() => fail('the national crew (ru) pack did not decode again after the pack sweep'));
   await page.evaluate(() => window.__P.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
   const library = await page.evaluate(() => window.__COT_AUDIO.library());
   report.library = library;
   if (library.failed) fail(`${library.failed} audio assets failed to decode`);
-
-  // 2b) battle END: victory over the fanfare.
-  await page.evaluate(() => window.__P.emit('battle:ended', { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
-  await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
-  await sleep(2600);
 
   const state = await page.evaluate(() => ({
     played: window.__COT_AUDIO.voiceLog.map((v) => v.id),
@@ -311,9 +355,6 @@ try {
   }));
   report.played = state.played;
   console.log(`[voice-smoke] ctx=${state.ctxState} t=${state.ctxTime.toFixed(1)}s played: ${state.played.join(', ') || '(none)'}`);
-  for (const id of ['battle_start', 'victory']) {
-    if (!state.played.includes(id)) fail(`bus event never played voice line: ${id}`);
-  }
   if (state.ctxState !== 'running') fail(`AudioContext not running: ${state.ctxState}`);
 
   // 6) console gate (quarantine the known-unrelated tankFactory wheel-sync)
@@ -328,8 +369,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify({ ...report, errors }, null, 2));
   try { await browser.close(); } catch (_) { /* fine */ }
   try { await server.close(); } catch (_) { /* fine */ }
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 
 if (errors.length) {

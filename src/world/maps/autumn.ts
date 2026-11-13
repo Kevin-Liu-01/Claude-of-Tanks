@@ -32,6 +32,8 @@ import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: SW -> NE. Stations follow the low ground of the seed-1337 field
@@ -428,13 +430,24 @@ export default {
     landmarks: [
       { kind: 'casemateFort', x: 350, z: -200, yawDeg: -90, params: { length: 55, cupolas: 3 }, name: 'the Metz fort on the east côte' },
       { kind: 'casemateFort', x: -360, z: 250, yawDeg: 90, params: { length: 55, cupolas: 3 }, name: 'the Metz fort on the west côte' },
+      // (amberford-lavoir-272, 2026-11-10; the owner: "new special buildings ... integrated with the whole identity of the
+      // map") the village lavoir (src/world/landmarks/village.ts lavoir): the covered wash-house of a Moselle village, cut
+      // into the rise on the place's south-west quarter (civic/plans/autumn.ts la-place: the market's corner) between the
+      // bots' line down the inn's front and the coach road's south arm, its arcade to the coach road, the well before its low
+      // end. The spring rises at its uphill (south) end into the fontaine and the beasts' trough, the rill runs out of its
+      // low end; its floor is terraced over the rise, a flight up to the middle arch. Set into the finished place (veto):
+      // nothing else on the map moves. Seated clear of the place's corridors by 1.4 m (evidence probe-seat3).
+      { kind: 'lavoir', x: -114.25, z: 74.5, yawDeg: 90, ground: 'veto', name: 'the lavoir on the place',
+        params: { length: 10, depth: 6, bays: 3, spring: 'right', steps: 2.2 } },
     ],
     // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
-    architecture: 'lorrain',
+    architecture: BUILDING_STYLES.autumn.kit,
+    // buildings-271 R4: the doorsteps (world/doorstepDressing.ts): pots, a bench, casks, logs and a cart by Amberford's 113 doors
+    doorsteps: 150,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
@@ -464,7 +477,7 @@ export default {
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -16 },
     ],
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
+      plaster: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.4 + 0.3), clamp01(l + 0.24)], // the crépi's grey-beige on the kit's lime render (buildings-270)
       roof: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
       stone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.6), clamp01(l * 0.98)],
       wood: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.85), clamp01(l * 0.92)],
@@ -493,7 +506,7 @@ export default {
     // tanks) + harvest-season logistics dressing
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.autumn,
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 8, // the harvest is in — stubble plots + standing rows on both banks

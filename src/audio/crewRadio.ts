@@ -29,6 +29,9 @@ interface SayOptions {
   staleS?: number;
   /** Speak this take of the line (its index in the script) instead of a random one. */
   take?: number;
+  /** (272) a burst's repeat: the same line already queued and not yet due keeps its moment (a fast gun's hits each
+   *  replaced it with a fresh delay, so the call waited for the burst to pause) */
+  burst?: boolean;
 }
 
 interface Request {
@@ -157,10 +160,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     bed = source;
   }
 
-  /** A keyed element of the net (key-up, release) into the headset speaker; its length, or 0 while it decodes. */
-  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): number {
+  /** A keyed element of the net (key-up, release) into the headset speaker; null while it decodes. */
+  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): AudioBufferSourceNode | null {
     const buffer = library.pick(id, random);
-    if (!buffer) return 0;
+    if (!buffer) return null;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const g = ctx.createGain();
@@ -169,12 +172,14 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     g.connect(speaker);
     src.start(when);
     src.onended = () => { try { g.disconnect(); } catch { /* detached */ } };
-    return buffer.duration;
+    return src;
   }
 
   const lastPlay = new Map<string, number>();
   const lastGroupPlay = new Map<string, { t: number; pri: number }>();
   const queue: Request[] = [];
+  /** update()'s scratch: the due calls it found unable to play this pass. */
+  const waiting: Request[] = [];
   const log: RadioLogEntry[] = [];
   let currentEnd = -1;
   let currentPri = -1;
@@ -182,6 +187,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   let currentGroup: string | null = null;
   let currentSrc: AudioBufferSourceNode | null = null;
   let currentGate: GainNode | null = null;
+  // What the current line scheduled beside its speech (2026-11-02 audit F11): its release click and its damaged set's
+  // crackle. A line cut short takes them with it, with its static swell (stopCurrent).
+  let currentKeyOut: AudioBufferSourceNode | null = null;
+  let currentCrackle: AudioBufferSourceNode | null = null;
 
   function applyDamage(): void {
     const t = ctx.currentTime;
@@ -191,7 +200,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     drive.curve = driveCurve(damage === 2 ? 0.75 : damage === 1 ? 0.45 : 0.25);
   }
 
-  /** The crew's own take, or nothing: every pack carries every line (crewRadio selftest), and one still decoding waits. */
+  /**
+   * The crew's own take, or nothing: every pack carries every line (crewRadio selftest). A line commits when it plays:
+   * one asked while its pack decodes waits in the queue until the pack lands or the line goes stale.
+   */
   function bufferFor(id: string, take?: number): { buffer: AudioBuffer; lang: string } | null {
     const own = library.voice(language, id, random, take);
     return own ? { buffer: own, lang: language } : null;
@@ -200,29 +212,39 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
   function stopCurrent(): void {
     const src = currentSrc;
     currentSrc = null;
+    const t = ctx.currentTime;
     if (src) {
-      const t = ctx.currentTime;
       try {
+        // the gate's own dropouts scheduled ahead must not reopen it under the fade
+        currentGate?.gain.cancelScheduledValues(t);
         currentGate?.gain.setTargetAtTime(0, t, 0.015);
         src.stop(t + 0.06);
       } catch { /* stopped */ }
     }
-    currentEnd = ctx.currentTime;
+    // its release click and crackle, scheduled for later, never play (one already sounding is cut with the line)
+    for (const pending of [currentKeyOut, currentCrackle]) {
+      if (!pending) continue;
+      try { pending.stop(t + 0.02); } catch { /* stopped */ }
+    }
+    currentKeyOut = null;
+    currentCrackle = null;
+    currentEnd = t;
     currentPri = -1;
     currentYields = false;
     currentGroup = null;
-    bedGain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    // and its static swell-down at its old end, which would drop the bed in the middle of the next line
+    bedGain.gain.cancelScheduledValues(t);
+    bedGain.gain.setTargetAtTime(0, t, 0.05);
     mixer.duckForVoice(false);
   }
 
-  function playNow(id: string, take?: number): boolean {
+  function playNow(id: string, take?: number, chosen = bufferFor(id, take)): boolean {
     const line = VOICE_LINES[id];
-    const chosen = line ? bufferFor(id, take) : null;
     if (!line || !chosen) return false;
     const now = ctx.currentTime;
     ensureBed();
     // Levels re the synthesized squelch they replaced (2026-10-03), matched on RMS.
-    const keyS = key('radio_key_in', now + 0.005, damage === 2 ? 0.14 : 0.1);
+    const keyS = key('radio_key_in', now + 0.005, damage === 2 ? 0.14 : 0.1)?.buffer?.duration ?? 0;
     const startAt = now + 0.005 + Math.max(0.04, keyS * 0.7);
     const src = ctx.createBufferSource();
     src.buffer = chosen.buffer;
@@ -248,7 +270,9 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     const bedLevel = damage === 2 ? 0.175 : damage === 1 ? 0.112 : 0.07;
     bedGain.gain.setTargetAtTime(bedLevel, startAt - 0.02, 0.02);
     bedGain.gain.setTargetAtTime(0, startAt + dur + 0.05, 0.04);
-    const outS = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
+    const keyOut = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
+    const outS = keyOut?.buffer?.duration ?? 0;
+    let crackleSrc: AudioBufferSourceNode | null = null;
     if (damage >= 1 && library.has('radio_interference') && random() < 0.6) {
       const crackle = library.pick('radio_interference', random);
       if (crackle) {
@@ -260,6 +284,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
         cg.connect(input);
         c.start(startAt + random() * dur * 0.7);
         c.onended = () => { try { cg.disconnect(); } catch { /* detached */ } };
+        crackleSrc = c;
       }
     }
     mixer.duckForVoice(true);
@@ -275,6 +300,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     };
     currentSrc = src;
     currentGate = gate;
+    currentKeyOut = keyOut;
+    currentCrackle = crackleSrc;
     currentEnd = startAt + dur + 0.02 + Math.max(0.12, Math.min(0.35, outS));
     currentPri = line.pri;
     currentYields = !!line.yields;
@@ -328,8 +355,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1) || (pri >= 2 && currentPri === 0) || (pri >= 1 && currentYields));
   }
 
-  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined): boolean {
+  function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined,
+    burst = false): boolean {
     const group = line.group || id;
+    if (burst) for (const queued of queue) if (queued.id === id && queued.readyAt > now) return true;
     if (!replaceQueuedGroup(group, line.pri)) return false;
     if (line.pri >= 3) removeLowerPriority(line.pri);
     if (!reserveSlot(line.pri)) return false;
@@ -354,33 +383,47 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       const delayS = Math.max(0, options?.delayS || 0);
       const busyUntil = currentEnd + RADIO_DISCIPLINE.gapS;
       if (currentGroup === (line.group || id) && now < currentEnd && line.pri <= currentPri) return false;
-      if (delayS === 0) {
-        if (now >= busyUntil) return playNow(id, take);
-        if (canInterrupt(line.pri, now)) {
-          stopCurrent();
-          removeLowerPriority(line.pri);
-          return playNow(id, take);
+      if (delayS === 0 && (now >= busyUntil || canInterrupt(line.pri, now))) {
+        // Taken now only with its take decoded: while the pack decodes the call queues, and a pack that holds no take
+        // of it stays silent (nothing cut for it).
+        const chosen = bufferFor(id, take);
+        if (chosen) {
+          if (now < busyUntil) {
+            stopCurrent();
+            removeLowerPriority(line.pri);
+          }
+          return playNow(id, take, chosen);
         }
+        if (library.voiceReady(language)) return false;
       }
       if (line.pri === 0 && now < busyUntil) return false;
-      return enqueue(id, line, now, delayS, options?.staleS, take);
+      return enqueue(id, line, now, delayS, options?.staleS, take, options?.burst === true);
     },
     update() {
       if (!queue.length) return;
       const now = ctx.currentTime;
       for (let i = queue.length - 1; i >= 0; i--) if (now > queue[i].expiresAt) queue.splice(i, 1);
-      let best = -1;
-      for (let i = 0; i < queue.length; i++) {
-        if (queue[i].readyAt > now) continue;
-        if (best < 0 || queue[i].pri > queue[best].pri || (queue[i].pri === queue[best].pri && queue[i].atReq < queue[best].atReq)) best = i;
+      const busy = now < currentEnd + RADIO_DISCIPLINE.gapS;
+      // The best due call that can play now goes. One that cannot yet (its pack still decoding, its cooldown running)
+      // stays queued until it goes stale, without holding back the calls below it.
+      waiting.length = 0;
+      for (;;) {
+        let best = -1;
+        for (let i = 0; i < queue.length; i++) {
+          if (queue[i].readyAt > now || waiting.includes(queue[i])) continue;
+          if (best < 0 || queue[i].pri > queue[best].pri || (queue[i].pri === queue[best].pri && queue[i].atReq < queue[best].atReq)) best = i;
+        }
+        if (best < 0) return;
+        const next = queue[best];
+        // a call that cannot cut the line on air: nothing below it can either
+        if (busy && !canInterrupt(next.pri, now)) return;
+        const chosen = cooldownActive(next.id, VOICE_LINES[next.id], now) ? null : bufferFor(next.id, next.take);
+        if (!chosen) { waiting.push(next); continue; }
+        queue.splice(best, 1);
+        if (busy) stopCurrent();
+        playNow(next.id, next.take, chosen);
+        return;
       }
-      if (best < 0) return;
-      if (now < currentEnd + RADIO_DISCIPLINE.gapS) {
-        if (!canInterrupt(queue[best].pri, now)) return;
-        stopCurrent();
-      }
-      const { id, take } = queue.splice(best, 1)[0];
-      if (!cooldownActive(id, VOICE_LINES[id], now)) playNow(id, take);
     },
     silence() {
       queue.length = 0;
@@ -395,6 +438,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       if (next !== language) {
         queue.length = 0;
         if (currentSrc) stopCurrent();
+        // One pack held at a time: the crew it leaves is released (assetLibrary.dropVoice).
+        if (language) library.dropVoice(language);
       }
       language = next;
       void library.loadVoice(next);

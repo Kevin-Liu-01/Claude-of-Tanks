@@ -26,6 +26,7 @@
  *
  *   node tools/mp-world-events-audit.mjs                       # ~2 min wall (its windows are host ticks: a slower machine takes longer, never fails sooner)
  *   node tools/mp-world-events-audit.mjs --play=30 --after=12 --out=/path --label=before
+ *   node tools/mp-world-events-audit.mjs --mode=air_support     # the room's mode (air-support-270: the bots call strikes)
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -49,6 +50,7 @@ import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '
 import { createStructureDamage } from '../src/sim/structureDamage.ts';
 import { craterFor, munitionChargeKg, munitionClassForShell } from '../src/sim/munitionBlast.ts';
 import { isHeClass } from '../src/sim/damage.ts';
+import { HOST_STATE, MATCH_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
@@ -152,7 +154,7 @@ const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2
  * fells through its event is left out of that view's log, as a presentation that dropped it would leave it; the matrix
  * must count it missing (`report.planted` names it).
  */
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, plant = null, log = () => {} } = {}) {
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, plant = null, gameMode = null, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event),
@@ -438,7 +440,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     }
   })();
   const welcomed = (peer) => !!peer.session.match?.welcome;
-  const live = (peer) => peer.session.match?.phase === 'live';
+  const live = (peer) => peer.session.match?.phase === MATCH_PHASE.live;
   const playing = (peer) => peer.session.match?.stats().matchPhase === PHASE.PLAYING;
   const hostEventsBetween = (fromMs, toMs, type) => hostLog.filter((e) => e.type === type && e.wallMs >= fromMs && e.wallMs < toMs);
   const uniqueBy = (list, key) => new Set(list.map(key)).size;
@@ -447,7 +449,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   try {
     // ---- start
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId: MAP_ID, botsFill: true } });
+    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId: MAP_ID, botsFill: true, ...(gameMode ? { gameMode } : {}) } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
@@ -640,7 +642,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const knownBySeat = new Set([...(bootBase?.destroyed ?? []), ...fallsSentToSeat]);
     const knownFromEventsOnly = [...knownBySeat].filter((index) => !(bootBase?.destroyed ?? []).includes(index));
     await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace');
-    await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts');
+    await until(() => p2.session.role === SESSION_ROLE.host && p2.session.matchHost?.state === HOST_STATE.live, 'p2 hosts');
     const core2 = hostCores.find((entry) => entry.id === 'p2');
     await until(() => core2?.hooked, 'the new host authority hooked');
     marks.newHostLiveAt = now();
@@ -759,7 +761,11 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       // there (it ended, its host stopped, a reset cleared its queue by design — persistent state covers the world, never a
       // replayed effect) could not present it. Not judged either: the seat's own shell_fired when its presentation has no
       // actors (the single-process harness cannot build the fleet twice; own shots are receipted in battlePresentation.selftest).
-      const reached = (e) => (linkOf(e)?.presentedTick ?? -1) >= e.tick + DEADLINE_TICKS;
+      // (wrecks-270, 11-06) e.tick is the actor's tick when the batch went out, one before the tick the batch carries: the
+      // loop calls onTick(tick + 1) and only then advances its own (server/match/loop.ts), and the client's queue holds a
+      // beat until its batch's tick plus the deadline. A view whose last frame presented e.tick + DEADLINE_TICKS (p3 leaving
+      // for the Garage on the very frame that released the third of four breaches of one batch) could not yet show the fourth.
+      const reached = (e) => (linkOf(e)?.presentedTick ?? -1) >= e.tick + 1 + DEADLINE_TICKS;
       const exempt = (e) => e.type === 'shell_fired' && e.shooterId === peer.id && round.actors === 0;
       const sentAll = hostLog.filter((e) => e.viewerId === peer.id && e.wallMs >= round.welcomeAtMs - 50 && e.wallMs < roundEnd);
       const sent = sentAll.filter((e) => reached(e) && !exempt(e));
@@ -901,7 +907,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const label = arg('label', null);
   const seedArg = arg('seed', String(AUDIT_MATCH_SEED));
   const report = await runWorldEventsAudit({ playMs: Number(arg('play', 30)) * 1000, afterMs: Number(arg('after', 12)) * 1000,
-    seed: seedArg === 'random' ? null : Number(seedArg) >>> 0, log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
+    seed: seedArg === 'random' ? null : Number(seedArg) >>> 0, gameMode: arg('mode', null), log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
   report.label = label;
   const text = formatMatrix(report);
   console.log(text);

@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import {mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession,openGamePage} from './map-probe-runtime.mjs';
 const out=resolve('.qa-dev/drone-details');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let heartbeat;
+let hold;
 try{
- await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'drone-details', timeoutMs: 10 * 60 * 1000 });
  console.log('drone-details: acquired native capture slot');
  await withMapProbeSession({root:process.cwd(),launch:{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}},async({browser,port})=>{
   const {page,errors}=await openGamePage(browser,{port,viewport:{width:900,height:650,deviceScaleFactor:1}});
@@ -29,4 +29,4 @@ try{
   }
   assert.deepEqual(errors,[]);await page.evaluate(()=>window.__droneReview.dispose());await page.close();
  });
-}finally{clearInterval(heartbeat);lock.release();}
+}finally{await hold?.release();}

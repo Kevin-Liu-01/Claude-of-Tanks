@@ -96,7 +96,8 @@ reads exactly as `bot`. Per mode:
 `game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
 (`playerFrameInput.ts`) is the only writer of the hull's input while it is driven. Leaving gives the controller back,
 and it resumes from the hull's live state. A driven hull's death plays the player's death flow (death camera, replay),
-then the watcher is back on the drone.
+then the watcher is back on the drone. Leaving inside the death beat ends the flow there, so no replay follows over the
+drone; a replay already on screen plays out (`battleResultPresentationRuntime.ts` leaveSeat).
 
 Receipts:
 - `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay
@@ -227,6 +228,60 @@ aircraft and show its icon, never the tank chosen in the garage. The authority s
 destruction (`sim/aerialCombat.ts` `killSourceOf`); a drone's kill reads as the FPV drone's the same way.
 
 Four allied ground vehicles accompany the gunship by default. They have 90% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
+
+## Air Support (air-support-270, 2026-11-05)
+
+The owner: "a new game mode where you can call in airstrikes and jet strikes and so on and we already have that model of
+the ac 130", then "if you ativatee the thing it goes in with a transition to an airstrike view where you can enter a
+special binocular view and theres a giant aiming reticle on the ground respecting ground geometry and u cann call in 3
+differennt kinnds of airstrikes with their own special effects annd sounnt", then "keep and add artillery annd recon with
+the 3 airstrikes". `air_support` plays Zone Control's three sectors with 8 s respawns and a twelve-minute clock, first to
+2000 (`RULESET_SCORE_TARGETS`; at 750 the first seeded runs ended inside three minutes, before anyone had earned a call).
+Every number below is `AIR_SUPPORT_RULES` in `src/sim/matchRuleset.ts`.
+
+- **Points** (per crew, capped at 1000, kept across respawns): 1 per 10 hp of damage the crew's own guns deal to an
+  enemy, 60 a kill (30 for a call-in's), 50 to each crew inside a sector its side takes, 10 for the first sight of an
+  enemy (once per enemy per 30 s), 80 for an aircraft brought down, and 1 every 4 s.
+- **Call-ins** (cost, the caller's cooldown, the warning): recon pass 120 / 40 s / 3 s (a jet along a 600 m track
+  through the mark spots every enemy within 160 m for 12 s, through `spotting.isSpotted`); artillery 300 / 60 s / 6 s
+  (ten M795 155 mm rounds over 5 s inside 35 m, 18 m blast); strafing run 400 / 75 s / 5 s (an A-10-class jet in a
+  15-degree dive walks 28 GAU-8 30 mm API rounds down a 140 m lane along the line from the caller's hull to the mark);
+  precision bomb 450 / 90 s / 7 s (a fast jet's GBU-12, released in a 40-degree dive 350 m up and about 375 m short, lands
+  within 8 m along the run and 2 m across it, 22 m blast); AC-130 orbit 800 / 150 s / 8 s (the gunship's own airframe,
+  30 mm and 152 mm, AI-flown for 30 s in a left-hand pylon turn on a 140 m ring 180 m up, engaging only enemies its side
+  has spotted inside the ring). A side has at most two call-ins under way and one gunship; bots never take the last slot.
+- **The warning.** A call's record is public the moment it is made: both sides see its footprint on the ground and the
+  minimap with its countdown, a crew inside it gets the INCOMING plate (and the sound), and no round of it arrives before
+  the warning has run (`sim/airSupport.selftest.mjs` checks every arrival; the balance probe counts any early one).
+- **Aircraft** are not entities: each flies its run, derived from its record alone (`sim/strikeRuns.ts`, air-support-runs-272):
+  one description per kind gives the flight (ingress from about 600 m to 1.3 km out at speed and altitude, the attack lined
+  up on the footprint's axis, a banked climbing egress; no jump, no instant turn, never sideways), the release points (the
+  GAU-8 under the nose, the bomb from the jet's pylon with the jet's velocity, the AC-130's guns from its left side) and
+  the footprint (the strafing lane, the bomb's ellipse long along the heading, the AC-130's ring at the radius it flies,
+  the battery's circle). The presentation draws it, the authority fires from it and tests rounds against it, and
+  `sim/strikeRuns.selftest.mjs` pins that they agree. An aircraft can be shot until it has flown its run out. A round of the other side through its sphere (jet 8 m,
+  gunship 16 m) costs it the round's damage (jets 600 hp, recon 400, gunship 1400); roof stations engage aircraft with
+  their counter-drone shares x4 at 1.5x their reach, laid early on an inbound aircraft and led by their rounds' flight;
+  a bot's main gun with no ground target takes an aircraft it can elevate to within 900 m. Brought down, the strike ends.
+- **Bots** call the dearest call-in they can afford that covers its minimum of spotted enemies (artillery and strafe 2,
+  bomb 1, gunship 3) with no friendly within 45 m of the footprint, and a recon pass toward the nearest sector they do not
+  hold when nobody is spotted (one a side every 30 s). A bot inside a footprint takes the `evade` mission out of it; the
+  gunship's ring is answered with guns.
+- **The strike view**: X (or the binoculars on a phone) raises binoculars over the scope's camera; 1-5 pick the call-in,
+  the trigger calls it, X / Esc / the right button lower them. The order has one owner (`game/strikeOrder.ts`): the plate
+  reads ready only when the authority's own rule would take the call (the view carries each kind's refusal), CALLED only
+  once the authority has taken it, and a refusal shows its reason (`game/strikeOrder.selftest.mjs`). The reticle and every footprint are painted on whatever
+  surface is there by a term of the aerial post pass (`engine/strikeMarks.ts`: at most eight marks, a fixed uniform block,
+  nothing when none is up).
+- **Wire**: no layout change. Strafe, bomb and gunship use the u16's three spare action bits; artillery and recon reuse the
+  supply-drop bits, which only the AC-130's escort reads (`airSupport.selftest` pins that no mode reads both). The
+  ledger and the strikes ride the per-viewer mode state and the host-migration checkpoint; strike rounds and their
+  impacts are shown to every viewer (they leave the aircraft, not the caller's hull).
+- **Checks by hand**: `node tools/air-support-shots.mjs --out=DIR [--only=desktop|phone]` films the strip, the strike
+  view for each call-in and each strike's warning, flight and impact under the capture lock, and measures the marks'
+  frame cost on and off (`--runs --only=desktop`: each call-in's run as a frame sequence from a chase or wide camera, each
+  frame logging the airframe's offset from its run); `node tools/mode-balance-probe.mjs --mode=air_support --map=verdant --seeds=1-24 --jobs=5
+  --out=DIR --tag=as` runs the seeded bot battles (seeds take commas: `--seeds=9,11,12`).
 
 ## Asymmetric teams and progression
 
@@ -475,11 +530,15 @@ authority now refuses to start a wave on an empty pool). Campaign progress stays
 (`network: true`) never records an operation.
 
 Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Mars, Gun Game, Drone, Infected and the Juggernaut
-hunters) revive the player through `mode:respawn`; Endless Horde and Frontline Assault never revive a human (their
-allied bots come back when a round is cleared or a sector falls, and in Frontline 30 s after a death too (`allyReviveS`,
-behind the last sector taken)). The killcam
-cancels its spectate and any pending ghost replay on the local player's revive so the
-camera returns to the tank instead of holding the wreck view (batch 27). Since
+hunters) revive the player through `mode:respawn`. Endless Horde and Frontline Assault have no respawn timer, and a
+solo human's death there ends the battle. Frontline never revives a human (its allied bots come back when a sector falls,
+and 20 s after a death too (`allyReviveS`, behind the last sector taken)). Endless Horde stands every fallen Alpha hull up
+when its next wave starts, humans too, so in a network room a fallen human comes back while another human holds. The
+killcam cancels its spectate and any pending ghost replay on the local player's revive so the
+camera returns to the tank instead of holding the wreck view (batch 27); where the revived hull ran the full death flow
+(a network Horde room, a Watch seat's allied bot), the result runtime hands its HUD and camera back too (round 5 U4), and
+the revived hull's later deaths run that flow again: the death camera, the replay and the ally chase, or at a verdict the
+kill cam of that death (before, only a hull's first death got it; round 5 U4, kept in round 6 V5, Kevin may overrule). Since
 2026-09-15 the death hand-off to the ally chase and its garage bar never starts while the
 ruleset revives the player; the HUD counts the revive down ("BACK IN n", from the death
 event or the frame-observed destroyed state) until the revive lands.
@@ -642,7 +701,7 @@ the round-1 critic's 16 seeds and maps: 101-108 on Winter, Autumn, Steppe, Coast
 Desert, then Frontier, Railyard, Alpine and Delta two seeds each; the Horde's team survival and Frontline's park and
 shield seats on 101-112; the shared authority on 101-104 for parity. Before is integ/228 (93559dfe8, the round-1
 critic's runs; Frontline's fight seat re-run at ac0a12960 with round 2's harness, whose fight seat plays the objective).
-The runs, scripts and compare output live in `cot-launch-state/streams/gameplay-modes-228/metrics/round2/final3`:
+The runs, scripts and compare output are kept outside the repository; the measurements:
 
 | Mode | Measure | Before | After | Target |
 | --- | --- | --- | --- | --- |

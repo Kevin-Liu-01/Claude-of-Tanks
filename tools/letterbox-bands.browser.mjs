@@ -22,7 +22,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { letterboxBands } from './letterbox-bands.mjs';
 
 const arg = (name, fallback) => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -112,8 +113,7 @@ async function main() {
   const wantSizes = arg('sizes', 'all').split(',');
   const surfaces = SURFACES.filter((surface) => wantSurfaces.includes('all') || wantSurfaces.includes(surface.id));
   const sizes = Object.entries(SIZES).filter(([id]) => wantSizes.includes('all') || wantSizes.includes(id));
-  await acquireCaptureLock(3 * 60 * 60 * 1000);
-  const refresher = setInterval(refreshCaptureLock, 60_000);
+  hold = await openCaptureHold({ label: 'letterbox-bands', timeoutMs: 3 * 60 * 60 * 1000 });
   const server = await createServer({ cacheDir: join(tmpdir(), `cot-letterbox-vite-${process.pid}`), logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, ws: false } });
   let browser = null;
@@ -158,10 +158,9 @@ async function main() {
       clearInterval(guard);
     }
   } finally {
-    clearInterval(refresher);
     await browser?.close().catch(() => {});
     await server.close().catch(() => {});
-    releaseCaptureLock();
+    await hold?.release();
   }
   writeFileSync(join(out, 'report.json'), `${JSON.stringify({ aborted, report }, null, 1)}\n`);
   const banded = report.filter((entry) => entry.bands.length);

@@ -12,7 +12,7 @@
 // geometry carries position, normal and uv only (the props buckets merge them with the kit's own parts).
 import * as THREE from 'three';
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
-import { buildDryStoneWallHead, crownStoneTop } from './inhabitKit.ts';
+import { buildDryStoneWallHead, buildLavaWallHead, crownStoneTop } from './inhabitKit.ts';
 import { dressedCourse } from './coursedWallKit.ts';
 
 export interface DressingGround { getHeightAt(x: number, z: number): number }
@@ -487,6 +487,8 @@ interface WallDressingOptions {
    * props.ts merges it into its bucket's non-casting mesh, so the shadow cascades skip it.
    */
   adobeApronCoarse?: boolean;
+  /** (buildings-272) Caldera's lava bank: a breach racks its boulders (inhabitKit buildLavaWallHead), not dry stone. */
+  lava?: boolean;
   plainV?: readonly [number, number];
   /**
    * (props lane A #6) the coping a brick-print map's wall piers carry, by its region (brickPierCapFor): the Ruhr's and
@@ -714,7 +716,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
         // the stones racked in two steps: the lift by the lip at the remnant's height, the bite's half as high
         // (on a snow map each step its own load, so the snow lies in the bite rather than bridging it)
         const step = (h: number, s: number, z: number) => {
-          const head = buildDryStoneWallHead(s, thick, h).translate(0, 0, z);
+          const head = (o.lava ? buildLavaWallHead : buildDryStoneWallHead)(s, thick, h).translate(0, 0, z);
           return o.snow ? mergeParts([head, buildSnowLoad(head, s ^ 0x5a0c, { bin: 0.08 })]) : head;
         };
         g = mergeParts([step(height + 0.15, seed, toward * 0.3), step((height + 0.15) * 0.55, seed ^ 0x51, -toward * 0.25)]);

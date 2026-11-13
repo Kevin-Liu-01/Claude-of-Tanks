@@ -23,6 +23,11 @@
 //   process holds is released at once (tools/capture-lock.mjs releaseAllCaptureHolds: the queue moves on), and the
 //   process exits 86 so the caller fails fast instead of freezing the Mac. `exit: false` keeps the process running
 //   (browserGuardOf(browser).tripped says why; the browser's pending calls reject as disconnected).
+// - What a trip releases (2026-11-02 audit S4): a trip that ends the process releases every hold the process has (they
+//   all end with it). One that keeps it running (`exit: false`) releases only what its caller names, `releaseHolds`:
+//   'all' (every hold of the process; the caller re-acquires before its next capture, as battle-spike-census does), an
+//   array of capture-lock instances (the holds tied to this browser), or 'none'. It is required with `exit: false`: a
+//   trip used to release every hold of the process, so another hold's work went on unlocked unless its owner noticed.
 // - close() stops the watchdog and kills whatever of the tree outlives it; so do the browser's disconnect, process exit
 //   (an uncaught error included) and a perl alarm (SIGALRM, still rc 142). Nothing is killed by pattern: only pids
 //   sampled in this browser's own process group.
@@ -36,9 +41,35 @@
 //   `launchHangMs` of wall (10 min) is called a hang.
 import { execFile, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { prepareToolBrowser } from './game-readiness.mjs';
 import { appendFileSync, writeSync } from 'node:fs';
 import { basename } from 'node:path';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
+
+/**
+ * Which capture holds a trip releases: every one when the trip ends the process; otherwise the caller's `releaseHolds`
+ * ('all', 'none', or an array of capture-lock instances), which `exit: false` must name. Returns the scope:
+ * { all: true } | { locks: [...] }. Throws a TypeError for a missing or malformed scope.
+ */
+export function tripReleaseScope({ exit = true, releaseHolds } = {}) {
+  if (exit !== false) return { all: true };
+  if (releaseHolds === 'all') return { all: true };
+  if (releaseHolds === 'none') return { locks: [] };
+  if (Array.isArray(releaseHolds) && releaseHolds.every((lock) => typeof lock?.release === 'function')) return { locks: [...releaseHolds] };
+  throw new TypeError('browser guard: exit: false needs releaseHolds (\'all\', \'none\' or the capture locks tied to this browser): '
+    + 'a trip that keeps the process running releases only what its caller names, and the caller re-acquires');
+}
+
+/** Release the holds `scope` names (tripReleaseScope); returns the tickets released. */
+export function releaseForTrip(scope, reason = null) {
+  if (scope.all) return releaseAllCaptureHolds(reason);
+  const tickets = [];
+  for (const lock of scope.locks) {
+    const ticket = lock.heldTicket ?? null;
+    if (lock.release(reason)) tickets.push(ticket);
+  }
+  return tickets;
+}
 
 /** The exit code of a process whose browser the guard killed. */
 export const BROWSER_GUARD_EXIT_CODE = 86;
@@ -335,6 +366,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
   const config = { ...browserGuardConfig(guardOptions), ...guardOptions.resolved };
   const label = guardOptions.label ?? (basename(process.argv[1] ?? 'node') || 'browser');
   const exit = guardOptions.exit !== false;
+  const releaseScope = tripReleaseScope(guardOptions);
   const say = guardOptions.log ?? ((line) => writeSync(2, `${line}\n`));
   const footprints = new Map();
   let timer = null, ticks = 0, stopped = false;
@@ -349,6 +381,8 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
       if (timer) clearTimeout(timer);
       timer = null;
       live.delete(guard);
+      // (round 3 B16) the SIGINT this launch took from puppeteer goes with its watch
+      if (guardOptions.sigintKey) giveSigint(guardOptions.sigintKey);
     },
     /** Stop watching and kill whatever of the tree is still alive (close, disconnect). */
     finish() {
@@ -364,7 +398,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
     const killed = killTree(sample, guard);
     const stragglers = reapTree(guard); // a helper started between the sample and the kill
     const hold = context.hold ?? null;
-    const released = releaseAllCaptureHolds(`browser guard: ${why}`);
+    const released = releaseForTrip(releaseScope, `browser guard: ${why}`);
     guard.tripped = {
       at: new Date().toISOString(), label, hold, why, pid: process.pid, rootPid,
       rendererMb: Math.round(sample.rendererMb), rendererPid: sample.rendererPid, treeMb: Math.round(sample.treeMb),
@@ -428,6 +462,53 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
 
 const guards = new WeakMap();
 
+/**
+ * Stop every guarded browser this process still has open (round 2 U38): each tree killed by its exact pids, as at exit.
+ * The open capture hold's default teardown (tools/capture-hold.mjs openCaptureHold): a one-hold tool's browsers stop
+ * drawing when its hold is stopped past the cap or by a signal, whoever launched them (a probe session, a helper).
+ * Returns the pids signalled (none: nothing of this process draws).
+ */
+export function stopGuardedBrowsers() {
+  const killed = [];
+  for (const guard of [...live]) { guard.stop(); killed.push(...reapTree(guard)); }
+  return killed;
+}
+
+// (round 3 B16) SIGINT: puppeteer-core hands its handleSIGINT (true unless the caller says otherwise) to @puppeteer/browsers,
+// whose SIGINT listener kills the browser and calls process.exit(130) inside itself. On Ctrl-C that cut off whatever else
+// answered SIGINT before it ran: a capture hold's unwind (tools/capture-hold.mjs owns SIGTERM, SIGINT and SIGHUP; a tool's
+// finally never reached its release, its preview child was orphaned, its report never written) and a tool's own
+// cooperative handler. SIGTERM was never cut off: puppeteer closes the browser there and exits nothing. So a guarded launch
+// hands handleSIGINT: false unless its caller sets it, and the guard answers SIGINT in puppeteer's place only when nothing
+// else in the process does: it exits 130, and the exit hooks (this module's and puppeteer's own) kill the browser. Its
+// listener lives while a launch it took SIGINT for runs or that browser's guard is live.
+const sigintTaken = new Set();
+function onGuardSigint() {
+  // another owner (a hold's signal owner, a tool's own handler) runs its way out and ends the process itself
+  if (process.listeners('SIGINT').some((listener) => listener !== onGuardSigint)) return;
+  process.exit(130);
+}
+function takeSigint(key) {
+  // first in line, so it sees every other listener as the signal came (a `once` handler removes itself when it runs)
+  if (!sigintTaken.size) process.prependListener('SIGINT', onGuardSigint);
+  sigintTaken.add(key);
+}
+function giveSigint(key) {
+  if (sigintTaken.delete(key) && !sigintTaken.size) process.removeListener('SIGINT', onGuardSigint);
+}
+
+// (round 2 U38) a stopped hold launches nothing new: teardown runs once per hold, so a tool whose per-row loop caught the
+// kill and launched its next browser drew on past the stop (and, once the hold went, unlocked). A hold that is stopped
+// (past the cap's grace, its budget, a signal) refuses this process's launches until it is released; a signal's refusal
+// stays (the process is on its way out).
+const launchRefusals = new Map();
+/** Refuse every guarded launch of this process, naming `reason`, until the returned function lifts this refusal. */
+export function refuseGuardedLaunches(reason) {
+  const key = Symbol('refusal');
+  launchRefusals.set(key, String(reason));
+  return () => { launchRefusals.delete(key); };
+}
+
 /** The guard record of a browser launchGuardedBrowser returned (peaks, tripped), or null. */
 export function browserGuardOf(browser) {
   return guards.get(browser) ?? null;
@@ -437,46 +518,70 @@ export function browserGuardOf(browser) {
  * Launch a browser with the guard: `launcher` is puppeteer (or puppeteer-core) or a playwright browser type (chromium).
  * `options` are the launcher's own (args gain the guard's flags). `guard`: { label, method ('launch', 'launchServer',
  * 'launchPersistentContext'), userDataDir (persistent contexts), heapMb, rendererCapMb, treeCapMb, intervalMs,
- * rendererProcessLimit, exit (false: report and kill, keep the process), onTrip(report), log(line), logFile }.
+ * rendererProcessLimit, exit (false: report and kill, keep the process), releaseHolds (with exit: false: 'all', 'none' or
+ * the capture locks a trip releases), onTrip(report), log(line), logFile }.
  * A launcher that starts no browser of this process (a test double, or a fixture browser with a fake pid) gets its
  * result back unwatched: the guard only ever samples and kills a process tree this process started.
  */
 export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
+  if (launchRefusals.size) {
+    throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''} refused: ${[...launchRefusals.values()].at(-1)}`);
+  }
   const method = guard.method ?? 'launch';
   if (typeof launcher?.[method] !== 'function') throw new TypeError(`launchGuardedBrowser: the launcher has no ${method}()`);
+  tripReleaseScope(guard); // a malformed scope fails before a browser starts
   const config = browserGuardConfig(guard);
   const token = randomBytes(8).toString('hex');
   // (267) no wall limit on the launch: the caller's timeout is a budget of the launching browser's CPU (watchLaunch)
   const cpuBudgetMs = positive(options?.timeout, LAUNCH_CPU_BUDGET_MS);
-  const launchOptions = { ...(options ?? {}), timeout: 0, args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
-  const watch = watchLaunch(token, { cpuBudgetMs, hangMs: positive(guard.launchHangMs, LAUNCH_HANG_MS) });
-  let target;
+  // (round 3 B16) SIGINT is the guard's unless the caller decides it (puppeteer's own exits the process inside itself)
+  const takesSigint = options?.handleSIGINT === undefined;
+  const launchOptions = { ...(options ?? {}), timeout: 0, ...(takesSigint ? { handleSIGINT: false } : {}),
+    args: guardedLaunchArgs(options?.args ?? [], { ...config, token }) };
+  if (takesSigint) takeSigint(token);
+  let watched = false;
   try {
-    target = method === 'launchPersistentContext'
-      ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
-      : await launcher[method](launchOptions);
-  } catch (error) {
-    if (watch.reason) throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''}: ${watch.reason}`, { cause: error });
-    throw error;
-  } finally {
-    watch.stop();
-  }
-  let rootPid = null;
-  try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
-  if (rootPid) {
-    // a pid this process did not start is a test double's (a fixture's fake child): nothing to watch, never to kill
-    if (!startedHere(await processRow(rootPid), token)) return target;
-  } else {
-    // playwright: its Browser (or persistent context) has no process(); anything else without one is a test double
-    const playwright = typeof target?.browserType === 'function' || (typeof target?.browser === 'function' && typeof target?.newPage === 'function');
-    if (!playwright) return target;
-    rootPid = await findRootPid(token);
-    if (!rootPid) {
-      try { await target.close(); } catch { /* best effort */ }
-      throw new Error('browser guard: the launched browser process was not found; refusing to run it unguarded');
+    const watch = watchLaunch(token, { cpuBudgetMs, hangMs: positive(guard.launchHangMs, LAUNCH_HANG_MS) });
+    let target;
+    try {
+      target = method === 'launchPersistentContext'
+        ? await launcher.launchPersistentContext(guard.userDataDir ?? '', launchOptions)
+        : await launcher[method](launchOptions);
+    } catch (error) {
+      if (watch.reason) throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''}: ${watch.reason}`, { cause: error });
+      throw error;
+    } finally {
+      watch.stop();
     }
+    // (2026-11-02 audit S3) every page this browser hands out asks for the harness path before its first navigation,
+    // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts)
+    await prepareToolBrowser(target);
+    let rootPid = null;
+    try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
+    if (rootPid) {
+      // a pid this process did not start is a test double's (a fixture's fake child): nothing to watch, never to kill
+      if (!startedHere(await processRow(rootPid), token)) return target;
+    } else {
+      // playwright: its Browser (or persistent context) has no process(); anything else without one is a test double
+      const playwright = typeof target?.browserType === 'function' || (typeof target?.browser === 'function' && typeof target?.newPage === 'function');
+      if (!playwright) return target;
+      rootPid = await findRootPid(token);
+      if (!rootPid) {
+        try { await target.close(); } catch { /* best effort */ }
+        throw new Error('browser guard: the launched browser process was not found; refusing to run it unguarded');
+      }
+    }
+    const record = watchBrowserTree(target, rootPid, { ...guard, resolved: config, sigintKey: takesSigint ? token : null });
+    watched = true;
+    return guardBrowser(target, record, method);
+  } finally {
+    // a launch that failed or handed back an unwatched double gives SIGINT back; a watched one does when its guard stops
+    if (!watched) giveSigint(token);
   }
-  const record = watchBrowserTree(target, rootPid, { ...guard, resolved: config });
+}
+
+/** Wire a watched browser's close (and a playwright server's kill) and its disconnect to its guard; returns it. */
+function guardBrowser(target, record, method) {
   guards.set(target, record);
   // close (and a playwright server's kill) end the watch and leave no helper behind
   for (const name of ['close', 'kill']) {

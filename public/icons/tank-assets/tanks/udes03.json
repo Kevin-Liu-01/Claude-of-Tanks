@@ -401,15 +401,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27060,
-      "sha256": "49ffd673c4be0cbd29b9079f4385cb6d64218c7b9fac3c0fc6952b4bd607385f",
+      "bytes": 27066,
+      "sha256": "7e94849746c11b9d7c13e5293cada62bd281c3c4ed40a17686db23f79b0568a3",
       "thumbnail": {
         "file": "thumbs/udes03_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10684,
-        "sha256": "5c7c75896acb05632dc0d009cc938ac94b4bcc2c0cc2fc01cb552ee0d9ca68e6"
+        "bytes": 10700,
+        "sha256": "b716d080d2d2f7d0ed61986918df139990e841061b5fa30504f0463b96dd95ec",
+        "frame": [27,110,224,248]
       }
     },
     "top": {
@@ -425,8 +426,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10468,
-      "sha256": "590676c55395af14b9c5d3ca2e68f7026ddd38c04142d4c5daf54630cb8cd02f"
+      "bytes": 10494,
+      "sha256": "761edb36a5e7ec7844f069230aa609e73b3ac3b9578e7952a847ac55dfc351a0"
     },
     "topSilhouette": {
       "file": "udes03_top_silhouette.png",
@@ -449,32 +450,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23468,
-      "sha256": "b0b3c87367a3b8e417b6f4599d409172f1318b18355b245f49fd8ceb3c2629b4"
+      "bytes": 23474,
+      "sha256": "17b1aab7486199b003f4d99b4bd5c2b8b143d021d7350c978ef0379bc8459918"
     },
     "modulesSide": {
       "file": "udes03_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23618,
-      "sha256": "9b67eea96e19dffd1c90c80366d3a8a52ce5113b8c37eefdcc42e74940e85810"
+      "bytes": 23634,
+      "sha256": "f90fcd8147aecb287a97a2f76eea21272aa4bc79a636d7636ec45055faab1632"
     },
     "crewSide": {
       "file": "udes03_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23098,
-      "sha256": "73c97db0f26b9a527285ad92042f0d64e4a32158f6f7a49b8e222de899f7ecb0"
+      "bytes": 22942,
+      "sha256": "311148349ad1380b1b80119d01e1a553379823a821ec87a4496bd32537572ab7"
     },
     "markings": {
       "file": "udes03_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36220,
-      "sha256": "6f8137659ef0602519ee2b021b60bded6678d5b25b94c331d9a0a27a26ed1a66"
+      "bytes": 33315,
+      "sha256": "a75845d979191df48489fb6cb673201b358a29f9ce140cb95846480861c286c0"
     },
     "technicalLabels": {
       "file": "udes03_technical.json",

@@ -92,6 +92,11 @@ interface FrameLoopScheduler {
   observeAnimationDecisions(observer: FrameLoopDecisionObserver): FrameLoopObservation;
   /** Accepted network activity can service hidden authority without waiting for a throttled timer. */
   wakeBackground(): boolean;
+  /**
+   * Presentation ticks can run now (not disposed, not backgrounded: the focus rule below). A wait for a presented
+   * frame counts its time only while this holds (2026-11-02 audit F2: the battle reveal's abandon ceiling).
+   */
+  readonly presenting: boolean;
   dispose(): void;
   readonly stats: {
     animationTicks: number;
@@ -217,6 +222,10 @@ export function createFrameLoopScheduler({
   // can report `hidden` while they are visibly focused, whereas an occluded
   // browser window can remain `visible` after the user switches apps. In both
   // ordinary tab switches and window blur, no presentation work is useful.
+  // (2026-11-02 audit R3, decided: kept) a visible but unfocused window is backgrounded on purpose. A solo battle's sim
+  // advances only with presented ticks, so clicking away pauses it (drawing there would run the sim unattended); an
+  // occluded window reports `visible`; a network seat keeps its transport/authority backgroundTick (20 Hz while
+  // visible, frameLoopScheduler.selftest). Watching on a second, unfocused screen is therefore not supported.
   const isBackgrounded = () => !documentState.hasFocus();
 
   const runTick = (timestampMs: number, wallMs = now()) => {
@@ -430,6 +439,7 @@ export function createFrameLoopScheduler({
       if (serviced) stats.backgroundActivityTicks++;
       return serviced;
     },
+    get presenting() { return !disposed && !isBackgrounded(); },
     stats,
     dispose() {
       if (disposed) return;

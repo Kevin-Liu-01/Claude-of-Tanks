@@ -29,6 +29,8 @@
 // the village and its casemate at the western pass redoubt; the houses shelled in April 1945, roofless.
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -140,7 +142,7 @@ export default {
       { kind: 'casemateFort', x: -360, z: -180, yawDeg: 90, params: { style: 'alpine', length: 44, depth: 20, height: 4.5 }, name: 'the south spur battery' },
     ],
     // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
-    architecture: 'savoyard',
+    architecture: BUILDING_STYLES.alpine.kit,
     plan: [],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     // the Hospice beside the north-shore road, and the Grande Croix chapel at the foot of the southern climb
@@ -198,7 +200,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.alpine,
     inhabit: {
       // (round 3, gauntlet waves 127 and 129: "traffic cones", "a modern candy-striped stall"): April 1945 at the
       // frontier — no market stalls, the cable reels and direction signs of the army's line works, no cones, Jersey

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "chieftain_mk9": {
+      "name": "Chieftain Mk 9",
+      "authority": "The owner, 2026-11-02: \"also update the cheiftainn mk 3 and mk 9\", then \"the cheiftain mk 3 and mk 9s look identical and way way too smimilar to the inspirations, make them look much more different\". Release 269 (item/italy-korea-bmp-267, profiles/chieftainMk9X.ts on chieftain10X.ts's buildChieftainMk10Family) builds the Chieftain Mk 9 (a Mk 6 after every phase of Totem Pole, with IFCS, 1979) on the fleet's source-built Mk 10 castings without the Stillbrew blocks and the horns they sit on: the bare cast turret nose with the gun slot open and a canvas boot, the NBC pack with a net roll, no ranging gun. No Commons photograph is labelled Mk 9; the packet uses its base Mk 6 and dated 1979-90 BAOR photographs of IFCS-era Chieftains before Stillbrew (the Mk 5 to the Mk 9 looked externally the same). It won its blind A/B against the round-268 build 2-0 (chieftainr268b, Opus medium, Sonnet medium), and both critics judged the four marks Mk 3, Mk 5, Mk 9 and Mk 10 distinct. No 3D model exists for this mark; numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Chieftain_Mk.6_%E2%80%9901_EB_70%E2%80%99_%E2%80%9CDAKEYNE%E2%80%9D_%2851295125978%29.jpg/1280px-Chieftain_Mk.6_%E2%80%9901_EB_70%E2%80%99_%E2%80%9CDAKEYNE%E2%80%9D_%2851295125978%29.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/British_Chieftain_Tanks_at_Canadian_Army_Trophy_Competition_in_1979.jpg/1280px-British_Chieftain_Tanks_at_Canadian_Army_Trophy_Competition_in_1979.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Een_colonne_Engelse_Chieftain_tanks.jpg/1280px-Een_colonne_Engelse_Chieftain_tanks.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Canadian_Army_Trophy_Competition_1979_Tanks_%28CC_116871%29.jpg/1280px-Canadian_Army_Trophy_Competition_1979_Tanks_%28CC_116871%29.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Chieftain_Tank_1.jpg/1280px-Chieftain_Tank_1.jpg",
+        "https://en.wikipedia.org/wiki/Chieftain_(tank)",
+        "https://en.wikipedia.org/wiki/Royal_Ordnance_L11"
+      ],
+      "widthM": 3.673,
+      "overallLengthM": 10.779,
+      "tallestM": 4.249,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule). Width over the hull's fender cases (marking decals excluded: their seats are regenerated). Length from the stern to the 120 mm muzzle with the gun forward. Tallest is the tip of the whip antenna; the structural turret roof stands 2.45 m and the commander's cupola optic 3.09 m.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs"
+    }
+  }
+}

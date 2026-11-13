@@ -16,6 +16,8 @@
 // about the outpost (8, 0): alpha deploys in the south mouth, bravo in the north mouth, and every inselberg, ridge,
 // strongpoint, floor track and objective has its counterpart. The canyon walls and their ravines keep their own shapes.
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -311,7 +313,7 @@ export default {
       { kind: 'desertFort', x: 148, z: -98, yawDeg: -81, name: 'the Desert Patrol fort' },
     ],
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
-    architecture: 'wadirum',
+    architecture: BUILDING_STYLES.badlands.kit,
     // (round 10, the gauntlet's wave 270: "a handful of flat-textured boxes, sheds and a scaffold tower over an open sand
     // lot ... no street, square or stone houses" — four steel stores, lock-ups, a lorry shelter, a water tower on its legs
     // and a second fort stood where the village should: the outpost is Rum village's, the patrol's fort and its store,
@@ -379,7 +381,7 @@ export default {
     rockSoilTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.15 + l * 0.74)],
     // the map-vehicles lane (2026-10-06, the period ruling): Jordan: the Al-Hussein (Challenger 1), the M60A3, the
     // Khalid's Chieftain and the Tariq's Centurion
-    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1_mk2', 'm60a3', 'chieftain3', 'centurion5_2'] },
+    tankWrecks: WRECK_CASTS.badlands,
     inhabit: {
       // (the maps lane, 2026-10-14: a village of some ninety compounds, so its yards and lanes carry a village's life — the
       // pickups and lorries at the gates, the drums and the jerry cans, the camps' tents; was core clutter 26, drums 12, pots

@@ -623,23 +623,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 29666,
-      "sha256": "99efac06c25ac671c9424f4de9f37c540a2adfd89f7f67cc423a773aac12315e"
+      "sha256": "de7ec8ae01c49e99dc42e433d010810d706f9de857f9422e7336697e768358bc"
     },
     "modulesSide": {
       "file": "sabra_mk2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33152,
-      "sha256": "cfba8cf85c675e25f0d173b04f22e90fcdad13386bef2a338d25bcda64c1c605"
+      "bytes": 33150,
+      "sha256": "d673d6e5d2794f6c700d4e47ab1fa7f8098ebc50052209bcb34dc8cda6a99cc0"
     },
     "crewSide": {
       "file": "sabra_mk2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30676,
-      "sha256": "71a3bc6638230751f3ba4b0f28964d45dcbaf2ce6a5b06b11bee411c6c13e970"
+      "bytes": 30672,
+      "sha256": "c9dc21e4e20be674d541e37ec21e2e8ef69c9d2bcea93a6350681b5f74004428"
     },
     "angle": {
       "file": "sabra_mk2_angle.webp",
@@ -654,7 +654,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 12558,
-        "sha256": "23a7bb7618da13cdd72a34dcb9de8efedd808ef3431a43703abe1421ac93a649"
+        "sha256": "23a7bb7618da13cdd72a34dcb9de8efedd808ef3431a43703abe1421ac93a649",
+        "frame": [23,91,227,250]
       }
     },
     "top": {
@@ -670,8 +671,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15796,
-      "sha256": "ffde488ec8e7169e1f7fb74ca1811e47af47629f29ba23b82bbad269eb26ff3d"
+      "bytes": 15806,
+      "sha256": "4279dedfec9df94e0e2f002ef3be58eee5673876b845ae879b512b0a60f50ccf"
     },
     "topSilhouette": {
       "file": "sabra_mk2_top_silhouette.png",
@@ -694,8 +695,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35550,
-      "sha256": "bc82e4fa353b6b910961cb3d9ffe346cbf33af579b813ad983ba9b1fe1bc3249"
+      "bytes": 32583,
+      "sha256": "7c0d2768d5fb6fe3fa65bf52e157cfd0d20f83ad668f30c4447d6972303a1582"
     },
     "technicalLabels": {
       "file": "sabra_mk2_technical.json",

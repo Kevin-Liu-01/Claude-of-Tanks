@@ -1,5 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // SCENE STUDIO self-test (docs/STUDIO.md §Self-test).
 // Usage: node tools/studio-selftest.mjs [--out shots/studio-selftest] [--keep]
 //
@@ -25,13 +25,11 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { MAP_IDS } from '../src/world/maps/index.ts';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 // --- exclusive harness lock (FIFO ticket protocol, see screenshot.mjs) ------
 
-await acquireLock(20 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'studio-selftest', timeoutMs: 20 * 60 * 1000 });
 
 // --- options -----------------------------------------------------------------
 const args = process.argv.slice(2);
@@ -135,7 +133,7 @@ try {
   // 1. boot straight into the studio on desert
   const entryStartedAt = Date.now();
   await page.goto(`${url}?studio=1&map=desert`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   // active flips when the studio takes the frame; mapId lands once the
   // chunked world build behind the busy bar finishes
   await page.waitForFunction(
@@ -590,8 +588,7 @@ try {
 
   // 11. exit hands back to the garage
   await page.evaluate(() => window.__STUDIO.exit());
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage'
-    && !window.__STUDIO.active, { timeout: 15000 });
+  await page.waitForFunction(`${readinessExpression('garage')} && !window.__STUDIO.active`, { timeout: 15000 });
   const after = await page.evaluate(() => ({
     phase: window.__DEBUG.game.phase, active: window.__STUDIO.active,
   }));
@@ -609,5 +606,6 @@ try {
   }
   await browser.close();
   await server.close();
+  await hold.release();
 }
 process.exit(failed || consoleErrors.length ? 1 : 0);

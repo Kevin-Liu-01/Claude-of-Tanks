@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getLocale, setLocale, t } from './i18n.ts';
-import { battleControlHintGroups } from './settings.ts';
+import { battleControlHintGroups, crewVoiceItems } from './settings.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { FLIGHT_ACTIONS, VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
@@ -34,7 +35,8 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
 // the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
 // flight action wears the table's glyph, as the HUD's controls row and the Garage do
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 38,
+// Air Support (air-support-270): the strike view's binoculars (X) join them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 39,
   'every remappable action has a settings icon');
 for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
@@ -56,6 +58,9 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
 // framing and field of view at their ranges, the kit's segmented control for the shoulder, and a named reset on each row
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
+  // (improve-271 plan 028) a preset picked in the same visit as a language switch is applied before the reload
+  assert.match(source, /\(locale\) => \{\s*(?:\/\/[^\n]*\n\s*)*commitGraphics\(\);\s*setLocale\(locale\);[\s\S]{0,300}window\.location\.assign\(/,
+    'the language switch commits the staged graphics preset before it navigates');
   assert.match(source, /cameraCard\(body\);/, 'the Gameplay tab carries the Camera card');
   for (const key of ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov']) {
     assert.match(source, new RegExp(String.raw`slider\(t\('settings\.camera\.[a-z]+'\), '${key}'`), `${key} is a slider row`);
@@ -114,19 +119,45 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
   assert.match(source, /\.filter\(\(\{ id \}\) => !record\.learned\.has\(id\)\)/, 'only the groups still unused show');
   assert.match(source, /hintListeners\.push\(input\.onAction\(action, \(\) => learnHint\(id\)\)\)/, 'a group leaves as its control is pressed');
   assert.match(source, /bus\.on\('ui:playerEngaged', \(\) => fadeHints\(\)\);/, 'the first engagement ends the strip');
-  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*kcReplay = true;\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
+  // (2026-11-02 audit F4: the kill-cam latch is the input owner's, battleInputOwner.ts; the panel's handler only clears up)
+  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
   // the resume veil's hide writes only when the veil is up: updateGear's 150 ms sweep calls it in every state, and a
   // classList.remove of an absent class still rewrites the attribute (266; the idle census in
   // tools/hud-self-measure.browser.selftest.mjs fails on any attribute a page at rest keeps rewriting)
-  assert.match(source, /function hideResumeVeil\(\) \{\s*if \(resume\.classList\.contains\('show'\)\) resume\.classList\.remove\('show'\);/,
+  // (2026-11-02 audit F4: the class is a projection of the input owner's veil, written only when it must change)
+  assert.match(source, /function syncResumeVeil\(\) \{\s*const up = inputOwner\.veil !== null;\s*if \(up !== resume\.classList\.contains\('show'\)\) resume\.classList\.toggle\('show', up\);/,
     'the veil\'s hide is a no-op while the veil is down');
+  assert.match(source, /function hideResumeVeil\(\) \{\s*inputOwner\.hideVeil\(\);\s*syncResumeVeil\(\);/,
+    'the sweep\'s hide goes through the owner and the projection');
   assert.match(source, /setInterval\(updateGear, 150\);/, 'the sweep it guards is still the 150 ms one');
   // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
   // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)
   assert.match(source, /\.cot-hints\{position:fixed;left:var\(--hud-hints-x,50%\);top:var\(--hud-hints-bottom,calc\(var\(--hud-systems-top,/, 'the strip seats over the controls row');
-  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
-    'the scope, a flight, Watch and spectating hide the strip');
+  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-cot-strike-view\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
+    'the scope, the strike view, a flight, Watch and spectating hide the strip');
 }
 
-console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
+// crew-languages-270 (owner 2026-11-06: "also that selection should be in languages"): Crew voices lists National crews,
+// then every pack as a language named in the interface's language (its own name beside it where that differs), sorted
+// by that name, with no flags; the stored value stays the pack's tag
+for (const locale of ['en-US', 'zh-CN']) {
+  setLocale(locale);
+  const items = crewVoiceItems();
+  assert.equal(items[0].id, 'national', `${locale}: National crews comes first`);
+  const languages = items.slice(1);
+  assert.deepEqual(languages.map((item) => item.id).sort(), [...CREW_LANGUAGES].sort(), `${locale}: every pack is listed once, by its tag`);
+  for (const item of languages) {
+    assert.ok(item.name.trim() && item.name !== item.id, `${locale}: ${item.id} renders a name`);
+    assert.ok(!item.chip, `${locale}: ${item.id} carries no flag: a language is not a country`);
+    if (item.facts) assert.ok(item.facts.length === 1 && item.facts[0].trim() && item.facts[0] !== item.name, `${locale}: ${item.id}'s own name`);
+  }
+  assert.equal(new Set(languages.map((item) => item.name)).size, languages.length, `${locale}: no two packs share a name`);
+  const collator = new Intl.Collator(locale);
+  assert.deepEqual(languages.map((item) => item.name), languages.map((item) => item.name).sort(collator.compare), `${locale}: sorted by name`);
+}
+setLocale('en-US');
+assert.deepEqual(['de', 'en-AU', 'ar'].map((id) => crewVoiceItems().find((item) => item.id === id)).map((item) => [item.name, item.facts?.[0] ?? null]),
+  [['German', 'Deutsch'], ['English (Australia)', null], ['Arabic', 'العربية']], 'German · Deutsch; English (Australia)');
+
+console.log('settingsControls.selftest: controls references, exhaustive setting icons and the crew voice languages passed');
 setLocale(originalLocale);

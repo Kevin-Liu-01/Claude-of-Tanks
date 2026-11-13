@@ -4,12 +4,12 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 const arg = (name, fallback) => process.argv.find(v => v.startsWith(`--${name}=`))?.slice(name.length + 3) || fallback;
 const { chromium } = await import(arg('playwright-module', 'playwright'));
-const lock = createCaptureLock();
-await lock.acquire(Number(arg('lock-timeout', '60000')));
-const refresh = setInterval(() => lock.refresh(), 30000);
+let hold;
+hold = await openCaptureHold({ label: 'rapid-fire-feedback', timeoutMs: Number(arg('lock-timeout', '60000')) });
+
 let browser;
 try {
   browser = await launchGuardedBrowser(chromium, { channel: 'chrome', headless: true, args: ['--disable-gpu'] });
@@ -68,4 +68,4 @@ try {
     assert.deepEqual(errors,[]); console.log(`${name}: penetration-only cards, totals, blocks, bounds and expiry passed`);
     await context.close();
   }
-} finally { await browser?.close(); clearInterval(refresh); lock.release(); }
+} finally { await browser?.close(); await hold?.release(); }

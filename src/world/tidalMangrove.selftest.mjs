@@ -11,7 +11,7 @@ import { createStructureClearances } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createProps, preloadPropModels } from './props.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { wreckPool } from './wrecks.ts';
+import { wreckDonorsFor } from './wreckRoster.ts';
 
 // Real production builders and buffers; Canvas2D pigment is a fixture, not
 // pixel evidence. No WebGL, browser, extra rendering or image acceptance.
@@ -580,7 +580,7 @@ for (let k = 0; k < 3; k++) {
 
 checkFarSeedVariation();
 globalThis.fetch = async url => new Response(readFileSync(url));
-await preloadPropModels(); await Promise.all(wreckPool('modern').map(id => ensureTankBuilder(id)));
+await preloadPropModels(); await Promise.all(wreckDonorsFor('mangrove').map(id => ensureTankBuilder(id)));
 checkThicketPlan();
 
 assert.equal(mangrove.splat.fieldPatch, 0, 'tidal islands must not inherit the agricultural plot/mowing shader');

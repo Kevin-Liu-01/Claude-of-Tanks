@@ -843,24 +843,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37122,
-      "sha256": "5c81a5deee66b8e59d2869f145b86bad0ca74d66f31be0205ae2c32090036a67"
+      "bytes": 36552,
+      "sha256": "c3dbdffe13fe7d6f2aca30602042e28240d76126b9c7dd8c18b76047e5ebee19"
     },
     "modulesSide": {
       "file": "lrmv_lynx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35910,
-      "sha256": "8056fda61a95d86a2fc93f16f346fb6cc9f359cb6efa92fa1eb102b63d775092"
+      "bytes": 34946,
+      "sha256": "93857f973473c1af64c73e0a835ae4c6f08d33eed510ea147f51d167ae143b1f"
     },
     "crewSide": {
       "file": "lrmv_lynx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32908,
-      "sha256": "4313fea3de1cc697b68c01e0c2967a5de533baa75d10846060ef9c4759176400"
+      "bytes": 32898,
+      "sha256": "5fa6f5a0355e6518fc2cfa0898d959089ab74b475fe61272a8b9d2d4548c3a09"
     },
     "angle": {
       "file": "lrmv_lynx_angle.webp",
@@ -875,7 +875,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11478,
-        "sha256": "0a5ac6c0fbecd7b6f4846536299672ea27b8e7539bfa21e55d4ca57eba168865"
+        "sha256": "0a5ac6c0fbecd7b6f4846536299672ea27b8e7539bfa21e55d4ca57eba168865",
+        "frame": [24,71,228,250]
       }
     },
     "top": {
@@ -883,8 +884,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28272,
-      "sha256": "1f06616f50143e3d4cdbf65be7f5812e12a522fe63fc0616770c18322188362e"
+      "bytes": 28244,
+      "sha256": "9773373ea7a44044401dadf824096b37a3a9601c03cc4500784d41f6f0a2f76d"
     },
     "side": {
       "file": "lrmv_lynx_side.webp",
@@ -892,7 +893,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 14394,
-      "sha256": "6d37651b72d3a9e893fb13aa9a64a438df9c7ba1845719a61614d1a4f3e64b27"
+      "sha256": "a02ba1577c56e0822bde3eba37a37beba4543381b2242ada379489914887ef89"
     },
     "topSilhouette": {
       "file": "lrmv_lynx_top_silhouette.png",
@@ -915,8 +916,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34094,
-      "sha256": "06a7a2733dd78f5f18ab5a54789df28fa58ff19d8e44f1df2595c3085b60f7a5"
+      "bytes": 31057,
+      "sha256": "59d293d2330c9b59ea6d811c781f679411a3c81ea3df134896d3c923c0d8e359"
     },
     "technicalLabels": {
       "file": "lrmv_lynx_technical.json",

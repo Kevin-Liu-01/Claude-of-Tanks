@@ -63,7 +63,7 @@ import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
-import { isTrackShoeMesh } from './track-clip-classification.mjs';
+import { expectedTrackBandCount, isTrackShoeMesh } from './track-clip-classification.mjs';
 import { createTrackClipTank, trackClipQuality } from './track-clip-options.mjs';
 import { provesClosedMeshSeparation } from './track-band-separation.mjs';
 
@@ -121,7 +121,8 @@ if (mode === 'list') {
   // excludes spare-link stowage on glacis/turret, which shares the bucket
   // material) and audit those as the track set instead.
   let trackSet = bands;
-  if (bands.length !== 2) {
+  const expectedBands = expectedTrackBandCount(bands);
+  if (bands.length !== expectedBands) {
     const bbp = new THREE.Box3();
     const handRolled = meshes.filter((m) => {
       if (!m.userData || !m.userData.trackBucket) return false;
@@ -134,7 +135,7 @@ if (mode === 'list') {
       // hand-rolled meshes are hull-side candidates no longer
       for (const m of handRolled) meshes.splice(meshes.indexOf(m), 1);
     } else {
-      out.anomaly = `expected 2 band meshes, found ${bands.length} (no ground-riding track buckets either)`;
+      out.anomaly = `expected ${expectedBands} band meshes, found ${bands.length} (no ground-riding track buckets either)`;
       window.__CLIP_RESULT = out; window.__CLIP_READY = true;
     }
   }

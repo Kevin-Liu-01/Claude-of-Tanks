@@ -55,7 +55,7 @@ export function munitionFromType(shellType: string | undefined, caliberMm: numbe
  * debris are coloured by). Until this every building broke as brick: a timber barn, an adobe ksar, a concrete block
  * and a stone church alike.
  */
-type StructureSoundMaterial = 'brick' | 'stone' | 'timber' | 'concrete' | 'plaster' | 'steel';
+export type StructureSoundMaterial = 'brick' | 'stone' | 'timber' | 'concrete' | 'plaster' | 'steel';
 export const STRUCTURE_SOUND_MATERIALS: readonly StructureSoundMaterial[] = Object.freeze(['brick', 'stone', 'timber', 'concrete', 'plaster', 'steel']);
 
 /** A fracture material (fx/structureFx.ts FRACTURE_BASE) as its walls sound; roofing, glass and canvas are not walls. */
@@ -111,6 +111,17 @@ const AFTER_FALL: Readonly<Record<StructureSoundMaterial, string>> = Object.free
   timber: 'crate_break', steel: 'debris_metal',
 });
 
+/**
+ * A roof caving in, by what the building is (world-sfx-269, 2026-11-03): a tiled roof over brick or stone, a concrete
+ * slab, an adobe house's flat earth roof, a barn's shingles, a shed's steel sheet (its collapse, quieter). Until this
+ * every roof but a shed's fell as clay tiles.
+ */
+const ROOF_FALL: Readonly<Record<StructureSoundMaterial, { readonly id: string; readonly gainDb: number }>> = Object.freeze({
+  brick: Object.freeze({ id: 'roof_fall', gainDb: -1 }), stone: Object.freeze({ id: 'roof_fall', gainDb: -1 }),
+  concrete: Object.freeze({ id: 'roof_fall_concrete', gainDb: -1 }), plaster: Object.freeze({ id: 'roof_fall_earth', gainDb: -1 }),
+  timber: Object.freeze({ id: 'roof_fall_timber', gainDb: -1 }), steel: Object.freeze({ id: 'collapse_steel', gainDb: -5 }),
+});
+
 /** Distant recordings for the big events, crossfaded in by range (the armour hits' law, stretched: a building is big). */
 export const STRUCTURE_FAR = Object.freeze({
   breach: 'wall_break_far', collapse: 'collapse_far', hit: 'impact_far_building',
@@ -141,7 +152,7 @@ export function structureStageSounds(stage: StructureStage, sound: StructureSoun
 export function sectionFallSounds(kind: 'wall' | 'roof', storeyDown: boolean, sound: StructureSound = structureSoundOf(null)): readonly DestructionSoundLayer[] {
   const m = sound.material;
   if (storeyDown) return [layer('floor_fall', 0, 0, 0.05), layer(AFTER_FALL[m], 0.45, -5, 0.2)];
-  if (kind === 'roof') return m === 'steel' ? [layer('collapse_steel', 0, -5)] : [layer('roof_fall', 0, -1, 0.05)];
+  if (kind === 'roof') return [layer(ROOF_FALL[m].id, 0, ROOF_FALL[m].gainDb, m === 'steel' ? 0 : 0.05)];
   return [layer(WALL_BREAK[m], 0, -3, 0.05), layer(AFTER_FALL[m], 0.3, -7, 0.15)];
 }
 
@@ -153,6 +164,7 @@ export function structureHitAsset(sound: StructureSound = structureSoundOf(null)
 /** Every recorded id these recipes play (the engine preloads them with the battle). */
 export const DESTRUCTION_SOUND_IDS: readonly string[] = Object.freeze([...new Set([
   ...Object.values(WALL_BREAK), ...Object.values(COLLAPSE), ...Object.values(SHELL_HIT), ...Object.values(AFTER_FALL),
+  ...Object.values(ROOF_FALL).map((roof) => roof.id),
   'glass_shatter', 'glass_cascade', 'debris_dirt', 'floor_fall', 'roof_fall', 'blast_masonry',
   STRUCTURE_FAR.breach, STRUCTURE_FAR.collapse, STRUCTURE_FAR.hit,
 ])].sort());

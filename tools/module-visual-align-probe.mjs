@@ -29,6 +29,7 @@ import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
@@ -59,7 +60,7 @@ async function withGamePage(run, launchBrowser) {
 
     // 180 s for the first navigation, 120 s for the game, one retry of a load that timed out (R4c)
     await loadReadyPage(page, `${boundOrigin(server)}/?nosplash`, {
-      label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
+      label: 'mod-align', ready: BOOT_LOADED_EXPRESSION, budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
     });
     return run(page);
   }, { launchBrowser });

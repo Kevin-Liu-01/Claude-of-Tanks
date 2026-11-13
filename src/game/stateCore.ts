@@ -1,13 +1,14 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
+import type { AppPhase } from './appLifecycle.ts';
 import type { WatchSession } from './watchSeat.ts';
-import type { CouchSession } from './couchSeats.ts';
+import { endCouchSession, type CouchSession } from './couchSeats.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
  * runtime. This module deliberately has no Three.js, DOM, WebGL, vehicle, or
- * simulation imports (the ruleset table is pure data) so presentation-only
- * entry points do not acquire the combat graph merely to create a bus or an
- * empty session.
+ * simulation imports (the ruleset table is pure data, couchSeats.ts the couch
+ * session's pure owner) so presentation-only entry points do not acquire the
+ * combat graph merely to create a bus or an empty session.
  */
 
 // The frame-stage hook (game/frameStages.ts; battle-spikes-253): re-exported here so the boot's existing shared chunk
@@ -25,7 +26,12 @@ export interface EventBus {
 }
 
 export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, MatchModeState = RuntimeValue> {
-  phase: 'garage' | 'battle' | 'ended' | 'shot' | 'studio';
+  /**
+   * Who owns the scene and the simulation. Written only through appLifecycle.ts `transitionAppPhase` (2026-11-02
+   * audit F1); a battle's end is its `result`, the finer states (loading, countdown, verdict hold, report, the Garage
+   * behind the report) are the lifecycle's derived `state`.
+   */
+  phase: AppPhase;
   preBattleS: number;
   mapId: string;
   tanks: Entity[];
@@ -60,6 +66,27 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   watch?: WatchSession | null;
   /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
   couch?: CouchSession<Entity> | null;
+  /** The dev battle hold's switch (dev/battleHold.ts; game/devBattleHold.ts reads it); absent in a player's session. */
+  devBattleHold?: boolean;
+}
+
+/**
+ * Whether a couch battle's phones drive its seats now (round 8 Y1 s2-01): a session (couchSeats.ts, its one owner), the
+ * ruleset's couch rules and the battle phase. The page's gates on whether the phones drive ask this: the keyboard's frame
+ * input (battleFrameRuntime), the HUD's and the keys' actions (playerBattleActions), the shared screen's reveal
+ * (watchRevealsAll) and the seats' Pause (main.ts's couch togglePause port; round 8 merge review r1). setupBattle's own
+ * seating reads the session it just began (the phase is still the Garage's there).
+ * src/app/couchRuntime.ts (app-couch's) still reads game.couch with gates of its own until it asks this one: frame() checks
+ * all three terms inline, source() the phase and the couch rules for a seat's tank, and beforeStep() only the session and
+ * the couch rules, which holds because main.ts calls it only from the local battle step (stepSimulation, which
+ * battleFrameRuntime runs in the battle phase alone).
+ */
+export function couchSeatsActive(game: {
+  phase?: string;
+  ruleset?: { readonly couch?: unknown } | null;
+  couch?: unknown;
+}): boolean {
+  return !!game.couch && !!game.ruleset?.couch && game.phase === 'battle';
 }
 
 /**
@@ -67,14 +94,16 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
  * no side). A taken seat sees as its side does, spotting and all.
  */
 export function watchRevealsAll(game: {
+  phase?: string;
   player: unknown;
-  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
+  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null; readonly couch?: unknown } | null;
   watch?: { readonly opened: boolean } | null;
-  couch?: { readonly sides: string } | null;
+  couch?: { readonly sides: string; readonly view?: string } | null;
 }): boolean {
   // a couch battle with seats on both sides shares one screen, and each seat sees its own side: the screen shows every
-  // hull (docs/COUCH-MODE.md; one pane per seat draws only its side's spotting)
-  if (game.couch?.sides === 'teams') return true;
+  // hull (docs/COUCH-MODE.md). The split screen keeps every hull in the scene too: each pane hides what its own seat's
+  // side has not spotted for its own draw (src/app/couchPaneViews.ts)
+  if (couchSeatsActive(game) && (game.couch?.sides === 'teams' || game.couch?.view === 'split')) return true;
   return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
 }
 
@@ -165,10 +194,12 @@ export function createGameState<
 
 /**
  * Garage return (2026-09-14): drop the finished match's objective state so nothing of it — markers,
- * events, the campaign operation, a bent ruleset — leaks into the garage or the next sortie.
+ * events, the campaign operation, a bent ruleset, a couch battle's seats (round 8 Y1 s2-01) — leaks into the garage or
+ * the next sortie, a network round's included.
  */
 export function clearMatchSession(game: Pick<GameState,
-  'gameMode' | 'matchModeState' | 'matchModeController' | 'modeEvents' | 'ruleset' | 'campaignOperationId'>): void {
+  'gameMode' | 'matchModeState' | 'matchModeController' | 'modeEvents' | 'ruleset' | 'campaignOperationId' | 'couch'>): void {
+  endCouchSession(game);
   game.matchModeController = null;
   game.matchModeState = null;
   game.modeEvents.length = 0;

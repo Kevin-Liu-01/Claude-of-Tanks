@@ -13,6 +13,11 @@ import { T80U_X_RING_RAISE_M } from '../src/vehicles/t80uXArmor.ts';
 // cover's face), so the station is the family casting's, z 1.10 (centurionFamily.ts TRUNNION), as the M60s take theirs.
 // turret_0 and gun_0 are the print's own meshes; its two whips are fused into turret_0 and stay in the oracle (the gate's
 // body rule names them by box: tools/fused-roof-gun-boxes.mjs FUSED_ANTENNA_BOXES).
+// The Chieftain Mk 5 X source (chieftain5, and from 271 the Mk 3 built on its castings).
+const CHIEFTAIN5_SOURCE_FRAME = Object.freeze({
+  sha256:'2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79',
+  fused:true,turret:Object.freeze([.0031,1.476,.36928]),gun:Object.freeze([-.008067,1.859441,1.570]),
+});
 const CENTURION_SOURCE_FRAME = Object.freeze({
   sha256:'66b2818a6cfe23a2f7be0ec7be68286e9969fb253d0c878a231aeec95e021aa1',
   turret:Object.freeze([-.000085,1.69628,.468587]), gun:Object.freeze([.000004,2.079211,1.10]),
@@ -89,10 +94,9 @@ const STUDY_SOURCE_WORLD_FRAMES = withAssembledSourceFrames({
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],
   },
-  chieftain5: {
-    sha256:'2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79',
-    fused:true,turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],
-  },
+  chieftain5: CHIEFTAIN5_SOURCE_FRAME,
+  // 271 (Main): the Mk 3 rebuilt on the Mk 5 X castings measures against the same certified source
+  chieftain3: CHIEFTAIN5_SOURCE_FRAME,
   c1_ariete: {
     // Owner's further10% enlargement of the already1.12-scale C1; complete original source.
     sha256:'1f33b3966189c876c8e507a57c59def5e6f3a70334d42315e0366911aedb6177',

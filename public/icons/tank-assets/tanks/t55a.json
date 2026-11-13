@@ -829,15 +829,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23774,
-      "sha256": "fe94c0a9f3f459fe4a08f0678a7e005541e4b2e107446aebc32dd767b3665587",
+      "bytes": 23762,
+      "sha256": "20b4000013a4c419c974e12987a6830b2443161a00d8ece217e60111f1fa6445",
       "thumbnail": {
         "file": "thumbs/t55a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9726,
-        "sha256": "3583ea585d095d09a4f66edbf65132e1e0538aea0bec9c016966e7be99d14bc0"
+        "bytes": 9730,
+        "sha256": "c072f60590818fbdbdfba11350c40f2b25f381e257078d01c6f47fefb898c5ac",
+        "frame": [21,123,223,249]
       }
     },
     "top": {
@@ -845,16 +846,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9868,
-      "sha256": "1cdf2ca112881e3d994b710efb66d95244d5129d3b5011c1c8927a24f9d76ba4"
+      "bytes": 9846,
+      "sha256": "c71b85f9861767d3a04c01f5db80880fe1f5764960243083ca66e94e366473bf"
     },
     "side": {
       "file": "t55a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9056,
-      "sha256": "893373f373ec4f2cf3e8e772d4209e62772eedc61d9a1cf62d7d7899b0b087fb"
+      "bytes": 9052,
+      "sha256": "e3fce77b53a4639c9c90b0713e78c578bbb13b78ab2a8880bbbf2d0a86105511"
     },
     "topSilhouette": {
       "file": "t55a_top_silhouette.png",
@@ -877,32 +878,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19726,
-      "sha256": "832f90218bacd6c554865619921fc68e02238ed9bcfdc026b183d7f48e65b127"
+      "bytes": 19702,
+      "sha256": "fa0e719ce18d714abbfa7537b9067f35ea12fae5cc2ca4ec147853d575245ef8"
     },
     "modulesSide": {
       "file": "t55a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22470,
-      "sha256": "66f4480ea794e42b6b1a5e9ca20a0ebeadb8a15c5585c9752d9e98fc4601f855"
+      "bytes": 22442,
+      "sha256": "903c225d657fee5de613fcdc760b0f7890f20349ccee378c34b5d3c478a16abd"
     },
     "crewSide": {
       "file": "t55a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20678,
-      "sha256": "82964a1bf5a333127f844a084117b457836ead114a89ca76d8fbcc38f5a575c0"
+      "bytes": 20698,
+      "sha256": "969b0559572fa382b2ddfc7877e4caab487b2e26405fc2f5076622ac5b8df829"
     },
     "markings": {
       "file": "t55a_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34812,
-      "sha256": "54d54612b9b7aae3a9d0bb56ce36ccb40d33fbbc18a0474eb555133c90f5226b"
+      "bytes": 32663,
+      "sha256": "7adaee530b3fca92b4bf54ddaffe9db1c992f026699a0ed6be18b282e29b4a67"
     },
     "technicalLabels": {
       "file": "t55a_technical.json",

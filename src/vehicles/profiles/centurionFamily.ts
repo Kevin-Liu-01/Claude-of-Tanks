@@ -10,12 +10,13 @@
 // Hull frame: +Z forward, ground y 0, the hull centred on z 0 (front guards 3.78, rear plate -3.72); left is +X. The
 // turret ring is 1.88 m across, centred 0.47 m ahead of the hull's middle on the 1.70 m roof. Turret parts are authored
 // in the ring frame; the gun's in the trunnion frame (2.075 m high, 1.10 m ahead of the hull's middle).
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -25,9 +26,11 @@ const slab = orientedSlab;
 /** The builds: the British Mk 3 (20-pdr), the British Mk 5/2 (105 mm L7), the Swedish Strv 81B (20-pdr) and the
  * Israeli Sho't Kal of 1973 (L7, the Continental AVDS-1790-2A conversion, IDF stowage; no Blazer armour) and the British
  * Mk 13 (the Mk 10's L7A2 and glacis appliqué with the L2 infra-red searchlight and the .50 ranging gun); the owner's
- * second batch (2026-10-27): the Swedish Strv 105 prototype, the South African Olifant Mk 2 and the British Mk 5 AVRE; and
- * (2026-10-28) the Australian Mk 5/1 of the Vietnam war. */
-export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal' | 'mk13' | 'strv105' | 'olifant_mk2' | 'avre' | 'mk5_1_aus';
+ * second batch (2026-10-27): the Swedish Strv 105 prototype, the South African Olifant Mk 2 and the British Mk 5 AVRE;
+ * (2026-10-28) the Australian Mk 5/1 of the Vietnam war; and (release 269, the South African tree) the Semel, the Olifant
+ * Mk 1, Mk 1A and Mk 1B. */
+export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal' | 'mk13' | 'strv105' | 'olifant_mk2' | 'avre' | 'mk5_1_aus'
+  | 'semel' | 'olifant_mk1' | 'olifant_mk1a' | 'olifant_mk1b';
 
 interface MarkDesign {
   /** Gun length ahead of the trunnion (muzzle face). */
@@ -53,10 +56,20 @@ interface MarkDesign {
   /** The casting's nose stops 12 cm short of the long nose (CASTING_BARE): the Mk 3 and Strv 81 (their registered
    * models' noses), the Mk 13 and the AVRE (their bare mantlets standing proud). */
   readonly shortNose: boolean;
+  /** The South African conversions (release 269; docs/references/tanks/olifant_mk1.md): the Semel of 1974 (the Mk 5 under
+   * the Continental AVI-1790 petrol engine, skirts kept), the Olifant Mk 1 of 1978 (the AVDS-1790-2A diesel, the 20-pdr
+   * kept, skirts off, two banks of four 81 mm dischargers, net racks), the Mk 1A of 1985 (the GT3 105 mm, the long bustle
+   * box, the bush bar) and the Mk 1B of 1991 (the Mk 2's torsion-bar hull and armoured turret, the searchlight over the
+   * gun, the cans racked on the bustle, no stabilised sight). Absent on every other mark. */
+  readonly sa?: 'semel' | 'mk1' | 'mk1a' | 'mk1b';
 }
 
 /** The Dutch Mk 5/2: the British Mk 5 pattern with the L7 and no conversion kit. */
-const isMk52 = (m: MarkDesign): boolean => m.kit === 'none' && m.mk5 && !m.swedish && !m.idf && !m.late;
+const isMk52 = (m: MarkDesign): boolean => m.kit === 'none' && m.mk5 && !m.swedish && !m.idf && !m.late && !m.sa;
+/** The South African marks on the AVDS/AVI-1790 deck (the Semel, the Olifant Mk 1 and Mk 1A). */
+const saAvds = (m: MarkDesign): boolean => m.sa === 'semel' || m.sa === 'mk1' || m.sa === 'mk1a';
+/** The Olifant Mk 1 and Mk 1A ran with their skirts off, the Horstmann bogies bare (the Angola and De Brug photographs). */
+const saSkirtless = (m: MarkDesign): boolean => m.sa === 'mk1' || m.sa === 'mk1a';
 
 const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
   mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: true },
@@ -68,6 +81,10 @@ const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
   olifant_mk2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'olifant', cover: false, shortNose: false },
   avre: { gunLen: 2.15, gun: '165', mk5: true, swedish: false, idf: false, late: false, kit: 'avre', cover: false, shortNose: true },
   mk5_1_aus: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'aus', cover: true, shortNose: false },
+  semel: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: false, sa: 'semel' },
+  olifant_mk1: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: false, sa: 'mk1' },
+  olifant_mk1a: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: false, sa: 'mk1a' },
+  olifant_mk1b: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'olifant', cover: false, shortNose: false, sa: 'mk1b' },
 });
 
 // ---- hull datums (metres, hull frame) ----
@@ -613,7 +630,9 @@ function buildOlifantRunningGear(P: TankBuilderPort): void {
 }
 
 function buildEngineDeck(P: TankBuilderPort, m: MarkDesign): void {
-  if (m.idf) { buildAvdsDeck(P); return; }
+  // (the South African conversions took the same air-cooled Continental 1790 and its deck: the Semel the petrol AVI, the
+  // Olifant Mk 1 and Mk 1A the AVDS diesel; the De Brug and Angola photographs show the raised louvred deck)
+  if (m.idf || saAvds(m)) { buildAvdsDeck(P); return; }
   const top = ENGINE_DECK_Y;
   // Two armoured radiator louvre fields behind the ring: dark wells under raked slats.
   for (const s of [-1, 1]) {
@@ -684,7 +703,8 @@ function buildAvdsDeck(P: TankBuilderPort): void {
  * Meteor tanks), pioneer tools in clamps on the left bins' face, the gun's travel lock folded on the rear deck's edge,
  * the convoy light box on the rear plate, and the Strv 81's blackout light boxes on its front guard bins. */
 function buildHullKit(P: TankBuilderPort, m: MarkDesign): void {
-  if (!m.idf) {
+  // (the 1790 conversions dropped the Meteor's charging engine and its silencer)
+  if (!m.idf && !saAvds(m)) {
     P.add('hullDark', box(0.16, 0.14, 0.44), 1.56, GUARD_Y + 0.10, -1.55);
     P.add('hullDark', cylZ(0.035, 0.40, 10), 1.56, GUARD_Y + 0.08, -1.98);
     P.add('hullDetail', box(0.18, 0.02, 0.46), 1.56, GUARD_Y + 0.175, -1.55);
@@ -740,9 +760,9 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
       P.add('hullDark', box(0.06, 0.06, 0.03), s * 0.55, 1.98, -3.686);
     }
   }
-  if (m.idf) {
-    // two links on the tub's rear plate between the AVDS boxes, under the convoy light (the Litani photograph)
-    KIT.spareTrackStrip(P, 'hull', 0, 1.20, REAR_Z - 0.035, 2, -Math.PI / 2);
+  // two links on the tub's rear plate between the AVDS boxes, under the convoy light (the Litani photograph)
+  if (m.idf) KIT.spareTrackStrip(P, 'hull', 0, 1.20, REAR_Z - 0.035, 2, -Math.PI / 2);
+  if (m.idf || saAvds(m)) {
     // the AVDS conversion's two louvred grille boxes on the upper rear plate (the 1978 rear photograph)
     for (const s of [-1, 1]) {
       P.add('hullFixedPaintedBodywork', box(0.62, 0.52, 0.10), s * 0.58, 1.46, REAR_Z - 0.04);
@@ -760,12 +780,12 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
     P.add('hullDark', cylZ(0.022, 0.30, 8), -0.20, 1.12, REAR_Z - 0.06);
     P.add('hullDetail', box(0.22, 0.26, 0.10), -0.60, 1.29, REAR_Z - 0.47);
   }
-  // infantry telephone box on the right rear
-  if (!m.idf && !m.swedish && m.kit !== 'aus') {
+  // infantry telephone box on the right rear (the 1790 decks' grille boxes take the upper rear plate)
+  if (!m.idf && !m.swedish && m.kit !== 'aus' && !saAvds(m)) {
     P.add('hullDetail', box(0.22, 0.26, 0.10), -0.30, 1.38, REAR_Z - 0.05);
     P.add('hullDark', box(0.16, 0.02, 0.012), -0.30, 1.46, REAR_Z - 0.10);
   }
-  if (!m.swedish && !m.idf && m.kit !== 'aus') {
+  if (!m.swedish && !m.idf && m.kit !== 'aus' && !saAvds(m)) {
     KIT.towCable(P, [[-1.20, 1.60, REAR_Z - 0.03], [-0.62, 1.30, REAR_Z - 0.06], [0, 1.52, REAR_Z - 0.04],
       [0.62, 1.30, REAR_Z - 0.06], [1.20, 1.60, REAR_Z - 0.03]]);
     // the cable's eyes clamped in their ferrules on the plate's top corners (the tube itself is open-ended)
@@ -1210,7 +1230,7 @@ function olifantSection(z: number, bottom: number, roof: number, hw: number): So
   return { z, ring: [[-hw, bottom], [hw, bottom], [hw, roof - c], [hw - c, roof], [-(hw - c), roof], [-hw, roof - c]] };
 }
 
-function buildOlifantTurret(P: TankBuilderPort): void {
+function buildOlifantTurret(P: TankBuilderPort, m: MarkDesign): void {
   const T = OLIFANT_TURRET;
   P.add('turret', sectionSolid([
     olifantSection(T.rearZ, 0.32, 0.86, 1.30),
@@ -1255,6 +1275,24 @@ function buildOlifantTurret(P: TankBuilderPort): void {
   }
   // two banks of four dischargers at the bustle's rear corners, raised forward (the Commons profile)
   for (const s of [-1, 1]) {
+    if (m.sa === 'mk1b') {
+      // the Mk 1B's stand at the roof edge on an open bracket, steeper and splayed further out, the whole bank over the
+      // roof line (the Tempe rear photograph, DSCF4691; Main, 2026-11-04): a shelf level with the roof off the side's
+      // top edge on two diagonal stays, a guard rail along its outer edge
+      // (the 269 blind critics: on a shelf below the roof edge the near bank's tubes sank behind the turret's top edge;
+      // a black rail over the roof read as spindly legs, so the rail is the bracket's own painted steel)
+      const bx = s * (T.hw + 0.10);
+      P.add('turretDetail', box(0.24, 0.03, 0.64), bx, 0.92, -2.38);
+      for (const sz of [-2.66, -2.10]) {
+        P.add('turretDark', xform(box(0.03, 0.272, 0.03), 0, 0, 0, 0, 0, -s * 0.824), bx, 0.8125, sz);
+        P.add('turretDetail', box(0.04, 0.14, 0.04), s * (T.hw + 0.205), 1.005, sz);
+      }
+      P.add('turretDetail', box(0.04, 0.04, 0.60), s * (T.hw + 0.205), 1.075, -2.38);
+      for (let k = 0; k < 4; k++) {
+        P.add('turretDetail', markSmokeTube(cylZ(0.046, 0.30, 12)), bx, 1.05, -2.60 + k * 0.16, -0.80, s * 0.35, 0);
+      }
+      continue;
+    }
     P.add('turretDetail', box(0.10, 0.12, 0.66), s * (T.hw + 0.05), 0.70, -2.40);
     for (let k = 0; k < 4; k++) {
       P.add('turretDetail', markSmokeTube(cylZ(0.042, 0.24, 12)), s * (T.hw + 0.07), 0.80, -2.64 + k * 0.155, -0.45, s * 0.25, 0);
@@ -1265,24 +1303,27 @@ function buildOlifantTurret(P: TankBuilderPort): void {
 /** The Olifant's roof: the commander's stabilised thermal sight head on its post ahead of his cupola on the right (the
  * box 0.47 m long and 0.50 m high, its corners chamfered, its window forward), the cupola, the loader's hatch and his
  * pintle 7.62 mm on the left (the Mk 1B's documented anti-aircraft gun; no source shows a remote mount), the gunner's
- * sight, periscopes, ventilator, lifting eyes and the aerials at the bustle's rear corners. Ring frame. */
-function buildOlifantRoof(P: TankBuilderPort): void {
+ * sight, periscopes, ventilator, lifting eyes and the aerials at the bustle's rear corners. The Mk 1B (1991) had no
+ * stabilised sight: the Mk 2's conversion added it (TE, Olifant Mk 2). Ring frame. */
+function buildOlifantRoof(P: TankBuilderPort, m: MarkDesign): void {
   const roofY = OLIFANT_TURRET.roof;
   const cx = -0.55, cz = -0.95;
   P.addCupola('turret', cylY(0.36, 0.38, 0.10, 32), cx, roofY + 0.05, cz);
   KIT.cupola(P, 'turret', cx, roofY + 0.10, cz, 0.30, 0.12, 8);
-  // the commander's sight
-  // (its head 0.68 m over the roof: the side and Armed Forces Day photographs; the critic, 2026-10-29: 0.9 m read tall)
-  const sx = -0.55, sz = -0.37, headY = roofY + 0.18;
-  P.add('turret', cylY(0.16, 0.20, 0.06, 20), sx, roofY + 0.03, sz);
-  P.add('turretDark', cylY(0.085, 0.085, 0.14, 14), sx, roofY + 0.12, sz);
-  const head = (z: number, hw: number): SolidSection => ({ z, ring: [[-hw, 0], [hw, 0], [hw, 0.50], [-hw, 0.50]] });
-  P.addEquipment('turretDetail', sectionSolid([head(-0.235, 0.14), head(-0.175, 0.20), head(0.175, 0.20), head(0.235, 0.14)]), sx, headY, sz);
-  P.add('turretGlass', box(0.24, 0.20, 0.012), sx, headY + 0.30, sz + 0.240);
-  P.add('turretDark', box(0.30, 0.03, 0.08), sx, headY + 0.42, sz + 0.25);
-  P.add('turretDark', box(0.30, 0.02, 0.012), sx, headY + 0.19, sz + 0.242);
-  P.add('turretDark', box(0.012, 0.36, 0.30), sx + 0.205, headY + 0.25, sz - 0.02);
-  P.add('turretDark', box(0.012, 0.36, 0.30), sx - 0.205, headY + 0.25, sz - 0.02);
+  if (m.sa !== 'mk1b') {
+    // the commander's sight
+    // (its head 0.68 m over the roof: the side and Armed Forces Day photographs; the critic, 2026-10-29: 0.9 m read tall)
+    const sx = -0.55, sz = -0.37, headY = roofY + 0.18;
+    P.add('turret', cylY(0.16, 0.20, 0.06, 20), sx, roofY + 0.03, sz);
+    P.add('turretDark', cylY(0.085, 0.085, 0.14, 14), sx, roofY + 0.12, sz);
+    const head = (z: number, hw: number): SolidSection => ({ z, ring: [[-hw, 0], [hw, 0], [hw, 0.50], [-hw, 0.50]] });
+    P.addEquipment('turretDetail', sectionSolid([head(-0.235, 0.14), head(-0.175, 0.20), head(0.175, 0.20), head(0.235, 0.14)]), sx, headY, sz);
+    P.add('turretGlass', box(0.24, 0.20, 0.012), sx, headY + 0.30, sz + 0.240);
+    P.add('turretDark', box(0.30, 0.03, 0.08), sx, headY + 0.42, sz + 0.25);
+    P.add('turretDark', box(0.30, 0.02, 0.012), sx, headY + 0.19, sz + 0.242);
+    P.add('turretDark', box(0.012, 0.36, 0.30), sx + 0.205, headY + 0.25, sz - 0.02);
+    P.add('turretDark', box(0.012, 0.36, 0.30), sx - 0.205, headY + 0.25, sz - 0.02);
+  }
   // the loader's hatch and his pintle gun
   P.addHatch('turret', cylY(0.30, 0.31, 0.045, 24), 0.55, roofY + 0.015, -0.80);
   P.add('turretDark', box(0.12, 0.05, 0.09), 0.55, roofY + 0.04, -1.12);
@@ -1310,7 +1351,7 @@ function buildOlifantRoof(P: TankBuilderPort): void {
  * standing proud of the turret's flat face with the coaxial gun's port on its front, and the ribbed canvas bellows round
  * the tube on the housing's face (the side, SANDF and Armed Forces Day photographs; the critics, 2026-10-29: the boot
  * sat flush on the face). Gun frame. */
-function buildOlifantMantlet(P: TankBuilderPort): void {
+function buildOlifantMantlet(P: TankBuilderPort, m: MarkDesign): void {
   // the cast block in the slot
   P.add('gunMount', box(0.62, 0.46, 0.42), 0, 0, 0.58);
   // the housing: 0.45 m long, 0.55 m tall, 0.60 m wide, its front edges chamfered, a seam and bolt heads round its face
@@ -1329,6 +1370,33 @@ function buildOlifantMantlet(P: TankBuilderPort): void {
     P.add('gunMountCloth', cylZ(i % 2 ? 0.172 : 0.195, 0.062, 18), 0, 0, 1.253 + i * 0.062);
   }
   P.add('gunMountDark', cylZ(0.13, 0.03, 18), 0, 0, 1.76);
+  if (m.sa === 'mk1b') {
+    // the Mk 1B's infra-red/white searchlight "added above the main gun" (TE, Olifant Mk 1B): a square armoured box on the
+    // housing's top left, laid with the gun, its glass forward behind a louvred shutter (the Tempe left and front
+    // photographs; the illustration's box stands as tall as the housing)
+    // (269 blind critics: at 0.44 x 0.40 m it was lost against the Mk 2's slab turret) 0.54 x 0.46 m, its depth and
+    // rear face kept so its sweep over the elevation arc stays the measured one
+    const lx = 0.32, ly = 0.50, lz = 1.02;
+    // its pedestal on the housing's top, nearly the box's width and depth (the 269 blind critic: a 0.16 m dark post
+    // under the box's front read as a thin stem in profile, the light top-heavy)
+    P.add('gunMount', box(0.44, 0.12, 0.34), lx, 0.335, lz - 0.02);
+    P.add('gunMountDark', box(0.44, 0.012, 0.012), lx, 0.389, lz + 0.155);
+    P.add('gunMount', box(0.54, 0.46, 0.42), lx, ly + 0.12, lz);
+    P.add('gunMountGlass', markVehicleNightLens(box(0.44, 0.36, 0.012), 'headlight', { searchlight: true }), lx, ly + 0.12, lz + 0.216);
+    for (let k = 0; k < 6; k++) P.add('gunMountDark', box(0.46, 0.012, 0.014), lx, ly - 0.03 + k * 0.06, lz + 0.226);
+    P.add('gunMountDark', box(0.56, 0.03, 0.06), lx, ly + 0.365, lz + 0.20);
+    // (Main, 2026-11-04: the box read as perched on a thin post from the rear) its yoke: an arm up each side of the box
+    // from the roof line to its trunnion boss, and a bolted access panel with its handle on its back face; every part
+    // above the turret's roof at level, the arms inside the box's own depth, so its sweep stays the measured one
+    for (const s of [-1, 1]) {
+      P.add('gunMount', box(0.04, 0.32, 0.30), lx + s * 0.29, 0.545, lz - 0.02);
+      P.add('gunMount', cylX(0.07, 0.04, 14), lx + s * 0.33, ly + 0.12, lz - 0.02);
+      P.add('gunMountDark', cylX(0.025, 0.012, 8), lx + s * 0.356, ly + 0.12, lz - 0.02);
+    }
+    P.add('gunMount', box(0.40, 0.30, 0.012), lx, ly + 0.12, lz - 0.216);
+    for (const bx of [-0.17, 0.17]) for (const by of [-0.12, 0.12]) P.add('gunMountDark', cylZ(0.016, 0.016, 8), lx + bx, ly + 0.12 + by, lz - 0.226);
+    P.add('gunMountDark', box(0.22, 0.025, 0.04), lx, ly + 0.30, lz - 0.235);
+  }
 }
 
 /** The Sho't's IDF racks: an open basket round the bustle bin, a stowage box on the bustle's left rear corner and a
@@ -1353,7 +1421,8 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
     P.add('turretDark', box(0.05, 0.05, 0.40), s * 0.80, 0.45, -1.90);
     P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, 0.75, 0, 0), s * 0.80, 0.62, -1.92);
   }
-  // the drone dock's two bars over the basket's left half (missionAttachmentReceiver.ts): the roof guns sweep the roof
+  // the drone dock's two bars on the right turret bin's lid, off the basket (missionAttachmentReceiver.ts, round 270):
+  // the roof guns sweep the roof
   addMissionAttachmentReceiver(P, 'shot_kal');
   // jerrycan cage: a welded bar frame on two brackets off the casting
   const cx = -1.26, cz = -1.56, w = 0.30, d = 0.50, h = 0.52, y0 = 0.33;
@@ -1370,6 +1439,113 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
     P.add('turretDark', box(0.06, 0.24, 0.06), cx + 0.18, y0 + 0.17, cz + bz);
   }
   mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 9740 }), cx, y0 + 0.02, cz, [0, Math.PI / 2, 0]);
+}
+
+/** The Olifant Mk 1's and Mk 1A's two banks of four 81 mm dischargers (the Mk 1's "only 2x4 sets of smoke grenades,
+ * instead of 2x6 seen on earlier South African Centurions"; TE, the Mk 1A: "two banks of four 81mm launchers, one either
+ * side of the turret"): a block of two by two on a bracket over each side bin's front end, raised forward and splayed
+ * out (the 1980 photograph of the Mk 1 at speed, the De Brug Mk 1A). Ring frame. */
+function buildOlifantDischargers(P: TankBuilderPort): void {
+  const z = 0.56, BIN_TOP = 0.74;
+  for (const s of [-1, 1]) {
+    const x = s * 1.36, yaw = s * 0.32;
+    // the bracket plate on the bin lid and the block's back plate
+    P.add('turretDetail', xform(box(0.30, 0.05, 0.26), 0, 0, 0, 0, yaw, 0), x, BIN_TOP + 0.02, z);
+    P.add('turretDetail', xform(box(0.26, 0.24, 0.05), 0, 0, 0, -0.50, yaw, 0), x, BIN_TOP + 0.15, z - 0.06);
+    for (let row = 0; row < 2; row++) for (let col = 0; col < 2; col++) {
+      const lx = (col - 0.5) * 0.11, ly = BIN_TOP + 0.11 + row * 0.10, lz = z + 0.02 + row * 0.05;
+      const px = x + Math.cos(yaw) * lx, pz = lz - Math.sin(yaw) * lx;
+      P.add('turretDetail', markSmokeTube(cylZ(0.045, 0.24, 12)), px, ly, pz, -0.50, yaw, 0);
+    }
+  }
+}
+
+/** The Olifant Mk 1's net racks and the Mk 1A's long bustle box (the Mk 1 photographs carry rolled camouflage nets on an
+ * open rack at the turret's back; TE, the Mk 1A at De Brug: "the additional storage bins at the back of the turret", a
+ * flat-sided box the turret's width, its top at the roof line, running 0.8 m over the engine deck, the tank's number on
+ * its side; nothing on it, so it never reads as the Mk 1's rack). Ring frame. */
+function buildOlifantBustleStowage(P: TankBuilderPort, m: MarkDesign): void {
+  if (m.sa === 'mk1') {
+    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.70, d: 0.52, h: 0.46, fill: 0, rails: 2, seed: 7101 }),
+      0, 0.36, -1.76);
+    // the rolled camouflage nets across the rack, two on its floor and one on them over the roof line, fat enough to
+    // read over the bustle from the front at range (269 blind critics: the rack's mixed load did not read as nets, and
+    // low rolls showed only from the side), each tied twice
+    for (const [dz, y] of [[-0.14, 0.54], [0.14, 0.54], [0, 0.80]] as const) {
+      P.add('turretCloth', cylX(0.15, 1.56, P.q ? 16 : 10), 0, y, -1.76 + dz);
+      for (const dx of [-0.48, 0.48]) P.add('turretDark', cylX(0.156, 0.03, P.q ? 16 : 10), dx, y, -1.76 + dz);
+    }
+    for (const s of [-1, 1]) {
+      P.add('turretDark', box(0.05, 0.05, 0.14), s * 0.62, 0.38, -1.48);
+      P.add('turretDark', xform(box(0.04, 0.04, 0.30), 0, 0, 0, 0.75, 0, 0), s * 0.62, 0.60, -1.56);
+    }
+    return;
+  }
+  // the box: its front 8 cm into the casting's back, its lid falling 2 cm to the rear, the lid seam and two hasps a side
+  const z0 = -1.40, z1 = -2.24, hw = 0.92, yb = 0.30;
+  P.add('turretDetail', slab(
+    [-hw, yb, z0], [hw, yb, z0], [hw, yb, z1], [-hw, yb, z1],
+    [-hw, 0.93, z0], [hw, 0.93, z0], [hw, 0.91, z1], [-hw, 0.91, z1]));
+  P.add('turretDark', box(2 * hw + 0.01, 0.012, 0.012), 0, 0.905, z1 - 0.004);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.012, 0.012, z0 - z1 - 0.06), s * (hw + 0.004), 0.86, (z0 + z1) / 2);
+    for (const f of [0.3, 0.75]) P.add('turretDark', box(0.02, 0.07, 0.05), s * (hw + 0.008), 0.78, z0 + (z1 - z0) * f);
+  }
+  for (const hx of [-0.50, 0.50]) P.add('turretDark', box(0.06, 0.08, 0.02), hx, 0.80, z1 - 0.01);
+}
+
+/** The Mk 1A's bush-bashing frame (TE: "a protective vegetation frame"; the De Brug photograph's V across the nose): two
+ * tubes from the nose lugs meeting ahead of the nose, a cross tube over them and its stays back to the guards' tips.
+ * Hull frame. */
+function buildOlifantBushBar(P: TankBuilderPort): void {
+  // a tube from a to b (three's XYZ Euler turns +Z by the yaw first, then the pitch), in the hull's paint: the frame
+  // reads against the shadow under the nose and its dark mesh bays (269 blind critics: dark tubes were lost there); as
+  // equipment, never the structural hull (the combat hull box keeps its bow at the nose)
+  const tube = (a: V3, b: V3, r: number, seg: number): void => {
+    const d: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+    P.addEquipment('hull', xform(cylZ(r, len, seg), 0, 0, 0, Math.atan2(-d[1], d[2]), Math.asin(d[0] / len), 0),
+      (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  };
+  const tip: V3 = [0, NOSE_Y + 0.24, NOSE_Z + 0.60];
+  for (const s of [-1, 1]) {
+    // the V's arm from the shackle lug to the tip, and its stay back to the front guard's tip
+    const lug: V3 = [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04];
+    tube(lug, tip, 0.06, 12);
+    tube([s * 0.28, (lug[1] + tip[1]) / 2, (lug[2] + tip[2]) / 2], [s * 1.30, 1.10, 3.76], 0.045, 10);
+    P.addEquipment('hull', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
+  }
+  P.addEquipment('hull', box(0.18, 0.18, 0.12), tip[0], tip[1], tip[2]);
+  // the frame's mesh panels, one in each bay (the V's two halves, the bays behind the stays), each run back under the
+  // nose's edge: left open, the bays read through to the ground from above (the standard check's contiguity, release
+  // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay). The stay bays stop 2.5 cm inside the
+  // track's inner edge (TRACK.xc - w / 2): out to the guards' tips they stood in the track band over the idlers (the
+  // track-clip audit, 36 cells); over the track the plan is the track's own
+  const panel = (corners: readonly (readonly [number, number, number])[]): void => {
+    const at = (dy: number) => corners.map(([x, y, z]) => [x, y + dy, z]);
+    P.add('hullDark', convexSlab(...at(-0.006), ...at(0.006)));
+  };
+  const back = NOSE_Z - 0.04, rise = (tip[1] - (NOSE_Y - 0.06)) / (tip[2] - (NOSE_Z + 0.04));
+  const vY = (z: number): number => NOSE_Y - 0.06 + (z - (NOSE_Z + 0.04)) * rise;
+  for (const s of [-1, 1]) {
+    panel([[0, vY(back), back], [s * 0.56, vY(back), back], [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04], tip]);
+    const mid: readonly [number, number, number] = [s * 0.28, (NOSE_Y - 0.06 + tip[1]) / 2, (NOSE_Z + 0.04 + tip[2]) / 2];
+    const xIn = TRACK.xc - TRACK.w / 2 - 0.025, t = (xIn - 0.28) / (1.30 - 0.28);
+    const edge: readonly [number, number, number] = [s * xIn, mid[1] + t * (1.10 - mid[1]), mid[2] + t * (3.76 - mid[2])];
+    panel([[s * 0.28, vY(back), back], mid, edge, [s * xIn, edge[1], back]]);
+  }
+}
+
+/** The Mk 1B's rack across the bustle's back: a welded frame of jerrycans from corner to corner, a holder for every can
+ * (the Tempe rear photograph, DSCF4691; Main, 2026-11-04: deeper and full, ten cans where six stood among packs), on
+ * arms under its floor from the bustle's lower edge, braced at its ends. Ring frame. */
+function buildOlifantMk1bBustleRack(P: TankBuilderPort): void {
+  const T = OLIFANT_TURRET, d = 0.50, z = T.rearZ - d / 2 - 0.01, y0 = 0.40;
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.40, d, h: 0.54, fill: 0, rails: 2, seed: 7121 }), 0, y0, z);
+  mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 10, seed: 7122 }), 0, y0 + 0.02, z);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.05, 0.05, 0.34), s * 1.15, y0 - 0.03, T.rearZ - 0.12);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, -0.836, 0, 0), s * 1.15, 0.545, T.rearZ - 0.14);
+  }
 }
 
 /** Discharger No. 1 Mk 1: one six-tube block (two rows of three) at each front corner of the casting, facing forward and
@@ -1579,13 +1755,15 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
 
 /** The three marks' complete build; the caller applies its family's tone kit. */
 export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): TankProfileBuild {
+  // an unknown mark fails here, never on a default path
+  if (!Object.hasOwn(MARKS, mark)) throw new Error(`centurionFamily: unknown mark '${String(mark)}'`);
   const m = MARKS[mark];
   buildHullBody(P);
   buildGuards(P, m.kit !== 'olifant');
   yield 'centurionHullBody';
   buildGuardBins(P);
   if (m.kit === 'olifant') buildOlifantSkirts(P);
-  else if (m.kit === 'aus') buildHorstmannBogies(P);
+  else if (m.kit === 'aus' || saSkirtless(m)) buildHorstmannBogies(P);
   else buildSkirts(P, m.kit === 'strv105' ? STRV105_SKIRT_BOT : SKIRT.bot);
   if (m.kit === 'avre') buildAvreSkirtBolts(P);
   yield 'centurionHullSides';
@@ -1594,6 +1772,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   yield 'centurionRunningGear';
   buildGlacisAndNose(P, m);
   if (m.kit === 'avre') buildDozer(P);
+  if (m.sa === 'mk1a') buildOlifantBushBar(P);
   buildEngineDeck(P, m);
   buildRearPlate(P, m);
   buildHullKit(P, m);
@@ -1601,13 +1780,15 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   P.turretG.position.set(0, RING.y, RING.z);
   P.gunG.position.set(0, trunnionY(m), TRUNNION.z);
   if (m.kit === 'olifant') {
-    buildOlifantTurret(P);
+    buildOlifantTurret(P, m);
   } else {
     buildCasting(P, m);
     buildTurretBins(P);
     // the Mk 13 carries an open mesh basket on the bustle where the earlier marks' box bin stood (the Bovington Mk 13)
     if (m.late) buildLateBustleBasket(P);
     else if (isMk52(m)) buildMk52BustleBasket(P);
+    // (the Olifant Mk 1's net racks and the Mk 1A's long box take the bustle's back)
+    else if (saSkirtless(m)) buildOlifantBustleStowage(P, m);
     // (the Australian basket hangs on the bustle itself)
     else if (m.kit !== 'aus') buildBustleBin(P);
   }
@@ -1615,22 +1796,24 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   if (m.kit === 'strv105') buildStrv105TurretKit(P);
   if (m.kit === 'avre') buildAvreTurretKit(P);
   if (m.kit === 'aus') buildAusTurretBaskets(P);
+  if (m.sa === 'mk1b') buildOlifantMk1bBustleRack(P);
   yield 'centurionTurretCasting';
   if (m.kit === 'olifant') {
-    buildOlifantRoof(P);
+    buildOlifantRoof(P, m);
   } else {
     buildRoof(P, m);
     // the Strv 105's and the AVRE's blocks stand on the bins behind their corner packages, below the roof line (the Strv
     // 104 photographs; the critic, 2026-10-29: 0.25 m over it in profile); the British Mk 5/2's and Mk 13's
     // six-tube banks on the side bins' front faces, outboard, level with the mantlet (the Dutch Mk 5/2 head-on photograph,
-    // the Bovington Mk 13)
+    // the Bovington Mk 13); the Olifants' two banks of four 81 mm on the turret's sides
     if (m.kit === 'strv105' || m.kit === 'avre') buildSmokeDischargers(P, 0.36, 0.80);
+    else if (saSkirtless(m)) buildOlifantDischargers(P);
     else if (m.mk5 && !m.swedish && !m.idf && m.kit === 'none') buildSmokeDischargers(P, 0.84, 0.50, 1.30);
     // (on the bare marks' shorter nose the blocks stand 12 cm further back, on the cheeks)
     else buildSmokeDischargers(P, m.shortNose ? 0.88 : 1.00, 0.56, undefined, castingOf(m));
   }
   yield 'centurionTurretFittings';
-  if (m.kit === 'olifant') buildOlifantMantlet(P);
+  if (m.kit === 'olifant') buildOlifantMantlet(P, m);
   else buildMantlet(P, m);
   buildMainGun(P, m);
   P.turretG.userData.centurionGunHousingRig = {
@@ -1649,11 +1832,24 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.52, 0.48, -0.30], -Math.PI / 2);
   }
   // the hull numbers on the front side plates (the Olifant's between its armoured modules' bolts)
-  // (the Australian tank's skirts are off: its number rides on the turret basket)
-  if (m.kit !== 'aus') {
+  // (the Australian tank's skirts are off: its number rides on the turret basket; the skirtless Olifants' on the
+  // turret's side bin)
+  if (m.kit !== 'aus' && !saSkirtless(m)) {
     const [nx, ny, nz] = m.kit === 'olifant' ? [OLIFANT_SKIRT.outer + 0.004, 1.14, 0.92] : [1.68, 1.08, 1.40];
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [nx, ny, nz], Math.PI / 2);
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-nx, ny, nz], -Math.PI / 2);
+  }
+  // the South African marks' own kit, as a player reads it at range (profiles/southAfrica.selftest.mjs)
+  if (m.sa) {
+    P.turretG.userData.olifantMarkReceipt = Object.freeze({
+      mark, gun: m.gun, suspension: m.kit === 'olifant' ? 'torsion' : 'horstmann',
+      skirts: m.kit === 'olifant' ? 'armoured' : saSkirtless(m) ? 'off' : 'plates', deck: saAvds(m) ? 'avds' : 'olifant',
+      dischargers: m.sa === 'semel' ? 12 : 8,
+      bustle: m.sa === 'mk1' ? 'net-rack' : m.sa === 'mk1a' ? 'box' : m.sa === 'mk1b' ? 'can-rack' : 'bin',
+      searchlight: m.sa === 'mk1b', sightPost: false, bushBar: m.sa === 'mk1a', raisedRearBanks: m.sa === 'mk1b',
+    });
+    // the Olifant Mk 1's and Mk 1A's field nets (ghillieFleetSuits.ts; the owner, 2026-11-03)
+    if (m.sa === 'mk1' || m.sa === 'mk1a') addVehicleGhillieSuit(P);
   }
   P.topY = 1.0;
 }

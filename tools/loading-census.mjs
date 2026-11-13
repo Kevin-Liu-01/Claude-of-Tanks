@@ -27,7 +27,7 @@
 //   node tools/loading-census.mjs --dist=<dir> --out=/absolute/new-dir [--conditions=slow,offline]
 //     [--layouts=desktop,phone] [--only=<row>,...] [--pages=game,home,docs,gallery,404] [--allow=<row>:<rule>,...]
 //     [--no-lock]
-// One render-class capture hold (tools/capture-lock.mjs) for the run, with checkpoint() between rows and pages.
+// One render-class capture hold (tools/capture-hold.mjs openCaptureHold) for the run, with checkpoint() between rows and pages.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
@@ -35,7 +35,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { LOADING_SURFACES } from '../src/ui/loadingSurfaceRegistry.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -293,7 +293,7 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
           { timeout: 5000, polling: 100 }).catch(() => {});
         await sleep(600);
       }
-      if (LOCK) await lock.checkpoint();
+      await hold?.checkpoint();
     }
     if (condition === 'offline') await cdp.send('Network.emulateNetworkConditions', ONLINE);
     return results;
@@ -302,13 +302,12 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
   }
 }
 
-const lock = createCaptureLock();
+let hold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold), checkpointed between rows and pages
 const report = { dist, at: new Date().toISOString(), conditions: CONDITIONS, layouts: LAYOUTS, results: [] };
-let server = null, browser = null, refresh = null;
+let server = null, browser = null;
 try {
   server = await serve();
-  if (LOCK) await lock.acquire(240 * 60_000, { place: 'loading-census', lockClass: 'render' });
-  refresh = LOCK ? setInterval(() => lock.refresh(), 30_000) : null;
+  if (LOCK) hold = await openCaptureHold({ label: 'loading-census', timeoutMs: 240 * 60_000, place: 'loading-census', lockClass: 'render' });
   for (const [pageName, rows] of plan()) {
     for (const layout of LAYOUTS) {
       try {
@@ -333,14 +332,13 @@ try {
         await browser?.close().catch(() => {});
         browser = null;
       }
-      if (LOCK) await lock.checkpoint();
+      await hold?.checkpoint();
     }
   }
 } finally {
-  if (refresh) clearInterval(refresh);
   await browser?.close().catch(() => {});
   server?.stop();
-  if (LOCK) { try { lock.release(); } catch { /* reaped once this process exits */ } }
+  await hold?.release();
   writeFileSync(join(out, 'loading-census.json'), JSON.stringify(report, null, 2));
 }
 

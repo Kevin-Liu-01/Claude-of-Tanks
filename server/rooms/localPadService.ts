@@ -53,15 +53,27 @@ export function createLocalPadService({
   const origins = allowedOrigins && allowedOrigins.length ? new Set(allowedOrigins.map((origin) => origin.trim())) : null;
   const actors = new Map<string, PadActor>();
   const sockets = new Map<string, WebSocket>();
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  // (audit S1, 2026-11-02) a pairing's timer and its removal are the actor's own, never its code's: a pairing forgotten
+  // while an old socket was still closing, its code drawn again or resumed into a new actor, had the old close delete
+  // the new actor and an old timer tick it.
+  const timers = new Map<PadActor, ReturnType<typeof setTimeout>>();
   const connects = new Map<string, { start: number; count: number }>();
   let closed = false;
   let nextSocket = 0;
 
+  /** Forget a pairing that holds nothing, only while its code still names it; its timer goes with it. */
+  const forgetIfVacant = (actor: PadActor): void => {
+    if (!actor.vacant || actor.liveSockets !== 0 || actors.get(actor.code) !== actor) return;
+    actors.delete(actor.code);
+    clearTimeout(timers.get(actor));
+    timers.delete(actor);
+  };
+
   const actorFor = (code: string): PadActor => {
-    let actor = actors.get(code);
-    if (actor) return actor;
-    actor = new PadActor(code, {
+    const held = actors.get(code);
+    if (held) return held;
+    let created: PadActor | null = null;
+    const actor: PadActor = created = new PadActor(code, {
       now: wallClock,
       randomToken: () => randomBytes(16).toString('base64url'),
       sha256Hex: (text) => createHash('sha256').update(text).digest('hex'),
@@ -75,14 +87,17 @@ export function createLocalPadService({
         if (ws) setTimeout(() => { try { ws.close(1000, reason); } catch { /* gone */ } }, 0);
       },
       schedule: (atMs) => {
-        clearTimeout(timers.get(code));
-        timers.delete(code);
-        if (atMs !== null) timers.set(code, setTimeout(() => actors.get(code)?.tick(), Math.max(0, atMs - wallClock())));
+        const self = created;
+        if (!self) return;
+        clearTimeout(timers.get(self));
+        timers.delete(self);
+        if (atMs === null || closed || actors.get(code) !== self) return;
+        const timer = setTimeout(() => { if (timers.get(self) === timer) timers.delete(self); if (actors.get(code) === self) self.tick(); }, Math.max(0, atMs - wallClock()));
+        timers.set(self, timer);
       },
       persist: () => {
         // memory is the store: a pairing that holds nothing is forgotten
-        const held = actors.get(code);
-        if (held && held.vacant && held.liveSockets === 0) actors.delete(code);
+        if (created) forgetIfVacant(created);
       },
       iceServers,
     });
@@ -134,13 +149,13 @@ export function createLocalPadService({
         ws.on('close', () => {
           if (sockets.get(socketId) === ws) sockets.delete(socketId);
           actor.handleClose(socketId);
-          if (actor.vacant && actor.liveSockets === 0) actors.delete(actor.code);
+          forgetIfVacant(actor);
         });
         if (route.kind === 'new') actor.openDesktop(socketId);
         else if (route.kind === 'lobby') actor.openLobby(socketId);
         else if (route.kind === 'join') actor.openJoin(socketId);
         else actor.openResume(socketId);
-        if (actor.vacant && actor.liveSockets === 0) actors.delete(actor.code);
+        forgetIfVacant(actor);
       });
       return true;
     },

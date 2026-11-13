@@ -10,8 +10,9 @@ const node = (row: TreeNode): TreeNode => Object.freeze({
 
 export const UK_TREE: NationTree = Object.freeze({
   id: 'uk',
-  // release 262: the South African Olifant Mk 2 and the Australian Mk 5/1 are drawn with the Centurions they came from
-  nations: Object.freeze(['UK', 'South Africa', 'Australia']),
+  // release 262: the Australian Mk 5/1 and the South African Olifant Mk 2 were drawn with the Centurions they came from
+  // (269: the Olifant Mk 2 moved to the South Africa tree, the Mk 5/1 to the Australia tree)
+  nations: Object.freeze(['UK']),
   flagNation: 'UK',
   name: 'United Kingdom',
   lines: Object.freeze([
@@ -19,6 +20,7 @@ export const UK_TREE: NationTree = Object.freeze({
     { id: 'challenger', name: 'Chieftain to Challenger 3' },
     { id: 'chieftain', name: 'Late Chieftain' },
     { id: 'warrior', name: 'Warrior and Ajax' },
+    { id: 'air_defence', name: 'Marksman' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -60,6 +62,11 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'fv510_milan', tier: 3, line: 'warrior', lane: 1, parents: ['fv510'], slot: 'line' }),
     node({ id: 'warrior_tes_h', tier: 5, line: 'warrior', lane: 0, parents: ['fv510_milan'], slot: 'line' }),
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
+    // Marksman (269): the Marconi Marksman turret, trialled on the Chieftain and fielded by Finland on two hulls, the
+    // ItPsv 90 (T-55) at V and the ItPsv Leopard 2 at VI after it, off the Chieftain Mk 10 on lane 5 (lane 4 carries the
+    // Mk 10's run to the FV4030/5; the FV4030/6 drops to lane 5 at VIII)
+    node({ id: 'marksman_t55', tier: 5, line: 'air_defence', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
+    node({ id: 'itpsv_leopard2', tier: 6, line: 'air_defence', lane: 5, parents: ['marksman_t55'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
     // release 262: the 2021 Challenger 3 demonstrator and its field fit with the remote station and kit (the owner,
@@ -69,11 +76,8 @@ export const UK_TREE: NationTree = Object.freeze({
       id: 'challenger3_td', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special',
       builds: ['challenger3_td_rws'],
     }),
-    // release 262: the Royal Engineers' Mk 5 AVRE and the South African Olifant Mk 2 on the rebuilt Centurion family, at the
-    // tiers their same-tier duels hold (the AVRE 0.28 at II, 0.07 at III; the Olifant 0.60 at III, 0.08 at IV)
+    // release 262: the Royal Engineers' Mk 5 AVRE on the rebuilt Centurion family, at the tier its same-tier duels hold (0.28
+    // at II, 0.07 at III; the Olifant Mk 2 beside it moved to the South Africa tree in 269)
     node({ id: 'centurion5_avre', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
-    node({ id: 'olifant_mk2', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    // the Australian Mk 5/1 (2026-10-28)
-    node({ id: 'centurion5_1_aus', tier: 2, line: 'special', lane: 2, parents: [], slot: 'special' }),
   ]),
 });

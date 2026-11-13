@@ -25,7 +25,7 @@ try {
   const trackedExternalGeometry = execFileSync(
     'git',
     ['ls-files', '-z'],
-    { cwd: root, encoding: 'utf8' },
+    { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 },
   ).split('\0').filter(Boolean).filter((file) => externalGeometryExt.test(file));
   for (const file of trackedExternalGeometry) {
     failures.push(`${file}: tracked external model geometry is forbidden`);

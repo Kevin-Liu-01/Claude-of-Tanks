@@ -596,4 +596,75 @@ for (const fail of ['', 'draw']) {
   }
 }
 
+{
+  // 2026-11-02 audit R4 (review round 1): another owner takes casters off while the warm waits between its renders.
+  // A vehicle finishing assembly behind the cover installs its articulated shadow batch over two retained proxies the
+  // warm had collected, while the warm primes its cascades (the batch refuses sources that are off, so the caster
+  // batches' isolation never meets it). The warm's end used to force castShadow = true on every caster it had
+  // collected: the proxies then cast beside the batch that casts for them (a doubled shadow after the reveal). Now the
+  // warm's isolation is a named hold (castShadowHolds.ts) and its end gives back only that hold.
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const lights = [new THREE.DirectionalLight(), new THREE.DirectionalLight()];
+  for (const light of lights) { light.castShadow = true; scene.add(light); }
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial();
+  const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+  const depthMaterial = new THREE.MeshDepthMaterial();
+  const proxyGeometry = new THREE.BoxGeometry();
+  proxyGeometry.clearGroups(); // the batch takes only full static geometry
+  const plain = Array.from({ length: 3 }, (_, index) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `plain-${index}`;
+    mesh.castShadow = true;
+    scene.add(mesh);
+    return mesh;
+  });
+  const rig = new THREE.Group();
+  scene.add(rig);
+  const sources = Array.from({ length: 2 }, (_, index) => {
+    const source = markShadowOnly(new THREE.Mesh(proxyGeometry, proxyMaterial));
+    source.name = `late-proxy-${index}`;
+    source.castShadow = true;
+    source.customDepthMaterial = depthMaterial;
+    source.userData.authoredShadowProxy = true;
+    source.position.set(index * 4, 0, -10);
+    rig.add(source);
+    return source;
+  });
+  scene.updateMatrixWorld(true);
+  let articulated = null;
+  const renders = [];
+  const owner = createDeploymentShadowWarmOwner({
+    renderer: {}, scene, camera,
+    lighting: { csm: { lights }, updateFov() {}, update() {}, preservePrimedCascadesForNextFrame() {} },
+    warmRender: preparable(() => {}),
+    shadowOnlyWarmRender() {
+      renders.push({ batched: Boolean(articulated), proxiesCasting: sources.filter((source) => source.castShadow).length });
+    },
+    getWorldGroup: () => scene, noteFovPrimed() {}, simDt: 1 / 60,
+  });
+  try {
+    const receipt = await owner.prime(async () => {
+      // the yield after the first cascade: the vehicle's batch takes its proxies over
+      if (!articulated && renders.length === 2) articulated = installArticulatedShadowBatch(rig, sources);
+    });
+    assert.equal(receipt.casterBatches, 1);
+    assert.equal(receipt.casterCount, plain.length + sources.length, 'the warm collected the proxies');
+    assert.equal(renders[0].proxiesCasting, 2, 'the caster batch warmed them');
+    assert.ok(articulated?.isBatchedMesh, 'the real articulated batch installed mid-warm');
+    assert.deepEqual(renders.filter((render) => render.batched).map((render) => render.proxiesCasting), [0],
+      'the last cascade draws the proxies through their batch only');
+    assert.deepEqual(sources.map((source) => source.castShadow), [false, false],
+      'the batch still holds its proxies off after the warm');
+    assert.ok(plain.every((mesh) => mesh.castShadow), 'the warm restores its other casters');
+    articulated.dispose();
+    assert.deepEqual(sources.map((source) => source.castShadow), [true, true],
+      'the proxies come back on only when their batch lets go');
+  } finally {
+    owner.dispose(); geometry.dispose(); proxyGeometry.dispose(); material.dispose(); proxyMaterial.dispose();
+    depthMaterial.dispose();
+  }
+}
+
 console.log('deploymentShadowWarm.selftest: exact cascades, bounded casters, and restoration passed');

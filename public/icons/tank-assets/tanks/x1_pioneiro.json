@@ -702,7 +702,7 @@
       }
     ]
   },
-  "geometryHash": "d874dc9d",
+  "geometryHash": "6bddcb26",
   "metadataHash": "88b75ea1",
   "presentationAnchor": {
     "xM": 0,
@@ -719,7 +719,7 @@
     "issues": [],
     "roles": {
       "wheelTire": 2,
-      "wheelDish": 7,
+      "wheelDish": 17,
       "wheelInset": 1,
       "suspensionLink": 1,
       "suspensionJoint": 1,
@@ -729,7 +729,7 @@
       "trackPadSimplified": 1,
       "armorPaint": 10,
       "gearShadow": 3,
-      "gunmetal": 7,
+      "gunmetal": 8,
       "opticGlass": 2,
       "wood": 1,
       "unclassified": 8,
@@ -761,15 +761,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26280,
-      "sha256": "36e2c6aeb1c5ea77cc152a2ff7121eb726c9a70f306f93b9af839e8af6cda1a3",
+      "bytes": 28096,
+      "sha256": "1191fbd7b48d485f505f2aaafecebaf9f8378e7d9f01f2bcd4401648920703cc",
       "thumbnail": {
         "file": "thumbs/x1_pioneiro_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11254,
-        "sha256": "67fe5ac844b3563e0806c1c6d47a44d0ae4be11dc0d063b4d7329ddd98c3c1a0"
+        "bytes": 11788,
+        "sha256": "73ce729b2d517af892d0544aebe31c0ca9409287f1f3c8668c8cb46555acba9d"
       }
     },
     "top": {
@@ -777,16 +777,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 6712,
-      "sha256": "f8decb3b477d435b56f707b82c047735693f40184b4868f396e0ff4f1b7113ec"
+      "bytes": 9918,
+      "sha256": "09150631a9a005281b48704b27204a667bff568601dc2136d3c6161a270daecf"
     },
     "side": {
       "file": "x1_pioneiro_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10354,
-      "sha256": "833c923a427e7f69a3b4e842ba6949c47164fb226ad2e3f804454daca225cd23"
+      "bytes": 11156,
+      "sha256": "e5bf6fd8f377b2cb7e37b6f2a7bfe78d25bc3c53798867c5fd0c1ff21ae7c423"
     },
     "topSilhouette": {
       "file": "x1_pioneiro_top_silhouette.png",
@@ -809,32 +809,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24306,
-      "sha256": "5ede45ad01c602a0ba6b8e410d1bffe9a700e85689819381000625d5158e3f32"
+      "bytes": 25702,
+      "sha256": "5f7f25dc6da9303793f50a6ff4efa701433453f05b349246e6e7a8b97568581d"
     },
     "modulesSide": {
       "file": "x1_pioneiro_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26156,
-      "sha256": "dd9673cc186b496774544c153d76328dd724e9f347c94e938fa9e0c2dcd82a4c"
+      "bytes": 27098,
+      "sha256": "43eee84774d3763bb0ef36fadb80697cd2da60ab899d96e0546e5cd711f91226"
     },
     "crewSide": {
       "file": "x1_pioneiro_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24278,
-      "sha256": "ed9a6be58ac31978ba160341c2d97180fb6b3bcfae4b1bfb06373183362a80ca"
+      "bytes": 25570,
+      "sha256": "7238b0f4c55596b9fd669409e66f776dbe54da402b9c2a63de5676e9a3284043"
     },
     "markings": {
       "file": "x1_pioneiro_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36298,
-      "sha256": "66f8c206d1d32daf64a4d5629900fe04f3c4f34cbec1c8c54e0f36e2e33b5f78"
+      "bytes": 34459,
+      "sha256": "71c1ddf41179442db64336aece31fab82f13ad5e5393e8a11d536261fb83e8cd"
     },
     "technicalLabels": {
       "file": "x1_pioneiro_technical.json",

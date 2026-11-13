@@ -1,5 +1,6 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { freezePage, thawPage } from './capture-hold.mjs';
+import { heldRunExitCode, heldStopWhy, openHeldRun, runHeldItem } from './held-items.mjs';
 // Render the current 30-map Studio duel collection.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
@@ -8,6 +9,10 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     --width 1280 --height 720 --fps 30 --bitrate 8000000 --out shots/battle-reels-v3/masters
 //   node tools/studio-example-videos.mjs --collection hero-rails --only 2 \
 //     --stills 0,900,1850,2900,3900,5000,6000 --out shots/hero-rails-r2/preview
+// A flag given twice takes its last value (round 4 E10; recorded round 5 U9): a flag after an npm script's baked ones
+// overrides that flag (`npm run reels:render -- --out shots/x` writes to shots/x), and the --only a stop's finishing run
+// appends replaces the run's own. A package.json script runs this tool as its last command, so the flags after
+// `npm run <script> --` reach it (tools/long-hold-users.selftest.mjs checks both).
 //
 // Collections: `duels` (every registered map, the Studio duel showcase),
 // `features` (the six feature loops cut from approved action frames),
@@ -21,14 +26,13 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // The renderer uses the production __STUDIO.load/directDuel/recordVideo path.
 // Generated WebM files and their manifest belong under shots/ (gitignored).
 
-import { createServer } from 'vite';
-import puppeteer from 'puppeteer';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import {BATTLE_REEL_SCENARIOS, DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const FEATURE_SCENE_FILES = [
   '61_action_desert_duel_leclerc_kill.json',
@@ -150,372 +154,430 @@ function heroRailScenario(config, index) {
 }
 
 const HERO_RAIL_SCENARIOS = HERO_RAIL_FILES.map(heroRailScenario);
-
-const args = process.argv.slice(2);
-function opt(name, fallback) {
-  const index = args.indexOf(`--${name}`);
-  return index >= 0 ? args[index + 1] : fallback;
-}
-
-const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
-const collection = opt('collection', 'duels');
-const POOLS = {
-  duels: SCENARIOS,
-  features: FEATURE_SCENARIOS,
-  'hero-rails': HERO_RAIL_SCENARIOS,
-  'battle-reels': BATTLE_REEL_SCENARIOS,
+// (round 5 U6) the duel and battle-reel pools load with the run that renders one: tools/studio-example-scenarios.mjs
+// reads every map's config (src/world/maps/index.ts, ~0.35 s of CPU), which a features or hero-rails run never needs
+// (tools/long-hold-users.selftest.mjs's signal children render features, each in a process of its own)
+const SCENARIO_POOLS = {
+  duels: async () => (await import('./studio-example-scenarios.mjs')).DUEL_SCENARIOS,
+  features: async () => FEATURE_SCENARIOS,
+  'hero-rails': async () => HERO_RAIL_SCENARIOS,
+  'battle-reels': async () => (await import('./studio-example-scenarios.mjs')).BATTLE_REEL_SCENARIOS,
 };
-const scenarioPool = POOLS[collection];
-if (!scenarioPool) throw new Error(`unknown collection ${collection}; expected ${Object.keys(POOLS).join(', ')}`);
-const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
-const only = new Set(String(opt('only', ''))
-  .split(',')
-  .map((value) => Number.parseInt(value.trim(), 10))
-  .filter((value) => Number.isInteger(value) && value >= 1 && value <= scenarioPool.length));
-const stills = String(opt('stills', ''))
-  .split(',')
-  .map((value) => Number.parseInt(value.trim(), 10))
-  .filter((value) => Number.isInteger(value) && value >= 0 && value <= 20_000);
-const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
-const width = Math.max(1280, Math.min(3840, Number.parseInt(opt('width', '1920'), 10) || 1920));
-const height = Math.max(720, Math.min(2160, Number.parseInt(opt('height', '1080'), 10) || 1080));
-const videoBitsPerSecond = Math.max(
-  2_000_000,
-  Math.min(60_000_000, Number.parseInt(opt('bitrate', '16000000'), 10) || 16_000_000),
-);
-mkdirSync(outDir, { recursive: true });
 
-// FIFO GPU lock shared by the repository's browser rendering tools.
+/**
+ * The run as a function (round 4 F12: tools/long-hold-users.selftest.mjs drives it in Node, with no Vite or Chrome).
+ * `args` are the command line's arguments. `deps` stand in for what serves and draws: `createServer` (Vite's),
+ * `puppeteer` (the launcher launchGuardedBrowser takes) and `hold` (openCaptureHold options laid over the tool's own: a
+ * stand-in lock, its log, its teardown).
+ */
+export async function renderStudioExamples(args = process.argv.slice(2), { createServer = null, puppeteer = null, hold: holdOptions = {} } = {}) {
+  // (round 4 E10 review) the last occurrence: a finishing run named by a stop appends --only <left> to the same options,
+  // which may hold an --only already (a finishing run stopped again); the first one won, and every take ran again
+  function opt(name, fallback) {
+    const index = args.lastIndexOf(`--${name}`);
+    return index >= 0 ? args[index + 1] : fallback;
+  }
 
-await acquireLock(45 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-lockRefresher.unref();
-
-const port = 7800 + Math.floor(Math.random() * 400);
-let server = null;
-let browser = null;
-const consoleErrors = [];
-const manifestPath=join(outDir,'manifest.json');
-let existingVideos=[];
-if(only.size && !stills.length && existsSync(manifestPath)) {
-  const existing=JSON.parse(readFileSync(manifestPath,'utf8'));
-  if(existing.version!==2 || existing.collection!==collection
-    || JSON.stringify(existing.renderer)!==JSON.stringify({width,height,fps,videoBitsPerSecond}))
-    throw new Error('Selective rendering requires a matching collection and renderer manifest');
-  existingVideos=existing.videos.filter(video=>!only.has(video.index));
-}
-const manifest = {
-  version: 2,
-  generatedAt: new Date().toISOString(),
-  collection,
-  renderer: { width, height, fps, videoBitsPerSecond },
-  videos: existingVideos,
-};
-const stillsManifest = { version: 1, collection, renderer: { width, height }, stills: [] };
-
-function writeManifest() {
-  manifest.videos.sort((a,b)=>a.index-b.index);
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-}
-
-try {
-  server = await createServer({
-    root: process.cwd(),
-    logLevel: 'error',
-    server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-    optimizeDeps: {
-      entries: ['index.html'],
-      include: [
-        'three',
-        'three/examples/jsm/loaders/GLTFLoader.js',
-        'three/examples/jsm/utils/SkeletonUtils.js',
-        'three/examples/jsm/utils/BufferGeometryUtils.js',
-        'three/examples/jsm/geometries/RoundedBoxGeometry.js',
-      ],
-    },
-  });
-  await server.listen();
-  const url = `http://localhost:${server.config.server.port}/`;
-  console.log(`[studio-examples] vite up at ${url}`);
-
-  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({
-    headless: 'new',
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  }));
-  const page = await browser.newPage();
-  await page.setViewport({ width, height, deviceScaleFactor: 1 });
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().includes('favicon')) {
-      consoleErrors.push(message.text());
-    }
-  });
-  page.on('pageerror', (error) => consoleErrors.push(String(error)));
-
-  await page.goto(`${url}?studio=1&map=desert&nogate=1`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 180_000,
-  });
-  await page.waitForFunction(
-    "window.__GAME_READY === true && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'desert'",
-    { timeout: 180_000 },
+  const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
+  const collection = opt('collection', 'duels');
+  if (!Object.hasOwn(SCENARIO_POOLS, collection)) {
+    throw new Error(`unknown collection ${collection}; expected ${Object.keys(SCENARIO_POOLS).join(', ')}`);
+  }
+  const scenarioPool = await SCENARIO_POOLS[collection]();
+  const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
+  const only = new Set(String(opt('only', ''))
+    .split(',')
+    .map((value) => Number.parseInt(value.trim(), 10))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= scenarioPool.length));
+  const stills = String(opt('stills', ''))
+    .split(',')
+    .map((value) => Number.parseInt(value.trim(), 10))
+    .filter((value) => Number.isInteger(value) && value >= 0 && value <= 20_000);
+  const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
+  const width = Math.max(1280, Math.min(3840, Number.parseInt(opt('width', '1920'), 10) || 1920));
+  const height = Math.max(720, Math.min(2160, Number.parseInt(opt('height', '1080'), 10) || 1080));
+  const videoBitsPerSecond = Math.max(
+    2_000_000,
+    Math.min(60_000_000, Number.parseInt(opt('bitrate', '16000000'), 10) || 16_000_000),
   );
-
-    const jobs = only.size
+  mkdirSync(outDir, { recursive: true });
+  const jobs = only.size
     ? scenarioPool.filter((scenario) => only.has(scenario.index))
     : scenarioPool.slice(0, count);
-  for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
-    const scenario = jobs[jobIndex];
-    const number = String(scenario.index).padStart(2, '0');
-    console.log(
-      `[studio-examples] ${String(jobIndex + 1).padStart(2, '0')}/` +
-      `${String(jobs.length).padStart(2, '0')} [scenario ${number}] ` +
-      `${scenario.alpha} vs ${scenario.bravo} on ${scenario.map}`,
-    );
-    const staged = await page.evaluate(async (job) => {
-      const S = window.__STUDIO;
-      const validateVehicles = (infos) => {
-        for (const info of infos) {
-          if (!info.id || !info.name) throw new Error('Cinematic actor is missing its registered tank identity');
-        }
-      };
-      const buildActorTracks = (actors, travel, durationMs) => actors.map((actor, actorIndex) => {
-        const heading = (actor.facingDeg || 0) * Math.PI / 180;
-        const distance = travel?.[actorIndex] ?? (actorIndex === 1 ? 0.8 : 1.8);
-        return {
-          actor: actor.name,
-          keys: [
-            { id: `${actor.name}-0`, tMs: 0, pos: [...actor.pos], facingDeg: actor.facingDeg || 0,
-              turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
-            { id: `${actor.name}-1`, tMs: durationMs,
-              pos: [actor.pos[0] + Math.sin(heading) * distance, actor.pos[1] + Math.cos(heading) * distance],
-              facingDeg: actor.facingDeg || 0, turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
-          ],
-        };
-      });
-      const minimumLeadSeparation = (actorTracks) => {
-        let minimum = Number.POSITIVE_INFINITY;
-        for (let sample = 0; sample <= 120; sample += 1) {
-          const progress = sample / 120;
-          const leadPositions = actorTracks.slice(0, 2).map(({ keys }) => [
-            keys[0].pos[0] + (keys[1].pos[0] - keys[0].pos[0]) * progress,
-            keys[0].pos[1] + (keys[1].pos[1] - keys[0].pos[1]) * progress,
-          ]);
-          minimum = Math.min(minimum, Math.hypot(
-            leadPositions[0][0] - leadPositions[1][0],
-            leadPositions[0][1] - leadPositions[1][1],
-          ));
-        }
-        return minimum;
-      };
-      const buildRailShots = (job, base, durationMs) => {
-        const [x, y, z] = base.pos;
-        const [lx, ly, lz] = base.lookAt;
-        const dx = lx - x;
-        const dz = lz - z;
-        const length = Math.max(0.001, Math.hypot(dx, dz));
-        const forwardX = dx / length;
-        const forwardZ = dz / length;
-        const rightX = forwardZ;
-        const rightZ = -forwardX;
-        const times = [0, 1850, 3900, durationMs];
-        return job.rail.map(([right, up, forward], railIndex) => ({
-          id: `rail-${railIndex + 1}`,
-          label: ['Contact', 'Crossing fire', 'Impact dive', 'Breakthrough'][railIndex],
-          tMs: times[railIndex],
-          pos: [x + rightX * right + forwardX * forward, y + up,
-            z + rightZ * right + forwardZ * forward],
-          lookAt: [lx + rightX * right * 0.22 + forwardX * forward * 0.5,
-            ly + up * 0.14, lz + rightZ * right * 0.22 + forwardZ * forward * 0.5],
-          fov: job.fovs?.[railIndex] ?? Math.max(32, base.fov - railIndex),
-          rollDeg: job.rolls?.[railIndex] ?? 0,
-          transition: railIndex === 0 ? 'linear' : 'smooth',
-        }));
-      };
-      const buildDefaultShots = (base, durationMs) => {
-        const [x, y, z] = base.pos;
-        const [lx, ly, lz] = base.lookAt;
-        return [
-          { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
-            fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
-          { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
-            lookAt: [lx + 0.5, ly + 0.1, lz], fov: Math.max(32, base.fov - 1),
-            rollDeg: (base.rollDeg || 0) * 0.5, transition: 'smooth' },
-          { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
-            lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
-            rollDeg: 0, transition: 'smooth' },
-        ];
-      };
-      const alphaInfo = S.getSpecInfo(job.alpha);
-      const bravoInfo = S.getSpecInfo(job.bravo);
-      validateVehicles([alphaInfo, bravoInfo]);
-      let board;
-      let minimumLeadSeparationM = null;
-      if (job.scene) {
-        await S.load(job.scene);
-        const base = S.getCamera();
-        const durationMs = 6000;
-        const actorTracks = buildActorTracks(job.scene.actors, job.travel, durationMs);
-        if (job.minimumLeadSeparationM && actorTracks.length >= 2) {
-          minimumLeadSeparationM = minimumLeadSeparation(actorTracks);
-          if (minimumLeadSeparationM < job.minimumLeadSeparationM) {
-            throw new Error(
-              `Lead vehicles close to ${minimumLeadSeparationM.toFixed(2)} m; ` +
-              `${job.minimumLeadSeparationM.toFixed(2)} m required`,
-            );
-          }
-        }
-        const shots = job.rail
-          ? buildRailShots(job, base, durationMs)
-          : buildDefaultShots(base, durationMs);
-        board = {
-          durationMs,
-          shots,
-          actorTracks,
-        };
-        S.setStoryboard(board);
-        S.setRailVisible(false);
-        S.seek(0);
-      } else {
-        const camo = job.camo;
-        const facing = Math.atan2(job.stage.bravo[0]-job.stage.alpha[0],job.stage.bravo[1]-job.stage.alpha[1])*180/Math.PI;
-        await S.load({
-          map: job.map,
-          seed: job.seed,
-          actors: [
-            { id: job.alpha, name: 'alpha', pos: job.stage.alpha, facingDeg: facing, camo },
-            { id: job.bravo, name: 'bravo', pos: job.stage.bravo, facingDeg: facing+180, camo },
-          ],
-          fxTime: 0,
-          timeScale: 0,
-        });
-        board = S.directDuel({variant:job.variant});
-      }
-      if (board.durationMs > 20_000 || board.actorTracks.length < 2) {
-        throw new Error('Studio did not build a bounded multi-tank storyboard');
-      }
-      return {
-        alpha: alphaInfo,
-        bravo: bravoInfo,
-        shots: board.shots.length,
-        shotTimes: board.shots.map((shot) => shot.tMs),
-        durationMs: board.durationMs,
-        effects: S.listEffects().length,
-        cameraCues: board.cameraCues?.length ?? 0,
-        minimumLeadSeparationM,
-      };
-    }, scenario);
-
-    const baseName = scenario.slug
-      ? `${number}_${scenario.slug}`
-      : `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}`;
-
-    if (stills.length) {
-      // Framing review: one deterministic frame per requested storyboard time.
-      for (const tMs of stills) {
-        const captured = await page.evaluate(async (input) => {
-          const S = window.__STUDIO;
-          S.seek(Math.min(input.tMs, S.durationMs ?? input.tMs));
-          await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
-          return S.capture({ width: input.width, height: input.height, type: 'image/png', download: false });
-        }, { tMs, width, height });
-        const bytes = Buffer.from(String(captured.dataURL).split(',')[1], 'base64');
-        const file = `${baseName}_${String(tMs).padStart(5, '0')}ms.png`;
-        writeFileSync(join(outDir, file), bytes);
-        stillsManifest.stills.push({ index: scenario.index, file, tMs, map: scenario.map, stage: scenario.stage ?? null });
-      }
-      writeFileSync(join(outDir, 'stills.json'), `${JSON.stringify({
-        ...stillsManifest, shotTimes: staged.shotTimes,
-      }, null, 2)}\n`);
-      console.log(`[studio-examples] ${baseName}: ${stills.length} stills (shots at ${staged.shotTimes.join(', ')} ms)`);
-      continue;
+  const manifestPath=join(outDir,'manifest.json');
+  let existingVideos=[];
+  if(only.size && !stills.length && existsSync(manifestPath)) {
+    const existing=JSON.parse(readFileSync(manifestPath,'utf8'));
+    if(existing.version!==2 || existing.collection!==collection
+      || JSON.stringify(existing.renderer)!==JSON.stringify({width,height,fps,videoBitsPerSecond}))
+      throw new Error('Selective rendering requires a matching collection and renderer manifest');
+    existingVideos=existing.videos.filter(video=>!only.has(video.index));
+  }
+  const manifest = {
+    version: 2,
+    generatedAt: new Date().toISOString(),
+    collection,
+    renderer: { width, height, fps, videoBitsPerSecond },
+    videos: existingVideos,
+  };
+  // (round 4 E10) a --stills run with --only keeps the takes stills.json already lists, as the video manifest does: the
+  // finishing run a stop names (--only <left>) listed only its own takes, and the first run's stills dropped out
+  const stillsPath = join(outDir, 'stills.json');
+  let existingStills = [];
+  if (only.size && stills.length && existsSync(stillsPath)) {
+    const existing = JSON.parse(readFileSync(stillsPath, 'utf8'));
+    if (existing.version !== 1 || existing.collection !== collection
+      || JSON.stringify(existing.renderer) !== JSON.stringify({ width, height })) {
+      throw new Error('Selective rendering requires a matching collection and renderer stills listing');
     }
+    existingStills = existing.stills.filter((still) => !only.has(still.index));
+  }
+  const stillsManifest = { version: 1, collection, renderer: { width, height }, stills: existingStills };
 
-    const result = await page.evaluate(async (job) => {
-      const S = window.__STUDIO;
-      const dataUrlFromBlob = (blob) => new Promise((resolveData, rejectData) => {
-        const reader = new FileReader();
-        reader.addEventListener('load', () => resolveData(reader.result), { once: true });
-        reader.addEventListener('error', () => rejectData(reader.error), { once: true });
-        reader.readAsDataURL(blob);
-      });
-      const recordingStartedAt = performance.now();
-      const recording = await S.recordVideo({
-        fps: job.fps,
-        videoBitsPerSecond: job.videoBitsPerSecond,
-        download: false,
-      });
-      const dataUrl = await dataUrlFromBlob(recording.blob);
-      return {
-        durationMs: recording.durationMs,
-        recordingWallMs: performance.now()-recordingStartedAt,
-        leadInMs: recording.leadInMs || 0,
-        mimeType: recording.mimeType,
-        size: recording.size,
-        base64: String(dataUrl).split(',')[1],
-      };
-    }, { fps, videoBitsPerSecond });
+  function writeManifest() {
+    manifest.videos.sort((a,b)=>a.index-b.index);
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+  createServer ??= (await import('vite')).createServer;
+  puppeteer ??= (await import('puppeteer')).default;
 
-    if (result.durationMs > 20_000 || result.durationMs < 1_000 || result.size < 20_000) {
-      throw new Error(`${number}: invalid recording ${result.durationMs} ms / ${result.size} bytes`);
-    }
-    const extension = result.mimeType.includes('mp4') ? 'mp4' : 'webm';
-    const file = `${baseName}.${extension}`;
-    const bytes = Buffer.from(result.base64, 'base64');
-    if (bytes.length !== result.size) {
-      throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);
-    }
-    writeFileSync(join(outDir, file), bytes);
-    // MediaRecorder WebM often omits the container duration. Stream-copy to
-    // a complete container, then verify it against the authored timeline.
-    const ffmpeg=process.env.FFMPEG||'/opt/homebrew/bin/ffmpeg';
-    const ffprobe=process.env.FFPROBE||'/opt/homebrew/bin/ffprobe';
-    const videoPath=join(outDir,file), remuxPath=join(outDir,`${number}.remux.${extension}`);
-    const remux=spawnSync(ffmpeg,['-v','error','-y','-i',videoPath,'-map','0','-c','copy',remuxPath],{encoding:'utf8'});
-    if(remux.status!==0)throw new Error(`Video remux failed: ${remux.stderr||remux.error}`);
-    const probe=spawnSync(ffprobe,['-v','error','-show_entries','format=duration','-of','json',remuxPath],{encoding:'utf8'});
-    if(probe.status!==0)throw new Error(`Video duration probe failed: ${probe.stderr||probe.error}`);
-    const containerDurationMs=Number(JSON.parse(probe.stdout).format?.duration)*1000;
-    const frameToleranceMs=Math.max(250,2000/fps);
-    if(!Number.isFinite(containerDurationMs) || containerDurationMs<result.durationMs-frameToleranceMs
-      || containerDurationMs>result.durationMs+result.leadInMs+frameToleranceMs)
-      throw new Error(`${file}: container duration ${containerDurationMs} disagrees with timeline ${result.durationMs} (record wall ${result.recordingWallMs} ms)`);
-    renameSync(remuxPath,videoPath);
-    manifest.videos.push({
-      index: scenario.index,
-      file,
-      map: scenario.map,
-      seed: scenario.seed,
-      alpha: { id: scenario.alpha, name: staged.alpha.name },
-      bravo: { id: scenario.bravo, name: staged.bravo.name },
-      durationMs: result.durationMs,
-      mimeType: result.mimeType,
-      bytes:statSync(videoPath).size,
-      recordedBytes:result.size,
-      containerDurationMs,
-      recordingWallMs: result.recordingWallMs,
-      leadInMs: result.leadInMs,
-      cameraShots: staged.shots,
-      effects: staged.effects,
-      cameraCues:staged.cameraCues,
-      variant:scenario.variant??null,
-      stage:scenario.stage??null,
-      authoredStage:scenario.authoredStage??false,
-      rail: !!scenario.rail,
-      minimumLeadSeparationM: staged.minimumLeadSeparationM,
+  // FIFO GPU lock shared by the repository's browser rendering tools.
+
+  // (round 3 A5 review) a collection (up to 30 takes, each a map's world build, a real-time recording of up to 20 s,
+  // its transfer and remux) runs far past the lock's 20-min cap, which the hold enforces: between takes it yields while
+  // anyone waits, the Studio page frozen through the yield (it draws every frame) and thawed once the lock is held
+  // again. The grace (300 s, not the default 60) lets a take in flight when the cap comes finish before its yield. A hold
+  // that was stopped (a signal, a yield that could not hold again) ends the run and names the --only run that finishes
+  // it. (round 4 E10) Each take's end is tools/held-items.mjs runHeldItem's and the exit code heldRunExitCode's: a
+  // failed take still fails the run (exit 1), takes left exit 3 (the stop was rethrown: 1), a signal's 128 + n stands,
+  // also while queued (openHeldRun: nothing rendered).
+  let page = null, frozen = null, takesLeft = [], nextTake = 0;
+  const hold = await openHeldRun({ label: 'studio-example-videos', timeoutMs: 45 * 60 * 1000, graceSeconds: 300,
+    onYield: async () => { frozen = await freezePage(page); },
+    onResume: async () => { await thawPage(page, frozen); frozen = null; }, ...holdOptions });
+  if (!hold) return;
+
+  const port = 7800 + Math.floor(Math.random() * 400);
+  let server = null;
+  let browser = null;
+  const consoleErrors = [];
+
+  try {
+    server = await createServer({
+      root: process.cwd(),
+      logLevel: 'error',
+      server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+      optimizeDeps: {
+        entries: ['index.html'],
+        include: [
+          'three',
+          'three/examples/jsm/loaders/GLTFLoader.js',
+          'three/examples/jsm/utils/SkeletonUtils.js',
+          'three/examples/jsm/utils/BufferGeometryUtils.js',
+          'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        ],
+      },
     });
-    writeManifest();
-    console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);
-  }
+    await server.listen();
+    const url = `http://localhost:${server.config.server.port}/`;
+    console.log(`[studio-examples] vite up at ${url}`);
 
-  if (consoleErrors.length) {
-    throw new Error(`page emitted ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 5).join(' | ')}`);
+    browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({
+      headless: 'new',
+      args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+    }));
+    page = await browser.newPage();
+    await page.setViewport({ width, height, deviceScaleFactor: 1 });
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !message.text().includes('favicon')) {
+        consoleErrors.push(message.text());
+      }
+    });
+    page.on('pageerror', (error) => consoleErrors.push(String(error)));
+
+    await page.goto(`${url}?studio=1&map=desert&nogate=1`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 180_000,
+    });
+    await page.waitForFunction(
+      `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'desert'`,
+      { timeout: 180_000 },
+    );
+
+    // one take: staged, then its stills or its recording; what it wrote is listed before it returns
+    async function renderTake(scenario, jobIndex) {
+      const number = String(scenario.index).padStart(2, '0');
+      console.log(
+        `[studio-examples] ${String(jobIndex + 1).padStart(2, '0')}/` +
+        `${String(jobs.length).padStart(2, '0')} [scenario ${number}] ` +
+        `${scenario.alpha} vs ${scenario.bravo} on ${scenario.map}`,
+      );
+      const staged = await page.evaluate(async (job) => {
+        const S = window.__STUDIO;
+        const validateVehicles = (infos) => {
+          for (const info of infos) {
+            if (!info.id || !info.name) throw new Error('Cinematic actor is missing its registered tank identity');
+          }
+        };
+        const buildActorTracks = (actors, travel, durationMs) => actors.map((actor, actorIndex) => {
+          const heading = (actor.facingDeg || 0) * Math.PI / 180;
+          const distance = travel?.[actorIndex] ?? (actorIndex === 1 ? 0.8 : 1.8);
+          return {
+            actor: actor.name,
+            keys: [
+              { id: `${actor.name}-0`, tMs: 0, pos: [...actor.pos], facingDeg: actor.facingDeg || 0,
+                turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+              { id: `${actor.name}-1`, tMs: durationMs,
+                pos: [actor.pos[0] + Math.sin(heading) * distance, actor.pos[1] + Math.cos(heading) * distance],
+                facingDeg: actor.facingDeg || 0, turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+            ],
+          };
+        });
+        const minimumLeadSeparation = (actorTracks) => {
+          let minimum = Number.POSITIVE_INFINITY;
+          for (let sample = 0; sample <= 120; sample += 1) {
+            const progress = sample / 120;
+            const leadPositions = actorTracks.slice(0, 2).map(({ keys }) => [
+              keys[0].pos[0] + (keys[1].pos[0] - keys[0].pos[0]) * progress,
+              keys[0].pos[1] + (keys[1].pos[1] - keys[0].pos[1]) * progress,
+            ]);
+            minimum = Math.min(minimum, Math.hypot(
+              leadPositions[0][0] - leadPositions[1][0],
+              leadPositions[0][1] - leadPositions[1][1],
+            ));
+          }
+          return minimum;
+        };
+        const buildRailShots = (job, base, durationMs) => {
+          const [x, y, z] = base.pos;
+          const [lx, ly, lz] = base.lookAt;
+          const dx = lx - x;
+          const dz = lz - z;
+          const length = Math.max(0.001, Math.hypot(dx, dz));
+          const forwardX = dx / length;
+          const forwardZ = dz / length;
+          const rightX = forwardZ;
+          const rightZ = -forwardX;
+          const times = [0, 1850, 3900, durationMs];
+          return job.rail.map(([right, up, forward], railIndex) => ({
+            id: `rail-${railIndex + 1}`,
+            label: ['Contact', 'Crossing fire', 'Impact dive', 'Breakthrough'][railIndex],
+            tMs: times[railIndex],
+            pos: [x + rightX * right + forwardX * forward, y + up,
+              z + rightZ * right + forwardZ * forward],
+            lookAt: [lx + rightX * right * 0.22 + forwardX * forward * 0.5,
+              ly + up * 0.14, lz + rightZ * right * 0.22 + forwardZ * forward * 0.5],
+            fov: job.fovs?.[railIndex] ?? Math.max(32, base.fov - railIndex),
+            rollDeg: job.rolls?.[railIndex] ?? 0,
+            transition: railIndex === 0 ? 'linear' : 'smooth',
+          }));
+        };
+        const buildDefaultShots = (base, durationMs) => {
+          const [x, y, z] = base.pos;
+          const [lx, ly, lz] = base.lookAt;
+          return [
+            { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
+              fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
+            { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
+              lookAt: [lx + 0.5, ly + 0.1, lz], fov: Math.max(32, base.fov - 1),
+              rollDeg: (base.rollDeg || 0) * 0.5, transition: 'smooth' },
+            { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
+              lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
+              rollDeg: 0, transition: 'smooth' },
+          ];
+        };
+        const alphaInfo = S.getSpecInfo(job.alpha);
+        const bravoInfo = S.getSpecInfo(job.bravo);
+        validateVehicles([alphaInfo, bravoInfo]);
+        let board;
+        let minimumLeadSeparationM = null;
+        if (job.scene) {
+          await S.load(job.scene);
+          const base = S.getCamera();
+          const durationMs = 6000;
+          const actorTracks = buildActorTracks(job.scene.actors, job.travel, durationMs);
+          if (job.minimumLeadSeparationM && actorTracks.length >= 2) {
+            minimumLeadSeparationM = minimumLeadSeparation(actorTracks);
+            if (minimumLeadSeparationM < job.minimumLeadSeparationM) {
+              throw new Error(
+                `Lead vehicles close to ${minimumLeadSeparationM.toFixed(2)} m; ` +
+                `${job.minimumLeadSeparationM.toFixed(2)} m required`,
+              );
+            }
+          }
+          const shots = job.rail
+            ? buildRailShots(job, base, durationMs)
+            : buildDefaultShots(base, durationMs);
+          board = {
+            durationMs,
+            shots,
+            actorTracks,
+          };
+          S.setStoryboard(board);
+          S.setRailVisible(false);
+          S.seek(0);
+        } else {
+          const camo = job.camo;
+          const facing = Math.atan2(job.stage.bravo[0]-job.stage.alpha[0],job.stage.bravo[1]-job.stage.alpha[1])*180/Math.PI;
+          await S.load({
+            map: job.map,
+            seed: job.seed,
+            actors: [
+              { id: job.alpha, name: 'alpha', pos: job.stage.alpha, facingDeg: facing, camo },
+              { id: job.bravo, name: 'bravo', pos: job.stage.bravo, facingDeg: facing+180, camo },
+            ],
+            fxTime: 0,
+            timeScale: 0,
+          });
+          board = S.directDuel({variant:job.variant});
+        }
+        if (board.durationMs > 20_000 || board.actorTracks.length < 2) {
+          throw new Error('Studio did not build a bounded multi-tank storyboard');
+        }
+        return {
+          alpha: alphaInfo,
+          bravo: bravoInfo,
+          shots: board.shots.length,
+          shotTimes: board.shots.map((shot) => shot.tMs),
+          durationMs: board.durationMs,
+          effects: S.listEffects().length,
+          cameraCues: board.cameraCues?.length ?? 0,
+          minimumLeadSeparationM,
+        };
+      }, scenario);
+
+      const baseName = scenario.slug
+        ? `${number}_${scenario.slug}`
+        : `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}`;
+
+      if (stills.length) {
+        // Framing review: one deterministic frame per requested storyboard time.
+        for (const tMs of stills) {
+          const captured = await page.evaluate(async (input) => {
+            const S = window.__STUDIO;
+            S.seek(Math.min(input.tMs, S.durationMs ?? input.tMs));
+            await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+            return S.capture({ width: input.width, height: input.height, type: 'image/png', download: false });
+          }, { tMs, width, height });
+          const bytes = Buffer.from(String(captured.dataURL).split(',')[1], 'base64');
+          const file = `${baseName}_${String(tMs).padStart(5, '0')}ms.png`;
+          writeFileSync(join(outDir, file), bytes);
+          stillsManifest.stills.push({ index: scenario.index, file, tMs, map: scenario.map, stage: scenario.stage ?? null });
+        }
+        stillsManifest.stills.sort((a, b) => a.index - b.index || a.tMs - b.tMs);
+        writeFileSync(stillsPath, `${JSON.stringify({
+          ...stillsManifest, shotTimes: staged.shotTimes,
+        }, null, 2)}\n`);
+        console.log(`[studio-examples] ${baseName}: ${stills.length} stills (shots at ${staged.shotTimes.join(', ')} ms)`);
+        return;
+      }
+
+      const result = await page.evaluate(async (job) => {
+        const S = window.__STUDIO;
+        const dataUrlFromBlob = (blob) => new Promise((resolveData, rejectData) => {
+          const reader = new FileReader();
+          reader.addEventListener('load', () => resolveData(reader.result), { once: true });
+          reader.addEventListener('error', () => rejectData(reader.error), { once: true });
+          reader.readAsDataURL(blob);
+        });
+        const recordingStartedAt = performance.now();
+        const recording = await S.recordVideo({
+          fps: job.fps,
+          videoBitsPerSecond: job.videoBitsPerSecond,
+          download: false,
+        });
+        const dataUrl = await dataUrlFromBlob(recording.blob);
+        return {
+          durationMs: recording.durationMs,
+          recordingWallMs: performance.now()-recordingStartedAt,
+          leadInMs: recording.leadInMs || 0,
+          mimeType: recording.mimeType,
+          size: recording.size,
+          base64: String(dataUrl).split(',')[1],
+        };
+      }, { fps, videoBitsPerSecond });
+
+      if (result.durationMs > 20_000 || result.durationMs < 1_000 || result.size < 20_000) {
+        throw new Error(`${number}: invalid recording ${result.durationMs} ms / ${result.size} bytes`);
+      }
+      const extension = result.mimeType.includes('mp4') ? 'mp4' : 'webm';
+      const file = `${baseName}.${extension}`;
+      const bytes = Buffer.from(result.base64, 'base64');
+      if (bytes.length !== result.size) {
+        throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);
+      }
+      writeFileSync(join(outDir, file), bytes);
+      // MediaRecorder WebM often omits the container duration. Stream-copy to
+      // a complete container, then verify it against the authored timeline.
+      const ffmpeg=process.env.FFMPEG||'/opt/homebrew/bin/ffmpeg';
+      const ffprobe=process.env.FFPROBE||'/opt/homebrew/bin/ffprobe';
+      const videoPath=join(outDir,file), remuxPath=join(outDir,`${number}.remux.${extension}`);
+      const remux=spawnSync(ffmpeg,['-v','error','-y','-i',videoPath,'-map','0','-c','copy',remuxPath],{encoding:'utf8'});
+      if(remux.status!==0)throw new Error(`Video remux failed: ${remux.stderr||remux.error}`);
+      const probe=spawnSync(ffprobe,['-v','error','-show_entries','format=duration','-of','json',remuxPath],{encoding:'utf8'});
+      if(probe.status!==0)throw new Error(`Video duration probe failed: ${probe.stderr||probe.error}`);
+      const containerDurationMs=Number(JSON.parse(probe.stdout).format?.duration)*1000;
+      const frameToleranceMs=Math.max(250,2000/fps);
+      if(!Number.isFinite(containerDurationMs) || containerDurationMs<result.durationMs-frameToleranceMs
+        || containerDurationMs>result.durationMs+result.leadInMs+frameToleranceMs)
+        throw new Error(`${file}: container duration ${containerDurationMs} disagrees with timeline ${result.durationMs} (record wall ${result.recordingWallMs} ms)`);
+      renameSync(remuxPath,videoPath);
+      manifest.videos.push({
+        index: scenario.index,
+        file,
+        map: scenario.map,
+        seed: scenario.seed,
+        alpha: { id: scenario.alpha, name: staged.alpha.name },
+        bravo: { id: scenario.bravo, name: staged.bravo.name },
+        durationMs: result.durationMs,
+        mimeType: result.mimeType,
+        bytes:statSync(videoPath).size,
+        recordedBytes:result.size,
+        containerDurationMs,
+        recordingWallMs: result.recordingWallMs,
+        leadInMs: result.leadInMs,
+        cameraShots: staged.shots,
+        effects: staged.effects,
+        cameraCues:staged.cameraCues,
+        variant:scenario.variant??null,
+        stage:scenario.stage??null,
+        authoredStage:scenario.authoredStage??false,
+        rail: !!scenario.rail,
+        minimumLeadSeparationM: staged.minimumLeadSeparationM,
+      });
+      writeManifest();
+      console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);
+    }
+    for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
+      nextTake = jobIndex;
+      const item = await runHeldItem(hold, () => renderTake(jobs[jobIndex], jobIndex));
+      // the stop came before this take or cut it (its browser stopped under it): left with the rest
+      if (item.outcome === 'left') { takesLeft = jobs.slice(jobIndex).map((job) => job.index); break; }
+      if (item.outcome === 'failed') throw item.error;
+    }
+  } catch (error) {
+    if (!hold.signal.aborted) throw error;
+    // a stop before the takes (the Studio's boot cut by a signal) leaves every take not yet rendered
+    takesLeft = jobs.slice(nextTake).map((job) => job.index);
+  } finally {
+    if (browser) await browser.close();
+    if (server) await server.close();
+    await hold.release();
   }
-  console.log(stills.length
-    ? `[studio-examples] complete: ${stillsManifest.stills.length} stills in ${outDir}`
-    : `[studio-examples] complete: ${manifest.videos.length} videos in ${outDir}`);
-} finally {
-  if (browser) await browser.close();
-  if (server) await server.close();
-  releaseLock();
+  if (takesLeft.length) {
+    // a stopped hold ended the run (between takes, or the take in flight once its browser is stopped): the manifest
+    // (stills.json for --stills) holds the finished takes, and the run that finishes the rest is named
+    console.error(`[studio-examples] the capture hold was stopped (${heldStopWhy(hold.signal)}): `
+      + `${takesLeft.length} take(s) left; finish with the same options and --only ${takesLeft.join(',')}`);
+  } else {
+    if (consoleErrors.length) {
+      throw new Error(`page emitted ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 5).join(' | ')}`);
+    }
+    console.log(stills.length
+      ? `[studio-examples] complete: ${stillsManifest.stills.length} stills in ${outDir}`
+      : `[studio-examples] complete: ${manifest.videos.length} videos in ${outDir}`);
+  }
+  heldRunExitCode({ left: takesLeft.length > 0 });
 }
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await renderStudioExamples();

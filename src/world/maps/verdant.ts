@@ -21,6 +21,8 @@
 
 import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 export default {
   id: 'verdant',
@@ -128,7 +130,7 @@ export default {
 
   props: {
     // regional-buildings lane: the Prokhorovka kolkhoz kit (maps/regional/kolkhoz.ts)
-    architecture: 'kolkhoz',
+    architecture: BUILDING_STYLES.verdant.kit,
     // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
     // raised granary, chapel and a tower windmill join the cottage/barn set
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
@@ -218,7 +220,7 @@ export default {
     // all destructible (drive-through, shell-breakable)
     // the map-vehicles lane (2026-10-06, the period ruling): Kursk, 1943: the KV-2, the fleet's one Soviet tank of
     // the war
-    tankWrecks: { era: 'ww2', count: 5, debris: true, ids: ['kv2'] },
+    tankWrecks: WRECK_CASTS.verdant,
     sandbagLines: 12,
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —

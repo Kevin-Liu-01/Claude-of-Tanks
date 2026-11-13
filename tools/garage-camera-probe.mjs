@@ -3,6 +3,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const failures = [];
 let checks = 0;
@@ -31,7 +32,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favi
 
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  await waitForBootLoaded(page, { timeout: 90000 });
   await sleep(1400);
 
   const initial = await page.evaluate(() => {

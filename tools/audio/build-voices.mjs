@@ -2,7 +2,7 @@
 // tools/audio/build-voices.mjs — generate, verify and master the national
 // crew radio packs.
 //
-//   ELEVENLABS_API_KEY_FILE=… node tools/audio/build-voices.mjs [--langs de,ru] [--lines fire,were_hit] [--no-verify] [--budget 25000] [--attempts 3]
+//   ELEVENLABS_API_KEY_FILE=… node tools/audio/build-voices.mjs [--langs de,ru] [--lines fire,were_hit] [--no-verify] [--budget 25000] [--attempts 3] [--dry] [--append]
 //
 // Per take: eleven_v4 speech in the crew language with the line's delivery as
 // an audio tag, spoken by the role's cast voice (tools/audio/crew-voices.json:
@@ -15,15 +15,28 @@
 // is real-time DSP in the engine so it can degrade with the radio module.
 //
 // Writes public/audio/voice/<lang>/<line>_<n>.webm and
-// src/audio/voiceManifest.generated.ts.
+// src/audio/voiceManifest.generated.ts. `--dry` writes nothing and calls no
+// API: it counts the takes whose first attempt is not cached yet and their
+// characters (speech bills one credit per character), planned as the build
+// plans them. `--append` keeps each line's shipped takes as they are and builds
+// only the takes after them (a line that gains a take keeps the ones already
+// approved; a rebuild of a take re-picks among its cached attempts and
+// re-encodes it). File <line>_<n> is always script take n (voicePlan.mjs): a
+// take that fails or comes back empty ends its line there, and --append
+// resumes at it. So does a take under the bar that a budget or quota stop cut
+// short (its attempts ended before all ran, or its cut pass never started;
+// pickTake); one whose attempts and cuts all ran ships its best attempt, under
+// the bar or not, flagged below 0.34. --append keeps by count, so a take whose
+// words change is rebuilt without --append (--lines <id>).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { speech, transcribe, ElevenLabsError } from './elevenlabs.mjs';
+import { speech, speechCached, transcribe, ElevenLabsError } from './elevenlabs.mjs';
 import { s16ToFloat, wavFromS16 } from './pcm.mjs';
 import { masterTake } from './master.mjs';
+import { buildLine, pickTake, planLine } from './voicePlan.mjs';
 
 /** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
 const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
@@ -32,7 +45,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const OUT = join(ROOT, 'public', 'audio', 'voice');
 const MANIFEST = join(ROOT, 'src', 'audio', 'voiceManifest.generated.ts');
-const STATE = join(HERE, '.voice-manifest.json');
+// COT_VOICE_STATE: a build of some languages beside another (each its own state file, rows merged after).
+const STATE = process.env.COT_VOICE_STATE || join(HERE, '.voice-manifest.json');
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : null);
@@ -41,10 +55,12 @@ const linesArg = opt('lines')?.split(',') ?? null;
 const verify = !args.includes('--no-verify');
 const budget = Number(opt('budget') || Infinity);
 const attempts = Number(opt('attempts') || 3);
+const dry = args.includes('--dry');
+const append = args.includes('--append');
 
 const script = JSON.parse(readFileSync(join(HERE, 'crew-lines.json'), 'utf8'));
 const { cast } = JSON.parse(readFileSync(join(HERE, 'crew-voices.json'), 'utf8'));
-const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'pt-BR': 'pt' };
+const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'pt-BR': 'pt', 'es-ES': 'es', 'es-419': 'es', 'pt-PT': 'pt', 'id-ID': 'id' };
 
 function normalize(text) {
   return String(text).toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]+/gu, '');
@@ -67,6 +83,44 @@ function similarity(a, b) {
   return 1 - prev[y.length] / Math.max(x.length, y.length);
 }
 
+/**
+ * Hindi, Urdu, Bengali, Persian and Arabic crews carry English procedure words, written in their own script ("फ़ायर",
+ * "لوڈڈ"), and scribe_v2 writes them in Latin as often as not ("Fire", "Load"): there a take is also compared by its
+ * consonants, both sides reduced to one Latin skeleton (vowels, semivowels and h dropped, the sound classes merged).
+ */
+const SKELETON_LANGS = new Set(['hi', 'ur', 'bn', 'fa', 'ar']);
+const SKELETON = new Map(Object.entries({
+  // Latin
+  b: 'b', c: 'k', d: 'd', f: 'f', g: 'g', j: 'j', k: 'k', l: 'l', m: 'm', n: 'n', p: 'p', q: 'k', r: 'r', s: 's', t: 't', x: 'ks', z: 'j', C: 'c',
+  // Devanagari (precomposed nukta letters included)
+  क: 'k', ख: 'k', क़: 'k', ख़: 'k', ग: 'g', घ: 'g', ग़: 'g', ङ: 'n', च: 'c', छ: 'c', ज: 'j', झ: 'j', ज़: 'j', ञ: 'n',
+  ट: 't', ठ: 't', ड: 'd', ढ: 'd', ड़: 'r', ढ़: 'r', ण: 'n', त: 't', थ: 't', द: 'd', ध: 'd', न: 'n', प: 'p', फ: 'f', फ़: 'f',
+  ब: 'b', भ: 'b', म: 'm', र: 'r', ल: 'l', श: 's', ष: 's', स: 's', 'ं': 'n',
+  // Bengali
+  ক: 'k', খ: 'k', গ: 'g', ঘ: 'g', ঙ: 'n', চ: 'c', ছ: 'c', জ: 'j', ঝ: 'j', য: 'j', ঞ: 'n', ট: 't', ঠ: 't', ড: 'd', ঢ: 'd',
+  ড়: 'r', ঢ়: 'r', ণ: 'n', ত: 't', থ: 't', ৎ: 't', দ: 'd', ধ: 'd', ন: 'n', প: 'p', ফ: 'f', ব: 'b', ভ: 'b', ম: 'm', র: 'r',
+  ল: 'l', শ: 's', ষ: 's', স: 's', 'ং': 'n',
+  // Arabic, Persian and Urdu
+  ب: 'b', پ: 'p', ت: 't', ٹ: 't', ط: 't', ث: 's', س: 's', ص: 's', ش: 's', ج: 'j', چ: 'c', خ: 'k', ق: 'k', ک: 'k', ك: 'k',
+  د: 'd', ڈ: 'd', ذ: 'j', ز: 'j', ژ: 'j', ض: 'j', ظ: 'j', ر: 'r', ڑ: 'r', غ: 'g', گ: 'g', ف: 'f', ل: 'l', م: 'm', ن: 'n', ں: 'n',
+}));
+
+function skeleton(text) {
+  // NFC splits the nukta letters (क़, য়) into base and nukta: Bengali য় is a semivowel, not য (j).
+  const latin = String(text).normalize('NFC').toLowerCase().replace(/\u09AF\u09BC/g, '').replace(/ch/g, 'C').replace(/ph/g, 'f').replace(/ck/g, 'k');
+  let out = '';
+  for (const ch of latin) out += SKELETON.get(ch) ?? '';
+  return out;
+}
+
+/** How closely a transcript reads as the script: by characters, and for the scripts above by consonants too. */
+function score(lang, heard, text) {
+  const sim = similarity(heard, text);
+  if (!SKELETON_LANGS.has(lang)) return sim;
+  const [a, b] = [skeleton(heard), skeleton(text)];
+  return a && b ? Math.max(sim, similarity(a, b)) : sim;
+}
+
 /** The longest unit repeated back to back, in characters ("abab" → 2). */
 function tandemUnit(chars) {
   let best = 0;
@@ -82,12 +136,18 @@ function tandemUnit(chars) {
  * Whether a transcript says the call twice back to back ("HE. HE.", a
  * stuttered restart) where the script does not. The speech model does this
  * often on very short calls, and by edit distance alone a doubled short call
- * scores 0.5, which would pass the loose bar for short calls.
+ * scores 0.5, which would pass the loose bar for short calls. It also doubles
+ * a phrase inside a longer call ("开球，开球，去抢球", "低重力，低重力，…":
+ * crew-lines-269), which edit distance passes at 0.7: a unit of two or more
+ * characters said twice in a row that the script says once, the transcript
+ * that much longer than the script.
  */
 function repeatsCall(heard, text) {
   const want = [...normalize(text)];
-  const unit = tandemUnit([...normalize(heard)]);
-  return unit >= Math.max(2, Math.ceil(want.length / 2)) && unit > tandemUnit(want);
+  const got = [...normalize(heard)];
+  const unit = tandemUnit(got);
+  if (unit <= tandemUnit(want)) return false;
+  return unit >= Math.max(2, Math.ceil(want.length / 2)) || (unit >= 2 && got.length - want.length >= unit);
 }
 
 /** A clean take beats one that repeats the call, then the closer transcript wins. */
@@ -100,15 +160,24 @@ const state = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
 const failures = [];
 const trims = [];
 
-/** Transcribe a take and score it against the script. */
+/**
+ * Transcribe a take and score it against the script. A second transcript of
+ * the same take behind a 20 ms lead-in (other bytes, so its own pass) is read
+ * only for a repeat: one transcriber pass often smooths a doubled phrase out
+ * that the next one hears (crew-lines-269's sweep found 19 of 2,652 takes).
+ */
 async function check(lang, line, text, raw, name) {
   const wav = join(tmp, `${lang}-${line.id}-${name}.wav`);
+  const lead = join(tmp, `${lang}-${line.id}-${name}-lead.wav`);
   writeFileSync(wav, wavFromS16(raw, 24000));
+  writeFileSync(lead, wavFromS16(Buffer.concat([Buffer.alloc(960), raw]), 24000));
   try {
     const stt = await transcribe({ file: wav, languageCode: LANG_CODE[lang] || lang });
-    spent += stt.cost || 0;
-    const repeated = repeatsCall(stt.text, text);
-    return { heard: stt.text, repeated, sim: repeated ? Math.min(similarity(stt.text, text), 0.2) : similarity(stt.text, text) };
+    const again = await transcribe({ file: lead, languageCode: LANG_CODE[lang] || lang });
+    spent += (stt.cost || 0) + (again.cost || 0);
+    const repeated = repeatsCall(stt.text, text) || repeatsCall(again.text, text);
+    const sim = score(lang, stt.text, text);
+    return { heard: stt.text, repeated, sim: repeated ? Math.min(sim, 0.2) : sim };
   } catch (error) {
     return { heard: `stt error: ${error.message}`, repeated: false, sim: 0 };
   }
@@ -164,47 +233,69 @@ async function trimmedTake(lang, line, text, best) {
   return found;
 }
 
-async function bestTake(lang, line, text) {
+/** The speech request of one attempt at a take: the role's cast voice, the delivery as an audio tag. */
+function speechParams(lang, line, text, attempt) {
   const voice = cast[lang][line.role === 'commander' ? 'commander' : 'crew'];
+  return {
+    voiceId: voice.voice_id,
+    text: `[${line.delivery}] ${text}`,
+    modelId: 'eleven_v4',
+    languageCode: LANG_CODE[lang] || lang,
+    stability: 0.6,
+    similarity: 0.8,
+    take: attempt,
+    outputFormat: 'pcm_24000',
+  };
+}
+
+async function bestTake(lang, line, text) {
   // Very short calls ("Up!", "HE!") transcribe loosely; accept a lower bar.
   const bar = normalize(text).length <= 4 ? 0.34 : 0.62;
-  let best = null;
-  const tried = [];
-  for (let attempt = 0; attempt < attempts && !stop; attempt++) {
-    const { file, cost } = await speech({
-      voiceId: voice.voice_id,
-      text: `[${line.delivery}] ${text}`,
-      modelId: 'eleven_v4',
-      languageCode: LANG_CODE[lang] || lang,
-      stability: 0.6,
-      similarity: 0.8,
-      take: attempt,
-      outputFormat: 'pcm_24000',
-    });
-    spent += cost;
-    if (spent >= budget) stop = true;
-    const raw = readFileSync(file);
-    const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
-    const durS = raw.length / 2 / 24000;
-    const candidate = { ...result, raw, durS, attempt };
-    tried.push(candidate);
-    if (!best || betterTake(candidate, best)) best = candidate;
-    if (candidate.sim >= bar && durS < 6) break;
-  }
-  // No attempt passed: cut each at its pauses until one reads as the script
-  // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
-  if (verify && best && best.sim < bar && !stop) {
-    for (const candidate of tried) {
+  return pickTake({
+    attempts, bar, verify, better: betterTake, stopped: () => stop,
+    attempt: async (attempt) => {
+      const { file, cost } = await speech(speechParams(lang, line, text, attempt));
+      spent += cost;
+      if (spent >= budget) stop = true;
+      const raw = readFileSync(file);
+      const result = verify ? await check(lang, line, text, raw, `${attempt}`) : { heard: '', repeated: false, sim: 1 };
+      return { ...result, raw, durS: raw.length / 2 / 24000, attempt };
+    },
+    // No attempt passed: cut each at its pauses until one reads as the script
+    // (a short cut can transcribe as a near-homophone, so one attempt is not enough).
+    trim: async (candidate) => {
       const cut = await trimmedTake(lang, line, text, candidate);
-      if (!cut) continue;
-      trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
+      if (cut) trims.push(`${lang}/${line.id}: "${candidate.heard}" → "${cut.heard}"`);
       return cut;
-    }
-  }
-  return best;
+    },
+  });
 }
 
 const languages = (langsArg || script.languages);
+if (dry) {
+  let takes = 0;
+  let uncached = 0;
+  let chars = 0;
+  for (const lang of languages) {
+    if (!cast[lang]) continue;
+    for (const line of script.lines.filter((l) => !linesArg || linesArg.includes(l.id))) {
+      const takesOf = line[lang] || [];
+      const plan = planLine({ previous: state[lang]?.[line.id] ?? [], takes: takesOf, append,
+        exists: (i) => existsSync(join(OUT, lang, `${line.id}_${i}.webm`)) });
+      for (const i of plan.build) {
+        takes++;
+        const params = speechParams(lang, line, takesOf[i], 0);
+        if (speechCached(params)) continue;
+        uncached++;
+        chars += params.text.length;
+      }
+    }
+  }
+  console.log(`dry: ${takes} takes, ${uncached} not cached, ${chars} characters on their first attempt `
+    + `(~${Math.round(chars * 1.5)} credits with re-rolls; speech-to-text adds about one credit a take)`);
+  rmSync(tmp, { recursive: true, force: true });
+  process.exit(0);
+}
 for (const lang of languages) {
   if (!cast[lang]) { console.warn(`no cast for ${lang}`); continue; }
   const dir = join(OUT, lang);
@@ -213,20 +304,31 @@ for (const lang of languages) {
   const jobs = script.lines.filter((line) => !linesArg || linesArg.includes(line.id)).map(async (line) => {
     const takes = line[lang];
     if (!Array.isArray(takes) || !takes.length) { failures.push(`${lang}/${line.id}: no script`); return; }
-    for (const name of readdirSync(dir)) if (takeFileOf(line.id).test(name)) rmSync(join(dir, name));
-    const shipped = [];
-    for (let i = 0; i < takes.length && !stop; i++) {
-      try {
-        const best = await bestTake(lang, line, takes[i]);
-        if (!best) continue;
-        if (best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
-        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${shipped.length}`) });
-        shipped.push(+facts.dur.toFixed(3));
-      } catch (error) {
-        failures.push(`${lang}/${line.id}#${i}: ${error.message}`);
-        if (error instanceof ElevenLabsError && error.quota) stop = true;
-      }
+    // --append: the shipped takes stay (their files and lengths) when the script still has at least as many
+    const previous = state[lang][line.id] ?? [];
+    const plan = planLine({ previous, takes, append, exists: (i) => existsSync(join(dir, `${line.id}_${i}.webm`)) });
+    for (const name of readdirSync(dir)) {
+      const match = takeFileOf(line.id).test(name) ? Number(name.slice(line.id.length + 1).split('.')[0]) : -1;
+      if (match >= plan.kept) rmSync(join(dir, name));
     }
+    const { shipped } = await buildLine({
+      previous,
+      plan,
+      stopped: () => stop,
+      take: async (i) => {
+        const best = await bestTake(lang, line, takes[i]);
+        if (best && best.sim < 0.34) failures.push(`${lang}/${line.id}#${i}: "${takes[i]}" heard "${best.heard}" (${best.sim.toFixed(2)}${best.repeated ? ', repeats' : ''})`);
+        return best;
+      },
+      ship: (index, best) => {
+        const facts = masterTake({ channels: [s16ToFloat(best.raw)], sr: 24000, preset: 'voice', outBase: join(dir, `${line.id}_${index}`) });
+        return +facts.dur.toFixed(3);
+      },
+      onError: (i, error) => {
+        failures.push(`${lang}/${line.id}#${i}: ${error ? error.message : 'a budget or quota stop cut its attempts short under the bar, so no take was built'}; the line stops at take ${i} (--append resumes there)`);
+        if (error instanceof ElevenLabsError && error.quota) stop = true;
+      },
+    });
     state[lang][line.id] = shipped;
   });
   await Promise.all(jobs);

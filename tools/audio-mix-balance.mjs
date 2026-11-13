@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 // audio-mix-balance.mjs — browser gate for the mix itself (src/audio/audioEngine.ts):
 // what a player actually hears, measured on the master output through the
 // __COT_AUDIO PCM tap with every settings channel at its default.
@@ -35,6 +35,12 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     the cabin, and its howitzer fires inside the fuselage and throws its
 //     case onto the deck.
 //
+// Every moment is heard at its loudest take (2026-11-04): each asset the
+// loudness receipt measured is held on its variant with the highest momentary
+// loudness (any other on its first), so no gate rides on the take the engine's
+// seeded stream drew (a 40 m collapse stood 1.7 dB over a near cannon in one
+// run and 2.3 in another).
+//
 // Exit 0 = green. Shares the FIFO capture lock with every browser harness.
 // Usage: node tools/audio-mix-balance.mjs
 
@@ -43,10 +49,16 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
+import { loudestTakes } from './audio/held-takes.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): the tools' page budget
+// (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS; this tool's ready wait 120 s, COT_READY_TIMEOUT_MS)
+const { navTimeoutMs: NAV_MS, readyTimeoutMs: READY_MS } = pageLoadBudget({ readyTimeoutMs: 120000 });
 
 function writeWav(path, i16, sampleRate) {
   const dataBytes = i16.length * 2;
@@ -128,10 +140,7 @@ function shotAnatomy(i16, sampleRate, masterLevel) {
   return { riseMs: a.riseMs, decayDb: +decayDb.toFixed(1), e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
 }
 
-await acquireLock(30 * 60 * 1000);
-process.on('exit', releaseLock);
-const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
-lockRefresher.unref();
+const hold = await openCaptureHold({ label: 'audio-mix-balance', timeoutMs: 30 * 60 * 1000 });
 
 const viteCacheDir = resolve('/tmp', `cot-audio-mix-vite-${process.pid}`);
 process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
@@ -164,12 +173,16 @@ try {
   await page.setViewport({ width: 1280, height: 720 });
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+  await waitForBootLoaded(page, { timeout: READY_MS });
   await page.mouse.click(640, 360);
   await page.waitForFunction('window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.3', { timeout: 30000 });
   // Default mix, as a fresh player has it.
   await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
+  // Every moment at its loudest take (see the header): the same verdict on every run.
+  const held = loudestTakes();
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), held);
+  console.log(`[mix] ${Object.keys(held).length} assets held on one take (the measured ones on their loudest)`);
   const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
   let lastI16 = null;
   let lastGrDb = 0;
@@ -207,7 +220,7 @@ try {
   // 2) Battle: the idle bed, then gunfire against it (the battle held so bots stay quiet).
   await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
   await page.waitForFunction('window.__COT_AUDIO.snapshot === "battle"', { timeout: 60000 });
-  await page.evaluate(() => window.__COT_AUDIO.preload(['gun_125_close', 'gun_120_close', 'gun_far_medium', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain']));
+  await page.evaluate(() => window.__COT_AUDIO.preload(['gun_125_close', 'gun_125_own', 'gun_125_interior', 'gun_125_far', 'gun_120_close', 'gun_120_far', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain']));
   await page.evaluate(() => { window.__DEBUG.game.preBattleS = 999; window.__COT_AUDIO.clearVoiceQueue(); });
   await sleep(4000);
   report.bed = await capture('battle_bed', 3000);
@@ -225,10 +238,12 @@ try {
     await sleep(4000);
   }
   const near = report.shots.cannon_15m.anatomy;
-  if (near.decayDb < 8) fail(`a near cannon holds within ${near.decayDb} dB of its crack half a second later (want ≥ 8: a crack that decays, not a blast)`);
-  if (near.lowBody > 0.5) fail(`a near cannon's body is ${(100 * near.lowBody).toFixed(0)} % below 100 Hz (want ≤ 50: a report, not a boom)`);
+  // (No cap on a near cannon's low body and no floor on its decay since 2026-11-04: a tank cannon booms, its energy low
+  // and its echo rolling, so its loudest 50 ms after a quarter second sits within a few dB of its first; the owner heard
+  // the decaying cracks those gates chose as guns. The ear proxy refuses a crack; the gates here keep the level, the peak
+  // and the limiter's headroom. Both are still reported in the anatomy.)
   if (near.atKnee > 40) fail(`a near cannon rides the soft clip (${near.atKnee} samples at its knee; the limiter should take the peak)`);
-  if (report.shots.cannon_15m.peakOverBedDb < 22) fail(`a near cannon's crack peaks only ${report.shots.cannon_15m.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
+  if (report.shots.cannon_15m.peakOverBedDb < 22) fail(`a near cannon peaks only ${report.shots.cannon_15m.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   // Our own gun, from the hatch beside it.
   const ownShot = `(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;
     D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: me.id, isPlayer: true, shellType: 'APFSDS', caliberMm: 125, muzzlePos: [p.x, p.y + 2, p.z + 4], dir: [0, 0, 1] }); })()`;
@@ -237,7 +252,7 @@ try {
   console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(report.shots.cannon_own.anatomy)}`);
   if (report.shots.cannon_own.overBedDb < 14) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 14)`);
   if (report.shots.cannon_own.anatomy.atKnee > 40) fail(`our own gun rides the soft clip (${report.shots.cannon_own.anatomy.atKnee} samples at its knee)`);
-  if (report.shots.cannon_own.peakOverBedDb < 22) fail(`our own gun's crack peaks only ${report.shots.cannon_own.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
+  if (report.shots.cannon_own.peakOverBedDb < 22) fail(`our own gun peaks only ${report.shots.cannon_own.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   await sleep(4000);
   // 2b) Destruction and launches (the audio stream's round 1, 2026-10-13): a brick house coming down near and far, a
   //     wall giving way, a missile leaving its tube. A collapse at 40 m stands at least 10 dB over the bed and no more
@@ -299,7 +314,7 @@ try {
   // 5) The drone: flying it, the listener rides it and its motors lead. A fresh Drone battle, captured before
   //    the bots engage: docked in the tank, then in flight.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'drone' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "drone"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "drone"`, { timeout: 180000, polling: 250 });
   await page.evaluate(() => window.__COT_AUDIO.preload(['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost']));
   await sleep(1500);
   const docked = await capture('drone_docked', 2000);
@@ -328,7 +343,7 @@ try {
 
   // 6) The AC-130: the opener, the cabin and the howitzer inside it.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'ac130' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "ac130"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "ac130"`, { timeout: 180000, polling: 250 });
   await sleep(1500);
   const gunshipFrom = await page.evaluate(() => (window.__COT_AUDIO.sfxLog.at(-1)?.seq ?? 0));
   await page.evaluate(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;
@@ -352,8 +367,7 @@ try {
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2));
   await browser.close().catch(() => {});
   await server.close().catch(() => {});
-  clearInterval(lockRefresher);
-  releaseLock();
+  await hold.release();
 }
 console.log(report.errors.length ? '[mix] FAIL' : '[mix] GREEN');
 process.exit(report.errors.length ? 1 : 0);

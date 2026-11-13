@@ -21,7 +21,21 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
 // 9 (consumables-260, 2026-10-26): the viewer's equipment multipliers gain `power` (VIEWER_EQUIPMENT), a Governor
 // Override's engine burst (sim/consumableRules.ts), so the predictor drives at the authority's power.
-export const WIRE_VERSION = 9;
+// 10 (audit M8, 2026-11-02): ENTITY_FLAGS gains TUMBLING, the hull's rigid phase itself (src/sim/hullBodyMode.ts), and
+// STACKED, the hull bearing on another hull (tankBodyContacts.ts hullBearsOnBody); the row's status word becomes a varint
+// (18 bits; 1 to 3 bytes, a flagless row's 1 where the u16 took 2). Before, a client rebuilt the tumble as
+// overturned-or-righting and judged a stack from a support cache its copy of the hull never filled, so the prediction
+// world's tank contacts and the authority's split the same pair (src/mp/match/hullBodyRow.ts).
+// 11 (round 2 of the 2026-11-02 audit, 2026-11-05): two snapshot additions. (a) U27: SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS
+// and, as the frame's last field, each index of its destroyed set's fall (destroyedSet.ts writeDestroyedFalls;
+// src/sim/obstacleFall.ts: cause and heading in a byte, none where the viewer may not read them), so a late joiner lays a
+// prop as it fell, not as a ram toward +Z; the falls take only the room the frame leaves under MAX_MESSAGE_BYTES (past it
+// they travel as none), so they never stop a keyframe. (b) U31:
+// SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS and, after the shells, the rounds this viewer was shown that left its view still in
+// flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end. Round 3 (2026-11-05, unreleased with
+// it, so no further bump): WELCOME ends with a u32 battleId, RESUME_HINT with a varint of the row's body bits, and HOLD
+// (type 22) is new (README.md).
+export const WIRE_VERSION = 11;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -37,7 +51,24 @@ export const WIRE_VERSION = 9;
 // a 251 tab and a 252 tab never share a match (the joining side reads "Refresh to join this match").
 // 10 (consumables-260, 2026-10-26): wire 9 and the consumable catalog (each seat's consumables; consumable_used names
 // its item and charges): a 259 tab and a 260 tab never share a match.
-export const PROTOCOL_VERSION = 10; // wire 9, consumable loadouts
+// 11 (the 2026-11-02 audit, round 1): wire 10, the TUMBLING and STACKED row flags the clients' hull copies restore their
+// body mode and their tank contacts from (audit M8); and the host handover a migration seals, which two builds would read
+// differently: the mode checkpoint's objective pitch (`ModeCheckpoint.objectives`, M1), every tank's life
+// (`ModeCheckpoint.lives`, M4: an older checkpoint derives them) and the pillboxes' booked points
+// (`NewModeCheckpoint.fortified`, M1); a resumed verdict (`AuthoritativeMatch.restoreVerdict`, M1: a keyframe sealed after
+// the verdict resumed as a running match); the extras' combat counters (`MigrationEntityExtras` moduleHp, fire, reloads,
+// magazines, consumables, auxiliary) and the resume state's keyframeTick, timeS, revivedEntityIds and respawnTicks (M1);
+// and the room's adminLocked (M2).
+// 12 (round 2 of the 2026-11-02 audit, 2026-11-05): wire 11, the destroyed list's falls (U27) and the unseen rounds (U31);
+// and the host handover a migration seals, which an older build would misread (round 2 U2, mp-resume): the extras'
+// reload channels at rest as null and the consumables' and auxiliary kit's at-rest fields absent (`MigrationEntityExtras`,
+// hostProtocol.ts: only what differs from a fresh host's state), and the resume state's keyframeBattleTimeMs.
+// Round 3 (mp-resume, 2026-11-05; still unreleased, so 12 carries it): the battle's identity (WelcomeMessage.battleId: 0 for
+// a match's first battle, kept by every resume through the sealed keyframe's battleId, new for a fallback restart; a client
+// judges a restart by it, round 3 A3), the resume hint's body bits (ResumeHintMessage.flags: the new host seats the hint's
+// contact and body mode as a row's, round 3 A14) and the held seat's HOLD notice (HoldMessage: a host that holds a HELLO
+// through its boot or its resume hold says how long, round 3 B1/X6).
+export const PROTOCOL_VERSION = 12; // wire 11 (destroyed falls, unseen rounds, the battle id, hint body bits, HOLD) and the round-2/3 migration handover
 
 export const TICK_HZ = 60;
 /**
@@ -98,6 +129,12 @@ export const MESSAGE_TYPE = Object.freeze({
   PONG: 19,
   CLOSE: 20,
   ERROR: 21,
+  /**
+   * Before the WELCOME (round 3 B1/X6, protocol 12): this host holds the seat's HELLO (its boot, its resume hold) and
+   * answers within `holdMs`. The seat's stall clock allows that long (MatchClient receiveHold); a host that announces
+   * nothing leaves the clock as it was.
+   */
+  HOLD: 22,
 } as const);
 
 /** Finite reasons for CLOSE, ERROR and LEAVE. */
@@ -151,7 +188,7 @@ export const HELLO_CAPABILITY = Object.freeze({
 export const RELOAD_KIND = Object.freeze({ READY: 0, SHELL: 1, INTRA_CLIP: 2, MAGAZINE: 3 } as const);
 export const RELOAD_KIND_NAMES = Object.freeze(['ready', 'shell', 'intraClip', 'magazine'] as const);
 
-/** Nine presentation flags, identical values to v1's SNAPSHOT_FLAGS. */
+/** Eleven presentation flags, identical values to v1's SNAPSHOT_FLAGS (src/sim/worldSnapshot.ts). */
 export const ENTITY_FLAGS = Object.freeze({
   DESTROYED: 1 << 0,
   BURNING: 1 << 1,
@@ -162,8 +199,21 @@ export const ENTITY_FLAGS = Object.freeze({
   AIRBORNE: 1 << 6,
   OVERTURNED: 1 << 7,
   AUTO_RIGHTING: 1 << 8,
+  /**
+   * The rigid phase (wire 10, audit M8): tumbling or righting (src/sim/hullBodyMode.ts). OVERTURNED and AUTO_RIGHTING are
+   * its sub-states; a plain tumble (a hull rolling on the ground after a stack kick or a landing on its side) is this bit
+   * alone, which the tank contacts read as a dynamic body (tankBodyContacts.ts isDynamicBodyContact).
+   */
+  TUMBLING: 1 << 9,
+  /**
+   * The hull is supported by another hull or elevated above its own static support (wire 10, audit M8): on a roof, held
+   * by the contact pass, or riding more than 0.5 m above its own static support, a plain jump included
+   * (tankBodyContacts.ts hullBearsOnBody, the dynamic-contact term). A client's copy of the hull has neither a contact
+   * pass nor a support cache, so its tank contacts read this bit instead (src/mp/match/hullBodyRow.ts).
+   */
+  STACKED: 1 << 10,
 } as const);
-export const ENTITY_FLAG_BITS = 9;
+export const ENTITY_FLAG_BITS = 11;
 
 /**
  * The authority holds a seat's last control this many ticks past its last fresh one, then releases drive and fire
@@ -182,7 +232,13 @@ export const CONTROL_FLAGS = Object.freeze({
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
-export const ACTION_BIT_MASK = 0x1fff; // thirteen action bits, including FPV launch/return
+/**
+ * Sixteen action bits, all taken (air-support-270): FPV launch/return, the supply drops, and Air Support's call-ins. Air
+ * Support reads the two supply-drop bits as its artillery and recon (sim/playerActions.ts AIR_STRIKE_BITS): only the
+ * AC-130's escort drops supplies and only Air Support calls strikes. A mode that wants either meaning beside the other
+ * fails sim/airSupport.selftest.mjs's exclusivity check first; it needs a wire change, not another reuse.
+ */
+export const ACTION_BIT_MASK = 0xffff;
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);
@@ -197,7 +253,18 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   HAS_VERDICT: 1 << 3,
   /** The packet carries destruction log entries (docs/DESTRUCTION.md §8.2). */
   HAS_DESTRUCTION: 1 << 4,
+  /** The packet names rounds this viewer was shown that left its view in flight (wire 11, SnapshotFrame.unseenShells). */
+  HAS_UNSEEN_SHELLS: 1 << 5,
+  /** The packet ends with a fall for each index of its destroyed set (wire 11, destroyedSet.ts writeDestroyedFalls). */
+  HAS_DESTROYED_FALLS: 1 << 6,
 } as const);
+/**
+ * How long a round that left a viewer's view in flight stays named in its snapshots (wire 11, round 2 U31): ten snapshots
+ * at 20 Hz, so a lost one does not lose the mark. Fixed, whatever becomes of the round, so the mark never tells its end;
+ * a mark ends sooner only when its round is in view again, or when a burst past MAX_SHELLS departures takes its place
+ * (server/match/unseenShellMarks.ts, round 3 A13).
+ */
+export const UNSEEN_SHELL_MARK_TICKS = TICK_HZ / 2;
 
 /** Entity row groups (a varint mask, low bits are the motion groups that change every interval). */
 export const ROW_GROUP = Object.freeze({
@@ -214,7 +281,7 @@ export const ROW_GROUP = Object.freeze({
   GUN_RELOAD: 1 << 10, // remaining, total u16 (2 ms units)
   MAGAZINE: 1 << 11,   // rounds u8, capacity u8
   AMMO: 1 << 12,       // 3 x varint
-  STATUS: 1 << 13,     // u16 status word (kinds, slot, mirror bit, flags)
+  STATUS: 1 << 13,     // varint status word (kinds, slot, mirror bit, flags; wire 10, was u16)
   ERA_ADD: 1 << 14,    // varint count + gap-coded plate indices added to the baseline set
   ERA_RESET: 1 << 15,  // varint count + gap-coded plate indices replacing the set
   /**
@@ -241,6 +308,8 @@ export const STATUS_GUN_RELOAD_KIND_SHIFT = 2;
 export const STATUS_SHELL_SLOT_SHIFT = 4;
 export const STATUS_GUN_RELOAD_MIRRORS = 1 << 6;
 export const STATUS_FLAGS_SHIFT = 7;
+/** The widest status word the decoder admits (wire 10: 7 + ENTITY_FLAG_BITS bits, a varint). */
+export const STATUS_WORD_MAX = (1 << (STATUS_FLAGS_SHIFT + ENTITY_FLAG_BITS)) - 1;
 
 /** Quantization: integers on the wire, SI units in the simulation. */
 export const POSITION_SCALE = 1000;          // mm

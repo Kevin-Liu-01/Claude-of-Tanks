@@ -57,7 +57,8 @@ assert.throws(
 
 const materialsSource = await readFile(new URL('./materials.ts', import.meta.url), 'utf8');
 assert.match(materialsSource,
-  /await run\(bakeSharedCanvasesSteps\(entry, quality\)\);[\s\S]{0,900}const acquiredDuringBake = TEX_CACHE\.get\(key\);[\s\S]{0,700}finalizeEntryResize\(acquiredDuringBake\);[\s\S]{0,200}return;/,
+  /await run\(bakeSharedCanvasesSteps\(entry, quality\)\);[\s\S]{0,900}const acquiredDuringBake = TEX_CACHE\.get\(key\);[\s\S]{0,700}await upgradeEntryChunked\(acquiredDuringBake, quality, run\);[\s\S]{0,200}return;/,
+  // (2026-11-02 audit R5) the live entry's promotion paints on private canvases under the paint owner (upgradeEntryChunked)
   'chunked pre-bake must preserve a live cache entry acquired during a yielded painter pass');
 assert.match(materialsSource,
   /const burnt = track\(setup\(new THREE\.MeshStandardMaterial\(\{[\s\S]{0,500}map: null,[\s\S]{0,500}emissiveMap: null,[\s\S]{0,500}const prepareBurnt = \(\) => \{[\s\S]{0,400}ensureBurntTextures\(shared, aniso\);/,

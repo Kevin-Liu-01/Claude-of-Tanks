@@ -12,8 +12,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { assertAutomationPath, readinessExpression, requestAutomationPath } from './game-readiness.mjs';
 import { resolveColdLoadingAsset, createColdImportHold, installColdImportCoverObserver,
   checkColdImportCover } from './solo-cold-import-cover.mjs';
 
@@ -86,8 +87,8 @@ const report = { protocol: 'solo-cold-import-cover-v1', pass: false,
   coverLimitMs: options.coverLimitMs, viewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
   observationCaveat: 'DOM geometry/opacity, a browser animation callback, and a screenshot while the real request is held establish visible cover evidence; rAF is not physical GPU/display acknowledgement.',
   errors: [], failures: [], cleanupErrors: [] };
-const lock = createCaptureLock();
-let lease = false, refresher = null, browser = null, page = null, cdp = null, hold = null;
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold); this probe keeps its own signal handlers
+let lease = false, browser = null, page = null, cdp = null, hold = null;
 let fetchEnabled = false, scenarioStartedAt = null, interrupted = null, pausedListener = null;
 const responseWork = [];
 let closePromise = null;
@@ -127,10 +128,9 @@ function readGraphics() {
 try {
   // Preserve the shared FIFO's existing queue boundary. No signal handler
   // swallows OS termination while acquire() is waiting on another owner.
-  await lock.acquire(15 * 60 * 1000); lease = true;
+  captureHold = await openCaptureHold({ label: 'solo-cold-import-cover-probe', timeoutMs: 15 * 60 * 1000, signals: [] }); lease = true;
   process.on('SIGINT', sigint); process.on('SIGTERM', sigterm);
   active();
-  refresher = setInterval(() => lock.refresh(), 30000); refresher.unref();
   scenarioStartedAt = performance.now();
   const { default: puppeteer } = await import('puppeteer');
   // Puppeteer owns the fresh temporary profile and its bounded launch timeout.
@@ -163,15 +163,15 @@ try {
   cdp.on('Fetch.requestPaused', pausedListener);
   await cdp.send('Fetch.enable', { patterns: [{ urlPattern: targetUrl, resourceType: 'Script', requestStage: 'Request' }] });
   fetchEnabled = true;
-  await page.evaluateOnNewDocument(() => {
-    // Same ordinary player fades as the maintained real-control probe.
-    Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
-  });
+  // Same ordinary player fades as the maintained real-control probe: the player's path (src/app/automationPath.ts).
+  await requestAutomationPath(page, 'player');
   await page.evaluateOnNewDocument(installColdImportCoverObserver);
   const response = await run('navigation', () => page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: remaining() }));
   if (!response?.ok() || hash(await response.buffer()) !== report.buildIndexHash) throw new Error('served_build_index_mismatch');
-  await run('garage-ready', () => page.waitForFunction(() => window.__GAME_READY === true
-    && window.__DEBUG?.game?.phase === 'garage' && window.__DEBUG?.pedestalOnStage, { timeout: remaining() }));
+  await run('garage-ready', () => page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,
+    { timeout: remaining() }));
+  // (2026-11-02 audit S3) the cover is judged on the player's path, or the probe fails here by name
+  report.automation = await run('automation-path', () => assertAutomationPath(page, 'player', { label: 'solo-cold-import-cover-probe' }));
   report.graphics = await page.evaluate(readGraphics);
   await run('solo-mode-picker', async () => {
     await page.click('.cot-battle-mode');
@@ -220,8 +220,7 @@ try {
   await closeBrowser();
   await bounded(() => Promise.allSettled(responseWork), 5000, 'response-owner-drain')
     .catch(error => report.cleanupErrors.push(String(error)));
-  clearInterval(refresher);
-  if (lease && (!browser || report.browserClosed)) { lock.release(); report.lockReleased = true; }
+  if (lease && (!browser || report.browserClosed)) { await captureHold?.release(); report.lockReleased = true; }
   process.removeListener('SIGINT', sigint); process.removeListener('SIGTERM', sigterm);
   try {
     report.sourceEnd = await sourceReceipt();

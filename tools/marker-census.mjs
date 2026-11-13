@@ -10,8 +10,9 @@
 // its points directly under the bar. Where a band seat slid the plate along its row (hud.ts targetPlateBand, the phones'
 // markers r20), its diamond stands off the centre by the offset the plate carries (--tgt-anch-dx), inside the plate.
 // Runs in the page: page.evaluate(markerProblems, staged), staged true where the state puts tanks of both sides in view
-// and one under the gun (the layout fixture's ?state=markers). The bars are decluttered (hud.ts updateHpBars): two that
-// would cross never both show.
+// and one under the gun (the layout fixture's ?state=markers). Hull bars may overlap each other (owner 2026-11-04: each
+// sits on its own tank, hud.ts updateHpBars; src/ui/hullBarMarkers.selftest.mjs holds that), so none is measured against
+// another here.
 
 /** The problems with the visible markers over tanks, as lines (empty when every one passes). */
 export function markerProblems(staged) {
@@ -81,9 +82,8 @@ export function markerProblems(staged) {
       }
     }
   }
-  // (staged: the plate over the enemy under the gun and a hull bar beside it; of the bars that would cross, an enemy's
-  // shows before an ally's and a nearer before a farther, so a phone's narrow view keeps fewer of them, and under 300 px
-  // tall the panels leave a bar no place)
+  // (staged: the plate over the enemy under the gun and a hull bar beside it; a phone's narrow view holds fewer of them
+  // clear of its panels, the plate and the ring, and under 300 px tall the panels leave a bar no place)
   if (staged) {
     if (!bars.length && innerHeight >= 300) problems.push('no hull bar in view');
     if (!plates.length) problems.push('no target plate over the enemy under the gun');

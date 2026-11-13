@@ -100,8 +100,10 @@ assert.match(post, /new TemporalAAPass\(camera, sceneDepth, size\.x, size\.y\)/,
 assert.match(post, /const jittered = taa\.enabled;\n\s*if \(jittered\) \{\n\s*const \[jx, jy\] = taaJitterOffset\(taaFrame\+\+\);\n\s*applyProjectionJitter\(camera\.projectionMatrix, jx, jy, sceneTarget\.width, sceneTarget\.height\);\n\s*camera\.projectionMatrixInverse\.copy\(camera\.projectionMatrix\)\.invert\(\);/, 'the scene render is jittered at the internal resolution');
 assert.match(post, /if \(jittered\) camera\.updateProjectionMatrix\(\);/, 'the unjittered projection is restored after every render');
 assert.ok(post.indexOf('const jittered = taa.enabled;') < post.indexOf('if (canonicalPrefix) sceneAA.beginMatrixFrame(renderer);'), 'the late fx matrix capture sees the jittered projection');
-assert.match(post, /taaEnabled = !!preset\.taa;\n\s*taa\.enabled = taaEnabled;\n\s*taa\.resetHistory\(\);/, 'preset changes gate the pass and reseed the history');
-assert.match(post, /dataset\.postAa = `\$\{taaEnabled \? 'taa\+' : ''\}smaa-high\+fsr1`/, 'the published AA state names temporal AA');
+// (2026-11-02 audit R4) the preset listener is the pass's one owner; a named hold (a Studio film) keeps it off
+assert.match(post, /taaEnabled = !!preset\.taa;\n\s*applyTemporalAA\(\);/, 'preset changes gate the pass');
+assert.match(post, /function applyTemporalAA\(\): void \{\s*const on = taaEnabled && !taaHeld;\s*taa\.enabled = on;\s*taa\.resetHistory\(\);/, 'and reseed the history');
+assert.match(post, /dataset\.postAa = `\$\{taaEnabled && !taaHeld \? 'taa\+' : ''\}smaa-high\+fsr1`/, 'the published AA state names temporal AA');
 const quality = readFileSync(new URL('./quality.ts', import.meta.url), 'utf8');
 // 2026-09-14: temporal AA is OFF by default on every desktop tier (owner: the 1049e4e frame "looks a
 // lot better … on low graphics too"; the shadow flashing it answered was the shadow-cull upload bug,

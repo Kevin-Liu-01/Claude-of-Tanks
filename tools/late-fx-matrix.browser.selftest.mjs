@@ -9,7 +9,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
@@ -97,15 +97,14 @@ async function captureCanvas(page, directory, report) {
   }
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'late-fx-matrix-and-scene-view-native-v2', ok: false, sourceHash: null,
   fixture: null, artifacts: {}, errors: [], browserClosed: false, serverClosed: false, lockReleased: false };
-let server, browser, page, refresh, outDir;
+let server, browser, page, outDir;
 try {
   outDir = outputDirectory(process.argv.slice(2));
   report.sourceHash = sourceHash();
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'late-fx-matrix.browser.selftest', timeoutMs: 45 * 60_000 });
   server = await createServer({ root: rootDir, logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     // Own the test document before public application route rewriting.
@@ -157,8 +156,7 @@ try {
     try { await bounded(server.close(), 10_000, 'owned Vite close'); report.serverClosed = true; }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh);
-  try { lock.release(); report.lockReleased = true; }
+  try { await hold?.release(); report.lockReleased = true; }
   catch (error) { report.errors.push(String(error)); }
 }
 report.ok = report.errors.length === 0 && report.fixture?.ok === true && report.fixture?.disposed === true

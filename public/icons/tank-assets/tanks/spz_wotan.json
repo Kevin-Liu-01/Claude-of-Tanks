@@ -1015,15 +1015,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29552,
-      "sha256": "488d170985e72188839ca1617cfd94330320357ecb7a2230873e561253d8c004",
+      "bytes": 29586,
+      "sha256": "bc5d78a03ddf255515df26317e734a1d3850766267743c9a3684de90ee3c41b4",
       "thumbnail": {
         "file": "thumbs/spz_wotan_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11090,
-        "sha256": "db00bcef78e09ce9b85d0b7cc228965ba10f4797a9760d3b7ced1ae3ce7456fb"
+        "bytes": 11086,
+        "sha256": "715e3c30460dd823d25a0b3c0a60d785db530f7806b1be5c0c1d02ef4e735c8f",
+        "frame": [26,106,230,250]
       }
     },
     "top": {
@@ -1087,8 +1088,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34710,
-      "sha256": "af1876f4cc8425d7030788c7b2a60aa178dc7a4758145f12a2d4f7ba24151a02"
+      "bytes": 32447,
+      "sha256": "71945ab60698561947fb6997cd69440bcb594a5266a4c25c1c3eb5d79d568639"
     },
     "technicalLabels": {
       "file": "spz_wotan_technical.json",

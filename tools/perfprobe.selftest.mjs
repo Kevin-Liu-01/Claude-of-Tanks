@@ -303,7 +303,7 @@ assert.match(source, /if \(cameraInputReport && !cameraInputReport\.coveragePass
   'unsupported or incomplete input evidence cannot silently produce a successful opt-in exit');
 const cleanup = source.slice(source.lastIndexOf('} finally {'));
 assert.ok(cleanup.indexOf('cameraAbort?.abort()') < cleanup.indexOf('browser?.close()'));
-assert.ok(cleanup.indexOf('if (cameraJob) await cameraJob') < cleanup.indexOf('releaseLock()'),
+assert.ok(cleanup.indexOf('if (cameraJob) await cameraJob') < cleanup.indexOf('await hold.release()'),
   'input acquisition is aborted and joined before the shared browser lease is released');
 assert.match(source, /cadence: nativeCadence \? 'native-requested' : 'unlocked-throughputput'/);
 assert.match(source, /environment: \{ start: perf\.environmentStart, end: perf\.environmentEnd \}/);

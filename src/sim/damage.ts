@@ -22,6 +22,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
+import { intraClipCycleS, type GunAutoloader } from './fireCycleFloor.ts';
 import type {
   BallisticShellSpec,
   ShellEntity,
@@ -39,6 +40,7 @@ import type {
   TankArmorPose,
 } from './armor.ts';
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.ts';
+import { plateMaterial, type PlateMaterial, type TrackStrike } from './plateMaterial.ts';
 import type { ModuleId } from './moduleCatalog.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import {
@@ -86,6 +88,10 @@ export interface DamageShell extends ShellEntity<DamageShellSpec> {
   /** A roof station's round (sim/auxiliarySystems.ts): the authority lays it on where the target will be in its own
    * time, so lag compensation never rewinds it (server/match/lagCompensation.ts). */
   roofStation?: boolean;
+  /** (270) a rotary gun's round between two full ones (fireCycleFloor.ts createRotaryShotThinning): simulated whole, but
+   * no tracer draws it and no viewer's shell rows carry it (its hit and impact are events), so a rotary gun's rounds in
+   * flight cost the floor's density on the wire and in the tracers. */
+  thinned?: boolean;
   /** Survives screen-piercing across fixed steps; scoped to each target. */
   weaponModuleRolls?: Map<string, Set<ModuleId>>;
 }
@@ -101,11 +107,8 @@ export interface DamageGunSpec {
   primaryGuided?: boolean;
   launcherMuzzles?: readonly LauncherMuzzle[];
   shells?: DamageShellSpec[];
-  autoloader?: {
-    magazineSize: number;
-    fullReloadS?: number;
-    intraClipS?: number;
-  } | null;
+  /** a rotary gun's (`rotary`) floor is one tick, below every other gun's (fireCycleFloor.ts) */
+  autoloader?: GunAutoloader | null;
 }
 
 export interface DamageTankSpec {
@@ -213,6 +216,8 @@ export interface DamageTarget {
   spec: DamageTankSpec & { armor: DamageArmorModel };
   state: DamageTankState;
   combat: CombatState;
+  /** False while a mode holds the hull out of play (a rescued AC-130 escort, a benched wave hostile); absent is active. */
+  modeActive?: boolean;
 }
 
 export type PlateHit = ArmorPlateIntersection;
@@ -262,6 +267,13 @@ export interface HitEvent {
   impactLocalPos: Vec3Tuple | null;
   impactLocalNormal: Vec3Tuple | null;
   impactLocalDir: Vec3Tuple | null;
+  /** (impact-materials-269, presentation only) what the round struck: the decisive plate's material (sim/plateMaterial.ts),
+   *  'wreck' on a destroyed hull. Absent when no plate decided (a module or crew box). Carried on the wire as free event
+   *  JSON (an inline key), so an older peer reads the same payload. */
+  material?: PlateMaterial;
+  /** (impact-materials-269, presentation only) the outer screen the round passed on its way to that plate: a skirt, a
+   *  track, a cage or a rack it went through. */
+  screenMaterial?: PlateMaterial;
 }
 
 interface ResolutionContext {
@@ -666,6 +678,15 @@ function refreshModuleState(m: CombatModuleState): ModuleStateName {
 }
 
 /**
+ * Set a module's hit points (floored at 0) and derive its stage through refreshModuleState: the module law's one writer
+ * for code outside this file (sim/impact.ts crashes and lethal rams; 2026-11-02 audit M6 — impact.ts re-implemented it).
+ */
+export function setModuleHp(m: CombatModuleState, hp: number): ModuleStateName {
+  m.hp = Math.max(0, hp);
+  return refreshModuleState(m);
+}
+
+/**
  * Shared per-intersection module damage: damage-chance roll, moduleDmg roll,
  * then an engine-compartment fire roll. RNG order per module is fixed:
  * chance → moduleDmg → fire.
@@ -897,6 +918,27 @@ function stampHullLocalShotInfo(
   event.localDir = [_siDir.x, _siDir.y, _siDir.z];
 }
 
+/**
+ * Where a round struck a track, for plateMaterial's road wheels: the strike's height and lateral normal in the hull frame,
+ * with the running gear's lowest and highest points (its traced prism, else the legacy track plate). Presentation only.
+ */
+function trackStrikeOf(hit: PlateHit, armor: DamageArmorModel): TrackStrike | null {
+  const link = hit.plate.moduleLink;
+  if ((link !== 'trackL' && link !== 'trackR') || hit.impactFrame !== 'hull' || !isFiniteNumber(hit.impactLocalY)) return null;
+  // a prism's outline is its side view [z, y]; a plate's corners are [x, y, z]: the height is the second either way
+  let outline: readonly (readonly number[])[] = hit.plate.verts;
+  for (const shape of armor.trackShapes ?? []) {
+    if (shape.plate === hit.plate) { outline = shape.poly; break; }
+  }
+  let yMin = Infinity, yMax = -Infinity;
+  for (const point of outline) {
+    if (point[1] < yMin) yMin = point[1];
+    if (point[1] > yMax) yMax = point[1];
+  }
+  return Number.isFinite(yMin) && Number.isFinite(yMax)
+    ? { y: hit.impactLocalY, normalX: hit.impactLocalNormalX ?? 0, yMin, yMax } : null;
+}
+
 function stampShotInfo(
   event: HitEvent,
   hit: ArmorHit,
@@ -905,6 +947,7 @@ function stampShotInfo(
   vel: Vector3,
 ): void {
   if (hit.kind === 'plate') {
+    event.material = plateMaterial(hit.plate, trackStrikeOf(hit, target.spec.armor));
     event.zone = hit.plate.name;
     event.plateKind = hit.plate.kind;
     event.physicalMm = hit.plate.physicalMm;
@@ -915,6 +958,7 @@ function stampShotInfo(
     event.nominalMm = b.kindClass === 'KE' ? hit.plate.keMm : hit.plate.ceMm;
   } else if (hit.kind === 'module') {
     event.zone = hit.barrel ? 'gun_barrel' : hit.module;
+    if (hit.barrel) event.material = 'armour';
   }
   stampArticulationShotInfo(event, hit);
   stampHullLocalShotInfo(event, target, vel);
@@ -1134,7 +1178,13 @@ function resolveScreenPlate(
   if (plate.moduleLink) {
     mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, plate.moduleLink, plate.weaponHousing));
   }
-  if (resolution.pen > 0 || resolution.hullPen) return TRACE_CONTINUE;
+  if (resolution.pen > 0 || resolution.hullPen) {
+    // presentation: the first screen the round went through on its way in (an exit screen past the hull is not one)
+    if (!resolution.hullPen && !resolution.decided && resolution.event.screenMaterial === undefined) {
+      resolution.event.screenMaterial = plateMaterial(plate, trackStrikeOf(hit, resolution.target.spec.armor));
+    }
+    return TRACE_CONTINUE;
+  }
   stampImpact(resolution.event, hit, effMm, penBefore);
   return TRACE_BREAK;
 }
@@ -1394,6 +1444,7 @@ export function resolvePlateStrike(shell: DamageShell, hit: PlateHit, targetId: 
   const pen = shell.remainingPenMm;
   event.zone = hit.plate.name;
   event.plateKind = hit.plate.kind;
+  event.material = plateMaterial(hit.plate);
   event.physicalMm = hit.plate.physicalMm;
   event.nominalMm = behavior.kindClass === 'KE' ? hit.plate.keMm : hit.plate.ceMm;
   if (behavior.kindClass !== 'HE' && wouldRicochet(spec, hit.impactAngleDeg, hit.plate)) {
@@ -1687,6 +1738,7 @@ function walkWreckTrace(
 function resolveWreckHit(shell: DamageShell, hits: ArmorHit[]): HitEvent {
   const behavior = behaviorOf(shell.spec.type);
   const event = baseEvent(shell, null);
+  event.material = 'wreck';
   if (behavior.kindClass === 'HE') return resolveWreckHeHit(shell, hits, event);
   const remainingPen = walkWreckTrace(shell, hits, event, behavior);
   if (remainingPen === null) return event;
@@ -2138,6 +2190,8 @@ export function resolveHeBurst(
   for (const tank of tanks) {
     if (direct && tank === directTarget) continue;
     if (tank.combat.destroyed) continue;
+    // a hull out of play takes no splash, as the direct trace skips it (improve-271 plan 011)
+    if (tank.modeActive === false) continue;
     const event = resolveHeSplashTarget(shell, burstPoint, tank, radiusM, dmgRoll, rng);
     if (event) events.push(event);
   }
@@ -2464,7 +2518,7 @@ export function startPostShotReload(combatState: CombatState, spec: DamageTankSp
     beginMagazineReload(combatState, spec);
     return;
   }
-  const totalS = Math.max(0.05, Number(autoloader.intraClipS) || spec.gun.reloadS);
+  const totalS = intraClipCycleS(autoloader, spec.gun.reloadS);
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
   combatState.reload.kind = 'intraClip';

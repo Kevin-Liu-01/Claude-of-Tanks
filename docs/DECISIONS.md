@@ -68,8 +68,16 @@ belongs behind the covered loading transition.
 
 Visible work yields within a small frame budget. Work under an opaque loader
 uses cooperative task yields and guarantees periodic real paints. Slow progress
-is not treated as failure; failed imports and graphics-context loss remain
-retryable without a refresh loop. Public first-visit performance is measured in
+is not treated as failure. A lazy chunk's failure follows one policy (audit R6,
+2026-11-02, `src/app/lazyChunk.ts`). Terminal for the document: an opener's chunk
+(a surface the player opens from a trigger), a failed stylesheet and a removed
+(404) chunk; an opener's trigger keeps an error state and its next press reloads
+the page once online (the release-264 ruling; `src/ui/components/loadFailure.ts`
+owns that state), and the page never reloads by itself. Every other failure is
+asked again by the next caller that needs the chunk, with the INFRA-P11 backoff
+(at once after a first failure, then 2, 4, 8 ... s up to a minute), never while
+the browser is offline. A failure after the code arrived (construction, data,
+graphics-context loss) stays retryable in the page, without a refresh loop. Public first-visit performance is measured in
 multiple cache-disabled sessions under constrained network and CPU conditions.
 Optional workers are accelerators, never lifecycle dependencies. Each worker
 task has a bounded deadline and an equivalent local fallback, so a browser that
@@ -97,8 +105,9 @@ Their circular lifecycle links are assembled only by
 presentation activation, and transport closure cannot be rewired independently
 inside `main.ts`.
 The common Bots preload list must contain no multiplayer composition, battle-client or
-network-presentation work. A failed first acquisition is retryable and must not
-poison later room attempts in the same page session.
+network-presentation work. A failed first acquisition must not poison later room
+attempts in the same page session: it is asked again under the lazy-chunk policy
+above (backoff, never offline; terminal only for an opener, a stylesheet or a 404).
 The demand-loaded battle HUD and damage panel are one phase-owned application
 runtime. Every acquisition reapplies the current directional-hit setting and
 queues the active minimap; replay veiling changes both surfaces atomically.
@@ -127,9 +136,10 @@ demand-loaded owner; `main.ts` does not make ordinary players parse its
 parallel acquisition policy.
 Solo loading, exact deployment warming, and Garage return/rematch are likewise
 accessed through stable typed facades backed by `app/lazyRuntimeOwner.ts`.
-Concurrent first callers must coalesce, a rejected acquisition must remain
-retryable, and their concrete option graphs must not be constructed during
-ordinary Garage boot.
+Concurrent first callers must coalesce, a rejected acquisition is asked again
+under the lazy-chunk policy above (`lazyRuntimeOwner.ts` is one `lazyChunk.ts`
+chunk), and their concrete option graphs must not be constructed during ordinary
+Garage boot.
 
 ## World and Garage lifecycle
 

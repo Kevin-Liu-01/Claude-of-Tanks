@@ -4,23 +4,21 @@ import { createNationMenu } from './nationSelect.ts';
 import { pickerText } from './pickerText.ts';
 import { t } from './i18n.ts';
 import { ENEMY_NATION_OPTIONS, readTeamArrangement, readTeamNations, writeTeamArrangement, writeTeamNations } from '../game/teamArrangement.ts';
-import { isWaveMode, matchRulesetFor, rulesetLines, RULESET_SCORE_TARGETS, TEAM_ARRANGEMENT_LIMITS } from '../sim/matchRuleset.ts';
+import { arrangementChoices, isWaveMode, matchRulesetFor, rulesetLines, RULESET_SCORE_TARGETS, TEAM_ARRANGEMENT_LIMITS, type ArrangementChoices } from '../sim/matchRuleset.ts';
 import type { CountryId } from '../sim/countries.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import { createTeamNationsControl } from './teamNationsControl.ts';
 
 type Field = 'allies' | 'enemies' | 'waveSize' | 'waveStep' | 'scoreTarget' | 'respawnS' | 'holdS' | 'enemyNation' | 'juggernautRole' | 'movingTargets';
 const FIELDS: readonly Field[] = ['allies', 'enemies', 'waveSize', 'waveStep', 'scoreTarget', 'respawnS', 'holdS', 'enemyNation', 'juggernautRole', 'movingTargets'];
-/** The settings of two to five values sit on the kit's segmented control; the counts, the winning score (up to six) and
- *  the enemy nation take the kit's picker menu. */
-const SEGMENTED: Partial<Record<Field, readonly string[]>> = {
-  respawnS: ['2', '3', '6', '10', '15'], waveStep: ['0', '1', '2', '3'], holdS: ['10', '20', '30', '45', '60'], juggernautRole: ['boss', 'hunter'],
-  // the range's targets: still on their marks, or shuttling along their hull axes (the ruleset's patrol)
-  movingTargets: ['off', 'on'],
-};
-const SCORE_TARGETS: Partial<Record<GameModeId, readonly number[]>> = {
-  capture_the_flag: [1, 3, 5, 7, 9], turbo_ball: [3, 5, 7, 10, 15], drone: [5, 10, 20, 30, 50],
-};
+/** The settings of two to six values sit on the kit's segmented control; the counts, the winning score and the enemy
+ *  nation take the kit's picker menu. Every value a mode offers is the ruleset's (sim/matchRuleset.ts arrangementChoices,
+ *  improve-271 plan 027: Air Support's 8 s respawn had no option among a list written here). */
+const SEGMENTED_FIELDS: ReadonlySet<Field> = new Set(['respawnS', 'waveStep', 'holdS', 'juggernautRole', 'movingTargets']);
+/** The fields whose offered values (and whether the mode takes them at all) are the ruleset's. */
+const CHOICE_FIELDS: ReadonlySet<Field> = new Set(['scoreTarget', 'respawnS', 'waveSize', 'waveStep', 'holdS', 'juggernautRole']);
+/** The range's targets: still on their marks, or shuttling along their hull axes (the ruleset's patrol). */
+const MOVING_TARGETS = ['off', 'on'] as const;
 
 interface ArrangeField {
   readonly root: HTMLElement;
@@ -67,13 +65,23 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
     captions.set(name, caption);
     root.append(caption);
     controls.append(root);
-    const fixed = SEGMENTED[name];
-    if (fixed) {
-      root.insertAdjacentHTML('beforeend', segmented({ label: label(name), className: 'cot-arrange-seg', value: fixed[0],
-        options: fixed.map((value) => ({ value, label: optionLabel(name, value) })) }));
+    if (SEGMENTED_FIELDS.has(name)) {
+      root.insertAdjacentHTML('beforeend', segmented({ label: label(name), className: 'cot-arrange-seg', value: '', options: [] }));
       const group = root.querySelector<HTMLElement>('.cot-arrange-seg')!;
       wireRoving(group, (value) => commit(name, value));
-      return [name, { root, show: (_values, value) => setRoving(group, value), close: () => {} }];
+      // the options are rebuilt only when the mode's set changes (the roving wiring reads the group's items live)
+      let offered = '';
+      return [name, { root, close: () => {}, show: (values, value) => {
+        const signature = values.map(([id]) => id).join('|');
+        if (signature !== offered) {
+          offered = signature;
+          const built = document.createElement('template');
+          built.innerHTML = segmented({ label: label(name), className: 'cot-arrange-seg', value,
+            options: values.map(([id, text]) => ({ value: id, label: text })) });
+          group.replaceChildren(...built.content.firstElementChild!.childNodes);
+        }
+        setRoving(group, value);
+      } }];
     }
     const menuHost = document.createElement('div');
     root.append(menuHost);
@@ -101,11 +109,11 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
     const range = rules.provingGround != null;
     teams.render();
     teams.root.hidden = range;
+    // a field the mode does not take is absent from its choices (sim/matchRuleset.ts arrangementChoices)
+    const choices = arrangementChoices(mode);
     for (const [name, field] of fields) {
       field.root.hidden = range ? name !== 'movingTargets' : name === 'movingTargets' ? true
-        : name === 'juggernautRole' ? mode !== 'juggernaut' : name === 'waveSize' || name === 'waveStep' ? mode !== 'endless_horde'
-        : name === 'holdS' ? mode !== 'frontline_assault'
-        : name === 'scoreTarget' || name === 'respawnS' ? !RULESET_SCORE_TARGETS[mode]
+        : CHOICE_FIELDS.has(name) ? !choices[name as keyof ArrangementChoices]
         // MONO's enemy country (AUTO first); RANDOM seats any vehicle, so the field is hidden and ignored
         : name === 'enemyNation' ? random
         : !isWaveMode(mode) && !customSides();
@@ -114,14 +122,14 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
       if (name === 'allies' || name === 'enemies') {
         captions.get(name)!.textContent = isWaveMode(mode) ? label(name) : t(name === 'allies' ? 'garage.battle.sidesAllies' : 'garage.battle.sidesEnemies');
       }
-      const values: Array<[string, string]> = SEGMENTED[name] ? SEGMENTED[name].map((value) => [value, optionLabel(name, value)])
-        : name === 'scoreTarget' ? (SCORE_TARGETS[mode] ?? [250, 500, 750, 1000, 1500, 2000]).map((value) => [String(value), String(value)])
+      const offered = CHOICE_FIELDS.has(name) ? choices[name as keyof ArrangementChoices] : null;
+      const values: Array<[string, string]> = offered ? offered.map((value): [string, string] => [String(value), optionLabel(name, String(value))])
+        : name === 'movingTargets' ? MOVING_TARGETS.map((value): [string, string] => [value, optionLabel(name, value)])
         // the player's own country is never the enemy under MONO
         : name === 'enemyNation' ? [['', t('teams.auto')], ...ENEMY_NATION_OPTIONS.filter(({ id }) => id !== ownCountry)
           .map(({ id }): [string, string] => [id, t(`campaign.enemy.${id}`)])]
         : (() => {
-          const [lo, hi] = name === 'waveSize' ? TEAM_ARRANGEMENT_LIMITS.waveSize
-            : TEAM_ARRANGEMENT_LIMITS[name as 'allies' | 'enemies'][mode];
+          const [lo, hi] = TEAM_ARRANGEMENT_LIMITS[name as 'allies' | 'enemies'][mode];
           return Array.from({ length: hi - lo + 1 }, (_, i): [string, string] => [String(lo + i), String(lo + i)]);
         })();
       const value = name === 'movingTargets' ? (rules.provingGround?.moving ? 'on' : 'off')

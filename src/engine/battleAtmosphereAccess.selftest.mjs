@@ -90,7 +90,12 @@ function harness(load) {
     await assert.rejects(h.access.prepare(5, 'winter'), /weather chunk unavailable/);
     assert.equal(h.access.current, null); assert.equal(h.applied.length, 0);
     assert.equal(h.optionsReads, 0);
-    await h.access.prepare(5, 'winter');
+    // (round 4 F2 review) a Studio prepare (no entry) never waits on the runtime's re-ask: it applies nothing, and its
+    // landing is true once the runtime lands (the Studio then lights again); a battle's entry waits and applies
+    const studio = await h.access.prepare(5, 'winter');
+    assert.equal(h.applied.length, 0, 'the Studio prepare applies nothing while the re-ask is in flight');
+    assert.equal(await studio.landing, true, 'failed load remains retryable: the re-ask lands');
+    await h.access.prepare(5, 'winter', undefined, { entry: true });
     assert.equal(h.loads, 2); assert.equal(h.creates, 1);
     assert.equal(h.access.current.weather.condition, 'clear', 'failed load remains retryable');
     assert.equal(h.access.current.weather.timeOfDay, 'night');
@@ -173,7 +178,8 @@ const loadNetworkWorld = mainCallback('loadWorld', {
 });
 const worldProgress = () => {};
 assert.equal(loadNetworkWorld('winter', worldProgress), 'prepared-world');
-assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atmosphere: 'covered-battle' }]],
+// (2026-11-02 audit F2) the room's variant is passed whole: null for a standard room, never a solo leftover
+assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atmosphere: 'covered-battle', terrainVariant: null }]],
   'actual network world adapter explicitly defers intermediate IBL until the authority-selected atmosphere');
 {
   const effects = [], activeWorld = {}, scene = new THREE.Scene();
@@ -232,19 +238,27 @@ assert.deepEqual(calls, [['trim', false]], 'authored no-weather entry still untr
 
 calls.length = 0;
 let currentMap = 'winter';
+// (round 4 F2 review) the map's air is an entry's too: asked at once whatever the backoff a Studio drag raised
+const ambiencePrepares = [];
+const entryAmbience = { prepare: (...args) => { ambiencePrepares.push(args); } };
 const prepareNetwork = mainCallback('atmosphere', {
   battleAtmosphere: weather, frontline, currentWorld: () => ({ mapId: currentMap }),
   game: { mapId: 'desert' },
-  mapAmbience: { prepare() {} }, battleAmbienceTime: () => 'day',
+  mapAmbience: entryAmbience, battleAmbienceTime: () => 'day',
 });
 await prepareNetwork({ meta: { weatherSeed: 0 } });
 currentMap = 'monsoon';
 await prepareNetwork({ meta: { weatherSeed: 1337 } });
 await prepareNetwork({ meta: {} });
-assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
-  'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot');
+// (round 4 F2) a battle entry asks the atmosphere's chunks at once whatever the lazy-chunk backoff (`{ entry: true }`)
+const ENTRY = { entry: true };
+assert.deepEqual(calls, [[0, 'winter', undefined, ENTRY], [1337, 'monsoon', undefined, ENTRY], [undefined, 'monsoon', undefined, ENTRY]],
+  'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot; it is an entry');
 assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
   'the frontline owner is prepared with the same seed and acquired map, after the weather owner');
+assert.deepEqual(ambiencePrepares, [[0, 'winter', 'day', undefined, ENTRY], [1337, 'monsoon', 'day', undefined, ENTRY],
+  [undefined, 'monsoon', 'day', undefined, ENTRY]], 'the network warm\'s map air is an entry');
+ambiencePrepares.length = 0;
 
 calls.length = 0;
 frontlinePrepares.length = 0;
@@ -252,14 +266,16 @@ const preferences = { times: ['sunset'] };
 const prepareSolo = mainCallback('prepareAtmosphere', {
   battleAtmosphere: weather, frontline, battlePreferences: preferences,
   game: { battleCount: 3, mapId: 'winter' },
-  mapAmbience: { prepare() {} }, battleAmbienceTime: () => 'day',
+  mapAmbience: entryAmbience, battleAmbienceTime: () => 'day',
 });
 await prepareSolo();
 preferences.times = ['day', 'sunset', 'night'];
 await prepareSolo();
-assert.deepEqual(calls, [[3, 'winter', ['sunset']], [3, 'winter', ['day', 'sunset', 'night']]],
-  'actual solo launch reads the current preference for each battle; network keeps its shared seed');
+assert.deepEqual(calls, [[3, 'winter', ['sunset'], ENTRY], [3, 'winter', ['day', 'sunset', 'night'], ENTRY]],
+  'actual solo launch reads the current preference for each battle; network keeps its shared seed; both are entries');
 assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
+assert.deepEqual(ambiencePrepares, [[3, 'winter', 'day', undefined, ENTRY], [3, 'winter', 'day', undefined, ENTRY]],
+  'the solo entry\'s map air is an entry');
 
 // Actual Garage activation precedes its setGarageSpots call on return. A late
 // atmosphere reset must not overwrite the newly selected Garage sky/fog.

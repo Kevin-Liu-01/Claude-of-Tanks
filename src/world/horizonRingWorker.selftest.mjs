@@ -43,7 +43,7 @@ const { finishHorizonRingGeometry, horizonRingFinished } = await import('./horiz
 const { buildHorizonRingWire } = await import('./horizonRingWorker.ts');
 const { unpackHorizonRing, packHorizonRing } = await import('./horizonRingWire.ts');
 const { startHorizonRingBuild, horizonRingKey, forgetHorizonRing } = await import('./horizonRingPrefetch.ts');
-const { horizonRing, horizonRingSupplyFor, supplyHorizonRing, withdrawHorizonRing } = await import('./horizonRingHook.ts');
+const { horizonRing } = await import('./horizonRingHook.ts');
 const { worldBuildConfig } = await import('./worldBuildConfig.ts');
 
 const drain = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
@@ -311,47 +311,25 @@ assert.match(terrainSource, /ringPipeline = ringSource\.take\(\);\s*if \(ringPip
 assert.doesNotMatch(terrainSource, /ringSource\.settled\(\)/, 'nothing waits for the worker');
 assert.match(terrainSource, /export function buildTerrainMeshes\([\s\S]{0,700}userData\.finishHorizonRing[\s\S]{0,300}while \(!steps\.next\(\)\.done\)/,
   'a synchronous terrain build that met a supply finishes the deferred ring itself');
-assert.ok(terrainSource.includes('const ringSource = horizonRingSupplyFor(cfg);'), 'terrain.ts takes the ring through the hook');
+// (2026-11-02 audit R1) the build's own supply, from its stream options: a process-wide slot keyed by map and variant
+// handed one build's ring to another build of the same map
+assert.ok(terrainSource.includes('const ringSource = streamOpts?.horizonRingSupply ?? null;'), 'terrain.ts takes the ring its world build handed it');
 assert.doesNotMatch(terrainSource, /^import (?!type)[^;]*from '\.\/(maps\/horizon|horizonRingPrefetch|horizonRingWorker|horizonRingWire)\.ts'/m,
   'terrain.ts imports neither the visual horizon nor the prefetch: the authority\'s height field stays clear of both');
 const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(mapSource, /startHorizonRingBuild\(\{\s*mapId, terrainVariant: terrainVariant \?\? null, fieldSeed: seed, ringSeed: 1337/);
-assert.match(mapSource, /supplyHorizonRing\(ringSource\);/);
-assert.match(mapSource, /withdrawHorizonRing\(ringSource\);\s*ringSource\.dispose\(\);/);
+assert.match(mapSource, /horizonRingSupply: ringSource,\s*hinterlandSupply: hinterlandSource,/, 'map.ts hands its terrain build its own supplies');
+assert.match(mapSource, /ringSource\?\.dispose\(\);/, 'and disposes the ring source when the build ends');
+assert.doesNotMatch(readFileSync(new URL('./horizonRingHook.ts', import.meta.url), 'utf8'), /const supplied = new Map/,
+  'no process-wide supply slot is left in the hook');
 {
   const props = mapSource.indexOf('const props = await createPropsAsync(');
   const finish = mapSource.indexOf('await finishHorizonRingAsync(terrain, ');
   const assemble = mapSource.indexOf('const world = await assembleWorldPaced(engineCtx, config, heightField, terrain, vegetation, props,');
   assert.ok(props > 0 && finish > props && assemble > finish, 'map.ts finishes the ring after the props, before the world is assembled');
 }
-// the hook: the installed pipeline is the module's; a supply serves its own map and variant only, until withdrawn
+// the hook: the installed pipeline is the module's
 assert.equal(horizonRing().horizonRingGeometrySteps, horizonRingGeometrySteps, 'maps/horizon.ts installs its pipeline');
-{
-  const supply = startHorizonRingBuild({ mapId: 'verdant', terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
-  supplyHorizonRing(supply);
-  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply);
-  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null, 'another map\'s build gets no supply');
-  assert.equal(horizonRingSupplyFor(worldBuildConfig('verdant', 'assault-trenches')), null, 'nor does the trench variant');
-  assert.equal(horizonRingSupplyFor(null), null);
-  const later = startHorizonRingBuild({ mapId: 'coastal', terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
-  supplyHorizonRing(later);
-  // (battle-spikes-253) two builds at once (the Garage's background build, a deploy's battlefield): each keeps its own
-  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply, 'a later build of another map leaves the earlier its supply');
-  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), later);
-  const trenches = startHorizonRingBuild({ mapId: 'verdant', terrainVariant: 'assault-trenches', fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
-  supplyHorizonRing(trenches);
-  assert.equal(horizonRingSupplyFor(worldBuildConfig('verdant', 'assault-trenches')), trenches, 'the trench variant keeps its own');
-  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply);
-  withdrawHorizonRing(trenches);
-  withdrawHorizonRing(supply);
-  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), null);
-  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), later, 'an ended build withdraws only its own supply');
-  withdrawHorizonRing(later);
-  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null);
-  supplyHorizonRing(supply);
-  supplyHorizonRing(null);
-  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), null, 'withdrawn when the world build ends');
-}
 
 console.log(`horizonRingWorker.selftest: ${checked} maps' ring pipelines (${vertices} vertices) identical worker against inline, the trench `
   + 'variant on both tiers, the ring from a precomputed pipeline identical on 3 maps, the prefetch\'s kept ring, fallbacks and disposal, '

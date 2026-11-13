@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { PRESETS, getDeviceTier, getPreset, onPresetChange, resolvePresetName } from './quality.ts';
@@ -53,6 +54,7 @@ import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
 import { limitPointLightFalloff } from './renderer.ts';
 import { shapeLampPointLights } from './lampLightShape.ts';
+import { attachMuzzleNearField } from './muzzleNearField.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
 interface AtmosphereLightInputs {
@@ -524,14 +526,14 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // into every cascade — the same maps (a proxy only drops the instances outside its cascade's frustum).
 type CasterProxyModule = typeof import('./shadowCasterProxies.ts');
 let casterProxies: CasterProxyModule | null = null;
-let casterProxiesLoad: Promise<CasterProxyModule | null> | null = null;
+// (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was null for the session; the next
+// rig asks again (until then every instance casts into every cascade, as before the module arrives)
+const casterProxiesLoad = createLazyChunk((): Promise<CasterProxyModule> => import('./shadowCasterProxies.ts'));
 function loadCasterProxies(lights: readonly THREE.DirectionalLight[]): void {
-  casterProxiesLoad ??= import('./shadowCasterProxies.ts').then((module) => module, () => null);
-  void casterProxiesLoad.then((module) => {
-    if (!module) return;
+  void casterProxiesLoad.load().then((module) => {
     module.registerCasterCascades(lights); // before the first owner meets a hook: an unregistered cascade builds none
     casterProxies = module;
-  });
+  }, () => { /* every instance casts into every cascade */ });
 }
 /** map.ts freezes the battle world's root after its build: the static shadow layer (shadowStaticCache.ts). */
 const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.matrixTraversalFrozen === true;
@@ -563,12 +565,16 @@ const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.m
 // entry: the first instanced or batched caster's shadow draw asks for it (the world, the hulls' gear batches and the
 // garage stand's instanced casters draw from the first frames), and until it lands three derives
 // its depth programs as it always did (the same maps either way; the kinds only spare the re-derivations).
+// (2026-11-02 audit R6, round 2 U35) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was three's own
+// derivation for the session; now the rig's update lifts the latch once a frame while the chunk is failed, and the next
+// caster drawn asks (at once after one failure, then past the backoff; the same handled promise until then)
 let settleDepthKind: typeof import('./shadowDepthKinds.ts').settleShadowDepthKind | null = null;
 let depthKindsRequested = false;
+const depthKindsLoad = createLazyChunk((): Promise<void> =>
+  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; }));
 function requestDepthKinds(): void {
   depthKindsRequested = true;
-  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
-    () => { /* three's own derivation for the session */ });
+  void depthKindsLoad.load(); // until it lands, and while it fails, three derives its depth programs as it always did
 }
 /**
  * 2026-10-14 (SKY shadows r2a, P1b): a DoubleSide or alpha-tested caster's front faces are in the map, so its depth draw
@@ -1035,12 +1041,16 @@ export function createLighting(
   // gain 1.5-3 ms), so Ultra keeps re-centring every cascade until a dirty-rect reuse makes the copies small
   let poseHoldTier = preset !== PRESETS.ultra;
   let staticShadowCacheRequested = mobileTier;
+  // (2026-11-02 audit R6, round 2 U35) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was the ordinary
+  // render for the session; now update lifts the latch once a frame while the chunk is failed, and the next frame that
+  // sees the frozen world root asks (at once after one failure, then past the backoff; the same handled promise until then)
+  const staticShadowCacheLoad = createLazyChunk((): Promise<void> => import('./shadowStaticCache.ts').then((module) => {
+    staticShadowCache = module.createShadowStaticCache();
+    setShadowCascadeCache(staticShadowCache);
+  }));
   const requestStaticShadowCache = (): void => {
     staticShadowCacheRequested = true;
-    import('./shadowStaticCache.ts').then((module) => {
-      staticShadowCache = module.createShadowStaticCache();
-      setShadowCascadeCache(staticShadowCache);
-    }, () => { /* the ordinary render for the session */ });
+    void staticShadowCacheLoad.load(); // the ordinary render until it lands, and while it fails
   };
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
@@ -1239,6 +1249,11 @@ export function createLighting(
   // once before dormancy; otherwise strict WebGL2 drivers bind a color
   // fallback to sampler2DShadow and reject every affected scene draw.
   let farCascadeDormant = false;
+  // (2026-11-02 audit R3/R4) the presentation is enclosed (the Garage's sealed bay): the authored rig instead of the
+  // grounded light model, scene.userData.lightEnclosed and the enclosure listeners read this, never the far-cascade sleep.
+  // The far cascades sleep because the bay is enclosed (setEnclosedPresentation sets both), so a change to the sleep's
+  // perf policy can no longer change the lighting.
+  let enclosedPresentation = false;
   // A settled enclosed presentation can reuse its completed shadow maps
   // byte-for-byte. This is stronger than far-cascade dormancy: no caster,
   // camera, or light moved, so even the near pair would only redraw the same
@@ -1495,6 +1510,10 @@ export function createLighting(
     const forcedFrame = force || forceFrames > 0;
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
+    // (round 2 U35) a failed caster-kind or static-cache chunk: its latch lifts once a frame, and its next need asks
+    // again under the policy's backoff (the kept failure until then, which allocates nothing)
+    if (depthKindsLoad.state === 'failed') depthKindsRequested = false;
+    if (staticShadowCacheLoad.state === 'failed') staticShadowCacheRequested = false;
     casterProxies?.updateCasterProxies(csm.lights, scene, false);
     nearVehiclePolicy.update();
     evaluateCasterProfiles(false);
@@ -1517,10 +1536,23 @@ export function createLighting(
   // when a battle leaves the Garage with a full-dome bake installed
   const enclosureListeners = new Set<(enclosed: boolean) => void>();
   let publishedEnclosed: boolean | null = null;
+  function setEnclosedPresentation(on: boolean): void {
+    const next = !!on;
+    const enclosureChanged = enclosedPresentation !== next;
+    enclosedPresentation = next;
+    // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
+    if (enclosureChanged && lastSunPreset) applyRig(lastSunPreset);
+    // the perf policy: the enclosure hides the 100-700 m bands, so their redraws sleep inside it
+    const sleep = next;
+    if (farCascadeDormant === sleep) return;
+    farCascadeDormant = sleep;
+    if (sleep) applyFarCascadeDormancy();
+    else forceAllCascades();
+  }
   function applyRig(opts: SunPreset): void {
     const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
     const irr = atmo?.irradianceRaw;
-    const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
+    const physical = physicalRig && !enclosedPresentation && !!atmo?.active && !!atmo.params && !!irr;
     const authoredSun = authoredSunOf(opts);
     // (2026-10-05: a deck with gaps casts its cells through the cloud shade map wherever the volumetric layer draws)
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
@@ -1528,11 +1560,11 @@ export function createLighting(
     rigModel = model;
     applyDeckPenumbra(model); // (the Whiteout round: a closed deck's diffuse shadows)
     scene.userData.lightModel = model;
-    scene.userData.lightEnclosed = farCascadeDormant;
+    scene.userData.lightEnclosed = enclosedPresentation;
     scene.environmentIntensity = model.envIntensity;
-    if (publishedEnclosed !== farCascadeDormant) {
-      publishedEnclosed = farCascadeDormant;
-      for (const listener of enclosureListeners) listener(farCascadeDormant);
+    if (publishedEnclosed !== enclosedPresentation) {
+      publishedEnclosed = enclosedPresentation;
+      for (const listener of enclosureListeners) listener(enclosedPresentation);
     }
     const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
     const colorHex = opts.sunColorHex ?? SUN_COLOR;
@@ -1663,13 +1695,15 @@ export function createLighting(
      * exactly the active graphics preset.
      */
     setFarCascadeDormant(on: boolean): void {
-      const next = !!on;
-      if (farCascadeDormant === next) return;
-      farCascadeDormant = next;
-      // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
-      if (lastSunPreset) applyRig(lastSunPreset);
-      if (next) applyFarCascadeDormancy();
-      else forceAllCascades();
+      setEnclosedPresentation(on);
+    },
+
+    /**
+     * (2026-11-02 audit R3/R4) enter or leave the enclosed presentation (the Garage): the light model keeps the authored
+     * rig inside, and the far cascades sleep there (setFarCascadeDormant is this call's older name).
+     */
+    setEnclosedPresentation(on: boolean): void {
+      setEnclosedPresentation(on);
     },
 
     /**
@@ -1791,6 +1825,8 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          // (271) a gun's own muzzle light reaches its gun through a near field (muzzleNearField.ts)
+          attachMuzzleNearField(shader);
           // 2026-10-08 (the world-ibl lane, with the fleet lane): the material's own envMapIntensity, which three
           // overwrites with the scene's on every draw, back on its share of the sky light (materialEnvIntensity.ts)
           bindMaterialEnvIntensity(shader, mat);
@@ -1969,6 +2005,7 @@ export function createLighting(
         scheduledMask: lastScheduledMask,
         fitChangedMask: lastFitChangedMask,
         farCascadeDormancyRequested: farCascadeDormant,
+        enclosedPresentation,
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         staticCache: staticShadowCache?.telemetry() ?? null,

@@ -964,7 +964,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 13316,
-        "sha256": "d94e2dc0975cd1ce82463c2224e532efffb06d1175cee3c536bde642e01aa640"
+        "sha256": "d94e2dc0975cd1ce82463c2224e532efffb06d1175cee3c536bde642e01aa640",
+        "frame": [22,65,230,250]
       }
     },
     "top": {
@@ -980,8 +981,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13726,
-      "sha256": "77fe543e79b5063d782c05aa6f75081d64a1653acc276479c89182712ba32033"
+      "bytes": 13732,
+      "sha256": "e68ee27100432abf42bf163bdde1727c2412de179515e2e3aa53cdfefdc72ad1"
     },
     "topSilhouette": {
       "file": "gepard_1a2_top_silhouette.png",
@@ -1004,32 +1005,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29200,
-      "sha256": "ae1522627c30fe68297db8ef54cec658c92c5e88f41a136d11d4ea96b995b6b6"
+      "bytes": 29172,
+      "sha256": "da0fbce17334bb8ef7febe1186c836da7a9bcde6532b987acf54c0f80a49674f"
     },
     "modulesSide": {
       "file": "gepard_1a2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30584,
-      "sha256": "148e78b380bef507115a13e4d1775412f7eeb682ed0ef19cf7d1696d3674177a"
+      "bytes": 30564,
+      "sha256": "0d5b9b55706e658196637b4cfa8d12ef38644d1acd93c0621e4fdaad1648ffea"
     },
     "crewSide": {
       "file": "gepard_1a2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28150,
-      "sha256": "dc8879c920ff4e85e4b7a1ff2a84f78ee16d617b4192d3c9da4db3056cd47ca1"
+      "bytes": 28132,
+      "sha256": "54eb67f90c9ec9c0e7eb68793822ed02036c2eb4e5aee3c1df3203154ba2426f"
     },
     "markings": {
       "file": "gepard_1a2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33768,
-      "sha256": "a863aa34cd63b44a0580c04fee1b4b450ee469aa832056abe920f6ae9ce38b22"
+      "bytes": 30703,
+      "sha256": "6b4c912141e9084f223ad2cdce48e1cd9a12d8f728b031065677b3b5ccb326a7"
     },
     "technicalLabels": {
       "file": "gepard_1a2_technical.json",

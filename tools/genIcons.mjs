@@ -48,6 +48,9 @@ let selectedViews = metadataOnly ? [] : opt('views')
   ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
+// (270) --portrait-control: no file or row is written; each angle portrait reports the azimuth the card ladder takes and
+// the one it takes when whips set the frame, and the run fails if any build without whips moves (Main 2026-11-06)
+const portraitControl = args.includes('--portrait-control');
 const authoringViews = new Set(['front']);
 mkdirSync(outDir, { recursive: true });
 
@@ -139,7 +142,7 @@ const url = `${boundOrigin(server)}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
 const pageErrors = [];
-const generated = { tanks: {}, files: {} };
+const generated = { tanks: {}, files: {}, frames: {}, control: {} };
 let failed = false;
 try {
   // One browser per chunk of ids (tools/browser-id-chunks.mjs): the whole fleet in one browser passed the 6 GB renderer
@@ -180,15 +183,21 @@ try {
         { timeout: 120000, polling: 400 },
       );
 
-      const part = await page.evaluate((ids, views, auditOnly) => {
+      const part = await page.evaluate((ids, views, auditOnly, control) => {
+        window.__PORTRAIT_CONTROL = control;
         if (!auditOnly) return window.__GEN(ids, views);
         return { ...window.__AUDIT(ids), files: {} };
-      }, chunk, selectedViews, metadataOnly);
+      }, chunk, selectedViews, metadataOnly, portraitControl);
       Object.assign(generated.tanks, part.tanks);
       // 268: an angle portrait framed off the standard azimuth says so (the page derives it from the card, no rows)
-      for (const [id, { sideRatio, standard }] of Object.entries(part.portraits ?? {}))
-        console.log(`[tank-assets] ${id}: portrait azimuth ${sideRatio} (at the standard the card measured ${standard.join('x')} px, outside the fleet envelope)`);
+      for (const [id, { sideRatio, standard, frame, control }] of Object.entries(part.portraits ?? {})) {
+        if (sideRatio !== undefined) console.log(`[tank-assets] ${id}: portrait azimuth ${sideRatio} (at the standard the card measured ${standard.join('x')} px, outside the fleet envelope)`);
+        // 270: a whip-equipped card's whip-free frame, recorded beside its thumbnail for tank-assets-check
+        if (frame) generated.frames[id] = frame;
+        if (control) generated.control[id] = control;
+      }
       for (const [name, dataUrl] of Object.entries(part.files)) {
+        if (portraitControl) { if (name.endsWith('.error')) { failed = true; console.error(`[tank-assets] ${name}: ${dataUrl}`); } continue; }
         generated.files[name] = true;
         if (name.endsWith('.error')) {
           failed = true;
@@ -211,7 +220,15 @@ try {
     }
   });
 
-  if (!failed) {
+  if (portraitControl) {
+    const rows = Object.entries(generated.control);
+    const moved = rows.filter(([, c]) => c.azimuth !== c.ruleless);
+    const strays = moved.filter(([, c]) => !c.whips);
+    console.log(`[tank-assets] portrait control: ${rows.length} cards, ${rows.filter(([, c]) => c.whips).length} with whips, `
+      + `${moved.length} moved: ${moved.map(([id, c]) => `${id} ${c.ruleless ?? 'none'}->${c.azimuth}`).join(', ') || 'none'}`);
+    if (strays.length) { failed = true; console.error(`[tank-assets] portrait control: builds without whips moved: ${strays.map(([id]) => id).join(', ')}`); }
+    if (rows.length < (onlyTanks.length || DEVELOPMENT_TANK_IDS.length)) { failed = true; console.error('[tank-assets] portrait control: cards missing'); }
+  } else if (!failed) {
     const previous = startingManifest;
     const tanks = onlyTanks.length && previous ? { ...previous.tanks } : {};
     for (const [id, meta] of Object.entries(generated.tanks)) {
@@ -224,6 +241,7 @@ try {
       for (const [view, file] of Object.entries(meta.requiredFiles)) {
         if (selectedViews.includes(view)) assets[view] = assetRecord(file, view);
       }
+      if (selectedViews.includes('angle') && assets.angle?.thumbnail && generated.frames[id]) assets.angle.thumbnail.frame = [...generated.frames[id]];
       if (Object.hasOwn(generated.files, technicalLabelsFile(id))) assets.technicalLabels = technicalLabelsRecord(technicalLabelsFile(id));
       // A portrait-only refresh must not rewrite armor, modules, geometry, or
       // presentation receipts. Those belong to the anatomy pipeline and may

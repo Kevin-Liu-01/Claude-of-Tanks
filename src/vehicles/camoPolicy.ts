@@ -149,16 +149,43 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * Engineering Technologies 2012 three-tone desert came with that vehicle and appends last. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10',
   'paint_bmpt_terminator'] as const);
+/** Release 269, the plain-coat pass (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the three
+ * Magachs each in a field coat over the IDF's Sinai grey (they wore the Merkava 2D's plain service grey), and the X1
+ * Pioneiro's olive drab under brown and black bands. The plain paints the Sho't Kal, the Challenger 1 Mk 3, the Leopard
+ * 1A5 DK-1 and both M41s led keep their ids with patterned recipes. Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_PLAIN_269 = Object.freeze(['paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'] as const);
+/** Release 269: the South Africa line's coats (southAfricaSpecs.ts): the SADF's nutria brown under the bush units' field
+ * disruption, a coat of its own on each of the Semel, the Olifant Mk 1 and the Mk 1A (owner 2026-11-03: no plain coats),
+ * and the 1990s SANDF three-tone of the Mk 1B and the TTD; then the Australia line's disruptive three-tone (australiaSpecs.ts):
+ * tan under olive and black, on the Leopard AS1, the M113AS4, both Abrams and the Redback; then the M113A1s' RAAC olive
+ * drab under field disruption, a coat of its own on each. One block for both lines (both heads named it AFTER_268), the
+ * South African ids first in merge order. Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1',
+  'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
+/** Release 270: the Tunguska-M's 2008 Moscow parade three-tone and the Pantsir-S1's tri-colour blotch
+ * (gm352AirDefenseSpecs.ts; owner 2026-11-05: "tunguska and pantsir need camos"). Appended after 269's saved catalog
+ * indices (269 is live, so its order holds). */
+const AUTHORED_PAINT_IDS_AFTER_269 = Object.freeze(['paint_tunguska_m', 'paint_pantsir_s1'] as const);
+/** Release 272: the Object 292's Kubinka three-tone (russia152Specs.ts; owner 2026-11-11: "give the molot and obj 292
+ * actual camos"): a pale sand base under grey-green and near-black bands, the surviving tank's coat before its plain green
+ * repaint. Appended after 271's saved catalog indices (271 is live, so its order holds). */
+const AUTHORED_PAINT_IDS_AFTER_271 = Object.freeze(['paint_object292'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
+  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_271[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_269 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_271 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -200,6 +227,10 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_264,
   ...AUTHORED_PAINT_IDS_AFTER_265,
   ...AUTHORED_PAINT_IDS_AFTER_266,
+  ...AUTHORED_PAINT_IDS_PLAIN_269,
+  ...AUTHORED_PAINT_IDS_AFTER_268,
+  ...AUTHORED_PAINT_IDS_AFTER_269,
+  ...AUTHORED_PAINT_IDS_AFTER_271,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -511,8 +542,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'], camoScale: 0.44 }),
   preset('sig_mbt70', 'mbt70', signatureTags('de', 'woodland', 'organic'),
     { scheme: 'fleck', base: '#4b5142', weather: '#5b604f', patches: ['#2c332a', '#6a5640', '#1d211f'], camoScale: 0.42 }),
-  preset('sig_kf51b', 'kf51_u', signatureTags('de', 'woodland', 'organic'),
-    { scheme: 'nato', base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'], camoScale: 0.34, patchK: 1.28 }),
+  // 2026-11-03 (268 r16; the owner: "give the kf51 u a better more pertinent camo"): the livery the KF51-U wore at
+  // Eurosatory 2024 (Commons KF-51U_01..13), Rheinmetall's block pattern of square cells: warm light grey with mid-grey
+  // fields, lime-green and charcoal blocks, the tones measured off the photographed plates (light 38 %, mid 29 %, lime
+  // 19 %, charcoal 12 %). Cells of 2 m / 8 (digitalCellK 10) read as its 0.25-0.75 m blocks, not a fine pixel field.
+  preset('sig_kf51b', 'kf51_u', signatureTags('de', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#77746d', weather: '#75726b', patches: ['#5b5a55', '#899a40', '#252729'], camoScale: 0.4, digitalCellK: 10 }),
   preset('sig_bmpt_t90', 'bmpt_t90', signatureTags('ru', 'woodland', 'digital'),
     { scheme: 'digital', base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'], camoScale: 0.5 }),
   preset('sig_t90', 't90_1992', signatureTags('ru', 'woodland', 'stripes'),
@@ -852,6 +887,8 @@ export function signatureCamoPatternId(specId: string): CamoPatternId | null {
 const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
   c1_ariete: 'service_ariete_c1',
   c2_ariete: 'sig_ariete_c2',
+  // 269: the US M113A3 in the US Army's MERDC four-colour woodland (its CARC three-tone sits a shade from the Leclerc's)
+  m113a3: 'merdc',
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48a5_patton: 'summer',
@@ -930,14 +967,55 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_tk_x: 'paint_type10',
   // release 267: the original BMPT Terminator in the Engineering Technologies 2012 vehicle's three-tone desert
   bmpt_terminator: 'paint_bmpt_terminator',
-  // release 268: the twin-cannon air defence in existing coats (no new paint; saved catalog indices hold): the Russian pair
-  // in Russia's plain service green (the photographs' solid coat), the PGZ-95 in the PLA green-and-sand organic coat (the
-  // Type 59's Signature recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature,
-  // the ZTZ-20's stock; the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5.
-  tunguska_m: 'national_ru',
-  pantsir_s1: 'national_ru',
+  // release 268: the twin-cannon air defence: the PGZ-95 in the PLA green-and-sand organic coat (the Type 59's Signature
+  // recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature, the ZTZ-20's stock;
+  // the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5. Release 270 (owner
+  // 2026-11-05: "tunguska and pantsir need camos"): the Russian pair leave the plain service green, each in a coat of its
+  // own: the Tunguska-M the 2008 Moscow parade's grey-buff and black bands, the Pantsir-S1 a tri-colour blotch.
+  tunguska_m: 'paint_tunguska_m',
+  pantsir_s1: 'paint_pantsir_s1',
   pgz95: 'sig_type59',
   pgz09: 'sig_ztz100_x',
+  // release 269, the plain-coat pass (owner 2026-11-03): the Magachs off the Merkava 2D's plain service grey, each in a
+  // field coat of its own, and the X1 Pioneiro in its banded olive drab (it painted its spec's coat as Factory)
+  magach3: 'paint_magach3',
+  magach6b: 'paint_magach6b',
+  magach7c: 'paint_magach7c',
+  x1_pioneiro: 'paint_x1_pioneiro',
+  // release 269: the South Africa line: the SADF's nutria brown under field disruption on the 20-pdr and 105 mm Centurions
+  // of 1974-85 (the Semel's bands, the Mk 1's bush three-tone, the Mk 1A's dry-season disruptive), the 1990s SANDF
+  // three-tone on the Mk 1B and the TTD
+  semel: 'paint_semel',
+  olifant_mk1: 'paint_olifant_mk1',
+  olifant_mk1a: 'paint_olifant_mk1a',
+  olifant_mk1b: 'paint_olifant_mk1b',
+  ttd: 'paint_olifant_mk1b',
+  // release 270: the second air-defence round in existing coats (no new paint; saved catalog indices hold): both Marksmen
+  // in Finland's three-tone's closest coat, the CV90 Mk IV's Swedish splinter woodland (paint_cv90_mkiv: green, black and a
+  // grey-green, as the photographs); the K30 Biho in the ROK woodland of the K2 (sig_k2, the photographs' four-colour
+  // coat); the PZA Loara in the PT-91 Twardy's Polish green, sand and black (sig_pt91_twardy). The Type 87 wears Japan's
+  // Factory coat with the Type 74 and the Type 90 (the JGSDF two-tone), the Lvkv 9040 Sweden's (the M90 splinter) with the
+  // CV90.
+  marksman_t55: 'paint_cv90_mkiv',
+  itpsv_leopard2: 'paint_cv90_mkiv',
+  k30_biho: 'sig_k2',
+  pza_loara: 'sig_pt91_twardy',
+  // release 269: the Australia line: the RAAC's olive drab under field disruption on the M113A1 FSV (bands) and MRV
+  // (three-tone), the disruptive three-tone from the Leopard AS1 on
+  m113a1_fsv: 'paint_m113a1_fsv',
+  m113a1_mrv: 'paint_m113a1_mrv',
+  leopard_as1: 'paint_leopard_as1',
+  m113as4: 'paint_leopard_as1',
+  m1a1_aim_sa_aus: 'paint_leopard_as1',
+  m1a2_sepv3_aus: 'paint_leopard_as1',
+  redback: 'paint_leopard_as1',
+  // the 152 mm line's Soviet prototypes (release 272, owner 2026-11-11: "give the molot and obj 292 actual camos"; they
+  // wore the national Russian plain): the Object 292 in its own paint, the three-tone the surviving tank wore at Kubinka
+  // (the Patriot Park photograph: pale sand under grey-green and near-black bands); the Molot, whose one photograph shows
+  // no scheme, in the Soviet and Russian Army's three-colour deforming coat of its era (late 1980s to the 1990s: green
+  // under khaki and black blotches), the Pantsir-S1's paint (no new paint)
+  object292: 'paint_object292',
+  object477_molot: 'paint_pantsir_s1',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

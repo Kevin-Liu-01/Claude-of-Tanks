@@ -9,6 +9,7 @@ import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
 import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk } from '../vehicles/turretRingWell.ts';
+import { WRECK_STATE_TABLE } from './wreckStates.ts';
 
 // Explicit 5a13dadb0 pipeline control: paint every expanded corner, then run
 // the unchanged generic all-attribute compactor. The original source was
@@ -17,7 +18,7 @@ import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim,
 // the production painter, and exact-word compaction. Older nonstaged M1A1 and
 // Type10 stream goldens remain independently asserted by wrecks.selftest.mjs.
 const source = readFileSync(new URL('./wrecks.ts', import.meta.url), 'utf8');
-const boundary = source.indexOf('export function wreckPool');
+const boundary = source.indexOf('export function wreckRemnantPaint');
 assert.ok(boundary > 0);
 const preparation = '    const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);';
 const fallback = '    if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);';
@@ -38,11 +39,11 @@ function pipeline(control, counts) {
   return new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
     'compactWreckGeometrySteps', 'createTank', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
     'planWreckCrumple', 'crumpleWreckGeometry', 'refineForCrumple',
-    'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk',
+    'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk', 'WRECK_STATE_TABLE',
     stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
     THREE, mergeGeometries, compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
     createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry, refineForCrumple,
-    buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk);
+    buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk, WRECK_STATE_TABLE);
 }
 
 function arrayIdentity(array) {
@@ -83,7 +84,7 @@ function originalControl(fixture) {
 }
 
 assert.equal(typeof globalThis.document, 'undefined', 'wreck work does not acquire Canvas or texture painters');
-const fixtures = [{ specId: 't90am', seed: 2526, pop: false }, { specId: 'xk2_black_panther', seed: 2002, pop: true }];
+const fixtures = [{ specId: 't90am', seed: 2526, state: 'burnt_out' }, { specId: 'xk2_black_panther', seed: 2002, state: 'turret_blown_off' }];
 for (const fixture of fixtures) await ensureTankBuilder(fixture.specId);
 const controls = fixtures.map(originalControl), receipts = [];
 const jobs = fixtures.map(fixture => {

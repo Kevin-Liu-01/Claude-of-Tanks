@@ -14,6 +14,12 @@ import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
 import { GM352_AIR_DEFENSE_PROFILES } from './profiles/gm352AirDefense.ts';
 import { GEPARD_PROFILES } from './profiles/gepard.ts';
 import { CHINESE_AIR_DEFENSE_PROFILES } from './profiles/chineseAirDefense.ts';
+import { TYPE87_PROFILES } from './profiles/type87.ts';
+import { MARKSMAN_PROFILES } from './profiles/marksman.ts';
+import { LVKV9040_PROFILES } from './profiles/lvkv9040.ts';
+import { K30_BIHO_PROFILES } from './profiles/k30Biho.ts';
+import { LOARA_PROFILES } from './profiles/loara.ts';
+import { M163_PROFILES } from './profiles/m163.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -65,6 +71,7 @@ import { MERKAVA_X_PROFILES } from './profiles/merkavaX.ts';
 import { K2_X_PROFILES } from './profiles/k2X.ts';
 import { KF51_X_PROFILES } from './profiles/kf51X.ts';
 import { T14_X_PROFILES } from './profiles/t14X.ts';
+import { RUSSIA_152_PROFILES } from './profiles/russia152.ts';
 import { KURGANETS_X_PROFILES } from './profiles/kurganetsX.ts';
 import { LEOPARD_A6_X_PROFILES } from './profiles/leopardA6X.ts';
 import { LEOPARD_A6_UA_PROFILES } from './profiles/leopardA6Ua.ts';
@@ -82,7 +89,10 @@ import { LEOPARD2A3B4_PROFILES } from './profiles/leopard2a3B4.ts';
 import { LEOPARD2A4_FAMILY_PROFILES } from './profiles/leopard2A4Family.ts';
 import { DENMARK_PROFILES } from './profiles/denmark.ts';
 import { BRAZIL_PROFILES } from './profiles/brazil.ts';
+import { SOUTH_AFRICA_PROFILES } from './profiles/southAfrica.ts';
+import { AUSTRALIA_PROFILES } from './profiles/australia.ts';
 import { M41_PROFILES } from './profiles/m41.ts';
+import { T95_PROFILES } from './profiles/t95.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -169,7 +179,10 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LEOPARD2A4_FAMILY_PROFILES,
   ...DENMARK_PROFILES,
   ...BRAZIL_PROFILES,
+  ...SOUTH_AFRICA_PROFILES,
+  ...AUSTRALIA_PROFILES,
   ...M41_PROFILES,
+  ...T95_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,
@@ -223,11 +236,20 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...K2_X_PROFILES,
   ...KF51_X_PROFILES,
   ...T14_X_PROFILES,
+  ...RUSSIA_152_PROFILES,
   ...KURGANETS_X_PROFILES,
   // 268: the twin-cannon air-defence round
   ...GM352_AIR_DEFENSE_PROFILES,
   ...GEPARD_PROFILES,
   ...CHINESE_AIR_DEFENSE_PROFILES,
+  // 269: the second air-defence round
+  ...TYPE87_PROFILES,
+  ...MARKSMAN_PROFILES,
+  ...LVKV9040_PROFILES,
+  ...K30_BIHO_PROFILES,
+  ...LOARA_PROFILES,
+  // 269: the M163 VADS
+  ...M163_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {

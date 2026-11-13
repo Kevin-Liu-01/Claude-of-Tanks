@@ -53,7 +53,10 @@ const nested = [...['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle',
   'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop',
   'createCropTexture', 'cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry',
   'tryPlaceCropPlot', 'cropAttributeNormal'].map(cropDeclaration), ...['refitDestructibleColliders', 'animateBrokenRecord', 'breakRecord',
-  'restoreDestructibleRecord'].map(declaration)].join('\n');
+  'restoreDestructibleRecord'].map(declaration),
+  // (2026-11-02 audit M9) a record's cover flags move through the one crush transition (collision.ts setCrushedRecords,
+  // already in the module's scope) by crushRecordsOf, beside the cosmetic-refusal latch it warns through once
+  `const ${variable('_noRecords')};`, `let ${variable('warnedCosmeticCover')};`, declaration('crushRecordsOf')].join('\n');
 const finalizer = cropDeclaration('finalizeCropFields').replace('function finalizeCropFields(', 'function realFinalize(');
 const sources = new Map();
 const hook = registerHooks({ load(name, context, next) {
@@ -245,7 +248,11 @@ function lifecycle(f, before, moved) {
       const { propIdx: _reference, ...referenceOb } = reference.ob;
       assert.deepEqual(actualOb, referenceOb, 'actual final geometry contact agrees with relocated pose');
       const saved = matrix(f, r).elements.map(Math.fround), live = new THREE.Matrix4();
-      assert.equal(f.breakRecord(f.records.indexOf(r), 1, 0), true);
+      // (2026-11-02 audit M9) a cosmetic break never opens cover: the record breaks as the authority's crush (the
+      // crushObstacle seam's flag), and a presentation break of the same record is refused
+      assert.equal(f.breakRecord(f.records.indexOf(r), 1, 0), false);
+      assert.ok(!r.ob.crushed && !r.state, 'the refused cosmetic break leaves the record standing');
+      assert.equal(f.breakRecord(f.records.indexOf(r), 1, 0, 0, 'shell', false, true), true);
       assert.equal(r.ob.crushed, true);
       pool.imB.getMatrixAt(pool.nBroken - 1, live); assert.deepEqual(live.elements, saved, 'actual broken transform');
       f.restoreDestructibleRecord(r); pool.imI.getMatrixAt(r.slot, live);

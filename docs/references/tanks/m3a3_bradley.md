@@ -318,3 +318,120 @@ the trim vane, inside the deck crown (`flush-glacis-carrier-and-era-r2`); the ol
 spare run on the nose shelf (the ERA field covers the shared course's glacis station). Spec fields: hw 1.64 → 1.70,
 trkTop 0.95 → 1.16, roofY 1.90 → 2.06, turretPivot as above, barrelLenM 2.30 → 1.99. `fleetLauncherMuzzles.ts` m3a3
 row x −0.91 → 0.91.
+
+## 269 — the A3 turret redesigned (owner 2026-11-05: "redesign the m3a3 bradley turret")
+
+The 268 turret was the scout shell squashed to 0.80 of its height: its roof stood 0.59 m over the ring and its M242
+0.20 m under that roof, on a compact M3 shield; the blind A/B read the turret low and the 25 mm long. Both A3 sources and
+the A2 source agree on a taller turret, so the A3 now stands on the family's measured A2 shell
+(`profiles/bradleyA3Turret.ts` on `modern3.ts` `addBradleyTurretShell`, the turret structure the A3 kept):
+
+| Measure | owner's low-poly M3A3 | Ukrainian M2A3 | built (A2 shell + A3 kit) |
+|---|---|---|---|
+| Roof over the deck | 0.69-0.76 m | 0.70 m | 0.77 m |
+| Gun line under the roof | — | 0.31 m | 0.305 m |
+| IBAS head (turret-local) | x 0.35..0.91, z 0.08..0.57, 0.26 m tall | x 0.29..0.77, z 0.03..0.47, 0.27 m | x 0.24..0.78, z 0.06..0.52, 0.34 m |
+| CIV head | x −1.30..−0.71, z −1.40..−0.89, top 0.40 m over the roof | x −1.11..−0.72, z −0.94..−0.72, top 0.70 m | x −0.99..−0.57, z −1.13..−0.81, top 0.63 m |
+| Gunner's hatch centre | 0.48, −0.31 | 0.45, −0.34 | 0.46, −0.34 |
+| Bustle aft of the rear wall | — | 0.50 m | rack 0.46 m deep, 1.30 m wide |
+
+Registration: each source scaled by its 6.55 m hull, front −Z and x mirrored into the game frame (+Z forward, +X the
+vehicle's left), its turret-local frame taken about the shared ring (x −0.14, z −0.40). The low-poly print loads assembled
+under three's GLTFLoader in Node; its loose parts are spare TOW rounds and a launch tube modelled beside the hull. The
+photographs in the research packet place the CIV on the right rear (behind the commander's hatch: rear three-quarter,
+right side) and the IBAS with its two doors open at the left front (front-left three-quarter). The BRAT tiles hold the
+spec's gameplay turret ERA zones (kept since §5.286); the 2004 Iraq head-on photograph shows boxes seated on the cheek
+plates beside the gun, where the build seats them.
+
+Built: the shared shell, M242 (A2 trunnion, gun line 2.525 m, muzzle at world z 2.37), stowed TOW launcher, right-wall
+bin, smoke banks and commander's station; the A3's IBAS head (window under a brow, doors open), the CIV on a welded
+plinth at the right rear corner (turntable, window body, armoured head whose brow overhangs the window), the gunner's
+hatch beside the commander's, a deeper bustle rack, two whips. BRAT tiles: 2 x 2 on each cheek plate
+(`m3a3_turret_cheek_R/L`), a column of two aft of the launcher on the left wall and two columns of two aft of the bin on
+the right (`m3a3_turret_side_R/L`). The hull is unchanged (the M6's hull-gear preservation rows hold).
+
+Spec (m3a3_bradley only; m6_linebacker's spec JSON is byte-identical): gunPivot [−0.06, 0.392, 0.78] → [−0.06, 0.465,
+0.60]; barrelLenM 1.99 → 2.17 (same muzzle); tw 0.85 → 0.98, tFrontZ 1.00 → 1.15, tRearZ −1.10 → −1.20, tH 0.90 → 0.77;
+gunPitchByYawDeg re-measured (tools/gun-depression-sweep.mjs: no mount conflict, full −9 to 158, the aft stop −7.4 to
+−7.8 from 161, was −5 from 159 with front dips to −7.9); `fleetLauncherMuzzles.ts` takes the shared Bradley row. The 268
+scout shell (`bradleyScoutTurretShell.ts`) and the compact M3 gun mount (`m3BradleyGunMount.ts` and its receipt) left
+with that turret.
+
+## 269, second order — the special M3A3 (owner 2026-11-05)
+
+Owner (verbatim): "make the m3a3 special by having a munch of extra optics tech and a launcher aonn its other sdie and a
+bunch of extra boxes". All on `profiles/bradleyA3Turret.ts`, turret-local:
+
+- A second twin TOW launcher on the right wall: the family's launcher (`modern3.ts` `addBradleyTowLauncher(P, -1)`, a new
+  `side` argument defaulting to the left) mirrored about the shell's centre plane (`BRADLEY_TOW_MIRROR_X`, x −0.07), so it
+  stands 7 cm off the right wall as the left stands off the left; it replaces the right-wall stowage bin. It fires:
+  `fleetLauncherMuzzles.ts` lists four mouths (the left pair, then (−1.245, 0.68/0.38, 0.60)), TOW `launcherTubes`
+  2 → 4; the ten rounds carried are unchanged.
+- Optics: a long-range scout sensor head (LRAS3 pattern) on a post and yoke over its electronics box behind the gunner's
+  hatch (head x −0.08..0.38, z −1.06..−0.78, 0.33..0.55 m over the roof): thermal, TV and laser-rangefinder windows of
+  armoured glass in dark bezels under 5 cm lens hoods, looking over the IBAS head. Four situational-awareness camera pods,
+  each with a laser-warning receiver dome on its crown: on the cheeks' outer faces (z 0.72, 0.64 m, facing 60° out from
+  ahead) and on posts at the rear roof corners (facing aft and out), the rear pair cabled along the roof into the
+  sensor's box. The IBAS head, the viewer and their views are untouched.
+- Boxes: a welded bustle box across the rear wall (x −0.66..0.52, 0.27..0.55 m, 0.47 m deep) with lid seams and latches,
+  armoured electronics boxes with doors at its ends over the chine, the open rack on its lid (empty: the decor layer
+  carries the crew's loose kit), and the electronics box under the sensor.
+- BRAT: the right wall's tiles move aft of the new launcher, a column of two as on the left.
+
+The traversing turret keeps 47 mm over the hull at its closest, as the M2A2's shell does (`.qa-dev` overhang probe:
+every turret vertex beyond 0.95 m of the ring axis, 360 yaws).
+
+## 270 — what the fidelity 48.6 and the gate's 0s measure (2026-11-06)
+
+Main, 2026-11-06: "m3a3 fidelity 48.6: read what it's measured against." Verdict: a **broken registration**, not a
+geometry gap. The 08-17 note above ("the rigged print does NOT assemble ... a disassembled parts kit") misread it: the
+print (sha256 a5a3a985…, the owner's `low_poly_m3a3_bradley.glb`) loads assembled, turret `bone11_169` (73 meshes) and gun
+`bone28_163` in place. Three loose subtrees lie on the ground beside the hull, two spare TOW rounds and a launch tube
+(`bone52_278`, `bone63_296`, `bone61_298`, raw x 2.13..3.68 against the hull's −1.84..1.22). The loader registers every
+uncertified print on the spec's published width over the WHOLE file (`tools/reference-glb-loader.ts`
+`normalizeReferenceWidth`): 3.61 / 5.525 raw = ×0.653 where the vehicle alone gives ×1.179, so the gate compares the build
+with a Bradley 3.91 m long and 1.75 m tall (its own record's `referenceDimensions` / `referenceBodyExtent`, run
+2026-11-06 at 2c1c5f8198 + this lane's registry commit). Every curve is 0; fidelity 48.6 (H40 T38 G100 R63). The base
+ledger's 0s (11-04, before the 269 turret redesign) are the same defect.
+
+With those three subtrees set aside (lane experiment, nothing registered: the print re-exported untextured with its
+hierarchy, `~/cot-lanes/abrams-bradley-268-evidence/r270/R/m3a3clean.mjs`, sha256 0f92442e…), the same page scores
+**88.4 (H91 T77 G100 R84)**, the class of the M3A2 against its print (89.4, T78). Silhouette IoU (Node raster, the
+loader's width fit; `r270/R/m3a3reg.mjs`): side 0.27 → 0.79, top 0.32 → 0.96, front 0.21 → 0.78. What remains: the
+low-poly print's hull sits about 0.14 m lower with a shorter glacis than the family hull measured from the 42manako
+print, and the turret carries the owner's 2026-11-05 additions the print does not (the right-hand TOW launcher, the
+LRAS3-pattern head, the camera pods, the bustle box), with the 25 mm line about 0.15 m higher than the print's.
+
+Main ruled the same day: "Register and pin the cleaned sipriv print (sha 0f92442e) through the oracle-repair route: a
+BUILD-STANDARD section E excision ... Leave the shared loader as it is." Registered: `m3a3_bradley_sipriv_excised.glb`
+(sha256 0f92442e…, pinned in `tools/oracle-pins.mjs`; built byte-idempotently by `tools/oracle-excision.mjs` from the
+recipe `docs/references/oracle-excisions/m3a3_bradley_sipriv_excised.json`, its provenance row: the pristine source's
+hash, the three removed nodes and why). Same turret and gun nodes and yaw. Scores against it (2026-11-06):
+procedural-fidelity 88.4 (H91 T77 G100 R84); geometry gate 0/90 — hull 55.3, whole 25.0, turret 11.9 (side 51.8, plan
+11.9), stations 47.1, dims 0, floaters 100. Dims is the build against the spec's silhouette rows, not the print: the 269
+turret stands 3.41 m to its body top against `silhouetteHeightM` 3.05 (11.8 % over). `tools/oracle-width-audit.mjs` is
+the class detector (whole-file width against the body's, read-only); the pristine print reads 80.4 % wider than its body.
+
+270, the same day: the gate's turret rows and the dims row.
+- The 0.79 m in the turret plan row's `reg` is not a sideways turret offset. The plan view's columns run across x and its
+  band along z, so the row's `dy` (−0.788) is fore-aft, and it is the HULL registration the turret rows are pinned to:
+  the print stands 0.78 m forward of the build in world (its origin sits 0.66 raw behind its hull centre, ×1.179 after
+  the yaw), and the hull curves' midpoints remove that (the side row's `dAlong` −0.807 is the same shift). Rebuilt in
+  Node from the gate's own transforms (`r270/R/planoverlay.mjs`: plan registration 0.330 / 0.788 against the record's
+  0.340 / −0.788, the sign the camera's), overlay `r270/R/m3a3-plan-overlay-gate.png`: after it the two turrets overlap;
+  the build's ring stands 0.14 m to the right (the family ring, x −0.14) and its turret ends 0.37 m short of the print's
+  rear rack, and the right-hand TOW launcher stands alone at x −1.3.
+- `silhouetteHeightM` 3.05 → 3.41 (`afvFamily.ts`; Main: "The spec describes what we build"): the gate's heightM row
+  measures the build from body top 3.4098 to roof-fittings top 3.4177, so 3.41 reads 0 %. Gate after it: min 11.9/90 —
+  hull 55.3, whole 25.0, turret 11.9, stations 47.1, dims 78.4 (hull length 6.529 against 6.71, 2.7 %; overall 6.565
+  against 6.70, 2.0 %), floaters 100; fidelity 88.4 unchanged.
+- The rear rack (Main 2026-11-06: "first check M3A3 photos, with dated sources, for the rear rack's length ... If the photos
+  show our length is right, leave it and name it"): left as built. In the two side-on photographs with the gun forward
+  (Commons Defense.gov 041117-F-2034C-030 and -033, M3A3s of C/1-4 CAV, 2004-11-17) the turret's rear-most point stands
+  1.77 m and 1.66-1.75 m from the hull's rear (pixel ratios against the 6.618 m hull extreme); the build's rear wall
+  stands 1.75 m from it and its 269 bustle box and rack (0.465 m deep) end at 1.28 m. The print's wall stands at 1.44 m and
+  its 0.40 m rack ends at 1.04 m: its turret sits about 0.3 m further aft on its hull than the photographed vehicles, so
+  the 0.37 m in the gate's plan overlay is the print's turret placement (with the width fit's 6 % oversize), not a short
+  rack. Named: the M3A3 print's turret placement, a policy red beside the ring (a) and the right TOW (c). Evidence:
+  `~/cot-lanes/abrams-bradley-268-evidence/research/m3a3_bradley/` (notes.md, sources.md, photos-270/).
+

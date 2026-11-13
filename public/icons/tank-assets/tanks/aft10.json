@@ -2556,24 +2556,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23490,
-      "sha256": "223f30655839e3a858270d5e4c980010e59eb5fa7412f7292c2618a4fb57cbc7"
+      "bytes": 23458,
+      "sha256": "e542c92242c40aff8203c03e0d8b94adc4b6b9467b1b6e113aa1f6f5cb51ddc3"
     },
     "modulesSide": {
       "file": "aft10_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25066,
-      "sha256": "3cf11a4876f8948e22898464cbf050b92411a71a9a56fbfa962bb6179c271ae4"
+      "bytes": 25056,
+      "sha256": "1475330ea2288fb7a3862613cd9b9b7c1ac4215398890f0d913deb7f677b42b8"
     },
     "crewSide": {
       "file": "aft10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25282,
-      "sha256": "27bb4310d73722983cedbe3f4997777b47d7161acdafdf0eb3868549fcaec289"
+      "bytes": 25372,
+      "sha256": "28f5b9f40780bb95514801bfe22719eb3e95c2f4c022f400eb04ea756d54f917"
     },
     "angle": {
       "file": "aft10_angle.webp",
@@ -2588,7 +2588,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 12370,
-        "sha256": "0e5a5e6b78c6cff317499d4a34fa4c84fe27e01b111ffa6c0044c8ab24eb06a6"
+        "sha256": "0e5a5e6b78c6cff317499d4a34fa4c84fe27e01b111ffa6c0044c8ab24eb06a6",
+        "frame": [22,84,224,250]
       }
     },
     "top": {
@@ -2596,16 +2597,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17154,
-      "sha256": "678260dd1c712dad4c401182aafa3455df0dfe1bebf2ab8876c6f59048b906db"
+      "bytes": 17128,
+      "sha256": "e6a6c362f690a3a0adacbb7d8be17359a06617429b65e276065a0fbccb615725"
     },
     "side": {
       "file": "aft10_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12388,
-      "sha256": "15ce20c7e2ecea223a2d0200ba5bec35fc2063d1aeef7508d47b38824f75714c"
+      "bytes": 12384,
+      "sha256": "a8e8d24226b9f3e1095a0350546af5a2e34bc54439d2b05a3ee5f62e41c6b020"
     },
     "topSilhouette": {
       "file": "aft10_top_silhouette.png",
@@ -2628,8 +2629,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35300,
-      "sha256": "6ea5cabe1f6e2095bc802025c1ab83392b5a1ad5afac059a7a2f4710513ca42e"
+      "bytes": 32216,
+      "sha256": "9c048ddc3c856b22048dcb164360924ef978a94ed16442e245ac46631eadab4e"
     },
     "technicalLabels": {
       "file": "aft10_technical.json",

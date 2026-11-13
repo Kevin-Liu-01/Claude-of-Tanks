@@ -2,6 +2,7 @@
 import {TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries, cloneFleetVariant, registerFleetSpecs} from './fleetSpecRegistry.ts';
 import {modernArmor, crewBox, shell, plate} from './specHelpers.ts';
+import {applyAirDefenseFirepower} from './airDefenseFirepower.ts';
 import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_GUN, LINEBACKER_MUZZLE, LINEBACKER_MOUTHS,
   LINEBACKER_SKIRT_STATIONS, LINEBACKER_SKIRT_OUTER} from './m6LinebackerLayout.ts';
 
@@ -25,13 +26,15 @@ spec.gunPitchByYawDeg = Object.freeze([
 spec.dims = {hullLengthM: 6.71, overallLengthM: 6.71, widthM: 4.12, heightM: LINEBACKER_RING[1] + (3.75-LINEBACKER_RING[1])*T};
 // Penetration and damage are game balance, not claims about Stinger armor performance.
 // The blast-fragmentation missile is deliberately not the donor's HEAT/TOW round.
+// 272: the M242's rounds weigh as the air-defence cohort's 25 mm (the PGZ-95's 43/40 at 0.25 s, x 0.30/0.25 for the one
+// gun's cycle: 52/48), not the Bradley IFV's 72/62, so the cohort rule below lands the M6 with its family (~20,400 a minute).
 spec.gun = {...spec.gun, caliberMm: 25, reloadS: .30, baseAccuracy: .24, aimTimeS: 1,
   soundProfile: 'm242-bushmaster', muzzleBoreSegments: 24,
   launcherMuzzles: LINEBACKER_MOUTHS.map(m => ({x:m.x*T,y:m.y*T,z:m.z*T})), shells: [
-    shell('M919 APFSDS-T', 'APFSDS', 25, 190, 175, 72, 1345, {pen2000Mm: 160, reloadS: .30, count: 360}),
+    shell('M919 APFSDS-T', 'APFSDS', 25, 190, 175, 52, 1345, {pen2000Mm: 160, reloadS: .30, count: 360}),
     shell('FIM-92 Stinger', 'HE', 70, 18, 18, 340, 750,
       {pen2000Mm: 18, reloadS: 3.0, count: 12, guided: true, launcherTubes: 4, soundProfile: 'tow-launch'}),
-    shell('M792 HEI-T', 'HE', 25, 8, 8, 62, 1100, {pen2000Mm: 8, reloadS: .30, count: 300}),
+    shell('M792 HEI-T', 'HE', 25, 8, 8, 48, 1100, {pen2000Mm: 8, reloadS: .30, count: 300}),
   ]};
 for (const key of ['launcherSalvo','autoloader','muzzles','fixedLaunchCanisters','primaryGuided'] as const) delete spec.gun[key];
 // 268: the shared hull measured from the owner's source (modern3.ts BRADLEY_HULL): hw 1.64 -> 1.70, trkTop .95 -> 1.16,
@@ -70,4 +73,7 @@ for (const b of [...armor.modules,...armor.crew]) if (b.turretLocal) {
 spec.armor = armor;
 spec.visual = {...spec.visual, scheme:'nato', base:'#82734f', weather:'#9e8a60',
   patches:['#3f4a35','#3b3830'], number:'LB-06', trackWidthM:.53, camoScale:.62};
+// The owner's air-defence firepower (2026-11-06, airDefenseFirepower.ts): the 25 mm at the floor cycle with twice its output
+// and six times its rounds; three loads of Stingers, the four-tube rack firing all four a launch, 0.15 s apart, reloading in 6 s.
+applyAirDefenseFirepower(spec, {rounds: 4, intervalS: .15});
 registerFleetSpecs(bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS), ['m6_linebacker'], {m6_linebacker:spec});

@@ -17,7 +17,8 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { sampleRenderedFrames } from './render-frame-sampler.mjs';
 import { evaluateWorldResidency, RESIDENCY_SCHEMA } from './world-residency-policy.mjs';
 import { RESIDENCY_TERRAIN_PROTOCOL, settleResidencyTerrain } from './world-residency-acquisition.mjs';
@@ -33,6 +34,7 @@ import {
   collectResidencyPrograms, writeResidencyPrograms,
   residencyAllocationPlan, createResidencyAllocationSampler,
 } from './world-residency-diagnostics.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -183,11 +185,9 @@ async function verifiedCameraState(page, expectedCamera, before = null) {
   return state;
 }
 
-let server, browser, lockRefresher, allocationSampler;
+let server, browser, allocationSampler;
 try {
-  await acquireCaptureLock(30 * 60 * 1000);
-  lockRefresher = setInterval(refreshCaptureLock, 60_000);
-  lockRefresher.unref();
+  hold = await openCaptureHold({ label: 'world-residency-probe', timeoutMs: 30 * 60 * 1000 });
   // Vite's project warmup resolves relative to cwd even with an explicit root.
   process.chdir(root);
   server = production
@@ -224,7 +224,7 @@ try {
     report.allocationSampling = allocationSampler.receipt;
   }
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.renderer && window.__SHOTS?.set);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.renderer && !!window.__SHOTS?.set`);
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   if (diagnosticsDir) await page.evaluate(installResidencyGeometryTracker);
   report.metadata.gpuRenderer = await page.evaluate(() => {
@@ -280,8 +280,7 @@ try {
   if (browser) await browser.close();
   if (server?.close) await server.close();
   else if (server) await new Promise(resolve => server.httpServer.close(resolve));
-  clearInterval(lockRefresher);
-  releaseCaptureLock();
+  await hold?.release();
 }
 report.evaluation = evaluateWorldResidency(report, baseline);
 report.ok = report.evaluation.pass;

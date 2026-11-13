@@ -1088,7 +1088,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10968,
-        "sha256": "9fc3dc641f4d900375dc236df527cd9db6ccb400826f95148a7b85479549c0a1"
+        "sha256": "9fc3dc641f4d900375dc236df527cd9db6ccb400826f95148a7b85479549c0a1",
+        "frame": [25,116,225,249]
       }
     },
     "top": {
@@ -1104,8 +1105,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14650,
-      "sha256": "622354cffd7725aca5e272b6117f09b77d614b99aaadd08c225cc3d8a172440d"
+      "bytes": 14636,
+      "sha256": "82f12342fc9b0acc9234188b8da7d55f92ed7fb9e5c54213598ea0f910719503"
     },
     "topSilhouette": {
       "file": "christian2_top_silhouette.png",
@@ -1128,32 +1129,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34354,
-      "sha256": "89fb913d6da1d83a1ac23b81ed1b696beafdc1c145672fe919c3453cca3b1e5a"
+      "bytes": 34378,
+      "sha256": "f2b16d0dcaa5ef3ebae4d11017e8d276aeb5a76f37a28e4d17039aa24f94ad57"
     },
     "modulesSide": {
       "file": "christian2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34926,
-      "sha256": "9b92f2c9ac5ccfef9f35b356457bf3ffef2bdf461a1551ebc6b14feeced4cc39"
+      "bytes": 34960,
+      "sha256": "657271080b28eb051b4698735e47c61b185966950c809d641fbd502ac13aed78"
     },
     "crewSide": {
       "file": "christian2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32616,
-      "sha256": "1d0ef193e8a37a571202fbf146e75b270f2e005fa9819aeae7c58109e684bb20"
+      "bytes": 32582,
+      "sha256": "0d7f830ade42b81c5032d505d0df70456914b82eebc4a90f9ec5caf1edac48e8"
     },
     "markings": {
       "file": "christian2_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33134,
-      "sha256": "44301d219b351875bde313a511af8f9502ddfe40ed44b1eb2ebb7a5f0bd6721e"
+      "bytes": 31545,
+      "sha256": "3a095c9612d0b0c7051e56cc1f116363384a240cf1b96688d192f4d79967e7a4"
     },
     "technicalLabels": {
       "file": "christian2_technical.json",

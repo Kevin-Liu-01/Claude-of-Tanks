@@ -13,19 +13,38 @@
  *
  * Determinism: the launch draws from its own stream, seeded by the match seed, the hull's id and the kill tick (the
  * match's streams are untouched); the step is rigidBody's. Two runs of one authority agree to the bit.
+ *
+ * Lifecycle (2026-11-02 audit 11-sim-2 #9): a hull's turret is in one declared phase, `WreckTurretPhase`:
+ *   seated  — no body: a live hull's, a casemate's, a wreck whose turret never flew;
+ *   flown   — a body, awake;   settled — a body, asleep (rigidBody's own sleep and wake move between the two).
+ * launch and restore take a turret from seated to a body; release, the step's rule and an eviction take it back to
+ * seated; reset seats every turret and forgets every hull. One rule, keepsTurretBody, says when a body must go: a hull
+ * keeps one only while it lies on the field as a wreck (alive again, or benched off the field, it gives it up). The
+ * world holds a body for every hull a match fields, so a kill's turret always flies; a world sized below its roster
+ * makes room by age (the oldest settled body, else the oldest).
  */
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import {
   createObstacleGrid, shellPassesThroughCollisionRecord, type CollisionRecord, type ObstacleQuery,
 } from '../world/collision.ts';
-import { createRigidShape, createRigidWorld, type RigidEnvironment, type RigidShape, type RigidWorld } from './rigidBody.ts';
+import {
+  createRigidShape, createRigidWorld, type RigidEnvironment, type RigidShape, type RigidSpawn, type RigidWorld,
+} from './rigidBody.ts';
 
 import * as detMath from './detMath.ts';
 /** The turret frame's gun droop on a wreck (rad, the barrel's line below the turret's horizontal): a dead gun's tube
  * sags on its trunnions, shallow enough that the barrel clears its own deck. */
 export const WRECK_GUN_DROOP_RAD = 0.06;
-/** Turret bodies a match keeps at once (the oldest settled one gives way). */
-const DEFAULT_CAPACITY = 24;
+/**
+ * Turret bodies a world holds at once: one for every hull a match fields (the wire's MAX_ENTITIES, the authority's
+ * roster bound; a solo battle fields at most 28), so no kill waits for room. A hull holds at most one body.
+ */
+const DEFAULT_CAPACITY = 64;
+/** A turret body's contact-sphere budget (createRigidShape's maxSpheres; the fleet's largest is 48), and the world's
+ * sphere pool per body, so a full world never runs out of spheres before it runs out of bodies. */
+const TURRET_MAX_SPHERES = 72;
+/** Kinematic boxes a step sets: a hull's box and its seated turret's, for every hull a match fields. */
+const KINEMATIC_BOXES = 2 * 64;
 /** Steps a cook-off's turret ignores its own hull (it leaves the ring before the hull's box can catch it). */
 const POP_IGNORE_HULL_STEPS = 8;
 
@@ -67,7 +86,26 @@ export interface WreckTurretTank {
   } | null;
   readonly combat: { readonly destroyed?: boolean } | null;
   readonly modeActive?: boolean;
-  readonly aerial?: { readonly active?: boolean } | null;
+  /** A drone carrier parks its hull on the ground while its drone flies; a gunship flies its orbit (no hull below). */
+  readonly aerial?: { readonly kind?: string; readonly active?: boolean } | null;
+}
+
+/** A hull's turret as the bodies hold it (the lifecycle in the header). */
+export type WreckTurretPhase = 'seated' | 'flown' | 'settled';
+
+/**
+ * Whether a hull keeps its turret body: only while it lies on the field as a wreck. A hull alive again (a revive, a
+ * migrated host's restore) takes its turret back whatever its mode flag says; a wreck benched off the field (the
+ * Horde's next wave, a Frontline sector) takes its turret with it, so nothing stays in the world unseen and unshootable.
+ */
+export function keepsTurretBody(tank: WreckTurretTank): boolean {
+  const alive = !!tank.combat && !tank.combat.destroyed;
+  return !alive && tank.modeActive !== false;
+}
+
+/** Whether a hull stands in the world as boxes the turrets meet: on the field and on the ground (a gunship is not). */
+function standsAsHull(tank: WreckTurretTank): boolean {
+  return tank.modeActive !== false && tank.aerial?.kind !== 'gunship';
 }
 
 /** A vehicle's turret body and boxes, derived once per spec and scale. */
@@ -292,7 +330,7 @@ function buildProfile(spec: WreckTurretSpec, s: number): WreckTurretProfile {
       spacing: 0.45 * s,
     });
   }
-  const shape = createRigidShape(parts, { restitution: 0.32, friction: 0.62, rolling: 0.3, linearDrag: 0.015, angularDrag: 0.06, maxSpheres: 72 });
+  const shape = createRigidShape(parts, { restitution: 0.32, friction: 0.62, rolling: 0.3, linearDrag: 0.015, angularDrag: 0.06, maxSpheres: TURRET_MAX_SPHERES });
   return {
     shape, pivot, hullCenter, hullHalf,
     turretCenter: [center[0] / s, center[1] / s, center[2] / s], turretHalf: [half[0] / s, half[1] / s, half[2] / s],
@@ -470,9 +508,16 @@ export interface WreckTurrets {
   gravity: number;
   /** Launch a dead hull's turret at its seat. False when the vehicle has no turret or it already flew. */
   launch(tank: WreckTurretTank, cause: WreckTurretCause, tick: number): boolean;
-  /** One fixed step: the hulls as kinematic boxes, then the bodies. Removes the turret of a hull that lives again. */
+  /**
+   * One fixed step: first every body whose hull no longer keeps it (keepsTurretBody) goes, then the hulls on the field
+   * stand as kinematic boxes, then the bodies step.
+   */
   step(tanks: readonly (WreckTurretTank | null | undefined)[]): void;
   has(id: string): boolean;
+  /** The hull's turret phase now. */
+  phase(id: string): WreckTurretPhase;
+  /** The hull's kinematic owner number since the last reset (first seen, deterministic; 0: not seen). */
+  owner(id: string): number;
   /** The turret frame's world pose now (false: no body). `out` = [x, y, z, qx, qy, qz, qw]. */
   framePose(id: string, out: Float64Array | number[]): boolean;
   /** The same between the last two steps (presentation, alpha in 0..1). */
@@ -483,6 +528,7 @@ export interface WreckTurrets {
   /** Put a body back as a log or a migration knew it (settled, or awake to fall from there). */
   restore(tank: WreckTurretTank, pose: WreckTurretBodyState): boolean;
   release(id: string): void;
+  /** A fresh world: every body gone, every hull forgotten. */
   reset(): void;
   /** Every body's pose, rounded to the millimetre (the determinism audit hashes it). */
   digest(): string;
@@ -499,8 +545,8 @@ export interface WreckTurretOptions {
 export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurrets {
   const capacity = Math.max(1, options.capacity ?? DEFAULT_CAPACITY);
   const world = createRigidWorld({
-    capacity, kinematicCapacity: 2 * 64 + 8, gravity: options.gravity ?? 9.81,
-    velocityIterations: 10, positionIterations: 4, contactsPerBody: 40,
+    capacity, kinematicCapacity: KINEMATIC_BOXES + 8, gravity: options.gravity ?? 9.81,
+    velocityIterations: 10, positionIterations: 4, contactsPerBody: 40, spherePool: capacity * TURRET_MAX_SPHERES,
   });
   const seed = (options.seed ?? 0) >>> 0;
   /** id → body slot, in launch order */
@@ -520,13 +566,27 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
   const r = new Float64Array(3);
   const pose = new Float64Array(7);
   const _p = new Vector3(), _q = new Quaternion(), _s = new Vector3();
-  const released: string[] = [];
 
-  function evictOldestSettled(): boolean {
+  /** Room in a world sized below its roster: the oldest settled body gives way, else the oldest (launch order). */
+  function evictOldest(): boolean {
+    let oldest: string | null = null;
     for (const [id, slot] of slots) {
-      if (world.asleep[slot]) { world.remove(slot); slots.delete(id); return true; }
+      if (world.asleep[slot]) { turrets.release(id); return true; }
+      oldest ??= id;
     }
-    return false;
+    if (oldest === null) return false;
+    turrets.release(oldest);
+    return true;
+  }
+
+  /** A body into the world, making room by age when it is full: the same body whatever room it had to make. */
+  function spawnBody(id: string, shape: RigidShape, spawn: RigidSpawn, scale: number): boolean {
+    let slot = world.spawn(shape, spawn);
+    while (slot < 0 && evictOldest()) slot = world.spawn(shape, spawn);
+    if (slot < 0) return false;
+    slots.set(id, slot);
+    bodyScale.set(id, scale);
+    return true;
   }
 
   function turretSeat(tank: WreckTurretTank, profile: WreckTurretProfile, outPos: Float64Array, outQ: Float64Array): void {
@@ -557,33 +617,22 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       // the hull's own motion carries into the throw
       const hvx = detMath.sin(state.yaw) * state.speed, hvz = detMath.cos(state.yaw) * state.speed;
       const hvy = Number.isFinite(state.verticalSpeed) ? state.verticalSpeed! : 0;
-      let slot = world.spawn(profile.shape!, {
+      return spawnBody(tank.id, profile.shape, {
         x: seatPos[0], y: seatPos[1], z: seatPos[2], qx: seatQ[0], qy: seatQ[1], qz: seatQ[2], qw: seatQ[3],
         vx: v[0] + hvx, vy: v[1] + Math.max(0, hvy), vz: v[2] + hvz, wx: v[3], wy: v[4] + (state.yawRate ?? 0), wz: v[5],
         owner: ownerOf(tank.id),
         ignoreOwnerSteps: cause === 'ammorack' || cause === 'ammo_rack' ? POP_IGNORE_HULL_STEPS : 0,
-      });
-      if (slot < 0 && evictOldestSettled()) {
-        slot = world.spawn(profile.shape!, {
-          x: seatPos[0], y: seatPos[1], z: seatPos[2], qx: seatQ[0], qy: seatQ[1], qz: seatQ[2], qw: seatQ[3],
-          vx: v[0] + hvx, vy: v[1] + Math.max(0, hvy), vz: v[2] + hvz, wx: v[3], wy: v[4], wz: v[5],
-          owner: ownerOf(tank.id), ignoreOwnerSteps: 0,
-        });
-      }
-      if (slot < 0) return false;
-      slots.set(tank.id, slot);
-      bodyScale.set(tank.id, profile.scale);
-      return true;
+      }, profile.scale);
     },
     step(tanks) {
       if (slots.size === 0) return;
-      // a hull that lives again (a respawn) takes its turret back
-      released.length = 0;
+      // a hull that lives again (a respawn) takes its turret back, and a wreck benched off the field takes it along,
+      // before any hull stands as boxes: the revived hull stands with its turret on its ring this very step
+      for (const tank of tanks) if (tank && slots.has(tank.id) && !keepsTurretBody(tank)) turrets.release(tank.id);
       let k = 0;
       for (const tank of tanks) {
-        if (!tank || !tank.state || tank.modeActive === false || tank.aerial?.active) continue;
+        if (!tank || !tank.state || !standsAsHull(tank)) continue;
         const flown = slots.has(tank.id);
-        if (flown && tank.combat && !tank.combat.destroyed) { released.push(tank.id); continue; }
         const profile = wreckTurretProfile(tank.spec, tank.state.modeScale ?? 1);
         const state = tank.state;
         const s = profile.scale;
@@ -595,10 +644,10 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
         // the hull's box (its top on the ring plane)
         const hc = profile.hullCenter, hh = profile.hullHalf;
         rotate(q, 0, hc[0] * s, hc[1] * s, hc[2] * s, r);
-        if (k < 128) world.setKinematic(k++, owner, state.pos.x + r[0], state.pos.y + r[1], state.pos.z + r[2], q[0], q[1], q[2], q[3],
+        if (k < KINEMATIC_BOXES) world.setKinematic(k++, owner, state.pos.x + r[0], state.pos.y + r[1], state.pos.z + r[2], q[0], q[1], q[2], q[3],
           hh[0] * s, hh[1] * s, hh[2] * s, vx0, vy0, vz0, 0, yawRate, 0);
         // a turret still on its ring is a box of its own
-        if (profile.shape && !flown && k < 128) {
+        if (profile.shape && !flown && k < KINEMATIC_BOXES) {
           rotate(q, 0, profile.pivot[0] * s, profile.pivot[1] * s, profile.pivot[2] * s, r);
           const ox = state.pos.x + r[0], oy = state.pos.y + r[1], oz = state.pos.z + r[2];
           yawAfter(q, 0, state.turretYaw, q, 4);
@@ -608,10 +657,14 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
         }
       }
       world.setKinematicCount(k);
-      for (const id of released) turrets.release(id);
       world.step();
     },
     has: (id) => slots.has(id),
+    phase(id) {
+      const slot = slots.get(id);
+      return slot === undefined ? 'seated' : world.asleep[slot] === 1 ? 'settled' : 'flown';
+    },
+    owner: (id) => owners.get(id) ?? 0,
     framePose(id, out) {
       const slot = slots.get(id);
       if (slot === undefined) return false;
@@ -644,14 +697,10 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       const profile = wreckTurretProfile(tank.spec, tank.state.modeScale ?? 1);
       if (!profile.shape) return false;
       turrets.release(tank.id);
-      const slot = world.spawn(profile.shape, {
+      return spawnBody(tank.id, profile.shape, {
         x: state.x, y: state.y, z: state.z, qx: state.qx, qy: state.qy, qz: state.qz, qw: state.qw,
         owner: ownerOf(tank.id), asleep: state.asleep,
-      });
-      if (slot < 0) return false;
-      slots.set(tank.id, slot);
-      bodyScale.set(tank.id, profile.scale);
-      return true;
+      }, profile.scale);
     },
     release(id) {
       const slot = slots.get(id);
@@ -664,6 +713,8 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       world.clear();
       slots.clear();
       bodyScale.clear();
+      owners.clear();
+      nextOwner = 1;
     },
     digest() {
       let text = '';

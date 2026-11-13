@@ -5,6 +5,10 @@ import { setObbShape, type CollisionRecord } from './collision.ts';
 import { slabBox } from './propGeometry.ts';
 import { PartSink, hashSeed, newRegionalParts, streamFrom, type RegionalBucket, type Rgb, type Vec3 } from './maps/regional/geometry.ts';
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherPalette } from './maps/regional/weather.ts';
+import { climateOf } from './maps/buildingStyleTable.ts';
+
+/** The kit's tint palettes with the place's weathering strengths (the map's row of the building-style table). */
+type WorksPalette = WeatherPalette & { readonly damp: number; readonly moss: number };
 import { emitRoof, roofGeometry, type RoofSpec } from './maps/regional/house.ts';
 
 type Point2 = readonly [number, number];
@@ -337,7 +341,7 @@ const DOOR_PAINT: Rgb = [0.21, 0.31, 0.25], BARE_TIMBER: Rgb = [0.42, 0.4, 0.36]
  * from any props stream (the tints and the look come from the kiosk's own hashed streams). Built in world coordinates so
  * the walls stand on the hard plan to the float.
  */
-function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPalette, out: Piece[]): void {
+function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WorksPalette, out: Piece[]): void {
   const sink = new PartSink([2.37, 1.13]);
   const tints = pickWeatherTints(palette, streamFrom(hashSeed('reservoir:waterworks:kiosk', kiosk.x, kiosk.z)));
   const tint = tints.stone;
@@ -732,7 +736,7 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
  * pump house must not be the one to activate it.
  */
 
-function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalette, out: Piece[]): void {
+function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WorksPalette, out: Piece[]): void {
   for (const body of plan.bodies) {
     // (the pump house's walls are the kit's masonry, buildKitKiosk; the bank and the intake keep their stone bodies)
     if (body.name !== 'kiosk') piece(out, 'stone', `${body.name}-body`, body.width, body.top - body.bottom,
@@ -952,7 +956,7 @@ function collectDonors(donors: readonly WaterworksRubblePacket[], buckets: Bucke
   return selection;
 }
 
-function buildBudgetedWorks(plan: Plan, field: WaterworksTerrain, palette: WeatherPalette, before: Budget,
+function buildBudgetedWorks(plan: Plan, field: WaterworksTerrain, palette: WorksPalette, before: Budget,
   after: Budget, kit: Budget): Piece[] | null {
   const pieces: Piece[] = [];
   buildBodies(plan, field, palette, pieces); buildIronPenstock(plan, pieces); buildBraces(plan, field, pieces);
@@ -977,7 +981,8 @@ function commitWaterworks(plan: Plan, donors: readonly WaterworksRubblePacket[],
 
 /**
  * Atomic, construction-only replacement. No RNG, new material or new collider slot. `kit` is the map's regional
- * architecture (props.ts), whose weathering the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none);
+ * architecture (props.ts), whose tints the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none) under the
+ * map's weathering (its building-style row);
  * (its `steel`, whether the map paints the steel atlas, no longer gates it: the iron draws in the baked family.)
  */
 export function composeReservoirWaterworks(mapId: string, config: ReservoirWaterworksConfig | undefined,
@@ -996,7 +1001,7 @@ export function composeReservoirWaterworks(mapId: string, config: ReservoirWater
   if (!buckets.dark.length || !buckets.stone.length) return receipt;
   // The pump house draws in the kit's weathered stone and curtained panes: only where the map's houses already draw both
   // (no family is activated by the waterworks).
-  const palette = kit ? kit.weather ?? DEFAULT_WEATHER : null;
+  const palette: WorksPalette | null = kit ? { ...(kit.weather ?? DEFAULT_WEATHER), ...climateOf(mapId) } : null;
   // (the iron's baked family: every map draws it, its yards' drums and tanks laid after the waterworks; a caller without
   // the bucket gets no pump house)
   if (!palette || !buckets.regionalStone?.length || !buckets.curtain?.length || !buckets.glass?.length || !buckets.regionalRoof?.length

@@ -36,6 +36,8 @@
 // standing and stacked on the tableland.
 import verdant from './verdant.ts';
 import type { MapCompositionConfig } from './contracts.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** A point's mirror across the gorge's axis (z = 0), with the yaw that faces the same way across it. */
 const mirrorSite = <T extends { z: number; yawDeg: number }>(site: T): T => ({ ...site, z: -site.z, yawDeg: 180 - site.yawDeg });
@@ -303,7 +305,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // map revival lane 2 (2026-10-05): the Andalusian kit (maps/regional/andalusian.ts)
-    architecture: 'andalusian',
+    architecture: BUILDING_STYLES.cliffbridge.kit,
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
@@ -337,7 +339,7 @@ export default {
     haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Andalusia in the 1970s: the Spanish Army's AMX-30E, M48
     // and M47
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['amx30b', 'm48a5_patton', 'm47_patton'] },
+    tankWrecks: WRECK_CASTS.cliffbridge,
     wallStyle: 'fieldstone',
     // round 3 (108c: "a white picket fence reads as American", "three blank coloured boards on posts like placeholder
     // swatches"): the yards fenced in cane (cañizo), the roads in post and rail where they are fenced at all, and no

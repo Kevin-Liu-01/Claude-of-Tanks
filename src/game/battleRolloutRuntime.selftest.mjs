@@ -10,7 +10,8 @@ const countdowns = [];
 const audioCalls = [];
 const runtime = createBattleRolloutRuntime({
   game,
-  bus,
+  // (2026-11-02 audit F1) the battle's one rollout edge is the frame runtime's latch; the harness latches the same way
+  rollout: () => bus.emit('battle:rollout', {}),
   audio: {
     resume: () => audioCalls.push('resume'),
     ambientOn: (active) => audioCalls.push(`ambient:${active}`),
@@ -32,5 +33,8 @@ runtime.open(0);
 assert.deepEqual(events, [['battle:rollout', {}]]);
 assert.throws(() => runtime.open(-1), /finite and non-negative/);
 assert.throws(() => createBattleRolloutRuntime({}), /valid state and presentation ports/);
+assert.throws(() => createBattleRolloutRuntime({
+  game, bus, audio: { resume() {}, ambientOn() {} }, getHud: () => null, defaultPreBattleSeconds: 5,
+}), /valid state and presentation ports/, 'a bus is no rollout port: the frame runtime owns the edge');
 
 console.log('battleRolloutRuntime.selftest: countdown, audio, and rollout edge pass');

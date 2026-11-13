@@ -35,6 +35,8 @@
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // The airfield's buildings: authored sites in rotation pairs about the runway's centre, so each half holds the same
 // cover (the roadside builder handed its plan out in road order: ten buildings along the south taxiway, six along the
 // north). The cargo side is authored; the terminal side is its rotation.
@@ -295,7 +297,7 @@ export default {
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
-    architecture: 'hostomel',
+    architecture: BUILDING_STYLES.airfield.kit,
     // 2026-10-03 (maps lane B, gauntlet wave 11): an airfield's hangars and stores are corrugated sheet, not brick
     // (round 75's industrial cladding, as on Whiteout Station)
     industrialCladding: 'steel',
@@ -309,7 +311,7 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
+    tankWrecks: WRECK_CASTS.airfield,
     // (the map-content lane, 2026-10-09, landed by the maps lane's Kestrel rebuild) the aprons' floodlight masts and the
     // holding apron's (landmarks/airfieldWorks.ts floodMast), rotation pairs about the runway's centre
     landmarks: [

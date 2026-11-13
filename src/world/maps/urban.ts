@@ -32,6 +32,8 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { STEINBURG_ROWS } from './steinburgRows.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -203,7 +205,7 @@ export default {
 
   props: {
     // regional-buildings lane: the Franconian town kit (maps/regional/franconian.ts)
-    architecture: 'franconian',
+    architecture: BUILDING_STYLES.urban.kit,
     // The landmarks lane (2026-10-05; src/world/landmarks/): the old town's two gate towers where the trade road passes
     // the town wall, north and south (Kronach's Tore: a square tower over the vaulted passage, its clock to the road
     // outside, a steep hipped roof, a stub of crenellated wall each side). Round 2 (2026-10-06; gauntlet wave 155: "the
@@ -230,7 +232,7 @@ export default {
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',
-      'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
+      'securityoffice', 'servicegarage', 'corneroffice',
     ],
     // Mirror pairs across the spur's crest, and posts on the crest itself (equally far from both teams): a garage
     // yard in each valley suburb, the castle forecourt and the bypass gap.
@@ -364,7 +366,7 @@ export default {
     // the shelled-town read finally includes the armor that died taking it
     // the map-vehicles lane (2026-10-06, the period ruling): the inner-German border of the 1980s: the Bundeswehr's
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
+    tankWrecks: WRECK_CASTS.urban,
     sandbagLines: 12,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 16 fence or gate records reaching into a structure)

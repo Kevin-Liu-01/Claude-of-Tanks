@@ -20,6 +20,8 @@
 // and the three strongpoints and zone-control discs stand within 10 % of equal route distance from both deployments.
 import delta from './delta.ts';
 import { createLakeChannel } from './marshChannel.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 /** The tidal waterline (-2.3 m) less the creek's water depth (waterContact.ts TANNIN_CREEK: 0.43 m): the lakes' floor. */
 const MANGROVE_TIDAL_FLOOR = -2.73;
@@ -151,7 +153,7 @@ export default {
       { kind: 'charcoalKilns', x: 22, z: 212, yawDeg: 0, name: 'the charcoal kilns' },
     ],
     // regional-buildings lane: the Ca Mau stilt-house kit (maps/regional/mekong.ts)
-    architecture: 'mekong',
+    architecture: BUILDING_STYLES.mangrove.kit,
     riverLandings: [
       { lakeIndex: 20, shoreAngleDeg: 285 }, // village-facing creek landing
       { lakeIndex: 10, shoreAngleDeg: 0 }, // relief-island net yard
@@ -178,7 +180,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Vietnam: the People's Army's T-55s (the Type 59 copy),
     // BMPs and T-62s, a captured M48
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62_1975', 'm48a5_patton'] },
+    tankWrecks: WRECK_CASTS.mangrove,
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Mekong delta's family

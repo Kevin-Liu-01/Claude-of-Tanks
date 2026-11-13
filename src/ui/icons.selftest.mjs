@@ -19,6 +19,7 @@ import {
   containedPortraitPlacement,
   directPortraitPlacement,
   measurePortraitCoreBounds,
+  measurePortraitFullBounds,
 } from './portraitFraming.ts';
 
 const equipIds = new Set(equipIconIds());
@@ -133,8 +134,8 @@ assert.equal(uiIconSVG('', 12), '', 'an empty id draws nothing');
 assert.match(uiIconSVG('info', 13, 'currentColor', 'x'), /^<svg class="cot-i x" /, 'a class joins the cot-i host');
 assert.doesNotMatch(uiIconSVG('info', 13), /style=/, 'the default colour inherits the surrounding text');
 const modeGlyphs = [...sprite.large.keys()].filter((id) => id.startsWith('mode'));
-assert.equal(modeGlyphs.length, 14, 'fourteen mode glyphs: the 13 rulesets and the proving ground');
-assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 14, 'no two modes share a glyph');
+assert.equal(modeGlyphs.length, 15, 'fifteen mode glyphs: the 14 rulesets and the proving ground');
+assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 15, 'no two modes share a glyph');
 assert.notEqual(sprite.large.get('modeFrontline'), sprite.large.get('modeZones'), 'Frontline Assault has its own glyph');
 for (const family of [
   ['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'breech', 'optics', 'radio', 'apu', 'turretRing', 'fcs', 'track'],
@@ -215,6 +216,21 @@ for (let y = 0; y < 13; y++) for (const x of [49, 50]) cutPixels[(y * syntheticW
 const cutAudit = auditPortraitPixels(cutPixels, syntheticWidth, syntheticHeight);
 assert.equal(cutAudit.whole, false, 'an antenna that leaves the canvas is seen: the measured silhouette is only its visible part');
 assert.equal(cutAudit.passes, false, 'a tank cut at the canvas edge never passes the envelope');
+// (270, Main 2026-11-06) a card's whips never set its frame: audited against the same card drawn without its antenna, a
+// whip that carries the silhouette over the height cap passes (here a cap lowered to 1.0 stands in for a tall whip), and
+// a whip that leaves the canvas still fails, since the card itself must be whole
+const whipless = syntheticPixels.slice();
+for (let y = 13; y <= 47; y++) for (const x of [49, 50]) whipless[(y * syntheticWidth + x) * 4 + 3] = 0;
+const bodyFrame = measurePortraitFullBounds(whipless, syntheticWidth, syntheticHeight);
+const frame = [bodyFrame.x0, bodyFrame.y0, bodyFrame.x1, bodyFrame.y1];
+const tightCap = { ...TANK_PORTRAIT_FRAME_POLICY, auditMaxFullHeightRatio: 1.0 };
+const whipSets = auditPortraitPixels(syntheticPixels, syntheticWidth, syntheticHeight, 140, 88, tightCap);
+const whipAside = auditPortraitPixels(syntheticPixels, syntheticWidth, syntheticHeight, 140, 88, tightCap, frame);
+assert.ok(whipSets.displayedFullHeightRatio > 1.0 && !whipSets.passes, 'control: the whip over the cap fails when it sets the frame');
+assert.ok(whipAside.passes && whipAside.displayedFullHeightRatio < whipSets.displayedFullHeightRatio,
+  'the same card passes against its whip-free frame');
+assert.equal(auditPortraitPixels(cutPixels, syntheticWidth, syntheticHeight, 140, 88, tightCap, frame).passes, false,
+  'a whip that leaves the canvas still fails: the card itself must be whole');
 
 const iconNames = (await readdir(new URL('../../public/icons/', import.meta.url)))
   .filter((name) => name.endsWith('_angle.webp'))

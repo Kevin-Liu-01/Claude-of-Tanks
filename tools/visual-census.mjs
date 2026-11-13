@@ -32,6 +32,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
+import { openCaptureHold } from './capture-hold.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 import { createPoliteCaptureLock } from './visual-census-lock.mjs';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, mapProbeServerOptions, resolveGroundPose } from './map-probe-runtime.mjs';
@@ -46,6 +47,7 @@ import {
 } from './visual-census-views.mjs';
 import { buildSheets, censusViewsOf, compareCensus, loadCensus, measureCensus, openCensus, saveCensus, writeIndex } from './visual-census-report.mjs';
 import { CENSUS_MAP_POSES } from './visual-census-map-poses.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'visual-census';
 const PORT_SPAN = 20;
@@ -446,7 +448,7 @@ async function bootPage(browser, baseUrl) {
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
   await page.goto(`${baseUrl}/?${GAME_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 300000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 600000, polling: 500 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__SHOTS && !!window.__DEBUG`, { timeout: 600000, polling: 500 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   const env = await page.evaluate(pageEnvironment);
   if (env.preset !== 'high') throw new Error(`boot preset is ${env.preset}, expected high`);
@@ -605,19 +607,18 @@ async function runCapture(options) {
   const lock = options.probeLock
     ? createPoliteCaptureLock({ probeDir: options.probeLock, log: (message) => console.log(`[${TOOL}] ${stamp()} ${message}`) })
     : createCaptureLock();
-  let server = null, browser = null, refresher = null, booted = null;
+  // the hold (round 2 U38) is tools/capture-hold.mjs openCaptureHold's on either lock: refresh, the cap (the capture lock's),
+  // the release at exit; this census keeps its own signal handler (cleanup, then exit 130)
+  let server = null, browser = null, booted = null, hold = null;
   const cleanup = async () => {
-    clearInterval(refresher);
     try { if (browser) await browser.close(); } catch { /* already gone */ }
     try { if (server) await server.close(); } catch { /* already gone */ }
-    lock.release();
+    await hold?.release();
   };
   const onSignal = (signal) => { console.error(`[${TOOL}] ${signal}: closing`); cleanup().finally(() => process.exit(130)); };
   process.once('SIGINT', onSignal); process.once('SIGTERM', onSignal);
   try {
-    await lock.acquire(options.lockTimeoutMin * 60000);
-    refresher = setInterval(() => lock.refresh(), 30000);
-    refresher.unref();
+    hold = await openCaptureHold({ label: TOOL, lock, timeoutMs: options.lockTimeoutMin * 60000, signals: [] });
     server = await startServer(options);
     session.port = server.port;
     browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,

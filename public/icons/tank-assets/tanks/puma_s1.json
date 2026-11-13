@@ -927,24 +927,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32120,
-      "sha256": "3e260a100d0c41a7406537be56d1cf2df3f8f76da95959f9d58ae4f08b9bb73c"
+      "bytes": 32100,
+      "sha256": "d7131b7d05393fc4473a193bf23a5a3a30ed14a929bf8d4755519e229cc1962d"
     },
     "modulesSide": {
       "file": "puma_s1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34184,
-      "sha256": "be4e3cdf2566eb27a8fd642b43890e0be56f776d6653c2c8e1550d7524b5379e"
+      "bytes": 34198,
+      "sha256": "07c66c109361a964399fbf5f49bdf9cc32f1404c47167dce3acf6fc696344cac"
     },
     "crewSide": {
       "file": "puma_s1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30058,
-      "sha256": "c4cd1e75daf637338243f01111d639f19b2e603569573de33eebc55d102dee56"
+      "bytes": 30116,
+      "sha256": "9c21c867bfb234305010b3ad8645d3a2218dda734414df0913dcc5ce85cdbd74"
     },
     "angle": {
       "file": "puma_s1_angle.webp",
@@ -959,7 +959,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11142,
-        "sha256": "b8e38168622b29fb94b338be00967ffa6c1780be71d738dfe5ca3d84fd52ec73"
+        "sha256": "b8e38168622b29fb94b338be00967ffa6c1780be71d738dfe5ca3d84fd52ec73",
+        "frame": [27,74,228,248]
       }
     },
     "top": {
@@ -967,16 +968,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18094,
-      "sha256": "7a78e8b906b2a3ae602fd210ca9af6304882c8d52d7fede8875aff6102079ab6"
+      "bytes": 18104,
+      "sha256": "55565ee099028e0ba8ad7d385e16b1119fcd2b1f2427621176a496cbc52a5b33"
     },
     "side": {
       "file": "puma_s1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13092,
-      "sha256": "5324348a96870a00e49880751dec6287b76da48c334b251fad14354a4f3e69aa"
+      "bytes": 13084,
+      "sha256": "adce25e23e784fb96fc3aa218bfc7e4a6986b9d2b4370a8b87b094812a9ab995"
     },
     "topSilhouette": {
       "file": "puma_s1_top_silhouette.png",
@@ -999,8 +1000,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34710,
-      "sha256": "af1876f4cc8425d7030788c7b2a60aa178dc7a4758145f12a2d4f7ba24151a02"
+      "bytes": 32447,
+      "sha256": "71945ab60698561947fb6997cd69440bcb594a5266a4c25c1c3eb5d79d568639"
     },
     "technicalLabels": {
       "file": "puma_s1_technical.json",

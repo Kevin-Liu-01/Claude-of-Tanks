@@ -38,7 +38,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   // taxonomy for future vehicles.
   [VEHICLE_ERAS.INTERWAR]: Object.freeze([]),
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze([
-    'kv2', 'jpz_e100',
+    'kv2', 'jpz_e100', 't95',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     'amx10p', 'amx10p_25', 'amx30b', 'amx40', 'osorio_p1', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1_pioneiro', 'x1a2_carcara', 't62mv1',
@@ -58,13 +58,28 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'magach6b', 'magach7c',
     'vickers_mk1',
     'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
+    // release 269: the South African Centurions, 1974-91
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
+    // release 269: the Australian M113A1 FSV and MRV (1970-96) and the Leopard AS1 (1976-2007)
+    'm113a1_fsv', 'm113a1_mrv', 'leopard_as1',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
+    // release 269: the Type 87 self-propelled anti-aircraft gun (in service 1987, on the cold-war Type 74)
+    'type87_aw',
+    // release 269: the M163 VADS (in US service 1968 to the 1990s, on the M741, an M113A1)
+    'm163_vads',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.
     'warrior_tes_h',
     // release 262: the Olifant Mk 2 (2007)
     'olifant_mk2',
+    // release 269: the TTD (1992)
+    'ttd',
+    // release 269: the Australian M113AS4 (2007), the AS21 Redback (2027) and the Abrams (the M1A1 AIM SA 2007, the M1A2
+    // SEPv3 2024)
+    'm113as4', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus',
+    // and the US Army's M113A3 (1987)
+    'm113a3',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',
@@ -100,6 +115,11 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // release 268: the twin-cannon air defence: the 2K22M (1990) and the Pantsir-S1 (2012 tracked option), the Gepard 1A2
     // (the 1996-2000 service-life extension), the PGZ-95 (1999) and the PGZ-09 (2009)
     'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
+    // release 269: the second air-defence round: the ItPsv 90 Marksman (1990, as the 2K22M), the ItPsv Leopard 2 (2016),
+    // the Lvkv 9040 (the 1990s CV90 family), the K30 Biho (1999) and the PZA Loara (2004)
+    'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara',
+    // release 269: the Object 292, a T-80BV under a 152 mm turret (the 152 mm line's clean-sheet tanks are next generation)
+    'object292',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.
@@ -107,6 +127,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
     'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
     'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
+    // release 269: the Russian 152 mm line's clean-sheet tanks (the Object 292 is a T-80U and modern)
+    'object477_molot', 'object195', 't14_152',
   ]),
 });
 

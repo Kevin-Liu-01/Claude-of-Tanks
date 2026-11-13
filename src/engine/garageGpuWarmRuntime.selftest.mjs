@@ -572,7 +572,9 @@ for (const mode of ['task-only-negative', 'actual-frame-ready', 'cancel-during-f
 }
 
 // perf-246: Battle Again over a Garage being prepared behind the report abandons the restore. It stops at the next
-// program step: no compile fallback, no shadow pass, no upload, no settle frame; the static presentation re-sleeps.
+// program step: no compile fallback, no shadow pass, no upload, no settle frame. (2026-11-02 audit R4: this case used to
+// pin the static presentation re-sleeping from the abandoned restore's finally, after the next phase had started; the
+// latch is now left to the phase that replaced it, which derives it every frame.)
 for (const abandonAt of ['program', 'linker', 'shadow', 'upload']) {
   const seen = [];
   let current = true;
@@ -629,7 +631,8 @@ for (const abandonAt of ['program', 'linker', 'shadow', 'upload']) {
   for (const never of ['compileFallback', ...order.slice(order.indexOf(abandonAt) + 1)]) {
     assert.equal(names.includes(never), false, `${abandonAt}: an abandoned restore never runs ${never}`);
   }
-  assert.deepEqual(seen.at(-1), ['staticDormant', true], `${abandonAt}: the static presentation sleeps again`);
+  assert.deepEqual(seen.filter(([name]) => name === 'staticDormant'), [['staticDormant', false]],
+    `${abandonAt}: the abandoned restore releases the latch at its start and never sets it again`);
 }
 
 // (2026-10-26, the room-stalls lane) the restore warms the LOD levels the first Garage frame will draw: a hero's levels as

@@ -2,6 +2,8 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // src/world/maps/mars.ts — Olympus Basin: a rust-red impact basin under a galaxy sky, its research
 // station scattered across the floor (owner 2026-09-18: "add mars map mode (called mars mode), make it have
 // space bases and make it look like a proper galaxy map"). The sky preset forces the night dome's starfield
@@ -160,7 +162,7 @@ export default {
     plan: ['gantry', 'containerRow', 'containerRow', 'gantry', 'containerRow', 'gantry'],
     // (the looks lane, 2026-10-13) the plan's gantries and container rows as the station builds them: the regolith works
     // under its gantry and the cargo modules banked in sintered regolith (maps/regional/olympus.ts), not a goods yard
-    architecture: 'olympus',
+    architecture: BUILDING_STYLES.mars.kit,
     // one placement per id (props.ts destructibleBuildings loop; the structureKit receipt pins
     // uniqueness): ten orbital families supplement the authored settlement districts.
     destructibleBuildings: ['habdome', 'habmodule', 'solararray', 'commsmast', 'fueltanks', 'landingpad',
@@ -202,7 +204,7 @@ export default {
     rubblePiles: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
     // (2026-10-28, the world-reds lane: the PL-01 in the Challenger 3 prototype's slot, modern since vehicle-eras-254)
-    tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 'object148_proto', 'pl01', 'm1a3', 'kf51_evo'] },
+    tankWrecks: WRECK_CASTS.mars,
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,

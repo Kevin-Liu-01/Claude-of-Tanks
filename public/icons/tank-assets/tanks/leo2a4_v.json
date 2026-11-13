@@ -2495,15 +2495,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27590,
-      "sha256": "67097a3e22385ceeccb8e73f9515759edeba95bcac4c163fc9ece3800f8aabb3",
+      "bytes": 27602,
+      "sha256": "44d734d01620c5484aa97a9ed6a4e51b3590b379dfd254da45c567b43d52439c",
       "thumbnail": {
         "file": "thumbs/leo2a4_v_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11082,
-        "sha256": "d96e6e16c349a4dfe0fe05493ef2fec3c66c5bc4b0ed39e6e55645e0bfc6add9"
+        "bytes": 11080,
+        "sha256": "56c9a120efaa8494bba14e8b9e607a7cde8cc6ab9445ffde076bb036155aa58c",
+        "frame": [24,100,224,249]
       }
     },
     "top": {
@@ -2567,8 +2568,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33141,
-      "sha256": "f26f1aaf666dda72a0220b01e679ffea87ae586725ab2c2325ec01358a2f8abc"
+      "bytes": 31102,
+      "sha256": "3d7386767405e0197278f3cf926a018f58dd90a68e390e3d6f3666d1317e6fa8"
     },
     "technicalLabels": {
       "file": "leo2a4_v_technical.json",

@@ -81,4 +81,14 @@ assert.deepEqual(summarizeTeam([
   assert.match(source, /watchedView = !!sum\.watched;/, 'the summary\'s watched flag picks the view');
 }
 
+// (improve-271 plan 028) a room update rebuilds the rematch panel: the action that had the focus (Ready, Start) has it
+// again in the rebuilt panel, so a keyboard player never Tabs back after every lobby update
+{
+  const source = readFileSync(new URL('./endScreen.ts', import.meta.url), 'utf8');
+  assert.match(source, /function renderRematchPanel\(panel: HTMLElement\): void \{\s*(?:\/\/[^\n]*\n\s*)*const focused = panel\.contains\(document\.activeElement\) \? \(document\.activeElement as HTMLElement\)\.dataset\.esAction \?\? null : null;\s*panel\.textContent = '';/,
+    'the panel remembers its focused action before it clears');
+  assert.match(source, /renderRoomActions\(panel, context, me, active\.length, readyCount, nextRound\);\s*if \(focused\) panel\.querySelector<HTMLElement>\(`\[data-es-action="\$\{focused\}"\]`\)\?\.focus\(\{ preventScroll: true \}\);/,
+    'and focuses the rebuilt one');
+}
+
 console.log('endScreen.selftest: team summary, damage comparison and reviving-mode death lines PASS');

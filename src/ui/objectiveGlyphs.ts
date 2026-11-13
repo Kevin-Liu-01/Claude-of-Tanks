@@ -443,3 +443,122 @@ export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number): void {
   ctx.stroke();
   ctx.restore();
 }
+
+/** Air Support's call-ins (air-support-270): recon, artillery, strafe, bomb, gunship. */
+export type StrikeGlyphKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunship';
+
+/**
+ * A call-in's footprint on the ground (air-support-270): a circle (artillery, the bomb, the AC-130's ring) or a lane
+ * (recon, the strafing run) along `angle` (the canvas rotation of the lane's long axis). The side's translucent fill
+ * under a dashed hazard keyline, the dashes marching while the warning runs (`march`, 0..1 of a dash period) so the
+ * targeted side reads it as live; `urgency` (0..1, 1 at the landing) thickens the line.
+ */
+export function drawStrikeFootprint(ctx: Ctx, x: number, y: number,
+  shape: { radiusPx: number; acrossPx?: number; angle?: number } | { halfLengthPx: number; halfWidthPx: number; angle: number },
+  side: ObjectiveSide, march: number, urgency: number, filled = true): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  // an ellipse (the bomb's): its long axis along the heading, turned as the lane is
+  if ('radiusPx' in shape && shape.acrossPx != null) ctx.ellipse(0, 0, Math.max(1.5, shape.acrossPx), Math.max(2, shape.radiusPx), shape.angle ?? 0, 0, Math.PI * 2);
+  else if ('radiusPx' in shape) ctx.arc(0, 0, Math.max(2, shape.radiusPx), 0, Math.PI * 2);
+  else {
+    // the lane's four corners turned to its heading (the glyphs never rotate the context: they stay upright)
+    const w = Math.max(1.5, shape.halfWidthPx), l = Math.max(2, shape.halfLengthPx);
+    const c = Math.cos(shape.angle), s = Math.sin(shape.angle);
+    ctx.moveTo(-w * c + l * s, -w * s - l * c);
+    ctx.lineTo(w * c + l * s, w * s - l * c);
+    ctx.lineTo(w * c - l * s, w * s + l * c);
+    ctx.lineTo(-w * c - l * s, -w * s + l * c);
+    ctx.closePath();
+  }
+  if (filled) { ctx.fillStyle = sideFill(side); ctx.fill(); }
+  const width = 1.1 + urgency * 1.1;
+  ctx.lineWidth = width + 1.4;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.setLineDash([5, 3.5]);
+  ctx.lineDashOffset = -march * 8.5;
+  ctx.lineWidth = width;
+  ctx.strokeStyle = sideColor(side);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A call-in's badge: a dark disc keyed in the side's colour with the call-in's pictogram (the minimap's and the world's
+ *  marker over its footprint, the strike strip's tile). */
+export function drawStrikeGlyph(ctx: Ctx, x: number, y: number, r: number, kind: StrikeGlyphKind, side: ObjectiveSide): void {
+  const color = sideColor(side);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(14,20,24,0.82)';
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.2, r * 0.22);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.lineWidth = Math.max(0.9, r * 0.12);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(0.9, r * 0.13);
+  const s = r * 0.62;
+  if (kind === 'recon') {
+    // a lens: the eye's lids and its pupil
+    ctx.beginPath();
+    ctx.moveTo(x - s, y);
+    ctx.quadraticCurveTo(x, y - s * 0.95, x + s, y);
+    ctx.quadraticCurveTo(x, y + s * 0.95, x - s, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, s * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind === 'artillery') {
+    // three rounds falling, noses down
+    const w = s * 0.34, h = s * 1.4;
+    for (let i = -1; i <= 1; i++) {
+      const cx = x + i * w * 1.6, top = y - h / 2 + Math.abs(i) * s * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2, top);
+      ctx.lineTo(cx - w / 2, top + h * 0.6);
+      ctx.quadraticCurveTo(cx, top + h * 1.05, cx + w / 2, top + h * 0.6);
+      ctx.lineTo(cx + w / 2, top);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (kind === 'strafe') {
+    // the gun run's chevrons along the lane
+    for (const dy of [-s * 0.45, s * 0.25]) {
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.7, y + dy + s * 0.35);
+      ctx.lineTo(x, y + dy - s * 0.35);
+      ctx.lineTo(x + s * 0.7, y + dy + s * 0.35);
+      ctx.stroke();
+    }
+  } else if (kind === 'bomb') {
+    // the bomb, nose down, its tail fins up
+    ctx.beginPath();
+    ctx.ellipse(x, y + s * 0.15, s * 0.36, s * 0.66, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - s * 0.42, y - s * 0.92);
+    ctx.lineTo(x + s * 0.42, y - s * 0.92);
+    ctx.lineTo(x, y - s * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // the gunship: a high-winged four-engine silhouette over its orbit ring
+    ctx.beginPath();
+    ctx.arc(x, y, s * 0.92, 0, Math.PI * 2);
+    ctx.setLineDash([s * 0.3, s * 0.22]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillRect(x - s * 0.12, y - s * 0.62, s * 0.24, s * 1.24);
+    ctx.fillRect(x - s * 0.72, y - s * 0.22, s * 1.44, s * 0.2);
+    ctx.fillRect(x - s * 0.32, y + s * 0.42, s * 0.64, s * 0.14);
+  }
+  ctx.restore();
+}

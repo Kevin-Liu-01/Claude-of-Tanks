@@ -5,14 +5,17 @@
  */
 import type { PadCue } from './padProtocol.ts';
 
-/** The battle's bus events a receiver listens to for its tank's cues. */
+/** The battle's bus events a receiver listens to for its tank's cues. `ammo_selection_denied` is the core's input stage's
+ *  refusal of a seat's shell pick (sim/playerInputStage.ts), which names its tank: the couch runtime's emit puts it on the
+ *  page bus for every seat (round 8 merge review r1). */
 export const PAD_CUE_EVENTS = [
   'shell:fired', 'shell:hit', 'module:state', 'tank:fire', 'tank:impact', 'tank:destroyed', 'player:spotted',
-  'ui:consumableDenied', 'ui:ammoSelectionDenied', 'ui:autoAimState',
+  'ui:consumableDenied', 'ui:ammoSelectionDenied', 'ammo_selection_denied', 'ui:autoAimState',
 ] as const;
 
 /** Whose cues: the tank's id, and whether it is the page's player (the events that name no tank, the sixth sense, the
- *  refusals and the sight's lock, are the player's; a couch seat other than the player's has none of them). */
+ *  page's refusals and the sight's lock, are the player's; a couch seat other than the player's has none of them, but
+ *  its own refused shell pick names its tank). */
 export interface PadCueOwner {
   id: string | null;
   player: boolean;
@@ -33,8 +36,10 @@ export function padCueOf(type: string, payload: unknown, owner: PadCueOwner): Pa
   const me = owner.id;
   switch (type) {
     case 'shell:fired':
-      // a heavier gun kicks harder: 20 mm is a flick, 150 mm and up the full thump
-      return me && field(payload, 'shooterId') === me ? { c: 'shot', m: clamp01((num(payload, 'caliberMm') - 20) / 130) } : null;
+      // a heavier gun kicks harder: 20 mm is a flick, 150 mm and up the full thump; a rotary gun's thinned rounds (270,
+      // sim/fireCycleFloor.ts) send nothing, its flicks at the floor's density
+      return me && field(payload, 'shooterId') === me && !field(payload, 'thinned')
+        ? { c: 'shot', m: clamp01((num(payload, 'caliberMm') - 20) / 130) } : null;
     case 'shell:hit': {
       if (!me || field(payload, 'kind') === 'heal') return null;
       const target = field(payload, 'targetId');
@@ -63,6 +68,9 @@ export function padCueOf(type: string, payload: unknown, owner: PadCueOwner): Pa
     case 'ui:consumableDenied':
     case 'ui:ammoSelectionDenied':
       return owner.player ? { c: 'denied' } : null;
+    case 'ammo_selection_denied':
+      // the input stage refused this tank's shell pick (a couch seat's: no page key or HUD raised it)
+      return me && field(payload, 'id') === me ? { c: 'denied' } : null;
     case 'ui:autoAimState':
       return owner.player ? { c: field(payload, 'on') === true ? 'lock' : 'unlock' } : null;
     default:

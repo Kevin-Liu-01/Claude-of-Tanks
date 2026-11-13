@@ -205,9 +205,16 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   fireLookout: { family: 'tower', defaults: { height: 22 },
     footprint: (p) => { const r = 2.6 + num(p, 'height') * 0.05; return [r, r]; } },
   // ------------------------------------------------------------------------------------------------ village works
-  // (the floor a step proud of the walls, the hipped roof's eaves past them)
-  lavoir: { family: 'civic', defaults: { length: 12, depth: 7, bays: 3 },
-    footprint: (p) => [num(p, 'length') / 2 + 0.6, num(p, 'depth') / 2 + 0.6] },
+  // (the floor a step proud of the walls, the hipped roof's eaves past them; amberford-lavoir-272: the abreuvoir and the
+  // fontaine's pillar 1.65 m past the spring end, the rill and its drain 1.75 m past the other, `spring` the uphill end;
+  // `steps` the run of the flight up to a terraced floor before its middle arch: the body and the flight its solids)
+  lavoir: { family: 'civic', defaults: { length: 12, depth: 7, bays: 3, spring: 'left', steps: 0 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.8, num(p, 'depth') / 2 + 0.6 + Math.max(0, num(p, 'steps'))],
+    solids: (p) => {
+      const L = num(p, 'length'), D = num(p, 'depth'), run = Math.max(0, num(p, 'steps'));
+      const body: readonly [number, number, number, number] = [0, 0, L / 2 + 1.8, D / 2 + 0.6];
+      return run > 0 ? [body, [0, D / 2 + 0.3 + run / 2, 1.6, run / 2 + 0.1] as const] : [body];
+    } },
   // (the street range alone for `form: 'arcade'`; the gate's dressed frame 0.25 m proud of the street front)
   // (`forecourt`: a paved front that deep before the street front; the footprint keeps its depth both ways)
   // a row of the map kit's houses side by side along x, their street fronts to +z (`kit`: an architecture id; `structure`:

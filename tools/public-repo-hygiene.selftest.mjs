@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
-const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
+const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8', maxBuffer: 1 << 28 })
   .split('\0')
   .filter((file) => file && fs.existsSync(file));
 
@@ -65,6 +65,7 @@ const maintainedStandaloneTools = new Set([
   'tools/roof-pocket-census.mjs', // 263 (vehicles-leclerc-false-roofs-262): the turret roof-pocket census (--ids | --all, --gate; CPU, run by hand)
   'tools/gun-face-split-table.mjs', // 266 (gunface-span-265): the gun-face split's fleet table, frontal turret hits moved per id (CPU, run by hand)
   'tools/landmark-shots.mjs', // 271 (landmarks-271): the set pieces' cloud-pinned A/B stills per build arm, resumable per pair (browser, under the capture lock, run by hand)
+  'tools/wreck-census.mjs', // wrecks-270: every map's placed hulks, their states, clearances and in-view repeats (Node, run by hand)
 ]);
 // 2026-09-23: the marketing generators are governed too (owner cleanup ruling:
 // a generator stays only while a document or manifest cites it).

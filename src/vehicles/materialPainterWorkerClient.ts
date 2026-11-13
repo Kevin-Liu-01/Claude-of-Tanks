@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createWorkerClientHealth } from '../workerClientHealth.ts';
 import {
   isMaterialPainterRequest, readMaterialPainterReply,
   type MaterialPainterMessage, type MaterialPainterRequest, type MaterialPainterResult,
@@ -17,7 +18,6 @@ interface MaterialPainterClientPorts {
   createWorker(): MaterialPainterWorkerPort | null;
   schedule(callback: () => void, delayMs: number): () => void;
   clone(request: MaterialPainterRequest): MaterialPainterRequest;
-  fontUrl: string;
 }
 interface PendingPaint {
   requestId: number;
@@ -31,7 +31,11 @@ interface MaterialPainterClient {
   available(): boolean;
 }
 
-/** One serial private worker; one consumer never cancels another shared bake. */
+/** One serial private worker; one consumer never cancels another shared bake. (2026-11-02 audit R6) The worker-client
+ *  pattern (src/workerClientHealth.ts): a job's deadline runs from its dispatch, never its queueing (with 16 queued, or
+ *  a laptop that slept mid-bake, the old absolute deadline tripped on a healthy worker); a failure closes the worker and
+ *  settles what it held with the main-thread fallback, and the next bake starts a fresh worker (it loads no font since
+ *  glacis-269); three in a row leave the client unavailable. Before, one failure turned it off for the session. */
 export function createMaterialPainterClient(
   ports: MaterialPainterClientPorts,
   options: { timeoutMs?: number; idleMs?: number; maxPending?: number } = {},
@@ -44,7 +48,7 @@ export function createMaterialPainterClient(
   let active: PendingPaint | null = null;
   let cancelIdle: (() => void) | null = null;
   let idleRevision = 0;
-  let unavailable = false;
+  const health = createWorkerClientHealth();
   let nextId = 1;
 
   function closeWorker(): void {
@@ -58,17 +62,26 @@ export function createMaterialPainterClient(
   function settle(job: PendingPaint, result: MaterialPainterResult | null): void {
     job.cancelTimer(); job.resolve(result);
   }
-  function fail(): void {
-    unavailable = true;
+  function drain(): void {
     closeWorker();
     const current = active; active = null;
     if (current) settle(current, null);
     for (const job of queue.splice(0)) settle(job, null);
   }
+  /** The worker failed: what it held takes the fallback; the next bake starts a fresh worker, unless that was the last. */
+  function fail(): void {
+    health.failed();
+    drain();
+  }
+  function dispose(): void {
+    health.close();
+    drain();
+  }
   function receive(owned: MaterialPainterWorkerPort, data: RuntimeValue): void {
     if (worker !== owned || !active) return;
     const result = readMaterialPainterReply(data, active.requestId, active.request);
     if (!result) { fail(); return; }
+    health.succeeded();
     const current = active; active = null;
     settle(current, result);
     advance();
@@ -83,7 +96,7 @@ export function createMaterialPainterClient(
     return owned;
   }
   function advance(): void {
-    if (active || unavailable) return;
+    if (active || health.state === 'unavailable') return;
     try {
       if (!queue.length) {
         const revision = ++idleRevision, owned = worker;
@@ -93,13 +106,15 @@ export function createMaterialPainterClient(
         return;
       }
       const owned = acquire();
-      if (!owned) { fail(); return; }
-      active = queue.shift()!;
-      owned.postMessage({ requestId: active.requestId, request: active.request, fontUrl: ports.fontUrl });
+      if (!owned) { dispose(); return; }
+      const job = active = queue.shift()!;
+      // the deadline runs from the job's dispatch (its turn at the serial worker), not from its request
+      job.cancelTimer = ports.schedule(() => { if (active === job) fail(); }, timeoutMs);
+      owned.postMessage({ requestId: job.requestId, request: job.request });
     } catch { fail(); }
   }
   function paint(request: MaterialPainterRequest): Promise<MaterialPainterResult | null> {
-    if (unavailable || queue.length + Number(!!active) >= maxPending) return Promise.resolve(null);
+    if (health.state === 'unavailable' || queue.length + Number(!!active) >= maxPending) return Promise.resolve(null);
     let snapshot: MaterialPainterRequest;
     try {
       snapshot = ports.clone(request);
@@ -108,20 +123,18 @@ export function createMaterialPainterClient(
     idleRevision++; cancelIdle?.(); cancelIdle = null;
     return new Promise(resolve => {
       const job: PendingPaint = { requestId: nextId++, request: snapshot, resolve, cancelTimer: () => {} };
-      // Deadline includes time queued, so no caller waits indefinitely behind another bake.
-      try { job.cancelTimer = ports.schedule(fail, timeoutMs); }
-      catch { resolve(null); fail(); return; }
+      // no caller waits indefinitely: the queue is bounded (maxPending) and every job's turn has its own deadline
       queue.push(job); advance();
     });
   }
-  return { paint, dispose: fail, available: () => !unavailable };
+  return { paint, dispose, available: () => health.state === 'available' };
 }
 
 let sharedClient: MaterialPainterClient | null = null;
 
 export function canPaintMaterialBaseInWorker(): boolean {
   return typeof Worker === 'function' && typeof OffscreenCanvas === 'function'
-    && typeof FontFace === 'function' && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
+    && typeof Path2D === 'function' && typeof DOMMatrix === 'function'
     && typeof document !== 'undefined' && typeof structuredClone === 'function'
     && (!sharedClient || sharedClient.available());
 }
@@ -149,7 +162,6 @@ export function tryPaintMaterialBase(request: MaterialPainterRequest): Promise<M
         createWorker: browserWorker,
         clone: value => structuredClone(value),
         schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
-        fontUrl: new URL(`${import.meta.env?.BASE_URL ?? '/'}fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2`, document.baseURI).href,
       });
     }
     owner = sharedClient;

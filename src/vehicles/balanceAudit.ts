@@ -1,4 +1,5 @@
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
+import { fireCycleFloorS, intraClipCycleS } from '../sim/fireCycleFloor.ts';
 
 export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x0.7 turret front with the Mk 1 and Mk 3 on the Mk 3\'s turret',
@@ -43,8 +44,21 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   centurion13: '262: the new Mk 13 shares the Mk 5/2 package (hull, armour factor, round, cadence, engine)',
   strv105: '262: the new Strv 105 shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel\'s power and its FFV cassettes',
   olifant_mk2: '262: the new Olifant Mk 2 package: the 1,040 hp diesel, the composite turret and glacis, a stabilised fire control and the GT-3B\'s APFSDS',
+  semel: '269: the Semel: the Strv 81\'s Mk 5 hull, armour and 20-pdr Type B under the 810 hp Continental petrol engine',
+  olifant_mk1: '269: the Olifant Mk 1: the 20-pdr Mk 5 with the 750 hp AVDS diesel, 56 t, and the laser fire control',
+  olifant_mk1a: '269: the Olifant Mk 1A: the Mk 5/2\'s 105 mm hull with the 750 hp AVDS, 56 t, the stabilised GT3 and its APFSDS a step under the Mk 2\'s',
+  olifant_mk1b: '269: the Olifant Mk 1B: the Mk 2 without its thermal fire control, 900 hp, its turret cheeks and rounds a step under the Mk 2\'s',
+  ttd: '269: the TTD: 58.3 t on 1,234 hp, the GT3 105 mm with the Mk 2\'s rounds, spaced armour at the IV footing over a 750 mm glacis',
   centurion5_1_aus: '262: the new Australian Mk 5/1: the Strv 81\'s Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand',
   centurion5_avre: '262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort',
+  m113a1_fsv: '269: the M113A1 FSV: the aluminium M113A1 under the Saladin turret, its 76 mm L5A1 firing HESH and HE, 11.9 t on 212 hp',
+  m113a1_mrv: '269: the M113A1 MRV: the M113A1 under the Scorpion turret, its 76 mm L23A1 firing HESH and HE, 12.5 t on 212 hp',
+  m113as4: '269: the M113AS4: the stretched M113 under ceramic appliqué and the Tenix turret\'s 12.7 mm M2, 18 t on 350 hp',
+  m113a3: '269: the US M113A3: the Ares APC\'s .50 and fire control on the aluminium M113, 12.3 t on 275 hp',
+  leopard_as1: '269: the Leopard AS1: the Leopard 1A3 DK\'s welded turret, hull and L7A3 with the SABCA laser fire control, 42.4 t on 830 hp',
+  m1a1_aim_sa_aus: '269: the M1A1 AIM SA: the M1A1 with export armour, a quicker fire control and the tungsten KEW-A2, 61.3 t on 1,500 hp',
+  m1a2_sepv3_aus: '269: the Australian M1A2 SEPv3: the SEPv3 without ARAT or Trophy, its KEW-A2 tungsten round, 66 t on 1,500 hp',
+  redback: '269: the AS21 Redback: the Puma S1\'s footing (30 mm, Spike LR2, Iron Fist hard-kill) on 42 t and 1,000 hp',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',
@@ -168,8 +182,8 @@ export function sustainedPrimaryDpm(spec: FleetTankSpec): number {
   if (!autoloader) return round.dmg * 60 / spec.gun.reloadS;
   const rounds = Math.max(1, autoloader.magazineSize);
   const cycle = (autoloader.fullReloadS || spec.gun.reloadS) +
-    Math.max(0, rounds - 1) * autoloader.intraClipS;
-  return round.dmg * rounds * 60 / Math.max(0.05, cycle);
+    Math.max(0, rounds - 1) * intraClipCycleS(autoloader, spec.gun.reloadS);
+  return round.dmg * rounds * 60 / Math.max(fireCycleFloorS(autoloader), cycle);
 }
 
 function median(values: number[]): number {

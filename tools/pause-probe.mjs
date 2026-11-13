@@ -34,6 +34,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { readinessExpression, scenePhaseExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const SIM_DT = 1 / 60; // mirror of src/sim/movement.ts (dt-clamp assertion)
 const SHOT_DIR = path.join(process.cwd(), 'shots', 'pause-r1');
@@ -153,7 +154,7 @@ const maxDisp = (a, b) => {
 try {
   console.log('\n[pause-probe] === boot + battle entry ===');
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  await waitForBootLoaded(page, { timeout: 90000 });
   await sleep(1200);
 
   const btn = await page.evaluate(() => {
@@ -163,8 +164,8 @@ try {
   await page.mouse.click(btn.cx, btn.cy);
   let phase = 'garage';
   try {
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 20000 });
-    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 20000 });
+    // (2026-11-02 audit S3) the battle is on screen: the lifecycle's own edge (tools/game-readiness.mjs)
+    await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 40000 });
     phase = 'battle';
   } catch (_) {
     phase = await page.evaluate(() => window.__DEBUG.game.phase);
@@ -174,7 +175,7 @@ try {
   // Player entry now holds the simulation behind a visible five-second
   // countdown. Pause semantics begin at rollout, not while the roster is
   // intentionally frozen.
-  await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 12000 });
+  await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 12000 });
   await sleep(600); // first live simulation beats after rollout
 
   // audio context + pointer lock via a real canvas click (the gesture path)
@@ -271,8 +272,12 @@ try {
   if (leave) {
     const leaveStartedAt = performance.now();
     await page.mouse.click(leave.cx, leave.cy);
-    await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 15000 });
+    // (round 2 Q21) responsiveness is the click to the Garage taking the scene (the phase edge this check timed before
+    // the lifecycle), not to a settled Garage: that also timed the whole cold restore, and a slow one on a loaded
+    // machine failed 'responsive' or timed out first. The settled Garage then gets its own budget before the checks.
+    await page.waitForFunction(scenePhaseExpression('garage'), { timeout: 15000 });
     const leaveElapsedMs = performance.now() - leaveStartedAt;
+    await page.waitForFunction(readinessExpression('garage'), { timeout: 60000 });
     st = await pauseState();
     check('leave-battle from pause lands in the garage',
       st.phase === 'garage' && !st.open && !st.paused && !st.pausedClass,
@@ -300,7 +305,7 @@ try {
 
   console.log('\n[pause-probe] === end-overlay Esc unchanged ===');
   await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 10000 });
+  await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 10000 });
   await sleep(600); // a few live ticks
   await page.evaluate(() => window.__DEBUG.slayEnemies());
   let endUp = false;

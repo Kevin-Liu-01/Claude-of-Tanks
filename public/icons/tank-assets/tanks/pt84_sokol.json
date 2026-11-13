@@ -6946,15 +6946,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26670,
-      "sha256": "387fccf7e8c7dc06f43834c91d1f622efeeee47acf80c8000616ed60fd661371",
+      "bytes": 26690,
+      "sha256": "e93346ec31c217cf906d18190e90d1a892edb3e960853426c952e2bd0846cd47",
       "thumbnail": {
         "file": "thumbs/pt84_sokol_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10972,
-        "sha256": "704c2ca9df460bdb7374af80b73a25e6e54ecd08228999bc1c9a37e8fb2a1983"
+        "bytes": 10964,
+        "sha256": "e0e95117f009598d097cc821b7e52bdd08c8e949d8652f238925c4ea13ad0e1b",
+        "frame": [22,107,229,249]
       }
     },
     "top": {
@@ -6970,8 +6971,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10242,
-      "sha256": "ab7758e0d8daa7da22b08beb60c00c47613888eb1a0a16b118c0be9f01f8c8c4"
+      "bytes": 10224,
+      "sha256": "280687ee9df61d0428cc22524b39e44349688a156ba14f6b45e2b2e1a8829fde"
     },
     "topSilhouette": {
       "file": "pt84_sokol_top_silhouette.png",
@@ -6994,16 +6995,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24688,
-      "sha256": "bd7c293843671738be0f45ff0680910ded57458a151eec37d251b0cab355708e"
+      "bytes": 24698,
+      "sha256": "cad8532ef954c80853ba22041cc539f5faeb2cb5eed04a6bb9260ece38637fc4"
     },
     "modulesSide": {
       "file": "pt84_sokol_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23006,
-      "sha256": "f40d01aa5468427eb657d945b8e57db4870eead02f34a58cfc92aa20ab3797fd"
+      "bytes": 22996,
+      "sha256": "fda916327841e0c1829d12a57e96f1f6d3adfdb1773107ee87a62efd37e54028"
     },
     "crewSide": {
       "file": "pt84_sokol_crew_side.webp",
@@ -7011,15 +7012,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 20852,
-      "sha256": "95043ad47bba304a0ee8a19c755720c7a748a1ba7a544fa02a20ca0b08db13eb"
+      "sha256": "9d3a5f7048ab48f421e57b1d8b331801ec639dad59e5519612dbd0c385d98ddf"
     },
     "markings": {
       "file": "pt84_sokol_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32622,
-      "sha256": "61695cf38c5886d1ed6660d1ffc6e0ada2aa16a1c0a394b6e0050eb317d1a904"
+      "bytes": 30600,
+      "sha256": "a23ad63b0394e570ef628608461ecf70addd930dc7140af9bef501c8be567722"
     },
     "technicalLabels": {
       "file": "pt84_sokol_technical.json",

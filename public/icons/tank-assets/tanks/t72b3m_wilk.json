@@ -55617,7 +55617,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10420,
-        "sha256": "8631a4abe19de6a7d316302881307c12bec8355a3fc239901fadedaf9ad200d6"
+        "sha256": "8631a4abe19de6a7d316302881307c12bec8355a3fc239901fadedaf9ad200d6",
+        "frame": [26,120,230,249]
       }
     },
     "top": {
@@ -55625,8 +55626,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16960,
-      "sha256": "586b3840c465c73f926c16642fb342c3b81f875f6ad4c8c6305d79c4051c8cce"
+      "bytes": 16962,
+      "sha256": "77616e139e4542516c739d255315dccf476db6e937f8a66cbaf6e5a0658893f3"
     },
     "side": {
       "file": "t72b3m_wilk_side.webp",
@@ -55657,8 +55658,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32817,
-      "sha256": "ad8f08a4d0597667202d99caca8b8f46ee177584a4b76a1eee2baebc6030110a"
+      "bytes": 30344,
+      "sha256": "2917966da7e7c0afa73f655eed4ff4508702388819a714c92b14767a743e871d"
     },
     "technicalLabels": {
       "file": "t72b3m_wilk_technical.json",

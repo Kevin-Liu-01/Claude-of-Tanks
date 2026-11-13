@@ -1223,7 +1223,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11210,
-        "sha256": "1196cc65e37b9d205a3b21424c99f3b0642e86b8bfc76314da6cd8129a4f4b83"
+        "sha256": "1196cc65e37b9d205a3b21424c99f3b0642e86b8bfc76314da6cd8129a4f4b83",
+        "frame": [20,107,225,250]
       }
     },
     "top": {
@@ -1240,7 +1241,7 @@
       "height": 256,
       "mime": "image/webp",
       "bytes": 11016,
-      "sha256": "348d5ee35e0b3fa1839f655b910915882e53df1828a67d8a685145658dcc27e3"
+      "sha256": "927030f63e55dd05554d3da9c23cb04782a0e63235f17d18850eab3bf3948b4e"
     },
     "topSilhouette": {
       "file": "leo2a7dk_top_silhouette.png",
@@ -1263,8 +1264,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26614,
-      "sha256": "190732f2a8d551f8b913eb45fcb43159d70cdc7ad8db3186fa5fe52b020fe454"
+      "bytes": 26630,
+      "sha256": "f4b2277877f06a5de5e8d595b5b35a88eae09ae18d68416f942223af578c061c"
     },
     "modulesSide": {
       "file": "leo2a7dk_modules_side.webp",
@@ -1272,23 +1273,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26424,
-      "sha256": "adf2476e3aea56f16ab86ecd090850daf45966fdb48bcbaba7f29ce185a9178e"
+      "sha256": "b4f158bdd48c4a5a60c88ffeb1d4d1e8ab732ed231baa04e61a252cd7cb16031"
     },
     "crewSide": {
       "file": "leo2a7dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25824,
-      "sha256": "da0a48995c3b847b7ebdecef037bee47dac983f065587a4e7c109227a1e481d7"
+      "bytes": 25830,
+      "sha256": "e23a9da22c136d542594059d94834d3b872551362650cc426ed79399a862bd0d"
     },
     "markings": {
       "file": "leo2a7dk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 31914,
-      "sha256": "0d665498c06c73fb28f48028d9f034eaab810a501e8340198964bcddfde2db58"
+      "bytes": 31647,
+      "sha256": "9744de3a5ea551dd96dba9e52d822cb82b05dd56bee9dd4ea27f6522e4b095f3"
     },
     "technicalLabels": {
       "file": "leo2a7dk_technical.json",

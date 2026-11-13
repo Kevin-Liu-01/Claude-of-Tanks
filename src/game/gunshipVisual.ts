@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 /** (ac130-fx-228) The airframe's lit material joins the battle's cascade setup (engineCtx.setupShadowMaterial), as every
  *  lit material in the scene must; the FX runtime installs the hooks when it is built (effects.ts, as it does the
@@ -13,15 +14,34 @@ export function configureGunshipMaterials(hooks: GunshipMaterialHooks | null): v
  * stages the airframe for its scene compile (stageGunshipVisual); a sync before the load lands asks for it.
  */
 interface Airframe { root: THREE.Group; spin(dt: number): void; dispose(): void }
+type AirframeModule = typeof import('./gunshipAirframe.ts');
 let build: ((hooks: GunshipMaterialHooks | null) => Airframe) | null = null;
-let loading: Promise<void> | null = null;
+// (2026-11-02 audit R6, review round 2) one lazyChunk (app/lazyChunk.ts) for the airframe and the FX runtime's lens guns:
+// a memo nulled on failure was asked again by every frame's sync (and the lens guns' own latch the same), so one failed
+// chunk was a new import and a warning each frame for the rest of an AC-130 battle; the policy asks at once, then past
+// its backoff (2, 4, 8 ... s, at most a minute), and never while offline
+const airframeChunk = createLazyChunk((): Promise<AirframeModule> => import('./gunshipAirframe.ts').then((module) => {
+  build = module.buildGunshipAirframe;
+  return module;
+}, (error: unknown) => {
+  console.warn('[gunship] the airframe did not load:', error);
+  throw error;
+}));
+let airframeAsk: Promise<void> | null = null;
+let airframeAsked: Promise<AirframeModule> | null = null;
+/** The airframe's chunk: resolves once it is in, or once this ask failed (nothing drawn until a later ask loads it). The
+ *  same handled promise until the load's state moves, so a sync on every frame allocates nothing. */
 export function loadGunshipAirframe(): Promise<void> {
-  loading ??= import('./gunshipAirframe.ts').then((module) => { build = module.buildGunshipAirframe; }, (error: unknown) => {
-    loading = null; // the next sync asks again
-    console.warn('[gunship] the airframe did not load:', error);
-  });
-  return loading;
+  const request = airframeChunk.load();
+  if (request !== airframeAsked) {
+    airframeAsked = request;
+    airframeAsk = request.then(() => undefined, () => undefined);
+  }
+  return airframeAsk!;
 }
+/** The airframe's module once its chunk is in (the FX runtime's lens guns build from it), else null: ask with
+ *  loadGunshipAirframe. */
+export function loadedGunshipAirframe(): AirframeModule | null { return airframeChunk.value; }
 
 const aircraft = new WeakMap<THREE.Object3D, Airframe>();
 /** (ac130-fx-228 r3) a camera nearer the airframe's origin than this is inside it (half its 40.4 m span, and a margin) */
@@ -50,7 +70,7 @@ function airframeOf(tankRoot: THREE.Object3D): Airframe | null {
  *  the pilot's own vehicle on every frame its gimbal lens (inside the airframe, at the orbit centre) is the camera and
  *  shows it for an external pose (the killcam, the ending's replay and orbit), so the caller passes it straight on. */
 export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean,
-  eye: THREE.Vector3 | null = null): void {
+  eye: THREE.Vector3 | null = null, bank = GUNSHIP_BANK_RAD, pitch = 0): void {
   const model = airframeOf(tankRoot);
   if (model) {
     if (tankRoot.parent && model.root.parent !== tankRoot.parent) tankRoot.parent.add(model.root);
@@ -59,7 +79,8 @@ export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vect
     // leaving, it looks away from the aircraft toward the ending's focus, so the airframe is behind it when it returns
     model.root.visible = visible && !(eye && eye.distanceToSquared(position) < GUNSHIP_HULL_CLEAR_M * GUNSHIP_HULL_CLEAR_M);
     model.root.position.copy(position);
-    model.root.rotation.set(0, yaw, GUNSHIP_BANK_RAD);
+    // the bank its flight gives it (Air Support's run: sim/strikeRuns.ts), else the AC-130 mode's fixed one; nose-up pitch
+    model.root.rotation.set(-pitch, yaw, bank, 'YXZ');
     model.spin(dt);
   }
 }

@@ -996,24 +996,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39880,
-      "sha256": "a0ca99bf26cdf37cc15aab73d2bb09ee3593f9fc4f09f691c7ecb0bc886432a6"
+      "bytes": 39878,
+      "sha256": "f61c6de68118684085235c54a20d7d06c3910ea1092b784ad11b7881f6d9b21a"
     },
     "modulesSide": {
       "file": "cv90_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39174,
-      "sha256": "08dcfaf03b457b6ee4dfc19f989dbd74a90cb7261a23d2e304bbd0b8e358e5c0"
+      "bytes": 40696,
+      "sha256": "123403217ccc162a0927ec496be0763af766473164e025033c89a107f155cdf1"
     },
     "crewSide": {
       "file": "cv90_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37926,
-      "sha256": "9f0725670c8056a825945fa9479cf4ac8343f0b44210ef7383082db48cd3173f"
+      "bytes": 37840,
+      "sha256": "e879aeebe53d0ee7e9e034d286845f409782d1bffffecd370112dce1a9cbf4fe"
     },
     "angle": {
       "file": "cv90_angle.webp",
@@ -1028,7 +1028,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11650,
-        "sha256": "e6a33e6957336cfef472eea8ffcc619b2e1376ba1ff460243bb7847788760d9d"
+        "sha256": "e6a33e6957336cfef472eea8ffcc619b2e1376ba1ff460243bb7847788760d9d",
+        "frame": [28,65,226,249]
       }
     },
     "top": {
@@ -1044,8 +1045,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15286,
-      "sha256": "f0e77c2e45482169be787ce1e8f8886133e2aaf72044f8b3fd4598349bc37f75"
+      "bytes": 15232,
+      "sha256": "355e0baff02ed8c1dd780824b1330d1e857907c762dbdc2f074eda402a145199"
     },
     "topSilhouette": {
       "file": "cv90_top_silhouette.png",
@@ -1068,8 +1069,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37059,
-      "sha256": "1b5bf90b0f9894e54e51b741311fce556aac7dec55e48104f70ae7f132e55626"
+      "bytes": 33601,
+      "sha256": "e6e324c74a2be4ffa3f1a0590c6e14d5083a6b784510fb63a460ed4938fd8372"
     },
     "technicalLabels": {
       "file": "cv90_technical.json",

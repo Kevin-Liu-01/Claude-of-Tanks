@@ -662,7 +662,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 9326,
-        "sha256": "ef749b1afe9be3189371cd26c771231612b8cfb6e288d240eb19f93af973cb63"
+        "sha256": "ef749b1afe9be3189371cd26c771231612b8cfb6e288d240eb19f93af973cb63",
+        "frame": [18,122,225,248]
       }
     },
     "top": {
@@ -678,8 +679,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8140,
-      "sha256": "43dcb43bf424e5efac306218f5a696e5ee8ffaeeaac3d65d755eb26ba78ab142"
+      "bytes": 8120,
+      "sha256": "d48de137c2a485883b671f21675dcdbe54965d8f4d89050dce7a82ba51e67197"
     },
     "topSilhouette": {
       "file": "challenger_x_top_silhouette.png",
@@ -702,32 +703,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19522,
-      "sha256": "6654089db81801cacda377e508e006558dfc12af3f2db897703ee92b7e4f894d"
+      "bytes": 19532,
+      "sha256": "81e0bc8341ec4a1c2d8117503e8618f87f9a6f1a6f2aec821e52466eed046425"
     },
     "modulesSide": {
       "file": "challenger_x_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19946,
-      "sha256": "0cf7bf9949ca507fb73b927d6a9ded915b32d1f86ff2ae23dbb2aaf2575d89d3"
+      "bytes": 20002,
+      "sha256": "d84048b810c555a7cd8487b2f1cc1c43f7555adbd5739c2ffc9dfb49ba5dcf7b"
     },
     "crewSide": {
       "file": "challenger_x_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16438,
-      "sha256": "b0119df4e02f194b5166f5f8339d4665eb5c7aa53c98bd50a5509b705454da99"
+      "bytes": 16392,
+      "sha256": "9171dab904138840ee73521c474d2212bd43e926e2e9ac24d9eee13f4cf858d1"
     },
     "markings": {
       "file": "challenger_x_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35710,
-      "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+      "bytes": 33253,
+      "sha256": "01b45a6217627452b8f1fccecb3868bdea89c751b6752e6596a9836681008bf5"
     },
     "technicalLabels": {
       "file": "challenger_x_technical.json",

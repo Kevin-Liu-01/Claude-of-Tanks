@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { castShadowHeldByOthers, holdCastShadowOff, releaseCastShadowHold } from './castShadowHolds.ts';
 import type {
   Camera,
   DirectionalLight,
@@ -412,10 +413,13 @@ export function createDeploymentShadowWarmOwner({
     observeRender: ObserveShadowWarm,
   ): Promise<number[]> {
     const batchTimes: number[] = [];
-    for (const { object } of state.casters) object.castShadow = false;
+    // (2026-11-02 audit R4) the warm holds its casters off across its awaits by name (castShadowHolds.ts): a caster
+    // another owner holds off meanwhile (an articulated shadow batch's source) stays off, and the release restores only
+    // what the holds wrote
+    for (const { object } of state.casters) holdCastShadowOff(object, state);
     shadowOnlyCamera.layers.mask = camera.layers.mask;
     for (const batch of state.batches) {
-      for (const object of batch) object.castShadow = true;
+      for (const object of batch) if (!castShadowHeldByOthers(object, state)) object.castShadow = true;
       // (2026-10-24, perf-245) every caster draws into the cascade, not only those its frustum holds: a caster kind
       // found only away from the spawn (a rock field, a stone wall, a crown's dapple, a wreck) made its depth pipeline
       // when a camera was thrown onto it — cut off by the GPU's own clip here, its vertices alone are the cost
@@ -427,13 +431,13 @@ export function createDeploymentShadowWarmOwner({
         observeRender('caster-batch', batchTimes.length, firstLight);
       } finally {
         for (const object of culled) object.frustumCulled = true;
+        firstLight.shadow.needsUpdate = false;
+        for (const object of batch) object.castShadow = false;
       }
       batchTimes.push(Math.round(now() - startedAt));
-      firstLight.shadow.needsUpdate = false;
-      for (const object of batch) object.castShadow = false;
       await yieldCovered(yieldForBudget);
     }
-    for (const { object } of state.casters) object.castShadow = true;
+    for (const { object } of state.casters) releaseCastShadowHold(object, state);
     return batchTimes;
   }
 
@@ -446,23 +450,24 @@ export function createDeploymentShadowWarmOwner({
     for (const light of lights) {
       light.shadow.needsUpdate = true;
       const startedAt = now();
-      observeRender('cascade', cascadeTimes.length, light);
+      try { observeRender('cascade', cascadeTimes.length, light); } finally { light.shadow.needsUpdate = false; }
       cascadeTimes.push(Math.round(now() - startedAt));
-      light.shadow.needsUpdate = false;
       await yieldCovered(yieldForBudget);
     }
     return cascadeTimes;
   }
 
+  // (2026-11-02 audit R4) a field goes back only while it still holds the value the warm wrote (the deploymentWarm.ts
+  // generators' rule); another owner's write across the warm's awaits stands
   function restoreCasterState(state: CasterState): void {
-    for (const { object } of state.casters) object.castShadow = true;
-    for (const { object, autoUpdate } of state.lods) object.autoUpdate = autoUpdate;
+    for (const { object } of state.casters) releaseCastShadowHold(object, state);
+    for (const { object, autoUpdate } of state.lods) if (object.autoUpdate === false) object.autoUpdate = autoUpdate;
   }
 
   function restoreShadowState(states: readonly SavedShadowState[]): void {
     for (const state of states) {
-      state.shadow.autoUpdate = state.autoUpdate;
-      state.shadow.needsUpdate = state.needsUpdate;
+      if (state.shadow.autoUpdate === false) state.shadow.autoUpdate = state.autoUpdate;
+      if (state.shadow.needsUpdate === false) state.shadow.needsUpdate = state.needsUpdate;
     }
   }
 

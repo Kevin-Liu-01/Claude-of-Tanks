@@ -3,9 +3,10 @@
 // hold. The actor is runtime-neutral; the Durable Object and the LAN helper host this same code.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { PadActor } from './padActor.ts';
 import {
-  PAD_CODE_TTL_MS, PAD_DESKTOP_GRACE_MS, PAD_ICE_LIMIT, PAD_LOBBY_JOIN_MS, PAD_LOBBY_SEATS, PAD_PAIR_MAX_MS, PAD_RELAY_BUDGET,
+  PAD_CODE_TTL_MS, PAD_DESKTOP_GRACE_MS, PAD_ICE_LIMIT, PAD_ICE_WINDOW_MS, PAD_LOBBY_JOIN_MS, PAD_LOBBY_SEATS, PAD_PAIR_MAX_MS, PAD_RELAY_BUDGET,
   PAD_RELAY_HZ, PAD_SIGNAL_LIMIT, drawPadCode, normalizePadCode,
 } from './padProtocol.ts';
 
@@ -272,12 +273,13 @@ function harness(code = 'K7Q4MZ') {
   h.msg('d1', { t: 'relay', data: 'c', seat: 2 });
   assert.deepEqual(h.last('p2'), { t: 'relay', data: 'c' });
 
-  // a phone sleeps and resumes into its own seat
+  // a phone sleeps and resumes into its own seat, and hears its number again (round 8 Y5 s3-06: a reloaded phone's page
+  // knew no seat, so its link chip lost "Seat 5")
   h.actor.handleClose('p5');
   assert.deepEqual(h.last('d1'), { t: 'seat', seat: 5, state: 'away' });
   h.actor.openResume('p5b');
   h.msg('p5b', { t: 'resume', token: tokens[4] });
-  assert.deepEqual(h.to('p5b').slice(0, 2), [{ t: 'resumed' }, { t: 'peer', state: 'here' }]);
+  assert.deepEqual(h.to('p5b').slice(0, 2), [{ t: 'resumed', seat: 5 }, { t: 'peer', state: 'here' }], "a lobby phone's resume names its seat");
   assert.deepEqual(h.last('d1'), { t: 'seat', seat: 5, state: 'here' });
 
   // a phone that leaves frees only its seat, and the next phone takes that number
@@ -364,6 +366,161 @@ function harness(code = 'K7Q4MZ') {
   h.msg('p2', { t: 'kick', seat: 1 });
   assert.deepEqual(h.last('p2'), { t: 'end', reason: 'invalid' }, 'a phone cannot let a seat go');
   assert.equal(h.actor.exportState().seats.length, 2);
+}
+
+// --- round 8 Y5 s3-07 / s4-03: a lobby a phone joined keeps its desktop's grace, in either order ----------------------
+// The lobby kind reused the pair's phase as "has a seat now": the last seat's release set it back to 'waiting', so a
+// desktop blink after every phone left ended the lobby at once (its code on the TV), and a desktop already away lost its
+// grace when the last seat left (a seatless lobby with no desktop held until its window or six hours, and a newcomer
+// who joined past the grace was seated, then dropped by the late alarm). The phase now only moves waiting -> paired.
+{
+  // every phone left, then the desktop blinks: the lobby holds for the grace, and the desktop's resume gets its window
+  const h = harness();
+  h.actor.openLobby('d1');
+  const { token } = h.to('d1')[0];
+  h.actor.openJoin('p1');
+  h.msg('p1', { t: 'end' });
+  assert.deepEqual(h.last('d1'), { t: 'seat', seat: 1, state: 'gone' });
+  h.advance(1000);
+  h.actor.handleClose('d1');
+  assert.ok(h.actor.exportState(), 'a lobby every phone left is kept when its desktop blinks (its code was seen)');
+  assert.equal(h.actor.phase, 'paired', 'a lobby a phone joined stays paired with no seat');
+  assert.equal(h.deadline, h.now + PAD_DESKTOP_GRACE_MS, 'its desktop has its grace');
+  h.advance(PAD_DESKTOP_GRACE_MS - 1000);
+  h.actor.tick();
+  h.actor.openResume('d2');
+  h.msg('d2', { t: 'resume', token });
+  assert.deepEqual(h.to('d2'), [{ t: 'resumed' }, { t: 'lobby', open: true, until: h.actor.exportState().joinUntil, seats: 0 }],
+    'a resume inside the grace gets its lobby and its join window back');
+  h.actor.openJoin('p2');
+  assert.equal(h.to('p2')[0].seat, 1, 'and it seats the next phone');
+}
+{
+  // between battles: the window closed for the battle, every phone left, then the desktop blinks
+  const h = harness();
+  h.actor.openLobby('d1');
+  const { token } = h.to('d1')[0];
+  h.actor.openJoin('p1');
+  h.actor.openJoin('p2');
+  h.msg('d1', { t: 'lobby', open: false });
+  h.msg('p1', { t: 'end' });
+  h.msg('p2', { t: 'end' });
+  h.actor.handleClose('d1');
+  assert.ok(h.actor.exportState(), 'a closed lobby every phone left is kept through a blink');
+  assert.equal(h.deadline, h.now + PAD_DESKTOP_GRACE_MS);
+  h.actor.openResume('d2');
+  h.msg('d2', { t: 'resume', token });
+  assert.deepEqual(h.to('d2'), [{ t: 'resumed' }, { t: 'lobby', open: false, until: null, seats: 0 }], 'its window stays closed');
+  // a desktop that never comes back ends it at the grace
+  h.actor.handleClose('d2');
+  h.advance(PAD_DESKTOP_GRACE_MS);
+  h.actor.tick();
+  assert.equal(h.actor.exportState(), null, 'past the grace the lobby is forgotten');
+}
+for (const open of [true, false]) {
+  // the reverse order: the desktop goes away while phones sit, then the last seat leaves
+  const h = harness();
+  h.actor.openLobby('d1');
+  h.actor.openJoin('p1');
+  if (!open) h.msg('d1', { t: 'lobby', open: false });
+  h.advance(60_000);
+  h.actor.handleClose('d1');
+  const awaySince = h.now;
+  assert.deepEqual(h.last('p1'), { t: 'peer', state: 'away' });
+  h.advance(30_000);
+  h.msg('p1', { t: 'end' });
+  assert.equal(h.deadline, awaySince + PAD_DESKTOP_GRACE_MS,
+    `the desktop's grace holds after the last seat leaves (window ${open ? 'open' : 'closed'}; it fell back to the window or the six hours)`);
+  // a newcomer past the grace, before the alarm runs: refused, never seated and then dropped
+  h.advance(PAD_DESKTOP_GRACE_MS);
+  h.actor.openJoin('late');
+  assert.deepEqual(h.to('late'), [{ t: 'end', reason: 'unknown' }], 'a phone past the desktop\'s grace is refused as unknown');
+  h.actor.tick();
+  assert.equal(h.actor.exportState(), null, 'the alarm at the grace ends the lobby');
+}
+{
+  // inside the grace a newcomer still joins (and hears the desktop away), as today
+  const h = harness();
+  h.actor.openLobby('d1');
+  h.actor.openJoin('p1');
+  h.actor.handleClose('d1');
+  h.msg('p1', { t: 'end' });
+  h.advance(PAD_DESKTOP_GRACE_MS - 1);
+  h.actor.openJoin('p2');
+  assert.deepEqual(h.to('p2').map((m) => m.t), ['joined', 'peer']);
+  assert.deepEqual(h.last('p2'), { t: 'peer', state: 'away' });
+}
+{
+  // the phase's one writer: only the first join moves it, and nothing moves it back
+  const source = readFileSync(new URL('./padActor.ts', import.meta.url), 'utf8');
+  const writes = [...source.matchAll(/\.phase\s*=(?!=)\s*([^;]+);/g)].map((match) => match[1]);
+  assert.deepEqual(writes, ["'paired'"], 'PadActor writes its phase in one place (#joined), forward only');
+  assert.match(source, /#joined\(state: PadActorState\): void \{\n\s*if \(state\.phase !== 'waiting'\) return;\n\s*state\.phase = 'paired';/);
+}
+
+console.log('padActor: PASS — codes expire, join once, wrong codes refused, resume and replace, limits and relay budget hold; lobbies seat eight, per-seat signals, relay and resume, leave, remove, close and reopen; a lobby a phone joined keeps its desktop\'s grace in either order');
+// --- ICE grants (272): only to a paired peer, counted per side and seat across sockets ------------------------------
+{
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+  // (a) a lobby's desktop with no phone joined has no peer to reach: no relay credentials
+  const empty = harness();
+  empty.actor.openLobby('d1');
+  empty.msg('d1', { t: 'ice' });
+  await flush();
+  assert.deepEqual(empty.last('d1'), { t: 'error', code: 'not_paired' }, 'an empty lobby is not granted ICE');
+  assert.equal(empty.iceCalls, 0);
+
+  // (b) a phone's window survives its socket: three grants, a resume on a new socket, and the fourth is refused
+  const h = harness();
+  h.actor.openDesktop('d1');
+  h.actor.openJoin('p1');
+  const { token } = h.to('p1').find((m) => m.t === 'joined');
+  for (let i = 0; i < PAD_ICE_LIMIT; i++) h.msg('p1', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, PAD_ICE_LIMIT);
+  h.actor.handleClose('p1');
+  h.actor.openResume('p1b');
+  h.msg('p1b', { t: 'resume', token });
+  h.msg('p1b', { t: 'ice' });
+  await flush();
+  assert.deepEqual(h.last('p1b'), { t: 'error', code: 'rate_limit' }, 'a resumed phone keeps its seat\'s ICE window');
+  assert.equal(h.iceCalls, PAD_ICE_LIMIT);
+  // the window is durable: a host that restores the stored state still counts it
+  const stored = h.actor.exportState();
+  const again = harness();
+  again.actor.restore(stored);
+  again.actor.attachSocket({ id: 'p1c', role: 'phone', seat: 1 });
+  again.msg('p1c', { t: 'ice' });
+  await flush();
+  assert.deepEqual(again.last('p1c'), { t: 'error', code: 'rate_limit' }, 'the window survives a restore');
+  // control: the desktop of a paired one-phone session keeps its own three grants
+  for (let i = 0; i < PAD_ICE_LIMIT; i++) h.msg('d1', { t: 'ice' });
+  h.msg('d1', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, 2 * PAD_ICE_LIMIT, 'each side of a pairing has PAD_ICE_LIMIT grants');
+  assert.ok(h.to('d1').some((m) => m.t === 'error' && m.code === 'rate_limit'));
+  // a new window opens after PAD_ICE_WINDOW_MS
+  h.advance(PAD_ICE_WINDOW_MS);
+  h.msg('p1b', { t: 'ice' });
+  await flush();
+  assert.equal(h.iceCalls, 2 * PAD_ICE_LIMIT + 1, 'the window reopens');
+
+  // (c) a lobby's desktop: PAD_ICE_LIMIT per phone actually joined, not per seat the lobby could hold
+  const lobby = harness();
+  lobby.actor.openLobby('d1');
+  lobby.actor.openJoin('p1');
+  lobby.actor.openJoin('p2');
+  for (let i = 0; i < PAD_ICE_LIMIT * 2 + 1; i++) lobby.msg('d1', { t: 'ice' });
+  await flush();
+  assert.equal(lobby.iceCalls, PAD_ICE_LIMIT * 2, 'two phones joined: twice PAD_ICE_LIMIT grants');
+  assert.ok(lobby.to('d1').some((m) => m.t === 'error' && m.code === 'rate_limit'));
+  // the desktop's window is not reset by its socket either
+  lobby.actor.handleClose('d1');
+  lobby.actor.openResume('d1b');
+  lobby.msg('d1b', { t: 'resume', token: lobby.to('d1').find((m) => m.t === 'code').token });
+  lobby.msg('d1b', { t: 'ice' });
+  await flush();
+  assert.equal(lobby.iceCalls, PAD_ICE_LIMIT * 2, 'a resumed desktop keeps its window');
 }
 
 console.log('padActor: PASS — codes expire, join once, wrong codes refused, resume and replace, limits and relay budget hold; lobbies seat eight, per-seat signals, relay and resume, leave, remove, close and reopen');

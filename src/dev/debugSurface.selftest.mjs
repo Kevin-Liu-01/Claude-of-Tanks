@@ -52,6 +52,7 @@ const surface = installDebugSurface({
   getDamagePanel: () => ({ visible: true }),
   devTrace: null,
   getNetworkDiagnostics: () => ({ state: networkState }),
+  isNetworkBattle: () => false,
   collectTelemetry: () => ({ fps: 120 }),
   sampleShadowContribution: async () => ({ changed: false }),
 }, target);
@@ -80,5 +81,9 @@ networkState = 'recovering';
 assert.equal(surface.network.state, 'recovering', 'network diagnostics remain live');
 assert.equal(surface.spotting.active, true);
 assert.deepEqual(surface.telemetry(), { fps: 120 });
+assert.equal(surface.battleHold.armed, false, 'the battle hold starts released');
+surface.battleHold.set(true);
+assert.equal(surface.game.devBattleHold, true, 'the battle hold arms the live game (game/devBattleHold.ts reads it)');
+surface.battleHold.set(false);
 
 console.log('debugSurface.selftest: live lazy diagnostic surface passed');

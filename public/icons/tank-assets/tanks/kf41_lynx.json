@@ -831,39 +831,40 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23470,
-      "sha256": "b18e9a6408373fdef9ebc5c7b237399445b86eaf6a9100c9b7bd0daeb01c7a07"
+      "bytes": 23382,
+      "sha256": "032f6e0446e2b2e2137fa744d2eb7859d590a43953af268fab20a997a0161a4e"
     },
     "modulesSide": {
       "file": "kf41_lynx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25424,
-      "sha256": "eafea4687af753e5181ea3881e31fbb6c6f2f5f38f6e9926eb7a4e128c5a464b"
+      "bytes": 25432,
+      "sha256": "235d828b8efe50dde98de8c51fd1c306c5aa11fc548a8ec0d09dd0d078c6e5ad"
     },
     "crewSide": {
       "file": "kf41_lynx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22556,
-      "sha256": "42c64ec2f2deb539f8b2c864a76cf7c9eb595876ca21951c4899d47fed0bc796"
+      "bytes": 22576,
+      "sha256": "c78b0db15cce8b851081cded00fd34c8b483bbdd4d6ff4941d0f49ca5ac8fb61"
     },
     "angle": {
       "file": "kf41_lynx_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24750,
-      "sha256": "d5dad0a2028ccc6153bdb28bd2695300517a7ede0b3d6fe8d2464f7f593d9df8",
+      "bytes": 26278,
+      "sha256": "3adae23454acac8279fd7e06ca663024093bff31cf00cbb23f375eb8cfc92ca4",
       "thumbnail": {
         "file": "thumbs/kf41_lynx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10586,
-        "sha256": "b6f99bbb9fddf77ffb5e84cf8235807068edb61471dd0a832a8e7d6b54f5db13"
+        "bytes": 11118,
+        "sha256": "25ee37693ab64a9b94c9564860e38054feeedc02d4721a60a7217d1998e642ff",
+        "frame": [25,87,227,250]
       }
     },
     "top": {
@@ -871,16 +872,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14172,
-      "sha256": "8871750684474289b33f208a8e983904259e942bc98984091d571d5f1d4e0995"
+      "bytes": 14154,
+      "sha256": "aefda12d7bafc922f123050166cde3733dd8aadf24b1a2f50283337da7d3737c"
     },
     "side": {
       "file": "kf41_lynx_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10602,
-      "sha256": "2ab84c99c8a90ff372e230420089affb7f5910d9dae1e9bd88189d24045fc0f7"
+      "bytes": 10610,
+      "sha256": "cef89ba26a29ab011f65c3516e03222d5fb685faa1d43dda5bc11350752acddf"
     },
     "topSilhouette": {
       "file": "kf41_lynx_top_silhouette.png",
@@ -903,8 +904,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34111,
-      "sha256": "1fe47b41b162d1379977a4910f8757cbc973e10e864d318a19b449ea5a81fc0b"
+      "bytes": 32095,
+      "sha256": "251ab78726e081070bb33d5398743af6984e06fd98e9ae7842af46ed157d2fcb"
     },
     "technicalLabels": {
       "file": "kf41_lynx_technical.json",

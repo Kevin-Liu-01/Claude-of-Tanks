@@ -797,15 +797,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26736,
-      "sha256": "bb49e188bf1c0911fa58724be7f014fc76f5cd3eb39e4bdbd99c79c74670ecad",
+      "bytes": 26680,
+      "sha256": "3f228dd82732d7a343685379a591a9fe7f8aad0efd236dd75745c2463582b980",
       "thumbnail": {
         "file": "thumbs/pl01_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10754,
-        "sha256": "fa1aaa140f7f2ad49ec1e100bab54e3dceaf3fda76ad1c2abe8f045b988c5c54"
+        "bytes": 10756,
+        "sha256": "5b0bd7db3f22e0376329f4e9d78349edee94362449ac889e6d416cf5402a29ca",
+        "frame": [26,89,226,250]
       }
     },
     "top": {
@@ -821,8 +822,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13354,
-      "sha256": "83eb34158ef53fd0929da8b8ee0a9e4b48067427aafbf9f04a64d59af7bbfaf6"
+      "bytes": 13340,
+      "sha256": "9d0e89d457431177d3f55bf24d599b6279ee5b9c7e3f676e84a31c73b0d2fc8c"
     },
     "topSilhouette": {
       "file": "pl01_top_silhouette.png",
@@ -845,32 +846,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34372,
-      "sha256": "ebf0977fc839a5095c18ddbb94195ac172acc54fdd5f448c8296d40c11e4c79f"
+      "bytes": 34306,
+      "sha256": "86ed59342ef5af8466495d7f4f379642317eaa5b139ecf9882169a00b2cbd0f1"
     },
     "modulesSide": {
       "file": "pl01_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32598,
-      "sha256": "a9b7363535ecc09e970d26e5f427480b197ec9dde4f802f0ae728ade9b267f4f"
+      "bytes": 32674,
+      "sha256": "4b9cdee73360f5f707a159823ee54bb13e38e7f1d24e4c5965692500e5064a85"
     },
     "crewSide": {
       "file": "pl01_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28938,
-      "sha256": "d69c49e6d13ef24ba7d20ebc3b68e2203fbb3db38853742b04e6cd19b6b0c952"
+      "bytes": 28936,
+      "sha256": "f0db31dfe4702d61814f7b8c0b7a223a121b318a69c9ec6e466e865facd9f97a"
     },
     "markings": {
       "file": "pl01_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32747,
-      "sha256": "e9fa1952fb91b09bbb4a14759ba704a3d852027f85e2e92a174b2069f4fd2ef7"
+      "bytes": 31122,
+      "sha256": "eb8e85e51c4709c8df18c70708a98b9c60cee55ee0f7f4cf0619b448af22bf74"
     },
     "technicalLabels": {
       "file": "pl01_technical.json",

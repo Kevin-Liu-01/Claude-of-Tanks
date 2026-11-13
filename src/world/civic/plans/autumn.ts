@@ -8,8 +8,9 @@
 // crossing left open (no inlay: the columns' crossroads); in the south-east quarter the monument aux morts (the map's
 // Croix de Lorraine, walked here from the edge of town) in its bed of grass behind a low Jaumont wall under a cast-iron
 // railing, four limes (the oak's form stands in) at the bed's corners, benches round it; the church's parvis in grey
-// sandstone pavés with its benches; the market's corner in the south-west quarter with the village well, two stalls and a
-// charrette; a Traction Avant parked along the south houses. No lamps (a village of 1944).
+// sandstone pavés with its benches; the market's corner in the south-west quarter with the village well, a stall and (since
+// amberford-lavoir-272) the lavoir cut into the quarter's rise; a Traction Avant parked along the south houses. No lamps
+// (a village of 1944).
 //
 // The bots' measured routes (the 229 routeheat probe: 16 of 700) cross the place on one line down the inn's front at
 // x = -124, from the north lane's mouth to the mill lane's: that corridor stays empty, and so do the four carriageways
@@ -18,7 +19,7 @@
 //
 // Pathways: none. The village-rue's usoirs, the beaten fore-yards between the fronts and the carriageway, are authored;
 // kerbs would erase them.
-import type { CivicPlan, CivicRect } from '../types.ts';
+import type { CivicPlanSource, CivicRect } from '../types.ts';
 
 import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -127, x1: -84, z0: 74, z1: 119.5 } as const;
@@ -28,9 +29,8 @@ const BED: CivicRect = { x0: -97, x1: -84, z0: 82, z1: 99 };
 const MONUMENT = { x: -87.5, z: 94.6 } as const;
 const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
-export const AUTUMN_CIVIC_PLAN: CivicPlan = {
+export const AUTUMN_CIVIC_PLAN: CivicPlanSource = {
   mapId: 'autumn',
-  style: 'lorrain',
   overlay: { monumentKind: 'monument' },
   pathways: null,
   areas: [{
@@ -66,9 +66,11 @@ export const AUTUMN_CIVIC_PLAN: CivicPlan = {
       { rect: { x0: -98, x1: -90, z0: 116, z1: 119.3 }, kind: 'setts' }],
     monument: { kind: 'monument', x: MONUMENT.x, z: MONUMENT.z, faceX: -110, faceZ: 100 },
     trees: {
-      // limes (the oak's form stands in): a row down the bed's west side and one at its south-east, and one by the market
+      // limes (the oak's form stands in): a row down the bed's west side and one at its south-east
       species: 'oak', scale: [0.95, 1.08],
-      stations: [{ x: -95, z: 97 }, { x: -95, z: 90.5 }, { x: -95, z: 84 }, { x: -88.5, z: 84 }, { x: -116.5, z: 78.5 }],
+      // (amberford-lavoir-272) the market's lime stood where the lavoir stands; no seat for it is left in the quarter (the
+      // lavoir's 2.5 m tree clearance, the bots' line down the inn's front, the well, the stall and 9 m off the roads)
+      stations: [{ x: -95, z: 97 }, { x: -95, z: 90.5 }, { x: -95, z: 84 }, { x: -88.5, z: 84 }],
     },
     furniture: [
       // the benches in the bed, on its diagonals, facing the monument; and two on the parvis facing the place
@@ -76,10 +78,10 @@ export const AUTUMN_CIVIC_PLAN: CivicPlan = {
       { kind: 'bench', x: -105, z: 115.5, yawDeg: 160 }, { kind: 'bench', x: -98.5, z: 114, yawDeg: 200 },
       // one against the farmhouse's gable, facing the bed
       { kind: 'bench', x: -85.2, z: 101.5, yawDeg: -90 },
-      // the market's corner: the village well, two stalls toward the crossing, a charrette
+      // the market's corner: the village well and a stall toward the crossing (amberford-lavoir-272: the lavoir took the
+      // corner's south half — its second stall and the charrette stood on its ground — landmarks/village.ts, autumn.ts)
       { kind: 'well', x: -113.5, z: 87, yawDeg: 30 },
-      { kind: 'stall', x: -113, z: 80.5, yawDeg: facing(-113, 80.5, -110, 100) }, { kind: 'stall', x: -117, z: 85.5, yawDeg: facing(-117, 85.5, -110, 100) },
-      { kind: 'handcart', x: -111, z: 76.5, yawDeg: 70 },
+      { kind: 'stall', x: -117, z: 85.5, yawDeg: facing(-117, 85.5, -110, 100) },
     ],
     // a Traction Avant along the south houses
     parking: [{ kind: 'sedan', x: -90.5, z: 78.5, yawDeg: 90 }],

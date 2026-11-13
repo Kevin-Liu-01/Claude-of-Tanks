@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -10,6 +10,7 @@ import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
+import { installRefusal } from './changed-only/fingerprint.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
@@ -427,8 +428,10 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
+  'tools/camo-sheet-layout.browser.selftest.mjs', // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
   'tools/mp-rooms-entry.browser.selftest.mjs', // 268: the multiplayer end-to-end's rooms entry per layout
+  'tools/couch-open.browser.selftest.mjs', // 272: a real press on Couch keeps the lobby open
   'tools/pane-stack-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt
   'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
@@ -669,4 +672,32 @@ try {
   assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
   assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
 } finally { rmSync(logFixture, { recursive: true, force: true }); }
+// 272: a stale install is refused before any receipt runs or records (the CLI and tools/gate.mjs call installRefusal).
+{
+  const fixture = mkdtempSync(join(tmpdir(), 'cot-install-drift-'));
+  try {
+    const lock = { packages: { '': { name: 'fixture' }, 'node_modules/oxlint': { version: '1.2.0' }, 'node_modules/left-pad': { version: '1.3.0' } } };
+    writeFileSync(join(fixture, 'package-lock.json'), JSON.stringify(lock));
+    const install = (dir, packages) => { mkdirSync(join(fixture, dir), { recursive: true });
+      writeFileSync(join(fixture, dir, '.package-lock.json'), JSON.stringify({ packages })); };
+    install('node_modules', { 'node_modules/oxlint': { version: '1.2.0' }, 'node_modules/left-pad': { version: '1.3.0' } });
+    assert.equal(installRefusal(fixture), null, 'the lock\'s install runs');
+    install('node_modules', { 'node_modules/left-pad': { version: '1.2.9' } });
+    const refused = installRefusal(fixture);
+    assert.match(refused, /node_modules does not match package-lock\.json \(2 differences\)/);
+    assert.match(refused, /left-pad 1\.2\.9 installed, 1\.3\.0 locked/);
+    assert.match(refused, /oxlint locked, not installed/);
+    assert.match(refused, /\nrun npm ci$/);
+    // a lane links node_modules from a checkout it owns: the link's install is the one compared
+    rmSync(join(fixture, 'node_modules'), { recursive: true, force: true });
+    install('owned/node_modules', { 'node_modules/oxlint': { version: '1.2.0' }, 'node_modules/left-pad': { version: '1.3.0' } });
+    symlinkSync(join(fixture, 'owned/node_modules'), join(fixture, 'node_modules'));
+    assert.equal(installRefusal(fixture), null, 'a linked install in step with the lock runs');
+    assert.match(installRefusal(fixture, () => ['x 2 installed, 1 locked']), /\(1 difference\):\n  x 2 installed, 1 locked\nrun npm ci/);
+    for (const source of ['./run-selftests.mjs', './gate.mjs']) {
+      assert.match(readFileSync(new URL(source, import.meta.url), 'utf8'), /const refusal = \w+ \? installRefusal\(\w+\) : null;\n\s+if \(refusal\) \{ console\.error\(`\[\w+\] \$\{refusal\}`\); process\.exitCode = 1; \}/,
+        `${source} refuses a drifted install before it runs anything`);
+    }
+  } finally { rmSync(fixture, { recursive: true, force: true }); }
+}
 console.log('run-selftests: separate execution/FIFO timings and source-invalidated fresh-process compile caching pass');

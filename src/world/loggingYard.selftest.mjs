@@ -7,7 +7,7 @@ import { mulberry32, HAY_CRATE_SITES, SLAB_SHELL_KINDS } from './props.ts'; // d
 // (props lane A #19, 2026-10-15) the field timber's placer and its caps moved to maps/groundDressing.ts
 import { FIELD_LOG_COUNTS, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
 import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts'; // the hitbox lane (2026-10-08): the stacks' shell slabs
-import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setObbShape } from './collision.ts';
+import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setCrushedRecords, setObbShape } from './collision.ts';
 import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPlacement.ts';
 import { scaleUV } from './propGeometry.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, civilianVehicleTypes } from './maps/inhabitKit.ts';
@@ -31,7 +31,7 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, `production stage exists: ${start}`);
   return source.slice(a, b);
 }
-const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, setObbShape,
+const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, setObbShape, setCrushedRecords,
   sampleDiscGround, sampleObbGround, planGroundedSegment, scaleUV, DESTRUCTIBLE_TYPES,
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
@@ -73,6 +73,7 @@ const factory = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const dPools = context.pools;
   ${section('  const groundCoverDetails =', '  group.userData.groundCoverDetails =')}
   ${section('  function refitDestructibleColliders(', '  function tintDestructibleInstances(')}
+  ${section('  const _noRecords: CollisionRecord[] = [];', '  /**\n   * Break/topple/toss')}
   ${section('  function restoreDestructibleRecord(', '  function resetDestructibles(')}
   return { ...context, buckets, fieldTimber, decorationGroundingReceipts, refitDestructibleColliders,
     restoreDestructibleRecord, nextRolls: () => [rng(), drng(), vrng()] };

@@ -271,14 +271,15 @@ const BUILDING_PALETTES = {
   savoyard: { default: { wall: [130, 124, 116], roof: [86, 84, 82], wallH: 6, roofH: 4 } },
 };
 
-/** Reference photographs of each place (the gauntlet's real set, ~/cot-launch-state/gauntlet-refs-20261012/real). */
+/** Reference photographs of each place (the gauntlet's real set of 2026-10-12, kept outside the repository: COT_GAUNTLET_REFS,
+ * else .qa-dev/gauntlet-refs/real). */
 const REFERENCES = {
   polders: [['real_scheldt_polders_2.jpg', 'Zeeland: a tower mill on the dyke over the creek, bare trees, low far horizon'],
     ['real_zeeland_1.jpg', 'Zeeland: a dyke road toward the Oosterschelde']],
   alpine: [['real_mont_cenis_1.jpg', 'Col du Mont-Cenis: the lake under snow below the Petit Mont-Cenis, March']],
   verdant: [['real_prokhorovka_1.jpg', 'Prokhorovka: the forest-steppe'], ['real_prokhorovka_2.jpg', 'Prokhorovka']],
 };
-const REF_DIR = path.join(process.env.HOME ?? '', 'cot-launch-state/gauntlet-refs-20261012/real');
+const REF_DIR = path.resolve(process.env.COT_GAUNTLET_REFS || '.qa-dev/gauntlet-refs/real');
 
 /** The eye-level sheet: the place's reference photographs, then four EYE8 views at tank eye height (CPU preview). */
 export async function renderEyes(id, build, ground, outDir, { fog, names = ['edge-n', 'edge-s', 'corner-ne', 'edge-w'], elev } = {}) {
@@ -425,7 +426,7 @@ export async function renderPlan(id, { outDir, draft = true, eyeViews = true, ey
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
   const ids = (arg('map') ?? 'polders').split(',');
-  const outDir = arg('out') ?? path.join(process.env.HOME, 'cot-launch-state/streams/horizons');
+  const outDir = arg('out') ?? '.qa-dev/horizons';
   mkdirSync(outDir, { recursive: true });
   for (const id of ids) {
     // (--eyes=edge-e,corner-se: other EYE8 rows than the default four, for a map whose story faces elsewhere)

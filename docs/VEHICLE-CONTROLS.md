@@ -158,8 +158,11 @@ Weapon failures follow the physical weapon being used:
   missile launcher remains available.
 - Armed automatic roof stations have their own **Roof gun** module. Its hit
   volumes follow the station's yaw and elevation. Yellow damage slows its
-  aiming and firing cadence; red damage stops automatic fire and prevents
-  activation. Repair the station, then reactivate it with its normal control.
+  aiming and firing cadence. Red damage silences every station without moving
+  the switch: a gun left on stays on, its control is marked silenced, and it
+  fires again by itself once the repair brings the module back to yellow. While
+  red, a press of its normal control still switches it off; only switching it
+  on waits for the repair.
 - External weapon stock receives one damage roll per projectile, including
   projectiles crossing several housing faces. Hits outside the hull do not
   invent hull penetration or hull HP damage. Disabled-critical-damage modes

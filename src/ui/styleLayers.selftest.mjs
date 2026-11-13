@@ -111,7 +111,7 @@ for (const path of documents) {
 // there deliberately (BUI-F5 builds the components).
 // The landing's, the manual's, the Gallery's and the technical diagrams' own token sheets (tools/gen-tokens.mjs "$sheet")
 // hold their tokens in the same layer.
-assert.deepEqual(layerUse.tokens?.sort(), ['src/ui/motion.css', 'src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-pad.css', 'src/ui/tokens/surface-print.css', 'src/ui/tokens/tokens.css'],
+assert.deepEqual(layerUse.tokens?.sort(), ['src/ui/motion.css', 'src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-deploy.css', 'src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/surface-pad.css', 'src/ui/tokens/surface-print.css', 'src/ui/tokens/surface-tutorial.css', 'src/ui/tokens/tokens.css'],
   'tokens.css, the surfaces\' own token sheets and the legacy motion aliases form the tokens layer');
 assert.match(read('index.html'), /<style>\s*@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer surfaces \{\s*:root \{/,
   'the game document opens its first inline sheet with the layer order and keeps the document defaults in surfaces');
@@ -145,7 +145,8 @@ for (const path of sources) {
       if (c === '(') depth++; else if (c === ')' && --depth === 0) break;
     }
     const call = text.slice(m.index, k + 1);
-    const layer = /,\s*'([a-z]+)'\s*\)$/.exec(call)?.[1];
+    // (couch-panes-272: the layer, then optionally the document it goes into: a split-screen pane's own)
+    const layer = /,\s*'([a-z]+)'\s*(?:,\s*[\w.$]+\s*)?\)$/.exec(call)?.[1];
     assert.ok(layer && STYLE_LAYERS.includes(layer), `${path}: ensureStyle(...) names its layer (${call.slice(0, 60).replace(/\s+/g, ' ')}...)`);
     assert.match(text, /import \{[^}]*\bensureStyle\b[^}]*\} from '(?:\.\/|\.\.\/|\.\.\/ui\/)styleLayers\.ts'/, `${path} imports ensureStyle from styleLayers.ts`);
     calls.push(`${path}:${layer}`);

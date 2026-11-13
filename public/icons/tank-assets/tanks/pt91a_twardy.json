@@ -6460,7 +6460,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11454,
-        "sha256": "a46fce51d5423e8a03b9562917cbbeaaa010b4444de53a50b81bfd7e63803382"
+        "sha256": "a46fce51d5423e8a03b9562917cbbeaaa010b4444de53a50b81bfd7e63803382",
+        "frame": [25,104,225,249]
       }
     },
     "top": {
@@ -6468,8 +6469,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11402,
-      "sha256": "f91fae2e7ae9fc563b702388f0caebd00d4d2517fc8951555209a79bd5e841e9"
+      "bytes": 11424,
+      "sha256": "0cdea721ad3c0e09e03d347404d4258e937a182ba09e623e3be1c96675e2b665"
     },
     "side": {
       "file": "pt91a_twardy_side.webp",
@@ -6524,8 +6525,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 32991,
-      "sha256": "0535282e9a50da3af373087952d4b4928b40e8e8f9e8c73904bbb09334c668d6"
+      "bytes": 31144,
+      "sha256": "2a6df66c56e64aef972c7d1251eb3ffb5ceba1ee9c2f5460a8f2fde3536cea09"
     },
     "technicalLabels": {
       "file": "pt91a_twardy_technical.json",

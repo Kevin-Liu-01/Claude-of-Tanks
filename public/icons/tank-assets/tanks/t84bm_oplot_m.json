@@ -4716,15 +4716,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26060,
-      "sha256": "2b8cf6c834ab5d1a61c5f8dae34913f2f85d20152e0c50dea4895463bdf70fb2",
+      "bytes": 26050,
+      "sha256": "d8bf5eb121637ad4ade50bd125a3bf5390e0ba60af52dcac86bd3370c40092bd",
       "thumbnail": {
         "file": "thumbs/t84bm_oplot_m_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10762,
-        "sha256": "511df8eb9e9833aa3f248e037de5a7537bfb4d919bd9ff640316c2b237fc0226"
+        "bytes": 10768,
+        "sha256": "4e6abcdadb35a9c6b34948eff9240867da640d21ccdec9416f029f3d670c5ef4",
+        "frame": [23,95,227,248]
       }
     },
     "top": {
@@ -4732,8 +4733,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12932,
-      "sha256": "79fddb67a1754fa7967bc5892623e8bc4cc9c011615fe4bf57f40ac58f180f20"
+      "bytes": 12998,
+      "sha256": "92ad5e56dbfa5298d82a03758bf14303ad60f8d0d22e2ee1883d795420670c71"
     },
     "side": {
       "file": "t84bm_oplot_m_side.webp",
@@ -4788,8 +4789,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36077,
-      "sha256": "c10634697aa959e9c940c8f8564ffa9d5245e1d1ee31ba6f3e70a07e29173bc5"
+      "bytes": 33807,
+      "sha256": "2d3397b73067ed6b9d1f7a3b0d72b5ee7e63a95bded1a14f2d5978fcd9446380"
     },
     "technicalLabels": {
       "file": "t84bm_oplot_m_technical.json",

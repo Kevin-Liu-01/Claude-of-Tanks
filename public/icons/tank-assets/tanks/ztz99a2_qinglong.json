@@ -5656,15 +5656,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26504,
-      "sha256": "e6c569a44a3f699c52bb6eb38e04834fd0b068a5862fecbc6490bb4cf2221064",
+      "bytes": 26550,
+      "sha256": "fe34a35683d1417a1323a0fdc5a970bd9359b5ac7b4b504e36dce22e3f678e54",
       "thumbnail": {
         "file": "thumbs/ztz99a2_qinglong_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10766,
-        "sha256": "0b3ef9b4e755921d0f7eef631f7fd65f74cacd55f4323e7260d997fcaa5b37cf"
+        "bytes": 10762,
+        "sha256": "4af5b68269cdf9df10099b8faa9c2649f68ef865ebc07cf04a4df974776d314e",
+        "frame": [11,107,223,249]
       }
     },
     "top": {
@@ -5672,16 +5673,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10316,
-      "sha256": "ecd3bddb5e842c67136b47d875c962fe08ea513640ed50ce71d564775da1db64"
+      "bytes": 10326,
+      "sha256": "0cc0ba8c594278ee3b648d3c6c114ce73a09fb39563bfce80eb081b8b1c2cabb"
     },
     "side": {
       "file": "ztz99a2_qinglong_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8490,
-      "sha256": "a47b247bfebf5b48494397317aa9ad2d12cac0e3d2ed645a806dda9207902357"
+      "bytes": 8484,
+      "sha256": "ca96dba57294d359f4990d5182ea3077c908183d1d49f0de009c4f70401e92f6"
     },
     "topSilhouette": {
       "file": "ztz99a2_qinglong_top_silhouette.png",
@@ -5704,32 +5705,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21656,
-      "sha256": "ef05c7caf82ce0c2e8619124adb0462cfb443f616832dc92ab5ab06aaaadc7b8"
+      "bytes": 21640,
+      "sha256": "c40084eb1203b7060d6b19a2d94b21c124dae2a2838c56d39f84b34e1fb80d68"
     },
     "modulesSide": {
       "file": "ztz99a2_qinglong_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20442,
-      "sha256": "cdb6465e819934e9796afb2d9790b806f39892bfac4ad7a22b0d49bc2d9140b3"
+      "bytes": 20416,
+      "sha256": "5fe675d54f2c3c3670485df901f8df93ce6dd35c085a794b187a1399cf2c2c31"
     },
     "crewSide": {
       "file": "ztz99a2_qinglong_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17194,
-      "sha256": "aa0d9f0c715e012032d98611b7479d7e72770625feb2dec99e52d6ef84b7f0cc"
+      "bytes": 17170,
+      "sha256": "702845cb25bbb862125269841a225031196f448318e1b4cf3522951f6373717c"
     },
     "markings": {
       "file": "ztz99a2_qinglong_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34688,
-      "sha256": "fc28a700a40a0cdbb6bcf12b2ce6c6fe56a9cd51821f4cc219ca9c0804cad031"
+      "bytes": 32483,
+      "sha256": "4d4b53b24701726a3eee94c64b72246bd4b47de982cb58469e750069e9185d45"
     },
     "technicalLabels": {
       "file": "ztz99a2_qinglong_technical.json",

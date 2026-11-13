@@ -72,7 +72,7 @@ function bakeFixture() {
 }
 
 async function completeNull(client, workers) {
-  const pending = client.bake('t90am', { seed: 101, pop: false }, () => {});
+  const pending = client.bake('t90am', { seed: 101, state: 'burnt_out' }, () => {});
   const worker = workers.at(-1);
   await task();
   worker.succeed();
@@ -115,7 +115,7 @@ try {
     const { client, workers } = fixture();
     for (let job = 0; job < 6; job++) {
       let checkpoints = 0;
-      const options = { seed: 2002 + job * 131, pop: job % 2 === 0 };
+      const options = { seed: 2002 + job * 131, state: job % 2 === 0 ? 'turret_blown_off' : 'burnt_out' };
       const specId = job % 2 ? 't90am' : 'm1a1';
       const pending = client.bake(specId, options, () => { checkpoints++; });
       assert.equal(workers.length, 1, 'serial jobs reuse the map-owned worker');

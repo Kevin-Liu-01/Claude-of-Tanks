@@ -27685,15 +27685,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29720,
-      "sha256": "7d63bad2ea4aa0f4a1c0e8f2de95819f5fb6efde1adc0b279ffef01c0c484a28",
+      "bytes": 29722,
+      "sha256": "bc46d0041873baf03cb5310cb21146f5917fb9cf001f704ba4a9ba6c9c5faf44",
       "thumbnail": {
         "file": "thumbs/t72b3m_hetman_ii_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11354,
-        "sha256": "a13173b49406c2e1a1165aa40c47962ad916cd6f3e29e6f92484c41d0e3c8a63"
+        "bytes": 11358,
+        "sha256": "f8a6103c84c0a36cc48c8d66abbe3cc0885ac2db95e2f3773e4736f537940084",
+        "frame": [25,113,230,250]
       }
     },
     "top": {
@@ -27701,8 +27702,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17114,
-      "sha256": "9a36097c5a23da5293e691bef5931fec1658f107ea8f255d4d1869d4974f382f"
+      "bytes": 17112,
+      "sha256": "a7f6d80adf011a5f9022e03416ef8e4501c42a62ab404ec0ced6f36e8efc3f87"
     },
     "side": {
       "file": "t72b3m_hetman_ii_side.webp",
@@ -27733,8 +27734,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36946,
-      "sha256": "d009ba7fd913e1b33269788a8a8b063d722085f64820dbfd5c30f22fd174227f"
+      "bytes": 32600,
+      "sha256": "c45765687f0125d1a9b0545304a05fc6c23d25cd8fd4fdeb6073a55c4eff65e1"
     },
     "technicalLabels": {
       "file": "t72b3m_hetman_ii_technical.json",

@@ -22,7 +22,7 @@ import {
   type AdvancedIfvScalePort,
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { TankBuilderPort, TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
@@ -30,7 +30,8 @@ import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface CvBuilderPort extends AdvancedIfvScalePort {
+/** The builder surface the CV90 construction uses (the CV9040C, profiles/cv9040CSourceX.ts, builds on it too). */
+export interface CvBuilderPort extends AdvancedIfvScalePort {
   readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
   readonly gunG: THREE.Group;
@@ -75,7 +76,7 @@ interface Cv90Hull {
 const lerp = THREE.MathUtils.lerp;
 
 /** Height of the roof/upper glacis surface at station z. */
-function cv90RoofY(d: Cv90Hull, z: number): number {
+export function cv90RoofY(d: Cv90Hull, z: number): number {
   if (z <= d.glacisBreakZ) return d.roofY;
   const lean = d.noseZ - 0.04;
   if (z <= lean) return lerp(d.roofY, d.noseTopY, (z - d.glacisBreakZ) / (lean - d.glacisBreakZ));
@@ -194,8 +195,9 @@ interface Cv90Gear {
 
 /** Seven dual rubber-tyred road wheels on trailing arms, the drive sprocket high at the FRONT, the idler at the rear,
  * three small return rollers under the side armour. */
-function cv90RunningGear(P: CvBuilderPort, g: Cv90Gear): void {
+function cv90RunningGear(P: CvBuilderPort, g: Cv90Gear, shoe?: Cv90TrackShoeBuilder): void {
   P.gear = KIT.buildRunningGear(P, {
+    ...(shoe ? { trackShoeBuilder: shoe } : {}),
     style: 'rubber', dishR: 0.75, wheelR: g.wheelR, wheelW: g.wheelW, wheelY: g.wheelY, xc: g.xc,
     wheelZs: g.wheelZs, sprocket: g.sprocket, idler: g.idler,
     rollers: g.rollerZs.map((z) => ({ z, y: g.rollerY })),
@@ -234,7 +236,7 @@ function glacisGrille(P: CvBuilderPort, d: Cv90Hull, x0: number, x1: number, z0:
 }
 
 /** A gun-mounted solid of chamfered rectangular sections (cradle covers, rocking masks). */
-function chamferedBox(stations: readonly (readonly [z: number, half: number, bottom: number, top: number,
+export function chamferedBox(stations: readonly (readonly [z: number, half: number, bottom: number, top: number,
   chamfer: number])[]): THREE.BufferGeometry {
   return sectionSolid(stations.map(([z, h, yb, yt, c]) => ({ z, ring: [
     [-h + c, yb], [h - c, yb], [h, yb + c], [h, yt - c], [h - c, yt], [-h + c, yt], [-h, yt - c], [-h, yb + c],
@@ -246,7 +248,7 @@ function chamferedBox(stations: readonly (readonly [z: number, half: number, bot
 // Measured: the 1/76 four-view drawing's metric scale bar (314.7 px/m) and the published Strf 9040C envelope
 // (6.55 m hull, 3.17 m wide without modular armour, 3.42 m with it, 2.71 m to the sight heads).
 
-const CV90_HULL: Cv90Hull = Object.freeze({
+export const CV90_HULL: Cv90Hull = Object.freeze({
   noseZ: 3.28, rearZ: -3.25, roofY: 1.76, sponY: 1.07, upperHalf: 1.52, bellyHalf: 1.00, bellyY: 0.42,
   // the lower glacis is the plane through (z 2.14, y 0.24) and the nose chin (3.28, 1.00); it meets the belly at 0.345
   glacisBreakZ: 1.10, noseTopY: 1.34, chinY: 1.00, kneeZ: 2.2975, kneeY: 0.345,
@@ -261,7 +263,9 @@ const CV90_GEAR: Cv90Gear = Object.freeze({
   trackW: 0.50, trackTh: 0.075, linkPitchM: 0.14, topY: 1.00, contactZF: 2.20, contactZR: -1.80,
 });
 
-function buildCv90Hull(P: CvBuilderPort): void {
+/** The Strf 9040 hull (the CV9040C builds on it, adding its C kit). `glacisTowCable: false` leaves the tow cable off the
+ * glacis (the CV9040C's applique tiles cover that run and stow it elsewhere). */
+export function buildCv90Hull(P: CvBuilderPort, o: { readonly glacisTowCable?: boolean } = {}): void {
   const d = CV90_HULL, { box } = KIT;
   P.add('hull', cv90HullShell(d));
   // Modular armour: a tall upper course whose top follows the troop roof and the glacis to the nose, and a lower
@@ -300,17 +304,24 @@ function buildCv90Hull(P: CvBuilderPort): void {
   P.add('hull', box(1.10, 0.03, 1.30), -0.78, cv90RoofY(d, 2.35) + 0.010, 2.35, tilt, 0, 0);
   glacisGrille(P, d, -1.30, -0.30, 1.22, 1.58, 6);
   cv90Bow(P, d, 1.26, 900);
-  KIT.towCable(P, [[-1.10, 1.30, 2.95], [-0.60, 1.38, 2.62], [0.10, 1.40, 2.60], [0.20, 1.36, 2.88]]);
+  if (o.glacisTowCable ?? true) {
+    KIT.towCable(P, [[-1.10, 1.30, 2.95], [-0.60, 1.38, 2.62], [0.10, 1.40, 2.60], [0.20, 1.36, 2.88]]);
+  }
 }
 
-function buildCv90RunningGear(P: CvBuilderPort): void {
-  cv90RunningGear(P, CV90_GEAR);
+/** A track shoe constructor for the running gear (tankFactoryCore's `trackShoeBuilder`). */
+type Cv90TrackShoeBuilder = (parameters: TrackShoeBuildParameters) => THREE.BufferGeometry;
+
+/** The Strf 9040 running gear (the CV9040C builds on it; `trackShoe` lays the run with a shared shoe constructor). */
+export function buildCv90RunningGear(P: CvBuilderPort, o: { readonly trackShoe?: Cv90TrackShoeBuilder } = {}): void {
+  cv90RunningGear(P, CV90_GEAR, o.trackShoe);
 }
 
 /** The 40 mm Bofors L/70 mount: a raked rocking mask running into the turret front, the long tapered cradle cover, the finned
  * barrel jacket and the barrel with its flared flash hider. Nothing on the moving gun reaches behind the trunnion far
- * enough to meet the hull roof at full elevation. */
-function buildCv90Gun(P: CvBuilderPort): void {
+ * enough to meet the hull roof at full elevation. `len` is the trunnion-to-muzzle length: the cv90
+ * authoring 3.12, the CV9040C its published 7.0 m overall (ifvReplicaSpecs.ts). */
+export function buildCv90Gun(P: CvBuilderPort, len = 3.12): void {
   const { cylX, cylZ } = KIT;
   // rocking mask between the cheeks: its raked back runs into the turret front at every pitch, its foot stays clear
   // of the hull roof at full elevation
@@ -325,18 +336,26 @@ function buildCv90Gun(P: CvBuilderPort): void {
   P.addGunExtra(chamferedBox([[0.22, 0.21, -0.18, 0.19, 0.05], [0.70, 0.18, -0.15, 0.17, 0.045],
     [1.04, 0.13, -0.11, 0.12, 0.035]]));
   P.addGunExtraDark(cylZ(0.098, 0.08, P.q ? 20 : 12), 0, 0, 1.08);
-  KIT.buildGun(P, { len: 3.12, r: 0.060, sleeve: false, collar: false, baseR: 0.095 });
+  KIT.buildGun(P, { len, r: 0.060, sleeve: false, collar: false, baseR: 0.095 });
   // finned barrel jacket ahead of the cradle and the flared flash hider (they recoil with the barrel)
   const seg = P.q ? 20 : 10;
   P.add('gun', cylZ(0.080, 0.40, seg), 0, 0, 1.32);
   for (let i = 0; i < 5; i++) P.add('gun', cylZ(0.094, 0.026, seg), 0, 0, 1.16 + i * 0.08);
-  P.add('gun', cylZ(0.084, 0.17, seg, 0.062), 0, 0, 3.025);
-  muzzleBore(P, { len: 3.12, r: 0.060, seg: 18 });
-  P.muzzleZ = 3.12;
+  P.add('gun', cylZ(0.084, 0.17, seg, 0.062), 0, 0, len - 0.095);
+  muzzleBore(P, { len, r: 0.060, seg: 18 });
+  P.muzzleZ = len;
 }
 
-function buildCv90Turret(P: CvBuilderPort): void {
-  const { box, cylY, cylZ } = KIT;
+/** The smoke-grenade banks on the rear of the turret's upper side panels (the CV9040C seats its Galix there). */
+interface Cv90SmokeBanks {
+  readonly count: number; readonly r: number; readonly len: number; readonly spacing: number; readonly seed: number;
+}
+const CV90_SMOKE_BANKS: Cv90SmokeBanks = Object.freeze({ count: 4, r: 0.038, len: 0.22, spacing: 0.085, seed: 920 });
+
+/** The Strf 9040 turret shell: the crew shell, the wedge cheeks, the lower-band panels, the smoke banks on the upper side
+ * panels and the lift eyes (the CV9040C builds on it, `smoke` its Galix banks on the same seat). */
+export function cv90TurretShell(P: CvBuilderPort, o: { readonly smoke?: Cv90SmokeBanks } = {}): void {
+  const smoke = o.smoke ?? CV90_SMOKE_BANKS;
   // Two-man Bofors turret: upright lower band, inward-raked upper add-on panels, short squared rear, a raked lower
   // front, and wedge cheek armour either side of the open gun channel the cradle runs out of.
   P.add('turret', armorLoft([
@@ -366,12 +385,17 @@ function buildCv90Turret(P: CvBuilderPort): void {
     // turns the bank's splay into elevation, so the splay leans the tubes toward the roof (-side): every tube rises
     // (tools/vehicle-controls-inventory.mjs rejects a downward or rearward smoke socket)
     mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 4, r: 0.038, len: 0.22, spacing: 0.085,
-      splay: -side * 0.15, pitch: -0.35, seed: 920 + side,
+      mats: P.mats, count: smoke.count, r: smoke.r, len: smoke.len, spacing: smoke.spacing,
+      splay: -side * 0.15, pitch: -0.35, seed: smoke.seed + side,
     }), side * 1.051, 0.593, -0.64, [0, 0, -side * 1.152]);
     KIT.liftEye(P, 'turretDetail', side * 0.70, 0.78, -0.80);
   }
-  buildCv90Gun(P);
+}
+
+/** The Strf 9040 turret roof: the gunner's sight head, the commander's cupola, its periscopes and sight, the gunner's
+ * hatch and the Lyran illumination launcher (the CV9040C carries the same roof). */
+export function cv90TurretRoof(P: CvBuilderPort): void {
+  const { box, cylY, cylZ } = KIT;
   // Gunner's sight head on the right front of the roof.
   P.addEquipment('turret', box(0.34, 0.30, 0.40), -0.52, 0.92, 0.30);
   P.add('turretDark', box(0.30, 0.16, 0.025), -0.52, 0.94, 0.505);
@@ -397,6 +421,13 @@ function buildCv90Turret(P: CvBuilderPort): void {
   // Lyran illumination launcher: twin tubes on a block at the left rear of the roof.
   P.addEquipment('turret', box(0.26, 0.14, 0.30), 0.60, 0.84, -0.80);
   for (const x of [0.54, 0.66]) P.add('turretDetail', cylZ(0.045, 0.40, 12), x, 0.96, -0.74, -0.30, 0, 0);
+}
+
+function buildCv90Turret(P: CvBuilderPort): void {
+  const { box, cylY } = KIT;
+  cv90TurretShell(P);
+  buildCv90Gun(P);
+  cv90TurretRoof(P);
   // Roof machine gun (the commander's Ksp 88 on a compact remote station at the right rear).
   const rws = FITTINGS.openYokeRws({
     mats: P.mats, bodySlot: 'hull', sizeStandard: 'k2b-compact-tower',

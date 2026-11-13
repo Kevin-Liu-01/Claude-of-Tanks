@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
+import { mount } from './fittingMount.ts';
 import { buildLeo1HullSteps, type Leo1HullDatums } from './leopard1Hull.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -16,8 +17,12 @@ import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.t
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** a3: the 1976 tank (TEM 2A rangefinder, XSW-30-U searchlight); a5: the 1990-94 EMES 18 conversion; a5dk1: the
- * Bosnia fit (turret-rear air conditioning and generator, the M41 DK-1's searchlight, GPS). */
-export type Leo1DkMark = 'a3' | 'a5' | 'a5dk1';
+ * Bosnia fit (turret-rear air conditioning and generator, the M41 DK-1's searchlight, GPS); as1 (release 269): the
+ * Australian Leopard AS1 of 1976-2007 on the same welded 1A3 turret (docs/references/tanks/leopard_as1.md): the Belgian
+ * SABCA fire control's laser in its armoured drum on the left cheek, the right port blanked, the crosswind sensor's mast
+ * on the roof, one row of four dischargers a side under a guard, no searchlight, FN MAGs, the Australian basket. */
+export type Leo1DkMark = 'a3' | 'a5' | 'a5dk1' | 'as1';
+const LEO1_DK_MARKS: readonly Leo1DkMark[] = ['a3', 'a5', 'a5dk1', 'as1'];
 
 // The welded turret, turret-local (origin on the ring 0.50 m ahead of the hull origin, on the 1.60 m turret base). From
 // the Krigsmuseet side view scaled by the 0.74 m road-wheel pitch: the roof 0.87 m over the base, the front corner strip
@@ -90,10 +95,12 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
     P.addEquipment(fit, box(0.16, 0.08, 0.10), s * 0.56, 0.55, 3.31 + 0.05, lowerTilt, 0, 0);
     P.addEquipment(fit, cylZ(0.035, 0.12, 10), s * 0.56, 0.95, 3.52, lowerTilt, 0, 0);
   }
-  // the Danish periscope wipe system over the driver's three periscopes
+  // the Danish periscope wipe system over the driver's three periscopes (not the Australian tank's)
   const periY = hull.deckTopY(1.03);
-  P.addEquipment(fit, box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
-  for (const x of [-0.66, -0.45, -0.24]) P.addEquipment(fit, box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
+  if (mark !== 'as1') {
+    P.addEquipment(fit, box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
+    for (const x of [-0.66, -0.45, -0.24]) P.addEquipment(fit, box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
+  }
   if (mark === 'a5dk1') {
     // r6 critics: UN on the upper glacis (r8: the bins' lettering, squeezed under their latches, read "IIN": gone) (its face 6 cm over the datum) and the rear plate between the fuel cans
     P.decal('hull', 'stencil', 'UN', 0.50, [0, hull.upperGlacisY(3.10) + 0.065, 3.103], 0, -Math.PI / 3);
@@ -102,6 +109,8 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
 }
 
 function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBuild {
+  // an unknown mark fails here, never on a default path
+  if (!LEO1_DK_MARKS.includes(mark)) throw new Error(`leopard1Dk: unknown mark '${String(mark)}'`);
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
@@ -160,6 +169,21 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       if (mark === 'a3') {
         P.add('turretDark', cylX(0.16, 0.03, P.q ? 20 : 14), s * (x + 0.105), W.rangefinderY, W.rangefinderZ);
         P.add('turretGlass', cylX(0.11, 0.012, P.q ? 20 : 14), s * (x + 0.118), W.rangefinderY, W.rangefinderZ);
+      } else if (mark === 'as1') {
+        if (s > 0) {
+          // the SABCA laser rangefinder's armoured drum over the left port: a broad round housing standing well proud of
+          // the cheek, its face ringed with bolts round the dark lens (the 1st Armoured Regiment and Puckapunyal photographs)
+          P.addEquipment('turret', cylX(0.29, 0.20, P.q ? 28 : 18), s * (x + 0.16), W.rangefinderY, W.rangefinderZ);
+          P.addEquipment('turretDetail', cylX(0.30, 0.03, P.q ? 28 : 18), s * (x + 0.255), W.rangefinderY, W.rangefinderZ);
+          P.add('turretDark', cylX(0.12, 0.02, P.q ? 20 : 14), s * (x + 0.275), W.rangefinderY, W.rangefinderZ);
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            P.add('turretDark', cylX(0.016, 0.012, 6), s * (x + 0.272), W.rangefinderY + Math.sin(a) * 0.22, W.rangefinderZ + Math.cos(a) * 0.22);
+          }
+        } else {
+          // the right port blanked by a hexagonal plate
+          P.addEquipment('turretDetail', cylX(0.17, 0.03, 6), s * (x + 0.11), W.rangefinderY, W.rangefinderZ);
+        }
       } else {
         // the blanking cover: a bolted flange ring and a flat plate (r7 critics: the bulging cap read as a dome; the Aalborg
         // turret's cover is flush, white and perforated round a dark centre)
@@ -179,8 +203,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     P.addCupola('turret', cylY(0.22, 0.23, 0.05, P.q ? 20 : 14), -0.52, roof + 0.145, -0.32);
     P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, roof + 0.19, -0.32);
     // (the 1A5s' raised PERI R12 a slim tube under a small head: r9 Opus, r10 Sonnet: the thick column read as a chimney)
-    const periH = mark === 'a3' ? 0.20 : 0.46, peri = mark === 'a5' ? 'turretDark' : 'turret';
-    if (mark === 'a3') {
+    const a3Roof = mark === 'a3' || mark === 'as1';
+    const periH = a3Roof ? 0.20 : 0.46, peri = mark === 'a5' ? 'turretDark' : 'turret';
+    if (a3Roof) {
       P.addEquipment('turret', cylY(0.115, 0.13, periH, P.q ? 18 : 12), -0.50, roof + periH / 2, 0.12);
       P.addEquipment('turret', box(0.24, 0.17, 0.20), -0.50, roof + periH + 0.085, 0.12);
       P.add('turretGlass', box(0.15, 0.085, 0.014), -0.50, roof + periH + 0.09, 0.225);
@@ -197,7 +222,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     P.add('turretGlass', box(0.10, 0.06, 0.014), 0.40, roof + 0.06, 0.207);
     // gunner's periscope in the brow
     P.addEquipment('turret', box(0.16, 0.09, 0.14), -0.30, roof + 0.03, 0.78);
-    if (mark !== 'a3') {
+    if (mark === 'a5' || mark === 'a5dk1') {
       // EMES 18: the armoured thermal sight box on the right (-x) front roof, its two windows behind armoured doors (one
       // door hinged open on the Aalborg turret)
       // (r9, r10 critics: the Aalborg box is a dark grey armoured block, not in the coat; the DK-1's in its UN white)
@@ -230,16 +255,29 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     P.addEquipment('turret', cylY(0.12, 0.14, 0.12, P.q ? 16 : 10), 0.52, roof + 0.06, -0.62);
     P.addEquipment('turret', box(0.24, 0.08, 0.20), 0.52, roof + 0.115, -0.62);
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
+      mats: P.mats, cls: mark === 'as1' ? 'mag58' : 'mg3', tone: 'two-tone', elev: 0.05,
       scale: 0.96, seed: 265, shield: false, ammo: true, working: true, ridingCradle: true,
     });
-    mg.name = 'leo1DkLoaderMg62';
+    mg.name = mark === 'as1' ? 'leo1As1LoaderMag' : 'leo1DkLoaderMg62';
     mg.position.set(0.52, roof + 0.115, -0.62);
     mg.rotation.y = -0.30;
     P.turretG.add(mg);
+    // the AS1's commander's M2 on a pintle at the cupola's front edge (front34_service_1armd, 1st Armoured Regiment:
+    // the commander's heavy gun belt-fed beside the loader's MAG 58)
+    if (mark === 'as1') {
+      P.addEquipment('turretDark', cylY(0.03, 0.035, 0.16, P.q ? 12 : 8), -0.40, roof + 0.20, -0.14);
+      const commander = FITTINGS.pintleMG({
+        mats: P.mats, cls: 'm2', tone: 'two-tone', elev: 0.04,
+        scale: 0.92, seed: 2691, shield: false, ammo: true, working: true, ridingCradle: true,
+      });
+      commander.name = 'leo1As1CommanderM2';
+      commander.position.set(-0.40, roof + 0.28, -0.14);
+      commander.rotation.y = 0.12;
+      P.turretG.add(commander);
+    }
     // Wegmann 76 mm dischargers: two rows of four on a bracket high on each side, with a guard loop (Krigsmuseet); the
     // 1A5s' four in two rows at the side's rear (the Aalborg turret, the RAMTA front and the Air Show rear: r10 critics)
-    if (mark !== 'a3') for (const s of [-1, 1] as const) {
+    if (mark === 'a5' || mark === 'a5dk1') for (const s of [-1, 1] as const) {
       const zc = -0.98, x = sideX(W.halfWidth - 0.015, roof, 0.68);
       P.addEquipment('turret', box(0.08, 0.30, 0.52), s * (x + 0.03), 0.68, zc);
       for (let k = 0; k < 4; k++) {
@@ -259,6 +297,23 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
         P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.62, s * 0.30, 0),
           s * (x + 0.11), 0.60 + row * 0.16, 0.42 - col * 0.24);
       }
+    }
+    if (mark === 'as1') {
+      // the AS1's one row of four Wegmann tubes a side at mid-side under its guard loop (the Esperance side photograph)
+      for (const s of [-1, 1] as const) {
+        const x = sideX(W.halfWidth, roof, 0.68);
+        P.addEquipment('turret', box(0.08, 0.20, 0.98), s * (x + 0.03), 0.66, -0.28);
+        P.addEquipment('turretDark', box(0.028, 0.028, 1.06), s * (x + 0.25), 0.78, -0.28);
+        for (const z of [-0.81, 0.25]) P.addEquipment('turretDark', box(0.30, 0.028, 0.028), s * (x + 0.10), 0.78, z);
+        for (let k = 0; k < 4; k++) {
+          P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.62, s * 0.30, 0),
+            s * (x + 0.11), 0.66, 0.08 - k * 0.24);
+        }
+      }
+      // the SABCA fire control's crosswind sensor on its mast at the roof's right front (the Esperance and service fronts)
+      P.addEquipment('turretDark', cylY(0.018, 0.022, 0.42, 8), -0.82, roof + 0.21, 0.42);
+      P.addEquipment('turret', box(0.10, 0.12, 0.06), -0.82, roof + 0.47, 0.42);
+      P.addEquipment('turretDark', box(0.14, 0.02, 0.08), -0.82, roof + 0.54, 0.42);
     }
     // whip antennas on the rear roof corners
     for (const s of [-1, 1] as const) {
@@ -313,6 +368,12 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       ammoCan(P, 'turretDark', -0.60, 0.40, rz + 0.12, 0.12);
     } else if (mark === 'a3') {
       ammoCan(P, 'turretDark', -0.72, 0.46, W.binRearZ - 0.06, 0.12);
+    } else if (mark === 'as1') {
+      // the Australian basket on the rear bin's back, its top over the roof line, on arms from the bin (the 1st Armoured
+      // Regiment's service photographs)
+      mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.90, d: 0.46, h: 0.50, fill: 0.6, rails: 2, seed: 1761 }),
+        0, 0.36, W.binRearZ - 0.24);
+      for (const s of [-1, 1] as const) P.addEquipment('turretDark', box(0.05, 0.05, 0.26), s * 0.86, 0.38, W.binRearZ - 0.10);
     }
     P.turretG.userData.leopard1DkTurretReceipt = {
       revision: 'leo1dk-265-welded',
@@ -325,8 +386,9 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       browTopZ: W.browTopZ,
       rearZ: W.rearZ,
       binRearZ: W.binRearZ,
-      emes18: mark !== 'a3',
+      emes18: mark === 'a5' || mark === 'a5dk1',
       rangefinderPortsOpen: mark === 'a3',
+      sabcaLaserDrum: mark === 'as1',
       airConditioningHousing: mark === 'a5dk1',
     };
     for (const s of [-1, 1] as const) {
@@ -412,7 +474,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       // as a grille; gone)
       P.add('gunMountDark', box(lamp.halfWidth * 2 + 0.04, 0.02, 0.09), lamp.x, lamp.high + 0.01, lamp.frontZ + 0.03, -0.12, 0, 0);
       yoke(lamp);
-    } else {
+    } else if (mark === 'a5') {
       // the 1A5 DK's light in its armoured box over the mask to the gun's left, its front door shut (the Aalborg turret;
       // r8 critics, both: the box with its lid up on the roof's brow stood where the photograph has only a periscope)
       const lamp = { x: 0.20, halfWidth: 0.20, low: 0.30, high: 0.57, rearZ: -0.14, frontZ: 0.12 };
@@ -427,7 +489,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     // L7A3 105 mm with its thermal sleeve and evacuator; the 1A5 DK added the muzzle reference collimator
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.13 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
-    if (mark !== 'a3') {
+    // (the AS1 carries no searchlight: none of its photographs shows one on the mask)
+    if (mark === 'a5' || mark === 'a5dk1') {
       P.add('gunDark', box(0.075, 0.07, 0.16), 0, 0.165, 4.20);
       P.add('gunDark', box(0.02, 0.09, 0.028), 0, 0.105, 4.22);
     }
@@ -437,7 +500,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       maskWidth: mask.halfWidth * 2,
       maskRidgeZ: mask.ridgeZ,
       searchlight: mark === 'a3' ? 'XSW-30-U' : mark === 'a5dk1' ? 'M41 DK-1 halogen' : null,
-      muzzleReference: mark !== 'a3',
+      muzzleReference: mark === 'a5' || mark === 'a5dk1',
       barrelRadius: 0.064,
     };
     P.mats.glass.color.setHex(0x3e493b);
@@ -451,3 +514,4 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
 export const buildLeo1A3DK = steppedBuilder((P: TankBuilderPort) => buildLeo1DkSteps(P, 'a3'));
 export const buildLeo1A5DK = steppedBuilder((P: TankBuilderPort) => buildLeo1DkSteps(P, 'a5'));
 export const buildLeo1A5DK1 = steppedBuilder((P: TankBuilderPort) => buildLeo1DkSteps(P, 'a5dk1'));
+export const buildLeopardAS1 = steppedBuilder((P: TankBuilderPort) => buildLeo1DkSteps(P, 'as1'));

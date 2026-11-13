@@ -1,12 +1,14 @@
 // The Field Manual's sound chapter: what each sound tells you in battle. Copyright © 2026 Kevin B. Liu.
 // The crew's calls are quoted from the caption script the game captions them with (src/audio/captionScript.generated.ts,
 // the first take in the reader's language); the arrival delays from the audio engine's own propagation
-// (src/audio/audioMath.ts); the crew languages from the voice packs (src/audio/vehicleAudioProfiles.ts), named by the
-// reader's locale; the gun reports and their loudness from src/audio/weaponAudio.ts; the sliders and alarms from the
+// (src/audio/audioMath.ts); the crew languages from the voice packs (src/audio/vehicleAudioProfiles.ts), the national ones
+// named by the reader's locale, the ones with no country by the Settings picker's names and in their own words; the gun reports and their loudness from src/audio/weaponAudio.ts; the sliders and alarms from the
 // Sound tab's own labels (src/ui/settings.ts). Node only (tools/docs-prerender.mjs).
 import { CAPTION_SCRIPT } from '../../audio/captionScript.generated.ts';
 import { ATMOSPHERES, propagationDelayS } from '../../audio/audioMath.ts';
-import { CREW_LANGUAGES } from '../../audio/vehicleAudioProfiles.ts';
+import { CEASE, GUNSHIP } from '../../audio/crewProcedure.ts';
+import { crewLanguageLabel } from '../../audio/crewVoice.ts';
+import { CREW_LANGUAGES, WORLD_CREW_LANGUAGES, type WorldCrewLanguage } from '../../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../../audio/weaponAudio.ts';
 import { flagMarkup } from '../../presentation/publicShell.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
@@ -27,10 +29,16 @@ function quotes(call: string): string {
   return (zh ? script['zh-CN'] : script['en-US']).map((take) => `<q>${esc(zh ? take.replace(/。$/u, '') : take)}</q>`).join('');
 }
 
+/** The numbers a call's meaning quotes, from the crew's own rules (crewProcedure.ts). */
+const CALL_VALUES: Readonly<Record<string, Record<string, string>>> = {
+  cease_fire: { km: String(CEASE.rangeM / 1000) },
+  gunship_danger_close: { m: String(GUNSHIP.dangerM) },
+};
+
 /** A table of calls: the glyph, what the crew says, and what it means. */
 function callTable(rows: ReadonlyArray<readonly [string, IconId]>, aria: string): string {
   const body = rows.map(([call, glyph]) => `<tr><th scope="row"><span class="dm-cell dm-cell--quotes">${icon(glyph, { size: 18 })}<span>${quotes(call)}</span></span></th>`
-    + `<td>${esc(t(`docs.audio.call.${call}`))}</td></tr>`).join('');
+    + `<td>${esc(t(`docs.audio.call.${call}`, CALL_VALUES[call] ?? {}))}</td></tr>`).join('');
   return `<div class="dm-table dm-table--wrap" tabindex="0" role="region" aria-label="${esc(aria)}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.audio.col.says'))}</th><th scope="col">${esc(t('docs.audio.col.means'))}</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
@@ -47,6 +55,21 @@ const WARNING_CALLS = [
   ['drone_incoming', 'modeDrone'],
 ] as const satisfies ReadonlyArray<readonly [string, IconId]>;
 
+/** The fire command and its answers, the AC-130 crew's fire control and the modes' own calls (crew-lines-269). */
+const FIRE_CALLS = [
+  ['fire_command_kinetic', 'shellApfsds'], ['identified', 'scope'], ['firing', 'fireGun'], ['re_engage', 'reload'], ['cease_fire', 'check'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
+const GUNSHIP_CALLS = [
+  ['gunship_cleared_hot', 'modeAc130'], ['gunship_tally', 'visionThermal'], ['gunship_shift_fire', 'search'], ['gunship_rifle', 'rocket'],
+  ['gunship_splash', 'blocked'], ['gunship_good_hits', 'penetration'], ['gunship_danger_close', 'alert'], ['gunship_rounds_complete', 'pause'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
+const MODE_CALLS = [
+  ['flag_dropped_ours', 'modeFlag'], ['objective_contesting', 'modeZones'], ['goal_conceded', 'modeTurbo'], ['wave_swarm', 'modeHorde'],
+  ['counter_attack', 'modeFrontline'], ['infected_turned', 'modeInfected'], ['juggernaut_spotted', 'modeJuggernaut'], ['gun_game_final', 'modeGunGame'],
+] as const satisfies ReadonlyArray<readonly [string, IconId]>;
+
 /** How late a shot is heard: the engine's own delay at three ranges, on Earth and on Mars. */
 function delays(): string {
   const ranges = [100, 500, 1000];
@@ -55,18 +78,28 @@ function delays(): string {
   return `<ul class="dm-delays" aria-label="${esc(t('docs.audio.delaysAria'))}">${row('earth')}${row('mars')}</ul>`;
 }
 
-/** The crew languages, each with its nation's flag and its name in the reader's locale. */
+/** The national crews, each with its nation's flag and its name in the reader's locale. */
 const LANGUAGE_FLAGS: Readonly<Record<string, string>> = {
   'en-US': 'us', 'en-GB': 'gb', de: 'de', ru: 'ru', uk: 'ua', zh: 'cn', fr: 'fr', sv: 'se', ja: 'jp', ko: 'kr', it: 'it', pl: 'pl', he: 'il',
   da: 'dk', 'pt-BR': 'br', 'en-AU': 'au', af: 'za',
 };
 function languages(): string {
   const names = new Intl.DisplayNames([getLocale()], { type: 'language' });
-  return `<ul class="dm-nations">${CREW_LANGUAGES.map((language) => {
+  const world = new Set<string>(WORLD_CREW_LANGUAGES);
+  return `<ul class="dm-nations">${CREW_LANGUAGES.filter((language) => !world.has(language)).map((language) => {
     const flag = LANGUAGE_FLAGS[language];
     if (!flag) throw new Error(`docs: no flag for the ${language} crew`);
     return `<li>${flagMarkup(flag, 'cot-c-flag cot-c-flag--md')}<span>${esc(names.of(language) ?? language)}</span></li>`;
   }).join('')}</ul>`;
+}
+
+/** The crews of languages with no country in the game: the Settings name, then the language in its own words and script. */
+function worldLanguages(): string {
+  const item = (language: WorldCrewLanguage): string => {
+    const { name, own } = crewLanguageLabel(language, getLocale());
+    return `<li><span>${esc(name)}</span>${own ? `<span class="dm-endonym" lang="${language}" dir="auto">${esc(own)}</span>` : ''}</li>`;
+  };
+  return `<ul class="dm-nations dm-languages">${WORLD_CREW_LANGUAGES.map(item).join('')}</ul>`;
 }
 
 /** Each gun report's name: the AC-130's three and the two machine guns by name, the rest by calibre and kind. */
@@ -99,7 +132,11 @@ export function audioSections(): RichSection[] {
   const sections: Array<[string, string, string]> = [
     ['hits', t('docs.audio.hits'), p('docs.audio.hitsLede') + callTable(RESULT_CALLS, t('docs.audio.hitsAria')) + `<h3>${esc(t('docs.audio.delaysTitle'))}</h3>` + delays()],
     ['warnings', t('docs.audio.warnings'), p('docs.audio.warningsLede') + callTable(WARNING_CALLS, t('docs.audio.warningsAria'))],
+    ['procedure', t('docs.audio.procedure'), p('docs.audio.procedureLede') + callTable(FIRE_CALLS, t('docs.audio.procedureAria'))
+      + `<h3>${esc(t('docs.audio.gunshipTitle'))}</h3>` + callTable(GUNSHIP_CALLS, t('docs.audio.gunshipAria'))
+      + `<h3>${esc(t('docs.audio.modesTitle'))}</h3>` + callTable(MODE_CALLS, t('docs.audio.modesAria'))],
     ['radio', t('docs.audio.radio'), p('docs.audio.radioLede', { languages: String(CREW_LANGUAGES.length) }) + languages()
+      + p('docs.audio.radioWorld', { languages: String(WORLD_CREW_LANGUAGES.length) }) + worldLanguages()
       + facts([['docs.audio.fact.oneAtATime', {}], ['docs.audio.fact.damagedRadio', {}], ['docs.audio.fact.crewSetting', { languages: String(CREW_LANGUAGES.length) }]])],
     ['gunfire', t('docs.audio.gunfire'), p('docs.audio.gunfireLede', { classes: String(Object.keys(WEAPON_CLASSES).length) }) + reports()
       + facts([['docs.audio.fact.hills', {}], ['docs.audio.fact.mars', { speed: String(mars.speedOfSoundMps), db: String(-mars.transmissionDb) }],

@@ -48,6 +48,11 @@ assert.deepEqual(closure.filter((file) => FLEET_PAYLOAD.test(file)), [], 'no fle
 // (2026-10-13, HL-0: the Hinterland that replaces the ring is client-only visual too, B-architecture §4.4)
 const VISUAL_WORLD = /^src\/world\/(?:maps\/horizon|borderFarmsteads|horizonPanorama|horizonVista)\.ts$|^src\/world\/maps\/regional\/|^src\/world\/hinterland\//;
 assert.deepEqual(closure.filter((file) => VISUAL_WORLD.test(file)), [], 'no visual horizon, hinterland, farmstead or regional building kit in the host Worker');
+// The authority takes a row onto a hull through src/mp/match/authorityRow.ts, never through the client's predictor:
+// round two of the 2026-11-02 audit imported its two row helpers from prediction.ts into the host restore and the actor,
+// which put the predictor, its interpolator and the wire barrel (81 KB) into the Worker.
+const CLIENT_PRESENTATION = /^src\/mp\/match\/(?:prediction|interpolation|matchClient)\.ts$|^src\/mp\/wire\/index\.ts$/;
+assert.deepEqual(closure.filter((file) => CLIENT_PRESENTATION.test(file)), [], 'no client predictor, interpolator, match client or wire barrel in the host Worker');
 for (const file of ['server/match/matchActor.ts', 'src/vehicles/authorityFleet.ts', 'src/vehicles/fleetRegistration.ts']) {
   assert.ok(closure.includes(file), `the host Worker registers the fleet through ${file}`);
 }
@@ -74,11 +79,31 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // 7.93 MB (7,934,589 B) at integ/267 for release 267 (the fleet at 279: the Leopard 2A7 DK, the Centurion Mk 5/2 DK and
 // the Type 90 (B); the sim's plate-along-shot planes; no builder, kit or calibration literal entered): the same rule,
 // plus 2 % (8.09 MB).
+// 8.16 MB (8,159,375 B, 449 files) on item/sm-fix-integration for round two of the 2026-11-02 audit (from 8,080,307 B:
+// the migration handover's restore and sealed extras, migrationState.ts +15.5 KB and migrationStore.ts +4.5 KB; the bots'
+// resume legs and event order, ai.ts +11.6 KB; the actor's unseen rounds, falls and resume hint, matchActor.ts +7.0 KB;
+// wire 11's destroyed falls and unseen rounds, codec.ts, destroyedSet.ts and constants.ts +11 KB; the sim's obstacle falls,
+// roof-gun switch and mode rules, obstacleFall.ts and roofGunSwitch.ts new, authoritativeMatch.ts and matchModes.ts +8 KB;
+// the shared row restore, authorityRow.ts new, after the client predictor it had pulled in left the Worker, above; no
+// builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.32 MB).
 // 8.18 MB (8,175,479 B) at integ/268 a2e4bf429e for release 268 (the fleet at 286: the BMPT Terminator, the Tunguska-M,
 // the Pantsir-S1, the Gepard 1A2, the PGZ-95, the PGZ-09 and the M3A2 Bradley; core-parity's shared sim stages (player
 // input, hull actions, tank pair contact, ram module damage, mode route push, camo paint) and the bots' construction;
 // no builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.34 MB).
-assert.ok(sourceBytes < 8.34e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 8.43 MB (8,430,276 B, 468 files) on item/sm-fix-integration with release 268 merged in at round four (origin/main
+// baff0f6924: 268's 8,175,479 B above plus the 2026-11-02 audit's rounds one to four, the migration handover, the bots'
+// resume legs and news queue, wire 11/12, the actor's unseen rounds, the shared crush press, ram rule and bot events; no
+// builder, kit or calibration literal entered: the assertion above holds): the same rule, plus 2 % (8.60 MB).
+// 8.45 MB (8,452,434 B) at integ/270 e4e9a3208c for release 270 (473 modules from 268's 464: Air Support's strike
+// controller and fire, +43.6 KB; ground-269's surface table and the terrain splat's GLSL that terrain.ts now imports,
+// +42.6 KB; the buildings' style and built-environment tables and three civic plans, +43.5 KB; edits to existing
+// modules, +46.4 KB; the fleet unchanged at 299, no builder, kit or calibration literal entered: the assertion above
+// holds): the same rule, plus 2 % (8.62 MB).
+// 8.75 MB (8,748,246 B, 484 files) on item/sm-fix8-merge with release 270 merged in (round 8 Y11: the 2026-11-02
+// audit's rounds one to eight over 269, the couch session owner, the hunt and raid checkpoint records and the sealed
+// boot configuration, beside 270's Air Support, ground and buildings tables above; no builder, kit or calibration
+// literal entered: the assertion above holds): the same rule, plus 2 % (8.92 MB).
+assert.ok(sourceBytes < 8.92e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');

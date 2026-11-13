@@ -14,6 +14,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const SCALE = 0.36;
 const near = (a, b, eps, label) => {
@@ -59,7 +60,7 @@ try {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) errors.push(msg.text());
   });
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
 
   await page.evaluate(() => {
     const D = window.__DEBUG;

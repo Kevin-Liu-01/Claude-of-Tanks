@@ -470,6 +470,7 @@ export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   surfaces: {
     roof: { kind: 'pantile', tint: [0.64, 0.32, 0.20] },
     stone: { kind: 'brick', tint: [0.56, 0.30, 0.23] },
+    // (buildings-270: Polders reverted to its base look, Main 11-06, the round-4 pairs 0–7)
     sourced: { plaster: true, wood: true },
   },
   builders: POLDER_BUILDERS,

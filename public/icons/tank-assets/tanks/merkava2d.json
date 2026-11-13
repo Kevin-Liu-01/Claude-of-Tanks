@@ -8647,7 +8647,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 13122,
-        "sha256": "07e3105de577f248711a37f86bf4132971f7bc63c80c00c6e64f907801d2b019"
+        "sha256": "07e3105de577f248711a37f86bf4132971f7bc63c80c00c6e64f907801d2b019",
+        "frame": [25,110,226,249]
       }
     },
     "top": {
@@ -8663,8 +8664,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17926,
-      "sha256": "da1e79b17f1320fb8e321bf861edf231ab969a3d44beab6962e8e9cca7a640ef"
+      "bytes": 17912,
+      "sha256": "81efc9e6d875f03b4b175f55e3967c4b465720dcb43cac74b5f4ec6a43078464"
     },
     "topSilhouette": {
       "file": "merkava2d_top_silhouette.png",
@@ -8687,32 +8688,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 48266,
-      "sha256": "caff79d8165c65341dd33127f24b5d5e6c42d2319b0d934348dc6129d0befec7"
+      "bytes": 48268,
+      "sha256": "a3f0bb68f3ebfe01c5eba48c43fe1bbc823e62901e85bb4f1861e50165d9affc"
     },
     "modulesSide": {
       "file": "merkava2d_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38836,
-      "sha256": "57a705962d8ae8428f77b431b4a6c8c9ce4b71b595fb841f5d4b9deb8eff6aeb"
+      "bytes": 38782,
+      "sha256": "8e4328fb6df5afcfa6c44ddd18ffe764d47345f1609cf2da952a6346c4862422"
     },
     "crewSide": {
       "file": "merkava2d_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37842,
-      "sha256": "970e7c9d4894d42903ffb9cc2ce8f1bc41852fb84c18b93825c27841deb3a1b4"
+      "bytes": 37822,
+      "sha256": "a72c65b19a3860fd4a9d4c86c54ffffa92584e983d80ebc4186a74661d327ce9"
     },
     "markings": {
       "file": "merkava2d_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33397,
-      "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+      "bytes": 33091,
+      "sha256": "9c07853422e957b37884a834a98f7de411a01fa4e27c922cd420beafa0130e55"
     },
     "technicalLabels": {
       "file": "merkava2d_technical.json",

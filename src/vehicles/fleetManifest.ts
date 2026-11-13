@@ -35,20 +35,26 @@ export const FLEET_GROUP_IDS = Object.freeze({
   denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk']),
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
+  // 269: the South African line's own builds (its Centurions are in the uk group)
+  southAfrica: Object.freeze(['ttd']),
+  // 269: the Australian line's own builds
+  australia: Object.freeze(['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'm113a3']),
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
+  t95: Object.freeze(['t95']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
   t72b3mX: Object.freeze(['t72b3m_2016']),
   challenger1X: Object.freeze(['challenger1_mk3']),
   t72buX: Object.freeze(['t72bu']),
-  chieftain5X: Object.freeze(['chieftain5']),
+  // release 268b: the Mk 3 on the Mk 5 X's castings (chieftainMk3X.ts), the Mk 9 on the Mk 10 X's (chieftainMk9X.ts)
+  chieftain5X: Object.freeze(['chieftain5', 'chieftain3']),
   t90AwX: Object.freeze(['t90']),
   t90BurlakX: Object.freeze(['t90a_burlak']),
   t90msX: Object.freeze(['t90ms_tagil']),
   leclercX: Object.freeze(['leclerc_xlr']),
   leclercClassicX: Object.freeze(['amx56']),
-  chieftain10X: Object.freeze(['chieftain_mk10']),
+  chieftain10X: Object.freeze(['chieftain_mk10', 'chieftain_mk9']),
   leopardX: Object.freeze(['leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5']),
   t90X: Object.freeze(['t90a', 't90a_vladimir', 't90m', 't90sm']),
   merkavaX: Object.freeze([
@@ -57,6 +63,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   k2X: Object.freeze(['k2_black_panther']),
   kf51X: Object.freeze(['kf51_panther']),
   t14X: Object.freeze(['t14_armata']),
+  // release 269: the Russian 152 mm line (profiles/russia152.ts)
+  russia152: Object.freeze(['object292', 'object477_molot', 'object195', 't14_152']),
   kurganetsX: Object.freeze(['kurganets25']),
   fv510MilanX: Object.freeze(['warrior_tes_h']),
   griffin50X: Object.freeze(['griffin50mm']),
@@ -81,7 +89,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'type74', 'amx30', 'amx30b2',
   ]),
   uk: Object.freeze([
-    'chieftain3', 'chieftain_mk9', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
+    'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
     'fv510', 'fv510_milan',
   ]),
   challenger: Object.freeze([
@@ -134,13 +143,25 @@ export const FLEET_GROUP_IDS = Object.freeze({
   gm352AirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
   gepard: Object.freeze(['gepard_1a2']),
   chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
+  // 269: the second air-defence round, one self-contained group per base vehicle (the 268 round's pattern); the two
+  // Marksmen share one turret module on two hulls
+  type87: Object.freeze(['type87_aw']),
+  marksman: Object.freeze(['marksman_t55', 'itpsv_leopard2']),
+  lvkv9040: Object.freeze(['lvkv9040']),
+  k30Biho: Object.freeze(['k30_biho']),
+  loara: Object.freeze(['pza_loara']),
+  // 269: the M163 VADS, its Vulcan turret on the M113 builder's M741 hull
+  m163: Object.freeze(['m163_vads']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;
 
-export const FLEET_GROUP_BY_ID: Readonly<Record<string, FleetGroup>> = Object.freeze(
+/** A tank's fleet group by its id. No prototype (improve-271, plan 039): an id spelled like an Object member
+ *  ("constructor", "toString") finds no group in any reader, rather than a function. */
+export const FLEET_GROUP_BY_ID: Readonly<Record<string, FleetGroup>> = Object.freeze(Object.assign(
+  Object.create(null) as Record<string, FleetGroup>,
   Object.fromEntries(
     (Object.entries(FLEET_GROUP_IDS) as [FleetGroup, readonly string[]][])
       .flatMap(([group, ids]) => ids.map((id) => [id, group])),
   ),
-);
+));

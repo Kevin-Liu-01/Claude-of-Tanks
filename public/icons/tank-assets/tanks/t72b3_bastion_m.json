@@ -9802,7 +9802,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10404,
-        "sha256": "8ff6a281bdf04e093a929400a168e48dae9885a35fb94add7d4d363893ebd73e"
+        "sha256": "8ff6a281bdf04e093a929400a168e48dae9885a35fb94add7d4d363893ebd73e",
+        "frame": [25,124,230,249]
       }
     },
     "top": {
@@ -9810,8 +9811,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13454,
-      "sha256": "f7ed1a92c8db02bc9372ee1ae5b8dabf4869a657477a4f2beb4a0571f7aff4a2"
+      "bytes": 13444,
+      "sha256": "f5b9badfe052304747bd563715d77617c6e98f3c2693d2ee66d746b1e4262656"
     },
     "side": {
       "file": "t72b3_bastion_m_side.webp",
@@ -9842,8 +9843,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35740,
-      "sha256": "2684f9f22e0eac8974a5edd33eb68fdaca87600253bacf942c27ed55bd6d0bd1"
+      "bytes": 32650,
+      "sha256": "dbce31d9976f5c29d825a8ea808b31c2b206a12dfe94a4eb912eb6979230992e"
     },
     "technicalLabels": {
       "file": "t72b3_bastion_m_technical.json",

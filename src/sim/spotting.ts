@@ -78,6 +78,8 @@ export interface SpottingTank {
     destroyed?: boolean;
     modules?: Partial<Record<'optics' | 'radio', { state?: SpottingModuleState }>>;
   };
+  /** False while the mode keeps the hull off the field (sim/matchModes.ts ModeLife: benched, rescued). */
+  modeActive?: boolean;
 }
 
 export interface ConcealerDisc {
@@ -128,6 +130,9 @@ interface SpottingDependencies {
   getEquipment?: (tank: SpottingTank) => readonly string[] | null | undefined;
   rng?: () => number;
   teams?: readonly string[];
+  /** Air Support's recon pass (sim/airSupport.ts): `team` holds tank `id` revealed now, whatever its eyes see. A reveal
+   *  answers isSpotted as a sighting does, so the snapshots, the markers and the bots read it through the one filter. */
+  revealed?: (id: string, team: string) => boolean;
 }
 
 interface SpottingEvent {
@@ -469,7 +474,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       };
       recs.set(ent.id, r);
     }
-    if (!ent.combat?.destroyed) r.lifeEnded = false;
+    if (alive(ent)) r.lifeEnded = false;
     return r;
   }
 
@@ -491,8 +496,20 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     }
   }
 
+  /** A live hull on the field: not destroyed, and not one the mode keeps off the field (audit M4, 2026-11-02: an
+   *  extracted or parked hull, inactive but not destroyed, was spotted where it stood, and spotted for its side). */
   function alive(e: SpottingTank | null | undefined): e is SpottingTank {
-    return Boolean(e && e.state && (!e.combat || !e.combat.destroyed));
+    return Boolean(e && e.state && (!e.combat || !e.combat.destroyed) && e.modeActive !== false);
+  }
+
+  /** A target's still-spotted window ends SPOT_LINGER_S after its last pass, checked every update (audit M4: only a
+   *  check ended it, up to one check interval, 2 s, late). No raycast, no allocation. */
+  function expireLinger(target: SpottingTank, record: SpottingRecord, timeS: number): void {
+    for (const team of teams) {
+      if (team === target.team) continue;
+      const state = record.byTeam[team];
+      if (state.spotted && timeS - state.lastPassS > SPOT_LINGER_S) state.spotted = false;
+    }
   }
 
   function eyeY(e: SpottingTank): number {
@@ -906,6 +923,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
         }
         const rec = recOf(t);
         if (timeS >= rec.nextCheckS) checkTarget(t, tanks, timeS);
+        else expireLinger(t, rec, timeS);
       }
       return events;
     },
@@ -936,6 +954,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
      */
     isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
       if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id && (tank.aerial?.kind !== 'gunship' || tank.team === team));
+      if (deps.revealed?.(id, team)) return true;
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;

@@ -64,6 +64,34 @@ function face(panel: FacePanel): FacePanel { return panel; }
 /** Group B (the owner: "a ton more netting and camo leaves all over"): denser garnish, more of it cut boughs. */
 const DENSE = { density: 1.8, leafScale: 0.94, boughShare: 0.42 } as const;
 /**
+ * Release 269 (the owner, 2026-11-02: "both the australian variatns nneed a lot of ghillie on them and on their
+ * barrels"): the Australian Abrams' field nets, heavier than Group B, in the dry bush's olive and straw (the Talisman
+ * Sabre and Southern Jackaroo photographs: garnish thick over the turret and the whole gun to the muzzle).
+ */
+const AUS_HEAVY = { density: 2.3, leafScale: 0.96, boughShare: 0.48 } as const;
+const AUS_BUSH = { light: 0x7b7650, dark: 0x3b3e2a, netColor: 'rgba(54,52,37,0.84)', netTextureSeed: 1101 } as const;
+
+/**
+ * A gun's net (the gun owner, in the gun's own frame: z along the bore from the trunnions; the owner, 2026-11-02: "in
+ * this case even drape ghillie acrross the top of mantlet and cheeks"): one net over the mantlet's top, and one over the
+ * tube from the mantlet to short of the muzzle, laid on its top and hanging free past its sides (no armour holds it
+ * there), its edges seated to the cord (a tube's strip leaves no 9 cm margin), draped down both sides to just under the
+ * centreline; the underside stays bare so the gun keeps its depression over the decks.
+ */
+function gunNet(mantlet: { x0: number; x1: number; z0: number; z1: number; y: number },
+  tube: { z0: number; z1: number; y: number }, seed: number) {
+  const nz = Math.max(8, Math.round((tube.z1 - tube.z0) / 0.08));
+  return {
+    top: [
+      laid({ ...mantlet, nx: 12, nz: Math.max(6, Math.round((mantlet.z1 - mantlet.z0) / 0.08)), garnishRiseM: 0.12,
+        garnishDensity: 2.0, garnishOpeningMarginM: 0.03, seed }),
+      laid({ x0: -0.22, x1: 0.22, z0: tube.z0, z1: tube.z1, nx: 10, nz, y: tube.y, clipToArmour: false, garnishRiseM: 0.14,
+        garnishDensity: 3.0, garnishOpeningMarginM: 0.02, seed: seed + 2 }),
+    ],
+    side: flanks(tube.z0, tube.z1, tube.y - 0.01, tube.y + 0.03, 0.16, seed + 4, { nz, ny: 4 }),
+  };
+}
+/**
  * Group A (the owner: "add our new ghillie and netting on the cv90, cv9040c, merkava mk 4b, merkava mk 3c"): 2026-10-12
  * (cam-netting) at the Group B garnish density; the fix round's 0.95 left 4-6 cards a square metre of net against the
  * Group B hulls' 10-15, and the four read as bare plate with a few patches.
@@ -86,6 +114,28 @@ function skirts(z0: number, z1: number, top: number, drop: number, out: number, 
  */
 const M1A2_X_OPEN_NET = { netStripDensity: 0.55 } as const;
 
+/**
+ * Release 269 round 3 (the Chieftain Mk 3's roof net: "a row of regular V-notch or loop cutouts"): a net's cut edge along
+ * a polyline, broken every 7 to 15 cm and each point thrown up to `jag` either side of the line (seeded), so the cells
+ * the cut takes step at irregular places instead of in a regular staircase down a straight diagonal.
+ */
+function ragged(line: readonly Point2[], jag: number, seed: number): Point2[] {
+  const out: Point2[] = [];
+  let k = 0;
+  const r = (): number => { const v = Math.sin(++k * 127.1 + seed * 311.7) * 43758.5453; return v - Math.floor(v); };
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [ax, az] = line[i], [bx, bz] = line[i + 1], L = Math.hypot(bx - ax, bz - az);
+    const nx = -(bz - az) / (L || 1), nz = (bx - ax) / (L || 1);
+    out.push([ax, az]);
+    for (let t = 0.07 + r() * 0.08; t < L - 0.05; t += 0.07 + r() * 0.08) {
+      const d = (r() - 0.5) * 2 * jag;
+      out.push([ax + (bx - ax) * t / L + nx * d, az + (bz - az) * t / L + nz * d]);
+    }
+  }
+  out.push(line[line.length - 1]);
+  return out;
+}
+
 /** A box [z0, z1, yLo, yHi] a flank drape is cut away over. */
 const cut = (z0: number, z1: number, lo: number, hi: number): readonly [number, number, number, number] => [z0, z1, lo, hi];
 
@@ -103,6 +153,19 @@ function profile(stations: ReadonlyArray<readonly [number, number]>): (z: number
 /** The Strv 103B's and 103A's hull deck lines (the round-5 suits' measured profiles, ghillieSuit.ts). */
 const STRV103B_DECK = profile([[-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63], [2.61, 1.53], [3.22, 1.55]]);
 const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
+
+/**
+ * Release 269 (the owner, 2026-11-03: "the olifant mk 1 and mk 1 a look way too close to eeach other. lets make mk 1a and
+ * mk 1 have a ton of ghillie on them among other differences"): the two Olifants' field nets, heavy, in two bush
+ * palettes so the nets themselves part them: the Mk 1's green (the 1980s South West Africa bush), the Mk 1A's dry straw
+ * (the Angolan winter of 1987-88).
+ */
+const SA_HEAVY = { density: 2.3, leafScale: 0.98, boughShare: 0.5 } as const;
+const SA_BUSH_GREEN = { light: 0x6c7a44, dark: 0x2c3a21, netColor: 'rgba(40,52,29,0.86)', netTextureSeed: 1101 } as const;
+// (r5 blind critic: the straw net read as green tufts, the field net's green sprays over a dark cloth: the cloth now
+// paler than the hull, the garnish dry cut strips with bare branches among them: ghillieSuit.ts fieldNetPalette)
+const SA_DRY_STRAW = { light: 0xc8b07a, dark: 0x8a7650, netColor: 'rgba(176,156,104,0.88)', netTextureSeed: 1101,
+  fieldNetPalette: 'straw' } as const;
 
 export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Object.freeze({
   // ---- Group A: the new ghillie and netting --------------------------------------------------------------------
@@ -149,10 +212,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // CV9040C: the turret roof netted round the commander's hatch, the cupola and its periscope ring, both sight boxes and
   // the whip bases; flank drapes over the turret's side bins, behind the front smoke banks; a rear drape. The troop roof
   // netted behind the turret round its four hatches (the builder opens them); the skirts hung in three drapes a side,
-  // the right flank's exhaust outlet (z -0.5 to 0.6) left bare.
+  // the right flank's exhaust outlet (z -0.5 to 0.6) left bare. 271 (Main 2026-11-08, the photo packet's 3.38 m with the
+  // add-on armour): the spray certified inside the side fittings' 1.73 m (it reached 1.81 m, 3.58 m overall, 6 % wide)
   cv9040c: {
     id: 'cv9040c', seed: 9041, style: 'leafy', ...FULL, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.73, hemFloorM: 0.65,
     turret: {
       top: [laid({
         x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,
@@ -558,16 +622,41 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'c2_ariete_proto', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
     // release 231: the hull net is cut round the whole gun's envelope (its mantlet plate's foot passed 11 mm over the
     // track-guard drape at the -7 side stops)
-    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8, conservativeGunEnvelope: true,
+    // 267 round 2 (both blind critics: "ragged shards sticking out at the rear skirt and past the hull outline in the top
+    // view"): the garnish stays within 4 cm of the skirt armour's 1.993 m plane (was 2.19), and the skirt drapes start
+    // on the skirt run (its rear end at -3.21), not 24 cm behind it
+    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.8, conservativeGunEnvelope: true,
+    // 269 (the owner, 2026-11-03: the C2 prototype's completely new turret, profiles/arieteProtoTurret.ts): the turret net
+    // refitted to the new shell (walls +-1.41, the cheek tip 2.39, the stowage box's rear 2.70 and its bins and APU behind
+    // it) and opened round its new fittings: the Lothar-SD box and Attila-D drum together, the commander's cupola and its
+    // periscopes, the loader's hatch, the two roof periscopes, the fume vent, the met mast and the two whip bases (the
+    // loader's 12.7 mm is opened by the builder); the flank drapes hang on the bustle behind the smoke rows (they run
+    // forward of 1.93 now, under the add-on boxes' rear ends), the rear drape between the left bin and the APU
+    // 269 round 2 (blind A/B arieter269t, both critics: "cloth flares past the front cheek corners in the top view", "the
+    // cloth sheet over the turret rear is a big flat patch ... it spills over the rear view"): the rear drape is gone and
+    // the openings follow the moved fittings: the Lothar box and the Attila drum (0.45-1.45), the loader's gun on its
+    // plinth, the met mast's hanging rods
+    // 269 round 3 (the round-2 blind A/B: "cloth within about 5 cm of the outline with a continuous hem", "the net kept
+    // within the roof outline with the shards trimmed"): the roof net is laid on 5 cm cells inside an outline 5 cm in from
+    // the roof's walls and the stowage box's rear, behind the cheek wedges' tops, so its edge is one unbroken hem (the
+    // panel's torn perimeter cells all fall outside it); no garnish seats within 12 cm of that hem; the flank drapes are
+    // gone, and the garnish is thinned (0.7) so the station, hatches and sights read through it
     turret: {
       top: [laid({
-        x0: -1.71, x1: 1.71, z0: -2.72, z1: 2.06, nx: 43, nz: 60, y: 0.97,
-        holes: [rect(-1.06, -0.52, -0.32, 0.16), rect(0.19, 0.82, -0.12, 0.12), rect(-0.12, 0.34, 0.24, 0.64), rect(0.01, 0.29, -0.69, -0.45),
-          rect(-0.38, -0.10, -0.34, -0.10), rect(-0.42, -0.24, -1.21, -1.03), rect(0.63, 1.04, 0.45, 0.61)],
-        garnishRiseM: 0.16, seed: 11,
+        x0: -1.62, x1: 1.62, z0: -2.85, z1: 1.80, nx: 65, nz: 93, y: 0.97,
+        outline: [[-1.36, 1.34], [-0.52, 1.57], [-0.30, 1.45], [0.30, 1.45], [0.52, 1.57], [1.36, 1.34], [1.36, -2.10],
+          [1.22, -2.60], [-1.22, -2.60], [-1.36, -2.10]],
+        foliageExclude: [rect(1.24, 1.40, -2.65, 1.40), rect(-1.40, -1.24, -2.65, 1.40), rect(-1.40, 1.40, -2.65, -2.20),
+          rect(-1.40, -0.40, 1.22, 1.60), rect(0.40, 1.40, 1.22, 1.60), rect(-0.40, 0.40, 1.33, 1.60)],
+        // (round 4: "torn net fragments along the rear edge of the roof and the bustle lip", "a small cloth flap near the
+        // rear hatch": the net is cut round the three rear roof boxes instead of climbing them, no bough seats within 0.45 m
+        // of the rear hem, and no scrap under 40 triangles stays)
+        holes: [rect(-1.18, -0.52, 0.40, 1.50), rect(-1.28, -0.40, -0.76, 0.12), rect(0.37, 1.25, -0.68, 0.15),
+          rect(0.56, 0.98, 0.23, 0.65), rect(-0.43, -0.23, 0.93, 1.09), rect(0.23, 0.43, 0.93, 1.09),
+          rect(-0.14, 0.14, -1.02, -0.74), rect(-1.17, 0.27, -1.49, -1.08), rect(-1.42, -1.09, -2.13, -1.01),
+          rect(1.09, 1.42, -2.07, -1.12)],
+        strictHoles: true, minPieceTris: 40, garnishRiseM: 0.16, garnishDensity: 0.7, seed: 11,
       })],
-      side: flanks(-2.57, -0.82, 1.00, 0.46, 1.68, 17),
-      face: [face({ z: -2.72, x0: -1.30, x1: 1.30, y0: 0.52, y1: 0.95, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
@@ -575,7 +664,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.87, x1: 1.87, z0: -0.11, z1: 3.85, nx: 37, nz: 40, y: 1.90, holes: [rect(-0.43, 0.20, 0.84, 1.29)],
           garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.45, 3.40, 1.72, 0.55, 2.01, 41),
+      side: skirts(-3.15, 3.40, 1.72, 0.55, 1.995, 41),
     },
   },
   // LRMV Lynx: the turret roof netted round the RWS (the builder) and the periscope row, drapes ahead of the side smoke
@@ -832,12 +921,17 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     turret: {
       // the fore-roof over the moving gun housing stays open air (kf51bTurretCenter.selftest: x +-0.40, z 0.92-1.85);
       // 268 r11: and the drone dock's plate at the turret's back, where the RWS stood before it moved beside the tower
-      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.64, garnishRiseM: 0.16, seed: 11,
-        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(0.08, 0.52, -2.34, -1.86)] })],
+      // 2026-11-03 (268 r16): and round the new roof kit (the coaxial MG's shroud and the auxiliary sight on the left
+      // cheek, the four corner sensor heads; r16b took the radome, the acoustic detector and the third antenna off). The
+      // turret's walls rise 7 cm (profiles/leopard.ts kf51uWallRiseM), so the roof net's level, the flank drapes' tops
+      // and the rear drape's top rise with them
+      top: [laid({ x0: -1.58, x1: 1.56, z0: -3.09, z1: 1.73, nx: 39, nz: 60, y: 0.71, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(-0.48, 0.48, 0.86, 1.90), rect(0.08, 0.52, -2.34, -1.86), rect(0.48, 0.76, 0.90, 1.73),
+          rect(0.76, 1.10, 0.76, 1.10), ...pair(1.12, 1.36, 0.68, 0.92), ...pair(0.74, 0.98, -2.72, -2.48)] })],
       // the front drapes cut round the cheek sensors (turret z 0.88, both flanks)
-      side: [...flanks(-0.38, 1.45, 0.68, 0.44, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
-        ...flanks(-2.94, -1.13, 0.68, 0.44, 1.55, 19)],
-      face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.62, nx: 25, ny: 6, seed: 23 })],
+      side: [...flanks(-0.38, 1.45, 0.75, 0.51, 1.55, 17, {}, () => [cut(0.66, 1.10, 0.50, 0.90)]),
+        ...flanks(-2.94, -1.13, 0.75, 0.51, 1.55, 19)],
+      face: [face({ z: -3.10, x0: -1.25, x1: 1.25, y0: 0.24, y1: 0.69, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
@@ -902,6 +996,58 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
       side: skirts(-3.30, 3.10, 1.54, 0.55, 2.05, 41),
     },
+  },
+  // ---- Release 269: the Australian Abrams (the owner, 2026-11-02: "a lot of ghillie on them and on their barrels") --
+  // M1A2 SEPv3 (Australia): the TUSK's frame without its ARAT: the turret roof and bustle under one net round the CROWS-LP
+  // and the sights, drapes down both flanks over the empty Trophy brackets, a rear drape over the rack; both decks
+  // netted round the driver's hatch, four drapes a side over the stock skirts; and the gun netted from the mantlet to
+  // 0.35 m short of the muzzle.
+  m1a2_sepv3_aus: {
+    id: 'm1a2_sepv3_aus', seed: 2691, style: 'leafy', ...AUS_HEAVY, ...AUS_BUSH,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.0, hemFloorM: 0.7,
+    clothClearsGunStops: true,
+    turret: {
+      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks")
+      top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 2.70, nx: 44, nz: 74, y: 0.92, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      // open over the empty Trophy cradles (the Australian tell Main asked for; the 269 blind critic saw none under the net)
+      side: flanks(-2.45, 0.60, 0.90, 0.50, 1.70, 17, {}, () => [cut(-2.06, -1.02, 0.25, 0.95)]),
+      face: [face({ z: -3.20, x0: -1.20, x1: 1.20, y0: 0.55, y1: 0.98, nx: 24, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.62, x1: 1.62, z0: -3.62, z1: 0.39, nx: 32, nz: 40, y: 1.72, garnishRiseM: 0.14, garnishDensity: 1.3, seed: 31 }),
+        laid({ x0: -1.62, x1: 1.62, z0: 0.39, z1: 3.62, nx: 32, nz: 32, y: 1.50, holes: [rect(-0.38, 0.38, 2.25, 3.00)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.30, 3.10, 1.54, 0.55, 1.95, 41),
+    },
+    gun: gunNet({ x0: -0.40, x1: 0.60, z0: 0.30, z1: 1.45, y: 0.36 }, { z0: 1.48, z1: 4.06, y: 0.11 }, 61),
+  },
+  // M1A1 AIM SA (Australia): the M1A1's turret roof netted to the bustle's rear wall round the CWS and the sights, the
+  // lengthened rack, its TMAPU and call-sign plate left bare; drapes down both flanks ahead of the bustle stowage; both
+  // decks and four drapes a side; the gun netted from the mantlet to 0.35 m short of the muzzle.
+  m1a1_aim_sa_aus: {
+    id: 'm1a1_aim_sa_aus', seed: 2692, style: 'leafy', ...AUS_HEAVY, ...AUS_BUSH,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.0, hemFloorM: 0.7,
+    clothClearsGunStops: true,
+    turret: {
+      // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks"), back to the
+      // 268 shell's bustle face (z -2.56): the rack behind it carries the crew's load (decorations.ts LIVED_IN_ROWS), which
+      // seats under no roof net
+      top: [laid({ x0: -1.62, x1: 1.52, z0: -2.56, z1: 2.30, nx: 40, nz: 60, y: 0.82, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      side: flanks(-2.00, 0.80, 0.72, 0.48, 1.74, 17),
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.62, x1: 1.62, z0: -3.62, z1: 0.39, nx: 32, nz: 40, y: 1.62, garnishRiseM: 0.14, garnishDensity: 1.3, seed: 31 }),
+        laid({ x0: -1.62, x1: 1.62, z0: 0.39, z1: 3.62, nx: 32, nz: 32, y: 1.45, holes: [rect(-0.38, 0.38, 2.25, 3.00)],
+          garnishRiseM: 0.12, seed: 37 }),
+      ],
+      side: skirts(-3.30, 3.10, 1.45, 0.55, 1.95, 41),
+    },
+    gun: gunNet({ x0: -0.36, x1: 0.46, z0: 0.05, z1: 0.64, y: 0.43 }, { z0: 0.70, z1: 3.54, y: 0.11 }, 61),
   },
   // M1E3 (the m1a3): no net since 2026-11-02 (the owner: "remove the ghillie on the m1e3"); its field cage, cages,
   // APS, whips and stowage stay (profiles/m1a3Concept.ts)
@@ -1012,5 +1158,196 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         bottomAt: (z: number) => 1.02 + Math.sin(z * 2.7) * 0.04,
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
+  },
+  // Chieftain Mk 3 (release 269; the owner, 2026-11-03: "for the mk3 add. abunch of nts and ghillie on the guns and turret
+  // and hull coverinng all suerfaces"): a BAOR tank dressed for a hide (1970s-80s, woodland nets and hessian scrim, the
+  // barrel bound in scrim). Turret: the roof, the cheeks' crowns and the NBC pack's lid netted on a fine grid, humped over
+  // sticks and rolled round the cupola, the loader's hatch, both whips and every lens (the cupola's L37 opens its own
+  // sweep), its front edge short of the casting's nose; a net thrown into the bar basket over its load, its rails clear;
+  // drapes down both flanks over the side bin, the jerry cans and the baskets (the left flank's stop behind the
+  // searchlight's lens). Hull: the engine deck round its two louvred covers (their hot air), the front decks and glacis round
+  // the driver's hatch, his periscope and the lamps, the nose and the stern round its exhaust pipes, three drapes a side down
+  // the bazooka plates over the running gear. Guns: the L11's canvas root cover and tube in scrim laid over their upper
+  // flanks (never under the axis) where they pass over the hull, then bound right round to short of the muzzle collar with
+  // loose ends and garnish hanging from it; the ranging gun's barrel in a strip of it. The cupola's L37 stays bare (a
+  // working station). Owner-local metres of the Mk 5 X build (chieftain5X.ts: the turret's pivot [0.0031, 1.476, 0.3693],
+  // the trunnion 1.2007 ahead of it at y 0.3834).
+  chieftain3: {
+    id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
+    // r269 polish (the coordinator on the blind critics: "shards past the outline", "right-angled patches", "no thickness",
+    // "the bustle wrap"): no garnish past 14 cm outside the bazooka plates (1.662)
+    // round 3 ("cloth hangs outside the track line at the lower corners of the front and rear views"): within 5 cm
+    fieldClearanceM: 0.03, maxHalfWidth: 1.71, hemFloorM: 0.62,
+    // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
+    // publishes none), 0.3 degrees deeper (0.8 over the stern from 140, where the recoiled extractor runs back over the
+    // deck): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach. Under
+    // them the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat exemption there (it lay 24 mm
+    // under the barrel at yaw 150) and the cards keep the clearance across their faces.
+    gunPitchByYawDeg: [[0, -10], [126, -10], [127, -8.86], [128, -5.52], [129, -4.02], [130, -3.21], [131, -2.89],
+      [132, -2.86], [133, -2.46], [134, -1.27], [135, -0.64], [136, -0.49], [138, -0.49], [139, -0.71], [140, -1.89],
+      [141, -2.08], [142, -1.99], [143, -1.93], [144, -1.93], [145, -1.39], [146, -1.11], [147, -1.08], [148, -1.27],
+      [149, -1.93], [150, -1.86], [151, -1.86], [152, -1.71], [153, -1.64], [154, -1.14], [155, -1.02], [156, -0.99],
+      [158, -0.99], [159, -0.55], [160, -0.46], [161, -0.46], [162, -0.08], [163, 0.07], [164, 0.07], [165, 0.11],
+      [169, 0.11], [170, 0.14], [173, 0.14], [174, 0.2], [175, 0.26], [176, 0.29], [177, 0.29], [178, 0.32],
+      [180, 0.32]],
+    clothClearsGunStops: true, cardsClearGunStops: true,
+    turret: {
+      top: [
+        // the roof on a 6 cm grid (no stepped right-angled patches), its depth from the sticks pushed under it, its folds
+        // and the rolls bunched round every opening; open round the cupola (a ring), the loader's hatch and both whips; its
+        // lens slots short (round 3, lensSlotM: the cupola's eight periscopes' 0.4 m slots each way bared a disc of roof
+        // round it; past 10 cm the cloth lies on the plate under each view and the garnish keeps out of it). Round 3: its
+        // creases eased (1.2 of the field net's relief: at 3 a crease's ridge, one cell wide, stood 6 cm up in a row of
+        // loops), its thickness from more sticks pushed under it, its cut edges torn at random (edgeTearP)
+        laid({
+          x0: -1.76, x1: 1.76, z0: -2.03, z1: 0.40, nx: 60, nz: 41, edgeTearP: 0.3,
+          holes: [Array.from({ length: 12 }, (_, k): Point2 => [-0.48 + 0.49 * Math.cos(k * Math.PI / 6), -0.824 + 0.49 * Math.sin(k * Math.PI / 6)]),
+            rect(0.18, 0.83, -1.08, -0.39), rect(0.707, 0.887, -1.859, -1.679), rect(-0.933, -0.753, -1.839, -1.659),
+            // (round 3: the side baskets carry their own nets, below)
+            rect(-1.45, -0.95, -2.10, -0.99), rect(0.95, 1.72, -2.10, -0.63),
+            // (round 6: the left side bin and the jerry cans carry their own nets, below)
+            rect(-1.62, -1.12, -0.86, 0.42)],
+          tents: [[1.25, -1.45, 0.09], [-1.30, -1.80, 0.08], [0.95, -1.95, 0.07], [-0.10, -1.95, 0.07], [1.45, -0.75, 0.07],
+            [0.55, 0.30, 0.08], [-0.20, -0.20, 0.06], [-1.20, -0.40, 0.07]],
+          y: 0.83, reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 11,
+        }),
+        // round 3: and on from the roof over the casting's front and cheeks either side of the mantlet to the nose ("left
+        // mostly bare"), its edge ragged; on the cheeks' curved shoulders and steep fronts no cell spans more than a 7 cm
+        // step (a 5 cm cell laid down them stretched into a tooth: "a row of regular V-notch ... cutouts"), the drapes
+        // below take over; the gun's sweep, the smoke dischargers' lines and the sights' views are the builder's
+        laid({
+          x0: -1.76, x1: 1.76, z0: 0.40, z1: 1.42, nx: 60, nz: 17, laidStepM: 0.07, edgeTearP: 0.3,
+          yAt: (x, z) => 0.83 - Math.max(0, z - 0.85) * 0.4 - Math.max(0, Math.abs(x) - 0.55) * Math.max(0, z - 0.6) * 0.6,
+          outline: [[-1.76, 0.40], [1.76, 0.40], ...ragged([[1.76, 0.52], [1.40, 0.62], [1.12, 0.80], [0.95, 0.95], [0.92, 1.05],
+            [0.80, 1.15], [0.78, 1.30], [0.55, 1.38], [0.25, 1.40], [-0.25, 1.40], [-0.45, 1.32], [-0.62, 1.22], [-0.78, 1.12],
+            [-0.92, 1.02], [-0.98, 0.92], [-1.12, 0.82], [-1.40, 0.68], [-1.76, 0.54]], 0.035, 11)],
+          holes: [rect(-1.62, -1.12, 0.38, 0.58)],
+          tents: [[-0.55, 0.50, 0.07], [0.45, 0.95, 0.06], [-0.60, 1.05, 0.06]],
+          reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 15,
+        }),
+        // the bar basket (round 3: "a bare, open wire frame standing out behind the turret"): the net thrown over it,
+        // resting on its top rails, the NBC pack and the load and sagging deep between them (sagK), its rear hanging
+        // in swags down the basket's back (the face below)
+        laid({
+          x0: -1.43, x1: 1.71, z0: -2.63, z1: -2.03, nx: 48, nz: 10, clipToArmour: false, riseLimitM: 0.05,
+          yAt: (x) => 0.719 + 0.060 * (x + 1.405) / 3.088, sagK: 3, tents: [[-0.86, -2.36, 0.04], [0.80, -2.36, 0.05]],
+          reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 13,
+        }),
+        // round 3: and over the two side baskets (their tops open, the bars showing), sagging onto their load
+        ...[[-1.45, -0.93, -2.10, -0.99, 0.719, 8], [0.93, 1.72, -2.10, -0.63, 0.779, 12]].map(([x0, x1, z0, z1, y, nx], k) => laid({
+          x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.065), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 3,
+          reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 71 + k * 6 })),
+        // round 6 (both critics: the dark stowage box on the turret's side and the open rack by the turret rear bare): a net
+        // thrown over the left side bin and over the jerry cans in their rack, resting on their lids and sagging 5-8 cm down
+        // over their edges (round 5's)
+        ...[[-0.17, 0.53, 0.62, 81], [-0.82, -0.37, 0.82, 85]].map(([z0, z1, y, seed]) => laid({
+          x0: -1.58, x1: -1.13, z0, z1, nx: 8, nz: Math.round((z1 - z0) / 0.06), clipToArmour: false, riseLimitM: 0.06,
+          yAt: () => y, sagK: 8, reliefScale: 1.5, rimScale: 0.5, garnishRiseM: 0.06, seed })),
+      ],
+      face: [face({ z: -2.61, x0: -1.43, x1: 1.71, y0: 0.30, y1: 0.80, nx: 32, ny: 6, swagM: 0.06, seed: 59 }),
+        // and down the cheeks' steep fronts below the roof net's edge, either side of the mantlet (the gun's sweep and the
+        // smoke dischargers' lines are cut by the builder)
+        face({ z: 1.20, zAt: (x) => 1.37 - 0.7 * Math.max(0, -x - 0.4), x0: -1.00, x1: -0.26, y0: 0.32, y1: 0.78, nx: 14, ny: 5,
+          swagM: 0.02, seed: 23 }),
+        face({ z: 1.20, zAt: (x) => 1.27 - 0.6 * Math.max(0, x - 0.5), x0: 0.26, x1: 1.00, y0: 0.32, y1: 0.78, nx: 14, ny: 5,
+          swagM: 0.02, seed: 29 })],
+      // the flanks over the side bin, the jerry cans and the baskets; each stops where the casting tucks under the cheek
+      // covers (a drape there fell free past the ring) and the left one behind the searchlight's lens
+      side: [...flanks(-2.57, 0.45, 0.80, 0.50, 1.55, 17).filter((p) => p.side < 0),
+        ...flanks(-2.57, -0.16, 0.80, 0.50, 1.76, 19).filter((p) => p.side > 0),
+        // round 3: and down the cheeks' curved sides ahead of them to the nose's turn, short (the casting tucks under there)
+        ...flanks(0.45, 0.88, 0.72, 0.36, 1.40, 25).filter((p) => p.side < 0),
+        ...flanks(0.02, 0.86, 0.72, 0.36, 1.30, 27).filter((p) => p.side > 0)],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.66, x1: 1.66, z0: -3.58, z1: -0.70, nx: 56, nz: 48, y: 1.70, holes: [rect(-0.92, 0.92, -3.23, -2.47)],
+          garnishRiseM: 0.12, seed: 31 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 44, nz: 55,
+          yAt: profile([[-0.70, 1.54], [1.65, 1.523], [2.15, 1.393], [2.57, 1.324], [2.73, 1.265], [3.02, 1.141], [3.40, 1.10]]),
+          garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+      ],
+      // three drapes a side tied along the bazooka plates' top edge under the fender bins (a roll over the bins would
+      // stand in the turret kit's sweep), down to the plates' foot
+      side: [0, 1, 2].flatMap((k) => flanks(-3.20 + k * 2.15, -3.20 + k * 2.15 + 2.05, 1.30, k === 1 ? 0.62 : 0.66, 1.665,
+        41 + 6 * k, { tiedTop: true })),
+      face: [face({ z: 3.42, x0: -1.10, x1: 1.10, y0: 0.88, y1: 1.15, nx: 22, ny: 5, seed: 43 }),
+        face({ z: -3.60, x0: -1.30, x1: 1.30, y0: 1.08, y1: 1.70, nx: 26, ny: 7, seed: 47,
+          holes: [rect(-1.00, -0.69, 1.18, 1.60), rect(0.69, 1.00, 1.18, 1.60)] })],
+    },
+    gun: {
+      // round 3 (the critics: "flat planar sheets", "a flap near the muzzle that reads as paper", "a thin ragged ribbon
+      // past the barrel outline"): the scrim bunched between its bindings to 1.3-1.5 times the barrel's width, its garnish
+      // within that; no loose flap hung under it
+      sleeve: [
+        // the canvas mantlet cover ahead of the turret's cheeks (they stand 2-3 cm beside it to 0.38 m), over its crown and
+        // flanks round the ranging gun's housing
+        // (round 6, Opus: "hard, stepped edges between bands": every band's ends taper down onto the barrel over 5 cm)
+        { z0: 0.40, z1: 0.80, reachM: 0.20, wrapDeg: 110, gapM: 0.015, bunchM: 0.05, garnishOffM: 0.06, garnishDensity: 3, taperM: 0.05,
+          seed: 49 },
+        // over the hull the rear deck binds the gun from below and the fender bins from beside under its axis
+        // (gun-depression-sweep's floors): the scrim laid over the upper flanks only, to 70 degrees round from the crown
+        // past the bins' reach, then to 10 degrees under the flanks, tied tight at its hems; the bore evacuator bare
+        { z0: 0.80, z1: 1.12, reachM: 0.20, wrapDeg: 70, gapM: 0.012, bunchM: 0.02, garnishOffM: 0.03, garnishDensity: 3, taperM: 0.05,
+          seed: 51 },
+        { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.06, garnishOffM: 0.065, garnishDensity: 3, taperM: 0.05,
+          seed: 52 },
+        // past the evacuator bound right round to 0.4 m short of the muzzle (in four lengths: a sleeve's garnish clumps
+        // stand a clump apart along it, so each length takes its own). Round 6 (the critics across rounds 3-5: "a clumped
+        // garnish mass about 0.3-0.5 m long hanging under the forward barrel wrap ... continuous with the wrap"): the second
+        // and third lengths let down under the barrel into two crumpled sacks of scrim, 0.27-0.34 m deep and 1.6-1.8 times
+        // the barrel's width, garnish tied on their flanks; the last 0.67 m to the muzzle clear of them (past the stern's
+        // reach: the barrel there never comes over the hull at any yaw)
+        ...[3.76, 4.03, 4.30, 4.57].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, bunchM: 0.065,
+          garnishOffM: 0.075, garnishDensity: k === 1 || k === 2 ? 8 : 5, taperM: 0.05,
+          ...(k === 1 ? { sack: { dropM: 0.34, widthM: 0.12 } } : k === 2 ? { sack: { dropM: 0.27, widthM: 0.10, crumpleM: 0.05 } } : {}),
+          seed: 53 + k * 4 })),
+        // the ranging gun's barrel bunched in a strip of it, its flash hider bare
+        { z0: 0.68, z1: 1.48, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 150, gapM: 0.006, bunchM: 0.012, garnishOffM: 0, seed: 57 },
+      ],
+    },
+  },
+  // ---- Release 269: the Olifant Mk 1 and Mk 1A (the owner, 2026-11-03: "a ton of ghillie on them among other
+  // differences"). Both run without skirts (the Horstmann bogies bare: their tell against the Semel), so neither hangs a
+  // drape over the running gear.
+  // Olifant Mk 1: the green net over the turret roof to the bustle's back wall, the net rack and its rolled nets left
+  // bare behind it, drapes down the turret's sides over the bins; the front deck and the raised engine deck netted; the
+  // 20-pdr bare.
+  olifant_mk1: {
+    id: 'olifant_mk1', seed: 2693, style: 'leafy', ...SA_HEAVY, ...SA_BUSH_GREEN,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.75, hemFloorM: 1.0,
+    clothClearsGunStops: true,
+    turret: {
+      top: [laid({ x0: -1.30, x1: 1.30, z0: -1.30, z1: 0.92, nx: 34, nz: 30, y: 0.96, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      side: flanks(-1.30, 0.70, 0.82, 0.44, 1.40, 17),
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.45, x1: 1.45, z0: 1.55, z1: 2.70, nx: 30, nz: 14, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.45, x1: 1.45, z0: -3.65, z1: -1.05, nx: 30, nz: 30, y: 1.90, garnishRiseM: 0.16, garnishDensity: 1.3, seed: 37 }),
+      ],
+    },
+  },
+  // Olifant Mk 1A: the straw net over the turret roof and on over the long bustle box to its back, drapes down the
+  // turret's and the box's sides and a drape over the box's back; both decks netted; and the 105 mm netted from the
+  // mantlet to short of the muzzle (the Mk 1's 20-pdr stays bare). The bush bar ahead of the nose stays bare.
+  olifant_mk1a: {
+    id: 'olifant_mk1a', seed: 2694, style: 'leafy', ...SA_HEAVY, ...SA_DRY_STRAW,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.75, hemFloorM: 1.0,
+    clothClearsGunStops: true,
+    turret: {
+      top: [laid({ x0: -1.30, x1: 1.30, z0: -2.30, z1: 0.95, nx: 34, nz: 44, y: 0.94, garnishRiseM: 0.18, garnishDensity: 1.5,
+        seed: 11 })],
+      side: flanks(-2.20, 0.60, 0.84, 0.46, 1.40, 17),
+      face: [face({ z: -2.28, x0: -0.90, x1: 0.90, y0: 0.40, y1: 0.90, nx: 18, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.45, x1: 1.45, z0: 1.55, z1: 2.70, nx: 30, nz: 14, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.45, x1: 1.45, z0: -3.65, z1: -1.05, nx: 30, nz: 30, y: 1.90, garnishRiseM: 0.16, garnishDensity: 1.3, seed: 37 }),
+      ],
+    },
+    gun: gunNet({ x0: -0.55, x1: 0.55, z0: 0.05, z1: 0.45, y: 0.40 }, { z0: 0.55, z1: 4.40, y: 0.11 }, 61),
   },
 });

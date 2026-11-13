@@ -1165,15 +1165,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29488,
-      "sha256": "773770081295193a9496f09831dcc7d0e4a15bc73c3be589ec69827edaed8580",
+      "bytes": 29500,
+      "sha256": "6dfaa9d15b7f743968a9a13773f1058af2aa5634f56a54dc8678396b424788f2",
       "thumbnail": {
         "file": "thumbs/object148_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11810,
-        "sha256": "3a9a76b2650830c3b316edc8d9d62f835b386d0a9f10be1c0bc7aea12c539904"
+        "bytes": 11792,
+        "sha256": "0fda0b560d07b5e5d3ba988fd977faefe5fb73c243eaba54267a413ea0bb5d0b",
+        "frame": [23,84,228,250]
       }
     },
     "top": {
@@ -1237,8 +1238,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35517,
-      "sha256": "3c6ed4d783de686d6fa1f7162392bb5f2bec8a54c4a2feecbe047029e78a876e"
+      "bytes": 32554,
+      "sha256": "0a155385569056ecac99f86c53c824e5454f13bc2d9b909b5ec91e30806e9b88"
     },
     "technicalLabels": {
       "file": "object148_proto_technical.json",

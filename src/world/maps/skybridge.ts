@@ -46,6 +46,8 @@ import { SKYBRIDGE_ARM } from './skybridgeArm.generated.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** The five roads (their junction nodes below, in the terrain's `roads`). */
@@ -224,7 +226,7 @@ export default {
       { kind: 'cablewayTower', x: 113.3, z: -20.2, yawDeg: -53.5, name: 'the cableway tail tower (east shore)' },
     ],
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
-    architecture: 'glencanyon',
+    architecture: BUILDING_STYLES.skybridge.kit,
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
       'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',
@@ -275,7 +277,7 @@ export default {
     rocks: 286, outcrops: 78, craters: 88, rubblePiles: 58,
     hedgehogs: 30, sandbagLines: 28,
     // the map-vehicles lane (2026-10-06, the period ruling): Glen Canyon in the 1960s: the M48, M60A1, M47 and M551
-    tankWrecks: { era: 'cold-war', count: 8, debris: true, ids: ['m48a5_patton', 'm60a1', 'm47_patton', 'm551_sheridan'] },
+    tankWrecks: WRECK_CASTS.skybridge,
     inhabit: {
       stalls: 0, benches: 2, coreClutter: 32, drums: 18,
       trucks: 10, jeeps: 7, drumClusters: 10, camps: 4, modernClutter: 36,

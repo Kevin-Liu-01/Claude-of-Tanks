@@ -36090,24 +36090,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26960,
-      "sha256": "b0777c50f36a9acb9e16e573afe28392a0323a92735adcf5c2c319c57429d283"
+      "bytes": 26942,
+      "sha256": "3122b6fe4a96c1e6644d84d73ce096311287f6ff63ec58634c8f807f791067f6"
     },
     "modulesSide": {
       "file": "ua_m1a2_abrams_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25598,
-      "sha256": "c4eb176ce374c32438577489a500324cb26ed8e1babf8d0d07f6449b3ee44fbe"
+      "bytes": 25634,
+      "sha256": "5bb022df2d94860125f1e9c06bfcd97aa91142c1795ecfac4836e94a8565fdcd"
     },
     "crewSide": {
       "file": "ua_m1a2_abrams_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23282,
-      "sha256": "c188807580c53dec0b38328af4ebc0a3f3374d392615f02d18931af1e8457186"
+      "bytes": 23304,
+      "sha256": "84a0bc6727118327051c6195c740a8f5466901e8e738240eab64bc357739d9d5"
     },
     "angle": {
       "file": "ua_m1a2_abrams_angle.webp",
@@ -36122,7 +36122,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 14572,
-        "sha256": "262bbdd29eb17082f0db9a4125b33a6bbd09865baff0cf57326d856201921734"
+        "sha256": "262bbdd29eb17082f0db9a4125b33a6bbd09865baff0cf57326d856201921734",
+        "frame": [21,95,229,250]
       }
     },
     "top": {
@@ -36131,15 +36132,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 22100,
-      "sha256": "7253986e3532b0036f0ee0da280cc1e6d6e143ab6387864ac487803000c8bf2e"
+      "sha256": "f3ae84034cf94b2df5cd08ee62279e90d66996cb68feec88cdb00bc9cabe4754"
     },
     "side": {
       "file": "ua_m1a2_abrams_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16560,
-      "sha256": "4a1fe5b2589965c60b23de2cc142b3ca18ec7ded11d51f0df60e47d7199bb80c"
+      "bytes": 16538,
+      "sha256": "936a836b1f7681c0f7a55ee6fb729926b54627ff701ef5734e1f6c64a833d683"
     },
     "topSilhouette": {
       "file": "ua_m1a2_abrams_top_silhouette.png",
@@ -36162,8 +36163,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35317,
-      "sha256": "b4f5f6d2069765bef544cd5f2c74274d37b58dfdcdc2afcef3f5315a12c9b237"
+      "bytes": 33637,
+      "sha256": "4f5a19e5dbdec171eb5f30422c7cecd83c4dc02baea65e8e82cdb8f73d176c60"
     },
     "technicalLabels": {
       "file": "ua_m1a2_abrams_technical.json",

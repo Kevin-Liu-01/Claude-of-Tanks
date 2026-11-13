@@ -32,6 +32,8 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   aerialVision: { id: 'visionInfrared', tone: 'green' },
   supplyAmmo: {id:'ammoRack',tone:'amber'},
   supplyHeal: {id:'medkit',tone:'green'},
+  // Air Support's strike view (air-support-270): the binoculars' lens
+  strikeView: { id: 'scope', tone: 'amber' },
   consumable1: { id: 'repair', tone: 'amber' },
   consumable2: { id: 'medkit', tone: 'green' },
   consumable3: { id: 'extinguisher', tone: 'red' },

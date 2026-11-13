@@ -902,24 +902,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28146,
-      "sha256": "dd256c8f442f005ac6ae2fb01c46f71c1b42c14aa68dad6afa7e860790431456"
+      "bytes": 28158,
+      "sha256": "757a002a8a9b9b99591c10c9d43c09ac16ae1e88158b304031bddd595dc7fdc5"
     },
     "modulesSide": {
       "file": "cv90105_tml_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31356,
-      "sha256": "2178c41455bb6079d0c0b378192f061b5cfd0dd43781e19bfef6b69e62eb45f7"
+      "bytes": 31270,
+      "sha256": "eebdc8876f77d261d7ceda3f8db71e700647bc4865c2b435923b03a8de515bb2"
     },
     "crewSide": {
       "file": "cv90105_tml_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29522,
-      "sha256": "8db4d538e685cef8c3e4d9afcb69e0c6e3fcd70cdb5936d272e7b0c868b0f5af"
+      "bytes": 29506,
+      "sha256": "16c79b0cc3216af7ffbe9bd0c9cb863ec91477c807baf5882576f92f219b3e43"
     },
     "angle": {
       "file": "cv90105_tml_angle.webp",
@@ -934,7 +934,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11618,
-        "sha256": "e803c7731126f86883981296eceb9f5c7a571db8bd01a7132e0bc4958b269aab"
+        "sha256": "e803c7731126f86883981296eceb9f5c7a571db8bd01a7132e0bc4958b269aab",
+        "frame": [24,87,226,249]
       }
     },
     "top": {
@@ -950,8 +951,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13714,
-      "sha256": "8d93c14a7c6416ee103729d6fd2db153d3f5b74d233f1b4460c65dabcfd2aabe"
+      "bytes": 13818,
+      "sha256": "4e409772de3bd26988fe287116a5a381e1809ad452bd8b8b6ce8e934a2d21b15"
     },
     "topSilhouette": {
       "file": "cv90105_tml_top_silhouette.png",
@@ -974,8 +975,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35861,
-      "sha256": "7f044cdf60535fce5a31fd7f2985f82272a927bf609348c2bdfa9877f8fc2cba"
+      "bytes": 32869,
+      "sha256": "3fc05645546d8e6d2c7609d2135cae5e373624f3fe097b581a82020cd2044796"
     },
     "technicalLabels": {
       "file": "cv90105_tml_technical.json",

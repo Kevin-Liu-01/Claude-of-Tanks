@@ -72,8 +72,11 @@ assert.match(source, /const finalBlow = pb\.kind === 'final' && !playerKill && !
   'a final blow between two other tanks reads as a neutral line');
 assert.match(source, /'killcam\.finalRamLine' : 'killcam\.finalBlowLine'/, 'the neutral line has ram and shell variants');
 assert.match(source, /\|\| pb\.kind === 'final';/, 'the final-kill x-ray draws the victim as a corpse');
-assert.equal((source.match(/lastLethal = lastDestroyed = null;\n\s*lastHitByTarget\.clear\(\);/g) || []).length, 2,
-  'both battle-entry paths clear the final-kill capture');
+// (2026-11-02 audit 02-game-2 #5) one reset holds the list; both battle-entry paths run it, and (round 3 merge review r1)
+// a network battle's restart under this seat
+assert.equal((source.match(/lastLethal = lastDestroyed = null;\n\s*lastHitByTarget\.clear\(\);/g) || []).length, 1,
+  'one capture reset clears the final-kill capture');
+assert.equal((source.match(/resetCaptureMemory\(\);/g) || []).length, 3, 'both battle-entry paths and the restart run it');
 
 assert.match(source, /const poseHistory = new Map(?:<[^;]+>)?\(\)/,
   'killcam retains the preceding simulation frame instead of reconstructing it after death');
@@ -107,7 +110,9 @@ assert.match(source, /setBattleLights\(shown(?:: boolean)?\) \{\s*if \(!active\)
   'the Garage light switch never pulls the lights from a running replay');
 assert.match(source, /function begin\([\s\S]*?\{[\s\S]*?showLightPool\(true\);[\s\S]*?active = true;/,
   'a replay always has its lights');
-assert.match(source, /active = false;\s*staged = false;\s*\/\/[^\n]*\n\s*showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\);/,
+// (round 3 A9, review r1) the read runs as one of teardown's release steps, so a host callback that throws cannot drop the
+// replay's done edge
+assert.match(source, /active = false;\s*staged = false;\s*\/\/[^\n]*\n\s*step\(\(\) => showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\)\);/,
   'a finished replay gives its lights back to the current light set');
 assert.match(main, /const setGarageSpots = [\s\S]*?garagePhasePresentation\.setActive\(active\);\s*garageLightsUp = active;\s*killcamAccess\.current\?\.setBattleLights\(!active\);/,
   'the Garage light switch drives the kill-cam light pool');
@@ -146,7 +151,8 @@ assert.match(cameraRig, /nextFov = activeSpectate\.fromFov \+ \(55 - activeSpect
 assert.match(cameraRig, /function spectateBlendDuration\(ent: CameraEntity \| null\): number[\s\S]*Math\.hypot\(dx, dy, dz\)/,
   'long-distance spectator target changes receive a distance-aware blend');
 assert.match(state,
-  /function resolveRamDamage[\s\S]*applyLethalRamModuleDamage[\s\S]*aModulesHit,[\s\S]*bModulesHit,[\s\S]*function publishRamDamage[\s\S]*game\.killcam\.onRam\(event, a, b\)/,
+  // (2026-11-02 audit M6: the lethal ram's module damage is sim/impact.ts resolveRamPairDamage's, the authority's rule too)
+  /function resolveRamDamage[\s\S]*resolveRamPairDamage[\s\S]*aModulesHit,[\s\S]*bModulesHit,[\s\S]*function publishRamDamage[\s\S]*game\.killcam\.onRam\(event, a, b\)/,
   'authoritative ram resolution records module failures before live wreck presentation');
 assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number)?\s*=\s*0[\s\S]*sparkFan[\s\S]*debris/,
   'vehicle collision effects use metal contact sparks and debris rather than shell penetration FX');

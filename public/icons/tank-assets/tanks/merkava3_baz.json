@@ -1737,7 +1737,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 12014,
-        "sha256": "a7df6fd88e4042436cf24f458e3a6f95374769f3811d1e9c0a199a6ffb84b293"
+        "sha256": "a7df6fd88e4042436cf24f458e3a6f95374769f3811d1e9c0a199a6ffb84b293",
+        "frame": [23,105,228,249]
       }
     },
     "top": {
@@ -1753,8 +1754,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 19274,
-      "sha256": "3900c8604fea468bd4d2c8d42af2135bec658332ca7b10f18f6ccbad810107c6"
+      "bytes": 19272,
+      "sha256": "30331fc46c7f60bdb0ab24841204fc7158cab05d46957b503adc1724c707e5b7"
     },
     "topSilhouette": {
       "file": "merkava3_baz_top_silhouette.png",
@@ -1777,32 +1778,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46884,
-      "sha256": "eeff3bab508d2bc792958ca0e685960db98b701a03b80f9a825bbe4d267be34f"
+      "bytes": 46946,
+      "sha256": "b1b4609012bdff0f0ef3eefa70723edaf79f03b0c951c2e82f57f29ceb304e0e"
     },
     "modulesSide": {
       "file": "merkava3_baz_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41390,
-      "sha256": "12297f571b1c045c8a9774f8ad822c580daefdbbc104bcd080feebb967397dd1"
+      "bytes": 41380,
+      "sha256": "a7cf32a12189862195e83636953f887e98cba3b8d821722607e8072df4c36fc2"
     },
     "crewSide": {
       "file": "merkava3_baz_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40124,
-      "sha256": "5910e409ffe8c38ea67d7c1d760d98badc6c5c7ab6f68f95a45ff2f9767f57c2"
+      "bytes": 40202,
+      "sha256": "7851615d2eaaa0c634c05da727f30c915f9006707cd614dccd734c31ab0f311f"
     },
     "markings": {
       "file": "merkava3_baz_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33397,
-      "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+      "bytes": 33091,
+      "sha256": "9c07853422e957b37884a834a98f7de411a01fa4e27c922cd420beafa0130e55"
     },
     "technicalLabels": {
       "file": "merkava3_baz_technical.json",

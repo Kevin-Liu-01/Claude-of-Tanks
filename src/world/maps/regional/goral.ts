@@ -18,10 +18,12 @@ import {
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
 import { openShed } from './outbuildings.ts';
-import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dressOf, type ArchitectureStyle, type RegionalBuildContext, type RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
 const CHAR = rgb(0x2a2420), BELL = rgb(0x6a5a3a);
+/** The carved window surrounds, as the Podhale photos show them (buildings-270): pale pine or the brown of the logs' carving. */
+const SURROUNDS: Readonly<Record<string, Rgb>> = { pale: PALE, brown: rgb(0x633c24) };
 /** Window frames: white, the odd blue or green painted ones. */
 const FRAMES: readonly Rgb[] = [WHITE, WHITE, rgb(0x4a6a8a), rgb(0x55704a)];
 
@@ -52,7 +54,8 @@ function stateFor(ctx: RegionalBuildContext): GoralState {
     window: {
       frame, frameWidth: 0.06, frameOut: 0.04, bars: rng() < 0.75 ? 'six' : 'cross',
       // the carved surround in pale spruce against the dark logs
-      surround: { bucket: 'structureWood', width: 0.11, out: 0.035, lintel: 0.2, colour: PALE },
+      // (buildings-270) the surround's paint, as the map names it (the `surround` axis): pale spruce, white or blue-grey
+      surround: { bucket: 'structureWood', width: 0.11, out: 0.035, lintel: 0.2, colour: SURROUNDS[dressOf(ctx, 'surround', 'pale')] ?? PALE },
       sill: { bucket: 'structureWood', out: 0.08, colour: PALE },
       shutters: null,
     },
@@ -415,8 +418,7 @@ const willa: RegionalBuilder = (ctx) => {
     const f = frame.faces.front;
     const attic: Array<[number, number]> = [[-1.25, -0.55], [0.55, 1.25]];
     if (!st.mobile) { gableBoards(sink, f, frame, attic); gableBoards(sink, frame.faces.back, frame, attic); }
-    sunburst(sink, f, frame.eaveY + 2.2, 1.6, st.mobile);
-    sunburst(sink, frame.faces.back, frame.eaveY + 2.2, 1.6, st.mobile);
+    for (const g of [f, frame.faces.back]) sunburst(sink, g, frame.eaveY + 2.2, 1.6, st.mobile);
     // the attic's small gable windows in their cut openings, white-framed
     if (Math.max(...(frame.roof.gable ?? [[0, 0]]).map(([, y]) => y)) - frame.eaveY > 1.6) {
       sink.recess = frame.gableReveal;
@@ -770,9 +772,8 @@ export const GORAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [0.98, 0.98, 0.99], [0.96, 0.97, 0.98], [1, 1, 1]],
     stone: [[1, 1, 1], [0.95, 0.94, 0.92], [1.03, 1.01, 0.98], [0.9, 0.9, 0.89]],
     roof: [[1, 1, 1], [0.86, 0.84, 0.82], [1.08, 1.04, 0.98], [0.78, 0.77, 0.76]],
-    damp: 0.7, moss: 0.55, mossTint: [0.9, 0.95, 0.8],
+    mossTint: [0.9, 0.95, 0.8],
   },
-  wear: 0.3,
   // the yards: a fence of split spruce round the woodshed (no garden under the January snow)
   yard: { kinds: ['cottage', 'logcabin', 'alpine'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [3.6, 3.0], garden: false },
 });

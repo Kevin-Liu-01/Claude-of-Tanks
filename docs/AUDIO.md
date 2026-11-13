@@ -1,7 +1,7 @@
 # Audio: the sound engine and how its sounds were made
 
 Claude of Tanks' sound is a sample-driven engine (`src/audio/`) playing
-first-party sound effects and national crew radio packs that were generated
+first-party sound effects and crew radio packs that were generated
 offline with ElevenLabs and then measured, selected and mastered by the tools
 in `tools/audio/`. Nothing calls ElevenLabs at runtime: only the mastered
 WebM/Opus files and two generated manifests ship.
@@ -15,8 +15,8 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 17 crew radio packs × 121 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 198 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.66 MB per language (122.53 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -46,7 +46,13 @@ embedded file, and decodes each asset on an `OfflineAudioContext` at the rate
 the build chose (24 kHz for assets with almost no energy above 12 kHz, else
 48 kHz; mobile caps everything at 24 kHz and keeps one variant per asset).
 Crew packs decode on their own lane so the first radio call never waits behind
-a battle's worth of sound effects. Sound effects share six decode slots in two
+a battle's worth of sound effects, at 16 kHz on every tier: every take plays
+through the radio's 3.4 kHz band and a speaker rolling off from 4.6 kHz, so
+nothing above 8 kHz is ever heard (a 371-take pack is about 40 MB decoded, 60 at
+24 kHz). iOS Safari keeps the rate (QA iPhone 16 simulator, iOS 26.5, 2026-11-04):
+the Russian pack decodes to 41.9 MB and the largest, Ukrainian, to 45.8 MB, apart
+from the 96 MB mobile cap on sound effects; at the context's 48 kHz it would be
+137. Sound effects share six decode slots in two
 lanes: the front lane is served first, and an asset joins it when it is loaded
 `{ front: true }` or the first time something asks to play it before it has
 decoded (a rig's loop, an ambience bed, a report), so a sound wanted now never
@@ -58,9 +64,11 @@ map's scene, running gear, and the roster's powertrains (the solo loader also
 awaits this, bounded to 3.5 s, before the reveal; a network round passes its
 lobby roster as it starts loading, and every later warm of the battle keeps the
 roster it was given). Its **presence set** decodes first, in the front lane:
-each powertrain's start-up and idle, the map's beds, the running gear, the
-other engine bands, every loop a rig can start, then the count's tick, the
-mode's opener, the hatch and the horn, so the countdown is heard from its first
+each powertrain's start-up and idle, then the one-shots due at a moment of the
+count (its tick, the mode's opener, the hatch and the horn; 2026-11-03: behind
+every loop an AC-130 battle decoded its opener 56th and its tick 79th of 85
+files), then the map's beds, the running gear, the other engine bands, every
+loop a rig can start and the aircraft modes' set, so the countdown is heard from its first
 frame (on Verdant with six tanks: 44 assets, 45 files, 2.1 MB of the about 670
 files a cold entry queues; our idle used to decode 638th, now 7th). Each roster
 hull's powertrain is resolved from its whole spec (`getVehicleSpec`, the
@@ -150,7 +158,8 @@ ui, music, voice, alarm ──────────────────�
   trims the top of a near crack (the probe reads its gain reduction), with
   the bed about 4 dB lower to keep them dominant. Gates: a near
   cannon 12 dB over the bed on its loudest 100 ms with its crack peaking at
-  least 22 dB over it and decaying at least 8 dB; 10 and 4 dB at 150 and
+  least 22 dB over it and decaying at least 8 dB (until the booms of
+  2026-11-04); 10 and 4 dB at 150 and
   400 m; our own gun 14 dB with a 22 dB crack; at most 40 samples at the soft
   clip's knee; the radio 6 dB under a near cannon. The final measurement (d52e45620): the bed −32.0 dBFS; a near cannon 13.6 dB over it on its loudest 100 ms, its crack peaking 24.1 dB over it and decaying 10.6 dB, held down 2.3 dB by the limiter with nothing at the clip's knee; 10.7 and 6.2 dB at 150 and 400 m; our own gun 17.2 dB with a 28.0 dB crack (3.3 dB of limiting); the radio 7.4 dB under a near cannon; the garage −31.3 dBFS.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
@@ -178,10 +187,13 @@ ui, music, voice, alarm ──────────────────�
 
 `vehicleAudioProfiles.ts` resolves each spec to a powertrain family —
 `turbine_agt` (Abrams), `turbine_gtd` (T-80), `diesel_v12_soviet`,
-`diesel_two_stroke` (Leopard 1/Chieftain/T-64 lineage), `diesel_v12_modern`,
-`diesel_aircooled` (M48/M60/Merkava 1–3), `diesel_ifv`, `gasoline_v12` — plus
-modifiers (turbo whistle, turbine auxiliaries, hybrid-electric drive, turret
-drive type, loader kind, mass class).
+`diesel_two_stroke` (Chieftain/T-64/Type 74/Type 90 lineage), `diesel_v12_modern`
+(the MTU 873/883 class: Leopard 2, Merkava 4, Challenger 2/3, K2),
+`diesel_v12_coldwar` (Leopard 1, AMX-30, Challenger 1: the cold-war Western
+diesels, 2026-11-03), `diesel_aircooled` (M48/M60/Magach/Merkava 1–3),
+`diesel_ifv`, `gasoline_v12` (Centurion, Strv 81, E-100) — plus modifiers
+(turbo whistle, turbine auxiliaries, hybrid-electric drive, turret drive type,
+loader kind, mass class).
 
 `vehicleAudioModel.ts` turns speed, throttle, slope and module health into RPM,
 load and gear. Manual and automatic gearboxes shift near the governor and hold
@@ -195,7 +207,17 @@ pitched by RPM (an idling engine at about a third of its full-load level),
 start and wind-down, light/heavy track sets per surface (earth,
 hard, mud, sand, snow; water runs the mud set under a wading loop) at slow/fast
 speed, squeal, skid and damaged-engine knock loops, and shift, brake,
-suspension and stall one-shots. The occupied hull adds turret drive, elevation
+suspension and stall one-shots. Its tables choose by what the hull is and what
+it is on (2026-11-03): `RUNNING_SURFACE` (a pivot screeches as steel only on
+hard ground and ploughs `track_scrub_soft_loop` on soft ground), `SHIFT_SOUND`
+(a manual box's clunk, an automatic's hydraulic shift, no shift for a
+turbine), `SUSPENSION_SOUND` (a light hull's bump and landing), and
+`TURRET_DRIVE_SOUND` (an electric and a hydraulic drive start and stop as
+themselves). Every hull splashes into water (a ford's splash, a plunge when fast
+or deep) and drains as it climbs out (`WATER_SOUND`, with waterline hysteresis).
+A carriageway is hard ground only where it is paved (`surfaceAt` reads the
+terrain's `getRoadPaveAt`, as the street grit does): the dirt roads of most
+maps are earth. The occupied hull adds turret drive, elevation
 servo, cabin hum and rattle. Remote rigs use levels of detail: own, near
 (within 140–165 m, five on desktop) and far (to 900–1000 m, eight). A rig's
 range hysteresis never makes a nearby tank read as our own: until 2026-10-02 an
@@ -204,21 +226,61 @@ centred, with the cabin extras).
 
 ### Weapons
 
-`weaponAudio.ts` classifies every gun into one of eighteen report classes:
-rifle and heavy machine guns, 20/25/30/40/50 mm autocannons,
-90/105/120/125/130/152 mm cannons, ATGM and heavy rocket launchers, and the
-AC-130's autocannon, howitzer and missiles (sound profiles refine the trim,
-e.g. the BMP-3's low-pressure 100 mm, or name a class outright, as the
-gunship's shells do). Each class has a close bank and a distant bank
-crossfaded by range (a cannon keeps its close report to about 150 m), a gun
-tail matched to the map (open, forest, urban, mountain; a machine-gun burst
-gets it once per 0.22 s beat, not once per round), and for the occupied gun
-in the sight an interior report. Our own gun has a dedicated report per bore
-(`gun_own_medium` for 90–105 mm, `gun_own_large` for 120–125 mm,
-`gun_own_heavy` for 130–152 mm, and `missile_launch_own` for launchers),
-fuller and more detailed than anyone else's, as World of Tanks keeps the
-player's shot apart, with the breech's recoil and run-out (`gun_recoil_mech`)
-under it.
+`weaponAudio.ts` keys every weapon by its bore class and ammunition
+construction (gun-reports-269, 2026-11-03): one table, `WEAPON_ROWS`, of 27
+rows from the rifle and heavy machine guns through the 20–50 mm autocannons,
+the 76, 84, 90, 100 and 105 mm unitary-brass guns, the BMP-3's low-pressure
+2A70, the combustible-case 120 and 130 mm smoothbores, the L11/L30 rifled
+120 mm with its bagged charges, the two-piece 125 mm, the KV-2's 152 mm
+howitzer and the M81-family 152 mm gun-launchers, the L9 demolition gun and the
+E-100's 17 cm, the TOS-1A's rockets, every guided round, and the AC-130's three
+guns. A weapon's key comes from its vehicle's own spec (`weaponMounts`): the
+gun's bore, and the construction its rounds imply (a guided or rocket round, a
+belt below 61 mm, British L-series ammunition on a BL gun, a 152 mm that also
+fires a gun-launched missile, the Soviet-pattern 125 mm, a combustible case
+from 115 mm, a separate cased charge from 146 mm, a unitary brass case below).
+The gun decides the report, never the round's damage calibre: a Centurion 3's
+20-pounder fires rounds the damage model sizes at 120 mm and is heard as an
+84 mm gun. Each mount of a gun is its own (the BMP-3's 30 mm, its 2A70 and the
+Arkan fired through it; a Bradley's 25 mm and its TOW), and a shot picks its
+mount by the round it names.
+
+`tools/audio/weapon-census.mjs` walks the fleet, the Gun Game ladder and the
+AC-130 and writes `weaponCensus.generated.ts` (the key union `FLEET_ROWS` must
+cover, so a new weapon fails typecheck until it has a row; each autoloaded main
+gun's loader make and the ready-rack doors, from
+`vehicles/internalLayoutRegistry.ts`) and the census by key and by vehicle in
+[`audio-generation/weapon-census.md`](audio-generation/weapon-census.md);
+`weaponCensus.selftest.mjs` fails when either no longer matches the fleet.
+
+Each row names four reports: the close report 30 m beside the gun, the crew's
+own from the open hatch, the closed turret's close-miked at the loader's
+station (heard in the sight), and the distant boom, crossfaded by range (a
+cannon keeps its close report to about 150 m). A row also carries its muzzle:
+with nothing on it the blast is loudest ahead of the gun (+1.5 dB in front,
+−1 behind, the punch under the report turning with it), a muzzle brake throws it sideways and back (a double-baffle
+brake +2.5 dB beside the gun), which our own report hears only as the brake's
+blast thrown back at the hatch. A gun tail matched to the map (open, forest,
+urban, mountain) follows every report, once per 0.22 s beat for a machine-gun
+burst. Our own roof gun or autocannon in the sight is heard only through its
+closed turret; our own cannon keeps its hatch report under the closed turret's,
+with the breech's recoil and run-out (`gun_recoil_mech`) under it. The battle
+warm decodes the close and distant reports of the roster's mounts (and of the
+roof stations' machine guns and 30 mm cannons; every row when the roster is
+unknown or in the Gun Game); our own reports and our loader's machinery load
+and are pinned once our hull is known.
+
+A fast gun is heard by its cadence (2026-11-11, release 272; `src/game/shotCadence.ts`, the one cap the audio, the
+effects, the camera and the phone read). Each round's crack plays up to the simulation's floor, 20 a second; a rotary
+gun's rounds between are silent. A gun firing sustained (rounds under 0.25 s apart) rings each crack for a short grain
+(0.3-1 s), its punch, distant boom (under a close report), breech and feed once each 0.15 s, its echo once each 0.45 s,
+and a burst's hull strikes on one target once each 0.1 s. A round with no simulation clock (a replay's, the Studio's)
+and any gun slower than 0.45 s a round are heard as before, voice for voice (`shotCadence.selftest`).
+The same audit (the lane's evidence `AUDIT.md`) bounded the other bursts the engine heard: a fast gun's rounds on the
+world strike once each 0.1 s per shooter (an airstrike's strafe in full); a held empty trigger clicks once a press; a
+fast gun's hit calls keep their queued moment instead of waiting for the burst to pause (crewRadio `burst`); a hull
+going straight back to the ground it just left within 0.4 s keeps its track loops; one prop break reported twice in a
+frame plays once; and a hull's landings come at most every 0.3 s.
 
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
@@ -242,16 +304,40 @@ velocity.
 ### Your own tank: loading and machinery
 
 Reloads play the loader's choreography (`resolveReloadCuePlan`) at the matching
-reload progress, close-miked in the turret on the interior bus:
+reload progress, close-miked in the turret on the interior bus. What the breech
+gives up comes from the round's construction, the new round going in from the
+loader's make; every cue is anchored in seconds to the cycle's start or end,
+stretched by the round's heft (a 90 mm round ×0.8, a 50 kg 152 mm projectile
+×1.45), so the breech always closes just before the gun is ready however long
+the authoritative reload, and a heavier round's work takes longer.
 
-| Loader | Sequence |
+| Construction | What the breech gives up |
 |---|---|
-| Manual | breech drops open, the case is thrown out, the ready-rack door slides open, a round comes out, the door shuts, the round is rammed home (a separate charge for 152 mm), the breech closes |
-| Carousel autoloader | the stub is kicked out, the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
-| Bustle autoloader | the case is ejected, the next round indexes, the ram, the breech closes |
-| Drum magazine | the drum turns to its first empty chamber, four rounds are fed in one by one, the drum indexes, the breech closes; between rounds of a clip, the drum turns and a round is rammed |
-| Autocannon | the box latches into the feed, the belt and bolt clatter, the latch |
-| Missile | the canister slides into the tube, the second one, the launcher arm swings up, the latch |
+| Unitary brass (76–105 mm) | the case is thrown out and clangs on the floor, weighed by its bore (a 90 mm's light ring, a 100 mm's lacquered steel, a 105 mm's) |
+| Combustible case (120, 130 mm) | only the stub drops out |
+| Two-piece (125 mm) | the steel stub: out through the turret's rear hatch on the AZ carousel, back into its tray on the MZ basket |
+| Separate, bagged (L11/L30 120 mm, L9 165 mm) | the vent tube flicks out; projectile, then the bag charge (the L9's rides in its base), the breech, a fresh vent tube |
+| Separate, cased (152 mm howitzer, 17 cm) | the huge case is pulled out; the projectile is hefted and rammed with a staff, then the cased charge, the heavy breech swung shut |
+| Caseless (152 mm gun-launchers) | the closed-breech scavenger blows the bore clear |
+
+| Loader | The new round |
+|---|---|
+| Manual | the breech drops open, the ready-rack door opens (the bustle and protected racks only), a round comes out, the door shuts, the round is rammed home, the breech closes |
+| AZ carousel (T-72, T-90, Type 96/99) | the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
+| MZ basket (T-64, T-80, T-84) | the conveyor basket turns, the cassette lifts, two rams, the breech closes |
+| T-14 carousel | the AZ cycle under the unmanned turret |
+| Bustle (Leclerc, Type 90/10, K2, KF51, M1A3) | the next round indexes, the rammer, the breech closes; a magazine refill hands each round in and pushes it into its cell |
+| Strv 103 | the case is thrown out of the hull's rear, the next round drops from the hull magazine, the ram, the breech closes |
+| BMP-3 2A70 | the autoloader turns and rams; a 9M117 is loaded by hand |
+| Roof launcher | the hatch, the canister out of stowage, into the tube, the launcher up, the latch |
+| TOS-1A | the reloading crane lowers rockets into the tubes |
+| AC-130 | the howitzer's breech drops open, a round is hefted and rammed, the breech closes; a pylon missile arms with its relay |
+
+An autocannon's or machine gun's per-shot cycle is its own action, heard with
+the shot (`ac_feed`); selecting another round on a dual-feed autocannon
+switches belts with a solenoid clack, on an autoloader turns the carousel or
+basket, on a bustle loader indexes it. The simulation never reloads a belt, a
+roof gun or a smoke discharger, so none of those has a reload sound.
 
 Every cycle ends in the lock that says the gun is ready. The turret drive has
 a start when a real slew begins (never on a servo flicker), its electric or
@@ -265,12 +351,39 @@ dropped as corny).
 There is no interface hit marker. A hit is confirmed the way a crew
 experiences it:
 
-- **The impact at the target.** Armour hits crossfade by range from the close
-  banks (tearing metal, a heavy clang, a dull thud) into distant banks (a
-  crack, knock or clang with an outdoor echo) between about 140 and 620 m, for
-  every shooter. HE and HEAT add their blasts, ERA its cassettes. Our own
-  rounds carry under the own-hit law above, so a penetration at 700 m is a
-  distant crack two seconds after the shell lands.
+- **The impact at the target, by what it struck.** One resolver
+  (`src/audio/impactMaterials.ts`, 269) plays every impact from the material
+  the round struck, what it did there (through, stopped, glanced off) and its
+  calibre band (bullet, autocannon, cannon). The materials are a closed set,
+  each table a `Record` over it, so a new one fails typecheck until it has its
+  sounds: a vehicle's parts as the damage law names them (armour plate, thin
+  steel, rubber skirt, track links, road wheel, ERA, cage, stowage rack, a
+  burnt-out wreck; `sim/plateMaterial.ts`, stamped on `shell:hit` as
+  `material`, and the outer screen the round passed as `screenMaterial`), the
+  ground under a landing (earth, sand, mud, snow, paved, water) and what a prop
+  is made of (steel, timber, earthwork, rock, concrete). Only steel rings or
+  whines: a ricochet off a rubber skirt slaps it, one off the running gear
+  clanks the links and the round whines away, a wreck knocks hollow, and a
+  round that went through a skirt or the wheels first is heard striking them,
+  with the plate behind 5 dB under. A solid round that meets the ground 72° or
+  more off its normal (`impactAngleDeg` on `shell:expired` and the authority's
+  `shell_impact`) skips: a surface-true graze, never a ring. Banks that swap
+  (armour, steel) crossfade by range from the close detail into a distant
+  crack, knock or clang between about 140 and 620 m, for every shooter; the
+  ground's distant thump adds under a gun round's landing past 200 m. HE and
+  HEAT add their blasts, ERA its cassettes. Our own rounds carry under the
+  own-hit law above, so a penetration at 700 m is a distant crack two seconds
+  after the shell lands.
+- **Inside our hull.** A penetration's spall bursts into the compartment it
+  struck (the turret and fighting compartment, the driver's station, the engine
+  bay) from that side; a blow that does not get through bongs the hull by the
+  part struck (armour fully, a track or a cage barely, a rubber skirt or a rack
+  not at all). A close burst rains back the ground it dug onto the ground and
+  our hull: dirt, sand, mud, snow, a road's grit, or a lake's spray.
+- **Near misses.** A round passing within a few metres goes by its calibre and
+  speed: a bullet's snap, an autocannon round's crack, a sabot's tearing
+  crack, a supersonic full-bore round's crack and rush, a subsonic shell's
+  whoosh, a missile's roar.
 - **The target going up.** A kill is the destruction itself (blast, sub-bass,
   debris, turret, cook-off), carried like our hits, with the far explosion
   layer beyond 600 m.
@@ -320,11 +433,23 @@ or an own perspective for the pilot or crew.
   heard tank reports from a commander's hatch, the 180 mm guided missile played
   as a 152 mm cannon and howitzer reloads ran the hull's autoloader.
 - **Mode openers.** Each mode opens on its own field sound at roll-out
-  (`MODE_OPENER`, read through the `getGameMode` getter): an air-raid siren for
-  the Endless Horde, a distant preparatory barrage for the Frontline Assault, a
-  vault door slamming for the Juggernaut, broken radio for Infected, a foghorn
-  for Turbo Ball, an armory for Gun Game and the gunship passing overhead for
-  the AC-130; Realistic opens on silence and the rest on the battle horn. The
+  (`modeSounds.ts` `MODE_OPENER`, exhaustive over the mode ids, read through the
+  `getGameMode` getter): an air-raid siren for the Endless Horde, a distant
+  preparatory barrage for the Frontline Assault, a vault door slamming for the
+  Juggernaut, broken radio for Infected, a foghorn for Turbo Ball, an armory
+  for Gun Game, the gunship passing overhead for the AC-130, a flag snapping
+  out on its steel pole for capture the flag, crews digging in for zone
+  control, an airlock cycling for the gravity mode, drones spinning up and
+  lifting off for the Drone mode and a range siren for the proving ground;
+  Realistic opens on silence and the standard battle on the horn. Every event
+  the mode controller emits is named in `MODE_EVENT_SOUND` with its recordings
+  or why it is heard as nothing (`worldSounds.selftest.mjs` scans
+  `matchModes.ts`): the Horde's special waves come on an attack warning's
+  warble, a Frontline counter-attack on a flare over the sector it drives at,
+  Turbo Ball's steel buoy is heard where anyone strikes it (`ball_strike`; it
+  was a flat sound for the striker alone) and an idle reset on the kick-off
+  horn, a flag by whose flag it is (`FLAG_CUE`), an ally turned in Infected on
+  the net breaking up. The
   Horde's waves come on the siren with the all-clear after them, the
   Frontline's counter-attacks and advances under the barrage, and a cache lands
   with a thud where it arrives (`cache_drop`). The Juggernaut itself (found by
@@ -332,6 +457,34 @@ or an own perspective for the pilot or crew.
   deeper, lands and rams with a superheavy's mass, and its gun reports carry
   2.5 dB further, a little deeper. Gravity mode's Olympus Basin has Mars
   acoustics (sound at 240 m/s, 14 dB thinner, nothing above 3.2 kHz).
+- **Air Support** (air-support-270). Each call-in is heard from its strike's
+  public record as the mode's events announce it (`modeSounds.ts`
+  `AIR_STRIKE_SOUND`, exhaustive over the kinds; `AIR_EVENT_SOUND` names every
+  event `sim/airSupport.ts` and the authorities emit). At the call the targeted
+  side's hull sounds its laser-warning alarm (`air_strike_warning`, full when
+  the footprint covers our hull, 9 dB down when it does not; full again if we
+  drive into it), our commander calls the crew out (`air_incoming`,
+  `artillery_incoming`), and a crew that made the call reads it back
+  (`air_call_*`; the AC-130 checks in with `gunship_cleared_hot`). The
+  aircraft are engine loops flown along `aircraftPose` from the call to their
+  exit in `aerialRig.ts` (`air_jet_recon_loop` high and fast,
+  `air_jet_attack_loop` for the A-10, `air_jet_fast_loop` for the bomber, the
+  AC-130's own `gunship_orbit_loop`): the distance law, air, pan and Doppler
+  make the pass. The A-10 fires one GAU-8 burst a run (`air_gau8_close`
+  fading into `air_gau8_far` by range), from where the jet is halfway down the
+  lane, so its rounds strike before the report arrives; its per-round
+  `shell:fired` plays no report (`STRIKE_OWNED_REPORTS`). Each 155 mm round and
+  the GBU-12 whistle down to their landings (`air_shell_incoming`,
+  `air_bomb_fall`, the variant's end placed on the solved landing time); the
+  barrage lands on the HE bank's `expl_he_large`, the bomb on its own
+  `air_bomb_blast` with the ground shock, the far rumble and the earth it
+  throws. A downed aircraft falls as the world draws it and crashes where it
+  meets the ground (`air_crash`); our gunner calls it when our guns did
+  (`aircraft_downed`). The strikes run on their own clock (the frames the
+  battle advances from the call; a pause stops it) and their own random
+  stream, so they never move the shared one. The family is in the Air Support
+  battle's warm, with the AC-130's report rows. The mode opens on
+  `jet_flyover` and its crews with `start_air_support`.
 - **Gun Game.** Advancing a stage plays the weapon changeover (breech, ram or
   missile tube, latch) and the loader's call for the new round. **Infected.**
   Being turned plays a grave sting and radio interference. The drone switch
@@ -351,7 +504,12 @@ towers, below), a distant-war bed in
 battle, the gun tail and a procedural reverb. The beds were regenerated on
 2026-10-02 without songbirds, bees, sirens or radio tones (those come as
 spots), selected for an
-even level across the loop seam and for body under the hiss. The garage is a
+even level across the loop seam and for body under the hiss. Each spot names
+the hours it is heard (`SPOT_HOURS`, 2026-11-03): after dark (one battle in ten
+falls at night) a scene's day birds, insects and farmyard give way to its own
+night life (`scene.night`: crickets, owls, nightjars, foxes, tropical night
+insects by habitat), read from the battle's time of day (`getTimeOfDay`).
+`MAP_SCENES` is keyed by the map ids, so a new map needs its scene. The garage is a
 working hangar: an audible room tone (+7 dB) with tools, impact wrenches, a
 hammer on a track pin, the crane chain, an air compressor, a diesel being run
 up and the big door 3–14 m away.
@@ -409,7 +567,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 121 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 198 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -446,8 +604,91 @@ What the crew says for the tank's own systems and the modes (2026-10-04):
 | Enemy on a point we hold (`mode_zone_contested`) | — | "They're contesting the point" |
 | Respawn | respawn | "Back in the fight" (and the one-per-life calls re-armed) |
 | Countdown (3, 2, 1, never while PREPARING holds it) | a tick each second | — |
-| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance" |
+| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance", or the mode's own opening (below) |
 | A reasoning medal (`service:medal` Chain of Thought or Let Me Think Step by Step), or 3 % of first shots | — | "Let me think step by step." then the gunner: "Step one: aim. Step two: fire." |
+
+#### The crew's procedure and each mode's own calls (2026-11-03, crew-lines-269)
+
+The owner: "more and better voice lines of more military terms and of things
+happening, more special terms for AC-130, all the special modes, in all the
+languages". 69 lines and 20 more takes on thin ones, in all 17 packs, each in
+its army's register. Two parts:
+
+- **A line asks for a moment in a tank crew's words; `resolveCrewLine`
+  (`voiceLines.ts`) turns it into what this crew says there.** `MODE_CREW` is
+  one exhaustive `Record<GameModeId, …>`, so a new mode fails typecheck until
+  it names its calls: its opening (the rollout's `battle_start` becomes "Get
+  their flag. Guard ours.", "Defensive positions. Hold this ground.", "We're the
+  Juggernaut…" or, for a hunter, "Find the Juggernaut…", "Range is hot."), its
+  results by the ending's reason (`mode_completed`, `battle:ended`: "Last line's
+  ours." for `line_held`, "We're overrun." for `horde_overrun` and
+  `assault_overrun`, "Time. We held out." for `survivors_extracted`, "Juggernaut's
+  down." for the hunters), and the team counts it has no use for. The counts
+  follow the network seat's rule in a solo battle too: said only where a death
+  is final (`deathsAreFinal`), so no "We're the last tank" for a Juggernaut
+  alone by design, no "One enemy left" in a respawning mode, and Infected's one
+  count is its own, "We're the last survivor". `GUNSHIP_CREW` is the AC-130
+  crew's own call for a tank crew's ("Cleared hot" for the opening, "Splash" for
+  a miss or a round with no effect, "Good hits" for a hit, "Friendly armor down"
+  for any escort lost, wherever it was) and silence where an aircraft has no
+  such moment (no "Moving", no driver, no last tank, never outnumbered by what
+  it hunts). A Turbo Ball kick-off revives every tank; it is not "Back in the
+  fight", and neither is the Proving Ground's reset. `voiceLines.selftest.mjs`
+  holds the tables to the script and the counts to `deathsAreFinal`.
+- **`crewProcedure.ts` voices the moments the sound handlers leave unvoiced**,
+  from the same bus events and frames, through the engine's `say`:
+
+| Moment | Crew |
+|---|---|
+| Our sight settles (0.35 s) on an enemy the player sees, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
+| Our kill left no enemy the player sees within 1.5 km | "Target. Cease fire." |
+| A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
+| Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
+| ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled and parked on its dock, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
+| Reversing within 6 s of a hit or of being seen | "Backing up." |
+| Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
+| Airborne 0.45 s (a Mars or Turbo Ball jump, a crest) | "Hold on." / "Brace for landing." |
+| The countdown, four seconds or more | "Crew, report." and the gunner's "Gunner ready. Loader up. Driver ready." (flavour the rollout's call cuts) |
+| Capture the Flag: a flag dropped either way, theirs recovered, ours captured | "They dropped our flag. Recover it.", "We dropped their flag.", "They've recovered their flag.", "They captured our flag." |
+| Zone Control: our side on their point | "We're contesting their point." |
+| Turbo Ball: a goal against us, the ball's idle reset | "They scored.", "Ball's reset." |
+| Horde: a runner or a swarm wave (after the wave's own call) | "Fast movers this wave.", "Big wave. Lots of them." |
+| Frontline: a counter-attack, the final line live | "Counter-attack!", "Last line. Take it." |
+| Infected: a teammate turned, our own crew turned | "They got one of ours. He's turned.", "We've turned. Hunt the survivors." |
+| Gun Game: our last weapon, an enemy's | "Last weapon. Finish it.", "Enemy's on the last weapon." |
+| Juggernaut: the boss sighted by our side (hunters) | "Juggernaut spotted!" |
+| AC-130: the sight on an enemy / on a new one far from the last kill | "Tally. Armor moving." / "Shifting fire." |
+| AC-130: a missile away, a heavy round by a friendly tank, three heavy rounds then 7 s quiet, a friendly extracted | "Rifle.", "Danger close.", "Rounds complete.", "Friendly extracted." |
+
+Every one of them has its moment in `voiceTriggers.selftest.mjs`, which drives
+the engine through each mode's opening and endings too. A network seat hears
+the same calls: the presentation now relays the authority's `drone_down` as
+`drone:down` (it had no case and was dropped), and the jump call reads the
+frame's airborne state rather than `tank:jump`, which a network seat never
+raises. "Friendly extracted" alone is the solo seat's call: the authority stops
+sending a hull that leaves the field, so a network seat never sees an escort's
+rescued life. "An enemy the player sees" is the game's one visibility
+rule (`src/game/playerVisibility.ts`, as the HUD draws it), not the team's
+spot. The crew is silent behind the pause menu, a network battle's included:
+its opening cuts the line on the air and the queue, each of its edges cancels
+the calls the crew had armed (a kill heard behind it arms no cease fire for
+the resume; a recalled drone that docks behind it is not called recovered,
+nor an enemy's smoke popped behind it called, at the resume), and the radio
+takes no line while it is open
+(`crewProcedure.selftest.mjs`). The crew's own calls are our tank's only while
+the player drives it: a watched battle's seat its brain drives makes none of
+the per-life or sighting calls (the fire command, cease fire, re-engage, the
+drone, APS, crushes, the Juggernaut sighted), while the mode's calls in the
+table above are the side's news and still play there, as the engine's own
+mode calls do. Each seat the watcher takes starts a new life, as a respawn
+does, with that hull's own radio set (a set broken while its brain drove it
+sounds broken) and its own fire alarm (the last seat's stops). The drone's
+calls follow the authority's flight view: "Drone recovered." when a recalled
+airframe is parked on its dock (`returnS` run out), never at the loss of one
+(`recallS` is only the recall's gate at launch).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
@@ -474,9 +715,23 @@ through one exhaustive `Record<CountryId, CrewLanguage>` in
 crew. The Leopard 2A4M CAN's spec names its German design, but its crew is
 Canada's (American English until Canada has a pack of its own); a hull with
 no country (dev, community) keeps American English. **Settings → Sound →
-Crew voices** offers **National crews**, or one nation's existing pack for
-every tank. The shared nation dropdown shows flags and localized nation
-names. Choosing a crew applies immediately and persists in the `crewVoice`
+Crew voices** offers **National crews** or one language's crew for every tank:
+the 17 national packs and 21 crews in languages with no country in the game (es-ES, es-419,
+pt-PT, nl, no, fi, el, cs, hu, ro, tr, ar, fa, hi, ur, bn, id-ID, ms, vi, th,
+fil: `WORLD_CREW_LANGUAGES`, crew-languages-270). No hull speaks one of those by
+default: `COUNTRY_CREW` maps only to `NationalCrewLanguage`, so adding a
+language can never change a nation's crew. Each speaks as one real army's
+armoured crews (Spain's Leopardo 2E crews, the Turkish Land Forces, the Indian
+Army's Armoured Corps, the Royal Thai Army's cavalry, …; the script's
+`$comment` and the round below name them). The dropdown lists languages, never
+nations or flags (owner, 2026-11-06: "also that selection should be in
+languages"): National crews first, then every pack named in the interface's
+language with its own name beside it ("German · Deutsch", "English (Australia)",
+"Arabic · العربية"), sorted by that name, with search (`settings.ts`
+`crewVoiceItems`). `crewVoice.ts` `crewLanguageLabel` takes both names from
+`Intl.DisplayNames`, keeping a region only where two packs share a language, so a
+new pack needs no catalog string. Indonesian's id is `id-ID` because `id` is the
+crew script's line-id key. Choosing a crew applies immediately and persists in the `crewVoice`
 field of `cot.settings.v1` as `national` or a pack ID; resetting Sound restores
 `national`. `crewVoice.ts` owns validation, resolution and legacy migration:
 `english` becomes `en-US`, and `interface` becomes the currently resolved
@@ -502,7 +757,7 @@ band, adds drive and drops syllables.
 ### Settings and debugging
 
 The Sound tab (`src/ui/settings.ts`) has the six volume sliders, the crew
-voices (National crews / one nation's pack), the concussion toggle and the
+voices (National crews / any of the 38 packs), the concussion toggle and the
 critical-damage heartbeat. After resume, `window.__COT_AUDIO` exposes the
 context, a master PCM tap (`startTap` / `stopTap` / `readTapB64`), the sound-route
 log, the sfx log (asset, start, gain, rate, distance, bus), the voice log,
@@ -580,6 +835,23 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
 6. **Manifest**. `build-sfx.mjs` writes `src/audio/sfxManifest.generated.ts`
    (group, variant count, durations, channels, rate, loop points, size) and the
    incremental state `tools/audio/.sfx-manifest.json`.
+7. **Commit** (`sfxBank.mjs`, 2026-11-08). Each asset's rebuild is one
+   transaction: its candidates master and are judged in a new folder of the
+   ignored `.qa-dev/sfx-stage/`, and only when at least one ships does the bank
+   move in (the old take files aside, the new ones in, stale indices gone) and
+   its manifest entry and verdict of record change. A rebuild that ships
+   nothing (every candidate refused by the ear proxy or under the loudness
+   floor, a pin that names no take, a step that throws, a swap that fails and
+   is rolled back) is refused: the shipped files and both records stay as they
+   were and the run exits 1. A bank that ships fewer than its `variants` is a
+   warning. The three records are written after every committed asset, so a run
+   that crashes between assets leaves them true to the disk. A swap that does
+   not finish (a kill inside it, or its undo or the records' write failing)
+   leaves the old take files in its stage's `prev/`: the run throws naming it,
+   and every later run keeps that stage and names it at start until it is
+   deleted (restore the bank from `prev/` or git first if `sfxVerdicts`
+   disagrees), whatever its pid: a rebuild never removes a stage folder it did
+   not make.
 
 **Gun reports** (2026-10-02). The owner heard firing as old film or gamey
 blasts, and the files agreed: the cannon reports swelled to their loudest
@@ -626,8 +898,8 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 121 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
- 17 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
+ 198 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 38 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
 
@@ -639,7 +911,25 @@ crew-lines.json ─┐                    crew-voices.json
    because "Feuer" is the firing order, British "Contact, wait out", Russian
    nominative ammunition calls ("Бронебойный"), IDF clock-position contact calls,
    spelled-out numbers and no Latin acronyms where a speech engine would misread
-   them.
+   them. Take n is the same call in every language, because the captions show
+   the en-US or zh-CN text of take n whichever crew speaks. The 21 languages
+   with no country (crew-languages-270) were written the same way, each for
+   one army: es-ES the Ejército de Tierra ("flecha", "rompedora"), es-419 the
+   Argentine, Chilean and Mexican armour in neutral Latin American Spanish,
+   pt-PT the Exército Português ("apontador", "perfurante"), nl the Koninklijke
+   Landmacht ("pijl", "brisant"), no the Hæren ("Stans ild"), fi the
+   Maavoimat ("nuoli", "Tulitauko"), el the Hellenic Army, cs the Czech Army
+   ("Střelče, podkaliberním"), hu the Honvédség ("nyíl", "Tüzet szüntess"), ro
+   the Forțele Terestre ("Ochitor, subcalibru"), tr the Kara Kuvvetleri
+   ("Nişancı, okçuk"), ar the Modern Standard Arabic of the Egyptian, Jordanian
+   and Saudi armour, fa the Artesh ground force ("زره‌شکاف"), hi, ur and bn the
+   Indian, Pakistani and Bangladeshi armoured corps with the English procedure
+   words those armies really use, written in their own scripts, id-ID the TNI
+   AD cavalry ("Siap"), ms the Kor Armor DiRaja, vi the Vietnam People's
+   Army ("Pháo thủ, đạn xuyên"), th the Royal Thai Army cavalry, and fil the
+   Philippine Army's Tagalog with its English procedure words. A homophone a
+   transcriber would mishear went (Norwegian "mil" is ten kilometres, the
+   Hungarian "a cél" is heard as "acél", steel).
 2. **Casting** (`voice-casting.mjs`, `voice-audition.mjs`). The Voice Library is
    searched per language for native male voices without live moderation or a
    credit multiplier, and candidates are ranked toward serious, mature profiles
@@ -648,14 +938,21 @@ crew-lines.json ─┐                    crew-voices.json
    calls; takes are round-tripped through speech-to-text and measured for pitch
    and spectral centroid. The cast (`tools/audio/crew-voices.json`) takes the
    deepest, most authoritative clean voice as commander and a distinct, equally
-   serious voice as crew.
+   serious voice as crew. For the 21 languages with no country, a candidate's
+   own library language had to be the crew's (a multilingual English voice
+   reads Finnish with an accent), and the audition forced the language code
+   on the transcriber: auto-detection reads spoken Urdu as Hindi.
 3. **Synthesis** (`build-voices.mjs`). Every take is `eleven_v4` speech in the
    crew language with the line's delivery as a bracketed audio tag (e.g.
    `[calm, clipped] Contact front.`), stability 0.6, similarity 0.8.
 4. **Verification**. Each take is transcribed with `scribe_v2` and compared to
    the script (normalised Levenshtein similarity). A transcript that repeats
    the call back to back ("HE. HE.", a stuttered restart) is held under the
-   bar, since by edit distance alone a doubled short call scores 0.5. Below
+   bar, since by edit distance alone a doubled short call scores 0.5; so
+   is a phrase said twice inside a longer call ("开球，开球，去抢球", 0.7 by
+   edit distance), and a second transcript of the take behind a 20 ms lead-in
+   is read for that repeat alone, because one pass often smooths it out
+   (crew-lines-269: 19 of 2,652 takes). Below
    0.62 (0.34 for calls of four characters or fewer) a take is regenerated —
    three attempts by default, and because earlier attempts come from the
    cache, `--attempts 10` on the flagged lines pays only for the new ones — and
@@ -666,10 +963,33 @@ crew-lines.json ─┐                    crew-voices.json
    longer call never passes). Takes still under 0.34 are reported for review; most
    are exact homophones the transcriber spells differently (Japanese
    装填 / 争点, 徹甲弾 / 鉄鋼弾, 奪取 / ダッシュ), which no text comparison can
-   separate.
+   separate. Hindi, Urdu, Bengali, Persian and Arabic takes are also compared
+   by their consonants, both texts reduced to one Latin skeleton: their crews'
+   English procedure words are written in the script ("फ़ायर", "لوڈڈ") and the
+   transcriber writes them in Latin as often as not ("Fire", "Load"), which
+   by characters alone scores a correct take near 0.
 5. **Mastering**. The `voice` preset: trim, fades, −18 LUFS integrated, 24 kHz
    mono Opus at 32 kbps. The radio character is not baked in: it is the live
    intercom chain, so it can degrade with the radio module.
+
+`--dry` counts the takes whose first attempt is not cached and their
+characters (speech bills a credit per character) without calling the API,
+planned exactly as the build plans them (`voicePlan.mjs` planLine).
+`--append` keeps every line's shipped takes and builds only the takes the
+script added after them: a rebuild re-picks among a take's cached attempts and
+re-encodes it, so a line that gains a take would otherwise churn the ones
+already approved (the Afrikaans "Laai nou." came back a different attempt).
+File `<line>_<n>` is always the script's take n, the take its caption shows
+(2026-11-08): a take whose request or master fails, that comes back empty, or
+that a budget or quota stop cut short under the bar (its attempts ended before
+all of them ran, or its cut pass never started) ends its line there, so the
+pack stays an aligned prefix (the soundAssets and captions receipts fail on the
+short pack) and an `--append` rerun resumes at that take. A take whose attempts
+and cuts all ran ships its best attempt, under the bar or not (flagged below
+0.34), even when another line's stop lands while it is being cut
+(`voicePlan.mjs` pickTake).
+`--append` keeps by count, not by words: a take whose words change is rebuilt
+without it (`--lines <id>`).
 
 ### Rounds
 
@@ -960,6 +1280,280 @@ crew-lines.json ─┐                    crew-voices.json
   "Laai nou" as "Lie now", "enjin" as "engine"). Each pack is 215 takes,
   1.4–1.6 MB, the size of the existing ones. 38,521 credits (speech 36,649,
   transcription 1,872), auditions and the second transcript included.
+- **2026-11-03, the crew's procedure and every mode in every language (lane
+  crew-lines-269).** The owner: "more and better voice lines of more military
+  terms and of things happeninng. more special terrms for ac 130, all the
+  special moodes, in all the languages." A census of every bus event, frame
+  edge and mode found the moments with no line or a wrong one (the crew radio
+  section's table names the trigger of each): the fire
+  command and its answers, APS and ERA either way, the drone's battery, link,
+  recall and the counter-drone fight, enemy smoke, backing out, obstacles,
+  jumps, the countdown, every mode's opening, its own moments and its results,
+  and the AC-130's fire control. 69 new lines and 20 more takes on lines that
+  had one, so a pack is 190 lines and 371 takes. Each language was written by
+  a writer briefed on its army's register who first read that pack's shipped
+  column (Bundeswehr Feuerkommando "Richtschütze, Wuchtgeschoss, Panzer" /
+  "Erkannt", Russian «Наводчик, бронебойным, по танку» / «Цель вижу», British
+  "Target stop", Japanese 目標よし, Hebrew מעיל רוח for the Trophy APS; NATO
+  aircrews keep "Cleared hot", "Rifle" and "Danger close" inside their own
+  sentences, the others use their own: «Работу разрешили», «Пуск», 着弾).
+  Two class fixes came with it: the tank crew's lines in the AC-130 and in
+  modes where they made no sense (the gunship's "Moving." and "We're
+  outnumbered." at its start, the lone Juggernaut's "We're the last tank.",
+  "Back in the fight." after every Turbo Ball goal, solo side counts in
+  respawning modes) now resolve through `MODE_CREW` and `GUNSHIP_CREW`; and a
+  round an APS stopped is no longer called a miss, nor an enemy's ERA "No
+  penetration". `build-voices.mjs --append` built only the added takes (a full
+  rebuild of a line re-picks among its cached attempts: the Afrikaans "Laai
+  nou." came back a different take). A second, independent transcript of all
+  2,652 new takes found 19 where the model said a phrase twice inside the call
+  ("开球，开球，去抢球", "Rifle, rifle", "밀고 밀고 나간다") and edit distance
+  had passed them, so the build now holds that repeat under the bar and reads a
+  second transcript for it; the 69 new lines were rebuilt from the cache with
+  it (4,211 credits: 22 takes re-rolled, those 19 and three more the second
+  transcript caught, and three rewrites voiced; the Japanese "over" 遠弾 was
+  read とおだん, now 目標を越えた、修正。). After it no take repeats
+  and 6 sit under the bar, each heard as the script's sounds by three fresh
+  transcripts: the transcriber spelling a homophone (後退 / 交代, 奪取 /
+  ダッシュ, 帰投 / 祈祷) or hearing it right on the next pass ("Coups au but",
+  표적 식별, 저거너트).
+  Packs grew from 26.96 MB (1.41–1.77 MB each) to 52.45 MB (2.69–3.45 MB
+  each), still loaded only for the crew's language, and the crew's pack now
+  decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
+  where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
+  speech, 9,166 transcription) against its 3M cap.
+- **2026-11-09, Air Support's lines in the world packs (crew-languages-270,
+  for release 270).** Air Support added eight crew lines (`start_air_support`,
+  the four `air_call_*`, `air_incoming`, `artillery_incoming`,
+  `aircraft_downed`) to the 17 national packs; the 21 world packs, built
+  beside it, had none, and a pack with no take of a line plays nothing. The
+  owner approved the takes before the 270 preview: 336 (8 lines × 2 takes ×
+  21 packs), so every pack is 198 lines and 387 takes. The packs are now
+  2.69–3.66 MB (122.53 MB in all; Persian the largest), so soundAssets'
+  per-pack cap is 4 MiB, the measure rounded up to the next MiB.
+- **2026-11-04, crews in languages with no country in the game (lane
+  crew-languages-270).** The owner: "add a bunch more crew radio lines for
+  languages that might not have a country in the game but still can be applied
+  as crew voices for international gamers! itd be a great feature and def one
+  wed want to "flex" about." Twenty-one packs, each all 190 lines and 371
+  takes, which no hull speaks by default and any player can choose
+  (`WORLD_CREW_LANGUAGES`; the runtime section above). One writer per language
+  worked from the en-US master, each line's moment and two or three shipped
+  packs of nearby armies, take n the same call as en-US take n; a validator
+  held the ids, take counts, script, digits and doubled phrases. Indonesian is
+  `id-ID`: `id` is the script's line-id key and overwrote every line's id.
+  Casting kept Voice Library voices whose own language is the crew's (a
+  multilingual English voice lists Finnish or Greek as verified) and forced
+  the language on the transcriber (auto-detection reads spoken Urdu as Hindi).
+  One build process was ffmpeg-bound (`masterTake` runs five synchronous
+  ffmpeg a take; about 14 takes a minute at a load of 700), so six builds ran
+  side by side, each with its own state file (`COT_VOICE_STATE`), and their
+  rows were merged. An independent transcript of all 7,791 takes flagged 59;
+  three fresh transcripts each then sorted them. 21 takes were reworded and
+  rebuilt, and each now reads as written: a Spanish "Motor dañado" said twice,
+  a laugh before the Persian "نزدیک بود" and a groan before "Paso a través",
+  the Greek "Έβαλαν γκολ" heard as a name, the Hungarian "Töltök" as
+  "Csütörtök" (Thursday), the Czech "Za cílem" as "Za týden" (in a week) and
+  seven Vietnamese calls ("Xe bị lật" came back as the English "Save me
+  luck"). The rest stand: numbers the transcriber writes as digits, the exhale
+  the armour-held lines direct ("steady, exhale"), and sound-alikes a fresh
+  pass hears right. The 21 packs are 2.92–3.64 MB (69.6 MB; all 38 are
+  122.04 MB) and decode at 16 kHz to 38.6–49.0 MB, Urdu (802 s) the longest of
+  the 38. The radio now releases the pack it leaves (`assetLibrary.dropVoice`),
+  so a phone holds one pack however many crews a player tries. The tree's
+  `git ls-files` passed execFileSync's 1 MB default, so the five whole-tree
+  listings (attribution audit, native-playables audit, public-repo hygiene,
+  QA evidence manifest, asset provenance) read up to 64 MB. The lane cost
+  372,951 credits (345,823 speech, 27,128 transcription; 10,368 of it the
+  audition) against its 500k cap.
+- **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
+  owner: "make a lot better sounds for everything ... all the special
+  moodes". The audit (kept outside the repository)
+  ranked 30 findings by how often a player hears them; the fixes go through
+  exhaustive tables, so a new ground, gearbox, drive, hull class, mode, mode
+  event, map or spot fails typecheck or `worldSounds.selftest.mjs` until it is
+  named. Every track loop and engine band had shipped from its one take: the
+  track loops' seams stepped up to 11 dB (now 0.01–1.8 dB, six to twelve takes
+  each, the light set's sand and mud asked for body under the hiss), and the
+  five engine bands that stepped 1.5–3.2 dB now step 0.03–1.1. Dirt roads (28
+  of 33 maps) were asphalt under the tracks and under a round; they are earth.
+  101 of 220-odd hulls shared one engine bank and two ran the wrong engine
+  (/e100/ matched "type100"; the Strv 81 is a Centurion): a cold-war diesel bank
+  for Leopard 1, AMX-30 and Challenger 1, the Magachs on the AVDS-1790. A pivot
+  screeches as steel only on hard ground; a gearbox, a turret drive and a hull
+  class are heard as themselves; every hull splashes into water and drains out
+  of it; a crash sounds of what it struck (a barn's timber, a berm's earth, a
+  building by its walls); a light vehicle explodes as one; roofs fall as their
+  buildings (a slab, an earth roof, shingles); a pillbox, a concrete barrier and
+  adobe walls break as their material. An APS intercept and a drone shot down
+  played nothing; they are heard. The night has its own life. Five modes got
+  their openers; the Horde's special waves, the Frontline's counter-attack,
+  Turbo Ball's buoy for everyone and its reset, the flag by whose it is and an
+  Infected ally turned got their sounds. 36 new assets, 19 families topped up
+  to 3–5 variants, `scrape_loop` (no moment) and the flat `ui_ball_hit`
+  removed; the cook-off loop (seams 4–8 dB) and the wreck fire (1.6–2.1 dB) re-picked from six takes (0.03 and
+  1.0 dB): 513 assets and 949 files, 25.3 MB (from 23.5). 18,384 credits.
+  Every explosion is judged by gun-reports-269's local ear proxy (YAMNet, the
+  cannon rule: Explosion or Boom at least 0.1 and twice Gunshot): the light
+  vehicle's explosion (heard as tools, steam, an engine; its prompt named the
+  fuel going up), the burnout (rumble) and two of the APS intercept's takes
+  failed it. Re-prompted and pinned, every shipped explosion passes (2.6–16.6×)
+  and the Frontline barrage 6.6×. The cook-off loop read as rain before fire;
+  it now reads fire, crackle, then explosion (its seam steps 1.15 dB).
+  Pins (`sfx-picks.json`) keep `rubble_crunch`, `tree_fall`, `wire_snag` and
+  the light snow track in the loudness receipt's range (`wire_snag`'s old takes
+  1 and 2 crossed the true-peak ceiling once measured). The soft-ground scrub
+  starts the first time it is heard: the rigs share the engine's seeded stream
+  with the crew radio's take picks, and a loop starting on every hull moved
+  which take the radio spoke. Every battle phase is a new battle to the engine:
+  a room's rematch starts from the result screen with no Garage between, and
+  kept the last battle's engines, alarms and rollout (no count, no opener, no
+  horn). The reverb sends follow the settings channels (crew-lines' finding
+  11): the voice pool, the vehicle rigs and the aircraft rigs each sent into
+  the reverb past their bus gain, so Engine 0 or Combat 0 still played their
+  reverb. The mixer now hands out one send per channel (`reverbSend(bus)`,
+  scaled as the channel scales its buses) and keeps the reverb's input to
+  itself; `reverbSends.selftest.mjs` walks the graph from every started source.
+  Leaving the garage ends its scene on the battle phase edge: the battle's
+  scene waits for the reveal or the rollout, and until then the hangar's bed
+  and workshop spots ran on under the loading screen
+  (`ambienceTeardown.selftest.mjs` drives a solo start, an online
+  activation, a rematch and a cold boot's online battle down the app
+  lifecycle's one phase writer; round 8 Y3 folded 269's
+  `battleEntryAmbience.selftest.mjs` into it). The explosions carry the ear proxy's `explosion` class and sit on the
+  verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
+  loudest take (the loudness receipt's momentary maximum), so a gate no longer
+  rides on the take the seeded stream drew. The first `sfx-smoke` on the boom
+  banks found the calibre ladder inverted: every 17 cm take carried less of its
+  energy under 150 Hz than every 76 mm take (0.51–0.70 against 0.70–0.77; its
+  "huge sideways blast from the brake" came back a bright blast, and the
+  engine turns a brake's blast by the row's brake anyway; "earth-shaking"
+  still rumbled broadband). Re-prompted for plain depth, all 8 takes pass the
+  ear proxy and the bank ships at a mean 0.82 against the 76 mm's 0.74
+  (1,540 credits over two prompts). The ladder's pairs live in
+  `tools/audio/gun-ladder.mjs`; the loudness receipt records each ladder
+  bank's shipped low share (`low150`) and `sfxLoudness.selftest.mjs` holds
+  the pairs on those means, so a bank generated or picked out of order fails
+  in Node. In the browser `sfx-smoke` captures each ladder bank on every
+  variant, held in turn, and compares the means (one held take compared two
+  takes: the 17 cm's loudest is its brightest); every other scene holds the
+  mix receipt's loudest takes (`tools/audio/held-takes.mjs`). It lands a
+  popped turret through the fx clock's landing: since 2026-10-10 the turret's
+  rigid body reports where it hits, and the smoke had still expected the
+  landing from the destruction event.
+
+- **2026-11-03, every calibre and its reload (gun-reports-269).** The owner:
+  "better cannonn sounds for all calibers, interior sounds for shell reloads
+  for different claibers". A census of every weapon the fleet fires
+  ([audio-generation/weapon-census.md](audio-generation/weapon-census.md)) found
+  the report chosen by the round's damage calibre rather than the gun (a
+  Centurion 3's 20-pounder sounded as a 120 mm, an M46's 90 mm as a 105), a
+  reload choreography chosen per vehicle rather than per weapon (a Bradley's TOW
+  reload played an autocannon's box swap), loaders guessed from id patterns, and
+  no bank of their own for the 35, 76, 84 and 100 mm, the 2A70, the rifled
+  120 mm, the 152 mm howitzer and gun-launchers, the 165 and the 170 mm. The
+  mechanism became one table keyed by bore and ammunition construction
+  (Weapons, above), its keys from each vehicle's own spec and a generated census
+  that fails typecheck for a weapon without a row, its loaders from the
+  internal-layout registry. 107 assets were generated (676 takes, then 8 more
+  for a roof gun's own report and 12 for two banks short of reports): every
+  cannon bore's close, own-hatch, closed-turret and distant reports (the 90, 105,
+  120 and 130 mm closes regenerated with words for their own gun; the 125 mm kept
+  its 10-02 takes, the mix tuned on them, when none of its eight new takes
+  measured as a report), each autocannon's and roof
+  machine gun's own, closed-turret and distant report, the 35 mm close, and 26
+  pieces of reload machinery weighed by calibre and construction. The scorer
+  learnt three failure modes (quality.md): the distant echo cut as a second
+  shot, a late-peaking blast outranking cracks, and a click shipped when fewer
+  than two takes survived the cut. The Studio's films play the new banks by a
+  calibre ladder (`CALIBRE_LADDER`); the grouped distant banks, the 152 mm
+  close, the three own and three interior banks, the drum refill and the old
+  charge ram retired. 18,874 credits.
+
+- **2026-11-04, the cannons boom (gun-reports-269, reopened).** The owner: "for
+  the gun sounds it still sounds like guns instead of tank cannons. reprompt it
+  to get the booming cannon sound effects right, rocket effects right, and also
+  all calibers and machine guns accordingly". Every gun, autocannon, machine-gun
+  and rocket bank was regenerated by its bore class
+  ([audio-generation/prompts.md](audio-generation/prompts.md#guns-what-each-class-is-the-boom-round-gun-reports-269-2026-11-04)):
+  a cannon a concussive boom with its energy low and a long rolling echo, an
+  autocannon a heavy thumping pop, the 12.7 and 7.62 mm one isolated round each
+  that the engine fires at the gun's rate (the chug and the rattle), a rocket its
+  motor, howitzers and gun-launchers a softer front, and each one's own-hatch
+  and closed-turret version; the 125 mm's 10-02 takes were replaced with the
+  rest. A local ear proxy, YAMNet
+  ([audio-generation/quality.md](audio-generation/quality.md#the-ear-proxy-run-criticmjs-sfx-criticpy)),
+  judges every file the build ships, as it ships (the mastered WebM of the
+  take's cut), by a rule written before the trial: it fails all 19 sounds the
+  owner rejected and passed the six pilot booms. The build ships a file only on
+  a pass and records its verdict, take, cut and hash in
+  `tools/audio/sfx-verdicts.json` (`sfxVerdicts.selftest.mjs` binds it to the
+  bytes; the listening page reads it); the raw takes' verdicts only order the
+  candidates. 102 banks, 281 files, every bank at its full slots: the machine
+  guns as dry single rounds the engine fires at the gun's rate, the distant ones
+  judged as that burst too. The cannon and autocannon presets are
+  loudness-mastered with no transient shaping; `audio-mix-balance.mjs` no longer
+  caps a near cannon's energy below 100 Hz at half or wants it 8 dB down after
+  a quarter second (a rolling boom measures within 3 dB); the TOS-1A's distant salvo has
+  its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
+  `tools/audio/layered-render.mjs` renders each row as the engine layers it.
+  46,330 credits, the prompt pilots on the ship path included.
+
+- **2026-11-03, impact materials (lane impact-materials-269).** The owner:
+  "ricochets off ground shouldnt sound like metal". The engine chose an impact
+  by its result and calibre alone, so every ricochet rang like sloped steel:
+  off rubber skirts, tracks, wrecks, and off the running gear at ground level,
+  where all 134 grazing 120 mm rods of a sample along three hulls' sides
+  passed the track first and landed at a median 0.54 m. A round through a
+  track, a skirt or a rack (`screen_pierce`) played nothing, a ground graze
+  played the plunge, open earth rolled a rock 18 % of the time, and dirt
+  rained onto water. Fixed in the mechanism above (the struck material picks
+  every layer), with 32 new families: grazes per ground, the track, wheel,
+  rubber, cage, stowage and wreck strikes, the ricochet's whine alone (under a
+  steel strike only), driver and engine-bay spall (the fighting compartment
+  keeps `pen_interior`), autocannon and supersonic near misses, bullets into
+  sand, snow, mud, a road, a rubber skirt and a rack, and debris and hull
+  patter per ground. 4,052 credits of sound generation (the first pass 3,668;
+  a whine and a flyby crack re-prompted after every take came back as noise or
+  a rush, 224; two bullet prompts re-written after their grit read as a second
+  report, 160). The payload grew 1.15 MB (23.5 to 24.6 MB). Every one of its
+  32 families ships pinned takes (`sfx-picks.json`), so the ranking that
+  gun-reports-269 owns can change without changing what a strike sounds like
+  (docs/audio-generation/quality.md). Each new strike, debris, hull-patter and
+  spall asset keeps the playback policy of the one it replaced
+  (`soundCues.ts`): without it a bullet into sand had carried like a shell's
+  strike, 10 dB hot, uncapped and loud enough in the HDR window to duck the
+  battle, which the in-game render of the listening page showed.
+  Every shipped strike, spall and graze then went through gun-reports-269's
+  YAMNet ear proxy, judged on the file that ships: 23 of 40 passed. 11 banks
+  were re-pinned to takes that pass. Four were re-prompted: the wreck heard as
+  a drum, the snow and sand grazes heard as a zipper, a fart and spray, and
+  the driver's spall heard as a drum. That cost 580 more credits, 4,632 for
+  the round; 64 of them were four more sand takes, after only two of the
+  first eight passed once mastered. All 40 shipped files now pass
+  (docs/audio-generation/quality.md).
+
+- **2026-11-05, Air Support (lane air-support-270).** The owner: "call in 3
+  differennt kinnds of airstrikes with their own special effects annd sounnt",
+  then "keep and add artillery annd recon with the 3 airstrikes". Ten new banks
+  (see Aircraft and mode sounds): three jet loops, the GAU-8 burst close and
+  far, the shell and bomb whistles, the 500 lb blast, the crash and the
+  targeted crew's alarm; reused the opener `jet_flyover`, the AC-130's orbit
+  and reports, the HE bank for each 155 mm landing. Every new bank names an
+  ear-proxy class written before its first take (`jet`, `gau8`, `incoming`,
+  `alarm`; the blast and crash `explosion`) and ships only files that pass as
+  shipped. Three prompts were rewritten after the proxy refused them (the
+  whistles came back with their landings or as a siren, the bomber's loop as
+  wind: docs/audio-generation/prompts.md). Eight crew lines in all 17 packs,
+  two takes each (the mode's opening, four read-backs, the two calls out of a
+  footprint, an aircraft down); an independent second transcript of all 272
+  shipped takes caught two that read wrong every time (French "passe canon",
+  Hebrew "בלייזר"), rewritten and rebuilt. Credits: 3,840 of sound generation
+  (60 takes, then 30 more for the re-prompts), 16,723 of speech with the
+  build's transcripts, about 320 for the second transcripts; 20,883 in all.
+  The sound-effect payload grew 0.66 MB (33.7 to 34.3 MB; the selftest cap
+  rose to 35 MB pending Main's ruling), decoded only in an Air Support battle;
+  the voice packs grew about 3.2 MB across 17 languages.
 
 ### Cost
 
@@ -994,6 +1588,16 @@ the first rounds' rate), so the four packs of 2026-11-03 cost 38,521 credits:
 a whole new pack (121 lines, 215 takes, its audition share,
 re-rolls and a second transcript) is about 9,600.
 
+crew-lines-269 (69 lines and 20 takes in all 17 packs, 2,652 takes) cost
+128,897 credits: 119,731 of speech, 9,166 of transcription (the build's check,
+its second transcript for repeats and the independent sweep); about 7,600 a
+pack.
+
+crew-languages-270 (21 whole packs, 7,791 takes) cost 372,951 credits: 345,823
+of speech, 27,128 of transcription (the audition 10,368, the six builds, three
+rounds of rewritten takes and the independent sweep); about 17,300 a whole
+pack.
+
 ## Changing or extending it
 
 Start from the [audio-generation skill](audio-generation/SKILL.md); the table
@@ -1002,8 +1606,8 @@ below is the short form.
 | Task | Steps |
 |---|---|
 | Add a sound | Add a catalog entry → `npm run audio:sfx:generate -- --ids <id>` → `npm run audio:sfx:build -- --ids <id>` → play it from the engine (and add a cue override if its group default does not fit) → `node src/audio/soundAssets.selftest.mjs` (it checks every engine reference exists in the manifest) |
-| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
-| Add or change a voice line | Edit `crew-lines.json` (all 17 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
+| Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` (a rebuild that ships nothing keeps the old bank and exits 1) |
+| Add or change a voice line | Edit `crew-lines.json` (all 38 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |
 | Remove a sound | Delete its catalog entry and run `build-sfx`: assets dropped from the catalog leave the manifest and the disk |
@@ -1028,7 +1632,7 @@ Headless selftests (all in `npm test`):
 | `src/audio/vehicleAudioModel.selftest.mjs` | idle, gearboxes, no gear hunting, turbine spool, braking, scrub, landings, stalls |
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets, and no oscillator anywhere in the sound engine or the HUD |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
-| `src/audio/crewVoice.selftest.mjs` | all 13 selectable packs, national/fixed resolution, flags and localized labels, legacy migration, invalid stored values |
+| `src/audio/crewVoice.selftest.mjs` | all 38 selectable packs (21 with no country: never a nation's default, each overriding every nation), national/fixed resolution, flags, own-language names and localized labels, legacy migration, invalid stored values |
 | `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts (a report cuts flavour), stale drops, every pack carrying every line and a missing take staying silent, damage, live switching and cold-pack behavior, the recorded key-up, release and net static (and silence, never a tone, while they decode) |
 | `src/audio/voiceTriggers.selftest.mjs` | all 109 crew lines from their game moments through the real engine (shot results back to back, the reasoning exchange after a Chain of Thought, our systems, the drone, the gunship, supply drops, objectives, hits, mobility, the count, results), a second battle's smoke, and no sound or crew chained in for another |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
@@ -1040,16 +1644,16 @@ Headless selftests (all in `npm test`):
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |
 
 Browser probes use the machine-wide GPU capture lock; set
-`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine. The lightweight
-`crew-voice.browser.mjs` fixture expects its caller to hold the capture lease
-and supply a running Vite server, like `custom-select.browser.mjs`.
+`COT_SHOTS_LOCK_TIMEOUT_MS=10800000` on a busy machine.
+`crew-voice-picker.browser.selftest.mjs` takes the capture lease and starts its
+own Vite server.
 
 | Probe | Checks |
 |---|---|
 | `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio at least 12 dB over the bed and at most 4 dB over a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, every pack through the radio chain |
-| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and every pack decoded and played through Web Audio |
+| `node tools/crew-voice-picker.browser.selftest.mjs` | the crew voice picker on the real Settings, on a touch phone and a desktop: National crews first, every pack a language row with no flag, the phone sheet inside the viewport, and a real touch drag (the wheel on desktop) reaching, choosing and storing the last row and an RTL row |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
 | `node tools/audio-spatial-killcam-probe.mjs` | arcade/sniper perspective, cannon and engine distance falloff, rams, the kill-cam replay |
 | `node tools/pause-probe.mjs` | the pause duck and resume |

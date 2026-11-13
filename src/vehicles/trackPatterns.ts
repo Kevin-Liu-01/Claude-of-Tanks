@@ -131,17 +131,21 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   [/(?:udes03|strv103a|strv103)(?:$|_)/, 'hydropneumatic-dead-track'],
   // 268: the GM-352 family (the Tunguska-M and the tracked Pantsir-S1) runs the eastern IFV track
   [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25|tunguska|pantsir)/, 'eastern-ifv'],
-  [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m3a2_bradley|m2a3_bradley|spz_puma|marder1a3|cv90)/, 'compact-ifv'],
+  // 269: the Lvkv 9040 runs its CV90 hull's track, the K30 Biho the K200 family's rubber-padded IFV track
+  [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m3a2_bradley|m2a3_bradley|spz_puma|marder1a3|cv90|lvkv9040|k30_biho)/, 'compact-ifv'],
   [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],
   // 262 (photographs, docs/references/tanks/type74.md and stb1.md "Hull"): the production Type 74 runs a double-pin track
   // with bolted end connectors; the STB-1's shows chevron grousers where it wraps the idler
   [/(?:^|_)type74(?:$|_)/, 'nato-double-pin'],
+  // 269: the Type 87 runs its Type 74 hull's track
+  [/(?:^|_)type87(?:$|_)/, 'nato-double-pin'],
   [/(?:^|_)stb1(?:$|_)/, 'soviet-single-pin'],
   // 267: the B marks (the Type 90 (B) and the Type 10B) run their families' track on the families' builds
   [/(?:type90|type10|type89)(?:b?$|_)/, 'japanese-modular'],
   [/(?:merkava)/, 'merkava-heavy'],
-  [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|vt4|t14|ua_t)/, 'soviet-single-pin'],
+  // 269: the PZA Loara runs its PT-91 hull's track
+  [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|vt4|t14|ua_t|loara)/, 'soviet-single-pin'],
 ]);
 
 /** Resolve one stable shoe construction for a vehicle's complete track train. */

@@ -348,7 +348,13 @@ function veranda(sink: PartSink, face: Face, frame: HouseFrame, depth: number, s
   const side = (s: number): Face => ({ origin: facePoint(face, s * w / 2, 0, depth / 2), u: [s * face.u[2], 0, -s * face.u[0]], out: [s * face.u[0], 0, s * face.u[2]], width: depth });
   const front: Face = { origin: facePoint(face, 0, 0, depth), u: face.u, out: face.out, width: w };
   for (const [f, span] of [[front, w], [side(-1), depth], [side(1), depth]] as const) {
-    for (const [ya, yb] of [[y0 + 0.85, frame.floors[1] - 0.14], [frame.floors[1] + 0.45, top - 0.16]] as const) {
+    // each band of glazing runs 10 cm up behind the head band over it and down behind the boarded dado under it, as glass
+    // sits in its frame's rebate: a structural face stands before every pane on a phone as on a desktop, so the pane
+    // stack's layering (geometry.ts splitPaneStacks) is the same on both tiers (phoneIdentity, facade: the panes were
+    // framed only by the desktop's fine glazing bars, and a phone's solids split differently). 10 cm, not less: the
+    // stack test (paneStack.ts stacked) draws a pane's corners a tenth in towards its centre before it looks for a frame
+    const tuck = 0.1;
+    for (const [ya, yb] of [[y0 + 0.85 - tuck, frame.floors[1] - 0.14 + tuck], [frame.floors[1] + 0.45 - tuck, top - 0.16 + tuck]] as const) {
       if (f === front && ya < y0 + 1) {
         for (const sg of [-1, 1]) facePanel(sink, 'glass', f, sg * (dh + span / 2 - 0.15) / 2, (ya + yb) / 2, -0.04, span / 2 - 0.15 - dh, yb - ya, {});
         // the light over the door, from its frame's head to the band's top (the cut glazing left the veranda open there)
@@ -1055,9 +1061,8 @@ export const NORDLAND_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     plaster: [[1, 1, 1], [0.98, 0.97, 0.95], [0.95, 0.95, 0.94], [1.0, 0.98, 0.95]],
     stone: [[1, 1, 1], [0.95, 0.95, 0.94], [1.02, 1.01, 0.99], [0.9, 0.91, 0.91]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.88], [1.06, 1.05, 1.02], [0.84, 0.86, 0.86]],
-    damp: 0.7, moss: 0.45, mossTint: [0.92, 0.96, 0.84],
+    mossTint: [0.92, 0.96, 0.84],
   },
-  wear: 0.3,
   // the yards: white picket fences round the potato beds and the woodshed (yards.ts)
   // round 4 (no white pickets off the American maps): the yards fenced in split rails, the skigard's nearest
   yard: { kinds: ['cottage', 'logcabin', 'alpine'], fence: 'fencerail', gate: 'gate', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },

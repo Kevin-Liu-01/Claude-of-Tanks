@@ -10,6 +10,10 @@ import { createTankState } from '../sim/movement.ts';
 import { createCombatState } from '../sim/damage.ts';
 
 const source = readFileSync(new URL('./hudEditorPreview.ts', import.meta.url), 'utf8');
+// (improve-271 plan 028) the editor's close disposes its part picker (two ResizeObservers, an IntersectionObserver and an
+// online listener held the closed editor's DOM)
+assert.match(readFileSync(new URL('./hudEditor.ts', import.meta.url), 'utf8'),
+  /onClose:\(\)=>\{\s*(?:\/\/[^\n]*\n\s*)*closed=true;[^\n]*parts\.dispose\(\);[^\n]*modal\.dispose\(\)\)/, 'the HUD editor disposes its part picker on close');
 const listed = source.match(/const PREVIEW_SPEC_IDS = \[([^\]]*)\] as const;/)?.[1];
 assert.ok(listed, 'the preview names its spec ids in one PREVIEW_SPEC_IDS list');
 const ids = [...listed.matchAll(/'([a-z0-9_]+)'/g)].map((match) => match[1]);

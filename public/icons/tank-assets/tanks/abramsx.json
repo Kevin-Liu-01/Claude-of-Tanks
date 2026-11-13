@@ -556,7 +556,7 @@
       }
     ]
   },
-  "geometryHash": "e0f7a97f",
+  "geometryHash": "51984c19",
   "metadataHash": "42a78656",
   "presentationAnchor": {
     "xM": 0.0026,
@@ -573,15 +573,15 @@
     "issues": [],
     "roles": {
       "wheelTire": 2,
-      "wheelDish": 7,
+      "wheelDish": 10,
       "suspensionLink": 1,
       "suspensionJoint": 1,
       "trackHardware": 4,
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "fittingPaint": 9,
-      "gunmetal": 34,
+      "gunmetal": 37,
+      "fittingPaint": 11,
       "opticGlass": 5,
       "armorPaint": 14,
       "gearShadow": 2,
@@ -612,15 +612,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24160,
-      "sha256": "a097f51bc67cd57dd04ca26980aa06f0415a0cf0ae10bea50ff48e00cecf5f15",
+      "bytes": 24136,
+      "sha256": "5e2721261ea5fe3cc306d5cfdf59c1436fb2b9003a04cbeef233d23f8c4203a6",
       "thumbnail": {
         "file": "thumbs/abramsx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10110,
-        "sha256": "2ec0959c1715b576831f32b757fd2c9447618069325501c3d7678a637699e4fc"
+        "bytes": 10112,
+        "sha256": "ae3ef35ba9bc331e8459ae42675e98485cee0815eb64df559077676bd068c2c3",
+        "frame": [20,89,227,249]
       }
     },
     "top": {
@@ -628,16 +629,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11790,
-      "sha256": "c0dd267214291e85fcdba34b99aab12b7883b58c0f14b544c3139e46cebc713a"
+      "bytes": 11798,
+      "sha256": "964bfe5fd815d3c02f4faf7c6231f2df2cec327a3de8684410bd7605a29611c3"
     },
     "side": {
       "file": "abramsx_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9310,
-      "sha256": "411e408dec69c25c364c6a9348bee9981f66f96537a65d61a94c1a326cd2f279"
+      "bytes": 9286,
+      "sha256": "3fc1c2084ba225d40e956a12e3b342fa16b49809090ba74a31a051d552cff350"
     },
     "topSilhouette": {
       "file": "abramsx_top_silhouette.png",
@@ -660,32 +661,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24180,
-      "sha256": "dcb985803f9ccfa8e80e229d9a80cc9d1e76ffffeea503389ece231dac44286d"
+      "bytes": 24164,
+      "sha256": "3cef7ff15814b37063a664c5df4b8e6f253bc573acc20d13cd91115e9910fa13"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25834,
-      "sha256": "a21dc681665c6191366996017d924152df297808c3cc4506e3e62406ebfc49b1"
+      "bytes": 25812,
+      "sha256": "e433754d65ff37f39807223cadd29a3d7de9fc5d09aa1bddc11b55943431a82e"
     },
     "crewSide": {
       "file": "abramsx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20754,
-      "sha256": "ecb1902e901dacf68060c61b138963470522edba9e780e49607347ad358287f4"
+      "bytes": 20770,
+      "sha256": "39dcc7f77c9b15729df61e9dfc748c5ef1cdbb0aa0438589fd16841fad43d0af"
     },
     "markings": {
       "file": "abramsx_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36606,
-      "sha256": "f96eaf9cbd7bd3de814ac31e5e4f149f87a511715b70b27aac9fece05a36b9ad"
+      "bytes": 35400,
+      "sha256": "4500b3a101c47349d624832372844e57bbd94c3d076bae184bba43b42f1c8a45"
     },
     "technicalLabels": {
       "file": "abramsx_technical.json",

@@ -9,12 +9,12 @@ import { registerHooks } from 'node:module';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript-compiler-api';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { createPropsProfiler, registerProfileCancellation } from './props-build-profile.mjs';
 
 const TOOL = fileURLToPath(import.meta.url);
 const ROOT = process.env.COT_WRECK_PROFILE_ROOT ?? process.argv.find(arg => arg.startsWith('--root='))?.slice(7);
-const INPUTS = Object.freeze({ specId: 't90am', seed: 2526, pop: false, camoSeed: 4532,
+const INPUTS = Object.freeze({ specId: 't90am', seed: 2526, state: 'burnt_out', camoSeed: 4532,
   quality: 'low', geometryQuality: 'low', materialMode: 'geometry-only', proceduralOnly: true, anisotropy: 4 });
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = array => Buffer.from(array.buffer, array.byteOffset, array.byteLength);
@@ -229,7 +229,7 @@ async function worker(mode) {
     const builderAcquisitionMs = performance.now() - acquisitionStart;
     const start = performance.now();
     baked = bakeTankWreck({ anisotropy: INPUTS.anisotropy, setupShadowMaterial() {} }, INPUTS.specId,
-      { seed: INPUTS.seed, pop: INPUTS.pop });
+      { seed: INPUTS.seed, state: INPUTS.state });
     const bakeMs = performance.now() - start;
     assert.ok(baked, 'Exact real T-90M bake must succeed');
     for (const name of [...BODY_STAGES.values(), ...GEOMETRY_STAGES.values(), ...CALL_STAGES.values()]) {
@@ -270,14 +270,17 @@ async function run(output, constructorOnly = false) {
       'Compaction spans cover the shared compactInputSteps body, excluding entrypoint eligibility checks',
       'Control and normalization-only candidate modify source in memory; no runtime files are changed'] };
   const write = () => writeFileSync(join(output, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  const lock = createCaptureLock(); let refresh, child;
+  let hold; let child;
   const cancellation = registerProfileCancellation(() => child);
   write();
   console.log(`[wreck-build-profile] pid=${process.pid} stage=capture_lock output=${output}`);
   try {
-    await lock.acquire(45 * 60 * 1000);
+    hold = await openCaptureHold({ label: 'wreck-build-profile', timeoutMs: 45 * 60 * 1000, signals: [] /* its own SIGINT/SIGTERM handler stops the run and writes the report */ });
+    // the hold's own stop (past the cap with a waiter) stops the worker as a signal does (round 2 U38)
+    hold.signal.addEventListener('abort', () => {
+      report.errors.push(`Capture hold stopped: ${hold.signal.reason?.message ?? hold.signal.reason}`); cancellation.interrupt();
+    }, { once: true });
     report.captureAcquiredAt = new Date().toISOString(); write();
-    refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
     assert.equal(cancellation.isInterrupted(), false, 'Interrupted while queued (lock admission itself is not abortable)');
     assert.deepEqual(identity(), pinned, 'Pinned source changed while queued');
     // Reverse the middle pair to reduce simple order bias. Every sample has
@@ -293,7 +296,7 @@ async function run(output, constructorOnly = false) {
     report.outputIdentityVerified = true;
   } catch (error) { report.errors.push(String(error)); }
   finally {
-    clearInterval(refresh); lock.release(); report.captureLeaseReleased = true;
+    await hold?.release(); report.captureLeaseReleased = true;
     cancellation.dispose();
     report.finishedAt = new Date().toISOString(); report.ok = !cancellation.isInterrupted() && !report.errors.length && report.outputIdentityVerified === true; write();
   }

@@ -1061,7 +1061,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10784,
-        "sha256": "a4d58479cc525c4917e085dbb4e8db58f64355a40190fe676cd46160088d54de"
+        "sha256": "a4d58479cc525c4917e085dbb4e8db58f64355a40190fe676cd46160088d54de",
+        "frame": [23,104,228,250]
       }
     },
     "top": {
@@ -1077,8 +1078,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13210,
-      "sha256": "889ce02c097790911cb8f603cb723f63f34e47d0fc8b20dbcf34971b5d6c7ec1"
+      "bytes": 13218,
+      "sha256": "2f4e7faa25ccb6c286b00a0de8cb3dbaa308f596439fcea14fdd9138bce94726"
     },
     "topSilhouette": {
       "file": "leo2a5dk_top_silhouette.png",
@@ -1101,32 +1102,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28014,
-      "sha256": "e63fb11da37455d5d86fa2f8d55ad0b7826c20f58372c92bd67bb599a3d21fee"
+      "bytes": 28020,
+      "sha256": "73de8e80acd5e5c07a7072d0f667858a43e0c4965ff08ba38e7470fa738896d2"
     },
     "modulesSide": {
       "file": "leo2a5dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27448,
-      "sha256": "162612b99886e8bd77ce37f0344b1a3a62e8434d72aad0315fa88f810d182e5c"
+      "bytes": 27416,
+      "sha256": "716ef258609b290df7f7da94ac0f8fe079a4e88379cdeab3bb7d13950e937cd2"
     },
     "crewSide": {
       "file": "leo2a5dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24554,
-      "sha256": "3bf8efc8b4b66e6eb0ed5fa0c296d2bd6879fce31f18914c61573507d565bdeb"
+      "bytes": 24560,
+      "sha256": "d2c0678b412a3165f967a8c4b619c8fa6a16c399fdaca358a78c38ec5f37e9b7"
     },
     "markings": {
       "file": "leo2a5dk_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33599,
-      "sha256": "96c341709229574e4c476849b7d7c2298d4828811a6846cb7ca3af076a3b871b"
+      "bytes": 31660,
+      "sha256": "7b89024cd8caab26ab78a932f1bc7e5f04079bd39d037c80b454502b6a3008c1"
     },
     "technicalLabels": {
       "file": "leo2a5dk_technical.json",

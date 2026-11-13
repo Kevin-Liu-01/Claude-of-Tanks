@@ -10,6 +10,8 @@
  */
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
+import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { runFootprint } from '../sim/strikeRuns.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
 
@@ -30,11 +32,14 @@ export interface ObjectiveStateView {
   goals?: ReadonlyArray<{ team: ObjectiveTeamId; x: number; z: number }> | null;
   pickups?: ReadonlyArray<{ kind: string; x: number; z: number; active?: boolean }> | null;
   line?: { index?: number; total?: number; holdS?: number } | null;
+  /** Air Support: every call-in's public record (sim/airSupport.ts AirSupportView). */
+  air?: { nowS: number; strikes: ReadonlyArray<{ kind: AirStrikeKind; team: ObjectiveTeamId; x: number; z: number; heading: number;
+    landsS: number; endS: number; downedS: number | null; mine?: boolean }> } | null;
   /** The proving ground's range (v2 progression, 2026-10-17): a marker on every lane's mark. */
   range?: { lanes: ReadonlyArray<{ index: number; x: number; z: number; rangeM: number }> } | null;
 }
 
-type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane';
+type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane' | 'strike';
 
 export interface ObjectiveMarker {
   kind: ObjectiveKind;
@@ -48,9 +53,19 @@ export interface ObjectiveMarker {
   /**
    * spawn: 'respawn' when the mode revives players there;
    * flag: 'home' | 'carried' | 'dropped'; flagBase: 'home' | 'away';
-   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'.
+   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike: the call-in's kind.
    */
   status?: string;
+  /** strike: its footprint (sim/strikeRuns.ts runFootprint: a circle's radius, an ellipse's semi-axis along `heading` with
+   *  `acrossM` across it, or a lane's half length and half width along `heading`), the seconds until it lands (0 once it
+   *  does) and whether it is the viewer's own call */
+  radiusM?: number;
+  acrossM?: number;
+  halfLengthM?: number;
+  halfWidthM?: number;
+  heading?: number;
+  countdownS?: number;
+  mine?: boolean;
   /** capture / hold progress 0..1 toward `progressSide` */
   progress?: number;
   progressSide?: 'own' | 'enemy';
@@ -183,6 +198,27 @@ function laneMarkers(state: ObjectiveStateView, out: ObjectiveMarker[]): void {
   }
 }
 
+/**
+ * Air Support's call-ins (air-support-270): every strike in progress is public, the targeted side's warning included — its
+ * footprint, whose it is (own or enemy), and the countdown to its landing; it pulses while the warning runs. A downed
+ * aircraft's strike, and one whose danger is past, leave the map.
+ */
+function strikeMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, out: ObjectiveMarker[]): void {
+  const air = state.air;
+  if (!air) return;
+  for (const strike of air.strikes) {
+    if (strike.downedS != null || air.nowS >= strike.endS) continue;
+    const footprint = runFootprint(AIR_SUPPORT_RULES, strike.kind);
+    const countdownS = Math.max(0, strike.landsS - air.nowS);
+    out.push({
+      kind: 'strike', x: strike.x, z: strike.z, side: objectiveSide(strike.team, perspective), status: strike.kind,
+      heading: strike.heading, countdownS, mine: !!strike.mine, pulse: countdownS > 0, priority: 3,
+      ...(footprint.shape === 'lane' ? { halfLengthM: footprint.halfLengthM, halfWidthM: footprint.halfWidthM }
+        : footprint.shape === 'ellipse' ? { radiusM: footprint.alongM, acrossM: footprint.acrossM } : { radiusM: footprint.radiusM }),
+    });
+  }
+}
+
 /** Markers for the current mode state, sorted by draw priority (area markers first). */
 export function objectiveMarkers(state: ObjectiveStateView | null | undefined): ObjectiveMarker[] {
   if (!state || !state.id || state.id === 'standard') return [];
@@ -190,14 +226,42 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   const out: ObjectiveMarker[] = [];
   spawnMarkers(state, perspective, out);
   if (state.id === 'capture_the_flag') flagMarkers(state, perspective, out);
-  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130') zoneMarkers(state, perspective, out);
+  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130' || state.id === 'air_support') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
   laneMarkers(state, out);
   pickupMarkers(state, out);
+  strikeMarkers(state, perspective, out);
   out.sort((a, b) => a.priority - b.priority);
   return out;
 }
+
+// (improve-271 plan 023) the one derivation, retained: the world presentation (every rendered frame) and the minimap
+// (15 to 30 Hz) read the same markers without rebuilding, sorting and keying them per frame. A room's mode state is a new
+// object per snapshot; the local battle's controller state is ONE object mutated in place each fixed step, so the key is
+// the state's reference with the battle clock the step advances (game.timeS) and the viewing side (a watched battle's
+// seat change can flip it between steps).
+let retainedState: ObjectiveStateView | null = null;
+let retainedTimeS = Number.NaN;
+let retainedTeam: ObjectiveTeamId = 'alpha';
+let retainedMarkers: readonly ObjectiveMarker[] = [];
+let retainedRevision = 0;
+/** The markers for `state` at battle time `timeS`, derived once per change; callers must not mutate the array. */
+export function objectiveMarkersFor(state: ObjectiveStateView | null | undefined, timeS: number): readonly ObjectiveMarker[] {
+  if (!state) return EMPTY_MARKERS;
+  const team = perspectiveOf(state);
+  if (state !== retainedState || !Object.is(timeS, retainedTimeS) || team !== retainedTeam) {
+    retainedState = state;
+    retainedTimeS = timeS;
+    retainedTeam = team;
+    retainedMarkers = objectiveMarkers(state);
+    retainedRevision++;
+  }
+  return retainedMarkers;
+}
+/** Which derivation objectiveMarkersFor last returned: a change means the markers were derived again. */
+export function objectiveMarkersRevision(): number { return retainedRevision; }
+const EMPTY_MARKERS: readonly ObjectiveMarker[] = Object.freeze([]);
 
 /** The markers a mode places on the team spawns themselves (the map skips its generic base rings then). */
 export function markersStandOnSpawns(markers: readonly ObjectiveMarker[]): boolean {

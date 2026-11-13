@@ -1578,7 +1578,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11046,
-        "sha256": "5a8e9905dacea5bff6950f23a108952cd2f8f5549f076f4c50d83d72788d0bae"
+        "sha256": "5a8e9905dacea5bff6950f23a108952cd2f8f5549f076f4c50d83d72788d0bae",
+        "frame": [23,104,225,249]
       }
     },
     "top": {
@@ -1594,8 +1595,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12924,
-      "sha256": "a96a816d725a71aead61720f9882198f757d2a0c773700c304ab21bf15aa33ac"
+      "bytes": 12914,
+      "sha256": "b6cdcd6ea5cf84653a783519dceaa3caf265b9738b2e1e47d0a69da20c8acedd"
     },
     "topSilhouette": {
       "file": "leo2_improved_top_silhouette.png",
@@ -1619,31 +1620,31 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 28964,
-      "sha256": "7ed72fd39c38eff3080ea8808e5bc20348ac6b07bd2ca0e1c42e540c21122e35"
+      "sha256": "e62cf21e148129c9e1895fcf09f930a50f7114212308de00daa695a7e9b377d3"
     },
     "modulesSide": {
       "file": "leo2_improved_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28764,
-      "sha256": "cf3d529356f765ac371dc68d3c30ddf966acfd28608b12a4a60655d5f77cc484"
+      "bytes": 28768,
+      "sha256": "e4515e8e1c52c78608a22758f187b03bda42dddf08331ba73f6c433aaee741d1"
     },
     "crewSide": {
       "file": "leo2_improved_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26098,
-      "sha256": "19d71d5918377c13c7236c3410272fbef5f2f2455783d81a8f2a4e9749e03852"
+      "bytes": 26118,
+      "sha256": "c9bb3f7e916913ee2e821f81ea1cdcacecb541036b2ef394422bf379ea436e61"
     },
     "markings": {
       "file": "leo2_improved_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33007,
-      "sha256": "6109a7dc3aa5aaf0cf4142417945aa3233ac8ecf352f3ec218b5087964d207f1"
+      "bytes": 30893,
+      "sha256": "b1f2bd23497228aafcfaf1d27132bd7bba3fd81140388374a8449e1054b40654"
     },
     "technicalLabels": {
       "file": "leo2_improved_technical.json",

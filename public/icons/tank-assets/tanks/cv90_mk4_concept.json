@@ -1070,24 +1070,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37212,
-      "sha256": "f56c9daa2c4e0a4afadb20feccee6dace82f080cddb02faf36d7a04004a53eef"
+      "bytes": 37176,
+      "sha256": "5daf60c1d5c7280bbd83e5c5e9bd29afcb7df0a9df487c33987136a11c21ed48"
     },
     "modulesSide": {
       "file": "cv90_mk4_concept_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37322,
-      "sha256": "4d2af6ba02609d70ccd27c6fbe19afce15b1a4f0ff48bd7593cf4fa1783f61a4"
+      "bytes": 37328,
+      "sha256": "3d3942450baf7bfdeb1da248004468fe559c1b9b3f5e1ef1505925ae28b12bff"
     },
     "crewSide": {
       "file": "cv90_mk4_concept_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33286,
-      "sha256": "0be62882bd01b3f42ec167ed0e5da76b27ef765d3b8d6e2493d4e221f1c74c56"
+      "bytes": 33282,
+      "sha256": "243eb96916591f6c37c55e81b4cdbd72754534e5c43a087a80aec177f5bdcc01"
     },
     "angle": {
       "file": "cv90_mk4_concept_angle.webp",
@@ -1102,7 +1102,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11662,
-        "sha256": "0039de5ef603e1a8ffb634c3c7c50b231b85474c69d74ab8b9326b577fd94741"
+        "sha256": "0039de5ef603e1a8ffb634c3c7c50b231b85474c69d74ab8b9326b577fd94741",
+        "frame": [28,105,228,249]
       }
     },
     "top": {
@@ -1118,8 +1119,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 16160,
-      "sha256": "b9b757986633bac405131f2bfd6a0576b8d90ecab773a0b0d9f4130013496da9"
+      "bytes": 16166,
+      "sha256": "11c1fdea1cc68624905f352210a03e4eb5062dcdb75971bf8b66ac940d1c8436"
     },
     "topSilhouette": {
       "file": "cv90_mk4_concept_top_silhouette.png",
@@ -1142,8 +1143,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36824,
-      "sha256": "176dadd54c177efcb70133c9a02ea435ade283b9b2b2eaa439dfe2e63ba20575"
+      "bytes": 34649,
+      "sha256": "d34aea96bb1898b1f7db9e8003d45f3bf67daccbb9c77d7ea6924c10728ba676"
     },
     "technicalLabels": {
       "file": "cv90_mk4_concept_technical.json",

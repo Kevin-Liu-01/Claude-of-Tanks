@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
 import { collectNightWindowCensus } from './night-window-census.mjs';
 import { collectNightFixtureCensus } from './night-fixture-census.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
@@ -291,7 +292,7 @@ async function stage(mapId, specId = 'm1a1') {
     if(d.game.phase !== 'battle' || !d.game.player)
       throw new Error(`Battle entry ${mapId}/${specId} returned in ${d.game.phase} without an active player; inspect the recorded battle-entry error`);
   }, { mapId, specId }, 180_000, `Battle entry ${mapId}/${specId}`);
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.player?.visual && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.tanks.every(x => x.visual)', { timeout: 180_000 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.player?.visual && window.__DEBUG.game.tanks.every(x => x.visual)`, { timeout: 180_000 });
   await evaluateWithin(() => {
     const d = window.__DEBUG;
     d.shotMode = true;
@@ -456,7 +457,7 @@ async function coldNightEntryPictures(garageBaseline) {
     report.coldNight.observerCleanup = await evaluateWithin(() => window.__equipmentDamageProbe.coldEntry.dispose()); save();
   }
   assertColdNightEntry(report.coldNight.entry, expected);
-  await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.tanks.every(x => x.visual)', { timeout: 180_000 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.tanks.every(x => x.visual)`, { timeout: 180_000 });
   await evaluateWithin(() => {
     const d = window.__DEBUG, p = d.game.player.state.pos;
     d.shotMode = true; d.post.setAdaptiveSuspended(true);
@@ -1112,7 +1113,7 @@ try {
     page = await within(browser.newPage(), 30_000, 'Browser page creation');
     await configurePage(tier);
     await page.goto(`http://127.0.0.1:5852/?debug=1&tier=${tier.query}`, { waitUntil: 'domcontentloaded', timeout: 360_000 });
-    await page.waitForFunction('window.__GAME_READY && window.__DEBUG?.battleAtmosphere && window.__DEBUG?.nightLighting', { timeout: 360_000 });
+    await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__DEBUG?.battleAtmosphere && window.__DEBUG?.nightLighting`, { timeout: 360_000 });
     await evaluateWithin(() => window.__equipmentDamageProbe.install(window.__DEBUG.post));
     await evaluateWithin(installNightLightProbe);
     await settle(2);

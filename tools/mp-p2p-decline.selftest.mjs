@@ -17,6 +17,7 @@ import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/m
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { ROOM_MATCH_REPORT_STALE_AFTER_MS } from '../src/mp/room/protocol.ts';
+import { HOST_STATE, MATCH_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const SECRET = 'mp-p2p-decline-seat-secret-0123456789abcdef';
 /** The election must beat the report budget: it follows the decline itself (reason `declined`), where a lapsed host is
@@ -112,9 +113,9 @@ async function runDeclineScenario({ name, url, steppedDown }) {
     assert.deepEqual({ hostId: election.hostId, reason: election.reason, secret: election.secret }, { hostId: 'p2', reason: 'declined', secret: true }, 'the last resort is elected at once with the secret, reason declined');
     assert.ok(facts.election.afterMs < ELECTION_BUDGET_MS, `elected ${facts.election.afterMs} ms after the decline — not the ${ROOM_MATCH_REPORT_STALE_AFTER_MS} ms report budget`);
     assert.deepEqual(await steppedDown(code), ['p1'], 'the departed host stepped down for this match: a decline never hands the match back to it');
-    await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', EVENT_CAP_MS);
-    await until(() => p2.headless.session.match?.phase === 'live' && p2.headless.session.stats().p2p?.migrating === false, 'p2 live on its own actor', EVENT_CAP_MS);
-    await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', EVENT_CAP_MS);
+    await until(() => p2.headless.session.role === SESSION_ROLE.host && p2.headless.session.matchHost?.state === HOST_STATE.live, 'p2 hosts', EVENT_CAP_MS);
+    await until(() => p2.headless.session.match?.phase === MATCH_PHASE.live && p2.headless.session.stats().p2p?.migrating === false, 'p2 live on its own actor', EVENT_CAP_MS);
+    await until(() => p3.headless.session.match?.phase === MATCH_PHASE.live && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', EVENT_CAP_MS);
     const core2 = cores.find((entry) => entry.id === 'p2').core;
     assert.ok(core2.actor.tick >= keyframeTick2, `the resumed tick ${core2.actor.tick} continues past the keyframe's ${keyframeTick2}`);
     assert.ok(core2.actor.tick >= oldHostTick, `the resumed tick ${core2.actor.tick} never falls behind the old host's ${oldHostTick}`);
@@ -123,7 +124,7 @@ async function runDeclineScenario({ name, url, steppedDown }) {
 
     // ---- the old host re-enters the running match: a peer of p2 on the same seat token
     await p1.headless.session.enterMatch(p1.headless.room.matchStart);
-    await until(() => p1.headless.session.match?.welcome && p1.headless.session.role === 'peer' && p1.headless.session.stats().p2p?.hostId === 'p2', 'p1 welcomed as a peer of p2', EVENT_CAP_MS);
+    await until(() => p1.headless.session.match?.welcome && p1.headless.session.role === SESSION_ROLE.peer && p1.headless.session.stats().p2p?.hostId === 'p2', 'p1 welcomed as a peer of p2', EVENT_CAP_MS);
     await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', EVENT_CAP_MS);
     facts.rejoin = { role: p1.headless.session.role, hostId: p1.headless.session.stats().p2p.hostId, generation: p1.headless.session.stats().p2p.generation, peersOnP2: p2.headless.session.matchHost.peersConnected };
     for (const entry of sessions) assert.notEqual(entry.headless.session.stats().phase, 'lost', `${entry.id} ended in lost`);

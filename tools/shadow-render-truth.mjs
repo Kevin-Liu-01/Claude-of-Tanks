@@ -19,6 +19,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -45,9 +46,9 @@ try {
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
   page.setDefaultTimeout(300000);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+  await waitForBootLoaded(page, { timeout: 180000 });
   await page.evaluate((id) => window.__DEBUG.beginSoloBattle({ mapId: id }), mapId);
-  await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle', { timeout: 240000 });
+  await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 240000 });
   await page.evaluate(() => new Promise((r) => setTimeout(r, 5000)));
 
   const result = await page.evaluate(() => {
@@ -59,9 +60,8 @@ try {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     const lights = D.lighting.csm.lights;
     const saved = lights.map((l) => l.shadow.intensity);
-    const taa = D.post?.taa;
-    const taaWas = taa ? taa.enabled : null;
-    if (taa) taa.enabled = false;
+    // (2026-11-02 audit U30, round 2) temporal AA held off through post's one owner, never written here
+    const taaHold = D.post?.holdTemporalAA ? D.post.holdTemporalAA('qa') : null;
     const ao = D.post?.gtao ?? D.post?.passes?.gtao ?? D.post?.ao;
     const aoWas = ao ? ao.enabled : null;
     if (ao) ao.enabled = false;
@@ -137,7 +137,7 @@ try {
       casters[name] = { objects: list.length, shadowPxLost: lost.onlyA, shadowPxGained: lost.onlyB };
     }
     renderAll();
-    if (taa && taaWas !== null) taa.enabled = taaWas;
+    taaHold?.release();
     if (ao && aoWas !== null) ao.enabled = aoWas;
     let proxies = 0;
     D.scene.traverse((o) => { if (o.userData?.cotCasterProxy) proxies++; });

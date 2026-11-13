@@ -63,7 +63,16 @@ export const USA_TREE: NationTree = Object.freeze({
     node({ id: 'm6_linebacker', tier: 5, line: 'bradley', lane: 1, parents: ['m2a2_bradley'], slot: 'line' }),
     node({ id: 'griffin50mm', tier: 10, line: 'bradley', lane: 9, parents: ['m3a3_bradley'], slot: 'line' }),
     // Special
+    // release 270: the T95 superheavy tank destroyer with its fictional 152 mm (owner 2026-11-05), at tier II beside the
+    // M60A2 (Main's ruling from the head-on duels: tier II mean 0.31, tier I 0.87 over the band; real armour, no nerf)
+    node({ id: 't95', tier: 2, line: 'special', lane: 2, parents: [], slot: 'special' }),
     node({ id: 'm60a2', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // 269 (the owner, 2026-11-03: "make a USA m113 variant, that plays similar to the ares apc"): the M113A3 at II, the
+    // Ares APC's tier in the UK tree's special lane
+    node({ id: 'm113a3', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    // 269 (the owner, 2026-11-04: "also add the m163 VADS"): the M163 on the M113's M741 at IV, after the M113A3 on its
+    // special lane (a special has no parents; a 20 mm gun a tier under the 35 mm Gepard at V)
+    node({ id: 'm163_vads', tier: 4, line: 'special', lane: 1, parents: [], slot: 'special' }),
     node({ id: 'm1a2_abrams_tusk', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

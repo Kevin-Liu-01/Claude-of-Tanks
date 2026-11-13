@@ -3,6 +3,8 @@
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { LocalFrame, faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type EmitOptions, type Face, type FaceSkip, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
 import { facadeOn, facadeRng, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
+import { registerBuildScope } from '../buildScopes.ts';
+import { paintOverride } from './appearance.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -42,6 +44,7 @@ export interface WindowStyle {
  * sill). Builders are synchronous: the slot never leaks between walls.
  */
 let sillShadowBucket: RegionalBucket | null = null;
+registerBuildScope('openings.sillShadow', () => sillShadowBucket !== null); // (2026-11-02 audit R1: buildScopes.ts)
 export function withSillShadow<T>(bucket: RegionalBucket | null, body: () => T): T {
   const prior = sillShadowBucket;
   sillShadowBucket = bucket;
@@ -153,7 +156,7 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   }
   windowDressing(sink, face, u, y, w, h, style);
   if (style.shutters) {
-    const sh = style.shutters, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
+    const sh = { ...style.shutters, colour: paintOverride() ?? style.shutters.colour }, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
     const closed = sh.closed ?? 0;
     // each window's shutters weathered a little differently (repainted one year, sun-faded another)
     const fade = 0.88 + rng() * 0.2;
@@ -268,7 +271,8 @@ export function rollerDoor(sink: PartSink, face: Face, u: number, y: number, w: 
 
 export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: DoorStyle, floorY = y): void {
   const leafH = style.transom ? h - 0.42 : h;
-  const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };
+  // (buildings-270) the building's paint, where its map names one (appearance.ts, the row's `paint` axis)
+  const lc = { colour: paintOverride() ?? style.leaf, decor: true, uv: UV_MEMBER };
   // in a cut opening (sink.recess) the leaf hangs at the back of the reveal
   const r = sink.recess, lo = r > 0 ? -r + 0.022 : 0.012;
   // (props census #9) a glazed leaf in a cut opening is a frame round its light — the kick panel, the stiles and the top
@@ -291,7 +295,7 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
   }
   if (style.transom) {
     faceBox(sink, 'glass', face, u, y + h - 0.21, lo - 0.006, w, 0.36, 0.03, { decor: true });
-    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true, fine: true });
+    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: lc.colour, decor: true, fine: true });
   }
   const f = style.frame, fw = f.width;
   // (on steps, its jambs stand on the tread under its head: EmitOptions.joined; without, its face is seated at range by

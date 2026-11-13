@@ -21,6 +21,7 @@ import { launder, millAxle, trestle, waterWheel } from './millWorks.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { HESSIAN_COURT_TYPES } from './hessianCourt.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
 // reflectance so the frame still reads in shade
@@ -55,6 +56,7 @@ const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
 });
 
 let palette: FachwerkPalette = HESSIAN_PALETTE;
+registerBuildScope('hessian.palette', () => palette !== HESSIAN_PALETTE); // (2026-11-02 audit R1: buildScopes.ts)
 /** Run a builder under a palette (builders are synchronous: the module-level palette cannot leak). */
 export function withPalette(p: FachwerkPalette, builder: RegionalBuilder): RegionalBuilder {
   return (ctx) => {
@@ -1054,9 +1056,7 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     plaster: [[1, 1, 1], [1, 0.97, 0.9], [1, 0.94, 0.84], [0.97, 0.96, 0.93], [1, 0.93, 0.89]],
     stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
     roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82]],
-    damp: 0.85, moss: 0.55,
   },
-  wear: 0.22,
   // the farmyards: a board fence (the Hessian Staketenzaun of rough boards, not the white picket the gauntlet read as
   // American, waves 183–184) round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
   // the map-revival lane (2026-10-05, Frontier's Hofreiten; the coordinator approved the flag): a farmhouse whose flank

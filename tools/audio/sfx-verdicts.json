@@ -1,0 +1,6076 @@
+{
+ "ac_20_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "55c078aa0be3e75bab954cb3.pcm",
+    "cutS": 2.2,
+    "sha256": "f39115a051f9788cbf67224c3f2feb04b3ca8c879f499bb1319c77b67fd2019f",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.5,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.8008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.7344,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "4038191a5293eb17e46fc421.pcm",
+    "cutS": 2.2,
+    "sha256": "2efd10145e8fe15d50a3c3d72e2f583ee6ac504d69ae677cfe873ceca48c0a3d",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.151,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1471,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "894ce8f2ce30269cd857d4d3.pcm",
+    "cutS": 2.2,
+    "sha256": "03babf107765f5ca22777a376463573239ebb35a3beef71e6cd86c79f1e290c4",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2539,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.194,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "4e13a8af8f17e25c57320344.pcm",
+    "cutS": 2.2,
+    "sha256": "1eae829f1b2b8de92526c15f17874a60ba7d90f594372fed2fcf97ec8fdbbe9b",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1172,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1367,
+     "top": "Gunshot, gunfire"
+    }
+   }
+  ]
+ },
+ "ac_20_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "eabe16b7ba516524789386c9.pcm",
+    "cutS": 2.4,
+    "sha256": "d0ad74c3f716ffef20da0cdeee57ac2dcb417380139b52a5882bdaa7d4d933ed",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5566,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.207,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a782a041a87ee5053d1050d2.pcm",
+    "cutS": 2.4,
+    "sha256": "e19461e21087e2fa6b48de577b4ea606f68d1b965eafb64f7c33ef3bad62117f",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.099,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "5d9b27f078581838578f8cfb.pcm",
+    "cutS": 2.4,
+    "sha256": "f6dfdc68c96f62eac9d5f2f61871aab132c680ab85558f45cda2c3b1b6214471",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0293,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "ac_20_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "9725a82e092b5af398c32a93.pcm",
+    "cutS": 1.76,
+    "sha256": "13e27347a5392c99acfc4e98baa91f857925270f51328882b805245fe258812c",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "d362babbe2a24a44672a8d7a.pcm",
+    "cutS": 1.76,
+    "sha256": "5c5182f61c8973badf671d170a49be26a3b1f484a7a91e7f9c6957b17edb053b",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "01fde91df69cd6e45d6a5bc2.pcm",
+    "cutS": 1.76,
+    "sha256": "b2016c53f3def3faf36e16725a1cc8d87672da9132127036cbd365dc0abb37bb",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0156,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "ac_20_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "dd59b8b2164cd4197b5a12c2.pcm",
+    "cutS": 2.2,
+    "sha256": "0e35aeeef74640381a8abec42733deea15607cd08294e292901d000f4251aa46",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2969,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3066,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "c71e9ff3c64e29df1cb7d4d9.pcm",
+    "cutS": 2.2,
+    "sha256": "3d94016c9e1337ea9a519323c931644138d09915f2b1cb3a959dc894763be493",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0456,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0221,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "007adc73d21a787808e1abe4.pcm",
+    "cutS": 2.2,
+    "sha256": "b85f954de73f8617dc5e42f06ee98739c9fc9a39349c8676c1503192d6d50043",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.584,
+     "top": "Gunshot, gunfire"
+    }
+   }
+  ]
+ },
+ "ac_25_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "b506ea730879d14cae2d1914.pcm",
+    "cutS": 2.2,
+    "sha256": "19a233d42c41e08702783674f78dc7e26d3b645af816ecf36ea10ac9d9c58086",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.3232,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2041,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "25bb47103bdfc6499369800f.pcm",
+    "cutS": 2.2,
+    "sha256": "b64de4b71863ee6cf60c18362474262265166e7a11d2c060840ad614447cd0f8",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1836,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0498,
+     "top": "Basketball bounce"
+    }
+   },
+   {
+    "source": "5f2df570ec881bde70a588ae.pcm",
+    "cutS": 2.2,
+    "sha256": "f9c27bf142c26f38353d78d3fa02f3cd26bece8643ad4b7fd472ee0beab2054a",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2793,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0234,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.6016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.083,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "f7f4c8b0f74fb50a5936da32.pcm",
+    "cutS": 2.2,
+    "sha256": "9bd2130eb04337ab2791a7a510c6bcba13130517202806d84fb47cb71e2acd2d",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0791,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0273,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_25_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "d325718da3d4e5ec775a11a2.pcm",
+    "cutS": 2.4,
+    "sha256": "568b10865cf1fb811f224fa4a2530b7941b771850df79d9cf56e303c0d4968c8",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1992,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "86247aaa6efb8c0a9f2a462d.pcm",
+    "cutS": 2.4,
+    "sha256": "4cac0ea64540f8105d6fcd91ebf8f5416200f7b616b34c8a9524efd2d30ba226",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0586,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d8011f8b2f75b4d0760c47e4.pcm",
+    "cutS": 2.4,
+    "sha256": "34019e4df95c0b2c1cf1c5311bb08065c132167bdd6c15f31f61b45b4f7cb2f7",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7383,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "ac_25_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "c93aef41e839dcfa28c25af5.pcm",
+    "cutS": 1.76,
+    "sha256": "c6a2f7145bd25e0a9727d1b4a9a8ccd6f5d456ed5dcf61ce773e8c4786fc93e1",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "f124a0e40a97ac6c1c61c5b8.pcm",
+    "cutS": 1.76,
+    "sha256": "14ac159168ccba5791bc8733254f19118a108cbef4e8021cf954c59898073ff7",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "d683b17da10ac9433b5ac24a.pcm",
+    "cutS": 1.76,
+    "sha256": "63561d92cf0b973bc6cbfc845413931705e851fde556ff20e51dd1d3bbc03595",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0156,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "ac_25_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "d8ac2332463caef0c0841d58.pcm",
+    "cutS": 2.2,
+    "sha256": "41e0dc18e09393acb4da1f392b183065bf2b6f469a387d2b16d59ec917df53b6",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.084,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0664,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "e068f503737ad10e7727f9d2.pcm",
+    "cutS": 2.2,
+    "sha256": "82be5c65185db205f337cba188465d811113211546dd8b046caa65713069f965",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0674,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0508,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "fa017de6449aae743df11d76.pcm",
+    "cutS": 2.2,
+    "sha256": "a8df8b708dfa49eefd20f3e175dab26579f4f6797d7923b48f6c330ed6904dd0",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.083,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0654,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_30_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "ad2be1191ec516abf7a89adc.pcm",
+    "cutS": 2.2,
+    "sha256": "5b934db506e95473d2850c4a48b3d1f89646a50d1debf3ec38f1b7bfa6aa5d8e",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0225,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "c57f553ad66112cd4e599160.pcm",
+    "cutS": 2.2,
+    "sha256": "b7cf2edc442fb79c009efc3718d9641c7b2906592d61c7c51e3b5f7bf9143f72",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0391,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0088,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "0497267b35b849820532b92b.pcm",
+    "cutS": 2.2,
+    "sha256": "e2cc27785d330282afc0ab6d9bae0fbeac8c35acdab0c0a0d74d6ac27b22816a",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7383,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0049,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "186d26a13a0b32bc82745bf4.pcm",
+    "cutS": 2.2,
+    "sha256": "fdff4b007abd999bb40cde8638ddb2be5df4018541154fe0293c5cf3e35ad4f0",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0176,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_30_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "5ca07afaf7a50cd16ae68aba.pcm",
+    "cutS": 2.4,
+    "sha256": "3d3557a03d1c732edc6114af046d2d138af5f8eff313247590004130391b451e",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.112,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "8084c9b8ca929f31d4b9388f.pcm",
+    "cutS": 2.4,
+    "sha256": "e316d5fda41dbb554c655784d3d78bcfe483b22413bc587f5aba4c809d2d8820",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0156,
+     "top": "Heart murmur"
+    }
+   },
+   {
+    "source": "0b7deaa61ffd4d543431306e.pcm",
+    "cutS": 2.4,
+    "sha256": "b5426da394d4860ab5a3f986948b4471d6196b6dce5df0ea383c066add01a784",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3066,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0703,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "ac_30_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "3592f57abeafa3a7acabc273.pcm",
+    "cutS": 1.76,
+    "sha256": "c114f78e0b881fbec277f833c0a903b0b0a764521b1366c36de7428744739721",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "1fe5e2ae3c7f7768396e1a22.pcm",
+    "cutS": 0.372,
+    "sha256": "e9818bcee73f3e309b8f8b97cf84fb3418ef9ec1f351b6328a82cbe50e7d972e",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0586,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "82fb7c3ba74faea5541a3be5.pcm",
+    "cutS": 1.76,
+    "sha256": "8ef12b9c38181cab7e517fe902ba98b6fee16c09fa14554d1110fbd144e4eb57",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0586,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "ac_30_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "1b602d4b30695b79ba74be34.pcm",
+    "cutS": 2.2,
+    "sha256": "f571965677dc1075854791df03956675e6ff81054ec3f2ea1982f773e5072ecf",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0752,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0332,
+     "top": "Drum"
+    }
+   },
+   {
+    "source": "f05fbf24a327545ee6656123.pcm",
+    "cutS": 2.2,
+    "sha256": "8dcbb4ec0249b42c825cf6ea4eda4c00bff106363464115c4488ca384d0656ff",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0107,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "4586f163ea3c5d1fd7fe9e9b.pcm",
+    "cutS": 2.2,
+    "sha256": "a5779c4a6973aeb9014e113ee7ac2b990d72c7ba75cd98f1cf4e3909861ab6bd",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1914,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1768,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "ac_35_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "dac82eaf0dea771970e0aad6.pcm",
+    "cutS": 2.2,
+    "sha256": "5d54717f69807980a04962a574ce6a8d3d31bd40589ce0a8df32d6690dd0d533",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.5859,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1703,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0672,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "ac0de4963b254fd8d99bce40.pcm",
+    "cutS": 2.2,
+    "sha256": "d3b66061b60c815415c4e38088c4133d428baec7a885dbafb14be61be4b5f97e",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2336,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0086,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "7db9be32ea334a47eb2f8344.pcm",
+    "cutS": 2.2,
+    "sha256": "001a219dbe26f4116b300aea76be386698ede079e2309d35a3f34c78004532dc",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.918,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.7383,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.4305,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0648,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8bcaa21d8cd5bc260f41a871.pcm",
+    "cutS": 2.2,
+    "sha256": "00372817c57bab0c000abbd9d9c616ffc53e6f00fcddcb22d8615cd81df42197",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0055,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0023,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_35_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "b76a6107e8d5b083fb4265c3.pcm",
+    "cutS": 2.4,
+    "sha256": "3dfe9af01add22175d9cd67060e65e668c5ed372fea44d96ba7308287b8be7fb",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8184,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2148,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "04ab892c7726f26d1b93d38e.pcm",
+    "cutS": 2.4,
+    "sha256": "110e7fdd578873fcd40f675b7b0948de8692a02e3798c83a1c1bd14d5e5e9762",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "f40d9ee652ecf75096ecaac5.pcm",
+    "cutS": 2.4,
+    "sha256": "7549a5c5daa90ebf408186f33179b9be860c62c9cefb6f526b279fd467536cf0",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.043,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Heart sounds, heartbeat"
+    }
+   }
+  ]
+ },
+ "ac_35_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "dd3a1f121adb0a38a80a99c1.pcm",
+    "cutS": 1.76,
+    "sha256": "1b6468d8c5ff10f3c729107fd55a98bacc8abbc3a6b473eeb43d08458c4a0bb6",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Arrow"
+    }
+   },
+   {
+    "source": "b626ee6a85dd58c52105a52a.pcm",
+    "cutS": 1.76,
+    "sha256": "3d91d1aa65892860a0140a2137b3a0108ed2d5f790607a69f7f4a0d9953083a2",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "22155caaf4eadcf61aa9c7f8.pcm",
+    "cutS": 1.76,
+    "sha256": "83702e594c6946a80654a74bf7154557cc79db69b0769f061c2ce42c61f19e1d",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0586,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "ac_35_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "e85a42be53c52fee02143293.pcm",
+    "cutS": 2.2,
+    "sha256": "54ac12055e797d4e2cb3989f01d23499f44a3db9c6276a506fc9466ecbe5c535",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1992,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.4016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1352,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "f0829bf52347e06ef212a4e4.pcm",
+    "cutS": 2.2,
+    "sha256": "9f3dcfed6484c2793f5ca8e37f5277dce5403b77121b7bde515d41bd1f007ddd",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7383,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.5,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2875,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0898,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "b04821030b4613a762db9671.pcm",
+    "cutS": 2.2,
+    "sha256": "0d1dff477021dcfe5368b9e3f35e01b4ef2e140ab08f54f5cd503b05af7981f0",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1813,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1195,
+     "top": "Thump, thud"
+    }
+   }
+  ]
+ },
+ "ac_40_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "ea0cd24a2efcab250df28059.pcm",
+    "cutS": 2.2,
+    "sha256": "93c197016af3885a8b5a438221726bf4e35e9625535d9c46bdc7e0fa0a4910f0",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.3438,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0098,
+     "top": "Fireworks"
+    }
+   },
+   {
+    "source": "adc46a9fd10cb745104a4cf0.pcm",
+    "cutS": 2.2,
+    "sha256": "ede3a9cea6730878bcf0d00326e6b35377e12db42e1633f3511148fa873700f0",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.3039,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1055,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "76bc54f4d9ffb878aa27cfb0.pcm",
+    "cutS": 2.2,
+    "sha256": "6adef791caeda54b9636f9ee295639487e6c112c65fca228bac8c1969c2f9d34",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0305,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0125,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "0b3dab7f4bc0b00f1a7be9cd.pcm",
+    "cutS": 2.2,
+    "sha256": "2f081e3a41f2fe3d3a8b5204da84b0a413fb54ee615809bdc2f4908de8503af2",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Arrow"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0469,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0117,
+     "top": "Heart sounds, heartbeat"
+    }
+   }
+  ]
+ },
+ "ac_40_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "33865f4e3cd196f35a486c54.pcm",
+    "cutS": 2.4,
+    "sha256": "dd3ede0f078b7e9225de5a21433f6a6ba5cf3854f5063347631b87a1d81b070b",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1035,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0215,
+     "top": "Heart sounds, heartbeat"
+    }
+   },
+   {
+    "source": "9f7674577db8397c9e7a60cb.pcm",
+    "cutS": 2.4,
+    "sha256": "eb2c097cee88e0f0e82836a5157f5627e3b3ac8d590b81de6b90df07ae17f753",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Arrow"
+    }
+   },
+   {
+    "source": "f8aaa9f596471bbc5b942ec1.pcm",
+    "cutS": 2.4,
+    "sha256": "975a9bf555d4980b88591fcf59db9c44a28a4ed9e61d2873743f64e8a920a6d8",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Heart sounds, heartbeat"
+    }
+   }
+  ]
+ },
+ "ac_40_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "94770aae8d624b73cf68a7e6.pcm",
+    "cutS": 1.76,
+    "sha256": "86515d8f20b76152848aa54b4b3b70a44043a2c26c6e1c626a012ec7b106da72",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0586,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0117,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "dcf8ca4e299fb69cf2450d58.pcm",
+    "cutS": 1.76,
+    "sha256": "12f52e14c42d18905b3d7ed3e69e7f793b99e9ee19266727d97ff65bf6cdd5e0",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Arrow"
+    }
+   },
+   {
+    "source": "d588e79042ad979dbd6e278b.pcm",
+    "cutS": 1.76,
+    "sha256": "715b419bac147444035958d83ab7506b44ab1a06f31a75ec51590aa29325e6ba",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "ac_40_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "826044209a2e992e7c40ba8c.pcm",
+    "cutS": 2.2,
+    "sha256": "f761f571de7291f2e1ab0fa1d11c89d1c526bd97dfca51369eec9d212dcb1343",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0156,
+     "top": "Whoosh, swoosh, swish"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0133,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0008,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "47f204525360997eddcad4fd.pcm",
+    "cutS": 2.2,
+    "sha256": "43105b4539e48e1005c558a2a34a0c0a2d5a0342b7f4e64e6275b640b24cfc5a",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0186,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "803e87de60a442aad2fd3813.pcm",
+    "cutS": 2.2,
+    "sha256": "5648807aa4ebfe7b6284721b46b74ea682fb5dcce5f21ccec7e467c32abc763d",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.157,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0805,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_50_close": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "6e529e5a982ec6406d4c1ca3.pcm",
+    "cutS": 2.2,
+    "sha256": "0a0d424d8cf8eb2456fc6a75462435c3949400fcee6649217e78ee82d54d0f0b",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0063,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "86a11632b1e0132cf5d07f5f.pcm",
+    "cutS": 2.2,
+    "sha256": "e1dc996158d2ad8b44771201ba8b4296f3b8cfd77d8ae420a36b83aa92947915",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1633,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "29971acced7119ad7a0eeb57.pcm",
+    "cutS": 2.2,
+    "sha256": "39b791e6af47a061cbe5cbf41b00261c387d498a9a8b1184d293e44484ce5b9a",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.666,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4082,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.7487,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3118,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "eda25db1bc20f844aafa864e.pcm",
+    "cutS": 2.2,
+    "sha256": "428e6aa716e335a0b684628160ca4a7ec605fe386d3eb51eb7b6200a3df89be6",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2233,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1862,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "ac_50_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "53cfa21ef02f5d6cc632488f.pcm",
+    "cutS": 2.4,
+    "sha256": "9eca8cae8f69607ac3e276357abc8f5cabd8e74eaaa25ca1fe7d96084d085af4",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8906,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4141,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "b8b3786aa5cdf7c0c6a4ecd0.pcm",
+    "cutS": 0.552,
+    "sha256": "f3b57cd649dc9e2e82676931f5397ae8dfdd6a82da108751f2eb65143152507d",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "db84353ddab94824cfdf889e.pcm",
+    "cutS": 2.4,
+    "sha256": "678ed540eddc8fa24aac15faca12f0ee78c46efae9ad49ca9e142db7158d1436",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0293,
+     "top": "Wild animals"
+    }
+   }
+  ]
+ },
+ "ac_50_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "d59c5da0e94fcbadd09ce75a.pcm",
+    "cutS": 1.76,
+    "sha256": "7b0955d9f74c7d6aa344d1e7659861802a6fdb23bbcf9ee3c2734808236d1e7b",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0586,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "56b4bb5229677ed093eac44f.pcm",
+    "cutS": 1.76,
+    "sha256": "a1b52dc7be885a8a2b72aa3ccf1b0318a0c5b43f7e77a52a3df46330577dc707",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "7234a6a0a0e6c777eb7e12ea.pcm",
+    "cutS": 1.76,
+    "sha256": "9f9485e56d84f3811e61e2e016f72d54481265e9530b06fafc24d427a962e7ce",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1992,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "ac_50_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "84f7c4e528c96da3117c382e.pcm",
+    "cutS": 2.2,
+    "sha256": "b412bc4941852d9eb23355adfc537914972537a194c6ea1c5a47be66c5721cfd",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1107,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0716,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "8a0d7d7efd940071f19c751a.pcm",
+    "cutS": 2.2,
+    "sha256": "32042a0875f81237872218cb3b7c893ec3665e5bb45d32066eefc19829c2880b",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.125,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0484,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "a6b7cb3677596d9bdd29ed5d.pcm",
+    "cutS": 2.2,
+    "sha256": "d1d2bad4c5c2790e1940d583deff907f9ed7d2c7e48973b4f8ac9b8f4f2300d2",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0299,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0104,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "air_bomb_blast": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "ec1e10a9975440c92c618a41.pcm",
+    "cutS": 6,
+    "sha256": "bad08fbf8f1393b67ab0ac9e8ea945f6b69fc3eb87293d4c32121a385ef6fdcf",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7591,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2852,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8efa972f03156378e5f66011.pcm",
+    "cutS": 6,
+    "sha256": "f078106c0a4f824cbf5a13b084a4b22ee144d9a186021d6ea26966c244f0b0e4",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6008,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1688,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8b73cea1b9c82fb288a6c719.pcm",
+    "cutS": 6,
+    "sha256": "79f2e928ee4b3efb8c4d1f5f515508cb41065a6b3ab50f02a92645bc2060f907",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7357,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1693,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_bomb_fall": {
+  "class": "incoming",
+  "variants": [
+   {
+    "source": "423c3bfafbe4c6f23213811c.pcm",
+    "cutS": 4.48,
+    "sha256": "8b5ab9445759fc73b470322476c3b844cbb25aca264551fbf34c90fc91893872",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistling",
+     "bestScore": 0.4395,
+     "against": "Explosion",
+     "againstScore": 0.2139,
+     "top": "Whistling"
+    }
+   },
+   {
+    "source": "69baffad58c51827766a3032.pcm",
+    "cutS": 4.48,
+    "sha256": "9ee5b7c46a67ab9c0cc8a0f1f1ab15a61920893746eec35c5f15c04f7ee24a9c",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistling",
+     "bestScore": 0.3531,
+     "against": "Siren",
+     "againstScore": 0.1055,
+     "top": "Whistling"
+    }
+   }
+  ]
+ },
+ "air_crash": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "b770c514c5695f8a7cba417b.pcm",
+    "cutS": 5,
+    "sha256": "b487cb3c639ae456402b3f57ed9137bb50b08b6d7117bc4164afd189d52f1ce2",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3665,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1582,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "bd89c52380c6b71353f17523.pcm",
+    "cutS": 5,
+    "sha256": "addeb1726c906601245790f90e9d8430f108449a1c73fdb73a16b59d5fd579bf",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.368,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0672,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_gau8_close": {
+  "class": "gau8",
+  "variants": [
+   {
+    "source": "b84fd838c342363fd82a11d5.pcm",
+    "cutS": 3,
+    "sha256": "8231fb58420fa4d64eb13fe76e8e24454d0fb6b2dd81bc09d48b28c1a92fe6a9",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7188,
+     "against": "Chainsaw",
+     "againstScore": 0,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "282eb368b11b056f1471c9fa.pcm",
+    "cutS": 3,
+    "sha256": "efbab76198a58d97b1e8d51122c3c49582a1d6e9362d97b016f3d436643be430",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6934,
+     "against": "Motorcycle",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "03c9e9e4456fce1eeb77a6d7.pcm",
+    "cutS": 3,
+    "sha256": "e4beb5c1cd718bf9131f390a23153b0fce0f2827f5fbb981aacddbdf6ea409f3",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.457,
+     "against": "Buzz",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_gau8_far": {
+  "class": "gau8",
+  "variants": [
+   {
+    "source": "518519b0d56d1a2709d6da32.pcm",
+    "cutS": 3.48,
+    "sha256": "39c9af78cf43d9ee68329ac70df95c6e28a76e3778cce6ba7139d7ee92a5be8c",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4766,
+     "against": "Engine",
+     "againstScore": 0.0013,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "228bbad8760f8efa256e656a.pcm",
+    "cutS": 3.48,
+    "sha256": "6b3d617a3a92592f605b65d05b99aa3b5ae14afdb998d535c419b58be054c4cb",
+    "class": "gau8",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6621,
+     "against": "Engine",
+     "againstScore": 0.002,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "air_jet_attack_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "c4c6c32dd6fab4dc320325ac.pcm",
+    "cutS": 6,
+    "sha256": "1421e5bdb15e2b8db5d3aa5ef3bced0ed6e629ed5a7bcb09df8f37a8dfad89c7",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.1552,
+     "against": "White noise",
+     "againstScore": 0.1183,
+     "top": "Vehicle"
+    }
+   }
+  ]
+ },
+ "air_jet_fast_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "81266e116f84f792a7e219fc.pcm",
+    "cutS": 6,
+    "sha256": "28ea783ea56cc8241daee86737c56ea266bd5b12e06601575af96f88bd00e907",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.2798,
+     "against": "White noise",
+     "againstScore": 0.0419,
+     "top": "Aircraft"
+    }
+   }
+  ]
+ },
+ "air_jet_recon_loop": {
+  "class": "jet",
+  "variants": [
+   {
+    "source": "883ffc8874e482af4491ef5f.pcm",
+    "cutS": 6,
+    "sha256": "a934de2b7c846ab7149ccc0528f6fc32a80ac02ef1033db853a42191bddcc127",
+    "class": "jet",
+    "pass": true,
+    "single": {
+     "best": "Aircraft",
+     "bestScore": 0.1854,
+     "against": "Wind",
+     "againstScore": 0.0316,
+     "top": "Aircraft"
+    }
+   }
+  ]
+ },
+ "air_shell_incoming": {
+  "class": "incoming",
+  "variants": [
+   {
+    "source": "3e2f624142e965aa81ea5b1f.pcm",
+    "cutS": 3,
+    "sha256": "25032542fb35046fb6e46e985e519544692514da5acfdaee80f71929e84d3f41",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistle",
+     "bestScore": 0.3841,
+     "against": "Explosion",
+     "againstScore": 0.1576,
+     "top": "Whistle"
+    }
+   },
+   {
+    "source": "6ae908d73f364b2d43a9748e.pcm",
+    "cutS": 3,
+    "sha256": "a28982f2472d9f2cfdb6f6b27ff458e4be88aa5f3376926d01419276973e0e93",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.082,
+     "against": "Explosion",
+     "againstScore": 0.0234,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "821be8ba0cbe0a7be6ffb360.pcm",
+    "cutS": 3,
+    "sha256": "5ac77b85c110427a1306c5a68a5f0af586f7814bef926f20e1d691d2e8c602a6",
+    "class": "incoming",
+    "pass": true,
+    "single": {
+     "best": "Whistle",
+     "bestScore": 0.6016,
+     "against": "Steam whistle",
+     "againstScore": 0.1035,
+     "top": "Whistle"
+    }
+   }
+  ]
+ },
+ "air_strike_warning": {
+  "class": "alarm",
+  "variants": [
+   {
+    "source": "a31784188b7974e534adc480.pcm",
+    "cutS": 2,
+    "sha256": "6d4bb73835f31b2c3da1a869a9bcda2f8364341491db41023d9de88a769ecb1b",
+    "class": "alarm",
+    "pass": true,
+    "single": {
+     "best": "Alarm",
+     "bestScore": 0.3926,
+     "against": "Music",
+     "againstScore": 0.0254,
+     "top": "Alarm"
+    }
+   }
+  ]
+ },
+ "aps_intercept": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "9123b3120c11023adf0a02a4.pcm",
+    "cutS": 2,
+    "sha256": "526784e330d77fe353ff3772888b5a5d9754798b3aecef2195b6ea03abddd9f6",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0176,
+     "top": "Burst, pop"
+    }
+   },
+   {
+    "source": "bca95f259529d6f8963d9e7d.pcm",
+    "cutS": 2,
+    "sha256": "8ef106b6b76ef759ba4ffedb5d82f9538b62d7fb1903f84c49f83d22cadd2136",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0352,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "0a178ab12718ef6f1d2b714e.pcm",
+    "cutS": 2,
+    "sha256": "609fddb8e6eee0bf52bdfcb309e6234224c60f63a989ea93f1be525d8aca9604",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1855,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0508,
+     "top": "Arrow"
+    }
+   }
+  ]
+ },
+ "atgm_launch": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "26364f694c80218e64cf3d42.pcm",
+    "cutS": 4,
+    "sha256": "e957575331f2bd9526d1ba3868e6fd0e3b917357db26f4288fc9d1f06123ce2c",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2313,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0836,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9d49b935ce30f625983aa4d4.pcm",
+    "cutS": 4,
+    "sha256": "09a4ee56069737a5f2906596ccbb46e1c7c2e06579ad4d025d92c4616dbe190b",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2148,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0805,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "2b28d1569054c1df5f637275.pcm",
+    "cutS": 4,
+    "sha256": "22825715ed89f49cf3766acd1f3d49dc4fab7ebcfc0cfc9afc247b2c6b487e94",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2227,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0805,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "burnout_blast": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "cf59610b777c92ebef529ebc.pcm",
+    "cutS": 3.48,
+    "sha256": "29c481ef39b2ca9fc3825a4b03c64fc3d4817483fd1e9156551967f227dacfa5",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6966,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0664,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "c70bca340cc1ee1f4a843d30.pcm",
+    "cutS": 3.48,
+    "sha256": "6bd98cd1f4c38442f31b2055921004a3264c1d4bc241746e88df342534874e33",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4206,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1068,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_100_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "0b84371950285b96bc33bb98.pcm",
+    "cutS": 5,
+    "sha256": "fe96ae4c9fcf8820ef9059b39cd4b73127ab44bc605c34c7bf3aba668d659b00",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8268,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1732,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "426aa1b39c8613db68688d48.pcm",
+    "cutS": 5,
+    "sha256": "33bfb436b3f65fe24b29bd9d5ccd3064dfb166dc9cc48d8537dbd07c4dac5d13",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6523,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1523,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "6bf4916f25a312e7517c4abe.pcm",
+    "cutS": 5,
+    "sha256": "b8fcd49cfe79f9d13129b4034a69a3332867965042a61420c1ed45fce3c8891e",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6172,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2643,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_100_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "14ae370e816abd5cb305d277.pcm",
+    "cutS": 5.48,
+    "sha256": "7f0716534fd3f535b638bff64cda770ffcd42f6af4c2baf5fe602b775d2248ec",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "3b64d96492a2ba9a427f20fc.pcm",
+    "cutS": 5.48,
+    "sha256": "eb7a8c1507aa86febc3c4244e459e34c33aca5c9bfb90df93da7527b4b390b51",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.2852,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_100_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "87a129c7b8e0aceefed8c820.pcm",
+    "cutS": 3,
+    "sha256": "70d4570d20bb4f965beab25701b9565520d0ba3bcfc61e1f9f7f99e180a706a9",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1823,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0052,
+     "top": "Throbbing"
+    }
+   },
+   {
+    "source": "84d7d4c6a8f4fb8cdce0b2f9.pcm",
+    "cutS": 3,
+    "sha256": "a0de7d37af5354828e373528e64850fb34c3103df5a30dbb741d4e97c95ed870",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.151,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Throbbing"
+    }
+   }
+  ]
+ },
+ "gun_100_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "f3338c8ae8e502204495e64f.pcm",
+    "cutS": 5,
+    "sha256": "244c7fe3aec25ae2a367b01709408c1cdbbf9ce114713b1281afcdff086eefce",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2135,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d1d622cfd293b267ff695771.pcm",
+    "cutS": 5,
+    "sha256": "c03a636bea9148b46237fef50c5e45ed200922b46b0bc779418cbf4e80aa097d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.556,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2266,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "7e40c481a19d65d4a702efbb.pcm",
+    "cutS": 5,
+    "sha256": "a2f25a9b1fe694690a27646bf668fee8cdc8a8832028d20a18486eb9331008ed",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8268,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2708,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_100lp_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "6ea2a6e31b3e6361fd205f3c.pcm",
+    "cutS": 5,
+    "sha256": "3b4427fd15b08db26f794b131cf5bb343962c962f46d681d5022275fcfd95798",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7109,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2461,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "26bd81963ce05eaeeba3a62b.pcm",
+    "cutS": 5,
+    "sha256": "b1102e722c284fc214e1a11eab0562df578007eddb2358527985fa55e6afe8f4",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8262,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.332,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a4a255933220c3306ec4b668.pcm",
+    "cutS": 5,
+    "sha256": "23fc4e4148eabe005e770bdb6300d7bb553d9be1993c6259c870bff80dc9fda5",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5599,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1667,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_100lp_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "58d867c76fec51b2db3f46d4.pcm",
+    "cutS": 5.48,
+    "sha256": "59228c38ac8ee1f06f469007f1fc934ab52df62356caa08c13d51dcfa18cf8ad",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1667,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0091,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "3e440bd3df9474d28e6882ea.pcm",
+    "cutS": 5.48,
+    "sha256": "2b0e6b3441e8a9af6e7bde7fae0299b30fb93bc07ee2c1b75586ff8bd82eab30",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_100lp_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "b7902a7a26984d394cdb3963.pcm",
+    "cutS": 3,
+    "sha256": "8e8f83c756c4cb14aff4c2323ed62328df88824ceccb976d300c433fcd9ac651",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.207,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "1c1d3682b60a1f225363af5f.pcm",
+    "cutS": 3,
+    "sha256": "0a03e358e80c4fd68f7eb9d212d9b596295cd565492fd9e4f960efb29e4b1db5",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1367,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_100lp_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "5274bf75ea1e5840a1fd4297.pcm",
+    "cutS": 5,
+    "sha256": "4e389668ad8a64c79811f1066f21890c2f952def808d9f51061297a6a4c141f4",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.457,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1152,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "51624e0454a1318eb07fc202.pcm",
+    "cutS": 5,
+    "sha256": "5f08daf4059128301a54ea21cc124061a99c7066ce8ef632bdd514b6ede3a0e6",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6641,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2539,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "607389f15bbd799ef5e86b18.pcm",
+    "cutS": 5,
+    "sha256": "c8ebc5d1035a8d2c0b0f8417b859e681d7bc93a5a02f192653823a522c4eb360",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4336,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1465,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_105_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "e27cd8ea74d751ed08242f05.pcm",
+    "cutS": 5,
+    "sha256": "ea1e5644cb31c5954433733f1516bb135c44d13c6684093573b1bae0015aea69",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8262,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1738,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "340963d6e692942598517855.pcm",
+    "cutS": 5,
+    "sha256": "84870cdbe47543c3e836d896ec7c20cf7381687deccb502874bff674428a7748",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7969,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3594,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "3121c3c2ec1aceb6c75bfbd0.pcm",
+    "cutS": 5,
+    "sha256": "9fbf4a913342442c2ecb47d459516c7b8009d15788c0f1061a73c10daf96666d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6621,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_105_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "8cc0830334d165d792def018.pcm",
+    "cutS": 5.48,
+    "sha256": "70182b405d301839da2c0bca6f784ddd57c69474fd465d81ef9fe6d9c2243675",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1224,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.056,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "1bc44dd116e079571568b47f.pcm",
+    "cutS": 5.48,
+    "sha256": "50054ee9b0c7cde3f10a2590f480282ee676d2dd8e8f4311aa061387400764c1",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.151,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.056,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "gun_105_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "3898f559b0eec068df2d5a88.pcm",
+    "cutS": 3,
+    "sha256": "033ae68aa0649b046c0ba43ab899832b2daa300869c91d58dae839dae65682e3",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1035,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "9ecdcb89dd27b651118dc448.pcm",
+    "cutS": 3,
+    "sha256": "9499023e49707c223d67fc4e40ac3b1e10839acb7eb2296c69bb1d3cad4b16ef",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0508,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_105_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "fa7db7214742a8046b87b787.pcm",
+    "cutS": 5,
+    "sha256": "6059010e45d1fe781a3aade01b04d2a6480197c9a8144378517623a35ca6db8d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2891,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0352,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "dc6ccf967332e17505e466cb.pcm",
+    "cutS": 5,
+    "sha256": "f484090233a3b82e75b2d2fc3a0c6e803a4db221cd63990843ed778e32b8186e",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4557,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0872,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "5f78e15d041905459fe49760.pcm",
+    "cutS": 5,
+    "sha256": "f68c39d593280cd5536381bf3adb65819d5f7ad2946314e8193754db12a68752",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0703,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_120_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "f6afd77b5e9ca2471d5d328d.pcm",
+    "cutS": 5,
+    "sha256": "756e58f70dc9b78603340eeaa28c9355cac829295669c911c6e787e34317f0d2",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.556,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1393,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "b45be6cc5b637e2cd3fc84cd.pcm",
+    "cutS": 5,
+    "sha256": "2bcb5860e02cd44a78bc53d83c659d937d7aedda5d71b3ce35c30fcf5df25261",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4609,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1471,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "bf0b5f3496ada95a2e7fe4c0.pcm",
+    "cutS": 5,
+    "sha256": "951ca108a405f815b20c91816b01f1e1dc9379a71d79c35329406cfcb0b9fe5f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4834,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.209,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_120_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "2ddb5b5e4c2e90ef83967994.pcm",
+    "cutS": 5.48,
+    "sha256": "0d2f493a9024de7ec2bc7e08b56e9b076757e27ebb00096d1451873d536b6bde",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.459,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "7a1c14628265bd96e2f30e34.pcm",
+    "cutS": 5.48,
+    "sha256": "10c9107ef0273e2f9a975a5a8186eac194d204fe6fb422021cb71ce147c41dd8",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0762,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0234,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_120_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "0ce5a7ea6f3a236cf2ae0ab1.pcm",
+    "cutS": 3,
+    "sha256": "4da0b3e34abcb2cce7a02bcb548783d675e28f40a406ee645644ec6de1442086",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "36229fa80a9f85c50830f0e9.pcm",
+    "cutS": 3,
+    "sha256": "2e9985e2d39bcf202520f87a65fa1cc3038a0d1613e4cca3608f15bc65a1f835",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1602,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_120_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "e62a958a8bfbfd82d6773197.pcm",
+    "cutS": 5,
+    "sha256": "a64ac34311175eb41abb92f0c6a7162ff89b37f6762cb2c2d438caaf9b648199",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2435,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0534,
+     "top": "Burst, pop"
+    }
+   },
+   {
+    "source": "6f2dda2934f330b41a637ac9.pcm",
+    "cutS": 5,
+    "sha256": "d3c50c5f1744641a936085d77c09b1b685642bccd86fcb786bc10bcd409b9f01",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1641,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0221,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "21f2c4eb6282656ca1444db0.pcm",
+    "cutS": 5,
+    "sha256": "90bd385fa21c6ead386f864db4bd4c391602f30f52a5a579f2455234dabef46e",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6732,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2409,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_120r_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "c51357a14d0909db50d86f75.pcm",
+    "cutS": 5,
+    "sha256": "f452d9f0f237c585354a20347dbbf925ad6e78cf88d3181cf4dc7f2c0228fc29",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5208,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1797,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ca59377421df02b2409822aa.pcm",
+    "cutS": 5,
+    "sha256": "179a59cbf2a9013fbf7b69698fe972c2114be6365306670fe746ee261b950a56",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4674,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1693,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d96e33f7ef3b5bae8b922a10.pcm",
+    "cutS": 5,
+    "sha256": "7a494f44455ae6498c2e23bef92485375a6b640cbf8e382d8b59cff0c55804f2",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2207,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1035,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_120r_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "ccbf91dbc94b4031ee775752.pcm",
+    "cutS": 5.48,
+    "sha256": "8ec8da8b58088288dc9a08828d8cfc8ab09f9c8e44c867c78f29a2740461cfe3",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2051,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0762,
+     "top": "Timpani"
+    }
+   },
+   {
+    "source": "aba3f64fa3097844de02e552.pcm",
+    "cutS": 5.48,
+    "sha256": "aa8c9929e6f154d32506ccdc0a4fd6aca4a82120fa5800ca9cbe3b160298d9db",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1152,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "gun_120r_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "e76c5eccd122bdc4ab2f9782.pcm",
+    "cutS": 3,
+    "sha256": "98373077181f92413837b860572b33447141aea008ae76291eac78dab8f7aa48",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1211,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "e7cd26a9bdc3c01690a28344.pcm",
+    "cutS": 3,
+    "sha256": "c49395b8bcc412fe1986ea646255b3e35b54f4bbdebccab15679db2ed55731c7",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_120r_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "f39a69d9733b36b1c17c1669.pcm",
+    "cutS": 5,
+    "sha256": "a8fbe2e583f960a95d12b8cd145a92ca9dd7b1676ba0d93cf03491761e250d90",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2096,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8ed5bb422eb9248ad1fd08cc.pcm",
+    "cutS": 5,
+    "sha256": "f844681ae65c7d521fd1469e719f1f8bac7af55b3eae2fd87beecf0cc4174abf",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5169,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1589,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "faeb31bb097292a025706eb5.pcm",
+    "cutS": 5,
+    "sha256": "1d3716fbb5c4dfca451d40aca099123878eb38827e955a9c031bde225b5d3668",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.373,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0762,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_125_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "b24f128d3ab4b336da1cb115.pcm",
+    "cutS": 5,
+    "sha256": "80cac43608b4e5d2cd4eb45d910e55af5d284444f47933ce20a614016654259f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4284,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1732,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ba0912f1b8333f9bce2ceb8e.pcm",
+    "cutS": 5,
+    "sha256": "2a3d7b610628eaeaf96f412b8219566c3c60f85d4868929f55cd2c4610ab4255",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3255,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1042,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "5f391549f3d25ab19d4f928c.pcm",
+    "cutS": 5,
+    "sha256": "b644291315f3523994048a28a9db2916c038d27e5f85e899d08c3d50cff07ad3",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6758,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.248,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_125_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "364b9f120c060848a1e20899.pcm",
+    "cutS": 5.48,
+    "sha256": "94b3f48fe31bcb32997c5c7fbe9f8df45e8685bbb211c44c1644d23a9519743f",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.084,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "a0ad2705fd1f95e8a9392296.pcm",
+    "cutS": 5.48,
+    "sha256": "0fb0a1d4c0d0fd5090b003719c58e9f9699ba858e13cfe17b3d672b784c843e2",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.069,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0065,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "gun_125_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "d8fdaf309dd1f0bdb9e955cf.pcm",
+    "cutS": 3,
+    "sha256": "8b21d30776e4d2cd1c7692bd4df542e4642da7428d24de1f53d882b51bdbf6bf",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.084,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "4b672424331493184610c751.pcm",
+    "cutS": 3,
+    "sha256": "75af2ebb86d6c19f722ccf40be43709c041a8a432e4675b61341634b28278d96",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1875,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_125_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "2274d7894c061c404c59b454.pcm",
+    "cutS": 5,
+    "sha256": "c15332076acbd5a11cd3de653a0732c1c7e9069f9bb5052232e7a16546cf1d8d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2246,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0518,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9086a97beefa468ce334d1aa.pcm",
+    "cutS": 5,
+    "sha256": "c170561317fe13a60d810382f625e62e9936bd1f795bdf80415537d27ff7a713",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.444,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1003,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "6f83c40a2966936302118eea.pcm",
+    "cutS": 5,
+    "sha256": "06dd5322006259b48961a3017cabf63d6f57c9bdf807f486e3b1514c4dd3e245",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3301,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_130_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "fce60d9a3c8d5d0a4dcdc455.pcm",
+    "cutS": 5,
+    "sha256": "a500725bd23fab7905cec94d02238f15216941c1964e04071eba4210eb84d9ec",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5664,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.207,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "6330524b64af1f7a100d5dc1.pcm",
+    "cutS": 5,
+    "sha256": "b25bab416d699f258a97f635aa4a3dcc80268ebea606fa6daf22aacf78df0184",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6003,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1901,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "61afa98481178e14b5cad034.pcm",
+    "cutS": 5,
+    "sha256": "3ba98615419368611ae868da0803f3d57d5d03ceaf298548192a328f30a4dc37",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5573,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_130_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "0c18e97dd7e4e38f37601500.pcm",
+    "cutS": 5.48,
+    "sha256": "a7c294d56066a301b99655af0dd350d77a3142039ec257574fc2a2994c301206",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.208,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.001,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "7b602769d27fac8013fd0de8.pcm",
+    "cutS": 5.48,
+    "sha256": "475a40154acab97769734edeca46a419d73846e45a75e69b24a758509f2e9673",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0924,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "gun_130_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "e5caa71f76c29c4f410dab21.pcm",
+    "cutS": 3,
+    "sha256": "7d499061a1ea1a4a990f1c6892615de965c52bb5721e98280adfb1af05bb1aaa",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Synthesizer"
+    }
+   },
+   {
+    "source": "5a185bf1e45eb55aa7b8d969.pcm",
+    "cutS": 3,
+    "sha256": "b774eee3d426245a82c9a747e857d18277a85a6a468adc7acd098f2ed83d216f",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0586,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_130_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "037c073c0426af6515cc18b1.pcm",
+    "cutS": 5,
+    "sha256": "1d38487bc390cda44ef562895fca6dd279773d02d63c00658907d7fe487e938f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3994,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0859,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9c6d648a5e38b425bc4cc4fb.pcm",
+    "cutS": 5,
+    "sha256": "457dfcefab1b00b60dd05e03d91d5108a8f6c4542d171035b3e67123d9ce48f3",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.651,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2122,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "84ad9e63fb5b809beb338346.pcm",
+    "cutS": 5,
+    "sha256": "7845c8efc865596a3318f8ae9d6dd50ee613e0853fee409ecec582f9aff41f5e",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2474,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152gl_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "82c07676ba9d3c71b492eb9b.pcm",
+    "cutS": 5.48,
+    "sha256": "02354cd4ed0a5290c0044ee1126b0575a3cd32d94ac53e0dfadace3ca9142185",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7409,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3099,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "c76126e5c8f43460ef15ed82.pcm",
+    "cutS": 5.48,
+    "sha256": "d5060cd01a0b342a9a1627a8af056662cf415a9e64def5bd37d65fbfab8f5ff4",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1523,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "f17636b5cd9b2c0e318b0f5d.pcm",
+    "cutS": 5.48,
+    "sha256": "10c46c3c88a67e1e83b696c8486069143354117a86dee4b94f670d806ba5f790",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5508,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2708,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152gl_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "32677246795d599fa0154da3.pcm",
+    "cutS": 5.48,
+    "sha256": "7db6b573c843220143deed72b3b69f5ff83711f5c2c62eb3a50b4e20cb03af08",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0176,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "97091295edfefc23d512554b.pcm",
+    "cutS": 5.48,
+    "sha256": "9287af76eab135293800b234168c5e8330e8b37b89b460d29c7de56cb956d86b",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1035,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0488,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "gun_152gl_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "f6f786bd46c04aa264b86aa1.pcm",
+    "cutS": 3,
+    "sha256": "f8fb812c30cef01563d2ec03854fa8fc1e2c19d15f36a362925f8a4830da07cd",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0762,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "a845e849a15258547183ee6f.pcm",
+    "cutS": 3,
+    "sha256": "3d35e64a39ba2ca0814b40af2dcc99baf90205a963cd35138e4a995fcda8456d",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0566,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_152gl_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "b0abd6033b7d9035184fe20e.pcm",
+    "cutS": 5.48,
+    "sha256": "464ec1dca4f1e0b75f4ac727cef8a8411659d06ae10f035d3f646ba43ea9d337",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6943,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2178,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9692fdcae5e00bfa31260a93.pcm",
+    "cutS": 5.48,
+    "sha256": "cdb46c4be61bfc45ed5b1841f673e98c9acceae00136a787f9b1eb69e8e1b887",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4206,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1432,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "da4282091aaff0949807e62c.pcm",
+    "cutS": 5.48,
+    "sha256": "e561da4d8a4bf3b7a3d20f6c1d8a49736fd3767c6ec2c0e591c5d357a290fe88",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3379,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1035,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152h_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "48439240e77495c3b260d492.pcm",
+    "cutS": 5.48,
+    "sha256": "0f95b50452f602942a0a8bc257a2b1d726b30c8baa3cb79c297503d5e4c23e1c",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7148,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2982,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8487245b22a58035439c95a1.pcm",
+    "cutS": 5.48,
+    "sha256": "bb14874250d7b657379f525100fbde34617372746d1e9da17ebd8b252c31f9c0",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8268,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2708,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "bf799ed2699f8061770b7cdf.pcm",
+    "cutS": 5.48,
+    "sha256": "b282c76b1684929ddc02c05f119da5b4acd5cff46bb288f62486f90e72c5beda",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7734,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2031,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152h_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "d95b5e1b9b85a7277cd75f21.pcm",
+    "cutS": 5.48,
+    "sha256": "fcd7f1e169c18fc0cfcd89b19fba0b33b9f3b3a2cb558661375a2316d86ba105",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.373,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "ca95910e8d1c44aa95818d35.pcm",
+    "cutS": 5.48,
+    "sha256": "44227064407b974f11c5ff656a2109f161f02b46db34c344b6cbc45ca8e1ad61",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1738,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0098,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_152h_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "c5eba980406d2f9dfab2f522.pcm",
+    "cutS": 3,
+    "sha256": "53c02728658a8b36c0613e86ddcc36c37f4200ab0fac88df0a06ffe035d1393f",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0488,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "2f889b9a4c101b76c140adb5.pcm",
+    "cutS": 3,
+    "sha256": "ed70763f703d94b6dbe6f2f43cf0a6c890b8e8645b1ba618d6ed172a1b1ce8fd",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1875,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_152h_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "91a151c24377e45f39a081c3.pcm",
+    "cutS": 5.48,
+    "sha256": "75242b889c94b6a8319e3d78350f74222453857ed0837f8e4905cf991df5c0ab",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6797,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.208,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "114ad8fae5ee39a8f63c3397.pcm",
+    "cutS": 5.48,
+    "sha256": "81fbe813d3aecc70eadfab084e76bbf12561fc5c9d1f7a8564a5bbe33dd31576",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6133,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0755,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "150f50440f6a4a7f88d3ed76.pcm",
+    "cutS": 5.48,
+    "sha256": "6cfcc09c41960a3432db8a0c492a76d1ec2fa92c58e84f3f7ec8da0fab802d45",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6302,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2174,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152n_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "bcbb1fac3534597f4025f93d.pcm",
+    "cutS": 5.48,
+    "sha256": "568a611e672085d0bcd4f53fb70efb31907922d6d053372f3c4db4cea66d6d86",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.9404,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1611,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "672119a180a5bd30e11fbb32.pcm",
+    "cutS": 5.48,
+    "sha256": "0176059f6a31fdbc3f82e89c01fc935300e9c01abacf1672b15d40d6636e97a7",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2526,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0443,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152n_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "2c463e7eb09fa788442f8c6e.pcm",
+    "cutS": 5.48,
+    "sha256": "b4d4f90798ebe2b678842af8264cd7ecfbbc5d7d5432acc1fc729d4448559ace",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2051,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "5665214e33c4a46b19d3f8a4.pcm",
+    "cutS": 5.48,
+    "sha256": "23f0fa62c0bf70da23791f81f1827b276a222e4174fc9e29facb0afca302c6d6",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2441,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0859,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152n_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "8e004c927cbf425f37413eea.pcm",
+    "cutS": 3,
+    "sha256": "a1f6e4ad7d4a64925361f5795eba6d73d20e342300254b114055c8ba56050a8b",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0234,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0059,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "1dc65c6ec01f466475897471.pcm",
+    "cutS": 3,
+    "sha256": "c410840d257d530fda45a78d918b44578e07a3d83ddb60645aabb58aa4603a1c",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Thump, thud",
+     "bestScore": 0.0312,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_152n_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "13fc360e7902dfe96a83bc3e.pcm",
+    "cutS": 5.48,
+    "sha256": "5a3a4aaac2892a58e51da180fd17020ce6375a89043d3ed9641477bb5ccd6921",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4714,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a6e95d941d8ea56bd58c6166.pcm",
+    "cutS": 5.48,
+    "sha256": "29096ec5e9c27665a6d5204eab98da8309db3d97db3bdb4daa814560bd6bf933",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0215,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_165_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "65f20824a3a2f19eb18020f1.pcm",
+    "cutS": 5.48,
+    "sha256": "e4be97d00676f363756654e8fa20a0f15990cac0bf7e5bff53ff19c2b5eec330",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.373,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "5150f30d3004e17a70ff8fe2.pcm",
+    "cutS": 5.48,
+    "sha256": "2a265ca233679f9c51e50022eb103773d6d1af5ebbf14a1481b9eb55cab639db",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8177,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3997,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ae6a1d3f1ab712a57c4a17d9.pcm",
+    "cutS": 5.48,
+    "sha256": "d1fdd1e17daa3fb44dfc8df15b6e8584c37054da365d48a73c17d24ad8f39771",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.9115,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4154,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_165_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "de41e1c091f7442149c8aa94.pcm",
+    "cutS": 5.48,
+    "sha256": "c30af4e9e52a766ad0176b4266b873804accf97b729de994a11393b4dfd31368",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0703,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "98cac1ab3138d64e32e81b12.pcm",
+    "cutS": 5.48,
+    "sha256": "e66db1d434f943c608586959097f3e87728ba4f860e3178f72cb888c0bc382c9",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4844,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1224,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_165_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "017f508eb815ddd48cae2fdc.pcm",
+    "cutS": 3,
+    "sha256": "05bd3587727fd0b5f83cc33758c42658687c585a26272e1e1bdd41d1ded5225e",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0781,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0176,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "fe4a988e0bbe635964bccc69.pcm",
+    "cutS": 3,
+    "sha256": "29d738e12c4e55a9a6e299a8912d7801c3dac23debe76e28e4665228dd98b0f2",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0059,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_165_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "d1560e958005e5e863e577c4.pcm",
+    "cutS": 5.48,
+    "sha256": "689a3a2c6acd7030bd476f5402f90b986dff677a49a165911c09ee44e4bec727",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8262,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2988,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "bea3bf505626ba033c1f5cdc.pcm",
+    "cutS": 5.48,
+    "sha256": "4db1f65d84e75e538ed5a9a10ce8fca6876a2a15f1ba4a001ccaa88147839c26",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6934,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2656,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "613130657a047de27d67ce81.pcm",
+    "cutS": 5.48,
+    "sha256": "c000f6b676e766664ed6ac0694b706b3a21a697ad1516636f04fd87ac1526b52",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.583,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2334,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_170_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "db3c42786bf6e8b4da3fa00f.pcm",
+    "cutS": 5.48,
+    "sha256": "841a43ec8741e8c761fa6264b448d226dc2399249cb27249ef0fa172fcf8b080",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6516,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2648,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "43500c61e7dc2a788a00a90b.pcm",
+    "cutS": 5.48,
+    "sha256": "b0ab4f2b516303f060dbc6806ad38138a58d9943017040dfb21037df53cb928d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4115,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1641,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "191238ccabc75f3207c88771.pcm",
+    "cutS": 5.48,
+    "sha256": "0e850f377f70044654161c1c9b042e7efc4197742ca4beed3370a4f304a8a8ae",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8034,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2747,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_170_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "728ccde41992d0e361f63d7b.pcm",
+    "cutS": 5.48,
+    "sha256": "ac955daf005a4b2ba8f1566a340d93e7dc5f348afbf90ad17e104c4ae54b4cb0",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1432,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.013,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "5c8e00e974dfbfb0a27fbb89.pcm",
+    "cutS": 5.48,
+    "sha256": "79e55ac715bdf1dd859f99d51cbf5cda3789350153b24b5dde54adf558a7b00b",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2005,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0365,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_170_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "a896b1a71ea78ea01eda8295.pcm",
+    "cutS": 3,
+    "sha256": "d3db075537ddc29c4ed4067fcf3b0f707e160347fed58ecf5c049c8fd575da1e",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Synthesizer"
+    }
+   },
+   {
+    "source": "2017a02667533b3b62e2cce0.pcm",
+    "cutS": 3,
+    "sha256": "9816ca22c2a4ed646fea0d20393ae0842d026d4cbe80f7f7e383292c2fdbfc05",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_170_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "38c0deb26f9e0dce539249b9.pcm",
+    "cutS": 5.48,
+    "sha256": "c8ba9b9352d06d570598cedbe473d5cf8df0f970ff42960f1224a5315b165213",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4844,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1508,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "3f9dd2efb8dfe8b92d338494.pcm",
+    "cutS": 5.48,
+    "sha256": "6d220cfa6a994be08270dea7b7af18abd5e37d44d764a123449592ccdafff1dc",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4714,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2227,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a9fabe1267d6147a496a232d.pcm",
+    "cutS": 5.48,
+    "sha256": "8f2f52bd15b6b26b8a1de639581ae087d15c898df42115a30264405d0f06e507",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2402,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0371,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_76_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "8fd5c2e8e00be80823727eb3.pcm",
+    "cutS": 4.48,
+    "sha256": "e5a13b4259739289d15db0b35c33d5a715f4269a807af017f4d21818ae29766c",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5762,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1523,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ca521ec8061d37efaaecb559.pcm",
+    "cutS": 4.48,
+    "sha256": "d408128a83a51497830f9c8904a8695acc8eecbfc575d4de52349698c3a271cf",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6023,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2773,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "01c7ff40dcea1b8568ac4992.pcm",
+    "cutS": 4.48,
+    "sha256": "52d0db09015255918c49c6bba8609fbd5a8d28f794a2c687a695e1e0de20a3ad",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7344,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1465,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_76_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "fae7a33ee8c72432114abe44.pcm",
+    "cutS": 5.48,
+    "sha256": "6548d963e25dab7645c527bf19de9c800fce6f77f7a6692240e7ad32cea73837",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "40ab00f37ece8d1e113c4d4e.pcm",
+    "cutS": 5.48,
+    "sha256": "b29219b4d9bc7b84aecc0bd5160437b486d4521a8cdfc6eed8f496bac4711254",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0625,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0117,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "gun_76_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "8146859599dee44c72c4dd68.pcm",
+    "cutS": 3,
+    "sha256": "8a4d30c0817b1b0d3615f00b888d4931f812fc57e868684fac436acf80f84648",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1602,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "4b03c8ffa54a8cd18abf7f40.pcm",
+    "cutS": 3,
+    "sha256": "e944292693f07a256ded433d39c69b03655fdb7420ea61175d9825efd5cc5237",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1855,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_76_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "f28de6f16c7e35ac08d43b66.pcm",
+    "cutS": 4.48,
+    "sha256": "c559ad660bbbc256ad35e21288e117f9a98f197a6ce4047a1190c7dcca24aa3a",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7344,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2812,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ba204b73094289cb0df43e70.pcm",
+    "cutS": 4.48,
+    "sha256": "a81af79f24ce106f176a40da1acb78a8fc1be2d30751bc4d61e1ad5af5eb81cb",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5762,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.207,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a2b8c291c6942c166bde0f1c.pcm",
+    "cutS": 4.48,
+    "sha256": "f4c5c624113a6319de1193298e846a8250c05f2be40d833fc3d345e1695bc361",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6621,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2305,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_84_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "556eccc0bfa5891d0ce9bafd.pcm",
+    "cutS": 4.48,
+    "sha256": "a30c07f7af43f9bb495345856e9b429f2963c3a71c6e8cb27a0e0d43e9ae63ff",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3477,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0928,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "04bd78852002e5632ab472f0.pcm",
+    "cutS": 4.48,
+    "sha256": "7733bdf907c51773aadf7ef9f214edec106c36fbe47233fac2cd1fb28b710765",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7793,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2051,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "640827d17a7024a77f8e1301.pcm",
+    "cutS": 4.48,
+    "sha256": "d927581185f4dfbf57a2644df456a20c69e50a1f2d18d6d6f251cf433729a8d9",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8516,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2549,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_84_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "51f3663d4bb25b0cfa6ddb2f.pcm",
+    "cutS": 5.48,
+    "sha256": "535e2e0ec9e1e1b97d9c6c97b97ea2e17324dc1e433d516a576300dcb266b009",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0013,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "1df35f72dde052da9b21b894.pcm",
+    "cutS": 5.48,
+    "sha256": "2dd164e9c0e7e05367f4c771ebd36ea7ff73c109f14b8135bc3be474a54f8060",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Heart sounds, heartbeat"
+    }
+   }
+  ]
+ },
+ "gun_84_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "90429732f2701e1fb22d7739.pcm",
+    "cutS": 3,
+    "sha256": "f2830530ae591e3941d63fc60abaa4d71a79db18496df14528b81b8f937f3bb0",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1328,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "da7f0ef9ad349fc98e55b113.pcm",
+    "cutS": 3,
+    "sha256": "e08b9ab169da0a41b29e37ceb5f3aa87ed66712359c822761741e41ddfdd6234",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1562,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0013,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_84_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "931c0452df2532724b8386d5.pcm",
+    "cutS": 4.48,
+    "sha256": "f8166df2656881d21253b28e6174a1b112d9d983b9b721e64fb9546747c37d09",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4388,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.181,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "70a48b27584cf45623a7e506.pcm",
+    "cutS": 4.48,
+    "sha256": "94ff4d51dd794e823b45e831219ee6e6522722b80c41b953ad7a818ffb20f22f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7266,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1966,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "48c42538df6b01e0da20afdc.pcm",
+    "cutS": 4.48,
+    "sha256": "35485a937798009a8dca1f2aa57d66b947f249fbd19b4eea20d1457d7f9b815f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0215,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "gun_90_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "40e34cc9760f67f6eb72a055.pcm",
+    "cutS": 4.48,
+    "sha256": "539424e7e0d7aadc565190ef76c1e9509e8e179a84f666f21e4bee692b2c2fde",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5866,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1973,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "3e82decdb164d913cef4bbf4.pcm",
+    "cutS": 4.48,
+    "sha256": "c1f7eb7dc5111b8c7420da926f5a9eeb37d7c6dbd9c7a395c7134c7ca72a9e63",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8516,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3281,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "b5cfb29d32f1a6b457eb164a.pcm",
+    "cutS": 4.48,
+    "sha256": "d5c81c0b824221f385102e6e1a8ee0ccb821003fd6639e6ece3109a9667bfc61",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5381,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2168,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_90_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "abd483fb96ad8bfb70655a6c.pcm",
+    "cutS": 5.48,
+    "sha256": "b87327760e50735737b54effbb4b83b6d5823001d8f488180e835e901f779444",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.2031,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0013,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "00f6cd199c554903efc8fbc3.pcm",
+    "cutS": 5.48,
+    "sha256": "8492a5021d9aac0c7cdbad44cd93ba7609526888f2cf8f018f2dbad176a18265",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1133,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0247,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_90_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "74eb846552d7e4744ef8bc79.pcm",
+    "cutS": 3,
+    "sha256": "0172d8fbd05f120cab62f94c2ff104ca53d9ff604e0faf05d378b29cdcec2932",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "199e078ff6e2b8ec511404a0.pcm",
+    "cutS": 3,
+    "sha256": "afa7a7fe3bdc9bc5307281b39f591ccb1d08730dd278a75192d6da4ae25ac959",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_90_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "7fcec8b9e28e7388ef169bc5.pcm",
+    "cutS": 4.48,
+    "sha256": "8c04736addd34d2accdf6803408dc982c058ff7c4f778dcb2739be54a9787e44",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6453,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2609,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9646c045b580bdf7a9f2947e.pcm",
+    "cutS": 4.48,
+    "sha256": "94dae7390525111191cf4f7f27b562087ca26c2ffc44bf552ab1489b34bcdbc9",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3555,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0365,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "7fec07d8e485594ece6ca308.pcm",
+    "cutS": 4.48,
+    "sha256": "5b98f72270aab0df9e16a9325c89e069d767f643a237089207caf2caa08c913d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1816,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0625,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gunship_30mm_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "60c77904d1491f5c872a1abc.pcm",
+    "cutS": 2.2,
+    "sha256": "8d09a2bd0382e7035364b6c12ec5aeb7954aa6c22d934741653ce65937611aa3",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0566,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "f9e911922f124bc39839652a.pcm",
+    "cutS": 2.2,
+    "sha256": "dd78a87aa83b76e45a3c4dd5f5c6ae76cf3f694348b210b80926a18e71282cbf",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "b6d7c761503f052cd75af10d.pcm",
+    "cutS": 2.2,
+    "sha256": "1902b4303998ec4c8979f70bab4c7bbd139e157349e0dc3545256921d756cbaa",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0449,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "gunship_30mm_own": {
+  "class": "autocannon",
+  "variants": [
+   {
+    "source": "9734b081e80387be61e0e0f9.pcm",
+    "cutS": 2.2,
+    "sha256": "3747e6218d5511e19603b70885cde67745c9aafad3cf8ff8dc9815bb6bab1026",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.2617,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2363,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "1ec252b11b3dff297c6c2b77.pcm",
+    "cutS": 2.2,
+    "sha256": "a4c3fb061f183a96be50d77b740c4d7e8f8fd32ca658331dfd60c0d84a9a52db",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.0176,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "5ddff06e8ff337d9945d61e9.pcm",
+    "cutS": 2.2,
+    "sha256": "bd43131cae5d7e974e71816f717989dfc9ef51187a085978b7855c93069dcd31",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1484,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.6074,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.5566,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9c750a49bfcdc06e6f79dcea.pcm",
+    "cutS": 2.2,
+    "sha256": "d6d8ba001488be4ad2235a65e034a90653705a839becfd77355863ac51955fbf",
+    "class": "autocannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Explosion",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.043,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gunship_howitzer_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "f929b509bc2537f2a1ffba82.pcm",
+    "cutS": 5,
+    "sha256": "e8ea5b01857413150ea32c57b63636109cf6c60ae0279d6b162de76270f0a455",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "2f4ee11b5a1293f6d0deecfc.pcm",
+    "cutS": 5,
+    "sha256": "2aa9b7ef3ce1db006db7085ef12911ca829096c21473e8e8f2619a71be4f8834",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2305,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0371,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "gunship_howitzer_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "2c53a74c83d5c686634b5b6e.pcm",
+    "cutS": 4,
+    "sha256": "3f1da8e8bf982169159e14a0440df4a91266ae197150025e0ef4e2296ebee00a",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5846,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1732,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ace843bd77c6385f51592df9.pcm",
+    "cutS": 4,
+    "sha256": "47aa7b1dacae98f0726f9710b32f2fb5becd66d59759e91d1b685c3e0005c162",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1465,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0449,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "184afc68697c25f6e3452cb5.pcm",
+    "cutS": 4,
+    "sha256": "589afc129f508869593d6ae9ed49ffdf12746c917b6ec43fafcba6a2e768a609",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1875,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0586,
+     "top": "Arrow"
+    }
+   }
+  ]
+ },
+ "gunship_missile_own": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "e4f3859b9f1d2ed8960a141a.pcm",
+    "cutS": 3,
+    "sha256": "b7af52e0eaf31d2a0b32663195494bfecf8a9db5a7bee39ebe3028e5dc4c68e8",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1445,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0449,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "fdf5c4409b89b3a42bb633ed.pcm",
+    "cutS": 3,
+    "sha256": "8b97e137669bbc5a2984b04498cd3e292bd36b18a2ee30650197035d1335c79f",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2256,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1826,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "launch_far": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "6a68741b6d7fa356e032252c.pcm",
+    "cutS": 3.48,
+    "sha256": "76eb0c30d8cab35a59cfcaaea05764e6c33f33f2dd9d8e8fd7867eb28d07f8c6",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2242,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0258,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "cf70c9930b8a0998e361092f.pcm",
+    "cutS": 3.48,
+    "sha256": "aacca4c872a2eb99716d9a1f17657611e2ab0584ec35ba0a0b9833cdca9d0ead",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2786,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0091,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "launch_gun": {
+  "class": "rocket-gun",
+  "variants": [
+   {
+    "source": "7640ec141e8b49ad0e60b183.pcm",
+    "cutS": 3.48,
+    "sha256": "060faab44e581fff49412b26f53388bc1584aced1e3e3944c0b5cbe9a9cf24d2",
+    "class": "rocket-gun",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5381,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1846,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9f6837cab36d281a9881ad8a.pcm",
+    "cutS": 3.48,
+    "sha256": "fa4f6758d00c3a65e79890bd68fd65284db711cb76b52dc03a292bd9cf739f30",
+    "class": "rocket-gun",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6768,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1768,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d1bb3ef9420de17443d03c41.pcm",
+    "cutS": 3.48,
+    "sha256": "f48bbd77ac6f9ce0ff4df18338af07443ce3520626bee40750aeaea01b23bdee",
+    "class": "rocket-gun",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3926,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.167,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "launch_rail": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "2af83e992d894b62a67d2e3b.pcm",
+    "cutS": 3.48,
+    "sha256": "a914aa90575d4a5d355b8b556dd6e5e302e4c90d426f13c02173d1aad4f0b666",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1455,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0068,
+     "top": "Accelerating, revving, vroom"
+    }
+   },
+   {
+    "source": "63558543d9e29436c519b2c4.pcm",
+    "cutS": 3.48,
+    "sha256": "01e61974383903e4c0d1cebe7a0821b34ea8509d2fe65eec4901410f2d6072a6",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1885,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1016,
+     "top": "Basketball bounce"
+    }
+   },
+   {
+    "source": "a2bd621a686f08e7e48a652b.pcm",
+    "cutS": 3.48,
+    "sha256": "ca04b531675f779a7c862eb613cb183225718f3e9cbe92625d29acabce71eb66",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.4674,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "launch_soft": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "76bc33ec1b0334217666d8af.pcm",
+    "cutS": 3.48,
+    "sha256": "db3a813d3fa0311956acd7f4fae835d3c69b8d479ccc3df9317dd3011f2df453",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.263,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0104,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "7bbb4c0edabd8757b31a689f.pcm",
+    "cutS": 3.48,
+    "sha256": "4cb465d37c2142d1bf553f9badee0e092417764b70a0fb00153e77626f31af28",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1602,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   },
+   {
+    "source": "c8cdbd56faf58b6bd290f313.pcm",
+    "cutS": 3.48,
+    "sha256": "47b73ee9ae276ed8062450eab504eda4af0e275103c8c8fd6c23c8b3b9f9c26c",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.2135,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0638,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "launch_tube": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "f6c4b9a79976f91e2f13de1f.pcm",
+    "cutS": 3.48,
+    "sha256": "9b2d0de37930db777079183f378644fce5adef71dd083538b92d1fbfafb9d7fc",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.0742,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0332,
+     "top": "Vehicle"
+    }
+   },
+   {
+    "source": "33a0082b34b663f48557fd37.pcm",
+    "cutS": 3.48,
+    "sha256": "33e7c2dc5824840f57b0549cd0349754cde74c24e2076943e15fc6d71a0994ee",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1263,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0911,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ffa2c7c816cd3eeb9e601e17.pcm",
+    "cutS": 3.48,
+    "sha256": "fc9388c782d144ee2ff430668d89277f8613c2fb664c0d2510f0602ba3b65e0d",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0602,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "mg_heavy_close": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "66bd1da4521607439fae8a06.pcm",
+    "cutS": 1,
+    "sha256": "98ec6cb669171556a369a5b80a70aa3dd8fb92bd153718132d92e06fb1cd8ba7",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.8008,
+     "against": "Firecracker",
+     "againstScore": 0.0586,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9551,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9629,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "b57894453bfee9787c2f86c1.pcm",
+    "cutS": 1,
+    "sha256": "4b6f97bc6165e6146bb1d4c230b973af8f832cc158ea1c5af1d4a11c9836c78a",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5859,
+     "against": "Firecracker",
+     "againstScore": 0.082,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9238,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9297,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "0c333c843057ed8beda1dce1.pcm",
+    "cutS": 1,
+    "sha256": "73026600c9200a98b6f406f4730d98fdf362653ced7480376747e3e33e2c1c26",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0195,
+     "against": "Firecracker",
+     "againstScore": 0.0039,
+     "top": "Fart"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.7695,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.7695,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "862afd923b3945a2671ea048.pcm",
+    "cutS": 1,
+    "sha256": "020c322774d51f9e23036d0bb5392742b3962e8ecf42f8364a5b2e07d5c85c4a",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4141,
+     "against": "Firecracker",
+     "againstScore": 0.0312,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.6191,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.6113,
+     "top": "Machine gun"
+    }
+   }
+  ]
+ },
+ "mg_heavy_far": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "4888b9b05b1619f309ac564d.pcm",
+    "cutS": 1,
+    "sha256": "c4118c6343cb0c2eb90b83d874f3f99a14859d08cc58884ffa8fa6812d11f6df",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.5,
+     "against": "Firecracker",
+     "againstScore": 0.0195,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.4688,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4883,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "243a02594dcc2a66ee929cfc.pcm",
+    "cutS": 1,
+    "sha256": "a250c2682d9005e510e585e9bab6795d9faf6ff6bbec8351ca38ceb644d372c2",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8008,
+     "against": "Firecracker",
+     "againstScore": 0.0586,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.8398,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.8477,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "e87a829d7d93fcfa9b6340c4.pcm",
+    "cutS": 1,
+    "sha256": "8251b62de27974d9a1aa96266eabaf1ae9dbb1ab1396dd1487962c888ab22235",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.668,
+     "against": "Firecracker",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.4414,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.4102,
+     "top": "Machine gun"
+    }
+   }
+  ]
+ },
+ "mg_heavy_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "3590619480cd1dc9dfcad78a.pcm",
+    "cutS": 1.36,
+    "sha256": "dc416135f7e8061fcc079e1fe909a596a513db47fb8dbf520e63876db66cd348",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Thump, thud",
+     "bestScore": 0.1094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0312,
+     "top": "Knock"
+    }
+   },
+   {
+    "source": "416dc811be803fe27e0fbf35.pcm",
+    "cutS": 1.36,
+    "sha256": "44d3deec3e8f69741203bf9f2ddc026fe336caa96080bf2dd6cb9666e260ae04",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.043,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "4734eadea195831a9d01fcef.pcm",
+    "cutS": 0.272,
+    "sha256": "7378afa39e66a74d3132337849594a6983056b21c05789978d5e304ba87e086d",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Thump, thud",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Knock"
+    }
+   }
+  ]
+ },
+ "mg_heavy_own": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "70cdc0ee910f63809f3fe13e.pcm",
+    "cutS": 1,
+    "sha256": "41bfdb4bdb742ce223ca8dbe848ea1549ef930baf168a01645283e863346dc4a",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Firecracker",
+     "againstScore": 0.0078,
+     "top": "Burst, pop"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.7598,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.7598,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "91025613e1a46c2991779141.pcm",
+    "cutS": 1,
+    "sha256": "50de56236515f383f9e5261c4da101b5eb72e5b3f480fb93b7d59c6bf47e08f2",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.1484,
+     "against": "Cap gun",
+     "againstScore": 0.0312,
+     "top": "Door"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9043,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9375,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "481c07100223d2fbbae57701.pcm",
+    "cutS": 1,
+    "sha256": "8e3c8dfae1753b6a654a03399e6373c0ca46f908d623a66190c4e2226c76e0e7",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.0312,
+     "against": "Cap gun",
+     "againstScore": 0.0117,
+     "top": "Whack, thwack"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.8516,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.8516,
+     "top": "Gunshot, gunfire"
+    }
+   }
+  ]
+ },
+ "mg_rifle_close": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "1c54a4f840c42fa4581a4708.pcm",
+    "cutS": 1,
+    "sha256": "7083f27cae60a587a25496718e14145f120b3a825676bdd44124d92a94b8ef98",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.668,
+     "against": "Firecracker",
+     "againstScore": 0.1094,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9355,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9492,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "ff7322f3fbf29dc1fd99b79e.pcm",
+    "cutS": 1,
+    "sha256": "fa34603539026ed3832de2aadd39a043e0f3de7230f715c20ff5a23158432b6b",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Firecracker",
+     "againstScore": 0.082,
+     "top": "Sound effect"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9043,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9297,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "26b217aa8f0cfaeeb996f8d9.pcm",
+    "cutS": 1,
+    "sha256": "5ae556bdc72d50d403b33ec86dbd08fdb227655f609f1fa2f35157bbc5efe45b",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.918,
+     "against": "Firecracker",
+     "againstScore": 0.0312,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9238,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9609,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "37d4784771b06272c2c7b82e.pcm",
+    "cutS": 1,
+    "sha256": "0c260cd9175d65003345df4332270c4bd6da00c0afba1c533245ea193ed0c1c6",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.1992,
+     "against": "Cap gun",
+     "againstScore": 0.0312,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.5918,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.6113,
+     "top": "Gunshot, gunfire"
+    }
+   }
+  ]
+ },
+ "mg_rifle_far": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "18c0157008aca85eb1650215.pcm",
+    "cutS": 1,
+    "sha256": "313275082f2b08def30ffa535ee53d806206264baa1fd6d519a11b2c83a77dc0",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.9805,
+     "against": "Firecracker",
+     "againstScore": 0.0039,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.8965,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9238,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "936a70eb35338501ffeea28a.pcm",
+    "cutS": 1,
+    "sha256": "85c95ebc1505415538e77f30b2f6565bcc4a528feedc995338122ca4669dbc72",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.8008,
+     "against": "Firecracker",
+     "againstScore": 0.0312,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9297,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9688,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "59921b66a5ff22a5f707f76a.pcm",
+    "cutS": 1,
+    "sha256": "8dccb8758b12f9eb35ce6bed6dab6c9e9beb28cbe53a0057c8eec681d412857d",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.7383,
+     "against": "Firecracker",
+     "againstScore": 0.1484,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.8281,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.8711,
+     "top": "Gunshot, gunfire"
+    }
+   }
+  ]
+ },
+ "mg_rifle_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "4b4d6d8231be583fe8e11bc5.pcm",
+    "cutS": 1.08,
+    "sha256": "fd40351d7b0a4e04af8ba6dc4812885600a9e2af89a52530cf7d82518b13592a",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Thump, thud",
+     "bestScore": 0.0586,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0039,
+     "top": "Arrow"
+    }
+   },
+   {
+    "source": "1dce78f87691ee91f45f0875.pcm",
+    "cutS": 1.08,
+    "sha256": "871effa98a45e64d36f2edd1f37cf161327747e3e83a5acb397b7ea3dce2400d",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Thump, thud",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0156,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "6a050e1a90069bc99b71a4e4.pcm",
+    "cutS": 1.08,
+    "sha256": "d335af9fca9a0a6536fbc6dfeea39bc0c2777f0100abbf2472a8f69a2317123e",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.082,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "mg_rifle_own": {
+  "class": "mg",
+  "variants": [
+   {
+    "source": "d20df44ce511039743f63f8d.pcm",
+    "cutS": 1,
+    "sha256": "943093b98dace77058ef24ab77f3e5e8dd2b1f52d8f463ed5cac2df745a62a9b",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.7383,
+     "against": "Firecracker",
+     "againstScore": 0.043,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.957,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.957,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d9e4923462a237e4d0e4cd1b.pcm",
+    "cutS": 1,
+    "sha256": "815f862291f2e71a877d98e3d1f599501e3b64711b5c5fda1fa3e7c8bf679761",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Gunshot, gunfire",
+     "bestScore": 0.5859,
+     "against": "Cap gun",
+     "againstScore": 0.4141,
+     "top": "Gunshot, gunfire"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.9551,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.9629,
+     "top": "Gunshot, gunfire"
+    }
+   },
+   {
+    "source": "190caf42ccdef5a639aec542.pcm",
+    "cutS": 1,
+    "sha256": "2b412d90d146caf35f1f4213c3195ad63887d8093e693388850fc9aaee9f031f",
+    "class": "mg",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Cap gun",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    },
+    "burst": {
+     "best": "Machine gun",
+     "bestScore": 0.5449,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.5254,
+     "top": "Machine gun"
+    }
+   }
+  ]
+ },
+ "missile_launch_own": {
+  "class": "rocket",
+  "variants": [
+   {
+    "source": "be210feea25720db87aa597c.pcm",
+    "cutS": 3.48,
+    "sha256": "6f827dd78dc71ff07bb5e0b012484f6126de0b3fdff4307086473cf961b5e853",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.0664,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0247,
+     "top": "Vehicle"
+    }
+   },
+   {
+    "source": "bbdd5b0b72f8502fbf9439ce.pcm",
+    "cutS": 3.48,
+    "sha256": "02ec104d05b23992c60f3fe68ec93ff4ec2cf21d52a6185376fd0b560b4a97ae",
+    "class": "rocket",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.193,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0102,
+     "top": "Arrow"
+    }
+   }
+  ]
+ },
+ "mode_frontline_barrage": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "0ca4a42417c10d6258ab1148.pcm",
+    "cutS": 6,
+    "sha256": "8d10c2cc6269acad8484a27f96c066f3de4eaf7fdddc6e0ebce7aa3c97214e2c",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6003,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0911,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "rocket_salvo": {
+  "class": "rocket-salvo",
+  "variants": [
+   {
+    "source": "e753a49aac088b4546b0ee50.pcm",
+    "cutS": 6,
+    "sha256": "37fe596e4757d1378cc09c8ca1c6559ba1627a9b6715af116bbed7d4a06037e3",
+    "class": "rocket-salvo",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1805,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1312,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "de06ca55f8b609d276a94dc7.pcm",
+    "cutS": 6,
+    "sha256": "dd52eb85b7b354aea9497f0744d54cdc834db7389fdeed5e98e902c8c8ee353c",
+    "class": "rocket-salvo",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.166,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0244,
+     "top": "Whoosh, swoosh, swish"
+    }
+   }
+  ]
+ },
+ "rocket_salvo_far": {
+  "class": "rocket-salvo",
+  "variants": [
+   {
+    "source": "47676d5546c37acb37cc1a75.pcm",
+    "cutS": 6,
+    "sha256": "664bf4d6fba74f09f1e9589a32ced94c404d2d6af00772c046683339fd552fc4",
+    "class": "rocket-salvo",
+    "pass": true,
+    "single": {
+     "best": "Whoosh, swoosh, swish",
+     "bestScore": 0.1903,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0631,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "9abfa4422bd239f65e2d55b8.pcm",
+    "cutS": 6,
+    "sha256": "760a7822a511edc7944885ae90bf75605bfb5a0ef569d89cd3c56e94d314da6b",
+    "class": "rocket-salvo",
+    "pass": true,
+    "single": {
+     "best": "Artillery fire",
+     "bestScore": 0.4029,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3834,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "tank_explode": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "b66be280f74c0f0b9a53d83a.pcm",
+    "cutS": 5,
+    "sha256": "aea1721e044dfe341ca9d9963b2bd92721cf16e295004470aac18e6d29783feb",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Boom",
+     "bestScore": 0.6094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2354,
+     "top": "Boom"
+    }
+   },
+   {
+    "source": "805fc64ddb66e32a2e31c44a.pcm",
+    "cutS": 5,
+    "sha256": "e69280b8a9ff9f1a95038c8926f4a087e22c278a66a42b3b512afd09f0dc3a7f",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0656,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8f0c5e2b308ed133faef8d17.pcm",
+    "cutS": 5,
+    "sha256": "79da6467d758887b5e648d357651e6d93a9a3a11ed34cd348e5dff46453719b3",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3578,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1242,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "tank_explode_ammo": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "f5ef43d4b506c152255f3eae.pcm",
+    "cutS": 6,
+    "sha256": "47142df818d2eaf638a7af451bae1a8a344ec716185b50eefaacddfea749e30b",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Boom",
+     "bestScore": 0.5078,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0306,
+     "top": "Boom"
+    }
+   },
+   {
+    "source": "a70433abb5f1b14a83369ec3.pcm",
+    "cutS": 6,
+    "sha256": "c40a4fbf1fd4972241301958819cfea801d3a65377f835161c219b7293f98f8d",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7969,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2155,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "4ed46bb2b4848edfc8986196.pcm",
+    "cutS": 6,
+    "sha256": "5f07e60ec9dfee9fc8d89373b42dc5f7afcaee3ea2c416166510fefc81568fba",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4967,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1557,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "vehicle_explode_light": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "58ef319c83982f00a269b382.pcm",
+    "cutS": 4,
+    "sha256": "340920bdc16aff3be503079f2b6c9780736e6f977da5c107976b717bed22e1a5",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.9076,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1393,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "e122450eeaf049acdf6739a5.pcm",
+    "cutS": 4,
+    "sha256": "433928fab3f3a10aa487bb21e8f3d22d60e49144a3dad47cacb16a773e406179",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7357,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "10f5ff6ddba5722f78d6a502.pcm",
+    "cutS": 4,
+    "sha256": "e7ab20bb919ae28c7c49adff0934d6dfc7d0553fe4126904f311b4fa9eae257a",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7083,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2409,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152_2a73_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "8c8765f31c2fd3d57de27258.pcm",
+    "cutS": 5.48,
+    "sha256": "f70ab40490a625aad5182c5f9d6711ebdf8a4290987f0025a710470a1073c9fe",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7096,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2695,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "fc0b5871d491ccaa9276b6c0.pcm",
+    "cutS": 5.48,
+    "sha256": "02a76e2ca66766acfbe2a4f0149e53c7ac3eb7db35f9354429bf03948c1604f7",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6081,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2539,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "2e729b5b1eed0a41f4aec8ff.pcm",
+    "cutS": 5.48,
+    "sha256": "0d57796cc9682bf58055295fb506305c3097478baa395e4b3438ec556506013d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4049,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1706,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152_2a73_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "77f07612dee1f394a1244ba9.pcm",
+    "cutS": 5.48,
+    "sha256": "26e54536ceca7e8cc67327eec3fe096823a654f4c4ed61d33f14ef0a38364885",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4336,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1758,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "69c9abb7706182c77fc233d4.pcm",
+    "cutS": 5.48,
+    "sha256": "dfd21663e9f892047fcd0bc3b09bb28d40a9ef63ee0f15af7597a8868b73b1bd",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2747,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0612,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152_2a73_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "38a49150d226a8bad0ec24fd.pcm",
+    "cutS": 3,
+    "sha256": "1fae406fd67593f792933d65dd731240fc484e21a2aa214a077f33e4c3d83864",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1348,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0195,
+     "top": "Arrow"
+    }
+   },
+   {
+    "source": "a7abdd56c8a4ffc503da08d0.pcm",
+    "cutS": 3,
+    "sha256": "01c59ab199f11a612a75fdfb3c801189a1f899b5a03084f038c6aed2e35901d2",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1523,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Rumble"
+    }
+   }
+  ]
+ },
+ "gun_152_2a73_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "ba7b866701bf88a7ec1e1a5a.pcm",
+    "cutS": 5.48,
+    "sha256": "47774076701fa6f2e31ef17adc598fe124af1287cbf9c0e5257df7bf4dd71cad",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.8164,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.3255,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "cf2f2dc9a12dacb0d9220bb3.pcm",
+    "cutS": 5.48,
+    "sha256": "6f2bdf52e4fef70d2aeceebf9c0ebb45baa05b1a6b75e1d44e4698be7cc5555a",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7969,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1562,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "ad5ad182bc4f3046dc249de0.pcm",
+    "cutS": 5.48,
+    "sha256": "1ad7a05c65367274f95a8020cc88aaf927609a779baa97a2953d47ecc9c7c695",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7207,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0703,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152_2a83_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "292ceb12d8ffa8d7fd6bee85.pcm",
+    "cutS": 5.48,
+    "sha256": "0b5bf33cd9b8bc4e15a90dfba44936dbe283685ba71b019e4e66303c5b37ff6f",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.332,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0924,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "4fe6f4316cf17153e6bbd0da.pcm",
+    "cutS": 5.48,
+    "sha256": "627b800ef93e56f6361e55d7afa76bb941e36023a85ac5d4525e3fdf5b7b14c6",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3919,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1211,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "d6b1690cbaff8fa20d3182bb.pcm",
+    "cutS": 5.48,
+    "sha256": "77d17c71ea1bbbdecfaf8eb74253562cf68c8a5ad59b884cbe5339f763739980",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6172,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2266,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152_2a83_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "bd1da2fb9fba5ad53edd1081.pcm",
+    "cutS": 5.48,
+    "sha256": "03dac123204bfd5ab5d3813e17b1c489231898679d316bcbae6a7ea38ee03d70",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0208,
+     "top": "Heart sounds, heartbeat"
+    }
+   },
+   {
+    "source": "a1f25cf74486e1d0bff46d57.pcm",
+    "cutS": 5.48,
+    "sha256": "e389184305c1f5a6913cda46e96e7e79e2416e11cef0f83fc6375d1fa56ef002",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0534,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Sound effect"
+    }
+   }
+  ]
+ },
+ "gun_152_2a83_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "7ccbb2f81c9d019d1b565c5e.pcm",
+    "cutS": 3,
+    "sha256": "dcc85c9a3c6764c338a600dfcd1ee252b10621c3b60fae8237ef8dfb9c5a81f8",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "ef6a22a35b715bc128930a80.pcm",
+    "cutS": 3,
+    "sha256": "7e1b08846fd3a1985c8a7b67c294b5b36675bc35f508c02261fe1b169b4541e5",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1152,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.002,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_152_2a83_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "2be61f19b8a63e86cb1d147a.pcm",
+    "cutS": 5.48,
+    "sha256": "dfc8333a6c2129039622e56dd47966c0e502fde8ba3b63101fada0e6714909dc",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2292,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.056,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "7b6005bffa53e016ebde34ee.pcm",
+    "cutS": 5.48,
+    "sha256": "5e22fe17ae272ec885358f9cac8c77d246ec8cc569c98341ed7ba3304ad0bf46",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1318,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0381,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "7d171a268b4799bdb670fd93.pcm",
+    "cutS": 5.48,
+    "sha256": "8c6ecafabb328ac9434fde4ae7d4237d208add990b0bb019da29a3c068777258",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6406,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2643,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152lp83_close": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "ab71f6653ab4cc2c4fdc04cd.pcm",
+    "cutS": 5.48,
+    "sha256": "70477db62a0c59e0fd702f86b17d2ac4d818ee86421af84a9ad4187bc2636d7d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.474,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2135,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "a00738f7294d7f2c0a69584a.pcm",
+    "cutS": 5.48,
+    "sha256": "782150c705ddaa8ece85d0173fae2f8c5a92f2851cae2e006546a9c7b5fab476",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.2487,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1016,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "742d46ba9975cc4cb3558fac.pcm",
+    "cutS": 5.48,
+    "sha256": "7ad26b6c9ffabb2248e9b90a743697a5a420fe775bc10882f3831ff42b51b738",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6237,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2448,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152lp83_far": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "cf7a66f1dc4c350aeda1abe2.pcm",
+    "cutS": 5.48,
+    "sha256": "938a81edc1f3b2a0bcbb9319b00b714f45d43c22bec3d2d3624ed804a5236161",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.1432,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0208,
+     "top": "Rumble"
+    }
+   },
+   {
+    "source": "71df8621beceecf24461a639.pcm",
+    "cutS": 5.48,
+    "sha256": "354cc0a86ba3d95a9dc106ad1f9ba1094e14558d261af3bc0154e89445e80be6",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3307,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1224,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "gun_152lp83_interior": {
+  "class": "interior",
+  "variants": [
+   {
+    "source": "6219b0c8f114660004091b6b.pcm",
+    "cutS": 3,
+    "sha256": "198123122ba7705d34f61b27932ecfde3c5a6ee9e3687ca8f0792dc6f57a8b24",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Rumble",
+     "bestScore": 0.0508,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0,
+     "top": "Sound effect"
+    }
+   },
+   {
+    "source": "91ce757f72e5ff1ce3c98630.pcm",
+    "cutS": 3,
+    "sha256": "fa84f0eb8888e01bc2ed22511e2031c9b3a683b74ae113c1eecb384638fc514b",
+    "class": "interior",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.0312,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0078,
+     "top": "Music"
+    }
+   }
+  ]
+ },
+ "gun_152lp83_own": {
+  "class": "cannon",
+  "variants": [
+   {
+    "source": "0001558d5f50e541c5879c14.pcm",
+    "cutS": 5.48,
+    "sha256": "bd1ea6de25742814d77065c4c595c9b22ff2c94d99bbaddb2f31035471afd06c",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3359,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0771,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "4d68744b422a51f6bd699944.pcm",
+    "cutS": 5.48,
+    "sha256": "a3d3678a13d0d1a5f39375fb09e695205758d1f512855b0bab9088e2a9abbb2d",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6172,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2487,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "beaca090fd3b7df393da501b.pcm",
+    "cutS": 5.48,
+    "sha256": "36fc7b96107dc62c1af40149a50ce71146d72ec0aaf48a98803501808797da79",
+    "class": "cannon",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4541,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1611,
+     "top": "Explosion"
+    }
+   }
+  ]
+ }
+}

@@ -465,6 +465,14 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     uBirth: { value: -1e9 }, uAlpha: { value: 0 }, uSeed: { value: 0 },
   }));
   let ringCursor = 0, scorchCursor = 0;
+  // (round 4 F7 review) the rings' and scorches' births and the companion pools' ride the shared clock: the runtime's
+  // rebase of it (the Studio's resetClock(0) at every load and seek, a capture's pin) moves them with its own stamps
+  // (timeShift.ts). They had stood still, and only the Studio's reset() straight after its resetClock(0) hid it.
+  port.setClockShift((delta) => {
+    particles.shiftTime(delta);
+    for (const decal of rings) decal.mesh.material.uniforms.uBirth.value += delta;
+    for (const decal of scorches) decal.mesh.material.uniforms.uBirth.value += delta;
+  });
   const _ringTone: GroundTone = { light: [0, 0, 0], dark: [0, 0, 0], snow: false, wet: false };
 
   function conformDecal(mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>, x: number, z: number, radius: number, lift: number): void {
@@ -1071,6 +1079,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       port.setMuzzleExposure(1, 1);
       muzzleExposure = 1; muzzleCards = 1;
       port.setLateFxActive(null);
+      port.setClockShift(null);
       if (borrowed && borrowedSaved) {
         borrowed.color.setHex(borrowedSaved.color);
         borrowed.distance = borrowedSaved.distance;

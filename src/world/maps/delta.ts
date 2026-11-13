@@ -22,6 +22,8 @@ import { CHAR_VILLAGE } from './deltaVillage.ts'; // the maps lane, 2026-10-14: 
 // The braided river: a stem from each map edge splits round the char the market village stands on, and the pattern
 // turns through 180 degrees about the char's centre (-4, 14).
 const station = ([x, z, r]: number[]) => ({ x, z, r, dip: 1.15 });
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 // Two trails: the main course (the south-west stem, the west branch and the north-east stem) and the east branch, which
 // leaves it at the split (-137.4, -121.3) and rejoins it at (129.4, 149.3).
 const river = [
@@ -145,7 +147,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Jamuna char tin-homestead kit (maps/regional/bengal.ts)
-    architecture: 'bengal',
+    architecture: BUILDING_STYLES.delta.kit,
     // The landmarks lane (2026-10-05; src/world/landmarks/temples.ts): the market village's terracotta aat-chala temple
     // in the yard west of the square, north of the village's yard wall: the square brick cella on its plinth under
     // the curved four-sided roof, the smaller cella and its roof above (eight slopes), the kalasa finial, the triple
@@ -192,7 +194,7 @@ export default {
     cropFields: 11, sandbagLines: 17, hedgehogs: 8,
     cropForm: 'wet-upright', // existing dry wetland-edge plots, not flooded paddies
     // the map-vehicles lane (2026-10-06, the period ruling): the Jamuna: the Bangladesh Army's Type 59s
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['type59'] },
+    tankWrecks: WRECK_CASTS.delta,
     inhabit: {
       stalls: 5, benches: 4, coreClutter: 24, bales: 8, stooks: 10,
       pots: 8, troughs: 2, laundry: 4, handcarts: 4, carts: 4,

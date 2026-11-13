@@ -1436,24 +1436,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35952,
-      "sha256": "aad2dc2bf95b48e05674a1495444d89af0c37779d52000083711a769652e7e71"
+      "bytes": 35960,
+      "sha256": "ec2370ca214b71f2aaf29c810798a5c2ed4869943a89a82e5050470671722f69"
     },
     "modulesSide": {
       "file": "type89_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33428,
-      "sha256": "c3df793e963815a66af927c5abc1f885527d0a01e770626cc0b606aa932f934d"
+      "bytes": 33418,
+      "sha256": "0e0d7fdf861516ae828a6d0f2aab5d402c690bf378b43c661c6f92082abc8d2d"
     },
     "crewSide": {
       "file": "type89_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29826,
-      "sha256": "909d56fb72ed19c1f7e9a79728fc79ec0d78990e901b2221a032255df32ae334"
+      "bytes": 29926,
+      "sha256": "e5b47d181762f74f55488a0c652fdf166322ac134d43033693544a7de7cb460e"
     },
     "angle": {
       "file": "type89_angle.webp",
@@ -1468,7 +1468,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10546,
-        "sha256": "939be53d4168f32b3beae0e2437ba65f3bd92b19bcabcc25abaaa61c7ec7e967"
+        "sha256": "939be53d4168f32b3beae0e2437ba65f3bd92b19bcabcc25abaaa61c7ec7e967",
+        "frame": [21,101,226,250]
       }
     },
     "top": {
@@ -1476,16 +1477,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15468,
-      "sha256": "7a6572e29b59425b66c0398fb5428db8681a21b0e09339a56b5b336b865c93a4"
+      "bytes": 15466,
+      "sha256": "fe5402f7041a1d18cd6b32985520ac34ebdd5e000dd23129135881d843852e96"
     },
     "side": {
       "file": "type89_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13214,
-      "sha256": "4e241bda37bd49f349217fce17d7014209dee9f97ac41a9935ca2647bb048b5a"
+      "bytes": 13228,
+      "sha256": "d49ccc03da33f02abbb3955f75322e5fd2bfaa39abe71b5f5b30807a8c18ef0c"
     },
     "topSilhouette": {
       "file": "type89_top_silhouette.png",
@@ -1508,8 +1509,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35097,
-      "sha256": "de959b6b12410f83eed564a1e7c072d18dbe0e587d1fcd505073471ae34dabaf"
+      "bytes": 33034,
+      "sha256": "69985a19d233d0dcb04857ac8b41eea5049fb832bb253072b156c66e880ec100"
     },
     "technicalLabels": {
       "file": "type89_technical.json",

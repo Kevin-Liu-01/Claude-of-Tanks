@@ -54,7 +54,12 @@ export function bowShackle(P: TankBuilderPort, x: number, y: number, z: number):
   P.add('hullDark', KIT.xform(KIT.torus(0.052, 0.015, 12), 0, 0, 0, Math.PI / 2, 0, 0), x, y, z);
 }
 
-function hullKit(P: TankBuilderPort): void {
+/**
+ * The Leopard 2A4's hull kit (the turret kit follows in addLeo2A4Kit). Release 269: exported for the ItPsv Leopard 2, the
+ * Marksman turret on the Finnish Leopard 2A4 (profiles/marksman.ts), whose hull carries the 2A4's kit without the German
+ * rear number (`rearNumber: false`); the leo2a4 builds it as before.
+ */
+export function addLeo2A4HullKit(P: TankBuilderPort, o: { readonly rearNumber?: boolean } = {}): void {
   const { box, cylZ } = KIT;
   // the spare links across the glacis's nose between the headlight pods (the photographed 2A4s), one run a side
   for (const sx of [-1, 1]) glacisTrackRack(P, `leo2a4-glacis-rack-${sx < 0 ? 'R' : 'L'}`, sx * 0.47, 3.20);
@@ -90,7 +95,7 @@ function hullKit(P: TankBuilderPort): void {
   P.add('hullDetail', KIT.xform(KIT.torus(0.05, 0.015, 12), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.92, HS.rearZ - 0.04);
   P.add('hullDetail', box(0.06, 0.05, 0.08), 0, 0.84, HS.rearZ - 0.05);
   // the old build's rear number on the lower rear plate's right
-  P.decal('hull', 'number', 'Y-241', 0.24, [-0.62, 1.27, HS.rearZ - 0.006], Math.PI);
+  if (o.rearNumber !== false) P.decal('hull', 'number', 'Y-241', 0.24, [-0.62, 1.27, HS.rearZ - 0.006], Math.PI);
 }
 
 function turretKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
@@ -127,6 +132,6 @@ function turretKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
 
 /** The Leopard 2A4's kit, after the hull and the turret. */
 export function addLeo2A4Kit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
-  hullKit(P);
+  addLeo2A4HullKit(P);
   turretKit(P, ctx);
 }

@@ -8,8 +8,12 @@
  * on frame 1). URLs must match a checked-in public asset exactly.
  *
  * `FEATURED_SHOTS` remains the complete garage gallery. Loading and transition
- * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
- * stay browsable without returning to the player-facing loading rotation.
+ * surfaces use `TRANSITION_SHOTS`: the boot pick (the gallery's one `bootImg`
+ * shot), then `LOADING_SHOTS`, the stills the owner picked from his
+ * loading-screen gallery (2026-11-11: its first sixteen close-ups; their
+ * files are the gallery's, public/media/gallery-r1). Both lists are
+ * written by tools/media-r5/site-media-wire.mjs from
+ * tools/media-r5/site-media/picks.json (`featured`, `loading`).
  */
 import { isMapId } from '../world/maps/catalog.ts';
 import { getLocalizedMapName } from './mapNames.ts';
@@ -130,8 +134,96 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   },
 ]);
 
+/** The loading screens' stills after the boot pick, in the gallery's order (picks.json `loading`). */
+export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
+  {
+    img: '/media/gallery-r1/s198-m1a2-tusk-copper-mesa-duel-low-t70-f33-m271-r14.webp',
+    capKey: 'media.loading.title.s198M1a2TuskCopperMesaDuelLowT70F33M271R14',
+    maps: ['copper_mesa'], focal: '27% 55%',
+  },
+  {
+    img: '/media/gallery-r1/s294-sepv3-copper-mesa-herolow-f33-m271-r14.webp',
+    capKey: 'media.loading.title.s294Sepv3CopperMesaHerolowF33M271R14',
+    maps: ['copper_mesa'], focal: '66% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14.webp',
+    capKey: 'media.loading.title.s298T90msTagilSaltwindHerolowV3F33M271R14',
+    maps: ['saltwind'], focal: '70% 55%',
+  },
+  {
+    img: '/media/gallery-r1/s280-leo2a3-b4-urban-duel-low-t70-f33-m271-r14.webp',
+    capKey: 'media.loading.title.s280Leo2a3B4UrbanDuelLowT70F33M271R14',
+    maps: ['urban'], focal: '31% 62%',
+  },
+  {
+    img: '/media/gallery-r1/s199-m1a2-x-desert-herolow-m271-r14.webp',
+    capKey: 'media.loading.title.s199M1a2XDesertHerolowM271R14',
+    maps: ['desert'], focal: '36% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s39-leo2a7v-lakeside-village-herolow-cl-t3333-m271-r14.webp',
+    capKey: 'media.loading.title.s39Leo2a7vLakesideVillageHerolowClT3333M271R14',
+    maps: ['reservoir'], focal: '64% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s120-type10-skybridge-herolow-v3-m271-r14.webp',
+    capKey: 'media.loading.title.s120Type10SkybridgeHerolowV3M271R14',
+    maps: ['skybridge'], focal: '39% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14.webp',
+    capKey: 'media.loading.title.s286Leo2a4mMonsoonHerohighV2FbM271R14',
+    maps: ['monsoon'], focal: '43% 55%',
+  },
+  {
+    img: '/media/gallery-r1/s296-t90m-proryv-coastal-duel-low-tm70-f33-m271-r14.webp',
+    capKey: 'media.loading.title.s296T90mProryvCoastalDuelLowTm70F33M271R14',
+    maps: ['coastal'], focal: '72% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s202-kf51-panther-copper-mesa-herohigh-m271-r14.webp',
+    capKey: 'media.loading.title.s202Kf51PantherCopperMesaHerohighM271R14',
+    maps: ['copper_mesa'], focal: '43% 42%',
+  },
+  {
+    img: '/media/gallery-r1/s267-t90a-vladimir-caldera-herohigh-fb-m271-r14.webp',
+    capKey: 'media.loading.title.s267T90aVladimirCalderaHerohighFbM271R14',
+    maps: ['caldera'], focal: '74% 48%',
+  },
+  {
+    img: '/media/gallery-r1/s289-t90ms-2011-longleaf-duel-low-tm95-m271-r14.webp',
+    capKey: 'media.loading.title.s289T90ms2011LongleafDuelLowTm95M271R14',
+    maps: ['longleaf'], focal: '64% 47%',
+  },
+  {
+    img: '/media/gallery-r1/s307-sepv2-airfield-herolow-m271-r14.webp',
+    capKey: 'media.loading.title.s307Sepv2AirfieldHerolowM271R14',
+    maps: ['airfield'], focal: '43% 60%',
+  },
+  {
+    img: '/media/gallery-r1/s47-ironworks-crane-herolow-fb-m271-r14.webp',
+    capKey: 'media.loading.title.s47IronworksCraneHerolowFbM271R14',
+    maps: ['foundry'], focal: '53% 55%',
+  },
+  {
+    img: '/media/gallery-r1/s190-t90am-frontier-herolow-own-m271-r14.webp',
+    capKey: 'media.loading.title.s190T90amFrontierHerolowOwnM271R14',
+    maps: ['frontier'], focal: '26% 58%',
+  },
+  {
+    img: '/media/gallery-r1/s143-ru-t72b3m-modern-mars-herolow-fb-m271-r14.webp',
+    capKey: 'media.loading.title.s143RuT72b3mModernMarsHerolowFbM271R14',
+    maps: ['mars'], focal: '41% 60%',
+  },
+]);
+
+/** The boot splash and transition rotation: the boot pick first, then the loading stills. */
+export const TRANSITION_SHOTS: readonly FeaturedShot[] = Object.freeze([
+  ...FEATURED_SHOTS.filter((shot) => shot.bootImg),
+  ...LOADING_SHOTS,
+]);
 /** Just the image URLs (boot hero + transition backdrops). */
-export const TRANSITION_SHOTS = FEATURED_SHOTS.filter((shot) => shot.maps?.length);
 export const FEATURED_IMAGES = TRANSITION_SHOTS.map((s) => s.img);
 
 let rotation: FeaturedShot[] = [];

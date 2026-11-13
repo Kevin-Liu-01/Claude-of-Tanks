@@ -10,6 +10,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import winter from './maps/winter.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the c5ca781e2 synchronous stone/grime painters,
@@ -42,11 +43,12 @@ function publicOwner(iterator, wrapperSource = wrappers) {
       return runtime;
     } finally { events.push('closed'); }
   }
-  const api = new Function('propsBuildSteps', 'ensureTankBuilder', 'createWreckBakeClient',
+  // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
+  const api = new Function('propsBuildSteps', 'ensureTankBuilder', 'createWreckBakeClient', 'assertNoBuildScopeOpen',
     stripTypeScriptTypes(wrapperSource).replace(/^export /gm, '')
       + '\nreturn { createProps, createPropsAsync };')(build, () => {
     assert.fail('texture row checkpoints must not acquire a vehicle builder');
-  }, createWreckBakeClient);
+  }, createWreckBakeClient, assertNoBuildScopeOpen);
   return { api, runtime, calls, events };
 }
 function assertPublicOwner(owner, result, args) {

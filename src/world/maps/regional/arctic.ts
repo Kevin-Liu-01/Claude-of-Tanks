@@ -446,7 +446,5 @@ export const ARCTIC_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     plaster: [[1, 1, 1], [0.98, 0.98, 0.97], [0.96, 0.97, 0.98]],
     stone: [[1, 1, 1], [0.96, 0.96, 0.95], [0.92, 0.92, 0.92]],
     roof: [[1, 1, 1], [0.94, 0.94, 0.95], [0.88, 0.86, 0.84]],
-    damp: 0.25, moss: 0,
   },
-  wear: 0.1,
 });

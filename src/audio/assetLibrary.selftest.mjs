@@ -36,6 +36,16 @@ assert.equal(desktop.pick('pen_heavy', Math.random), null);
 await desktop.load(['pen_heavy']);
 assert.ok(desktop.pick('pen_heavy', Math.random), 'and plays once decoded');
 
+// A receipt holds an asset on one variant whatever the stream draws (audio-mix-balance: each moment at its loudest
+// take), and releasing the hold lets the stream choose again.
+await desktop.load(['gun_120_close']);
+const takes = Array.from({ length: SFX_ASSETS.gun_120_close.n }, (_, i) => desktop.variant('gun_120_close', i));
+const last = takes.length - 1;
+desktop.holdVariants({ gun_120_close: last });
+for (const draw of [0, 0.3, 0.6, 0.99]) assert.equal(desktop.pick('gun_120_close', () => draw), takes[last], 'a held asset plays its held take');
+desktop.holdVariants(null);
+assert.equal(desktop.pick('gun_120_close', () => 0), takes[0], 'released, the stream chooses again');
+
 // Crew packs never count against the sound-effect cap.
 await desktop.loadVoice('ru');
 const stats = desktop.stats();
@@ -46,6 +56,39 @@ assert.ok(missTakes >= 2, `the miss line has a short take (${missTakes})`);
 const short = desktop.voice('ru', 'miss', () => 0, 1);
 assert.ok(short && short !== desktop.voice('ru', 'miss', () => 0, 0), 'the requested take, not a random one');
 assert.equal(desktop.voice('ru', 'miss', () => 0, 1), short, 'and the same take every time');
+
+// One crew pack held at a time (crew-languages-270): a dropped pack's decoded bytes go, and a drop during the load stops it
+// without leaving the pack ready or counted.
+{
+  const one = desktop.stats().voiceMb;
+  await desktop.loadVoice('de');
+  assert.ok(desktop.stats().voiceMb > one, 'a second pack adds its bytes while both are held');
+  const both = desktop.stats().voiceMb;
+  desktop.dropVoice('ru');
+  assert.ok(desktop.stats().voiceMb < both, 'dropping one releases its bytes');
+  assert.equal(desktop.voiceReady('ru'), false, 'a dropped pack is no longer ready');
+  assert.equal(desktop.voice('ru', 'miss', () => 0), null, 'and plays nothing');
+  assert.deepEqual(desktop.stats().voices, ['de']);
+  desktop.dropVoice('de');
+  assert.equal(desktop.stats().voiceMb, 0, 'with every pack dropped no crew bytes remain');
+  const dropping = desktop.loadVoice('ru');
+  desktop.dropVoice('ru');
+  await dropping;
+  assert.equal(desktop.voiceReady('ru'), false, 'a drop during the load leaves nothing ready');
+  assert.equal(desktop.stats().voiceMb, 0, 'and counts no bytes');
+  await desktop.loadVoice('ru');
+  assert.ok(desktop.voiceReady('ru') && desktop.stats().voiceMb > 0, 'a later load fetches it again');
+}
+
+// Crew speech decodes at 16 kHz on every tier: the radio passes nothing above its 4.6 kHz speaker roll-off.
+for (const lowMemory of [false, true]) {
+  const rates = [];
+  const lib = createAssetLibrary({ ...options, lowMemory, createDecoder: (rate) => { rates.push(rate); return ctx; } });
+  await lib.ready;
+  rates.length = 0;
+  await lib.loadVoice('ru');
+  assert.deepEqual([...new Set(rates)], [16000], `${lowMemory ? 'mobile' : 'desktop'} crew packs decode at 16 kHz (${rates})`);
+}
 
 // Mobile: one variant per asset.
 fetched.length = 0;
@@ -77,4 +120,63 @@ assert.ok(mobile.pick('gun_120_close', Math.random), 'and still picks it');
   await gated.idle();
 }
 
-console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight passed');
+// (improve-271, plan 018, on F11's backoff) a sound that decoded some variants keeps playing them and refills the ones
+// the network failed on a later load, its bytes counted once; a missing variant is final; a crew pack refills a take
+{
+  const { VOICE_PACKS } = await import('./voiceManifest.generated.ts');
+  const ok = () => ({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(16) });
+  const counted = (rule) => {
+    const urls = [];
+    return { urls, fetchImpl: async (url) => { urls.push(String(url)); return rule(String(url), urls.filter((u) => u === String(url)).length); } };
+  };
+  // a variant the network failed: refilled alone after the wait, its bytes counted once
+  {
+    const id = 'gun_120_close';
+    const partial = counted((url, nth) => { if (url.endsWith(`/${id}_0.webm`) && nth === 1) throw new TypeError('reset'); return ok(); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: partial.fetchImpl });
+    await lib.load([id]);
+    assert.ok(lib.has(id) && lib.variant(id, 0) === null && lib.variant(id, 1), 'ready with the variants it has');
+    await lib.load([id]);
+    assert.equal(partial.urls.length, SFX_ASSETS[id].n, 'not again before the backoff runs out');
+    now += 2000;
+    await lib.load([id]);
+    assert.ok(lib.variant(id, 0), 'the failed variant refilled');
+    assert.equal(partial.urls.filter((u) => u.endsWith(`/${id}_1.webm`)).length, 1, 'only the failed variant is fetched again');
+    const whole = createAssetLibrary({ ...options });
+    await whole.load([id]);
+    assert.equal(lib.stats().sfxMb, whole.stats().sfxMb, 'its bytes counted once');
+    now += 120_000;
+    await lib.load([id]);
+    assert.equal(partial.urls.length, SFX_ASSETS[id].n + 1, 'nothing more once whole');
+  }
+  // a missing variant (a 404) is final: the sound plays the others and never asks for it again
+  {
+    const id = 'pen_heavy';
+    const gone = counted((url) => (url.endsWith(`/${id}_0.webm`) ? { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) } : ok()));
+    const lib = createAssetLibrary({ ...options, fetchImpl: gone.fetchImpl });
+    await lib.load([id]);
+    now += 120_000;
+    await lib.load([id]);
+    assert.ok(lib.has(id));
+    assert.equal(gone.urls.length, SFX_ASSETS[id].n, 'a missing variant is not asked for again');
+  }
+  // a crew pack: a take the network failed comes back on a later loadVoice, that take alone
+  {
+    const [line] = Object.entries(VOICE_PACKS.ru).find(([, t]) => t.length >= 2);
+    const voice = counted((url, nth) => { if (url.endsWith(`/ru/${line}_1.webm`) && nth === 1) throw new TypeError('reset'); return ok(); });
+    const lib = createAssetLibrary({ ...options, fetchImpl: voice.fetchImpl });
+    await lib.loadVoice('ru');
+    const before = voice.urls.length;
+    assert.ok(lib.voice('ru', line, () => 0, 0), 'the pack plays without the failed take');
+    await lib.loadVoice('ru');
+    assert.equal(voice.urls.length, before, 'not before the backoff runs out');
+    now += 2000;
+    await lib.loadVoice('ru');
+    assert.equal(voice.urls.length, before + 1, 'that take alone again');
+    const take0 = lib.voice('ru', line, () => 0, 0), take1 = lib.voice('ru', line, () => 0, 1);
+    assert.ok(take1 && take1 !== take0, 'and it plays as its own take');
+    assert.ok(lib.voiceReady('ru'));
+  }
+}
+
+console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight, a partly loaded sound and a crew pack refill what the network failed passed');

@@ -13,6 +13,8 @@
 // (treeBiomes.ts).
 import frontier from './frontier.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
@@ -106,7 +108,7 @@ export default {
     sourcedPalette: 'frontier',
     // the map-revival lane (2026-10-05): the mill-town kit (maps/regional/longleaf.ts) builds the plan in the company
     // town's construction, every building where it stood
-    architecture: 'longleaf',
+    architecture: BUILDING_STYLES.longleaf.kit,
     // The landmarks lane (2026-10-06; src/world/landmarks/towers.ts fireLookout): the forest's fire lookout on the western
     // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
     // zig-zag stair inside its frame, seen over the canopy from both deployments.
@@ -156,7 +158,7 @@ export default {
     haystacks: 8, rocks: 30, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.longleaf,
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // the map-revival lane (2026-10-05, round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill yard"): the

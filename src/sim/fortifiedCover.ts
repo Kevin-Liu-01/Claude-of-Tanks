@@ -76,6 +76,10 @@ export interface FortifiedCoverLedger {
   ram(record: FortifiedRecord, massTons: number, closingMps: number, timeS: number): boolean;
   /** The structure points the record's prop has taken. */
   pointsOf(record: FortifiedRecord): number;
+  /** A host migration (audit M1, 2026-11-02): every prop's booked points by prop index (an index-less record cannot travel). */
+  capture(): Array<[propIdx: number, points: number]>;
+  /** The points a previous host booked: a pillbox it had half broken stays half broken. */
+  restore(entries: readonly (readonly [number, number])[]): void;
 }
 
 export function createFortifiedCoverLedger(): FortifiedCoverLedger {
@@ -113,6 +117,17 @@ export function createFortifiedCoverLedger(): FortifiedCoverLedger {
     },
     pointsOf(record) {
       return entries.get(keyOf(record))?.points ?? 0;
+    },
+    capture() {
+      const out: Array<[number, number]> = [];
+      for (const [key, entry] of entries) if (typeof key === 'number' && entry.points > 0) out.push([key, entry.points]);
+      return out.sort((a, b) => a[0] - b[0]);
+    },
+    restore(list) {
+      for (const [propIdx, points] of list) {
+        if (!Number.isInteger(propIdx) || propIdx < 0 || !(points > 0)) continue;
+        entryOf({ propIdx }).points = Math.min(FORTIFIED_HP_SP, points);
+      }
     },
   };
 }

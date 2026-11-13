@@ -3,7 +3,7 @@
 // and the decor's rolled and draped nets (decorations.ts); three.js only, so the decor can use it without importing the
 // fleet.
 import * as THREE from 'three';
-import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
+import { createPaintAttempts, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Theatre (round 5, 2026-10-08; wave 253: "the desert Abrams wears green nets, green leaves ... against sand paint";
@@ -36,6 +36,17 @@ export interface NetPalette {
   /** A bough's colour pulled toward the theatre (dry scrub in the desert). */
   readonly boughTint: readonly [number, number, number];
 }
+
+/**
+ * Release 269 (the Olifant Mk 1A; the r5 blind critic: its "straw" net read as green tufts): a field net of dry-season
+ * cover whatever the hull's theatre, a pale straw cloth over the paint with dry cut strips and a few bare branches
+ * (ghillieSuit.ts fieldNetPalette 'straw'; the theatre palettes' olive nets stay every other suit's).
+ */
+export const STRAW_FIELD_NET_PALETTE: NetPalette = Object.freeze({
+  cord: [96, 84, 56],
+  strips: [[[112, 96, 62], 0.18], [[142, 124, 82], 0.24], [[168, 148, 98], 0.24], [[192, 172, 120], 0.18], [[128, 106, 70], 0.16]],
+  boughs: 0.3, boughTint: [1.12, 1.0, 0.7],
+} satisfies NetPalette);
 
 export const NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Object.freeze({
   woodland: {
@@ -110,6 +121,7 @@ const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
 const gapToneOf = (pal: NetPalette): [number, number, number] =>
   [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
 const netCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
+const settlesNet = createPaintAttempts();
 
 /** The painter's own seeded stream (mulberry32). */
 function garnishStreamOf(seed: number): () => number {
@@ -269,11 +281,12 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
 
 /**
  * The garnished net and its height map for a theatre (cached per theatre, seed and palette set; null without a DOM).
- * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES). `stripDensity` scales the crew's garnish density
+ * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES); `straw`: the dry-season field net
+ * (STRAW_FIELD_NET_PALETTE) whatever the theatre. `stripDensity` scales the crew's garnish density
  * at every knot (1: the issue net, about 69 % of the tile cloth; lower: more open cord between the bunches).
  */
-export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false, stripDensity = 1): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
-  const key = `${field ? 'field:' : ''}${theatre}:${seed}${stripDensity === 1 ? '' : `:strips${stripDensity}`}`;
+export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false, stripDensity = 1, straw = false): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
+  const key = `${straw ? 'straw:' : field ? 'field:' : ''}${theatre}:${seed}${stripDensity === 1 ? '' : `:strips${stripDensity}`}`;
   if (netCache.has(key)) return netCache.get(key)!;
   let out: { map: THREE.Texture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
@@ -282,7 +295,7 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d', { willReadFrequently: true }), hctx = height.getContext('2d', { willReadFrequently: true });
       if (ctx && hctx) {
-        const S = NET_TEXTURE_PX, pal = (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre];
+        const S = NET_TEXTURE_PX, pal = straw ? STRAW_FIELD_NET_PALETTE : (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre];
         paintGarnishedNet(ctx, hctx, S, pal, seed, stripDensity);
         // (263, alphaCutTexture.ts) the garnish shades what lies under it, the gaps under thick garnish take the hull's
         // shade there, and the map keeps straight alpha with its own coverage mips: no black rim at any cut or range
@@ -305,7 +318,8 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
     }
   }
   // without a DOM nothing is painted, and nothing is remembered (a later build with a canvas paints it)
-  if (typeof document !== 'undefined') netCache.set(key, out);
+  // (2026-11-02 audit R6) and a failed paint is counted, not kept as that null (alphaCutTexture.ts createPaintAttempts)
+  if (typeof document !== 'undefined' && settlesNet(key, !!out)) netCache.set(key, out);
   return out;
 }
 

@@ -23,7 +23,6 @@ function makeState() {
     trackScroll: { l: 0, r: 0 },
     _swayEst: 0,
     _susp: { p: 0, r: 0, pv: 0, rv: 0 },
-    _flinch: { p: 0, r: 0, pv: 0, rv: 0 },
   };
 }
 
@@ -99,6 +98,9 @@ runSchedule([1 / 144, 1 / 90, 1 / 72, 1 / 120, 1 / 55, 1 / 100]);
   assert.equal(sampleTankPresentationPose(tracker, state, 0.75), pose,
     'render sampling must reuse the pose object');
   assert.equal(pose.pos, nested, 'render sampling must reuse nested objects');
+  // (round 3 of the 2026-11-02 audit, A12) the hit rock is the visual's own spring (audit M9); no sim state carries a
+  // `_flinch`, so the sampled pose carries none either
+  for (const sample of [pose, tracker.previous, tracker.current]) assert.ok(!('_flinch' in sample), 'no dead hull-flinch field in a pose sample');
 }
 
 console.log('presentationPose selftest: all checks passed');

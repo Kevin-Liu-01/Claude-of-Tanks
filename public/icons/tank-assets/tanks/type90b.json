@@ -943,7 +943,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 9632,
-        "sha256": "fec409c308646ef4fd815b899f5fedd4446248736a8352909c5d8295ccd3f6bf"
+        "sha256": "fec409c308646ef4fd815b899f5fedd4446248736a8352909c5d8295ccd3f6bf",
+        "frame": [23,102,225,248]
       }
     },
     "top": {
@@ -959,8 +960,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11378,
-      "sha256": "6f1c844f17222ef4582154a45b5526db6ca9b11fcee735217323fa99fce8ee8f"
+      "bytes": 11370,
+      "sha256": "eac15a420b94c7390f3716aa596c6445d72fa59c5b14f850fb3db93837321e30"
     },
     "topSilhouette": {
       "file": "type90b_top_silhouette.png",
@@ -983,32 +984,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25820,
-      "sha256": "64f0dc3579eec88656f70fc794f431d14709b18b51b5edf9f79e26538ed051b4"
+      "bytes": 25794,
+      "sha256": "8048063f9e2b68ca7bfa4f818e7ceefc7cbe2239b1a789a890883437f524d5b6"
     },
     "modulesSide": {
       "file": "type90b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25894,
-      "sha256": "12ca28dc7d91c229f868bbf8bf762e50c4a1444d3a06ae9ccb2e41601d517c69"
+      "bytes": 25848,
+      "sha256": "4c1a107758b091473ce2170d2c2ae6e3ef86b8a2557ca99f238a5023e768d142"
     },
     "crewSide": {
       "file": "type90b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20592,
-      "sha256": "039511003e70768a552183074dd94ced306001f0bb347feab6e7c861c35a5499"
+      "bytes": 20628,
+      "sha256": "79e80d94fbf337c9bd7826aac76cc48cfd0a93e4aed63d412a8c50bc01418899"
     },
     "markings": {
       "file": "type90b_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34121,
-      "sha256": "8662bb9668225a648c3bbd6d1ddf58460ac15403022cd8befb57ebe567f8e76a"
+      "bytes": 32106,
+      "sha256": "4fa6bd919efe5366a775407e672b15ddeda697a80d21ffcc7f98ce20d162519e"
     },
     "technicalLabels": {
       "file": "type90b_technical.json",

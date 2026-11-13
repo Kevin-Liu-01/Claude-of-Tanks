@@ -1476,7 +1476,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 12686,
-        "sha256": "6f1158eb76a7dc90349099c94e68972640d557df7b3ffb65dcec0a8da4999b71"
+        "sha256": "6f1158eb76a7dc90349099c94e68972640d557df7b3ffb65dcec0a8da4999b71",
+        "frame": [22,82,223,250]
       }
     },
     "top": {
@@ -1492,8 +1493,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14086,
-      "sha256": "e8c748f51eb2b08e4622109c9fc322ca70d7fcb40fbf7cbac6230a9059dd2d63"
+      "bytes": 14108,
+      "sha256": "29ebbe02bbd9127efa0f658a8634597b1a6f1a594259af4487c84f6c5c1ff194"
     },
     "topSilhouette": {
       "file": "m551_sheridan_top_silhouette.png",
@@ -1516,32 +1517,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33164,
-      "sha256": "a6a234d5271141513d4da03ca0bdabdb79bfec561bbe232911d1f6430eac21af"
+      "bytes": 33184,
+      "sha256": "9c9d1c44e589264a8eb562b7601f8bcabc1e2aaffb772097ca2f23b74a13ea93"
     },
     "modulesSide": {
       "file": "m551_sheridan_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30728,
-      "sha256": "33e46c36250665103ac14c48f05d9d596fec481f8f8d6a92e9378b9df80c2df3"
+      "bytes": 30726,
+      "sha256": "1a0164d5ec4269274ca09d7241e9aea7f821c07eafe533a5ac066fdde05234b9"
     },
     "crewSide": {
       "file": "m551_sheridan_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31294,
-      "sha256": "deb82a75c2fb4177c36177ff6ad589e3c84f386e04e16c7ed7e8c5f30a7d0fe8"
+      "bytes": 31360,
+      "sha256": "c9f063273a71228c4adb7d18568843d0c7ccfee2e6b7e7063491b15cc7fc717a"
     },
     "markings": {
       "file": "m551_sheridan_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37151,
-      "sha256": "0285f9d11a5b0dd03e8919f568b8920f5e2d87106bac0af979f26aa5a394c7b6"
+      "bytes": 34196,
+      "sha256": "02fbf254b09cabcbefa7e5fc12ece8cdfc065c78bb7aa646cd907cce576774cc"
     },
     "technicalLabels": {
       "file": "m551_sheridan_technical.json",

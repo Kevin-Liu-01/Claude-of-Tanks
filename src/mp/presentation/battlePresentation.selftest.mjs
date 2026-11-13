@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../../sim/movement.ts';
+import { hullBodyMode } from '../../sim/hullBodyMode.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, quantizeReloadS, zeroEntityRow } from '../wire/index.ts';
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
 import { prebuildRosterVisuals, prewarmRosterVisuals } from './battlePresentation.ts';
 import { battleStaticDrawMerge } from '../../vehicles/fleetFactory.ts';
+import { withheldObstacleFall } from '../../sim/obstacleFall.ts';
+import { setToppleAxis, settledToppleAngle } from '../../world/topple.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -255,8 +258,16 @@ const expired = busEvents.at(-1);
 assert.equal(expired.type, 'shell:expired');
 assert.equal(expired.payload.hitKind, 'prop');
 assert.deepEqual(expired.payload.normal, [0, 0.2, -0.98]);
+assert.equal(expired.payload.impactAngleDeg, undefined, 'an older host names no incidence');
+// (impact-materials-269) the authority's incidence reaches the audio: a solid round skipping off the ground
+presentation.applyEvent({ kind: 'shell_impact', payload: { shellId: 79, shooterId: 'foe', kind: 'terrain', surfaceKind: 'terrain', x: 3, y: 0, z: 9, nx: 0, ny: 1, nz: 0, impactAngleDeg: 86, shellType: 'APFSDS', caliberMm: 120 } }, { own: false, feedbackPredicted: false });
+assert.equal(busEvents.at(-1).type, 'shell:expired');
+assert.equal(busEvents.at(-1).payload.impactAngleDeg, 86, 'the round\'s incidence reaches shell:expired');
 presentation.applyEvent({ kind: 'module_state', payload: { id: 'foe', module: 'gun', state: 'red', source: 'hit' } }, { own: false, feedbackPredicted: false });
 assert.equal(busEvents.at(-1).type, 'module:state');
+// (crew-lines-269) a roof gun's counter-drone strike reaches the bus as solo raises it: the crew calls the drone it cost
+presentation.applyEvent({ kind: 'drone_down', payload: { id: 'me', killerId: 'foe' } }, { own: false, feedbackPredicted: false });
+assert.deepEqual(busEvents.at(-1), { type: 'drone:down', payload: { id: 'me', killerId: 'foe' } });
 
 // Spotting, rolling back onto the tracks and our reload reach the bus in solo play's shapes (2026-10-04): the crew's
 // spot calls, the sixth sense, the self-right and the loading machinery work in a network battle too.
@@ -536,6 +547,46 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
+// ------------------------------------------------------------ a remote row's body bits at the real call site (round 2, Q7)
+// applySamplePose restores ground contact, the body mode and the support from the row (wire 10, hullBodyRow.ts) onto the
+// copy the prediction world's tank contacts read. hullBodyRow.selftest drives the owner through its own replica of the
+// pose writes; this drives the presentation itself, so the call site cannot go back to the old projection
+// (tumbling = overturned || autoRighting, the support cache left at the copy's origin) with every receipt green.
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, timeS: 0, preBattleS: 0, result: null, resultReason: null };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, worldCollision,
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  const foeCopy = () => p.actors.get('foe').state;
+  const botCopy = () => p.actors.get('bot-3').state;
+  // the stacked hull 2.5 m up and the tumbling one on the ground: neither copy was ever stepped or given a support cache
+  p.applyFrame(frame({ tick: 900, entities: [
+    sample(2, 20, 12, { y: 3.7, flags: ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.STACKED }),
+    sample(3, -50, -50, { flags: ENTITY_FLAGS.TUMBLING }),
+  ] }));
+  assert.equal(hullBodyMode(foeCopy()), 'tumbling', 'a stacked tumbling row is a tumbling copy');
+  assert.equal(foeCopy()._body.dynamicSupport, true, 'STACKED is the copy\'s support flag');
+  assert.equal(foeCopy()._sup.top, Infinity, 'the copy\'s support cache is not its own: never elevated');
+  assert.equal(hullBodyMode(botCopy()), 'tumbling', 'a plain tumble (TUMBLING alone) is the rigid phase on the copy');
+  assert.equal(botCopy().overturned, false, 'neither overturned');
+  assert.equal(botCopy()._body.autoRighting, false, 'nor righting');
+  assert.equal(botCopy()._body.dynamicSupport, false, 'and on its own support');
+  assert.equal(botCopy().grounded, true);
+  p.applyFrame(frame({ tick: 902, entities: [
+    sample(2, 20, 12, { y: 3.7, flags: ENTITY_FLAGS.AIRBORNE }),
+    sample(3, -50, -50, { flags: ENTITY_FLAGS.TUMBLING | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING }),
+  ] }));
+  assert.equal(foeCopy().grounded, false, 'AIRBORNE: both ground copies');
+  assert.equal(foeCopy()._ride.grounded, false);
+  assert.equal(hullBodyMode(foeCopy()), 'supported', 'a row without a rigid bit is a supported hull');
+  assert.equal(foeCopy()._body.dynamicSupport, false, 'a row without STACKED clears the support');
+  assert.equal(hullBodyMode(botCopy()), 'righting', 'the righting sub-state');
+  assert.equal(botCopy().overturned, true);
+  p.dispose();
+}
+
 // ------------------------------------------------------------ the recording adapter (headless soaks)
 {
   const recorder = new RecordingPresentation(4);
@@ -572,8 +623,13 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
 // The persistent destroyed list reaches the presentation one interpolation delay ahead of the presented world. Before this
 // lane it felled every listed prop on arrival — early, toward +Z, at speed 0 — and the `world_prop_destroyed` event found
 // nothing left to fell; a late joiner watched every earlier fall replay; a host migration's re-sends crunched twice.
+// (round 2 of the 2026-11-02 audit, U27) A listed prop lies as it fell: the list's falls (wire 11) give the cause and the
+// direction; a none, or a list without them (an older frame, a migration's restored entries), lays it as the withheld live
+// event does: as a ram along the prop's own heading (sim/obstacleFall.ts withheldObstacleFall). Before, every settled prop
+// lay as a ram toward +Z (0, 1): this receipt pinned it. Until the round 2 review a none was direction (0, 0), which the
+// world's hinge (world/topple.ts) lays exactly as (0, 1): so the lays below are judged through topple.ts, not by arguments.
 {
-  const propObstacles = Array.from({ length: 6 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
+  const propObstacles = Array.from({ length: 7 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
   const propCalls = [];
   const propFx = [];
   const propWorld = {
@@ -588,8 +644,23 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   const crushFx = () => propFx.filter((event) => event.type === 'prop:crushed').length;
   const propFrame = (overrides) => frame({ destroyedPending: (index) => owed.has(index), ...overrides });
   // a late joiner's first frame: the list is settled state — final pose, no fall, no sound; the prop whose event is owed waits for it
-  props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destructibleRevision: 3 }));
-  assert.deepEqual(propCalls, [[0, 0, 1, 0, 'ram', true], [4, 0, 1, 0, 'ram', true]], 'what predates the view lands settled; the owed prop is left to its event');
+  // prop 0 a ram toward -X, prop 4 a shell toward -Z (codes: cause << 6 | heading in 64ths of a turn, sim/obstacleFall.ts)
+  props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destroyedFalls: [(1 << 6) | 48, (1 << 6) | 16, (2 << 6) | 32], destructibleRevision: 3 }));
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  // the lay the world's hinge makes of a crush's direction: its axis and its settled angle on a slope
+  const slope = { getHeightAt: (x, z) => 0.35 * z + 0.12 * x };
+  const lay = (dx, dz) => {
+    const axis = setToppleAxis(new Vector3(), dx, dz);
+    return [axis.x, axis.y, axis.z, settledToppleAngle(slope, 0, 0, 0, dx, dz, 6, 0.2)].map((v) => Math.round(v * 1e6) / 1e6 + 0);
+  };
+  const layOf = (call) => lay(call[1], call[2]);
+  const ownLay = (index) => { const own = withheldObstacleFall(index, { cause: 'ram', dx: 0, dz: 0 }); return lay(own.dx, own.dz); };
+  const PLUS_Z_LAY = lay(0, 1);
+  assert.equal(propCalls.length, 2, 'what predates the view lands settled; the owed prop is left to its event');
+  assert.ok(propCalls[0][0] === 0 && near(propCalls[0][1], -1) && near(propCalls[0][2], 0) && propCalls[0][4] === 'ram' && propCalls[0][5] === true,
+    `a settled prop lies as it fell: a ram toward -X (${propCalls[0]})`);
+  assert.ok(propCalls[1][0] === 4 && near(propCalls[1][1], 0) && near(propCalls[1][2], -1) && propCalls[1][4] === 'shell' && propCalls[1][5] === true,
+    `a shell's fall keeps its cause and its direction (${propCalls[1]})`);
   assert.equal(crushFx(), 0, 'settled state makes no sound');
   assert.equal(propObstacles[2].crushed, false);
   // the owed event arrives: a live fall with the authority\'s direction and speed, and the crunch
@@ -610,12 +681,30 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(propCalls.at(-1), [3, 0, 1, 900, 'shell', false]);
   // the new host\'s list reads lower for a moment (a revision regression across a migration) yet names a prop this view
   // has not laid down: the content decides, not the number
-  props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destructibleRevision: 2 }));
-  assert.deepEqual(propCalls.at(-1), [1, 0, 1, 0, 'ram', true]);
-  // a frame without the owed-prop predicate (a recorder, an older client) still settles its list
+  // (its fall withheld from this viewer: none, a ram along the prop's own heading)
+  props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destroyedFalls: [(1 << 6) | 48, 0], destructibleRevision: 2 }));
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [1, 0, 'ram', true]);
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(1), 'a fall this viewer may not read lies along the prop\'s own heading');
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY, 'not as the old ram toward +Z');
+  // a frame without the owed-prop predicate or the falls (a recorder, an older frame) still settles its list, each prop
+  // along its own heading (not the +Z lay for these props: one prop in 64 hashes to heading 0, toward +Z)
   props.applyFrame(frame({ tick: 700, destroyed: [0, 1, 5], destructibleRevision: 4 }));
-  assert.deepEqual(propCalls.at(-1), [5, 0, 1, 0, 'ram', true]);
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [5, 0, 'ram', true]);
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(5));
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY);
+  assert.notDeepEqual(ownLay(1), ownLay(5), 'two props, two headings');
   assert.equal(crushFx(), 2, 'only the two live events sounded');
+  // a live fall withheld from this viewer (no cause, direction or speed: its source hidden) lies as a settled none would:
+  // along the prop's own heading, and its splinters fly that way
+  const before = propCalls.length;
+  props.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 6, kind: 'tree' } }, { own: false, feedbackPredicted: false });
+  assert.equal(propCalls.length, before + 1);
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [6, 0, 'ram', false], 'it falls live, as a ram');
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(6), 'a withheld live fall lies along the prop\'s own heading');
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY, 'not toward +Z');
+  assert.ok(near(propFx.at(-1).payload.dir[0], propCalls.at(-1)[1]) && near(propFx.at(-1).payload.dir[2], propCalls.at(-1)[2]),
+    'its splinters fly along that heading');
+  assert.equal(crushFx(), 3);
   props.dispose();
 }
 
@@ -780,11 +869,13 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
   {
     const guesses = [];
     const guessing = prebuildRosterVisuals([{ playerId: 'bot-3', specId: spec, camo: 'factory', isViewer: false }], { ...deps,
-      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.paint = opts.camoPattern; guesses.push(visual); return visual; } });
+      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.paint = opts.camoPattern; visual.opts = opts; guesses.push(visual); return visual; } });
     await guessing.settled;
     assert.equal(guesses.length, 1, 'the guess was built');
-    assert.deepEqual([guessing.has('bot-3'), guessing.has('bot-3', 'factory'), guessing.has('bot-3', 'auto')], [true, true, false],
-      'the prebuild holds the bot in the guessed paint only');
+    const built = guesses[0].opts;
+    assert.deepEqual([guessing.has('bot-3'), guessing.has('bot-3', { specId: spec, options: built }),
+      guessing.has('bot-3', { specId: spec, options: { ...built, camoPattern: 'auto' } })], [true, true, false],
+      'the prebuild holds the bot as it was guessed only (take()\'s own rule)');
     const added = [];
     const field = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
     const rosterPaints = [], warmedPaints = [];
@@ -803,6 +894,33 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
     assert.equal(guesses[0].disposed, true, 'the guessed vehicle is disposed');
     assert.ok(!added.includes(guesses[0].root), 'and never joined the scene: no frame draws the guess');
     assert.ok(added.includes(bot.visual.root) && bot.visual.visible && bot.visual.syncs > 0, 'the first battle frame shows the bot in the roster\'s paint');
+    q.dispose();
+  }
+
+  // (round 8 Y1 s4-06) a guess with the roster's paint and another vehicle (a rejoin after a human left: the bots' ids hold
+  // their roll index while their vehicles move, room/roomBots.ts) is no held seat either: has() and take() share one rule,
+  // so the roster warms and builds the bot's real vehicle with the others (never a cold build after the warm), and the
+  // guess is disposed without joining the scene
+  {
+    const other = ['t90am', 'leo2_improved', 'leo2a4'].find((id) => getSpec(id) && getSpec(id).id !== getSpec(spec).id);
+    assert.ok(other, 'a second vehicle for the roster row');
+    const guesses = [];
+    const guessing = prebuildRosterVisuals([{ playerId: 'bot-3', specId: spec, camo: 'auto', isViewer: false }], { ...deps,
+      createTankVisualSteps: function* (specId, _engineCtx, opts) { yield; const visual = fakeVisual(specId, null, opts); visual.specId = specId; guesses.push(visual); return visual; } });
+    await guessing.settled;
+    const added = [], warmedSeats = [], rosterBuilds = [];
+    const field = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant' };
+    const q = createBattlePresentation({ engineCtx: { scene: { add(object) { added.push(object); } }, anisotropy: 1 }, game: field, bus: { emit() {} }, prebuilt: guessing,
+      createTankVisual: (id, engineCtx, opts) => { rosterBuilds.push(`${id}:${opts.camoPattern}`); const visual = fakeVisual(id, engineCtx, opts); visual.specId = id; return visual; },
+      camoFor: (entry) => (entry.bot ? entry.camo : 'summer') ?? 'factory',
+      prepareVisualTextures: async (warmSpec, _aniso, quality, _tick, camo) => { warmedSeats.push(`${warmSpec.id}:${camo}:${quality}`); }, clock: () => nowMs });
+    await q.applyRoster([roster[0], { ...roster[2], specId: other, camo: 'auto' }], context);
+    assert.ok(warmedSeats.includes(`${getSpec(other).id}:auto:ai`),
+      `the bot's real vehicle is warmed with the roster, its guess in the right paint notwithstanding (${warmedSeats})`);
+    assert.ok(rosterBuilds.includes(`${other}:auto`), 'and built by the roster');
+    assert.equal(q.actors.get('bot-3').visual.specId, other, 'the bot drives its real vehicle');
+    assert.equal(guesses[0].disposed, true, 'the guessed vehicle is disposed');
+    assert.ok(!added.includes(guesses[0].root), 'and never joined the scene');
     q.dispose();
   }
 }

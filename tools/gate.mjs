@@ -36,6 +36,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { isStarved } from './selftest-verdict.mjs';
+import { installRefusal } from './changed-only/fingerprint.mjs';
 
 export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
 const VERDICTS_BLOCKING = Object.freeze({ regression: true, changed: true, flaky: false, unstable: false, inherited: false });
@@ -525,9 +526,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   let options;
   try { options = parseGateArgs(process.argv.slice(2)); }
   catch (error) { console.error(error.message); process.exitCode = 2; }
-  if (options) {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  // A stale install fails the gate before any step (272): its typecheck could skip the linter, and its receipt PASSes
+  // would be stored under the lockfile's key.
+  const refusal = options ? installRefusal(root) : null;
+  if (refusal) { console.error(`[gate] ${refusal}`); process.exitCode = 1; }
+  else if (options) {
     process.env.COT_SHOTS_LOCK_TIMEOUT_MS ||= String(GATE_LOCK_TIMEOUT_MS);
-    const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     process.exitCode = await runGate(options, { root });
   }
 }

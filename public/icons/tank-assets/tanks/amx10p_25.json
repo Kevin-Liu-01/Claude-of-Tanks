@@ -2688,24 +2688,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40678,
-      "sha256": "0042bfd6f2f71c2b6d7587725e7985f78b02edef46f05aaac7b6e9645c84f401"
+      "bytes": 40682,
+      "sha256": "2c2d163600a97e105bbff2ff54547eadb434cb0f6e1baa5203f7a98840d7bc87"
     },
     "modulesSide": {
       "file": "amx10p_25_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34858,
-      "sha256": "4ea5e3a102f1a57ba8187b9c610500f841927fc3662f29900a55ace7525e9c28"
+      "bytes": 34838,
+      "sha256": "e1142a7b4dff6d55cafb6da71b2bf16e5a429c4b925063d5c021d586470d5d3a"
     },
     "crewSide": {
       "file": "amx10p_25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31524,
-      "sha256": "09aa2679303f3a0a5e55abadf232f788143b249b2c14b31d3b36ad769ed3afa8"
+      "bytes": 31492,
+      "sha256": "888659094cd9e2a35f34ecfbe76bfe12288937894e5632c74ae23cf2c6c0e4dc"
     },
     "angle": {
       "file": "amx10p_25_angle.webp",
@@ -2720,7 +2720,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 11506,
-        "sha256": "cbd1eee4ee6fb4170947020522c3ffec8aac5d09eb60965b7db50e28df3da809"
+        "sha256": "cbd1eee4ee6fb4170947020522c3ffec8aac5d09eb60965b7db50e28df3da809",
+        "frame": [29,110,224,250]
       }
     },
     "top": {
@@ -2736,8 +2737,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12936,
-      "sha256": "b3f1c89083c5d76a8c3797cce05c2757fd87685b5baa3d22ab485565aa9daec6"
+      "bytes": 12944,
+      "sha256": "783efd8a586df06a1d2592e545538f0b55c4802066bf8c454d619bf239682f19"
     },
     "topSilhouette": {
       "file": "amx10p_25_top_silhouette.png",
@@ -2760,8 +2761,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35943,
-      "sha256": "7f71eabc3d2821ad4d7aec3021d304c1ef7131ad5fbe30fd383dc417551a1d2c"
+      "bytes": 32155,
+      "sha256": "e1c87ea71b6a4582aa8439ea719d3c127d7104fe3e2e6f0d048c02cf122f89e5"
     },
     "technicalLabels": {
       "file": "amx10p_25_technical.json",

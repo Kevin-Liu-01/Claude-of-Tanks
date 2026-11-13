@@ -705,15 +705,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28292,
-      "sha256": "57ada332984198613b05d5ebbb5998cb584725763116bbf0671706abc339fdc9",
+      "bytes": 28286,
+      "sha256": "7c88128a4730231fee77c96e52ce63059963d54add2c0ceec44f8516968886d4",
       "thumbnail": {
         "file": "thumbs/warrior_tes_h_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10772,
-        "sha256": "d407eccb6d4a34a7d6864ce4e7e9a20215b51818f085c36fe94739e37db45ef6"
+        "sha256": "a702fabba22669a02f4bb891d4e9ff412b9139468368d3bd740a0d66ed8e18f5",
+        "frame": [28,107,225,248]
       }
     },
     "top": {
@@ -721,8 +722,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21576,
-      "sha256": "0289d0181c223368818a93d784acec10cd8a3f9fad05f6e7b63d2fcde703973d"
+      "bytes": 21594,
+      "sha256": "e5e41eeba89e29183289aa03dc1df1830af2f5063eb5f425ee2620a17b2fcb0a"
     },
     "side": {
       "file": "warrior_tes_h_side.webp",
@@ -753,8 +754,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 35522,
-      "sha256": "724befac557efec26df69a487d3ffdd4931ce31803677639ce81e64064e883e3"
+      "bytes": 33057,
+      "sha256": "a241300951a810634389b850ceb27306c69ad9f96f503368cec6b92bbac7bcfa"
     },
     "technicalLabels": {
       "file": "warrior_tes_h_technical.json",

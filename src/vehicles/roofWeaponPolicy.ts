@@ -14,11 +14,12 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   bmp3: 'BMP-3: 100 mm 2A70, 30 mm 2A72, a coaxial PKT and two bow PKTs; no roof machine gun on the turret.',
   bmp3_rok: 'BMP-3 in Republic of Korea service: the standard BMP-3 armament (2A70, 2A72, coaxial and bow PKTs); no roof '
     + 'machine gun.',
-  bwp1: 'BWP-1 upgraded with the ZSSW-30 unmanned turret (30 mm Mk 44S, Spike-LR, coaxial UKM-2000): its 7.62 is the '
-    + 'coaxial gun; no roof machine gun.',
+  bwp1: 'BWP-1M "Puma" demonstrator with the unmanned Rafael RCWS-30 station (30 mm cannon, coaxial 7.62, one Spike-LR '
+    + 'canister): its 7.62 is the coaxial gun; no roof machine gun.',
   bmp2: 'BMP-2: 30 mm 2A42, a coaxial 7.62 mm PKT and the 9M113 Konkurs launcher on the turret roof; no roof machine gun.',
   m2a2_bradley: 'M2A2 Bradley: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
-  m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
+  m3a3_bradley: 'M3A3 Bradley CFV: 25 mm M242, a coaxial M240C and two twin TOW launchers (269, the owner\'s second on the '
+    + 'right); no pintle or roof machine gun.',
   m3a2_bradley: 'M3A2 Bradley CFV: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or roof machine gun.',
   ua_m2a3_bradley: 'M2A3 Bradley in Ukrainian service: 25 mm M242, a coaxial M240C and the twin TOW launcher; no pintle or '
     + 'roof machine gun.',
@@ -46,6 +47,15 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   gepard_1a2: 'Flakpanzer Gepard 1A2: two 35 mm Oerlikon KDA and two quad smoke dischargers; no machine gun.',
   pgz95: 'PGZ-95: four 25 mm and four QW-2; no machine gun.',
   pgz09: 'PGZ-09: two 35 mm PG99 and the smoke dischargers; no machine gun.',
+  // 269: the second air-defence round carries no roof machine gun either
+  type87_aw: 'Type 87 SPAAG: two 35 mm Oerlikon KDA (Japan Steel Works) and the smoke dischargers; no machine gun.',
+  marksman_t55: 'Marksman (ItPsv 90): two 35 mm Oerlikon KDA and eight 76 mm smoke dischargers; no machine gun.',
+  itpsv_leopard2: 'ItPsv Leopard 2: the Marksman turret\'s two 35 mm Oerlikon KDA and its smoke dischargers; no machine gun.',
+  lvkv9040: 'Lvkv 9040: one 40 mm Bofors L/70 and the smoke dischargers; no roof machine gun.',
+  k30_biho: 'K30 Biho: two 30 mm KCB and the smoke dischargers; no roof machine gun.',
+  pza_loara: 'PZA Loara: two 35 mm Oerlikon KDA and the smoke dischargers; no secondary armament.',
+  // 269: the M163 VADS
+  m163_vads: 'M163 VADS: the 20 mm M168 Vulcan in its open one-man mount; no roof machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
   kv2: 'KV-2: the 152 mm M-10 and three 7.62 mm DT machine guns in ball mounts (coaxial, turret rear and hull bow); no '

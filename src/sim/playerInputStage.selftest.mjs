@@ -4,7 +4,8 @@
 // 1. No driver, an inactive hull and a wreck all brake, hold the trigger off and the lay (aimLocked), and press nothing.
 // 2. The controls land as sent: fireIntentSeq only as a safe integer, action bits as an integer, aimLocked as a boolean.
 // 3. A slot past the rack is the last one; an empty slot is refused, the trigger held off, the refusal emitted once
-//    while it is asked for, and again after a slot that was taken.
+//    while it is asked for, and again after a slot that was taken or a request of the slot held (round 8 Y1 s2-10: a
+//    seat that turns back to the round it holds and asks for the empty one again is told again).
 // 4. The aim decodes from the hull's position, from its drone's while one flies, into the hull's own aim point.
 // 5. A bot (applyBotInput): a live hull's lay is handed back before its controller writes; a wreck's controller still
 //    runs (it zeroes its own drive) with the lay left held; the slot it asks for is taken when stocked, else the request
@@ -79,6 +80,17 @@ for (const [label, prepare, input] of [
   applyPlayerInput(entity, drive({ shellSlot: 2 }), emit);
   assert.equal(events.length, 2, 'asked for again after a slot was taken, the refusal is emitted again');
 }
+// (round 8 Y1 s2-10) the request turns back to the slot held, then asks for the empty one again: a new press, told again
+{
+  const entity = hull();
+  events.length = 0;
+  for (let tick = 0; tick < 3; tick++) applyPlayerInput(entity, drive({ shellSlot: 2 }), emit);
+  for (let tick = 0; tick < 2; tick++) applyPlayerInput(entity, drive({ shellSlot: 0 }), emit);
+  assert.equal(entity.combat.shellSlot, 0, 'the slot held is still held');
+  for (let tick = 0; tick < 3; tick++) applyPlayerInput(entity, drive({ shellSlot: 2 }), emit);
+  assert.deepEqual(events.map(({ type, slot }) => `${type}:${slot}`), ['ammo_selection_denied:2', 'ammo_selection_denied:2'],
+    'asked for again after the request came back to the slot held, the refusal is emitted again (once per request)');
+}
 
 // 4. the aim's origin
 {
@@ -125,5 +137,5 @@ for (const [label, prepare, input] of [
 
 console.log('playerInputStage.selftest: no driver, an inactive hull and a wreck brake and hold the lay; the controls land as sent '
   + '(fire intent a safe integer, action bits an integer); a slot past the rack is the last, an empty one refused with the trigger '
-  + 'held off and its refusal emitted once, again after a taken slot; the aim decodes from the hull, from its drone while one flies; '
+  + 'held off and its refusal emitted once, again after a taken slot or a request of the held one; the aim decodes from the hull, from its drone while one flies; '
   + 'a bot\'s lay handed back before its controller, a wreck\'s controller run with the lay held, its slot taken when stocked, else held');

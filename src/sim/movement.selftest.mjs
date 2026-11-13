@@ -107,8 +107,8 @@ function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
 // as rotation.set(-(visualPitch + suspP·SUSP_VIS_P) + flinchP, yaw,
 // visualRoll + suspR·SUSP_VIS_R + sway·SWAY_VIS + flinchR, 'YXZ') with root at
 // state.pos (tankFactory syncFromState: sim attitude plus the VISIBILITY-
-// AMPLIFIED susp-rock spring and turn-lean sway, plus the hit-flinch rock —
-// all mirrored by the sim in state._susp/_swayEst/_flinch; amplification
+// AMPLIFIED susp-rock spring and turn-lean sway — mirrored by the sim in
+// state._susp/_swayEst (the hit-flinch rock is the visual's own, audit M9); amplification
 // constants in lockstep with tankFactory SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS) and
 // the track contact plane at hull-local y = 0 — so a contact point at
 // hull-local (x, 0, z) renders at:
@@ -131,10 +131,9 @@ const SWAY_VIS = 3.2;
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
-  const fl = state._flinch || { p: 0, r: 0 };
   const seat = state._holdSeat || { p: 0, r: 0 };
-  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
-  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P;
+  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);
@@ -1040,6 +1039,19 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     0.3 * 0.7 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
     'IFV autocannon: translation impulse uses the readable 36-percent scale');
 
+  // (272) a rotary gun (fireCycleFloor.ts floorShotShare): three of its rounds kick, shove and bloom the gun as one round
+  // of the same gun at the floor does, so a second of its fire disturbs the aim as a second at the floor
+  const rotaryIfv = { ...rapidIfv, gun: { ...rapidIfv.gun, autoloader: { magazineSize: 300, intraClipS: 1 / 60, rotary: true } } };
+  const rotaryState = createTankState(rotaryIfv, new Vector3(), 0);
+  const floorState = createTankState(rapidIfv, new Vector3(), 0);
+  for (let round = 0; round < 3; round++) fireRecoil(rotaryState, rotaryIfv, beltRound);
+  fireRecoil(floorState, rapidIfv, beltRound);
+  near(rotaryState._spring.pitchV, floorState._spring.pitchV, 1e-12, 'rotary gun: three rounds kick the hull as one floor round');
+  near(Math.hypot(rotaryState._spring.recoilVX, rotaryState._spring.recoilVZ),
+    Math.hypot(floorState._spring.recoilVX, floorState._spring.recoilVZ), 1e-12, 'rotary gun: three rounds shove the hull as one');
+  near(rotaryState.bloomF, floorState.bloomF, 1e-12, 'rotary gun: three rounds bloom the aim as one');
+  assert(rotaryState._spring.pitchV > 0 && floorState.bloomF > 1, 'rotary gun: the control rounds did kick and bloom');
+
   ent.state.bloomF = 1;
   fireRecoil(ent.state, rapidIfv, { caliberMm: 152, reloadS: 14 });
   near(ent.state.bloomF, 2.2, 1e-9, 'IFV missile rail keeps full after-shot bloom');
@@ -1202,12 +1214,15 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(Number.isFinite(fallbackBody.state.pos.y) && fallbackBody.state.overturned,
     'fallback closed-shell support seats an overturned tank without anatomy points');
 
+  // the hit/recoil flinch is the visual's own spring (audit M9): a stray one on a state neither moves nor rings the sim
   const flinching = makeEntity(field);
+  const unflinched = makeEntity(field);
   flinching.state._flinch = { p: 0.04, r: -0.03, pv: 0.1, rv: -0.1 };
-  const before = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
   run(flinching, field, 180);
-  const after = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
-  assert(after < before * 0.01, 'impact flinch decays through the bounded attitude spring');
+  run(unflinched, field, 180);
+  assert(flinching.state.pos.y === unflinched.state.pos.y && flinching.state.visualPitch === unflinched.state.visualPitch,
+    'the sim never folds a hull flinch into its support solve');
+  assert(flinching.state._flinch.p === 0.04 && flinching.state._flinch.pv === 0.1, 'nor integrates one');
 }
 
 // ------------------------------------------------ touchdown step (round 8) --

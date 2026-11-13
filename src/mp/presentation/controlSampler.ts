@@ -2,15 +2,19 @@
  * The viewer's controls for the match wire, sampled from the own actor's input record (the rig writes its aim point every
  * frame) with the HUD's action presses queued between ticks (the online driver: mp/session/browserComposition.ts).
  */
+import { AIR_STRIKE_BITS } from '../../sim/playerActions.ts';
 import type { ControlSample } from '../match/inputStream.ts';
 import { ACTION_BITS } from '../wire/index.ts';
 import type { MatchActor } from './battlePresentation.ts';
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal', number>> = Object.freeze({
+const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship', number>> = Object.freeze({
   reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: ACTION_BITS.SPECIAL_ACTION,
   selfRight: ACTION_BITS.SELF_RIGHT,
   smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE, supplyAmmo: ACTION_BITS.SUPPLY_AMMO, supplyHeal: ACTION_BITS.SUPPLY_HEAL,
+  // Air Support's call-ins (air-support-270): the same bits the solo step reads (sim/playerActions.ts AIR_STRIKE_BITS)
+  strikeRecon: AIR_STRIKE_BITS.recon, strikeArtillery: AIR_STRIKE_BITS.artillery, strikeStrafe: AIR_STRIKE_BITS.strafe,
+  strikeBomb: AIR_STRIKE_BITS.bomb, strikeGunship: AIR_STRIKE_BITS.gunship,
 });
 const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
 const DEFAULT_AIM_DISTANCE_M = 1000;
@@ -26,7 +30,7 @@ export interface ControlSampler {
   /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
   sample(tick: number): Readonly<ControlSample> | null;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
   reset(): void;
 }
 

@@ -164,6 +164,11 @@ export function strikeDrone(carrier: AerialEntity, chance: number): boolean {
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
+  // a new life (both authorities' revive hooks call this) retires the airframe its old flight had in the air, as a
+  // destroyed carrier's is (audit M4, 2026-11-02: a living hull's revive, a Turbo Ball goal's, left it in the shells
+  // list with no flight to steer, strike or end it)
+  const previous = flights.get(entity);
+  if (previous?.shell && previous.shell.id === previous.shellId) previous.shell.dead = true;
   // a vehicle without a dock (droneDockExempt.ts DRONE_DOCK_EXEMPT) carries no drone: no flight, no dock drawn
   if (!ruleset.aerial || (ruleset.aerial === 'gunship' && (entity.bot || entity.team === 'enemy' || entity.team === 'bravo'))
     || (ruleset.aerial === 'drone' && !!entity.spec?.id && Object.hasOwn(DRONE_DOCK_EXEMPT, entity.spec.id))) {
@@ -338,7 +343,8 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
     const saved = checkpoint.shell;
     direction.fromArray(saved.velocity).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, new Vector3().fromArray(saved.pos), direction, nextId());
-    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0; shell.vel.set(0,0,0);
+    // the saved velocity stands (audit M4: the launch line's vel.set(0,0,0) followed it, and the airframe stalled)
+    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0;
     flight.shell = shell; flight.shellId = shell.id; launchShell(shell);
   }
 }
@@ -358,7 +364,7 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
  * Pure and deterministic (no clock, no state): both authorities (sim/authoritativeMatch.ts, game/state.ts) stamp it on the
  * hit and the destruction they emit; presentation only renders it (ui/killSourceIdentity.ts).
  */
-type KillSource = 'ac130' | 'drone' | 'vehicle';
+type KillSource = 'ac130' | 'drone' | 'strafe' | 'bomb' | 'artillery' | 'vehicle';
 
 interface KillSourceShooter {
   aerial?: { kind?: string } | null;
@@ -375,6 +381,11 @@ export function killSourceOf(shooter: KillSourceShooter | null | undefined, shel
   if (shooter?.aerial?.kind === 'gunship') return 'ac130';
   // a gunship round whose shooter record is gone (it never is: the gunship is untouchable) still names its gun
   if (typeof shell?.reloadGroup === 'string' && shell.reloadGroup.startsWith('gunship-')) return 'ac130';
+  // Air Support's airstrikes (air-support-270): the strafing run's 30 mm and the precision bomb, credited to their caller;
+  // the AC-130 orbit fires the gunship's own rounds (above)
+  if (shell?.reloadGroup === 'strike-strafe') return 'strafe';
+  if (shell?.reloadGroup === 'strike-bomb') return 'bomb';
+  if (shell?.reloadGroup === 'strike-artillery') return 'artillery';
   // the FPV warhead carries the DRONE tracer (sim/munitionBlast.ts drone_fpv); a hit event carries its name
   if (shell && (shell.tracer === 'DRONE' || shell.name === DRONE_WARHEAD.name)) return 'drone';
   return 'vehicle';
@@ -382,5 +393,5 @@ export function killSourceOf(shooter: KillSourceShooter | null | undefined, shel
 
 /** A source worth showing in place of the firing vehicle (a gunship's or a drone's kill), or null. */
 export function supportKillSource(source: unknown): Exclude<KillSource, 'vehicle'> | null {
-  return source === 'ac130' || source === 'drone' ? source : null;
+  return source === 'ac130' || source === 'drone' || source === 'strafe' || source === 'bomb' || source === 'artillery' ? source : null;
 }

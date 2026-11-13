@@ -2,12 +2,12 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withMapProbeSession,openGamePage,beginSoloBattle} from './map-probe-runtime.mjs';
 const out=resolve('.qa-dev/spectator-cursor');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let refresh;
+let hold;
 try{
- await lock.acquire();refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'spectator-cursor', timeoutMs: 10 * 60 * 1000 });
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/clutter-vite-cache')},async({browser,port})=>{
   const {page,errors}=await openGamePage(browser,{port,viewport:{width:1280,height:800}});
   await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant'});
@@ -43,4 +43,4 @@ try{
   writeFileSync(resolve(out,'report.json'),JSON.stringify({pass:true,deathCapture:true,release:true,recapture:true,keyboardCycle:true,compact:bounds,errors},null,2));
   console.log('Spectator capture, hint, native release, canvas recapture, target cycling and compact layout passed');
  });
-}finally{clearInterval(refresh);lock.release();}
+}finally{await hold?.release();}

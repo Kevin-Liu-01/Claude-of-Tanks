@@ -13,8 +13,10 @@
 
 export type Unsubscribe = () => void;
 
-/** Lifecycle of one transport. `reconnecting` keeps the resume token and retries with backoff. */
-export type TransportState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
+/** Lifecycle of one transport. `reconnecting` keeps the resume token and retries with backoff. (2026-11-02 audit S3) a
+ * runtime list: the multiplayer harnesses import it (tools/mp-states.mjs) instead of spelling the words. */
+export const TRANSPORT_STATES = Object.freeze(['idle', 'connecting', 'open', 'reconnecting', 'closed'] as const);
+export type TransportState = typeof TRANSPORT_STATES[number];
 
 /** Why a transport closed or is reconnecting (typed; free text goes in `detail`). */
 export const TRANSPORT_CLOSE = Object.freeze({
@@ -122,7 +124,7 @@ export interface BackpressurePolicy {
 }
 
 export const DEFAULT_BACKPRESSURE: Readonly<BackpressurePolicy> = Object.freeze({
-  // A client sends ≈ 3.4 KB/s of input and a few KB of chat; 64 KB unsent means
+  // A client sends ≈ 3.6 KB/s of input (a 60 B frame, 60 a second) and a few KB of chat; 64 KB unsent means
   // the link has been dead for many seconds, not that a burst is in flight.
   maxBufferedBytes: 64 * 1024,
   sustainedMs: 5_000,

@@ -22,9 +22,12 @@
 // `shown` and `done`. `--report` folds the samples into p50 / p95 per path and build and resolves each script's
 // position through the build's hidden source maps (`vite build --sourcemap hidden`) to a source file and line.
 //
-// The probe hides navigator.webdriver, so the transitions, veils and idle warm-ups run as they do for a player. The
-// battle document boots with it visible (the game then installs `__DEBUG`, which the battle paths use to end a
-// battle) and hides it once the Garage is up.
+// The probe asks for the player's path (src/app/automationPath.ts), so the transitions, veils and idle warm-ups run as
+// they do for a player. The battle document boots on the harness path (the game then installs `__DEBUG`, which the
+// battle paths use to end a battle) and takes the player's once the Garage is up. A build before the automation owner
+// (2026-11-03: an A/B base, a deployment) ignores the request and decides by navigator.webdriver alone, and the driver
+// is hidden at launch, so the probe also mirrors the same choice onto navigator.webdriver: the one tool that does
+// (docs/AUTOMATION-PATHS.md), or such a build's battle document would never install `__DEBUG` and never warm.
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -32,6 +35,7 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { accessProblems } from './interaction-access.mjs';
 import { STEP_PATHS } from './interaction-steps.mjs';
+import { assertAutomationPath } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -52,9 +56,12 @@ const RENDERER_LIMIT_KB = 6 * 1024 * 1024;
 const INPUT_EVENTS = ['pointerdown', 'pointerup', 'click', 'mousedown', 'mouseup', 'keydown', 'keyup', 'touchstart', 'touchend'];
 
 /** The in-page recorder: event timing, long animation frames and long tasks from document start, and the visibility
- *  test the paths use. `window.__cotAutomation` decides what navigator.webdriver reads. */
+ *  test the paths use. `window.__cotAutomation` decides which automation path the game reads: the request for a build
+ *  with the automation owner, navigator.webdriver for a build before it (the owner never reads the driver; only
+ *  analytics and telemetry see it, during the battle document's boot). */
 const PROBE = `(() => {
   if (window.__click) return;
+  Object.defineProperty(window, '__COT_AUTOMATION', { get: () => (window.__cotAutomation === true ? 'harness' : 'player'), configurable: true });
   Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => window.__cotAutomation === true, configurable: true });
   const rec = window.__click = { events: [], loafs: [], longtasks: [] };
   rec.visible = (el) => { if (!el || el.nodeType !== 1) return false;
@@ -1124,6 +1131,9 @@ async function main() {
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
     log(`warming ${base.label}:${doc} ${url}`);
     await rewarmPage(page);
+    // (2026-11-02 audit S3) every game document is timed on the player's path (the battle document once its warm-up
+    // hands over): a page that took another path fails here by name
+    if (doc !== 'gallery') await assertAutomationPath(page, 'player', { label: `${base.label}:${doc}` });
     // the boot's own stage timings (main.ts BOOT_TIMINGS), kept beside the run
     const boot = await page.evaluate(() => ({ ms: window.__BOOT_MS ?? null, timings: window.__BOOT_TIMINGS ?? null })).catch(() => null);
     if (boot?.timings) {

@@ -21,6 +21,8 @@
 // the Square of the Republic (also the turbo-ball kickoff) and the east square — so both teams fight down into the
 // valley; the trunk roads reach the boulevard 50 m apart, so neither runs straight on into the other.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -162,7 +164,7 @@ export default {
     // Austro-Hungarian blocks and Yugoslav towers, the slopes' mahala houses, the mosques and churches, the siege on
     // every one — in place of the megacity kit; the render takes Steinburg's lime-render photo tint, warm enough for
     // the kit's ochre, cream, green and pink washes
-    architecture: 'sarajevo', sourcedPalette: 'urban',
+    architecture: BUILDING_STYLES.ruinspires.kit, sourcedPalette: 'urban',
     // the boulevard's tram line, catenary, burnt trams and the container screens at its crossings, the white stones of the
     // cemeteries on the slopes below the ridges (maps/sarajevoStreets.ts)
     extraKits: ['sarajevo'],
@@ -224,7 +226,7 @@ export default {
     hedgehogs: 38, sandbagLines: 26, townCraters: true,
     // the map-vehicles lane (2026-10-06, the period ruling): Sarajevo, 1992-96: the T-72M1 (the M-84's parent), the
     // T-55 (its Type 59 copy) and the BMP
-    tankWrecks: { era: 'cold-war', count: 9, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
+    tankWrecks: WRECK_CASTS.ruinspires,
     inhabit: {
       stalls: 1, benches: 8, coreClutter: 34, drums: 20,
       trucks: 10, jeeps: 8, drumClusters: 10, camps: 3, modernClutter: 44,

@@ -5855,7 +5855,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10014,
-        "sha256": "b2ee0f484fa3c061e3422c42420b048363205f27a78cc5e4f72fc36298a79f25"
+        "sha256": "b2ee0f484fa3c061e3422c42420b048363205f27a78cc5e4f72fc36298a79f25",
+        "frame": [25,108,224,249]
       }
     },
     "top": {
@@ -5864,15 +5865,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 9692,
-      "sha256": "9045749137dd77d4e00f411b8645050be1a3b7295c43a7df43e907afd2b5b24d"
+      "sha256": "9d75b394bcf23199255f01d5c6dfd4d44320ae7aeea4a84bac0499c6a8daa775"
     },
     "side": {
       "file": "pt91m_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9430,
-      "sha256": "bccfa6253f02396196ca5bcc7094c6a676ab507180f2bda5b539d2552fee5a76"
+      "bytes": 9436,
+      "sha256": "20bf8d71ed4e53b95abdb91f8b2ab25ab08f3894c135a4da0f184f160407b824"
     },
     "topSilhouette": {
       "file": "pt91m_top_silhouette.png",
@@ -5895,32 +5896,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23128,
-      "sha256": "dec6d5141ecd48f7a5d924a740a425b84450e2cfca6553375149f6720e0e237c"
+      "bytes": 23152,
+      "sha256": "e179458159b914f52d137602af8b316a7449f2415ec36eb7fe3b1eb100707b73"
     },
     "modulesSide": {
       "file": "pt91m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20840,
-      "sha256": "84a0289c9e5c7df8add5a8e018f80de9a917d2c6b34bb96f21fb6bebd5bdf2c5"
+      "bytes": 20808,
+      "sha256": "31dae7527e5e275149b56491f6ff317c2d31e4225041a6df599a79294f8ca3ac"
     },
     "crewSide": {
       "file": "pt91m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19032,
-      "sha256": "8616df0cc404fa1daa3a9cfc910eca7bf549b7e707f5ef44ed83a69bde41dcb4"
+      "bytes": 19026,
+      "sha256": "d1e71d2de9111ce0b3ad2a344be3c033dcc9b9c3db9f75775e6f615d8bbe39d1"
     },
     "markings": {
       "file": "pt91m_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 33444,
-      "sha256": "ceeaeca1c12df73996724b3e9e126de97e219985b9f2828da738941031cdc097"
+      "bytes": 30378,
+      "sha256": "00d93b5ac76008f1fa2495c3a61131b6da280b58a6980e65d966805209da4836"
     },
     "technicalLabels": {
       "file": "pt91m_technical.json",

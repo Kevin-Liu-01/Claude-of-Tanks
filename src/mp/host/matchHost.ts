@@ -15,13 +15,31 @@ import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import type { RtcIceConfig, RtcPeerConnectionFactory, Signaler } from '../transport/webRtcTransport.ts';
 import { createRtcHostAcceptor } from '../match/rtcClientLink.ts';
 import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../match/rtcClientLink.ts';
-import { CLOSE_REASON } from '../wire/constants.ts';
+import { CLOSE_REASON, MESSAGE_TYPE } from '../wire/constants.ts';
+import { encodeMessage } from '../wire/codec.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
-import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { HOST_LOOPBACK_PEER, bootHoldNoticeMs } from './hostProtocol.ts';
+import { ELECTED_HOST_BOOT_MS, RESUME_HOLD_MS } from '../match/recovery.ts';
 import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
 type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
+
+/**
+ * The runtime's moves (audit M1/M3, 2026-11-02): setState refused only a move to the same state, so a `ready` already in
+ * flight across the thread boundary when the session stopped the host (or one landing just after the boot timeout)
+ * moved a stopped or failed host to `live`: its drain no longer held back the stopped actor's reports, it overwrote the
+ * page's kernels report and boot timings, and a later stop() emitted `stopped` again. Stopped and failed are terminal.
+ * A live host still fails (review round 2): the browser port reports a Worker `error` at any point of its life as
+ * `boot_failed` (browserHostPort.ts), and that host must be torn down, not left live with a dead thread.
+ */
+const HOST_MOVES: Readonly<Record<MatchHostState, readonly MatchHostState[]>> = Object.freeze({
+  idle: ['booting', 'failed', 'stopped'],
+  booting: ['live', 'failed', 'stopped'],
+  live: ['stopped', 'failed'],
+  stopped: [],
+  failed: [],
+});
 
 interface MatchHostRoomPort {
   signaler: Signaler;
@@ -77,7 +95,8 @@ export interface MatchHost {
   readonly acceptor: RtcHostAcceptor | null;
   /**
    * Boot the actor with `config`; resolves once it runs (rejects when the boot failed or timed out). The port and the
-   * acceptor exist from construction, so peers offering before the boot is done are answered and their frames wait.
+   * acceptor exist from construction, so peers offering before the boot is done are answered, told their HELLOs wait for
+   * the boot (wire HOLD), and their frames wait.
    */
   start(config: HostBootConfig): Promise<void>;
   /** One display frame: deliver the loopback frames, sample the uplink, report pressure. */
@@ -92,7 +111,8 @@ export interface MatchHost {
 
 const PRESSURE_INTERVAL_MS = 100;
 const UPLINK_WINDOW_MS = 1000;
-const DEFAULT_BOOT_TIMEOUT_MS = 30_000;
+// the elected host's boot bound a held seat's stall clock allows for (recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS)
+const DEFAULT_BOOT_TIMEOUT_MS = ELECTED_HOST_BOOT_MS;
 const PORT_CLOSE_GRACE_MS = 500;
 
 export function createMatchHost({
@@ -123,22 +143,46 @@ export function createMatchHost({
   let coreStats: HostCoreStats | null = null;
   let reports = 0;
   let peerSeq = HOST_LOOPBACK_PEER;
-  const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number }>();
+  // heard: the link's first frame came (the boot's HOLD notice answers that one, bootHoldNotice)
+  const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number; heard: boolean }>();
   const queuedLoopback: Uint8Array<ArrayBuffer>[] = [];
   let bootTimer: unknown = null;
+  /** When start() began the boot (clock()); null before it. */
+  let bootStartedAtMs: number | null = null;
   let lastPressureMs = -Infinity;
   let uplinkWindowStartMs: number | null = null;
   let uplinkWindowBytes = 0;
   let uplinkBytesPerS = 0;
   let startPromise: Promise<void> | null = null;
 
-  const setState = (next: MatchHostState, detail = ''): void => {
-    if (state === next) return;
+  const canMove = (next: MatchHostState): boolean => HOST_MOVES[state].includes(next);
+  /** The one writer of `state`: a move the table does not allow is ignored (false). */
+  const setState = (next: MatchHostState, detail = ''): boolean => {
+    if (!canMove(next)) return false;
     state = next;
     stateListeners.emit({ state: next, detail });
+    return true;
   };
 
   const post = (message: HostToWorkerMessage, transfer?: ArrayBuffer[]): void => { port?.post(message, transfer); };
+
+  /**
+   * The boot's HOLD notice (wire HOLD; round 3 B1/X6, round 4 F0): what a seat hears when its first frame, its HELLO,
+   * reaches this host before the actor runs (`ready`): its HELLO waits at most what is left of the boot's bound, then a
+   * resume's hold (bootHoldNoticeMs; a boot not yet asked for may hold). This runtime is its one teller, to every link
+   * alike, its own loopback seat and each bridged peer: it owns the bound (its timer fails the boot) and it runs on the
+   * main thread, whatever the Worker is doing. The core tells only its resume hold, once its actor runs (matchHostCore.ts
+   * noticeHeld). Before, a peer's boot notice was the core's: this thread only posted the peer's frames to the Worker, so
+   * a Worker still evaluating its chunk (a slow device, a cold cache) told the seat nothing, and on a kept host's link,
+   * which allows nothing past the stall clock before a word (MatchClient: the room's same generation), the seat asked for
+   * a fresh link 5 s into the boot.
+   */
+  const bootHoldNotice = (): Uint8Array => {
+    const bootLeftMs = bootStartedAtMs === null ? bootTimeoutMs : bootTimeoutMs - (clock() - bootStartedAtMs);
+    return encodeMessage({ type: MESSAGE_TYPE.HOLD, holdMs: bootHoldNoticeMs(bootLeftMs, RESUME_HOLD_MS, config) });
+  };
+  /** A seat's first frame now waits for the boot: the host is not live yet, nor gone (its links are dropped then). */
+  const holdsForBoot = (): boolean => !ready && (state === 'idle' || state === 'booting');
 
   // ------------------------------------------------------------ the host's own seat over the loopback pair
 
@@ -146,7 +190,13 @@ export function createMatchHost({
   pair = loopback;
   loopback.server.open();
   loopback.server.onFrame((bytes) => {
-    if (!ready) { queuedLoopback.push(bytes.slice()); return; }
+    if (!ready) {
+      // the host's own seat waits here for the boot, its frames queued until the core runs the actor; its first word hears
+      // how long at most (bootHoldNotice), as a peer's does
+      if (!queuedLoopback.length && holdsForBoot()) loopback.server.send(bootHoldNotice());
+      queuedLoopback.push(bytes.slice());
+      return;
+    }
     const copy = bytes.slice();
     post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: copy.buffer }, [copy.buffer]);
   });
@@ -162,9 +212,18 @@ export function createMatchHost({
 
   const bridge = (link: RtcClientLink, peerId: string): void => {
     const peer = ++peerSeq;
-    bridges.set(peer, { link, playerId: peerId, lastPressure: 0 });
+    const entry = { link, playerId: peerId, lastPressure: 0, heard: false };
+    bridges.set(peer, entry);
     post({ type: 'link_open', peer, label: link.label, playerId: peerId });
     link.onMessage((bytes) => {
+      // a peer's first word before the actor runs: told here, at once, that the boot holds it (bootHoldNotice), then passed
+      // on to the core, which keeps it until its actor runs
+      if (!entry.heard) {
+        entry.heard = true;
+        if (holdsForBoot()) {
+          try { link.send(bootHoldNotice()); } catch { /* the channel closed under the send; its close follows */ }
+        }
+      }
       const copy = bytes.slice();
       post({ type: 'link_frame', peer, bytes: copy.buffer }, [copy.buffer]);
     });
@@ -176,7 +235,8 @@ export function createMatchHost({
   const receive = (message: WorkerToHostMessage): void => {
     switch (message.type) {
       case 'ready':
-        if (ready) return;
+        // only a booting host goes live: a ready from a thread this host already stopped or failed is its last word
+        if (ready || !canMove('live')) return;
         ready = true;
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
         post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host', playerId });
@@ -240,8 +300,7 @@ export function createMatchHost({
   };
 
   const fail = (detail: string): void => {
-    if (state === 'stopped' || state === 'failed') return;
-    setState('failed', detail);
+    if (!setState('failed', detail)) return;
     teardown();
   };
 
@@ -267,7 +326,8 @@ export function createMatchHost({
   };
 
   // The thread and the acceptor come up at once: a peer that offers before the boot is done (the room's election reaches
-  // every seat together) is answered now, its link bridged, its frames held by the core until the actor runs.
+  // every seat together) is answered now, its link bridged, its HELLO told the boot holds it (bootHoldNotice, from this
+  // thread, whatever the Worker is doing), its frames held by the core until the actor runs.
   let spawnError: Error | null = null;
   try {
     port = createPort();
@@ -289,11 +349,14 @@ export function createMatchHost({
       if (state !== 'idle') { reject(new Error(`host is ${state}`)); return; }
       if (!next || typeof next.hostSecret !== 'string' || next.hostSecret.length < 16) { const error = new TypeError('a boot config with the host secret is required'); fail(error.message); reject(error); return; }
       config = next;
+      bootStartedAtMs = clock();
       setState('booting', 'boot');
       const off = stateListeners.add(({ state: current, detail }) => {
         if (current === 'live') { off(); resolve(); }
         else if (current === 'failed' || current === 'stopped') { off(); reject(new Error(detail || current)); }
       });
+      // the bound the seats are told their HELLOs wait for (bootHoldNotice): past it the boot fails, the links are dropped
+      // (teardown) and the room elects another seat
       bootTimer = setTimer(() => { bootTimer = null; if (!ready) fail('host boot timed out'); }, bootTimeoutMs);
       post({ type: 'boot', config: next });
     });
@@ -320,7 +383,7 @@ export function createMatchHost({
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
-    if (state === 'stopped' || state === 'failed') return;
+    if (!canMove('stopped')) return;
     post({ type: 'stop', reason, detail });
     setState('stopped', detail || 'stopped');
     teardown();
@@ -352,3 +415,10 @@ export function createMatchHost({
     onState: (listener) => stateListeners.add(({ state: next, detail }) => listener(next, detail)),
   };
 }
+
+/**
+ * (2026-11-02 audit S3) The host runtime's states as a runtime list: the multiplayer harnesses import it
+ * (tools/mp-states.mjs) instead of spelling the words; tools/mp-states.selftest.mjs pins it to MatchHostState.
+ */
+export const MATCH_HOST_STATES = Object.freeze(
+  ['idle', 'booting', 'live', 'stopped', 'failed'] as const satisfies readonly MatchHostState[]);

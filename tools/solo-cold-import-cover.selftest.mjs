@@ -185,9 +185,9 @@ for (const mutate of [
   assert.ok(checkColdImportCover(changed).length, `reject ${mutate}`);
 }
 const source = await readFile(new URL('./solo-cold-import-cover-probe.mjs', import.meta.url), 'utf8');
-assert.match(source, /createCaptureLock\(\)/);
-assert.match(source, /await lock\.acquire\(/);
-assert.ok(source.indexOf("process.on('SIGINT'") > source.indexOf('await lock.acquire('),
+// (round 2 U38) the lease is the one hold wrapper's open form, with no signal handler of its own (signals: [])
+assert.match(source, /await openCaptureHold\(\{[^\n]*signals: \[\]/);
+assert.ok(source.indexOf("process.on('SIGINT'") > source.indexOf('await openCaptureHold('),
   'queued interruption retains normal OS termination; handlers own only an admitted lease');
 assert.match(source, /page\.click\('\.cot-battle'\)/);
 assert.match(source, /Fetch\.continueRequest/);

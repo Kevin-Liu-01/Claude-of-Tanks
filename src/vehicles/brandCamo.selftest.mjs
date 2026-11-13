@@ -12,7 +12,8 @@ Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
 const sha = data => createHash('sha256').update(data).digest('hex');
 const pixels = canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
 const sources = [
-  ['gt', 'gt-mark.svg', '06f0c9dcca6d1723ee0891aff0db44dc635ebf44fa5c3dfcd70812b5cb6c6b03', GT_BRAND_PATH],
+  // 272 (owner: "for my gt camo, use our new gt logo!"): the globe replaces the GT monogram (gt-mark.svg) as the source.
+  ['gt', 'gt-globe-logo-light.svg', 'f48245a0a672ff75c149f32b8f8510c0c3c3b8e74442746aedc6dff17177b909', GT_BRAND_PATH],
   ['openai', 'openai-blossom-guideline.svg', '01485e70cea6df8422f5abc643fbbd3c153442cc41da0e7d8e7451801ebf26e2', OPENAI_BRAND_PATH],
   ['xai', 'x-logo.svg', 'dd46f96b6f47fcd33683b79ddfaf3daca1d4f8aeba3c0f2bde1584c69cc699d4', X_BRAND_PATH],
   ['gemini', 'gemini-sparkle-v002.svg', '01821494593b81ffd7da0e08287d4735304ff6292a6903453328b9d17cf38799', GEMINI_BRAND_PATH],
@@ -36,7 +37,7 @@ for (const [brand, file, hash, path] of sources) {
   const native = createCanvas(256, 256);
   paintBrandMark(native.getContext('2d'), brand, 128, 128, 200);
   const viewBox = brand === 'openai' ? '109.28628 188.44128 342.01344 342.01344'
-    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : brand === 'gt' ? '-177.82 -176.82 1552.64 1552.64' : '-3.92 -3.92 35.84 35.84';
+    : brand === 'xai' ? '-185.28 -171.78 1570.56 1570.56' : brand === 'gt' ? '-49.92 -49.92 355.84 355.84' : '-3.92 -3.92 35.84 35.84';
   const defs = bytes.toString().match(/<defs>[\s\S]*?<\/defs>/)?.[0] || '';
   const referenceSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${viewBox}" fill="white">${tag}${defs}</svg>`;
   const reference = createCanvas(256, 256);
@@ -54,6 +55,12 @@ for (const [brand, file, hash, path] of sources) {
   const substitute = createCanvas(256, 256);
   substitute.getContext('2d').fillRect(28, 28, 200, 200);
   assert.ok(alphaAgreement(pixels(substitute), pixels(reference)) < .9, 'solid generic substitute is rejected');
+  if (brand === 'gt') {
+    // the globe is open line-work: a filled disc of the same diameter (207.5 of 278 native units) is not the mark
+    const disc = createCanvas(256, 256), ctx = disc.getContext('2d');
+    ctx.beginPath(); ctx.arc(128, 128, 200 * 207.5 / 278 / 2, 0, Math.PI * 2); ctx.fill();
+    assert.ok(alphaAgreement(pixels(disc), pixels(reference)) < .7, 'gt: the globe keeps its counters, not a filled disc');
+  }
 }
 const painter = createMaterialPainter(createCanvas);
 const spec = { id: 'sabra_mk2', nation: 'Israel', era: 'modern', visual: {} };

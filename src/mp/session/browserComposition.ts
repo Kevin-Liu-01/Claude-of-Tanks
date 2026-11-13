@@ -48,7 +48,7 @@ import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { programReceipt, type ProgramOriginWatch, type ProgramReceipt, type ReceiptProgram } from '../../engine/programReceipt.ts';
 import { planFromRoom } from '../host/hostPlan.ts';
-import { botCamoRoll } from '../../sim/camoPaint.ts';
+import { planBotPaints } from '../../sim/camoPaint.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
@@ -347,6 +347,12 @@ export interface BrowserRoomPorts {
   enterGarage(): MaybePromise<void>;
   /** The transition out of a live battle (the Garage return's `leave`). */
   returnToGarage(): Promise<void>;
+  /**
+   * (round 2, app-flow) Hand this round the scene before it covers, loads or announces anything: a Studio open in this
+   * tab leaves first, and a scene that still cannot hand over to a battle rejects (main.ts takeSceneForRound, the app
+   * lifecycle's edge). Null when it can hand over now.
+   */
+  takeSceneForRound(): Promise<void> | null;
   getPhase(): string;
   hasResult(): boolean;
 }
@@ -490,6 +496,13 @@ export interface BrowserComposition {
   readonly active: boolean;
   /** The round has been activated into the live battle phase. */
   readonly inMatch: boolean;
+  /**
+   * (round 2, app-flow) A round owns the screen: from its start (its scene hand-over, then its cover) until it reveals
+   * or its covered Garage restore has landed, whether a launch (`beginRoom`) or the room's session (a later match_start
+   * while the room is kept: a rematch, the next match) entered it. main's app lifecycle reads 'loading' through it, so
+   * the Studio's F8, its button and its entry refuse to open over the round meanwhile.
+   */
+  readonly entering: boolean;
   readonly room: V2RoomSession | null;
   readonly session: SessionOwner | null;
   /** One display frame (the app's network pump, every phase). */
@@ -499,7 +512,7 @@ export interface BrowserComposition {
   /** The page is going away (pagehide): a hosting seat hands its match on at once (plan step 11). True when it did. */
   handOffHosting(reason: string): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeGunship'): void;
   /** The Garage return's network port: keep the room across the return? */
   shouldPreserveRoom(): boolean;
   /** Leave the match, keep the seat (the Garage return with a preserved room). */
@@ -612,6 +625,15 @@ function isSuperseded(error: RuntimeValue): boolean {
 }
 
 /**
+ * (2026-11-02 audit R1) A rejection that marks itself superseded: the world activation's (src/world/worldActivationRuntime.ts
+ * WorldActivationSupersededError), whose later request is often this composition's own Garage restore (setDormant(true))
+ * after a room closed or was left while loading. It is the round's own supersession once the round no longer owns its load.
+ */
+function marksSuperseded(error: RuntimeValue): boolean {
+  return !!error && typeof error === 'object' && (error as { superseded?: unknown }).superseded === true;
+}
+
+/**
  * 2026-10-10 (the MP shader-prep lane; production 207-211: "Battle shaders could not finish preparing" refused the
  * returning seat's entry at load 54-84, compile 5.0 s + retry 5.0 s): the strict preparation (src/engine/programWarm.ts) is
  * a 5 s wall-clock window, and a busy GPU process links a cold cohort for longer. A window that runs out is not a failure:
@@ -698,6 +720,7 @@ function validatePorts(ports: BrowserCompositionPorts): void {
     ['room.getMenu', ports.room?.getMenu], ['room.setGarageStatus', ports.room?.setGarageStatus], ['room.emitRoomState', ports.room?.emitRoomState],
     ['room.clearInput', ports.room?.clearInput], ['room.enterGarage', ports.room?.enterGarage], ['room.returnToGarage', ports.room?.returnToGarage],
     ['room.getPhase', ports.room?.getPhase], ['room.hasResult', ports.room?.hasResult],
+    ['room.takeSceneForRound', ports.room?.takeSceneForRound],
   ];
   for (const [name, port] of required) {
     if (typeof port !== 'function') throw new TypeError(`multiplayer v2 browser composition requires the ${name} port`);
@@ -733,6 +756,9 @@ export function createBrowserComposition({
   let roomSession: V2RoomSession | null = null;
   let session: SessionOwner | null = null;
   let round: ActiveRound | null = null;
+  // (round 2, app-flow) a failed or lost round's covered restore still in flight (failRound, stopLoading): its round is
+  // already released, and the round still owns the screen until the loader is down (`entering`)
+  let restoring = 0;
   let latestLobby: SerializedLobby | null = null;
   let latestRoom: RoomSnapshot | null = null;
   let menuAttached = false;
@@ -1022,19 +1048,24 @@ export function createBrowserComposition({
 
   /** v1's `stopLoading`: reacquire opaque coverage, restore the Garage under it, then fade the loader. */
   const stopLoading = async (label = 'Restoring Garage'): Promise<void> => {
-    if (!load.battleLoad.visible) {
-      load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
-    }
-    load.battleLoad.progress(1, label);
-    lifecycle.coverRendering();
-    load.audio.loadingOn(false);
+    restoring += 1; // (round 2, app-flow) the round's screen until the loader is down
     try {
-      await roomPorts.enterGarage();
+      if (!load.battleLoad.visible) {
+        load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
+      }
+      load.battleLoad.progress(1, label);
+      lifecycle.coverRendering();
+      load.audio.loadingOn(false);
+      try {
+        await roomPorts.enterGarage();
+      } finally {
+        // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
+        // that throws still releases the cover and the loader; the caller reports the error.
+        lifecycle.uncoverRendering();
+        try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      }
     } finally {
-      // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
-      // that throws still releases the cover and the loader; the caller reports the error.
-      lifecycle.uncoverRendering();
-      try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      restoring -= 1;
     }
   };
 
@@ -1078,7 +1109,9 @@ export function createBrowserComposition({
     active.failed = true;
     if (!active.abort.signal.aborted) active.abort.abort(error);
     finishTrace(active, 'failed');
-    const superseded = isSuperseded(error);
+    // (audit R1) released first (releaseRoom, disposePresentation, a newer round: round !== active), then superseded by
+    // the covered Garage restore: never a failed entry (no beacon, no report), as the release's own check('world') was
+    const superseded = isSuperseded(error) || (round !== active && marksSuperseded(error));
     if (!superseded) {
       lastFailure = { message: messageOf(error), matchId: active.matchId, stage, reason: reasonOf(error) };
       load.recordEntryFailure?.(lastFailure);
@@ -1096,12 +1129,16 @@ export function createBrowserComposition({
       load.battleLoad.show({ mapName: notice, thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
       load.battleLoad.progress(1, 'Returning to Garage');
     }
+    // (round 2, app-flow) released above (nothing ran in between), and the round keeps the screen through the leave and
+    // the covered restore below
+    restoring += 1;
     try {
       if (session) await session.leaveMatch(superseded ? 'superseded' : 'entry_failed');
       await stopLoading(notice ? 'Returning to Garage' : undefined);
     } catch (restoreError) {
       reportError('multiplayer v2 entry', restoreError);
     } finally {
+      restoring -= 1;
       settleEntry(false);
       if (!superseded) {
         syncMenu();
@@ -1153,6 +1190,14 @@ export function createBrowserComposition({
     };
     try {
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
+      // (round 2, app-flow) the round takes the scene first, before its cover, its world or its announcement: a Studio
+      // open in this tab leaves (a later round while the room is kept), and a scene that still cannot hand over refuses
+      // the round here (the activation refused it only after the round had covered and loaded its world over the Studio)
+      const handOver = roomPorts.takeSceneForRound();
+      if (handOver) {
+        try { await handOver; } catch (error) { await failRound(active, error, 'scene'); throw error; }
+        check('scene');
+      }
       const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
       try {
         load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant });
@@ -1162,6 +1207,13 @@ export function createBrowserComposition({
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
       showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
+      // (round 8 Y1 s1-04) every round loads in silence, as every other entry does: a rematch from the result screen is
+      // still the battle phase, so the last battlefield's scene played under the loader until this round's activation
+      // edge, where the engine's battle edge ends the intent (audioEngine.ts modeEdge). The intent now ends with the
+      // loader's start: in a battle it stops the scene; ambientOn(true) at the reveal below brings the new map's scene.
+      // roundLoaderAmbience.selftest reads the audio calls from showRoundLoad to the first await and plays them on the
+      // real engine, so they stay in that span
+      load.audio.ambientOn(false);
       load.audio.loadingOn(true);
       // the lobby's vehicles (ours first): their engines, with the map's beds and the running gear, decode ahead of the
       // combat banks while the round loads, so its countdown sounds (2026-10-14)
@@ -1183,15 +1235,14 @@ export function createBrowserComposition({
       // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
       // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
       // the world load; a wrong guess is a spare bake, never a different roster.
-      // (268, item 6) each with the paint the authority will roll at its roster index (every seated hull first, then the
-      // bots in the plan's order: server/match/matchActor.ts), so its bake is the one the WELCOME's roster names
+      // (268, item 6) each with the paint the authority will roll at its roster index: the match actor's own rule
+      // (sim/camoPaint.ts planBotPaints, round 8 Y1 s4-06), so its bake is the one the WELCOME's roster names
       try {
         const plan = planFromRoom(sessionRound.room, { seed: matchStart.seed });
-        let index = plan.seats.filter((seat) => seat.team !== 'spectator').length;
-        for (const bot of plan.bots) {
-          const camo = botCamoRoll(matchStart.seed, index++, matchStart.mapId);
-          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo, isViewer: false });
-        }
+        const paints = planBotPaints(plan.seats, plan.bots, matchStart.seed, matchStart.mapId);
+        plan.bots.forEach((bot, ordinal) => {
+          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo: paints[ordinal]!, isViewer: false });
+        });
       } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
       // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
@@ -1662,6 +1713,7 @@ export function createBrowserComposition({
     beginRoom,
     get active() { return round !== null; },
     get inMatch() { return !!round && round.activated; },
+    get entering() { return (round !== null && !round.revealed) || restoring > 0; },
     get room() { return roomSession; },
     get session() { return session; },
     pump,

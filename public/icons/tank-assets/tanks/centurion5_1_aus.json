@@ -854,15 +854,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25454,
-      "sha256": "982ae9c60758ad2c53b651ed03d51beddf9656edfcf3cca24ba4feb7882a12e7",
+      "bytes": 26874,
+      "sha256": "e41cb21718a5a7b917b2dcf0db2ca9ea9e02ef6efa13953f6434aac5accf690b",
       "thumbnail": {
         "file": "thumbs/centurion5_1_aus_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10602,
-        "sha256": "7c20bfd7c9ec6a0318b984eb1b703956677a90712c7b23a08c1e55d14c4b6bab"
+        "bytes": 10964,
+        "sha256": "fee05f02321844dd2ce7da0cf0166f93a7bc24897c4f92abf3f3d1fc040fdc81",
+        "frame": [24,115,225,249]
       }
     },
     "top": {
@@ -870,16 +871,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9168,
-      "sha256": "b6b3f536e3ebb9f1c7e6c1d4029288ade45469c60b771726625bcefc671c07a2"
+      "bytes": 10546,
+      "sha256": "55dc8c51eb398e51d172c5865a5fd712d9b23a2d2a70e54ef2a4a06a125081fc"
     },
     "side": {
       "file": "centurion5_1_aus_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11812,
-      "sha256": "90f3b9c8531e3a530a28bf74362229ab39f4995f81e3ee8f7ce093fb36c8eb8f"
+      "bytes": 12360,
+      "sha256": "6d198f220bbd309f766bfdd060df214a26dfde98044ee8fde5927127bcd25745"
     },
     "topSilhouette": {
       "file": "centurion5_1_aus_top_silhouette.png",
@@ -902,32 +903,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27086,
-      "sha256": "ee35b82849b687f37f27b6b5af960c54209a2d48117ca51859b7caca546b17cd"
+      "bytes": 28440,
+      "sha256": "91a3f863f70e874c9f4f1ab7806385b15d632541f58b6784bdfa457eb8c35f9f"
     },
     "modulesSide": {
       "file": "centurion5_1_aus_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25116,
-      "sha256": "9668de5367e84e2f3b3928971f31e184de9eb88e862301c929d9cff272c0e6ad"
+      "bytes": 27120,
+      "sha256": "2e02718f862c354a21abc7fe799ca135c54b09a654ed181511a82339cb7a3923"
     },
     "crewSide": {
       "file": "centurion5_1_aus_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23506,
-      "sha256": "7739c02106e6e0a9448c178cbd5eca9cbc87ccb47db12d9239526b522eae7ea4"
+      "bytes": 25254,
+      "sha256": "4662a4e6e311a615a3a96af0d38875d16de2007cd3b45e4e8abc5a58b821107a"
     },
     "markings": {
       "file": "centurion5_1_aus_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 34816,
-      "sha256": "0a0667485e8691ffea231934374d25a9e9b9fb849da610b42c2e655ef42fd672"
+      "bytes": 33781,
+      "sha256": "1d324faf5563efded53282d3b265f5238390eac7a4236ec56a15458fee8350f0"
     },
     "technicalLabels": {
       "file": "centurion5_1_aus_technical.json",

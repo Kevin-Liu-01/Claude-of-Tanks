@@ -2598,7 +2598,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 14968,
-        "sha256": "4434f0a476cc6c3ed43799dec59180abe6d775d60bf1fd7d31f61bb608e84967"
+        "sha256": "4434f0a476cc6c3ed43799dec59180abe6d775d60bf1fd7d31f61bb608e84967",
+        "frame": [24,84,226,250]
       }
     },
     "top": {
@@ -2606,8 +2607,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23688,
-      "sha256": "bb6228f78ac0f908921548586310e3abc38fc9418fd89feecfa19ad09cba1a35"
+      "bytes": 23712,
+      "sha256": "de4e8edb98d7b45e3e4c24f3f21a920d703f86214ddfe079e2101d5d4df79c54"
     },
     "side": {
       "file": "m551a1_tts_side.webp",
@@ -2662,8 +2663,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 37882,
-      "sha256": "a3a07576fcd1f82358ca724c7267be9c5db7f319875ad1598bfce2836c5cee5f"
+      "bytes": 35440,
+      "sha256": "896e6468ea132c31c7fb5be89db1b4fa41abc6704cdff963fdf2f964c232f3f2"
     },
     "technicalLabels": {
       "file": "m551a1_tts_technical.json",

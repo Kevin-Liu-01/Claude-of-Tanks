@@ -1,7 +1,9 @@
+import { AIR_SUPPORT_RULES } from './matchRuleset.ts';
 import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type SmokePoint, type SmokeWorld, type SmokeWorldHit } from './smokeBallistics.ts';
 import { smokeClip, smokeClipReach, smokeScreenSummary } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
+import { roofGunSwitch, roofGunTogglable } from './roofGunSwitch.ts';
 import { auxiliaryWeaponProfile, type AuxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { createShell, penAtDistanceMm, shellGravityMps2, stepShell } from './ballistics.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
@@ -435,7 +437,12 @@ export function requestAuxiliary(
   if (!kit) return false;
   const state = auxiliaryState(entity);
   if ((action === 'lights' || action === 'lightsOff') && kit.lights) { state.lights = action === 'lights' ? 1 : 0; return true; }
-  if (action === 'roofGun' && kit.guns.length && entity.combat.modules?.roofGun?.state !== 'red') { state.gunOn = !state.gunOn; return true; }
+  // the roof-gun switch is the crew's in every state: a red module refuses switching it on, never off (round 2 U9: the
+  // switch was locked while red, so the crew could not silence a gun that would start firing again at the repair)
+  if (action === 'roofGun' && kit.guns.length) {
+    if (!roofGunTogglable(state.gunOn, entity.combat.modules?.roofGun?.state)) return false;
+    state.gunOn = !state.gunOn; return true;
+  }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
   const terrain=ground ?? (()=>entity.state.pos.y);
   const query=world&&typeof world.raycast==='function'?world as SmokeWorld:null;
@@ -471,6 +478,13 @@ interface GunContext {
   /** VH.15: the authority charges a round a station fired at a drone to that drone's airframe (aerialCombat.ts
    * strikeDrone): `chance`, the round's share of a strike at its range (weapon profile, droneStrikeChance). */
   droneHit?(carrier: AuxiliaryEntity, chance: number, shooter: AuxiliaryEntity): void;
+  /** Air Support's counter-air (sim/airSupport.ts): the nearest enemy aircraft within `rangeM` of `origin` (where a
+   *  round at `roundMps` meets it left in `out`, a handle returned), and the share a round lands on it. Absent outside
+   *  the mode. */
+  counterAir?: {
+    nearest(shooter: AuxiliaryEntity, origin: Vector3, rangeM: number, out: Vector3, roundMps: number): object | null;
+    hit(aircraft: object, chance: number, shooter: AuxiliaryEntity): void;
+  };
 }
 const wrap = (v:number) => detMath.atan2(detMath.sin(v), detMath.cos(v));
 type RoofGunMount = AuxiliaryInventory['guns'][number];
@@ -655,7 +669,9 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   entity.state.roofGunPitch = state?.gunPitch ?? 0;
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;
   const damage = entity.combat.modules?.roofGun?.state;
-  if (damage === 'red') { state.gunOn = false; return false; }
+  // a red module silences the station, as it does stations 1+; the switch stays the crew's (audit M4, 2026-11-02: this
+  // switched it off, and the gun stayed off after the auto-repair until the crew pressed the toggle again)
+  if (roofGunSwitch(state.gunOn, damage) === 'silenced') return false;
   const fired = stepStation(entity, gun, state, damage, now, dt, context);
   entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
   return fired;
@@ -669,7 +685,7 @@ export function stepRoofStation(entity: AuxiliaryEntity, index: number, now: num
   const guns = auxiliaryCapabilities(entity.spec)?.guns, gun = guns?.[index], state = entity.combat.auxiliary;
   if (!gun || !state?.gunOn || entity.combat.destroyed || entity.modeActive === false) return false;
   const damage = entity.combat.modules?.roofGun?.state;
-  if (damage === 'red') return false;
+  if (roofGunSwitch(state.gunOn, damage) === 'silenced') return false;
   const station = (state.stations ??= guns.slice(1).map(stationState))[index - 1];
   return !!station && stepStation(entity, gun, station, damage, now, dt, context);
 }
@@ -744,6 +760,16 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
     if (fired) context.droneHit?.(drone, droneStrikeChance(profile, range), entity);
     return fired;
   }
+  // Air Support's counter-air (air-support-270): an enemy aircraft the station can lay on (led by its rounds' flight), with
+  // a clear line, comes next; one inbound inside twice the reach is tracked so the station is laid when it arrives
+  const fireRange = profile.counterDroneRangeM * AIR_SUPPORT_RULES.counterAir.rangeScale;
+  const aircraft = context.counterAir?.nearest(entity, origin, fireRange * 2, aimPoint, profile.shell.velocityMps) ?? null;
+  if (aircraft && stationLay(gun, profile, aimPoint) && friendlyLaneClear(entity, null, context.entities, origin, aimPoint) && context.clear(origin, aimPoint)) {
+    const range = aimPoint.distanceTo(origin);
+    const fired = aimAndFire(entity, gun, state, profile, aimPoint, null, damage, now, dt, handling, context, false, range > fireRange);
+    if (fired) context.counterAir!.hit(aircraft, droneStrikeChance(profile, range), entity);
+    return fired;
+  }
   scanGun = gun; engageWeapon = profile; scanStation = state; scanShooter = entity; scanNow = now; scanContext = context;
   const target = selectRoofTarget(entity, context, profile.rangeM, origin, stationAccepts);
   scanGun = null; engageWeapon = null; scanStation = null; scanShooter = null; scanContext = null;
@@ -800,7 +826,7 @@ function selectDroneTarget(entity: AuxiliaryEntity, context: GunContext, gun: Ro
  * null for a drone overhead. `aim`: the point is the station's aim point on the target (a refusal there holds it). */
 function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: AuxiliaryStationState, profile: AuxiliaryWeaponProfile,
   point: Vector3, target: AuxiliaryEntity | null, damage: string | undefined, now: number, dt: number, handling: number,
-  context: GunContext, aim = false): boolean {
+  context: GunContext, aim = false, holdFire = false): boolean {
   const arc = gun.yawArc;
   direction.copy(point).sub(origin);
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
@@ -819,6 +845,8 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   state.gunPitch+=Math.max(-dt*handling*profile.pitchRateRadS,Math.min(dt*handling*profile.pitchRateRadS,pitch));
   // crossing the shallow sector depressed, the barrel lifts clear of the roof first
   if(gun.depressionByYaw)state.gunPitch=Math.max(state.gunPitch,-depressionAt(gun,state.gunYaw,profile.depressionRad));
+  // Air Support's counter-air: an inbound aircraft still out of reach is tracked, not fired on
+  if(holdFire)return false;
   if(Math.abs(turn)>.035||Math.abs(pitch)>.035||now<state.nextShot)return false;
   const cp=detMath.cos(state.gunPitch);
   // THREE applies local scale before the animated yaw. Doing the reverse

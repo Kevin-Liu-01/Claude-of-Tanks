@@ -49,6 +49,8 @@ import { revealWhenReady } from '../ui/components/reveal.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
+import { heroCardChunk } from '../ui/heroCardChunk.ts';
 import { applyGalleryCameraRange, fitGalleryDepth, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = 'appearance' | AnatomyMode | 'markup';
@@ -69,6 +71,8 @@ interface GalleryVisual extends DamageLabVisual {
 interface GalleryLoadOptions {
   view?: string;
   mode?: string;
+  /** a Back or Forward move to this tank's address (popstate), not a press */
+  history?: boolean;
 }
 
 declare global {
@@ -216,6 +220,10 @@ const damageBurst = createDamageBurst(scene);
 const damagePoint = new THREE.Vector3();
 const damageEnd = new THREE.Vector3();
 let selectedId: string | null = null;
+/** (2026-11-02 audit, 16-audio-gallery item 8) The vehicle on the stage: `visual`, `damageLab` and the anatomy view are
+ *  its. selectedId (the dossier and the row) moves at a press, shownId at the swap, and a failed load puts selectedId
+ *  back on it. */
+let shownId: string | null = null;
 let activeMode: GalleryMode = 'appearance';
 let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
@@ -244,51 +252,51 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
   overlay() {
     if (!isAnatomyMode(activeMode) || activeMode === 'armor') setMode('modules', false);
     else setMode(activeMode, false);
-    void anatomyReady.then(() => anatomyView?.setToggle('hits', damageWorkbench.hitboxes));
+    void anatomySettled().then(() => anatomyView?.setToggle('hits', damageWorkbench.hitboxes));
   },
-  copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: selectedId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
+  // (audit item 8) the lab is the shown vehicle's: its id, never the selection's (a new row pressed, the old lab still up)
+  copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: shownId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
 });
 // The damage lab is the gallery's heaviest graph — the sim's damage, movement and armour and the auxiliary weapons table,
 // about 495 kB raw in 9 requests (main 395305d45) — so it loads after the first tank is on screen (2026-10-07, push 3b:
 // the owner's load-time priority). The Damage lab tab holds a placeholder of its size while the module takes more than
 // 200 ms; a failed load is retried by the next tank load.
 type DamageLabModule = typeof import('./damageLab.ts');
-let damageLabModule: Promise<DamageLabModule> | null = null;
-function loadDamageLab(): Promise<DamageLabModule> {
-  if (damageLabModule) return damageLabModule;
+// (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): a failed module is asked again by the next
+// vehicle's load, a failed stylesheet never
+const damageLabModule = createLazyChunk((): Promise<DamageLabModule> => {
   const pending = document.createElement('div');
   pending.className = 'damage-workbench';
   pending.setAttribute('aria-busy', 'true');
   const slow = setTimeout(() => damageHost.append(pending), 200);
-  damageLabModule = import('./damageLab.ts').then(
+  return import('./damageLab.ts').then(
     (module) => { clearTimeout(slow); pending.remove(); return module; },
-    (error: unknown) => { clearTimeout(slow); pending.remove(); damageLabModule = null; throw error; },
+    (error: unknown) => { clearTimeout(slow); pending.remove(); throw error; },
   );
-  return damageLabModule;
+});
+function loadDamageLab(): Promise<DamageLabModule> {
+  return damageLabModule.load();
 }
 // The take (owner 2026-10-12, brand-ui SPEC 12.5): the selected vehicle's own newest take is the dossier's hero media.
 // Its module and the fleet index load once the first tank is on screen; until then, and for a vehicle the index lacks,
 // the frame keeps the vehicle's hero card.
 let inAction: InActionBlock | null = null;
-let inActionLoad: Promise<void> | null = null;
+// (audit R6) the take's chunk under the one lazy-chunk policy: a failed module is asked again by the next vehicle
+const inActionLoad = createLazyChunk(() => import('./inAction.ts').then(({ mountInAction }) => {
+  inAction = mountInAction(takeMedia, $<HTMLElement>('#takeActions'));
+  void inAction.ids.then((ids) => { takeIds = ids; renderFacets(); });
+}));
 let takeIds: ReadonlySet<string> | null = null;
 function showInAction(id: string): void {
   if (inAction) { inAction.show(id); return; }
-  inActionLoad ??= import('./inAction.ts').then(
-    ({ mountInAction }) => {
-      inAction = mountInAction(takeMedia, $<HTMLElement>('#takeActions'));
-      void inAction.ids.then((ids) => { takeIds = ids; renderFacets(); });
-    },
-    () => { inActionLoad = null; },
-  );
-  void inActionLoad.then(() => { if (selectedId === id) inAction?.show(id); });
+  void inActionLoad.load().then(() => { if (selectedId === id) inAction?.show(id); }, () => {});
 }
 function damageTargetKey(key: string | null): string {
   if (!key || !damageLab) return '';
   return damageLab.targets.some(target => target.key === key) ? key : '';
 }
 function emphasizeDamageTarget(): void {
-  void anatomyReady.then(() => { if (damageLab?.selected) anatomyView?.select(damageLab.selected); });
+  void anatomySettled().then(() => { if (damageLab?.selected) anatomyView?.select(damageLab.selected); });
 }
 function colorDamageOverlay(): void {
   if (!damageLab || !anatomyView) return;
@@ -304,13 +312,20 @@ function colorDamageOverlay(): void {
 // through import() the first time one of them opens, so the Gallery's first load and the game boot graph stay as they
 // were; the scene is built once per vehicle and specimen state and kept while the layers switch.
 type AnatomyModule = typeof import('./anatomyView.ts');
-let anatomyModule: Promise<AnatomyModule> | null = null;
+// (audit R6) an opener's chunk (the layer buttons): any failure is terminal, the buttons keep the kit's error state
+const anatomyModule = createLazyChunk((): Promise<AnatomyModule> => import('./anatomyView.ts'), { opener: true });
 let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
+/** (audit R6) The latest showAnatomy's settling: each show replaces anatomyReady, so a waiter follows it to the newest. */
+async function anatomySettled(): Promise<void> {
+  for (let seen: Promise<void> | null = null; seen !== anatomyReady;) {
+    seen = anatomyReady;
+    await seen.catch(() => {});
+  }
+}
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts');
-  return anatomyModule;
+  return anatomyModule.load();
 }
 const anatomyHost = (): AnatomyHost => ({
   renderer, scene, camera, viewport,
@@ -334,7 +349,9 @@ const anatomyHost = (): AnatomyHost => ({
   onToggle() { updateUrl(); },
 });
 function anatomyVehicle(): AnatomyVehicle | null {
-  if (!visual || !selectedId) return null;
+  // (audit item 8) while a pressed row's tank builds, the stage, its lab and the anatomy are still the one before it: no
+  // layer pairs the new id with the old root and the old lab's armour (the swap's setMode shows the new one's)
+  if (!visual || !selectedId || selectedId !== shownId) return null;
   const spec = getSpec(selectedId) as GalleryVehicleSpec & { era?: string; gun?: { caliberMm?: number; shells?: Array<{ caliberMm?: number }> } };
   const removed = damageLab ? [...damageLab.snapshot().removed].sort() : [];
   return {
@@ -461,16 +478,16 @@ function frameView(requestedName = 'hero'): void {
 const stage = document.querySelector<HTMLElement>('#viewport');
 const actions = document.querySelector<HTMLElement>('.acts');
 type NoticeKit = typeof import('../ui/components/notice.ts');
-let noticeKit: Promise<NoticeKit> | null = null;
 /** The kit's notices load with the page's first notice and make their regions then (a static import made them one more
- *  Gallery boot request: Main's 253 ruling). */
+ *  Gallery boot request: Main's 253 ruling). (2026-11-02 audit R6) Under the one lazy-chunk policy (app/lazyChunk.ts):
+ *  `??=` kept a failed chunk, so after one blip no notice ever showed (a failed load's among them); the next asks again. */
+const noticeKit = createLazyChunk(() => import('../ui/components/notice.ts').then((kit) => {
+  if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
+  if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
+  return kit;
+}));
 function loadNotices(): Promise<NoticeKit> {
-  noticeKit ??= import('../ui/components/notice.ts').then((kit) => {
-    if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
-    if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
-    return kit;
-  });
-  return noticeKit;
+  return noticeKit.load();
 }
 // (gallery.css: the page scrolls, stage over the panes, on a phone or a short window under 1100 px)
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 768px), ((height < 520px) and (width < 1100px))') : null;
@@ -837,8 +854,9 @@ function groupRecords(list: GalleryRecord[]): RosterGroup[] {
 
 let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest; classes: typeof import('../vehicles/vehicleFacets.ts');
   glyphs: typeof import('../ui/vehicleFacetIcons.ts'); chips: typeof import('../ui/heroCardChips.ts') } | null = null;
-Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
-  .then(async ([module]) => {
+// (2026-11-02 audit R6) the document's one hero card load (ui/heroCardChunk.ts): a sheet that failed keeps the angle icons
+heroCardChunk.load()
+  .then(async (module) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
     // the class glyph and the tier chip ride with the cards (the chunk the card module already pulls)
@@ -895,6 +913,7 @@ function renderRoster(): void {
       if (art) heroCards.module.decorateHeroCard(art, id, heroCards.manifest, { tankSizes: '180px', flagSizes: '240px', priority: id === selectedId });
     }
   }
+  markFailedRows();
   const tabStop = vehicleList.querySelector<HTMLElement>('.it[aria-selected=true]') ?? vehicleList.querySelector<HTMLElement>('.it');
   if (tabStop) tabStop.tabIndex = 0;
   if (focusedId) vehicleList.querySelector<HTMLElement>(`.it[data-id="${CSS.escape(focusedId)}"]`)?.focus({ preventScroll: true });
@@ -1450,6 +1469,7 @@ function disposeTank(): void {
     visual.dispose();
   }
   visual = null;
+  shownId = null;
 }
 
 function nextFrame(): Promise<void> {
@@ -1495,9 +1515,62 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
   }
 }
 
+/** The fleet row of `id`, where the roster shows it. */
+const rowFor = (id: string | null): HTMLElement | null =>
+  id ? vehicleList.querySelector<HTMLElement>(`.it[data-id="${CSS.escape(id)}"]`) : null;
+/** The vehicles whose load failed in this document: their rows keep the kit's error state through a roster redraw. */
+const failedLoads = new Set<string>();
+function markFailedRows(): void {
+  for (const id of failedLoads) {
+    const row = rowFor(id);
+    if (row) markLoadFailed([row], t('loadFailed.generic'));
+  }
+}
+
+/** (2026-11-02 audit R6) The vehicle load's failure edge: a builder or lab chunk that did not arrive, or a build that
+ *  threw, left the silhouette up, READY false and an unhandled rejection. The current load's failure takes the
+ *  silhouette down and says so. A superseded load's failure is the newer load's business, never this one's.
+ *  (audit, 16-audio-gallery item 8) A load that failed before its swap leaves the stage, the lab and the anatomy on the
+ *  tank before it, while the dossier and the row had moved at the press: they go back to the shown tank (READY as it
+ *  stood), and the failed vehicle's row keeps the kit's error state (no chunk needed, so it shows offline, where the
+ *  toast's own chunk may not load), and its next press (a click, the [ ] keys, the history) reloads the page once online,
+ *  the kit's opener rule (components/loadFailure.ts). (round 2, the loaders residual) Offline a history move there cannot
+ *  reload: the address, which Back or Forward had moved to the failed tank, goes back to the tank still shown (the stage,
+ *  the dossier and the row never left it). */
 async function loadTank(
   requestedId: string | null | undefined,
   options: GalleryLoadOptions = {},
+): Promise<void> {
+  if (pressFailed(rowFor(requestedId ?? null))) {
+    // (online the page reloads at the address the history move named)
+    if (options.history && navigator.onLine === false) updateUrl();
+    return;
+  }
+  const version = loadVersion + 1; // the version the load claims before its first await
+  await loadTankUnguarded(requestedId, options).then(undefined, (error: unknown) => {
+    if (version !== loadVersion) return;
+    loadingState.classList.add('hidden');
+    console.warn('[gallery] the vehicle did not load', error);
+    const failedId = selectedId;
+    const shown = shownId ? recordById.get(shownId) : undefined;
+    if (failedId && failedId !== shownId) {
+      failedLoads.add(failedId);
+      if (shown) {
+        selectedId = shown.id;
+        renderDossier(shown);
+        markSelectedRow();
+        updateUrl();
+        window.__TANK_GALLERY_READY = !!damageLab;
+      }
+      markFailedRows();
+    }
+    showToast(t('loadFailed.generic'), { severity: 'error' });
+  });
+}
+
+async function loadTankUnguarded(
+  requestedId: string | null | undefined,
+  options: GalleryLoadOptions,
 ): Promise<void> {
   let id = requestedId;
   if (!id || !recordById.has(id)) id = records[0]?.id;
@@ -1528,6 +1601,7 @@ async function loadTank(
   if (version !== loadVersion) { built.dispose(); return; }
   disposeTank();
   visual = built;
+  shownId = id;
   visual.centerOnPresentationPoint?.(0, 0);
   visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);
   scene.add(visual.root);
@@ -1541,7 +1615,8 @@ async function loadTank(
   setMode(options.mode || activeMode, false);
   updateUrl();
   await nextFrame();
-  loadingState.classList.add('hidden');
+  // (audit R6) a load superseded during that frame leaves the newer load's silhouette standing
+  if (version === loadVersion) loadingState.classList.add('hidden');
   if (version === loadVersion) showInAction(id);
   const { createDamageLab } = await loadDamageLab();
   if (version !== loadVersion || !visual) return;
@@ -1609,7 +1684,13 @@ function stepVehicle(step: number): void {
   if (next) void loadTank(next.id);
 }
 
-$('#gallerySearch').addEventListener('input', applyFilters);
+// (272) key repeat types about 30 characters a second, and each rebuilt the whole roster (its ~600 rows and hero cards):
+// the roster follows once a frame, at the latest query, as the fleet grid's search does (docs/fleetGrid.ts)
+let searchFrame = 0;
+$('#gallerySearch').addEventListener('input', () => {
+  if (searchFrame) return;
+  searchFrame = requestAnimationFrame(() => { searchFrame = 0; applyFilters(); });
+});
 $('#archiveFilters').addEventListener('submit', (event) => event.preventDefault());
 for (const id of ['#nationFacets', '#classFacets', '#eraFacets', '#roleFacets', '#extraFacets']) $(id).addEventListener('click', onFacet);
 $('#sortDirection').addEventListener('click', () => {
@@ -1740,7 +1821,9 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (!event.ctrlKey && !event.metaKey && /^[1-5]$/.test(event.key)) {
-    setMode(GALLERY_MODES[Number(event.key) - 1]);
+    const mode = GALLERY_MODES[Number(event.key) - 1];
+    // (audit R6) a layer whose module did not arrive: the key reloads once online, as a press does
+    if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode);
     return;
   }
   if (!event.ctrlKey && !event.metaKey && (event.key === '[' || event.key === ']')) {
@@ -1758,7 +1841,7 @@ document.addEventListener('keydown', (event) => {
 
 window.addEventListener('popstate', () => {
   const params = new URLSearchParams(location.search);
-  loadTank(linkTankId(params), { mode: params.get('layer') || 'appearance' });
+  loadTank(linkTankId(params), { mode: params.get('layer') || 'appearance', history: true });
 });
 new ResizeObserver(resize).observe(viewport);
 
@@ -1828,7 +1911,7 @@ window.__TANK_GALLERY = {
     return changed;
   },
   resetDamage: () => { damageLab?.reset(); updateArticulation(); setMode(activeMode, false); damageWorkbench.refresh(); },
-  waitAnatomyReady: () => anatomyReady,
+  waitAnatomyReady: anatomySettled,
   setAnatomyToggle: (toggle: AnatomyToggle, value: boolean) => anatomyView?.setToggle(toggle, value),
   setArmorMetric: (metric: ArmorMetric) => { armorMetric = metric; anatomyView?.setMetric(metric); },
   selectPart: (key: string | null) => anatomyView?.select(key),

@@ -1,4 +1,5 @@
 import { createGunshipBattleVisual } from '../../game/gunshipVisual.ts';
+import { transitionBattleCountdown } from '../../game/preBattleCountdown.ts';
 import type { AerialView } from '../../sim/aerialCombat.ts';
 import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
@@ -19,7 +20,8 @@ import { createOpaqueLoadingYielder } from '../../engine/frameScheduler.ts';
 import type { FrameSchedulerOptions, WorkYielder } from '../../engine/frameScheduler.ts';
 import { createCombatState, mainWeaponModuleState } from '../../sim/damage.ts';
 import type { CombatState } from '../../sim/damage.ts';
-import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
+import { cannonMuzzleIndex, isUnguidedRocket, usesLauncherMuzzles, type CannonMuzzleCursor } from '../../sim/launcherPolicy.ts';
+import { createRotaryShotThinning } from '../../sim/fireCycleFloor.ts';
 import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
@@ -42,6 +44,8 @@ import {
 } from '../wire/index.ts';
 import type { RosterEntry, TeamId, VerdictId, WireEvent } from '../wire/index.ts';
 import { createEntitySample, decodeRow } from '../match/interpolation.ts';
+import { applyPresentedHullRowFlags } from '../match/hullBodyRow.ts';
+import { OBSTACLE_FALL_NONE, decodeObstacleFall, withheldObstacleFall, type ObstacleFall } from '../../sim/obstacleFall.ts';
 import type { EntitySample, ShellSample } from '../match/interpolation.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
@@ -49,6 +53,7 @@ import type { EventContext, PresentationAdapter, RosterContext } from './adapter
 import { createPredictionWorld } from './predictionWorld.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent } from '../../sim/destructionEvents.ts';
+import { resetWorldForBattle, type BattleResetWorld } from '../../world/battleWorldReset.ts';
 import { FUEL_CHARGE_KG, cookOffChargeKg } from '../../sim/munitionBlast.ts';
 import { shellHitsWater } from '../../sim/shellSurface.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
@@ -68,7 +73,9 @@ export interface TankVisual {
   gunDirWorld?(target: Vector3): Vector3;
   stripEra?(plateName: string): void;
   resetEra?(): void;
-  setDestroyed?(options: { pop: boolean }): void;
+  /** `lateCause` (2026-11-02 audit F10): this call is the kill's cause landing after its flag laid the wreck, so a pop
+   *  upgrades a young plain wreck (vehicles/wreckLifecycle.ts); without it a repeat on a wreck does nothing */
+  setDestroyed?(options: { pop: boolean; lateCause?: boolean }): void;
   /** Physics lane (wire 5): the host will send this wreck's turret pose; never simulate it locally. */
   awaitWreckTurretPose?(): void;
   resetDestroyed?(): void;
@@ -100,7 +107,14 @@ export interface MatchActor {
   isPlayer: boolean;
   bot: boolean;
   state: TankState;
-  combat: CombatState;
+  /**
+   * Its muzzleCursor and launcherCursor mirror the authority's for the own seat (shell_fired), so a predicted shot kicks
+   * the next barrel or tube; each life that follows a death this seat's frames show (a presented frame whose own row is the
+   * wreck) and each restarted battle begin them as the authority's fresh combat state does (beginWeaponCursors). A life no
+   * presented frame marks does not: a living hull's revive (a Turbo Ball goal's kick-off), or a death and revive that both
+   * fell in a gap with no presented frame (a reconnect, a page stalled past the respawn delay). See ownMirrorLife.
+   */
+  combat: CombatState & CannonMuzzleCursor;
   specialAction: SpecialActionState;
   input: MatchActorInput;
   visual: TankVisual;
@@ -120,6 +134,11 @@ export interface MatchActor {
   _lastZ: number;
   /** Physics lane (wire 5): the wreck's turret body pose its host sent, interpolated; null while it has none. */
   _wreckTurretPose?: Float64Array | null;
+  /**
+   * A mode revived this hull while a held row still showed its wreck (round 4 E6a review r1: reviveAtRespawn): its new
+   * life is owed until a row shows it alive, no row reaches it (settleOwedRevive), or that new life ends.
+   */
+  _reviveOwed: boolean;
 }
 
 export interface MatchShell {
@@ -148,6 +167,8 @@ export interface PresentationGameState {
   timeS: number;
   preBattleS: number;
   result?: string | null;
+  /** Battle time of the verdict: the post-verdict hold counts from it (app lifecycle's verdict and report). */
+  resultTimeS?: number | null;
   /** battle endings (2026-09-25): the killcam facade main composes (typed loosely); every observable lethal shell_hit feeds it. */
   killcam?: RuntimeValue;
   resultReason?: string | null;
@@ -259,6 +280,9 @@ export interface BattlePresentation extends PresentationAdapter {
 const POS_SCALE = 1;
 /** The persistent destroyed list lays props down as settled state: final pose, no fall, no debris, no sound. */
 const SETTLED_CRUSH: Readonly<{ settled: true }> = Object.freeze({ settled: true as const });
+const NO_IDS: readonly number[] = Object.freeze([]);
+/** A prop's fall (the settled list's, a withheld live event's), decoded in place (no allocation a prop). */
+const propFall: ObstacleFall = { cause: 'ram', dx: 0, dz: 0 };
 const scratchSample = createEntitySample();
 const muzzleTip = new Vector3();
 const shotDirection = new Vector3();
@@ -358,12 +382,22 @@ export interface RosterPrebuildSeat extends RosterPrewarmSeat {
   playerId: string;
 }
 
+/** A seat's vehicle as the roster asks for it: what RosterPrebuild's take() and has() compare a prebuilt vehicle with. */
+export interface RosterPrebuildWanted {
+  specId: string;
+  options: TankVisualOptions;
+}
+
 /** The roster's vehicles built ahead: each handed over once to its seat; whatever is not taken goes with dispose(). */
 export interface RosterPrebuild {
   /** The seat's vehicle if it was built as these options name it (once); null otherwise, and a mismatch is disposed. */
   take(playerId: string, specId: string, options: TankVisualOptions): TankVisual | null;
-  /** Whether it holds the seat's vehicle (in `camo`'s paint, where named: a guess the roster's paint overrules is not held). */
-  has(playerId: string, camo?: string): boolean;
+  /**
+   * Whether take() would hand the seat its vehicle: built as `wanted` names it (its vehicle and every option, its paint
+   * included; round 8 Y1 s4-06: one predicate with take(), so a guess take() refuses is warmed and grouped like any seat).
+   * With no `wanted`, whether it holds a vehicle for the seat at all.
+   */
+  has(playerId: string, wanted?: RosterPrebuildWanted): boolean;
   /** Settles when every build has finished or stopped. */
   readonly settled: Promise<void>;
   dispose(): void;
@@ -466,22 +500,26 @@ export function prebuildRosterVisuals(
     built.clear();
   };
   signal?.addEventListener('abort', dispose, { once: true });
+  /** The one confirm rule (take and has): the vehicle the roster would build, with every option, never yet placed. */
+  const matches = (entry: { specId: string; options: TankVisualOptions; visual: TankVisual }, specId: string,
+    options: TankVisualOptions): boolean =>
+    entry.specId === getSpec(specId).id && entry.options.camoSeed === options.camoSeed
+    && entry.options.camoPattern === options.camoPattern && entry.options.quality === options.quality
+    && entry.options.geometryQuality === options.geometryQuality && entry.options.batchStatic === options.batchStatic
+    && entry.options.battleDetailLod === options.battleDetailLod && entry.options.staticDrawMerge === options.staticDrawMerge
+    && !entry.visual.root.parent;
   return {
     take(playerId, specId, options) {
       const entry = built.get(playerId);
       if (!entry) return null;
       built.delete(playerId);
-      if (entry.specId === getSpec(specId).id && entry.options.camoSeed === options.camoSeed
-        && entry.options.camoPattern === options.camoPattern && entry.options.quality === options.quality
-        && entry.options.geometryQuality === options.geometryQuality && entry.options.batchStatic === options.batchStatic
-        && entry.options.battleDetailLod === options.battleDetailLod && entry.options.staticDrawMerge === options.staticDrawMerge
-        && !entry.visual.root.parent) return entry.visual;
+      if (matches(entry, specId, options)) return entry.visual;
       entry.visual.dispose();
       return null;
     },
-    has: (playerId, camo) => {
+    has: (playerId, wanted) => {
       const entry = built.get(playerId);
-      return !!entry && (camo === undefined || entry.options.camoPattern === camo);
+      return !!entry && (!wanted || matches(entry, wanted.specId, wanted.options));
     },
     settled,
     dispose,
@@ -526,6 +564,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let appliedDestroyedLength = -1;
+  /** The client's battle restarts as of the last frame (MatchFrame.battleRestarts); null before the first frame. */
+  let presentedBattleRestarts: number | null = null;
   // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
   const authorityObstacles = createAuthorityObstacles(worldCollision);
   // the authority's destruction on this world: stages, collapses, heaps (docs/DESTRUCTION.md §8)
@@ -553,9 +593,41 @@ export function createBattlePresentation({
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
   let verdictSeenAtMs: number | null = null;
+  // (2026-11-02 audit F1 review) Battle time of the newest frame that showed no verdict. It is no later than the
+  // authority's verdict, so a hold counted from it is over by the time the authority's clock freezes at the hold's end
+  // (authoritativeMatch stepPlaying); the frame or event that brings the verdict can be a few steps past it.
+  let verdictFreeBattleS = 0;
   let sessionVerdict: { verdict: VerdictId; reason: string } | null = null;
   let lastFrameAtMs = -Infinity;
   let lastPredictedFireSeq = -1;
+  /**
+   * The own seat's cursor mirrors across its hull's lives (round 8 Y1 residual; s5-01's mirror). The authority begins
+   * every life with a fresh combat state (sim/authoritativeMatch.ts reviveForMode: createCombatState), so a new life's
+   * first cannon round leaves mouth 0 and its first missile tube 0; the mirrors begin each life there too. The edge is
+   * the own row's death, not the revive's `mode_respawn`: the own rows and rounds reach this seat at once, while any other
+   * event waits for the render tick (mp/match/events.ts), so a revive presented there can follow the new life's first
+   * rounds, and a reset there would undo their mirror. The host sends a round's event before the snapshot that shows its
+   * shooter's death (server/match/matchActor.ts: events, then the snapshot, each tick) on one ordered channel, so every
+   * round of the old life reaches this seat by the frame whose row first shows the wreck; that frame's own rounds are
+   * presented after its rows (mp/presentation/adapter.ts), so the mirrors begin the new life at the next frame
+   * ('died' -> 'following'), before any of its rows, predictions or rounds.
+   * - 'following': the mirrors follow the authority's shell_fired for the own seat's rounds (followOwnCursors);
+   * - 'died': the own row showed the wreck this frame (updateOwn); the next frame begins the mirrors (applyFrame).
+   * A restart begins every hull's (beginActorLife). Known gaps: a life no presented frame marks. Its first predicted kick
+   * can take the old life's next barrel, as before; its first confirmed round puts the mirror back on the authority's cursor
+   * (followOwnCursors) before the next prediction, which waits for the authority's row to change (mp/match/events.ts
+   * OwnShotPredictor: one per ready epoch): normally the row that shows that round, sent after its event.
+   * - A revive of a living hull (a Turbo Ball goal's kick-off, sim/matchModes.ts) has no row edge.
+   * - The death edge needs a presented frame that shows the own wreck before the new life's first round reaches this seat,
+   *   so a gap with no presented frame from the death through the revive misses it: a reconnect to the same host
+   *   (matchClient.ts resetForNewSocket drops the own row and the samples, so no frame comes until the resumed link's first
+   *   snapshot, which shows the new life; the battle id is unchanged, so no restart), or a page stalled past the respawn
+   *   delay (a frame carries only the newest own row). The host keeps a disconnected hull in the field (authoritativeMatch
+   *   onPeerLeave), where the mode can kill and revive it.
+   * Closing them needs a life count the wire does not carry (on the own viewer row, and on the own rounds for a round that
+   * comes before that row); a tick on the own rounds alone misses the reconnect, whose mode_respawn is not replayed.
+   */
+  let ownMirrorLife: 'following' | 'died' = 'following';
   let predictionWorldCache: PredictionWorld | null = null;
   let predictionWorldSpec: FleetTankSpec | null = null;
   let disconnected = false;
@@ -624,7 +696,7 @@ export function createBattlePresentation({
       contactGeom: null, rigidGear: false, networkVisible: false, modeSpeedMultiplier: 1, modeGravityScale: 1,
       eraNames: eraPlateNames(spec.armor),
       _networkPoseReady: false, _authoritySlot: -1, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
-      _lastX: 0, _lastZ: 0,
+      _lastX: 0, _lastZ: 0, _reviveOwed: false,
     };
     if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
     if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
@@ -651,16 +723,20 @@ export function createBattlePresentation({
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
-    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds in the roster's paint is neither
-    // grouped nor built here (268, item 6: a bot's guessed paint the roster overrules is built here as if never guessed)
+    // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds as the roster would build it is
+    // neither grouped nor built here (268, item 6; round 8 Y1 s4-06: a guess the roster overrules, its paint or its
+    // vehicle, is grouped, warmed and built here as if never guessed: the one rule take() hands a vehicle over by)
     if (prebuilt) { await prebuilt.settled; assertActive(); }
+    const prebuiltFor = (entry: RosterEntry, isViewer: boolean): boolean =>
+      !!prebuilt?.has(entry.playerId, { specId: entry.specId, options: visualOptions(entry, isViewer) });
     // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
     const shared = new Map<string, RosterEntry[]>();
     for (const entry of active) {
       if (actors.has(entry.playerId) || (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot)) continue;
       const camo = camoFor(entry);
-      if (prebuilt?.has(entry.playerId, camo)) continue;
-      const vehicle = seatBuildKey(entry.specId, camo, !spectator && entry.entityId === rosterContext.ownEntityId);
+      const isViewer = !spectator && entry.entityId === rosterContext.ownEntityId;
+      if (prebuiltFor(entry, isViewer)) continue;
+      const vehicle = seatBuildKey(entry.specId, camo, isViewer);
       let group = shared.get(vehicle);
       if (!group) shared.set(vehicle, group = []);
       group.push(entry);
@@ -681,7 +757,7 @@ export function createBattlePresentation({
         shared.delete(vehicle);
         await prepareSharedVisuals(group, rosterContext, textureTick, assertActive);
       }
-      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuilt?.has(entry.playerId, camo)) {
+      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuiltFor(entry, isViewer)) {
         warmed.add(key);
         try { await prepareVisualTextures(getSpec(entry.specId), engineCtx.anisotropy ?? 4, quality, textureTick, camo); }
         catch { /* createTank keeps its synchronous compatibility path */ }
@@ -785,13 +861,16 @@ export function createBattlePresentation({
   function updateDestruction(actor: MatchActor, destroyed: boolean): void {
     if (destroyed) {
       const pop = destructionCause.get(actor.id) === 'ammo_rack';
+      // a cause after the flag calls again, naming itself late: the visual's wreck owner upgrades a young plain wreck to
+      // the cook-off (vehicles/wreckLifecycle.ts, 2026-11-02 audit F10); no other caller's repeat upgrades a wreck
       if (actor._networkDestroyed && actor._networkDestroyPop === pop) return;
+      const lateCause = actor._networkDestroyed;
       actor._networkDestroyed = true;
       actor._networkDestroyPop = pop;
       if (actor.visual.setDestroyed) {
         // Impact scars are transient children of the live tank: detach them before the wreck material traversal.
         clearVehicleDecals?.(actor.visual);
-        actor.visual.setDestroyed({ pop });
+        actor.visual.setDestroyed(lateCause ? { pop, lateCause } : { pop });
         // the host owns the turret's body (wire 5): the visual follows the rows' pose and never simulates its own
         actor.visual.awaitWreckTurretPose?.();
       }
@@ -799,6 +878,9 @@ export function createBattlePresentation({
       actor.visual.resetDestroyed?.();
       actor._networkDestroyed = false;
       actor._networkDestroyPop = false;
+      // (2026-11-02 audit F10) the cause was this life's: the next death's flag may land before its own event, and must
+      // not first draw this one's wreck (a late cook-off cause still upgrades it: vehicles/wreckLifecycle.ts)
+      destructionCause.delete(actor.id);
     }
   }
 
@@ -817,13 +899,11 @@ export function createBattlePresentation({
     }
     state.pos.set(sample.x * POS_SCALE, sample.y * POS_SCALE, sample.z * POS_SCALE);
     state.verticalSpeed = sample.vy;
-    state.grounded = (sample.flags & ENTITY_FLAGS.AIRBORNE) === 0;
-    state.overturned = (sample.flags & ENTITY_FLAGS.OVERTURNED) !== 0;
-    state._body.autoRighting = (sample.flags & ENTITY_FLAGS.AUTO_RIGHTING) !== 0;
-    state._body.tumbling = state.overturned || state._body.autoRighting;
+    // ground contact, the body mode and the stack, as the authority judged them (wire 10): the prediction world's tank
+    // contacts read them
+    applyPresentedHullRowFlags(state, sample.flags);
     state._ride.y = sample.y;
     state._ride.v = sample.vy;
-    state._ride.grounded = state.grounded;
     state.yaw = sample.yaw;
     state.visualPitch = sample.pitch;
     state.visualRoll = sample.roll;
@@ -904,7 +984,10 @@ export function createBattlePresentation({
     }
     if (viewer.row) {
       const sample = decodeRow(viewer.row, scratchSample);
+      const wasDestroyed = actor.combat.destroyed;
       const destroyed = updateCombat(actor, sample, true);
+      // the own hull's death: its cursor mirrors begin the next life at the next frame (ownMirrorLife)
+      if (destroyed && !wasDestroyed) ownMirrorLife = 'died';
       updateEra(actor, viewer.row.eraSpent);
       updateDestruction(actor, destroyed);
       if (!viewer.state) applySamplePose(actor, sample, false);
@@ -941,7 +1024,19 @@ export function createBattlePresentation({
     game.player = ownActor();
   }
 
-  function applyShells(samples: readonly ShellSample[]): void {
+  /**
+   * Why a presented round left the frame (round 2 of the 2026-11-02 audit, U31): `unseen`, the authority still flies it
+   * out of this view (its shooter hidden, or past the view's bound: the frame names it, wire 11), or `ended`. Before, an
+   * absence was always an end, so a spotting loss longer than the effects' 0.12 s grace drew one: a missile's wire parted
+   * and its trail ended, a tracer gave up its belt place, a drone flew home. An unseen round goes to the effects as
+   * `shell:unseen`, which they hold out of view instead; an ended one leaves as before (its strike event, if any, told
+   * them already).
+   */
+  function roundExit(id: number, unseen: readonly number[]): 'unseen' | 'ended' {
+    return unseen.length && unseen.includes(id) ? 'unseen' : 'ended';
+  }
+
+  function applyShells(samples: readonly ShellSample[], unseen: readonly number[]): void {
     const live = new Set<number>();
     for (const raw of samples) {
       live.add(raw.id);
@@ -968,7 +1063,12 @@ export function createBattlePresentation({
       shell.spawnedAtS ??= game.timeS;
       shell.ageS = Math.max(0, game.timeS - shell.spawnedAtS);
     }
-    for (const [id, shell] of shellById) if (!live.has(id)) { shell.dead = true; shellById.delete(id); }
+    for (const [id, shell] of shellById) {
+      if (live.has(id)) continue;
+      shell.dead = true;
+      shellById.delete(id);
+      if (roundExit(id, unseen) === 'unseen') bus.emit('shell:unseen', { shellId: id, shooterId: shell.shooterId });
+    }
     liveShells.length = 0;
     for (const shell of shellById.values()) liveShells.push(shell);
     game.shells = liveShells;
@@ -982,23 +1082,174 @@ export function createBattlePresentation({
    * the list arrives one interpolation delay ahead of the presented world, and until the world state audit
    * (2026-10-01) it felled every tree first — early, toward +Z, at speed 0 — and the event found nothing left to fell.
    * Compared by content, not by a monotonic revision alone: a migrated host continues the old revision, but a list
-   * may still read differently with a lower number for a moment.
+   * may still read differently with a lower number for a moment. Each listed prop lies as it fell (wire 11, round 2 U27:
+   * `falls`, sim/obstacleFall.ts): its cause and direction where this viewer may read them, else as a ram along the prop's
+   * own heading (withheldObstacleFall, a hash of its index), as the live event without its source's fields lays it here.
+   * Before, every one lay as a ram toward +Z (and until the round 2 review a none still did: direction 0, 0 is +Z to the
+   * world's hinge, world/topple.ts).
    */
-  function applyDestroyed(indices: readonly number[], revision: number, pending: ((index: number) => boolean) | null): void {
+  function applyDestroyed(indices: readonly number[], falls: readonly number[], revision: number,
+    pending: ((index: number) => boolean) | null): void {
     if (revision === appliedDestructibleRevision && indices.length === appliedDestroyedLength) return;
     appliedDestructibleRevision = revision;
     appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
-    // the list carries indices only: a world laid out otherwise reads it through the authority's identities, or not at all
+    // the list names props by index alone (wire 11 adds each one's fall, not its identity): a world laid out otherwise
+    // reads it through the authority's identities, or not at all
     if (!authorityObstacles.listReadable) return;
-    for (const index of indices) {
+    const aligned = falls.length === indices.length;
+    for (let at = 0; at < indices.length; at++) {
+      const index = indices[at]!;
       const obstacle = authorityObstacles.listed(index);
       if (!obstacle || obstacle.crushed) continue;
       // its event is owed to this presentation: it falls then, live
       if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
-      worldCollision.crushObstacle?.(obstacle, 0, 1, 0, 'ram', SETTLED_CRUSH);
+      const fall = decodeObstacleFall(aligned ? falls[at]! : OBSTACLE_FALL_NONE, index, propFall);
+      worldCollision.crushObstacle?.(obstacle, fall.dx, fall.dz, 0, fall.cause, SETTLED_CRUSH);
       obstacle.crushed = true;
     }
+  }
+
+  /**
+   * The battle restarted under this seat (round 3 X5; MatchFrame.battleRestarts: a host restarted it from its spawns, or
+   * resumed it from a frame still in its countdown): what this presentation laid down as settled state belongs to a battle
+   * no longer played, and the host has it standing. The world's destructibles stand again (props, trees, poles and their
+   * marks) through the battle edge's one reset (world/battleWorldReset.ts, round 3 review r1): a restart is a battle start,
+   * so it declares the frame as the falls' driver and the crush sweeps on as the solo start and a round's activation do,
+   * then stands the world; the destruction mirror forgets its stages, heaps and craters, and the applied list is
+   * forgotten, so the restarted battle's list and log lay down from nothing. Before, the client's collision kept the
+   * abandoned battle's crushes and its prediction drove through props the host blocks.
+   * The bus hears it too ('battle:restarted', review r1): the effects (fx/effects.ts) reset what the abandoned battle laid
+   * as a battle's start does (structure stages and their ledger, rubble, craters, decals), so a collapsed building stops
+   * being drawn over the collision that stands again and the restarted battle's own collapse of it plays (the stage
+   * ledger refused it); its smoke screens go with that reset, so this frame tells the restarted battle's again.
+   * Every actor starts a new life too, before the bus hears it (review r2): the host restarted every hull alive at its
+   * spawn, and a row writes a hull's life only where it reaches this seat. A wreck is sent to every seat, a live hull this
+   * seat does not spot is not, so a hull that died in the abandoned battle and is hidden in the restarted one read
+   * destroyed until it was spotted: the HUD and the network side counts (main.ts getTeamRoster) counted it dead, so the
+   * crew called "last enemy" at the restart with the enemies alive and hidden; battle:ended's roster reported it dead; and
+   * the own prediction collided with its old wreck. The new life is whole (beginActorLife, round 4 E4): its hull points,
+   * modules, crew, fire, wreck look, wreck turret pose, ERA and death cause are the restarted battle's. The restarted
+   * frame's rows, applied right after, still write the hulls this seat sees.
+   * A restart opens a new battle for every per-battle owner on the bus too (round 4 E6b: the HUD, the report, the service
+   * and career records, the result flow, the medal toasts; review r2: the audio engine's battle play, audioEngine.ts
+   * resetBattlePlay), each through the reset its battle start runs, unconditionally.
+   * The edge's policy (round 4 E6b review r1): a restart cannot follow this seat's verdict, so no owner guards against
+   * one. A battle restarts under this seat only on a new link (matchClient.ts restartBattle: another battle id at the
+   * WELCOME, or a first snapshot that shows the followed battle not begun), which a migration brings. The session settles
+   * the verdict in the same frame dispatch that can set game.result here (matchSession.ts: its frame listener calls
+   * settleVerdict on frame.meta.verdict; the frame meta is the newer snapshot's, so the frame that releases match_ended
+   * names the verdict, and the meta's own verdict waits out verdictGraceMs here) and moves to 'ended', which ends the
+   * migration (matchSession.ts setPhase: "a round that ends ... ends its migration too"); a lost link ends it the same
+   * way ('lost').
+   */
+  function resetSettledWorld(restarts: number): void {
+    resetWorldForBattle(worldCollision as BattleResetWorld | null);
+    destruction.reset();
+    appliedDestructibleRevision = -1;
+    appliedDestroyedLength = -1;
+    lastSmokeJson = null;
+    for (const actor of actors.values()) beginActorLife(actor);
+    destructionCause.clear();
+    publishRoster();
+    bus.emit('battle:restarted', { battleRestarts: restarts });
+  }
+
+  /**
+   * One hull's new life where no row carries it (round 4 E4, E6): alive and whole, as the host begins one. The host builds
+   * a fresh combat state at a revive (sim/authoritativeMatch.ts reviveForMode: createCombatState, so its hull points at
+   * their maximum, every module whole, every crew member up, no fire) and at a restart (migrationFallback builds every
+   * actor anew); a row writes only what it carries (hull points, fire, the wreck and its turret pose, ERA), and only where
+   * it reaches this seat, and a remote hull's modules come only by module_state events. Before, a hidden hull revived by
+   * the restart read alive with the abandoned battle's hull points (0 for a wreck: the HUD's ear row drew an empty health
+   * bar on a living enemy until it was spotted) and its broken modules.
+   * Its visual begins the new life too (review r2): what the old life's module states and hits laid on it (main.ts's
+   * 'module:state' listener throws a track band and scorches a weapon, the hits knock equipment off and bend the gun) is
+   * the visual's own state, which no row and no mended module tells it. Its one reset is resetDestroyed
+   * (vehicles/tankFactoryCore.ts: "Safe on a never-destroyed tank"; it re-seats both track bands, clears the weapon and
+   * equipment damage and the live crumple), which the wreck's undoing (updateDestruction) runs and a living hull now gets
+   * here. Before, a hull alive at the restart, this seat's own included, kept the abandoned battle's thrown track, its
+   * scorched rack or roof gun and its knocked-off equipment while its modules read whole. (The audio's module states are
+   * the audio's per-battle record: its restart listener resets them, audioEngine.ts restartLives.)
+   */
+  function beginActorLife(actor: MatchActor): void {
+    const { combat } = actor;
+    combat.destroyed = false;
+    combat.hp = combat.maxHp;
+    combat.fire.burning = false;
+    combat.fire.tickTimer = 0;
+    combat.fire.ticksLeft = 0;
+    mendModulesAndCrew(combat);
+    if (actor._networkDestroyed) updateDestruction(actor, false);
+    else actor.visual.resetDestroyed?.();
+    destructionCause.delete(actor.id);
+    actor._wreckTurretPose = null;
+    actor._reviveOwed = false;
+    updateEra(actor, NO_IDS);
+    beginWeaponCursors(combat);
+  }
+
+  /**
+   * A fresh combat state's barrel and launcher cursors (sim/damage.ts createCombatState leaves both unset: mouth 0, tube 0),
+   * which the host gives every hull at a revive and every hull of a restarted battle: the own seat's mirrors begin a life
+   * here (ownMirrorLife, beginActorLife), so its first predicted kick takes the barrel the life's first round leaves.
+   */
+  function beginWeaponCursors(combat: MatchActor['combat']): void {
+    combat.muzzleCursor = 0;
+    combat.launcherCursor = 0;
+  }
+
+  /**
+   * A mode revived this hull (round 4 E6a; sim/matchModes.ts reviveAtSpawn emits `mode_respawn`, which every viewer
+   * receives): a new life where no row carries it. A hull no row reached this frame (out of this seat's view: a live hull
+   * this seat does not spot is not sent) begins it here (beginActorLife), as every hull does at a restart; before, it
+   * stayed the wreck it was until a row reached it (in game.tanks, dead in the roster's side counts and battle:ended's
+   * roster, a prediction collider, with 0 hull points and its broken modules). A row that reached it this frame is the
+   * authority's word for its life and pose and stands: its fresh row is the new life's, and a row the host still holds
+   * from before the revive (server/match/interestTiers.ts needsFreshRow: a row in the view is refreshed on its tier's
+   * cadence, and a wreck is in every view) shows the wreck until the next fresh one, which revives it as any row does;
+   * undone here, the wreck would be laid again by that held row (a flicker). That held row's hull may leave this seat's
+   * view before its fresh row comes (review r1: per-viewer visibility does not linger; an enemy seen through an ally's
+   * radio share drops out when this seat leaves the share's reach, or its radio is hit, sim/spotting.ts isSpotted with a
+   * receiver), and then no row revives it: its revive is owed (_reviveOwed) and settled after the next frame's rows
+   * (settleOwedRevive). Either way the modules and the crew, which no row carries for a remote hull, are the new life's.
+   * The own hull's viewer row and state carry all of it every frame.
+   */
+  function reviveAtRespawn(actor: MatchActor): void {
+    if (actor.networkVisible) {
+      mendModulesAndCrew(actor.combat);
+      actor._reviveOwed = actor.combat.destroyed;
+      return;
+    }
+    beginActorLife(actor);
+    publishRoster();
+  }
+
+  /**
+   * A revive owed under a held wreck row (reviveAtRespawn), settled once the frame's rows are in (applyFrame, before the
+   * roster is published): a row that shows the hull alive paid it; a row that still shows the wreck holds it on (no
+   * flicker: the wreck is undone only once no row shows it); and a hull no row reached is not a wreck on the host (a wreck
+   * is in every view: authoritativeMatch.ts canObserveEntity), so it begins its new life here. Its new life's death
+   * (tank_destroyed) drops the debt, so a hull that died again is never revived by the revive before.
+   */
+  function settleOwedRevive(actor: MatchActor): void {
+    if (actor.networkVisible) {
+      if (!actor.combat.destroyed) actor._reviveOwed = false;
+      return;
+    }
+    actor._reviveOwed = false;
+    if (actor.combat.destroyed) beginActorLife(actor);
+  }
+
+  /** What no row carries for a remote hull: its modules whole and its crew up (a new life's). */
+  function mendModulesAndCrew(combat: CombatState): void {
+    for (const module of Object.values(combat.modules)) {
+      if (!module) continue;
+      module.hp = module.maxHp;
+      module.state = 'ok';
+      module.repairT = 0;
+    }
+    for (const member of Object.keys(combat.crew)) combat.crew[member] = true;
   }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
@@ -1037,9 +1288,12 @@ export function createBattlePresentation({
     return typeof wave === 'number' && Number.isFinite(wave) ? wave : null;
   }
 
-  function endMatch(result: string, reason: string): void {
+  function endMatch(result: string, reason: string, resultTimeS = Math.min(game.timeS, verdictFreeBattleS)): void {
     game.result = result;
     game.resultReason = reason;
+    // (2026-11-02 audit F1 review) the network verdict owns its time, as the solo sim's does (state.ts): the app
+    // lifecycle's verdict hold and report count from it (appLifecycle.battleSubPhase)
+    game.resultTimeS = resultTimeS;
     // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
     // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
@@ -1065,10 +1319,22 @@ export function createBattlePresentation({
 
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
+    // a battle restart first: this frame's list and log, and its events after it, are the restarted battle's. The count is
+    // taken before the bus hears it (review r2): the bus does not catch a listener's throw, and a throw that left this
+    // frame restarted the battle again on the next one, so the world, the effects and every listener reset twice
+    const restarts = frame.battleRestarts ?? 0;
+    const restarted = presentedBattleRestarts !== null && restarts !== presentedBattleRestarts;
+    presentedBattleRestarts = restarts;
+    if (restarted) resetSettledWorld(restarts);
     lastFrameAtMs = clock();
     if (mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
+    // the frame after the own hull's death: the old life's rounds are in, so its mirrors begin the next life (ownMirrorLife)
+    if (ownMirrorLife === 'died') {
+      if (own) beginWeaponCursors(own.combat);
+      ownMirrorLife = 'following';
+    }
     if (frame.modeStateJson !== lastModeStateJson) {
       lastModeStateJson = frame.modeStateJson;
       try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
@@ -1107,6 +1373,7 @@ export function createBattlePresentation({
     if (own) updateOwn(own, frame);
     for (const actor of actors.values()) {
       classify(actor);
+      if (actor._reviveOwed) settleOwedRevive(actor);
       if (!actor.networkVisible) actor.visual.setVisible(false);
     }
     if (!mounted) mount();
@@ -1118,9 +1385,11 @@ export function createBattlePresentation({
       lastSmokeJson=frame.meta.smokeJson||'';
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
     }
-    game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
-    applyShells(frame.shells);
-    applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
+    // (2026-11-02 audit F1) the countdown's one writer: this client follows the authority's count
+    transitionBattleCountdown(game, 'follow', frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0);
+    applyShells(frame.shells, frame.unseenShells ?? NO_IDS);
+    applyDestroyed(frame.destroyed, frame.destroyedFalls ?? NO_IDS, frame.destructibleRevision,
+      typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     // the destruction log is settled state, as the destroyed list is: what this seat did not see happen lands at its end
     destruction.applyLog(frame.destruction ?? [], typeof frame.destructionPending === 'function' ? frame.destructionPending : null,
       typeof frame.craterPending === 'function' ? frame.craterPending : null);
@@ -1133,6 +1402,7 @@ export function createBattlePresentation({
     // `match_ended` event predates this client; the event keeps the cinematic order when it does arrive. The session's
     // verdict (settleVerdict) waits here too.
     let verdict = frame.meta.verdict, verdictReason = frame.meta.verdictReason;
+    if (verdict === VERDICT.NONE) verdictFreeBattleS = game.timeS;
     if (verdict === VERDICT.NONE && sessionVerdict) { verdict = sessionVerdict.verdict; verdictReason = sessionVerdict.reason; }
     if (verdict !== VERDICT.NONE && !game.result) {
       verdictSeenAtMs ??= clock();
@@ -1150,20 +1420,33 @@ export function createBattlePresentation({
 
   // ------------------------------------------------------------ events
 
-  function launcherIndex(shooter: MatchActor, payload: Record<string, RuntimeValue>): number | null {
-    const count = shooter.spec.gun.launcherMuzzles?.length ?? 0;
+  /**
+   * The mouth the authority says a round left (shell_fired.muzzleIndex): a launcher's tube for a launcher round, or (round
+   * 8 Y1 s5-01) one of the gun's own mouths for any other round of a gun with two or more (sim/launcherPolicy.ts
+   * cannonMuzzleIndex, the barrel owner both drivers share); null when it names none (a single bore, an older host).
+   */
+  function muzzleIndexOf(shooter: MatchActor, payload: Record<string, RuntimeValue>): number | null {
     const round = shooter.spec.gun.shells.find((shell) => shell.name === payload.shellName);
+    const launcher = usesLauncherMuzzles(shooter.spec.gun, round);
+    const count = launcher ? shooter.spec.gun.launcherMuzzles?.length ?? 0
+      : cannonMuzzleIndex(shooter.spec.gun, round) >= 0 && Array.isArray(shooter.spec.gun.muzzles) ? shooter.spec.gun.muzzles.length : 0;
     const index = payload.muzzleIndex;
-    return count > 0 && usesLauncherMuzzles(shooter.spec.gun, round) && typeof index === 'number' && Number.isInteger(index) &&
-      index >= 0 && index < count ? index : null;
+    return count > 0 && typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < count ? index : null;
   }
 
+  // (270) the rotary gun's presentation at the floor's density, one thinning per clock: the predicted shots on this
+  // seat's, the authority's on its own
+  const thinPredictedShot = createRotaryShotThinning();
+  const thinFiredShot = createRotaryShotThinning();
   function emitPredictedShot(own: MatchActor, slot: number): void {
     if (!mounted || snapshotPhase !== PHASE.PLAYING || game.result || own.combat.destroyed ||
         !own.visual.gunMuzzleWorld || !own.visual.gunDirWorld || mainWeaponModuleState(own.combat) === 'red') return;
     const shell = own.spec.gun.shells[slot];
     if (!shell) return;
-    const launcher = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : undefined;
+    // the barrel the authority will name: its cursor as the last shell_fired left it (a launcher's tube, or the gun's own
+    // mouth: round 8 Y1 s5-01; a single bore names none, and the visual keeps its one barrel)
+    const cannon = cannonMuzzleIndex(own.spec.gun, shell, own.combat.muzzleCursor ?? 0);
+    const launcher = usesLauncherMuzzles(own.spec.gun, shell) ? own.combat.launcherCursor ?? 0 : cannon >= 0 ? cannon : undefined;
     const muzzleIndex = own.visual.recoilKick?.(0, shotRecoilScale(own.spec, shell), launcher, usesLauncherMuzzles(own.spec.gun, shell)) ?? -1;
     own.visual.gunMuzzleWorld(muzzleTip, muzzleIndex, usesLauncherMuzzles(own.spec.gun, shell));
     own.visual.gunDirWorld(shotDirection);
@@ -1172,23 +1455,36 @@ export function createBattlePresentation({
       shellType: shell.type, shellName: shell.name, weaponSound: shell.soundProfile || own.spec.gun.soundProfile || null,
       caliberMm: shell.caliberMm, velocityMps: shell.velocityMps, timeS: game.timeS, muzzleIndex,
       rocket: isUnguidedRocket(own.spec.gun, shell),
+      thinned: own.spec.gun.autoloader?.rotary === true && shell.guided !== true && thinPredictedShot(own.id, game.timeS),
       muzzlePos: [muzzleTip.x, muzzleTip.y, muzzleTip.z], dir: [shotDirection.x, shotDirection.y, shotDirection.z],
     });
   }
 
+  /**
+   * The own seat's cursors follow the authority's (the next predicted shot kicks the barrel it will name), for every round
+   * the authority names, including one that reaches this seat while the own row still shows the wreck: a new life's first
+   * round can (its event goes out before the snapshot that shows the revive), and the mirror must count it although the
+   * round is not presented (applyEvent). An old life's last round can too (ownMirrorLife begins the next life after it).
+   */
+  function followOwnCursors(payload: Record<string, RuntimeValue>): void {
+    const shooter = actors.get(String(payload.shooterId ?? ''));
+    if (!shooter || payload.shooterId !== ownActor()?.id) return;
+    const index = muzzleIndexOf(shooter, payload);
+    const round = shooter.spec.gun.shells.find((shell) => shell.name === payload.shellName);
+    if (index !== null && usesLauncherMuzzles(shooter.spec.gun, round)) {
+      shooter.combat.launcherCursor = (index + 1) % shooter.spec.gun.launcherMuzzles!.length;
+    } else if (index !== null) shooter.combat.muzzleCursor = index + 1;
+  }
+
   function emitShellFired(payload: Record<string, RuntimeValue>, feedbackPredicted: boolean): void {
     const shooter = actors.get(String(payload.shooterId ?? ''));
-    if (shooter && payload.shooterId === ownActor()?.id) {
-      const index = launcherIndex(shooter, payload);
-      if (index !== null) shooter.combat.launcherCursor = (index + 1) % shooter.spec.gun.launcherMuzzles!.length;
-    }
     let muzzlePos: RuntimeValue[] = [payload.x, payload.y, payload.z];
     let shellSpec: FleetTankSpec['gun']['shells'][number] | null = null;
     let muzzleIndex: number | null = -1;
     if (shooter?.visual.recoilKick) {
       const shells = shooter.spec.gun.shells;
       shellSpec = shells.find((shell) => shell.name === payload.shellName) || shells.find((shell) => shell.type === payload.shellType) || null;
-      const authoritative = launcherIndex(shooter, payload);
+      const authoritative = muzzleIndexOf(shooter, payload);
       const launcher = usesLauncherMuzzles(shooter.spec.gun, shellSpec);
       muzzleIndex = feedbackPredicted ? authoritative ?? -1
         : shooter.visual.recoilKick(0, shotRecoilScale(shooter.spec, shellSpec), authoritative ?? undefined, launcher);
@@ -1197,11 +1493,16 @@ export function createBattlePresentation({
         muzzlePos = [muzzleTip.x, muzzleTip.y, muzzleTip.z];
       }
     }
+    const timeS = Number(payload.timeS ?? game.timeS);
     bus.emit('shell:fired', {
       shellId: payload.shellId, shooterId: payload.shooterId, isPlayer: payload.shooterId === ownActor()?.id,
       shellType: payload.shellType, shellName: payload.shellName,
       weaponSound: payload.weaponSound || shellSpec?.soundProfile || shooter?.spec.gun.soundProfile || null,
-      muzzleIndex, caliberMm: payload.caliberMm, velocityMps: payload.velocityMps, timeS: payload.timeS ?? game.timeS,
+      muzzleIndex, caliberMm: payload.caliberMm, velocityMps: payload.velocityMps, timeS,
+      // (270) a rotary gun's flash, report and kick at the floor's density (sim/fireCycleFloor.ts); a predicted own shot
+      // already played its own
+      thinned: !feedbackPredicted && shooter?.spec.gun.autoloader?.rotary === true && shellSpec?.guided !== true
+        && thinFiredShot(shooter.id, timeS),
       // (233) the round's own blast envelope (the gunship's howitzer), as the solo step publishes it
       blastRadiusM: shellSpec?.blastRadiusM,
       muzzlePos, dir: [payload.dx, payload.dy, payload.dz], shooterSpecId: shooter?.specId,
@@ -1234,6 +1535,7 @@ export function createBattlePresentation({
     const own = ownActor();
     switch (kind) {
       case 'shell_fired':
+        followOwnCursors(payload);
         if (eventContext.own && (!own || !mounted || snapshotPhase !== PHASE.PLAYING || game.result || own.combat.destroyed)) return;
         emitShellFired(payload, eventContext.feedbackPredicted);
         return;
@@ -1276,6 +1578,8 @@ export function createBattlePresentation({
         bus.emit('shell:expired', {
           shellId: payload.shellId, shooterId: payload.shooterId, hitTerrain: payload.kind === 'terrain', hitKind: payload.kind,
           surfaceKind: payload.surfaceKind || payload.kind, normal: [payload.nx || 0, payload.ny ?? 1, payload.nz || 0],
+          // (impact-materials-269) the round's incidence, for the graze's skip; an older host's payload has none
+          ...(typeof payload.impactAngleDeg === 'number' ? { impactAngleDeg: payload.impactAngleDeg } : {}),
           shellType: payload.shellType, caliberMm: payload.caliberMm, pos: [payload.x, payload.y, payload.z],
           // the building the authority's round struck (any round: its hole, 2026-10-10)
           ...(typeof payload.structureId === 'number' ? { structureId: payload.structureId } : {}),
@@ -1293,10 +1597,17 @@ export function createBattlePresentation({
           shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
         return;
+      case 'drone_down':
+        // a drone shot down (the authority's counter-drone strike, sim/aerialCombat.ts strikeDrone), as the solo step
+        // raises it: heard breaking up where it flew, and the crew calls its own drone lost to fire or the enemy's our gun downed
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
+        return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);
         const actor = actors.get(id);
+        // (round 4 E6a review r1) a new life's death: the wreck its rows show is this one's, owed no revive
+        if (actor) actor._reviveOwed = false;
         // The authority's death position (ghost-crunch lane, 2026-10-02): the explosion, the wreck's smoke column
         // (effects.ts lastKnownPos) and the killcam sit where the hull died, not where this frame's interpolated or
         // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
@@ -1330,8 +1641,17 @@ export function createBattlePresentation({
         // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
         // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
         if (obstacle.crushed) return;
+        // A fall withheld from this viewer (its source a hull it does not see: sim/authoritativeMatch.ts viewerWorldEvent
+        // drops the cause, the direction and the speed) lies as the settled list's none lays it, along the prop's own
+        // heading (round 2 U27 review): a seat that watched it and a seat that joined after it lay the prop alike. Not
+        // direction 0, 0, which the world's hinge lays toward +Z (world/topple.ts setToppleAxis) and which laid every
+        // withheld prop so; a prop's own heading is toward +Z only where its index hashes to step 0, one prop in 64.
+        const withheld = typeof payload.directionX !== 'number' || typeof payload.directionZ !== 'number'
+          ? withheldObstacleFall(index, propFall) : null;
+        const directionX = withheld ? withheld.dx : Number(payload.directionX) || 0;
+        const directionZ = withheld ? withheld.dz : Number(payload.directionZ) || 0;
         worldCollision?.crushObstacle?.(
-          obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0,
+          obstacle, directionX, directionZ, Number(payload.speedMps) || 0,
           // a blast fells a prop as a shell does (destruction, 2026-10-07: the solo step crushes it with 'shell' too)
           payload.cause === 'shell' || payload.cause === 'blast' ? 'shell' : 'ram',
         );
@@ -1345,7 +1665,7 @@ export function createBattlePresentation({
           // the prop's height sizes the splinters and picks the sound, as the solo step's crush event does
           h: obstacle.max[1] - obstacle.min[1],
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
-          dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
+          dir: [directionX, 0, directionZ],
         });
         return;
       }
@@ -1403,6 +1723,14 @@ export function createBattlePresentation({
         applyVerdict(verdict, String(payload.reason ?? 'elimination'));
         return;
       }
+      case 'mode_respawn': {
+        // the hull's new life first, so the bus's listeners hear a hull that is alive (round 4 E6a); the own hull's rows
+        // carry its life, and its cursor mirrors began the life at its death (ownMirrorLife), never here
+        const actor = actors.get(String(payload.id ?? ''));
+        if (actor && actor !== own) reviveAtRespawn(actor);
+        bus.emit('mode:respawn', { type: kind, ...payload });
+        return;
+      }
       default:
         if (LOCAL_PLAYER_EVENT_KINDS.has(kind)) {
           if (own && payload.id === own.id) emitLocalPlayerEvent(kind, payload);
@@ -1441,7 +1769,9 @@ export function createBattlePresentation({
   function endDisconnected(): boolean {
     if (disconnected || game.result) return false;
     disconnected = true;
-    endMatch('draw', 'network_disconnect');
+    // no authority field follows a lost connection, so its verdict has no hold to present: the report is due at once
+    const holdS = Number(game.ruleset?.endingHoldS);
+    endMatch('draw', 'network_disconnect', game.timeS - (Number.isFinite(holdS) ? Math.max(0, holdS) : 0));
     return true;
   }
 

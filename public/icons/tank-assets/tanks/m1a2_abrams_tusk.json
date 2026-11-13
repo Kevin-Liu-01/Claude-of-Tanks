@@ -44625,15 +44625,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35332,
-      "sha256": "4b9ad97c206e6f2a1224076d8625003507858f04ed3cac5d7329c299111e9e64",
+      "bytes": 35346,
+      "sha256": "add5a2b85b64ac646065d0271fb5ee29ffd6aca09d7f6a1c287da59c7af83696",
       "thumbnail": {
         "file": "thumbs/m1a2_abrams_tusk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13488,
-        "sha256": "ae1ad2ff36c8b9f328bc72a31af1eadf1ce6f1fa8a217cbcf033bb7e9e305341"
+        "bytes": 13494,
+        "sha256": "c862f8badaa4e8c98b33f745725cafc1a26cea3e693310f2322183c2b00a8f4a",
+        "frame": [23,111,227,249]
       }
     },
     "top": {
@@ -44641,8 +44642,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23342,
-      "sha256": "9c5d7830803059af807a59ba0a901b4a0c35a515205b73ec5558b3f20faa970c"
+      "bytes": 23346,
+      "sha256": "e86bcda1f81e87c108b7a9eb85c12f17568b8a7dd298ac398a79b94f07765c76"
     },
     "side": {
       "file": "m1a2_abrams_tusk_side.webp",
@@ -44673,8 +44674,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36055,
-      "sha256": "bf6b3043227df5c4e80c2df5365cbe810d23dea30faf748ff2f7030f18504fd4"
+      "bytes": 34598,
+      "sha256": "d36bb476002685583f285e06ad0b328dc79015dd2fa048422477cf987c8101c7"
     },
     "technicalLabels": {
       "file": "m1a2_abrams_tusk_technical.json",

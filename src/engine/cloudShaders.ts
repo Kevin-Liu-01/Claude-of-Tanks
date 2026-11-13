@@ -49,8 +49,11 @@ const f = (x: number): string => { const s = String(x); return s.includes('.') |
 export const CLOUD2_PERIODS = Object.freeze({
   /** the local weather (cloudNoise.ts bakeCloudLocalWeather) */
   local: 48000,
-  /** the street field (cloudNoise.ts bakeCloudWeatherStreets) in the wind frame */
-  streets: 12000,
+  /**
+   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 1 km
+   * apart, so its tile's period stands past the views it fills and beats against the local weather's 48 km
+   */
+  streets: 18000,
   /** the Perlin–Worley shape volume (cloudVolumeNoise.ts) */
   shape: 3200,
   /** the detail volume */
@@ -99,6 +102,9 @@ uniform vec4 uLayerAnvil;
 uniform vec4 uLayerCore;
 // the deck lumps: the cell channel at a third of the cells' period thickens and thins the column (0 = none)
 uniform vec4 uLayerLumps;
+// clouds-269: a convective lane's crown — the share of the slab under its ceiling over which its shell fades out (cl2Shell;
+// 0 = round 6's law, the decks')
+uniform vec4 uLayerDome;
 uniform vec4 uProfA;
 uniform vec4 uProfB;
 uniform vec4 uProfC;
@@ -154,8 +160,10 @@ vec4 cl2Weather( vec2 xz, float h, float lod ) {
 	vec4 lw = textureLod( tLocal, ( xz + uLocalShift ) / CL2_LOCAL, lod );
 	vec4 w = uLayerChannels * lw;
 	if ( dot( uLayerStreets, uLayerStreets ) > 0.0 ) {
-		vec2 q = vec2( dot( xz, uWindDir2 ), dot( xz, vec2( -uWindDir2.y, uWindDir2.x ) ) );
-		float st = textureLod( tStreetField, ( q + uStreetShift2 ) / CL2_STREETS, lod ).r;
+		vec2 q = vec2( dot( xz, uWindDir2 ), dot( xz, vec2( -uWindDir2.y, uWindDir2.x ) ) ) + uStreetShift2;
+		// (clouds-269) a street sky's cumulus drawn out a little further along the wind: aligned, never ruled rows
+		q.x /= 1.0 + 0.35 * max( uLayerStreets.x - 0.4, 0.0 );
+		float st = textureLod( tStreetField, q / CL2_STREETS, lod ).r;
 		w = mix( w, vec4( st ), uLayerStreets );
 	}
 	// a front's cells gathered where the large-scale field runs high, the air between them clear
@@ -199,6 +207,18 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 admitted = uLayerCover * heightScale;
 	vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );
 	vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );
+	// clouds-269 (the owner: "make clouds more natural and also less prism-y"): a convective lane's crown. Under the law
+	// above a core keeps its density up to the slab's ceiling, so the cores of every mass stood to one height under a flat
+	// lid. Over the slab's top uLayerDome the shell eases to nothing at the ceiling, so the shape's erosion takes a core's
+	// top billow by billow — the surviving share of the shape volume shrinking with height, each turret at its own — and a
+	// column that ends lower keeps this law's height and its billows (a deeper fade thinned every body's upper half: the
+	// mass at three quarters of Verdant's slab 0.19 of its widest at a 0.4 fade, round 6's 0.50). (Round 10's crown faded each column over the top
+	// quarter of a height set by its excess over the base footprint: the weak columns ended in thin flat strips and a
+	// saturated core under one soft lid — the blind critics' "flat pancakes", "a squarish loaf with a flat top",
+	// 2026-11-05 — and its anvil band left a ledge under each anvil.) The base stays the condensation level's one flat
+	// line: a base lifted by each cloud's own share of the slab drew overlapping clouds as stacked flat-bottomed tiers, a
+	// rim lifted toward each cloud's edge ledges inside a mass.
+	d *= mix( vec4( 1.0 ), 1.0 - smoothstep( 1.0 - uLayerDome, vec4( 1.0 ), vec4( hf ) ), step( vec4( 1e-4 ), uLayerDome ) );
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
@@ -212,6 +232,17 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 // density profile. [ported] the shape and detail remaps and the profile; the turbulence at the base is first-party.
 vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec3 sp = p + uShapeShift;
+	// clouds-269: the shape volume tiles every uShapePeriod (1.6–3.2 km) on the world's axes, so wherever the weather
+	// admitted a wide area the same billows stood in rows and columns. The lookup turns off the axes (a 3-4-5 rotation),
+	// and three sines on incommensurate wavevectors (11, 13 and 17 periods, drifting with the shape) lift it by up to 0.45
+	// of a period, so each region reads its billows from another height of the volume, the billows leaning under 5° at
+	// the median. Nothing moves the lookup sideways: round 11's smooth warp (the turbulence curl, up to 0.3 of a period)
+	// stretched every billow by a fifth at the median and up to 1.9 times, while it moved a cloud a period from its twin
+	// by about 200 m — Monsoon's towers "blurrier and smoother, with a smeared look", 0-3 to main's crisp lobes (2026-11-05).
+	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz;
+	vec2 lq = sp.xz * ( 6.2831853 / uShapePeriod );
+	sp.y += ( sin( lq.x / 11.0 ) + sin( dot( lq, vec2( -0.5640, 0.8258 ) ) / 13.0 + 1.3 )
+		+ sin( dot( lq, vec2( -0.3984, -0.9172 ) ) / 17.0 + 2.6 ) ) * ( 0.15 * uShapePeriod );
 	if ( uTurbulence > 0.0 ) {
 		// the base drags with the wind's swirl: the lowest third of each lane, by its shell
 		float k = dot( shell, clamp( ( 0.3 - hf ) / 0.3, 0.0, 1.0 ) );
@@ -787,7 +818,13 @@ void main() {
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
 					// (a far tower's interior stays a cloud's, never lit through); the cascades fade into it at their outer edge
 					float column = sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
-					od += cl2BsmDepth( p, run, column )
+					// clouds-269 (Main, 2026-11-05; Whiteout's "long straight streaks fanning from one point", the owner: "yeah the
+					// straight line in whiteout"): under a closing deck the map's depth along a low sun held one value down
+					// kilometre strips toward it, so the overcast's thin places lit as straight rays; a closing deck takes its light
+					// diffuse, the column's own estimate standing in for the map under a low sun and the map returning by 0.75
+					// (scaling the map's depth kept its strips: only the map's absence, CLOUD_BSM_OFF, cleared them)
+					float deckSun = smoothstep( 0.6, 1.0, dot( wgt, uLayerFlat ) ) * ( 1.0 - smoothstep( 0.3, 0.75, sunUp ) );
+					od += mix( cl2BsmDepth( p, run, column ), column, deckSun )
 						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
 				}
 				lit++;

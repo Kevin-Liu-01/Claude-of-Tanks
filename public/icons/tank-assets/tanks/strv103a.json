@@ -416,7 +416,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10806,
-        "sha256": "e73e2b60d6301378b03b345c418d38ed1af7c9fb1f0b6be4ed108e2297490ed7"
+        "sha256": "e73e2b60d6301378b03b345c418d38ed1af7c9fb1f0b6be4ed108e2297490ed7",
+        "frame": [26,126,229,249]
       }
     },
     "top": {
@@ -432,8 +433,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10392,
-      "sha256": "134bdcb22112be6b30003e7fe5f89e4a13c3133e05e92fbcbea2ec1ab3daa503"
+      "bytes": 10390,
+      "sha256": "b4feeacb95c4d20046b52b31cbc8fee1b95195e2ce8034832e8799f58aaa9473"
     },
     "topSilhouette": {
       "file": "strv103a_top_silhouette.png",
@@ -456,16 +457,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27600,
-      "sha256": "716645932b900678ae701d16e39160ffb79995dd2359215a2e0e3f7a42189839"
+      "bytes": 27574,
+      "sha256": "9a20151c5441af5501bb4a436e1589c64d20ec51aae8b08e5f913360470389cf"
     },
     "modulesSide": {
       "file": "strv103a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28708,
-      "sha256": "e1ee1d6597f5cfdfd35d1af144241e167b65fb10f50fb740e60d2acb3e619086"
+      "bytes": 28688,
+      "sha256": "61e1bc3f4e4ed7a5abed8b6662d1e6f569fc7ba208ed89b0493a542847e06da6"
     },
     "crewSide": {
       "file": "strv103a_crew_side.webp",
@@ -473,15 +474,15 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 26556,
-      "sha256": "686b8045d7af5e8c099da4995b23d6ed9de8422d840183c1ef3867c30ab28387"
+      "sha256": "3732eec2f5f441e2b43b571ce3159b67b88b413dda4756d6f92d71c565cc777c"
     },
     "markings": {
       "file": "strv103a_markings.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36642,
-      "sha256": "d935af0d78b23c3d4102239123e47ceb45ed04688fcdada225df59ae76484721"
+      "bytes": 33711,
+      "sha256": "acb8ddcbf1d81f597ccaaa586c969175c204a51f46275d1a47fd3470640b0248"
     },
     "technicalLabels": {
       "file": "strv103a_technical.json",

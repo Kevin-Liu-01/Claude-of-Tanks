@@ -19,6 +19,8 @@
 // landform's geology cannot steepen what that blend sets, so their ground stays the PR head's.)
 
 import { gully, talusFan } from './geology.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -163,12 +165,12 @@ export default {
   },
   props: {
     // map revival lane 2 (2026-10-05): the nordland kit (maps/regional/nordland.ts)
-    architecture: 'nordland',
+    architecture: BUILDING_STYLES.fjord.kit,
     plan: ['fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',
       'boatshed', 'warehouse', 'logcabin', 'ruin', 'netyard', 'depot'],
-    destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'quonsethut'],
+    destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'fieldhut'],
     tacticalBeats: [
       // 2026-10-03 (maps lane B): the gate moves from (-286, 62), 33 m from Verdant's western post, down the cliff road
       // to its southern bend (the layout brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
@@ -177,7 +179,7 @@ export default {
       { id: 'harbor-watch', role: 'scout', x: 206, z: -184, yawDeg: -12,
         structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
       { id: 'northern-service-yard', role: 'support', x: -252, z: 286, yawDeg: 28,
-        structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
     ],
     // 2026-10-03 (maps lane B, gauntlet wave 28: "the town and an inland lighthouse sit on a wide, flat meadow … an
     // Atlantic coastal plain rather than a fjord harbour"): the town is the harbour's — its buildings, plaza and street
@@ -274,7 +276,7 @@ export default {
     rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    sandbagLines: 16, tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    sandbagLines: 16, tankWrecks: WRECK_CASTS.fjord,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules) a fence run's module or gate that
     // meets a building's plot is left out; the field works as they were (fieldWorksLevel is off for 227, the coordinator's ruling: its first cuts dropped local cover; 228 seats each module on its own ground)
     dressingRules: { fencesClearBuildings: true },

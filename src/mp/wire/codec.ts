@@ -5,10 +5,10 @@
  */
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
-import { readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
+import { readDestroyedFalls, readDestroyedSet, writeDestroyedFalls, writeDestroyedSet } from './destroyedSet.ts';
 import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
-  CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
+  CLOSE_REASON, ENTITY_FLAG_BITS, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
   MAX_EVENT_JSON_BYTES, MAX_ID_BYTES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_MOVEMENT_VALUES,
   MAX_NAME_BYTES, MAX_REASON_BYTES, MAX_RULESET_JSON_BYTES, MAX_SEATS, MAX_SHELLS, MAX_TOKEN_BYTES,
@@ -18,7 +18,7 @@ import {
 import type { CloseReasonId, PhaseId, TeamId, VerdictId } from './constants.ts';
 import type {
   ChatMessage, CloseMessage, ControlFrame, EntityRow, EntityRowPatch, ErrorMessage, EventMessage,
-  HelloMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, ResumeHintMessage, RosterEntry, ShellRow,
+  HelloMessage, HoldMessage, InputMessage, LeaveMessage, PingMessage, PongMessage, ResumeHintMessage, RosterEntry, ShellRow,
   SnapshotAckMessage, SnapshotFrame, SnapshotMeta, SnapshotPacket, ViewerState, WelcomeMessage,
   WireEvent, WireMessage,
 } from './messages.ts';
@@ -34,6 +34,8 @@ const CLOSE_REASON_MAX = Math.max(...Object.values(CLOSE_REASON));
 const EVENT_KIND_INDEX = new Map<string, number>(EVENT_KIND_NAMES.map((name, index) => [name, index]));
 const SHELL_TYPE_INDEX = new Map<string, number>(SHELL_TYPE_NAMES.map((name, index) => [name, index]));
 const sharedWriter = new ByteWriter(2048);
+/** The widest flag word a resume hint may carry (the row's ENTITY_FLAGS; the actor reads its body bits). */
+const HINT_FLAGS_MAX = (1 << ENTITY_FLAG_BITS) - 1;
 
 function reason(value: number): CloseReasonId {
   if (!Number.isInteger(value) || value < 0 || value > CLOSE_REASON_MAX) {
@@ -74,7 +76,7 @@ function writeControl(writer: ByteWriter, control: ControlFrame): void {
   writer.u8(control.shellSlot);
   writer.u16(control.fireSeq);
   writer.u16(control.actionSeq);
-  if (control.actionBits > 0x1fff) throw new WireError('range', 'action bits exceed thirteen bits');
+  if (control.actionBits > 0xffff) throw new WireError('range', 'action bits exceed sixteen bits');
   writer.u16(control.actionBits);
 }
 
@@ -125,6 +127,8 @@ function writeWelcome(writer: ByteWriter, message: WelcomeMessage): void {
   writer.string(message.mode, MAX_ID_BYTES);
   writer.string(message.rulesetJson, MAX_RULESET_JSON_BYTES);
   writeRoster(writer, message.roster);
+  // the battle's identity (round 3 A3): absent is a match's first battle
+  writer.u32(message.battleId ?? 0);
 }
 
 function writeShell(writer: ByteWriter, shell: ShellRow): void {
@@ -212,12 +216,14 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
     (packet.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (packet.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
     (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
-    (destruction.length ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0);
+    (destruction.length ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0) |
+    (packet.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0);
   if (!packet.keyframe && (!baseline || baseline.tick !== packet.baseTick)) {
     throw new WireError('missing_baseline', 'delta snapshot needs its baseline frame');
   }
   writer.u32(tickOrNone(packet.tick));
   writer.u32(packet.serverTimeMs);
+  const flagsAt = writer.length;
   writer.u8(flags);
   writer.u32(packet.keyframe ? NO_TICK : tickOrNone(packet.baseTick));
   writer.u32(tickOrNone(packet.ackedInputTick));
@@ -239,12 +245,51 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   if (packet.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   writer.u16(packet.shells.length);
   for (const shell of packet.shells) writeShell(writer, shell);
+  if (packet.unseenShells?.length) writeUnseenShells(writer, packet.unseenShells);
   if (packet.viewer) writeViewer(writer, packet.viewer, packet.keyframe ? null : baseline?.viewer ?? null);
   if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
   if (destruction.length) {
     writer.u32(packet.keyframe ? 0 : packet.destructionBase);
     writeDestructionEntries(writer, destruction);
   }
+  // wire 11 (round 2, U27): each index's fall, in the set's order, last and only into the room the frame leaves
+  if (writeDestroyedFalls(writer, alignedFalls(packet.destroyed, packet.destroyedFalls), packet.destroyed.length)) {
+    writer.setU8(flagsAt, flags | SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS);
+  }
+}
+
+/** A frame's falls when they line up with its destroyed list (an older or hand-built frame has none: every fall none). */
+function alignedFalls(destroyed: readonly number[], falls: readonly number[] | undefined): readonly number[] | null {
+  return falls && falls.length === destroyed.length ? falls : null;
+}
+
+/**
+ * The rounds this viewer was shown that left its view in flight (wire 11, round 2 U31; SnapshotFrame.unseenShells), after
+ * the shells when SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS is set: `varint count` (1..MAX_SHELLS), then each round's u16 id,
+ * strictly ascending.
+ */
+function writeUnseenShells(writer: ByteWriter, ids: readonly number[]): void {
+  if (ids.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot unseen shells');
+  writer.varint(ids.length);
+  let previous = -1;
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id <= previous || id > 0xffff) throw new WireError('range', 'unseen shell ids must be strictly increasing u16');
+    writer.u16(id);
+    previous = id;
+  }
+}
+
+function readUnseenShells(reader: ByteReader): number[] {
+  const count = reader.varint();
+  if (count < 1 || count > MAX_SHELLS) throw new WireError('too_many', 'snapshot unseen shells');
+  const ids: number[] = new Array(count);
+  let previous = -1;
+  for (let index = 0; index < count; index++) {
+    const id = reader.u16();
+    if (id <= previous) throw new WireError('invalid_message', 'unseen shell ids must be strictly increasing');
+    ids[index] = previous = id;
+  }
+  return ids;
 }
 
 function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
@@ -253,6 +298,10 @@ function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
   writer.i16(message.speed); writer.i16(message.verticalSpeed);
   writer.u16(message.yaw); writer.u16(message.pitch); writer.u16(message.roll);
   writer.u16(message.turretYaw); writer.u16(message.gunPitch);
+  // the row's body bits (round 3 A14): absent is a hull on the ground, upright
+  const flags = message.flags ?? 0;
+  if (!Number.isInteger(flags) || flags < 0 || flags > HINT_FLAGS_MAX) throw new WireError('range', `resume hint flags out of range: ${flags}`);
+  writer.varint(flags);
 }
 
 function readResumeHint(reader: ByteReader): ResumeHintMessage {
@@ -263,7 +312,14 @@ function readResumeHint(reader: ByteReader): ResumeHintMessage {
     x: reader.i32(), y: reader.i32(), z: reader.i32(),
     speed: reader.i16(), verticalSpeed: reader.i16(),
     yaw: reader.u16(), pitch: reader.u16(), roll: reader.u16(), turretYaw: reader.u16(), gunPitch: reader.u16(),
+    flags: readHintFlags(reader),
   };
+}
+
+function readHintFlags(reader: ByteReader): number {
+  const flags = reader.varint();
+  if (flags > HINT_FLAGS_MAX) throw new WireError('range', 'resume hint flags out of range');
+  return flags;
 }
 
 function writeEvents(writer: ByteWriter, message: EventMessage): void {
@@ -307,6 +363,7 @@ export function encodeMessage(message: WireMessage, baseline: SnapshotFrame | nu
     case MESSAGE_TYPE.ERROR:
       writer.u8(reason(message.reason)); writer.string(message.detail, MAX_DETAIL_BYTES);
       break;
+    case MESSAGE_TYPE.HOLD: writer.u32(message.holdMs); break;
     default:
       throw new WireError('unknown_type', `cannot encode message type ${String((message as { type: unknown }).type)}`);
   }
@@ -341,7 +398,7 @@ function readControl(reader: ByteReader): ControlFrame {
   };
   if (control.flags > 7) throw new WireError('range', 'control flags exceed three bits');
   if (control.shellSlot > 2) throw new WireError('range', 'shell slot must be 0..2');
-  if (control.actionBits > 0x1fff) throw new WireError('range', 'action bits exceed thirteen bits');
+  if (control.actionBits > 0xffff) throw new WireError('range', 'action bits exceed sixteen bits');
   return control;
 }
 
@@ -405,7 +462,7 @@ function readWelcome(reader: ByteReader): WelcomeMessage {
     type: MESSAGE_TYPE.WELCOME, protocolVersion, tickHz, snapshotHz, seat, entityId, team,
     serverTick: tickOrNone(reader.u32()), serverTimeMs: reader.u32(), seed: reader.u32(), capabilities: reader.u32(),
     roomId: reader.string(MAX_ID_BYTES), mapId: reader.string(MAX_ID_BYTES), mode: reader.string(MAX_ID_BYTES),
-    rulesetJson: reader.string(MAX_RULESET_JSON_BYTES), roster: readRoster(reader),
+    rulesetJson: reader.string(MAX_RULESET_JSON_BYTES), roster: readRoster(reader), battleId: reader.u32(),
   };
 }
 
@@ -485,7 +542,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (tick === NO_TICK) throw new WireError('range', 'snapshot tick is required');
   const serverTimeMs = reader.u32();
   const flags = reader.u8();
-  if (flags > 31) throw new WireError('range', 'snapshot flags out of range');
+  if (flags > 127) throw new WireError('range', 'snapshot flags out of range');
   const keyframe = (flags & SNAPSHOT_FLAGS.KEYFRAME) !== 0;
   const baseTick = tickOrNone(reader.u32());
   if (keyframe !== (baseTick === NO_TICK)) throw new WireError('invalid_message', 'keyframe flag disagrees with base tick');
@@ -545,6 +602,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (shellCount > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   const shells: ShellRow[] = [];
   for (let index = 0; index < shellCount; index++) shells.push(readShell(reader));
+  const unseenShells = flags & SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS ? readUnseenShells(reader) : [];
   const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader, baseline?.viewer ?? null) : null;
   const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? reader.string(MAX_MODE_STATE_JSON_BYTES) : null;
   let destructionBase = 0;
@@ -554,9 +612,11 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
     if (keyframe && destructionBase !== 0) throw new WireError('invalid_message', 'a keyframe carries the whole destruction log');
     destruction = readDestructionEntries(reader);
   }
+  const destroyedFalls = flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS ? readDestroyedFalls(reader, destroyed.length) : null;
   return {
     type: MESSAGE_TYPE.SNAPSHOT, tick, serverTimeMs, keyframe, baseTick, ackedInputTick, ackedFireSeq, ackedActionSeq,
-    inputMarginTicks, meta, destroyed, destruction, destructionBase, entities, removed, shells, viewer, modeStateJson,
+    inputMarginTicks, meta, destroyed, ...(destroyedFalls ? { destroyedFalls } : {}), destruction, destructionBase, entities,
+    removed, shells, ...(unseenShells.length ? { unseenShells } : {}), viewer, modeStateJson,
   };
 }
 
@@ -623,6 +683,7 @@ export function decodeMessage(input: unknown, options: DecodeOptions = {}): Deco
       case MESSAGE_TYPE.ERROR:
         message = { type: MESSAGE_TYPE.ERROR, reason: reason(reader.u8()), detail: reader.string(MAX_DETAIL_BYTES) } satisfies ErrorMessage;
         break;
+      case MESSAGE_TYPE.HOLD: message = { type: MESSAGE_TYPE.HOLD, holdMs: reader.u32() } satisfies HoldMessage; break;
       default:
         throw new WireError('unknown_type', `unknown message type ${type}`);
     }
@@ -653,6 +714,15 @@ function destroyedAdditions(base: readonly number[], next: readonly number[]): n
   return next.filter((index) => !known.has(index));
 }
 
+/** The falls of `destroyedAdditions(base, next)`, from `next`'s (aligned) falls; null when it has none. */
+function destroyedAdditionFalls(base: readonly number[], next: readonly number[], falls: readonly number[] | null): number[] | null {
+  if (!falls) return null;
+  const known = new Set(base);
+  const out: number[] = [];
+  for (let at = 0; at < next.length; at++) if (!known.has(next[at]!)) out.push(falls[at] ?? 0);
+  return out;
+}
+
 function rowsSorted(rows: readonly EntityRow[]): boolean {
   for (let index = 1; index < rows.length; index++) if (rows[index]!.entityId <= rows[index - 1]!.entityId) return false;
   return true;
@@ -668,31 +738,44 @@ function patchesSorted(patches: readonly EntityRowPatch[]): boolean {
   return true;
 }
 
-/** The union of two strictly increasing lists, strictly increasing. */
-function sortedUnion(a: readonly number[], b: readonly number[]): number[] {
+/**
+ * The union of two strictly increasing lists, strictly increasing, and its falls (wire 11) into `falls` when either side
+ * has some: an index in both keeps `a`'s.
+ */
+function sortedUnion(a: readonly number[], b: readonly number[], aFalls: readonly number[] | null = null,
+  bFalls: readonly number[] | null = null, falls: number[] | null = null): number[] {
   const out: number[] = [];
   let i = 0, j = 0;
   while (i < a.length || j < b.length) {
     const next = j >= b.length || (i < a.length && a[i]! <= b[j]!) ? a[i]! : b[j]!;
-    if (i < a.length && a[i] === next) i++;
-    if (j < b.length && b[j] === next) j++;
+    let fall = 0;
+    if (j < b.length && b[j] === next) { fall = bFalls?.[j] ?? 0; j++; }
+    if (i < a.length && a[i] === next) { fall = aFalls?.[i] ?? 0; i++; }
     out.push(next);
+    falls?.push(fall);
   }
   return out;
 }
 
 const NO_INDICES: readonly number[] = Object.freeze([]);
 const additionScratch: number[] = [];
+const additionFallScratch: number[] = [];
 
-/** The destroyed indices in `next` that `base` lacks, both strictly increasing: a merge walk, into a reused list. */
-function sortedAdditions(base: readonly number[], next: readonly number[]): readonly number[] {
+/**
+ * The destroyed indices in `next` that `base` lacks, both strictly increasing: a merge walk, into a reused list; their
+ * falls (from `next`'s aligned `falls`) into another (wire 11).
+ */
+function sortedAdditions(base: readonly number[], next: readonly number[], falls: readonly number[] | null = null): readonly number[] {
+  additionFallScratch.length = 0;
   if (next === base || next.length === base.length && next.length === 0) return NO_INDICES;
   additionScratch.length = 0;
   let cursor = 0;
-  for (const index of next) {
+  for (let at = 0; at < next.length; at++) {
+    const index = next[at]!;
     while (cursor < base.length && base[cursor]! < index) cursor++;
     if (cursor < base.length && base[cursor] === index) { cursor++; continue; }
     additionScratch.push(index);
+    additionFallScratch.push(falls?.[at] ?? 0);
   }
   return additionScratch;
 }
@@ -719,18 +802,23 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   const hasVerdict = frame.meta.verdict !== 0;
   writer.u32(tickOrNone(frame.tick));
   writer.u32(frame.serverTimeMs);
-  writer.u8((keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
+  const flagsAt = writer.length;
+  const flags = (keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
     (frame.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (frame.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
     (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
-    (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0));
+    (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0) |
+    (frame.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0);
+  writer.u8(flags);
   writer.u32(keyframe ? NO_TICK : tickOrNone(baseline.tick));
   writer.u32(tickOrNone(frame.ackedInputTick));
   writer.u16(frame.ackedFireSeq);
   writer.u16(frame.ackedActionSeq);
   writer.i8(frame.inputMarginTicks);
   writeMeta(writer, frame.meta, hasVerdict);
-  writeDestroyedSet(writer, baseline ? sortedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed);
+  const frameFalls = alignedFalls(frame.destroyed, frame.destroyedFalls);
+  const added = baseline ? sortedAdditions(baseline.destroyed, frame.destroyed, frameFalls) : frame.destroyed;
+  writeDestroyedSet(writer, added);
   // the rows: every row on a keyframe, a changed one on a delta (both lists sorted by entity id)
   if (frame.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   const rowCountAt = writer.length;
@@ -764,11 +852,16 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   if (frame.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   writer.u16(frame.shells.length);
   for (const shell of frame.shells) writeShell(writer, shell);
+  if (frame.unseenShells?.length) writeUnseenShells(writer, frame.unseenShells);
   if (frame.viewer) writeViewer(writer, frame.viewer, keyframe ? null : baseline.viewer ?? null);
   if (frame.modeStateJson != null) writer.string(frame.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
   if (destructionCount) {
     writer.u32(keyframe ? 0 : destructionBase);
     writeDestructionEntries(writer, frameDestruction.slice(destructionBase));
+  }
+  // wire 11 (round 2, U27): the falls last, only into the room the frame leaves (destroyedSet.ts writeDestroyedFalls)
+  if (writeDestroyedFalls(writer, baseline ? (frameFalls ? additionFallScratch : null) : frameFalls, added.length)) {
+    writer.setU8(flagsAt, flags | SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS);
   }
   if (writer.length > MAX_MESSAGE_BYTES) throw new WireError('bad_length', `message exceeds ${MAX_MESSAGE_BYTES} bytes`);
   return writer.toBytes();
@@ -802,12 +895,17 @@ export function buildSnapshotPacket(frame: SnapshotFrame, baseline: SnapshotFram
     inputMarginTicks: frame.inputMarginTicks,
     meta: frame.meta,
     destroyed: baseline ? destroyedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed.slice(),
+    ...(alignedFalls(frame.destroyed, frame.destroyedFalls) ? {
+      destroyedFalls: baseline ? destroyedAdditionFalls(baseline.destroyed, frame.destroyed, frame.destroyedFalls!)!
+        : frame.destroyedFalls!.slice(),
+    } : {}),
     // the log only grows: a delta carries what follows its baseline's length
     destruction: (frame.destruction ?? []).slice(baseline ? (baseline.destruction ?? []).length : 0),
     destructionBase: baseline ? (baseline.destruction ?? []).length : 0,
     entities,
     removed,
     shells: frame.shells,
+    ...(frame.unseenShells?.length ? { unseenShells: frame.unseenShells } : {}),
     viewer: frame.viewer,
     modeStateJson: frame.modeStateJson,
   };
@@ -854,11 +952,29 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     }
     entities.sort((a, b) => a.entityId - b.entityId);
   }
-  // the persistent lists: the baseline's own arrays when the packet adds nothing (frames never change them)
-  const destroyed = !base ? packet.destroyed.slice()
-    : !packet.destroyed.length ? base.destroyed
-      : indicesSorted(base.destroyed) && indicesSorted(packet.destroyed) ? sortedUnion(base.destroyed, packet.destroyed)
-        : [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b);
+  // the persistent lists: the baseline's own arrays when the packet adds nothing (frames never change them); each
+  // index keeps its fall (wire 11), the baseline's where both name it
+  const packetFalls = alignedFalls(packet.destroyed, packet.destroyedFalls);
+  const baseFalls = base ? alignedFalls(base.destroyed, base.destroyedFalls) : null;
+  let destroyedFalls: number[] | undefined;
+  let destroyed: number[];
+  if (!base) {
+    destroyed = packet.destroyed.slice();
+    if (packetFalls) destroyedFalls = packetFalls.slice();
+  } else if (!packet.destroyed.length) {
+    destroyed = base.destroyed;
+    if (baseFalls) destroyedFalls = base.destroyedFalls;
+  } else if (indicesSorted(base.destroyed) && indicesSorted(packet.destroyed)) {
+    const falls = baseFalls || packetFalls ? [] as number[] : null;
+    destroyed = sortedUnion(base.destroyed, packet.destroyed, baseFalls, packetFalls, falls);
+    if (falls) destroyedFalls = falls;
+  } else {
+    const fallOf = new Map<number, number>();
+    packet.destroyed.forEach((index, at) => fallOf.set(index, packetFalls?.[at] ?? 0));
+    base.destroyed.forEach((index, at) => fallOf.set(index, baseFalls?.[at] ?? 0));
+    destroyed = [...fallOf.keys()].sort((a, b) => a - b);
+    if (baseFalls || packetFalls) destroyedFalls = destroyed.map((index) => fallOf.get(index)!);
+  }
   const baseLog = base ? base.destruction ?? [] : [];
   const additions = packet.destruction ?? [];
   if (base && additions.length && packet.destructionBase !== baseLog.length) {
@@ -874,9 +990,11 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     inputMarginTicks: packet.inputMarginTicks,
     meta: packet.meta,
     destroyed,
+    ...(destroyedFalls ? { destroyedFalls } : {}),
     destruction,
     entities,
     shells: packet.shells,
+    ...(packet.unseenShells?.length ? { unseenShells: packet.unseenShells } : {}),
     viewer: packet.viewer,
     modeStateJson: packet.modeStateJson,
   };

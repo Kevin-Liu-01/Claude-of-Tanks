@@ -36,7 +36,8 @@ export function openHudEditor(trigger:HTMLElement):void {
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
   const modal=createModal({surface:'hud-editor',title:label('title'),size:'wide',unsaved:()=>JSON.stringify(draft)!==stored,onClose:()=>{
-    closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
+    // (improve-271 plan 028) the part picker's observers and its online listener go with the editor
+    closed=true;request?.abort();scene?.frame.remove();observer.disconnect();parts.dispose();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');
   const toolbar=element('div','hud-edit-toolbar',modal.body);
@@ -59,7 +60,9 @@ export function openHudEditor(trigger:HTMLElement):void {
   stage.setAttribute('aria-label',label('preview'));
   stage.style.backgroundImage=`url('${BACKDROP}')`;
   const backdrop=new Image();backdrop.src=BACKDROP;
-  const backdropReady=backdrop.decode();void backdropReady.catch(()=>{});
+  // (2026-11-02 audit R6) the decode only holds the preview until its sky is ready: a failed one was shared by every
+  // profile's load, so each tab failed until the editor closed; the preview now shows without it
+  const backdropReady=backdrop.decode().catch(()=>{});
   const loading=element('p','hud-edit-loading',preview);loading.setAttribute('role','status');loading.textContent=label('loading');
   const inspector=element('aside','hud-edit-inspector',content);
   const inspectorTitle=element('h3','',inspector);

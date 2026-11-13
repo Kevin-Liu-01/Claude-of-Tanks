@@ -180,13 +180,13 @@ async function loadWorld(mapId, variant) {
   const query = (x, z, r) => worldCollision.queryObstacles(x - r, z - r, x + r, z + r, []).slice();
   return { mapId, variant, worldCollision, hf, fn, contact, water, query };
 }
-/** Clear the crushes, falls and ram marks a run left on the shared records (a fresh world for the next run). */
+/** Clear the crushes and falls a run left on the shared records (a fresh world for the next run; a hull's press is its
+ *  battle's own ledger, sim/crushPress.ts, never on the records). */
 function resetWorld(world) {
   for (const list of [world.worldCollision.getObstacles(), world.worldCollision.getColliders?.() ?? []]) {
     for (const record of list) {
       if (record.crushed) delete record.crushed;
       if (record.dead) delete record.dead;
-      if (record._pressS) { delete record._pressS; delete record._pressT; }
     }
   }
 }

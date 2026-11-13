@@ -69,8 +69,8 @@ Runtime entry from the garage and map changes use the shared transition screen
 with measured world-build progress. `window.__STUDIO_LOAD`, `__STUDIO_WARM`, and
 `__WORLD_LOAD` expose the most recent stage timings for diagnostics.
 
-Under WebDriver or the `?nogate` parameter, the boot input prompt closes
-automatically so headless capture tools can enter Studio.
+On the harness path (which every browser a tool launches asks for, docs/AUTOMATION-PATHS.md) or with the `?nogate`
+parameter, the boot input prompt closes automatically so headless capture tools can enter Studio.
 
 ## Interactive controls
 
@@ -83,7 +83,7 @@ automatically so headless capture tools can enter Studio.
 - **Sound lane** (the timeline's last lane): the film's soundtrack as it will mix, drawn as peaks. Once the scene has settled for 1.5 s (not while playing or dragging) the take replays to its end without rendering to collect every combat sound, as a film export does, mixes them as the film does (studioFilmAudio.ts, at a preview sample rate) and returns the playhead; the lane dims while a changed scene is being mixed again. Silent effects (the cinematic moments, dust) leave it flat, as they leave the film
 - **Queue** (the header, Queue · N): deliveries in the scene's frame (films at 1080p30, 1440p60, 2160p30; a still at every shot; a still at the playhead), each with its time and size before it starts (size from the encoder's bitrate rule, time from this browser's last measured render rate). Start runs them one after another through the film veil and names the files (`verdant_1080p30_16x9.mp4`, `verdant_shot-02-gunline-portrait_16x9.png`); a cancelled film stops the queue, a notice says when it is done
 - **Commands** (the header, **Ctrl/Cmd K**, from a field too): one search over every action, run through the control that does it; battlefields and tanks are listed once named ("t-90" adds that tank in view). Arrows move, Enter runs, Esc closes the palette, never the Studio. The Studio's shortcuts (J/K/L, undo, redo, the palette, F8) work from a focused panel button
-- **Undo / redo** (the header, **Ctrl/Cmd Z**, **Shift Ctrl/Cmd Z** or **Ctrl/Cmd Y**): settled edits are steps (the camera, the playhead and playing never are); the same battlefield and tanks restore in place, anything else reloads. Every step autosaves the scene to this browser (never an empty one), and an empty Studio offers **Restore last scene**
+- **Undo / redo** (the header, **Ctrl/Cmd Z**, **Shift Ctrl/Cmd Z** or **Ctrl/Cmd Y**): settled edits are steps (the camera, the playhead and playing never are); the same battlefield and tanks restore in place, anything else reloads. Every step autosaves the scene to this browser (never an empty one), and an empty Studio offers **Restore last scene**. Exit commits the last edit first, a battlefield or light change in flight included. The header's and the keys' undo, redo and Restore do nothing while anything holds the Studio or its panel (a queued render, a time or sun change, a staging); each holds only the session it began in, so one an exit outlived never holds the Studio entered again
 - **Quick | Pro** (the header): Quick keeps the essentials; Pro adds the picture sliders, letterbox and depth of field, camera roll and fly speed, film blur and shake, live recording, the recoil chip, play speed, effect parameters and the plan view. Each viewer's choice is remembered in the browser
 - **Look through** (the viewport chip): the view is the shots' camera at the playhead. Dragging, the wheel, the fly keys or a camera edit leave it, after which scrubbing and playing keep the free view; selecting a shot, keying one from the view or loading a scene look through again. Recording and film export always ride the shots
   (or selected actor when no effect layer is selected)
@@ -116,6 +116,9 @@ Additional methods used by the panel:
 
 ```js
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
+__STUDIO.sessionToken()                                // stale once the session ends: load(json, {owner}) is then refused
+__STUDIO.busy()                                        // what holds the Studio ('recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light') or null; work an exit outlived holds nothing,
+                                                       // but the page's one film export holds 'export' until it ends (its module, encoder flush and soundtrack mix outlast the cancel)
 await __STUDIO.ready()                                 // entered, and every tank's builder in (247)
 __STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)   // addActor: after ready(); load() needs only its own tanks
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
@@ -143,7 +146,7 @@ __STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmI
 __STUDIO.setCamera(cfg) / .getCamera()                // leaves look-through
 __STUDIO.setLookThrough(on) / .lookThrough
 __STUDIO.undo() / .redo() / .history           // { undo, redo, savedAt }
-__STUDIO.autosaved() / .restoreAutosave()      // the last autosaved scene in this browser
+__STUDIO.autosaved() / .restoreAutosave()      // the last autosaved scene in this browser (false if busy or the Studio closed under it)
 __STUDIO.soundPreview(buckets)                 // { peaks, cues }: the soundtrack over the timeline
 __STUDIO.setPlacementSnap('road'|'terrain'|'off') / .placementSnap  // where a dragged or placed tank lands
 __STUDIO.applyPosePreset(actor, 'hull-down'|'firing'|'knocked-out')  // false: no crest within 24 m ahead
@@ -216,7 +219,12 @@ seconds. The result is `{ blob, size, mimeType, durationMs }`. Recording hides
 the camera rail and pauses on the final frame. The video contains the rendered
 picture only; Studio does not currently mix game audio into the capture stream.
 It records in real time and can drop frames on a busy machine; use the film
-renderer below for deliverables.
+renderer below for deliverables. A recording is refused while a film is open or
+an export runs (from its request), and while the Studio is entering, exiting,
+loading a scene, changing battlefield, restoring an undo or changing the light.
+`directProduction()`, `directDuel()`, `setProductionFormat()` and
+`applyProductionCamera()` are refused (or ignored) on the same reading, and a
+film (`beginFilm()`, an export's own film) opens over none of them.
 
 ### Film renderer
 

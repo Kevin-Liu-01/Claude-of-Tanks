@@ -43,8 +43,12 @@ export {
 } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
-import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
+import {
+  drawNationalInsignia, drawTacticalNumber, glacisMarkingOutline, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
+  vehicleMarkingRecord,
+} from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
+import { glacisPath, glacisSetsMarking, glacisWidth } from '../ui/glacisText.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
 import { paintRubberSurface } from './rubberSurface.ts';
 // MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
@@ -226,22 +230,82 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
   return c;
 }
 
-function redrawWhenMarkingFontReady(draw: () => void): void {
-  if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
-    document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) draw(); }).catch(() => {});
+// Lettering Glacis cannot set as written (a stencil's CTEx) keeps 'Cot UI': it bakes once in the face at hand and again
+// when the bold face arrives. Glacis lettering is outlines and never waits for a face.
+const MARKING_UI_FACE = "bold 16px 'Cot UI'";
+
+/** What a lettering painter drew: the string it lettered and how to draw its canvas again. */
+interface DecalLettering {
+  readonly text: string;
+  readonly redraw: () => void;
+}
+
+/**
+ * A decal's canvas and its bake (2026-11-08 round 8 s5-09). A decal is final at once (Glacis outlines, or a drawn mark
+ * that letters nothing) or provisional: lettered in the face at hand, then redrawn and uploaded once 'Cot UI' loads
+ * (final), or dropped when the load brings no face. Its material set's dispose does not end it: a copied material
+ * (cloneTankVisual) still draws the texture. paintDecal answers for its own lettering; createTankMaterials' decal()
+ * owns the one wait (one predicate, one waiter). Before, the painter redrew on its own waiter and decal() uploaded on a
+ * second one under its own guess at what the painter lettered.
+ */
+interface PaintedDecal {
+  readonly canvas: HTMLCanvasElement;
+  /** The lettering is provisional: Glacis cannot set it as written, so it bakes again in 'Cot UI'. */
+  readonly needsUiFace: boolean;
+  /** Draws the canvas again in the face now at hand (null: the decal letters nothing). */
+  readonly redraw: (() => void) | null;
+}
+
+/** The share of a 256 px text decal its lettering may span, outline included (8 px margins). */
+const MARKING_TEXT_SPAN = 240;
+
+/**
+ * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, at the decal's
+ * size rule brought down where the measured run would pass MARKING_TEXT_SPAN, an outlined marking's outline
+ * (glacisMarkingOutline: 6 % of the size, never under the old face's 6-texel stencil halo nor over the old face's halo on
+ * that marking) stroked under the fill with mitred corners clipped short so the chamfers stay crisp. `outlineWidth` is the
+ * old face's halo (and says the marking has one). Hull lettering's caps stand where the shell face's did over (x, y) (SHELL_MIDDLE_CAP_LIFT); a plate's or a
+ * disc's centre on it. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
+ */
+function letterMarking(
+  ctx: CanvasRenderingContext2D, text: string, x: number, y: number, ruleSize: number,
+  fill: string, outlineWidth = 0, outline = '', seat: 'hull' | 'plate' = 'hull',
+): void {
+  ctx.save();
+  if (glacisSetsMarking(text)) {
+    const options = { tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' } as const;
+    const size = Math.min(ruleSize,
+      (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { ...options, size: 1 })));
+    const path = glacisPath(text, x, seat === 'hull' ? y - size * SHELL_MIDDLE_CAP_LIFT : y, { ...options, size });
+    if (outlineWidth) {
+      ctx.lineWidth = glacisMarkingOutline(size, outlineWidth);
+      ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
+      ctx.stroke(path);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill(path);
+  } else {
+    ctx.font = `bold ${ruleSize}px 'Cot UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const anchorY = seat === 'hull' ? y : y + ruleSize * SHELL_MIDDLE_CAP_LIFT;
+    if (outlineWidth) { ctx.lineWidth = outlineWidth; ctx.strokeStyle = outline; ctx.strokeText(text, x, anchorY); }
+    ctx.fillStyle = fill;
+    ctx.fillText(text, x, anchorY);
   }
+  ctx.restore();
 }
 
 function paintDesignationDecal(
   ctx: CanvasRenderingContext2D,
   marking: VehicleMarkingRecord,
-): void {
+): DecalLettering {
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
     drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  return { text: marking.tacticalNumber, redraw: draw };
 }
 
 function paintStarDecal(ctx: CanvasRenderingContext2D): void {
@@ -321,25 +385,18 @@ function paintGreyCrossDecal(ctx: CanvasRenderingContext2D): void {
   ctx.strokeRect(108, 48, 40, 160);
 }
 
-function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
-    ctx.font = `bold ${Math.min(120, Math.floor(380 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = 'rgba(20,20,20,0.55)';
-    ctx.strokeText(text, 128, 128);
-    ctx.fillStyle = 'rgba(174,172,162,0.92)';
-    ctx.fillText(text, 128, 128);
+    letterMarking(ctx, text, 128, 128, Math.min(120, Math.floor(380 / length)), 'rgba(174,172,162,0.92)', 10, 'rgba(20,20,20,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  return { text, redraw: draw };
 }
 
 /** Stencilled black lettering with a thin pale edge (the United Nations' "UN" on white vehicles). */
-function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
     ctx.beginPath();
@@ -349,36 +406,26 @@ function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(20,20,18,0.9)';
     ctx.stroke();
-    ctx.font = `bold ${text.length > 2 ? 100 : 130}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(18,18,18,0.95)';
-    ctx.fillText(text, 128, 134);
+    letterMarking(ctx, text, 128, 128, text.length > 2 ? 100 : 130, 'rgba(18,18,18,0.95)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  return { text, redraw: draw };
 }
 
-function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): void {
+function paintStencilDecal(ctx: CanvasRenderingContext2D, text: string, white = false): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
-    ctx.font = `bold ${Math.min(150, Math.floor(400 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)';
-    ctx.strokeText(text, 128, 128);
-    ctx.fillStyle = white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)';
-    ctx.fillText(text, 128, 128);
+    letterMarking(ctx, text, 128, 128, Math.min(150, Math.floor(400 / length)),
+      white ? 'rgba(236,234,226,0.95)' : 'rgba(18,18,18,0.94)', 6, white ? 'rgba(24,24,22,0.45)' : 'rgba(232,230,222,0.55)');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  return { text, redraw: draw };
 }
 
 // A registration plate: black lettering on a white plate with a thin black border, the plate a strip across the square
 // canvas (the Bundeswehr's "Y" plates)
-function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
+function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): DecalLettering {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
@@ -386,41 +433,38 @@ function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.fillRect(2, 98, 252, 60);
     ctx.fillStyle = 'rgba(238,236,228,0.98)';
     ctx.fillRect(6, 102, 244, 52);
-    ctx.font = `bold ${Math.min(46, Math.floor(330 / length))}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(18,18,18,0.96)';
-    ctx.fillText(text, 128, 129);
+    letterMarking(ctx, text, 128, 128, Math.min(46, Math.floor(330 / length)), 'rgba(18,18,18,0.96)', 0, '', 'plate');
   };
   draw();
-  redrawWhenMarkingFontReady(draw);
+  return { text, redraw: draw };
 }
 
-// Transparent marking decal canvases.
+// Transparent marking decal canvases: the drawn marks letter nothing; the rest say what they lettered.
 function paintDecal(
   kind: string,
   text: string | null | undefined,
   marking: VehicleMarkingRecord,
-): HTMLCanvasElement {
+): PaintedDecal {
   const canvas = makeCanvas(256, 256);
   const ctx = canvas2d(canvas);
   ctx.clearRect(0, 0, 256, 256);
+  let lettering: DecalLettering | null = null;
   if (kind === 'insignia') drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
-  else if (kind === 'designation') paintDesignationDecal(ctx, marking);
+  else if (kind === 'designation') lettering = paintDesignationDecal(ctx, marking);
   else if (kind === 'star') paintStarDecal(ctx);
   else if (kind === 'cross') paintCrossDecal(ctx);
   else if (kind === 'soot') paintSootDecal(ctx);
   else if (kind === 'crossgrey') paintGreyCrossDecal(ctx);
-  else if (kind === 'stencil') paintStencilDecal(ctx, text ?? '');
-  else if (kind === 'stencilWhite') paintStencilDecal(ctx, text ?? '', true);
-  else if (kind === 'plate') paintPlateDecal(ctx, text ?? '');
+  else if (kind === 'stencil') lettering = paintStencilDecal(ctx, text ?? '');
+  else if (kind === 'stencilWhite') lettering = paintStencilDecal(ctx, text ?? '', true);
+  else if (kind === 'plate') lettering = paintPlateDecal(ctx, text ?? '');
   // a NATO bridge-classification disc: black number on a yellow disc
-  else if (kind === 'mlc') paintMlcDecal(ctx, text ?? '');
+  else if (kind === 'mlc') lettering = paintMlcDecal(ctx, text ?? '');
   // a flag on its pole (the text names the insignia painter, e.g. 'dk-dannebrog'): drawn as itself, never re-seated as
   // the vehicle's national insignia
   else if (kind === 'flag') drawNationalInsignia(ctx, text ?? '', 128, 128, 250);
-  else paintTextDecal(ctx, text ?? '');
-  return canvas;
+  else lettering = paintTextDecal(ctx, text ?? '');
+  return { canvas, needsUiFace: !!lettering && !glacisSetsMarking(lettering.text), redraw: lettering?.redraw ?? null };
 }
 
 /**
@@ -541,10 +585,23 @@ const TEX_CACHE = new Map<string, SharedTextureEntry>();
 const TEXTURE_LEASE_PENDING = new Map<string, number>();
 
 interface EntryPaintState {
+  /** Moves each time a writer takes the entry: the newest writer owns it. */
   revision: number;
   active: number;
   idle: Promise<void> | null;
   resolveIdle: (() => void) | null;
+  /**
+   * 2026-11-02 audit R5: true from the moment a writer starts on the live canvases until the newest writer completes.
+   * While it holds, `patternId` (the last completed pattern) does not name what the canvases show: a chunked repaint of
+   * B aborted after its albedo pass left B on the hull with `patternId` still A, so a sweep back to A skipped it.
+   */
+  dirty: boolean;
+}
+
+/** One writer's claim on an entry's live canvases (takeEntryPaint). */
+interface EntryPaintToken {
+  readonly state: EntryPaintState;
+  readonly revision: number;
 }
 
 // A pattern can change A -> B -> A while a worker is in flight. Pattern IDs
@@ -555,26 +612,49 @@ const ENTRY_PAINT_STATE = new WeakMap<SharedTextureEntry, EntryPaintState>();
 function entryPaintState(entry: SharedTextureEntry): EntryPaintState {
   let state = ENTRY_PAINT_STATE.get(entry);
   if (!state) {
-    state = { revision: 0, active: 0, idle: null, resolveIdle: null };
+    state = { revision: 0, active: 0, idle: null, resolveIdle: null, dirty: false };
     ENTRY_PAINT_STATE.set(entry, state);
   }
   return state;
 }
 
-function beginEntryRepaint(entry: SharedTextureEntry): EntryPaintState {
+/**
+ * The one paint-owner gate (2026-11-02 audit R5). Every writer of a published entry's canvases takes the entry here
+ * first: the sync repaint, the memoized restore, the chunked repaint, the sync and chunked quality promotions and the
+ * worker's promotion. The newest writer owns it; an older chunked writer checks ownsEntryPaint after each yield and
+ * stops without writing again (its partial work leaves the entry dirty for the next sweep). Only the owner's completion
+ * records its pattern and clears dirty.
+ */
+function takeEntryPaint(entry: SharedTextureEntry): EntryPaintToken {
   const state = entryPaintState(entry);
   state.revision++;
+  state.dirty = true;
   if (state.active++ === 0) {
     state.idle = new Promise<void>((resolve) => { state.resolveIdle = resolve; });
   }
-  return state;
+  return { state, revision: state.revision };
 }
 
-function endEntryRepaint(state: EntryPaintState): void {
+function ownsEntryPaint(token: EntryPaintToken): boolean {
+  return token.state.revision === token.revision;
+}
+
+/** End a writer's claim; `completed` is the pattern it finished painting in full, or null for an aborted write. */
+function releaseEntryPaint(entry: SharedTextureEntry, token: EntryPaintToken, completed: MaterialPatternId | null): void {
+  const { state } = token;
+  if (completed !== null && ownsEntryPaint(token)) {
+    entry.patternId = completed;
+    state.dirty = false;
+  }
   if (--state.active !== 0) return;
   state.resolveIdle?.();
   state.idle = null;
   state.resolveIdle = null;
+}
+
+/** Whether the entry's canvases may hold part of a pattern its `patternId` does not name. */
+function entryPaintDirty(entry: SharedTextureEntry): boolean {
+  return ENTRY_PAINT_STATE.get(entry)?.dirty === true;
 }
 
 function pendingEntryRepaint(key: string): Promise<void> | null {
@@ -639,7 +719,11 @@ export function materialTextureDimensions<Value>(quality: Value): { albedo: numb
   return { albedo: sizes.albedo, map: sizes.map };
 }
 
-function bakeSharedCanvases(entry: SharedTextureEntry, quality: MaterialTextureQuality): void {
+/** What a base bake paints into: a published entry, or a private draft of one (upgradeEntryChunked). */
+type SharedPaintTarget = Pick<SharedTextureEntry,
+  'spec' | 'seed' | 'patternId' | 'feats' | 'camoCanvas' | 'normalCanvas' | 'roughCanvas' | 'quality'>;
+
+function bakeSharedCanvases(entry: SharedPaintTarget, quality: MaterialTextureQuality): void {
   const g = bakeSharedCanvasesSteps(entry, quality);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -679,7 +763,7 @@ function sharedMaterialPaintRequest(
 }
 
 function* bakeSharedCanvasesSteps(
-  entry: SharedTextureEntry,
+  entry: SharedPaintTarget,
   quality: MaterialTextureQuality,
 ): Generator<void, void, void> {
   const request = sharedMaterialPaintRequest(entry, quality);
@@ -755,8 +839,65 @@ export function isMaterialTextureQualityUpgrade<Current, Requested>(current: Cur
 // in-place promotion.
 const PREBAKE_PENDING = new Map<string, Promise<void>>();
 function upgradeEntry(entry: SharedTextureEntry, quality: MaterialTextureQuality = 'high'): void {
-  bakeSharedCanvases(entry, quality);
-  finalizeEntryResize(entry);
+  // a synchronous writer: it owns the entry for its whole bake, so a chunked repaint in flight stops at its next check
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    bakeSharedCanvases(entry, quality);
+    finalizeEntryResize(entry);
+    completed = entry.patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
+  }
+}
+
+/**
+ * A chunked quality promotion of a published entry (2026-11-02 audit R5). It paints on private canvases between its
+ * yields and installs them in one synchronous step under the paint owner, so the live canvases (and the GPU's
+ * immutable storage) never hold a half-promoted bake and no repaint interleaves with its stages. A repaint that
+ * landed another pattern while it painted sends it round again; a selection that keeps moving ends in one synchronous
+ * promotion.
+ */
+async function upgradeEntryChunked(
+  entry: SharedTextureEntry,
+  quality: MaterialTextureQuality,
+  run: (steps: Generator<void, void, void>) => Promise<void>,
+): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!isMaterialTextureQualityUpgrade(entry.quality, quality)) return;
+    const draft: SharedPaintTarget = {
+      spec: entry.spec, seed: entry.seed, patternId: entry.patternId, feats: null, quality: entry.quality,
+      camoCanvas: makeCanvas(4, 4), normalCanvas: makeCanvas(4, 4), roughCanvas: makeCanvas(4, 4),
+    };
+    const drafts = [draft.camoCanvas, draft.normalCanvas, draft.roughCanvas];
+    try {
+      await run(bakeSharedCanvasesSteps(draft, quality));
+      // promoted meanwhile (a synchronous acquire): nothing left to do
+      if (!isMaterialTextureQualityUpgrade(entry.quality, quality)) return;
+      // a repaint completed another pattern while this one painted: paint the promotion again for it
+      if (entry.patternId !== draft.patternId) continue;
+      const token = takeEntryPaint(entry);
+      let completed: MaterialPatternId | null = null;
+      try {
+        for (const [live, painted] of [[entry.camoCanvas, draft.camoCanvas], [entry.normalCanvas, draft.normalCanvas],
+          [entry.roughCanvas, draft.roughCanvas]] as const) {
+          live.width = painted.width;
+          live.height = painted.height;
+          canvas2d(live).drawImage(painted, 0, 0);
+        }
+        entry.feats = draft.feats;
+        entry.quality = quality;
+        finalizeEntryResize(entry);
+        completed = draft.patternId;
+      } finally {
+        releaseEntryPaint(entry, token, completed);
+      }
+      return;
+    } finally {
+      releaseWorkerPaintCanvases(drafts);
+    }
+  }
+  if (isMaterialTextureQualityUpgrade(entry.quality, quality)) upgradeEntry(entry, quality);
 }
 
 /** Post-resize texture ritual shared by synchronous acquisition and chunked
@@ -840,14 +981,21 @@ function commitWorkerPaintPromotion(
   ] as const;
   // No yield during installation. Materials keep the same THREE.Texture and
   // canvas identities; the immutable GPU storage is renewed only after all maps.
-  for (const [canvas, pixels] of pairs) {
-    canvas.width = pixels.width;
-    canvas.height = pixels.height;
-    canvas2d(canvas).putImageData(pixels, 0, 0);
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    for (const [canvas, pixels] of pairs) {
+      canvas.width = pixels.width;
+      canvas.height = pixels.height;
+      canvas2d(canvas).putImageData(pixels, 0, 0);
+    }
+    entry.feats = result.features;
+    entry.quality = quality;
+    finalizeEntryResize(entry);
+    completed = entry.patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
   }
-  entry.feats = result.features;
-  entry.quality = quality;
-  finalizeEntryResize(entry);
 }
 
 interface WorkerPaintSnapshot {
@@ -1004,10 +1152,7 @@ export function prebakeSharedTextures(
     let entry = TEX_CACHE.get(key);
     if (entry) {
       // mirror acquire's only upgrade case; anything else is already adequate
-      if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
-        await run(bakeSharedCanvasesSteps(entry, quality));
-        finalizeEntryResize(entry);
-      }
+      if (isMaterialTextureQualityUpgrade(entry.quality, quality)) await upgradeEntryChunked(entry, quality, run);
       return;
     }
     const { patternId } = identity.fixed ? identity : sharedTextureIdentity(spec.id);
@@ -1031,8 +1176,7 @@ export function prebakeSharedTextures(
     const acquiredDuringBake = TEX_CACHE.get(key);
     if (acquiredDuringBake) {
       if (isMaterialTextureQualityUpgrade(acquiredDuringBake.quality, quality)) {
-        await run(bakeSharedCanvasesSteps(acquiredDuringBake, quality));
-        finalizeEntryResize(acquiredDuringBake);
+        await upgradeEntryChunked(acquiredDuringBake, quality, run);
       }
       return;
     }
@@ -1124,7 +1268,9 @@ function disposeSharedTextureEntry(entry: SharedTextureEntry): void {
 
 function releaseSharedTextures(shared: SharedTextureEntry | null | undefined): void {
   const entry = shared && TEX_CACHE.get(shared.cacheKey);
-  if (!entry) return;
+  // (2026-11-02 audit R5) by identity: a late release of a disposed entry never decrements the new entry that re-created
+  // its key (which disposed the live tank's textures and orphaned it from every later camo sweep)
+  if (!entry || entry !== shared) return;
   if (--entry.refs <= 0 && !TEXTURE_LEASE_PENDING.has(entry.cacheKey)) disposeSharedTextureEntry(entry);
 }
 
@@ -1971,7 +2117,7 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
     o = { scheme: 'star', base: '#57603f', weather: '#4e5738',
       patches: ['#ded8c8'] };
   } else if (patternId === 'berlin45') {
-    // Soviet 4BO with the white air-recognition band + tactical number.
+    // Soviet 4BO with the white air-recognition band.
     o = { scheme: 'idband', base: '#4a5138', weather: '#525a3e',
       patches: ['#e0dccb'] };
   } else if (patternId === 'ardennes44') {
@@ -1982,8 +2128,8 @@ function patternVisual(spec: MaterialTankSpec, patternId: MaterialPatternId): Ma
       patches: ['#4c5539', '#6e6f64'] };
   } else if (patternId === 'pacific45') {
     // camo r8: late-war USMC — forest green under hard-edged black wave
-    // bands, white hull number, coral-dust stipple. patches = [black band,
-    // coral dust, stencil white].
+    // bands, coral-dust stipple. patches = [black band, coral dust, stencil
+    // white].
     o = { scheme: 'usmc', base: '#46543d', weather: '#3e4b36',
       patches: ['#282e26', '#c2ab84', '#e3ded1'] };
   } else if (patternId === 'jungleops') {
@@ -2102,21 +2248,28 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   const ph = camoPatternIdHash(patternId);
-  entryPaintState(entry).revision++;
-  // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
-  // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
-  paintCamo(entry.camoCanvas, vis, mulberry32(camoPatternStreamSeed(vis, ph)), feats, entry.seed);
-  exposureTrim(entry.camoCanvas);
-  camoTex.needsUpdate = true;
-  // camo_spotting r4: the roughness map follows the repaint so each pattern's
-  // per-patch paint response lands with it (albedo-only repaints read as
-  // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
-  // with the normal map; the stochastic dust layer redraws from a
-  // pattern-keyed stream, which is invisible at paint scale.
-  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
-  paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
-  roughTex.needsUpdate = true;
-  entry.patternId = patternId;
+  // the paint owner (takeEntryPaint): a chunked repaint in flight stops at its next check instead of running its
+  // remaining passes (the exposure trim is a multiply) over this complete repaint
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
+    // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
+    paintCamo(entry.camoCanvas, vis, mulberry32(camoPatternStreamSeed(vis, ph)), feats, entry.seed);
+    exposureTrim(entry.camoCanvas);
+    camoTex.needsUpdate = true;
+    // camo_spotting r4: the roughness map follows the repaint so each pattern's
+    // per-patch paint response lands with it (albedo-only repaints read as
+    // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
+    // with the normal map; the stochastic dust layer redraws from a
+    // pattern-keyed stream, which is invisible at paint scale.
+    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
+    paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
+    roughTex.needsUpdate = true;
+    completed = patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
+  }
   retintEntryFittings(entry, vis);
   // camo r4: memoize the finished bake — the next visit to this
   // (spec, pattern) pair restores in a couple of blits instead of repainting.
@@ -2246,7 +2399,7 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
     return false;
   }
   if (resolveCamoPattern(entry.spec.id) !== patternId
-    || entry.patternId === patternId) {
+    || (entry.patternId === patternId && !entryPaintDirty(entry))) {
     // superseded (or already landed) while the bitmaps decoded — the newer
     // selection's own restore/repaint owns the entry, don't fight it.
     cb.close(); rb.close();
@@ -2262,12 +2415,19 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
     c2.drawImage(bmp, 0, 0, canvas.width, canvas.height);
     c2.restore();
   };
-  entryPaintState(entry).revision++;
-  blit(entry.camoCanvas, cb); cb.close();
-  blit(entry.roughCanvas, rb); rb.close();
-  if (entry.camoTex) entry.camoTex.needsUpdate = true;
-  if (entry.roughTex) entry.roughTex.needsUpdate = true;
-  entry.patternId = patternId;
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    blit(entry.camoCanvas, cb);
+    blit(entry.roughCanvas, rb);
+    if (entry.camoTex) entry.camoTex.needsUpdate = true;
+    if (entry.roughTex) entry.roughTex.needsUpdate = true;
+    completed = patternId;
+  } finally {
+    cb.close();
+    rb.close();
+    releaseEntryPaint(entry, token, completed);
+  }
   retintEntryFittings(entry, patternVisual(entry.spec, patternId));
   return true;
 }
@@ -2281,7 +2441,7 @@ export function applyCamoPatterns(onlySpecId: string | null = null): void {
   for (const entry of TEX_CACHE.values()) {
     if (entry.fixedPattern || (onlySpecId && entry.spec.id !== onlySpecId)) continue;
     const pid = resolveCamoPattern(entry.spec.id);
-    if (entry.patternId !== pid) repaintEntry(entry, pid);
+    if (entry.patternId !== pid || entryPaintDirty(entry)) repaintEntry(entry, pid);
   }
 }
 
@@ -2322,7 +2482,8 @@ function staleCamoEntry(key: string): StaleCamoEntry | null {
   const entry = TEX_CACHE.get(key);
   if (!entry || entry.fixedPattern) return null;
   const patternId = resolveCamoPattern(entry.spec.id);
-  return entry.patternId === patternId ? null : { entry, patternId };
+  // a dirty entry is stale whatever its recorded pattern: its canvases may hold an aborted repaint's partial work
+  return entry.patternId === patternId && !entryPaintDirty(entry) ? null : { entry, patternId };
 }
 
 async function yieldCamoSweep(delayMs: number, generation: number): Promise<boolean> {
@@ -2330,11 +2491,14 @@ async function yieldCamoSweep(delayMs: number, generation: number): Promise<bool
   return generation === _camoSweepGen;
 }
 
+/** How a chunked repaint ended: painted, superseded by a newer sweep, or the entry taken by another writer. */
+type ChunkedRepaintOutcome = 'painted' | 'swept' | 'taken';
+
 async function repaintCamoEntryChunked(
   entry: SharedTextureEntry,
   patternId: MaterialPatternId,
   generation: number,
-): Promise<boolean> {
+): Promise<ChunkedRepaintOutcome> {
   const visual = {
     ...patternVisual(entry.spec, patternId),
     modernWelds: isPostwarVehicleEra(entry.spec.era),
@@ -2345,24 +2509,33 @@ async function repaintCamoEntryChunked(
     throw new Error(`vehicle material cache entry ${entry.cacheKey} is incomplete`);
   }
 
-  const paintState = beginEntryRepaint(entry);
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  // after each yield: a newer sweep owns the remainder, and a newer writer owns this entry (either way, no more writes)
+  const resume = async (): Promise<ChunkedRepaintOutcome | null> => {
+    if (!await yieldCamoSweep(16, generation)) return 'swept';
+    return ownsEntryPaint(token) ? null : 'taken';
+  };
   try {
     paintCamo(entry.camoCanvas, visual, mulberry32(camoPatternStreamSeed(visual, patternHash)), feats, entry.seed);
-    if (!await yieldCamoSweep(16, generation)) return false;
+    let stopped = await resume();
+    if (stopped) return stopped;
     exposureTrim(entry.camoCanvas);
     camoTex.needsUpdate = true;
-    if (!await yieldCamoSweep(16, generation)) return false;
+    stopped = await resume();
+    if (stopped) return stopped;
     paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats);
-    if (!await yieldCamoSweep(16, generation)) return false;
+    stopped = await resume();
+    if (stopped) return stopped;
     paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, visual);
     roughTex.needsUpdate = true;
-    entry.patternId = patternId;
-    retintEntryFittings(entry, visual);
-    snapshotBake(entry, patternId);
-    return true;
+    completed = patternId;
   } finally {
-    endEntryRepaint(paintState);
+    releaseEntryPaint(entry, token, completed);
   }
+  retintEntryFittings(entry, visual);
+  snapshotBake(entry, patternId);
+  return 'painted';
 }
 
 /**
@@ -2399,7 +2572,14 @@ export async function applyCamoPatternsChunked(opts: CamoApplyOptions | null = n
     // split the independent passes into paintable tasks. A superseding
     // sweep aborts between passes; its fresh albedo pass then owns the
     // same canvases from that point onward.
-    if (!await repaintCamoEntryChunked(pending.entry, pending.patternId, gen)) return;
+    let outcome = await repaintCamoEntryChunked(pending.entry, pending.patternId, gen);
+    // another writer took the entry mid-repaint (a synchronous repaint or promotion): look again, once, and repaint
+    // only if what it left is still not the selection
+    if (outcome === 'taken') {
+      const again = staleCamoEntry(key);
+      if (again && gen === _camoSweepGen) outcome = await repaintCamoEntryChunked(again.entry, again.patternId, gen);
+    }
+    if (outcome === 'swept') return;
   }
 }
 
@@ -3309,6 +3489,7 @@ export function createTankMaterials(
     normalizeMaterialTextureQuality(quality),
     camoPattern,
   );
+  let materialSetDisposed = false;
   const { camoTex, normalTex, roughTex } = shared;
   if (!camoTex || !normalTex || !roughTex) {
     throw new Error(`vehicle material cache entry ${shared.cacheKey} is incomplete`);
@@ -3688,18 +3869,34 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();
   const decalTextureLeases: SootTextureLease[] = [];
+  /** A provisional decal's one wait (PaintedDecal): when 'Cot UI' loads, redraw its canvas and upload it in the same
+   *  callback; a load that brings no face drops it. A final decal waits for nothing. The set's dispose does not drop it
+   *  (fix-up r1): a copy of the decal's material (cloneTankVisual) draws this texture after the set is gone, and a
+   *  texture nothing draws is never uploaded, so the re-bake costs it one canvas redraw. */
+  const rebakeWhenUiFaceLoads = (painted: PaintedDecal, texture: THREE.CanvasTexture): void => {
+    const redraw = painted.redraw;
+    if (!painted.needsUiFace || !redraw || !document.fonts || document.fonts.check(MARKING_UI_FACE)) return;
+    document.fonts.load(MARKING_UI_FACE).then((faces) => {
+      if (!faces.length) return;
+      redraw();
+      texture.needsUpdate = true;
+    }).catch(() => {});
+  };
   const decal = (kind: string, text?: string | null): THREE.MeshStandardMaterial => {
     const key = `${marking.markingCode}:${kind}:${text || ''}`;
     if (!decalCache.has(key)) {
+      // (the soot is drawn, never lettered: its shared texture is final at once)
       const lease = kind === 'soot' && engineCtx
-        ? acquireSootTexture(engineCtx, aniso, () => canvasTex(paintDecal(kind, text, marking), { aniso }))
+        ? acquireSootTexture(engineCtx, aniso, () => canvasTex(paintDecal(kind, text, marking).canvas, { aniso }))
         : null;
-      if (lease) decalTextureLeases.push(lease);
-      const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
-      // number decals re-bake when their font loads (paintDecal registered first, so
-      // its redraw runs before this) — push the fresh canvas to the GPU.
-      if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
-        document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
+      let t: THREE.CanvasTexture;
+      if (lease) {
+        decalTextureLeases.push(lease);
+        t = lease.texture;
+      } else {
+        const painted = paintDecal(kind, text, marking);
+        t = track(canvasTex(painted.canvas, { aniso }));
+        rebakeWhenUiFaceLoads(painted, t);
       }
       const m = track(setup(new THREE.MeshStandardMaterial({
         map: t, transparent: true, roughness: 0.8, metalness: 0.1,
@@ -3764,6 +3961,9 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     prepareBurnt,
     decal,
     dispose() {
+      // once (2026-11-02 audit R5): a second dispose released the shared entry's ref again
+      if (materialSetDisposed) return;
+      materialSetDisposed = true;
       for (const rec of paintableRecs) shared.paintable.delete(rec);
       for (const resource of disposables) {
         if ('isMaterial' in resource && resource.isMaterial) {

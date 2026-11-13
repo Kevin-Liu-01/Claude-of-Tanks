@@ -45,6 +45,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/mp/session/headlessSession.ts';
+import { MATCH_PHASE, ROOM_PHASE, SESSION_PHASE } from './mp-states.mjs';
 
 function argValue(name, fallback) {
   const prefix = `--${name}=`;
@@ -178,8 +179,9 @@ export async function runRoomsE2E({
     await until(() => second.room.room?.adminId === 'p2', 'admin migrated to the most senior seat', 10_000);
     report.admin.push({ at: 'creator left', adminId: second.room.room.adminId, phase: second.room.room.phase });
     log(`creator left at ${((performance.now() - startedAt) / 1000).toFixed(1)} s; admin now ${second.room.room.adminId}; room phase ${second.room.room.phase}`);
-    // `starting` until the room's first 10 s poll sees the actor playing; only `waiting` would mean the match ended
-    if (second.room.room.phase === 'waiting') failures.push(`the match ended with the creator's departure (${second.room.room.phase})`);
+    // `starting` until the room's first match poll (ROOM_MATCH_POLL_MS, 30 s) sees the actor playing; only `waiting` would
+    // mean the match ended
+    if (second.room.room.phase === ROOM_PHASE.waiting) failures.push(`the match ended with the creator's departure (${second.room.room.phase})`);
     // the recorder is a bounded ring, so compare the newest presented tick, not the count
     const tickBefore = second.presentation.frames.at(-1)?.tick ?? -1;
     await sleep(2000);
@@ -207,11 +209,11 @@ export async function runRoomsE2E({
     if (!verdict) {
       // ---- a probe against a host whose clock is the ruleset's: every remaining seat leaves the running match and the room
       // (the resumed seat's welcome precedes its `live` phase by a frame)
-      await until(() => live().every((entry) => entry.headless.session.stats().match?.phase === 'live'), 'every remaining seat live', 10_000);
+      await until(() => live().every((entry) => entry.headless.session.stats().match?.phase === MATCH_PHASE.live), 'every remaining seat live', 10_000);
       for (const entry of live()) {
         const stats = entry.headless.session.stats();
-        if (stats.phase === 'lost') failures.push(`${entry.id} ended in lost`);
-        if (stats.match && stats.match.phase !== 'live') failures.push(`${entry.id} match phase ${stats.match.phase}`);
+        if (stats.phase === SESSION_PHASE.lost) failures.push(`${entry.id} ended in lost`);
+        if (stats.match && stats.match.phase !== MATCH_PHASE.live) failures.push(`${entry.id} match phase ${stats.match.phase}`);
       }
       report.rounds.push({ round: 1, matchId: matchId1, welcomed: welcomed1 });
       for (const entry of live()) {
@@ -223,7 +225,7 @@ export async function runRoomsE2E({
       // ---- verdict reaches everyone (room status and the client's own frames)
       await until(() => live().every((entry) => entry.headless.session.verdict), 'a verdict at every remaining client', (battleS + hostCountdownS + 30) * 1000);
       const verdicts = new Set(live().map((entry) => `${entry.headless.session.verdict.verdict}:${entry.headless.session.verdict.reason}`));
-      await until(() => second.room.room?.phase === 'waiting' && second.room.room.lastResult, 'room back to waiting with a result', 20_000);
+      await until(() => second.room.room?.phase === ROOM_PHASE.waiting && second.room.room.lastResult, 'room back to waiting with a result', 20_000);
       report.rounds.push({ round: 1, matchId: matchId1, welcomed: welcomed1, verdicts: [...verdicts], lastResult: second.room.room.lastResult });
       log(`round 1 verdict ${[...verdicts].join(' | ')}; room ${second.room.room.phase}, result ${JSON.stringify(second.room.room.lastResult)}`);
       if (verdicts.size !== 1) failures.push(`clients disagree on the verdict: ${[...verdicts].join(' | ')}`);
@@ -243,8 +245,8 @@ export async function runRoomsE2E({
       await sleep(3000);
       for (const entry of live()) {
         const stats = entry.headless.session.stats();
-        if (stats.phase === 'lost') failures.push(`${entry.id} ended in lost`);
-        if (stats.match && stats.match.phase !== 'live') failures.push(`${entry.id} match phase ${stats.match.phase}`);
+        if (stats.phase === SESSION_PHASE.lost) failures.push(`${entry.id} ended in lost`);
+        if (stats.match && stats.match.phase !== MATCH_PHASE.live) failures.push(`${entry.id} match phase ${stats.match.phase}`);
       }
     }
   } catch (error) {

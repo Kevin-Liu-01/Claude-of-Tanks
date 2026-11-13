@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { mulberry32 } from '../audio/audioMath.ts';
 import { SFX_ASSETS } from '../audio/sfxManifest.generated.ts';
-import { WEAPON_CLASSES, weaponClassForCaliber } from '../audio/weaponAudio.ts';
+import { WEAPON_ROWS, calibreRow } from '../audio/weaponAudio.ts';
 import { MAP_SCENES } from '../audio/environmentScenes.ts';
 import { FILM_SFX, FILM_TAILS, FILM_WEAPONS, filmSoundVoice, filmTravelDelayS, filmWeaponClass } from './studioFilmAudio.ts';
 
@@ -20,18 +20,17 @@ for (const [id, [group, variants]] of Object.entries(FILM_SFX)) {
     assert.ok(existsSync(new URL(`../../public/audio/sfx/${group}/${id}_${k}.webm`, import.meta.url)), `${id}_${k}.webm ships`);
   }
 }
-for (let mm = 5; mm <= 220; mm += 0.5) assert.equal(filmWeaponClass(mm), weaponClassForCaliber(mm), `${mm} mm reads as the engine's class`);
+// a cue carries only its calibre: the film hears it as weaponAudio.ts calibreRow does (gun-reports-269)
+for (let mm = 5; mm <= 240; mm += 0.5) assert.equal(filmWeaponClass(mm), calibreRow(mm).key, `${mm} mm reads as the engine's row`);
 const engine = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
-// the report banks live in weaponAudio.ts since 2026-10-13 (the coverage receipt reads them there)
-const banks = readFileSync(new URL('../audio/weaponAudio.ts', import.meta.url), 'utf8');
-for (const [id, weapon] of Object.entries(FILM_WEAPONS)) {
-  const source = WEAPON_CLASSES[id];
-  assert.deepEqual([weapon.family, weapon.closeFadeM, weapon.farFadeM, weapon.tailRate, weapon.tailGain],
-    [source.family, source.closeFadeM, source.farFadeM, source.tailRate, source.tailGain], `${id} as weaponAudio.ts`);
-  assert.match(banks, new RegExp(`\\b${id}: '${weapon.close}'`), `${id}'s close bank as weaponAudio.ts`);
-  assert.match(banks, new RegExp(`\\b${id}: '${weapon.far}'`), `${id}'s distant bank as weaponAudio.ts`);
-  assert.ok(FILM_SFX[weapon.close] && FILM_SFX[weapon.far], `${id}'s banks are listed`);
+for (const [key, weapon] of Object.entries(FILM_WEAPONS)) {
+  const source = WEAPON_ROWS[key];
+  assert.ok(source, `${key} is a row of weaponAudio.ts`);
+  assert.deepEqual([weapon.family, weapon.closeFadeM, weapon.farFadeM, weapon.tailRate, weapon.tailGain, weapon.close, weapon.far],
+    [source.family, source.closeFadeM, source.farFadeM, source.tailRate, source.tailGain, source.close, source.far], `${key} as weaponAudio.ts`);
+  assert.ok(FILM_SFX[weapon.close] && FILM_SFX[weapon.far], `${key}'s banks are listed`);
 }
+for (let mm = 5; mm <= 240; mm += 0.5) assert.ok(FILM_WEAPONS[filmWeaponClass(mm)], `${mm} mm has its row copied`);
 assert.match(engine, /BLAST_DB[^=]*= Object\.freeze\(\{ cannon: -6, autocannon: -16, mg: -19 \}\)/, 'the punch levels as audioEngine.ts');
 for (const [map, scene] of Object.entries(MAP_SCENES)) assert.equal(FILM_TAILS[map] ?? 'open', scene.tail, `${map}'s echo`);
 
@@ -50,9 +49,10 @@ assert.deepEqual(names(filmSoundVoice(cue('cannon'), 20, mulberry32(1))), ['blas
 assert.deepEqual(names(filmSoundVoice(cue('cannon', { caliberMm: 125 }), 20, mulberry32(1), 'urban')), ['blast_punch_heavy', 'gun_125_close', 'tail_urban']);
 assert.deepEqual(names(filmSoundVoice(cue('cannon', { caliberMm: 30 }), 20, mulberry32(1))), ['blast_punch_medium', 'ac_30_close', 'tail_open']);
 assert.deepEqual(names(filmSoundVoice(cue('cannon', { caliberMm: 12.7 }), 20, mulberry32(1))), ['blast_punch_light', 'mg_heavy_close', 'tail_open']);
-assert.deepEqual(names(filmSoundVoice(cue('cannon'), 600, mulberry32(1))), ['gun_far_medium', 'tail_open'], 'a distant gun is its boom and echo');
+assert.deepEqual(names(filmSoundVoice(cue('cannon'), 600, mulberry32(1))), ['gun_120_far', 'tail_open'], 'a distant gun is its bore\'s boom and echo');
 const mid = names(filmSoundVoice(cue('cannon'), 250, mulberry32(1)));
-assert.ok(mid.includes('gun_120_close') && mid.includes('gun_far_medium'), 'between the fades both banks play');
+assert.ok(mid.includes('gun_120_close') && mid.includes('gun_120_far'), 'between the fades both banks play');
+assert.ok(names(filmSoundVoice(cue('cannon', { caliberMm: 76 }), 20, mulberry32(1))).includes('gun_76_close'), 'a 76 mm is its own gun in a film');
 assert.deepEqual(names(filmSoundVoice(cue('cannon'), 20, mulberry32(1), 'none')), ['blast_punch_heavy', 'gun_120_close'], 'no echo on the Moon');
 assert.equal(filmSoundVoice(cue('cannon'), 20, mulberry32(1)).layers[0].maxDurS, 0.5, 'the punch is cut short');
 assert.ok(filmSoundVoice(cue('cannon'), 2000, mulberry32(3)), 'a gun carries 2 km');

@@ -230,7 +230,8 @@ try {
     'KF51B tower uses the same size standard as the Leopard 2A6M');
   assert.equal(rws?.userData.weaponRole, 'roof-primary',
     'KF51B open-yoke station replaces the retired split-shield roof gun');
-  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [-0.83, 0.644, 0.35]);
+  // 2026-11-03 (268 r16): the owner's taller KF51-U turret (walls +7 cm) carries its roof station 7 cm higher
+  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [-0.83, 0.714, 0.35]);
   assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
   // 267 (the real Eurosatory 2024 KF51-U): the three crew ride in the hull under the KF51 front armour's flat crew roof,
   // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
@@ -246,7 +247,9 @@ try {
   // and the face's shoulder stays under the roof line
   const sight = attachmentSeat?.multispectralSight;
   assert.equal(sight?.mounting, 'upright-cheek-face', 'KF51-U cheek sight sits in the cheek, not on it');
-  assert.deepEqual(sight?.centerLocal, [-0.90, 0.385, 1.2906]);
+  // 2026-11-03 (268 r16): the taller turret's cheek face, lofted to its new shoulder, stands 3.5 mm farther forward at the
+  // sight's centre
+  assert.deepEqual(sight?.centerLocal, [-0.90, 0.385, 1.2941]);
   assert.ok(sight.faceBottomY < sight.apertureCenterY - 0.11 && sight.apertureCenterY + 0.11 < sight.faceTopY
     && sight.faceTopY < roofReceipt.centerHeightM,
     'KF51-U cheek sight window lies within its face, and the face stays under the roof line');

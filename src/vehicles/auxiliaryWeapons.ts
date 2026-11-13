@@ -114,6 +114,10 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t90a:b32Heavy,t90a_vladimir:b32Heavy,t90m:b32Heavy,
   t90sm:b32Heavy,t90ms_tagil:b32Heavy,
   t14_armata:b32Rifle,object148_proto:ubr6,
+  // release 269: the 152 mm line's roof guns: the Object 195's 30 mm 2A42, the T-14 152's Kord tower, the Object 292's
+  // NSVT on the T-80U's cupola (owner 2026-11-05: "add a machine gun tto the object 292") and the Molot's commander's
+  // remote NSVT (owner 2026-11-07); its gunner's 7.62 mm is below (272: the GSh-30 it replaced fired ubr6 here)
+  object195:ubr6,object477_molot:b32Heavy,t14_152:b32Heavy,object292:b32Nsvt,
   vt4a1:type54,ztz100:type54,ztz20:type54,
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
@@ -129,8 +133,11 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
 
 // 2026-10-31 (lane t90-family-266; the owner: "make some of our reworked t90s have new or unique machine gun
 // arrangmenet,s like 2 machine guns"): the second, 7.62 mm roof guns (the AM II's gunner's PKT, the AM's twin PKT mount)
-// fire the PK family's 7.62×54R cartridge, not the generic rifle profile's NATO round (game numbers unchanged).
-const vehicleRifleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {t90am:b32Rifle,t90m_proryv:b32Rifle};
+// fire the PK family's 7.62×54R cartridge, not the generic rifle profile's NATO round (game numbers unchanged). Release 272
+// (owner 2026-11-11: the Molot's autocannon "a lil smaller until its a rregular remote machine gun emplacement"): the
+// Molot's gunner's remote PKT in place of its GSh-30.
+const vehicleRifleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {t90am:b32Rifle,t90m_proryv:b32Rifle,
+  object477_molot:b32Rifle};
 
 export function auxiliaryWeaponProfile(caliberMm:number,vehicleId=''): AuxiliaryWeaponProfile {
   const specific=vehicleAmmunition[vehicleId];

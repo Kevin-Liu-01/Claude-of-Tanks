@@ -5314,7 +5314,8 @@
         "height": 256,
         "mime": "image/webp",
         "bytes": 10538,
-        "sha256": "13bec80a68d232310b99b2bcbf9051f7230c885e9a068efc3dd614c013a998d3"
+        "sha256": "13bec80a68d232310b99b2bcbf9051f7230c885e9a068efc3dd614c013a998d3",
+        "frame": [25,120,225,248]
       }
     },
     "top": {
@@ -5322,8 +5323,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11248,
-      "sha256": "02a2d37f0ea2d982b1f61b725e57c232f13a15c37e592998d91d549bb1994b50"
+      "bytes": 11244,
+      "sha256": "b7050f63425b3ce1f994f9b67ae5e0539cd529b4a6f85311b396de2f50263238"
     },
     "side": {
       "file": "t64b1v_2022_side.webp",
@@ -5378,8 +5379,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 36150,
-      "sha256": "d479f60157813b4407ae62312aed0e84416d114f4b288590a713490b6cf24100"
+      "bytes": 33931,
+      "sha256": "d9bad96d2277e2ae06c0d3f0d9df3a9147651b5e511eeb8c0dfdb53551405b82"
     },
     "technicalLabels": {
       "file": "t64b1v_2022_technical.json",

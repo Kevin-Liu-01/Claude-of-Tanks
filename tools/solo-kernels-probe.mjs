@@ -14,7 +14,8 @@ import { resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -26,7 +27,7 @@ const cycles = Number(arg('cycles', 2));
 const port = Number(arg('port', 5294));
 const out = resolve(root, '.qa-dev', checkOnly ? 'solo-kernels-check.json' : `solo-kernels-${mapId}.json`);
 
-const lock = createCaptureLock();
+let hold;
 const vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-kernels-vite-cache'), logLevel: 'error',
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 await vite.listen();
@@ -46,7 +47,7 @@ async function battlePage(mode) {
     localStorage.setItem('cot.game.teams.v1', JSON.stringify({ standard: { allies: 15, enemies: 16 } }));
   });
   await page.goto(`${origin}/?nosplash=1&tier=desktop&simKernels=${mode ?? 'ts'}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   await page.evaluate((map) => window.__DEBUG.startBattle('m1a1_abrams_hc', map), mapId);
   await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle', { timeout: 300_000, polling: 250 });
   const tanks = await page.evaluate(() => window.__DEBUG.game.tanks.length);
@@ -72,7 +73,7 @@ function inclusive(profile, names) {
 
 const report = { mapId, seconds, cycles, check: null, runs: [], maps: [] };
 try {
-  await lock.acquire(90 * 60 * 1000);
+  hold = await openCaptureHold({ label: 'solo-kernels-probe', timeoutMs: 90 * 60 * 1000 });
   if (checkOnly) {
     // the default flip's gate: every battlefield, the TypeScript driving a battle and the kernels answering beside it
     const { MAP_IDS } = await import('../src/world/maps/index.ts');
@@ -133,7 +134,8 @@ try {
   }
 } finally {
   writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);
-  lock.release();
+  // (2026-11-02 audit S4) the browser closes before the lock goes: the next holder's GPU work never overlaps this Chrome
   await browser.close();
   await vite.close();
+  await hold?.release();
 }
