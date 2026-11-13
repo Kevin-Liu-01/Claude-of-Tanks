@@ -4734,6 +4734,11 @@ if (tutorialReplay.asked) {
   try { history.replaceState(history.state, '', tutorialReplay.cleaned); } catch { /* the address keeps it */ }
 }
 let tutorialEntryPassed = false;
+const tutorialProjectScratch = new THREE.Vector3();
+const tutorialPose = (entity: { state?: { pos?: { x: number; y: number; z: number }; yaw?: number } | null } | null | undefined) => {
+  const state = entity?.state;
+  return state?.pos ? { x: state.pos.x, y: state.pos.y, z: state.pos.z, yaw: state.yaw ?? 0 } : null;
+};
 const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').then(({ createTutorialAccess }) => createTutorialAccess({
   record: {
     read: () => readTutorialRecord(), due: (chapter) => tutorialChapterDue(chapter),
@@ -4761,6 +4766,24 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
     && !game.ruleset?.provingGround,
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+  // 273: the battle's guide projects world points through the battle camera; the tutorial's steps read the view, the
+  // player's id and the armour colours
+  guide: {
+    project: (point) => {
+      if (game.phase !== 'battle') return null;
+      const v = tutorialProjectScratch.set(point.x, point.y, point.z).project(camera);
+      return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight, behind: v.z > 1 };
+    },
+    groundY: (x, z) => groundSampler(x, z),
+    player: () => tutorialPose(game.phase === 'battle' ? game.player : null),
+    actor: (id) => tutorialPose(game.phase === 'battle' ? game.tankById.get(id) ?? null : null),
+  },
+  view: () => (game.phase !== 'battle' || !game.player ? null : {
+    mode: rig.mode === 'SNIPER' ? 'sight' : 'third', zoom: rig.zoom,
+    freeLook: !!game.player.input?.aimLocked && !game.player.combat?.destroyed,
+  }),
+  playerId: () => (game.phase === 'battle' ? game.player?.id ?? null : null),
+  armourOn: () => !!input.getSettings().armorAimOverlay,
 })));
 const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
   tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));
@@ -4784,6 +4807,9 @@ if (typeof window !== 'undefined') {
   if (diagnosticsRequested) {
     Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
       value: (chapter: 'garage' | 'battle' | 'tips') => withTutorial((access) => access.debugStart(chapter)) });
+    // 273: the guide alone over the battle showing (tools/tutorial-guide.browser.mjs); resolves to its snapshot reader
+    Object.defineProperty(window, '__TUTORIAL_GUIDE', { configurable: true,
+      value: (spec: import('./ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null) => tutorialAccess.load().then((access) => access.debugGuide(spec)) });
   }
 }
 garageBootDone = true;

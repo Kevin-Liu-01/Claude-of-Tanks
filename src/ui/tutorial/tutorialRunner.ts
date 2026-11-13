@@ -25,6 +25,10 @@ import { t } from '../i18n.ts';
 import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
 import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
+import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
+
+/** Diagnostics (app/tutorialAccess.ts debugGuide): the guide alone, on whatever battle is showing. */
+export { createTutorialGuide };
 
 export interface TutorialPort {
   /** The game's bus (its `on`): shell:fired, ui:shellSelect, ui:shellSelectionChanged, ui:pause. */
@@ -40,6 +44,21 @@ export interface TutorialPort {
   playerPosition(): { readonly x: number; readonly z: number } | null;
   /** The chapter's screen: live, covered by a surface the step did not open, or gone. */
   screen(chapter: TutorialChapter): TutorialScreen;
+  /** 273: what the guide reads over a battle (tutorialGuide.ts); absent, no step draws guidance. */
+  readonly guide?: GuidePort;
+  /** 273: the player's view in battle (the rig's mode and zoom, free look held), or null elsewhere. */
+  view?(): TutorialView | null;
+  /** 273: the player's entity id in battle (hit and module steps tell the player's tank from an actor). */
+  playerId?(): string | null;
+  /** 273: whether the armour colours are on now (an armour step already met moves on at once). */
+  armourOn?(): boolean;
+}
+
+/** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
+export interface TutorialView {
+  readonly mode: 'third' | 'sight';
+  readonly zoom: number;
+  readonly freeLook: boolean;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -68,6 +87,10 @@ export interface RunOptions {
 }
 
 const DRIVE_POLL_MS = 250;
+/** How long free look must be held for a camera step that asks for it. */
+const FREE_LOOK_HOLD_MS = 1000;
+/** A step with no budget of its own falls behind after this long (the guide escalates once). */
+const BEHIND_DEFAULT_S = 45;
 const SCREEN_POLL_MS = 250;
 const PAD_POLL_MS = 90;
 /** Gamepad buttons (standard mapping) per screen: the Garage's menus take none; a battle binds all but the stick clicks. */
@@ -108,6 +131,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
 
   const overlay = createTutorialOverlay({ next: () => api.next(), back: () => api.back(), skip: () => api.skip() });
   overlay.root.dataset.chapter = chapter;
+  // the guide comes with the first step that asks for it, and goes with the run (273)
+  let guide: TutorialGuideLayer | null = null;
+  const guideFor = (step: TutorialStep): TutorialGuideLayer | null => {
+    if (!step.guide || !port.guide) return guide;
+    guide ??= createTutorialGuide(port.guide);
+    return guide;
+  };
 
   const resolver = (step: TutorialStep): (() => Element | null) | null => {
     if (!step.target.length) return null;
@@ -132,12 +162,24 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     clearStep();
     for (const off of runOff.splice(0)) off();
     overlay.destroy();
+    guide?.destroy();
+    guide = null;
     if (outcome) onEnd(outcome);
   }
 
   function arm(step: TutorialStep): void {
     const advance = step.advance;
     const go = (): void => { if (!ended && steps[index] === step) api.next(); };
+    /** A condition read every DRIVE_POLL_MS (the port's state has no event of its own). */
+    const poll = (met: () => boolean): void => {
+      const timer = window.setInterval(() => { if (!hiddenByPause && !covered && met()) go(); }, DRIVE_POLL_MS);
+      stepOff.push(() => window.clearInterval(timer));
+    };
+    // a step with guidance falls behind once: its guide escalates (the aim ghost), never twice
+    if (step.guide && advance.on !== 'next') {
+      const timer = window.setTimeout(() => guide?.setEscalated(true), (step.behindS ?? BEHIND_DEFAULT_S) * 1000);
+      stepOff.push(() => window.clearTimeout(timer));
+    }
     if (advance.on === 'press') {
       const onPress = (event: Event): void => {
         const lit = resolver(step)?.();
@@ -150,6 +192,51 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     } else if (advance.on === 'shell') {
       // the player's ask (a shell key, a rack press) or the load it led to: an ATGM slot answers with its own event
       stepOff.push(port.on('ui:shellSelect', go), port.on('ui:shellSelectionChanged', go));
+    } else if (advance.on === 'reach') {
+      const marker = step.guide?.marker;
+      if (marker) {
+        const radius = advance.radiusM ?? marker.radiusM;
+        poll(() => { const at = port.playerPosition(); return !!at && Math.hypot(at.x - marker.x, at.z - marker.z) <= radius; });
+      }
+    } else if (advance.on === 'camera') {
+      let heldSince = 0;
+      poll(() => {
+        const view = port.view?.();
+        if (!view) return false;
+        const modeOk = view.mode === advance.mode && view.zoom >= (advance.zoomAtLeast ?? -Infinity);
+        if (!advance.freeLook) return modeOk;
+        if (!view.freeLook) { heldSince = 0; return false; }
+        heldSince ||= performance.now();
+        return performance.now() - heldSince >= FREE_LOOK_HOLD_MS;
+      });
+    } else if (advance.on === 'armour') {
+      if (port.armourOn?.() === advance.value) { queueMicrotask(go); return; }
+      stepOff.push(port.on('ui:armorOverlayState', (payload) => { if (!!(payload as { on?: boolean } | null)?.on === advance.value) go(); }));
+      poll(() => port.armourOn?.() === advance.value);
+    } else if (advance.on === 'hit') {
+      let count = 0;
+      stepOff.push(port.on('shell:hit', (payload) => {
+        const hit = payload as { kind?: string; attackerId?: string; targetId?: string } | null;
+        const me = port.playerId?.() ?? null;
+        if (!hit?.kind || !me || !advance.kinds.includes(hit.kind)) return;
+        const mine = advance.by === 'player' ? hit.attackerId === me && (!advance.actor || hit.targetId === advance.actor)
+          : hit.targetId === me && (!advance.actor || hit.attackerId === advance.actor);
+        if (mine && ++count >= (advance.count ?? 1)) go();
+      }));
+    } else if (advance.on === 'consumable') {
+      stepOff.push(port.on('ui:consumableUsed', (payload) => {
+        const used = payload as { ok?: boolean; item?: string } | null;
+        if (used?.ok && used.item === advance.item) go();
+      }));
+    } else if (advance.on === 'module') {
+      stepOff.push(port.on('module:state', (payload) => {
+        const change = payload as { id?: string; module?: string; state?: string } | null;
+        if (change?.id === port.playerId?.() && change?.module === advance.module && change?.state === advance.state) go();
+      }));
+    } else if (advance.on === 'spot') {
+      stepOff.push(port.on('tank:spotted', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
+    } else if (advance.on === 'destroy') {
+      stepOff.push(port.on('tank:destroyed', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
     } else if (advance.on === 'drive') {
       let from = port.playerPosition();
       const timer = window.setInterval(() => {
@@ -196,6 +283,12 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       focus: !battle && input !== 'touch',
     };
     overlay.show(view);
+    const layer = guideFor(step);
+    layer?.show(step.guide ?? null, {
+      marker: step.guide?.marker ? t(step.guide.marker.label) : '',
+      actor: step.guide?.actor ? t(step.guide.actor.label) : '',
+      distance: (metres) => t('tutorial.guide.distance', { m: String(metres) }),
+    });
     arm(step);
   }
 
@@ -271,6 +364,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
   runOff.push(port.on('ui:pause', (payload) => {
     hiddenByPause = !!(payload as { on?: boolean } | null)?.on;
     overlay.setHidden(hiddenByPause || covered);
+    guide?.setHidden(hiddenByPause || covered);
   }));
 
   // the screen the chapter belongs to (see the module comment): covered hides the card, gone closes the run where it stands
@@ -287,6 +381,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     if (nowCovered === covered) return;
     covered = nowCovered;
     overlay.setHidden(hiddenByPause || covered);
+    guide?.setHidden(hiddenByPause || covered);
   };
   const screenTimer = window.setInterval(checkScreen, SCREEN_POLL_MS);
   runOff.push(() => window.clearInterval(screenTimer));

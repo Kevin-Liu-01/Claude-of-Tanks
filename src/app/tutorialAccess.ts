@@ -45,6 +45,12 @@ export interface TutorialAccessDeps {
   readonly isTutorialBattle: () => boolean;
   /** A new player's first battle is a gentle one: easy bots (the Deploy screen shows the choice). */
   readonly preferEasyBots: () => void;
+  /** 273: what the battle's guide reads (ui/tutorial/tutorialGuide.ts), and the battle state camera, armour and hit
+   *  steps read (ui/tutorial/tutorialRunner.ts TutorialPort). */
+  readonly guide: import('../ui/tutorial/tutorialGuide.ts').GuidePort;
+  readonly view: () => import('../ui/tutorial/tutorialRunner.ts').TutorialView | null;
+  readonly playerId: () => string | null;
+  readonly armourOn: () => boolean;
 }
 
 export interface TutorialAccess {
@@ -56,6 +62,9 @@ export interface TutorialAccess {
   current(): { chapter: TutorialChapter; step: string | null } | null;
   /** Diagnostics only (main.ts gates it): clear the record and run one chapter now, on whatever screen is showing. */
   debugStart(chapter: TutorialChapter): void;
+  /** Diagnostics only (273): show a guide spec over the battle showing (null clears it), its labels taken as written;
+   *  resolves to a reader of what it drew (the receipts' snapshot). */
+  debugGuide(spec: import('../ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null): Promise<() => unknown>;
 }
 
 const BODY_FLAG = 'cot-tutorial';
@@ -73,6 +82,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   const resumeAt: Partial<Record<TutorialChapter, number>> = {};
   /** The Garage closed on its Deploy step: the battle that follows decides (a tutorial battle is Deploy pressed). */
   let closedOnDeploy = false;
+  /** Diagnostics' guide (debugGuide), apart from any run. */
+  let debugLayer: import('../ui/tutorial/tutorialGuide.ts').TutorialGuideLayer | null = null;
 
   function start(chapter: TutorialChapter, stillWanted: () => boolean): void {
     if (run || starting) return;
@@ -85,7 +96,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         chapter,
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
-          screen: deps.screen },
+          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);
@@ -163,5 +174,11 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
       start(chapter, () => true);
     },
     current: () => (run ? { chapter: run.chapter, step: run.stepId } : starting ? { chapter: starting, step: null } : null),
+    debugGuide: (spec) => chunk.load().then((runner) => {
+      debugLayer?.destroy();
+      debugLayer = spec ? runner.createTutorialGuide(deps.guide) : null;
+      debugLayer?.show(spec, { marker: spec?.marker?.label ?? '', actor: spec?.actor?.label ?? '', distance: (m) => `${m} m` });
+      return () => debugLayer?.snapshot() ?? null;
+    }),
   };
 }

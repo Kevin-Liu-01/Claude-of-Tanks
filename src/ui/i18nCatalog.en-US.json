@@ -5954,5 +5954,6 @@
   "tutorial.garage.kit.bodyTouch": "Three slots for a repair kit, a first aid kit and an extinguisher. In battle, tap a kit's button to use it.",
   "tutorial.battle.minimap.bodyTouch": "Your team and every spotted enemy show here, each in its side's colour.",
   "tutorial.tips.done.title": "You're ready",
-  "tutorial.tips.done.body": "That is the whole tutorial. Replay it any time from Settings; now pick a tank and press Deploy."
+  "tutorial.tips.done.body": "That is the whole tutorial. Replay it any time from Settings; now pick a tank and press Deploy.",
+  "tutorial.guide.distance": "{m} m"
 }

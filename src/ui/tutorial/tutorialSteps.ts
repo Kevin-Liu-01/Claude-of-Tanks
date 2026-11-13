@@ -27,7 +27,39 @@ export type TutorialAdvance =
   /** The player fired. */
   | { readonly on: 'fire' }
   /** The player loaded a different shell. */
-  | { readonly on: 'shell' };
+  | { readonly on: 'shell' }
+  // ── 273: the training battle's kinds (each heard on the bus or read from the port; tutorialRunner.ts arm) ──────────
+  /** The player's tank stands inside the step's guide marker (its ring's radius, or this one). */
+  | { readonly on: 'reach'; readonly radiusM?: number }
+  /** The player's view: the third-person camera or the gunner's sight, at least this zoom, or free look held. */
+  | { readonly on: 'camera'; readonly mode: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly freeLook?: boolean }
+  /** The armour colours reach this state (the H key's ui:armorOverlayState, or the Settings row). */
+  | { readonly on: 'armour'; readonly value: boolean }
+  /** Hits of these kinds (sim/damage.ts HitEvent kind): by the player on an actor, or by an actor on the player. */
+  | { readonly on: 'hit'; readonly kinds: readonly string[]; readonly by: 'player' | 'actor'; readonly actor?: string; readonly count?: number }
+  /** The player used this consumable (sim/consumableRules.ts id). */
+  | { readonly on: 'consumable'; readonly item: string }
+  /** A module of the player's tank reaches this state (module:state). */
+  | { readonly on: 'module'; readonly module: string; readonly state: 'ok' | 'yellow' | 'red' }
+  /** The player's side spotted this actor. */
+  | { readonly on: 'spot'; readonly actor: string }
+  /** This actor is destroyed. */
+  | { readonly on: 'destroy'; readonly actor: string };
+
+/**
+ * A step's guidance over the battle (tutorialGuide.ts draws it): a marker to drive to, the path toward it, an actor to
+ * look at, the HUD controls to press, and the plate to aim at once the step falls behind. Labels are catalog keys.
+ * World points are metres on the battlefield's ground plane.
+ */
+export interface TutorialGuideSpec {
+  readonly marker?: { readonly x: number; readonly z: number; readonly radiusM: number; readonly label: string };
+  readonly path?: boolean;
+  readonly actor?: { readonly id: string; readonly label: string };
+  /** HUD controls, as a step's target: the first that is on screen gets the chevron. */
+  readonly hud?: readonly string[];
+  /** A point in the actor's own frame (tutorialGuideMath.ts actorPoint): along its hull, up, and across it (+ its left). */
+  readonly aimAt?: { readonly id: string; readonly along: number; readonly up: number; readonly across: number };
+}
 
 export interface TutorialMedia {
   /** Served from public/: a still (.webp) or a short muted loop (.webm or .mp4). */
@@ -53,6 +85,10 @@ export interface TutorialStep {
   readonly dim?: boolean;
   /** Where the card stands: the middle of the screen (default) or the upper band, clear of the sight. */
   readonly card?: 'middle' | 'upper';
+  /** The guidance over the battle (273): marker, path, actor bracket, HUD chevron, aim ghost. */
+  readonly guide?: TutorialGuideSpec;
+  /** Seconds before the step counts as fallen behind and the guide escalates (the aim ghost shows). */
+  readonly behindS?: number;
 }
 
 const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });

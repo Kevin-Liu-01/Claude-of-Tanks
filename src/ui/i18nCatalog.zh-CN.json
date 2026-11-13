@@ -5954,5 +5954,6 @@
   "tutorial.garage.kit.bodyTouch": "三个槽位：维修包、急救包和灭火器。战斗中点击对应按钮即可使用。",
   "tutorial.battle.minimap.bodyTouch": "你的队友和所有被发现的敌人都显示在这里，各用本方颜色。",
   "tutorial.tips.done.title": "准备就绪",
-  "tutorial.tips.done.body": "教程到此结束，可随时在设置中重新观看。现在选一辆坦克，点击“出战”。"
+  "tutorial.tips.done.body": "教程到此结束，可随时在设置中重新观看。现在选一辆坦克，点击“出战”。",
+  "tutorial.guide.distance": "{m} 米"
 }
