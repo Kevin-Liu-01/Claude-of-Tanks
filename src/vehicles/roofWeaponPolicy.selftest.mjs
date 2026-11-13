@@ -9,7 +9,7 @@ import { TANK_SPECS } from './specs.ts';
 import './tankFactory.ts';
 import { AUXILIARY_INVENTORY } from './auxiliaryInventory.generated.ts';
 import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
-import { NO_ROOF_WEAPON, carriesNoRoofWeapon } from './roofWeaponPolicy.ts';
+import { NO_ROOF_WEAPON, PINNED_ROOF_WEAPON_COUNT, carriesNoRoofWeapon, pinnedRoofWeaponCount } from './roofWeaponPolicy.ts';
 import { ROOF_STATION_ARCS } from './roofStationArcs.ts';
 import { roofEquipmentVerdict } from '../../tools/source-equipment-policy.mjs';
 import { auxiliaryRowJson, createAuxiliaryState } from '../sim/auxiliarySystems.ts';
@@ -29,6 +29,16 @@ const census = (mg) => ({ mg, dressing: 0, invalidWeaponMarkers: 0 });
 assert.equal(roofEquipmentVerdict('bmpt_t90', census(0), null).passed, true, 'a listed vehicle passes with no roof gun');
 assert.equal(roofEquipmentVerdict('bmpt_t90', census(1), null).passed, false, 'and fails with a decorative one');
 assert.equal(roofEquipmentVerdict('m1a1_abrams_hc', census(0), null).passed, false, 'an unlisted vehicle still needs its roof gun');
+// Owner 2026-11-12: a pinned vehicle is held to its exact count on the build alone (no source configuration, no hash)
+for (const [id, count] of Object.entries(PINNED_ROOF_WEAPON_COUNT)) {
+  assert.ok(TANK_SPECS[id], `${id}: a playable vehicle`);
+  assert.ok(Number.isInteger(count) && count >= 0, `${id}: a whole count`);
+  assert.equal(pinnedRoofWeaponCount(id), count);
+  assert.equal(roofEquipmentVerdict(id, census(count), null).passed, true, `${id}: its pinned ${count}`);
+  assert.equal(roofEquipmentVerdict(id, census(count + 1), null).passed, false, `${id}: one more fails`);
+  if (count > 0) assert.equal(roofEquipmentVerdict(id, census(count - 1), null).passed, false, `${id}: one fewer fails`);
+}
+assert.equal(pinnedRoofWeaponCount('m1a1_abrams_hc'), null, 'the default rule for every other vehicle');
 
 // Every working station is one named object the presentation finds by name (src/fx/auxiliaryPresentation.ts), and the
 // whole roof's aim and bursts ride one vehicle row: worst-case numbers (every float at its longest, a smoke screen up,

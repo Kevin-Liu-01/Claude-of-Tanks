@@ -1,4 +1,4 @@
-// npm run gate:repin -- --ids=a,b[,...] [--chunk=10]: re-pin the geometry gate's rows (body height, hull span and every
+// npm run gen:repin -- --ids=a,b[,...] [--chunk=10]: re-pin the geometry gate's rows (body height, hull span and every
 // other component) for ids whose geometry a merge moved. Each chunk is one tools/geometry-gate.mjs --repin run under one
 // render capture ticket, so a hold stays short; an oracle missing from this checkout stops the run before anything is
 // written, and the first failing chunk stops the rest. An id the page cannot measure keeps its previous row, marked
@@ -49,8 +49,8 @@ export function dimsSummary(record) {
 async function main() {
   const args = process.argv.slice(2);
   const idsArg = args.find((a) => a.startsWith('--ids='));
-  const ids = uniqueIds(idsArg ? idsArg.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : [], 'gate:repin --ids');
-  if (!ids.length) throw new Error('usage: npm run gate:repin -- --ids=a,b[,...] [--chunk=10]');
+  const ids = uniqueIds(idsArg ? idsArg.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : [], 'gen:repin --ids');
+  if (!ids.length) throw new Error('usage: npm run gen:repin -- --ids=a,b[,...] [--chunk=10]');
   const chunkArg = args.find((a) => a.startsWith('--chunk='));
   const size = chunkArg ? Number(chunkArg.slice(8)) : 10;
   const run = (chunk) => runCapturedCommand(process.execPath, ['tools/geometry-gate.mjs', `--ids=${chunk.join(',')}`, '--repin'],
@@ -67,14 +67,14 @@ async function main() {
     else console.log(text == null ? `${id.padEnd(20)} no record` : `${dimsSummary(JSON.parse(text))}  [${text === before.get(id) ? 'unchanged' : 'moved'}]`);
   }
   if (result.failed) {
-    console.error(`[gate:repin] stopped at ${result.failed.join(',')}: ${result.error.message}`);
-    if (result.rest.length) console.error(`[gate:repin] not run: ${result.rest.join(',')}`);
+    console.error(`[gen:repin] stopped at ${result.failed.join(',')}: ${result.error.message}`);
+    if (result.rest.length) console.error(`[gen:repin] not run: ${result.rest.join(',')}`);
     process.exitCode = 1;
   } else if (kept.size) {
-    console.error(`[gate:repin] ${result.done.length - kept.size} id(s) re-measured; ${kept.size} not re-pinned (${[...kept.keys()].join(', ')}): `
+    console.error(`[gen:repin] ${result.done.length - kept.size} id(s) re-measured; ${kept.size} not re-pinned (${[...kept.keys()].join(', ')}): `
       + 'their rows keep the previous measurement, marked repinError, for their owners to fix');
     process.exitCode = 1;
-  } else console.log(`[gate:repin] ${result.done.length} id(s) re-measured; commit docs/geometry-gate/ (records and ledger.json)`);
+  } else console.log(`[gen:repin] ${result.done.length} id(s) re-measured; commit docs/geometry-gate/ (records and ledger.json)`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await main();

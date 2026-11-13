@@ -114,12 +114,14 @@ additions. The [ZTZ-85-III packet](../references/photos/ztz85-iii-20261028.json)
 qualifies the release 263 rebuild, whose registered print was a fused,
 low-confidence conversion. The [T-64 packet](../references/photos/t64-20261031.json)
 holds the true T-64s, whose borrowed prints were deregistered. `stageARoute` and
-`stageAPassed` state stage A's rule:
+`stageAPassed` state stage A's rule (owner, 2026-11-12: outside 3D models are
+generation-only comparison bases and never decide a release):
 
-- a registered 3D oracle always measures, and a packet never overrides it (the
-  geometry gate refuses an ID with both);
 - an owner concept proves its design record; a photo-class ID proves its packet;
-- an ID with no packet, no oracle and no concept still fails a forced gate.
+- any other ID has no stage A evidence and reads N/A; its physical stages
+  (clip, contiguity, decor, sealed and the ledgers) still decide the release;
+- the geometry comparison still refuses an ID that has both a photo packet and a
+  registered comparison model (`npm run gen:checks -- photo-registry-separation`).
 
 `tools/photo-reference-check.mjs` produces fresh HIGH/LOW physical
 configuration and dimension receipts (the packet's width, length and tallest,

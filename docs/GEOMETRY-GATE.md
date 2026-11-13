@@ -1,5 +1,14 @@
 # The Geometry Gate
 
+> **Generation-only (owner, 2026-11-12).** Outside 3D models are comparison bases while a lane builds or fixes a
+> tank, never a test. Everything below that scores a build against a registered model (the geometry comparison,
+> the silhouette fidelity page, the oracle pins and records in `docs/geometry-gate/<id>.json`) is a build reference
+> a lane reads by hand (`npm run gen:checks`, `npm run gen:repin`, `npm run gen:fidelity`). No release gate,
+> receipt, selftest or `test:heavy` suite runs it, and `tank:release:check` decides without it: its stage A is a
+> concept or photo proof (any other id reads N/A), and its clip, contiguity, decor, sealed, ledger and census steps
+> check the build against itself and the game's rules. Where this file says "gate", "ships" or "graduates", read
+> "the lane's own bar while building".
+
 Current source-backed new builds use the **92-point exemplar** contract in
 [vehicle instructions](../src/vehicles/SKILL.md), not the legacy 90 floor stated
 in the historical program below. See the
@@ -19,7 +28,7 @@ program. A tank ships only when it passes **BOTH** gates:
    ≥ 9.0/10 on every view of its board (`&board=1`), i.e. "same vehicle,
    same tier" against the reference render.
 
-IoU (`npm run model:fidelity`) remains a regression floor, not a pass bar.
+IoU (`npm run gen:fidelity`) remains a regression floor, not a pass bar.
 
 ## What the geometric gate measures
 
@@ -248,7 +257,7 @@ node tools/geometry-gate.mjs --ids=<family ids>
 When a merge moves the geometry of ids that have rows (an integrator taking family heads), re-pin those rows:
 
 ```
-npm run gate:repin -- --ids=<ids> [--chunk=10]
+npm run gen:repin -- --ids=<ids> [--chunk=10]
 ```
 
 It runs the gate on 10 ids at a time, each chunk under one render capture ticket, with `--repin`: an id whose

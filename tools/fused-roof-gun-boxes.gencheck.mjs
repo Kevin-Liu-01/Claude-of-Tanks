@@ -28,7 +28,7 @@ for (const id of ids) {
     assert.ok(box[1] > 2.0 && box[4] < 3.0, `${id}: a box stands over the hull, under the whips (y ${box[1]}..${box[4]})`);
   }
   const record = JSON.parse(fs.readFileSync(new URL(`../docs/geometry-gate/${id}.json`, import.meta.url), 'utf8'));
-  assert.equal(gunCountedAsBody(record), null, `${id}: the record counts the source's roof gun as body; re-pin it (npm run gate:repin)`);
+  assert.equal(gunCountedAsBody(record), null, `${id}: the record counts the source's roof gun as body; re-pin it (npm run gen:repin)`);
 }
 // negative controls: the pre-box record (whole against whole) and a drop that named no boxed mesh are refused
 assert.match(gunCountedAsBody({ oracleComparison: { roofWeaponsDropped: false }, roofFittingsExcluded: { reference: [] } }), /whole against whole/);
@@ -71,7 +71,7 @@ for (const id of whipIds) {
     assert.ok(box[1] > low && box[4] < high, `${id}: a box over the turret roof and the whips' mounts, to their tips (y ${box[1]}..${box[4]})`);
   }
   const record = JSON.parse(fs.readFileSync(new URL(`../docs/geometry-gate/${id}.json`, import.meta.url), 'utf8'));
-  assert.equal(whipsCounted(record, FUSED_ANTENNA_BOXES[id]), null, `${id}: the record counts the source's whips; re-pin it (npm run gate:repin)`);
+  assert.equal(whipsCounted(record, FUSED_ANTENNA_BOXES[id]), null, `${id}: the record counts the source's whips; re-pin it (npm run gen:repin)`);
 }
 // negative controls: a record that kept the whips in its shapes, boxes that took the mounts' caps too, a whip's station
 const entry = FUSED_ANTENNA_BOXES.strv81, row = (refTop) => ({ refTop });

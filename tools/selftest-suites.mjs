@@ -366,8 +366,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
     'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
-    'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
+    // owner 2026-11-12: the standard check's B2 openings verdict on the build alone (pinned cells, bounded bays)
+    'tools/approved-openings.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
     // release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured
@@ -378,36 +379,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/mudguardHangers.selftest.mjs',
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
     'src/vehicles/fittingSnap.selftest.mjs',
-    'tools/reference-supplement.selftest.mjs',
-    // 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig
-    'tools/owner-kit-targets.selftest.mjs',
-    'tools/fidelity-component-floor.selftest.mjs',
-    'tools/fidelity-visibility.selftest.mjs',
-    // 262 (Main's ruling on the Challenger 3 TD): each oracle-blind fleet part is named, ruled and carried once
-    'tools/oracle-blind-parts.selftest.mjs',
-    'tools/procedural-fidelity-lifecycle.selftest.mjs',
     'tools/isolated-capture-browser.selftest.mjs',
-    'tools/reference-gun-pivot.selftest.mjs',
-    'tools/source-world-registration.selftest.mjs',
-    // 266: the gate page's reference table names each id once; certified ids register their private local oracle
-    'tools/reference-override-registry.selftest.mjs',
-    'tools/source-dimension-frame.selftest.mjs',
-    // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
-    'tools/body-height-parts.selftest.mjs',
-    // 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare body to body
-    'tools/fused-roof-gun-boxes.selftest.mjs',
     // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
     'tools/whip-rods.selftest.mjs',
-    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
-    'tools/gate-stowage.selftest.mjs',
-    // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
-    'tools/gate-oracle-pins.selftest.mjs',
-    // 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision
-    // recipe; the M3A3 registers its pinned excised print
-    'tools/oracle-width-audit.selftest.mjs',
-    // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
-    'tools/gate-repin.selftest.mjs',
-    'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
@@ -430,7 +404,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 229: the runtime half (every child preloads it): a failing graph-object assert fails fast with labels.
     'tools/assert-graph-guard.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
-    'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
     'src/vehicles/eraBindingReceipt.selftest.mjs',
     'src/vehicles/battleEraReceipt.selftest.mjs',
@@ -512,14 +485,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
-    'tools/source-configuration-record.selftest.mjs',
-    'tools/source-openings-policy.selftest.mjs',
-    'tools/ariete-source-openings.selftest.mjs',
-    'tools/source-opening-rays.selftest.mjs',
     'tools/track-band-separation.selftest.mjs',
-    'tools/source-assembly-replay.selftest.mjs',
-    'tools/preservation-oracle.selftest.mjs',
-    'tools/object695-epokha-reference.selftest.mjs',
     'tools/attribution-audit.mjs',
     'src/vehicles/suspensionPatterns.selftest.mjs',
     'src/sim/ammunition.selftest.mjs',
@@ -649,9 +615,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/profiles/aresApcX.selftest.mjs',
-    'tools/ares-apc-x-reference.selftest.mjs',
-    // 262: the T-84BM Oplot-M's registered comparison oracle
-    'tools/oplot-bm-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
@@ -768,7 +731,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chieftain5XSource.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSourceClosure.selftest.mjs',
     'src/vehicles/profiles/roundedTrackContact.selftest.mjs',
-    'tools/second-wave-x-reference.selftest.mjs',
     'src/vehicles/profiles/sovietSecondWaveGeometry.selftest.mjs',
     'src/vehicles/sourceXArticulation.selftest.mjs',
     'src/vehicles/sourceXEra.selftest.mjs',
@@ -3266,7 +3228,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/deployModeArt.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
-    'tools/source-dimension-frame.browser.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',

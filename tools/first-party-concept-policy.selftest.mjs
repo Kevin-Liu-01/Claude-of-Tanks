@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {FIRST_PARTY_CONCEPTS,firstPartyConcept,partitionConceptIds,validateSelectedIds,
   assertNoConceptReferences,conceptEquipmentVerdict,conceptReceiptPassed,conceptDesignPath,conceptDesignReady,conceptDocumentPassed} from './first-party-concept-policy.mjs';
 import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
-import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
+import {approvedOpeningsVerdict} from './approved-openings.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import {assertConceptDatums,assertConceptWeapons} from './first-party-concept-datums.mjs';
 import {resolveTankId} from '../src/vehicles/tankIdAliases.ts';
@@ -51,8 +51,8 @@ for(const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
   }
   // C2 retains the C1 tow-coupler air. A zero-cell scan without its complete
   // measured rear-stock receipt must not authorize filling that opening.
-  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:0}}).passed,id !== 'c2_ariete');
-  assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'no blanket concept-hole exception');
+  assert.equal(approvedOpeningsVerdict({id,scan:{holeCells:0,samples:[]}}).passed,id !== 'c2_ariete');
+  assert.equal(approvedOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'no blanket concept-hole exception');
   const dimension=quality=>({quality,passed:true,fillLoaded:true,bounds:{min:[-design.widthM/2,0,-design.overallLengthM/2],max:[design.widthM/2,design.tallestM,design.overallLengthM/2]}});
   const receipt={id,comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,score:null,passed:true,
     designPath,designSha256:hash,startedAt:new Date(2000).toISOString(),test:{path:design.test,exitCode:0},

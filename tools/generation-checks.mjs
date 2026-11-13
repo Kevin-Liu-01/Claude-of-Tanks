@@ -1,0 +1,38 @@
+// The tank-generation checks (owner, 2026-11-12: outside 3D models are comparison bases while a lane builds or fixes a
+// tank, never a test). Each is the comparison tooling's own check; none is a receipt, so npm test, test:heavy,
+// test:lane, tank:release:check and the release gate never run one. A lane runs them by hand: `npm run gen:checks`
+// (tools/tank-generation-checks.mjs, which also holds this list equal to the tools/*.gencheck.mjs on disk).
+// docs/TEST-AUDIT.md lists them under "Tank-generation checks".
+export const GENERATION_CHECKS = Object.freeze([
+  'tools/ares-apc-x-reference.gencheck.mjs',
+  'tools/ariete-source-openings.gencheck.mjs',
+  'tools/body-height-parts.gencheck.mjs',
+  'tools/fidelity-component-floor.gencheck.mjs',
+  'tools/fidelity-visibility.gencheck.mjs',
+  'tools/fused-roof-gun-boxes.gencheck.mjs',
+  'tools/gate-oracle-pins.gencheck.mjs',
+  'tools/gate-repin.gencheck.mjs',
+  'tools/gate-stowage.gencheck.mjs',
+  'tools/geometry-gate-policy.gencheck.mjs',
+  'tools/object695-epokha-reference.gencheck.mjs',
+  'tools/oplot-bm-x-reference.gencheck.mjs',
+  'tools/oracle-blind-parts.gencheck.mjs',
+  'tools/oracle-width-audit.gencheck.mjs',
+  'tools/owner-kit-targets.gencheck.mjs',
+  'tools/photo-registry-separation.gencheck.mjs',
+  'tools/preservation-oracle.gencheck.mjs',
+  'tools/procedural-fidelity-lifecycle.gencheck.mjs',
+  'tools/reference-gun-pivot.gencheck.mjs',
+  'tools/reference-override-registry.gencheck.mjs',
+  'tools/reference-supplement.gencheck.mjs',
+  'tools/second-wave-x-reference.gencheck.mjs',
+  'tools/source-assembly-replay.gencheck.mjs',
+  'tools/source-comparison-cameras.gencheck.mjs',
+  'tools/source-configuration-record.gencheck.mjs',
+  'tools/source-dimension-frame.browser.gencheck.mjs',
+  'tools/source-dimension-frame.gencheck.mjs',
+  'tools/source-opening-rays.gencheck.mjs',
+  'tools/source-openings-policy.gencheck.mjs',
+  'tools/source-world-registration.gencheck.mjs',
+  'tools/source-x-oracle.gencheck.mjs',
+]);
