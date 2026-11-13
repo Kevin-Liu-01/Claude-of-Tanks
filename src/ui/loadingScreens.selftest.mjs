@@ -83,12 +83,14 @@ assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked sti
 assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garage still carries the boot derivative');
 // the loading picks (owner 2026-11-13, on the sheet of the old loop and the gallery: "lets do S C D K L M 17 25 2 6 12 9
-// 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22"): five stills of the old loop, then twenty-four of the gallery; a
-// still he drops leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
+// 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22", then "actualy lets make 4 the first one (K)": the Orchard Valley
+// still is the boot pick): Steinburg and four stills of the old loop, then twenty-four of the gallery; a still he drops
+// leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
+assert.equal(bootPicks[0].id, 's49-orchard-sunset', 'the Orchard Valley still opens the boot splash');
 const loadingPicks = sitePicks.loading.stills;
-const garagePicks = new Map(sitePicks.featured.filter((pick) => pick.id).map((pick) => [pick.id, pick]));
+const garagePicks = new Map(sitePicks.featured.filter((pick) => !pick.boot).map((pick) => [pick.versus ?? pick.id, pick]));
 assert.equal(loadingPicks.length, 29, 'twenty-nine stills follow the boot pick');
-assert.ok(loadingPicks.slice(0, 5).every((id) => garagePicks.has(id)), 'five stills of the old loop open the rotation');
+assert.ok(loadingPicks.slice(0, 5).every((id) => garagePicks.has(id)), 'Steinburg and four stills of the old loop open the rotation');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
 const loadingDir = new URL(`../../public/media/${sitePicks.gallery.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));
@@ -136,7 +138,10 @@ assert.deepEqual(
   for (const [n, id] of loadingPicks.entries()) {
     const item = loadingItems.get(id), shot = LOADING_SHOTS[n];
     if (!item) {
-      assert.deepEqual(shot, FEATURED_SHOTS.find((garage) => garage.img === shot.img), `${id}: as the Garage shows it`);
+      // as the Garage shows it, and a versus still with its boot lens on the boot splash
+      const { bootImg, ...garageShot } = shot, pick = garagePicks.get(id);
+      assert.deepEqual(garageShot, FEATURED_SHOTS.find((garage) => garage.img === shot.img), `${id}: as the Garage shows it`);
+      assert.equal(bootImg, pick.bootVersus && pickBoot(pick), `${id}: its boot lens on the boot splash`);
       continue;
     }
     assert.ok(files.has(`${id}.webp`), `${id}: a gallery still`);

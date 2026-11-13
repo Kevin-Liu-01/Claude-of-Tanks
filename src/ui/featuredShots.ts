@@ -9,10 +9,10 @@
  *
  * `FEATURED_SHOTS` remains the complete garage gallery. Loading and transition
  * surfaces use `TRANSITION_SHOTS`: the boot pick (the gallery's one `bootImg`
- * shot), then `LOADING_SHOTS`, in the owner's order (2026-11-13): five
- * stills of the old loop (the Garage's files) and twenty-four of his
- * loading-screen gallery (public/media/gallery-r1). Both lists are
- * written by tools/media-r5/site-media-wire.mjs from
+ * shot), then `LOADING_SHOTS`, in the owner's order (2026-11-13):
+ * Steinburg and four stills of the old loop (the Garage's files), then
+ * twenty-four of his loading-screen gallery (public/media/gallery-r1).
+ * Both lists are written by tools/media-r5/site-media-wire.mjs from
  * tools/media-r5/site-media/picks.json (`featured`, `loading`).
  */
 import { isMapId } from '../world/maps/catalog.ts';
@@ -32,8 +32,13 @@ interface FeaturedShot {
 
 export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
+    img: '/media/site50-r14/stills/s49-orchard-sunset.webp',
+    bootImg: '/media/site50-r14/stills/s49-orchard-sunset-boot.webp',
+    capKey: 'media.site50.title.s49OrchardSunset',
+    maps: ['orchard', 'autumn'], focal: '78% 62%',
+  },
+  {
     img: '/media/versus-r1/f6-leo2a6-steinburg-r7.webp',
-    bootImg: '/media/versus-r1/f6-leo2a6-steinburg-r7-boot-1280.webp',
     capKey: 'media.versus.title.f6Leo2a6SteinburgR7',
     maps: ['urban'], focal: '46% 60%',
   },
@@ -88,11 +93,6 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
     maps: ['winter'], focal: '39% 50%',
   },
   {
-    img: '/media/site50-r14/stills/s49-orchard-sunset.webp',
-    capKey: 'media.site50.title.s49OrchardSunset',
-    maps: ['orchard', 'autumn'], focal: '78% 62%',
-  },
-  {
     img: '/media/site50-r14/stills/s37-river-village-close.webp',
     capKey: 'media.site50.title.s37RiverVillage',
     maps: ['delta'], focal: '26% 50%',
@@ -137,6 +137,12 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
 /** The loading screens' stills after the boot pick, in the owner's order (picks.json `loading.stills`). */
 export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
+    img: '/media/versus-r1/f6-leo2a6-steinburg-r7.webp',
+    bootImg: '/media/versus-r1/f6-leo2a6-steinburg-r7-boot-1280.webp',
+    capKey: 'media.versus.title.f6Leo2a6SteinburgR7',
+    maps: ['urban'], focal: '46% 60%',
+  },
+  {
     img: '/media/site50-r14/stills/s29-fjord-road-kill.webp',
     capKey: 'media.site50.title.s29FjordRoadKill',
     maps: ['fjord', 'saltwind', 'coastal'], focal: '38% 55%',
@@ -145,11 +151,6 @@ export const LOADING_SHOTS: readonly FeaturedShot[] = Object.freeze([
     img: '/media/site50-r14/stills/s13-farm-race.webp',
     capKey: 'media.site50.title.s13FarmRace',
     maps: ['frontier', 'steppe', 'longleaf'], focal: '64% 55%',
-  },
-  {
-    img: '/media/site50-r14/stills/s49-orchard-sunset.webp',
-    capKey: 'media.site50.title.s49OrchardSunset',
-    maps: ['orchard', 'autumn'], focal: '78% 62%',
   },
   {
     img: '/media/site50-r14/stills/s37-river-village-close.webp',
