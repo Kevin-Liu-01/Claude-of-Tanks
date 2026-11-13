@@ -149,8 +149,16 @@ export interface TreeImpostorLibrary {
   applyProgram(shader: MaterialShader): void;
   /** The first atlas row of a species. */
   rowBase(species: string): number;
-  /** A fresh quad for one species pool (its own instanced attributes are attached by the pool). */
-  quadGeometry(species: string, mirror: boolean): THREE.BufferGeometry;
+  /**
+   * (world-pools-272) The far tier's one quad pool for every species and both far variants: the quad, with the cell a
+   * species pool's quad carried per vertex (its first row, the mirror flag, the variants baked, its elevated row) and its
+   * needle share as instanced attributes at `capacity`, written per slot (cellOf, needleOf); the pool attaches aImpRow.
+   */
+  poolGeometry(capacity: number): THREE.BufferGeometry;
+  /** A tree's impostor cell: its species' first row, the mirror flag, the variants baked, its species' elevated row (or -1). */
+  cellOf(species: string, mirror: boolean): readonly [number, number, number, number];
+  /** A species' needle share (1 a needle crown, 0 a broadleaf). */
+  needleOf(species: string): number;
   /** Bake when a renderer is present and the atlas is not baked; true when the atlas is baked after the call. */
   ensureBaked(): boolean;
   /**
@@ -161,6 +169,20 @@ export interface TreeImpostorLibrary {
   ensureBakedAsync(waitLinks: () => Promise<void>, alive?: () => boolean): Promise<boolean>;
   /** A digest of every bake input: the layout, the geometry bytes, the leaf atlases' pixels. */
   digest(): string;
+}
+
+/**
+ * (world-pools-272) Fill `count` slots of a pool geometry (TreeImpostorLibrary.poolGeometry) from `start` with one species'
+ * cell and needle share: a static pool written bucket by bucket (the horizon ring's forest, the hinterland).
+ */
+export function fillTreeImpostorCells(geometry: THREE.BufferGeometry, start: number, count: number,
+  library: TreeImpostorLibrary, species: string, mirror: boolean): void {
+  const cell = library.cellOf(species, mirror), needle = library.needleOf(species);
+  const cells = geometry.getAttribute('aImpCell').array as Float32Array, needles = geometry.getAttribute('aImpNeedle').array as Float32Array;
+  for (let k = start; k < start + count; k++) {
+    cells.set(cell, k * 4);
+    needles[k] = needle;
+  }
 }
 
 /** The albedo atlas plus the half-resolution normal atlas, with mips. */
@@ -623,27 +645,32 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       if (base === undefined) throw new Error(`world/treeImpostors: no rows for ${species}`);
       return base;
     },
-    quadGeometry(species, mirror) {
-      const base = this.rowBase(species);
+    poolGeometry(capacity) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0]), 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]), 3));
       geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
       geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12).fill(1), 3));
       geometry.setAttribute('aFlex', new THREE.BufferAttribute(new Float32Array([0, 0, TREE_IMPOSTOR_TOP_FLEX, TREE_IMPOSTOR_TOP_FLEX]), 1));
-      const m = mirror ? 1 : 0;
-      // per vertex, constant over the quad: the species' first row, the mirror flag, the variants baked, the
-      // species' elevated row (round 77c; -1 without the elevated ring)
-      const e = elevatedRowOf.get(species) ?? -1;
-      const cell = [base, m, variants, e];
-      geometry.setAttribute('aImpCell', new THREE.BufferAttribute(new Float32Array([...cell, ...cell, ...cell, ...cell]), 4));
-      // GND (2026-10-15): the species' needle share, constant over the quad (canopyLighting.ts cotCanopyTransmit)
-      geometry.setAttribute('aImpNeedle', new THREE.BufferAttribute(new Float32Array(4).fill(needleOf.get(species) ? 1 : 0), 1));
+      // per instance (world-pools-272; per vertex while every species and far variant drew its own pool): the tree's
+      // cell (cellOf) and its species' needle share (GND 2026-10-15, canopyLighting.ts cotCanopyTransmit)
+      const cell = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
+      cell.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('aImpCell', cell);
+      const needle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+      needle.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('aImpNeedle', needle);
       geometry.setIndex([0, 1, 2, 0, 2, 3]);
       geometry.computeBoundingSphere();
-      geometry.userData.treeImpostor = { species, base, mirror, variants, elevatedRow: e };
+      geometry.userData.treeImpostor = { variants };
       return geometry;
     },
+    cellOf(species, mirror) {
+      const base = rowBaseOf.get(species);
+      if (base === undefined) throw new Error(`world/treeImpostors: no rows for ${species}`);
+      return [base, mirror ? 1 : 0, variants, elevatedRowOf.get(species) ?? -1];
+    },
+    needleOf(species) { return needleOf.get(species) ? 1 : 0; },
     ensureBaked() {
       if (baked) return true;
       const renderer = options.renderer;

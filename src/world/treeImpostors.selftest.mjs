@@ -119,8 +119,12 @@ function auditFarSlots(world, id) {
     // p2 trees lane: a battle snag keeps its own far stand-in (the atlas holds the living species)
     if (tree.fslot < 0 || tree.species === 'snag') continue;
     far++;
-    const mesh = meshes.find(m => m.name === `treeImpostor_${tree.species}_${tree.fv}`);
+    // world-pools-272: one pool for every species and far variant; the slot's cell names its tree's species and variant
+    const mesh = meshes.find(m => m.name === 'treeImpostor');
     assert.ok(mesh && mesh.count > tree.fslot, `${id}: the far slot is inside the live prefix`);
+    const cell = mesh.geometry.getAttribute('aImpCell');
+    assert.deepEqual([0, 1, 2, 3].map(k => cell.array[tree.fslot * 4 + k]), [...library.cellOf(tree.species, tree.fv === 1)], `${id}: the slot carries its tree's cell`);
+    assert.equal(mesh.geometry.getAttribute('aImpNeedle').array[tree.fslot], library.needleOf(tree.species), `${id}: the slot carries its species' needle share`);
     // (the trees lane, 2026-10-07: a field tree's open crown past the three near variants draws the open variant's row)
     const impVariant = tree.variant < TREE_IMPOSTOR_VARIANTS ? tree.variant : 2;
     assert.equal(mesh.geometry.getAttribute('aImpRow').array[tree.fslot], impVariant, `${id}: the slot carries its tree's near variant`);
@@ -161,9 +165,10 @@ try {
     }
     assert.equal(library.material.customProgramCacheKey(), TREE_IMPOSTOR_PROGRAM_KEY);
     assert.ok(library.material.map === library.albedo.texture);
-    // the pools: two impostor quads per species, no lobe pool, the near pools and their shadow proxies untouched
+    // the pools (world-pools-272): one impostor pool for every species and far variant, no lobe pool, the near pools and
+    // their shadow proxies untouched
     const impostorMeshes = world.group.children.filter(m => m.userData.treeImpostor === true);
-    assert.equal(impostorMeshes.length, species.length * 2, `${id}: two impostor pools per species`);
+    assert.equal(impostorMeshes.length, 1, `${id}: one impostor pool`);
     // p2 trees lane: the battle snags keep their own far stand-in (two pools per far variant), every living species is an impostor
     assert.equal(world.group.children.filter(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor && !m.userData.battleSnag).length, 0, `${id}: no lobe pool`);
     // (+ the battle snags' three near pools where the map has craters — vegetation.ts battleSnagShare)
@@ -174,22 +179,24 @@ try {
     assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, nearSpecies * 3 + fieldCrownPools, `${id}: the near crown shadow proxies stay`);
     assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3 + fieldCrownPools);
     for (const mesh of impostorMeshes) {
-      const [, sp, fv] = mesh.name.split('_');
       assert.ok(mesh.material === library.material);
       assert.equal(mesh.geometry.getAttribute('position').count, 4); assert.equal(mesh.geometry.index.count, 6);
       assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false);
       assert.equal(mesh.userData.aoExclude, true); assert.equal(mesh.userData.treeLod, 'far'); assert.equal(mesh.frustumCulled, false);
-      const cell = mesh.geometry.getAttribute('aImpCell');
-      assert.equal(cell.itemSize, 4, 'round 77c: the cell carries the elevated row');
-      for (let v = 0; v < 4; v++) {
-        assert.equal(cell.getX(v), library.rowBase(sp)); assert.equal(cell.getY(v), fv === '1' ? 1 : 0); assert.equal(cell.getZ(v), library.variants);
-        assert.equal(cell.getW(v), library.elevated ? library.groundRows + species.indexOf(sp) : -1, `${id}: the species' elevated row (or none)`);
+      for (const name of ['aImpCell', 'aImpNeedle']) assert.ok(mesh.geometry.getAttribute(name).isInstancedBufferAttribute, `${id}: ${name} per instance`);
+      assert.equal(mesh.geometry.getAttribute('aImpCell').itemSize, 4, 'round 77c: the cell carries the elevated row');
+      for (const sp of species) {
+        for (const mirror of [false, true]) {
+          const cell = library.cellOf(sp, mirror);
+          assert.equal(cell[0], library.rowBase(sp)); assert.equal(cell[1], mirror ? 1 : 0); assert.equal(cell[2], library.variants);
+          assert.equal(cell[3], library.elevated ? library.groundRows + species.indexOf(sp) : -1, `${id}: the species' elevated row (or none)`);
+        }
       }
       const flex = [...mesh.geometry.getAttribute('aFlex').array];
       assert.ok(flex[0] === 0 && flex[1] === 0 && Math.abs(flex[2] - 0.3) < 1e-6 && Math.abs(flex[3] - 0.3) < 1e-6, 'the quad top flutters like a lobe crown');
-      const population = world._trees.filter(t => t.species === sp).length;
+      const living = world._trees.filter(t => t.species !== 'snag').length;
       const row = mesh.geometry.getAttribute('aImpRow');
-      assert.ok(row?.isInstancedBufferAttribute && row.count === Math.min(world._trees.length, Math.max(1, population)), `${id}: aImpRow at the species capacity`);
+      assert.ok(row?.isInstancedBufferAttribute && row.count === Math.min(world._trees.length, Math.max(1, living)), `${id}: aImpRow at the living trees' capacity`);
       assert.equal(row.usage, THREE.DynamicDrawUsage);
     }
     // the bake: none at construction, once from the first update, outside a render pass, the state restored
@@ -295,4 +302,4 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 console.log(JSON.stringify({ receipts, lobeTriangles, budget: budgetRows }));
-console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, impostor pools (2 draws / species, 2 tris / far tree) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, deterministic bake inputs, lobes without a renderer and on mobile PASS');
+console.log('treeImpostors.selftest: the layout law and budget on 31 maps, the row measure, one impostor pool for every species and far variant (1 draw, 2 tris / far tree, the cell and needle share per instance) on three producers, the bake from the first update with the render state restored and after a suspension, far slots carrying their variants through the partition, deterministic bake inputs, lobes without a renderer and on mobile PASS');

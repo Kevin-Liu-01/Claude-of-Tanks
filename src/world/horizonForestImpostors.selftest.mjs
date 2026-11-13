@@ -98,15 +98,20 @@ try {
     const seen = new Set();
     const classCounts = [{}, {}];
     let heightSum = 0;
+    // world-pools-272: one pool for every species and mirror, the cell (and the species it names) per instance
+    assert.equal(impostorMeshes.length, 1, `${id}: one impostor pool`);
+    const speciesOfBase = new Map(librarySpecies.map(sp => [library.rowBase(sp), sp]));
     for (const mesh of impostorMeshes) {
-      const { species, mirror } = mesh.userData.horizonForestImpostor;
-      const cell = mesh.geometry.getAttribute('aImpCell');
-      assert.equal(cell.getX(0), library.rowBase(species)); assert.equal(cell.getY(0), mirror ? 1 : 0); assert.equal(cell.getZ(0), library.variants);
-      assert.equal(cell.getW(0), library.elevated ? library.groundRows + librarySpecies.indexOf(species) : -1, `${id}: the elevated row rides on the ring's quads too`);
+      const cell = mesh.geometry.getAttribute('aImpCell'), needle = mesh.geometry.getAttribute('aImpNeedle');
+      assert.ok(cell.isInstancedBufferAttribute && needle.isInstancedBufferAttribute, `${id}: the cell and the needle share per instance`);
       assert.ok(mesh.material === forest.userData.horizonForestImpostorMaterial);
       assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false); assert.equal(mesh.frustumCulled, false); assert.equal(mesh.userData.aoExclude, true);
       const rows = mesh.geometry.getAttribute('aImpRow');
       for (let j = 0; j < mesh.count; j++) {
+        const species = speciesOfBase.get(cell.getX(j)), mirror = cell.getY(j) === 1;
+        assert.ok(species && (cell.getY(j) === 0 || mirror) && cell.getZ(j) === library.variants, `${id}: the slot's cell`);
+        assert.equal(cell.getW(j), library.elevated ? library.groundRows + librarySpecies.indexOf(species) : -1, `${id}: the elevated row rides on the ring's quads too`);
+        assert.equal(needle.getX(j), library.needleOf(species), `${id}: the slot's needle share`);
         mesh.getMatrixAt(j, matrix);
         matrix.decompose(position, quaternion, scale);
         const i = byKey.get(`${position.x.toFixed(3)},${position.z.toFixed(3)}`);

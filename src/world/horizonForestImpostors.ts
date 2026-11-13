@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts';
 import { HORIZON_FOREST_PLACEMENT_STRIDE } from './horizonVista.ts';
-import { TREE_IMPOSTOR_ALPHA_TEST, type TreeImpostorLibrary } from './treeImpostors.ts';
+import { TREE_IMPOSTOR_ALPHA_TEST, type TreeImpostorLibrary, fillTreeImpostorCells } from './treeImpostors.ts';
 import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
 
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
@@ -294,21 +294,30 @@ export function bindHorizonForestImpostors(
   const rimTint = new THREE.Color(...(options.rimTreeTint ?? [1, 1, 1]));
   const speciesCounts: Record<string, number> = {};
   let draws = 0;
-  for (const [key, bucket] of buckets) {
-    const [sp, mirror] = key.split('/');
-    const geometry = library.quadGeometry(sp, mirror === '1');
-    const rows = new THREE.InstancedBufferAttribute(new Float32Array(bucket.length), 1);
+  // world-pools-272: one pool for every species and mirror (a pool each drew up to eight), the cell per instance
+  let total = 0;
+  for (const bucket of buckets.values()) total += bucket.length;
+  const geometry = total > 0 ? library.poolGeometry(total) : null;
+  const rows = new THREE.InstancedBufferAttribute(new Float32Array(total), 1);
+  const mesh = geometry ? new THREE.InstancedMesh(geometry, material, total) : null;
+  if (geometry && mesh) {
     geometry.setAttribute('aImpRow', rows);
-    const mesh = new THREE.InstancedMesh(geometry, material, bucket.length);
-    mesh.name = `horizon-forest-impostor-${sp}-${mirror}`;
+    mesh.name = 'horizon-forest-impostors';
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     mesh.matrixAutoUpdate = false;
     mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // alpha-tested: the GTAO override prepass would composite the quads solid
-    mesh.userData.horizonForestImpostor = { species: sp, mirror: mirror === '1' };
-    for (let j = 0; j < bucket.length; j++) {
-      const i = bucket[j], o = i * stride;
+    mesh.userData.horizonForestImpostor = { buckets: [] as { species: string; mirror: boolean; start: number; count: number }[] };
+  }
+  let slot0 = 0;
+  for (const [key, bucket] of buckets) {
+    if (!geometry || !mesh) break;
+    const [sp, mirror] = key.split('/');
+    fillTreeImpostorCells(geometry, slot0, bucket.length, library, sp, mirror === '1');
+    mesh.userData.horizonForestImpostor.buckets.push({ species: sp, mirror: mirror === '1', start: slot0, count: bucket.length });
+    for (let k = 0; k < bucket.length; k++) {
+      const i = bucket[k], o = i * stride, j = slot0 + k;
       if (i >= placements) {
         // (GND 2026-10-16) an understorey tree: its own place, turn and tint (resolveHorizonForestTrees)
         const tree = resolved.trees[i];
@@ -330,11 +339,14 @@ export function bindHorizonForestImpostors(
       mesh.setColorAt(j, color);
       rows.array[j] = variantOf[i];
     }
+    speciesCounts[sp] = (speciesCounts[sp] ?? 0) + bucket.length;
+    slot0 += bucket.length;
+  }
+  if (mesh) {
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     forest.add(mesh);
     draws++;
-    speciesCounts[sp] = (speciesCounts[sp] ?? 0) + bucket.length;
   }
   // the lobes: the near class keeps casting its hull's shadow at the impostor's stature, the rest are disposed
   const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
