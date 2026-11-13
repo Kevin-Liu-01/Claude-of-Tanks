@@ -263,7 +263,7 @@ import { isPlayerVisible } from './game/playerVisibility.ts';
 import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import {
-  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
+  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun, TUTORIAL_ON,
 } from './ui/tutorial/tutorialRecord.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -4785,14 +4785,14 @@ const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAc
 };
 // the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
 bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
-bus.on('ui:replayTutorial', () => withTutorial((access) => access.replay()));
+bus.on('ui:replayTutorial', () => { if (TUTORIAL_ON) withTutorial((access) => access.replay()); });
 void entryReady.then(() => {
   tutorialEntryPassed = true;
   if (testDriveSpecId || pendingRoomInvitePromise) {
     if (tutorialMayRun()) withTutorial(() => { /* resident for the Garage's next showing */ });
     return;
   }
-  if (tutorialReplay.asked) withTutorial((access) => access.replay());
+  if (tutorialReplay.asked && TUTORIAL_ON) withTutorial((access) => access.replay());
   else if (tutorialMayRun()) withTutorial((access) => access.garageShown());
 }).catch(() => { /* the entry gate's own failure is reported where it is awaited */ });
 // receipts read the chapter and step showing; a diagnostics page (dev, ?debug=1, automation) may also start a chapter

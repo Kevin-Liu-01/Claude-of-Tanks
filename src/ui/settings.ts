@@ -90,6 +90,7 @@ import {
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
+import { TUTORIAL_ON } from './tutorial/tutorialRecord.ts';
 import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
 
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
@@ -1287,17 +1288,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     });
     // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle
     // steps in the next Standard battle and the tips after it (app/tutorialAccess.ts hears ui:replayTutorial)
-    const tutorialRow = el('div', 'cot-set-row', iface);
-    settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
-    const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
-    replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
-    replayTutorial.addEventListener('click', () => {
-      emit('ui:click', {});
-      closePanel();
-      emit('ui:replayTutorial', {});
-    });
-    const tutorialNote = el('div', 'cot-set-note', iface);
-    tutorialNote.textContent = t('settings.tutorial.replayNote');
+    if (TUTORIAL_ON) { // (272.0.1) off until the Deploy-step fix (ui/tutorial/tutorialRecord.ts)
+      const tutorialRow = el('div', 'cot-set-row', iface);
+      settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
+      const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
+      replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
+      replayTutorial.addEventListener('click', () => {
+        emit('ui:click', {});
+        closePanel();
+        emit('ui:replayTutorial', {});
+      });
+      const tutorialNote = el('div', 'cot-set-note', iface);
+      tutorialNote.textContent = t('settings.tutorial.replayNote');
+    }
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
     const cleanViewNote = el('div', 'cot-set-note', iface);
     cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
