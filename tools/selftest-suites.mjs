@@ -1907,6 +1907,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
+    'src/mp/room/equipmentSelection.selftest.mjs', // 273 (fire-fx-debounce-272 audit follow-up): an unchanged Garage pick sends no select_equipment, a changed one once; the room still applies a repeat
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
