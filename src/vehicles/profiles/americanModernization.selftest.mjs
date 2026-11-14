@@ -107,7 +107,7 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
     // 2026-10-08 (tank-accessories round 5: the American M2 is the fleet's shared Browning construction at true scale;
     // wave 255 on the M60A1 read its gunmetal chest as part of a "plain dark block"): the can takes the solid fitting
     // paint every shared gun's can takes (browningMachineGunStandard), never the host camouflage.
-    // 263 (integrator): patton-family-262 rebuilt the M46 and M47 to their gate reference models, whose roof M2s carry
+    // 263 (integrator): patton-family-262 rebuilt the M46 and M47 to their measured references, whose roof M2s carry
     // no can (pattonCast roofM2 ammo: false, the fitting's hasConnectedFeed false); a gun with its can keeps the rule
     if (gun.userData.hasConnectedFeed === false) assert.ok(ammoBox === undefined, `${id}: a gun without its feed draws no can`);
     else {
@@ -278,7 +278,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     `${id}: retains the established commander optics assembly`);
   assert.equal(optic?.clearsWeaponTower, true,
     `${id}: relocates the optic clear of the new gun tower`);
-  // Re-pinned 2026-11-03 (release 268 builder E): the commander's station stands at the owner's model's position (its
+  // Re-pinned 2026-11-03 (release 268 builder E): the commander's station stands at its measured position (its
   // centre 0.275 m further inboard and 0.8815 m further aft, profiles/abrams.ts tejasRoofKit cdx/cdz), the optic with it.
   assert.ok(Math.abs(optic?.x - (-0.84 + 0.275)) < 1e-9, `${id}: optic x ${optic?.x}`);
   assert.ok(Math.abs(optic?.z - (0.70 - 0.8815)) < 1e-9, `${id}: optic z ${optic?.z}`);

@@ -142,15 +142,15 @@ and reseat tracks — the cornered track in the bottom right; don't let wheels g
 
 Candidates and outcome, batch 17 → batch 18: t90a_burlak_x 94.7, strv122_x 96.0, leo2a4m_x 93.1,
 kf51_x 93.3, t80u_x 95.0, amx40_x 92.3, leclerc_x 93.4, t90m_x 91.9/90 all PASS; challenger_3 and
-challenger2 have no registered oracle; challenger1_x was 0 before and after (mg0, dims 0 —
+challenger2 have no registered comparison record; challenger1_x was 0 before and after (mg0, dims 0 —
 pre-existing). Four X tanks moved: t72b3m_x dims 93.3 → 91.9 (the hub package pulled in 3 cm),
 leo2a7v_x whole 92.2 → 91.9, type10_x dims 79.4 → 75.7 and m1a2_sepv2_x hull 87.6 → 76.8 —
 the last two were already below the bar (their pre-batch shoes sat 87 mm and 43 mm under the
-tank-frame floor; the presentation floor offset hides it in game). The mask oracles for the X
-tanks are their source GLBs, whose track ramps start at the old contact pins; the owner-directed
+tank-frame floor; the presentation floor offset hides it in game). The X tanks'
+recorded track ramps start at the old contact pins; the owner-directed
 wrap deviates from them by design. The release check ran on the eight passing ids; its fidelity
 step put kf51_x's `component.turret.right` at 91.8 (92.8 at 88f235a41, 97.6 overall either way —
-the wrap shifts the right-view registration against the GLB), recorded as a fleet bar in
+the wrap shifts the right-view registration), recorded as a fleet bar in
 `tools/west-x-reference-overrides.ts` per the owner-directed-change rule.
 
 ### Mobile and boot (outside QA at 390×844)

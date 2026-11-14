@@ -27,15 +27,6 @@ const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
   delta_crossing: '/media/deploy-r1/op-06-1280.webp',
 });
 
-/**
- * The modes with a plate background of their own (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows):
- * the core modes' a 1600x900 cut of the still their card shows, the others the media lane's HUD-free battle frames. A
- * mode without one shows its tile picture, and so does every mode under reduced data (the mode picker has loaded the
- * tiles already).
- */
-const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'drone', 'turbo_ball',
-  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130', 'proving_ground']);
-
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }
 
@@ -227,7 +218,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   function settle(): void {
     if (fading || !wanted || !menu.classList.contains('open')) return;
     const mode = wanted;
-    const url = PLATE_ART.has(mode) && !saveData() ? `/media/deploy-r1/${mode}-1600.webp` : host.modeArt(mode);
+    // every mode's plate background (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows; the core modes'
+    // a 1600x900 cut of their card's still, the others the media lane's HUD-free battle frames: deployModeArt.selftest);
+    // under reduced data its tile picture, which the mode picker has loaded already
+    const url = saveData() ? host.modeArt(mode) : `/media/deploy-r1/${mode}-1600.webp`;
     if (front?.getAttribute('src') === url) return;
     fading = true;
     const outgoing = front;

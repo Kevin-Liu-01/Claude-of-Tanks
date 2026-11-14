@@ -109,3 +109,10 @@ export function oraclePinError(path, sha256, pins) {
   if (pin.sha256 !== sha256) return `oracle ${path} is ${sha256}, not the pinned ${pin.sha256}: not measured`;
   return null;
 }
+
+/** The geometry comparison's refusal (rule c): an id with both a photo packet and a registered comparison model is a
+ * registry error. A tank-generation check: no gate reads the registry. */
+export function assertNoPhotoOverride(ids,registered,isPhotoReference){
+  for(const id of ids)if(isPhotoReference(id)&&registered.has(id))
+    throw new Error(`${id}: photographic qualification cannot override a registered 3D target`);
+}

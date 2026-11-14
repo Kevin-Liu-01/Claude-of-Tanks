@@ -1,6 +1,5 @@
-import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
-import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
+import {validateSelectedIds} from './first-party-concept-policy.mjs';
 import {uniqueIds} from './id-list.mjs';
 /** The vehicles whose counter-drone pilot runs are pinned (src/sim/counterDroneStations.test-support.mjs COUNTER_DRONE_PINS;
  * tank-release-plan.selftest holds the two lists equal). */
@@ -36,7 +35,6 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
   // a repeated id fails by name before any step (2026-10-16, test-speed R4c; tools/id-list.mjs)
   const selectedIds=validateSelectedIds(uniqueIds(ids.split(','),'tank:release:check --ids'),Object.keys(FLEET_GROUP_BY_ID));
-  const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
   const counterDronePinned=selectedIds.filter(id=>COUNTER_DRONE_PINNED_IDS.includes(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
@@ -53,7 +51,8 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // Sealed hull (2026-09-13): no view may look into the tank through a culled
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
-    ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
+    // Outside 3D models never score a release (owner, 2026-11-12): the silhouette comparison against a registered model is a
+    // tank-generation tool a lane runs by hand (npm run gen:fidelity), never a step here.
     // Per id since 266: the fleet-wide form is the manual `fleet` suite's command (see above).
     cpu('gen-combat-anatomy','--check',selected),
     // 2026-10-29 (the owner's voxel blocks): no committed interior fill stands outside its current body (a skin moved
@@ -99,7 +98,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
 /**
  * Fast checks (2026-09-15): the same steps, grouped into stages the check runs one after the
  * other, with every step inside a stage running concurrently. Stage 1 is the load-sensitive
- * browser scoring (standard → sealed → fidelity) and stays serial. Stage 2 runs the fleet-wide
+ * browser scoring (standard → sealed) and stays serial. Stage 2 runs the fleet-wide
  * node probes side by side with the receipt suite and the production build: they read the same
  * tree, never write to it, and the GPU children still serialise through the capture queue.
  * A stage stops at its first failure; a later stage never starts after a failed one.
@@ -108,7 +107,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
 export function tankReleaseStages(ids, gate, node = process.execPath, {lane = false} = {}) {
   const steps = tankReleaseSteps(ids, gate, node, {lane});
   const tool = (step) => (step.command === node ? step.args[0] : `${step.command} ${step.args.join(' ')}`);
-  const serialTools = new Set(['tools/tank-standard-check.mjs', 'tools/tank-sealed-check.mjs', 'tools/procedural-fidelity.mjs']);
+  const serialTools = new Set(['tools/tank-standard-check.mjs', 'tools/tank-sealed-check.mjs']);
   const serial = steps.filter((step) => serialTools.has(tool(step)));
   const parallel = steps.filter((step) => !serialTools.has(tool(step)));
   return [

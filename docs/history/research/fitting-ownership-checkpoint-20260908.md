@@ -24,7 +24,7 @@ different bounded lifetime change, not silently included here.
 
 The six publishable paths are the new helper, its focused selftest, the two
 existing runtime files, one `tools/selftest-suites.mjs` entry, and this report.
-No source model, temporary QA artifact or generated fleet asset belongs in
+No temporary QA artifact or generated fleet asset belongs in
 this checkpoint.
 
 ## Current-main differential and lifetime proof

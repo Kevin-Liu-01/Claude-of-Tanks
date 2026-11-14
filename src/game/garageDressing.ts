@@ -31,6 +31,7 @@ import {
   mulberry32, canvasTexture, makeHazardTexture,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { GARAGE_SLIDESHOW_GLASS_BULGE, GARAGE_VERDANT_SLIDESHOW, garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
 import {
@@ -174,6 +175,12 @@ const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze({
 const GARAGE_BATTLE_SCREEN_SHOTS = Object.freeze(
   FEATURED_SHOTS.filter((shot) => shot.maps?.length),
 );
+// (2026-11-11, owner: "we can also add all 78 to the galleries and other image areas") After them the owner's whole
+// loading-screen gallery (src/ui/galleryShots.ts, all seventy-eight, each with its battlefield), loaded when the screen
+// first starts, so its rows never join a boot chunk; a Garage whose battlefield has a gallery opener (GALLERY_OPENERS)
+// opens on it, the rest on their featured still. Without the gallery the featured stills carry the screen alone.
+interface BattleScreenShot { readonly img: string; readonly maps?: readonly string[] }
+const galleryShotsChunk = createLazyChunk(() => import('../ui/galleryShots.ts'));
 const BATTLE_SCREEN_HOLD_MS = 6_500;
 const BATTLE_SCREEN_SCROLL_MS = 720;
 const BATTLE_SCREEN_PANEL_W = 5.86;
@@ -1243,6 +1250,25 @@ export function createGarageDressing(
   // the arriving Garage's own still, taken the moment the screen is free (an arrival during a load or a crossfade used to
   // leave the previous Garage's still up for a whole hold and then cycle past its own)
   let battleScreenWanted: number | null = null;
+  // the rotation: the featured stills, and the gallery's once it has loaded (with its openers' places in the rotation)
+  let battleScreenShots: readonly BattleScreenShot[] = GARAGE_BATTLE_SCREEN_SHOTS;
+  let battleScreenOpeners: ReadonlyMap<string, number> = new Map();
+
+  /** The gallery joins the rotation (once); a failed load leaves the featured stills, and the next start asks again. */
+  async function joinGalleryToBattleScreen(): Promise<void> {
+    if (battleScreenShots !== GARAGE_BATTLE_SCREEN_SHOTS) return;
+    const gallery = await galleryShotsChunk.load().catch(() => null);
+    if (!gallery || battleScreenShots !== GARAGE_BATTLE_SCREEN_SHOTS) return;
+    const first = GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const index = new Map(gallery.GALLERY_SHOTS.map((shot, n) => [shot.id, first + n]));
+    battleScreenShots = Object.freeze([...GARAGE_BATTLE_SCREEN_SHOTS,
+      ...gallery.GALLERY_SHOTS.map((shot) => ({ img: shot.img, maps: [shot.map] }))]);
+    battleScreenOpeners = new Map(Object.entries(gallery.GALLERY_OPENERS).flatMap(([map, id]) => {
+      const at = index.get(id);
+      return at === undefined ? [] : [[map, at] as const];
+    }));
+    group.userData.battleScreenImageCount = battleScreenShots.length;
+  }
 
   function disposeBattleScreenTexture(texture: THREE.Texture | null): void {
     if (!texture || texture === battleScreenFallbackTexture) return;
@@ -1295,7 +1321,7 @@ export function createGarageDressing(
   }
 
   function loadBattleScreenTexture(index: number): Promise<THREE.Texture | null> {
-    const shot = GARAGE_BATTLE_SCREEN_SHOTS[index];
+    const shot = battleScreenShots[index];
     if (!shot) return Promise.resolve(null);
     const generation = battleScreenGeneration;
     return decodeBattleScreenImage(shot.img).then((texture) => {
@@ -1331,7 +1357,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uTransition.value = 0;
     battleScreenFrame = null;
     group.userData.battleScreenResidentImageCount = 1;
-    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
+    group.userData.battleScreenCurrentImage = battleScreenShots[battleScreenIndex]?.img || '';
     if (group.parent && group.visible && !document.hidden && !takeWantedBattleScreen()) scheduleBattleScreenAdvance();
   }
 
@@ -1371,8 +1397,8 @@ export function createGarageDressing(
   async function advanceBattleScreen(targetIndex: number | null = null): Promise<void> {
     if (!battleScreenMaterial || !battleScreenCurrentTexture
         || battleScreenFrame !== null || battleScreenLoading
-        || GARAGE_BATTLE_SCREEN_SHOTS.length < 2) return;
-    const nextIndex = targetIndex ?? battleScreenWanted ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+        || battleScreenShots.length < 2) return;
+    const nextIndex = targetIndex ?? battleScreenWanted ?? (battleScreenIndex + 1) % battleScreenShots.length;
     const takesWanted = nextIndex === battleScreenWanted;
     if (takesWanted) battleScreenWanted = null;
     battleScreenLoading = true;
@@ -1392,17 +1418,27 @@ export function createGarageDressing(
     });
   }
 
-  /** The slideshow opens on its Garage's own battlefield still (FEATURED_SHOTS' maps field), then cycles. */
+  /**
+   * The slideshow opens on its Garage's own battlefield still, then cycles: the gallery's opener for that battlefield
+   * (GALLERY_OPENERS) once the gallery has joined, else its first still with that map (FEATURED_SHOTS' maps field).
+   */
   function battleScreenStartIndex(mapId: string): number {
-    const index = GARAGE_BATTLE_SCREEN_SHOTS.findIndex((shot) => shot.maps?.includes(mapId));
+    const opener = battleScreenOpeners.get(mapId);
+    if (opener !== undefined) return opener;
+    const index = battleScreenShots.findIndex((shot) => shot.maps?.includes(mapId));
     return index >= 0 ? index : 0;
   }
 
   async function startBattleScreen(fallback: THREE.Texture): Promise<void> {
-    if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
+    if (!battleScreenMaterial || !battleScreenShots.length) return;
     battleScreenCurrentTexture = fallback;
+    // an arrival while the gallery loads waits as the wanted still (openSlideshowOnGarage), as during a texture load
+    battleScreenLoading = true;
+    await joinGalleryToBattleScreen();
+    if (!battleScreenMaterial) { battleScreenLoading = false; return; }
+    battleScreenWanted = null; // the start below is the current Garage's, in the rotation as it now stands
     battleScreenIndex = battleScreenStartIndex(currentVariant.mapId);
-    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
+    group.userData.battleScreenWantedImage = battleScreenShots[battleScreenIndex].img;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(battleScreenIndex);
     battleScreenLoading = false;
@@ -1411,7 +1447,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageA.value = texture;
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
-    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
+    group.userData.battleScreenCurrentImage = battleScreenShots[battleScreenIndex].img;
     if (!takeWantedBattleScreen()) scheduleBattleScreenAdvance();
   }
 
@@ -1446,7 +1482,7 @@ export function createGarageDressing(
    */
   function openSlideshowOnGarage(): void {
     const start = battleScreenStartIndex(currentVariant.mapId);
-    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[start]?.img || '';
+    group.userData.battleScreenWantedImage = battleScreenShots[start]?.img || '';
     if (battleScreenFrame !== null || battleScreenLoading) {
       battleScreenWanted = start;
       return;
@@ -1910,7 +1946,7 @@ export function createGarageDressing(
     group.userData.battleScreenMode = 'crt-crossfade-slideshow';
     group.userData.battleScreenWallBay = 'west-freestanding';
     group.userData.battleScreenDisplayCount = 1;
-    group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
+    group.userData.battleScreenImageCount = battleScreenShots.length;
     group.userData.battleScreenResidentImageLimit = 2;
     group.userData.battleScreenResidentImageCount = 0;
     group.userData.battleScreenDecodeSize = [BATTLE_SCREEN_DECODE_W, BATTLE_SCREEN_DECODE_H];

@@ -2,7 +2,7 @@ import {isPhotoReference,photoEquipmentVerdict} from './photo-reference-policy.m
 import {firstPartyConcept,conceptEquipmentVerdict} from './first-party-concept-policy.mjs';
 import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import { Matrix4, Vector3 } from 'three';
-import { carriesNoRoofWeapon } from '../src/vehicles/roofWeaponPolicy.ts';
+import { carriesNoRoofWeapon, pinnedRoofWeaponCount } from '../src/vehicles/roofWeaponPolicy.ts';
 
 /** Source configuration decisions apply only to their hash-verified input.
  * Unregistered fleet vehicles retain the existing >=1 roof-MG requirement, except those whose real counterpart carries
@@ -21,6 +21,10 @@ export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = 
   // (no decorative gun); every other vehicle shows at least one, and roofWeaponPolicy.selftest holds that each works.
   // 2026-10-16 (226 gate): a listed vehicle's coaxial gun drawn as a fitting on the main gun's rig (the Puma's MG4) is
   // not a roof weapon: the listed vehicles are held to no ROOF gun (census.roofMg leaves gun-owned fittings out).
+  // Owner 2026-11-12: the gate passes no configuration. A vehicle with a pinned count (roofWeaponPolicy.ts) is held to it
+  // exactly; the source-configuration branch below is the tank-generation tools' own (it hashes an outside model).
+  const pinned = configuration ? null : pinnedRoofWeaponCount(id);
+  if (pinned !== null) return { passed: census.mg === pinned, required: pinned, observed: census.mg };
   if (!configuration) return carriesNoRoofWeapon(id)
     ? { passed: (census.roofMg ?? census.mg) === 0, required: '0 (no roof weapon on the real vehicle)',
       observed: census.roofMg ?? census.mg }

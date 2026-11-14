@@ -79,7 +79,7 @@ assert.throws(() => PAD_TOUR_STATE.timedOut, /PadTourState has no state timedOut
     `.cot-couch-seat[data-state="\${here}"]`, "resumed.desktop === PAD_LINK_STATE.live", "p.state.pos.x === 'here'"]) {
     assert.ok(!Object.keys(FORMS).some((form) => caught(form, sample)), `not a literal comparison: ${sample}`);
   }
-  const harnesses = ['tools/pad-e2e.browser.mjs', 'tools/couch-e2e.browser.mjs'];
+  const harnesses = ['tools/pad-e2e.browser.mjs', 'tools/couch-e2e.browser.mjs', 'tools/couch-panes.browser.mjs'];
   const found = {};
   for (const file of harnesses) {
     const source = read(file);

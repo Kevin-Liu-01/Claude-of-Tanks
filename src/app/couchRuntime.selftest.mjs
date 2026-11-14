@@ -36,6 +36,7 @@ globalThis.document = { body: { classList: {
 } } };
 const { setBodyFlag } = await import('../ui/bodyFlags.ts');
 const { createCouchRuntime } = await import('./couchRuntime.ts');
+const { couchTierActive } = await import('../engine/quality.ts');
 
 // main.ts's own port binding, run over the real bodyFlags and a HUD recorder
 const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -45,7 +46,7 @@ const couchViews = [];
 const hud = { setCouchView: (on) => couchViews.push(on) };
 const mainPort = new Function('setBodyFlag', 'currentHud', 'document', `return ${portSource};`)(setBodyFlag, () => hud, globalThis.document);
 
-function createHarness() {
+function createHarness(extra = {}) {
   const listeners = new Map();
   const calls = [];
   let lobbyListener = null;
@@ -75,6 +76,7 @@ function createHarness() {
     },
     setSpectating: (on) => { calls.push(['setSpectating', on]); mainPort(on); },
     startLobby: () => { calls.push(['startLobby']); return lobby; },
+    ...extra,
   });
   const emit = (type, payload) => { for (const listener of listeners.get(type) ?? []) listener(payload); };
   /** A battle phase with this session (the solo start's transitionAppPhase announces it). */
@@ -269,6 +271,34 @@ function portLobby() {
   lobby.ports.seat(1).input.tapVirtual('shell3');
   runtime.beforeStep();
   assert.deepEqual([felt.get(1), felt.get(2).length], [['denied'], 2], "seat 1's refusal is felt on seat 1's phone alone");
+}
+
+// couch-panes-272: a split battle's Start asks for the couch tier before the world builds (its light world is read at the
+// build); a refused launch, a shared-camera battle and the Garage return let it go; without the panes' page ports (a page
+// that cannot split) the tier is never asked for
+{
+  const h = createHarness({ paneViews: {} });
+  h.runtime.open();
+  h.seat([{ seat: 1, presence: 'here', view: null }, { seat: 2, presence: 'here', view: null }]);
+  let tierAtLaunch = null;
+  assert.equal(h.runtime.startBattle(() => { tierAtLaunch = couchTierActive(); return true; }, 'split'), true);
+  assert.equal(tierAtLaunch, true, 'the couch tier is in force when the split battle launches');
+  h.battle(h.session());
+  h.garage();
+  assert.equal(couchTierActive(), false, 'the Garage return lets it go');
+  assert.equal(h.runtime.startBattle(() => false, 'split'), false);
+  assert.equal(couchTierActive(), false, 'a refused launch lets it go');
+  h.runtime.startBattle(() => { tierAtLaunch = couchTierActive(); return true; }, 'shared');
+  assert.equal(tierAtLaunch, false, 'the shared camera keeps the player\'s own preset');
+  h.runtime.startBattle(() => true, 'split');
+  h.runtime.close();
+  assert.equal(couchTierActive(), false, 'the lobby\'s end lets it go');
+  const plain = createHarness();
+  plain.runtime.open();
+  plain.seat([{ seat: 1, presence: 'here', view: null }]);
+  plain.runtime.startBattle(() => { tierAtLaunch = couchTierActive(); return true; }, 'split');
+  assert.equal(tierAtLaunch, false, 'a page without the panes\' ports never asks for it');
+  assert.equal(plain.runtime.renderViews(1 / 60, 1 / 60), false, 'and draws the frame as usual');
 }
 
 console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, a seat\'s Pause only in a couch battle, and a seat\'s refused shell pick on its own phone passed');

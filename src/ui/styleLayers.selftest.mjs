@@ -145,7 +145,8 @@ for (const path of sources) {
       if (c === '(') depth++; else if (c === ')' && --depth === 0) break;
     }
     const call = text.slice(m.index, k + 1);
-    const layer = /,\s*'([a-z]+)'\s*\)$/.exec(call)?.[1];
+    // (couch-panes-272: the layer, then optionally the document it goes into: a split-screen pane's own)
+    const layer = /,\s*'([a-z]+)'\s*(?:,\s*[\w.$]+\s*)?\)$/.exec(call)?.[1];
     assert.ok(layer && STYLE_LAYERS.includes(layer), `${path}: ensureStyle(...) names its layer (${call.slice(0, 60).replace(/\s+/g, ' ')}...)`);
     assert.match(text, /import \{[^}]*\bensureStyle\b[^}]*\} from '(?:\.\/|\.\.\/|\.\.\/ui\/)styleLayers\.ts'/, `${path} imports ensureStyle from styleLayers.ts`);
     calls.push(`${path}:${layer}`);

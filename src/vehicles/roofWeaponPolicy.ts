@@ -73,3 +73,29 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
 export function carriesNoRoofWeapon(id: string): boolean {
   return Object.hasOwn(NO_ROOF_WEAPON, id);
 }
+
+// Owner 2026-11-12: the standard check's decor census holds these vehicles to an exact count. Each is the owner-approved
+// roof-weapon decision for the vehicle (2026-09-18 and later configuration rulings), counted the census's way (`mg`:
+// every working weapon fitting, a gun-owned coaxial included), and it is checked against the build alone.
+export const PINNED_ROOF_WEAPON_COUNT: Readonly<Record<string, number>> = Object.freeze({
+  aft10: 0,
+  ajax: 1,
+  bmp3m_dragun125: 1,
+  cv90105_tml: 0,
+  cv90_mk4: 0,
+  griffin50mm: 1,
+  k21: 0,
+  kf41_lynx: 0,
+  kurganets25: 0,
+  merkava4_barak: 1,
+  puma_s1: 0,
+  sabra_mk2: 1,
+  type89: 0,
+  type96b: 0,
+  warrior_tes_h: 0,
+});
+
+/** The vehicle's pinned exact roof-weapon count, or null when the default rule applies. */
+export function pinnedRoofWeaponCount(id: string): number | null {
+  return Object.hasOwn(PINNED_ROOF_WEAPON_COUNT, id) ? PINNED_ROOF_WEAPON_COUNT[id] : null;
+}

@@ -55,7 +55,7 @@ Five focused engine checks passed through the ordinary FIFO:
 `deploymentUploadPrograms`, `deploymentShadowWarm`, `offscreenWarm`,
 `programWarm`, and `frameScheduler`. Exact `npm run typecheck` (including
 core-unused) and `npm run build` passed; the public asset check retained 181
-playables and zero GLB-sourced playables. Four runtime files / 161 functions
+playables, all procedural. Four runtime files / 161 functions
 have zero complexity violations and zero `any`/`unknown`. Docs Doctor reports
 4 pass / 0 fail / 0 warn. Changed-code React Doctor reports no issues across
 six files (score and supply-chain scan disabled; no score claim).

@@ -25,7 +25,7 @@ All twelve remain explicitly named concepts, tier X/next generation, with unchan
 
 ## Reference contract
 
-The concept design document is `docs/references/concepts/national-modernization-20261001.json`; `tools/first-party-concept-policy.mjs` enforces declared dimensions and mechanical datums. Manufacturer references from revision 1/2 remain inspiration. The four owner images, including the War Thunder T-72M2 Moderna image, are visual direction only, not an exact model target. Downloaded review copies stay local in `.qa-dev/national-redesign/t72-owner-references/`; their URLs are retained in the concept document.
+The concept design document is `docs/references/concepts/national-modernization-20261001.json`; `tools/first-party-concept-policy.mjs` enforces declared dimensions and mechanical datums. Manufacturer references from revision 1/2 remain inspiration. The four owner images, including the T-72M2 Moderna image, are visual direction only, not an exact model target. Downloaded review copies stay local in `.qa-dev/national-redesign/t72-owner-references/`; their URLs are retained in the concept document.
 
 ## Revision 5 construction and evidence
 

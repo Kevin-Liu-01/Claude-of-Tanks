@@ -26,9 +26,9 @@ assert.ok(near(roofCarrier.rearBottomY,
 assert.ok(near(roofCarrier.frontBottomY,
   roofCarrier.frontRoofY - roofCarrier.seatDepthM),
 'carrier front edge is seated into the transition roof');
-// 2026-11-03 (release 268 builder E): the commander's tower stands at the owner's model's seat on the level roof behind
-// the knee (profiles/m1a1Turret.ts, profiles/abrams.ts tejasRoofKitSteps: 0.275 m inboard, 0.88 m aft of the print-era
-// carrier at x -1.07); the carrier follows the roof under it (the print-era roof fell > 0.095 under it).
+// 2026-11-03 (release 268 builder E): the commander's tower stands at its measured seat on the level roof behind
+// the knee (profiles/m1a1Turret.ts, profiles/abrams.ts tejasRoofKitSteps: 0.275 m inboard, 0.88 m aft of the earlier
+// carrier at x -1.07); the carrier follows the roof under it (the earlier roof fell > 0.095 under it).
 assert.ok(near(roofCarrier.rearBottomY - roofCarrier.frontBottomY, roofCarrier.rearRoofY - roofCarrier.frontRoofY),
   'carrier follows the roof pitch instead of remaining horizontal');
 assert.ok(near(roofCarrier.thicknessM, 0.11),
@@ -72,7 +72,7 @@ assert.equal(loader.station, 'sepv3-loader-m240',
   'roof receipt identifies the restored loader installation');
 assert.ok(loader.x > 0,
   'loader Browning sits on the right in a head-on view');
-// (builder E: the loader's mount at the owner's model's hatch seat, was 0.95, -0.10)
+// (builder E: the loader's mount at its measured hatch seat, was 0.95, -0.10)
 assert.ok(near(loader.x, 0.775) && near(loader.pintleZ, -0.39),
   'loader Browning is centered on its roof mounting foot');
 assert.ok(loader.receiverBottomY < loader.receiverY

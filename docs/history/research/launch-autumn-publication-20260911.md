@@ -7,7 +7,7 @@ https://claude-of-tanks-dvkmqg7v2-kl01s-projects.vercel.app
 The authenticated hosted response and public https://cot.kevinliu.studio/
 return identical index bytes and the expected version, SHA-256
 `0bf757bc3531ba48060306582be863dd4e0711bb9b80a5c57825079bc4b344a5`.
-Source upload inspection includes no private comparison GLBs, local QA files,
+Source upload inspection includes no local QA files,
 or secrets. Public build and repository hygiene checks pass.
 
 Fresh native public two-context multiplayer checks pass private room creation,

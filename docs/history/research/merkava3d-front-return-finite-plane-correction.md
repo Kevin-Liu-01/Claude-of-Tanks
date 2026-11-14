@@ -5,7 +5,7 @@ Status: **focused physical/native checks passed; not release-qualified**,
 
 This is a narrow successor to local bodywork commit
 `3787c9868ce362b6e5260fc734bbe0e358fb9be9` and its
-[original source/fit report](merkava3d-x-front-return-checkpoint.md).
+[original source/fit report](../../tank-generation/history/merkava3d-x-front-return-checkpoint.md).
 The earlier 16 before/after images, 520-pose proof and test-only containment
 receipt remain preserved. They do not certify the corrected runtime below.
 
@@ -67,5 +67,5 @@ claimed. The parent must still run current combined anatomy and composed
 release; prior screenshots or this focused pass do not substitute for it.
 
 Fresh corrected `npm run typecheck` and `npm run build:public` both PASS.
-The public registry probe remains 174 procedural playables and zero
-GLB-sourced runtime models; the existing large-chunk warning remains.
+The public registry probe remains 174 playables, all
+procedural; the existing large-chunk warning remains.

@@ -166,11 +166,15 @@ const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifan
  * (gm352AirDefenseSpecs.ts; owner 2026-11-05: "tunguska and pantsir need camos"). Appended after 269's saved catalog
  * indices (269 is live, so its order holds). */
 const AUTHORED_PAINT_IDS_AFTER_269 = Object.freeze(['paint_tunguska_m', 'paint_pantsir_s1'] as const);
+/** Release 272: the Object 292's Kubinka three-tone (russia152Specs.ts; owner 2026-11-11: "give the molot and obj 292
+ * actual camos"): a pale sand base under grey-green and near-black bands, the surviving tank's coat before its plain green
+ * repaint. Appended after 271's saved catalog indices (271 is live, so its order holds). */
+const AUTHORED_PAINT_IDS_AFTER_271 = Object.freeze(['paint_object292'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
   | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_269[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_271[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
@@ -180,7 +184,8 @@ const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_269 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_269 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_271 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -225,6 +230,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_PLAIN_269,
   ...AUTHORED_PAINT_IDS_AFTER_268,
   ...AUTHORED_PAINT_IDS_AFTER_269,
+  ...AUTHORED_PAINT_IDS_AFTER_271,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -1003,10 +1009,13 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m1a1_aim_sa_aus: 'paint_leopard_as1',
   m1a2_sepv3_aus: 'paint_leopard_as1',
   redback: 'paint_leopard_as1',
-  // the 152 mm line: the Object 292 in the plain green Kubinka shows it in, and the Molot, the 152 mm line's other Soviet prototype, in
-  // the same: the national Russian plain (the service presets are a cold-war amoeba and the T-90M's digital)
-  object292: 'national_ru',
-  object477_molot: 'national_ru',
+  // the 152 mm line's Soviet prototypes (release 272, owner 2026-11-11: "give the molot and obj 292 actual camos"; they
+  // wore the national Russian plain): the Object 292 in its own paint, the three-tone the surviving tank wore at Kubinka
+  // (the Patriot Park photograph: pale sand under grey-green and near-black bands); the Molot, whose one photograph shows
+  // no scheme, in the Soviet and Russian Army's three-colour deforming coat of its era (late 1980s to the 1990s: green
+  // under khaki and black blotches), the Pantsir-S1's paint (no new paint)
+  object292: 'paint_object292',
+  object477_molot: 'paint_pantsir_s1',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

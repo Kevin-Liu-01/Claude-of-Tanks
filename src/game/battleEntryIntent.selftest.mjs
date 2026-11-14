@@ -31,7 +31,9 @@ const { createBattleEntryIntent, replayBattleEntry } = battleEntryIntentModule;
 {
   const intent = createBattleEntryIntent();
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'teams', seats: [1, 2] } });
-  assert.deepEqual(intent.couch, { sides: 'teams' }, 'a couch begin keeps its sides (the seats are read again at a replay)');
+  assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'a couch begin keeps its sides, and its screen shared when unsaid (the seats are read again at a replay)');
+  intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'together', view: 'split' } });
+  assert.deepEqual(intent.couch, { sides: 'together', view: 'split' }, 'couch-panes-272: the experimental split screen is kept');
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: null });
   assert.equal(intent.couch, null, 'a solo begin clears the couch');
   intent.begin({ terrainVariant: null, campaignOperationId: null, watched: false, couch: { sides: 'sideways' } });
@@ -61,10 +63,10 @@ const { createBattleEntryIntent, replayBattleEntry } = battleEntryIntentModule;
   assert.deepEqual([solo.outcome, solo.calls], ['started', [['replay', { watch: false, couch: null }]]], 'a solo battle: BATTLE');
   const watched = run({ intent: { watched: true, couch: null } });
   assert.deepEqual(watched.calls, [['replay', { watch: true, couch: null }]], 'a watched battle is watched again');
-  const couch = run({ intent: { watched: false, couch: { sides: 'teams' } }, seats: [1, 3] });
+  const couch = run({ intent: { watched: false, couch: { sides: 'teams', view: 'split' } }, seats: [1, 3] });
   assert.equal(couch.outcome, 'started');
   assert.deepEqual(couch.calls, [['closeJoins'], ['replay', { watch: false,
-    couch: { seats: [1, 3], sides: 'teams', names: ['Seat 1', 'Seat 3'] } }]],
+    couch: { seats: [1, 3], sides: 'teams', view: 'split', names: ['Seat 1', 'Seat 3'] } }]],
   'a couch battle starts again with the phones here now, its join window closed first');
   const empty = run({ intent: { watched: false, couch: { sides: 'together' } }, seats: [] });
   assert.deepEqual([empty.outcome, empty.calls], ['lobby', [['lobby']]], 'no phone here: the couch lobby, never a keyboard battle');

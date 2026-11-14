@@ -2,8 +2,8 @@
 // states them, and short seeded runs through the real solo battle (Horde's first wave over a 24-deal sweep) pin the asks the owner made of the zombie modes
 // (2026-10-17 / 2026-10-18): Endless Horde fields the wave law's enemies out of the humans' reach and sight, its fodder
 // hulls (0.15 of their own) against the humans' doubled hulls, and zombies that rush in, never fall back, scoot, kite
-// or ram; the Infected arrive near the survivors and close on them. The long A/B batches (8+ seeds a mode) live under
-// cot-launch-state/streams/gameplay-modes-228/metrics; tools/mode-aggression-targets.json holds the gate.
+// or ram; the Infected arrive near the survivors and close on them. The long A/B batches (8+ seeds a mode) are kept outside the
+// repository; tools/mode-aggression-targets.json holds the gate.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -241,7 +241,7 @@ const mean = (list, f) => list.reduce((n, r) => n + (f(r) ?? 0), 0) / list.lengt
 
 // Deals that fail a conduct ask through a named, unfixed defect (Main, 2026-11-02), by mode and seed, the asks and the
 // cause. The list only shrinks: a listed deal that passes its asks fails the receipt until it is struck off here (and in
-// cot-launch-state TESTS-OWED). Its other asks hold as on every deal.
+// the tests-owed record). Its other asks hold as on every deal.
 // 2026-11-02: horde.6 and horde.24 struck off (the director's arrival leads on its side's knowledge, 84cb8f86a8; both pass)
 const KNOWN_CONDUCT = new Map();
 const conductMisses = [], known = [];

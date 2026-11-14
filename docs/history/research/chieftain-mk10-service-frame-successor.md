@@ -1,7 +1,7 @@
 # Chieftain Mk10 X service-frame preservation contract
 
 2026-09-08 — test-only successor to an incompatible historical comparison.
-No runtime geometry, lamp annotation, source oracle, armor rule or visual gate
+No runtime geometry, lamp annotation, reference, armor rule or visual gate
 changes in this checkpoint. Both focused tests pass at HIGH and LOW; this is
 not a complete-suite or vehicle release certificate.
 

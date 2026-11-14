@@ -6,10 +6,8 @@ import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceipt
 import {boundOrigin, toolServerOptions} from './tool-page-load.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
-import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
 import { roofEquipmentVerdict } from './source-equipment-policy.mjs';
-import { verifyConfigurationSource } from './source-configuration-record.mjs';
-import { measureSourceOpenings } from './source-opening-check.mjs';
+import { approvedOpeningsVerdict } from './approved-openings.mjs';
 import { isArieteOpeningTarget } from './ariete-source-openings.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
@@ -18,9 +16,11 @@ import { createStageRunner, formatStageSummary, stageStatus, summarizeStages } f
 import { contiguityPassed } from './contig-grid.mjs';
 import { CONTIG_HIDDEN_LEDGER, applyHiddenGaps, readHiddenLedger } from './contig-hidden-gaps.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
-// aggregates the standard's machine-checkable gates per tank:
-//   A.  geometry-gate components (latest docs/geometry-gate/<id>.json,
-//       staleness-flagged; use --gate to force a fresh run first)
+// aggregates the standard's machine-checkable gates per tank. Owner, 2026-11-12: outside 3D models are tank-generation
+// comparison bases only, so no stage here reads one or a record measured on one; every stage checks the build against
+// itself, its own records and the game's rules.
+//   A.  a concept id proves its design record, a photo id its photo packet (fresh receipts); any other id has no
+//       A-stage evidence (N/A, never a failure)
 //   B4. track containment (tools/track-clip-audit.mjs --exact)
 //   B2. CONTIGUITY (v2): top-down ~6 cm scan on the procedural build via
 //       tools/standard-check-page.html — enclosed sky cells inside the plan
@@ -32,41 +32,32 @@ import { CONTIG_HIDDEN_LEDGER, applyHiddenGaps, readHiddenLedger } from './conti
 //       lattice finds and the pre-227 raster never saw are listed per id in
 //       docs/geometry-gate/contig-hidden.json (guards 229, the fleet audit):
 //       known work orders, reported on every run; any other gap, or a listed
-//       one grown past its box, fails. Every approved exterior opening must
-//       match complete-source air and finite stock witnesses; unexpected
-//       holes remain zero. FrontSide render truth doubles as
+//       one grown past its box, fails. A vehicle with an approved exterior
+//       opening shows holes only inside it (tools/approved-openings.mjs);
+//       unexpected holes remain zero. FrontSide render truth doubles as
 //       the winding audit.
 //   B3. DECORATION census (v2): KIT.fittings marker roots on the procedural
 //       build — real rendered pintleMG/openYokeRws stock + other fitting
 //       dressing. Hand-authored decoration carries no markers and censuses
 //       ZERO: migrate the profile to KIT.fittings (kit.js) or carry a packet
-//       justification for a real hand-authored weapon. Owner-approved source
-//       configurations pin exact counts by original hash; others need mg>=1, except a vehicle whose real counterpart
-//       carries no roof weapon (src/vehicles/roofWeaponPolicy.ts, VH.14 2026-10-14), which needs mg 0.
+//       justification for a real hand-authored weapon. A photo id's packet and a vehicle in
+//       src/vehicles/roofWeaponPolicy.ts PINNED_ROOF_WEAPON_COUNT pin exact counts; others need mg>=1, except a
+//       vehicle whose real counterpart carries no roof weapon (NO_ROOF_WEAPON, VH.14 2026-10-14), which needs mg 0.
 // Usage:
 //   node tools/tank-standard-check.mjs --ids=a,b [--gate] [--no-render] [--stages]
 //   node tools/tank-standard-check.mjs --fixture     # KIT.fittings self-test
-// --stages (2026-10-16, test-speed R4b): run and report EVERY stage (A geometry/concept/photo, B4 clip, B2 contiguity,
+// --stages (2026-10-16, test-speed R4b): run and report EVERY stage (A concept/photo, B4 clip, B2 contiguity,
 //   B3 decor) for every id instead of stopping at the first failing stage; print a per-stage summary and write
-//   <out>/stages.json. The exit stays 2 when any gated stage fails for any id or any stage itself fails. --gate keeps
-//   its meaning: a fresh geometry run whose stale or failed packet fails the A stage (tools/standard-check-stages.mjs).
+//   <out>/stages.json. The exit stays 2 when any gated stage fails for any id or any stage itself fails
+//   (tools/standard-check-stages.mjs).
 // Own vite 74xx-77xx; cot-shots FIFO lock held around the render phase only
-// (the fresh geometry phase is wrapped here; track-clip manages its own turn).
+// (track-clip manages its own turn).
 import { execFileSync } from 'node:child_process';
-import { readFileSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
 
-const { configurations: studyConfigurations } = JSON.parse(readFileSync(new URL('../docs/references/batches/supplied-afv-configurations.json', import.meta.url), 'utf8'));
-// The source-study records keep the spelling the study was registered under; a vehicle renamed through the tank id
-// alias layer reads its study's record by its schema-1 id (SSOT 2.19).
-const configurations = new Proxy(studyConfigurations, {
-  get(target, key) {
-    if (typeof key !== 'string' || Object.hasOwn(target, key)) return target[key];
-    const study = target[tankSeedId(key)];
-    return study ? { ...study, id: key } : undefined;
-  },
-});
+// The equipment configuration of each photo id, from its photo document (the only configuration the gate reads).
+const configurations = {};
 const sourceReceipts = new Map();
 const openingReports = new Map();
 const conceptReports = new Map();
@@ -102,20 +93,6 @@ async function runChild(tool, args) {
 // (2026-10-22, capture-hold): the hold covers the renders only.
 const captureLock = createCaptureLock();
 process.on('exit', () => captureLock.release());
-
-// --- phase 0: optional fresh gate run (serialized around its browser child) -
-// A forced run requires every registered comparison oracle to be present and
-// every packet to be freshly measured. geometry-gate --check owns the
-// fail-closed oracle census; the mtime check below prevents a stale packet from
-// being reported as evidence for this release run.
-let freshGateStartedAt = null;
-if (forceGate && ids.length) {
-  // --check makes a missing registered oracle or a sub-floor measurement a
-  // hard release failure rather than treating it as a procedural-only ID.
-  freshGateStartedAt = Date.now();
-  // --stages: a red geometry run is recorded; each id's A stage then reads its fresh (or missing) packet below.
-  await stages.run('geometry', () => runChild('tools/geometry-gate.mjs', [`--ids=${ids.join(',')}`, '--check']));
-}
 
 // Fresh native design proof replaces ONLY obsolete comparison assertions.
 const conceptStartedAt=Date.now();
@@ -237,8 +214,7 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
     for (const id of ids) await stages.run('contiguity', async () => {
       const configuration = configurations[id];
       const photo=photoDocuments.get(id);
-      const sourceReceipt = photo ? {id,verified:true,path:photo.packetPath,sha256:photo.packetSha256}
-        : configuration ? verifyConfigurationSource(id, configuration) : null;
+      const sourceReceipt = photo ? {id,verified:true,path:photo.packetPath,sha256:photo.packetSha256} : null;
       sourceReceipts.set(id, sourceReceipt);
       const result = standard.get(id);
       if (!result || result.error || !result.holes) return;
@@ -247,11 +223,9 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
       result.latticeHoles = result.holes;
       result.holes = hidden.scan;
       result.hiddenGaps = { listed: hidden.listed.length, removedPrimary: hidden.removedPrimary, closed: hidden.closed };
-      try {
-        openingReports.set(id, await measureSourceOpenings(id, result.holes, configuration, sourceReceipt, result.qualityScans));
-      } catch (error) {
-        openingReports.set(id, { passed:false, reason:String(error.message || error) });
-      }
+      const low = result.qualityScans?.low;
+      openingReports.set(id, approvedOpeningsVerdict({ id, scan: result.holes,
+        lowScan: low && low.id === id && low.quality === 'low' && !low.error ? low.holes : null }));
       mkdirSync(reportRoot,{recursive:true});
       writeFileSync(path.join(reportRoot,`${id}.json`),JSON.stringify({
         id,recordedAt:new Date().toISOString(),standard:result,
@@ -286,45 +260,26 @@ if (fixture) {
 
 // --- per-tank table ----------------------------------------------------------
 const CLIP_BAND = 0; // strict owner law: no non-running-gear solid may enter the animated sweep
-console.log('id                 | gateMin | components (h/w/t/st/d/f)      | age  | clip f/r+sweep | contig | decor');
-console.log('-------------------|---------|--------------------------------|------|----------------|--------|------------');
+console.log('id                 | A stage                        | clip f/r+sweep | contig | decor');
+console.log('-------------------|--------------------------------|----------------|--------|------------');
 let fails = 0;
 const stageRows = []; // --stages: one verdict per stage per id (tools/standard-check-stages.mjs)
 for (const id of ids) {
-  let row = 'procedural-only', min = 'N/A', age = '—';
-  let gateRequired = 90;
-  let gateApplicable = false;
-  let exactGatePassed = false;
-  let gatePacket = false; // a geometry packet: the gate writes one for every registered oracle it measures
+  let row = 'procedural: no record (N/A)';
   const concept=firstPartyConcept(id);
-  if(!concept&&!isPhotoReference(id))try {
-    const p = `docs/geometry-gate/${id}.json`;
-    const j = JSON.parse(readFileSync(p, 'utf8'));
-    const packetMtime = statSync(p).mtimeMs;
-    gatePacket = true;
-    gateApplicable = freshGateStartedAt === null || packetMtime >= freshGateStartedAt;
-    const c = j.components;
-    if (gateApplicable) {
-      min = j.geoMin;
-      gateRequired = Number.isFinite(j.requiredMinimum) ? j.requiredMinimum : 90;
-      exactGatePassed = geometryReceiptPassed(j);
-      row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
-      age = `${Math.round((Date.now() - packetMtime) / 60000)}m`;
-    }
-  } catch { /* keep placeholder */ }
   const cl = clip.get(id);
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = strictTrackClipPassed(cl);
   // Classified by id, not by document: a photo id whose document failed to load (--stages) fails its A stage.
   const photoId=isPhotoReference(id), photo=photoDocuments.get(id);
-  // Stage A's route and verdict (photo-reference-policy.mjs; Main 2026-10-31): a registered oracle measures (the gate
-  // refuses a photo packet beside one), a concept or photo id proves its record, a procedural-only id fails a forced gate.
-  const route = stageARoute(id, { registered: gatePacket, concept: Boolean(concept) });
-  const gateOk = stageAPassed(route, { forceGate, gateApplicable, exactGatePassed,
+  // Stage A's route and verdict (photo-reference-policy.mjs): a concept or photo id proves its record; any other id has
+  // no A-stage evidence and is N/A (owner 2026-11-12: no outside model qualifies or fails a build).
+  const route = stageARoute(id, { concept: Boolean(concept) });
+  const gateOk = stageAPassed(route, {
     photoProof: photoId && Boolean(photo) && photoReceiptPassed(id,photoReports.get(id),photo.packet,photo.packetSha256,photoStartedAt),
     conceptProof: Boolean(concept) && conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHashes.get(id)) });
-  if(concept){row='concept: comparison N/A';gateRequired='N/A';}
-  if(photoId){row='photo; 3D score UNVERIFIED';gateRequired='—';}
+  if(concept)row='concept design proof';
+  if(photoId)row='photo packet proof';
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;
@@ -368,25 +323,24 @@ for (const id of ids) {
     }
   }
   if (!gateOk || !clipOk || !contigOk || !decorOk) fails++;
-  const aStage = concept ? 'concept' : photoId ? 'photo' : 'geometry';
+  const aStage = concept ? 'concept' : photoId ? 'photo' : 'procedural';
   stageRows.push({ id, stages: {
-    // A comparison id with no packet outside --gate stays procedural-only: N/A, never a failure (as before).
-    [aStage]: gateOk && aStage === 'geometry' && !gateApplicable ? 'N/A' : stageStatus(true, gateOk),
+    [aStage]: aStage === 'procedural' ? 'N/A' : stageStatus(true, gateOk),
     clip: stageStatus(true, clipOk),
     contiguity: stageStatus(!noRender, contigOk),
     decor: stageStatus(!noRender, decorOk),
   } });
   console.log(
-    `${id.padEnd(19)}| ${String(min).padStart(4)}/${String(gateRequired).padEnd(2)} | ${String(row).padEnd(31)}| ${String(age).padStart(4)} | ` +
+    `${id.padEnd(19)}| ${(aStage === 'procedural' ? row : `${row} ${gateOk ? '✓' : '✗'}`).padEnd(31)}| ` +
     `${clipStr.padStart(14)}${cl ? (clipOk ? ' ✓' : ' ✗') : '  '}| ${contigStr.padStart(6)} | ${decorStr}`);
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 at every hull-anchored phase (φ = phase-only) + verified equipment configuration'}).`);
+    `(fresh concept and photo proofs + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 at every hull-anchored phase (φ = phase-only) + the equipment census'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
-      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. Source-specific counts require the approved original hash; other vehicles retain mg>=1, except those listed in src/vehicles/roofWeaponPolicy.ts (no roof weapon on the real vehicle: mg 0).');
+      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. Pinned counts (photo packets, roofWeaponPolicy.ts PINNED_ROOF_WEAPON_COUNT) are exact; other vehicles retain mg>=1, except those listed in src/vehicles/roofWeaponPolicy.ts (no roof weapon on the real vehicle: mg 0).');
   }
 }
 let stageSummary = null;

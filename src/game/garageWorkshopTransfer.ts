@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TANK_SPECS } from '../vehicles/specs.ts';
+import { createWorkerCalls, type WorkerCallTimers } from '../workerCalls.ts';
 import {
   createGarageWorkshopMaterialPalette,
   garageWorkshopFinishKey,
@@ -333,13 +334,19 @@ async function visualFromWire(
   };
 }
 
+/** How long the workshop worker may stay silent while it holds an exhibit (ms): the page's single-job workers' 15 s
+ *  (materialPainterWorkerClient.ts; it builds the whole tank before its first batch), twice that before its first answer
+ *  while it loads the fleet's builders. */
+const WORKSHOP_SILENCE_MS = 15_000;
+const WORKSHOP_FIRST_SILENCE_MS = 30_000;
+
 export function createGarageWorkshopTransfer(
   engineCtx: GarageDressingEngineContext,
+  options: { silenceMs?: number; firstSilenceMs?: number; timers?: WorkerCallTimers } = {},
 ): {
   createVisual(specId: string, camoSeed: number): Promise<GarageWorkshopVisual>;
   dispose(): void;
 } {
-  let worker: Worker | null = null;
   let nextRequestId = 1;
   const sharedPalettes = new Map<string, {
     palette: GarageWorkshopMaterialPalette;
@@ -372,22 +379,19 @@ export function createGarageWorkshopTransfer(
       },
     };
   };
-  const pending = new Map<number, {
+  interface WorkshopRequest {
     camoSeed: number;
     wire: GarageWorkshopGeometryWire | null;
     geometryCount: number;
     nodeCount: number;
     resolve(value: GarageWorkshopVisual): void;
     reject(error: Error): void;
-  }>();
-  const handleMessage = (event: MessageEvent<WorkerReply>): void => {
-    const reply = event.data;
-    const request = pending.get(reply.requestId);
-    if (!request) return;
+  }
+  /** One of the worker's messages for its request; true once the request has settled. */
+  const handleReply = (request: WorkshopRequest, reply: WorkerReply): boolean => {
     if (!reply.ok) {
-      pending.delete(reply.requestId);
       request.reject(new Error(reply.message || 'Garage workshop worker failed'));
-      return;
+      return true;
     }
     if (reply.kind === 'begin') {
       request.geometryCount = reply.geometryCount;
@@ -401,72 +405,59 @@ export function createGarageWorkshopTransfer(
         nodes: [],
         payload: reply.payload,
       };
-      return;
+      return false;
     }
     if (!request.wire) {
-      pending.delete(reply.requestId);
       request.reject(new Error('Garage workshop worker sent a batch before its header'));
-      return;
+      return true;
     }
     if (reply.kind === 'geometries') {
       request.wire.geometries.push(...reply.geometries);
-      return;
+      return false;
     }
     if (reply.kind === 'nodes') {
       request.wire.nodes.push(...reply.nodes);
-      return;
+      return false;
     }
-    if (reply.kind !== 'complete') return;
-    pending.delete(reply.requestId);
+    if (reply.kind !== 'complete') return false;
     if (request.wire.geometries.length !== request.geometryCount
       || request.wire.nodes.length !== request.nodeCount) {
       request.reject(new Error('Garage workshop worker transfer was incomplete'));
-      return;
+      return true;
     }
     void visualFromWire(request.wire, acquirePalette, engineCtx)
       .then(request.resolve, request.reject);
+    return true;
   };
-  const handleError = (event: ErrorEvent): void => {
-    const error = new Error(event.message || 'Garage workshop worker failed');
-    for (const request of pending.values()) request.reject(error);
-    pending.clear();
-  };
-  const ensureWorker = (): Worker => {
-    if (worker) return worker;
-    worker = new Worker(new URL('./garageWorkshopGeometryWorker.ts', import.meta.url), {
+  // (improve-271, plan 031) src/workerCalls.ts: a worker silent past its deadline (each streamed batch resets it) or one
+  // that fails rejects what it holds, so garageDressing.ts builds those exhibits in line and the covered Garage restore
+  // settles; the dead worker is terminated and the next request starts a fresh one under R6's count
+  // (src/workerClientHealth.ts)
+  const calls = createWorkerCalls<WorkerReply>({
+    name: 'Garage workshop worker',
+    spawn: () => new Worker(new URL('./garageWorkshopGeometryWorker.ts', import.meta.url), {
       type: 'module',
       name: 'cot-garage-workshop-geometry',
-    });
-    worker.onmessage = handleMessage;
-    worker.onerror = handleError;
-    return worker;
-  };
+    }),
+    idOf: (reply) => reply?.requestId,
+    silenceMs: options.silenceMs ?? WORKSHOP_SILENCE_MS,
+    firstSilenceMs: options.firstSilenceMs ?? WORKSHOP_FIRST_SILENCE_MS,
+    timers: options.timers,
+  });
   return {
     createVisual(specId, camoSeed) {
       const requestId = nextRequestId++;
       return new Promise((resolve, reject) => {
-        pending.set(requestId, {
-          camoSeed,
-          wire: null,
-          geometryCount: 0,
-          nodeCount: 0,
-          resolve,
-          reject,
+        const request: WorkshopRequest = { camoSeed, wire: null, geometryCount: 0, nodeCount: 0, resolve, reject };
+        const posted = calls.post(requestId, { requestId, specId, camoSeed, spec: TANK_SPECS[specId] }, undefined, {
+          reply: (reply) => handleReply(request, reply),
+          fail: reject,
         });
-        ensureWorker().postMessage({
-          requestId,
-          specId,
-          camoSeed,
-          spec: TANK_SPECS[specId],
-        });
+        if (!posted) reject(new Error('Garage workshop worker unavailable'));
       });
     },
     dispose() {
-      worker?.terminate();
-      worker = null;
-      const error = new Error('Garage workshop worker disposed');
-      for (const request of pending.values()) request.reject(error);
-      pending.clear();
+      calls.dispose(new Error('Garage workshop worker disposed'));
       for (const entry of sharedPalettes.values()) entry.palette.dispose();
       sharedPalettes.clear();
     },

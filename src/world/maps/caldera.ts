@@ -268,11 +268,18 @@ export default {
     architecture: BUILDING_STYLES.caldera.kit,
     tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
     // (round 3: no rail yard — its seven sidings were Cinder Junction's, laid across the paddies)
-    wallStyle: 'fieldstone', wallStoneChance: 0.72,
-    wallRuns: [
+    // (buildings-272, the blind critic: "a tall, crisp block wall that zigzags across the open paddy") Aso's farmstead
+    // walls are knee-high banks of the caldera's dark lava boulders, laid dry round the yards (inhabitKit lavaStoneModule);
+    // the stone tinted down to the outcrops' basalt (scenery.masonryTint below)
+    wallStyle: 'lava', wallStoneChance: 0.72,
+    // (buildings-272) the six field walls taken up: Aso's paddies are held by their earth bunds (the paddies above), never
+    // walled; their draws spent where they stood, so the rest of the map draws what it drew
+    retiredWallRuns: [
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
       [204, -142, 300, -106, 3], [202, 134, 296, 168, 2],
       [-144, 248, -42, 278, 3], [68, -270, 164, -238, 2],
+    ],
+    wallRuns: [
       // (buildings-271, the 3D census: "walled farmstead compounds ... round a packed yard, hedge or block wall") each
       // farmstead's dry-laid lava-stone wall round its back and both ends, 2 m outside its buildings (the minka, the naya,
       // the kura row, the greenhouse; their footprints in the minka's frame from the built world), a field gate to the
@@ -297,6 +304,10 @@ export default {
       trucks: 8, jeeps: 5, drumClusters: 9, camps: 3, modernClutter: 34,
       roadFence: 'fencerail', yardFence: 'fencerail',
     },
+  },
+  scenery: {
+    // (buildings-272) the lava walls' stone: the field print darkened to the caldera's weathered basalt and andesite
+    masonryTint: [0.5, 0.49, 0.48],
   },
   horizon: {
     // (Caldera round 2, wave 114: "smooth, untextured domes and pale alpine spires rather than Aso's long, flat-topped

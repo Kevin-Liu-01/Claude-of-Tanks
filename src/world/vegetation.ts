@@ -547,6 +547,11 @@ export interface VegetationRuntime {
   ): void;
   /** Item 259: Settings' See-through foliage (FOLIAGE_LENS_REACH): the camera's foliage fades, off by default. */
   setSeeThrough(on: boolean): void;
+  /**
+   * More places the near tree tier is chosen for (couch mode's split screen: the other panes' cameras), besides the
+   * camera `update` is given: a tree takes the tier of its distance to the nearest. Empty or null: the camera alone.
+   */
+  setDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null): void;
   treeObstacles: TreeObstacle[];
   concealers: ConcealmentDisc[];
   /** Fell a trunk toward (dx, dz); `settled` lays it at its final pose at once (state that fell before this viewer looked). */
@@ -9106,9 +9111,40 @@ function* vegetationBuildSteps(
       lodTransitions.splice(i, 1);
     }
   }
+  /** (couch-panes-272) The split screen's other panes' cameras: the near tier is every pane's (setDetailFoci). */
+  let detailFoci: readonly { readonly x: number; readonly z: number }[] = [];
+  /** Where the last tree repartition stood for each focus (a focus moved past 6 m repartitions, as the camera does). */
+  const repartitionedFoci: { x: number; z: number }[] = [];
+  /** A tree's planar distance to the nearest of the camera and the detail foci. */
+  function nearestViewDistance(x: number, z: number, camPos: THREE.Vector3): number {
+    let d = Math.hypot(x - camPos.x, z - camPos.z);
+    for (let i = 0; i < detailFoci.length; i++) {
+      const focusD = Math.hypot(x - detailFoci[i].x, z - detailFoci[i].z);
+      if (focusD < d) d = focusD;
+    }
+    return d;
+  }
+  function fociMoved(): boolean {
+    if (repartitionedFoci.length !== detailFoci.length) return true;
+    for (let i = 0; i < detailFoci.length; i++) {
+      const dx = detailFoci[i].x - repartitionedFoci[i].x, dz = detailFoci[i].z - repartitionedFoci[i].z;
+      if (dx * dx + dz * dz > 36) return true;
+    }
+    return false;
+  }
+  function noteRepartitionedFoci(): void {
+    repartitionedFoci.length = detailFoci.length;
+    for (let i = 0; i < detailFoci.length; i++) {
+      const at = repartitionedFoci[i] ??= { x: 0, z: 0 };
+      at.x = detailFoci[i].x; at.z = detailFoci[i].z;
+    }
+  }
+  function setDetailFoci(points: readonly { readonly x: number; readonly z: number }[] | null): void {
+    detailFoci = points ?? [];
+  }
   function repartitionTree(t: TreeRecord, camPos: THREE.Vector3): void {
     if (t.lodT) return; // mid cross-fade — settle before re-deciding
-    const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
+    const d = nearestViewDistance(t.x, t.z, camPos), reach = t.nearScale ?? 1;
     const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
     if (t.near) {
       if (d > treeNearOut * reach && !promo) {
@@ -9131,7 +9167,8 @@ function* vegetationBuildSteps(
   function outlandBatchLive(batch: OutlandTreePools, camPos: THREE.Vector3): boolean {
     if (scopeZoomR > 0) return true;
     for (const sp of batch.species) for (const slots of batch.nearSlots.get(sp)!) if (slots.length) return true;
-    const gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
+    let gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
+    for (const focus of detailFoci) gap = Math.min(gap, batch.minRadiusM - Math.max(Math.abs(focus.x), Math.abs(focus.z)));
     return gap < treeNearOut * OUTLAND_NEAR_SCALE + 6;
   }
   function repartitionTrees(camPos: THREE.Vector3): boolean {
@@ -9159,7 +9196,7 @@ function* vegetationBuildSteps(
   function seedTreePartition(tree: TreeRecord, camPos: THREE.Vector3): void {
     tree.lodT = false;
     tree.lodF = 0;
-    const distance = Math.hypot(tree.x - camPos.x, tree.z - camPos.z), reach = tree.nearScale ?? 1;
+    const distance = nearestViewDistance(tree.x, tree.z, camPos), reach = tree.nearScale ?? 1;
     tree.near = distance < treeNearIn * reach || (tree.near && distance <= treeNearOut * reach)
       || scopePromoted(tree, camPos);
     if (tree.near) {
@@ -9379,9 +9416,10 @@ function* vegetationBuildSteps(
       rebuildCarpet(camPos);
       return false;
     }
-    if (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending) {
+    if (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending || fociMoved()) {
       scopeRepartitionPending = false;
       _lastCam.copy(camPos);
+      noteRepartitionedFoci();
       return repartitionTrees(camPos);
     }
     // Stagger a tree repartition against carpet construction/publication, but
@@ -9891,7 +9929,7 @@ function* vegetationBuildSteps(
     group.userData.outlandTrees = (group.userData.outlandTrees ?? 0) + batch.trees.length;
     return batch.trees.length;
   }
-  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, groundCoverSealSteps, treeObstacles, concealers,
+  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, setDetailFoci, groundCoverSealSteps, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => felledTrees.advance(dt, 'timeline'), setFallDriver: (driver: FallDriver) => felledTrees.setDriver(driver), _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _seeThrough: () => ({ on: seeThrough, sweeps: occlusionSweeps, sniperTarget: sniperFadeTarget, crownReach: uCrownNearReach.value,
       shrubReach: uShrubNearReach.value, nearSee: uCotNearSee.value }),

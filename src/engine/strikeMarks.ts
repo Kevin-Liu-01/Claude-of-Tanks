@@ -9,8 +9,8 @@
  * STRIKE_MARK_MAX marks, one loop over the live ones, and nothing at all when none is up (uStrikeN 0 skips the block).
  * No geometry, no draw call, no per-frame allocation.
  *
- * Shapes (the call-ins' footprints, sim/airSupport.ts strikeFootprint): a circle (the artillery's dispersion, the
- * bomb's blast with its laser cross), a lane (the strafing run's lane with chevrons marching along its heading), a track
+ * Shapes (the call-ins' footprints, sim/strikeRuns.ts runFootprint): a circle (the artillery's dispersion; the bomb's
+ * ellipse, its blast round its miss, long along the run, with its laser cross on the run's axis), a lane (the strafing run's lane with chevrons marching along its heading), a track
  * (the recon pass: its flight line and the dashed edges of the swath it reveals, unfilled), the AC-130's orbit ring; and
  * the aiming reticle of the crew's own strike view, brighter, with
  * its range ticks. Lines are emissive in the linear HDR buffer (they read through the haze and touch the bloom).
@@ -29,9 +29,9 @@ const SHAPE_CODE: Readonly<Record<StrikeMarkShape, number>> = Object.freeze({
 export interface StrikeMark {
   x: number; y: number; z: number;
   shape: StrikeMarkShape;
-  /** circle/orbit: the radius; lane: the half length along the heading. */
+  /** circle/orbit: the radius (an ellipse's semi-axis along the heading); lane: the half length along the heading. */
   sizeA: number;
-  /** lane: the half width. */
+  /** lane: the half width; circle: 0, or an ellipse's semi-axis across the heading. */
   sizeB: number;
   heading: number;
   r: number; g: number; b: number;
@@ -129,9 +129,15 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
       float w = max( 0.22, px * ( aim ? 1.4 : 1.0 ) ) * ( 1.0 + urg * 0.8 );
       float line = 0.0, fill = 0.0;
       if ( s < 0.5 || ( s > 1.5 && s < 2.5 ) ) {
-        // circle (0) and orbit ring (2)
-        float r = length( d ), R = A.z;
-        float ang = atan( d.y, d.x );
+        // circle (0) and orbit ring (2); a circle with an across semi-axis (A.w) is an ellipse along the heading (the bomb's
+        // footprint: its long miss along the run), drawn in the frame of the run with the across axis stretched to the along
+        vec2 e = d;
+        if ( s < 0.5 && A.w > 0.0 ) {
+          float sh = sin( B.x ), ch = cos( B.x );
+          e = vec2( ( d.x * ch - d.y * sh ) * A.z / A.w, d.x * sh + d.y * ch );
+        }
+        float r = length( e ), R = A.z;
+        float ang = atan( e.y, e.x );
         float ring = cotStrikeLine( r - R, w, px );
         // dashes marching round the ring (quicker as it nears); the orbit's are long, the circle's short
         float dashes = s > 1.5 ? 18.0 : 36.0;
@@ -139,14 +145,14 @@ export const STRIKE_MARKS_GLSL = /* glsl */ `
         line = max( line, ring * mix( dash, 1.0, aim ? 0.6 : 0.25 ) );
         // the inner ring and four ticks (the bomb's laser cross reads in them)
         line = max( line, cotStrikeLine( r - R * 0.5, w * 0.6, px ) * 0.55 );
-        vec2 a2 = abs( d );
-        float tick = max( cotStrikeLine( d.x, w * 0.8, px ) * step( a2.y, R * 1.12 ) * step( R * 0.72, a2.y ),
-                          cotStrikeLine( d.y, w * 0.8, px ) * step( a2.x, R * 1.12 ) * step( R * 0.72, a2.x ) );
+        vec2 a2 = abs( e );
+        float tick = max( cotStrikeLine( e.x, w * 0.8, px ) * step( a2.y, R * 1.12 ) * step( R * 0.72, a2.y ),
+                          cotStrikeLine( e.y, w * 0.8, px ) * step( a2.x, R * 1.12 ) * step( R * 0.72, a2.x ) );
         line = max( line, tick );
         if ( aim || s < 0.5 ) {
           // the centre cross
-          float cross = max( cotStrikeLine( d.x, w * 0.7, px ) * step( a2.y, min( R * 0.18, 6.0 ) ),
-                             cotStrikeLine( d.y, w * 0.7, px ) * step( a2.x, min( R * 0.18, 6.0 ) ) );
+          float cross = max( cotStrikeLine( e.x, w * 0.7, px ) * step( a2.y, min( R * 0.18, 6.0 ) ),
+                             cotStrikeLine( e.y, w * 0.7, px ) * step( a2.x, min( R * 0.18, 6.0 ) ) );
           line = max( line, cross );
         }
         // a footprint's faint fill (the AC-130's ring hardly any: 140 m of red flooded an overhead view); the aim none

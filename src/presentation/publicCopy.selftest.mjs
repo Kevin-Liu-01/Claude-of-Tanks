@@ -73,10 +73,12 @@ const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.ts'), 'utf8')
 const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.ts'), 'utf8');
 assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
 // the visual archive is the site fifty's (public/media/site50-r14/archive.json: the fifty frames and each take's
-// stills) after production-r1's battlefield photographs; the manual's wall shows all of it
+// stills) after production-r1's battlefield photographs and (2026-11-11) the owner's gallery (public/media/gallery-r1,
+// src/ui/galleryShots.ts: the wall shows it after the photographs); the manual's wall shows all of it
 const siteArchive = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/archive.json'), 'utf8'));
 const productionShots = JSON.parse(readFileSync(join(ROOT, 'public/media/production-r1/manifest.json'), 'utf8')).shots;
-const archiveCount = siteArchive.shots.length + productionShots.length;
+const galleryCount = JSON.parse(readFileSync(join(ROOT, 'public/media/gallery-r1/manifest.json'), 'utf8')).items.length;
+const archiveCount = siteArchive.shots.length + productionShots.length + galleryCount;
 // (259, gallery-studio: the zh Field frames showed FRONTIER, COASTAL) every archive card reads in the locale: a
 // battlefield still by its map's name, a take by its catalog title, a frame by its own line, each feature by its key,
 // and every frame's or take's battlefield by its id

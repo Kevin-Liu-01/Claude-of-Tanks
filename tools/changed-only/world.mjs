@@ -89,7 +89,7 @@ export function computeWorldState(ctx) {
   const isOutput = (file) => outputRoots.some((root) => file === root || file.startsWith(`${root}/`));
   const fleetStop = new Set(fleetEntries);
 
-  const stepStates = {}, comps = { 'world:roster': roster, 'world:fleet': fleetKey };
+  const stepStates = {}, comps = { 'world:fleet': fleetKey };
   for (const step of steps) {
     const reasons = [...globalReasons];
     const skip = (from, to) => {
@@ -174,6 +174,5 @@ export function computeWorldState(ctx) {
   return {
     universe: 'maps', root, ids: [...mapIds], roster, toolchain, steps: stepStates, comps, globalReasons,
     inKey, outKey, fileHash, fileIds: {}, donorsOf, reasonsFor,
-    rosterOf: (manifest) => manifest.comps?.['world:roster'] ?? null,
   };
 }

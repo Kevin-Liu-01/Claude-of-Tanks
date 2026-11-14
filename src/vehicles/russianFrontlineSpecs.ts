@@ -1,5 +1,4 @@
-// Combat records for the independent Russian frontline procedural builds. The owner-supplied reference GLBs are
-// local measurement oracles only; no runtime model or source payload participates in these tanks.
+// Combat records for the independent Russian frontline procedural builds.
 
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { shell, modernArmor, moduleBox, crewBox as cbox } from './specHelpers.ts';

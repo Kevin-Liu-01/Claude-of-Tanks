@@ -19,6 +19,7 @@
 import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
 import { ACTIVE_MASTERS, SMALL_MASTERS } from '../ui/icons/spriteIndex.ts';
 import { brandMarkSVG } from '../ui/brandMark.ts';
+import { gtSymbolSvg } from '../ui/gtSymbol.ts';
 
 export type PublicPageKey = 'home' | 'gallery' | 'docs' | 'studio' | 'media';
 
@@ -112,7 +113,7 @@ export function publicFooterHtml(shell: PublicShellPage, text: ShellText, year =
     + `<a href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 16)}<span>GitHub</span>${stars}</a></nav>`
     + languageLinks(shell.path, text, 'public-footer__lang')
     + `<p class="public-footer__credit"><span>© ${year} Kevin B. Liu</span>`
-    + `<a href="https://generaltranslation.com/" target="_blank" rel="noreferrer"><img src="/brand/partners/general-translation.png" alt="" width="16" height="16" loading="lazy" decoding="async">`
+    + `<a href="https://generaltranslation.com/" target="_blank" rel="noreferrer">${gtSymbolSvg(16, 'public-footer__gt')}`
     + `<span data-i18n="publicNav.language.credit">${escapeHtml(text('publicNav.language.credit'))}</span></a></p>`
     + `</div></footer>`;
 }

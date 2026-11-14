@@ -51,7 +51,7 @@ import { couchSeatSides } from '../sim/matchRuleset.ts';
   assert.equal(controls.take(out).actionBits, PLAYER_ACTION_BITS.FIRST_AID | PLAYER_ACTION_BITS.SMOKE, 'taps press on the next tick');
   assert.equal(controls.take(out).actionBits, 0, 'and only on that tick');
   controls.tapVirtual('sniperToggle');
-  assert.equal(controls.take(out).actionBits, 0, 'the scope means nothing under the shared camera');
+  assert.equal(controls.take(out).actionBits, 0, "the scope is the pane camera's, never a press in the core");
   controls.tapVirtual('shell3');
   assert.equal(controls.take(out).shellSlot, 2, 'shell keys pick the slot');
   assert.equal(controls.take(out).shellSlot, 2, 'and the slot stays');
@@ -62,10 +62,34 @@ import { couchSeatSides } from '../sim/matchRuleset.ts';
   controls.addVirtualAim(0, 1e6);
   assert.ok(Math.abs(controls.take(out).aimPitch) <= 0.35, 'the sight never pitches past its limit');
 
+  // the split screen (phase 2): the phone's drag, scope and zoom are its pane camera's; the pane's sight lays the gun
+  const intent = {};
+  controls.aimAlong(0.5);
+  controls.drainCamera(intent);
+  controls.addVirtualAim(12, -4);
+  controls.tapVirtual('sniperToggle');
+  controls.tapVirtual('zoomIn');
+  controls.tapVirtual('zoomIn');
+  controls.tapVirtual('zoomOut');
+  assert.deepEqual(controls.drainCamera(intent), { aimDx: 12, aimDy: -4, sniperToggles: 1, zoom: 1 }, 'the camera intent since the last frame');
+  assert.deepEqual(controls.drainCamera(intent), { aimDx: 0, aimDy: 0, sniperToggles: 0, zoom: 0 }, 'drained once');
+  controls.layAim(-1.25, 0.1, 237);
+  controls.addVirtualAim(50, 0);
+  controls.take(out);
+  assert.deepEqual([out.aimYaw, out.aimPitch, out.aimDistance], [-1.25, 0.1, 237], 'a laid sight holds; the drag turns the camera, not the bearing');
+  assert.equal(controls.drainCamera(intent).aimDx, 50);
+  controls.pressVirtual('freeLook');
+  assert.equal(controls.take(out).aimLocked, true, 'free look holds the gun on its lay');
+  controls.releaseVirtual('freeLook');
+  assert.equal(controls.take(out).aimLocked, false);
+  controls.aimAlong(2);
+  assert.equal(controls.take(out).aimDistance, COUCH_AIM_DISTANCE_M, 'a new battle starts unlaid, at the default range');
+
   controls.tapVirtual('consumable1');
+  controls.pressVirtual('freeLook');
   controls.release();
   controls.take(out);
-  assert.deepEqual([out.throttle, out.steer, out.fire, out.brake, out.actionBits], [0, 0, false, false, 0], 'release lets everything go');
+  assert.deepEqual([out.throttle, out.steer, out.fire, out.brake, out.actionBits, out.aimLocked], [0, 0, false, false, 0, false], 'release lets everything go');
 }
 
-console.log('couchSeats: PASS — seats by side in roster order, the first seat on the first tank, sit-outs; levels hold, a trigger tap inside a tick fires once, taps press once, shells, aim sense, release');
+console.log('couchSeats: PASS — seats by side in roster order, the first seat on the first tank, sit-outs; levels hold, a trigger tap inside a tick fires once, taps press once, shells, aim sense, the split screen camera intent and laid sight, free look, release');

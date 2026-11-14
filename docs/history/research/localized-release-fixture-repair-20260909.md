@@ -53,7 +53,7 @@ core-unused checks plus the complete anatomy update/check: 174 anatomy and
 failures or outside-module results, all 79 existing dimension-drift warnings
 retained, and 522 technical-card files current with no tracked generation drift.
 That seven-ID release was still pending at the time. The later combined
-[nine-tank release](nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass)
+[nine-tank release](../../tank-generation/history/nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass)
 passed the complete 858-check lifecycle and both private/public builds on
 unchanged frozen inputs. That complete run supplies acceptance; none of the
 earlier failures is erased or relabelled by the narrow intermediate passes.

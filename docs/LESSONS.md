@@ -15,12 +15,12 @@ became three mandatory layers: builder-side vertex asserts (bow direction and tu
 seat derived from the reference's own vertices), the v11 mirror check (which
 near-symmetric hulls still evade), and the rule that no sheet ships without a turntable
 eyeball. Curve scores alone never certify a tank again. The root cause was ultimately
-fixed at the ORACLE (`_rotate_mesh_180y`) — when the reference itself faces −z, repair
-the oracle, never mirror the build.
+fixed at the REFERENCE (`_rotate_mesh_180y`) — when the reference itself faces −z, repair
+the reference, never mirror the build.
 
 ## The gunNode incident, or: mirror what the runtime saw
 
-Graduation retires a tank's GLB registration but keeps measuring against the print via
+Graduation retires a tank's runtime registration but keeps measuring against the reference via
 override maps in three harness pages. When leo2a4_v graduated, the map mirrored the
 registration's SURFACE call — and the `articulated` helper it used silently injects
 `gunNode:'^Gun'`. The mirrored config lacked it; at load-prove the graduate cratered to
@@ -31,9 +31,9 @@ two (the isu152 re-cert finding).
 
 ## The t84 double-warp, and stale bytes generally
 
-Oracle repairs are append-only recipes over a pristine `.bak`. The t84 packet earned its
+Reference repairs are append-only recipes over a pristine `.bak`. The t84 packet earned its
 scar when a duplicate `REPAIRS['t84']` key ran a STALE batch and double-warped the
-print; the restore came from the fresh `.bak` (committed bytes). Hence warp law v2:
+reference; the restore came from the fresh `.bak` (committed bytes). Hence warp law v2:
 fresh .bak from committed HEAD bytes per batch, never flat-assign over a live recipe
 (python asserts must target the LAST definition site — rindex), demote superseded
 recipes to history with archived baks, census expect guards, byte-idempotency proven
@@ -45,11 +45,11 @@ appended — assert against the FILE.
 
 fv510's normalize warp was disabled for a round because it "did nothing": headline 0
 before, 0 after. The re-adjudication decoded the mechanism instead of the headline: the
-curve score is 100 − 12·mean − 0.6·p95 − 1.5·cover, and a print that is 10.9% short and
+curve score is 100 − 12·mean − 0.6·p95 − 1.5·cover, and a reference that is 10.9% short and
 shape-divergent is floored at 0 by the 12·mean term no matter what the warp fixes. The
 warp had in fact collapsed single-sided cover 5.29 → 1.12 and trued the frame. Second
 mechanism in the same story: the game loader normalizes by
-min(length, width·1.08, height·1.30) — a mast-heavy print binds on HEIGHT, so a pure
+min(length, width·1.08, height·1.30) — a mast-heavy reference binds on HEIGHT, so a pure
 z-stretch is normalized away until a y-knee releases the clamp. Judge warps by the row
 TERMS (mean/p95/cover/safeScale), never a 0-floored headline; verify which min() term
 binds before authoring.
@@ -57,12 +57,12 @@ binds before authoring.
 ## The parked turret (m26), and the value of re-diagnosis
 
 Every early m26 measurement said "sunken turret" — a certified short-barrel cap was
-even built on it. A vertex census of the pristine print finally showed the truth: the
-fused turret was authored PARKED for printing — laid flat, 1.77 m aft and 0.53 m left of
+even built on it. A vertex census of the pristine reference finally showed the truth: the
+fused turret was authored PARKED — laid flat, 1.77 m aft and 0.53 m left of
 the hull's perfectly-circular ring pit. One rigid translate seated it; the "short
 barrel" premise dissolved (the M3 was never short; the whole assembly sat aft of
 station). The lesson threads through the caps case law: caps must be PROVABLY the
-oracle's defect, and a repair that re-frames the print retires every conclusion measured
+reference's defect, and a repair that re-frames the reference retires every conclusion measured
 against the old pose. m26's full arc — 70.6 baseline → batch-42 body warp → r3 re-anchor
 (90.4, first pass) → r4 facet retune → graduation as the 26th — is the program's
 worked example that honest re-measurement beats fighting a number.
@@ -70,14 +70,14 @@ worked example that honest re-measurement beats fighting a number.
 ## The fused turret that was a LOD shell (vlo bakes)
 
 The owner reported leo2_revolution's turret "fused with its hull". The cause was not the
-build: the recovered print carries `chassis_vlo`, a whole-vehicle LOD shell riding the
+build: the recovered reference carries `chassis_vlo`, a whole-vehicle LOD shell riding the
 HULL node, baking the at-rest turret into every hull mask — 128 polluted side columns.
 The proc had faithfully mirrored the bake into rig_hull, building a turret-shaped hull
 that never yawed. And the trap inside the trap: deleting the vlo ALONE re-frames the
-hull-anchored registration and gates the un-relaid proc at 0 — the oracle repair and
+hull-anchored registration and gates the un-relaid proc at 0 — the reference repair and
 the proc re-lay are ONE coupled landing. The §E law now orders a `_vlo` audit on any
-print before trusting its hull rows, and the request-interception sim (serving candidate
-GLB bytes to the UNMODIFIED gate page via puppeteer) exists so coupled states can be
+reference before trusting its hull rows, and the request-interception sim (serving candidate
+bytes to the UNMODIFIED gate page via puppeteer) exists so coupled states can be
 proven without touching shared files.
 
 ## Reversed windings: the missing left side

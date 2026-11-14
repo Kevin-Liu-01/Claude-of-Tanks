@@ -113,7 +113,11 @@ export function createTankIdResolver({
   };
   const resolve = (id: string, from: unknown = 1): string => {
     let out = String(id);
-    for (let s = schemaOf(from); s < schema; s += 1) out = renames[s - 1]![out] ?? out;
+    // own keys only (improve-271, plan 039): an id spelled like an Object method ("constructor") stays itself
+    for (let s = schemaOf(from); s < schema; s += 1) {
+      const map = renames[s - 1]!;
+      if (Object.hasOwn(map, out)) out = map[out]!;
+    }
     return out;
   };
   const inverses = renames.map((map) => new Map(Object.entries(map).map(([from, to]) => [to, from])));

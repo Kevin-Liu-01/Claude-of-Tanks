@@ -575,9 +575,8 @@ function acquireSootTexture(
 // Refcounted so dispose() only frees GPU memory when the last user is gone.
 // ---------------------------------------------------------------------------
 
-// r8 exposure trim for the SHARED procedural albedo (not the GLB pattern
-// tiles — composeGlbShare applies its own 0.84 multiply): full-brightness
-// procedural paint rendered a milky pastel next to the trimmed Abrams GLB
+// r8 exposure trim for the SHARED procedural albedo: full-brightness
+// procedural paint rendered a milky pastel next to the trimmed Abrams
 // under the garage spots — the core of the roster-cohesion critique.
 const TEX_CACHE = new Map<string, SharedTextureEntry>();
 // Pending owners protect an existing entry while an in-place bake yields and
@@ -1438,7 +1437,7 @@ function* burntBakeSteps(entry: SharedTextureEntry, aniso: number): Generator<vo
 //   'auto'    — resolves per active battlefield biome (set via setCamoBiome)
 //
 // Patterns repaint the SHARED per-spec albedo canvas in place, so the garage
-// pedestal, battle tanks, and any sourced-GLB overlay all update live without
+// pedestal, battle tanks, and any overlay consumer all update live without
 // rebuilding geometry. A pattern grants the small concealment bonus (see
 // src/sim/spotting.ts CAMO_PAINT_BONUS) only when it MATCHES the active
 // battlefield biome — hasCamoPaint() below; AUTO always matches.
@@ -2595,8 +2594,8 @@ function sharedEntryFor(spec: MaterialTankSpec, selection: string | null): Share
 }
 
 /**
- * Shared per-spec roughness map for external consumers (community GLB camo
- * hulls take it so big untextured CAD plates get micro roughness variation
+ * Shared per-spec roughness map for external consumers (camo overlay hulls
+ * take it so big untextured plates get micro roughness variation
  * instead of one waxy constant — r7 "waxy single-color scan" critique).
  * @param {object} spec TankSpec
  * @param selection the tank's camo selection (createTank's camoPattern)
@@ -2956,10 +2955,10 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
     + `		float vehLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		vehFill = min( vehFill, 0.30 / vehLuma );
 `
-    // tank_models r5 (frosted/clay GLB major): the fill is a SHADE
+    // tank_models r5 (frosted/clay major): the fill is a SHADE
     // readability device, but it ran unconditionally — under the garage
     // spots / field sun it stacked a 0.35-0.55×albedo ambient on top of the
-    // full direct response, washing every sourced-GLB tank toward flat
+    // full direct response, washing every tank toward flat
     // pastel clay (light-grey Panzer III, frosted IS-3/Wei He, sandblasted
     // Abrams decks, blown q_heavy turret) and erasing camo pattern contrast
     // at pedestal range. Gate it by RECEIVED direct light, normalized by
@@ -3000,14 +2999,14 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
     // (0.05-0.08 albedo: Panzergrau, 4BO green) tested as "deep shade" even
     // in full sun/garage light, and the absolute 0.115-0.21 output floor
     // then clamped the whole hull to flat light-grey clay, erasing texture
-    // contrast (light-grey Panzer III, frosted IS-3 / Wei He, washed GLB
+    // contrast (light-grey Panzer III, frosted IS-3 / Wei He, washed
     // decks). Normalize by albedo (-> incident-irradiance estimate, same
     // for dark and light paints) and fade the WHOLE floor out when lit —
     // the deep-shade/canopy behavior gameplay_feel calibrated (direct ~ 0)
     // keeps its 0.21 lift exactly; lit surfaces keep their real shading.
     + `		float vehShade = 1.0 - smoothstep( 0.10, 0.45, vehDirL / vehLuma );
 `
-    // tank_models r1 (critic: "flat pale-green clay" GLB hulls, "bone-white
+    // tank_models r1 (critic: "flat pale-green clay" hulls, "bone-white
     // chalk" T-90A gear, blue-tinted pastel track links). The r5 shade test
     // only looked at DIRECT light, so every ordinary self-shadowed face of
     // a sunlit/garage-lit tank counted as "deep canopy" and got floored to
@@ -3499,7 +3498,7 @@ export function createTankMaterials(
   // welds / bolts / casting; a whisper of clearcoat lets sky light streak
   // across big plates; vertex colors carry the baked dust/AO gradient.
   // r8: envMapIntensity 0.55 across the painted set — full-strength IBL
-  // washed the procedural fleet a milky pastel next to the Abrams GLB
+  // washed the procedural fleet a milky pastel next to the Abrams
   // (whose composite runs at 0.6), the core of the "CAD clay" cohesion
   // critique. Clearcoat trimmed with it.
   // lighting_post r3 (round 3, major #1b): hulls rendered ~2 stops darker
@@ -3802,7 +3801,7 @@ export function createTankMaterials(
   // family as the shader burn mask (real wrecks char DARK).
   burnt.color.setScalar(0.72);
   // r5 WORLD-SPACE TRIPLANAR charred sampling: the burnt swap must work on
-  // ANY mesh, including sourced GLBs whose palette-atlas UVs collapse whole
+  // ANY mesh, including meshes whose palette-atlas UVs collapse whole
   // faces to a few texels — with plain UV sampling those wrecks rendered as
   // a featureless black slab with the ember pockets magnified into giant
   // soft red "spotlight" blobs (r4 wreck-closeup major). Triplanar in world
@@ -4120,7 +4119,7 @@ if ( uBurnT >= 0.0 ) {
   // fully-charred faces at ~0.26 luminance (clearly fire-lit orange, under
   // bloom threshold) and reaches partially-charred panels early, while
   // staying exactly zero on unburned paint (keep it a brnM product — a
-  // brnM-independent base term regressed a GLB deck to black).
+  // brnM-independent base term regressed a deck to black).
   // r7: 0.62 -> 0.34 — against the darker multiply-char albedo the old gain
   // FLOODED the whole wreck uniform orange for seconds (probe destroy_2_5s);
   // the wash must fire-light the toss beat, then hand the surface back to
@@ -4534,11 +4533,11 @@ if ( uBurnT >= 0.0 && uCrOn > 0.5 ) {
 
 /**
  * Wrap `mat` IN PLACE with the burn mask, chaining its existing
- * onBeforeCompile stack (CSM cascade patch, GLB camo overlay, ambient-floor
+ * onBeforeCompile stack (CSM cascade patch, camo overlay, ambient-floor
  * hook) so the material keeps its full live look until uBurnT rises past 0.
  *
  * In place, not a clone: vehicle materials are built per visual (procedural
- * set + per-tank GLB camo clones), the GLB camo overlay exists only as a
+ * set + per-tank camo clones), the camo overlay exists only as a
  * shader hook (a clone loses the paint — r6 verify: pale raw-bake M1A2
  * wreck), and three's CSM keys its uniform registry by the material captured
  * in the hook closure, so only the original object can chain it safely. The

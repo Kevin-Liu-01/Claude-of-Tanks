@@ -58,7 +58,7 @@ function movingStock(tank,solids,check=true){
         stats.containmentExclusions++;
       }
       // Indexed and nonindexed, visible and hidden far shoes, complete open
-      // and closed finite surfaces: none is dropped by an oracle-name filter.
+      // and closed finite surfaces: none is dropped by a name filter.
       for(let i=0;i<n;i+=3){
         const tri=[0,1,2].map(j=>new T.Vector3().fromBufferAttribute(p,index?index.getX(i+j):i+j).applyMatrix4(matrix));
         triBox.setFromPoints(tri);

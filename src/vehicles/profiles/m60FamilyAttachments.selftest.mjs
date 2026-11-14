@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { M60_TRACK_FINISH } from './patton.ts';
 
-// Release 266 (the M60 batch): the M60A1 and M60A3 are rebuilt at true size on the owner's models' castings
+// Release 266 (the M60 batch): the M60A1 and M60A3 are rebuilt at true size on new measured castings
 // (pattonCast.ts buildM60CastSteps; Main's rulings 2026-10-28: the 0.9 compact envelope retired, the M60A3's ERA off).
 // The old builder's attachment, cassette, shoulder and finish receipts went with it. What an M60 still has to carry:
 // its canonical rigs at true size, the A1's searchlight glass riding the gun (no armour), one matte steel track band a

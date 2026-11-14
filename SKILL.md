@@ -43,5 +43,5 @@ and the nearest directory `SKILL.md`.
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 The root checkout is frequently mixed dirty and may lag hundreds of tank
-commits. Do not pull, reset, clean, or blanket-stage it. Public builds strip
-quarantined assets; both a green build and runtime provenance checks matter.
+commits. Do not pull, reset, clean, or blanket-stage it. Public builds ship
+no 3D model file; both a green build and runtime provenance checks matter.

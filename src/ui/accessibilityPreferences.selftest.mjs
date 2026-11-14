@@ -157,8 +157,8 @@ const body = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
 const defaults = parseDecls(/^:root\{([^}]*)\}/m.exec(body)[1]);
 // The surface tokens (245's split: tools/gen-tokens.mjs writes the tokens one page reads to src/ui/tokens/surface-*.css,
 // which that page's own sheet imports after tokens.css) join the defaults: on their page the cascade reads both sheets.
-// (261: the badge sheets, whose print hues, badge-*-paper, tokens.ts names too)
-for (const surface of ['surface-home', 'surface-docs', 'surface-gallery', 'surface-deploy', 'surface-badge', 'surface-badge-paper']) {
+// (261: the badge sheets, whose print hues, badge-*-paper, tokens.ts names too; 272: the first-game tutorial's spot and pulse)
+for (const surface of ['surface-home', 'surface-docs', 'surface-gallery', 'surface-deploy', 'surface-badge', 'surface-badge-paper', 'surface-tutorial']) {
   const sheet = read(`src/ui/tokens/${surface}.css`).replace(/\/\*[\s\S]*?\*\//g, '');
   for (const [k, v] of parseDecls(/:root\{([^}]*)\}/.exec(sheet)[1])) if (!defaults.has(k)) defaults.set(k, v);
 }
@@ -345,7 +345,7 @@ const consumers = [
   ['src/engine/cameraRig.ts', /A11Y\.shake \* \(0\.0011[\s\S]*Math\.pow\(trauma, 1\.6\) \* A11Y\.shake[\s\S]*recoil \* A11Y\.shake[\s\S]*fovKick \* A11Y\.shake/, 'the camera: sway, trauma shake, recoil kick and FOV punch'],
   ['src/game/killcam.ts', /Math\.exp\(-pb\.itWall \/ 0\.3\) \* A11Y\.shake/, 'the kill cam shake'],
   ['src/game/killcam.ts', /cotKcFlash\{0%\{opacity:calc\(\.62\*var\(--cot-flash-scale,1\)\)/, 'the kill cam shock flash'],
-  ['src/fx/effects.ts', /state\.peak \* Math\.pow\(k, state\.pow \|\| 2\) \* A11Y\.flash/, 'the muzzle and blast lights'],
+  ['src/fx/effects.ts', /let v = pulseLevel\(state, age\) \* A11Y\.flash/, 'the muzzle and blast lights (applyLight, through the one level law pulseLevel)'],
   ['src/fx/effects.ts', /\* muzzleCardScale \* appliedCardFlash/, 'the additive flash and jet cards'],
   ['src/engine/volumetricClouds.ts', /\(1 - 0\.25 \* k\) \* A11Y\.flash/, 'lightning'],
   ['src/ui/hud.ts', /\(1 - paint\.age \/ 0\.25\) \* A11Y\.flash/, 'the incoming-hit bloom'],

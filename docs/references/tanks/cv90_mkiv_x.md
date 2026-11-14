@@ -148,7 +148,7 @@ World-space triangles, winding and combat roles match before/after at both quali
 
 ## Independent review checkpoint
 
-The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/history/research/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
+The official14-view critic has reviewed this vehicle and returned **FAIL** on source-visible detail. Exact image-specific findings and historical scores are in `docs/tank-generation/history/regional-source-independent-critic-20260918.md`; no silhouette pass supersedes this review. Source-based detail correction and fresh full review remain required. Following shared-track integration, pre-main track and geometry hashes above are historical until revalidated.
 
 ## Post-main round10 — source equipment relief
 
@@ -226,7 +226,7 @@ All capture commands exit0 and rig parity isOK. The builder spot-viewed the fres
 
 ## Round18 independent shaded review checkpoint — 2026-09-18
 
-An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/history/research/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/cv90_mkiv_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
+An independent reviewer actually inspected the fourteen final-shader originals and recorded source fit/detail/static seating of at least9 in every image. See `docs/tank-generation/history/regional-source-independent-critic-20260918.md` and `.qa-dev/tank-run/independent-regional-review/final-shader-r18-review.json`. The matched source and native silhouette, primary source equipment, corrected wheels and open mechanisms meet that scoped HIGH gallery review. It does not certify LOW or moving contact, performance, anatomy, source roof-weapon policy, actual newly generated interior-fill coverage or composed release. The originals and identities remain archived under `.qa-dev/tank-run/europe-source/final-shader-r18/official14/cv90_mkiv_x/`; later final loaded captures must preserve this history. Publication remains NOT PUBLISHED.
 
 
 ## Round21 actual-filled evidence refresh — 2026-09-18

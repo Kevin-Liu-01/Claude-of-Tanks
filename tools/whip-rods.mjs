@@ -27,10 +27,10 @@ const cutRoles = new Set(BODY_EXCLUDED_SEAT_ROLES);
 /** Rods read in their builders and found not to be aerials: id -> [{ foot: [x, y, z] in the tank's frame (5 cm), why }]. */
 export const NOT_WHIPS = Object.freeze({
   x1a2_carcara: Object.freeze([Object.freeze({ foot: [-0.06, 2.45, -0.32], why: "the commander's sight rod under its head (bernardiniX1.ts)" })]),
-  challenger3_td: Object.freeze([Object.freeze({ foot: [-0.006, 2.011, -4.81], why: "the stern pole over the drums' cradle, the oracle's Object_2 (challenger3Td.ts)" })]),
-  challenger3_td_rws: Object.freeze([Object.freeze({ foot: [-0.006, 2.011, -4.81], why: "the stern pole over the drums' cradle, the oracle's Object_2 (challenger3Td.ts)" })]),
+  challenger3_td: Object.freeze([Object.freeze({ foot: [-0.006, 2.011, -4.81], why: "the stern pole over the drums' cradle (challenger3Td.ts)" })]),
+  challenger3_td_rws: Object.freeze([Object.freeze({ foot: [-0.006, 2.011, -4.81], why: "the stern pole over the drums' cradle (challenger3Td.ts)" })]),
   m60a3: Object.freeze([Object.freeze({ foot: [0.67, 2.682, -1.35],
-    why: "the crosswind sensor's mast (pattonCast.ts), a sensor: the oracle keeps its wind_sensor01 in the body" })]),
+    why: "the crosswind sensor's mast (pattonCast.ts), a sensor kept in the body" })]),
   merkava4_barak: Object.freeze([-1.025, 1.025].map((x) => Object.freeze({ foot: [x, 1.98, -3.57],
     why: "the basket's rear corner post under an aerial's collar (merkavaX.ts cageBar); the instanced aerials carry the role" }))),
 });

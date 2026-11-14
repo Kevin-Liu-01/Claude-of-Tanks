@@ -22,11 +22,11 @@ node tools/decoration-eval.mjs --catalog-only
   `proceduralOnly`; auto-skip on measurement-stub engine contexts (any ctx
   whose `setupShadowMaterial` fails the USE_CSM probe — the fidelity lab,
   shaded-parity boards and rig-QA pages all pass stubs), so even the lab's
-  GLB *reference* builds stay bare. Explicit override: `opts.decor`
+  *reference* builds stay bare. Explicit override: `opts.decor`
   (`true`/`false`) — `proceduralOnly` still wins over `decor: true`.
 - In-game surfaces (garage pedestal, battle, studio, icon generator) dress
-  **by default** — zero call-site changes. GLB-sourced tanks dress *after*
-  the model swap lands (`applySwap` hides every pre-swap render node, and
+  **by default** — zero call-site changes. A model-swapped tank dresses *after*
+  the swap lands (`applySwap` hides every pre-swap render node, and
   anchors must probe the real geometry).
 - Deterministic per vehicle: selection is seeded by **spec id only** (never
   camoSeed). Same tank, same kit, every build; variation lives across the
@@ -48,8 +48,8 @@ node tools/decoration-eval.mjs --catalog-only
   iteration. `npm test` green throughout.
 - The mandated `--ids=m60a1,kv2` baseline (90.7 / 90.2) was captured and
   reproduced BEFORE integration. Mid-round, both ids **graduated the dual
-  gate** (their recovered GLB oracles were retired by the fleet agents —
-  `userdrops5.js` / `specs.ts`), so the gate can no longer *run* for them;
+  gate** (their runtime registrations were retired by the fleet agents in
+  `specs.ts`), so the gate can no longer *run* for them;
   their ledger rows carry the last-good pre-graduation measurements. A
   mid-transition gate invocation from this round briefly wrote error rows
   into `ledger.json`; the rows were restored to the last-good values (the

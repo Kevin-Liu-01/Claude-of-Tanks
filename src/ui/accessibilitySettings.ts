@@ -161,6 +161,15 @@ function commit(prefs: AccessibilityPreferences, store: Storage | null): boolean
   return true;
 }
 
+/** (272) Merge a change into the preferences and apply it without storing it: a slider's drag previews each step and
+ *  stores once, on its release (saveAccessibility), instead of writing storage sixty times a second. */
+export function previewAccessibility(change: AccessibilityChange): void {
+  const { customOwn: _own, customEnemy: _enemy, ...allowed } = change as Partial<AccessibilityPreferences>;
+  const prefs = normalizeAccessibility({ ...accessibilityPreferences(), ...allowed });
+  applyAccessibility(prefs);
+  globalThis.dispatchEvent?.(new CustomEvent(ACCESSIBILITY_EVENT, { detail: prefs }));
+}
+
 /** Merge a change into the preferences, persist and apply it. False (nothing applied) when storage refuses. */
 export function saveAccessibility(change: AccessibilityChange, store: Storage | null = storage()): boolean {
   const { customOwn: _own, customEnemy: _enemy, ...allowed } = change as Partial<AccessibilityPreferences>;

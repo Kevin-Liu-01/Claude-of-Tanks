@@ -19,7 +19,7 @@ Explicit `/404.html` requests keep HTTP404. Existing pretty routes are unchanged
 Regression coverage uses the real Vite configuration and actual development
 and preview HTTP responses, plus temporary path-confinement fixtures. The
 maintained native track audit separately checks page execution and readiness.
-Source models and local QA outputs are not included in this checkpoint.
+Local QA outputs are not included in this checkpoint.
 
 Retained unsuccessful attempts:
 
@@ -40,7 +40,7 @@ All passed against unchanged authored inputs in
 - Real development/preview routing, existing not-found and public navigation
   contracts, test discovery and1943-module import integrity: five tests PASS.
 - Typecheck/core-unused and public build PASS; public registry174 playables,
-  zero GLB-sourced vehicles. Existing bundle-size warnings remain.
+  all procedural. Existing bundle-size warnings remain.
 - Native maintained track audit:3/3 tanks load and retain one integrated
   animated shoe layer, with no duplicate full-length proxies.
 

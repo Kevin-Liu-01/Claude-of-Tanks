@@ -20,8 +20,7 @@ lazy anatomy view: `anatomyData.ts` reads the combat armor model into the lists
 combat frames (heat map, `anatomyModules.ts` models, `anatomyCrew.ts`
 mannequins, hit volumes), and `anatomyView.ts` (loaded through `import()`) owns
 the ghost exterior pass, toggles, legend, badges and readouts. `overlays.ts`
-still builds the baked side diagrams and field-guide scenes;
-`viewGlyphs.ts` owns the exhaustive camera-view icon vocabulary.
+still builds the baked side diagrams and field-guide scenes.
 `surfaceMarkup.ts` owns live triangle/patch selection, articulation ownership,
 review annotations, JSON, and PNG capture. `inAction.ts` is the dossier's lazy
 "In action" block: the selected vehicle's own take over `src/ui/fleetTakes.ts`. `gallery.ts` owns the separate-page

@@ -189,7 +189,7 @@ function sovGear(P: SovietHeavyBuilderPort, g: SovietGearOptions): RunningGearPo
 // ---------------------------------------------------------------------------
 // KV-2 — docs/references/tanks/kv2.md (release 262 historical rebuild)
 // The owner (2026-10-27): "update/redesign ... turrets and hullls as well based on proper historical referrences so they
-// will no longer look so chungus". The print-fitted build (a full-width 2.9 m deck slab at 1.60 m with deck-level
+// will no longer look so chungus". The earlier fitted build (a full-width 2.9 m deck slab at 1.60 m with deck-level
 // fenders, a disc-and-box mantlet) gives way to the measured vehicle; the packet's gap table carries every number.
 // World metres, ground y = 0, bow +z, tank left +x. The welded KV-1 hull is a 1.85 m box from the 0.43 belly to the
 // 1.65 roof, 6.675 m from nose to tail, with fender shelves 0.28 m under the roof over 0.70 m tracks. The 1941
@@ -469,7 +469,7 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
       outset: 0.1105,
       name: 'gearRoadWheelDarkAnnuli', appearanceRole: 'wheelInset', // dark annulus, not a painted face (runningGearFinish.ts)
     });
-    const dx = xc - 1.2925, k = idler.r / 0.30; // the face planes measured on the print-era seat, carried with the track
+    const dx = xc - 1.2925, k = idler.r / 0.30; // the face planes measured on the earlier seat, carried with the track
     for (const sx of [-1, 1]) {
       // idler: the open dished wheel (dark void, eight straight radial spokes, rim and hub rings) on the kit hub's face
       P.add('hullRunningGearDark', cylX(0.27 * k, 0.006, 20), sx * (1.578 + dx), idler.y, idler.z);
@@ -491,7 +491,7 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
       P.add('hullRunningGearTrack', KIT.torus(0.055, 0.008, 10), sx * (1.6505 + dx), sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
     }
   }
-  // the running-gear hardware family retoned (print-era r4): manganese band texels lifted to the rusty-warm family,
+  // the running-gear hardware family retoned (earlier r4): manganese band texels lifted to the rusty-warm family,
   // worn dark end-wheel drums, floorless pocket voids; per-build material clones only
   {
     for (const tm of [P.mats.trackL, P.mats.trackR]) tm.color.setRGB(1.45, 1.30, 1.08);

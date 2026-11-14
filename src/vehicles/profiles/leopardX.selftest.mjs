@@ -6,8 +6,8 @@ import { isOpenLatticeMesh } from '../../../tools/standard-continuity-policy.mjs
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
-// Fixed measurements came from the owner source BEFORE authoring (see each
-// reference packet and source-measurements.json). Do not replace these with
+// Fixed measurements recorded BEFORE authoring (see each reference
+// packet). Do not replace these with
 // LEOPARD_X_DATUMS or geometry/attachment receipts written by the builder.
 const sources = {
   leo2a7v: { roof:2.67624, rear:-2.794, front:3.110, width:3.0947,
@@ -434,5 +434,5 @@ for (const [id, source] of Object.entries(sources)) {
 
 const authored=fs.readFileSync(new URL('./leopardX.ts',import.meta.url),'utf8');
 assert.doesNotMatch(authored,/buildDonorVariant|buildCanonical|buildProfile\(|GLTFLoader|\.glb['"`]/,
-  'X profiles contain no donor-family construction or source loading path');
-console.log('leopardX.selftest: four source-fixed shells, real A7V optic air, bore/gear datums and articulation pass');
+  'X profiles contain no donor-family construction or external geometry loading path');
+console.log('leopardX.selftest: four fixed-datum shells, real A7V optic air, bore/gear datums and articulation pass');

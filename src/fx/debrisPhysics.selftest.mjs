@@ -136,6 +136,47 @@ function collapse(dts) {
   assert.deepEqual(pool.stats(), { bodies: 0, awake: 0, waiting: 0, handles: 0, timeS: 0 });
 }
 
+// --- (improve-271, plan 016; reproduced before the fix: the resting piece was evicted at 0.5 s and handed over as settled
+// rubble where it stood) a full pool never evicts a piece asleep awaiting its release, as a collapse spawns its panels;
+// the later body waits, and enters once those pieces are released and come to rest
+{
+  const pool = createDebrisPhysics({ capacity: 4 });
+  pool.bind(flat);
+  const evicted = [];
+  pool.onEvict((handle) => evicted.push(handle));
+  const resting = [0, 1, 2, 3].map((k) => pool.spawn(block, { x: k * 2, y: 0.25, z: 0, asleep: true }, 5));
+  assert.ok(resting.every((h) => pool.asleep(h)), 'four panels in the world, asleep, awaiting their release');
+  assert.equal(pool.room(), 0, 'no room: a piece awaiting its release does not give way');
+  run(pool, 0.5);
+  const late = pool.spawn(block, { x: 20, y: 1, z: 0 });
+  assert.ok(late >= 0);
+  assert.deepEqual(evicted, [], 'no resting piece is passed to an evict listener');
+  assert.ok(resting.every((h) => pool.inWorld(h)), 'every panel still stands in the world');
+  assert.equal(pool.inWorld(late), false, 'the later body waits outside the world');
+  run(pool, 8);
+  assert.equal(pool.inWorld(late), true, 'and enters once the released panels have come to rest and give way');
+  assert.equal(evicted.length, 1, 'one settled panel gave way to it');
+}
+
+// --- (plan 016) a resting piece the pool could not take at once is counted off `waiting` once when released: the next
+// resting piece is still woken at its time
+{
+  const pool = createDebrisPhysics({ capacity: 2 });
+  pool.bind(flat);
+  const movers = [0, 1].map((k) => pool.spawn(block, { x: k * 2, y: 3, z: 0 }));
+  const outside = pool.spawn(block, { x: 10, y: 0.25, z: 0, asleep: true }, 1);
+  assert.equal(pool.inWorld(outside), false, 'full of moving bodies: the resting piece waits outside the world');
+  pool.release(outside);
+  pool.release(movers[0]);
+  const later = pool.spawn(block, { x: 20, y: 0.25, z: 0, asleep: true, vy: 4 }, 0.5);
+  assert.equal(pool.stats().waiting, 1, 'one piece awaiting its release, counted once');
+  run(pool, 1);
+  const v = new Float64Array(6);
+  pool.framePoseAt(later, pose);
+  assert.ok(pose[1] > 0.5, `the later resting piece was woken at its time with its release velocity (${pose[1].toFixed(2)} m)`);
+  void v;
+}
+
 // --- (destruction-slabs 227 round 4) no body is launched: two slabs released deep in each other (a roof's sheets cut
 // with their eave boards, a cell spawned into a resting slab) part without a burst — what a step adds is held, and no
 // step lifts a body faster than 8 m/s; a throw set at a body's release keeps its speed

@@ -90,29 +90,21 @@ export function photoTarget(id,packet){
   return target;
 }
 /**
- * Stage A's route (Main 2026-10-31): a registered 3D oracle always measures (a packet never overrides it), an owner
- * concept proves its design, a photo-class id proves its packet; an id with none of them is procedural-only.
+ * Stage A's route: an owner concept proves its design, a photo-class id proves its packet; any other id has no A-stage
+ * evidence (owner 2026-11-12: outside 3D models are tank-generation comparison bases only and never qualify a build).
  */
-export function stageARoute(id,{registered=false,concept=false}={}){
-  if(registered)return 'oracle';
+export function stageARoute(id,{concept=false}={}){
   if(concept)return 'concept';
   return isPhotoReference(id)?'photo':'none';
 }
 /**
- * Stage A's verdict on a route's evidence: the photo and concept routes on their fresh receipts; the oracle on its fresh
- * geometry packet under --gate (outside it, a stale or absent packet stays N/A as before); a procedural-only id fails a
- * forced gate and is N/A outside it. Only the route's own evidence counts: a photo receipt never passes an oracle.
+ * Stage A's verdict on a route's evidence: the photo and concept routes on their fresh receipts; an id with neither is
+ * N/A and never fails. Only the route's own evidence counts.
  */
-export function stageAPassed(route,{forceGate=false,gateApplicable=false,exactGatePassed=false,photoProof=false,conceptProof=false}={}){
+export function stageAPassed(route,{photoProof=false,conceptProof=false}={}){
   if(route==='photo')return photoProof===true;
   if(route==='concept')return conceptProof===true;
-  if(route==='oracle')return forceGate?gateApplicable&&exactGatePassed:!gateApplicable||exactGatePassed;
-  return !forceGate;
-}
-/** The geometry gate's refusal (rule c): an id with both a photo packet and a registered 3D oracle is a registry error. */
-export function assertNoPhotoOverride(ids,registered){
-  for(const id of ids)if(isPhotoReference(id)&&registered.has(id))
-    throw new Error(`${id}: photographic qualification cannot override a registered 3D target`);
+  return true;
 }
 export function photoDimensionsPassed(row,target){
   const min=row?.bounds?.min,max=row?.bounds?.max;

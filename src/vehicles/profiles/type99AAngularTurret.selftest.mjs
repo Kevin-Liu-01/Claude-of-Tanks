@@ -115,7 +115,7 @@ assert.deepEqual(vt4a1.hullRig.userData.runningGearReceipts,
 assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.exactHullCloneOf, 'ztz99a2',
   'VT-4A1: geometry receipt declares the shared A2 chassis');
 assert.equal(vt4a1.hullRig.userData.vt4a1GeometryReceipt?.sourceGeometryImported, false,
-  'VT-4A1: comparison GLB is never imported as playable geometry');
+  'VT-4A1: no external geometry is imported as playable geometry');
 
 // The VT turret remains independent: its chevrons form the complete front
 // while the canonical A2 now owns a separate production-arrow architecture.

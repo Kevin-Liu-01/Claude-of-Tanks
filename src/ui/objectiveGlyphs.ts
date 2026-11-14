@@ -454,12 +454,14 @@ export type StrikeGlyphKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunsh
  * targeted side reads it as live; `urgency` (0..1, 1 at the landing) thickens the line.
  */
 export function drawStrikeFootprint(ctx: Ctx, x: number, y: number,
-  shape: { radiusPx: number } | { halfLengthPx: number; halfWidthPx: number; angle: number },
+  shape: { radiusPx: number; acrossPx?: number; angle?: number } | { halfLengthPx: number; halfWidthPx: number; angle: number },
   side: ObjectiveSide, march: number, urgency: number, filled = true): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.beginPath();
-  if ('radiusPx' in shape) ctx.arc(0, 0, Math.max(2, shape.radiusPx), 0, Math.PI * 2);
+  // an ellipse (the bomb's): its long axis along the heading, turned as the lane is
+  if ('radiusPx' in shape && shape.acrossPx != null) ctx.ellipse(0, 0, Math.max(1.5, shape.acrossPx), Math.max(2, shape.radiusPx), shape.angle ?? 0, 0, Math.PI * 2);
+  else if ('radiusPx' in shape) ctx.arc(0, 0, Math.max(2, shape.radiusPx), 0, Math.PI * 2);
   else {
     // the lane's four corners turned to its heading (the glyphs never rotate the context: they stay upright)
     const w = Math.max(1.5, shape.halfWidthPx), l = Math.max(2, shape.halfLengthPx);

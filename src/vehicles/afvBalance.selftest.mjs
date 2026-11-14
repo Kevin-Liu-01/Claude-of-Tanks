@@ -33,7 +33,8 @@ const EXPECTED = Object.freeze({
   bwp1:               { hp: 1850, speed: 68, reverse: 28, traverse: 50.9, damage: 62, pen: [158, 144, 130], reload: 0.32, sound: 'mk30-2', missile: [580, 'spike-launch'] },
   marder1a3:          { hp: 1250, speed: 65, reverse: 17, traverse: 53, damage: 32, pen: [76, 68, 60], reload: 0.20, sound: 'rh202', missile: [450, 'milan-launch'] },
   m3a3_bradley:       { hp: 2300, speed: 61, reverse: 20, traverse: 49.3, damage: 70, pen: [185, 170, 155], reload: 0.33, sound: 'm242-bushmaster', missile: [700, 'tow-launch'] },
-  m6_linebacker:      { hp: 2400, speed: 60, reverse: 22, traverse: 47, damage: 72, pen: [190, 175, 160], reload: .30, sound: 'm242-bushmaster', missile: [340, 'tow-launch'] },
+  // 272 (airDefenseFirepower.ts): the M6 joins the air-defence rule: the cohort's 25 mm damage (52 -> 17) at the 0.05 s floor
+  m6_linebacker:      { hp: 2400, speed: 60, reverse: 22, traverse: 47, damage: 17, pen: [190, 175, 160], reload: 0.05, sound: 'm242-bushmaster', missile: [340, 'tow-launch'] },
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 50.9, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1820, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [158, 143, 128], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
@@ -90,8 +91,9 @@ const EXPECTED = Object.freeze({
   m113a3:              { hp: 1500, speed: 66, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
   // 269: the M163 VADS (m163Specs.ts): its 20 mm Vulcan at the gun's 1,000 rounds a minute (cycle 0.06 s) in the burst
   // limiter's 60-round bursts, the headline reload the burst limiter's 4.0 s reset (a magazine's: fleetBalance.selftest)
-  // (2026-11-06, airDefenseFirepower.ts: the floor cycle 0.05 s, 300-round bursts, the reset 2 s)
-  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 18, pen: [90, 72, 55], reload: 2, cycle: 0.05, magazine: 300, sound: 'rh202', missile: null },
+  // (2026-11-06, airDefenseFirepower.ts: the floor cycle 0.05 s, 300-round bursts, the reset 2 s; 270: a rotary gun, one
+  // round a tick, 7 damage a round for twice the authored output)
+  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 7.4, pen: [90, 72, 55], reload: 2, cycle: 1 / 60, magazine: 300, rotary: true, sound: 'rh202', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
@@ -127,8 +129,8 @@ for (const id of ifvIds) {
   // (a burst magazine's rounds cycle at the magazine's own interval: the M163 VADS, 269)
   assert.equal(round.reloadS, expected.cycle ?? expected.reload, `${id}: default-round reload`);
   if (expected.magazine) {
-    assert.deepEqual(spec.gun.autoloader, { magazineSize: expected.magazine, intraClipS: expected.cycle, fullReloadS: expected.reload },
-      `${id}: the burst magazine`);
+    assert.deepEqual(spec.gun.autoloader, { magazineSize: expected.magazine, intraClipS: expected.cycle, fullReloadS: expected.reload,
+      ...(expected.rotary ? { rotary: true } : {}) }, `${id}: the burst magazine`);
   }
   assert.equal(round.dmg, expected.damage, `${id}: default-round damage`);
   assert.deepEqual([round.pen100Mm, round.pen1000Mm, round.pen2000Mm], expected.pen,
@@ -139,7 +141,9 @@ for (const id of ifvIds) {
     assert.ok(guided, `${id}: guided weapon exists`);
     assert.equal(guided.dmg, expected.missile[0], `${id}: guided damage`);
     assert.equal(guided.soundProfile, expected.missile[1], `${id}: launcher report`);
-    assert.ok(spec.gun.primaryGuided ? guided.reloadS === expected.reload : guided.reloadS >= 2 && guided.reloadS <= 3,
+    // (270, airDefenseFirepower.ts) a rack fired whole in salvos reloads as a group in 6 s
+    assert.ok(spec.gun.primaryGuided ? guided.reloadS === expected.reload
+      : spec.gun.launcherSalvo ? guided.reloadS === 6 : guided.reloadS >= 2 && guided.reloadS <= 3,
       `${id}: primary rack uses its authored cycle; auxiliary launcher remains independent`);
     missileDamage.add(guided.dmg);
   } else {

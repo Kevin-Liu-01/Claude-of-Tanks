@@ -18,7 +18,7 @@ Worktree: `/Users/kevinliu/.codex/worktrees/cot-fleet-continuation-20260921`.
 Branch: `codex/fleet-continuation-20260921`.
 The shared dirty checkout and old mixed drafts are untouched. Verified
 checkpoints may be committed and pushed to main under the owner's standing
-authorization; unfinished drafts and source models remain excluded.
+authorization; unfinished drafts remain excluded.
 
 ## Reconciled completed requests
 

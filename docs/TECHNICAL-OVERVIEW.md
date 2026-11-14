@@ -318,9 +318,9 @@ merges compatible geometry, applies materials and camouflage, constructs
 running gear, installs fittings and state-driven presentation, and returns a
 disposable visual interface.
 
-All selectable runtime vehicles use first-party geometry. External models may
-exist only as quarantined comparison or authoring inputs. Public builds remove
-restricted comparison assets.
+All selectable runtime vehicles use first-party geometry. Comparison bases
+belong to the tank-generation tooling alone (`docs/tank-generation/`), and public
+builds ship no model file.
 
 ### 6.4 Generated asset record
 
@@ -492,9 +492,9 @@ Verification is selected by the surface that can fail.
 | --- | --- | --- |
 | Deterministic module | Node `*.selftest.mjs` | Math, policy, schema, state transitions, codecs, and ownership invariants |
 | Browser integration | Chromium/Puppeteer probes | DOM flow, transport, renderer, timing, and user-facing behavior |
-| Vehicle geometry | Geometry gates, shaded critics, fingerprints | Shape, articulation, provenance, generated asset freshness, and appearance |
+| Vehicle geometry | Shaded critics and fingerprints; the geometry gate is a tank-generation tool a lane runs by hand (`npm run gen:checks`), and no gate or receipt reads an outside model | Shape, articulation, provenance, generated asset freshness, and appearance |
 | Performance | Cold-load, development trace, frame probes | Boot cost, frame ownership, stalls, quality rescue, and regressions |
-| Artifact | Public and private Vite builds | Route reachability, bundling, and quarantine stripping |
+| Artifact | Public and private Vite builds | Route reachability, bundling, and model-file stripping |
 
 Minimum aggregate verification:
 

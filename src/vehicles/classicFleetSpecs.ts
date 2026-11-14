@@ -116,8 +116,8 @@ const SPECS: FleetTankSpec[] = [
 const leopardPrototype = SPECS.find(spec => spec.id === 'leopard2_proto')!;
 leopardPrototype.armor = copy(LEOPARD2_PROTO_ARMOR);
 
-// Register only first-party procedural gameplay rows. Historical source assets
-// remain offline comparison inputs and have no runtime registration path.
+// Register only first-party procedural gameplay rows; nothing else has a
+// runtime registration path.
 for (const spec of SPECS) {
   tankSpecs[spec.id] ||= spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);

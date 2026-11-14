@@ -111,6 +111,10 @@
 - Round 6 (53a7320c33): the gun-depression sweep found the LP-83's 0.24 m recoiling root on the deck (elevation over 8
   degrees at yaw 0-55, every pitch at 132-180): the root slimmed to 0.15 m inside the T-80U X's trunnion block; the 292
   joins nationalGunClearance on its own measured curve.
+- Release 272 (owner 2026-11-11: "give the molot and obj 292 actual camos"): stock coat `paint_object292` (Soviet
+  Three-Tone Woodland: a pale sand `#968f6b` base under grey-green `#66714f` and near-black `#2b2e2c` bands, `nato`,
+  scale 0.45), the three-tone the surviving tank wore at Kubinka before its plain green repaint (the owner's Patriot Park
+  photograph, image 7 of 2026-11-05); was `national_ru`, plain green.
 
 ## Publication receipt (only if requested)
 

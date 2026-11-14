@@ -133,9 +133,9 @@ marking seats, icons for the 18 ids, `tank:anatomy:check` PASS (module-hit
 0 FAIL, 181 tanks), sealed ledger for the 18 ids (challenger2's row was
 already open before this batch — 97 px in 3 views, unchanged), watertight
 sample with fills (table above). Release gate: `leo2a5_x` 92.4/92 and `k2_x`
-93.4/92 PASS; `leo2_revolution` cannot be scored here ("registered exemplar
-comparison oracle unavailable") and the legacy ids (M1s, Challengers) have no
-registered oracle rows at all — an untouched control (`t72b3`) fails the same
+93.4/92 PASS; `leo2_revolution` cannot be scored here (its registered
+comparison record was unavailable) and the legacy ids (M1s, Challengers) have no
+registered comparison rows at all — an untouched control (`t72b3`) fails the same
 way — so the receipts and the sealed ledger are the gate for those.
 
 ## Receipts: the fail-fast trap

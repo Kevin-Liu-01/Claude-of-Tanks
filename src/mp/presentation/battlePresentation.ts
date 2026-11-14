@@ -21,6 +21,7 @@ import type { FrameSchedulerOptions, WorkYielder } from '../../engine/frameSched
 import { createCombatState, mainWeaponModuleState } from '../../sim/damage.ts';
 import type { CombatState } from '../../sim/damage.ts';
 import { cannonMuzzleIndex, isUnguidedRocket, usesLauncherMuzzles, type CannonMuzzleCursor } from '../../sim/launcherPolicy.ts';
+import { createRotaryShotThinning } from '../../sim/fireCycleFloor.ts';
 import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
@@ -1433,6 +1434,10 @@ export function createBattlePresentation({
     return count > 0 && typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < count ? index : null;
   }
 
+  // (270) the rotary gun's presentation at the floor's density, one thinning per clock: the predicted shots on this
+  // seat's, the authority's on its own
+  const thinPredictedShot = createRotaryShotThinning();
+  const thinFiredShot = createRotaryShotThinning();
   function emitPredictedShot(own: MatchActor, slot: number): void {
     if (!mounted || snapshotPhase !== PHASE.PLAYING || game.result || own.combat.destroyed ||
         !own.visual.gunMuzzleWorld || !own.visual.gunDirWorld || mainWeaponModuleState(own.combat) === 'red') return;
@@ -1450,6 +1455,7 @@ export function createBattlePresentation({
       shellType: shell.type, shellName: shell.name, weaponSound: shell.soundProfile || own.spec.gun.soundProfile || null,
       caliberMm: shell.caliberMm, velocityMps: shell.velocityMps, timeS: game.timeS, muzzleIndex,
       rocket: isUnguidedRocket(own.spec.gun, shell),
+      thinned: own.spec.gun.autoloader?.rotary === true && shell.guided !== true && thinPredictedShot(own.id, game.timeS),
       muzzlePos: [muzzleTip.x, muzzleTip.y, muzzleTip.z], dir: [shotDirection.x, shotDirection.y, shotDirection.z],
     });
   }
@@ -1487,11 +1493,16 @@ export function createBattlePresentation({
         muzzlePos = [muzzleTip.x, muzzleTip.y, muzzleTip.z];
       }
     }
+    const timeS = Number(payload.timeS ?? game.timeS);
     bus.emit('shell:fired', {
       shellId: payload.shellId, shooterId: payload.shooterId, isPlayer: payload.shooterId === ownActor()?.id,
       shellType: payload.shellType, shellName: payload.shellName,
       weaponSound: payload.weaponSound || shellSpec?.soundProfile || shooter?.spec.gun.soundProfile || null,
-      muzzleIndex, caliberMm: payload.caliberMm, velocityMps: payload.velocityMps, timeS: payload.timeS ?? game.timeS,
+      muzzleIndex, caliberMm: payload.caliberMm, velocityMps: payload.velocityMps, timeS,
+      // (270) a rotary gun's flash, report and kick at the floor's density (sim/fireCycleFloor.ts); a predicted own shot
+      // already played its own
+      thinned: !feedbackPredicted && shooter?.spec.gun.autoloader?.rotary === true && shellSpec?.guided !== true
+        && thinFiredShot(shooter.id, timeS),
       // (233) the round's own blast envelope (the gunship's howitzer), as the solo step publishes it
       blastRadiusM: shellSpec?.blastRadiusM,
       muzzlePos, dir: [payload.dx, payload.dy, payload.dz], shooterSpecId: shooter?.specId,

@@ -27,6 +27,9 @@ export interface AutoloaderSpec {
   magazineSize: number;
   intraClipS: number;
   fullReloadS?: number;
+  /** A rotary gun (a Gatling's barrel cluster): its rounds may cycle once a tick, below every other gun's 0.05 s
+   * (sim/fireCycleFloor.ts). Default off. */
+  rotary?: boolean;
 }
 
 export interface FleetGunSpec extends Record<string, RuntimeValue> {

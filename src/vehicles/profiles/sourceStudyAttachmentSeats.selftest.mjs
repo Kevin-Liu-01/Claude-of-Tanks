@@ -79,10 +79,13 @@ for (const quality of ['high', 'low']) for (const id of ids) {
         assert.equal(first?.object.name,'turretDetail','the narrow receiver is visible below the whip');
       }
     } else {
+      // Re-pinned 2026-11-11 (272): 5d4955ba60 (2026-10-19, the owner's float sweep: "each pair is seated on" its tray)
+      // snaps each smoke case onto its tray, moving three caps 10.4, 12.5 and 12.4 mm (the fourth was seated). Measured
+      // at that commit and on main alike (0.0 mm at its parent); the axes and the 9.5 mm cap face are unchanged.
       for(const [mouth,axis] of [
-        [[-.964395,2.676650,-.141980],[.371,.136,.924]],
-        [[-1.512045,2.677500,-.453230],[-.084,.136,.988]],
-        [[.959405,2.676650,-.141980],[-.371,.136,.924]],
+        [[-.974011,2.677087,-.138165],[.371,.136,.924]],
+        [[-1.512124,2.677520,-.465713],[-.084,.136,.988]],
+        [[.947902,2.676152,-.146548],[-.371,.136,.924]],
         [[1.506505,2.677500,-.453230],[.084,.136,.988]],
       ]) {
         const m=new THREE.Vector3(...mouth),a=new THREE.Vector3(...axis).normalize();

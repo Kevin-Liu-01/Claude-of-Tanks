@@ -61,7 +61,7 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **222** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
+| Fleet | **222** first-party procedural vehicles in production and local development |
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -74,7 +74,7 @@ Language selection lives under **Settings → Language → Language**. See the
 [localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
 the General Translation workflow, and release gates.
 
-The provenance gate currently reports **303 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
+The provenance gate currently reports **303 first-party procedural battle playables**.
 
 ## Field footage
 
@@ -395,7 +395,7 @@ node tools/public-shell.mjs --write
 node tools/gen-tokens.mjs
 ```
 
-The public build strips quarantined comparison assets. Simulation, networking, browser multiplayer, maps, collision,
+Simulation, networking, browser multiplayer, maps, collision,
 destruction, rendering policy, UI, mobile controls, vehicle provenance, anatomy, generated assets, and both build variants
 have executable checks.
 
@@ -417,5 +417,4 @@ All gameplay code and every selectable procedural vehicle model are original fir
 repository is MIT-licensed by default, with procedural vehicle and battlefield source, fleet and map data, generated game
 assets, capture recipes, authored media, and first-party branding expressly excluded as proprietary Reserved Content.
 Earlier public revisions remain available under the MIT terms under which they were released. See [`LICENSE`](LICENSE), [`LICENSE-POLICY.md`](LICENSE-POLICY.md),
-[`NOTICE.md`](NOTICE.md), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) before reusing any file. External models may be
-retained only as quarantined research references; they are never loaded as playable geometry.
+[`NOTICE.md`](NOTICE.md), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) before reusing any file.

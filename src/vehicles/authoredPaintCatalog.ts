@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 66 entries over 148 vehicles.
+// 67 entries over 149 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -42,6 +42,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_magach6b',
   'paint_magach7c',
   'paint_marder2',
+  'paint_object292',
   'paint_object695_x',
   'paint_olifant_mk1',
   'paint_olifant_mk1a',
@@ -126,6 +127,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_magach6b',lead: 'magach6b',sourceTankIds: ['magach6b'],nation: 'Israel',label: 'IDF Splinter Woodland',tags: ['il','woodland','digital','signature'],visual: {scheme: 'splinter',base: '#7b7a66',weather: '#878571',patches: ['#5d6052','#9c977d','#3b3c34'],camoScale: 0.55}},
   {id: 'paint_magach7c',lead: 'magach7c',sourceTankIds: ['magach7c'],nation: 'Israel',label: 'IDF Blotch Woodland',tags: ['il','woodland','organic','signature'],visual: {scheme: 'blotch',base: '#8a856e',weather: '#96917a',patches: ['#5f6150','#3a3a32'],camoScale: 0.6,patchK: 1.8}},
   {id: 'paint_marder2',lead: 'marder2',sourceTankIds: ['marder2'],nation: 'Germany',label: 'Bundeswehr Three-Tone Woodland',tags: ['de','woodland','organic','signature'],visual: {scheme: 'nato',base: '#48533f',weather: '#73705b',patches: ['#302e27','#242c24'],camoScale: 0.5}},
+  {id: 'paint_object292',lead: 'object292',sourceTankIds: ['object292'],nation: 'USSR',label: 'Soviet Three-Tone Woodland',tags: ['ru','woodland','organic','signature'],visual: {scheme: 'nato',base: '#968f6b',weather: '#a29b77',patches: ['#66714f','#2b2e2c'],camoScale: 0.45,patchK: 1.15}},
   {id: 'paint_object695_x',lead: 'object695',sourceTankIds: ['object695'],nation: 'Russia',label: 'Russian Digital Woodland III',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a44',weather: '#5c6647',patches: ['#7d8664','#33402c','#6f7570'],camoScale: 0.34}},
   {id: 'paint_olifant_mk1',lead: 'olifant_mk1',sourceTankIds: ['olifant_mk1'],nation: 'South Africa',label: 'SANDF Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#76684d',weather: '#827456',patches: ['#4b5535','#2a2720'],camoScale: 0.55,patchK: 1.3}},
   {id: 'paint_olifant_mk1a',lead: 'olifant_mk1a',sourceTankIds: ['olifant_mk1a'],nation: 'South Africa',label: 'SANDF Disruptive Desert',tags: ['desert','organic','signature'],visual: {scheme: 'merdc',base: '#a08b63',weather: '#ab9770',patches: ['#6c5a3d','#c8b48c','#3b3428'],camoScale: 0.6,patchK: 1.2}},

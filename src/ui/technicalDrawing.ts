@@ -262,12 +262,19 @@ export function mountTechnicalDrawing(host: HTMLElement, id: string, options: Te
 
   // zoom and pan on a fine pointer
   const fine = options.zoom !== false && typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches;
+  // (272) a wheel or a drag reports more events than frames, and each one measured the stage and re-placed the plate: the
+  // zoom and pan follow at once, the drawing once a frame
+  let zoomFrame = 0;
+  const applyZoomSoon = (): void => {
+    if (zoomFrame) return;
+    zoomFrame = requestAnimationFrame(() => { zoomFrame = 0; if (!disposed) applyZoom(); });
+  };
   const zoomAt = (factor: number, x: number, y: number): void => {
     const next = Math.min(ZOOM_MAX, Math.max(1, zoom * factor));
     panX = x - (x - panX) * next / zoom;
     panY = y - (y - panY) * next / zoom;
     zoom = next;
-    applyZoom();
+    applyZoomSoon();
   };
   if (fine) {
     root.classList.add('can-zoom');
@@ -287,7 +294,7 @@ export function mountTechnicalDrawing(host: HTMLElement, id: string, options: Te
       if (!drag) return;
       panX = drag.panX + event.clientX - drag.x;
       panY = drag.panY + event.clientY - drag.y;
-      applyZoom();
+      applyZoomSoon();
     });
     stage.addEventListener('pointerup', () => { drag = null; });
     stage.addEventListener('dblclick', () => { zoom = 1; panX = 0; panY = 0; applyZoom(); });

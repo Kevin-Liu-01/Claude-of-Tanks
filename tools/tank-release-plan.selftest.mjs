@@ -7,7 +7,6 @@ const byTool=tool=>steps.find(step=>step.args[0]===`tools/${tool}.mjs`);
 assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'node-test tools/tank-standard-check.mjs --ids=leo2a7v,t14_armata --gate --stages',
   'node-test tools/tank-sealed-check.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/sealed.json --gate',
-  'node-test tools/procedural-fidelity.mjs --ids=leo2a7v,t14_armata --check --board --neutral-board',
   'node-test tools/gen-combat-anatomy.mjs --check --ids=leo2a7v,t14_armata',
   'node-test tools/interior-fill-exposure.mjs --ids=leo2a7v,t14_armata --lane --check --jobs=4',
   'node-test tools/fleet-geometry-ledger.mjs --check --ids=leo2a7v,t14_armata',
@@ -28,17 +27,16 @@ assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'npm test',
   'npm run build:private',
 ], 'fail-fast ordering retains every existing command, assertion flag and complete ID scope exactly once');
-for(const tool of ['procedural-fidelity','tank-standard-check']) {
-  const step=byTool(tool);
-  assert.ok(step,`strict release cannot omit ${tool}`);
+{
+  const step=byTool('tank-standard-check');
+  assert.ok(step,'strict release cannot omit tank-standard-check');
   assert.equal(step.command,'node-test');
-  assert.ok(step.args.includes('--ids=leo2a7v,t14_armata'),'source comparisons retain the entire selected scope');
+  assert.ok(step.args.includes('--ids=leo2a7v,t14_armata'),'the standard check keeps the entire selected scope');
 }
-assert.ok(byTool('procedural-fidelity').args.includes('--check'));
-assert.ok(byTool('procedural-fidelity').args.includes('--board'));
-assert.ok(byTool('procedural-fidelity').args.includes('--neutral-board'),
-  'strict source release retains fresh equal-material visual/articulation evidence after scoring');
-assert.equal(byTool('procedural-fidelity').capture,true);
+// Owner, 2026-11-12: outside 3D models are tank-generation comparison bases only; no release step scores against one.
+for(const [ids,gate] of [['leo2a7v,t14_armata',true],['m1a1_abrams_hc',false],['strv122,ztz100',true]])
+  assert.equal(tankReleaseSteps(ids,gate,'node-test').some(step=>step.args[0]==='tools/procedural-fidelity.mjs'||step.args[0]==='tools/geometry-gate.mjs'),false,
+    `${ids} (gate=${gate}): no step compares a build with an outside model`);
 assert.ok(byTool('tank-standard-check').args.includes('--gate'));
 // 2026-10-16 (test-speed R4b): the release reports every standard stage, so a red geometry gate cannot hide B2-B4.
 assert.ok(byTool('tank-standard-check').args.includes('--stages'));
@@ -63,8 +61,6 @@ assert.equal(steps.find(step=>step.command==='npm'&&step.args[0]==='test').captu
   'npm selftests own their phase leases; no outer lock');
 assert.equal(steps.find(step=>step.command==='npm'&&step.args[1]==='build:private').capture,true,
   'standalone private build uses the shared resource queue');
-assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,
-  'non-source release does not require an unavailable reference');
 assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,20,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check; 2026-10-11: + ledger and mission-seat checks; 2026-10-15: + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18: + the gun-junction ledger; 266: + the id-scoped tanks receipts; 267: + the whip-rod census)'); // 265 integration: + the id-scoped fill exposure beside the id-scoped tanks step (19); 267: + the whip-rod census (20).
 // guards 229: the counter-drone step only for a release naming a pinned vehicle, on those ids, CPU only (no capture lease)
 assert.equal(byTool('counter-drone-engage').capture,false,'the counter-drone pilot runs build no geometry: no capture lease');
@@ -81,16 +77,16 @@ for(const ids of ['',',','t14_armata,'])assert.throws(()=>tankReleaseSteps(ids,t
 // remaining probe beside the receipt suite and the build, four at a time.
 const stages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test');
 assert.deepEqual(stages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),
-  [['scoring',1,3],['fleet probes, receipts and build',4,19]]); // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
+  [['scoring',1,2],['fleet probes, receipts and build',4,19]]); // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
 assert.deepEqual(stages[0].steps.map(step=>step.args[0]),
-  ['tools/tank-standard-check.mjs','tools/tank-sealed-check.mjs','tools/procedural-fidelity.mjs'],
+  ['tools/tank-standard-check.mjs','tools/tank-sealed-check.mjs'],
   'the load-sensitive scoring stays serial and first');
 assert.deepEqual(stages.flatMap(stage=>stage.steps),steps,'staging reorders nothing and drops nothing');
 assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[0]==='test'));
 assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[1]==='build:private'));
 const plain=tankReleaseStages('m1a1_abrams_hc',false,'node-test');
-assert.deepEqual(plain.map(stage=>stage.steps.length),[2,18],'without a reference the scoring stage has no fidelity step'); // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
-console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');
+assert.deepEqual(plain.map(stage=>stage.steps.length),[2,18],'without --gate the plan has the same scoring stage'); // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
+console.log('tank-release-plan: standard and sealed scoring with no outside model, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');
 
 // Lane mode (2026-10-16, test-speed R8e): a lane landing skips exactly the embedded `npm test` and
 // `npm run build:private`. Every other step is the integrator mode's byte for byte. Since 266 every step is per id:
@@ -122,7 +118,7 @@ assert.deepEqual(tankReleaseSteps('leo2a7v,t14_armata',true,'node-test',{lane:fa
 assert.deepEqual(tankReleaseSteps('m1a1_abrams_hc',false,'node-test',{lane:true}),withoutNpm(tankReleaseSteps('m1a1_abrams_hc',false,'node-test')),
   'without --gate or a reference, lane mode still keeps every other step');
 const laneStages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:true});
-assert.deepEqual(laneStages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),[['scoring',1,3],['fleet probes',4,17]]); // the integrator stage's 19 less npm test and build:private // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
+assert.deepEqual(laneStages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),[['scoring',1,2],['fleet probes',4,17]]); // the integrator stage's 19 less npm test and build:private // 265 integration: + the id-scoped fill exposure; 267: + the whip-rod census
 assert.deepEqual(laneStages.flatMap(stage=>stage.steps),lane,'lane staging reorders nothing and drops nothing');
 assert.deepEqual(tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:false}),stages,'integrator staging unchanged');
 
@@ -156,7 +152,7 @@ assert.match(tankReleaseInvocation(['--lane','--dry-run']).usage ?? '',/^usage: 
 assert.deepEqual(tankReleasePlanLines(laneRun).filter(line=>line.startsWith('  ')),lane.map(step=>`  ${tankReleaseLabel(step)}`),
   '--dry-run prints every lane step');
 assert.deepEqual(tankReleasePlanLines(fullRun).filter(line=>line.startsWith('[tank-release] stage ')),
-  ['[tank-release] stage "scoring": 3 step(s), 1 at a time','[tank-release] stage "fleet probes, receipts and build": 19 step(s), 4 at a time']);
+  ['[tank-release] stage "scoring": 2 step(s), 1 at a time','[tank-release] stage "fleet probes, receipts and build": 19 step(s), 4 at a time']);
 
 // The note's claims, pinned where they live. The gate (tools/gate.mjs) runs the default receipt tier and `npm run build`;
 // `npm run build` runs build:private's commands with the same prebuild, then the public strip and provenance.
@@ -210,7 +206,7 @@ assert.deepEqual(lanePass.calls.map(call=>call.label),lane.map(tankReleaseLabel)
 assert.deepEqual(lanePass.calls.map(call=>call.capture),lane.map(step=>step.capture),'each step runs through the runner its capture flag names');
 assert.equal(lanePass.calls.some(call=>call.label.startsWith('npm ')),false,'a lane run never starts npm test or the build');
 assert.equal(lanePass.maxInFlight,4,'the probes stage runs four at a time');
-assert.deepEqual(lanePass.calls.slice(0,4).map(call=>call.inFlight),[1,1,1,1],
+assert.deepEqual(lanePass.calls.slice(0,3).map(call=>call.inFlight),[1,1,1],
   'the scoring steps run one at a time, and the probes start only after the scoring stage finished');
 const laneLines=lanePass.out.map(([,line])=>line.trim());
 assert.equal(laneLines[0],'[tank-release] lane mode --gate: leo2a7v,t14_armata');
@@ -236,7 +232,7 @@ assert.equal(plainLane.calls.some(call=>call.label.startsWith('npm ')),false);
 // order, no PASS line is printed and no later stage starts.
 const scoringFail=await fakeRelease(laneArgv,{fail:{[tankReleaseLabel(lane[1])]:7}});
 assert.equal(scoringFail.status,7,'a failed lane step fails the lane run with its status');
-assert.deepEqual(scoringFail.calls.map(call=>call.label),lane.slice(0,3).map(tankReleaseLabel),'the scoring stage finishes; the probes never start');
+assert.deepEqual(scoringFail.calls.map(call=>call.label),lane.slice(0,2).map(tankReleaseLabel),'the scoring stage finishes; the probes never start');
 assert.doesNotMatch(scoringFail.text,/PASS/);
 assert.equal(scoringFail.text.split('\n').filter(line=>line===`[tank-release] ${LANE_NOTE}`).length,1,'no closing note after a failure');
 assert.equal(scoringFail.out.at(-1)[1],'\n[tank-release] FAIL (lane mode) leo2a7v,t14_armata','the FAIL line is the last output');
@@ -286,10 +282,9 @@ for(const step of concept.filter(s=>s.args[0]?.startsWith('tools/')&&s.args.some
   assert.ok(step.args.includes('--ids=ztz100_prototype,object695'),'all physical checks retain both concepts');
 }
 for(const name of ['tank-standard-check','tank-sealed-check'])assert.ok(concept.find(s=>s.args[0]===`tools/${name}.mjs`).args.includes('--gate'));
-// 262: the ZTZ-100 is a concept now (the ZTZ-20 family); strv122 is the mixed run's source comparison
+// 262: the ZTZ-100 is a concept now (the ZTZ-20 family)
 const mixed=tankReleaseSteps('strv122,ztz100_prototype,object695',true,'node-test');
-assert.deepEqual(mixed.find(s=>s.args[0]==='tools/procedural-fidelity.mjs').args,
- ['tools/procedural-fidelity.mjs','--ids=strv122','--check','--board','--neutral-board']);
+assert.equal(mixed.some(s=>s.args[0]==='tools/procedural-fidelity.mjs'),false,'a mixed run compares nothing with an outside model');
 assert.throws(()=>tankReleaseSteps('unknown_x',true),/known playable/,'unknown IDs cannot obtain N/A qualification');
 
 const type100=tankReleaseSteps('type100',true,'node-test');

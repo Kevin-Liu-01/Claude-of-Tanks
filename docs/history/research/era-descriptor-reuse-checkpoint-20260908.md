@@ -20,7 +20,7 @@ registry/profile edit. Exact authored ERA facets still bypass this legacy
 deduplicator. Current-main night-lighting integration remains untouched.
 The focused selftest has one row in `tools/selftest-suites.mjs`.
 
-No source models, temporary QA files, unrelated WIP or generated asset sweep
+No temporary QA files, unrelated WIP or generated asset sweep
 belong in this checkpoint. Byte-identical geometry is the acceptance boundary;
 this is not a newly qualified vehicle batch.
 

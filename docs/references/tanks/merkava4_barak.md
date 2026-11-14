@@ -20,7 +20,7 @@ openings remain. The source itself overlaps its lower rear rails with its
 track by 31–34 mm. A documented hidden receiving relief clears the real moving
 stock while retaining the upper returns and visible rear form. The 264-phase
 fixture includes a failing control with the original overlapping tip restored.
-See [the source study](../../history/research/barak-bow-opening-source-study-20260919.md).
+See [the source study](../../tank-generation/history/barak-bow-opening-source-study-20260919.md).
 
 Full fleet generation passed at `87e8e9526`, including the regenerated assets.
 The subsequent independent fourteen-view review is **HOLD**: a closed rear

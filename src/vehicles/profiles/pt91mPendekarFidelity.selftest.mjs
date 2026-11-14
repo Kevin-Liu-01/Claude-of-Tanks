@@ -9,7 +9,7 @@ import {KIT} from './kit.ts';
 import {T72BU_X_SOURCE_DATUMS as DATUMS} from '../t72buXArmor.ts';
 import {createTankState} from '../../sim/movement.ts';
 
-// The old standalone oracle target and its assertions are preserved verbatim
+// The old standalone target and its assertions are preserved verbatim
 // in docs/references/tanks/pt91m.legacy-fidelity-selftest.txt. Owner 2026-10-06
 // explicitly replaced that target with the actual T-72BU and a refitted PT91 kit.
 const restore=installCanvasFixture();

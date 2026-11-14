@@ -901,9 +901,9 @@ before relying on the triangle saving: until the `tree-cull` toggle's A/B says t
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated
-presentation assets. The runtime no longer loads comparison GLBs for playable
-vehicles. Public builds also remove quarantined source material, reducing
-artifact size and eliminating obsolete source-loading branches from the public
+presentation assets. The runtime loads no model file for playable
+vehicles, and public builds ship none, which keeps artifact size down and
+keeps obsolete source-loading branches out of the public
 path.
 
 Vehicle portraits, silhouettes, and diagrams are generated ahead of time.

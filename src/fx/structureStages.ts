@@ -614,10 +614,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
       changed = true;
     }
+    let pieceGone = false;
     for (const hide of result.hides ?? []) {
       // a set piece's named piece (landmarks/pieces.ts: a figure, a merlon, a sail) goes by its own spans
       if (hide.piece) {
-        for (const span of seam.spans) if (span.piece === hide.piece) { flattenSpan(span); changed = true; }
+        for (const span of seam.spans) if (span.piece === hide.piece) { flattenSpan(span); changed = true; pieceGone = true; }
         continue;
       }
       // the whole structure (a collapse) is the mask's fall; a section's hide waits for sections on the spans (P2)
@@ -629,6 +630,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // roof's slabs carry it down; stood in the world it was left in the sky, or on the attic floor)
       if (hide.partClass === 'roof') changed = flattenRoofFurniture(seam) || changed;
     }
+    // (amberford-lavoir-272; the slab census: the lavoir's roof, a named piece, came off at the breach and its top storey's
+    // room still drew its ceiling at the wall heads, a 65 m² lid) a set piece whose roof is a named piece opens to the sky
+    // as a roof's fall opens a building: once the piece hides take its roof below half drawn, its top rooms lose their
+    // ceilings (here and in the fracture's rooms) and what stood on the roof goes
+    if (pieceGone && roofDropped(seam)) { fracture?.roofOpened(seam.structureIdx); changed = true; }
     if (changed) seam.touchShadows();
   }
 

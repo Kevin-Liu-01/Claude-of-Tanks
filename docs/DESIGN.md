@@ -13,11 +13,11 @@ they overlap. Navigation: docs/INDEX.md. History-as-narrative: docs/LESSONS.md.)
 The program has four interlocking systems:
 
 1. the RUNTIME — procedural tank construction (src/vehicles/);
-2. the MEASUREMENT STACK — headless instruments that score builds against oracles;
+2. the MEASUREMENT STACK — headless instruments that score builds;
 3. the PROGRAM LOOP — builders → orchestrator landings → critics → ratification →
    graduation;
-4. the ORACLE LIFECYCLE — community GLB → extract → registration → repairs →
-   retirement at graduation.
+4. the REFERENCE LIFECYCLE — tank-generation tooling that registers, repairs and
+   retires a lane's comparison basis (§4).
 
 ---
 
@@ -27,10 +27,10 @@ The program has four interlocking systems:
 - `TANK_SPECS` (specs.ts:543) — every playable's stats, `dims` (published real-vehicle
   dimensions: the gate's sovereign anchor), `armor` (incl. `turretPivot`/`gunPivot` —
   the rig seats), `visual` knobs (trackWidthM, camoScale, bakeDirtDeckEq...).
-- `MODEL_SOURCE` (specs.ts:1690) — the per-tank source-of-truth switch: which ids load a
-  GLB, with registration config (turretNode/gunNode regexes, autoPivot, yawOffset,
-  flip). Procedural-only ids simply have no row. The userdrops*.js modules override rows
-  in the eager facade's declared import order—later waves land on top.
+- `MODEL_SOURCE` (specs.ts:1690) — the per-tank source-of-truth switch, with registration
+  config (turretNode/gunNode regexes, autoPivot, yawOffset, flip). Procedural-only ids
+  simply have no row. Later wave modules override rows in the eager facade's declared
+  import order—later waves land on top.
 - `getSpec` (specs.ts:2013), `ALL_TANK_IDS` (specs.ts:1678).
   `combatVariantSpecs.ts` registers the core Abrams/T-90 combat variants by
   side effect before roster finalization.
@@ -107,12 +107,12 @@ change framing). `FITTINGS` is the import spelling that survives the kit.js/tank
 module cycle on synchronous top-level rigs. Self-test:
 `node tools/tank-standard-check.mjs --fixture`.
 
-### 1.5 Source-geometry comparison path
-Playable vehicles never load third-party GLBs. Historical source geometry may
-still be inspected by isolated authoring and comparison tools, but production
-registration, Garage presentation, battles, thumbnails, and multiplayer all
-use the first-party procedural builders. Public builds strip quarantined source
-assets, and source-loader behavior is not a gameplay fallback.
+### 1.5 Comparison path
+Playable vehicles are first-party procedural builds. Comparison during tank
+generation is done by tools a lane runs by hand (`npm run gen:checks`,
+`npm run gen:fidelity`, `npm run gen:repin`); production registration, Garage
+presentation, battles, thumbnails, and multiplayer all use the first-party
+procedural builders, and no gate or receipt reads an outside model.
 
 ---
 
@@ -132,7 +132,7 @@ is the caller's (e.g. visual-evaluator.mjs:24, 30 min) or the wrapper's default
 
 | Instrument | What it measures |
 |---|---|
-| tools/geometry-gate.mjs (:1-12) + tools/procedural-fidelity.html?geo=1 | THE gate. Both models through the identical 1024-px ortho-mask → column-polyline pipeline; components hullCurves/wholeCurves/turretCurves/stations/dims/floaters, min is the headline; curve score = 100 − 12·mean% − 0.6·p95% − 1.5·cover% (fidelity page ~:1007); hull-anchored translation-only registration; writes docs/geometry-gate/<id>.json + tool-written ledger.json (merge, never shrink — gate.mjs:68) |
+| tools/geometry-gate.mjs (:1-12) + tools/procedural-fidelity.html?geo=1 | The tank-generation silhouette comparison a lane runs by hand (`npm run gen:checks`). Reference and build go through the identical 1024-px ortho-mask → column-polyline pipeline; components hullCurves/wholeCurves/turretCurves/stations/dims/floaters, min is the headline; curve score = 100 − 12·mean% − 0.6·p95% − 1.5·cover% (fidelity page ~:1007); hull-anchored translation-only registration; writes docs/geometry-gate/<id>.json + tool-written ledger.json (merge, never shrink — gate.mjs:68) |
 | tools/visual-evaluator.mjs (:1-15) + visual-evaluator-page.html | §D numbers for angle/roundness claims: edge Δangles with noise bands, arc fits + facet reads, per-column deltas; RIG MISMATCH (yaw-proxy >10°) exits 2 and ABORTS scoring; --selftest calibrates; graduates need the committed CRITIC_REFERENCE_OVERRIDES mirror |
 | tools/tmp-tank-critic.mjs + tmp-tank-critic.html | The official 14 shaded ref/proc pairs (front..close-roof) at camoSeed 4242 → shots/critic-<id>/; `--final` additionally writes 14 yaw0 + 14 yaw90 procedural frames with a shared union camera frame; the critic's raw evidence; graduates measure via its CRITIC_REFERENCE_OVERRIDES map |
 | tools/track-clip-audit.mjs (:1-18) | §B4 voxel interpenetration at bow/stern wrap zones — bandVox AND shoeVox per zone (--exact = true interpenetration; shoe = player-visible bar); dressingSkipped conformance exclusions; shots/track-clip*.json, blind spots ranked |
@@ -144,10 +144,10 @@ is the caller's (e.g. visual-evaluator.mjs:24, 30 min) or the wrapper's default
 | tools/genIcons.mjs + tools/tank-assets-check.mjs | 9 outputs per tank from the shipped model: hero/top/side, two silhouettes, KE-armor/module/crew diagrams, and markings; manifest (a row file per tank, tools/tank-assets-store.mjs) binds file hashes + dimensions to live geometry, tiers and combat volumes |
 | tools/muzzle-bore-probe.mjs | Visual fleet gate: straight-on render + center ray proves the machine-tagged cannon mouth is dark and exposed; emits per-tank PNGs and `report.json` |
 | tools/quietcert.mjs | Perf certification that REFUSES contended machines by design (docs/cert-r6-*) |
-| (retired 2026-09-23) | The GLB-era oracle instruments — vertex-extract, vertex-workorder, vertex-normalize and repair_oracles.py — left the repository with the hidden fleet; their measurement records remain under docs/references/vertex/ and the process history in Git |
+| (retired 2026-09-23) | The earlier comparison instruments — vertex-extract, vertex-workorder, vertex-normalize and repair_oracles.py — left the repository with the hidden fleet; their measurement records remain under docs/references/vertex/ and the process history in Git |
 | tools/screenshot.mjs | The 20-view deterministic screenshot contract (docs/SCREENSHOT_CONTRACT.md) — game-wide, not tank-specific |
 
-Photo-class instruments (no-oracle lane): tools/tmp-leo-photoclass.{html,mjs} and
+Photo-class instruments (photo-only lane): tools/tmp-leo-photoclass.{html,mjs} and
 tools/tmp-ww2-photoclass.{html,mjs} — proc-only renders on the critic's exact 14-view
 rig + yaw pose. Batch drivers holding ONE FIFO ticket for pair renders:
 tools/tmp-b1b3-critic-batch.mjs (+ per-round clones like tmp-density-critic-batch.mjs).
@@ -193,26 +193,14 @@ tools; scratchpad snapshots instead of stashes; the orchestrator is the only com
 
 ---
 
-## 4. The oracle lifecycle
+## 4. The reference lifecycle
 
-1. **Sourcing** — community CC models only (docs/ATTRIBUTION.md records every asset +
-   evaluation verdicts). THE ONE ABSOLUTE RULE: no commercial-game extractions, ever —
-   provenance screening happens on the binary's own metadata. NC/ND/unverifiable
-   licenses live in local-only quarantine (recovered/, quarantine/; strip-nc-assets.mjs
-   scrubs public builds). [skill: onboard-oracle]
-2. **Onboarding** — place under public/models/tanks/community/, ATTRIBUTION row,
-   MODEL_SOURCE registration, vertex-extract REG, gate baseline x2.
-3. **Service** — the print is the measured reference; certified oracle-defect caps
-   (never dims) record where it is wrong; §B7 lets the owner rule photo-class over a
-   wrong region.
-4. **Repairs** — orchestrator-lane batches in repair_oracles.py (seat/rotate/warp),
-   planned by vertex-normalize, verified byte-idempotent + census-guarded + gate-in-loop,
-   simulated first via request interception. [skill: oracle-repair]
-5. **Retirement (graduation)** — runtime registration dropped; the print stays on disk
-   as the measurement oracle via the three override maps (procedural-fidelity /
-   visual-evaluator-page / tmp-tank-critic); freeze verification moves to geometry hash.
-   Flip-era tanks (mass registration flip c487188) were retired ahead of graduation and
-   only need mirror verification.
+Comparison bases are tank-generation tooling, not part of the game. How a lane
+registers, services, repairs and retires one is documented under
+[docs/tank-generation/](tank-generation/README.md). The comparison tools are ones a
+lane runs by hand (`npm run gen:checks`, `npm run gen:fidelity`, `npm run gen:repin`);
+no gate or receipt reads an outside model. At graduation the runtime registration
+is dropped and freeze verification moves to the geometry hash.
 
 ---
 
@@ -223,7 +211,7 @@ consequences of the architecture above:
 - masks are DoubleSide but the game renders FrontSide → reversed-winding slabs are
   gate-invisible and render-invisible-from-outside (§C missing-side; winding guards).
 - hull-anchored registration → dims tail anchors shift hull-row mids (counterweight
-  law); short-barreled oracles cap only wholeCurves.
+  law); short-barreled references cap only wholeCurves.
 - station cameras render a ~0.52 m clipped slab → long axis-aligned prisms vanish
   (segment ≤0.48 m).
 - the 12% body filter + p95 roof define what "counts" for dims; whips don't count for

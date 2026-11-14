@@ -26,6 +26,7 @@ import type {
   CombatState,
   HitEvent,
 } from '../sim/damage.ts';
+import { createRotaryShotThinning } from '../sim/fireCycleFloor.ts';
 import type {
   MovementArmorSpec,
   MovementContactGeometry,
@@ -140,6 +141,7 @@ import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
+import { createShotCadence, shotShakeScale } from './shotCadence.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
@@ -601,6 +603,9 @@ interface ShellFiredEvent {
   /** (233) the round's own blast envelope when its spec has one (the gunship's howitzer: 22 m): the effects size its
    *  charge by it (effects.ts rememberMunition) instead of the calibre's generic charge */
   blastRadiusM?: number;
+  /** (270) a rotary gun's round between two full ones (sim/fireCycleFloor.ts createRotaryShotThinning): it flies, hits
+   *  and impacts, but plays no muzzle flash, report or camera kick */
+  thinned: boolean;
 }
 
 interface NearestTankTrace {
@@ -708,8 +713,10 @@ const _firedEv: ShellFiredEvent = {
   caliberMm: 0, velocityMps: 0, timeS: 0,
   muzzlePos: [0, 0, 0], dir: [0, 0, 0],
   weaponSound: null, muzzleIndex: -1,
-  recoilScale: 1,
+  recoilScale: 1, thinned: false,
 };
+// (270) the rotary gun's presentation at the floor's density: every third round of the M163's one a tick in full
+const thinRotaryShot = createRotaryShotThinning();
 
 
 
@@ -719,7 +726,7 @@ const _firedEv: ShellFiredEvent = {
  * @param {object} game game state
  * @param {string} playerSpecId chosen TankId
  * @param {object} world World (§2.7)
- * @param {{random?:boolean}} [opts] COMMUNITY TANKS: random=true shuffles the
+ * @param {{random?:boolean}} [opts] FULL POOL: random=true shuffles the
  *   enemy roster from the full pool (garage-started battles); default keeps
  *   the deterministic core-8 staging (boot, screenshot contract).
  * @returns {void}
@@ -1127,7 +1134,7 @@ export function setupBattle(
   wreckTurrets.gravity = 9.81 * (Number.isFinite(game.ruleset.gravityScale) ? game.ruleset.gravityScale : 1);
   wreckTurrets.bind(wreckEnvironmentFor(world, ground.field));
 
-  // COMMUNITY TANKS: field the participants; park everyone else (hidden,
+  // FULL POOL: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
@@ -1817,12 +1824,18 @@ function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): num
   return muzzleIndex;
 }
 
+// (272) the player's camera kick by its gun's cadence (game/shotCadence.ts): a fast gun kicks once a shake window, by the
+// rounds it stands for, so a long burst holds a steady shake instead of ratcheting the camera to its full shake
+const shotShake = createShotCadence();
+
 function applyShotFeedback(
   entity: SoloEntity,
   shell: DamageShellSpec,
   muzzleIndex: number,
   recoilScale: number,
   rig: CameraRig | null,
+  thinned: boolean,
+  timeS: number,
 ): void {
   fireRecoil(entity.state, entity.spec, shell, recoilLaunchFor(entity, _dir));
   entity.visual?.recoilKick(
@@ -1831,11 +1844,15 @@ function applyShotFeedback(
     muzzleIndex >= 0 ? muzzleIndex : undefined,
     usesLauncherMuzzles(entity.spec.gun, shell),
   );
-  if (!entity.isPlayer || !rig) return;
+  if (!entity.isPlayer || !rig || thinned) return;
   const caliberScale = Math.max(0, Math.min(1, (shell.caliberMm - 30) / 122));
-  rig.addTrauma((0.10 + caliberScale * 0.20) * recoilScale);
+  const trauma = (0.10 + caliberScale * 0.20) * recoilScale;
+  const kick = shotShakeScale(shotShake.admit('shake', entity.id, shell.soundProfile || entity.spec.gun.soundProfile || shell.caliberMm,
+    timeS), trauma);
+  if (kick <= 0) return;
+  rig.addTrauma(trauma * kick);
   rig.recoilKick?.(
-    (0.006 + caliberScale * 0.011) * recoilScale,
+    (0.006 + caliberScale * 0.011) * recoilScale * kick,
     recoilScale,
   );
 }
@@ -1848,6 +1865,7 @@ function emitShellFired(
   muzzleIndex: number,
   recoilScale: number,
   bus: EventBus,
+  thinned: boolean,
 ): void {
   _firedEv.shellId = shell.id;
   _firedEv.shooterId = entity.id;
@@ -1862,6 +1880,7 @@ function emitShellFired(
   _firedEv.velocityMps = shellSpec.velocityMps;
   _firedEv.blastRadiusM = shellSpec.blastRadiusM;
   _firedEv.timeS = game.timeS;
+  _firedEv.thinned = thinned;
   _firedEv.muzzlePos[0] = _muzzle.x;
   _firedEv.muzzlePos[1] = _muzzle.y;
   _firedEv.muzzlePos[2] = _muzzle.z;
@@ -1890,6 +1909,8 @@ function tryFire(
   applyDispersion(_dir, dispersion, game.combatRng);
   const firedSlot = entity.combat.shellSlot;
   if (!consumeAmmunition(entity.combat, firedSlot)) return;
+  const thinned = entity.spec.gun.autoloader?.rotary === true && shellSpec.guided !== true
+    && thinRotaryShot(entity.id, game.timeS);
   const shell = acquireShell(
     shellSpec,
     entity.id,
@@ -1898,6 +1919,7 @@ function tryFire(
     _dir,
     game.nextShellId++,
   );
+  shell.thinned = thinned;
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
@@ -1905,8 +1927,8 @@ function tryFire(
   if (rulesetUnlimitedFor(game.ruleset, entity)) refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
-  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
-  emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus);
+  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig, thinned, game.timeS);
+  emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus, thinned);
   startPostShotReload(entity.combat, entity.spec);
   if (!hasAmmunition(entity.combat, firedSlot)) {
     const fallbackSlot = selectFirstAvailableShell(entity.combat, entity.spec);
@@ -2887,7 +2909,7 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   }
 }
 /** Air Support's counter-air for the solo battle's roof stations: the nearest enemy aircraft, and its share of a round. */
-const _soloAirPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+const _soloAirPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
 function soloCounterAir(game: SoloGameState): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
   return {
     nearest(shooter, origin, rangeM, out, roundMps) {

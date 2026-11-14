@@ -445,6 +445,17 @@ export default {
     // the rise the town stands on: a long farmhouse steps its plinth over up to 2.1 m of fall (the default 1.7 refused two)
     maxSpread: 2.1,
     monument: true, // the market cross on the square
+    // (amberford-lavoir-272, 2026-11-10; the owner: "new special buildings ... integrated with the whole identity of the
+    // map") the village lavoir (src/world/landmarks/village.ts lavoir): the covered wash-house of a Moselle village, cut
+    // into the rise on the place's south-west quarter (civic/plans/autumn.ts la-place: the market's corner) between the
+    // bots' line down the inn's front and the coach road's south arm, its arcade to the coach road, the well before its low
+    // end. The spring rises at its uphill (south) end into the fontaine and the beasts' trough, the rill runs out of its
+    // low end; its floor is terraced over the rise, a flight up to the middle arch. Set into the finished place (veto):
+    // nothing else on the map moves. Seated clear of the place's corridors by 1.4 m (evidence probe-seat3).
+    landmarks: [
+      { kind: 'lavoir', x: -114.25, z: 74.5, yawDeg: 90, ground: 'veto', name: 'the lavoir on the place',
+        params: { length: 10, depth: 6, bays: 3, spring: 'right', steps: 2.2 } },
+    ],
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tacticalBeats: [
       // the inn and yard at the south end of the bridge: the brawl for the crossing

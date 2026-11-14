@@ -19,6 +19,7 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, resumeStateFromRetained } from './migrationState.ts';
+import { ENTITY_FLAGS } from '../wire/constants.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
 const seats = [
@@ -29,10 +30,30 @@ await ensureAuthorityFleet(seats.map((seat) => seat.specId));
 const world = () => ({ mapId: 'verdant', heightField: { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) }, getObstacles: () => [] });
 const inputs = new Map();
 const era = createEraIndexer();
+/**
+ * The actor's frame at `tick` in the shape the host sends it (server/match/matchActor.ts frames, matchHostCore.ts's
+ * keyframe), its mode state included (round 8 H9): a resume whose newest frame is newer than the keyframe writes that
+ * state over the keyframe's checkpoint (migrationState.ts checkpointAtNewestFrame), and a frame without it skipped that
+ * rewrite, the path every real migration in a mode takes (huntSearchMigration.selftest's hostFrame).
+ */
 const frameOf = (actor, tick) => {
   const authority = actor.authority, battleTimeMs = Math.round(authority.timeS * 1000);
   const snap = authority.snapshot({ tick, serverTimeMs: battleTimeMs, viewerId: 'migration', ackInputSeq: null });
-  return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127, meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: authority.entities.map((entity) => captureEntityRow(entity, actor.wireIdOf(entity.id), era, tick)), shells: [], viewer: null, modeStateJson: null };
+  return { tick, serverTimeMs: battleTimeMs, ackedInputTick: 0xffffffff, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 127, meta: captureMeta({ ...snap.meta, battleTimeMs }, false), destroyed: [], entities: authority.entities.map((entity) => captureEntityRow(entity, actor.wireIdOf(entity.id), era, tick)), shells: [], viewer: null,
+    modeStateJson: snap.meta?.modeState ? JSON.stringify(snap.meta.modeState) : null };
+};
+/** A case is built only when its resume carries that path's inputs: a newest frame newer than the keyframe, with the mode
+ *  state, over a mode checkpoint (applyResumeState restores one only when the resume carries it; checkpointAtNewestFrame
+ *  rewrites a checkpoint with a mode). That the rewrite ran is handoff's score check. */
+const throughNewestFrame = (state, keyframe) => state.frame.tick > (keyframe?.tick ?? Infinity) && typeof state.frame.modeStateJson === 'string'
+  && !!state.modeCheckpoint?.mode;
+const isDestroyedRow = (row) => (row.flags & ENTITY_FLAGS.DESTROYED) !== 0 || row.hp <= 0;
+/** Bench a hull on the old host through its life's one writer (matchModes.ts setLife, by the restore a migrated host
+ *  takes; Zone Control benches no hull itself): its life, its checkpoint's destroyed entry, combat.destroyed and its rows
+ *  all say so, as on a host whose mode benched it. */
+const bench = (sim, id) => {
+  const checkpoint = sim.captureModeCheckpoint();
+  sim.restoreModeCheckpoint({ ...checkpoint, mode: { ...checkpoint.mode, lives: checkpoint.mode.lives.map(([key, life]) => [key, key === id ? 'benched' : life]) } });
 };
 const keyframeOf = (actor, tick) => {
   const sim = actor.authority;
@@ -49,13 +70,18 @@ const batter = (sim, entity) => {
 const kill = (entity) => { entity.combat.hp = 0; entity.combat.destroyed = true; };
 
 /** A match of `ruleset` played to a revive of the IFV inside the gap; returns the fresh host after the resume. */
-function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLife = null }) {
+function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLives = null, benchBeforeKeyframe = [] }) {
   const make = (resume) => createMatchActor({ roomId: 'revive-migration', mapId: 'verdant', mode: ruleset.mode, ruleset, seed: 5, seats, bots: [], world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
   const old = make(null), sim = old.authority;
   sim.onMatchReady();
   let tick = 0;
   const step = (n, onTick = () => {}) => { for (let k = 0; k < n; k++) { sim.step({ dt: 1 / 60, inputs }); tick++; onTick(); } };
-  step(60);
+  // the MBT takes the middle zone (a lone hull in 8 s: matchModes.ts ZONE_CAPTURE_S), so bravo scores through the gap
+  // and the newest frame's score is newer than the keyframe's (the rewrite's check below)
+  const middle = () => sim.modeController.serialize().zones[1];
+  Object.assign(sim.entityById.get('mbt').state.pos, { x: middle().x, z: middle().z });
+  step(9 * 60);
+  assert.equal(middle().owner, 'bravo', `${ruleset.mode}: setup, the MBT took the middle zone`);
   let ifv = sim.entityById.get('ifv');
   batter(sim, ifv);
   let respawnTick = null;
@@ -68,9 +94,16 @@ function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLife = nul
   if (killBeforeKeyframe) {
     kill(ifv);
     step(Math.round((ruleset.respawnS - 0.5) * 60), listen);
+    for (const id of benchBeforeKeyframe) bench(sim, id);
     keyframe = keyframeOf(old, tick);
-    // the keyframe's word on the hull's life, where a case names one (a hull the mode had benched at the keyframe)
-    if (keyframeLife) keyframe.modeCheckpoint.mode.lives = keyframe.modeCheckpoint.mode.lives.map(([id, life]) => [id, id === 'ifv' ? keyframeLife : life]);
+    // the keyframe's word on a dead hull's life, where a case names one (a hull the mode had benched at the keyframe),
+    // with its destroyed entry as the capture writes a benched or down life (matchModes.ts captureCheckpoint)
+    if (keyframeLives) {
+      const mode = keyframe.modeCheckpoint.mode;
+      mode.lives = mode.lives.map(([id, life]) => [id, keyframeLives[id] ?? life]);
+      const lives = new Map(mode.lives);
+      mode.destroyed = mode.destroyed.map(([id]) => [id, lives.get(id) === 'down' || lives.get(id) === 'benched']);
+    }
     step(60, listen); // the respawn falls due 0.5 s after the keyframe
   } else {
     keyframe = keyframeOf(old, tick);
@@ -85,9 +118,35 @@ function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLife = nul
   // it drove off its spawn before the host went
   ifv.state.pos.x += 24; ifv.state.pos.z += 18;
   const latest = frameOf(old, tick);
+  // a hull the keyframe benches is destroyed in its checkpoint and its keyframe row, and in its newest row while the old
+  // host still benches it, as on a host whose mode benched it (the revived IFV's newest row is alive)
+  for (const [id, life] of keyframe.modeCheckpoint?.mode?.lives ?? []) {
+    if (life !== 'benched') continue;
+    const rowOf = (frame) => frame.entities.find((row) => row.entityId === old.wireIdOf(id));
+    const stillBenched = sim.entityById.get(id).modeLife === 'benched';
+    assert.ok(new Map(keyframe.modeCheckpoint.mode.destroyed).get(id) && isDestroyedRow(rowOf(keyframe.frame)) && (!stillBenched || isDestroyedRow(rowOf(latest))),
+      `${ruleset.mode}: setup, the keyframe's bench of ${id} agrees with its destroyed entry and its rows`);
+  }
   const { state } = resumeStateFromRetained(keyframe, 0, latest, 1500, [], [], respawnsTold ? [['ifv', respawnTick], ['mbt', keyframe.tick - 30]] : []);
   const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
   applyResumeState(fresh, state);
+  assert.ok(throughNewestFrame(state, keyframe), `${ruleset.mode}: setup, the resume runs through the newest frame's mode state `
+    + `(checkpointAtNewestFrame): the newest frame (tick ${state.frame.tick}, mode state ${state.frame.modeStateJson ? 'carried' : 'missing'}) `
+    + `against the keyframe (tick ${keyframe.tick})`);
+  // the rewrite ran (round 8 H9 fix-up r2): the new host takes the score bravo's zone made in the gap, which only the
+  // newest frame shows (a resume that restored the keyframe's checkpoint as it was had the keyframe's)
+  const held = keyframe.modeCheckpoint.mode.score.bravo, shown = JSON.parse(state.frame.modeStateJson).score.bravo;
+  const resumed = fresh.authority.captureModeCheckpoint().mode.score.bravo;
+  assert.ok(shown > Math.round(held), `${ruleset.mode}: setup, bravo scored between the keyframe (${held}) and the newest frame (${shown})`);
+  assert.equal(Math.round(resumed), shown, `${ruleset.mode}: the new host takes the newest frame's score (checkpointAtNewestFrame), not the keyframe's ${held}`);
+  // the rewrite keeps the keyframe's lives (round 8 H9 fix-up): the MBT, which no revive names, lives the keyframe's
+  // life on the new host. Where the keyframe benched it, a rewrite that lost the lives would bring it back 'down' (from
+  // the destroyed list: restoreCheckpoint's fallback), on the field, so that case names the loss. Not pinned here: the
+  // respawns and scored deaths the rewrite keeps, as no handoff has one for a hull no revive names; nor the destroyed
+  // list, which the restore reads only where the lives are missing
+  const mbtLife = keyframe.modeCheckpoint.mode.lives.find(([id]) => id === 'mbt')?.[1], mbt = fresh.authority.entityById.get('mbt');
+  assert.ok(mbtLife && mbt.modeLife === mbtLife && mbt.modeActive === (mbtLife === 'alive' || mbtLife === 'down'),
+    `${ruleset.mode}: the MBT keeps the keyframe's life through the resume (${mbtLife}; the new host has ${mbt.modeLife}${mbt.modeActive === false ? ', off the field' : ''})`);
   return { old, fresh, oldIfv: ifv, state };
 }
 
@@ -138,8 +197,9 @@ judge('zone control, dead at the keyframe', fromRows);
 assert.deepEqual(fromRows.state.revivedEntityIds, [ifvWireId], 'the overlay names the hull its rows show revived');
 
 // ---- benched at the keyframe, then revived in the gap (a wave's draw, a stranded hull's return): the keyframe's bench
-// does not outlive the revive the rows show (integration IR2)
-const fromBench = handoff({ ruleset: zone, killBeforeKeyframe: true, respawnsTold: false, keyframeLife: 'benched' });
+// does not outlive the revive the rows show (integration IR2); the MBT, benched on the old host before the keyframe and
+// named by no revive, stays benched through the newest frame's rewrite (handoff's MBT check)
+const fromBench = handoff({ ruleset: zone, killBeforeKeyframe: true, respawnsTold: false, keyframeLives: { ifv: 'benched' }, benchBeforeKeyframe: ['mbt'] });
 judge('zone control, benched at the keyframe', fromBench);
 
 // ---- died and revived inside the gap: both rows alive, the mode_respawn this seat was told of names it

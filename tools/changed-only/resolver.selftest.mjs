@@ -5,11 +5,22 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { balanceTokens, computeState, emptyManifest, installDrift, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest,
-  stampedInKeys, toolchainChange, toolchainOf } from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, installDrift, parseManifest, recordStep, refreshComponents, resolveChanged as resolveRaw,
+  serializeManifest, stampedInKeys, toolchainChange, toolchainOf, unexplainedIds } from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
+
+// (272) Every resolve in this receipt is also held to the rule that no id is due without a reason (its own or the step's
+// '*'): the --ids chain's final summary used to write `reasons: {}` and read as due for nothing.
+const resolveChanged = (...args) => {
+  const out = resolveRaw(...args);
+  assert.deepEqual(unexplainedIds(out), [], 'the resolver never marks an id due without a reason');
+  return out;
+};
+assert.deepEqual(unexplainedIds({ fills: { mode: 'ids', ids: ['a1', 'b1'], reasons: { b1: ['row sizes[b1]'] } },
+  marking: { mode: 'full', ids: ['a1'], reasons: { '*': ['roster'] } }, seats: { mode: 'ids', ids: ['a2'], reasons: { a2: [] } } }),
+['fills[a1]', 'seats[a2]'], 'control: an id with no reason of its own and no step reason, or an empty list, is named');
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-changed-only-cache-'));
@@ -156,6 +167,34 @@ put('src/vehicles/sizes.generated.ts', sizes);
 // 9. Roster, toolchain and a missing manifest fail closed.
 const reordered = rowsData(); reordered.roster.all = ['a2', 'a1', 'b1'];
 assert.deepEqual(changed(resolveChanged(state({ rows: reordered }), m0)), { sizes: 'full:a2,a1,b1', other: 'full:a2,a1,b1' }, 'a roster reorder runs whole-fleet');
+// (272) Two consecutive computations over one tree key every id alike, and a step recorded on the whole fleet settles
+// under a moved roster whatever the chain left out: the roster is the step's own line. A table-wide roster line moved
+// only with a chain that selected every step, so the post-271 recording regen (every step but the gate) recorded each
+// step's keys under the new roster, kept the old line, and resolved "full 311 (roster)" after every pass.
+{
+  const before = state({ rows: reordered }), again = state({ rows: reordered });
+  for (const name of Object.keys(before.steps)) for (const id of before.ids) {
+    assert.deepEqual([again.inKey(name, id), again.outKey(name, id)], [before.inKey(name, id), before.outKey(name, id)],
+      `two computations over one tree give one key (${name}[${id}])`);
+  }
+  const partial = parseManifest(serializeManifest(m0));
+  recordStep(partial, 'sizes', null, Object.fromEntries(before.ids.map((id) => [id, before.inKey('sizes', id)])), before);
+  refreshComponents(partial, before, { ran: ['sizes'], shared: false }); // a partial chain: no shared lines
+  const table = parseManifest(serializeManifest(partial));
+  assert.deepEqual(changed(resolveChanged(again, table)), { sizes: 'none:', other: 'full:a2,a1,b1' },
+    'the step that ran on the whole fleet settles; the one left out stays whole-fleet due');
+  assert.deepEqual(resolveChanged(again, table).other.reasons['*'], ['roster'], 'and still reads as the roster');
+  assert.match(serializeManifest(partial), /^roster\tsizes\t[0-9a-f]{16}$/m, 'the roster line names its step');
+  // an --ids run keeps the step's roster: the other ids' keys were taken under the old one
+  const scoped = parseManifest(serializeManifest(m0));
+  recordStep(scoped, 'sizes', ['a1'], { a1: before.inKey('sizes', 'a1') }, before);
+  assert.equal(resolveChanged(again, scoped).sizes.mode, 'full', 'an --ids record leaves the roster change due');
+  // and an --ids chain judges its own ids by their keys: the one it recorded is current, another names the roster
+  assert.equal(resolveChanged(again, scoped, { steps: ['sizes'], only: ['a1'] }).sizes.mode, 'none', 'the --ids run\'s own id settles');
+  const other = resolveChanged(again, scoped, { steps: ['sizes'], only: ['a2'] }).sizes;
+  assert.deepEqual([other.ids, other.reasons.a2], [['a2'], ['roster']], 'an id it did not record is due, named as the roster');
+  assert.equal(parseManifest('#schema 1\nroster\tabc\n'), null, 'a table-wide roster line no longer parses');
+}
 assert.deepEqual(changed(resolveChanged(s0, null)), { sizes: 'full:a1,a2,b1', other: 'full:a1,a2,b1' }, 'no manifest runs whole-fleet');
 put('package-lock.json', '{"lockfileVersion":3,"x":1}\n');
 assert.deepEqual(changed(resolveChanged(state(), m0)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a lockfile change marks everything');

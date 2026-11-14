@@ -107,7 +107,7 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.architecture, 'single-watertight-upper-and-lower-arrowhead',
     `${id} uses one closed volume for both faces of each chevron course`);
   assert.equal(receipt.runtimeGeometry, 'first-party-procedural',
-    `${id} does not load the comparison model at runtime`);
+    `${id} loads no external geometry at runtime`);
   assert.equal(receipt.sourceComparisonOnly, true,
     `${id} records the owner model as measurement input only`);
   assert.equal(receipt.sharedRidge, true, `${id} declares one physical ridge for both armor faces`);

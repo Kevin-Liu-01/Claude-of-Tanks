@@ -88,6 +88,19 @@ export function openSurface(surface: TransientSurface, opener?: Node | null): vo
   openers.set(surface, from ?? null);
 }
 
+/**
+ * Whether `node` is `surface`'s: inside its box or its controls, or inside a surface standing on it (opened from it, wherever
+ * its box lives: a body-level modal). A surface that closes when the focus leaves it asks this, so the focus a surface it
+ * opened takes is not a leave (272: Deploy's focusout read the couch lobby's focus as one, closed Deploy, and the lobby
+ * went with it: a real press on Couch opened the lobby and closed it a frame later).
+ */
+export function surfaceHolds(surface: TransientSurface, node: Node | null): boolean {
+  const at = stack.indexOf(surface);
+  if (at < 0) return boxOf(surface).contains(node);
+  for (let i = at; i < stack.length; i++) if (boxOf(stack[i]).contains(node)) return true;
+  return false;
+}
+
 /** `surface` closed (its own close, or the stack's): the surfaces standing on it close with it. */
 export function closeSurface(surface: TransientSurface): void {
   const at = stack.indexOf(surface);

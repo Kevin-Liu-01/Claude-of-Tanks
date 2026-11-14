@@ -45,7 +45,16 @@ bank stays the raw record). Builders and critics re-read this file at
 round start — briefs cite section numbers, and a brief that predates a law
 never excuses missing it.
 
-## A. Geometry (the measured gate)
+## A. Geometry (the measured comparison)
+> **Generation-only (owner, 2026-11-12).** Outside 3D models are comparison bases while a lane builds or fixes a
+> tank, never a test. Everything in §A and §E that scores a build against a registered model (the geometry comparison,
+> the silhouette fidelity page, the oracle pins and records in `docs/geometry-gate/<id>.json`) is a build reference
+> a lane reads by hand (`npm run gen:checks`, `npm run gen:repin`, `npm run gen:fidelity`). No release gate,
+> receipt, selftest or `test:heavy` suite runs it, and `tank:release:check` decides without it: its stage A is a
+> concept or photo proof (any other id reads N/A), and its clip, contiguity, decor, sealed, ledger and census steps
+> check the build against itself and the game's rules. Where this file says "gate", "ships" or "graduates", read
+> "the lane's own bar while building".
+
 - `node tools/geometry-gate.mjs --ids=<id>` — every component ≥90
   (hullCurves, wholeCurves, turretCurves, stations, dims, floaters). Min is
   the headline. Dims sovereign to PUBLISHED dims (1% grace then −8/pct).
@@ -364,7 +373,7 @@ never excuses missing it.
 3. Every round ends with: gate line ×2, regenerate that tank's nine asset
    outputs from the clean landing candidate
    (`npm run tank:assets -- --ids=<id>`), then the unified release check
-   (`npm run tank:release:check -- --ids=<id>`). The release check requires
+   (`npm run tank:release:check -- --ids=<id>`; it reads no outside model). The release check requires
    current hashed hero/top/side views, both silhouettes, armor/module/crew
    diagrams, markings, one valid I-X tier, penetration + module metadata, and a visible
    machine-tagged muzzle bore. It also renders and ray-tests that bore

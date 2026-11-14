@@ -8,6 +8,10 @@
  * screen centre. The HUD's sight bands (the notice planners, the countdown, the warning chip: `--hud-sight-shift`) take
  * the sight's place from here instead of the screen centre. The scope's sight is always the screen centre.
  *
+ * Per view (couch-panes-272, docs/COUCH-MODE.md): the bands and the shift are a document's. The page's HUD and camera
+ * use the page's document (the default); a split-screen pane's HUD lays out in its own document and its camera reads and
+ * writes that document's, so no pane's framing is another's.
+ *
  * DOM-light (the CSS variable is written only where a document exists) and boot-safe: no imports.
  */
 
@@ -27,54 +31,70 @@ interface BattleBands {
   riseCap?: number;
 }
 
-let bands: BattleBands | null = null;
-let shiftPx = 0;
-const listeners = new Set<() => void>();
+interface SightView {
+  bands: BattleBands | null;
+  shiftPx: number;
+  readonly listeners: Set<() => void>;
+}
+const views = new WeakMap<object, SightView>();
+/** Where no document exists (the Node receipts): one view. */
+const NO_DOCUMENT = {};
+const pageDocument = (): object => (typeof document !== 'undefined' ? document : NO_DOCUMENT);
+function viewOf(doc: object = pageDocument()): SightView {
+  let view = views.get(doc);
+  if (!view) { view = { bands: null, shiftPx: 0, listeners: new Set() }; views.set(doc, view); }
+  return view;
+}
 
 const sameBox = (a: BattleBandBox, b: BattleBandBox) => a.x0 === b.x0 && a.y0 === b.y0 && a.x1 === b.x1 && a.y1 === b.y1;
 
 /** battleHudLayout.ts, each relayout: the bands as measured (whole px). A copy equal to the last keeps its identity, so
  *  the rig's change test is one comparison. */
-export function publishBattleBands(next: BattleBands): void {
+export function publishBattleBands(next: BattleBands, doc?: Document): void {
+  const view = viewOf(doc);
+  const bands = view.bands;
   if (bands && bands.width === next.width && bands.height === next.height && bands.touch === next.touch
     && bands.ceiling === next.ceiling && bands.riseCap === next.riseCap && bands.floor.length === next.floor.length
     && bands.floor.every((box, i) => sameBox(box, next.floor[i]))
     && (bands.transient?.length ?? 0) === (next.transient?.length ?? 0)
     && (bands.transient ?? []).every((box, i) => sameBox(box, next.transient![i]))) return;
-  bands = next;
+  view.bands = next;
 }
 
 /** The bands last measured, or null before the battle HUD's first layout. */
-export function battleBands(): BattleBands | null {
-  return bands;
+export function battleBands(doc?: Document): BattleBands | null {
+  return viewOf(doc).bands;
 }
 
 /** The camera rig: the arcade sight's rise over the screen centre, CSS px (0: the centre; negative: under it, a framing
  *  setting that lowers the picture). Whole px; a change writes `--hud-sight-shift` on the body and asks the HUD for a
  *  relayout. */
-export function setBattleSightShift(px: number): void {
+export function setBattleSightShift(px: number, doc?: Document): void {
+  const view = viewOf(doc);
   const next = Math.round(Number.isFinite(px) ? px : 0);
-  if (next === shiftPx) return;
-  shiftPx = next;
-  if (typeof document !== 'undefined' && document.body) {
-    if (next) document.body.style.setProperty('--hud-sight-shift', `${next}px`);
-    else document.body.style.removeProperty('--hud-sight-shift');
+  if (next === view.shiftPx) return;
+  view.shiftPx = next;
+  const target = doc ?? (typeof document !== 'undefined' ? document : null);
+  if (target?.body) {
+    if (next) target.body.style.setProperty('--hud-sight-shift', `${next}px`);
+    else target.body.style.removeProperty('--hud-sight-shift');
   }
-  for (const listener of listeners) listener();
+  for (const listener of view.listeners) listener();
 }
 
 /** The arcade sight's rise over the screen centre, CSS px. */
-export function battleSightShift(): number {
-  return shiftPx;
+export function battleSightShift(doc?: Document): number {
+  return viewOf(doc).shiftPx;
 }
 
 /** The arcade sight's y in a window `height` tall (the scope's is always height / 2). */
-export function battleSightY(height: number): number {
-  return height / 2 - shiftPx;
+export function battleSightY(height: number, doc?: Document): number {
+  return height / 2 - viewOf(doc).shiftPx;
 }
 
 /** Called after each change of the sight's place; returns the unsubscribe. */
-export function onBattleSightShift(listener: () => void): () => void {
+export function onBattleSightShift(listener: () => void, doc?: Document): () => void {
+  const { listeners } = viewOf(doc);
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }

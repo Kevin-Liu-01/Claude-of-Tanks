@@ -1,7 +1,7 @@
 # The Premiere direction in the live kit
 
 The Premiere surfaces are built from the direction's own code, not re-authored. The source of truth is
-`~/cot-launch-state/streams/brand-ui/phase2/bui01/src`:
+the direction's own source (brand-ui phase 2, bui01; kept outside the repository):
 
 - `components.css`: the shared components;
 - `tokens.css`: the tokens, which the live `src/ui/tokens/tokens.json` carries under the same names;

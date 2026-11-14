@@ -6,10 +6,9 @@ import { registerProfiledBuilders } from './tankFactoryCore.ts';
 import { buildAbramsX } from './profiles/abramsSourceX.ts';
 import { KIT } from './profiles/kit.ts';
 
-// Independent held-out intersections of source18, selected OBJ SHA256
-// 85c33cee1ec041cbc3b5453841a6a006c8f1f866365a7a16c078bad3d630bd29.
-// The source's curved sheets and small chamfers are approximated from sparse
-// scalar sections. These checks are local physical witnesses, not raw-view QA.
+// Recorded witness faces of the four curved returns (fixed numbers the build is held to).
+// The curved sheets and small chamfers are built from sparse scalar sections.
+// These checks are local physical witnesses, not raw-view QA.
 const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
 function xRay(meshes, side, rawY, rawZ, far = 1.3) {
   return new THREE.Raycaster(new THREE.Vector3(side * 3, rawY + .203945, .357965 - rawZ),
@@ -37,13 +36,13 @@ function returnWitnesses(meshes, label) {
     for (const [rawZ, outerX] of [[-2.87, 1.83685994], [-2.75, 2.00228853],
       [-2.713, 2.08535254], [2.797, 2.04826144], [2.831, 1.97177705], [2.92, 1.83691001]]) {
       const hits = xRay(meshes, side, .7, rawZ);
-      assert.ok(hits.length, `${label}: source curved stock ${side}/${rawZ}`);
+      assert.ok(hits.length, `${label}: curved return stock ${side}/${rawZ}`);
       assert.ok(Math.abs(Math.abs(hits[0].point.x) - outerX) < .002,
-        `${label}: held-out source sheet face ${rawZ}: ${hits[0].point.x}`);
+        `${label}: recorded sheet face ${rawZ}: ${hits[0].point.x}`);
     }
     for (const [y, z] of [[.426, -2.74], [1.02, -2.74], [.505, 2.808], [1.098, 2.808]]) {
       assert.equal(xRay(meshes, side, y, z, 1.13).length, 0,
-        `${label}: source-proven opening, not a dark filled end cap ${side}/${y}/${z}`);
+        `${label}: a real opening, not a dark filled end cap ${side}/${y}/${z}`);
     }
     for (const [y, z] of [[.355, -2.74], [.72, -2.74], [1.092, -2.74],
       [.435, 2.808], [.8, 2.808], [1.17, 2.808]]) {
@@ -77,7 +76,7 @@ for (const quality of ['high', 'low']) {
     tank = createTank('m1a2_abrams_sepv2', null,
       { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
     tank.root.updateMatrixWorld(true);
-    assert.equal(captured.length, 4, 'exactly four source curved returns');
+    assert.equal(captured.length, 4, 'exactly four curved returns');
     for (const mesh of captured) assert.ok(volume(mesh.geometry) > .001, 'closed outward-facing thin stock');
     returnWitnesses(captured, `${quality}/actual emitted sheets`);
     returnWitnesses(physicalMeshes(tank), `${quality}/complete native scene`);
@@ -85,7 +84,7 @@ for (const quality of ['high', 'low']) {
       for (const rawZ of [3.0, 3.5, 3.7]) {
         const blocked=xRay(physicalMeshes(tank),side,.7,rawZ,1.23);
         assert.equal(blocked.length,0,
-          `source20 aft receiving-panel joint and raised lower-edge air remain open ${quality}/${side}/${rawZ}: `+
+          `the aft receiving-panel joint and raised lower-edge air remain open ${quality}/${side}/${rawZ}: `+
           JSON.stringify(blocked.map(h=>({mesh:h.object.name,point:h.point.toArray(),face:h.faceIndex}))));
       }
       assert.ok(xRay(physicalMeshes(tank), side, .7, 3.1, 1.23).length,

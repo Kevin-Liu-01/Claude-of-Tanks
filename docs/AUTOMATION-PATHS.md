@@ -108,6 +108,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/battle-memory-probe.mjs`
 - `tools/battle-spike-census.mjs`
 - `tools/black-world.browser.selftest.mjs`
+- `tools/couch-panes.browser.mjs`
 - `tools/daynight-atmosphere-probe.mjs`
 - `tools/destruction-first-use.browser.selftest.mjs`
 - `tools/dev-perf-probe.mjs`
@@ -259,6 +260,7 @@ census cannot tell it from a loop guard, so the row's reason says what each loop
 - `tools/bot-combat-probe.mjs`: a loop guard: it stops stepping when the battle ends
 - `tools/bot-targeting.browser.mjs`: a loop guard: the sample ends with the battle
 - `tools/cold-load-probe.mjs`: records the boot mirror as a receipt field (`ready`)
+- `tools/couch-panes.browser.mjs`: a receipt check: the page's battle HUD stands down (hidden) while the split screen's panes show their own
 - `tools/daynight-atmosphere-probe.mjs`: receipt fields (the first battle render's loader, the reveal latch) and guards around its own entries
 - `tools/environment-motion-probe.mjs`: a precondition and a receipt check that the battle is the requested one
 - `tools/garage-audio-intent.mjs`: a receipt check: both samples in the Garage

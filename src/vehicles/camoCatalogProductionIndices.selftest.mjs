@@ -98,8 +98,8 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
   'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
-  'paint_tunguska_m', 'paint_pantsir_s1'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, then the 269 plain-coat pass and the South Africa and Australia lines, then the Tunguska-M\'s and the Pantsir-S1\'s coats (270), append, after GT');
+  'paint_tunguska_m', 'paint_pantsir_s1', 'paint_object292'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, then the 269 plain-coat pass and the South Africa and Australia lines, then the Tunguska-M\'s and the Pantsir-S1\'s coats (270), then the Object 292\'s Kubinka three-tone (272), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
@@ -111,7 +111,7 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10', 'paint_bmpt_terminator',
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
   'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
-  'paint_tunguska_m', 'paint_pantsir_s1']);
+  'paint_tunguska_m', 'paint_pantsir_s1', 'paint_object292']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -161,7 +161,9 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
   'leopard_as1', 'm113a1_fsv', 'm113a1_mrv',
   // release 270: the Tunguska-M and the Pantsir-S1 each in its own Russian coat (owner 2026-11-05: "tunguska and
   // pantsir need camos")
-  'tunguska_m', 'pantsir_s1'];
+  'tunguska_m', 'pantsir_s1',
+  // release 272: the Object 292 in its own Kubinka three-tone (owner 2026-11-11: "give the molot and obj 292 actual camos")
+  'object292'];
 // Release 267: the Danish Leopard 2A7 DK in its own coat under the Barracuda cover and the Centurion Mk 5/2 DK in its
 // 1980s three-tone, appended after 266's; then the Japan line's Type 90 (B) in its JGSDF two-tone;
 // then the original BMPT Terminator in its Engineering Technologies 2012 three-tone desert.
@@ -178,9 +180,9 @@ const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_de
   gepard_1a2: 'service_leo2a6m', type87_aw: 'service_type10', lvkv9040: 'service_strv122',
   // Release 269: the M163 VADS wears the US Factory coat, the desert tan of the owner's photograph (no new paint)
   m163_vads: 'service_usa_desert',
-  // 269: the 152 mm line: the Soviet prototypes in the national Russian plain, the Object 195 and the T-14 152 in the
-  // T-14's Russian service digital
-  object292: 'national_ru', object477_molot: 'national_ru', object195: 'service_t90m', t14_152: 'service_t90m' };
+  // 269: the 152 mm line: the Object 195 and the T-14 152 in the T-14's Russian service digital (272: the Object 292 has
+  // its own paint, above; the Molot wears the Pantsir-S1's, below)
+  object195: 'service_t90m', t14_152: 'service_t90m' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
@@ -216,7 +218,10 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', m48a2ga2: 'service_leo2
   m113as4: 'paint_leopard_as1',
   m1a1_aim_sa_aus: 'paint_leopard_as1', m1a2_sepv3_aus: 'paint_leopard_as1', redback: 'paint_leopard_as1',
   // release 269: the US M113A3 in the MERDC woodland
-  m113a3: 'merdc' };
+  m113a3: 'merdc',
+  // release 272: the Molot in the Pantsir-S1's Russian three-colour blotch, its era's Soviet and Russian Army coat (owner
+  // 2026-11-11: "give the molot and obj 292 actual camos"; no new paint)
+  object477_molot: 'paint_pantsir_s1' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,

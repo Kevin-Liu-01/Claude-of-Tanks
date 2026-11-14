@@ -84,7 +84,7 @@ const CURVES = {
   // release 231: the C1 Ariete pre-series, its hull under the turret's sweep and its mantlet raked (profiles/misc.ts)
   c1_ariete_preserie: [],
   // release 231: the Ariete prototypes, their turrets' undersides at the hull slab and the roof ahead of the turret at the
-  // print's fore line (profiles/italy.ts)
+  // hull's fore line (profiles/italy.ts)
   c1_ariete_proto_serie1: [],
   c2_ariete_proto: [],
   // release 231: the M1A2 X family, its turret race cover and race inside the turret's ring disc

@@ -205,8 +205,11 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     raySelection.best = worldHit;
     raySelection.exactTank = false;
     raySelection.softDistance = Infinity;
+    // the sight's own hull is the view's player (couch-panes-272: a split-screen pane's seat, never the page's player, whose
+    // tank another pane may aim at); a view with no player skips the page's flagged one, as before
+    const own = game.player;
     for (const tank of game.tanks) {
-      if (tank.isPlayer || !tank.state || !tank.combat || tank.combat.destroyed) continue;
+      if ((own ? tank === own : tank.isPlayer) || !tank.state || !tank.combat || tank.combat.destroyed) continue;
       const radius = tank.spec.armor.boundingRadiusM;
       const inflatedRadius = radius * AIM_STICKY_INFLATE;
       armTo.copy(tank.state.pos);

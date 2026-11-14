@@ -1,21 +1,22 @@
 // tank-standard-check --stages (2026-10-16, test-speed R4b part 1): run and report EVERY stage for every id.
-// In 226 `tank-standard-check --gate` stopped at the forced geometry phase (red since August), so B2-B4 never ran on
+// In 226 `tank-standard-check --gate` stopped at its first red phase (red since August), so B2-B4 never ran on
 // most ids and ten contiguity/decor regressions surfaced only at 20:45. With --stages a failing stage is recorded and
 // the next stage still runs; the exit stays non-zero when any gated stage fails for any id, or any stage itself fails.
 // Without --stages the tool keeps its old behaviour and stops at the first failing stage.
 
-/** Every stage in report order. An id's A stage is one of geometry / concept / photo, by its class. */
+/** Every stage in report order. An id's A stage is one of procedural / concept / photo, by its class: a concept or photo
+ * id proves its record; any other id has no A-stage evidence and reads N/A (owner 2026-11-12: no outside 3D model). */
 export const STANDARD_STAGES = Object.freeze([
-  Object.freeze({ key: 'geometry', label: 'A geometry gate' }),
+  Object.freeze({ key: 'procedural', label: 'A no record' }),
   Object.freeze({ key: 'concept', label: 'A concept proof' }),
   Object.freeze({ key: 'photo', label: 'A photo proof' }),
   Object.freeze({ key: 'clip', label: 'B4 track clip' }),
   Object.freeze({ key: 'contiguity', label: 'B2 contiguity' }),
   Object.freeze({ key: 'decor', label: 'B3 decor' }),
 ]);
-const A_STAGES = Object.freeze(['geometry', 'concept', 'photo']);
+const A_STAGES = Object.freeze(['procedural', 'concept', 'photo']);
 const B_STAGES = Object.freeze(['clip', 'contiguity', 'decor']);
-/** PASS and FAIL are gated verdicts; SKIP (--no-render) and N/A (no registered comparison) never fail a run. */
+/** PASS and FAIL are gated verdicts; SKIP (--no-render) and N/A (no A-stage record) never fail a run. */
 const STAGE_STATUSES = Object.freeze(['PASS', 'FAIL', 'SKIP', 'N/A']);
 
 /** The status of one gated check: a verdict when it ran, SKIP when the run left it out. */

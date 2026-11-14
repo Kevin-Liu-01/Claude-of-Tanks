@@ -248,6 +248,7 @@ import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { togglePhonePause } from './ui/phonePause.ts';
 import { setBodyFlag } from './ui/bodyFlags.ts';
 import { openCouchWhenCurrent } from './app/couchOpener.ts';
+import { chaseStartPitch } from './engine/chaseStart.ts';
 import { shellTypeCode } from './ui/shellLabels.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -263,15 +264,16 @@ import { AppPhaseTransitionError, canTransitionAppPhase, createAppLifecycle, Gar
 import { bootReadiness } from './app/bootReadiness.ts';
 import { openSurfaceIds } from './ui/components/surfaceStack.ts';
 import {
-  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun,
+  markTutorialChapter, readTutorialRecord, readTutorialReplay, resetTutorialRecord, tutorialChapterDue, tutorialMayRun, TUTORIAL_ON,
 } from './ui/tutorial/tutorialRecord.ts';
 import { createBattleEntryIntent, replayBattleEntry, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
+import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -321,7 +323,6 @@ const startupIntent = createStartupIntent(globalThis.location);
 const STUDIO_BOOT_INTENT = startupIntent.studioRequested;
 const STUDIO_BOOT_MAP = startupIntent.studioMapId;
 
-const DEG = Math.PI / 180;
 const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
@@ -2442,7 +2443,8 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
-  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind] },
+  strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
+    blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
   rules: {
     selectShell: battleClientAccess.selectShell,
     repairAllModules: battleClientAccess.repairAllModules,
@@ -2469,6 +2471,9 @@ const battlePresentation = createBattlePresentationRuntime({
   game,
   camera,
   scene,
+  // a couch battle's split screen: every pane's camera (src/app/couchPaneViews.ts), so no pane's hulls lose their detail
+  getExtraViews: () => couchOwner.current?.extraViews() ?? null,
+  getLodBias: () => couchOwner.current?.lodBias() ?? 1,
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
@@ -2833,7 +2838,8 @@ function prepareBattleRevealCamera() {
   if (game.ruleset?.watch && watchOwner.current?.prepareReveal()) return;
   if (!game.player || !game.player.state) return;
   rig.release();
-  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  rig.snapArcade(2, game.player.state.yaw, chaseStartPitch((game.player.state as { _spring?: { pitch?: number } })._spring?.pitch,
+    (game.player.spec as { gunDepressionDeg?: number } | undefined)?.gunDepressionDeg));
 }
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees: a network round's actors and the solo roster both
@@ -3758,7 +3764,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     // a watched battle (the Deploy foot's Watch): Battle Again watches again
     watched: options?.watch === true,
     // (round 8 Y4 s3-04) a couch battle (the Couch lobby's Start): Battle Again starts a couch battle again
-    couch: options?.couch ? { sides: options.couch.sides } : null,
+    couch: options?.couch ? { sides: options.couch.sides, view: options.couch.view === 'split' ? 'split' : 'shared' } : null,
   }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -3934,6 +3940,23 @@ const couchOwner = createLazyRuntimeOwner(
     // (round 8 Y4 s3-02) the couch view by its own reason of the body class's owner (2026-11-02 audit F8), so no other
     // owner's reason strips it; both writes happen only on a change (the runtime asks every frame)
     setSpectating: (on) => { setBodyFlag('cot-spectating', 'couch', on); currentHud()?.setCouchView(on); },
+    // the split screen (src/app/couchPaneViews.ts): each pane's camera, aim and HUD are made of the page's own parts
+    paneViews: {
+      game,
+      camera,
+      canvas: () => renderer.domElement,
+      post,
+      rig: { heightField: hfProxy, raycast: worldRaycast, getCameraSettings: () => input.getSettings() },
+      aim: { worldRaycast, computeDispersion: (spec, state, distanceM) => computeDispersionRadM(spec, state, distanceM) },
+      input,
+      bus,
+      loadHud: () => Promise.all([import('./ui/hud.ts'), import('./ui/damagePanel.ts')]).then(([hud, damagePanel]) => ({ hud, damagePanel })),
+      detailFoci: (points) => currentWorld()?.setTerrainDetailFoci?.(points),
+      minimap: () => {
+        const src = currentHud()?.exportMinimapBackground('image/png');
+        return src ? { heightField: hfProxy, src } : null;
+      },
+    },
   }),
 );
 // the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
@@ -3948,7 +3971,9 @@ bus.on('watch:change', (payload) => {
   panel?.setTank(entity.spec, entity.visual);
   panel?.setEquipment(entity.equip ?? null);
 });
-const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
+const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio,
+  // a couch battle's split screen: the room hears the most recent shooter's solo mix (src/app/couchPaneViews.ts)
+  focus: () => couchOwner.current?.listenerFocus() ?? null });
 const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
@@ -4130,6 +4155,9 @@ const mainFrame = createMainFrameRuntime({
   rig,
   // Watch's cameras, else a couch battle's shared camera, own the frame (the chase rig then stands down)
   watchFrame: (dt) => (watchOwner.current?.frame(dt) ?? false) || (couchOwner.current?.frame(dt) ?? false),
+  // a couch battle's split screen draws one pane per seat (docs/COUCH-MODE.md phase 2)
+  renderViews: (dt, wallDt) => couchOwner.current?.renderViews(dt, wallDt) ?? false,
+  splitHud: () => !!couchOwner.current?.paneViews && game.result == null,
   killcam,
   veilHud,
   worldFramePresentation,
@@ -4797,11 +4825,11 @@ const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAc
 };
 // the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
 bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
-bus.on('ui:replayTutorial', () => withTutorial((access) => access.replay()));
+bus.on('ui:replayTutorial', () => { if (TUTORIAL_ON) withTutorial((access) => access.replay()); });
 // 273: the training battle is the tutorial's own mode; its rollout loads the tutorial for any player (a resident access
-// hears the rollout itself)
+// hears the rollout itself). The tutorial's switch (TUTORIAL_ON) governs it too.
 bus.on('battle:rollout', () => {
-  if (game.ruleset?.training && !tutorialAccess.value) withTutorial((access) => access.trainingRolledOut());
+  if (TUTORIAL_ON && game.ruleset?.training && !tutorialAccess.value) withTutorial((access) => access.trainingRolledOut());
 });
 void entryReady.then(() => {
   tutorialEntryPassed = true;
@@ -4809,7 +4837,7 @@ void entryReady.then(() => {
     if (tutorialMayRun()) withTutorial(() => { /* resident for the Garage's next showing */ });
     return;
   }
-  if (tutorialReplay.asked) withTutorial((access) => access.replay());
+  if (tutorialReplay.asked && TUTORIAL_ON) withTutorial((access) => access.replay());
   else if (tutorialMayRun()) withTutorial((access) => access.garageShown());
 }).catch(() => { /* the entry gate's own failure is reported where it is awaited */ });
 // receipts read the chapter and step showing; a diagnostics page (dev, ?debug=1, automation) may also start a chapter

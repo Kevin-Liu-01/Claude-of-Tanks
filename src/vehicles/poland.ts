@@ -1,8 +1,7 @@
 import {applyEscortFieldKitArmor} from './escortFieldKitArmor.ts';
 import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
-// Polish armored-family gameplay/spec registration. The owner-supplied GLBs
-// remain external visual and metric oracles; all playable geometry is the
-// first-party procedural work in profiles/poland.ts.
+// Polish armored-family gameplay/spec registration. All playable geometry is
+// the first-party procedural work in profiles/poland.ts.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';

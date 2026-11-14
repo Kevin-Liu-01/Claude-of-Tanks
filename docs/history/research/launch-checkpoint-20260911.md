@@ -76,7 +76,7 @@ of the preexisting source-real open-channel versus zero-continuity conflict.
 Chieftain Mk5 X fitted tracks/rotors and refreshed anatomy are preserved at
 `0f95db4d8`; the missing required roof gun remains an unresolved owner decision,
 and this draft is not included. Challenger 3 X repair evidence does not create
-a missing source-fidelity oracle.
+a missing fidelity record.
 
 The manual GitHub production workflow still has an invalid Vercel token. The
 authenticated CLI can deploy, but the supported token-creation API rejects its
@@ -84,5 +84,5 @@ application with HTTP 403. No new token was created and no GitHub secret was
 changed. The direct authenticated deployment path was used for this checkpoint.
 
 Detailed transient receipts remain in the owned worktrees under `.qa-dev/launch`;
-raw source models, credentials, generated QA and unfinished experiments were
+credentials, generated QA and unfinished experiments were
 not added to the publication commit.

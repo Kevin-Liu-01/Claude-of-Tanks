@@ -13,6 +13,12 @@
  * which loads the overlay, the steps and their strings when a chapter runs.
  */
 
+/** (272.0.1, Main 2026-11-12) The tutorial's switch. 272.0.1 turned it off when a click on the dimmed screen at step 7
+ *  (Deploy) launched a Proving Ground battle and left the card over the loading screen; 272.1 turns it back on with the
+ *  fix (the dim is inert, the card's lifetime follows its screen). Off: no chapter starts for a new player,
+ *  `/?tutorial=1` does nothing, and Settings and the Field Manual offer no Replay. */
+export const TUTORIAL_ON: boolean = true;
+
 export const TUTORIAL_STORAGE_KEY = 'cot.tutorial.v1';
 export const TUTORIAL_CHAPTERS = ['garage', 'battle', 'tips'] as const;
 /** The chapters the record keeps, and (273) the training battle's, which runs whenever a training battle rolls out (the
@@ -83,7 +89,7 @@ export function resetTutorialRecord(storage?: RecordStorage | null): void {
 
 /** Any chapter could still run: the boot loads the tutorial's access (app/tutorialAccess.ts) only then. */
 export function tutorialMayRun(storage?: RecordStorage | null): boolean {
-  return TUTORIAL_CHAPTERS.some((chapter) => tutorialChapterDue(chapter, storage));
+  return TUTORIAL_ON && TUTORIAL_CHAPTERS.some((chapter) => tutorialChapterDue(chapter, storage));
 }
 
 /** The URL flag the Field Manual's Replay link carries; the boot drops it from the address once read. */

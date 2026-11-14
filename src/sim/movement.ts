@@ -2,6 +2,7 @@ import { movementDispersionFactor } from './movementDispersion.ts';
 import { mechanicalGunPitchFloor, minimumMechanicalGunPitch } from './gunPitchLimits.ts';
 import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
 import { usesLauncherMuzzles, type LauncherMuzzle } from './launcherPolicy.ts';
+import { floorShotShare, type GunAutoloader } from './fireCycleFloor.ts';
 /**
  * movement.ts — pure-logic tank movement, attitude, turret/gun kinematics and
  * dispersion bloom. Implements docs/history/research/movement-physics.md §2–§8 and §10
@@ -53,6 +54,8 @@ export interface MovementGunSpec {
   baseAccuracy: number;
   caliberMm: number;
   reloadS: number;
+  /** a rotary gun's autoloader: its rounds shake the hull by their share of a floor cycle (fireRecoil) */
+  autoloader?: GunAutoloader | null;
   bloom: {
     move: number;
     hullRot: number;
@@ -602,7 +605,7 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // Line half-length 0.45 × hullLengthM matches the rendered track bottom run
 // for PROCEDURAL gear (tankFactory places idler/sprocket at ~±0.45 L; the
 // arcs curve up past them).
-// r7 TERRAIN-CONTACT HARD GATE (float side, round critique CRITICAL): GLB
+// r7 TERRAIN-CONTACT HARD GATE (float side, round critique CRITICAL): swapped
 // visuals do NOT share that layout — the swapped Abrams' rendered track
 // bottom runs only ±2.3 m (0.29 L) with the tracks curling up past ±2.5 m,
 // so a 0.45 L support line held the tank up on ~1.25 m of PHANTOM contact
@@ -772,7 +775,7 @@ const BODY_FACE_BACK_M = 0.3;
 // chassis height, but assigning pos.y to that value every fixed tick made the
 // whole vehicle trace the heightfield like a rigid magnet. Keep the support
 // value as a hard compression floor, then let the sprung mass follow it with
-// bounded droop. Procedural bogies travel 0.22 m and sourced GLB wheels travel
+// bounded droop. Procedural bogies travel 0.22 m and swapped wheels travel
 // 0.20 m, so the limits below keep the chassis inside the visual suspension
 // envelope while giving it enough inertia to round crests instead of snapping.
 const RIDE_OMEGA = 2 * Math.PI * 1.8; // 1.8 Hz sprung-mass heave
@@ -5586,7 +5589,7 @@ export function updateTank(
   const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
-  // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
+  // part of the key: a mesh swap landing on a PARKED tank (deferred stream-in)
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
   const recordReadsBefore = heightField.recordReads ?? 0;
@@ -5811,11 +5814,15 @@ export function fireRecoil(
   // gravity a bot firing through a boost flight pitched over 95 degrees and came down on its back: the ground rock's
   // kick, three times a flight, and the air does not damp it back)
   const turn = state.grounded === false ? AIR_RECOIL_TURN_SCALE : 1;
-  spr.pitchV += kick * ct * recoilScale * turn;
-  spr.rollV += kick * st * recoilScale * turn;
+  // (272) a rotary gun's round kicks, shoves and blooms by its share of a floor cycle (fireCycleFloor.ts floorShotShare):
+  // a second of the Vulcan's fire disturbs the gun as a second at the floor does. At full size a round, three times the
+  // shocks kept the M163's hull rocking and its reticle open: 3 % of its rounds hit an MBT at 120 m, not the floor's 42 %.
+  const share = floorShotShare(spec.gun.autoloader);
+  spr.pitchV += kick * ct * recoilScale * turn * share;
+  spr.rollV += kick * st * recoilScale * turn * share;
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
-  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;
+  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale * share;
   spr.recoilVX -= detMath.sin(gunYawWorld) * v;
   spr.recoilVZ -= detMath.cos(gunYawWorld) * v;
   if (launch && launch.scale > 1) {
@@ -5838,7 +5845,7 @@ export function fireRecoil(
   const afterShotBloom = rapidIfvShot
     ? Math.min(spec.gun.bloom.afterShot, IFV_AUTOCANNON_AFTER_SHOT_BLOOM)
     : spec.gun.bloom.afterShot;
-  state.bloomF *= afterShotBloom;
+  state.bloomF *= share === 1 ? afterShotBloom : detMath.pow(afterShotBloom, share);
 }
 
 /**

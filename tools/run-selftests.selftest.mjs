@@ -416,7 +416,6 @@ await assert.rejects(runSelftestFile('bad-launch.mjs', {
 assert.equal(listening(spawnSignals), 0);
 
 assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
-  'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
@@ -428,8 +427,10 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
+  'tools/camo-sheet-layout.browser.selftest.mjs', // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
   'tools/mp-rooms-entry.browser.selftest.mjs', // 268: the multiplayer end-to-end's rooms entry per layout
+  'tools/couch-open.browser.selftest.mjs', // 272: a real press on Couch keeps the lobby open
   'tools/pane-stack-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt
   'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
@@ -454,7 +455,7 @@ const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
 assert.deepEqual(registered.events, [`[selftests] actual-registry: ${SELFTEST_OWNED_LEASE_FILES.length + 2} files`, 'acquire', 'cpu', 'release',
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
-const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
+const oldRegistry = actualRegistryFixture(['tools/cloud-history.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
   /runner must release/);
 assert.equal(oldRegistry.held, false, 'the old nested-lock failure still releases owned runner resources');

@@ -13,6 +13,8 @@ import { stationDepression, stationProbe } from '../../../tools/roof-station-arc
 
 const PACKET = JSON.parse(readFileSync(new URL('../../../docs/references/photos/russia-152-20261104.json', import.meta.url), 'utf8'));
 const IDS = ['object292', 'object477_molot', 'object195', 't14_152'];
+/** The line's tabled roof guns: [id, station, calibre]. */
+const ROOF_GUNS = [['object195', 'object195_2a42', 30], ['object477_molot', 'molotGunnerMgStation', 7.62]];
 const box = (o) => { o.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o); };
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
 
@@ -63,23 +65,24 @@ for (const quality of ['high', 'low']) {
     assert.ok(near(h152.min.z, h14.min.z, .002) && near(h152.max.z, h14.max.z, .002) && near(h152.min.y, h14.min.y, .002), `${quality}: the T-14 152's hull is the T-14's (length, floor)`);
     assert.ok(h152.max.y >= h14.max.y - .002 && h152.max.y <= h14.max.y + .03, `${quality}: the T-14 152's kit over the T-14's deck (${h152.max.y.toFixed(3)} v ${h14.max.y.toFixed(3)})`);
     for (const k of ['min', 'max']) assert.ok(Math.abs(h152[k].x) <= Math.abs(h14[k].x) + .02 && Math.abs(h152[k].x) >= Math.abs(h14[k].x) - .002, `${quality}: the T-14 152's kit beside the T-14's hull (x ${h152[k].x.toFixed(3)} v ${h14[k].x.toFixed(3)})`);
-    // the 30 mm cannons beside the 152s are working stations that pitch in their cradles
-    for (const [id, name] of [['object195', 'object195_2a42'], ['object477_molot', 'molot_gsh30']]) {
+    // the roof guns beside the 152s are working stations that pitch in their cradles: the Object 195's 30 mm 2A42, the
+    // Molot's gunner's remote 7.62 mm (272: in place of its GSh-30; owner 2026-11-11)
+    for (const [id, name, calibre] of ROOF_GUNS) {
       const station = tanks[id].root.getObjectByName(name);
-      assert.ok(station && station.userData.caliberMm === 30, `${quality}: ${id} carries its 30 mm station`);
-      assert.ok(station.getObjectByName('auxiliaryWeaponPitch'), `${quality}: ${id}'s 30 mm pitches`);
+      assert.ok(station && station.userData.caliberMm === calibre, `${quality}: ${id} carries its ${calibre} mm station`);
+      assert.ok(station.getObjectByName('auxiliaryWeaponPitch'), `${quality}: ${id}'s ${calibre} mm pitches`);
     }
   } finally { for (const tank of Object.values(tanks)) tank.dispose(); }
 }
-// The 30 mm stations' arcs and depression tables hold against the built stock (tools/roof-station-arcs.mjs, the M551 TTS
+// The roof stations' arcs and depression tables hold against the built stock (tools/roof-station-arcs.mjs, the M551 TTS
 // receipt's check 8, src/sim/roofStations.selftest.mjs): every degree of the arc is clear from level to full elevation,
 // full depression outside the table, each table entry and the smaller of two neighbouring entries between them, and the
 // arc ends within 4 degrees of the stock it keeps clear of
-for (const [id, name] of [['object195', 'object195_2a42'], ['object477_molot', 'molot_gsh30']]) {
+for (const [id, name, calibre] of ROOF_GUNS) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
   try {
     tank.root.updateMatrixWorld(true);
-    const station = tank.root.getObjectByName(name), profile = auxiliaryWeaponProfile(30, id), DEG = Math.PI / 180;
+    const station = tank.root.getObjectByName(name), profile = auxiliaryWeaponProfile(calibre, id), DEG = Math.PI / 180;
     const { probe } = stationProbe(tank.root, station), [lo, hi] = station.userData.yawArc, table = station.userData.depressionByYaw;
     const held = (yaw) => {
       if (yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;

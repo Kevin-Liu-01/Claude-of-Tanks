@@ -5,11 +5,10 @@ import {getSpec} from './specs.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {COMBAT_ANATOMY_CALIBRATIONS} from './combatAnatomyCalibrations.ts';
 
-// Source equipment scopes, not guesses from a generic dark/glass material.
-// These scalar bounds pin seven metadata-only repairs against the original
-// physical geometry, plus T62's newly measured low periscope. They are not
-// supplied vertex arrays. Count: 54 preserved parts plus 2 new T62 parts.
-// 2026-10-01: the T-62MV-1 source-study sight (and its newly measured low periscope) left with that build: the
+// Exact equipment scopes, not guesses from a generic dark/glass material.
+// These scalar bounds pin seven metadata-only repairs against the build's
+// earlier physical geometry. Count: 54 preserved parts.
+// 2026-10-01: the T-62MV-1 sight (and its newly measured low periscope) left with that build: the
 // owner's rebuild carries the T-62 obr. 1975 chassis and the complete T-72B 1987 upper assembly (4c34b3e8b,
 // cdbfe54dc). Its optics are proved to be exactly those donors' own below, plus the rebuild's thermal sensor.
 const EXACT_SCOPES = {

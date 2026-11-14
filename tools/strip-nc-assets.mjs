@@ -12,6 +12,8 @@
 //    gates must leave them on legal procedural family fallbacks.
 // 3. Prints the docs/ATTRIBUTION.md sections that must be dropped for a
 //    public build (the PERSONAL-USE / NC QUARANTINE block).
+// Step 1c (owner 2026-11-12: outside 3D models exist only inside tank-generation tooling) deletes every 3D model file
+// left anywhere in dist/ (MODEL_FILE_RE), so an ignored model on a builder's disk can never ship; the runtime loads none.
 // Step 1b deletes the tool-only public files (tools/tool-only-public-files.mjs):
 // the tank asset manifest (a row file per tank) and the marking sheets stay in public/ for
 // the tools that write and read them, but no page requests them.
@@ -20,7 +22,7 @@
 //   COT_STRIP_NC_PROBE_CACHE=0           probe the registry even when its inputs are unchanged
 //   COT_STRIP_NC_PROBE_TIMEOUT_MS=<ms>   the probe's wall-clock limit (default 10 minutes)
 
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync, realpathSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -41,6 +43,8 @@ const STRIP_DIRS = [
   // procedural geometry and does not consume their baked model outputs.
   path.join(DIST, 'models', 'tanks', 'candidates-gen2'),
 ];
+/** Every 3D model format; none ships in dist/. */
+export const MODEL_FILE_RE = /\.(glb|gltf|obj|stl|fbx|blend|3mf|dae|ply|usdz)(\.bak)?$/i;
 const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|abramsx-mortavex\.glb)/;
 
 // The registry probe evaluates the whole spec registry: about 3 s of CPU, which took 59 s of wall clock at load 215
@@ -137,6 +141,10 @@ async function main() {
   for (const { path: file } of toolOnly) await rm(path.join(DIST, file), { force: true });
   // a tool-only directory (the per-tank manifest, 266) goes whole, so no empty folder ships
   for (const dir of toolOnlyPublicDirs(DIST)) await rm(path.join(DIST, dir), { recursive: true, force: true });
+  // 1c. no 3D model file ships (owner 2026-11-12): the runtime builds every vehicle and prop procedurally
+  const models = (await readdir(DIST, { recursive: true })).filter((file) => MODEL_FILE_RE.test(file));
+  for (const file of models) await rm(path.join(DIST, file), { force: true });
+  console.log(`[strip-nc] removed ${models.length} 3D model file(s) from dist`);
   const toolOnlyBytes = toolOnly.reduce((sum, entry) => sum + entry.bytes, 0);
   console.log(`[strip-nc] removed ${toolOnly.length} tool-only public files (${(toolOnlyBytes / 1048576).toFixed(1)} MB)`);
 

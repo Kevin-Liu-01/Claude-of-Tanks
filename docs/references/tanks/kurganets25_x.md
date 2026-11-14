@@ -5,7 +5,7 @@
 This vehicle is already published. The owner-requested mantlet/autocannon
 correction restores the receiver recess that the former roof loft covered.
 The compact 57 mm source configuration, gun axis, muzzle, hull and running
-gear are retained. See the [gun correction and verification record](../../history/research/kurganets-gun-mantlet-20260921.md).
+gear are retained. See the [gun correction and verification record](../../tank-generation/history/kurganets-gun-mantlet-20260921.md).
 Earlier draft/pending statements below describe their dated work rounds.
 
 ## Current integrated status — 2026-09-18
@@ -125,7 +125,7 @@ source front cover remains closed; internal receiver circles are not exposed
 as invented holes. The fitted drum underside overlaps the native deck and is
 explicitly authored closure, not a claimed source sheet thickness.
 
-Calipers: `docs/history/research/kurganets-source-fitting-calipers-20260918.md`.
+Calipers: `docs/tank-generation/history/kurganets-source-fitting-calipers-20260918.md`.
 Actual native HIGH/LOW full-scene first-hit, groove, curvature, crown and closed
 face regressions pass. Selected costs are 54,020/34,318 triangles, 40/39 objects.
 Fresh14 originals and stable identities are under
@@ -167,7 +167,7 @@ Rendered replay also passes for all 12 HIGH/LOW cases using preserved pre-edit p
 
 The supplied Armored Warfare source depicts the short-gun Epokha configuration: 57 mm main weapon, four large Kornet flank canisters and an eight-tube raised rear Bulat rack. This matches the [publisher's configuration](https://armoredwarfare.com/en/news/general/development-kurganets-25), distinct from its earlier 30 mm turret. The authored opening remains 58.46 mm across; no source geometry, gear or frame was edited to correct the metadata.
 
-The three playable channels are now 57 mm APFSDS, Kornet and Bulat. Ready counts are four and eight visible tubes, with no invented hidden reload stock. Bulat's nominal 70 mm, HE effect and borrowed guided motion are explicit game tuning, not measured hardware data or a thermobaric simulation. Its independent numbered selector, reload and inventory are covered alongside the complete fleet's actual authoritative guided launches. Full configuration sources, balance values and limits are recorded in the [runtime integration review](../../history/research/supplied-fleet-runtime-integration-review-20260918.md#supplied-weapon-configuration-cross-check). Final generated anatomy and release receipts must postdate this metadata correction.
+The three playable channels are now 57 mm APFSDS, Kornet and Bulat. Ready counts are four and eight visible tubes, with no invented hidden reload stock. Bulat's nominal 70 mm, HE effect and borrowed guided motion are explicit game tuning, not measured hardware data or a thermobaric simulation. Its independent numbered selector, reload and inventory are covered alongside the complete fleet's actual authoritative guided launches. Full configuration sources, balance values and limits are recorded in the [runtime integration review](../../tank-generation/history/supplied-fleet-runtime-integration-review-20260918.md#supplied-weapon-configuration-cross-check). Final generated anatomy and release receipts must postdate this metadata correction.
 
 
 ## Folded bow and receiving hull — 2026-09-18

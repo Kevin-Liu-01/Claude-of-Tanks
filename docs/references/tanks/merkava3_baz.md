@@ -9,7 +9,7 @@ The supplied Mk.3D (registered for `merkava3_baz`) carries 9 turret `ex_armor` p
 
 Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
 packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
-[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
+[docs/tank-generation/history/merkava-family-262.md](../../tank-generation/history/merkava-family-262.md).
 
 ## Supplied source (the approved target, owner 2026-10-27)
 

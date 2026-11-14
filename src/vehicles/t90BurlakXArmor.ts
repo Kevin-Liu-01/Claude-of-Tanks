@@ -1,6 +1,6 @@
 import {plate,type ArmorPlate} from './specHelpers.ts';
 // Boot-light physical source measurements. Protection values are gameplay
-// conventions, not an inference of real protection from supplied geometry.
+// conventions, not an inference of real protection.
 export const T90_BURLAK_X_SOURCE_DATUMS={
   dims:{hullLengthM:6.36329984665,overallLengthM:10.063049793,widthM:4.0703,heightM:2.26367998123},
   turretPivot:[-.001247544176495,1.544579982757568,.114670021536425],

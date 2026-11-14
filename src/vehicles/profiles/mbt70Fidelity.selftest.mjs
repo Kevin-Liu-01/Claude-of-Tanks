@@ -14,7 +14,7 @@ import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 const spec = getSpec('mbt70');
 assert(spec, 'MBT-70 is registered');
 assert.equal(tankTier('mbt70'), 3, 'MBT-70 matches at its shown Tier III (258)');
-assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the comparison GLB');
+assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads external geometry');
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
 // Factory now names the existing stock flecktarn. Generic German service

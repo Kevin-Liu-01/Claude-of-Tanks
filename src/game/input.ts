@@ -239,7 +239,8 @@ export interface InputLayer {
   virtualActive(): boolean;
   isTouchLayout(): boolean;
   getSettings(): InputSettings;
-  setSetting(key: keyof InputSettings, value: RuntimeValue): void;
+  /** (272) `persist` false: in force now, stored by a later call (a slider's drag stores once, on its release) */
+  setSetting(key: keyof InputSettings, value: RuntimeValue, persist?: boolean): void;
   /** Release every toggled hold action (hold-or-toggle): the player can no longer use them. */
   releaseToggles(): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
@@ -1429,7 +1430,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *  field lands on 0.2, never on the silent default (the old `+value || 1`
      *  treated 0 as falsy and quietly reset the field to 1.0×). The default
      *  is reserved for genuinely non-numeric input (NaN). */
-    setSetting(key, value) {
+    setSetting(key, value, persist = true) {
       const num = (fallback: number, lo: number, hi: number) => {
         const n = Number(value);
         return clamp(Number.isFinite(n) ? n : fallback, lo, hi);
@@ -1460,7 +1461,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       }
       else if (isCameraNumericKey(key)) settings[key] = clampChaseSetting(key, value);
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
-      saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
+      if (persist) saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
     },
 
     releaseToggles() {

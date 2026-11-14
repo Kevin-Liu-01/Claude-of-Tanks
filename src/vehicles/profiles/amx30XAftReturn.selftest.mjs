@@ -10,7 +10,7 @@ const cast = (objects, origin, direction, far = 4) => new THREE.Raycaster(new TH
 // Held-out complete canonical Object_66 measurements. Source SHA-256:
 // 55f4ec8837caa90c4ad976fdfd974bd9761497b27d963e3af84f040b9126bae5.
 // These fixed witnesses include the actual continuity-cell point, not its
-// rounded display label; no source mesh is needed by this runtime test.
+// rounded display label; no external geometry is needed by this runtime test.
 const TOP = [
   [.9272321138211659, -3.226646555662154, 1.1208732466549582, [.01421402637647, .87915741147029, -.47631943830903]],
   [.94, -3.22, 1.1242678612596153],

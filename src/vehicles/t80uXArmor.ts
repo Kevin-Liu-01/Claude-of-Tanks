@@ -1,7 +1,7 @@
 // Boot-light T-80U X cassette registration; source-fit scalar seed fields only.
 // Exact generated exposed-triangle receipts define actual protection locations.
 // Contact values preserve the existing T-80U gameplay convention and are NOT
-// inferred physical protection measurements from the supplied polygon model.
+// inferred physical protection measurements.
 import {plate,type ArmorPlate} from './specHelpers.ts';
 
 /** Release 231 (the gun-hull fleet lane; the owner approved, 2026-10-21): the T-80U X casting rides this far (m) above the

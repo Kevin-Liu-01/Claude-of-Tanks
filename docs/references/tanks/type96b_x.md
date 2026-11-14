@@ -129,7 +129,7 @@ Final round7 report `.qa-dev/tank-run/eastern-source/fidelity-round7.json`: aggr
 
 ### Post-main source-detail revision — 2026-09-18
 
-Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/history/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
+Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/tank-generation/history/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
 
 Source-only mechanical rays in `type96-mechanical-rays.json` show that Object_14's approximately 68 mm radius is the gun's inner bore. The source outer shroud tapers from 137 mm at Z 2.28 m to 110 mm at Z 5 m and approximately 99 mm at Z 6.45 m. The revision restores this stepped/tapered physical barrel while preserving its 68 mm bore and muzzle position. Separate measured rear louver banks replace the vertical comb and unsupported upper grilles. The cupola is lowered to its source envelope, with distinct periscope fittings. The wheel casting now uses an independently authored 13-station revolved section: approximately +181 mm axial hub, +55 mm recessed web at radius 150 mm and +199 mm lip at radius 290 mm. Two measured tire bands retain the canonical moving gear. No source vertices/topology enter runtime. Wheel stock resource costs and moving contacts require fresh verification; source has no roof MG.
 
@@ -176,7 +176,7 @@ The repository `npm run typecheck` (native TypeScript plus core-unused check) pa
 
 ### Source detail correction r4 — 2026-09-18
 
-The fresh r3 independent critic inspected all fourteen images and failed at minimum **8/10**, identifying the secondary rectangular roof panel as a concrete remaining shape error. That review is preserved in `docs/history/research/regional-source-independent-critic-20260918.md`; this round addresses the measured hatch only, without changing wheel stock, axles, tracks, camouflage or source frames.
+The fresh r3 independent critic inspected all fourteen images and failed at minimum **8/10**, identifying the secondary rectangular roof panel as a concrete remaining shape error. That review is preserved in `docs/tank-generation/history/regional-source-independent-critic-20260918.md`; this round addresses the measured hatch only, without changing wheel stock, axles, tracks, camouflage or source frames.
 
 Independent Object_12 component isolation is diagnostic only: no source vertices or topology enter runtime. Scalar readings in `.qa-dev/tank-run/eastern-source/detail-r4-study.json` and `detail-r4-hatch.json` show an oval lid centered approximately X0.58755/Z−0.21318, 0.7361 × 0.5129 m in plan. Source center top Y2.32196 and outer-lip witness Y2.31134 reveal a shallow dished plate with a raised circular center, rather than the previous 0.735 × 0.513 rectangular panel at Y2.328. Held-out diagonal points X0.30/Z−0.40 and X0.92/Z−0.35 have no source hatch stock. Sparse first-party revolved stock now reproduces that oval plan/rim and center relief. Separate measured hinge blocks/pins, latch and a grab handle with two feet and a raised rail complete the bounded correction.
 

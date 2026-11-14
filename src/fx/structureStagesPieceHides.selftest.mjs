@@ -154,4 +154,47 @@ const laid = (before) => debris.group.children.filter((m) => !before.has(m) && m
   assert.ok(laid(before2).length > 0 && laid(before2).every((m) => m.visible), 'and its laid copy at once');
 }
 
+// ---- (amberford-lavoir-272; the slab census: the lavoir's roof, a named piece, came off at the breach and its top storey's
+// room drew its ceiling at the wall heads, a 65 m² lid) a set piece whose roof is a named piece opens to the sky when the
+// piece takes the roof: the top storey's rooms lose their ceilings and are lit open, as a roof section's fall leaves them
+{
+  const id = 11, x = 200, placement = { x, y: 0, z: 0, yaw: 0 };
+  const roofed = { regionalPlaster: [part('regionalPlaster', 10, 4, 6, x, 0, 0)], regionalRoof: [part('regionalRoof', 11, 0.3, 7, x, 4, 0)] };
+  const anatomy = describeDefault({ structureIdx: id, mapId: 'autumn', builder: 'lavoir', style: null, parts: roofed, w: 10, d: 6, h: 4.3, placement,
+    massClass: 'landmark', seed: damageSeed(1, id, 7) });
+  assert.ok(anatomy.roof, 'the default kit reads a roof');
+  const spans = Object.entries(roofed).map(([bucket, list]) => {
+    const flat = list[0].toNonIndexed();
+    return { mesh: new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ name: bucket })), geometryId: null, instanceId: null, position: flat.getAttribute('position'),
+      bucket, partClass: bucket === 'regionalRoof' ? 'roof' : 'wall', first: 0, count: flat.getAttribute('position').count,
+      ...(bucket === 'regionalRoof' ? { piece: 'roof' } : {}) };
+  });
+  const real = createStructureDamageSeam(id, 'lavoir', null, anatomy, spans);
+  const seam = { ...real, breach(hole, out) {
+    const r = real.breach(hole, out);
+    return hole.hole === 0 ? { ...r, hides: [...(r.hides ?? []), { section: null, partClass: null, piece: 'roof' }] } : r;
+  } };
+  const before = new Set(debris.group.children);
+  const ev = (stage, previous) => ({ structureId: id, massClass: 'landmark', cx: x, cz: 0, hw: 5, hd: 3, yaw: 0, baseY: 0, topY: 4.3, cause: 'blast',
+    munition: 'he', points: 30, integrity: 0.3, x, y: 2, z: 3, dirX: 0, dirZ: -1, stage, previous, settled: true });
+  stages.stage(ev('damaged', 'intact'), seam);
+  stages.stage(ev('breached', 'damaged'), seam);
+  const ceiling = (m) => {
+    const g = m.geometry, p = g.getAttribute('position'), ix = g.index, n = Math.min(ix ? ix.count : p.count, g.drawRange.count);
+    let area = 0;
+    for (let t = g.drawRange.start; t + 2 < g.drawRange.start + n; t += 3) {
+      const [a, b, c] = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(p, ix ? ix.getX(t + k) : t + k));
+      const nrm = b.sub(a).cross(c.sub(a)), l = nrm.length();
+      if (nrm.y < -0.9 * l) area += l / 2;
+    }
+    return area;
+  };
+  const rooms = debris.group.children.filter((m) => !before.has(m) && m.isMesh && m.userData.room === true);
+  assert.ok(rooms.length > 0, 'the breach laid the rooms behind its holes');
+  for (const m of rooms) {
+    assert.equal(m.userData.openToSky, true, 'the roofless storey\'s room is lit open to the sky');
+    assert.ok(ceiling(m) < 1, `no ceiling over the roofless storey (${ceiling(m).toFixed(1)} m²)`);
+  }
+}
+
 console.log('structureStagesPieceHides selftest: a live run\'s piece stands until its wreck shows, a settled run\'s goes at once; a live stage\'s laid piece falls into its place first');

@@ -379,7 +379,7 @@ export const STATION_KEYS: Readonly<Record<string, readonly FleetWeaponKey[]>> =
   object148_proto: ['30/belt'],
   object195: ['30/belt'],
   object292: ['12.7/belt'],
-  object477_molot: ['12.7/belt', '30/belt'],
+  object477_molot: ['12.7/belt', '7.62/belt'],
   olifant_mk1: ['7.62/belt'],
   olifant_mk1a: ['7.62/belt'],
   olifant_mk1b: ['7.62/belt'],

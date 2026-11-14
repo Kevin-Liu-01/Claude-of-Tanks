@@ -8,8 +8,8 @@ Full release qualification was running when this record was written. **Release, 
 |---|---|
 | `kurganets25_x` | [Corrected bow, final14 + Garage2](kurganets-final-bow-independent-review-20260918.md) |
 | `ztz100_x` | [Regenerated assembled views](final-regenerated-assembled-visual-review-20260918.md), [Garage](final-garage-shadow-independent-review-20260918.md) |
-| `fv510_milan_x` | [Approved assembled target](final-approved-targets-independent-review-20260918.md) |
-| `griffin50_x` | [Final BMP/Griffin review — Griffin scope](final-bmp-griffin-independent-review-20260918.md) |
+| `fv510_milan_x` | [Approved assembled target](../../tank-generation/history/final-approved-targets-independent-review-20260918.md) |
+| `griffin50_x` | [Final BMP/Griffin review — Griffin scope](../../tank-generation/history/final-bmp-griffin-independent-review-20260918.md) |
 | `ajax_x` | [Regenerated fender and Garage review](final-fenders-independent-review-20260918.md) |
 | `aft10_x` | [Regenerated assembled views](final-regenerated-assembled-visual-review-20260918.md), [Garage](final-garage-shadow-independent-review-20260918.md) |
 | `bmp3m_dragun125_x` | [Final corrections and Garage review](final-corrections-independent-review-20260918.md) |

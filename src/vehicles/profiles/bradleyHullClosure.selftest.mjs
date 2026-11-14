@@ -3,9 +3,9 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 
 // 268 (the owner: "the m1a1s and bradleys look odd. here are the actual models, runn our tank generation procedures on
-// them"): the four Bradleys share one hull core measured from the owner's supplied model (modern3.ts BRADLEY_HULL,
-// bradleyHullCoreReceipt), the source's side armour and skirt course (bradleySideArmorReceipt) and, on the M2A2 and
-// the Ukrainian vehicle, the source's turret (bradleyA2TurretClosureReceipt). The Marder 1A3 keeps the pre-268 donor
+// them"): the four Bradleys share one measured hull core (modern3.ts BRADLEY_HULL,
+// bradleyHullCoreReceipt), the measured side armour and skirt course (bradleySideArmorReceipt) and, on the M2A2 and
+// the Ukrainian vehicle, the measured turret (bradleyA2TurretClosureReceipt). The Marder 1A3 keeps the pre-268 donor
 // build byte for byte, so it alone still carries the donor's continuous upper-hull closure receipt.
 const IDS = [
   'm2a2_bradley',

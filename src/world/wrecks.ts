@@ -17,7 +17,7 @@
 //
 // Contract notes:
 //  - createTank is called with proceduralOnly: true — synchronous procedural
-//    build (no async GLB swap, no GLB textures), and attachTankDecorations
+//    build (no async mesh swap, no streamed textures), and attachTankDecorations
 //    HARD-SKIPS on that flag, so this path never interacts with the
 //    decoration system or the geometry-gate metrology guards. tankFactory
 //    itself is NOT modified — the bake is a pure consumer.
@@ -888,7 +888,7 @@ function* buildTankWreckSteps(
       // No anatomy consumer survives the static position/normal/color bake.
       // Leave visual ERA placement and all normal factory defaults intact.
       eraVisualBindingReceipt: false,
-      proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
+      proceduralOnly: true,    // synchronous, no mesh swap, decor hard-skips
     });
     owner.visual = visual;
     const state = WRECK_STATE_TABLE[opts.state ?? 'burnt_out'];

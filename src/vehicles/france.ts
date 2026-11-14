@@ -564,7 +564,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // planar cabinet even though its plan trace was accurate.  This authored
   // shoulder ring keeps the broad AMX-40 cheek volume low, turns inward
   // progressively, and falls gently into the asymmetric rear lobes.  It is
-  // a new repository-authored shell, not a sampled or converted source mesh.
+  // a new repository-authored shell.
   // The former 3.30 m plan stopped well inside the AMX-40's own authored
   // turret envelope and made the fighting compartment look undersized on
   // the long hull.  Carry the *connected shell* to the measured cheek and

@@ -3,9 +3,6 @@
 export const EASTERN_SOURCE_STUDIES = {
   aft10: {
     name: 'AFT-10 X', donor: 'm551_sheridan', nation: 'China', role: 'tank_destroyer', tier: 10,
-    sourceFile: 'aft-10_armored_warfare.glb',
-    sourceSha256: '45fdbb3efdc173cfc09a6293673534afc83f86ba20a1cd7ebc05f688ac85d1f0',
-    canonicalSha256: '95212acdcac7ef46744dde58888f675fa65284dfd4b008b2f7fda717b4e18d79',
     translation: [0.0039, 0.0102, 0],
     dims: { hullLengthM: 7.6094, overallLengthM: 7.6094, widthM: 3.3028,
       heightM: 3.496, silhouetteHullLengthM: 7.6094,
@@ -19,9 +16,6 @@ export const EASTERN_SOURCE_STUDIES = {
   },
   bmp3m_dragun125: {
     name: 'BMP-3M Dragun 125 X', donor: 'bmp3', nation: 'Russia', role: 'light_tank', tier: 10,
-    sourceFile: 'bmp-3m_dragun_125_armored_warfare.glb',
-    sourceSha256: '1c5d3241266a698550f281e715b0b96d9b1360fef07aa8ccb1cd70044fc0aae3',
-    canonicalSha256: '4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16',
     translation: [-0.00237, 0, 0],
     dims: { hullLengthM: 8.15, overallLengthM: 9.0417, widthM: 4.049712,
       heightM: 3.294, silhouetteHullLengthM: 8.15,
@@ -34,9 +28,6 @@ export const EASTERN_SOURCE_STUDIES = {
   },
   k21: {
     name: 'K21', donor: 'cv90', nation: 'South Korea', role: 'ifv', tier: 9,
-    sourceFile: 'k21_armored_warfare.glb',
-    sourceSha256: 'bacb27e883dfddb929d8de820bbebb31dec4d161ba2b25ac0afdc539b35883a1',
-    canonicalSha256: 'ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8',
     translation: [-0.000015, -0.0138, 0],
     dims: { hullLengthM: 7.6289, overallLengthM: 7.6289, widthM: 3.47303,
       heightM: 3.0572, silhouetteHullLengthM: 7.6289,
@@ -49,9 +40,6 @@ export const EASTERN_SOURCE_STUDIES = {
   },
   type96b: {
     name: 'Type 96B X', donor: 'ztz99_longwei', nation: 'China', role: 'mbt', tier: 10,
-    sourceFile: 'type_96b_armored_warfare.glb',
-    sourceSha256: '4abe3113a6919c78d56f9dfb8f8841bd22cc40a33283925c768bbcd3ee5fc8f0',
-    canonicalSha256: 'ac66370796b83d2d63755390ffdbcaa503d9dbc15726630205c4e44a2765b1ed',
     translation: [0, 0.0042, 0],
     dims: { hullLengthM: 7.0473, overallLengthM: 10.00451, widthM: 3.4454,
       heightM: 3.0152, silhouetteHullLengthM: 7.0473,

@@ -365,9 +365,24 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   ruling, 272 folded in): game +26,562 B brotli, cn +26,573 B, Gallery +25,085 B; requests +8 on game, cn and Gallery
   //   (new boot leaves from the folded 272 lanes and improve plans, not folded under the ruling: attribution and the fold
   //   are owed post-deploy); the entry +229 B. Home +148 B, docs +150 B and 404 +57 B re-pinned at their measures.
-  game: { brotliBytes: 1237548, requests: 135, entryBrotliBytes: 259456 },
-  cn: { brotliBytes: 1282784, requests: 136, entryBrotliBytes: 259456 },
-  gallery: { brotliBytes: 785129, requests: 81 },
+  // 2026-11-11 (integrator 271.1, the patch re-pin at integ/271.1's build 580fb07d28): game +858 B brotli, cn +1,547 B
+  //   (the loading stills' rotation on the boot path, the Couch/Watch/Deploy button family, the camo sheet layout and
+  //   the Air Support plate; cn also their zh strings); requests and the entry held. The other rows inside their slack.
+  // 2026-11-11 (integrator 271.2, the Air Support fix's re-pin at integ/271.2's build): game +1,501 B brotli, cn +1,483 B;
+  //   requests +4 on both (air-support-runs-272's strike order, strike runs and strike call modules on the boot path, not
+  //   folded under the live-fix ruling: the fold is owed with 271's); the entry +172 B.
+  // 2026-11-12 (integrator 272, the single end re-pin at integ/272's release build 465cd86573): game +10,800 B brotli,
+  //   cn +10,962 B, Gallery +5,215 B; requests game and cn +7, Gallery +2. The new boot chunks against live 271.2:
+  //   chaseStart (couch-panes-272 0669e4783f), fireCycleFloor (m163-rotary-272 db35064ff4; on the Gallery too), and five
+  //   modules already on main that now split into shared chunks of their own under 272's new importers: weaponHitKind
+  //   (fire-fx-debounce-272's audio cadence), lodDistanceScale (also on the Gallery), aerialVision, droneMotion and
+  //   battleHudFrameRuntime. The entry -9,572 B (those modules left it), pinned at its measure.
+  // 2026-11-12 (integrator 272.1, at integ/272.1's build with gt-symbol-272 edf92d71fc): the entry +1,081 B (the GT
+  //   symbol inline, currentColor, in the Garage credits and the language pop-up; general-translation.png retired); game
+  //   -2,230 B and Gallery -3,625 B brotli overall, requests held. The other rows stay at 272's pins.
+  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 251137 },
+  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 251137 },
+  gallery: { brotliBytes: 790344, requests: 83 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },
   notFound: { brotliBytes: 18734, requests: 7 },

@@ -39,7 +39,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, closeSurfacesWithin, openSurface, surfaceHolds, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
 import { createGarageScreen, createLazyOpener, createLazyPanelToggle, type GarageScreenTicket } from './garageScreen.ts';
 // (2026-11-02 audit S3) the product's boot latch, read only through gameReady.ts (never its harness mirror, the flag the
 // tools wait on)
@@ -53,6 +53,7 @@ import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { CouchChunkError } from '../app/couchOpener.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
+import { gtSymbolSvg } from './gtSymbol.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconId, shellIconSVG } from './shellIcons.ts';
@@ -341,14 +342,19 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
 // (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
 const FIT_SHRINK_PX = 10;
 const FIT_STRETCH_PX = 36;
+/** A docked paint swatch gives up to half its picture's 48 px basis (showroom.css) to bring one more row in: its picture
+ *  takes the row's height, so its name keeps its lines (owner 11-11: two rows missed a 1920 sheet by 11 px, and one row
+ *  stood over an empty strip). */
+const CAMO_FIT_SHRINK_PX = 24;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
  * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic). `fill` (a phone's sheet)
  * leaves no strip empty under those rows while more wait below: its rows take one height, the tallest tile's give or take
  * what brings in a row that misses by a few pixels or fills what is left over, and the scroll stops on them (garage.css),
- * so the window stays whole wherever it scrolls.
+ * so the window stays whole wherever it scrolls. `shrink` is how far a row may give to bring the next one in (the docked
+ * paint sheet's swatches give more: their picture takes the row's height).
  */
-function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
+function fitWholeRows(grid: HTMLElement, peek = true, fill = false, shrink = FIT_SHRINK_PX): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
   grid.style.gridAutoRows = '';
@@ -365,7 +371,7 @@ function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
       const rows = room - (parseFloat(style.paddingTop) || 0) + gap;
       if (tallest > 0) {
         let count = Math.max(1, Math.floor(rows / (tallest + gap)));
-        if (tallest - (rows / (count + 1) - gap) <= FIT_SHRINK_PX) count += 1;
+        if (tallest - (rows / (count + 1) - gap) <= shrink) count += 1;
         const height = Math.min(tallest + FIT_STRETCH_PX, rows / count - gap);
         grid.style.gridAutoRows = `${Math.floor(height * 100) / 100}px`;
       }
@@ -722,7 +728,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span${currentLocale === 'zh-CN' ? ' class="is-current"' : ''}>中文</span></span></button>` +
     `<a class="cot-locale-credit" href="https://generaltranslation.com/" target="_blank" rel="noreferrer" ` +
     `aria-label="${t('publicNav.language.creditEyebrow')} ${t('publicNav.language.creditName')}">` +
-    `<img src="/brand/partners/general-translation.png" alt="" draggable="false">` +
+    `${gtSymbolSvg(30, 'cot-gt-symbol')}` +
     `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
     `<strong>${t('publicNav.language.creditName')}</strong></span></a></div>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
@@ -848,12 +854,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
     // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
     `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
-    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle
-    `<button type="button" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
-    `${uiIconSVG('phone', 20)}<span>${t('couch.entry')}</span></button>` +
-    `<button type="button" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
+    // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle. Couch and Watch are the kit's
+    // secondary and Deploy its primary (components.css .cot-c-btn): one family, its focus, press and unavailable states
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
+    `${uiIconSVG('couch', 20)}<span>${t('couch.entry')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
     `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
-    `<button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `<button type="button" class="cot-c-btn cot-c-btn--primary" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
     // the launch's estimate and the key hints load with deployScreen.ts (972c9575b3); the extra </div> closes Watch's .cot-deploy-acts
     `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
@@ -956,6 +963,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // r9.5: the list moved to featuredShots.ts — ONE copy shared with the boot
   // splash and the transition screens (hand-synced copies drifted from disk
   // twice; r9.1 was the "always the same picture" bug that caused).
+  // (2026-11-11, Kevin: "add all 78 to the galleries") After the twenty, the owner's whole loading-screen gallery
+  // (galleryShots.ts), loaded on the first page turn: the strip a Garage draws at boot is today's first page, and its
+  // twenty dots page through the rest (a dot is one picture of the page in view; its name counts all of them).
   // The selected tank's own take (owner 2026-10-12, fleetTakes.ts): once the
   // Garage is playable (or on intent) and the panel is on screen, the fleet
   // index loads; while it has the selected tank, the panel shows that take's
@@ -983,6 +993,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
     const dots = panel.querySelectorAll<HTMLButtonElement>('.fdots button');
     const shotEl = requiredElement<HTMLElement>(panel, '.fshot');
+    let shots: { img: string; cap: () => string; focal?: string }[] =
+      FEATURED_SHOTS.map((shot) => ({ img: shot.img, cap: () => t(shot.capKey, shot.capVars) }));
+    const pageSize = dots.length;
+    let galleryJoined = false;
+    const galleryShotsChunk = createLazyChunk(() => import('./galleryShots.ts'));
+    // the gallery joins once, its 640 cards aimed by their focal; a failed load keeps the twenty and the next turn asks again
+    const joinGallery = (): Promise<void> => galleryShotsChunk.load().then(({ GALLERY_SHOTS, galleryShotText }) => {
+      if (galleryJoined) return;
+      galleryJoined = true;
+      shots = shots.concat(GALLERY_SHOTS.map((shot) => ({ img: shot.thumb, cap: () => galleryShotText(shot, 'title'), focal: shot.focal })));
+    }, () => {});
     let idx = -1;
     let front = 0;
     let timer: ReturnType<typeof setInterval> | 0 = 0;
@@ -994,29 +1015,46 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let fleetRequest: Promise<void> | null = null;
     const fleetTakesChunk = createLazyChunk(() => import('./fleetTakes.ts'));
     let player: FleetTakePlayer | null = null;
-    const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
+    const show = (i: number, imageUrl = shots[i].img): void => {
       front ^= 1;
       layers[front].style.backgroundImage = `url("${imageUrl}")`;
+      layers[front].style.backgroundPosition = shots[i].focal ?? '';
       layers[front].classList.add('on');
       layers[front ^ 1].classList.remove('on');
-      capEl.textContent = t(FEATURED_SHOTS[i].capKey, FEATURED_SHOTS[i].capVars);
-      dots.forEach((d, k) => d.classList.toggle('on', k === i));
-      // the picture in view is the dots' one tab stop (the arrows step the rotation from it)
-      for (const dot of dots) { dot.tabIndex = -1; dot.removeAttribute('aria-current'); }
-      dots[i].tabIndex = 0;
-      dots[i].setAttribute('aria-current', 'true');
+      capEl.textContent = shots[i].cap();
+      // the dots show the page in view; the picture in view is their one tab stop (the arrows step the rotation from it)
+      const page = i - (i % pageSize);
+      dots.forEach((dot, k) => {
+        dot.classList.toggle('on', page + k === i);
+        dot.hidden = page + k >= shots.length;
+        dot.setAttribute('aria-label', t('garage.gallery.shot', { n: page + k + 1, count: shots.length }));
+        dot.tabIndex = -1;
+        dot.removeAttribute('aria-current');
+      });
+      dots[i - page].tabIndex = 0;
+      dots[i - page].setAttribute('aria-current', 'true');
       idx = i;
     };
     const preload = (i: number, cb: (url: string) => void, priority: ImagePriority = 'low'): void => {
-      preloadImage(FEATURED_SHOTS[i].img, { priority }).then((url) => {
+      preloadImage(shots[i].img, { priority }).then((url) => {
         if (url) cb(url);
       });
     };
     const jump = (i: number, priority: ImagePriority = 'high') => preload(i, (url) => {
       if (!vehicleTake) show(i, url);
     }, priority);
+    /** Step to picture `to` of all of them (wrapping); a turn off either end of the twenty first brings the gallery in. */
+    const go = (to: number, priority: ImagePriority = 'high', then?: (i: number) => void): void => {
+      const land = (): void => {
+        const i = (to + shots.length) % shots.length;
+        jump(i, priority);
+        then?.(i);
+      };
+      if (galleryJoined || (to >= 0 && to < shots.length)) land();
+      else void joinGallery().then(land);
+    };
     const advance = (priority: ImagePriority = 'low') => {
-      if (!vehicleTake) jump((idx + 1) % FEATURED_SHOTS.length, priority);
+      if (!vehicleTake) go(idx + 1, priority);
     };
     const arm = () => { if (!timer && !vehicleTake) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
@@ -1045,7 +1083,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         shotEl.dataset.tip = fleet.fleetTakeText(take, 'title');
       } else {
         shotEl.removeAttribute('title');
-        if (idx >= 0) capEl.textContent = t(FEATURED_SHOTS[idx].capKey, FEATURED_SHOTS[idx].capVars);
+        if (idx >= 0) capEl.textContent = shots[idx].cap();
         else if (activated) showFirst('low');
         if (engaged) arm();
       }
@@ -1095,23 +1133,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     requiredElement<HTMLButtonElement>(panel, '.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
-      jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
+      go(idx - 1);
       rearm();
     });
     requiredElement<HTMLButtonElement>(panel, '.fnav.next').addEventListener('click', (e) => {
       e.stopPropagation(); advance(); rearm();
     });
-    dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
+    dots.forEach((d, k) => d.addEventListener('click', () => { go(idx - (idx % pageSize) + k); rearm(); }));
     // the keys (261, the lead's follow-up): the arrows, Home and End move the rotation from the dots and the focus with it
     requiredElement<HTMLElement>(panel, '.fdots').addEventListener('keydown', (event) => {
-      const count = FEATURED_SHOTS.length;
-      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: count - 1 } as Record<string, number>)[event.key];
+      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: shots.length - 1 } as Record<string, number>)[event.key];
       if (to === undefined || idx < 0) return;
       event.preventDefault();
-      const next = (to + count) % count;
-      jump(next);
+      go(to, 'high', (next) => dots[next % pageSize].focus({ preventScroll: true }));
       rearm();
-      dots[next].focus({ preventScroll: true });
     });
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);
@@ -2054,8 +2089,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
     // whole rows, as the equipment grid's (the r26 critic read the paint grid's 40 % peek, dimmed to a quarter, as a row
-    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below
-    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false));
+    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below. Docked, they fill the sheet (owner 11-11:
+    // a fit that only dropped the row that missed left one row of swatches over an empty half sheet at 900 to 1920); the
+    // swatch's picture takes the row's height (showroom.css)
+    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false, document.body.dataset.cotPanels === 'persistent', CAMO_FIT_SHRINK_PX));
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
@@ -3772,7 +3809,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return true;
   }
 
-  function step(dir: number): void {
+  // (272) a held arrow walks the roster at the key's repeat rate (about 30 a second): the highlight and its card follow each
+  // step, and the pick itself (its storage writes, its builder and texture prebake, a room's selection) settles once, 120 ms
+  // after the last repeat. A single press picks at once, as before.
+  const HELD_PICK_SETTLE_MS = 120;
+  let heldPickTimer: ReturnType<typeof setTimeout> | null = null;
+  function step(dir: number, repeat = false): void {
     if (vehicleLocked) return;
     // Arrows walk the active national fleet only, as the roster filter shows it.
     const pool = (specsByCountry.get(countryFilter) || []).filter((s) => facetVisible(s.id));
@@ -3780,7 +3822,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const idx = pool.findIndex((s) => s.id === selectedId);
     const next = idx < 0 ? pool[dir > 0 ? 0 : pool.length - 1] : pool[(idx + dir + pool.length) % pool.length];
     emit('ui:click', {});
-    api.setSelected(next.id);
+    if (heldPickTimer) { clearTimeout(heldPickTimer); heldPickTimer = null; }
+    if (!repeat) { api.setSelected(next.id); return; }
+    if (!applySelection(next.id)) return;
+    const id = next.id;
+    heldPickTimer = setTimeout(() => {
+      heldPickTimer = null;
+      if (!vehicleLocked && selectedId === id && onSelect) onSelect(id);
+    }, HELD_PICK_SETTLE_MS);
   }
   /** Home and End on the roster strip: the active fleet's first or last tank (the interaction census: no Home/End). */
   function stepToEnd(last: boolean): void {
@@ -4202,8 +4251,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   battleMenu.addEventListener('click', (event) => {
     if ((event.target as Element | null)?.closest('[data-battle-close]')) closeBattleMenu({ restoreFocus: true });
   });
+  // (272) the focus a surface opened from Deploy takes (the couch lobby: a body-level modal standing on Deploy) stays
+  // Deploy's: read as a leave, it closed Deploy and the stack took the new surface with it
   const leavesDeploy = (event: FocusEvent) => event.relatedTarget instanceof Node
-    && !battleControl.contains(event.relatedTarget) && !battleMenu.contains(event.relatedTarget);
+    && !battleControl.contains(event.relatedTarget) && !surfaceHolds(deploySurface, event.relatedTarget);
   battleControl.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   battleMenu.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
@@ -4647,8 +4698,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
     setupWatch.hidden = range;
-    // a couch battle plays the couch modes (COUCH_RULES), never inside a room
-    setupCouch.disabled = !solo || !isCouchMode(battleGameMode) || !opts.onCouch;
+    // a couch battle plays the couch modes (COUCH_RULES), never inside a room; unavailable, the button says why (the kit's
+    // hover tip, components/hoverTip.ts)
+    const couchOff = !opts.onCouch ? 'couch.unavailable' : !solo ? 'couch.off.room' : !isCouchMode(battleGameMode) ? 'couch.off.mode' : '';
+    setupCouch.disabled = Boolean(couchOff);
+    if (couchOff) setupCouch.dataset.tip = t(couchOff);
+    else delete setupCouch.dataset.tip;
     setupCouch.hidden = range;
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
@@ -5030,8 +5085,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a control that took the key (a station's or a chip row's roving, the camo picker's grid) keeps it: its arrows never
     // also switch the tank (the interaction census)
     if (e.defaultPrevented) return;
-    if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
-    else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
+    if (e.code === 'ArrowLeft') { step(-1, e.repeat); e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { step(1, e.repeat); e.preventDefault(); }
     else if ((e.code === 'Home' || e.code === 'End') && target?.closest('.cot-cards')) { stepToEnd(e.code === 'End'); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
       // the bare screen's Enter deploys; every control keeps its own (residual fix-up r1: a held Enter deploys once)

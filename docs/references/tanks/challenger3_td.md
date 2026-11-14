@@ -11,7 +11,7 @@
   (owner, 2026-10-28).
 - Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9 and r11; procedural
   fidelity 96.6 PASS under Main's track-shoe exemption (r11; 96.1 with tracks 89.2 unexempted); every other lane
-  receipt PASS (see `~/cot-launch-state/streams/TESTS-OWED.md`, the cr3td-262 section).
+  receipt PASS (the tests-owed record's cr3td-262 section, kept outside the repository).
 - Publication status: lane branch only; integration through Main (release 262).
 - Worktree / branch / baseline commit: `.claude/worktrees/dazzling-engelbart-21c8ce`, `item/cr3td-262`, from
   `origin/main` `7d045a7588`.

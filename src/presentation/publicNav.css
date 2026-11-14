@@ -87,7 +87,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-ui);color:var(--ink-3)}
 .public-footer__credit a{display:inline-flex;align-items:center;gap:var(--s2);color:var(--ink-3);text-decoration:none}
 .public-footer__credit a:hover{color:var(--ink-1)}
-.public-footer__credit img{border-radius:var(--r1)}
+.public-footer__gt{width:16px;height:16px;aspect-ratio:1;flex:none}
 
 @media (width < 1100px){
   .public-nav__links{display:none}

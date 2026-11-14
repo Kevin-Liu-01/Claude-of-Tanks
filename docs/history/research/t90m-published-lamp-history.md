@@ -1,7 +1,7 @@
 # T-90M source-X preservation: published lamp-pose history
 
 2026-09-08 — test-only correction. No runtime geometry, lighting, materials,
-armor, source model or release threshold changes.
+armor, reference or release threshold changes.
 
 The ordinary `sourceXFleet` regression expected the independently recorded
 pre-X HIGH fingerprint `ffbd40d4`. Published `origin/main` at

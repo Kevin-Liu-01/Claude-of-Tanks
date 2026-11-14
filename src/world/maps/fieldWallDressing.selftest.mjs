@@ -252,7 +252,9 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   assert.equal(unasked.turfs.length, 0, 'none unless asked');
   // the props wiring: asked on the mild, grassy, fieldstone maps' desktops; merged by cell into the ground beds
   const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
-  assert.match(props, /const wallTurfOn = !mobileProps && !snowCap && rockDressing\.dust < 0\.5 && !sourcedStoneIsBrick\(mapId\);/, 'the turf on the mild, grassy maps\' dry-stone walls');
+  // (buildings-272: a brick-print map's lava wall counts as dry stone: brickWalls = the brick print and not wallStyle 'lava')
+  assert.match(props, /const brickWalls = sourcedStoneIsBrick\(mapId\) && P\.wallStyle !== 'lava';/, 'the lava wall over a brick print');
+  assert.match(props, /const wallTurfOn = !mobileProps && !snowCap && rockDressing\.dust < 0\.5 && !brickWalls;/, 'the turf on the mild, grassy maps\' dry-stone walls');
   // (the time-to-battle lane, 2026-10-08: the near mesh's vertices through the props build's memo of the field's own
   // heights, props.ts nearMeshVertexHeight; nearMeshVertexMemo.selftest holds it to the field's values)
   assert.match(props, /turf: wallTurfOn \? \{\n\s*meshAt: \(x, z\) => terrainNearMeshHeightAt\(nearMeshVertexHeight, x, z\), foldAt: turfFoldAt,/, 'on the nearest terrain mesh');

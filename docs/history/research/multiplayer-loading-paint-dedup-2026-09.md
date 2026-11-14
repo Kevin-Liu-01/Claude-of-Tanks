@@ -641,8 +641,8 @@ exact geometry/record/matrix/RNG parity, and three destruction/reset cycles.
 The maintained wall fixture also now binds the real night-fixture helper used
 by its extracted current-runtime lifecycle. Props scheduling, frame scheduling,
 progress, countdown, typecheck/core-unused, public build and diff checks pass.
-The public artifact still contains 174 procedural playables and zero GLB-sourced
-playables. Results: `/private/tmp/cot-loading-pool-batches.ixtTxZ/checks.json`.
+The public artifact still contains 174 playables, all
+procedural. Results: `/private/tmp/cot-loading-pool-batches.ixtTxZ/checks.json`.
 
 The read-only world scan exits 1 with eleven diagnostics, all in selftests:
 eight trusted repository-source execution fixtures, one deliberate sequential

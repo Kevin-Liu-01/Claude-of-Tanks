@@ -13,6 +13,7 @@ import { hrefForLocale } from '../../ui/localeRouting.ts';
 import { getLocale, t } from '../../ui/i18n.ts';
 import { icon } from '../../ui/icons/icon.ts';
 import type { RichSection } from './types.ts';
+import { TUTORIAL_ON } from '../../ui/tutorial/tutorialRecord.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -79,7 +80,7 @@ export function startSections(): RichSection[] {
   // (272) the game's own first-game tutorial, replayed: the Garage tour, then the first-battle steps (app/tutorialAccess.ts)
   const replay = `<a class="dm-next" href="${hrefForLocale('/?tutorial=1', locale)}">${icon('play', { size: 20 })}`
     + `<b>${esc(t('docs.start.replay'))}</b><span>${esc(t('docs.start.replayLede'))}</span></a>`;
-  const html = `<div class="dm-nexts">${replay}${next}</div>`;
+  const html = `<div class="dm-nexts">${TUTORIAL_ON ? replay : ''}${next}</div>`;
   sections.push({ id: 'next', title: t('docs.start.next.title'), html, text: plain(html) });
   return sections;
 }

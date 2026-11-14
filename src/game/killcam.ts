@@ -48,7 +48,7 @@ import {
  *      brief ~0.55x dilation through the launch (fx clock scaled via
  *      main.ts), the camera pushed out and eased back onto the x-ray
  *      vantage. Ammo-rack kills toss the turret (pop 1.0), plain kills jolt
- *      it (pop 0.22) — same setDestroyed grammar as live play, GLB and
+ *      it (pop 0.22) — same setDestroyed grammar as live play, swapped and
  *      procedural alike. Emits 'killcam:impact' {cause,pos,timeScale} on the
  *      bus as the additive audio seam for the replayed cinematic blast.
  *   2. X-RAY  — the victim rendered ghost-translucent (view-dependent fresnel
@@ -906,7 +906,7 @@ function sharedMats(): SharedMaterials {
       {
         vec3 kcV = normalize(cameraPosition - vKcW);
         // Degenerate-normal guard FIRST (r3): the performance-budget kit
-        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a1_abrams_hc/t90m
+        // merge ships hull meshes WITHOUT a normal attribute (m1a1_abrams_hc/t90m
         // audit: 4 merged meshes each) — the attribute defaults to (0,0,0),
         // normalize() NaNs, and NaN alpha painted the whole live-Abrams
         // ghost as a solid black silhouette. Zero-length normals fall back
@@ -925,8 +925,8 @@ function sharedMats(): SharedMaterials {
         float kcNear = distance(cameraPosition, kcCenter) - kcRad;
         float kcT = clamp((distance(cameraPosition, vKcW) - kcNear)
           / max(kcRad * 2.0, 0.001), 0.0, 1.0);
-        // r3 fidelity rework (the live GLB Abrams read as a near-turretless
-        // slab): GLB victims are ONE smooth-normal mesh, so the old single
+        // r3 fidelity rework (the live Abrams read as a near-turretless
+        // slab): single-mesh victims are ONE smooth-normal mesh, so the old single
         // pow(kcF,2.6) term lit only a hair-thin band while every face-on
         // panel sat at the 0.06 floor — invisible over sunlit grass. The
         // multi-part procedural Tiger only read because 8-12 hull layers
@@ -2807,7 +2807,7 @@ export function createKillCam(deps: KillcamDeps) {
   /**
    * Put the shooter back at the firing snapshot and solve the rendered bore
    * against the captured launch direction. The second, visual-space solve is
-   * important for imported tanks: their GLB barrel rig may carry a small
+   * important for swapped tanks: their barrel rig may carry a small
    * authored correction that logical turretYaw/gunPitch alone cannot see.
    */
   function rememberAttackerPresentation(
@@ -3880,8 +3880,8 @@ export function createKillCam(deps: KillcamDeps) {
   // the tracer reaches the plate the destruction is RE-FIRED on the restaged
   // victim and plays live in front of the camera: detonation flash, fx
   // fireball/debris/smoke (fx children re-shown for the beat), the turret-pop
-  // arc tumbling off the setDestroyed grammar exactly as in live play (GLB
-  // and procedural parity — the GLB turret node is re-parented into turretG
+  // arc tumbling off the setDestroyed grammar exactly as in live play (swapped
+  // and procedural parity — a swapped turret node is re-parented into turretG
   // at swap time), with a brief fx-clock dilation through the launch. The
   // camera pushes out from the x-ray vantage for the fireball and eases back
   // onto it, so the x-ray hold that follows starts without a cut.
@@ -5977,7 +5977,7 @@ export function createKillCam(deps: KillcamDeps) {
 
   function updateXray(dt: number): void {
     pb.xt += dt;
-    // late-attached meshes (async GLB kit deferral) join the ghost skin the
+    // late-attached meshes (async kit deferral) join the ghost skin the
     // frame they arrive — see the r3 note at pb.ghostSkin
     if (pb.ghostSkin) pb.ghostSkin();
     // xrayAng0: the impact beat's orbital drift carries straight into the

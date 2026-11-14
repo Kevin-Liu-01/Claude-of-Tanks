@@ -1,6 +1,6 @@
 // Offline calibration of the Mk5-derived Mk10's independently closed stocks.
-// Only first-party emitted geometry is read. No source model or live render
-// buffer is changed, and disconnected cheeks never share a convex hull.
+// Only first-party emitted geometry is read. No live render buffer is
+// changed, and disconnected cheeks never share a convex hull.
 import * as THREE from 'three';
 import {ConvexHull} from 'three/addons/math/ConvexHull.js';
 import {registerProfiledBuilders} from '../src/vehicles/tankFactoryCore.ts';

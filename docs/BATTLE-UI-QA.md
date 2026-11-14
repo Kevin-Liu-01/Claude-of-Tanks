@@ -821,7 +821,7 @@ The broader suite is not a green baseline. Existing source-geometry,
 archival-reference and balance failures remain visible. Fresh comparisons
 against the unmodified main snapshot reproduced the TOS donor fingerprint,
 T-90 equipment/source-gun expectations, T-62 marking-count expectation and
-Challenger 3X/T-62 fire-control outliers. Missing local source GLBs and existing
+Challenger 3X/T-62 fire-control outliers. Missing comparison records and existing
 geometry score failures also prevent claiming a clean source-reference
 release gate. No geometry threshold or historical anchor hash was lowered to
 make these failures pass.

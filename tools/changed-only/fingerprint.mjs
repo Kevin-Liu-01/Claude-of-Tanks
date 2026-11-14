@@ -17,6 +17,11 @@
 // An id is changed when its row is missing, its inKey moved or its outKey moved (an output edited outside the chain).
 // Anything the graph cannot see fails closed: an undeclared dynamic read or a computed import makes the step run on
 // every id; a roster change, a missing manifest or a frame edit of an output file runs the step on the whole fleet.
+// The roster is recorded per step (272): `roster <step> <hash>`, the roster that step's keys were last taken against on
+// the whole fleet. A single table-wide line moved only with a chain that selected every step, so a partial chain (every
+// step but the gate, --no-world) recorded keys under the new roster and left the old line, and every later resolve read
+// "full 311 (roster)" for every step: no pass could ever settle (the 271/272 Abrams "fixpoint", whose 8 ids were only
+// the roster's first 8).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -564,7 +569,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 // ---------------------------------------------------------------- manifest
 
 export function emptyManifest() {
-  return { schema: SCHEMA, toolchain: null, toolchainParts: [], roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {},
+  return { schema: SCHEMA, toolchain: null, toolchainParts: [], rosters: {}, core: null, groups: {}, tools: {}, rows: {}, keys: {},
     files: {}, comps: {}, stamps: {} };
 }
 
@@ -579,7 +584,8 @@ export function parseManifest(text) {
     const [kind, ...fields] = line.split('\t');
     // the hash, then (268) the parts it was taken on, so a table recorded elsewhere names what moved
     if (kind === 'toolchain') { manifest.toolchain = fields[0]; manifest.toolchainParts = fields.slice(1); }
-    else if (kind === 'roster') manifest.roster = fields[0];
+    // (272) per step: the roster the step's whole-fleet keys were taken against
+    else if (kind === 'roster') { if (fields.length !== 2) return null; manifest.rosters[fields[0]] = fields[1]; }
     else if (kind === 'core') manifest.core = fields[0];
     else if (kind === 'group') manifest.groups[fields[0]] = fields[1];
     else if (kind === 'tool') manifest.tools[fields[0]] = fields[1];
@@ -597,7 +603,7 @@ export function parseManifest(text) {
 export function serializeManifest(manifest) {
   const lines = [];
   if (manifest.toolchain) lines.push(['toolchain', manifest.toolchain, ...(manifest.toolchainParts ?? [])].join('\t'));
-  if (manifest.roster) lines.push(`roster\t${manifest.roster}`);
+  for (const [step, hash] of Object.entries(manifest.rosters ?? {})) lines.push(`roster\t${step}\t${hash}`);
   if (manifest.core) lines.push(`core\t${manifest.core}`);
   for (const [group, hash] of Object.entries(manifest.groups)) lines.push(`group\t${group}\t${hash}`);
   for (const [step, hash] of Object.entries(manifest.tools)) lines.push(`tool\t${step}\t${hash}`);
@@ -641,7 +647,8 @@ const worldStepOf = (key, steps) => (steps.includes(key.split(':')[2]) ? key.spl
  * The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run): what
  * the resolver names when a step's keys move (reasonsFor). (268) `ran`: the steps this run recorded (every step when
  * omitted). Only their own lines move: a tank step's tool key, a world step's tool, map and donor keys. `shared`: the
- * lines every step reads (the toolchain, roster, core, groups, rows and the world's own) move too. The chain passes
+ * lines every step reads (the toolchain, core, groups, rows and the world's own) move too; the roster is a step's own
+ * line, written by recordStep (272). The chain passes
  * false on a partial chain (--steps, --no-gpu, --no-world). A step that did not run then keeps the lines its keys were
  * taken against. Its keys embed them, so it stays due either way, but its reasons stay true: --steps=gate used to
  * relabel four steps whose tools had moved "inputs rewritten after this step ran".
@@ -651,7 +658,6 @@ export function refreshComponents(manifest, state, { ran = null, shared = true }
   if (shared) {
     manifest.toolchain = state.toolchain;
     manifest.toolchainParts = [...state.toolchainParts];
-    manifest.roster = state.roster;
     manifest.core = state.core;
     manifest.groups = { ...state.groups };
     manifest.rows = {};
@@ -706,6 +712,9 @@ export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set(
     }
   }
   if (!Object.keys(stamped).length) delete manifest.stamps[name];
+  // (272) the roster moves with a whole-fleet run of this step alone: an --ids run leaves the other ids' keys as they were
+  // taken, so their roster change still reads as one
+  if (!ids) (manifest.rosters ??= {})[name] = after.roster;
   manifest.files[name] = Object.fromEntries(after.steps[name].outputFiles.map((file) => [file, after.fileHash(file)]));
 }
 
@@ -735,27 +744,44 @@ const reasonsFor = (manifest, state, name, id) => {
 /**
  * Which ids each step must run on. mode: 'none' | 'ids' (a subset) | 'all' (every id; the tool may run scoped) |
  * 'full' (the whole fleet without --ids: roster change, missing manifest, an output file's frame edited).
+ * (272) `only`: judge just these ids (an --ids chain's own), each by its own key rows. A roster the step's whole-fleet
+ * keys predate is the other ids' concern: it no longer marks the whole fleet but is named on every judged id whose key
+ * moved. Without it an --ids run under a roster change read its own freshly recorded ids as due on every pass.
  */
-export function resolveChanged(state, manifest, { steps = Object.keys(state.steps) } = {}) {
+/** (272) The `step[id]`s a resolve marks due without a reason (neither the id's own nor the step's '*'): never valid. A
+ *  summary that dropped the reasons (the --ids final used to write `reasons: {}`) read as due for nothing. */
+export function unexplainedIds(result) {
+  return Object.entries(result).flatMap(([name, entry]) => (entry.ids ?? [])
+    .filter((id) => !(entry.reasons?.[id]?.length || entry.reasons?.['*']?.length)).map((id) => `${name}[${id}]`));
+}
+
+export function resolveChanged(state, manifest, { steps = Object.keys(state.steps), only = null } = {}) {
   const result = {};
+  const judged = only ? state.ids.filter((id) => only.includes(id)) : state.ids;
   for (const name of steps) {
     const step = state.steps[name];
     const reasons = {};
-    const all = (why, mode = 'all') => { result[name] = { mode, ids: [...state.ids], reasons: { '*': why } }; };
+    const all = (why, mode = 'all') => { result[name] = { mode, ids: [...judged], reasons: { '*': why } }; };
     if (!manifest) { all(['no manifest'], 'full'); continue; }
-    const recordedRoster = state.rosterOf ? state.rosterOf(manifest) : manifest.roster;
-    if (recordedRoster !== state.roster) { all([recordedRoster == null ? 'never recorded' : 'roster'], 'full'); continue; }
+    const recordedRoster = manifest.rosters?.[name] ?? null;
+    const rosterWhy = recordedRoster === state.roster ? null : recordedRoster == null ? 'roster never recorded' : 'roster';
+    if (rosterWhy && !only) { all([rosterWhy === 'roster' ? 'roster' : 'never recorded'], 'full'); continue; }
     if (!step.decomposed) { all(step.reasons); continue; }
     const keys = manifest.keys[name] ?? {}, stamps = manifest.stamps?.[name] ?? {};
     const changed = [], stamped = {};
-    for (const id of state.ids) {
+    // (272) under `only`, a moved roster names itself in place of the "rewritten after this step ran" fallback
+    const inputsWhy = (id) => {
+      const why = state.reasonsFor ? state.reasonsFor(manifest, name, id) : reasonsFor(manifest, state, name, id);
+      return rosterWhy ? [rosterWhy, ...why.filter((line) => !line.startsWith('inputs rewritten after'))] : why;
+    };
+    for (const id of judged) {
       // (268) an id the step could not run here, stamped with why: current while that holds (stampProblem)
       const stamp = stamps[id], loose = stamp ? stampProblem(state, step, name, id, stamp) : null;
       if (stamp && !loose) { stamped[id] = `${stamp.code}: ${stamp.reason}`; continue; }
       const recorded = keys[id];
       if (!recorded) { changed.push(id); reasons[id] = ['no row', ...(loose ? [loose] : [])]; continue; }
       const why = [];
-      if (recorded.in !== state.inKey(name, id)) why.push(...(state.reasonsFor ? state.reasonsFor(manifest, name, id) : reasonsFor(manifest, state, name, id)));
+      if (recorded.in !== state.inKey(name, id)) why.push(...inputsWhy(id));
       if (recorded.out !== state.outKey(name, id)) why.push('output edited outside chain');
       if (why.length) { changed.push(id); reasons[id] = loose ? [...why, loose] : why; }
     }

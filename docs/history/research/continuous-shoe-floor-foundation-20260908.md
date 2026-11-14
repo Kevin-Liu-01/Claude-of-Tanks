@@ -88,7 +88,7 @@ certificate for either opted-in pilot. No expected fixture was regenerated.
 | Continuous interval helper | PASS — 38,912 native-matrix heldouts |
 | New support modules' complexity/type inventory | PASS — 17 functions; zero complexity violations, explicit `any` or `unknown` |
 | Typecheck and core-unused check | PASS |
-| Public build | PASS — 925 transformed modules; 174 procedural playables, zero GLB-sourced |
+| Public build | PASS — 925 transformed modules; 174 playables, all procedural |
 | Tracked runtime/tool/config input guard | PASS — no changes during validation |
 
 The ten files are `continuousShoeFloor`, `track-course-intervals`,

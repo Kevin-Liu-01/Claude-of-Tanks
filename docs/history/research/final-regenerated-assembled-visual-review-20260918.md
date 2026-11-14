@@ -10,7 +10,7 @@ Scores are source fit / substantive detail / static seating. Exact-image carry-f
 
 ## ajax_x
 
-Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/history/research/ajax-r12-independent-review-20260918.md).
+Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/tank-generation/history/ajax-r12-independent-review-20260918.md).
 
 | Original | Fit/detail/seat | Evidence | Observation |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Freshly inspected 7/14; exact-image prior evidence 7/14. [Prior independent revi
 
 ## griffin50_x
 
-Freshly inspected 5/14; exact-image prior evidence 9/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/history/research/griffin-detail5-independent-review-20260918.md).
+Freshly inspected 5/14; exact-image prior evidence 9/14. [Prior independent review](/Users/kevinliu/.codex/worktrees/cot-kurganets-odztz-20260917/docs/tank-generation/history/griffin-detail5-independent-review-20260918.md).
 
 | Original | Fit/detail/seat | Evidence | Observation |
 | --- | --- | --- | --- |

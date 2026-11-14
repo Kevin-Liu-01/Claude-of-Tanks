@@ -86,10 +86,11 @@ import {
 // entry telemetry (2026-09-24): the anonymous crash/load beacon is a player choice
 import { setTelemetryOptOut, telemetryOptOutStored } from '../entry/telemetry.ts';
 import {
-  COLOR_PRESETS, DEFAULT_ACCESSIBILITY, HOLD_ACTIONS, RANGES, accessibilityPreferences, saveAccessibility, setCustomTeamColours,
+  COLOR_PRESETS, DEFAULT_ACCESSIBILITY, HOLD_ACTIONS, RANGES, accessibilityPreferences, previewAccessibility, saveAccessibility, setCustomTeamColours,
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
+import { TUTORIAL_ON } from './tutorial/tutorialRecord.ts';
 import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
 
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
@@ -1100,11 +1101,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       num.value = String(parseFloat(toD(v).toFixed(digits)));
     };
     sync();
+    // (272) a drag applies each step and stores once, on its release (an arrow key's step is a release too)
     range.addEventListener('input', () => {
-      input.setSetting(key, parseFloat(range.value));
+      input.setSetting(key, parseFloat(range.value), false);
       sync();
       if (o.onChange) o.onChange();
     });
+    range.addEventListener('change', () => input.setSetting(key, parseFloat(range.value)));
     num.addEventListener('change', () => {
       const d = parseFloat(num.value);
       if (Number.isFinite(d)) input.setSetting(key, fromD(d));
@@ -1285,17 +1288,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     });
     // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle
     // steps in the next Standard battle and the tips after it (app/tutorialAccess.ts hears ui:replayTutorial)
-    const tutorialRow = el('div', 'cot-set-row', iface);
-    settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
-    const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
-    replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
-    replayTutorial.addEventListener('click', () => {
-      emit('ui:click', {});
-      closePanel();
-      emit('ui:replayTutorial', {});
-    });
-    const tutorialNote = el('div', 'cot-set-note', iface);
-    tutorialNote.textContent = t('settings.tutorial.replayNote');
+    if (TUTORIAL_ON) { // (272.0.1) off until the Deploy-step fix (ui/tutorial/tutorialRecord.ts)
+      const tutorialRow = el('div', 'cot-set-row', iface);
+      settingLabel(tutorialRow, t('settings.tutorial.title'), { id: 'manual', tone: 'cyan' });
+      const replayTutorial = el('button', 'cot-set-tutorial cot-c-btn cot-c-btn--36 cot-c-btn--secondary', tutorialRow);
+      replayTutorial.type = 'button'; replayTutorial.textContent = t('settings.tutorial.replay');
+      replayTutorial.addEventListener('click', () => {
+        emit('ui:click', {});
+        closePanel();
+        emit('ui:replayTutorial', {});
+      });
+      const tutorialNote = el('div', 'cot-set-note', iface);
+      tutorialNote.textContent = t('settings.tutorial.replayNote');
+    }
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
     const cleanViewNote = el('div', 'cot-set-note', iface);
     cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
@@ -1550,14 +1555,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       range.style.setProperty('--f', `${(((v - min) / (max - min)) * 100).toFixed(1)}%`);
       num.value = String(Math.round(v * 100));
     };
-    const set = (value: number): void => {
-      if (Number.isFinite(value)) saveAccessibility({ [key]: Math.round(value * 100) / 100 } as AccessibilityChange);
+    const set = (value: number, store = true): void => {
+      const change = { [key]: Math.round(value * 100) / 100 } as AccessibilityChange;
+      if (Number.isFinite(value)) { if (store) saveAccessibility(change); else previewAccessibility(change); }
       sync();
     };
     sync();
-    range.addEventListener('input', () => set(parseFloat(range.value)));
+    // (272) a drag previews each step and stores once, on its release
+    range.addEventListener('input', () => set(parseFloat(range.value), false));
     num.addEventListener('change', () => { set(parseFloat(num.value) / 100); emit('ui:click', {}); });
-    range.addEventListener('change', () => emit('ui:click', {}));
+    range.addEventListener('change', () => { set(parseFloat(range.value)); emit('ui:click', {}); });
   }
 
   function renderAccessibility(): void {

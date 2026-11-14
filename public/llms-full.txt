@@ -36,7 +36,7 @@ The X-ray killcam and hit presentation consume authoritative results. They do no
 
 ## Vehicles and procedural geometry
 
-Every selectable public vehicle is built from first-party procedural runtime geometry rather than loading a source GLB as its playable model. A shared vehicle specification drives identity, nation, class, tier, dimensions, mass, movement, weapon, ammunition, armor, modules, crew, labels, garage cards, Tank Gallery views, and combat behavior.
+Every selectable public vehicle is built from first-party procedural runtime geometry. A shared vehicle specification drives identity, nation, class, tier, dimensions, mass, movement, weapon, ammunition, armor, modules, crew, labels, garage cards, Tank Gallery views, and combat behavior.
 
 Vehicle rigs contain hull, turret, gun and recoil groups, fittings, road wheels, idlers, sprockets, return rollers where appropriate, suspension, track paths, shadow proxies, and levels of detail. Geometry/profile changes are verified through combat-anatomy generation, articulation checks, asset checks, focused profile tests, and targeted release gates.
 

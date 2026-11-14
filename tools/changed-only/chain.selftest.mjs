@@ -21,6 +21,8 @@
 //     oracle appears; a stamp never hides an output edited by hand, and a skip without a reason gets none.
 //   - (268) a partial chain (--steps) writes only the lines of the steps it ran: a step whose tool moved stays due and
 //     reads as its tool.
+//   - (272) a partial chain settles under a moved roster (each step's roster is its own line), and an --ids chain judges
+//     its own ids by their keys and keeps their reasons.
 //   - (268) every fixture chain is bounded by the CPU its process tree spends, never wall time (watchChild), and a
 //     tree's CPU keeps what its exited members spent; so is a synchronous child (budgetedSync, the rows read outside a
 //     chain), node spawning node; (round 8 Y10 s6-06) the chain's own rows read runs in its child groups, awaited.
@@ -598,5 +600,32 @@ assert.deepEqual([afterPartial.final.fills.mode, afterPartial.final.fills.reason
   'the step whose tool moved stays due, named as its tool');
 assert.equal(afterPartial.final.seats.mode, 'none', 'and the step that ran is current');
 assert.deepEqual(Object.entries((await chain(X)).final).filter(([, entry]) => entry.mode !== 'none'), [], 'the plain chain settles the rest');
+
+// 13 (272). A chain that leaves a step out settles under a moved roster: each step records the roster with its whole-fleet
+// keys. The table kept one roster line, moved only by a chain that selected every step, so the post-271 recording regen
+// (every step but the gate) resolved "full (roster)" after every pass and stopped "CPU steps still moving" on the roster's
+// first 8 ids. An --ids chain under a roster change judges its own ids by their keys and keeps the resolver's reasons (its
+// final used to read the lane's id as due with `reasons: {}`); the other ids stay due as the roster.
+const Y = join(base, 'Y');
+cpSync(B, Y, { recursive: true });
+const reorder = (root) => put(root, 'src/vehicles/specs.ts', read(root, 'src/vehicles/specs.ts').replace("['a1', 'a2', 'b1', 'b2']", "['a2', 'a1', 'b1', 'b2']"));
+reorder(Y);
+const rostered = await chain(Y, '--no-world');
+assert.deepEqual(rostered.runs.slice(0, 3).map((run) => `${run.step}[${run.ids.join(',')}]`), ['controls[*]', 'fills[*]', 'seats[*]'],
+  'a roster change runs each tank step on the whole fleet');
+assert.deepEqual(Object.entries(rostered.final).filter(([, entry]) => entry.mode !== 'none'), [], 'and the partial chain settles');
+assert.ok(rostered.passes <= 2, `in at most two passes (${rostered.passes})`);
+assert.match(read(Y, 'release/fingerprints.tsv'), /^roster\tseats\t[0-9a-f]{16}$/m, 'each step keeps its own roster line');
+const settled = await chain(Y, '--dry-run');
+assert.deepEqual(['controls', 'fills', 'seats'].map((name) => settled.final[name].mode), ['none', 'none', 'none'],
+  'a plain resolve agrees: the tank steps are current');
+const Z = join(base, 'Z');
+cpSync(B, Z, { recursive: true });
+reorder(Z);
+const lane = await chain(Z, '--ids=b1', '--no-world');
+assert.deepEqual(Object.entries(lane.final).filter(([, entry]) => entry.mode !== 'none'), [], 'an --ids chain settles its own id under a roster change');
+assert.ok(lane.passes <= 2, `in at most two passes (${lane.passes})`);
+const laneAfter = await chain(Z, '--dry-run');
+assert.deepEqual([laneAfter.final.seats.mode, laneAfter.final.seats.reasons['*']], ['full', ['roster']], 'the other ids stay due, named as the roster');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);

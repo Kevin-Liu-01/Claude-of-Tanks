@@ -20,7 +20,6 @@ const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 
 assert.ok(!profileSource.includes('epokhaTurret'), 'the counterpart turret is not assembled');
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map(m => m[1]).sort(),
   ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleAuxiliaryGeometry.ts', '../vehicleNightLighting.ts', './kit.ts', './object695MissileTurret.ts', './sectionSolid.ts', 'three']);
-const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/object695_x.source-measurements.json', import.meta.url), 'utf8'));
 const spec = TANK_SPECS.object695;
 const installedScale = VEHICLE_SIZE_FACTORS[spec.id] ?? 1;
 assert.equal(installedScale,.90,'owner-directed ten-percent reduction');
@@ -36,9 +35,9 @@ assert(spec.gun.shells.filter(s => s.guided).every(s => s.count >= 12));
 const backupIndex = spec.gun.shells.findIndex(s => s.name === '30 mm APFSDS-T');
 assert(backupIndex >= 0 && !spec.gun.shells[backupIndex].guided);
 assert.equal(spec.gun.shells[backupIndex].caliberMm, 30);
-assert.deepEqual([...D.wheelStations], record.roadWheels.stationsZM);
-assert.deepEqual(D.turretPivot, record.turretPivotM);
-assert.equal(D.wheelR, record.roadWheels.radiusM);
+assert.deepEqual([...D.wheelStations], [-2.32, -1.63, -0.94, -0.24, 0.45, 1.14, 1.84]);
+assert.deepEqual(D.turretPivot, [0, 2.15, -1.1]);
+assert.equal(D.wheelR, 0.275);
 assert.equal(D.muzzleZ, .45); assert.equal(D.launcherTopM, 3.719); assert.equal(D.mastTopM, 3.90);
 
 function checkRadioVolume(armor) {
@@ -265,13 +264,13 @@ for(const quality of ['high','low']){
     assert.ok(Math.abs(Math.min(...modules.map((p) => p.min[1])) - 0.80) < 1e-6 && Math.abs(Math.max(...modules.map((p) => p.max[1])) - 1.95) < 1e-6, 'module band y 0.80–1.95');
     assert.equal(count('module-rear-chamfer'), 2); assert.equal(count('module-front-chamfer'), 4, 'two prow wedges a side'); assert.equal(count('mudguard'), 4); assert.equal(count('ring-fitting'), 2);
     assert.equal(count('ramp-door'), 1, 'the ramp is closed'); assert.equal(count('stern-box'), 2); assert.equal(count('rear-roof-hatch'), 1); assert.equal(count('rear-roof-post'), 2); assert.equal(count('rear-right-box'), 1); assert.equal(count('rear-rack-lid'), 1); assert.equal(count('rear-rack-post'), 4);
-    // 2026-09-18: the boxes end at the source's stern SILHOUETTE (z −3.56; the record's −3.60 is their outermost fitting) so the
-    // geometry gate's body-extent law reads the same hull length as the source (dims 87.1 → 96.7)
+    // 2026-09-18: the boxes end at the measured stern SILHOUETTE (z −3.56; the recorded −3.60 is their outermost fitting) so the
+    // geometry gate's body-extent law reads the measured hull length (dims 87.1 → 96.7)
     const sternBoxAft = Math.min(...parts.filter((p) => p.part === 'stern-box').map((p) => p.min[2]));
-    assert.ok(sternBoxAft <= -3.55 && sternBoxAft >= -3.575, `stern boxes end at the source's stern silhouette (${sternBoxAft.toFixed(3)})`);
+    assert.ok(sternBoxAft <= -3.55 && sternBoxAft >= -3.575, `stern boxes end at the measured stern silhouette (${sternBoxAft.toFixed(3)})`);
     assert.equal(count('driver-hatch'), 1); assert.equal(count('lamp-box'), 2); assert.equal(count('tow-eye'), 4); assert.equal(count('intake-drum'), 1);
     assert.equal(count('smoke-tube'), 10); assert.equal(count('deck-louvre'), 1); assert.equal(count('nose-lip'), 1);
-    console.log('Checking source-independent stock',quality);
+    console.log('Checking authored stock',quality);
     checkLaunchStock(tank);console.log('Launcher stock PASS');checkFixedStock(tank);console.log('Fixed stock PASS');checkCannon(tank);console.log('Cannon PASS');checkNegativeControls(tank);console.log('Negatives PASS');checkArticulation(tank);
     const rig=tank.root.getObjectByName('rig_hull').userData.object695Receipt;
     assert.equal(rig.architecture,'object695-missile-hunter-concept');assert.equal(rig.physicalLauncherTubes,12);

@@ -8,7 +8,7 @@ replace its turret. No external mesh or texture is distributed or loaded in play
 The owner’s final proportion correction makes both Griffin hulls 10% longer
 and both upper assemblies 10% smaller. The hull is 7.26594 m long; wheel
 radii and weapon calibers remain unchanged. See the
-[proportion record](../../history/research/griffin-proportions-20260921.md).
+[proportion record](../../tank-generation/history/griffin-proportions-20260921.md).
 
 Tier X, USA. Sixteen physical launch cells cycle a finite 64-missile inventory
 at one-second stock intervals without a magazine pause. Each guided missile

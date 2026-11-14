@@ -1,6 +1,4 @@
 // Boot-light combat data for three core first-party procedural variants.
-// Historical derivative GLBs remain offline comparison inputs only; they
-// never enter the runtime registry or replace these specs/builders.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
@@ -198,7 +196,7 @@ const VARIANT_SPECS = {
     })(),
     visual: {
       // tank_models r2 (critic: ARAT tiles/muzzle painted a clashing tan over
-      // the woodland hull): the GLB's baked-texture composite is keyed by
+      // the woodland hull): the hull's camo composite is keyed by
       // NATION pattern tile (USA woodland), while every untextured kit part
       // (ARAT rows, loader shield, muzzle furniture) wears THIS visual's
       // shared canvas — the roster §3.4 solid desert tan made the kit read

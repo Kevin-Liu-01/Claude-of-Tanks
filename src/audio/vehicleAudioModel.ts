@@ -90,6 +90,8 @@ export interface VehicleAudioState {
   lastSpeedMps: number;
   brakeCooldownS: number;
   bumpCooldownS: number;
+  /** (272) a landing's gap: a hull flickering off the ground (1.5 cm clearance on a fast downhill) landed every frame */
+  landCooldownS: number;
   skidActive: boolean;
 }
 
@@ -97,7 +99,7 @@ export function createVehicleAudioState(profile: EngineFamilyProfile): VehicleAu
   return {
     rpm: profile.idleRpm, load: 0.1, gear: 0, shiftS: 0, gearHoldS: 0, trackMps: 0, scrub: 0,
     brake: 0, skid: 0, running: true, rough: 0, airborne: false,
-    lastVerticalMps: 0, lastSpeedMps: 0, brakeCooldownS: 0, bumpCooldownS: 0, skidActive: false,
+    lastVerticalMps: 0, lastSpeedMps: 0, brakeCooldownS: 0, bumpCooldownS: 0, landCooldownS: 0, skidActive: false,
   };
 }
 
@@ -135,6 +137,7 @@ export function stepVehicleAudio(
   const demand = clamp(Math.abs(input.throttle), 0, 1);
   state.brakeCooldownS = Math.max(0, state.brakeCooldownS - dt);
   state.bumpCooldownS = Math.max(0, state.bumpCooldownS - dt);
+  state.landCooldownS = Math.max(0, state.landCooldownS - dt);
   state.gearHoldS = Math.max(0, state.gearHoldS - dt);
 
   // ---- engine running state: a red engine stalls, a repair restarts it.
@@ -245,7 +248,10 @@ export function stepVehicleAudio(
   } else if (state.airborne) {
     state.airborne = false;
     const impact = Math.max(input.landingImpactMps, -state.lastVerticalMps);
-    if (impact > 2.2) pushEvent(events, 'land', (impact - 2.2) / 8);
+    if (impact > 2.2 && state.landCooldownS <= 0) {
+      pushEvent(events, 'land', (impact - 2.2) / 8);
+      state.landCooldownS = 0.3;
+    }
   } else if (state.bumpCooldownS <= 0 && absSpeed > 2) {
     const jolt = Math.abs(input.verticalSpeedMps - state.lastVerticalMps);
     if (jolt > 1.1) {

@@ -154,7 +154,7 @@ all transitions are hitch-free.
 The 111-family × two-variant structure collision audit passes (minimum 94.1,
 maximum 64 parts), alongside all four new runtime regressions, existing wreck,
 resource and ground-cover tests, diagnostic CPU selftests, typecheck and the
-public build (914 modules; 174 procedural playables, zero GLB-sourced). All 801
+public build (914 modules; 174 playables, all procedural). All 801
 ordered test paths exist without duplicates. The seven changed runtime/tool
 modules pass the strict quality gate: 1,026 functions, zero complexity violations,
 zero explicit `any`/`unknown`.

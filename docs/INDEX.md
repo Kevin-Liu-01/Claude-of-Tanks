@@ -200,7 +200,7 @@ design inputs that ARCHITECTURE.md names:
 - [armor-penetration.md](history/research/armor-penetration.md)
 - [shells-ballistics.md](history/research/shells-ballistics.md)
 - [movement-physics.md](history/research/movement-physics.md)
-- [modern-roster.md](history/research/modern-roster.md)
+- [modern-roster.md](tank-generation/history/modern-roster.md)
 - [tank-roster.md](history/research/tank-roster.md)
 - [graphics-aaa.md](history/research/graphics-aaa.md)
 

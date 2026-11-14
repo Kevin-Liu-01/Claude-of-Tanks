@@ -1,7 +1,7 @@
 // ridingPartsWire.selftest.mjs — the riding parts' wire (UI-LOCKDOWN E, 2026-10-25): an entry a worker posts rebuilds
 // the same geometry (attributes, index, groups, draw range, bounds, user data), a seed never replaces an entry a build
 // filled, and a key names its public fitting and options. The fleet-wide proof (every tank built from seeded entries
-// matches the geometry ledger) runs beside the stage receipts: ~/cot-launch-state/streams/frontend-e/riding/proof.mjs.
+// matches the geometry ledger) runs beside the stage receipts, outside the repository.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { RIDING_CRADLE_PARTS, RIDING_STATION_PARTS } from './ridingPartsCache.ts';

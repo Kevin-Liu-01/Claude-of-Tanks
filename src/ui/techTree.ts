@@ -807,11 +807,26 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       zoomTo(kind === 'in' ? zoom * ZOOM_STEP : kind === 'out' ? zoom / ZOOM_STEP : 1);
     });
   }
+  // (272) a trackpad pinch reports 60-120 wheel events a second, and each re-laid every node and the wire: the board
+  // follows once a frame, at the latest target (a wheel's deltas add up) and pointer
+  let pendingZoom: { value: number; x: number; y: number } | null = null;
+  let zoomFrame = 0;
+  function zoomSoon(value: number, clientX: number, clientY: number): void {
+    if (pendingZoom) { pendingZoom.value = value; pendingZoom.x = clientX; pendingZoom.y = clientY; }
+    else pendingZoom = { value, x: clientX, y: clientY };
+    if (zoomFrame) return;
+    zoomFrame = requestAnimationFrame(() => {
+      zoomFrame = 0;
+      const target = pendingZoom;
+      pendingZoom = null;
+      if (target) zoomTo(target.value, target.x, target.y);
+    });
+  }
   // ctrl/⌘ + wheel, and a trackpad pinch (which the browser reports as one), zoom at the pointer; a plain wheel scrolls.
   board.addEventListener('wheel', (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
-    zoomTo(zoom * Math.exp(-event.deltaY * 0.002), event.clientX, event.clientY);
+    zoomSoon((pendingZoom?.value ?? zoom) * Math.exp(-event.deltaY * 0.002), event.clientX, event.clientY);
   }, { passive: false });
 
   // A press that travels pans the board (any pointer, from a node too); two touches pinch-zoom about their midpoint.
@@ -845,7 +860,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     point.y = event.clientY;
     if (pinch && pointers.size >= 2) {
       const now = spread();
-      if (pinch.distance > 0) zoomTo(pinch.zoom * now.distance / pinch.distance, now.x, now.y);
+      if (pinch.distance > 0) zoomSoon(pinch.zoom * now.distance / pinch.distance, now.x, now.y);
       swallowClick = true;
       return;
     }

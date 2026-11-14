@@ -44,7 +44,7 @@
 //     --max-file-mb (default 2 MB) with a warning;
 //   - rewrites one file at a time with a plain token scan (no big regex).
 // Run it with NODE_OPTIONS=--max-old-space-size=4096 under a memory ceiling
-// (~/cot-launch-state/streams/ids/tools/memcap.sh 4 -- ...) and a wall-clock
+// (a memcap wrapper, 4 GB) and a wall-clock
 // alarm, check `headroom can-start` first, and never in parallel with another
 // bulk scan.
 //

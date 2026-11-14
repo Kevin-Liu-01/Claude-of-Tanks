@@ -35,8 +35,8 @@ function envelopeAndOwnership(tank,quality) {
 
 function foldedGuard(tank,quality) {
   const hull=tank.root.getObjectByName('hull');
-  // Source Object_4:92 triangle-plane measurements at raw X±1.1. X is
-  // independently authored at the unchanged uniform-oracle metre scale.
+  // Fixed triangle-plane measurements at raw X±1.1. X is
+  // independently authored at the unchanged uniform metre scale.
   for(const side of [-1,1])for(const [z,roof,floor] of[
     [3.665198,1.110784,1.092888],[3.778860,.890474,.871269],
   ]) {

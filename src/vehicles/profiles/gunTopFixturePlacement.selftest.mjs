@@ -102,7 +102,7 @@ for (const fixture of cases) {
   tank.dispose();
 }
 
-// The M60A3 rebuilt on the owner's model (23cd21c3de, 2026-10-28: its sleeved tube tops out at the sleeve's radius, no
+// The M60A3 rebuilt on its measured casting (23cd21c3de, 2026-10-28: its sleeved tube tops out at the sleeve's radius, no
 // top housing) carries no muzzle-reference fixture: no seating receipt, and every part riding the recoil is on the bore.
 {
   const tank = createTank('m60a3', null, { proceduralOnly: true, geometryReceipt: true, materialMode: 'geometry-only', quality: 'low' });

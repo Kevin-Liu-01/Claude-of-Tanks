@@ -736,7 +736,7 @@ const _nm3 = new THREE.Matrix3();
  * Clamp a node-local stamp point onto the vehicle's VISIBLE skin.
  *
  * The armor model's plate point (HitEvent.localPos) often sits INSIDE the
- * rendered hull — side skirts, spaced armor and GLB shells all stand proud
+ * rendered hull — side skirts, spaced armor and outer shells all stand proud
  * of the sim plates — which buried the mark behind the skin. Cast from
  * outside the hull back along the surface normal against the struck node's
  * meshes and adopt the first visible skin point (and its face normal, when

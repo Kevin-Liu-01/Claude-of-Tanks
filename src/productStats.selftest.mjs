@@ -33,7 +33,7 @@ const actual = {
 assert.equal(
   ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length,
   0,
-  'runtime fleet registry must not contain offline comparison GLBs',
+  'runtime fleet registry must not register a candidate model',
 );
 assert.deepEqual(PRODUCT_STATS, actual,
   'src/productStats.ts must match the canonical vehicle and battlefield registries');

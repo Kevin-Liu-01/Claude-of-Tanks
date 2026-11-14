@@ -30,6 +30,9 @@ export interface ShellSpec extends Record<string, RuntimeValue> {
    * missile load is one round per tube ("the BMPT T-90 should have minimum 8 since it has 8 tubes") — pinned by
    * guidedLauncherTubes.selftest against the profiles' published tube censuses. */
   launcherTubes?: number;
+  /** How it flies when not propelled: 'free_fall', an unpowered store dropped from an aircraft (a bomb), with no motor and
+   *  no tracer: the presentation draws its body falling, never a tracer or a motor's flame (fx/freeFallStores.ts). */
+  flight?: 'free_fall';
 }
 
 export const shell = (

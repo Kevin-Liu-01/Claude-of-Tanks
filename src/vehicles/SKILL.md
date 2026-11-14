@@ -180,7 +180,8 @@ prints the rename table.
 A new whole-fleet check is a fleet audit (`{ check(id, tank), finish() }`) added to the fleet pass whose build it
 reads (`fleetPassDefault`, `fleetPassHigh`, `fleetPassLow`; rules in `fleetPass.test-support.mjs`), not another
 receipt that rebuilds all 217 tanks: the build is nearly all of a sweep's cost.
-All playables use first-party runtime geometry; source GLBs are comparison-only.
+All playables use first-party runtime geometry; comparison bases belong to the tank-generation
+tooling alone, and no test, receipt or gate reads one.
 Every first-party procedural vehicle is created by Kevin B. Liu and must keep
 the canonical named authorship record from `src/authorship.ts`; AI systems are
 development tools, not model authors. Preserve third-party reference credits
@@ -404,11 +405,12 @@ start with [the tank-generation handbook](../../docs/tank-generation/README.md)
 and its repo-local procedure. It consolidates intake decisions, source-only
 registration, negative-space construction, current tool coverage, strict gates,
 reusable prompts and handoffs. Its chronology notes distinguish current
-source-X requirements from historical oracle-repair recipes and scoped as-is
+source-X requirements from historical reference-repair recipes and scoped as-is
 publication exceptions; a published model is not necessarily qualified.
 
 Read current program state and the relevant family profile, inspect standard
-side/top views, run focused geometry gates, then fleet/family/assets checks.
+side/top views, run the tank-generation comparison tools by hand (`npm run gen:checks`),
+then fleet/family/assets checks.
 For a new tank or a ground-up rebuild backed by an owner-supplied reference,
 use the exemplar quality bar: at least 92/100 overall and 92/100 in every
 registered silhouette view, plus source/spec dimensions within three percent.

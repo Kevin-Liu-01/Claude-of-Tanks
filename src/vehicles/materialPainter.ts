@@ -295,7 +295,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
   // OFF) subdivides each facet with normal-displaced midpoints — the
   // camoPatchPath2D spray-boundary treatment — so SPRAYED consumers (desert
   // patches, fleck dapples) stop reading as razor-cut vector stickers once a
-  // GLB atlas island magnifies the canvas (tank_models r7 lineage). MASKED
+  // UV atlas island magnifies the canvas (tank_models r7 lineage). MASKED
   // hard-edge schemes (splinter, caunter, blocks, dazzle) keep the default 0:
   // their ruler edges are the authentic language, and the rng draw order of
   // every existing caller is untouched at 0.
@@ -365,7 +365,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       }
       // tank_models r7 ("razor-edged geometric triangles that read as vector
       // shapes rather than sprayed paint" — T-80U/T-90A skirts): the straight
-      // lineTo polygon sides survive every downstream blur once a GLB atlas
+      // lineTo polygon sides survive every downstream blur once a UV atlas
       // island magnifies the canvas. Each side is subdivided with normal-
       // displaced midpoints (~2-4 px noise at reference scale, scales with the
       // patch) so boundaries wander like spray, never ruler lines.
@@ -612,7 +612,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
     // edge (1-2 px feather) with a separate faint overspray halo plus droplet
     // specks riding the border — shared by the 'stripes' and 'nato' schemes.
     // camo_spotting r3: `specks` optional — the 2px droplet dash blew up into
-    // confetti-scale chips on GLB skirt UV islands (NATO topology critique);
+    // confetti-scale chips on skirt UV islands (NATO topology critique);
     // the NATO/masked schemes now skip it while WW2 sprayed schemes keep it.
     const sprayEdge = (p: Path2D, col: Rgb, coreA: number, specks = true): void => {
       ctx.filter = `blur(${(S * 0.0028).toFixed(1)}px)`;
@@ -808,7 +808,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // boundaries as elongated shadow bars (never free confetti chips), and
       // the droplet-speck dash is off for both (confetti on skirt UV islands).
       // camo_spotting r6: `pk`/`blackK` (visual.patchK / visual.blackK, both
-      // default 1 — rng draw order untouched at 1) let the GLB atlas path
+      // default 1 — rng draw order untouched at 1) let an atlas-UV consumer
       // rescale the scheme where its UV world density differs from the boxUV
       // reference: the m1a1_abrams_hc's summer patches grow ~14% and the black shadow
       // bars gain weight ("two greens read monotone olive at mid distance,
@@ -861,7 +861,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // thin dark streaks. Replaces the r1 same-size-ellipse "cheetah print".
       // camo_spotting r6: `pk` (visual.patchK, default 1 — rng draw order is
       // untouched at 1) rescales the patch geometry for consumers whose UV
-      // world density differs from the boxUV reference: the GLB atlas path
+      // world density differs from the boxUV reference: the atlas-UV path
       // shrinks the big modern hulls' blobs ~30% (m1a1_abrams_hc "dazzle/giraffe patches
       // at large scale" critique) while counts scale 1/pk so overall coverage
       // eases down with the size rather than ballooning.
@@ -894,7 +894,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // swallowed the whole flank -> flat tan wash)
       // camo r2 edge treatment: the large/mid desert patches are SPRAYED, not
       // masked — polyPath2D edgeNoise wanders their facets ~2-4 px like the
-      // camoPatchPath2D boundaries, so magnified GLB atlas islands stop
+      // camoPatchPath2D boundaries, so magnified UV atlas islands stop
       // rendering them as razor-cut vector shards (tank_models r7 lineage).
       const nBig = Math.round(4 * nK / pk);
       const paintLargeDesertPatches = (): void => {

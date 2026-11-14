@@ -1,4 +1,5 @@
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
+import { fireCycleFloorS, intraClipCycleS } from '../sim/fireCycleFloor.ts';
 
 export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x0.7 turret front with the Mk 1 and Mk 3 on the Mk 3\'s turret',
@@ -181,8 +182,8 @@ export function sustainedPrimaryDpm(spec: FleetTankSpec): number {
   if (!autoloader) return round.dmg * 60 / spec.gun.reloadS;
   const rounds = Math.max(1, autoloader.magazineSize);
   const cycle = (autoloader.fullReloadS || spec.gun.reloadS) +
-    Math.max(0, rounds - 1) * autoloader.intraClipS;
-  return round.dmg * rounds * 60 / Math.max(0.05, cycle);
+    Math.max(0, rounds - 1) * intraClipCycleS(autoloader, spec.gun.reloadS);
+  return round.dmg * rounds * 60 / Math.max(fireCycleFloorS(autoloader), cycle);
 }
 
 function median(values: number[]): number {

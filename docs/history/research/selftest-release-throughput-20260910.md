@@ -160,7 +160,7 @@ The complete T-14 release at `f33618e06` qualifies the changed order with all
 Phase times were 560.249 / 718.733 / 145.728 seconds, totaling 23m44.710s;
 232.649 seconds were explicitly measured runner FIFO wait. Summed overlapping
 child time was 3,525.876 seconds. See the
-[frozen qualification](t14-roller-release-20260910.md). No matched full-suite
+[frozen qualification](../../tank-generation/history/t14-roller-release-20260910.md). No matched full-suite
 speedup percentage is claimed from earlier, differently scoped runs.
 
 ## Four-worker extension (opt-in, no gate removals)

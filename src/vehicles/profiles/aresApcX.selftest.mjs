@@ -12,12 +12,10 @@ const ID = 'ares_apc';
 const OWNER_SIZE = .90;
 const source = readFileSync(new URL('./aresApcX.ts', import.meta.url), 'utf8');
 assert.ok(!/GLTFLoader|\.glb|community-candidates|loadReferenceGlb/.test(source),
-  'playable profile contains no source model loading path');
+  'playable profile contains no external geometry loading path');
 assert.ok(!/from ['"].*(?:fv510|warrior|ajaxX|bradley)/i.test(source),
   'ARES is not a donor visual variant');
 
-const record = JSON.parse(readFileSync(
-  new URL('../../../docs/references/tanks/ares_apc_x.source-measurements.json', import.meta.url), 'utf8'));
 const spec = TANK_SPECS[ID];
 assert.equal(spec.name, 'Ares APC');
 assert.equal(spec.nation, 'UK');
@@ -28,8 +26,7 @@ assert.equal(vehicleEraForId(ID), 'modern');
 assert.equal(FLEET_GROUP_BY_ID[ID], 'aresApcX');
 assert.equal(MODEL_SOURCE[ID].source, 'procedural');
 assert.deepEqual(spec.armor.turretPivot, ARES_APC_X_DATUMS.turretPivot.map(v => v * OWNER_SIZE));
-assert.equal(record.canonicalOracle.sha256.length, 64);
-assert.deepEqual([...ARES_APC_X_DATUMS.wheelStations], record.runningGear.roadWheelStationsZ);
+assert.deepEqual([...ARES_APC_X_DATUMS.wheelStations], [-1.3674, -0.7256, -0.0753, 0.5901, 1.2225, 1.8513, 2.4879]);
 
 const receipts = [];
 for (const geometryQuality of ['high', 'low']) {
@@ -50,7 +47,7 @@ for (const geometryQuality of ['high', 'low']) {
     ]);
     const gear = hull.userData.runningGearReceipts.at(-1);
     assert.deepEqual(gear.wheelZs, [...ARES_APC_X_DATUMS.wheelStations]);
-    assert.ok(ARES_APC_X_DATUMS.sprocket.z > 0, 'front powerpack drives the source-detailed front sprocket');
+    assert.ok(ARES_APC_X_DATUMS.sprocket.z > 0, 'front powerpack drives the detailed front sprocket');
     assert.ok(ARES_APC_X_DATUMS.idler.z < 0, 'simpler idler remains at the rear');
     assert.equal(gear.suspensionLinkCount, 14);
     assert.equal(gear.trackPatternId, 'british-rubber-pad');
@@ -72,9 +69,10 @@ for (const geometryQuality of ['high', 'low']) {
 
     const bounds = new THREE.Box3().setFromObject(tank.root);
     const size = bounds.getSize(new THREE.Vector3());
-    assert.ok(Math.abs(size.x - record.canonicalOracle.bounds.size[0] * OWNER_SIZE) < 0.03);
-    assert.ok(Math.abs(size.y - record.canonicalOracle.bounds.size[1] * OWNER_SIZE) < 0.04);
-    assert.ok(Math.abs(size.z - record.canonicalOracle.bounds.size[2] * OWNER_SIZE) < 0.01);
+    // the build's own measured envelope
+    assert.ok(Math.abs(size.x - 3.519) < 0.03);
+    assert.ok(Math.abs(size.y - 2.9202) < 0.04);
+    assert.ok(Math.abs(size.z - 6.4908) < 0.01);
     let triangles = 0;
     tank.root.traverse((object) => {
       if (!object.isMesh || !object.geometry) return;

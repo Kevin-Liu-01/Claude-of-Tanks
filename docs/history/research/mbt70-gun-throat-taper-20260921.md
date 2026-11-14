@@ -22,7 +22,7 @@ The existing whole-vehicle source comparison remains a separate failed
 qualification. Its committed baseline already failed the 90-point floor;
 the fresh run reports 86.5 minimum (whole curves 89.4, dimensions 86.5,
 floaters 100). The vehicle retains the owner-directed M1A1 hull composition
-documented in [the fender repair](mbt70-upper-fender-sides-20260909.md).
+documented in [the fender repair](../../tank-generation/history/mbt70-upper-fender-sides-20260909.md).
 The source, registration and thresholds are unchanged. This small repair
 does not certify that broader comparison or redesign the rest of the tank.
 

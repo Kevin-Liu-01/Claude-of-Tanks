@@ -125,6 +125,8 @@ export const INTERACTION_SITES = Object.freeze({
   'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:.cot-teams-seg'], lane: 'premiere-site' },
   // couch mode's lobby (docs/COUCH-MODE.md): how the seats take sides, Together or Teams
   'couch-sides': { chooses: 'sides', options: 2, screen: 'deploy', owner: 'src/ui/couchLobby.ts', build: 'segmented', marks: ['segmented:.cot-couch-sides'], lane: 'premiere-site' },
+  // and how the big screen shows the battle (couch-panes-272): a pane per player with its own camera and HUD, or one camera
+  'couch-view': { chooses: 'view', options: 2, screen: 'deploy', owner: 'src/ui/couchLobby.ts', build: 'segmented', marks: ['segmented:.cot-couch-view'], lane: 'premiere-site' },
   'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'picker', marks: ['picker:nation-dropdown'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)
@@ -237,7 +239,7 @@ export const INTERACTION_EXEMPT: readonly InteractionExempt[] = Object.freeze([
   { owner: GARAGE, mark: 'bespoke:chipById', reason: "the roster's nation flags: navigation within the ratified carousel, flag-only tabs the kit's tabs cannot draw" },
   { owner: GARAGE, mark: 'bespoke:id===countryId', reason: "the roster's nation flags: navigation within the ratified carousel, flag-only tabs the kit's tabs cannot draw" },
   { owner: 'src/ui/garageFacetPanel.ts', mark: 'bespoke:state[group]', reason: "the roster's Filter panel: class, role and era filters any number of which may be on, not a choose-one" },
-  { owner: GARAGE, mark: 'bespoke:k===i', reason: "the featured still's dots show which picture of the slideshow is up: a readout, nothing to choose" },
+  { owner: GARAGE, mark: 'bespoke:page+k', reason: "the featured still's dots show which picture of the slideshow is up (since 2026-11-11 the dots of the page in view: the gallery's 78 follow the twenty): a readout, nothing to choose" },
   { owner: GALLERY_PAGE, mark: 'listbox:#vehicleList', reason: "the Gallery's roster: master-detail navigation, a row opens its tank's dossier (and its ?id=)" },
   { owner: GALLERY, mark: 'bespoke:dataset.id', reason: "the Gallery's roster: master-detail navigation, a row opens its tank's dossier (and its ?id=)" },
   { owner: 'src/gallery/galleryFacets.ts', mark: 'bespoke:selected===code', reason: "the archive's filter rows: filters a reader stacks, not a choose-one (their chips are the kit's)" },

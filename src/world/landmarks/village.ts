@@ -18,7 +18,7 @@ import { archedFace, archedSlab, bar, cornerPilasters, extrude, moulding, type A
 import { ageWall } from './age.ts';
 import { drapedRect } from './grounds.ts';
 import type { LandmarkBuilder } from './types.ts';
-import { finishLandmark, prebuiltPiece } from './pieces.ts';
+import { finishLandmark, piece, prebuiltPiece } from './pieces.ts';
 
 const TIMBER = rgb(0x5f4a36), DOOR = rgb(0x4d3324), IRON = rgb(0x2a2c2d);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -27,36 +27,60 @@ const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() *
 
 /**
  * The lavoir (the frame: its length along x, the open arcade to +z, y = 0 the ground at its lowest corner): see the
- * module's note.
+ * module's note. (amberford-lavoir-272, 2026-11-10: placed on Amberford's place, and finished as a working wash-house)
+ * The spring end (`spring`: 'left' -x, 'right' +x) is the uphill one. The spring rises outside it into the fontaine's
+ * stone pillar, runs from its spout into the abreuvoir (the beasts' trough along that end wall) and through the wall by
+ * an iron pipe into the rinçoir, the small upstream basin where the washing was rinsed; over the stone sill into the
+ * long washing basin, ringed by its sloping washing stones; and out by the overflow through the far end wall into the
+ * rill, a stone-kerbed channel to its drain. The roof and its tie beams come down when the lavoir is breached, the
+ * fontaine's pillar at the first damage (landmarks/pieces.ts, the set-piece damage kit).
  */
 export const lavoir: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = Math.max(8, Number(ctx.params.length)), D = Math.max(5, Number(ctx.params.depth));
   const bays = Math.max(2, Math.round(Number(ctx.params.bays)));
-  const base = -0.6 - ctx.groundFall, floor = 0.25, h = 3.9, t = 0.6;
+  const s = ctx.params.spring === 'right' ? 1 : -1; // the spring end's side along x
+  const t = 0.6, base = -0.6 - ctx.groundFall;
+  const groundAt = (lx: number, lz: number): number => ctx.ground?.(lx, lz) ?? 0;
+  // the floor stands a hand over the highest ground inside the walls (cut into a bank, the lavoir is terraced: its paved
+  // floor on a stone podium toward the low side, never the ground showing through it), at least 0.25 m over the lowest
+  let inside = 0;
+  for (let i = 0; i <= 6; i++) for (let j = 0; j <= 4; j++) inside = Math.max(inside, groundAt(-L / 2 + t + (L - 2 * t) * i / 6, -D / 2 + t + (D - 2 * t) * j / 4));
+  const floor = Math.max(0.25, inside + 0.12), h = floor + 3.65;
   // the paved floor, a step proud of the walls
   sink.span('stone', -L / 2 - 0.3, base, -D / 2 - 0.3, L / 2 + 0.3, floor, D / 2 + 0.3);
+  // the flight up to the middle arch from the ground before it (`steps`: its run, m), when the floor stands over it
+  const run = Math.max(0, Number(ctx.params.steps) || 0), front = D / 2 + 0.3;
+  if (run > 0) {
+    const foot = groundAt(0, front + run / 2), risers = Math.ceil(Math.max(0, floor - foot) / 0.18);
+    const rise = (floor - foot) / Math.max(1, risers), tread = Math.min(0.34, run / Math.max(1, risers - 1));
+    const sw = Math.min(2.6, (L - 0.8 * (bays + 1)) / bays) / 2 + 0.2;
+    for (let k = 1; k < risers; k++) {
+      const z0 = front + (risers - 1 - k) * tread;
+      sink.span('stone', -sw, base, z0, sw, foot + k * rise, z0 + tread);
+    }
+  }
   // the back wall and the two end walls: render on the rubble
   sink.span('plaster', -L / 2, floor, -D / 2, L / 2, h, -D / 2 + t);
   for (const sx of [-1, 1]) {
     const x0 = sx > 0 ? L / 2 - t : -L / 2;
     sink.span('plaster', x0, floor, -D / 2 + t, x0 + t, h, D / 2 - t);
   }
-  // the front: an arcade of round arches on sandstone piers
+  // the front: an arcade of round arches on sandstone piers, a plain impost band at the springing
   const pier = 0.8, A = (L - (bays + 1) * pier) / bays, spring = h - A / 2 - 0.42;
   const holes: ArchHole[] = Array.from({ length: bays }, (_, i) => ({
     u: -L / 2 + pier + A / 2 + i * (A + pier), w: A, y0: floor, spring, form: 'round' as const,
   }));
   sink.placed(0, 0, 0, D / 2 - t / 2, () => archedSlab(sink, 'stone', -L / 2, L / 2, floor, h, t, holes, { ends: true, top: true }));
+  for (let i = 0; i <= bays; i++) {
+    const x = -L / 2 + pier / 2 + i * (A + pier), hw = pier / 2 + 0.06;
+    sink.span('stone', x - hw, spring - 0.16, D / 2 - t - 0.02, x + hw, spring, D / 2 + 0.06, { decor: true });
+  }
   // the sandstone quoins and the eaves course
   cornerPilasters(sink, 'stone', 0, 0, L, D, floor, h - 0.22, 0.45, 0.04);
   moulding(sink, 'stone', L, D, h - 0.22, 0.22, 0.1);
-  // the tie beams over the floor, one over each pier
-  for (let i = 0; i <= bays; i++) {
-    const x = -L / 2 + pier / 2 + i * (A + pier);
-    bar(sink, 'structureWood', [x, h - 0.12, -D / 2 + t], [x, h - 0.12, D / 2 - t], 0.2, { colour: TIMBER, decor: true });
-  }
-  // the basin: the washing stones sloping to the water on all four sides, the water in it
+  // the two basins, ringed by the washing stones sloping to the water: the rinçoir (the spring's end, short) and the
+  // washing basin (the rest), the stone sill between them a hand under the kerb
   const bx = L / 2 - t - 1.3, bz0 = -D / 2 + t + 1.05, bz1 = D / 2 - t - 1.25, kerb = floor + 0.42, lip = floor + 0.26, w = 0.55;
   const sides: Array<[Vec3[], Vec3, number]> = [
     // along x: the front side and the back side (profile in y-z at x = -bx - w, extruded along +x)
@@ -67,10 +91,64 @@ export const lavoir: LandmarkBuilder = (ctx) => {
     [[[-bx - w, floor - 0.5, bz0], [-bx - w, kerb, bz0], [-bx, lip, bz0], [-bx, floor - 0.5, bz0]], [0, 0, 1], bz1 - bz0],
   ];
   for (const [profile, dir, depth] of sides) extrude(sink, 'stone', profile, dir, depth, { decor: true });
-  sink.quad('glass', [-bx, floor + 0.12, bz1], [bx, floor + 0.12, bz1], [bx, floor + 0.12, bz0], [-bx, floor + 0.12, bz0], { decor: true });
-  // the low hipped roof of canal tiles, its ridge along the length
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.55, verge: 0.55, thickness: 0.12, bucket: 'roof', ridge: 'round' };
-  sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, L, h, roof), roof));
+  const sill = s * (bx - Math.min(2.2, bx * 0.45)), sw = 0.16;
+  sink.span('stone', sill - sw, floor - 0.2, bz0, sill + sw, lip - 0.04, bz1, { decor: true });
+  const water = floor + 0.12;
+  const pools: Array<[number, number, number]> = s < 0 ? [[-bx, sill - sw, water + 0.05], [sill + sw, bx, water]] : [[-bx, sill - sw, water], [sill + sw, bx, water + 0.05]];
+  for (const [x0, x1, y] of pools) sink.quad('glass', [x0, y, bz1], [x1, y, bz1], [x1, y, bz0], [x0, y, bz0], { decor: true });
+  // the spring's iron pipe through the spring end wall into the rinçoir, and the overflow's spout out of the far end
+  const xi = s * (L / 2 - t), zm = (bz0 + bz1) / 2;
+  bar(sink, 'structureMetal', [xi + s * 0.05, floor + 0.62, zm], [xi - s * 0.5, floor + 0.62, zm], 0.07, { colour: IRON, decor: true });
+  bar(sink, 'structureMetal', [-s * (L / 2 - 0.05), floor + 0.05, zm], [-s * (L / 2 + 0.3), floor + 0.05, zm], 0.12, { colour: IRON, decor: true });
+  // the drying pole the length of the back wall, on iron hooks
+  const pz = -D / 2 + t + 0.35, py = floor + 2.0;
+  bar(sink, 'structureWood', [-L / 2 + t + 0.4, py, pz], [L / 2 - t - 0.4, py, pz], 0.07, { colour: TIMBER, decor: true, fine: true });
+  for (const x of [-L / 2 + t + 0.6, 0, L / 2 - t - 0.6]) bar(sink, 'structureMetal', [x, py, -D / 2 + t], [x, py, pz], 0.03, { colour: IRON, decor: true, fine: true });
+  // the washerwomen's kneeling boxes along the front kerb, open to the basin
+  for (let k = 0; k < bays; k++) {
+    const x = -bx + (2 * bx) * (k + 0.5) / bays + (ctx.variant() - 0.5) * 0.8, z = bz1 + w + 0.32, bw = 0.55, bd = 0.42, bh = 0.32;
+    sink.span('structureWood', x - bw / 2, floor, z - bd / 2, x + bw / 2, floor + 0.04, z + bd / 2, { colour: TIMBER, decor: true, fine: true });
+    sink.span('structureWood', x - bw / 2, floor, z + bd / 2 - 0.03, x + bw / 2, floor + bh, z + bd / 2, { colour: TIMBER, decor: true, fine: true });
+    for (const e of [-1, 1]) sink.span('structureWood', x + e * bw / 2 - (e > 0 ? 0.03 : 0), floor, z - bd / 2, x + e * bw / 2 + (e < 0 ? 0.03 : 0), floor + bh, z + bd / 2,
+      { colour: TIMBER, decor: true, fine: true });
+  }
+  // outside the spring end: the abreuvoir along the wall, a hollow stone trough seated on the ground there, and the
+  // fontaine's pillar at its outer side, its spout over the water
+  const tx0 = s * L / 2, tx1 = s * (L / 2 + 1.05), tz = Math.min(1.7, D / 2 - 0.9), tg = Math.max(floor, groundAt(s * (L / 2 + 0.55), 0));
+  const rim = tg + 0.72, tw = 0.16, lo = Math.min(tx0, tx1), hi = Math.max(tx0, tx1);
+  sink.span('stone', lo, base, -tz, hi, tg + 0.1, tz);
+  sink.span('stone', lo, tg + 0.1, -tz, hi, rim, -tz + tw);
+  sink.span('stone', lo, tg + 0.1, tz - tw, hi, rim, tz);
+  sink.span('stone', lo, tg + 0.1, -tz + tw, lo + tw, rim, tz - tw);
+  sink.span('stone', hi - tw, tg + 0.1, -tz + tw, hi, rim, tz - tw);
+  sink.quad('glass', [lo + tw, rim - 0.1, tz - tw], [hi - tw, rim - 0.1, tz - tw], [hi - tw, rim - 0.1, -tz + tw], [lo + tw, rim - 0.1, -tz + tw], { decor: true });
+  const fx = s * (L / 2 + 1.05 + 0.28), fg = Math.max(floor, groundAt(fx, 0)), top = fg + 1.75;
+  piece(sink, { name: 'fontaine', kind: 'detach', at: 'damaged', fall: 'topple', toward: [s, 0] }, (p) => {
+    p.span('stone', fx - 0.28, base, -0.36, fx + 0.28, top, 0.36);
+    p.span('stone', fx - 0.36, top, -0.44, fx + 0.36, top + 0.14, 0.44);
+    p.polygon('stone', [[fx - 0.3, top + 0.14, 0.38], [fx + 0.3, top + 0.14, 0.38], [fx, top + 0.52, 0]], { decor: true });
+    p.polygon('stone', [[fx + 0.3, top + 0.14, -0.38], [fx - 0.3, top + 0.14, -0.38], [fx, top + 0.52, 0]], { decor: true });
+    p.polygon('stone', [[fx - 0.3, top + 0.14, -0.38], [fx - 0.3, top + 0.14, 0.38], [fx, top + 0.52, 0]], { decor: true });
+    p.polygon('stone', [[fx + 0.3, top + 0.14, 0.38], [fx + 0.3, top + 0.14, -0.38], [fx, top + 0.52, 0]], { decor: true });
+    bar(p, 'structureMetal', [fx - s * 0.28, rim + 0.42, 0], [fx - s * 0.7, rim + 0.36, 0], 0.06, { colour: IRON, decor: true });
+  });
+  // the rill from the overflow: two stone kerbs, its bed and its water, to the iron grating of the drain
+  const r0 = -s * (L / 2 + 0.3), r1 = -s * (L / 2 + 1.15), rg = groundAt((r0 + r1) / 2, zm), rlo = Math.min(r0, r1), rhi = Math.max(r0, r1);
+  for (const e of [-1, 1]) sink.span('stone', rlo, base, zm + e * 0.32 - 0.11, rhi, rg + 0.14, zm + e * 0.32 + 0.11, { decor: true });
+  sink.span('stone', rlo, base, zm - 0.21, rhi, rg - 0.04, zm + 0.21, { decor: true });
+  sink.quad('glass', [rlo, rg + 0.02, zm + 0.21], [rhi, rg + 0.02, zm + 0.21], [rhi, rg + 0.02, zm - 0.21], [rlo, rg + 0.02, zm - 0.21], { decor: true });
+  const gx = s < 0 ? rhi - 0.05 : rlo - 0.55;
+  sink.span('stone', gx, base, zm - 0.34, gx + 0.6, rg - 0.02, zm + 0.34, { decor: true });
+  sink.span('structureMetal', gx + 0.04, rg - 0.02, zm - 0.3, gx + 0.56, rg + 0.04, zm + 0.3, { colour: IRON, decor: true });
+  // the low hipped roof of canal tiles on its tie beams, one over each pier: it comes down when the lavoir is breached
+  piece(sink, { name: 'roof', kind: 'detach', at: 'breached', fall: 'slump' }, (p) => {
+    for (let i = 0; i <= bays; i++) {
+      const x = -L / 2 + pier / 2 + i * (A + pier);
+      bar(p, 'structureWood', [x, h - 0.12, -D / 2 + t], [x, h - 0.12, D / 2 - t], 0.2, { colour: TIMBER, decor: true });
+    }
+    const roof: RoofSpec = { kind: 'hip', pitchDeg: 22, eave: 0.55, verge: 0.55, thickness: 0.12, bucket: 'roof', ridge: 'round' };
+    p.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(p, roofGeometry(D, L, h, roof), roof));
+  });
   // its age (age.ts): the render fallen from the rubble at the wall foot, the grime run down from the eaves
   if (ctx.age) {
     const outside: Face[] = [
@@ -84,7 +162,7 @@ export const lavoir: LandmarkBuilder = (ctx) => {
         spallCount: k === 0 ? 3 : 2, grime: 0.3 });
     });
   }
-  return { parts: sink.finish(), tints: { plaster: [0.98, 0.92, 0.8] } };
+  return { parts: finishLandmark(sink), tints: { plaster: [0.98, 0.92, 0.8] } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- khan

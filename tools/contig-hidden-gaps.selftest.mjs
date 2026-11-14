@@ -14,7 +14,7 @@ import {
   CONTIG_HIDDEN_LEDGER, applyHiddenGaps, cellPixelBox, gapPixelBox, hiddenGapEntry, hiddenRowsFromAudit, readHiddenLedger,
   serializeHiddenLedger,
 } from './contig-hidden-gaps.mjs';
-import { sourceOpeningsVerdict } from './source-openings-policy.mjs';
+import { approvedOpeningsVerdict } from './approved-openings.mjs';
 
 // A 3 x 6 m hull plan with enclosed through-slots across x (z = at .. at + width), 1.6 m long, plus an optional add-on.
 function hull(slots, addonReach = 0) {
@@ -28,7 +28,7 @@ const scanOf = (rects) => { const frame = anchoredContigFrame(planRectBounds(rec
 // the gate's §B2 verdict for an ordinary (non-opening) id, as tank-standard-check reaches it
 const verdict = (scan, row) => {
   const judged = applyHiddenGaps(scan, row);
-  return { ...judged, passed: contiguityPassed(judged.scan, sourceOpeningsVerdict({ id: 'selftest_tank', scan: judged.scan })) };
+  return { ...judged, passed: contiguityPassed(judged.scan, approvedOpeningsVerdict({ id: 'selftest_tank', scan: judged.scan })) };
 };
 const auditRow = (id, scan, seenOnMain = false) => ({ id, gaps: scan.gaps.map((g) => ({ ...g, seenOnMain })) });
 
@@ -105,7 +105,7 @@ assert.ok(base.phaseOnlyCells > 0 && base.gaps.length === 1, `the fixture slot i
   const gate = readFileSync(new URL('./tank-standard-check.mjs', import.meta.url), 'utf8');
   for (const needle of ['applyHiddenGaps(result.holes, hiddenLedger?.rows?.[id])', 'result.holes = hidden.scan;',
     'contigOk = contiguityPassed(st.holes, opening);']) assert.ok(gate.includes(needle), `tank-standard-check: ${needle}`);
-  assert.ok(gate.indexOf('result.holes = hidden.scan;') < gate.indexOf('openingReports.set(id, await measureSourceOpenings(id, result.holes'),
+  assert.ok(gate.indexOf('result.holes = hidden.scan;') < gate.indexOf('openingReports.set(id, approvedOpeningsVerdict({ id, scan: result.holes'),
     'the ledger applies before the openings policy reads the scan');
   console.log(`contig-hidden-gaps.selftest: exact boxes hold across the 226 add-on sweep; an unlisted, second or grown gap fails, a listed `
     + `one passes and a closed one is reported; ${Object.values(ledger.rows).flat().length} listed gaps on `

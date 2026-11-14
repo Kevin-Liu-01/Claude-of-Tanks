@@ -2,6 +2,7 @@ import { OWNER_SIZE_TARGETS, withOwnerSizeTargets } from './owner-size-targets.t
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
+import { SUPPLIED_SOURCE_STUDY_FILES } from './supplied-source-study-files.mjs';
 import { T80U_X_RING_RAISE_M } from '../src/vehicles/t80uXArmor.ts';
 // The Strv 81 print ("Strv 81" by MMD_SonicNewYear, CC-BY-4.0, docs/ATTRIBUTION.md), raw bda892df… (the bytes kept
 // before the 08-17 whip excision; nothing trimmed), prepared by tools/source-x-oracle.mjs
@@ -239,7 +240,7 @@ const STUDY_SOURCE_WORLD_FRAMES = withAssembledSourceFrames({
     turret:[0,1.4596,.5185], gun:[0,1.85491175,1.3478],
   },
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, {
-    sha256: study.oracleSha256, fused: true, turret: [...study.turret], gun: [...study.gun],
+    sha256: SUPPLIED_SOURCE_STUDY_FILES[study.id].oracleSha256, fused: true, turret: [...study.turret], gun: [...study.gun],
   }])),
   // M48A5 (release 262): the owner-supplied ater.studio model ("use this patton for the m48"), raw sha256 a7c37097...89c7fc,
   // baked by source-x-oracle (axes -x, y, -z; scale 1; no translation). Turret: the Turret_01_4 node's origin. Gun: the

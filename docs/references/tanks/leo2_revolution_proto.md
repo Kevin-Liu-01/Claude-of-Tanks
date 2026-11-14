@@ -13,7 +13,7 @@ This explicit redesign supersedes the earlier instruction to preserve the old
 Revolution turret byte-for-byte under the Proto name. It does **not** rewrite the
 immutable historical comparison, qualify against it, or authorize a new source
 waiver. The historical preservation receipt remains separate in
-[the source record](../../research/leopard-revolution-source.md).
+[the source record](../../tank-generation/history/leopard-revolution-source.md).
 
 Owned ID: `leo2_revolution_proto`. The current Revolution and Leopard 2A7V are
 unchanged geometry controls. This work started directly from `origin/main`;

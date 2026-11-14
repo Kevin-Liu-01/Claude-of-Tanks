@@ -10,7 +10,8 @@ import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './playerActions.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, airStrikeFlies, matchRulesetFor } from './matchRuleset.ts';
 import { GAME_MODE_IDS } from './gameModeCatalog.ts';
-import { aircraftPose, strikeCovers } from './airSupport.ts';
+import { strikeCovers } from './airSupport.ts';
+import { bombReleaseOffsetS, runMuzzle, runPose } from './strikeRuns.ts';
 import { encodeAimIntent } from './aimIntent.ts';
 import { killSourceOf } from './aerialCombat.ts';
 
@@ -90,6 +91,14 @@ function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, s
     input.actionBits = AIR_STRIKE_BITS[kind];
     tick(1);
     paid.push([kind, R.points.cap - air.pointsOf('caller')]);
+    // air-support-runs-272: the view a client draws every aircraft from (the mode state's JSON, as the wire carries it)
+    // holds each strike's run exactly as the authority flies it
+    const view = JSON.parse(JSON.stringify(sim.modeController.serialize('e1').air));
+    for (const strike of air.strikes) {
+      const seen = view.strikes.find((v) => v.id === strike.id);
+      assert.ok(seen, `the client sees strike ${strike.id}`);
+      for (const key of ['kind', 'x', 'y', 'z', 'heading', 'calledS', 'landsS', 'endS']) assert.equal(seen[key], strike[key], `the view's ${key}`);
+    }
   };
   const e1 = () => sim.entityById.get('e1').state.pos;
   // recon first: the enemy at 380 m is out of the caller's sight, then revealed by the pass for revealS
@@ -137,7 +146,7 @@ function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, s
     if (shootDown && kind === 'strafe') {
       // e1's rounds through the jet while it comes in: the strike falls before its gun opens, and no round of it leaves
       const strike = air.strikes.find((s) => s.kind === 'strafe');
-      const pose = aircraftPose(R, strike, sim.timeS, { x: 0, y: 0, z: 0, yaw: 0, bank: 0 });
+      const pose = runPose(R, strike, sim.timeS, { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 });
       for (let n = 0; n < 3; n++) {
         const shell = { dead: false, shooterId: 'e1', prevPos: { x: pose.x - 5, y: pose.y, z: pose.z }, pos: { x: pose.x + 5, y: pose.y, z: pose.z }, spec: { dmg: 300 } };
         air.tryHitAircraft(shell, sim.timeS);
@@ -199,6 +208,25 @@ for (const [kind, drop] of first.paid) assert.ok(drop >= R[kind].cost - 1 && dro
   const strike = first.air.requestStrike('caller', 'recon', 0, 0, first.sim.timeS);
   assert.equal(strike, true, 'recon off cooldown after the run');
   assert.equal(first.air.requestStrike('caller', 'recon', 0, 0, first.sim.timeS + 1), false, 'a second recon waits its cooldown');
+}
+
+// air-support-runs-272: every round the authority fires leaves where the strike's run puts its aircraft (the GAU-8 under
+// the strafing jet's nose at its round's time, the bomb's pylon at the release, the AC-130's guns at the step), so the
+// aircraft a client draws from the record and the rounds it is sent agree
+let worstMuzzleM = 0;
+{
+  const p = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, at = { x: 0, y: 0, z: 0 }, fired = new Map();
+  const every = R.strafe.fireS / (R.strafe.rounds - 1);
+  for (const e of rounds) {
+    const call = strikeOf.get(e.strikeId);
+    if (call.kind === 'artillery') continue;
+    const k = fired.get(e.strikeId) ?? 0; fired.set(e.strikeId, k + 1);
+    const record = { id: e.strikeId, kind: call.kind, x: call.x, y: call.y, z: call.z, heading: call.heading, calledS: call.timeS, landsS: call.landsS };
+    const t = call.kind === 'strafe' ? call.landsS + k * every : call.kind === 'bomb' ? call.landsS + bombReleaseOffsetS(R) : e.timeS;
+    runMuzzle(runPose(R, record, t, p), call.kind, at);
+    worstMuzzleM = Math.max(worstMuzzleM, Math.hypot(e.x - at.x, e.y - at.y, e.z - at.z));
+  }
+  assert.ok(worstMuzzleM < 0.01, `every strike round leaves its aircraft's run (${worstMuzzleM.toFixed(4)} m)`);
 }
 
 // determinism: the same seed and inputs fire the same rounds at the same ticks onto the same points
@@ -276,4 +304,4 @@ run({ migrateAt: 'bomb' });
 }
 assert.ok(AIR_STRIKE_KINDS.every((kind) => R[kind].warningS >= 3), 'every call-in warns at least 3 s');
 assert.ok(!airStrikeFlies('artillery') && airStrikeFlies('gunship'));
-console.log(`airSupport: 5 call-ins accepted, ${rounds.length} rounds, ${arrivals.length} arrivals all at or after their warnings (earliest +${earliest.toFixed(3)} s); recon reveals; points, cooldowns, air cap, shoot-down, bots calling and evading, migration and replay pass`);
+console.log(`airSupport: 5 call-ins accepted, ${rounds.length} rounds, ${arrivals.length} arrivals all at or after their warnings (earliest +${earliest.toFixed(3)} s); every round leaves its aircraft's run (${worstMuzzleM.toFixed(4)} m) and the client's view carries each run; recon reveals; points, cooldowns, air cap, shoot-down, bots calling and evading, migration and replay pass`);

@@ -117,8 +117,8 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   semantic location and articulation frame (`turretLocal`) of each system;
   the finalizer changes collision representation, not module identity.
 - **Parametric expansion template**: additional first-party vehicles
-  (`communityArmor` is the retained helper name in specs.ts and its userdrops
-  mirror) derive every box from `spec.dims` —
+  (`communityArmor` is the retained helper name in specs.ts)
+  derive every box from `spec.dims` —
   rear-half engine, mid fuel, center-forward ammo, ring band at the roof.
 - **Donor copies re-fitted to dims** (module_hitbox r1): derived variants
   (`additionalFleetSpecs.ts` and `classicFleetSpecs.ts`) copy a donor spec and
@@ -127,7 +127,7 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   per-axis affine scale of plates/authoring bounds/pivots/barrel. Before the fit the
   m60a1 carried Leopard-1-sized armor 1.2 m shorter and 0.23 m narrower than
   its rendered hull: shots at the rendered turret resolved as air. The
-  geometry gate pins visuals to `spec.dims`, so dims are the shared truth for
+  tank-generation geometry gate pins visuals to `spec.dims`, so dims are the shared truth for
   both visual and armor envelope.
 - Published `heightM` may include external sights, weapons and antennas. Those
   are never allowed to stretch the base shell; structural cupolas and hatches

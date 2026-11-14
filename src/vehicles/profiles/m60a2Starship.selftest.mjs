@@ -65,7 +65,7 @@ try {
   assert.ok(hullRig, 'Starship retains the canonical hull rig');
   assert.ok(turretRig, 'Starship retains the canonical turret rig');
   assert.ok(gunRig, 'Starship retains the canonical gun rig');
-  // Release 266 (the M60 batch, Main's ruling 2026-10-28): the M60s are rebuilt at true size off the owner's models
+  // Release 266 (the M60 batch, Main's ruling 2026-10-28): the M60s are rebuilt at true size on new measured castings
   // (pattonCast.ts buildM60CastSteps), so the 0.9 compact envelope and the old builder's ERA, side-cassette, glacis,
   // searchlight and shoulder-closure receipts are gone with it; the rebuilt hull's closure is the fleet's contiguity
   // ledger's, its gun's clearance pattonGunClearance's.

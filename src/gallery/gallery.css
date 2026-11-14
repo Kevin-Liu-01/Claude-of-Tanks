@@ -185,12 +185,6 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .layers button:disabled{color:var(--ink-4);cursor:not-allowed}
 /* the camera's framings are the kit's picker menu (261 census): its trigger names the framing in view */
 .views{right:16px;top:14px;display:flex;padding:3px}
-.camera-view-glyph__tank{fill:currentColor;opacity:.9}
-.camera-view-glyph__track,.camera-view-glyph__guide,.camera-view-glyph__height,.camera-view-glyph__focus{fill:none;stroke:currentColor;stroke-width:1.5;
-  stroke-linecap:square;stroke-linejoin:miter}
-.camera-view-glyph__guide{opacity:.45;stroke-dasharray:1.4 1.4}
-.camera-view-glyph__camera{fill:var(--accent);stroke:none}
-.camera-view-glyph__height{color:var(--accent)}
 .tools{left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:2px;padding:3px}
 .tools button{height:34px;padding:0 var(--s3);color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body)}
 .tools button[aria-pressed=true]{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}

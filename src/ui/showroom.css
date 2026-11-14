@@ -301,7 +301,19 @@ body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-pic
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__opt{gap:var(--s1);padding:var(--s1)}
 /* a swatch not yet drawn holds a compact swatch's place (the kit's 168 px card placeholder made the rows jump) */
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__cell{contain-intrinsic-size:auto 92px}
-body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:3/2}
+/* a docked swatch's picture takes the row's height, not its column's width (owner 11-11: "squished on open"): a 3:2
+   picture over a stretched 1fr column stood each row ~92 px tall at 1920, two rows missed the sheet's ~180 px by a few
+   pixels, and the whole-row fit left one row over an empty half sheet. The fit (garage.ts fitCamoRows) fills the room with
+   whole rows of one height and the picture gives or takes the difference; the name below it keeps its line */
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:auto;flex:1 1 48px;min-height:0}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__words{flex:none}
+/* the rows share the tallest swatch's height, so a name keeps two lines at most (its whole name stays its accessible name):
+   a three-line name ("M1A1 HC USAREUR Three-Tone" in an 88 px swatch) stood every row 142 px tall, one to a sheet */
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__name{display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+/* the rows the fit sets stop the scroll on whole rows, as a phone's sheet does */
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__grid{scroll-snap-type:y mandatory;scroll-padding-block:var(--s2)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__cell{scroll-snap-align:start}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__name{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.2}
 /* a swatch shows its name; its nation and kind stay its search words (in a narrow cell they broke mid-word in zh) */
 .cot-camos .cot-c-picker__facts{display:none}

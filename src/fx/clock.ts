@@ -73,7 +73,7 @@ export function fxClockNow(): number | null {
 // effects.ts; the pop arc lives in tankFactory.ts. effects registers a tiny
 // emitter here and the visual's applyPop calls it along the arc, so the
 // turret drags a readable smoke + ember wake for its whole flight (works for
-// live kills, GLB swaps and backdated composed captures alike).
+// live kills, mesh swaps and backdated composed captures alike).
 
 let popTrailFn: PopTrailEmitter | null = null;
 

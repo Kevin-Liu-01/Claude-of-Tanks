@@ -20,7 +20,6 @@ import { admissionOrder, createRuntimeIndex, DURATION_SNAPSHOT_URL, durationSnap
 // before acquisition. Those ordinary tests run under the runner's lease only
 // with COT_SELFTEST_CPU_LEASE=1 (selftestCpuLease); by default they take none.
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
-  'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
@@ -35,10 +34,14 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/black-world.browser.selftest.mjs',
   // 2026-10-30 (garage-roster-thrash-265): the roster settle guard serves the checkout and takes the lock itself
   'tools/garage-roster-settle.browser.selftest.mjs',
+  // 2026-11-11 (camo-picker-layout-272): the paint sheet's layout guard serves the checkout and takes the lock itself
+  'tools/camo-sheet-layout.browser.selftest.mjs',
   // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard serves the checkout and takes the lock itself
   'tools/hud-self-measure.browser.selftest.mjs',
   // 268: the multiplayer end-to-end's rooms entry at 1024x640 and 1440x900 serves the checkout and takes the lock itself
   'tools/mp-rooms-entry.browser.selftest.mjs',
+  // 272: a real press on Couch keeps the lobby open; serves the checkout and takes the lock itself
+  'tools/couch-open.browser.selftest.mjs',
   // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt takes the lock itself
   'tools/pane-stack-layer.browser.selftest.mjs',
   // 2026-09-26: part 2 of the Garage switch probe takes the capture lock itself (createCaptureLock in the receipt) —

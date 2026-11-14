@@ -1,7 +1,7 @@
 # How Claude of Tanks works
 
 This document describes the current game runtime. Historical fleet work and
-quarantined reference assets are outside its scope. A Vite application runs a
+tank-generation tooling are outside its scope. A Vite application runs a
 Three.js rendering stack around a deterministic 60 Hz armored-combat
 simulation. Multiplayer transports the same authority model over WebRTC or
 WebSocket without moving gameplay decisions into the renderer.
@@ -170,8 +170,7 @@ armor forms, fittings, and procedural running gear in
 `src/vehicles/fleetFactory.ts`, and
 `src/vehicles/profiles/`. Node audits retain the eager `tankFactory.ts` facade;
 the browser runtime uses the demand-loaded facade. The public runtime
-does not swap those vehicles for community GLBs. Historical source assets are
-quarantined comparison material and are stripped from public builds.
+loads no model file for those vehicles, and public builds ship none.
 
 Each vehicle spec supplies dimensions, mass, mobility, gun limits, ammunition,
 armor plates, modules, crew, concealment, and render metadata. Texture programs

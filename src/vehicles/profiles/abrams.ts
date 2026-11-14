@@ -690,12 +690,12 @@ const ERA_CONTACT_OFFSET = -0.006;
 // bearings; at 0.08 it ran on both. (The held m1a1ha keeps 0.08.)
 const BUSTLE_ERA_FOOT_Y = 0.10;
 /** Release 268 builder E: a bustle-flank cassette's foot over the measured bustle's underside, which climbs toward the
- * rear face (its rear end z0 is the highest point under it); the print-era shell's level foot otherwise. */
+ * rear face (its rear end z0 is the highest point under it); the earlier shell's level foot otherwise. */
 function bustleEraFootY(t: AbramsTurretConfig, z0: number, foot = BUSTLE_ERA_FOOT_Y): number {
   const s = t.m1a1Source;
   return s ? Math.max(foot, m1a1BustleUnderside(s.deckAt, s.ringZ, s.ringY, flankFaceX(t, foot), z0) + 0.025) : foot;
 }
-/** The cassette's authored heights (foot..top) compressed onto its raised foot (identity on the print-era shell). */
+/** The cassette's authored heights (foot..top) compressed onto its raised foot (identity on the earlier shell). */
 function bustleEraY(t: AbramsTurretConfig, z0: number, top: number, foot = BUSTLE_ERA_FOOT_Y): (y: number) => number {
   const f = bustleEraFootY(t, z0, foot);
   return (y: number): number => f + (y - foot) * (top - f) / (top - foot);
@@ -1104,7 +1104,7 @@ function smokeBank(
 // roofline in every side/front column; tube tips inside the cheek plan edge.
 // Release 268 (photo research/m1a1/photos/5-smoke-launcher.jpg): the M250 six-tube bank rides a bracket bolted to the
 // turret SIDE WALL just behind the cheek corner, two rows of three tubes in a cradle aimed forward, outboard and up.
-// The print-era cluster hung on the cheek face. The bracket's inner face lies on the wall's own tumblehome plane
+// The earlier cluster hung on the cheek face. The bracket's inner face lies on the wall's own tumblehome plane
 // (`outset` carries it onto a mark's side applique); cradle, tubes and dark bores share one yaw/pitch frame.
 function tejasSmokeCluster(P: AbramsBuilderPort, t: AbramsTurretConfig, side: number, outset = 0): void {
   const inset = t.inset ?? 0.14;
@@ -2200,7 +2200,7 @@ const TEJAS_HULL: AbramsHullConfig = {
   // buildTejasFamily adds the pods.
   // Release 268 (owner's source model, research/m1a1/source-registration.md): the glacis is ONE plate rising ~7 degrees
   // from the bow edge (1.20 m at z 3.84) to 1.37 m at z 2.2, and the hull roof climbs gently under the turret to 1.49 m
-  // (1.42 at z 1.5, 1.455 at 1.0). The print-fit table ran a flat 1.355 glacis behind a 1.45 splash step. The driver's
+  // (1.42 at z 1.5, 1.455 at 1.0). The earlier fit table ran a flat 1.355 glacis behind a 1.45 splash step. The driver's
   // periscope shelf keeps its 1.51 crest; the engine deck keeps release 240's rise under the turret sides (from -1.77).
   deck: [[3.881, 1.205], [3.84, 1.21], [3.6, 1.226], [3.4, 1.251], [3.0, 1.301], [2.6, 1.346], [2.27, 1.37],
     [2.13, 1.51], [1.95, 1.51], [1.88, 1.43], [1.5, 1.425], [1.0, 1.455], [0.0, 1.48],
@@ -2543,7 +2543,7 @@ function* tejasRoofKitSteps(
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   // Release 268 builder E: on the owner's model's shell (t.m1a1Source) the roof is flat to the knee and falls 8 degrees
   // to the cheek tops; the commander's station, the loader's hatch and his M240 stand at the model's positions (the
-  // commander's cupola 0.27 m inboard and 0.88 m aft of the print-era seat, the loader's hatch 0.18 m inboard and 0.29 m
+  // commander's cupola 0.27 m inboard and 0.88 m aft of the earlier seat, the loader's hatch 0.18 m inboard and 0.29 m
   // aft), and every height authored on the old 0.79 roof follows the 8.1 cm lower roof.
   const src = Boolean(t.m1a1Source);
   const cdx = src ? 0.275 : 0, cdz = src ? -0.8815 : 0;
@@ -2645,7 +2645,7 @@ function* tejasRoofKitSteps(
     ? transitionRoofAt(z) + roofCarrierReceipt.seat + roofCarrierReceipt.thickness
     : platformTopAt(z);
   const tejasRoofKitTurretStage2 = (): void => {
-    // (release 268: the print-era 0.60 x 0.40 block on the right cheek is gone: the flat cheek roof buries it and the
+    // (release 268: the earlier 0.60 x 0.40 block on the right cheek is gone: the flat cheek roof buries it and the
     // gunner's sight doghouse now owns that seat)
     // Visual r4 item 2 (turret brow/eave): from the front + front quarters the
     // station base's top edge read as an EAVE over the left cheek — the two
@@ -3283,7 +3283,7 @@ function* tejasRoofKitSteps(
   // world 1.19, then a 2.22 rear shelf to 1.58 (the ref band edge law) ----
   const tejasRoofKitModulesStage3 = (): void => {
     // Release 268: the gunner's primary sight doghouse stands on the vehicle-RIGHT (-x) front roof straight ahead of
-    // the commander (every head-on photograph, research/m1a1/photos/4-front.jpg); the print-era kit put it on the
+    // the commander (every head-on photograph, research/m1a1/photos/4-front.jpg); the earlier kit put it on the
     // loader's side. Its rear course is the roof-conforming receipt plate on the transition roof; the armoured
     // window box rides the flat cheek roof in front of it, its doors and window facing forward.
     if (src) {
@@ -3429,7 +3429,7 @@ function* tejasRoofKitSteps(
   // wall. Bays fill to the loft ('wall' depth — the print's fused-mass read).
   const tejasRoofKitMarkingsStage1 = (): void => {
     if (src) {
-      // Release 268 builder E: the owner's model's flank stowage replaces the print-era bays, lips, shelves, drum and
+      // Release 268 builder E: the owner's model's flank stowage replaces the earlier bays, lips, shelves, drum and
       // pouches: a hexagonal stowage tube low along each side wall (falling 12 cm toward its larger end cap behind the
       // cheek corner) and the bustle rack's side rails, three 30 mm rails on four posts from the cheek corner aft to the
       // rear basket, braced to the wall and the roof edge. Marks whose bustle flanks carry armour cassettes keep the bare
@@ -4303,7 +4303,7 @@ function tejasToneKit(P: AbramsBuilderPort): void {
 
 /**
  * Release 268 builder E (the floating-kit class): a roof post of the M1A1 marks, a warning sensor's or an antenna's base
- * with its mast. Authored for the print-era shells' roof (0.75-0.79 over the ring), on the owner's model's 0.709 roof
+ * with its mast. Authored for the earlier shells' roof (0.75-0.79 over the ring), on the owner's model's 0.709 roof
  * the bases stood 4 cm over it and some masts short of their base, touching nothing. The mast stands on its base's top
  * and the pair drops onto the roof, or the plate, under it (P.snapGroup down), as every rested kit does.
  */
@@ -4599,7 +4599,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
   // column) and the whole band lives on the already-priced only-proc
   // published-overall columns (residual law).
   const buildTejasFamilyGunStage1 = (): void => {
-    // (release 268 builder E: the print-era MRS collar steps give way to the model's plain 0.091 muzzle end)
+    // (release 268 builder E: the earlier MRS collar steps give way to the model's plain 0.091 muzzle end)
     // §B3.1 MUZZLE BORE (owner addendum 2026-08-06, "make tips of guns have
     // holes"): the M256 face carries the bore — counterbore rim lip (torus,
     // outer r 0.076, a real hole + parallax edge) + near-black bore disc
@@ -5387,7 +5387,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, iffY, iffZ); // rear IFF panel
         P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY + 0.035, iffZ - 0.005);
         P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY - 0.045, iffZ - 0.005);
-        // (release 268: the IFLIR cheek plates stood on the print-era GPS seat on the loader's side; the FEP's
+        // (release 268: the IFLIR cheek plates stood on the earlier GPS seat on the loader's side; the FEP's
         // second-generation FLIR head now rides the gunner's sight itself, abramsM1A1Identity.ts addFepFit)
         // (release 268 round 3: the pioneer tools that lay on the glacis are gone; the glacis is bare but for the driver's
         // hatch and periscopes, research/m1a1_abrams_fep/photos)

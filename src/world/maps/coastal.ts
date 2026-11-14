@@ -287,12 +287,12 @@ export default {
     // 2026-10-06 (the map-revival lane): the roadside builder places nothing — the bourg is authored (BOURG_HALF and
     // its mirror, the chapel and the market hall on the axis); the harbour lights are the landmarks lane's, on the mole
     plan: [],
-    destructibleBuildings: ['fishershack', 'fieldhut', 'leanto', 'guardpost'],
+    destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
     tacticalBeats: [
       { id: 'south-bocage-croft', role: 'brawl', x: -260, z: -103, yawDeg: 0,
-        structure: 'fishershack', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+        structure: 'saunahut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
       { id: 'north-bocage-croft', role: 'brawl', x: -260, z: 147, yawDeg: 180,
-        structure: 'fishershack', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+        structure: 'saunahut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
       { id: 'south-downs-post', role: 'support', x: 40, z: -103, yawDeg: 8,
         structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
       { id: 'north-downs-post', role: 'support', x: 40, z: 147, yawDeg: 188,

@@ -67,11 +67,11 @@ for(const quality of ['high','low'])for(const id of ids){
     for(const x of [-.30,.25])for(const y of [.23,.38,.48]){
       assert.ok(front(fixed,x,y)<=gun.position.z-.039,`${id}: central pitch bay is open`);
     }
-    // 2026-11-03 (release 268 builder E, owner: "the mantlet and cannon ... match the model"): the gun shield is the owner's
-    // model's narrow recessed shield (profiles/m1a1GunMount.ts): it fills the 0.319 slot between the cheeks with a 12 mm
+    // 2026-11-03 (release 268 builder E, owner: "the mantlet and cannon ... match the model"): the gun shield is the measured
+    // narrow recessed shield (profiles/m1a1GunMount.ts): it fills the 0.319 slot between the cheeks with a 12 mm
     // running gap a side, its face bulges forward at the gun axis, its top lies on the turret roof's forward course at
     // rest, its rear is a rotor arc nested in the fixed elevation recess, and the round collar and coax tube stand out of
-    // it. The print-era broad raked plate, its journals and recessed coax receiver are gone; these checks replace theirs.
+    // it. The earlier broad raked plate, its journals and recessed coax receiver are gone; these checks replace theirs.
     const sideHit=(side)=>{ray.set(new Vector3(side*.6,0,.10),new Vector3(-side,0,0));ray.far=.6;return ray.intersectObject(moving)[0];};
     for(const side of [-1,1]){
       near(Math.abs(sideHit(side).point.x),.307,.0005,`${id}: shield fills the slot`);
@@ -108,7 +108,7 @@ for(const quality of ['high','low'])for(const id of ids){
     assert.ok(ray.intersectObjects([moving,dark])[0]?.object === dark,`${id}: dark coax bore at the tube's mouth`);
     assert.ok(front(moving,-.225,.145)>front(moving,-.225,.30)+.30,`${id}: coax tube stands out of the shield`);
     // Round fixed collar round the recoiling tube. Re-pinned 2026-11-03 (release 268 builder E, the blind A/B fix round):
-    // sliced from the owner's model at 2.5 cm, the sleeve runs straight out of the shield face at r 0.146 to its 0.165
+    // sliced at 2.5 cm, the sleeve runs straight out of the shield face at r 0.146 to its 0.165
     // lip ring (the 0.172 drum was the face boss's radius); the fixed sleeve is 0.150 over the 0.146 thermal sleeve.
     for(const z of [.50,.60,.70])for(let k=0;k<16;k++){
       const a=(k+.5)*Math.PI/8,dx=Math.cos(a),dy=Math.sin(a);

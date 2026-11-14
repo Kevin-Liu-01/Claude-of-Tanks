@@ -24,7 +24,7 @@ Verdant watersheds. Study-branch equivalents are `c88615e69` and `97f8a0382`.
 ## Completed verification
 
 - Production public builds pass on both roots: 18 localized routes, 174
-  procedural playable vehicles, zero GLB-sourced playables.
+  playable vehicles, all procedural.
 - TypeScript 7.0.2 no-emit and core-unused policy pass. The reused dependency
   cache lacks main's new `@typescript/native` alias; validation selected the
   same installed 7.0.2 package via `node_modules/typescript/bin/tsc`. The

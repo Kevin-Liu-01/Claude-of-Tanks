@@ -19,7 +19,7 @@ function actualShoeFloor(mesh) {
 
 function basicChecks(tank,quality) {
   const b=new THREE.Box3().setFromObject(tank.root);
-  near(b.max.x-b.min.x,3.61781384,.0001,`${quality}: unchanged oracle's physical width, not published nominal`);
+  near(b.max.x-b.min.x,3.61781384,.0001,`${quality}: unchanged measured physical width, not published nominal`);
   near(b.max.z-b.min.z,9.80,.002,`${quality}: official length, assembled terminal rim included`);
   // Rotated prototype AABB corners are not shoe surfaces. Test actual
   // per-instance vertices, including the rounded rigid-shoe approach knee.

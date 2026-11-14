@@ -1,6 +1,4 @@
 // Boot-light combat record for the independent VT-4A1 procedural build.
-// The owner-supplied GLB is a local measurement oracle only; no runtime model
-// or source payload participates in this tank.
 
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { shell, apfsdsPenetration, modernArmor, crewBox as cbox, moduleBox } from './specHelpers.ts';

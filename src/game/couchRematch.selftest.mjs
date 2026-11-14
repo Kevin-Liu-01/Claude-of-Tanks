@@ -59,41 +59,42 @@ function enter(options) {
 }
 
 // couch battle 1: seats 1 and 2 on two sides
-enter({ gameMode: 'standard', couch: { seats: [1, 2], sides: 'teams', names: ['Seat 1', 'Seat 2'] } });
+enter({ gameMode: 'standard', couch: { seats: [1, 2], sides: 'teams', view: 'shared', names: ['Seat 1', 'Seat 2'] } });
 const first = game.couch;
 // (every assertion compares primitives: an AssertionError carrying a session would print the whole battle's object graph)
 assert.equal(!!first && first.seats.length === 2 && !!game.ruleset.couch, true, 'setupBattle seated the phones under the couch rules');
 const firstTanks = first.seats.map(({ entity }) => entity);
-assert.deepEqual(intent.couch, { sides: 'teams' }, "main's recordIntent recorded the couch");
+assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, "main's recordIntent recorded the couch");
 
 // the Garage return (Battle Again's own enter): the battle's teardown, then main's phase:change 'garage' handler
 transitionAppPhase(game, 'garage', { reason: 'garage-return' });
 clearBattleAfterExit({ game });
 onPhase({ phase: 'garage' });
 const afterClear = { ended: game.couch === null, names: firstTanks.map((entity) => entity.displayName ?? null) };
-assert.deepEqual(intent.couch, { sides: 'teams' }, 'the Garage phase keeps the couch for Battle Again');
+assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'the Garage phase keeps the couch for Battle Again');
 
 // Battle Again: the phones here now are seats 1 and 3 (seat 2's phone left, seat 3's joined between battles)
 assert.equal(typeof replayBattleEntry, 'function', "Battle Again's replay rule (before: a click on '.cot-battle')");
 const closed = [];
 const outcome = replayBattleEntry(intent, {
   replay: (entry) => { enter({ gameMode: 'standard', watch: entry.watch, ...(entry.couch ? { couch: entry.couch } : {}) }); return true; },
-  couch: () => ({ seatsInPlay: () => [1, 3], startBattle: (launch) => { closed.push('joins'); return launch([1, 3]); } }),
+  couch: () => ({ seatsInPlay: () => [1, 3], startBattle: (launch, view) => { closed.push(`joins ${view}`); return launch([1, 3]); } }),
   openCouchLobby: () => assert.fail('phones are here: no lobby'),
   seatName: (seat) => `Seat ${seat}`,
 });
 assert.equal(outcome, 'started');
-assert.deepEqual(closed, ['joins'], 'the join window closed before the rematch');
+assert.deepEqual(closed, ['joins shared'], 'the join window closed before the rematch, which keeps the screen it had');
 const second = game.couch;
 assert.equal(!!second && second !== first, true, 'the rematch is a couch battle with a new session (before: game.couch null)');
 assert.equal(!!game.ruleset.couch, true, 'under the couch rules');
 assert.equal(second.sides, 'teams', 'its sides are the entry\'s');
+assert.equal(second.view, 'shared', 'and its screen (couch-panes-272: split panes or the shared camera)');
 assert.deepEqual(second.seats.map(({ seat }) => seat), [1, 3], 'its seats are the phones here now');
 assert.deepEqual(second.seats.map(({ entity }) => entity.displayName), ['Seat 1', 'Seat 3'], 'each wearing its seat\'s name');
 for (const entity of firstTanks) {
   if (!second.seats.some((seat) => seat.entity === entity)) assert.equal(entity.displayName ?? null, null, 'a tank no seat drives now has its own name');
 }
-assert.deepEqual(intent.couch, { sides: 'teams' }, 'and the record is still the couch battle\'s');
+assert.deepEqual(intent.couch, { sides: 'teams', view: 'shared' }, 'and the record is still the couch battle\'s');
 
 // battle-core's half (Y11): nothing of the couch battle outlives the Garage return's clearMatchSession
 assert.equal(afterClear.ended, true, 'the Garage return ended the couch session (battle-core endCouchSession)');

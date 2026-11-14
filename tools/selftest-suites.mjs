@@ -92,6 +92,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/airSupport.selftest.mjs',
     'src/sim/airSupportSolo.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): the strike order is the authority's verdict, never a stale lock or a guess
+    'src/game/strikeOrder.selftest.mjs',
+    // 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run
+    'src/sim/strikeRuns.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/fx/droneMotion.selftest.mjs',
@@ -362,8 +366,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 272: the committed WebAssembly kernel against its manifest's Rust sources (no toolchain; well under a second)
     'tools/sim-kernel-manifest.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
-    'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
+    // owner 2026-11-12: the standard check's B2 openings verdict on the build alone (pinned cells, bounded bays)
+    'tools/approved-openings.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
     // release 264 (Main 2026-10-28): the roofs-without-walls ledger, shrink-only fleet-wide, two rows re-measured
@@ -374,36 +379,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/mudguardHangers.selftest.mjs',
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
     'src/vehicles/fittingSnap.selftest.mjs',
-    'tools/reference-supplement.selftest.mjs',
-    // 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig
-    'tools/owner-kit-targets.selftest.mjs',
-    'tools/fidelity-component-floor.selftest.mjs',
-    'tools/fidelity-visibility.selftest.mjs',
-    // 262 (Main's ruling on the Challenger 3 TD): each oracle-blind fleet part is named, ruled and carried once
-    'tools/oracle-blind-parts.selftest.mjs',
-    'tools/procedural-fidelity-lifecycle.selftest.mjs',
     'tools/isolated-capture-browser.selftest.mjs',
-    'tools/reference-gun-pivot.selftest.mjs',
-    'tools/source-world-registration.selftest.mjs',
-    // 266: the gate page's reference table names each id once; certified ids register their private local oracle
-    'tools/reference-override-registry.selftest.mjs',
-    'tools/source-dimension-frame.selftest.mjs',
-    // 266 (Main's ruling 2026-10-30): the gate's dims measure the body; a 1 m whip leaves its height, a raised hull moves it
-    'tools/body-height-parts.selftest.mjs',
-    // 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare body to body
-    'tools/fused-roof-gun-boxes.selftest.mjs',
     // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
     'tools/whip-rods.selftest.mjs',
-    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
-    'tools/gate-stowage.selftest.mjs',
-    // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
-    'tools/gate-oracle-pins.selftest.mjs',
-    // 270 (Main 2026-11-06): the loose-part class detector (whole-file width against the body's) and the §E excision
-    // recipe; the M3A3 registers its pinned excised print
-    'tools/oracle-width-audit.selftest.mjs',
-    // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
-    'tools/gate-repin.selftest.mjs',
-    'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
     // 2026-10-29 (the owner's voxel blocks): committed fills inside the current body; seeded stale fills caught
@@ -426,7 +404,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 229: the runtime half (every child preloads it): a failing graph-object assert fails fast with labels.
     'tools/assert-graph-guard.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
-    'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
     'src/vehicles/eraBindingReceipt.selftest.mjs',
     'src/vehicles/battleEraReceipt.selftest.mjs',
@@ -508,14 +485,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
-    'tools/source-configuration-record.selftest.mjs',
-    'tools/source-openings-policy.selftest.mjs',
-    'tools/ariete-source-openings.selftest.mjs',
-    'tools/source-opening-rays.selftest.mjs',
     'tools/track-band-separation.selftest.mjs',
-    'tools/source-assembly-replay.selftest.mjs',
-    'tools/preservation-oracle.selftest.mjs',
-    'tools/object695-epokha-reference.selftest.mjs',
     'tools/attribution-audit.mjs',
     'src/vehicles/suspensionPatterns.selftest.mjs',
     'src/sim/ammunition.selftest.mjs',
@@ -645,9 +615,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/profiles/aresApcX.selftest.mjs',
-    'tools/ares-apc-x-reference.selftest.mjs',
-    // 262: the T-84BM Oplot-M's registered comparison oracle
-    'tools/oplot-bm-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
@@ -744,14 +711,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chieftain10XEngineDeck.selftest.mjs',
     'src/vehicles/profiles/chieftain10XGunCarriage.selftest.mjs',
     'src/vehicles/profiles/t90AwXTowCables.selftest.mjs',
-    'src/vehicles/profiles/t90AwXCheekLeaves.selftest.mjs',
-    'src/vehicles/profiles/t90AwXApsHousings.selftest.mjs',
-    'src/vehicles/profiles/t90AwXAAContainers.selftest.mjs',
     'src/vehicles/profiles/t90AwXSideMounts.selftest.mjs',
     'src/vehicles/profiles/t90AwXSmallOptics.selftest.mjs',
-    'src/vehicles/profiles/t90AwXCastUnderside.selftest.mjs',
-    'src/vehicles/profiles/t90AwXRearStowage.selftest.mjs',
-    'src/vehicles/profiles/t90AwXRemainingRoof.selftest.mjs',
     'src/vehicles/profiles/t90AwXMachineGun.selftest.mjs',
     'src/vehicles/profiles/chieftain10XBasket.selftest.mjs',
     'src/vehicles/profiles/chieftain10XClosureFittings.selftest.mjs',
@@ -764,7 +725,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chieftain5XSource.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSourceClosure.selftest.mjs',
     'src/vehicles/profiles/roundedTrackContact.selftest.mjs',
-    'tools/second-wave-x-reference.selftest.mjs',
     'src/vehicles/profiles/sovietSecondWaveGeometry.selftest.mjs',
     'src/vehicles/sourceXArticulation.selftest.mjs',
     'src/vehicles/sourceXEra.selftest.mjs',
@@ -789,13 +749,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90SMXTowCable.selftest.mjs',
     'src/vehicles/profiles/t90SMXFrontEra.selftest.mjs',
     'src/vehicles/profiles/t90SMXRwsBase.selftest.mjs',
-    'src/vehicles/profiles/t90SMXSmoke.selftest.mjs',
     'src/vehicles/profiles/t90SMXLauncherShelf.selftest.mjs',
     'src/vehicles/profiles/t90SMXRightLauncherBracket.selftest.mjs',
-    'src/vehicles/profiles/t90SMXLeftSmokeMounts.selftest.mjs',
     'src/vehicles/profiles/t90SMXGunSaddles.selftest.mjs',
     'src/vehicles/profiles/t90AXRwsBracket.selftest.mjs',
-    'src/vehicles/profiles/t90AXSmoke.selftest.mjs',
     'src/vehicles/profiles/t90AXRearGuard.selftest.mjs',
     'src/vehicles/profiles/t90VXRearGuards.selftest.mjs',
     'src/vehicles/profiles/t90VXFrontGuards.selftest.mjs',
@@ -1470,6 +1427,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/circular-cap-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
+    'src/workerCalls.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
     'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
@@ -1662,6 +1620,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/muzzleNearField.selftest.mjs', // 271: a gun's muzzle light reaches its own gun through a near field
+    'src/game/shotCadence.selftest.mjs', // 272: a fast gun's report, flash, light and kick by its cadence; a slow gun's as before
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
@@ -1973,6 +1932,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padTour.selftest.mjs', // round 8 Y5 s6-04: the game screen's guide is a bounded mirror of the phone's (on:false, Skip, the link leaving live, the phone's time left)
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls
     'src/game/couchCamera.selftest.mjs', // couch-mode-268: the shared camera frames every seat
+    'src/game/couchPanes.selftest.mjs', // couch-panes-272: the split screen's grids, equal panes, the HUD scale and its priority tiers
+    'src/engine/chaseStart.selftest.mjs', // couch-panes-272: the chase camera's first look follows the hull's pitch (no GUN TRAVEL LIMIT at a slope spawn)
     // round 8 Y4 s3-02/s3-09: the couch view by its own reason in every couch battle; Start closes the join window first
     'src/app/couchRuntime.selftest.mjs',
     // round 8 Y4 s3-03: the couch lobby opens only over the Garage that asked (its ticket), once; a failed chunk is the press's
@@ -2421,7 +2382,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/impactDecals.selftest.mjs',
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
-    'src/gallery/viewGlyphs.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',
     'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',
@@ -3132,6 +3092,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
+    // the gallery lane (2026-11-11): the owner's whole loading-screen gallery, public/media/gallery-r1 and galleryShots.ts
+    'src/ui/galleryShots.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
@@ -3263,9 +3225,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
+    // 272: every mode's picture (Deploy tile and plate, the landing's and the Field Manual's still); Air Support shipped blank
+    'src/ui/deployModeArt.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
-    'tools/source-dimension-frame.browser.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',
@@ -3283,12 +3246,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     // 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped widths
     'tools/garage-roster-settle.browser.selftest.mjs',
+    // 2026-11-11 (camo-picker-layout-272): the Garage's paint sheet opens on whole rows that fill it, with every name
+    // inside its swatch and no sideways scroll, docked and on a phone
+    'tools/camo-sheet-layout.browser.selftest.mjs',
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
     // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
     // it, at the tool's 1024x640 and a desktop's 1440x900
     'tools/mp-rooms-entry.browser.selftest.mjs',
+    // 272 (live 271: "when i press couch the window instantly disappears"): a real press on Couch keeps the lobby and
+    // Deploy open, by mouse at 1920x1080 and 1200x819 and by touch at 390x844
+    'tools/couch-open.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program

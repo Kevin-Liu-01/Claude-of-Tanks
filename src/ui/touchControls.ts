@@ -506,8 +506,15 @@ export function createTouchControls({
     aimLayer.classList.toggle('on', layout && battle);
     const scope=root.querySelector<HTMLButtonElement>('.scope')!;
     const aircraft=getFlightKind()==='gunship';
-    scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope')}</span>`;
-    scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
+    // (272) every resize rebuilt the button's markup: only a change of seat (a tank's scope, a gunship's zoom) or of its
+    // words does
+    const scopeLabel=t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope');
+    const scopeKey=`${aircraft?'gunship':'tank'}|${scopeLabel}`;
+    if(scope.dataset.kind!==scopeKey){
+      scope.dataset.kind=scopeKey;
+      scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${scopeLabel}</span>`;
+      scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
+    }
     // (2026-11-02 audit F8) the flight's climb rail holds the virtual handbrake: a hidden rail may never see the lift
     if (!layout || !battle) { resetMove(); cancelFireGesture(); releaseClimb(); }
     // (improve-271 plan 024) a preset chosen in Settings shows on the chip at the next phase, resize or rotation
@@ -813,8 +820,8 @@ export function createTouchControls({
     const stored = getStoredChoice();
     return stored === 'auto' ? resolvePresetName(stored) : stored;
   }
-  function renderGraphicsButton(): void {
-    const name = graphicsChoice();
+  function renderGraphicsButton(pending: PresetName | null = null): void {
+    const name = pending ?? graphicsChoice();
     const english = PRESETS[name]?.label || name;
     // (the four tiered presets read their Settings names in every locale: zh showed "HIGH", gauntlet r1)
     const tiered = TIERED_PRESET_KEYS[english];
@@ -828,11 +835,36 @@ export function createTouchControls({
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
     graphicsButton.dataset.tip = t('touch.gfx.title', { label });
   }
+  // (272) taps in quick succession step the chip and apply once, when the tapping stops: each preset reallocated the
+  // renderer's targets and relinked its programs mid-battle. A lone tap applies at once, as before.
+  const GRAPHICS_TAP_GAP_MS = 500;
+  let lastGraphicsTapMs = -Infinity;
+  let pendingGraphics: PresetName | null = null;
+  let graphicsTimer: ReturnType<typeof setTimeout> | null = null;
+  const applyGraphics = (preset: PresetName): void => {
+    if (getDeviceTier() === 'mobile') setMobilePresetName(preset); else setPresetName(preset);
+  };
   tapButton(graphicsButton, () => {
     const mobile = getDeviceTier() === 'mobile';
-    const next = nextQuickGraphicsPreset(graphicsChoice(), mobile);
-    if (mobile) setMobilePresetName(next); else setPresetName(next);
-    renderGraphicsButton();
+    const nowMs = performance.now();
+    const quick = nowMs - lastGraphicsTapMs < GRAPHICS_TAP_GAP_MS;
+    lastGraphicsTapMs = nowMs;
+    const next = nextQuickGraphicsPreset(pendingGraphics ?? graphicsChoice(), mobile);
+    if (!quick) {
+      applyGraphics(next);
+      renderGraphicsButton();
+    } else {
+      pendingGraphics = next;
+      renderGraphicsButton(next);
+      if (graphicsTimer) clearTimeout(graphicsTimer);
+      graphicsTimer = setTimeout(() => {
+        graphicsTimer = null;
+        const preset = pendingGraphics;
+        pendingGraphics = null;
+        if (preset) applyGraphics(preset);
+        renderGraphicsButton();
+      }, GRAPHICS_TAP_GAP_MS);
+    }
     bus.emit('ui:click', {});
   });
   renderGraphicsButton();

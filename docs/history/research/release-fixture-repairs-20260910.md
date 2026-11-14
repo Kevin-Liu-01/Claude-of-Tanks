@@ -2,7 +2,7 @@
 
 These repairs prevent already-published world/factory changes from stopping
 otherwise unrelated tank releases. This checkpoint changes no playable vehicle,
-source model, asset, geometry oracle, score floor or application runtime.
+asset, geometry reference, score floor or application runtime.
 
 - Two historical world guards explicitly require the published birch/aspen
   `birchLeaves: true` flags, then compare their original palette hashes after

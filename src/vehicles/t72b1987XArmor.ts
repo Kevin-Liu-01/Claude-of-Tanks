@@ -2,7 +2,7 @@
 // the authored cassette fields; generated exact triangle receipts own hit space.
 // Protection values retain the existing T-72B obr.1987 gameplay donor (whose
 // inherited balance recipe originated in T-72B3), not a historical claim
-// about the supplied T-72B obr.1987 mesh or the chemistry of its visible bricks.
+// about the T-72B obr.1987 or the chemistry of its visible bricks.
 import {plate,type ArmorPlate} from './specHelpers.ts';
 
 export function createT72B1987XArmorZones():{hullPlates:ArmorPlate[];turretPlates:ArmorPlate[]} {

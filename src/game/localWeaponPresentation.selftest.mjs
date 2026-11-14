@@ -78,7 +78,7 @@ const shellKinds = new Map(), sweepTails = new Map();
 const fxCalls = [];
 const scratch = () => ({ set() {} });
 const fxBindings = {
-  _v3: scratch(), _v4: scratch(), shellKinds, sweepTails,
+  _v3: scratch(), _v4: scratch(), shellKinds, sweepTails, SHELL_RECORDS_MAX: 512,
   fx: { muzzleFlash: () => fxCalls.push('flash') },
   spawnSabotPetals: () => fxCalls.push('sabot'),
   // the destruction-fx lane's record of a fired round's class and charge (its burst reads it at expiry)
@@ -127,5 +127,22 @@ assert.deepEqual(fxCalls.slice(5), ['missile', 'wire:21:2'], 'a confirmed wire-g
   assert.deepEqual(fxCalls.slice(before), ['gunship:cannon', 'gunship:howitzer', 'gunship:missile', 'gunship:howitzer'],
     "the gunship's shots take the gunship muzzle, never a tank cannon's flash at the lens");
   assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(31)), [...shot.muzzlePos, 180], "the gunship missile anchors its hellfire's trail");
+}
+// (270) a rotary gun's thinned rounds (sim/fireCycleFloor.ts): no flash, report or crew call, predicted or confirmed; the
+// confirmed round still registers its flight for its impact
+{
+  const vulcan = { ...shot, caliberMm: 20, shellType: 'AP', thinned: true };
+  const flashes = fxCalls.length, reports = calls.filter(([kind]) => kind === 'report').length;
+  const radio = calls.filter(([kind]) => kind === 'radio').length;
+  predictFx(vulcan);
+  confirmFx({ ...vulcan, shellId: 40 });
+  predictAudio(vulcan);
+  confirmAudio({ ...vulcan, shellId: 40 });
+  assert.equal(fxCalls.length, flashes, 'a thinned round flashes nothing');
+  assert.equal(calls.filter(([kind]) => kind === 'report').length, reports, 'and plays no report');
+  assert.equal(calls.filter(([kind]) => kind === 'radio').length, radio, 'and no crew call');
+  assert.equal(shellKinds.get(40), 'AP', 'its flight is still registered for its impact');
+  confirmFx({ ...vulcan, shellId: 41, thinned: false });
+  assert.deepEqual(fxCalls.slice(flashes), ['flash'], 'the full round between them flashes');
 }
 console.log('localWeaponPresentation.selftest: production audio/FX receivers isolate intent feedback and retain authority');

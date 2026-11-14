@@ -134,7 +134,7 @@ Frozen complete-source comparison now passes: aggregate **94.69**, minimum offic
 
 ### Post-main source-detail revision — 2026-09-18
 
-Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/history/research/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
+Baseline shared gear: `3f6fc4ad8`. The independent review in `docs/tank-generation/history/regional-source-independent-critic-20260918.md` failed all fourteen views at the shaded-detail threshold. Earlier receipts are historical and do not certify this revision.
 
 Source-only scalar bounds in `aft-detail-scalar-study.json` identify the Object_11 rear cradle loops (each 0.146 × 0.460 × 0.597 m), Object_17 inclined supports, and Object_18 roof access panels/driver cover. The revision authors closed elliptical rings and separate diagonal braces with real air; restores asymmetric polygonal roof covers and the box ahead of the launcher; and adds open canister handles. The eight launch axes, true cradle pivot and functioning launch contract are unchanged. Source covered-canister state and absent roof MG remain unresolved comparison targets.
 
@@ -187,7 +187,7 @@ Final r3b native construction census (`detail-r3b-native.json`) also passes at H
 
 ### Source detail correction r4 — 2026-09-18
 
-The fresh r3b independent critic inspected all fourteen images and failed at minimum **8/10**, identifying missing thin stern bridging stock and the generic bow mast receiver. That review remains preserved in `docs/history/research/regional-source-independent-critic-20260918.md`. The following is a bounded correction to those two source features; the already-sealed square canister covers, eight launch-anchor contract, road-wheel stations, tracks and palette are preserved.
+The fresh r3b independent critic inspected all fourteen images and failed at minimum **8/10**, identifying missing thin stern bridging stock and the generic bow mast receiver. That review remains preserved in `docs/tank-generation/history/regional-source-independent-critic-20260918.md`. The following is a bounded correction to those two source features; the already-sealed square canister covers, eight launch-anchor contract, road-wheel stations, tracks and palette are preserved.
 
 Canonical Object_18 rays in `.qa-dev/tank-run/eastern-source/detail-r4-study.json` identify an **8.7 mm** bridge between Y1.9663 and Y1.975, spanning Z−3.623…−3.1484 across the stern side boxes. Four columns × four rows of approximately 190 × 52 mm slots penetrate only this plate. The center bridge is now a closed thin extrusion with sixteen genuine holes joined to the existing side cap stock. It does not fill the space beneath or move the recessed rear door aft. Source rays through the forward slots see the central deck at Y1.9477; the two former rear roof stations at Y1.970 are corrected to that independent datum so the front slot row is not falsely plugged by the hull.
 
@@ -206,7 +206,7 @@ Fresh originals: `detail-r4/official14/aft10_x` under the same private evidence 
 
 ### Source wheel correction r5 and final shader capture — 2026-09-18
 
-The independent corrected-r4 review actually inspected all fourteen originals and retained a minimum **8.5/10** for wheel-face correspondence (`docs/history/research/aft-r4-independent-review-20260918.md`). Its canister, stern bridge and bow mast findings were resolved. That reviewer then took ownership of this bounded wheel correction; their earlier independent verdict cannot certify their new authored revision. A different critic must assess the fresh set.
+The independent corrected-r4 review actually inspected all fourteen originals and retained a minimum **8.5/10** for wheel-face correspondence (`docs/tank-generation/history/aft-r4-independent-review-20260918.md`). Its canister, stern bridge and bow mast findings were resolved. That reviewer then took ownership of this bounded wheel correction; their earlier independent verdict cannot certify their new authored revision. A different critic must assess the fresh set.
 
 Canonical Object_15 scalar sections prove an asymmetric wheel: outer hub axial +123.15 mm, recessed web +49–69 mm across R75–239 mm, rising lip +132.35 mm at R251 mm, and plain inner cone −103.15 mm at its center to approximately −129.6 mm at R269.4 mm. Source radial samples and the single connected wheel island show no geometric six-bolt ring. The prior generic native first-visible web was +148.23 mm and its hub +195.88 mm; this was a measured stock difference, not a compensation for lighting. No source topology, UVs or textures were copied.
 

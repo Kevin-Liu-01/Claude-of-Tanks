@@ -23,8 +23,8 @@ const oldBow=orientedSlab(
  [-1.6291,1.3114633560,3.879],[1.6291,1.3114633560,3.879],
  [1.6291,1.34,3.84],[-1.6291,1.34,3.84]);
 const oldBowPart=shellPart(oldBow);
-// Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the bow course's two deck corners follow the owner's
-// source glacis (1.2052 at z 3.879 and 1.21 at 3.84; the print-fit table's 1.3115 / 1.34); its lower bow and width
+// Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the bow course's two deck corners follow the measured
+// glacis (1.2052 at z 3.879 and 1.21 at 3.84; the earlier fit table's 1.3115 / 1.34); its lower bow and width
 // corners are unchanged. The original slab above stays the opposite-diagonal negative control.
 const liveBow=orientedSlab(
  [-1.6791,1.1609803438,3.879],[1.6791,1.1609803438,3.879],
@@ -95,8 +95,8 @@ for(const id of ids)for(const quality of ['high','low']){
  const captures=[],bodies=[];
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,
   partCensus(bucket,g,source){
-   // 2026-11-03 (release 268 builder E): the M1A1 body and bustle are the owner's model's, one loft (profiles/m1a1Turret.ts)
-   // instead of the five print-era bottom stations; it is captured whole and checked below as one closed mirrored solid.
+   // 2026-11-03 (release 268 builder E): the M1A1 body and bustle are one measured loft (profiles/m1a1Turret.ts)
+   // instead of the five earlier bottom stations; it is captured whole and checked below as one closed mirrored solid.
    if(source==='add'&&bucket==='turret'&&g.attributes.position.count>300
     &&new Error().stack.includes('addAbramsShellBody'))bodies.push(g);
    if(source!=='add'||!['hull','turret'].includes(bucket)||g.attributes.position.count!==36)return;
@@ -110,7 +110,7 @@ for(const id of ids)for(const quality of ['high','low']){
   // (a sloped glacis plate and a hull roof climbing under the turret: 20 stations, was 19 with the splash step), so the
   // hull lofts capture 56 courses (58 before).
   assert.equal(parts.filter(p=>p.bucket==='hull').length,56,`${id}/${quality}: every native hull loft course captured`);
-  const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,0,'no print-era bustle station remains');
+  const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,0,'no earlier bustle station remains');
   assert.equal(bodies.length,1,`${id}/${quality}: the measured body and bustle loft captured`);
   const native=nativeStructuralStock(tank.root,['hull','turret']);assert.deepEqual(native.unsupported,[]);
   for(const p of parts){

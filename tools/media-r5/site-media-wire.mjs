@@ -14,8 +14,13 @@
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
 // --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
-// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs), each
-// still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
+// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs, loading,
+// gallery), each still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
+// loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading`, a list on top of
+// the gallery's collection) and its captions in both catalogs.
+// gallery (2026-11-11) wires the owner's whole loading-screen gallery (picks.json `gallery`, built into
+// public/media/gallery-r1 by loading-media.mjs): src/ui/galleryShots.ts, which the Garage's slideshow and the manual's
+// archive wall import, and the wall's limit and count.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,11 +39,15 @@ const MANIFEST = JSON.parse(readFileSync(join(ROOT, 'public/media', PICKS.collec
 const ARCHIVE = JSON.parse(readFileSync(join(ROOT, 'public/media', PICKS.collection, 'archive.json'), 'utf8'));
 const BUILT = new Map(MANIFEST.files.map((f) => [`/${f.path}`, f]));
 const EN = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
+const ZH = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
 // The manual's wall shows the whole archive: mediaArchive.ts puts production-r1's battlefield photographs first (they
-// replace older overviews, optionalProduction.selftest), then the site fifty's frames, so its limit and both counts
-// are the two together and no frame is cut.
+// replace older overviews, optionalProduction.selftest), then (2026-11-11, its `gallery` option) the owner's gallery,
+// public/media/gallery-r1, then the site fifty's frames, so its limit and both counts are the three together and no
+// frame is cut.
 const PRODUCTION = join(ROOT, 'public/media/production-r1/manifest.json');
-const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(readFileSync(PRODUCTION, 'utf8')).shots.length : 0);
+const GALLERY_MANIFEST = PICKS.gallery && join(ROOT, 'public/media', PICKS.gallery.collection, 'manifest.json');
+const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(readFileSync(PRODUCTION, 'utf8')).shots.length : 0)
+  + (GALLERY_MANIFEST && existsSync(GALLERY_MANIFEST) ? JSON.parse(readFileSync(GALLERY_MANIFEST, 'utf8')).items.length : 0);
 // the versus stills (versus-media.mjs: public/media/versus-r1), which the landing's hero opens on and its versus wall shows
 const VERSUS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-r1/manifest.json'), 'utf8'));
 // the versus films (versus-films.mjs: public/media/versus-films-r1), which the landing's versus section plays above its wall
@@ -204,8 +213,7 @@ function wireDocs() {
   // the phone's H.264 rung is the fallback for a browser without VP9) and both archive counts
   const loops = PICKS.docs.archiveLoops.map((id) => `      <div class="docs-motion-item"><video data-media-player muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-i18n-label="${titleKey(id)}" data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}-960.webm`)}" type="video/webm"><source data-src="/media/web-video-r1/${id}-mobile.mp4" type="video/mp4" data-rung="phone"></video></div>\n`);
   swap(D, /(<div class="docs-motion-grid"[^>]*>\n)(?:[ \t]*(?:<div class="docs-motion-item">)?<video [^\n]*<\/video>(?:<\/div>)?\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${loops.join('')}${close}`, 'archive loops');
-  const n = String(WALL_COUNT);
-  swap(D, /(data-i18n="docs\.aside\.archiveTitle" data-i18n-vars=')[^']*('>)\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive card count');
+  wireWallCount();
   // (the archive dialog's count left site/docs.html with the Field Manual rebuild, 245: its heading is gone)
   // the manual's paired figures (their captions stay; the image under each is a site fifty still)
   for (const [caption, pick] of Object.entries(PICKS.docs.figures)) {
@@ -228,7 +236,17 @@ function wireTopics() {
     swap(T, new RegExp(`\\['/media/[^']+(', t\\('docs\\.topic\\.${topic}\\.${media}'\\)\\])`), (_, close) => `['${url}${close}`, `topic figure ${slot}`);
   }
   swap('src/presentation/mediaArchive.ts', /const MANIFEST_URL = '[^']+';/, () => `const MANIFEST_URL = '${C}/archive.json';`, 'archive manifest');
-  swap('src/docs/docs.ts', /\{ mode: 'wall', limit: \d+, filters: false \}/, () => `{ mode: 'wall', limit: ${WALL_COUNT}, filters: false }`, 'archive wall limit');
+  wireWallLimit();
+}
+// the manual's wall: its limit (every shot of the archive, the battlefield photographs and the gallery with it) and the
+// count on its card
+function wireWallLimit() {
+  swap('src/docs/docs.ts', /\{ mode: 'wall', limit: \d+, filters: false((?:, \w+(?:: \w+)?)*) \}/,
+    (_, rest) => `{ mode: 'wall', limit: ${WALL_COUNT}, filters: false${rest} }`, 'archive wall limit');
+}
+function wireWallCount() {
+  const n = String(WALL_COUNT);
+  swap('site/docs.html', /(data-i18n="docs\.aside\.archiveTitle" data-i18n-vars=')[^']*('>)\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive card count');
 }
 
 // --- the battle takes ---------------------------------------------------------------------------------------------
@@ -474,10 +492,100 @@ function wireCatalogs() {
   }
 }
 
+// --- the loading screens (2026-11-11, the owner's loading-screen gallery) -------------------------------------------
+// picks.loading names the stills that follow the boot pick (featured[0]) on the boot splash and the transition screens:
+// a list on top of the gallery's collection (272: one collection, loading-r1 retired). tools/media-r5/loading-media.mjs
+// builds public/media/<gallery collection> and records the list in its manifest (each still's battlefield, focal and its
+// caption in both locales); this writes src/ui/featuredShots.ts LOADING_SHOTS (the gallery's files) and the captions'
+// keys, and drops the caption of a still the list no longer names.
+const loadingKey = (id) => `media.loading.title.${camel(id)}`;
+function loadingItems() {
+  const manifest = JSON.parse(readFileSync(GALLERY_MANIFEST, 'utf8'));
+  const ids = [...PICKS.loading.close, ...PICKS.loading.elevated];
+  if (JSON.stringify(manifest.loading) !== JSON.stringify(ids)) {
+    throw new Error('the gallery manifest\'s loading list is not picks.json loading (run tools/media-r5/loading-media.mjs)');
+  }
+  const byId = new Map(manifest.items.map((item) => [item.id, item]));
+  return ids.map((id) => {
+    const item = byId.get(id);
+    if (!item) throw new Error(`loading still ${id} is not a built gallery still (run tools/media-r5/loading-media.mjs)`);
+    if (!existsSync(join(ROOT, 'public', item.path))) throw new Error(`loading still ${id}: ${item.path} is not published`);
+    return item;
+  });
+}
+function wireLoading() {
+  const items = loadingItems();
+  // (2026-11-11, the gallery lane) each still's focal, aimed at its hero tank (picks.json gallery.focal, in the manifest)
+  const entries = items.map((item) => `\n  {\n    img: '${item.path}',\n    capKey: '${loadingKey(item.id)}',\n    maps: ['${item.map}'], focal: '${item.focal}',\n  },`);
+  swap('src/ui/featuredShots.ts', /(export const LOADING_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[)[\s\S]*?(\n\]\);)/,
+    (_, open, close) => `${open}${entries.join('')}${close}`, 'loading shots');
+  const keys = new Set(items.map((item) => loadingKey(item.id)));
+  for (const [locale, file] of [['en', 'src/ui/i18nCatalog.en-US.json'], ['zh', 'src/ui/i18nCatalog.zh-CN.json']]) {
+    const catalog = JSON.parse(get(file));
+    for (const key of Object.keys(catalog)) if (key.startsWith('media.loading.title.') && !keys.has(key)) delete catalog[key];
+    for (const item of items) catalog[loadingKey(item.id)] = item.title[locale];
+    texts.set(file, keepEscapes(get(file), `${JSON.stringify(catalog, null, 2)}\n`));
+  }
+}
+
+// --- the owner's gallery (2026-11-11: "we can also add all 78 to the galleries and other image areas") ----------------
+// picks.gallery names the whole loading-screen gallery; loading-media.mjs builds public/media/<collection>
+// and its manifest (each still's battlefield, focal, 640 rung and caption in both locales). This writes
+// src/ui/galleryShots.ts GALLERY_SHOTS (the caption, and the tanks alone for a card that names the battlefield beside
+// them) and GALLERY_OPENERS (the still a Garage's slideshow opens on, by battlefield), and the manual's wall limit and
+// count. No caption becomes a catalog key: the game loads its catalog whole at boot (galleryShots.ts).
+const quote = (text) => `'${String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+function galleryItems() {
+  const G = PICKS.gallery;
+  const manifest = JSON.parse(readFileSync(GALLERY_MANIFEST, 'utf8'));
+  const byId = new Map(manifest.items.map((item) => [item.id, item]));
+  return [...G.close, ...G.elevated].map((id) => {
+    const item = byId.get(id);
+    if (!item) throw new Error(`gallery still ${id} is not built (run tools/media-r5/loading-media.mjs)`);
+    const thumb = item.rungs?.find((rung) => rung.width === 640);
+    if (!thumb) throw new Error(`gallery still ${id} has no 640 rung`);
+    for (const path of [item.path, thumb.path]) {
+      if (!existsSync(join(ROOT, 'public', path))) throw new Error(`gallery still ${id}: ${path} is not published`);
+    }
+    // the caption is "<battlefield>: <tanks>" in each language (loading-media.mjs itemOf): the tanks are what follows it
+    const who = {};
+    for (const [lang, catalog, sep] of [['en', EN, ': '], ['zh', ZH, '：']]) {
+      const lead = `${catalog[`map.${item.map}`]}${sep}`;
+      if (!item.title[lang].startsWith(lead)) throw new Error(`gallery still ${id}: its ${lang} caption does not open on "${lead}"`);
+      who[lang] = item.title[lang].slice(lead.length);
+    }
+    return { item, thumb, who };
+  });
+}
+function wireGallery() {
+  const rows = galleryItems().map(({ item, thumb, who }) => [
+    '  {',
+    `    id: ${quote(item.id)},`,
+    `    img: ${quote(item.path)},`,
+    `    thumb: ${quote(thumb.path)},`,
+    `    map: ${quote(item.map)}, group: ${quote(item.group)}, focal: ${quote(item.focal)},`,
+    `    title: { en: ${quote(item.title.en)}, zh: ${quote(item.title.zh)} },`,
+    `    who: { en: ${quote(who.en)}, zh: ${quote(who.zh)} },`,
+    '  },',
+  ].join('\n'));
+  const G = 'src/ui/galleryShots.ts';
+  swap(G, /(export const GALLERY_SHOTS: readonly GalleryShot\[\] = Object\.freeze\(\[\n)[\s\S]*?(\]\);)/,
+    (_, open, close) => `${open}${rows.map((row) => `${row}\n`).join('')}${close}`, 'gallery shots');
+  const ids = new Set([...PICKS.gallery.close, ...PICKS.gallery.elevated]);
+  const openers = Object.entries(PICKS.gallery.openers ?? {}).map(([map, id]) => {
+    if (!ids.has(id)) throw new Error(`gallery opener for ${map}: ${id} is not a gallery still`);
+    return `  ${/^[a-z]\w*$/.test(map) ? map : quote(map)}: ${quote(id)},\n`;
+  });
+  swap(G, /(export const GALLERY_OPENERS: Readonly<Record<string, string>> = Object\.freeze\(\{\n)[\s\S]*?(\}\);)/,
+    (_, open, close) => `${open}${openers.join('')}${close}`, 'gallery openers');
+  wireWallLimit();
+  wireWallCount();
+}
+
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
   const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards, readme: wireReadme,
-    landing: wireLandingManifest, catalogs: wireCatalogs };
+    landing: wireLandingManifest, catalogs: wireCatalogs, loading: wireLoading, gallery: wireGallery };
   const only = arg('only')?.split(',');
   if (only?.some((name) => !sections[name])) throw new Error(`--only takes sections of ${Object.keys(sections).join(', ')}`);
   for (const [name, wire] of Object.entries(sections)) if (!only || only.includes(name)) wire();

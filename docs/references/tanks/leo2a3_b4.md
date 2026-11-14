@@ -72,7 +72,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
 The owner: "the real leopards of these have cutouts in the front of turret for a window thing. I'm guessing 1 is for
 coaxial machine gun but no idea on the other one (auxiliary gunner sight maybe ??) also note that the fronts of turret
 are sloped a little instead of being flat on. update these. research and build it out." Reference: the owner's Austrian
-2A4 (`~/cot-launch-state/streams/owner-shots/20261028-leopard2a4-turret-front-ref.webp`). The sources, measurements and
+2A4 (a turret-front photograph, 2026-10-28, kept outside the repository). The sources, measurements and
 confidence levels are in the lane's note `~/cot-lanes/christian2-262-evidence/turret-front-sources.md`. Most dimensions are
 photo estimates scaled from the 0.93 m mantlet (btvt/Militarysta, measured), the 635 mm track and the 3.70 m width; the
 pre-2A5 front is the same from 2A0 to 2A4 (en.wikipedia: the 2A5 moved the sight "to the turret roof as opposed to the

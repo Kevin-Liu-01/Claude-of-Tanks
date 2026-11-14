@@ -251,7 +251,7 @@ export function garageSpecialSystem(
     detail: t('garage.dossier.special.autoreload'),
     meta: t('garage.dossier.magazine.spec', {
       size: autoloader.magazineSize,
-      cycle: autoloader.intraClipS.toFixed(1),
+      cycle: autoloader.intraClipS.toFixed(autoloader.intraClipS < 0.1 ? 2 : 1),
       reload: effectiveReloadS.toFixed(1),
     }),
   };

@@ -157,9 +157,9 @@ function emptyT90Mount(t){
   }
 }
 function historicalEmptyT90Mount(t){
-  // Complete-source held-outs from t90.remaining-roof-heldouts.json:
+  // Held-out datums:
   // retain the interrupted lower web, flanking rim and real axial opening.
-  // Only the named owner-added NSVT is detached; every source mesh remains.
+  // Only the named owner-added NSVT is detached; every other mesh remains.
   const census=censusEquipment(t.root);
   assert.equal(census.mg,0,'retained unarmed source mount has no false recognized MG');
   assert.equal(standardWeaponPass({census}),false,'actual full-standard MG0 rejection remains required');
