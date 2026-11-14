@@ -64,6 +64,9 @@ export interface TutorialView {
   readonly freeLook: boolean;
   /** Where the gun points on the ground plane (rad; 0 faces +z, turning toward +x): the hull's yaw plus the turret's. */
   readonly gunYaw: number;
+  /** The loaded round's type ('APFSDS', 'HEAT', 'HE', ...), and the hull's speed (m/s). */
+  readonly shellType: string | null;
+  readonly speedMps: number;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -203,9 +206,22 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       stepOff.push(() => document.removeEventListener('click', onPress, true));
     } else if (advance.on === 'fire') {
       stepOff.push(port.on('shell:fired', (payload) => { if ((payload as { isPlayer?: boolean } | null)?.isPlayer) go(); }));
+    } else if (advance.on === 'shell' && advance.type) {
+      // a round of this type is loaded (273): read, so a load the player already made counts
+      poll(() => port.view?.()?.shellType === advance.type);
     } else if (advance.on === 'shell') {
       // the player's ask (a shell key, a rack press) or the load it led to: an ATGM slot answers with its own event
       stepOff.push(port.on('ui:shellSelect', go), port.on('ui:shellSelectionChanged', go));
+    } else if (advance.on === 'hidden') {
+      const marker = step.guide?.marker;
+      let stillSince = 0;
+      if (marker) poll(() => {
+        const at = port.playerPosition(), view = port.view?.();
+        const inside = !!at && !!view && Math.hypot(at.x - marker.x, at.z - marker.z) <= marker.radiusM && view.speedMps < 0.5;
+        if (!inside) { stillSince = 0; return false; }
+        stillSince ||= performance.now();
+        return performance.now() - stillSince >= advance.stillS * 1000;
+      });
     } else if (advance.on === 'reach') {
       const marker = step.guide?.marker;
       if (marker) {

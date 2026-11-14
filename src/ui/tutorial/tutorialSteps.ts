@@ -27,8 +27,8 @@ export type TutorialAdvance =
   | { readonly on: 'drive'; readonly metres: number }
   /** The player fired. */
   | { readonly on: 'fire' }
-  /** The player loaded a different shell. */
-  | { readonly on: 'shell' }
+  /** The player loaded a different shell (273: or this one, by its type: 'HEAT', 'HE'). */
+  | { readonly on: 'shell'; readonly type?: string }
   // ── 273: the training battle's kinds (each heard on the bus or read from the port; tutorialRunner.ts arm) ──────────
   /** The player's tank stands inside the step's guide marker (its ring's radius, or this one). */
   | { readonly on: 'reach'; readonly radiusM?: number }
@@ -36,6 +36,8 @@ export type TutorialAdvance =
    *  or free look held; a step that names no mode takes either. */
   | { readonly on: 'camera'; readonly mode?: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly orbitAtLeastM?: number;
       readonly freeLook?: boolean }
+  /** The player stands still inside the step's guide marker (a bush) this long. */
+  | { readonly on: 'hidden'; readonly stillS: number }
   /** The gun points at the step's guide marker (its bearing within the tolerance), held this long. */
   | { readonly on: 'turret'; readonly toleranceDeg: number; readonly holdS: number }
   /** The armour colours reach this state (the H key's ui:armorOverlayState, or the Settings row). */

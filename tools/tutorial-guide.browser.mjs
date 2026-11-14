@@ -42,7 +42,7 @@ const report = { view: VIEW, locale: LOCALE, cases: {}, errors: [], startedAt: n
 
 let server, browser, hold;
 try {
-  hold = await openCaptureHold({ label: 'tutorial-guide', place: `guide-${VIEW}-${LOCALE}`, lockClass: 'render', timeoutMs: 20 * 60_000 });
+  hold = await openCaptureHold({ label: 'tutorial-guide', place: `guide-${VIEW}-${LOCALE}`, lockClass: 'render', timeoutMs: 90 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 120_000, protocolTimeout: 600_000,

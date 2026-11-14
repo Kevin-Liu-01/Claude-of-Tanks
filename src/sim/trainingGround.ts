@@ -47,15 +47,17 @@ export interface TrainingRules {
 }
 
 /**
- * The training battle (storyboard §2): the southern half of Verdant Fields. The player starts in alpha's assembly area
- * behind the southern swell, facing north toward it; the drive, turret and vision scenes (S1 to S4) play on the level
- * fields before the swell, and the targets wait beyond it.
+ * The training battle (storyboard §2): the south-west of Verdant Fields. The drive, turret and vision scenes (S1 to S4)
+ * play on the open meadow west of alpha's assembly woods (x -300..-210, z -160..-95): the probe of 2026-11-14
+ * (tools/training-layout-probe.mjs) found no canopy, no obstacle and at most a 14 % grade on any leg, and the board in
+ * sight from ring B. The first layout's rings stood in the wood behind the southern swell (a tank driving into trunks,
+ * the camera in the leaves). The player starts on the meadow's east edge facing west; the targets wait beyond it.
  */
 export const TRAINING_RULES: TrainingRules = Object.freeze({
   mapId: 'verdant',
   loanerSpecId: 'm1a1',
   seed: 27_301,
-  start: Object.freeze({ x: -170, z: -365, yawDeg: 0 }),
+  start: Object.freeze({ x: -215, z: -135, yawDeg: 270 }),
   actors: Object.freeze([
     Object.freeze({ key: 'target1', specId: 'leo1a5', x: -150, z: -60, yawDeg: 210 }),
     Object.freeze({ key: 'target2', specId: 'merkava2b', x: -60, z: -40, yawDeg: 180 }),
@@ -65,11 +67,11 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
 
 /** The scenes' points, named once: the guide's markers and the steps that wait on them read these. */
 export const TRAINING_POINTS = Object.freeze({
-  /** S2: the first ring, 60 m ahead of the start, and the second, a turn to the left. */
-  driveA: Object.freeze({ x: -170, z: -305, radiusM: 6 }),
-  driveB: Object.freeze({ x: -130, z: -305, radiusM: 6 }),
-  /** S3: the board the gun points at, on the swell's slope to the north. */
-  board: Object.freeze({ x: -130, z: -250, radiusM: 3 }),
+  /** S2: the first ring, 50 m ahead of the start (west), and the second, 35 m to the left of it (north). */
+  driveA: Object.freeze({ x: -265, z: -135, radiusM: 6 }),
+  driveB: Object.freeze({ x: -265, z: -100, radiusM: 6 }),
+  /** S3: the board the gun points at, 61 m south-west of ring B across the meadow (in sight from it). */
+  board: Object.freeze({ x: -300, z: -150, radiusM: 3 }),
 });
 
 /** An actor's rule by its scenes' name. */

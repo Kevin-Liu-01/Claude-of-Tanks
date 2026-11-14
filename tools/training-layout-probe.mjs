@@ -27,7 +27,7 @@ const { TRAINING_RULES, TRAINING_POINTS } = await import('../src/sim/trainingGro
 
 let server, browser, hold;
 try {
-  hold = await openCaptureHold({ label: 'training-probe', place: 'training-layout', lockClass: 'render', timeoutMs: 15 * 60_000 });
+  hold = await openCaptureHold({ label: 'training-probe', place: 'training-layout', lockClass: 'render', timeoutMs: 90 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 120_000, protocolTimeout: 600_000,
@@ -46,7 +46,7 @@ try {
     TRAINING_RULES.loanerSpecId, TRAINING_RULES.mapId);
   await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
   const probe = await page.evaluate((box, step, actors, points) => {
-    const world = window.__DEBUG.getWorld();
+    const world = window.__DEBUG.world;
     const hf = world.heightField;
     const [x0, z0, x1, z1] = box;
     const heights = [];
@@ -58,8 +58,11 @@ try {
     const inBox = (x, z) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
     const concealers = (world.getConcealment?.() ?? []).filter((d) => !d.dead && inBox(d.x, d.z))
       .map((d) => ({ x: Math.round(d.x * 10) / 10, z: Math.round(d.z * 10) / 10, r: Math.round(d.r * 10) / 10, add: d.add }));
-    const obstacles = (world.getObstacles?.() ?? []).filter((o) => inBox(o.x ?? o.cx ?? 0, o.z ?? o.cz ?? 0))
-      .slice(0, 2000).map((o) => ({ x: Math.round(o.x ?? o.cx), z: Math.round(o.z ?? o.cz), r: Math.round((o.r ?? o.radius ?? Math.max(o.hw ?? 0, o.hd ?? 0)) * 10) / 10, kind: o.kind ?? o.type ?? '' }));
+    // a collision record is a box (world/collision.ts CollisionRecord min/max, [x, y, z]): its centre and half diagonal on the ground
+    const obstacles = (world.getObstacles?.() ?? []).filter((o) => o?.min && o?.max && !o.dead)
+      .map((o) => ({ x: Math.round((o.min[0] + o.max[0]) / 2), z: Math.round((o.min[2] + o.max[2]) / 2),
+        r: Math.round(Math.hypot(o.max[0] - o.min[0], o.max[2] - o.min[2]) * 5) / 10, kind: o.kind ?? '' }))
+      .filter((o) => inBox(o.x, o.z));
     /** The ground's clearance under the line from a sight 2.4 m up to a target 1.5 m up (m; < 0: the ground blocks). */
     const clearance = (a, b) => {
       const ya = hf.getHeightAt(a.x, a.z) + 2.4, yb = hf.getHeightAt(b.x, b.z) + 1.5;
