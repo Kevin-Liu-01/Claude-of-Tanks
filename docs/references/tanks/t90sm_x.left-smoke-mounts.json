@@ -38,5 +38,5 @@
     "note": "The measured lower carrier overlaps the existing source-corrected canted case at this point; no extension or waiver is used. The test casts against actual built buffers with back-face culling removed read-only."
   },
   "constructionAllowances": "Source-fitted plane normals are rounded to six decimal places. The folded sheets are closed8mm skins and the three backing plates have14/21/27mm authored depth within their measured source envelopes. Narrow lower ties are independently authored inside the source coupling-strip region. Small terminal bevels are simplified; intermediate source lower/upper bounds retain4mm assertions.",
-  "regression": "src/vehicles/profiles/t90SMXLeftSmokeMounts.selftest.mjs checks high/low actual visible turretDetail buffer presence within2µm, six positive rear-stock engagements, held-out source edge and first-surface rays, true stand-off air, and positive case contact. The complete192-ray smoke regression and strict track audit remain separate."
+  "regression": "src/vehicles/profiles/t90SMXLeftSmokeMounts.gencheck.mjs checks high/low actual visible turretDetail buffer presence within2µm, six positive rear-stock engagements, held-out source edge and first-surface rays, true stand-off air, and positive case contact. The complete192-ray smoke regression and strict track audit remain separate."
 }

@@ -117,7 +117,7 @@ function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
 // We sample BOTH track lines at 0.1 m spacing (3.5× denser than the solve) and
 // report the worst penetration (< 0 gap) and the smallest root-plane gap.
 // During motion that plane may sit inside the ±suspension travel envelope;
-// procedural/GLB wheels and track belts deform by the matching amount.
+// procedural wheels and track belts deform by the matching amount.
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
 // MOVEMENT r1: 2.3 was a stale mirror — movement.ts/tankFactory lock SWAY_VIS

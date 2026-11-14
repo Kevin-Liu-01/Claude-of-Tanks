@@ -423,7 +423,7 @@ floors, adaptation, timeouts or parity requirements; no nine-case matrix is
 unlocked by the failed receipt.
 
 The four lamp-model release check ran, but is **not passed**. M1A3 and Proryv
-have no registered local reference oracles. Separate remaining checks in
+have no registered comparison records. Separate remaining checks in
 `lamp-remaining-gates-r2` report all four contiguity/fitting censuses passing;
 MBT70's strict track test fails eight hull-detail voxels. Fresh registered
 MBT70/T90M fidelity and geometry checks also fail. Their exact before/after
@@ -479,7 +479,7 @@ The eight MBT-70 rear hull-detail/track overlap voxels are confirmed unchanged
 by the lamp work: full mesh inventories/matrices and every rear vertex match
 the pre-lamp source, with only forward fixture positions changed. Existing
 MBT-70/T-90M reference-fidelity failures likewise remain documented, and M1A3
-and Proryv still have no registered comparison oracle. No fake reference,
+and Proryv still have no registered comparison record. No fake reference,
 passing ledger, geometry tolerance or tank redesign has been substituted.
 Owner direction on publishing this focused lighting work with those existing
 qualification limitations has been requested; publication remains pending.
@@ -566,8 +566,8 @@ the new cleanup owner is within limits. The updated acquisition fingerprint is
 No further native run was made, and the old failed receipt was not relabeled.
 
 The private build also passes (`final-private-build-r1.log`). Its status
-receipt records only concurrent authorized documentation/test changes, no
-generated runtime or asset mutations, and no staged comparison GLBs. The R5
+receipt records only concurrent authorized documentation/test changes and no
+generated runtime or asset mutations. The R5
 public build was not rebuilt or replaced.
 
 ## Full-suite checkpoint

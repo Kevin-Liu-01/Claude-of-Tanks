@@ -5,7 +5,7 @@ The approved assembled source exposed an overbuilt procedural rear shoulder. The
 ## Frozen source and author revision
 
 - Approved target: `public/models/community-candidates/k21_x_assembled_20260918.glb`, SHA256 `e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b`.
-- Original canonical source: SHA256 `ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8`. Its detached Object_7 was rigidly assembled in the earlier [source-only study](bmp-k21-source-reassembly-20260918.md). Neither source changed in this revision.
+- Original canonical source: SHA256 `ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8`. Its detached Object_7 was rigidly assembled in the earlier [source-only study](../../history/research/bmp-k21-source-reassembly-20260918.md). Neither source changed in this revision.
 - Profile: `src/vehicles/profiles/k21X.ts`, SHA256 `9e800d5f744999d73bf2c86c6ebc33999b6a9599fc47421b4262f2c140cc6791`.
 - Focused test: `src/vehicles/profiles/k21RearHullStock.selftest.mjs`, SHA256 `da9c78990bbfc777649826c8fa457417fc3cdcd10b5db9e4551b0224c4bd82b0`.
 - Original profile remains authenticated in `.qa-dev/tank-run/k21-rear-hull/profile-before.ts`, SHA256 `ceb4848453657d9acc6ff7dfc8ec8cdf99e3a3cd74e1b658e2a9f15c8353c5f2`.

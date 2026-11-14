@@ -81,8 +81,9 @@ generator spelling. `tank:release:check` fails before commit/push when:
 - the existing geometry/track/contiguity/fittings standard fails;
 - `npm test` or the private production build fails (integrator mode only).
 
-`--gate` forwards to the existing fresh geometry-gate phase when that tank is
-eligible for it. The do-not-gate list in `docs/BUILD-STANDARD.md` still applies.
+`--gate` is forwarded to the standard, sealed and per-id ledger checks. The geometry gate
+and fidelity page are tank-generation tools a lane runs by hand (`npm run gen:checks`,
+`npm run gen:fidelity`, `npm run gen:repin`); no gate or receipt reads an outside model.
 `--lane` (a tank lane before READY) runs the same steps without the embedded
 `npm test` and private build: the integrator mode runs both, and the release
 gate runs every receipt and `npm run build` (the same vite build) once per

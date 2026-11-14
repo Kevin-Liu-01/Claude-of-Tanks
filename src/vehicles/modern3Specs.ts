@@ -709,8 +709,7 @@ const MODERN3_SPECS = {
         shell('35mm HEI-T', 'HE', 35, 8, 8, 78, 1175, { reloadS: 0.52, count: 280 }),
       ],
     },
-    // PHOTO-CLASS build (no oracle — the War Thunder rip is REFUSED per THE
-    // ONE ABSOLUTE RULE; PROGRAM-STATE queue entry). Published: 6.8 hull,
+    // PHOTO-CLASS build (PROGRAM-STATE queue entry). Published: 6.8 hull,
     // 3.2 wide, 2.5 high; the KDE muzzle overhangs the bow (overall 7.3).
     dims: { hullLengthM: 6.8, overallLengthM: 7.3, widthM: 3.2, heightM: 2.5 },
     armor: (() => {

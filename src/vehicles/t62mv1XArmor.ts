@@ -8,7 +8,7 @@ export const T62MV1_X_ERA_ZONE_NAMES={
   hull:['glacis_era_L','glacis_era_R'],turret:['turret_era_L','turret_era_R'],
 } as const;
 
-// Gameplay convention, NOT a protection measurement from a polygon model:
+// Gameplay convention, NOT a protection measurement:
 // the existing first-generation K1 balance preset (modern1.ts) is proposed.
 // The source title is MV-1; its low-detail broad covers alone do not establish
 // explosive composition. Parent registration must retain that provenance note.

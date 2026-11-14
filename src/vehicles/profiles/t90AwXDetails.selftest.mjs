@@ -41,9 +41,9 @@ function sideArmor(t){
   }
   t.resetEra();
 }
-// The owner requested the canonical Shtora emitter instead of the source's
+// The owner requested the canonical Shtora emitter instead of a
 // painted rectangular face. Its actual aperture/rig are covered by shtora's
-// dedicated test; unrelated source cases/carriers retain their exact oracle.
+// dedicated test; unrelated cases/carriers retain their exact checks.
 function cases(mesh){
   for(const[x,z,y]of [[1,-.8,2.0658302232],[1.2,-.8,2.0863284269],[1.4,-.6,2.0877798410],
     [1.5,-.55,2.0882597220],[-.9,-.85,2.0634799004],[-1.1,-.75,2.0856647460],[-1.25,-.65,2.0866237938],[-1.35,-.55,2.0584301512]]){

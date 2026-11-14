@@ -1,4 +1,4 @@
-// Native first-party surface recipes, not source mesh data. Keep these scalar
+// Native first-party surface recipes. Keep these scalar
 // faces aligned with the named independent profile constructors below.
 import type { ArmorPlate } from '../sim/armor.ts';
 import type { FleetTankSpec } from './specContracts.ts';

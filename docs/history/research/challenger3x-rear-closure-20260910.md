@@ -26,8 +26,8 @@ keel and rear extents. Existing side armor and open rack framing remain.
 - Standard Challenger 3 before/after PNGs are byte-identical:
   SHA-256 `3733e26574a81442d1628cdea5cd40504755964aa0262f15342ad085bf31af4a`.
 - Independent review of 10 m and 15 m low-detail rear views found no new
-  opening or protrusion. This is scoped repair evidence, not source-fidelity
-  certification; Challenger 3 X still has no registered comparison oracle.
+  opening or protrusion. This is scoped repair evidence, not fidelity
+  certification; Challenger 3 X still has no registered comparison record.
 
 Receipts are under `.qa-dev/launch/owner-rear-before`,
 `owner-rear-after-r2`, `rear-before`, `rear-after-r2`, and
@@ -35,8 +35,8 @@ Receipts are under `.qa-dev/launch/owner-rear-before`,
 and correctly failed native merging; r2 supplies the required UV attribute.
 Full-fleet anatomy update/check passed: 181 tanks and 543 technical cards,
 zero module failures. All ten Challenger 3 X asset views were regenerated.
-The forced unified source-comparison gate failed because this first-party model
-has no registered comparison oracle. That failure is retained in
+The forced unified comparison gate failed because this first-party model
+has no registered comparison record. That failure is retained in
 `.qa-dev/launch/challenger3x-release.log`; it is not a qualification pass.
 All remaining release checks, the complete test suite (307 pre, 630 core,
 41 post), type checking, and public/private builds passed in

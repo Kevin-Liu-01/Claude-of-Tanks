@@ -63,7 +63,7 @@ tire repair as unrelated geometry damage.
 Full
 candidate review, anatomy/assets, release and changed-file scan remain outstanding.
 This edit does not fix the still-thin tracks or certify hull/fender closure.
-No source models or temporary QA files belong in this checkpoint.
+No temporary QA files belong in this checkpoint.
 
 ## Publication split
 

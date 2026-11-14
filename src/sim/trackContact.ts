@@ -35,7 +35,7 @@ const CONTACT_WID_FRAC_MAX = 0.58;
 const CONTACT_ZC_FRAC_MAX = 0.12; // contact-run centre offset cap (x hull length)
 // MOVEMENT r1: hull-local Y of the lowest rendered surface — the support solve seats THIS plane on the terrain
 // (pos.y = ground − bottomY + margin). The rebuilt profiles park it anywhere from −0.016 (pad grousers a hair under the
-// old plane) to +0.10 (community placeholder pontoons / raised print floor lines); outside this band the scan hit paint,
+// old plane) to +0.10 (placeholder pontoons / raised floor lines); outside this band the scan hit paint,
 // not a track.
 const CONTACT_BOTY_MIN = -0.20;
 const CONTACT_BOTY_MAX = 0.30;

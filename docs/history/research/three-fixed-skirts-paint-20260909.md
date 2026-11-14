@@ -46,7 +46,7 @@ still-thin tracks or certify full-fleet performance.
 
 Owning tree: `/Users/kevinliu/.codex/worktrees/cot-amx30-wheel-face-style-20260909`.
 New native output: `.qa-dev/three-fixed-skirts-native-20260909-r1/` (ignored).
-Source models and temporary QA files are excluded from the commit.
+Temporary QA files are excluded from the commit.
 # Integrated recovery preflight — 2026-09-10
 
 At `d0455875c`, the recovered batch is based on the corrected T-90 X

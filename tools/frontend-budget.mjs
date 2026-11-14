@@ -377,8 +377,11 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   modules already on main that now split into shared chunks of their own under 272's new importers: weaponHitKind
   //   (fire-fx-debounce-272's audio cadence), lodDistanceScale (also on the Gallery), aerialVision, droneMotion and
   //   battleHudFrameRuntime. The entry -9,572 B (those modules left it), pinned at its measure.
-  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 250056 },
-  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 250056 },
+  // 2026-11-12 (integrator 272.1, at integ/272.1's build with gt-symbol-272 edf92d71fc): the entry +1,081 B (the GT
+  //   symbol inline, currentColor, in the Garage credits and the language pop-up; general-translation.png retired); game
+  //   -2,230 B and Gallery -3,625 B brotli overall, requests held. The other rows stay at 272's pins.
+  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 251137 },
+  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 251137 },
   gallery: { brotliBytes: 790344, requests: 83 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },

@@ -1,5 +1,5 @@
 // Swedish family gameplay/spec registration. Geometry lives in
-// profiles/sweden.ts and supplied GLBs remain external visual oracles.
+// profiles/sweden.ts.
 
 import {
   TANK_SPECS,

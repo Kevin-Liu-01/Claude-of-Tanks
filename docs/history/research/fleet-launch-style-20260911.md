@@ -26,11 +26,10 @@ T72B3M X wheel-paint changes are held outside this publication checkpoint. Its
 profile, source-mounted regression and selected assets retain the prior shipped
 configuration. The draft and its comparison receipts remain preserved separately.
 T72B3M X retains the preexisting268-cell source-air conflict described in
-`t72b3m-x-side-mounts.md`. No source-air waiver or altered gate is introduced.
-The three first-party paint targets have no registered external comparison
-oracle; the source checks above apply only to K2/T90SM. The wider fleet and
-launch-performance program remain open. No third-party geometry is added to
-the playable loading path.
+[`t72b3m-x-side-mounts.md`](../../tank-generation/history/t72b3m-x-side-mounts.md). No source-air waiver or altered gate is introduced.
+The three first-party paint targets have no registered comparison
+record; the source checks above apply only to K2/T90SM. The wider fleet and
+launch-performance program remain open.
 
 Strv 122 X complete composed release passes on 2026-09-11: source, fidelity,
 physical contact, anatomy, selected assets, 311 pre/648 core/41 post checks and

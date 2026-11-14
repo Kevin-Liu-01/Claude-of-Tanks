@@ -150,7 +150,7 @@ try {
     turretOwned: true,
   }, 'Puma S1 MELLS launcher uses two square armored cells and no circular tubes');
   const gear = hull.userData.runningGearReceipts?.at(-1);
-  assert.deepEqual(gear?.wheelZs, [1.79, 1.01, 0.25, -0.68, -1.43, -2.17], 'six road wheels at the S1 oracle stations');
+  assert.deepEqual(gear?.wheelZs, [1.79, 1.01, 0.25, -0.68, -1.43, -2.17], 'six road wheels at the measured S1 stations');
   assert.equal(gear?.xcLeft, 1.31, 'left Puma track lane at the measured S1 lane');
   assert.equal(gear?.xcRight, 1.31, 'right Puma track lane at the measured S1 lane');
   assert.equal(gear?.trackW, 0.52, 'S1 native course width');

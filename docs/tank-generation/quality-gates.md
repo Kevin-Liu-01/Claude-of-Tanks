@@ -4,10 +4,18 @@ The bar is recognizable, measured, coherent geometry at the AbramsX,
 Challenger 2 and Leclerc exemplar level—not decoration count or a flattering
 average. The [build standard](../BUILD-STANDARD.md),
 [geometry gate](../GEOMETRY-GATE.md), and newer
-[source-X contract](../history/research/source-x-second-wave.md) remain the detailed
+[source-X contract](history/source-x-second-wave.md) remain the detailed
 owners. Use the [tool map](tool-map.md) to check actual current coverage.
 
 ## Acceptance matrix
+
+The "Registered source fidelity" and "Geometric fidelity" rows are a lane's own
+bar while it builds against an outside comparison model. They are build
+references, run by hand (`npm run gen:fidelity`, `node tools/geometry-gate.mjs`,
+`npm run gen:checks`), never release gates: no receipt, `test:heavy` suite or
+`tank:release:check` step reads an outside model (owner, 2026-11-12). The
+release row's composed stages check the build against itself and the game's
+rules.
 
 | Gate | Required evidence / failure condition |
 | --- | --- |

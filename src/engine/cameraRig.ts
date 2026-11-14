@@ -1871,7 +1871,7 @@ const _sbPc = new Float64Array(SHOW_POINTS_MAX + 1);
  * Union of every descendant mesh's geometry AABB, expressed in `root`'s LOCAL
  * frame (so the result hugs a yawed hull instead of ballooning into a
  * world-axis box). Invisible children are included on purpose: the garage
- * hides the whole hero while its GLB parses, and the pose must still solve.
+ * hides the whole hero while it loads, and the pose must still solve.
  *
  * @param {THREE.Object3D} root
  * @param {THREE.Vector3} outMin
@@ -2669,7 +2669,7 @@ export function createShowroomOrbit(
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
       pointsAgeS += d;
       if (!haveBox) return pollForFirstSubject(d);
-      // The hero GLB streams in behind a procedural stand-in and the carousel
+      // The hero can stream in behind a stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
       // framing (and heroDist) always describes what is actually on stage.
       const dirty = refreshSubjectMeasurement(d);

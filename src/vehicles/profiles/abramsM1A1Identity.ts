@@ -41,7 +41,7 @@ interface AbramsIdentityPort {
 
 // Turret-local datums of the Tejas-family bustle (profiles/abrams.ts TEJAS_TURRET; turret rig at the ring).
 // Release 268 builder E: the rack hangs on the owner's model's shorter bustle (rear face -2.56, 0.41 m deep, rails 0.68,
-// floor 0.25 + its 0.02 mesh); the print-era rack ran 0.70, 0.31, -3.165 .. -3.505.
+// floor 0.25 + its 0.02 mesh); the earlier rack ran 0.70, 0.31, -3.165 .. -3.505.
 const RACK_TOP_Y = 0.68;            // rack rail tops (railTopFlush)
 const RACK_FLOOR_Y = 0.27;          // rack floor seat (rackCans rkY)
 const RACK_FRONT_Z = -2.595;        // bustle rear wall

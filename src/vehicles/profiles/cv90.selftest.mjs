@@ -13,7 +13,7 @@ const source = readFileSync(new URL('./cv90.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /from ['"].*sweden\.ts['"]/,
   'CV90 family does not call the legacy Swedish builder pack');
 assert.doesNotMatch(source, /Downloads|\.glb|\.obj|\.zip/,
-  'comparison sources never enter the playable runtime path');
+  'external files never enter the playable runtime path');
 assert.doesNotMatch(source, /buildCv90Family|Cv90Config/,
   'the two requested vehicles are not variants of a configurable family builder');
 assert.doesNotMatch(source, /from ['"].*(?:china|type99).*['"]|buildZTZ|buildType99/i,

@@ -2,7 +2,7 @@ import { weaponAssembly } from './profiles/weaponStock.ts';
 import { antennaPart } from './profiles/antennaPart.ts';
 import { withSeatRole } from './spareTrackSeat.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
-// Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
+// Vehicles (docs/tank-generation/history/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
 // K1A1 (§5.38 KOREA round — new build vs the k1a1_kojf print).
 //
@@ -4038,8 +4038,7 @@ export function buildPuma(P: Modern3BuilderPort) {
 }
 
 // ================================= Type 89 IFV ==============================
-// NEW VEHICLE, PHOTO CLASS (owner order 2026-08-06; the dropped War Thunder
-// rip is REFUSED — THE ONE ABSOLUTE RULE; no oracle, so this build NEVER
+// NEW VEHICLE, PHOTO CLASS (owner order 2026-08-06; this build NEVER
 // gates: dims/floaters/§B battery + 14-view self-reads are the bars).
 // Authored to the real vehicle's configuration at published dims (6.8 x 3.2
 // x 2.5, KDE muzzle overhangs to 7.3): boxy welded hull under a LONG

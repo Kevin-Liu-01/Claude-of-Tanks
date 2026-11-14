@@ -11,6 +11,14 @@
  * Enter for Next and Backspace for Skip (keys no default binding uses) and never moves focus to the card; a gamepad
  * takes A / B / BACK in the Garage and the stick clicks (RS Next, LS Skip) in battle, where every other button is
  * bound. The card's buttons show those keys.
+ *
+ * The run belongs to its screen (272, the owner on the preview: the Deploy card outlived the Garage onto a battle's
+ * loading screen). It asks the screen every SCREEN_POLL_MS, and at every phase change, whether it is live, covered (a
+ * surface the step did not open: Settings, a picker, a modal; the card hides until it closes) or gone (a battle starts,
+ * another screen takes over): gone closes the run where it stands and hands its place back (onClose), so the chapter
+ * resumes there, and app/tutorialAccess.ts advances by rule when the place was Deploy. On the Garage the keyboard is
+ * inert too: a key the card does not take (and Enter on a press step, which belongs to the lit control) never reaches
+ * the Garage's hotkeys; Tab stays inside the card.
  */
 import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
@@ -30,7 +38,11 @@ export interface TutorialPort {
   codeLabel(code: string): string;
   /** The player's tank on the ground plane, in battle; null elsewhere. */
   playerPosition(): { readonly x: number; readonly z: number } | null;
+  /** The chapter's screen: live, covered by a surface the step did not open, or gone. */
+  screen(chapter: TutorialChapter): TutorialScreen;
 }
+
+export type TutorialScreen = 'live' | 'covered' | 'gone';
 
 export interface TutorialRun {
   readonly chapter: TutorialChapter;
@@ -49,9 +61,14 @@ export interface RunOptions {
   readonly port: TutorialPort;
   /** The chapter ended: done (its last step passed) or skipped (Skip, which ends the whole tutorial). */
   onEnd(outcome: TutorialOutcome): void;
+  /** The step to start on (a chapter its screen closed resumes where it stood). */
+  readonly startAt?: number;
+  /** The screen went away mid-chapter: the run closed at this step, nothing recorded. */
+  onClose?(index: number, stepId: string): void;
 }
 
 const DRIVE_POLL_MS = 250;
+const SCREEN_POLL_MS = 250;
 const PAD_POLL_MS = 90;
 /** Gamepad buttons (standard mapping) per screen: the Garage's menus take none; a battle binds all but the stick clicks. */
 const PAD_KEYS = {
@@ -74,15 +91,18 @@ function bodyHtml(step: TutorialStep, port: TutorialPort): string {
   return html;
 }
 
-export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): TutorialRun {
+export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose }: RunOptions): TutorialRun {
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
   const battle = chapter === 'battle';
   // the Garage's Deploy names Enter in the player's language; the card's caps match it
   const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : port.codeLabel(code));
-  let index = 0;
+  let index = Math.max(0, Math.min(startAt, Math.max(0, chapterSteps(chapter, input).length - 1)));
   let ended = false;
   let hiddenByPause = false;
+  let covered = false;
+  /** Keys whose press the Garage guard swallowed: their release goes too. */
+  const swallowed = new Set<string>();
   let stepOff: Array<() => void> = [];
   const runOff: Array<() => void> = [];
 
@@ -181,7 +201,10 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
 
   // keys: the Garage's arrows and Esc, a battle's Enter and Backspace (see the module comment)
   const onKey = (event: KeyboardEvent): void => {
-    if (ended || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (ended || covered || hiddenByPause) return; // a surface over the screen owns the keyboard while it is up
+    if (event.altKey || event.ctrlKey || event.metaKey) return; // the browser's own shortcuts
+    if (!battle && event.code === 'Tab') { trapTab(event); return; }
+    if (event.repeat) { if (!battle) swallow(event); return; }
     let handled = true;
     if (event.code === 'Enter' || event.code === 'NumpadEnter') {
       // a step that waits for a press on its control lets Enter reach it (the Garage's Deploy answers to Enter)
@@ -193,10 +216,39 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
     else if (!battle && event.code === 'ArrowLeft') api.back();
     else if (!battle && event.code === 'Escape') api.skip();
     else handled = false;
-    if (handled) { event.preventDefault(); event.stopImmediatePropagation(); }
+    if (handled) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+    // the Garage is inert under the card: only a focused card button's own keys, and Enter on a press step (the lit
+    // control's), go on; every other key (the Garage's hotkeys among them) stops here
+    if (battle) return;
+    const onCardButton = event.target instanceof HTMLButtonElement && overlay.root.contains(event.target);
+    const pressStepEnter = steps[index]?.advance.on === 'press' && (event.code === 'Enter' || event.code === 'NumpadEnter');
+    if (pressStepEnter || (onCardButton && (event.code === 'Space' || event.code === 'Enter' || event.code === 'NumpadEnter'))) return;
+    swallow(event);
   };
+  function swallow(event: KeyboardEvent): void {
+    swallowed.add(event.code);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+  const onKeyUp = (event: KeyboardEvent): void => {
+    if (!swallowed.delete(event.code)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  /** Tab walks the card's own buttons, never out to the Garage under the dim. */
+  function trapTab(event: KeyboardEvent): void {
+    const buttons = [...overlay.root.querySelectorAll<HTMLButtonElement>('.cot-tut-card button')]
+      .filter((button) => !button.hidden && getComputedStyle(button).display !== 'none');
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!buttons.length) return;
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const next = at < 0 ? 0 : (at + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length;
+    buttons[next]!.focus({ preventScroll: true });
+  }
   window.addEventListener('keydown', onKey, true);
-  runOff.push(() => window.removeEventListener('keydown', onKey, true));
+  window.addEventListener('keyup', onKeyUp, true);
+  runOff.push(() => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKeyUp, true); });
 
   // a gamepad's edges, read here (the game's own poll fires its actions only in battle)
   const padKeys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
@@ -208,7 +260,7 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
     pad?.buttons.forEach((b, i) => { if (b.pressed) held |= 1 << i; });
     const pressed = held & ~padHeld;
     padHeld = held;
-    if (!pressed || hiddenByPause) return;
+    if (!pressed || hiddenByPause || covered) return;
     if (pressed & (1 << padKeys.next)) api.next();
     else if (padKeys.back >= 0 && pressed & (1 << padKeys.back)) api.back();
     else if (pressed & (1 << padKeys.skip)) api.skip();
@@ -218,8 +270,27 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
   // a paused battle (the pause menu) hides the card; it comes back with the battle
   runOff.push(port.on('ui:pause', (payload) => {
     hiddenByPause = !!(payload as { on?: boolean } | null)?.on;
-    overlay.setHidden(hiddenByPause);
+    overlay.setHidden(hiddenByPause || covered);
   }));
+
+  // the screen the chapter belongs to (see the module comment): covered hides the card, gone closes the run where it stands
+  const checkScreen = (): void => {
+    if (ended) return;
+    const screen = port.screen(chapter);
+    if (screen === 'gone') {
+      const at = index, stepId = steps[index]?.id ?? '';
+      end(null);
+      onClose?.(at, stepId);
+      return;
+    }
+    const nowCovered = screen === 'covered';
+    if (nowCovered === covered) return;
+    covered = nowCovered;
+    overlay.setHidden(hiddenByPause || covered);
+  };
+  const screenTimer = window.setInterval(checkScreen, SCREEN_POLL_MS);
+  runOff.push(() => window.clearInterval(screenTimer));
+  runOff.push(port.on('phase:change', () => checkScreen()));
 
   const api: TutorialRun = {
     chapter,
@@ -242,5 +313,6 @@ export function runTutorialChapter({ chapter, port, onEnd }: RunOptions): Tutori
 
   if (!steps.length) { end('done'); return api; }
   render();
+  checkScreen();
   return api;
 }

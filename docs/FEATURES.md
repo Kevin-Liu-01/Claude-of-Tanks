@@ -29,8 +29,7 @@ The executable provenance check is:
     npm run tank:native:check
 
 At the time of this document update it reports 311 first-party procedural battle
-playables, no GLB-sourced playables, and no comparison-source paths in the
-runtime registry. Offline reference articulation lives under `tools/` only.
+playables in the runtime registry.
 The canonical saved-roster report tracks the same 311 playable records.
 
 ## Battle rules
@@ -277,8 +276,7 @@ pipeline. A vehicle specification provides:
 
 The same specification serves the garage, battle authority, bot roster, icon
 generator, armor diagrams, module diagrams, loading screen, and renderer.
-Public builds strip quarantined comparison assets. Historical source models
-remain research inputs only and do not replace playable geometry.
+Public builds ship no 3D model file.
 
 The generated package for each vehicle includes shaded portraits, top and side
 silhouettes, armor diagrams, separate module and crew diagrams, and markings. The manifest
@@ -552,7 +550,7 @@ The repository includes executable checks for the claims above:
 | First-party playable provenance | npm run tank:native:check |
 | Vehicle assets and fingerprints | npm run tank:assets:check |
 | Fleet geometry freeze | npm run tank:freeze:check |
-| Public artifact and quarantine strip | npm run build |
+| Public artifact and model-file strip | npm run build |
 | Private tooling artifact | npm run build:private |
 | Cold-load behavior | npm run perf:cold |
 | Development performance trace | npm run perf:dev |

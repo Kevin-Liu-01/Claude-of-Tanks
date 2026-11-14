@@ -10,7 +10,7 @@ after the complete twelve-stage/935-test release and current-main integration.
 The previous `e4ca00b6c` released fourteen recovered tank updates after
 the complete twelve-stage/933-test qualification; Type 10 X and the two
 T-90A X Shtora corrections were already released in `4aa008627`.
-Use [the current recovery boundary](tank-work-object-store-followup-20260909.md)
+Use [the current recovery boundary](../../tank-generation/history/tank-work-object-store-followup-20260909.md)
 for present disposition. The interrupted-run counts below remain historical
 evidence and must not be presented as the status of those shipped updates.
 
@@ -20,7 +20,7 @@ On 2026-09-08 the owner confirmed: **“Yes—push verified checkpoints as they
 pass.”** This authorizes coherent, verified checkpoints of the requested work
 and its necessary tests/docs directly to `origin/main`. It does not authorize
 publishing failed candidates as-is, lowering fixed quality/performance gates,
-unrelated experiments, private comparison/source models or temporary QA files.
+unrelated experiments or temporary QA files.
 Earlier batch-specific as-is exceptions are not a waiver for this work.
 
 Keep the existing [fleet acceptance contract](../../tank-generation/fleet-style-performance-priority.md)

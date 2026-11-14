@@ -7,7 +7,7 @@ ships the fourteen-tank recovery: both Leclerc X studies, Strv 122 X, A4M X,
 A5 X, KF51 X, AMX-30 X, T-72B 1987 X, B3 X, BU X, T-62MV-1 X, T-90 X,
 Burlak X and MS X. All twelve release stages and one uninterrupted 933-check
 npm lifecycle passed. Source, selected assets and final receipts are included.
-See [the frozen release certificate](fourteen-tank-recovery-release-20260910.md).
+See [the frozen release certificate](../../history/research/fourteen-tank-recovery-release-20260910.md).
 
 Type 10 X's painted fixed skirts and T-90 X/A X/Vladimir X's canonical Shtora
 were already published in `4aa008627`. The optional four-worker runner is

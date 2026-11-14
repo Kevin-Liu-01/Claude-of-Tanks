@@ -1,6 +1,4 @@
-// Boot-light combat data for the repository-authored KF51 family. The
-// recovered GRIP420 asset is retained only as an attributed authoring oracle;
-// neither it nor the retired T-80U comparison participates in this registry.
+// Boot-light combat data for the repository-authored KF51 family.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
   shell,
@@ -57,8 +55,7 @@ const KF51_SPEC = {
       tFrontMm: 750, tSideMm: 320, tRearMm: 70, mantletMm: 500,
     }),
     visual: {
-      // Bundeswehr woodland (GLB ships baked woodland — this drives the camo
-      // overlay composite + the procedural stand-in while the GLB streams)
+      // Bundeswehr woodland (this drives the camo overlay composite)
       scheme: 'nato', base: '#49543c', weather: '#515e44',
       patches: ['#23261f', '#4a3a2c'],
       marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34, patchK: 1.75,

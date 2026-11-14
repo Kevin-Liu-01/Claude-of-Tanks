@@ -605,7 +605,7 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // Line half-length 0.45 × hullLengthM matches the rendered track bottom run
 // for PROCEDURAL gear (tankFactory places idler/sprocket at ~±0.45 L; the
 // arcs curve up past them).
-// r7 TERRAIN-CONTACT HARD GATE (float side, round critique CRITICAL): GLB
+// r7 TERRAIN-CONTACT HARD GATE (float side, round critique CRITICAL): swapped
 // visuals do NOT share that layout — the swapped Abrams' rendered track
 // bottom runs only ±2.3 m (0.29 L) with the tracks curling up past ±2.5 m,
 // so a 0.45 L support line held the tank up on ~1.25 m of PHANTOM contact
@@ -775,7 +775,7 @@ const BODY_FACE_BACK_M = 0.3;
 // chassis height, but assigning pos.y to that value every fixed tick made the
 // whole vehicle trace the heightfield like a rigid magnet. Keep the support
 // value as a hard compression floor, then let the sprung mass follow it with
-// bounded droop. Procedural bogies travel 0.22 m and sourced GLB wheels travel
+// bounded droop. Procedural bogies travel 0.22 m and swapped wheels travel
 // 0.20 m, so the limits below keep the chassis inside the visual suspension
 // envelope while giving it enough inertia to round crests instead of snapping.
 const RIDE_OMEGA = 2 * Math.PI * 1.8; // 1.8 Hz sprung-mass heave
@@ -5589,7 +5589,7 @@ export function updateTank(
   const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
-  // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
+  // part of the key: a mesh swap landing on a PARKED tank (deferred stream-in)
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
   const recordReadsBefore = heightField.recordReads ?? 0;

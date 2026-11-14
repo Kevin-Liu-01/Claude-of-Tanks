@@ -1,5 +1,5 @@
-// Source-study scalar contracts shared by registration and offline comparison.
-// Importing this module never registers a vehicle or loads source geometry.
+// Measured scalar contracts shared by fleet registration and the tank-generation tools.
+// Importing this module never registers a vehicle.
 import { BRITISH_US_SOURCE_STUDIES } from './britishUsSourceStudyData.ts';
 import { EUROPE_SOURCE_STUDIES } from './europeSourceStudyData.ts';
 import { EASTERN_SOURCE_STUDIES } from './easternSourceStudyData.ts';
@@ -17,9 +17,6 @@ interface SuppliedSourceStudy {
   readonly gun: readonly [number, number, number];
   readonly muzzleZ: number;
   readonly trackWidthM: number;
-  readonly rawSha256: string;
-  readonly oracleSha256: string;
-  readonly sourceFile: string;
 }
 
 export const ADDITIONAL_SUPPLIED_SOURCE_STUDIES: readonly SuppliedSourceStudy[] = Object.freeze([
@@ -30,7 +27,6 @@ export const ADDITIONAL_SUPPLIED_SOURCE_STUDIES: readonly SuppliedSourceStudy[] 
     role: study.role === 'tank_destroyer' ? 'td' : study.role === 'light_tank' ? 'light' : study.role,
     tier: study.tier, dimensions: study.dims,
     turret: study.frame.turret, gun: study.frame.gun, muzzleZ: study.frame.muzzleZ,
-    trackWidthM: study.trackWidthM, rawSha256: study.sourceSha256,
-    oracleSha256: study.canonicalSha256, sourceFile: study.sourceFile,
+    trackWidthM: study.trackWidthM,
   })),
 ]);

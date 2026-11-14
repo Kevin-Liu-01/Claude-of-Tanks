@@ -6,7 +6,7 @@ T-90 X's canonical round red Shtora and complete rearward-stowed NSVT now pass
 the frozen fourteen-tank release: all twelve stages, 933 uninterrupted npm
 checks, types, and private/public builds. Its final geometry/assets are part
 of that checkpoint; see
-[`fourteen-tank-recovery-release-20260910.md`](fourteen-tank-recovery-release-20260910.md).
+[`fourteen-tank-recovery-release-20260910.md`](../../history/research/fourteen-tank-recovery-release-20260910.md).
 The earlier T-90A X/Vladimir X release below remains separate. Historical
 pending/failed T-90 X statements describe those earlier attempts, not this
 latest qualified checkpoint. The separate optical sensor is preserved, and

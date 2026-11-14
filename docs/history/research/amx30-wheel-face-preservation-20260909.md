@@ -27,4 +27,4 @@ Anatomy, asset refresh, source/release qualification and the changed-file
 quality scan remain outstanding. A separate eight-ID wheel-face census failed
 before evaluating its first tank because its Node harness lacked `document`.
 It provides no result for those other tanks; do not infer a fleet-wide fix.
-No temporary QA files or source models are included in this local checkpoint.
+No temporary QA files are included in this local checkpoint.

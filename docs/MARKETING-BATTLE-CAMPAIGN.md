@@ -8,7 +8,7 @@ The R3 campaign is a deterministic set of 60 in-engine 4K battle images:
   numbered 91-120.
 
 Every image is rendered by Scene Studio with current first-party
-procedural tanks and materials. Source/comparison models and generated-image
+procedural tanks and materials. Generated-image
 substitutes are not part of this path. PNG exports under `shots/` are local
 artifacts; the scene definitions and generation/grade tools are the durable
 sources.
