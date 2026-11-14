@@ -13,11 +13,11 @@
  * which loads the overlay, the steps and their strings when a chapter runs.
  */
 
-/** (272.0.1, Main 2026-11-12) The tutorial is off until its Deploy-step fix lands (272.1): a click on the dimmed screen at
- *  step 7 launched a Proving Ground battle and left the card over the loading screen. Off: no chapter starts for a new
- *  player, `/?tutorial=1` does nothing, and Settings and the Field Manual offer no Replay. The code stays; turn this
- *  back on with the fix. */
-export const TUTORIAL_ON: boolean = false;
+/** (272.0.1, Main 2026-11-12) The tutorial's switch. 272.0.1 turned it off when a click on the dimmed screen at step 7
+ *  (Deploy) launched a Proving Ground battle and left the card over the loading screen; 272.1 turns it back on with the
+ *  fix (the dim is inert, the card's lifetime follows its screen). Off: no chapter starts for a new player,
+ *  `/?tutorial=1` does nothing, and Settings and the Field Manual offer no Replay. */
+export const TUTORIAL_ON: boolean = true;
 
 export const TUTORIAL_STORAGE_KEY = 'cot.tutorial.v1';
 export const TUTORIAL_CHAPTERS = ['garage', 'battle', 'tips'] as const;

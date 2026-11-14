@@ -31,7 +31,7 @@ Only selected images have been reviewed; capture completion is not approval
 of all 120 images or proof of frame-rate improvement.
 
 Full visual review, composed anatomy/assets and targeted release qualification
-remain outstanding. No source meshes or temporary QA files are in this commit.
+remain outstanding. No temporary QA files are in this commit.
 This checkpoint must not be pushed to main as a passed release yet.
 
 ## Follow-up: repeated Leclerc pins and measured native cost

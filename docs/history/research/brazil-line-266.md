@@ -3,8 +3,8 @@
 ## Request and rulings
 
 - Owner, 2026-10-29: "lets build brazil, not taiwan, and flesh it out with all its own tanks"; to this lane the same day,
-  "EE-T1 Osório. use our tank generation specs" (with the M41 print attached: byte-identical, sha256 127ca9ed, to the print
-  the Denmark lane registered as m41a3's oracle, so the M41C rides that builder).
+  "EE-T1 Osório. use our tank generation specs" (the M41C rides the m41a3 builder the Denmark lane
+  registered).
 - Main, 2026-10-29 (DECISIONS; proposal ~/cot-lanes/brazil-line-266-evidence/PROPOSAL.md): ten ids and tiers approved, the
   tree's two branches as drawn, markings and paint by era; wheeled vehicles out (the owner's own call); two heads.
   - Head A (this branch's first READY): the indigenous line, the tree, Brazil as a team country: x1_pioneiro I (root),

@@ -15,6 +15,9 @@
   transition:opacity var(--dur-base) var(--ease-enter),transform var(--dur-base) var(--ease-move);}
 .cot-tut[data-dim='clear'] .cot-tut-spot{box-shadow:var(--tutorial-spot-clear);}
 .cot-tut.has-spot .cot-tut-spot{opacity:1;}
+/* the dim's blockers (tutorialOverlay.ts tile): inert ground round the lit control's hole */
+.cot-tut-block{position:fixed;left:0;top:0;pointer-events:auto;touch-action:none;}
+.cot-tut-block[hidden]{display:none;}
 .cot-tut-pulse{position:absolute;inset:0;border-radius:inherit;box-shadow:var(--tutorial-pulse);opacity:0;}
 .cot-tut-pulse.is-pulsing{animation:cot-tut-pulse var(--dur-stage) var(--ease-enter) 1 both;}
 @keyframes cot-tut-pulse{0%{opacity:0;transform:scale(1.08);}45%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(1);}}
@@ -32,7 +35,7 @@
 .cot-tut-bar i{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transition:transform var(--dur-base) var(--ease-move);}
 .cot-tut-media{margin:0;border-radius:var(--r1);overflow:hidden;background:var(--surface-scene);aspect-ratio:16 / 9;}
 .cot-tut-media[hidden]{display:none;}
-.cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;}
+.cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
 .cot-tut-body{margin:0;font-size:var(--fs-14);line-height:1.5;color:var(--ink-2);}
 .cot-tut-body .cot-c-kbd{margin:0 1px;}

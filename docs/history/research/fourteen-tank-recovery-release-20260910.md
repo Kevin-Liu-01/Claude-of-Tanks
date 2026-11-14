@@ -30,7 +30,7 @@ The earlier failed attempts remain documented rather than relabeled successful.
 
 One composed release covers all fourteen tanks. It does not repeat the entire
 fleet suite fourteen times, remove assertions, waive failed geometry, or ship
-source models and temporary QA. The ordinary FIFO lease remains in force.
+temporary QA. The ordinary FIFO lease remains in force.
 
 ## Bounded source scope
 
@@ -50,7 +50,7 @@ source models and temporary QA. The ordinary FIFO lease remains in force.
 These changes do not finish country-matched track thickness, all fleet
 triangle budgets, every fender, or the 59-vehicle style/performance backlog.
 T-72B3M, failed fitted T-80U/T-90A pilots, and inferred Merkava station counts
-are not silently included. Source models and temporary QA are excluded.
+are not silently included. Temporary QA is excluded.
 
 ## Retained first composed release
 

@@ -63,7 +63,7 @@ try {
     assert.notEqual((await get('/missing.txt')).status, 403, 'a missing path is left to Vite');
     assert.equal(refused.length, 7, 'favicon and missing paths are not refusals');
   });
-  // exact files: a page keyed per id (the geometry gate's oracles) is served those files and no sibling
+  // exact files: a page keyed per id (the geometry gate) is served those files and no sibling
   const exactRefused = [];
   await serve([servedPublicOnly({ dirs: ['fonts'], files: ['/models/a/oracle.glb'] }, (file) => exactRefused.push(file))], async (get) => {
     assert.deepEqual(await get('/models/a/oracle.glb'), { status: 200, text: 'oracle' }, 'a listed file is served');

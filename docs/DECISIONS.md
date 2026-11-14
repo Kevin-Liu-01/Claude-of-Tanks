@@ -13,8 +13,8 @@ when future work must preserve a non-obvious choice or deliberately reverse it.
 
 Claude of Tanks is a first-party browser armored-combat game, not a loader for
 third-party playable models. Every playable vehicle is procedural runtime
-geometry owned by this repository. Comparison meshes may support authoring and
-review, but public builds and gameplay do not load them.
+geometry owned by this repository. Comparison bases belong to the tank-generation
+tooling alone: no test, receipt, gate, public build or gameplay path reads one.
 
 Multicrew is not a planned mode. One player owns one vehicle input seat. New
 multiplayer work should improve rooms, teams, objective modes, persistence,

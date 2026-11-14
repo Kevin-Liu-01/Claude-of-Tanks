@@ -349,12 +349,12 @@ the complete combat-anatomy and targeted tank release sequence.
 
 The owner explicitly chose: keep the armed version and compare the roof gun
 against its documented photo reference. Do not qualify it against the unarmed
-supplied model. Current main already contains commits describing that decision;
+reference. Current main already contains commits describing that decision;
 reconcile the remaining dirty K1 worktree rather than asking again.
 
 ### M1A2 SEP v2 X
 
-The owner explicitly chose the supplied model's roof equipment and antennas
+The owner explicitly chose the reference's roof equipment and antennas
 over the conflicting published `3.44 m` height. Preserve that target in the
 dimension/source receipt. Current main contains the target-selection fix;
 inspect the one remaining unique source-frame commit before deciding whether
@@ -368,8 +368,7 @@ gear, correct real-world return rollers, country-appropriate complete visible
 track stock, closed chassis/fender/skirt interfaces while retaining lower wheel
 visibility, correct camouflage/material ownership, proper bores and mounted
 guns, appropriate Shtora equipment, and measured HIGH/LOW plus actual selection
-performance. Supplied models remain comparison inputs only; playable vehicles
-stay first-party procedural.
+performance. Playable vehicles stay first-party procedural.
 
 Every geometry/profile release still requires:
 

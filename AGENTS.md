@@ -133,8 +133,10 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
   steps it on the page and never reaches `src/mp`; a room's authority runs the same step. Guards:
   `tools/driver-boundaries.selftest.mjs`, `src/sim/driverStepParity.selftest.mjs`.
 - No per-frame allocation in established hot loops; reuse scratch state.
-- All playable tanks are first-party procedural runtime models. Source GLBs
-  are comparison/authoring inputs, never a playable loading path.
+- All playable tanks are first-party procedural runtime models. Outside 3D models live only inside the
+  tank-generation tooling (`docs/tank-generation/`) as comparison bases while a lane builds a tank: no test,
+  receipt or gate reads one (`npm run gen:checks` runs the comparison tools' own checks by hand), and no public
+  page, doc or string names one.
 - Every first-party file and asset is attributed to Kevin B. Liu by
   `NOTICE.md`; every playable spec inherits the named authorship record from
   `src/authorship.ts`. Record third-party exceptions in `docs/ATTRIBUTION.md`
@@ -171,7 +173,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 - Any playable tank addition or geometry/profile change regenerates with
   `npm run tank:regen:changed` (`-- --ids=<your ids>` while main has no
   `release/fingerprints.tsv`: without it a plain run refuses): every fleet generator (controls, fills, seats,
-  spare-track, anatomy, marking, ledger, gun lines, centering, icons, the geometry gate) runs only
+  spare-track, anatomy, marking, ledger, gun lines, centering, icons, and the generation-only comparison records) runs only
   on the ids whose inputs or outputs moved, in dependency order, then the world
   steps (wreck plan, collision and trench shards) only on the maps whose config,
   world core or wreck donors moved, until the final resolve is empty

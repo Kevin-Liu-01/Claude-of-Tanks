@@ -674,8 +674,9 @@ integrator's pre-deploy light pass is `npm run typecheck` (with lint), `npm run 
 Lanes get lint through typecheck, or run `npm run lint` on its own.
 
 `npm run tank:release:check -- --ids=<ids> [--gate]` runs two stages (`tools/tank-release-plan.mjs`):
-the load-sensitive browser scoring (standard, sealed, source fidelity) one step at a time, then the
-other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
+the load-sensitive browser scoring (standard, sealed) one step at a time, then the
+other probes four at a time. The silhouette comparison is a tank-generation tool a lane runs by hand
+(`npm run gen:checks`, `npm run gen:fidelity`, `npm run gen:repin`); no gate or receipt reads an outside model. It has two modes (2026-10-16, test-speed R8e):
 
 | Mode | Command | Runs | Who runs it |
 |---|---|---|---|
@@ -955,8 +956,8 @@ Build the public artifact:
 
     npm run build
 
-The public build runs Vite with public mode and then strips quarantined
-comparison assets.
+The public build runs Vite with public mode, then `tools/strip-nc-assets.mjs`
+deletes any 3D model file left in the output; the runtime loads none.
 
 Build the private artifact:
 
@@ -1239,7 +1240,7 @@ fails if a page enters a step key (a step that really reads one is listed in its
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
-spare-track keep-out), then the geometry ledger, the manual reference, centering, icons and the geometry gate (capture
+spare-track keep-out), then the geometry ledger, the manual reference, centering, icons and the geometry gate's generation-only comparison records (capture
 lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
@@ -1263,9 +1264,14 @@ generated spec data, index/loader maps), the builder groups on the id's spec cha
 the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
 writes. An id re-runs when its row is missing or either key moved; a hand edit to one output row marks that id.
 Beside the keys the table keeps the component lines the resolver names when a key moves (a step's tool, the core, the
-groups, the rows, the roster). A step's own lines are written only when it runs, and the shared ones only by a chain
+groups, the rows). A step's own lines are written only when it runs, and the shared ones only by a chain
 that selects every step (268). A partial chain (`--steps`, `--no-gpu`, `--no-world`) leaves every step it did not run
-as its keys were taken, so a step whose tool moved stays due under its true reason.
+as its keys were taken, so a step whose tool moved stays due under its true reason. The roster is a step's own line
+(272): `roster <step> <hash>`, written when the step runs on the whole fleet. A single shared roster line used to stay
+behind in a partial chain while the keys moved to the new roster, so every pass resolved "full 311 (roster)" and the
+CPU fixpoint never settled. An `--ids` run leaves its step's roster as it was, and judges its own ids by their keys
+(`resolveChanged` `only`); the other ids stay due as the roster until a plain chain runs the step whole-fleet. The
+chain fails if its final resolve marks any id due without a reason.
 
 It fails closed: an undeclared directory read, child process, computed import or whole-environment read in a step's
 closure runs that step on every id; a roster change, a missing manifest, an unreadable table or an output file edited
@@ -1318,28 +1324,28 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
-- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`, or with a page
+- A tool that cannot run an id in this checkout (the gate without that id's reference, `--absent=skip`, or with a page
   error that keeps the previous row) names it, with its reason, in the report its step's `skipped` flag asks for. The
   chain records the other ids and stamps each named one whose reason the step's `stamp` reads (268, `gateStamp` in
-  `tools/changed-only/steps.mjs`): an absent or unpinned oracle is keyed on that file's presence and bytes and the
+  `tools/changed-only/steps.mjs`): an absent or unpinned reference is keyed on that file's presence and bytes and the
   step's tool, any other page error on the id's whole input key. A stamped id reads current, in the chain and in
-  `fresh.selftest.mjs`, until that key moves (the oracle appears, a fix lands), and never over an output edited since
+  `fresh.selftest.mjs`, until that key moves (the reference appears, a fix lands), and never over an output edited since
   its last run; a reason the step cannot read gets no stamp, so the id stays due. The chain does not retry the id or
   fail, and names any still due in the final resolve; `tank:changed --explain` says why. A stamp is the one key that
-  reads a gitignored file's presence: it says the id cannot run here, so a checkout holding the oracle finds it due and
+  reads a gitignored file's presence: it says the id cannot run here, so a checkout holding the reference finds it due and
   clears it.
 - The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
   `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
   (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran
   centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
-  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's references
   (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`), with the
   `graft: { path, sha256 }` beside it where a certificate seats a second source in the first (t90a_burlak_proto): the file's bytes
   where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
   did, and different bytes at the path re-run that id alone. Because the gate writes the row its own key reads, a run
   stamps that row as it recorded it (`stampedInKeys`: the recorded sha256s), not as it stood before the run. The
-  pre-run stamp left every id whose record gained or moved its oracle due a second time; 267's bootstrap gated 118 ids
+  pre-run stamp left every id whose record gained or moved its reference due a second time; 267's bootstrap gated 118 ids
   twice. A ledger a step only checks each id against
   (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
   as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
@@ -1507,13 +1513,10 @@ See GALLERY.md.
 The public artifact must:
 
 - contain all playable first-party vehicles;
-- exclude quarantined non-commercial comparison assets;
+- contain no 3D model file;
 - preserve the game, home, docs, and Studio routes intended for deployment;
 - keep non-game routes from preloading the game graph;
 - contain no development trace instrumentation.
-
-The private artifact may retain authoring/comparison inputs used by local
-verification.
 
 ## Documentation changes
 

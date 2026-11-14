@@ -42,6 +42,5 @@ export const IMAGE_FIT_CUTOUTS: readonly ImageFitCutout[] = Object.freeze([
   // icons and marks
   { owner: GARAGE_CSS, key: '.cot-header-nav .nv .nvi', holds: "a destination's icon" },
   { owner: GARAGE_CSS, key: '.cot-mobile-nav-menu button img,.cot-mobile-nav-menu button svg', holds: "a menu item's icon" },
-  { owner: GARAGE_CSS, key: '.cot-locale-credit img', holds: "the translation credit's logo" },
   { owner: 'src/ui/transition.ts', key: '.cot-trans .mark', holds: 'the brand mark' },
 ]);

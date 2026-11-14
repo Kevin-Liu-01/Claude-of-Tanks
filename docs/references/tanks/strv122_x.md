@@ -118,7 +118,7 @@ rather than fabricated; that older result is not the final corrected shape's
 qualification receipt.
 
 The subsequent bounded cupola correction and exact preservation evidence are
-in [`strv122-x-supplied-cupola.md`](../../history/research/strv122-x-supplied-cupola.md).
+in [`strv122-x-supplied-cupola.md`](../../tank-generation/history/strv122-x-supplied-cupola.md).
 Its actual high/low source-surface, negative-air and positive-contact tests pass,
 and fresh identical-camera close-ups resolve the missing non-weapon assembly.
 The opposite weapon-cupola rim and receiver still have documented medium-form

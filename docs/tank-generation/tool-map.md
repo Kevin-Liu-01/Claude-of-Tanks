@@ -248,8 +248,10 @@ scratch output, not a loophole for an incomplete production manifest.
 [tank-release-plan.mjs](../../tools/tank-release-plan.mjs) is the current
 executable release composition: anatomy freshness, presentation centering,
 module alignment/hits, assets, duplicate tracks, muzzle bore, barrel circularity,
-strict source fidelity, fresh geometry/standard checks, full `npm test`, and
-private build. It stops at the first failure. Public build and attribution
+the standard and sealed checks, full `npm test`, and private build. It stops at
+the first failed stage. It reads no outside model (owner, 2026-11-12): the source
+comparison and silhouette fidelity commands above are build references a lane
+runs by hand, never release steps. Public build and attribution
 above are additional checks; never describe later skipped stages as passed.
 
 Lane mode (`--lane`, 2026-10-16) is the same composition without the embedded

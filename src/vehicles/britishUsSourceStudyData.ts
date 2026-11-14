@@ -1,5 +1,4 @@
-// Boot-light source datums. These records do not register or mutate fleet specs.
-// The associated GLBs are owner-supplied local comparison inputs only.
+// Boot-light measured datums. These records do not register or mutate fleet specs.
 import type { FleetDimensions } from './specContracts.ts';
 
 interface SourceStudyRecord {
@@ -14,10 +13,7 @@ interface SourceStudyRecord {
   readonly gun: readonly [number, number, number];
   readonly muzzleZ: number;
   readonly trackWidthM: number;
-  readonly rawSha256: string;
-  readonly oracleSha256: string;
   readonly groundTranslationY: number;
-  readonly sourceFile: string;
 }
 
 export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.freeze([
@@ -32,9 +28,6 @@ export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.fr
     },
     turret: [.175, 1.965, -.42], gun: [.114, 2.23, .70], muzzleZ: 3.0793,
     trackWidthM: .453, groundTranslationY: .005,
-    rawSha256: '5bb512734139e4beaeaa3775bdc68913431a555a2d1d46f395a47a8fa0a5ea45',
-    oracleSha256: 'e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04',
-    sourceFile: 'fv510_warrior_milan_war_thunder.glb',
   },
   {
     id: 'griffin50mm', name: 'Griffin 50 mm', donor: 'spz_puma',
@@ -46,9 +39,6 @@ export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.fr
     },
     turret: [0, 2.07, -.36], gun: [0, 2.60, .74], muzzleZ: 3.67194,
     trackWidthM: .575, groundTranslationY: .029,
-    rawSha256: 'ab4daa4ba8eed3eff25c77c35bd7082a2de7d188bd0c87e6fc73c57e7076bfca',
-    oracleSha256: '62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34',
-    sourceFile: 'griffin_50mm_armored_warfare.glb',
   },
   {
     id: 'ajax', name: 'Ajax', donor: 'cv90', nation: 'UK', role: 'ifv', tier: 9,
@@ -59,8 +49,5 @@ export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.fr
     },
     turret: [-.05, 2.10, -1.05], gun: [0, 2.506, .67], muzzleZ: 3.099,
     trackWidthM: .597, groundTranslationY: .001,
-    rawSha256: '5b2759b557a9d02af059dcf0e03eb6b41bdc6e7ecb62da17c4a8f224e48581f1',
-    oracleSha256: '506a31e984730c4ab6a398a4f1305a2fe6220960699842d8ed62ec0b4a2658f0',
-    sourceFile: 'ajax_armored_warfare.glb',
   },
 ]);

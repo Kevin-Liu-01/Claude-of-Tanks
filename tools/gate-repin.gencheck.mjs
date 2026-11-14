@@ -1,4 +1,4 @@
-// gate:repin's plan: chunks (one capture ticket each), the first failing chunk stops the rest, and the printed dims rows.
+// gen:repin's plan: chunks (one capture ticket each), the first failing chunk stops the rest, and the printed dims rows.
 // The guards it relies on (geometry-gate.mjs --repin) are geometry-gate-policy.selftest.mjs's missingOraclesError and
 // mergeLedgerRow.
 import assert from 'node:assert/strict';

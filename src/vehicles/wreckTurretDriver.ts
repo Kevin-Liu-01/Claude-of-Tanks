@@ -268,7 +268,7 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
     _q.set(framePose[3], framePose[4], framePose[5], framePose[6]);
     _s.setScalar(scale);
     _m.compose(_p, _q, _s);
-    // the drawn group's seat within the frame (a GLB re-seat) and its own fitted scale
+    // the drawn group's seat within the frame (a model re-seat) and its own fitted scale
     _off.compose(seatOffset, seatQuat, turretScale);
     _m.multiply(_off);
     _inv.copy(rootWorld(_rootWorld)).invert();

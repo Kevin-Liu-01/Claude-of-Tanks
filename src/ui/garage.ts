@@ -53,6 +53,7 @@ import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { CouchChunkError } from '../app/couchOpener.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
+import { gtSymbolSvg } from './gtSymbol.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconId, shellIconSVG } from './shellIcons.ts';
@@ -727,7 +728,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span${currentLocale === 'zh-CN' ? ' class="is-current"' : ''}>中文</span></span></button>` +
     `<a class="cot-locale-credit" href="https://generaltranslation.com/" target="_blank" rel="noreferrer" ` +
     `aria-label="${t('publicNav.language.creditEyebrow')} ${t('publicNav.language.creditName')}">` +
-    `<img src="/brand/partners/general-translation.png" alt="" draggable="false">` +
+    `${gtSymbolSvg(30, 'cot-gt-symbol')}` +
     `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
     `<strong>${t('publicNav.language.creditName')}</strong></span></a></div>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +

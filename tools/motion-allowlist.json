@@ -42,34 +42,6 @@
       "measured": "LOOP_S 1.2 s. Boot r18 blocked-thread probe: the mark kept moving through a 2 s main-thread block, 83 of 84 frames presented (brand-ui-240-evidence/boot-live/boot-mark-main-thread-blocked-2s.mp4)."
     },
     {
-      "rule": "raster",
-      "file": "404.html",
-      "where": "/brand/partners/general-translation.png",
-      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
-      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
-    },
-    {
-      "rule": "raster",
-      "file": "site/home.html",
-      "where": "/brand/partners/general-translation.png",
-      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
-      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
-    },
-    {
-      "rule": "raster",
-      "file": "src/presentation/publicShell.ts",
-      "where": "/brand/partners/general-translation.png",
-      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
-      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
-    },
-    {
-      "rule": "raster",
-      "file": "src/ui/garage.ts",
-      "where": "/brand/partners/general-translation.png",
-      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
-      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 30 x 30 CSS px in the Garage language credit (3.2x the box, crisp to DPR 3)."
-    },
-    {
       "rule": "duration",
       "file": "src/ui/hud.ts",
       "where": ".cot-prebattle .n.tick~.ring .arc",

@@ -55,7 +55,7 @@ activity remains a limitation; no favorable smoothness threshold is invented.
 The initial browser wrapper stopped before acquisition on the incorrect
 `challenger3` control identifier; R2 uses registered `challenger_3`.
 
-Source models, temporary probes, build outputs and QA captures remain outside
+Temporary probes, build outputs and QA captures remain outside
 the publication set. The scoped construction change is published; see the deployment receipt below.
 
 ## Native selection and independent review

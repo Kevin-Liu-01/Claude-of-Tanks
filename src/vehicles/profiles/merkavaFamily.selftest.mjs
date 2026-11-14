@@ -1,20 +1,20 @@
 // Release 262 (the owner 2026-10-27: "redesign and clean up the merkava mk 1b, 2b, 2d, baz, mk 3c, and mk 4b, completely
-// new with all oldness removed and we will need their gun assemblies back and beautiful"; then, of the supplied Mk 1B,
-// 2B, 2D, 3C, 3D and 4B source models: "need to match the geometry of these"): the six marks the Merkava family builder
-// draws (profiles/merkava.ts over merkavaFamilyMarks.ts and the source fit, merkavaFamilySource.ts). Each mark, at HIGH
+// new with all oldness removed and we will need their gun assemblies back and beautiful"; then, of the Mk 1B,
+// 2B, 2D, 3C, 3D and 4B references: "need to match the geometry of these"): the six marks the Merkava family builder
+// draws (profiles/merkava.ts over merkavaFamilyMarks.ts and the measured fit, merkavaFamilySource.ts). Each mark, at HIGH
 // and LOW detail:
-//  - runs six road wheels a side at the source's wheel stations, its dished faces riding them under travel, and the
-//    source's return rollers;
-//  - draws its gun to the source's muzzle (the M64 105 mm on the Mk 1 and Mk 2, the MG25x 120 mm on the Mk 3 and Mk 4),
+//  - runs six road wheels a side at the measured wheel stations, its dished faces riding them under travel, and the
+//    measured return rollers;
+//  - draws its gun to the measured muzzle (the M64 105 mm on the Mk 1 and Mk 2, the MG25x 120 mm on the Mk 3 and Mk 4),
 //    its barrel a sleeved tube with its evacuator, its mantlet and coaxial port riding rig_gun and elevating with it, the
-//    12.7 mm over the gun where the source mounts one, the barrel itself recoiling (rig_recoil);
-//  - registers the spec's two removable turret packages over the source's add-on turret armour; stripping both leaves the
+//    12.7 mm over the gun where the mark mounts one, the barrel itself recoiling (rig_recoil);
+//  - registers the spec's two removable turret packages over the measured add-on turret armour; stripping both leaves the
 //    cast shell (the permanent backing) whole, and a reset restores them;
 //  - carries its bustle basket's measured floor with the fleet's chests and cans on it inside its rails, the basket's
 //    volume reserved from the decor;
 //  - publishes the family receipt (merkavaFamilyReceipt).
 // It replaces the old pile's fit receipts (merkava1bFit, merkava2Fit, merkava3Fit, merkavaGunCradle, merkavaRunningGear,
-// merkavaEraFinish, merkava4bGeometry), which pinned the retired oracle-fit geometry.
+// merkavaEraFinish, merkava4bGeometry), which pinned the retired fit geometry.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';

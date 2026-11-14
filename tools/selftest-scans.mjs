@@ -134,7 +134,6 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/vehicles/weaponFinish.selftest.mjs': lists('src/vehicles/profiles/*.ts'),
   'src/world/civic/civicPlans.selftest.mjs': lists('src/world/civic/*.ts'),
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
-  'tools/gate-oracle-pins.selftest.mjs': lists('docs/geometry-gate/*.json'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
@@ -294,6 +293,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/asset-provenance.selftest.mjs': outside('the fixture repository its digest-cache cases create under tmpdir'),
   'tools/genHeroCards.mjs': outside('its own output directory (--out, .qa-dev/hero-cards by default): the layers it wrote, for tank-layers.json'),
   'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
+  'tools/strip-nc-assets.mjs': outside('the build output it strips (dist/: every 3D model file left there, owner 2026-11-12)'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),
   'tools/changed-only/resolver.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),
   'tools/changed-only/world.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),

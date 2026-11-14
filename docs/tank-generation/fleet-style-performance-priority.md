@@ -79,8 +79,8 @@ not a current release queue. Do not repeat it without checking ancestry.
 - Merkava Mk3D X/Mk4 X fitted rollers are published in `8ff6d7cf6`, and
   T-14 X rollers are published through `ff0f639d9` (geometry `a681223d4`).
   Their release records are
-  [Merkava](../history/research/merkava-roller-release-20260910.md) and
-  [T-14](../history/research/t14-roller-release-20260910.md). Do not recover the old
+  [Merkava](history/merkava-roller-release-20260910.md) and
+  [T-14](history/t14-roller-release-20260910.md). Do not recover the old
   mixed K2/T-14 branch wholesale: K2 X was excluded for its 90.8137 source
   score, below 92. These publications do not complete their track-gauge work.
 - T-90A X's upper fender closure, selected assets and final verification are
@@ -91,9 +91,9 @@ not a current release queue. Do not repeat it without checking ancestry.
   reduces redundant folded-sheet tessellation
   and attaches its existing six rollers using shared spindle primitives.
   It is tracked separately in
-  [the Type 10 cost/contact checkpoint](../history/research/type10-x-cost-contact-20260910.md).
+  [the Type 10 cost/contact checkpoint](history/type10-x-cost-contact-20260910.md).
   That checkpoint retained a 35 mm carrier. The subsequent
-  [owner-approved 90 mm follow-up](../history/research/type10-x-90mm-candidate-20260910.md)
+  [owner-approved 90 mm follow-up](history/type10-x-90mm-candidate-20260910.md)
   now matches the original Type 10's stock thickness, keeps the axles fixed,
   uses closed paired-wheel primitives and six fitted return rotors, and passes
   HIGH/LOW moving-contact and skirt/support checks. It reduces selected,
