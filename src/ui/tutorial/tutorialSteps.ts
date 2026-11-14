@@ -32,9 +32,10 @@ export type TutorialAdvance =
   // ── 273: the training battle's kinds (each heard on the bus or read from the port; tutorialRunner.ts arm) ──────────
   /** The player's tank stands inside the step's guide marker (its ring's radius, or this one). */
   | { readonly on: 'reach'; readonly radiusM?: number }
-  /** The player's view: the third-person camera (pulled back at least this far) or the gunner's sight (at least this zoom),
-   *  or free look held; a step that names no mode takes either. */
-  | { readonly on: 'camera'; readonly mode?: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly orbitAtLeastM?: number;
+  /** The player's view: the third-person camera (pulled back this much further than it stood when the step began: the
+   *  chase framing sets its own distance per screen, so no fixed distance means "pulled back"), the gunner's sight (at
+   *  least this zoom), or free look held; a step that names no mode takes either. */
+  | { readonly on: 'camera'; readonly mode?: 'third' | 'sight'; readonly zoomAtLeast?: number; readonly orbitGrowM?: number;
       readonly freeLook?: boolean }
   /** The player stands still inside the step's guide marker (a bush) this long. */
   | { readonly on: 'hidden'; readonly stillS: number }
@@ -213,11 +214,10 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.turretPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
     title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.bodyPad', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
     guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
-  // S4: the views: pull the camera back, the gunner's sight, its zoom, free look
+  // S4: the views: pull the camera back (a keyboard's wheel: a touch pinch never moves the chase camera, touchControls.ts,
+  // and a pad has no zoom binding until the controller-parity slice), the gunner's sight, its zoom, free look
   { id: 'training.orbit', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
-    title: 'tutorial.training.orbit.title', body: 'tutorial.training.orbit.body', advance: { on: 'camera', mode: 'third', orbitAtLeastM: 18 } },
-  { id: 'training.orbitTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
-    title: 'tutorial.training.orbit.title', body: 'tutorial.training.orbit.bodyTouch', advance: { on: 'camera', mode: 'third', orbitAtLeastM: 18 } },
+    title: 'tutorial.training.orbit.title', body: 'tutorial.training.orbit.body', advance: { on: 'camera', mode: 'third', orbitGrowM: 5 } },
   { id: 'training.sight', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
     title: 'tutorial.training.sight.title', body: 'tutorial.training.sight.body', advance: { on: 'camera', mode: 'sight' },
     keys: { sight: 'sniperToggle' } },

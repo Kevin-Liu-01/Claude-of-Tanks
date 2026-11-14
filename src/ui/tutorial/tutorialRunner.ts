@@ -238,11 +238,14 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       }
     } else if (advance.on === 'camera') {
       let heldSince = 0;
+      /** The third-person camera's distance when the step began (its first read in that view). */
+      let orbitFrom: number | null = null;
       poll(() => {
         const view = port.view?.();
         if (!view) return false;
-        const modeOk = (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity)
-          && (view.mode !== 'third' || view.orbitM >= (advance.orbitAtLeastM ?? -Infinity));
+        if (view.mode === 'third') orbitFrom ??= view.orbitM;
+        const grown = advance.orbitGrowM == null || (view.mode === 'third' && orbitFrom != null && view.orbitM >= orbitFrom + advance.orbitGrowM);
+        const modeOk = (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity) && grown;
         if (!advance.freeLook) return modeOk;
         if (!view.freeLook) { heldSince = 0; return false; }
         heldSince ||= performance.now();

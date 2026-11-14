@@ -93,25 +93,30 @@ try {
     const s = window.__DEBUG.game.player.state;
     return { x: s.pos.x, z: s.pos.z, yaw: s.yaw, gun: s.yaw + (s.turretYaw ?? 0) };
   });
+  /** The next step once the showing one moves on: its id, null when the chapter has ended (no card), undefined on a timeout. */
   async function waitChange(from, ms) {
     const until = Date.now() + ms;
     for (;;) {
       const now = await stepNow();
       if (now !== from) return now;
-      if (Date.now() > until) return null;
+      if (Date.now() > until) return undefined;
       await sleep(150);
     }
   }
   // the battle's pointer: a desktop player clicks into the battle (pointer lock); a phone has no lock
   if (!touch) { await page.mouse.move(vp.width / 2, vp.height * 0.6); await page.mouse.click(vp.width / 2, vp.height * 0.6); await sleep(300); }
 
-  /** Drive into a marker: hold forward, steer toward it with the keys (a phone: the stick), until the step moves on. */
+  /** Drive into a marker: hold forward, steer toward it with the keys (a phone: one finger held on the stick, moved by
+   *  CDP touch events), until the step moves on. */
   async function driveTo(marker, stepId) {
-    const forward = 'KeyW';
-    if (!touch) await page.keyboard.down(forward);
     let steer = null;
     const joy = touch ? await page.$('.cot-touch .joy') : null;
     const box = joy ? await joy.boundingBox() : null;
+    const cdp = touch ? await page.createCDPSession() : null;
+    const cx = box ? box.x + box.width / 2 : 0, cy = box ? box.y + box.height / 2 : 0, r = box ? box.width * 0.4 : 0;
+    const finger = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 7 }] });
+    if (touch) await finger('touchStart', cx, cy);
+    else await page.keyboard.down('KeyW');
     try {
       const until = Date.now() + 90_000;
       while (Date.now() < until) {
@@ -120,11 +125,9 @@ try {
         const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.yaw);
         // a bearing that grows turns toward +x, the hull's left
         const want = err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null;
-        if (touch && box) {
-          const cx = box.x + box.width / 2, cy = box.y + box.height / 2, r = box.width * 0.4;
-          const sx = want === 'KeyA' ? -0.6 : want === 'KeyD' ? 0.6 : 0;
-          await page.touchscreen.touchStart(cx, cy).catch(() => {});
-          await page.touchscreen.touchMove(cx + sx * r, cy - r * 0.9).catch(() => {});
+        if (touch) {
+          const sx = Math.max(-0.8, Math.min(0.8, -err * 1.5));
+          await finger('touchMove', cx + sx * r, cy - r * 0.9);
         } else if (want !== steer) {
           if (steer) await page.keyboard.up(steer);
           if (want) await page.keyboard.down(want);
@@ -135,21 +138,22 @@ try {
       return false;
     } finally {
       if (steer) await page.keyboard.up(steer);
-      if (!touch) await page.keyboard.up(forward);
-      if (touch) await page.touchscreen.touchEnd().catch(() => {});
+      if (touch) { await finger('touchEnd', cx, cy).catch(() => {}); await cdp.detach().catch(() => {}); }
+      else await page.keyboard.up('KeyW');
     }
   }
 
-  /** Turn the gun onto a marker: the mouse (a finger) by small moves, the sign learnt from the gun's answer. */
+  /** Turn the gun onto a marker: the mouse (a finger) by small moves, the sign learnt from the gun's answer once the
+   *  turret has caught up with the sight (it traverses at its own rate behind the camera). */
   async function aimAt(marker, stepId) {
-    let sign = 1;
-    const until = Date.now() + 40_000;
+    let sign = 1, worse = 0;
+    const until = Date.now() + 60_000;
     while (Date.now() < until) {
       if ((await stepNow()) !== stepId) return true;
       const p = await pose();
       const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.gun);
-      if (Math.abs(err) < 0.05) { await sleep(300); continue; }
-      const dx = Math.max(-120, Math.min(120, -err * 260)) * sign;
+      if (Math.abs(err) < 0.06) { await sleep(300); continue; }
+      const dx = Math.max(-90, Math.min(90, -err * 180)) * sign;
       if (touch) {
         const x = vp.width * 0.62, y = vp.height * 0.4;
         await page.touchscreen.touchStart(x, y); await page.touchscreen.touchMove(x + dx, y); await page.touchscreen.touchEnd();
@@ -157,10 +161,11 @@ try {
         await page.mouse.move(vp.width / 2 + dx, vp.height * 0.6, { steps: 4 });
         await page.mouse.move(vp.width / 2, vp.height * 0.6, { steps: 1 });
       }
-      await sleep(250);
+      await sleep(800);
       const after = await pose();
       const errAfter = wrap(Math.atan2(marker.x - after.x, marker.z - after.z) - after.gun);
-      if (Math.abs(errAfter) > Math.abs(err) + 0.01) sign = -sign;
+      worse = Math.abs(errAfter) > Math.abs(err) + 0.02 ? worse + 1 : 0;
+      if (worse >= 2) { sign = -sign; worse = 0; }
     }
     return false;
   }
@@ -210,16 +215,20 @@ try {
       await page.keyboard.up('CapsLock');
     }
     const next = await waitChange(now, id === 'training.rollout' ? 10_000 : 30_000);
-    const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== null };
+    const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== undefined,
+      ended: next === null };
     report.steps.push(entry);
-    console.log(`[training] ${now}: ${how} → ${next === null ? 'STUCK' : 'moved on'} (${entry.seconds} s)`);
-    if (next === null) break;
-    now = next === undefined ? null : next;
-    if (now === null) break;
+    console.log(`[training] ${now}: ${how} → ${next === undefined ? 'STUCK' : next === null ? 'chapter done' : 'moved on'} (${entry.seconds} s)`);
+    if (next === undefined || next === null) break;
+    now = next;
   }
+  // the chapter ended on its last step, and the battle goes on (the card is gone, nothing over the field)
+  report.chapterEnded = report.steps.at(-1)?.ended === true && report.steps.at(-1)?.step === stepsFor.at(-1)?.id;
+  report.leftOver = await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
   const expected = stepsFor.map((s) => s.id);
-  report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id));
+  report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id)) && report.chapterEnded
+    && report.leftOver === 0;
   assert.ok(report.ok, `every step moved on through the game's input: ${JSON.stringify(report.steps.map((s) => [s.step, s.advanced]))}`);
 } catch (error) {
   report.ok = false;

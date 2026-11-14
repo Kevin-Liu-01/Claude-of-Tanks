@@ -6010,7 +6010,6 @@
   "tutorial.training.turret.bodyPad": "右摇杆转动炮塔；左摇杆转动车身。不开车，把炮口对准 1 号靶牌。",
   "tutorial.training.orbit.title": "把镜头拉远",
   "tutorial.training.orbit.body": "滚动鼠标滚轮把镜头拉远，看清周围。再往回滚就能拉近。",
-  "tutorial.training.orbit.bodyTouch": "在屏幕上双指捏合，把镜头拉远，看清周围。",
   "tutorial.training.sight.title": "使用炮手瞄准镜",
   "tutorial.training.sight.body": "按 {sight} 进入炮手瞄准镜。它能看得很远，让你瞄准某一块装甲。再按一次退出。",
   "tutorial.training.sight.bodyTouch": "点击瞄准镜按钮进入炮手瞄准镜。它能看得很远，让你瞄准某一块装甲。",

@@ -6010,7 +6010,6 @@
   "tutorial.training.turret.bodyPad": "The right stick turns the turret; the left stick turns the hull. Point the gun at board 1 without driving.",
   "tutorial.training.orbit.title": "Pull the camera back",
   "tutorial.training.orbit.body": "Scroll the mouse wheel to pull the camera back for a wide view. Scroll in again to come closer.",
-  "tutorial.training.orbit.bodyTouch": "Pinch the screen to pull the camera back for a wide view.",
   "tutorial.training.sight.title": "Look through the gunner's sight",
   "tutorial.training.sight.body": "Press {sight} for the gunner's sight. It shows far and lets you aim at one plate. Press it again to come back out.",
   "tutorial.training.sight.bodyTouch": "Tap the scope button for the gunner's sight. It shows far and lets you aim at one plate.",
