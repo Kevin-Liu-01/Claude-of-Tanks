@@ -5185,13 +5185,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       setGaragePanel('');
       // the surfaces the old hide missed: the equipment and consumables pickers (the equipment's Tab trap stayed on the
       // document), the rival and quick picker menus (body top layer), the tech tree and photo mode, and the filter's
-      // auto-select timer, which could change the selection after the battle entry began
+      // auto-select timer, which could change the selection after the battle entry began (the tech tree closes above)
       closeEqPicker({ restoreFocus: false });
       garageConsumables?.close({ restoreFocus: false });
       rivalMenu?.close();
       quickMenus?.mode.close();
       quickMenus?.field.close();
-      techTreeScreen?.close({ restoreFocus: false });
       closePhoto?.();
       facetPanelToggle.panel?.close();
       if (facetSelectTimer !== null) { clearTimeout(facetSelectTimer); facetSelectTimer = null; }
