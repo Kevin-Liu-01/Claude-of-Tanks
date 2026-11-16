@@ -10,7 +10,8 @@ import { dialogSurface } from '../ui/components/surfaceStack.ts';
 // files (the pictures' WebP files end to end, fetched with an HTTP range request). A picture the site already shows
 // elsewhere names that file instead. The collections are grouped by what the pictures show (battle scenes by
 // battlefield, vehicles by country...), and every picture has a caption in each locale: its title, a line about it,
-// and its shot (close-up, another moment...).
+// and its shot (close-up, another moment...). tools/media-library/build.mjs builds it from the published folders'
+// manifests (2026-11-16; before, a snapshot built outside the repository fell three weeks behind the site).
 const ROOT_URL = '/media/library-r3';
 /** [name, width, height, sheet, x, y, thumb width, thumb height, pack, offset, length] or [..., published url] */
 type LibraryItem = [string, number, number, number, number, number, number, number, ...(number | string)[]];

@@ -8,10 +8,16 @@
 // receipt reads every range back as a WebP of the stated size, holds every cell inside its sheet, every pack covered
 // end to end, every caption worded in each locale (never a file name, never the media rounds' own words), and the
 // counts the pages print equal to the index.
+// Since 2026-11-16 (owner: "what about our /media page? its missing so much stuff ... between that page going up and
+// new stuf"; the library was a snapshot built outside the repository, three weeks and 200 pictures behind) it also
+// holds the library current with public/media (tools/media-library): every picture published there is in the library
+// or has a reason in tools/media-library/sources.mjs, the committed library is what the builder plans from the
+// manifests, and every linked picture is the file its thumbnail was cut from (a re-render in place re-cuts it).
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { census, differences, entriesOf, lockOf, planLibrary, readLibrary, readLock } from '../media-library/library.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(ROOT, 'public/media/library-r3');
@@ -140,6 +146,25 @@ const printed = docs.match(/data-i18n="docs\.aside\.libraryTitle" data-i18n-vars
 assert.ok(printed, 'the manual index links the library with its count');
 assert.equal(Number(printed[1].replaceAll(',', '')), top.count, 'the manual index prints the library count');
 assert.match(docs, /href="\/docs\/filming#library"/, 'the manual index opens the library');
+
+// current with public/media: the census, the plan and the thumbnails' lock (fix: node tools/media-library/build.mjs --write)
+const WRITE = 'run node tools/media-library/build.mjs --write and commit the library';
+const library = readLibrary(LIB);
+const { plan, results } = planLibrary(library);
+const { problems, counts } = census(plan, results);
+assert.deepEqual(problems, [], `every picture under public/media is in the library or has a reason in tools/media-library/sources.mjs (${WRITE}, or give it a reason)`);
+assert.deepEqual(differences(plan, library), [], `the committed library is the plan the manifests make (${WRITE})`);
+const lock = readLock();
+const cut = lockOf(plan);
+assert.deepEqual(Object.keys(lock).sort(), Object.keys(cut).sort(), `lock.json names exactly the linked pictures (${WRITE})`);
+const recut = Object.keys(cut).filter((url) => cut[url] !== lock[url]);
+assert.deepEqual(recut, [], `every linked picture is the file its thumbnail was cut from (${WRITE})`);
+// the census bites: a picture the library stopped showing, with no reason, is reported by name
+const shown = entriesOf(plan).find((e) => e.item.ref.url?.startsWith('/media/gallery-r1/'));
+assert.ok(shown, 'the library shows the owner\'s gallery (public/media/gallery-r1)');
+const without = { collections: plan.collections.map((c) => ({ ...c, sets: c.sets.map((s) => ({ ...s, items: s.items.filter((i) => i !== shown.item) })) })) };
+assert.deepEqual(census(without, results).problems.map((p) => p.split(':')[0]), [shown.item.ref.url], 'a published still missing from the library fails the census');
 console.log(`media-library.selftest: ${pictures} pictures in ${top.collections.length} collections (${ranges} pack ranges, `
   + `${links} published files, ${sheets} thumbnail sheets, ${(bytes / 1048576).toFixed(0)} MB of packs) read back, `
-  + `${captions} captions worded in ${LOCALES.join(' and ')}`);
+  + `${captions} captions worded in ${LOCALES.join(' and ')}; current with public/media (${counts.files} pictures there: `
+  + `${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders)`);

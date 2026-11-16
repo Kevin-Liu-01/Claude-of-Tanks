@@ -187,6 +187,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/i18n-literal-lint.mjs': lists('src/ui/**/*.ts', 'src/gallery/**/*.ts', 'src/game/**/*.ts', 'src/**/*.css'),
   // every media reference in the pages and sources against the collections on disk
   'tools/media-freshness.selftest.mjs': lists('src/**', 'site/*.html', 'public/media/*'),
+  // the media library's census: every picture under public/media against the library and the folders' rules
+  'tools/media-library/library.mjs': lists('public/media/**'),
   // publicPages: the game, the 404 and every page under site/
   'tools/media-page-scan.mjs': lists('site/*.html'),
   // lintFiles: the sources, the public sheets and the site documents
