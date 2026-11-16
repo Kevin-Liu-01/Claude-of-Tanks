@@ -388,8 +388,9 @@ export const BUNDLE_BUDGETS = Object.freeze({
   notFound: { brotliBytes: 18734, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. The entry's
- *  256 B covers its commit-hash noise, up to 201 B over five builds in round seven (owner approved 2026-11-13, V11). */
-const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 256, requests: 0 };
+ *  256 B covers its commit-hash noise, up to 201 B over five builds in round seven (owner approved 2026-11-13, V11). A
+ *  page total includes its entry chunk, so the same noise moves it: its slack matches the entry's (owner, 2026-11-13). */
+const BUNDLE_SLACK = { brotliBytes: 256, entryBrotliBytes: 256, requests: 0 };
 
 const SLACK = { lcpMs: 150, cls: 0.005, tbtMs: 50, inpMs: 24, shellMs: 24, contentMs: 50, inpP98Ms: 24, longTaskMs: 30,
   droppedFrames: 2, consoleErrors: 0, consoleWarnings: 0, heapGrowthMb: 2, nodeGrowth: 50, canvasViolations: 0 };

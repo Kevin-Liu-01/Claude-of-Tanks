@@ -104,7 +104,10 @@ export function markupCopy(markup) {
   return out;
 }
 
-const looksLikeMarkup = (text) => /<\/?[a-z][\w-]*(?:[\s/>]|$)/i.test(text) || /^[^<]*\s[\w-]+\s*=\s*["']/.test(text) || /^\s*[\w-]+\s*=\s*["']/.test(text);
+/** A media type with parameters (`video/webm; codecs="vp9"`): its `name="value"` is no attribute, and it is never copy. */
+const MEDIA_TYPE = /^[a-z]+\/[\w.+-]+(?:\s*;\s*[\w-]+=(?:"[^"]*"|'[^']*'|[^;\s]+))+\s*$/i;
+const looksLikeMarkup = (text) => !MEDIA_TYPE.test(text) && (/<\/?[a-z][\w-]*(?:[\s/>]|$)/i.test(text)
+  || /^[^<]*\s[\w-]+\s*=\s*["']/.test(text) || /^\s*[\w-]+\s*=\s*["']/.test(text));
 const cssContentStrings = (css) => [...css.matchAll(/content\s*:\s*([^;}]*)/g)]
   .flatMap((match) => [...match[1].matchAll(/(['"])((?:(?!\1).)*)\1/g)].map((part) => part[2]));
 

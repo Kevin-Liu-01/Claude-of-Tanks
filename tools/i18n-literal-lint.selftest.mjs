@@ -40,6 +40,8 @@ assert.deepEqual(kinds("const html = '<button class=\"x\" ' + `title=\"${t('a')}
 assert.deepEqual(kinds('const glsl = `#include <common>\\nvarying vec3 vWorld; void main(){ if (a < b) gl_FragColor = vec4(1.0); }`;'), [],
   'shader source');
 assert.deepEqual(kinds(".a::before{content:attr(aria-label)}"), []);
+assert.deepEqual(kinds("const ok = video.canPlayType('video/webm; codecs=\"vp9\"');"), [], 'a media type with parameters is not markup');
+assert.deepEqual(kinds("el.textContent = 'video/webm; codecs=\"vp9\"';"), ['.textContent: video/webm; codecs="vp9"'], 'unless it reaches a sink');
 assert.deepEqual(lintCss('x.css', ".a::before{content:attr(data-label)} .b::after{content:''} .c::after{content:'\\2014'}"), []);
 assert.deepEqual(englishWords('ABC123 · T-90M · G-01'), [], 'codes with digits');
 assert.deepEqual(englishWords('VIII · 120 mm · 72 km/h'), [], 'numerals and units');
