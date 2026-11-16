@@ -1,4 +1,5 @@
 import './ui/richTooltip.css';
+import { armourTipDue, readArmourDefaultMarker, writeArmourDefaultMarker } from './game/armourOverlayDefault.ts';
 import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
@@ -1153,6 +1154,21 @@ const battleEntryIntent = createBattleEntryIntent();
 // hold never re-opens a brief that had faded
 let briefShownForCountdown = false;
 bus.on('battle:rollout', () => { briefShownForCountdown = false; });
+// 273: armour colours on for everyone, once (game/armourOverlayDefault.ts): the first rollout the player drives after the
+// flip shows its one-time tip (ui/armourOverlayTip.ts, loaded only then). A watched or couch battle leaves it for the
+// next; colours turned off again before it need no tip. A keyboard player reads their own key; a pad or a touch layout,
+// where the colours have no control yet, the Settings row.
+bus.on('battle:rollout', () => {
+  if (game.watch || game.couch) return;
+  const due = armourTipDue(readArmourDefaultMarker(), !!input.getSettings().armorAimOverlay);
+  if (due === 'none') return;
+  writeArmourDefaultMarker('done');
+  if (due === 'skip') return;
+  const keyboard = !input.isTouchLayout() && !input.isPadConnected();
+  const code = keyboard ? input.getBinding('hitboxOverlay') : null;
+  import('./ui/armourOverlayTip.ts').then(({ showArmourOverlayTip }) => showArmourOverlayTip({ key: code ? labelForCode(code) : null }))
+    .catch(() => { /* a failed chunk loses the tip, never the battle */ });
+});
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;

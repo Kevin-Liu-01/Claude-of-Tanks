@@ -82,12 +82,27 @@ assert.deepEqual(capsCollision,
     storage.set('cot.settings.v1', JSON.stringify({ cameraFraming: 9, cameraShoulder: 7, cameraDistance: 'x' }));
     const bad = createInput().getSettings();
     assert.deepEqual([bad.cameraFraming, bad.cameraShoulder, bad.cameraDistance], [0.2, 'centre', 1], 'stored values out of range or kind are safe');
-    globalThis.localStorage = { getItem: () => null, setItem() {} };
-    assert.equal(controls.getSettings().armorAimOverlay, false, 'armor highlighting is opt-in for new profiles');
+    // 273 (Kevin: "turn it on once for everyone with a one time tip"): armour colours are on for a new profile; a
+    // profile saved before the flip is turned on once (and saved so, its tip due); after the flip a saved choice stands
+    const flipStore = (entries) => {
+      const map = new Map(Object.entries(entries));
+      return { map, getItem: (key) => map.get(key) ?? null, setItem: (key, value) => { map.set(key, String(value)); } };
+    };
+    globalThis.localStorage = flipStore({});
+    assert.equal(createInput().getSettings().armorAimOverlay, true, 'armour colours are on for a new profile');
+    assert.equal(globalThis.localStorage.map.get('cot.armourOverlayDefault.v1'), 'tip', 'and its one-time tip is due');
+    const before = flipStore({ 'cot.settings.v1': JSON.stringify({ armorAimOverlay: false, isometricView: true, revision: 1, showPerfMeter: true }) });
+    globalThis.localStorage = before;
+    assert.equal(createInput().getSettings().armorAimOverlay, true, 'a profile saved off before the flip is turned on once');
+    const flipped = JSON.parse(before.map.get('cot.settings.v1'));
+    assert.equal(flipped.armorAimOverlay, true, 'and saved so');
+    assert.deepEqual([flipped.revision, flipped.showPerfMeter, flipped.isometricView], [1, true, true], 'the rest of the record is kept as it was');
+    assert.equal(before.map.get('cot.armourOverlayDefault.v1'), 'tip', 'its tip is due');
     for (const enabled of [true, false]) {
-      globalThis.localStorage = {getItem:key=>key==='cot.settings.v1'?JSON.stringify({armorAimOverlay:enabled,isometricView:enabled}):null,setItem(){}};
+      globalThis.localStorage = flipStore({ 'cot.settings.v1': JSON.stringify({ armorAimOverlay: enabled, isometricView: enabled }),
+        'cot.armourOverlayDefault.v1': 'done' });
       assert.equal(createInput().getSettings().isometricView, enabled, 'saved camera preference is restored');
-      assert.equal(createInput().getSettings().armorAimOverlay, enabled, 'explicit saved armor preference is preserved');
+      assert.equal(createInput().getSettings().armorAimOverlay, enabled, 'after the flip, the saved armour choice stands (off sticks)');
     }
     globalThis.localStorage = { getItem: () => null, setItem() {} };
     assert.equal(controls.getBinding('smoke'),'KeyG');
