@@ -24,20 +24,17 @@ A World of Tanks-style armored combat simulator built directly with Three.js and
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/site50-r14/stills/s07-lake-shellfire.webp" alt="A Stridsvagn 122 crosses the frozen lake through shellfire"></td>
-<td width="50%"><img src="public/media/site50-r14/stills/s23-village-crossroads.webp" alt="A T-80U Husarz and a PL-01 hold the village crossroads"></td>
+<td width="50%"><img src="public/media/gallery-r1/s298-t90ms-tagil-saltwind-herolow-v3-f33-m271-r14.webp" alt="A T-90MS Tagil in digital camouflage fires across the grass at Saltwind Narrows"></td>
+<td width="50%"><img src="public/media/gallery-r1/s190-t90am-frontier-herolow-own-m271-r14.webp" alt="A T-90AM in digital camouflage in the tall grass of Frontier Basin, smoke rising behind it"></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/site50-r14/stills/s39-lakeside-village.webp" alt="A Chieftain Mk 10 fires across the village at Highland Reservoir"></td>
-<td width="50%"><img src="public/media/site50-r14/stills/s20-road-return-fire.webp" alt="A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset"></td>
+<td width="50%"><img src="public/media/gallery-r1/s286-leo2a4m-monsoon-herohigh-v2-fb-m271-r14.webp" alt="A Leopard 2A4M in white digital camouflage fires along a dirt track on Monsoon Ridge"></td>
+<td width="50%"><img src="public/media/gallery-r1/s267-t90a-vladimir-caldera-herohigh-fb-m271-r14.webp" alt="A T-90A Vladimir fires across the green slopes of Obsidian Caldera"></td>
 </tr>
 </table>
 
-These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine. The
-[visual archive](public/media/site50-r14/archive.json) holds the fifty frames and the key moment and close portrait of each of
-the site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the 12 hero frames, the 22
-screenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the 21 versus stills, the
-3 trailers, the 24-shot mosaic and the Scene Studio loop published on the site.
+Every picture here is captured in the game engine. The four above come from the
+[battle gallery](public/media/gallery-r1/manifest.json) that the Garage and the Field Manual show.
 
 ## Fight, watch, inspect, and direct
 
@@ -108,12 +105,21 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 
 <table>
 <tr>
-<td width="50%"><a href="public/media/site50-r14/loops/s05-barn-advance.webm"><img src="public/media/site50-r14/loops/s05-barn-advance.jpg" alt="Open the T-14 Armata past the barns take"></a><br><sub><b>T-14 Armata past the barns:</b> A T-14 Armata advances past the barns of Verdant Fields.</sub></td>
-<td width="50%"><a href="public/media/site50-r14/loops/s07-lake-shellfire.webm"><img src="public/media/site50-r14/loops/s07-lake-shellfire.jpg" alt="Open the Strv 122 on the frozen lake take"></a><br><sub><b>Strv 122 on the frozen lake:</b> A Stridsvagn 122 crosses the frozen lake through shellfire.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s21-fields-assault.webm"><img src="public/media/site50-r14/loops/s21-fields-assault.jpg" alt="Open the T-90SM wedge take"></a><br><sub><b>T-90SM wedge:</b> A T-90SM wedge assaults through the burning fields.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s20-road-return-fire.webm"><img src="public/media/site50-r14/loops/s20-road-return-fire.jpg" alt="Open the Challenger 2 returning fire take"></a><br><sub><b>Challenger 2 returning fire:</b> A Challenger 2 leads a column returning fire across the fields at sunset.</sub></td>
 </tr>
 <tr>
-<td width="50%"><a href="public/media/site50-r14/loops/s18-street-knockout.webm"><img src="public/media/site50-r14/loops/s18-street-knockout.jpg" alt="Open the T-90A knocked out at night take"></a><br><sub><b>T-90A knocked out at night:</b> A T-90A is knocked out at the end of a Steinburg street at night.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s226-church-duel.webm"><img src="public/media/site50-r14/loops/s226-church-duel.jpg" alt="Open the snowy village duel take"></a><br><sub><b>Snowy village duel:</b> A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street.</sub></td>
 <td width="50%"><a href="public/media/site50-r14/loops/s26-minaret-fire.webm"><img src="public/media/site50-r14/loops/s26-minaret-fire.jpg" alt="Open the Merkava Mk 3D fires take"></a><br><sub><b>Merkava Mk 3D fires:</b> A Merkava Mk 3D fires at Sunscar Oasis.</sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="25%"><img src="public/media/site50-r14/stills/s21-fields-assault.webp" alt="A T-90SM wedge assaults through the burning fields"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s19-roof-tiles-close.webp" alt="Roof tiles rain down as a PL-01 fires up the street"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s20-road-return-fire-close.webp" alt="A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s38-church-knockout-close.webp" alt="A Leopard 2A6 is knocked out beside the onion-domed church at night"></td>
 </tr>
 </table>
 
@@ -130,19 +136,13 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 </p>
 
 Vehicles do not share one gun and one movement model. A specification can add its own loading, guidance, suspension,
-ammunition, anatomy, and controls, and all of it still runs inside the fixed-step authority.
+ammunition, anatomy, and controls, and all of it still runs inside the fixed-step authority. Battle, Garage, Gallery,
+Studio, bots, icons, diagrams, and technical dossiers all read the same 311 vehicle specifications.
 
-<table>
-<tr>
-<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 using hydropneumatic suspension to aim on a slope"><br><sub><b>Swedish siege suspension:</b> the Strv 103A, Strv 103B, and UDES 03 aim their fixed guns by pitching the physical hull. Wheels and both loaded track runs reshape around the solved pose.</sub></td>
-<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 firing a guided Shillelagh missile"><br><sub><b>Guided weapons:</b> the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike, Konkurs, Arkan, and Jyu-MAT launchers.</sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/ui-246/gallery-modules.webp" alt="Leclerc XLR internal modules and crew shown in the Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, Garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same 311 vehicle specifications.</sub></td>
-</tr>
-</table>
-
+- **Swedish siege suspension:** the Strv 103A, Strv 103B, and UDES 03 aim their fixed guns by pitching the physical hull.
+  Wheels and both loaded track runs reshape around the solved pose.
+- **Guided weapons:** the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike,
+  Konkurs, Arkan, and Jyu-MAT launchers.
 - **Magazine autoloaders** track ready rounds, cycle time inside the magazine, full replenishment, manual magazine
   reloads, shell changes, and damage to the loading mechanism. The Leclerc, Type 90, PL-01, and four-round PL-01 105 each
   carry their own magazine timings.
@@ -170,7 +170,7 @@ ammunition, anatomy, and controls, and all of it still runs inside the fixed-ste
 </tr>
 <tr>
 <td width="50%"><img src="public/media/ui-246/battle-firing.webp" alt="A Leopard 2A7V fires in a Standard battle on Sirocco Wadi, the muzzle flash in frame"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
-<td width="50%"><img src="public/media/site50-r14/stills/s29-fjord-road-kill.webp" alt="A T-90 burns on the road above the fjord"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s226-church-duel-close.webp" alt="A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
 </tr>
 </table>
 
@@ -209,10 +209,6 @@ fingerprints, and a targeted release gate.
 
 ### Ten Garage environments
 
-<p align="center">
-  <a href="public/media/showcase-r2/process/review-01.webp"><img src="public/media/showcase-r2/process/review-01.webp" alt="All ten Claude of Tanks Garage environments shown with a varied non-Abrams fleet and the current Garage interface"></a>
-</p>
-
 Verdant keeps the enclosed Motor Pool. The other nine locations are light scene packs drawn from a real battlefield's
 terrain, structures, materials, trees, horizon, sky, and atmosphere, without loading that battlefield. One hero pose keeps
 the tank and camera comparable across all ten. The [Garage environments guide](docs/GARAGE-ENVIRONMENTS.md) has the
@@ -238,13 +234,6 @@ combines:
 The renderer reached **120 FPS on the certified test hardware**. Real performance depends on refresh rate, browser,
 thermal limits, GPU and driver, resolution, and quality level. Combat rules stay at 60 Hz at every render rate.
 
-<table>
-<tr>
-<td width="50%"><img src="public/media/ui-246/battle-sight.webp" alt="The gunner's sight at four-power zoom on a Leopard 2A4 beside a windmill, drawn through the production post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
-<td width="50%"><img src="public/maps/foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
-</tr>
-</table>
-
 ## Multiplayer and couch play
 
 <p>
@@ -265,9 +254,8 @@ simulation. Each pane in Split view draws only the enemies its own player has sp
 [Couch mode](docs/COUCH-MODE.md) and the [phone controller](docs/PHONE-CONTROLLER.md).
 
 <p align="center">
-  <img src="public/media/ui-246/multiplayer-pair.webp" alt="Two players' live screens from one private room on Tarkhan Steppe: a Challenger 3 and a T-90M facing each other">
+  <img src="docs/media/readme/multiplayer-abrams-vs-t90am.webp" width="100%" alt="Two players' screens side by side, each with its full battle HUD: Player One, the Alpha commander in an M1A1 Abrams HC, and Player Two, the Bravo commander in a T-90AM, facing each other in a village by a white church">
 </p>
-<p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures with the real battle HUD, the host's simulation, filtered snapshots, and each commander's view.</sub></p>
 
 ### Controls at a glance
 
@@ -296,14 +284,12 @@ their own movement, aim, scope, fire, ammunition, equipment, and special-action 
   <img src="docs/media/icons/toolPhoto.svg" width="52" alt="Capture icon" title="Deterministic capture">
 </p>
 
-<table>
-<tr>
-<td width="50%"><img src="public/media/ui-246/studio-workspace.webp" alt="The Scene Studio composing a battle scene on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
-<td width="50%"><a href="public/media/landing-r1/studio-leclerc-knockout.mp4"><img src="public/media/landing-r1/studio-leclerc-knockout.jpg" alt="Open the Scene Studio film of a Strv 122 firing on and destroying a Leclerc"></a><br><sub><b>Directed destruction:</b> this 1080p timeline moves both actors, fires the Strv 122, resolves impacts, detaches the Leclerc track, and triggers its ammunition-rack blast.</sub></td>
-</tr>
-</table>
+<p align="center">
+  <img src="public/media/ui-246/studio-workspace.webp" width="100%" alt="The Scene Studio composing a battle scene on Verdant Fields: the shot list, the viewport with a T-90 in digital camouflage, and the timeline">
+</p>
 
-Scene Studio drives the game's own renderer. Vehicles, camouflage, camera, lighting, recoil, tracers, explosions,
+Scene Studio places any roster vehicle on any map, conforms it to terrain, poses it within physical limits, and
+schedules game effects on a deterministic timeline. It drives the game's own renderer. Vehicles, camouflage, camera, lighting, recoil, tracers, explosions,
 sparks, smoke, debris, wreck state, and timeline events are all scene data. A saved scene can be replayed, scrubbed,
 edited, exported as JSON, captured as a high-resolution still, or recorded as video.
 

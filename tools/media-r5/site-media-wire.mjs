@@ -14,7 +14,7 @@
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
 // --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
-// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs, loading,
+// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, landing, catalogs, loading,
 // gallery), each still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
 // loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading`, a list on top of
 // the gallery's collection) and its captions in both catalogs.
@@ -311,31 +311,6 @@ function wireSocialCards() {
   }
 }
 
-// --- the README (the repository's front page) ---------------------------------------------------------------------
-function wireReadme() {
-  const M = 'README.md';
-  const R = PICKS.readme;
-  const cell = (id) => `<td width="50%"><img src="public${still(id)}" alt="${esc(take(id).en)}"></td>`;
-  const rows = [[R.stills[0], R.stills[1]], [R.stills[2], R.stills[3]]].map((pair) => `<tr>\n${pair.map(cell).join('\n')}\n</tr>`);
-  swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
-    () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
-  swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
-    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the ${PICKS.home.hero.length} hero frames, the ${PICKS.home.rail.length}\nscreenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the ${PICKS.home.versus.length} versus stills, the\n${PICKS.home.trailers.length} trailers, the ${PICKS.home.mosaic.length}-shot mosaic and the Scene Studio loop published on the site.`, 'README archive note');
-  const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
-  const p = PICKS.home.paths;
-  swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/[^"]+\.webm">[\s\S]*?<\/tr>\n<\/table>/,
-    () => `<table>\n<tr>\n${loop(p[0])}\n${loop(p[1])}\n</tr>\n<tr>\n${loop(p[2])}\n${loop(p[3])}\n</tr>\n</table>`, 'README loops');
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Thirty-three worlds:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.worlds.id, R.worlds.still)}${b}${esc(take(R.worlds.id).en)}${c}`, 'README worlds');
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Shared world kit:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.worldKit.id, R.worldKit.still)}${b}${esc(take(R.worldKit.id).en)}${c}`, 'README world kit');
-  // the Destruction cell (owner 2026-10-12: "no more ui_explosion anymore!"): a site-fifty knockout instead of the capture
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Destruction:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.destruction.id, R.destruction.still)}${b}${esc(take(R.destruction.id).en)}${c}`, 'README destruction');
-  swap(M, /\[Browse the full (?:showcase manifest\]\(public\/media\/showcase-r1\/manifest\.json\)|archive\]\(public\/media\/site50-r\d+\/archive\.json\)),/,
-    () => `[Browse the full archive](public/media/${PICKS.collection}/archive.json),`, 'README archive link');
-}
-
 // --- the landing contract -----------------------------------------------------------------------------------------
 function wireLandingManifest() {
   const path = 'public/media/landing-r1/manifest.json';
@@ -565,7 +540,7 @@ function wireGallery() {
 
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
-  const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards, readme: wireReadme,
+  const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards,
     landing: wireLandingManifest, catalogs: wireCatalogs, loading: wireLoading, gallery: wireGallery };
   const only = arg('only')?.split(',');
   if (only?.some((name) => !sections[name])) throw new Error(`--only takes sections of ${Object.keys(sections).join(', ')}`);
