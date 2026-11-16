@@ -21,6 +21,7 @@ export const LIB = join(MEDIA, LIBRARY_ROOT);
 export const LOCK_FILE = join(ROOT, 'tools/media-library/lock.json');
 export const LOCALES = ['en-US', 'zh-CN'];
 const IMAGE = /\.(?:webp|jpe?g|png|avif|gif)$/i;
+const VIDEO = /\.(?:mp4|webm|mov|m4v)$/i;
 
 /** A WebP file's pixel size from its head (VP8, VP8L or VP8X). */
 export function webpSize(head) {
@@ -87,6 +88,7 @@ export function readLibrary(dir = LIB) {
             name: item[0], width: item[1], height: item[2], thumb: item.slice(3, 8),
             ref: typeof item[8] === 'string' ? { url: item[8] } : { pack: item[8], offset: item[9], length: item[10] },
             caption: s.captions?.[k] ?? [null, null, null],
+            clip: s.clips?.[k] ?? null,
           })),
         })),
       };
@@ -101,12 +103,12 @@ export function entriesOf(library) {
   return out;
 }
 
-function walkImages(dir, base) {
+function walkFiles(dir, base, kind = IMAGE) {
   const out = [];
   for (const name of readdirSync(dir).sort()) {
     const file = join(dir, name);
-    if (statSync(file).isDirectory()) out.push(...walkImages(file, `${base}/${name}`));
-    else if (IMAGE.test(name)) out.push(`${base}/${name}`);
+    if (statSync(file).isDirectory()) out.push(...walkFiles(file, `${base}/${name}`, kind));
+    else if (kind.test(name)) out.push(`${base}/${name}`);
   }
   return out;
 }
@@ -173,7 +175,8 @@ export function createContext(library) {
     },
     manifest: (folder) => readJson(`public/media/${folder}/manifest.json`),
     source: (rel) => readFileSync(join(ROOT, rel), 'utf8'),
-    files: (folder) => walkImages(join(MEDIA, folder), `/media/${folder}`),
+    files: (folder) => walkFiles(join(MEDIA, folder), `/media/${folder}`),
+    videos: (folder) => walkFiles(join(MEDIA, folder), `/media/${folder}`, VIDEO),
     exists: (url) => existsSync(publicFile(url)),
     size: (url) => {
       if (!sizes.has(url)) sizes.set(url, imageSize(publicFile(url)));
@@ -304,7 +307,15 @@ export function planLibrary(library = readLibrary()) {
     }
     set.items = [...lead, ...items, ...trail];
   }
-  // 4. empty sets leave; the words
+  // 4. each picture's clip, as the folders' rules give it (a clip for a picture the library does not show is the census's)
+  const clips = new Map();
+  for (const [folder, r] of results) for (const [url, clip] of r.clips) if (clip) clips.set(url, { folder, clip });
+  for (const e of entriesOf(plan)) {
+    e.item.clip = (e.item.ref.url && clips.get(e.item.ref.url)?.clip) || null;
+    clips.delete(e.item.ref.url);
+  }
+  plan.strayClips = [...clips].map(([url, { folder }]) => `${folder}: a clip for ${url}, which the library does not show`);
+  // 5. empty sets leave; the words
   for (const c of plan.collections) {
     const w = ctx.collectionWords(c.key);
     if (w) Object.assign(c, w);
@@ -334,11 +345,15 @@ export function planLibrary(library = readLibrary()) {
  */
 export function census(plan, results) {
   const linked = new Map();
-  for (const e of entriesOf(plan)) if (e.item.ref.url) linked.set(e.item.ref.url, e);
+  const played = new Set();
+  for (const e of entriesOf(plan)) {
+    if (e.item.ref.url) linked.set(e.item.ref.url, e);
+    for (const [src] of e.item.clip?.sources ?? []) played.add(src);
+  }
   const notes = new Map();
   for (const [folder, r] of results) for (const [url, why] of r.notes) notes.set(url, `${folder}: ${why}`);
-  const problems = [];
-  const counts = { files: 0, linked: 0, noted: 0, excluded: 0 };
+  const problems = [...(plan.strayClips ?? [])];
+  const counts = { files: 0, linked: 0, noted: 0, excluded: 0, videos: 0, played: 0 };
   for (const folder of readdirSync(MEDIA).sort()) {
     if (folder === LIBRARY_ROOT) continue;
     const dir = join(MEDIA, folder);
@@ -347,7 +362,16 @@ export function census(plan, results) {
       continue;
     }
     const rule = FOLDERS[folder];
-    for (const url of walkImages(dir, `/media/${folder}`)) {
+    // a film is a picture's clip, given a reason by its folder's rule, or in an excluded folder
+    for (const url of walkFiles(dir, `/media/${folder}`, VIDEO)) {
+      counts.videos++;
+      if (played.has(url)) counts.played++;
+      else if (!notes.has(url) && !rule?.exclude) {
+        problems.push(`${url}: a film neither played from a library picture nor given a reason`
+          + (rule ? '' : ` (public/media/${folder} has no rule in tools/media-library/sources.mjs)`));
+      }
+    }
+    for (const url of walkFiles(dir, `/media/${folder}`)) {
       counts.files++;
       if (linked.has(url)) {
         counts.linked++;
@@ -361,6 +385,7 @@ export function census(plan, results) {
     }
   }
   for (const url of linked.keys()) if (!existsSync(publicFile(url))) problems.push(`${url}: the library links a file that is not published`);
+  for (const src of played) if (!existsSync(publicFile(src))) problems.push(`${src}: a clip names a film that is not published`);
   return { problems, counts };
 }
 
@@ -381,7 +406,7 @@ export function shapeOf(library) {
     key: c.key, title: c.title, blurb: c.blurb,
     sets: c.sets.map((s) => ({
       key: s.key, title: s.title, kind: s.kind,
-      items: s.items.map((i) => [i.name, i.width, i.height, i.ref.url ?? `packed:${i.ref.length}`, i.caption]),
+      items: s.items.map((i) => [i.name, i.width, i.height, i.ref.url ?? `packed:${i.ref.length}`, i.caption, i.clip ?? null]),
     })),
   }));
 }

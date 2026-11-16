@@ -97,8 +97,10 @@ and loading policy; those contracts extend beyond this directory.
   publishing or re-rendering pictures under `public/media`, run
   `node tools/media-library/build.mjs --write` and commit the library with them.
   A new folder gets a rule in `tools/media-library/sources.mjs` (its pictures'
-  collection, set and caption from its manifest or the catalogs) or a reason
-  to stay out; `media-library.selftest.mjs` fails until then.
+  collection, set and caption from its manifest or the catalogs, and a
+  picture's clip from its moving take) or a reason to stay out, films included;
+  `media-library.selftest.mjs` fails until then. The viewer plays a clip only
+  on its play control's press, through `mediaPlayer.ts` (`mode: 'click'`).
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

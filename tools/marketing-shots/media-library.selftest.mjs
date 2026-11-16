@@ -81,7 +81,7 @@ function worded(text, what, optional = false) {
 }
 let captions = 0;
 assert.ok(top.collections.length >= 6, 'the library holds the finals by collection');
-let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0;
+let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0, clips = 0, clipFiles = 0;
 for (const summary of top.collections) {
   assert.match(summary.key, /^[a-z0-9-]+$/);
   worded(summary.title, `${summary.key}: the title`);
@@ -101,6 +101,22 @@ for (const summary of top.collections) {
     assert.match(set.key, /^[a-z0-9-]+$/, `${summary.key}: set key ${set.key}`);
     worded(set.title, `${summary.key}/${set.key}: the title`);
     assert.equal(set.captions?.length, set.items.length, `${summary.key}/${set.key}: a caption a picture`);
+    // a picture's clip: its moving take's published files in the player's ladder order (VP9 before H.264)
+    if (set.clips) {
+      assert.equal(set.clips.length, set.items.length, `${summary.key}/${set.key}: a clip entry a picture`);
+      set.clips.forEach((clip, k) => {
+        if (clip == null) return;
+        const what = `${summary.key}/${set.key}/${set.items[k][0]}: its clip`;
+        assert.ok(clip.sources.length > 0 && (clip.seconds == null || clip.seconds > 0), what);
+        for (const [src, type, rung] of clip.sources) {
+          assert.equal(type, /\.mp4$/.test(src) ? 'video/mp4' : 'video/webm', `${what}: ${src} is typed by its file`);
+          assert.ok(rung === undefined || rung === 'phone' || rung === 'wide', `${what}: ${src}'s rung`);
+          assert.ok(existsSync(join(ROOT, 'public', src)), `${what}: ${src} is published`);
+          clipFiles++;
+        }
+        clips++;
+      });
+    }
     set.captions.forEach(([title, about, shot], k) => {
       const what = `${summary.key}/${set.key}/${set.items[k][0]}`;
       worded(title, `${what}: the title`);
@@ -164,7 +180,15 @@ const shown = entriesOf(plan).find((e) => e.item.ref.url?.startsWith('/media/gal
 assert.ok(shown, 'the library shows the owner\'s gallery (public/media/gallery-r1)');
 const without = { collections: plan.collections.map((c) => ({ ...c, sets: c.sets.map((s) => ({ ...s, items: s.items.filter((i) => i !== shown.item) })) })) };
 assert.deepEqual(census(without, results).problems.map((p) => p.split(':')[0]), [shown.item.ref.url], 'a published still missing from the library fails the census');
+// and a film no picture plays, with no reason, is reported by name (a battlefield's landmark loop, here)
+const landmark = entriesOf(plan).find((e) => e.item.ref.url?.startsWith('/media/maps-r1/') && e.item.clip);
+assert.ok(landmark, 'the library plays the battlefield picker\'s loops from its landmarks (public/media/maps-r1)');
+const silent = { collections: plan.collections.map((c) => ({ ...c, sets: c.sets.map((s) => ({ ...s,
+  items: s.items.map((i) => (i === landmark.item ? { ...i, clip: null } : i)) })) })) };
+assert.deepEqual(census(silent, results).problems.map((p) => p.split(':')[0]), landmark.item.clip.sources.map(([src]) => src),
+  'a published film no picture plays fails the census');
 console.log(`media-library.selftest: ${pictures} pictures in ${top.collections.length} collections (${ranges} pack ranges, `
   + `${links} published files, ${sheets} thumbnail sheets, ${(bytes / 1048576).toFixed(0)} MB of packs) read back, `
-  + `${captions} captions worded in ${LOCALES.join(' and ')}; current with public/media (${counts.files} pictures there: `
-  + `${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders)`);
+  + `${captions} captions worded in ${LOCALES.join(' and ')}, ${clips} clips (${clipFiles} files); current with public/media (${counts.files} pictures there: `
+  + `${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders; `
+  + `${counts.videos} films, ${counts.played} in clips)`);

@@ -15,12 +15,14 @@
 //                                                 index, lock.json and the manual index's count (site/docs.html)
 //   --all                                         with --write: every collection's sheets again, changed or not
 //
+// A picture with a moving take carries its clip in its set's `clips` (its files in the player's ladder order); the viewer
+// plays it on a press (src/presentation/mediaLibrary.ts). New words or clips rewrite the indexes only, never the sheets.
 // After publishing a folder under public/media (or re-rendering a picture in place), run --write and commit the
 // library with it; the library's receipt (tools/marketing-shots/media-library.selftest.mjs) fails until then.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  LIB, LOCK_FILE, ROOT, census, differences, entriesOf, lockOf, planLibrary, publicFile, readLibrary, readLock, sha16, shapeOf,
+  LIB, LOCK_FILE, ROOT, census, differences, entriesOf, lockOf, planLibrary, publicFile, readLibrary, readLock, sha16,
 } from './library.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -95,7 +97,9 @@ async function write(library, plan) {
     mkdirSync(dir, { recursive: true });
     const old = library.collections.find((x) => x.key === c.key);
     const items = c.sets.flatMap((s) => s.items);
-    const sameShape = old && JSON.stringify(shapeOf({ collections: [old] })[0].sets) === JSON.stringify(shapeOf({ collections: [c] })[0].sets);
+    // the sheets and packs depend on the pictures' order, sizes and files only: new words or clips never re-cut them
+    const cells = (col) => col.sets.flatMap((s) => s.items.map((i) => [i.width, i.height, i.ref.url ?? `packed:${i.ref.length}`]));
+    const sameShape = old && JSON.stringify(cells(old)) === JSON.stringify(cells(c));
     const fresh = items.every((i) => !i.ref.url || (i.ref.url in lock && !stale(lock, i.ref.url)));
     const rebuild = ALL || !sameShape || !fresh || !old?.sheets?.length;
     let packs = old?.packs ?? [];
@@ -170,6 +174,7 @@ async function write(library, plan) {
         key: s.key, title: s.title, kind: s.kind,
         items: s.items.map((i) => [i.name, i.width, i.height, ...i.thumb, ...('url' in i.ref ? [i.ref.url] : [i.ref.pack, i.ref.offset, i.ref.length])]),
         captions: s.items.map((i) => i.caption),
+        ...(s.items.some((i) => i.clip) ? { clips: s.items.map((i) => i.clip ?? null) } : {}),
       })),
     };
     writeFileSync(join(dir, 'index.json'), JSON.stringify(index));
@@ -207,5 +212,5 @@ if (WRITE) {
     console.error(`${lines.join('\n')}\nrun: node tools/media-library/build.mjs --write`);
     process.exit(1);
   }
-  console.log(`media library: ${plan.count} pictures, current with public/media (${counts.files} pictures there: ${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders)`);
+  console.log(`media library: ${plan.count} pictures, ${entriesOf(plan).filter((e) => e.item.clip).length} of them with a clip, current with public/media (${counts.files} pictures there: ${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders; ${counts.videos} films: ${counts.played} in clips)`);
 }

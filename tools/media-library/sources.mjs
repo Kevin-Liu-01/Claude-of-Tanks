@@ -6,6 +6,8 @@
 //   read(ctx)   the folder's pictures: each one's collection, set and caption [title, about, shot] in both locales, from
 //               its manifest or the catalogs (src/ui/i18nCatalog.*.json), never from a file name; and a reason for every
 //               other picture in it (a smaller rung, a poster's thumbnail, a copy, an older render the library replaces).
+//               A picture with a moving take carries its clip (the owner, 2026-11-16: clips play from their pictures), and
+//               every film in the folder is a picture's clip or has a reason too.
 //               `owns` folders give the library all their pictures: one the folder stops yielding leaves the library.
 //               The others (the site fifty, the interface set, the Filming manual) keep the pictures the library already
 //               shows from them and add the new ones.
@@ -50,8 +52,20 @@ const shown = (rungs) => {
 const scenesAt = { before: ['scenes-studio', 'scenes-blur'] };
 
 function sink() {
-  return { pictures: [], relinks: [], drops: [], notes: new Map() };
+  return { pictures: [], relinks: [], drops: [], notes: new Map(), clips: new Map() };
 }
+/**
+ * A picture's clip (2026-11-16, owner: clips play from their pictures): its moving take's files in the ladder order the
+ * site's player reads (VP9 before H.264; `wide` only on wide screens, `phone` on phones: src/presentation/mediaPlayer.ts),
+ * each [file, type, rung?]. The viewer plays it on the press of its play control; nothing transfers before that.
+ */
+const videoType = (src) => (/\.mp4$/i.test(src) ? 'video/mp4' : 'video/webm');
+function clipOf(seconds, ...files) {
+  const sources = files.filter((f) => f && f[0]).map(([src, rung]) => (rung ? [src, videoType(src), rung] : [src, videoType(src)]));
+  return sources.length ? { seconds: seconds ?? null, sources } : null;
+}
+/** A home r2 take's ladder: its film, its 1920 file for wide screens, its phone rung. */
+const homeClip = (it) => clipOf(it.seconds ?? it.film?.seconds, [it.film?.path], [it.wide?.path, 'wide'], [it.mobile?.path, 'phone']);
 /** Every rung but the shown one, as a smaller (or larger) copy of it. */
 function rungNotes(out, rungs, main) {
   for (const r of rungs) if (r.path !== main) out.notes.set(r.path, `the ${r.width} px rung of ${main}`);
@@ -125,6 +139,7 @@ function home(ctx) {
     rungNotes(out, it.poster.rungs, main);
     const names = it.tanks.map((id) => ctx.tank(id).name);
     const about = own(it.title, what);
+    out.clips.set(main, homeClip(it));
     if (names.length === 2) {
       out.pictures.push({ url: main, name: it.id, ...duel(it.hour, /topdown/.test(it.id)),
         caption: [ctx.versus(names[0], names[1]), about, null] });
@@ -138,18 +153,21 @@ function home(ctx) {
     rungNotes(out, it.poster.rungs, main);
     const { place, who } = placeAndWho(it.title, `home-r2/${it.id}`);
     out.pictures.push({ url: main, name: it.id, ...duel(it.hour), caption: [ctx.text(who), ctx.text(place), ctx.word('shots', 'moment')] });
+    out.clips.set(main, homeClip(it));
   }
   for (const [key, it] of Object.entries(m.features)) {
     const main = shown(it.poster.rungs).path;
     if (!main.startsWith('/media/home-r2/')) continue;
     if (MONTAGES.has(key)) {
       for (const r of it.poster.rungs) out.notes.set(r.path, `the poster of the ${key} montage, a film cut from other takes (a clip)`);
+      for (const f of [it.film, it.mobile]) if (f) out.notes.set(f.path, `the ${key} montage, a film cut from takes the library plays from their own pictures`);
       continue;
     }
     const place = HOME_FEATURES[key];
     if (!place) throw new Error(`home-r2: the feature "${key}" has no place in the library (tools/media-library/sources.mjs)`);
     rungNotes(out, it.poster.rungs, main);
     const at = place(it);
+    out.clips.set(main, homeClip(it));
     out.pictures.push({ url: main, name: it.id, ...at,
       ...(at.collection === 'scenes' ? { setTitle: ctx.cat(`map.${it.map}`), setAt: scenesAt } : {}),
       caption: [ctx.cat(`home.features.${key}`), own(it.title, `home-r2/${it.id}`), null] });
@@ -174,6 +192,8 @@ function maps(ctx) {
     rungNotes(out, it.poster.rungs, main);
     out.pictures.push({ url: main, name: it.id.replace(/_/g, '-'), collection: 'battlefields', set: 'battlefields-landmarks',
       setAt: { first: true }, caption: [ctx.cat(`map.${it.id}`), ctx.cat(`atmosphere.${it.hour}`), null] });
+    // the picker's hover loop of the same view
+    out.clips.set(main, clipOf(it.loop?.seconds, [it.loop?.path]));
   }
   return out;
 }
@@ -220,8 +240,11 @@ function deploy(ctx) {
 /** The first game's tips (tutorial-r1, 272): each loop's poster with its tip. */
 function tutorial(ctx) {
   const out = sink();
-  for (const it of ctx.manifest('tutorial-r1').items) {
+  const items = ctx.manifest('tutorial-r1').items;
+  for (const it of items) {
     if (it.type !== 'image/webp') continue;
+    // the tip's loop, whose middle frame the poster is
+    out.clips.set(it.src, clipOf(null, ...items.filter((v) => v.slot === it.slot && v.type.startsWith('video/')).map((v) => [v.src])));
     out.pictures.push({ url: it.src, name: `tip-${slug(it.slot)}`, collection: 'gameplay', set: 'gameplay-tutorial',
       setAt: { after: ['gameplay-campaign', 'gameplay-deploy', 'gameplay-modes'] },
       caption: [ctx.cat(`tutorial.tips.${it.slot}.title`), ctx.cat(`tutorial.tips.${it.slot}.body`), null] });
@@ -238,6 +261,8 @@ function docsHero(ctx) {
     const hour = DOCS_HERO_HOURS[it.id];
     if (!hour) throw new Error(`docs-hero-r2: ${it.id} has no hour in tools/media-library/sources.mjs DOCS_HERO_HOURS`);
     out.pictures.push({ url: it.files.poster.path, name: `hero-${it.id}`, ...duel(hour), caption: [own(it.title, `docs-hero-r2/${it.id}`), null, null] });
+    // the topic header's ladder (src/docs/topics.ts topicHeroMarkup): the 960 loop, the 1920 one on wide screens, the phone rung
+    out.clips.set(it.files.poster.path, clipOf(it.seconds, [it.files.r960?.path], [it.files.wide?.path, it.files.r960 ? 'wide' : null], [it.files.phone?.path, 'phone']));
     if (it.files.thumb) out.notes.set(it.files.thumb.path, `the thumbnail of ${it.files.poster.path}`);
   }
   return out;
@@ -336,6 +361,38 @@ function site50(ctx) {
     }
     if (sub === 'stills' && f.take) addStill(url, base, f.take, base);
   }
+  // the moving takes of the pictures the library shows from here: a loop's poster plays its loop (the topic headers'
+  // ladder, src/docs/topics.ts), a reel's frame its reel, the feature reel's poster the reel
+  const phone = (take) => `/media/web-video-r1/${take}-mobile.mp4`;
+  const seconds = (url) => files.get(url)?.seconds ?? null;
+  for (const e of lib.entries) {
+    const url = e.item.ref.url;
+    const loop = url?.match(/^\/media\/site50-r14\/loops\/([\w-]+)\.jpg$/)?.[1];
+    if (loop) {
+      const wide = `/media/site50-r14/loops/${loop}.webm`, r960 = `/media/site50-r14/loops/${loop}-960.webm`;
+      const small = ctx.exists(r960);
+      out.clips.set(url, clipOf(seconds(wide), [small ? r960 : null], [ctx.exists(wide) ? wide : null, small ? 'wide' : null],
+        [ctx.exists(phone(loop)) ? phone(loop) : null, 'phone']));
+    }
+    const reel = url?.match(/^\/media\/site50-r14\/reels\/([\w-]+)\.webp$/)?.[1];
+    if (reel && ctx.exists(`/media/site50-r14/reels/${reel}.mp4`)) out.clips.set(url, clipOf(seconds(`/media/site50-r14/reels/${reel}.mp4`), [`/media/site50-r14/reels/${reel}.mp4`]));
+    if (url === '/media/site50-r14/films/reel.jpg') {
+      out.clips.set(url, clipOf(seconds('/media/site50-r14/films/reel.webm'), ['/media/site50-r14/films/reel.webm'],
+        ['/media/site50-r14/films/reel.mp4'], [ctx.exists(phone('reel')) ? phone('reel') : null, 'phone']));
+    }
+  }
+  // the folder's other films (a clip above plays from its picture; these stay with the pages that play them)
+  const FILM_REASONS = {
+    fleet: 'a vehicle\'s take film for the Garage\'s take panel (src/ui/fleetTakes.ts): the library shows the vehicle\'s pictures',
+    loops: 'a take\'s loop: the library plays it from the take\'s loop poster where it shows that picture, else shows the take\'s stills',
+    reels: 'a take\'s reel: the library plays it from the reel\'s frame where it shows that picture, else shows the take\'s stills',
+    films: 'a film the landing plays in its dialog (the trailers) or the feature reel, which the library plays from the reel\'s poster',
+    home: 'the Studio feature\'s earlier loop: home r2\'s studio-246 replaced it, and the library plays that one from its picture',
+  };
+  for (const url of ctx.videos('site50-r14')) {
+    const reason = FILM_REASONS[url.split('/')[3]];
+    if (reason) out.notes.set(url, reason);
+  }
   /** A still the library lacks joins its take's other pictures (else its battlefield's scenes), in the take's words. */
   function addStill(url, name, takeId, base) {
     const take = ofTake(takeId);
@@ -379,6 +436,9 @@ function filming(ctx) {
     if (ctx.library.byUrl(url) || !named.has(url)) continue;
     out.notes.set(url, `the Filming manual's process: ${stage.get(url) ?? 'a process figure (a frame strip, a card or a review sheet)'}`);
   }
+  for (const take of m.takes) {
+    for (const [name, s] of Object.entries(take.stages)) if (s.video) out.notes.set(s.video, `the Filming manual's process: the take ${take.id} at its ${name} stage (its viewer plays it)`);
+  }
   return out;
 }
 
@@ -396,6 +456,20 @@ function battleEnd(ctx) {
   return out;
 }
 
+/** Each page's share clip (share-r1, og:video): a re-cut of a take the library plays from its own picture. */
+function share(ctx) {
+  const out = sink();
+  for (const it of ctx.manifest('share-r1').items) out.notes.set(it.path, `a page's share clip (og:video), cut from ${it.master}: the library plays the takes from their pictures`);
+  return out;
+}
+
+/** The phone rungs of the site fifty's loops (web-video-r1): part of a clip's ladder where the library plays that loop. */
+function webVideo(ctx) {
+  const out = sink();
+  for (const f of ctx.manifest('web-video-r1').files) out.notes.set(`/media/web-video-r1/${f.path}`, `the phone rung of ${f.source}`);
+  return out;
+}
+
 const RETIRED = 'which no page shows (tools/media-freshness.selftest.mjs RETIRING)';
 export const FOLDERS = {
   'gallery-r1': { owns: true, read: gallery },
@@ -410,6 +484,8 @@ export const FOLDERS = {
   'ui-246': { read: ui246 },
   'filming-r1': { read: filming },
   'battle-end-r1': { read: battleEnd },
+  'share-r1': { read: share },
+  'web-video-r1': { read: webVideo },
   'docs-r1': { exclude: 'the Field Manual\'s screens, captured on release 243 before the 246 interface overhaul: the library shows the current screens (ui-246)' },
   'settings-r1': { exclude: 'the Settings screen\'s 640 x 360 quality previews (captured on 243): parts of a screen, not pictures to view' },
   'feature-evidence-r2': { exclude: `the August feature evidence, retired for the versus renders, ${RETIRED}` },

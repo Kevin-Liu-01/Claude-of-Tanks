@@ -14,7 +14,7 @@
    },
    "count": 293,
    "sets": 27,
-   "bytes": 4044758
+   "bytes": 4049407
   },
   {
    "key": "vehicles",
@@ -42,7 +42,7 @@
    },
    "count": 85,
    "sets": 3,
-   "bytes": 379822
+   "bytes": 382772
   },
   {
    "key": "combat",
@@ -56,7 +56,7 @@
    },
    "count": 12,
    "sets": 2,
-   "bytes": 404187
+   "bytes": 404610
   },
   {
    "key": "gameplay",
@@ -70,7 +70,7 @@
    },
    "count": 64,
    "sets": 6,
-   "bytes": 279871
+   "bytes": 280112
   },
   {
    "key": "keyart",
@@ -98,7 +98,7 @@
    },
    "count": 100,
    "sets": 3,
-   "bytes": 1070756
+   "bytes": 1073351
   },
   {
    "key": "interface",
@@ -112,7 +112,7 @@
    },
    "count": 21,
    "sets": 4,
-   "bytes": 87314
+   "bytes": 87461
   }
  ]
 }
