@@ -103,8 +103,22 @@ try {
       await sleep(150);
     }
   }
-  // the battle's pointer: a desktop player clicks into the battle (pointer lock); a phone has no lock
-  if (!touch) { await page.mouse.move(vp.width / 2, vp.height * 0.6); await page.mouse.click(vp.width / 2, vp.height * 0.6); await sleep(300); }
+  /** A desktop player clicks into the battle for pointer lock; a step with its dim on (the rollout card) swallows that click,
+   *  as 272.1 has it, so the walk takes the lock on the first step that leaves the field clear. A phone has no lock. */
+  const locked = () => page.evaluate(() => !!document.pointerLockElement);
+  async function takeLock() {
+    if (touch || (await locked())) return;
+    await page.mouse.move(vp.width / 2, vp.height * 0.6);
+    await page.mouse.click(vp.width / 2, vp.height * 0.6);
+    await sleep(300);
+  }
+  /** The step's marker on the screen: the guide's ring (null while it is off screen). */
+  const markerOnScreen = () => page.evaluate(() => {
+    const ring = document.querySelector('.cot-tut-guide-ring');
+    if (!ring || ring.getAttribute('display') === 'none') return null;
+    const r = ring.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
 
   /** Drive into a marker: hold forward, steer toward it with the keys (a phone: one finger held on the stick, moved by
    *  CDP touch events), until the step moves on. */
@@ -154,6 +168,14 @@ try {
       const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.gun);
       if (Math.abs(err) < 0.06) { await sleep(300); continue; }
       const dx = Math.max(-90, Math.min(90, -err * 180)) * sign;
+      if (!touch && !(await locked())) {
+        // cursor aim (no pointer lock): the gun lays on the ground under the cursor; rest it on the marker, or toward the
+        // side the marker lies on while it is off screen
+        const at = await markerOnScreen();
+        await page.mouse.move(at ? at.x : err > 0 ? vp.width * 0.1 : vp.width * 0.9, at ? at.y : vp.height * 0.55, { steps: 6 });
+        await sleep(800);
+        continue;
+      }
       if (touch) {
         const x = vp.width * 0.62, y = vp.height * 0.4;
         await page.touchscreen.touchStart(x, y); await page.touchscreen.touchMove(x + dx, y); await page.touchscreen.touchEnd();
@@ -200,8 +222,12 @@ try {
     const id = now.replace(/(Touch|Pad)$/, '');
     let how = '';
     if (id === 'training.rollout') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
-    else if (id === 'training.driveA' || id === 'training.driveB') { how = 'drove'; await driveTo(TRAINING_POINTS[MARKERS[id]], now); }
-    else if (id === 'training.turret') { how = 'aimed'; await aimAt(TRAINING_POINTS.board, now); }
+    else if (id === 'training.driveA' || id === 'training.driveB') { how = 'drove'; await takeLock(); await driveTo(TRAINING_POINTS[MARKERS[id]], now); }
+    else if (id === 'training.turret') {
+      await takeLock();
+      how = touch ? 'aimed (drag)' : (await locked()) ? 'aimed (mouse, pointer lock)' : 'aimed (cursor aim)';
+      await aimAt(TRAINING_POINTS.board, now);
+    }
     else if (id === 'training.orbit') { how = touch ? 'pinched' : 'wheel out'; if (touch) await pinch(false); else await wheel(240, 4); }
     else if (id === 'training.sight') {
       how = touch ? 'scope button' : 'shift';
