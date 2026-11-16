@@ -7703,6 +7703,21 @@ function* vegetationBuildSteps(
   }
   const nearMeshes = {} as Record<Species, TreeMesh[][]>;
   const farMeshes = {} as Record<Species, TreeMesh[][]>;
+  /** world-pools-272: the far tier's one impostor pool (every living species, both far variants), null on the lobe tier. */
+  let impostorPool: TreeMesh[] | null = null;
+  /** A species whose far trees draw on the impostor atlas (every living species where the atlas exists; the snags keep lobes). */
+  function isImpostorSpecies(sp: Species): boolean { return !!treeImpostors && (sp as string) !== 'snag'; }
+  /** Per species: its two far variants' impostor cells (x4 each, the second mirrored) and its needle share. */
+  const impostorCells = new Map<Species, { cells: Float32Array; needle: number }>();
+  function impostorCellOf(sp: Species): { cells: Float32Array; needle: number } {
+    let entry = impostorCells.get(sp);
+    if (!entry) {
+      const library = treeImpostors!;
+      entry = { cells: Float32Array.from([...library.cellOf(sp, false), ...library.cellOf(sp, true)]), needle: library.needleOf(sp) };
+      impostorCells.set(sp, entry);
+    }
+    return entry;
+  }
   // Shadow redesign 2026-09-12: the crown shadow proxies that the r5 budget
   // note measured as net-negative were rendered in the forward passes with
   // colorWrite off. They now sit on the shadow-only render layer that the
@@ -7836,6 +7851,26 @@ function* vegetationBuildSteps(
     retainedGeometries.push(alt);
     return alt;
   }
+  /**
+   * Round 77b: a quad pool on the impostor atlas; world-pools-272: one for every species and both far variants (the second
+   * mirrored), so the cell a species pool's quad carried per vertex is per instance (aImpCell, aImpNeedle: written with
+   * the slot, writeImpostorCell) beside aImpRow (the tree's near variant, picking the species' row). No shadow either way:
+   * the far tier casts nothing (the near proxies carry the crowns) and receives nothing, as the lobes did.
+   */
+  function makeImpostorPool(capacity: number, name: string): TreeMesh[] {
+    const library = treeImpostors!;
+    const quad = makeTreeMesh(library.poolGeometry(capacity), library.material, speciesList[0], false, capacity);
+    const rowAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+    rowAttr.setUsage(THREE.DynamicDrawUsage);
+    quad.geometry.setAttribute('aImpRow', rowAttr);
+    quad.castShadow = false;
+    quad.receiveShadow = false;
+    quad.userData.treeLod = 'far';
+    quad.userData.treeImpostor = true;
+    quad.userData.aoExclude = true; // alpha-tested: the GTAO override prepass would composite the quads solid
+    quad.name = name;
+    return [quad];
+  }
   function createTreeMeshPools(): void {
     // Species never changes during promotion, cross-fade, toppling or reset.
     // Each LOD can therefore hold at most this species' final population,
@@ -7844,6 +7879,13 @@ function* vegetationBuildSteps(
     const speciesCounts = new Map<Species, number>();
     for (const tree of trees) {
       speciesCounts.set(tree.species, (speciesCounts.get(tree.species) ?? 0) + 1);
+    }
+    // world-pools-272: the far tier's impostors are one pool for every species and both far variants (one draw, where a
+    // pool per species and variant drew up to eight); its capacity is every living tree's (a tree holds one far slot)
+    if (treeImpostors) {
+      let living = 0;
+      for (const sp of speciesList) if (isImpostorSpecies(sp)) living += speciesCounts.get(sp) ?? 0;
+      impostorPool = makeImpostorPool(Math.min(trees.length, Math.max(1, living)), 'treeImpostor');
     }
     for (const sp of speciesList) {
       // An unused species still owns its existing meshes/materials. Retain
@@ -7896,23 +7938,9 @@ function* vegetationBuildSteps(
         return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
-      farMeshes[sp] = treeGeoFar[sp].map((g, fv) => {
-        if (treeImpostors && (sp as string) !== 'snag') {
-          // Round 77b: one quad pool per species and far variant on the impostor atlas (the second variant mirrored);
-          // aImpRow (the tree's near variant, written with its slot) picks the species' row. No shadow either way:
-          // the far tier casts nothing (the near proxies carry the crowns) and receives nothing, as the lobes did.
-          const quad = makeTreeMesh(treeImpostors.quadGeometry(sp, fv === 1), treeImpostors.material, sp, false, capacity);
-          const rowAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
-          rowAttr.setUsage(THREE.DynamicDrawUsage);
-          quad.geometry.setAttribute('aImpRow', rowAttr);
-          quad.castShadow = false;
-          quad.receiveShadow = false;
-          quad.userData.treeLod = 'far';
-          quad.userData.treeImpostor = true;
-          quad.userData.aoExclude = true; // alpha-tested: the GTAO override prepass would composite the quads solid
-          quad.name = `treeImpostor_${sp}_${fv}`;
-          return [quad];
-        }
+      farMeshes[sp] = treeGeoFar[sp].map((g) => {
+        // Round 77b: the impostor atlas's quads; world-pools-272: every species and far variant shares the one pool
+        if (impostorPool && isImpostorSpecies(sp)) return impostorPool;
         const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false, capacity);
         farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
         farCanopy.userData.treeLod = 'far';
@@ -8712,10 +8740,13 @@ function* vegetationBuildSteps(
   // two touched slots upload via addUpdateRange (tens of floats, no stall).
   const nearSlots = {} as Record<Species, TreeRecord[][]>;
   const farSlots = {} as Record<Species, TreeRecord[][]>;
+  /** world-pools-272: the impostor pool's slots, shared by every species and far variant that draws in it. */
+  const impostorSlots: TreeRecord[] = [];
   function createPartitionSlots(): void {
     for (const sp of speciesList) {
       nearSlots[sp] = Array.from({ length: treeGeo[sp].length }, () => []);
-      farSlots[sp] = Array.from({ length: FAR_VARIANTS }, () => []);
+      farSlots[sp] = farMeshes[sp][0] === impostorPool ? Array.from({ length: FAR_VARIANTS }, () => impostorSlots)
+        : Array.from({ length: FAR_VARIANTS }, () => []);
     }
   }
   createPartitionSlots();
@@ -8987,6 +9018,19 @@ function* vegetationBuildSteps(
     if (lf) { lf.addUpdateRange(slot, 1); lf.needsUpdate = true; }
     const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b: the impostor row
     if (ir) { ir.addUpdateRange(slot, 1); ir.needsUpdate = true; }
+    const ic = m.geometry.getAttribute('aImpCell') as THREE.BufferAttribute | undefined; // world-pools-272: the cell
+    if (ic) { ic.addUpdateRange(slot * 4, 4); ic.needsUpdate = true; }
+    const ineedle = m.geometry.getAttribute('aImpNeedle') as THREE.BufferAttribute | undefined;
+    if (ineedle) { ineedle.addUpdateRange(slot, 1); ineedle.needsUpdate = true; }
+  }
+  /** world-pools-272: an impostor slot's cell and needle share, its tree's species and far variant (the pool is shared). */
+  function writeImpostorCell(m: TreeMesh, slot: number, t: TreeRecord): void {
+    const cell = m.geometry.getAttribute('aImpCell') as THREE.BufferAttribute | undefined;
+    if (!cell) return;
+    const entry = impostorCellOf(t.species), at = t.fv === 1 ? 4 : 0, out = cell.array as Float32Array;
+    out[slot * 4] = entry.cells[at]; out[slot * 4 + 1] = entry.cells[at + 1];
+    out[slot * 4 + 2] = entry.cells[at + 2]; out[slot * 4 + 3] = entry.cells[at + 3];
+    (m.geometry.getAttribute('aImpNeedle') as THREE.BufferAttribute).array[slot] = entry.needle;
   }
   /** A tree's impostor row in its species' atlas rows: its near variant; a field tree's open crown past the three near
    * variants draws the open variant's row (trees lane, 2026-10-07: FIELD_OPEN_ALTERNATES). */
@@ -9017,6 +9061,7 @@ function* vegetationBuildSteps(
       if (lf) lf.array[slot] = lodF;
       const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
       if (ir) ir.array[slot] = impostorRowOf(t);
+      writeImpostorCell(m, slot, t);
       markSlotDirty(m, slot);
     }
   }
@@ -9227,6 +9272,7 @@ function* vegetationBuildSteps(
       if (lodFade) lodFade.array[tree.fslot] = 0;
       const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
       if (row) row.array[tree.fslot] = impostorRowOf(tree);
+      writeImpostorCell(mesh, tree.fslot, tree);
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
@@ -9277,20 +9323,25 @@ function* vegetationBuildSteps(
         lodFade.clearUpdateRanges();
         lodFade.needsUpdate = true;
       }
-      const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
-      if (row) {
-        row.clearUpdateRanges();
-        row.needsUpdate = true;
+      for (const name of ['aImpRow', 'aImpCell', 'aImpNeedle']) { // round 77b; world-pools-272: the cell and needle share
+        const stream = mesh.geometry.getAttribute(name) as THREE.BufferAttribute | undefined;
+        if (stream) {
+          stream.clearUpdateRanges();
+          stream.needsUpdate = true;
+        }
       }
       mesh.visible = mesh.count > 0;
     }
   }
   function uploadPartition(): void {
+    const uploaded = new Set<TreeMesh[]>(); // (world-pools-272: the shared impostor pool once)
     for (const species of speciesList) {
       for (let variant = 0; variant < nearMeshes[species].length; variant += 1) {
         uploadNearPartition(species, variant);
       }
       for (let variant = 0; variant < FAR_VARIANTS; variant += 1) {
+        if (uploaded.has(farMeshes[species][variant])) continue;
+        uploaded.add(farMeshes[species][variant]);
         uploadFarPartition(species, variant);
       }
     }
@@ -9298,7 +9349,14 @@ function* vegetationBuildSteps(
   }
   function uploadOutlandBatch(batch: OutlandTreePools): void {
     for (const pools of batch.nearCull.values()) for (const pool of pools) uploadNearPool(pool);
-    for (const [species, pools] of batch.far) pools.forEach((meshes, fv) => uploadFarPool(meshes, batch.farSlots.get(species)![fv]));
+    const uploaded = new Set<TreeMesh[]>();
+    for (const [species, pools] of batch.far) {
+      pools.forEach((meshes, fv) => {
+        if (uploaded.has(meshes)) return;
+        uploaded.add(meshes);
+        uploadFarPool(meshes, batch.farSlots.get(species)![fv]);
+      });
+    }
   }
   function rebuildPartitionFull(camPos: THREE.Vector3): void {
     _partitionBuilt = true;
@@ -9857,10 +9915,12 @@ function* vegetationBuildSteps(
     geometry.boundingSphere = source.boundingSphere ? source.boundingSphere.clone() : null;
     geometry.boundingBox = source.boundingBox ? source.boundingBox.clone() : null;
     geometry.userData = { ...source.userData };
-    if (source.getAttribute('aImpRow')) {
-      const row = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
-      row.setUsage(THREE.DynamicDrawUsage);
-      geometry.setAttribute('aImpRow', row);
+    for (const name of ['aImpRow', 'aImpCell', 'aImpNeedle']) { // round 77b; world-pools-272: the cell and needle share
+      const stream = source.getAttribute(name);
+      if (!stream) continue;
+      const own = new THREE.InstancedBufferAttribute(new Float32Array(capacity * stream.itemSize), stream.itemSize);
+      own.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute(name, own);
     }
     const mesh = makeTreeMesh(geometry, src.material, sp, src.userData.treeFoliage === true, capacity);
     mesh.castShadow = src.castShadow;
@@ -9899,11 +9959,15 @@ function* vegetationBuildSteps(
       species: [...counts.keys()], near: new Map(), far: new Map(), nearSlots: new Map(), farSlots: new Map(), nearCull: new Map(),
       trees: [], minRadiusM: Infinity,
     };
+    // world-pools-272: the batch's far trees share one impostor pool too (every species is on the atlas here)
+    const batchImpostor = impostorPool ? impostorPool.map((src) => outlandMeshLike(src, specs[0].species as Species, specs.length)) : null;
+    const batchImpostorSlots: TreeRecord[] = [];
     for (const [sp, n] of counts) {
       batch.near.set(sp, nearMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
-      batch.far.set(sp, farMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
+      const shared = batchImpostor && farMeshes[sp][0] === impostorPool;
+      batch.far.set(sp, farMeshes[sp].map((pool) => (shared ? batchImpostor! : pool.map((src) => outlandMeshLike(src, sp, n)))));
       batch.nearSlots.set(sp, Array.from({ length: nearMeshes[sp].length }, () => []));
-      batch.farSlots.set(sp, Array.from({ length: farMeshes[sp].length }, () => []));
+      batch.farSlots.set(sp, Array.from({ length: farMeshes[sp].length }, () => (shared ? batchImpostorSlots : [])));
       // trees perf: the batch's near pools join the battlefield's view cull
       batch.nearCull.set(sp, batch.nearSlots.get(sp)!.map((slots, v) => makeNearCullPool(batch.near.get(sp)![v], slots)));
     }
