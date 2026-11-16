@@ -254,7 +254,7 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
     if (recordOf(payload)?.phase === 'garage') tally = null;
   });
   // (round 4 E6b) A network battle restarted under this seat (battlePresentation.ts 'battle:restarted') opens a new
-  // battle (the session's decision; Kevin may overrule): the record takes only the battle that ends, so its kills and
+  // battle (owner approved 2026-11-13): the record takes only the battle that ends, so its kills and
   // damage start over, as at a battle's start, for the same player, vehicle and map in the battle it already reached.
   // Before, the career totals and the battle's row added the abandoned battle's kills and damage to its own.
   bus.on('battle:restarted', () => {
