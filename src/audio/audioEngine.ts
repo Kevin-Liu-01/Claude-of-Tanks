@@ -699,6 +699,14 @@ export function createAudio({
   let wasAtLimit = false;
   let lastGunLimitAt = -99;
   let slewS = 0;
+  // (273) a damaged turret ring's grind: one held loop while the turret slews on the ring, faded in at the slew's edge and
+  // out once it has stopped for RING_GRIND_RELEASE_S (a servo flicker under the edge does not cut it). Before, a 0.6 s cut
+  // of the loop restarted every 0.2 s (its cue's cooldown), each start a click. `ringGrindHeard`: this frame updated our
+  // hull's edges; a frame without them (our hull destroyed, another seat, the drone's view) lets the grind go.
+  const RING_GRIND_RELEASE_S = 0.12;
+  let ringGrind: Rig | null = null;
+  let ringGrindQuietS = 0;
+  let ringGrindHeard = false;
   let lastTurretStopAt = -99;
   let lastTurretStartAt = -99;
   let lastPitch: number | null = null;
@@ -2160,6 +2168,12 @@ export function createAudio({
 
   // ------------------------------------------------------------ alarms/edge ---
 
+  function stopRingGrind(fadeS = 0.2): void {
+    ringGrind?.stop(fadeS);
+    ringGrind = null;
+    ringGrindQuietS = 0;
+  }
+
   function updatePlayerEdges(entity: AudioEntity, dt: number): void {
     if (!mixer || !ctx) return;
     const combat = entity.combat;
@@ -2242,7 +2256,11 @@ export function createAudio({
       }
       slewS = 0;
     }
-    if (moduleHealth(entity, 'turretRing') !== 'ok' && traverse > 0.08) play('traverse_grind_loop', hullOptions({ maxDurS: 0.6, gainDb: -6 }));
+    ringGrindHeard = true;
+    if (moduleHealth(entity, 'turretRing') !== 'ok' && traverse > 0.08) {
+      ringGrindQuietS = 0;
+      ringGrind ??= loopRig('traverse_grind_loop', hullOptions({ gainDb: -6 }));
+    } else if (ringGrind && (ringGrindQuietS += dt) >= RING_GRIND_RELEASE_S) stopRingGrind();
     // Ammunition stock.
     const ammo = combat?.ammo;
     const cap = combat?.ammoCapacity;
@@ -2520,6 +2538,7 @@ export function createAudio({
 
   function updateRigs(list: readonly RuntimeValue[], dt: number): void {
     if (!mixer || !library || !pool || !ctx) return;
+    ringGrindHeard = false;
     candidates.length = 0;
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
@@ -2618,6 +2637,7 @@ export function createAudio({
       rig.update(rigFrame);
       if (rigFrame.own) updatePlayerEdges(entity, dt);
     }
+    if (ringGrind && !ringGrindHeard) stopRingGrind();
   }
 
   // ------------------------------------------------------------- aircraft ---
@@ -3049,6 +3069,7 @@ export function createAudio({
 
   function stopWorld(reason: string): void {
     stopAerial();
+    stopRingGrind(0.4);
     shotCadence.clear();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
@@ -3977,7 +3998,15 @@ export function createAudio({
       get crewLanguage() { return radio?.language ?? null; },
       get sfxLog() { return pool?.log ?? []; },
       /** (272) the one-shot and loop voices sounding now (the pool's budget bounds them): a fast gun's receipt */
-      activeVoices: () => { if (!pool || !ctx) return 0; pool.prune(ctx.currentTime); return pool.active.length; },
+      activeVoices: (id?: string) => {
+        if (!pool || !ctx) return 0;
+        pool.prune(ctx.currentTime);
+        // (273) one asset's voices (the turret ring's grind receipt)
+        if (id == null) return pool.active.length;
+        let n = 0;
+        for (const voice of pool.active) if (voice.id === id && !voice.dead) n++;
+        return n;
+      },
       get sfxLoaded() { return !!library?.supported && (library?.stats().assets ?? 0) > 0; },
       get sfxCount() { return library?.stats().assets ?? 0; },
       get killcamSfxLog() { return killcamLog; },

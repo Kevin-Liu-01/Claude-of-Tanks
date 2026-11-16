@@ -503,4 +503,21 @@ assert.match(labelsSource, /void sheetReady\.then\(\(\) => \{ if \(disposed\) re
 assert.match(garageSource, /body\[data-cot-width='phone'\] \.cot-modal\.cot-technical-viewer\{height:calc\(var\(--cot-viewport-height,100dvh\) - 16px\)\}/,
   'a phone\'s drawing sheet stands at its full height from the press');
 
+// (273) the window's resize reaches the Garage once a frame: one pending-flag frame runs the grids' whole rows, then the
+// fades and the rails' affordances they settle (a dragged edge fired five listeners per event, three of them writing the
+// layout and reading it back); the carousel's and the nation rail's own queues hold one frame each however often asked
+assert.match(garageSource, /const queueGarageResize = \(\): void => \{\s*if \(resizeFrame\) return;\s*resizeFrame = requestAnimationFrame\(\(\) => \{\s*resizeFrame = 0;\s*fitCamoRows\(\);[\s\S]*?holdGridHeight\(grid, fitPickerGrid\);\s*syncScrollFades\(\);\s*syncCarouselAffordances\(\);\s*syncCountryRailAffordances\(\);/,
+  'one flagged frame does the Garage\'s resize work, the writes before the reads');
+assert.match(garageSource, /window\.addEventListener\('resize', queueGarageResize\);/, 'the window\'s resize queues it');
+for (const work of ['syncScrollFades', 'fitCamoRows', 'queueCarouselAffordances', 'queueCountryRailAffordances']) {
+  assert.ok(!garageSource.includes(`window.addEventListener('resize', ${work})`), `${work} no longer runs per resize event`);
+}
+assert.doesNotMatch(garageSource, /window\.addEventListener\('resize', \(\) => \{\s*const grid = root\.querySelector<HTMLElement>\('\.cot-eqpick\.open/,
+  'nor the picker grid\'s fit');
+for (const [queue, flag, sync] of [['queueCarouselAffordances', 'carouselFrame', 'syncCarouselAffordances'],
+  ['queueCountryRailAffordances', 'countryRailFrame', 'syncCountryRailAffordances']]) {
+  assert.match(garageSource, new RegExp(`const ${queue} = \\(\\): void => \\{\\s*if \\(${flag}\\) return;\\s*${flag} = requestAnimationFrame\\(\\(\\) => \\{ ${flag} = 0; ${sync}\\(\\); \\}\\);`),
+    `${queue} holds one frame however often it is asked`);
+}
+
 console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');
