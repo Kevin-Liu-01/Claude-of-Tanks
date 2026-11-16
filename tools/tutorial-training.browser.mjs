@@ -186,6 +186,8 @@ try {
       await sleep(800);
       const after = await pose();
       const errAfter = wrap(Math.atan2(marker.x - after.x, marker.z - after.z) - after.gun);
+      (report.aimLog ??= []).push({ err: Math.round(err * 1000) / 1000, after: Math.round(errAfter * 1000) / 1000, dx: Math.round(dx), sign,
+        locked: !touch && (await locked()) });
       worse = Math.abs(errAfter) > Math.abs(err) + 0.02 ? worse + 1 : 0;
       if (worse >= 2) { sign = -sign; worse = 0; }
     }
