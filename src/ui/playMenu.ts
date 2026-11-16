@@ -47,6 +47,7 @@ import { createRoomServiceLimit } from '../mp/session/roomServiceLimit.ts';
 export type { PlayMode } from '../mp/session/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../mp/session/playerNames.ts';
 import { normalizeRoomCode } from '../mp/room/protocol.ts';
+import { createEquipmentSelectionGate } from '../mp/room/equipmentSelection.ts';
 import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
 import { nextPlayMenuSeat, roomRulesLocked, seatRendersLobby, shouldAutoHandoff, type PlayMenuSeat } from './playMenuSeat.ts';
 import { ensureFonts } from './fonts.ts';
@@ -1689,6 +1690,11 @@ export function createPlayMenu({
   function ownId(): string | undefined {
     return activeRoom?.playerId || session?.roomInfo.peerId;
   }
+  function ownSeat(): LobbyPlayer | undefined {
+    return state?.players.find((player) => player.id === ownId());
+  }
+  // a pick the seat already holds, or one in flight, sends no select_equipment (equipmentSelection.ts)
+  const equipmentGate = createEquipmentSelectionGate((next, failed) => command({ ...next }, { failed }));
 
   function command(command: Record<string, RuntimeValue>, outcome: { done?: () => void; failed?: () => void } = {}): void {
     const refused = (error: RuntimeValue): void => { setStatus(errorMessage(error), true); outcome.failed?.(); };
@@ -2214,7 +2220,7 @@ export function createPlayMenu({
     if (!specId || !isVehicleAllowed(specId)) return;
     const loadout = getVehicleLoadout(specId);
     command({ type: 'select_vehicle', specId });
-    command({ type: 'select_equipment', equipment: loadout.equipment, consumables: loadout.consumables ?? [] });
+    equipmentGate.send(ownSeat(), { type: 'select_equipment', equipment: loadout.equipment, consumables: loadout.consumables ?? [] });
     command({ type: 'select_camo', camo: loadout.camo });
   });
   sizeSelect.addEventListener('change', () => {
@@ -2369,6 +2375,7 @@ export function createPlayMenu({
     state = null;
     role = null;
     moveSeat('none', 'room detached');
+    equipmentGate.reset();
     handedOffMatchId = null;
     if (hadLobby) showSelectedGameMode(preferredGameMode());
     clearRoomUrl();
@@ -2396,7 +2403,7 @@ export function createPlayMenu({
     if (me.specId !== selection.specId) {
       command({ type: 'select_vehicle', specId: selection.specId });
     }
-    command({ type: 'select_equipment', equipment: selection.equipment, consumables: selection.consumables ?? [] });
+    equipmentGate.send(me, { type: 'select_equipment', equipment: selection.equipment, consumables: selection.consumables ?? [] });
     if (me.camo !== selection.camo) command({ type: 'select_camo', camo: selection.camo });
     if (role === 'host' && selection.mapId && state.mapId !== selection.mapId) {
       command({ type: 'set_map', mapId: selection.mapId });

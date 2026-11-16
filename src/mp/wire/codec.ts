@@ -199,14 +199,40 @@ function writeViewer(writer: ByteWriter, viewer: ViewerState, baseViewer: Viewer
   }
 }
 
-function writeMeta(writer: ByteWriter, meta: SnapshotMeta, hasVerdict: boolean): void {
+/** A smoke text's bound (the meta's every live screen as JSON). */
+const MAX_SMOKE_JSON_BYTES = 32768;
+/**
+ * wire 12 (improve-271 plan 020): the length prefix that means "the acknowledged baseline's string". The mode-state JSON
+ * is a JSON object, never empty, so its length 0 is free; the smoke text's length is written plus one (0 = the
+ * baseline's, 1 = no smoke). Only a delta uses it, and only for a string equal to the baseline's it is written against.
+ */
+const KEEPS_BASELINE = 0;
+
+/** Whether a delta keeps its baseline's mode-state JSON (equal by value; a keyframe has no baseline here). */
+function keepsModeState(modeStateJson: string | null, baseline: SnapshotFrame | null): boolean {
+  return baseline !== null && modeStateJson !== null && baseline.modeStateJson === modeStateJson;
+}
+/** Whether a delta keeps its baseline's smoke text (a non-empty one: no smoke costs its one byte either way). */
+function keepsSmoke(meta: SnapshotMeta, baseline: SnapshotFrame | null): boolean {
+  return baseline !== null && !!meta.smokeJson && baseline.meta.smokeJson === meta.smokeJson;
+}
+
+function writeMeta(writer: ByteWriter, meta: SnapshotMeta, hasVerdict: boolean, keepSmoke: boolean): void {
   writer.u8(meta.phase);
   writer.u16(meta.countdownMs);
   writer.u32(meta.battleTimeMs);
   writer.u8(meta.verdict);
   if (hasVerdict) writer.string(meta.verdictReason, MAX_REASON_BYTES);
   writer.u32(meta.destructibleRevision);
-  writer.string(meta.smokeJson || '', 32768);
+  if (keepSmoke) writer.varint(KEEPS_BASELINE);
+  else writer.string(meta.smokeJson || '', MAX_SMOKE_JSON_BYTES, 1);
+}
+
+/** The mode-state JSON (HAS_MODE_STATE), or KEEPS_BASELINE for one equal to the baseline's. */
+function writeModeState(writer: ByteWriter, modeStateJson: string, keep: boolean): void {
+  if (keep) { writer.varint(KEEPS_BASELINE); return; }
+  if (modeStateJson === '') throw new WireError('range', 'a mode state is a JSON object, never empty');
+  writer.string(modeStateJson, MAX_MODE_STATE_JSON_BYTES);
 }
 
 function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: SnapshotFrame | null): void {
@@ -230,7 +256,8 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   writer.u16(packet.ackedFireSeq);
   writer.u16(packet.ackedActionSeq);
   writer.i8(packet.inputMarginTicks);
-  writeMeta(writer, packet.meta, hasVerdict);
+  const base = packet.keyframe ? null : baseline;
+  writeMeta(writer, packet.meta, hasVerdict, keepsSmoke(packet.meta, base));
   // wire 6 (2026-10-13): the smaller of a gap list and a bitset, never a cap a long match can pass (destroyedSet.ts)
   writeDestroyedSet(writer, packet.destroyed);
   if (packet.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
@@ -247,7 +274,7 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   for (const shell of packet.shells) writeShell(writer, shell);
   if (packet.unseenShells?.length) writeUnseenShells(writer, packet.unseenShells);
   if (packet.viewer) writeViewer(writer, packet.viewer, packet.keyframe ? null : baseline?.viewer ?? null);
-  if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
+  if (packet.modeStateJson != null) writeModeState(writer, packet.modeStateJson, keepsModeState(packet.modeStateJson, base));
   if (destruction.length) {
     writer.u32(packet.keyframe ? 0 : packet.destructionBase);
     writeDestructionEntries(writer, destruction);
@@ -523,7 +550,19 @@ function readViewer(reader: ByteReader, baseViewer: ViewerState | null = null): 
   return { entityId, modules, crewBits, equipment, modeSpeedMultiplier, modeGravityScale, movementVersion, movementFlags, movementValues };
 }
 
-function readMeta(reader: ByteReader, hasVerdict: boolean): SnapshotMeta {
+/**
+ * wire 12: a string a delta kept (KEEPS_BASELINE) is its acknowledged baseline's own. Never on a keyframe; without the
+ * baseline the delta cannot be read (`missing_baseline`, the client asks for a keyframe); a baseline without that
+ * string is a forged marker.
+ */
+function keptString(what: string, kept: string | null | undefined, keyframe: boolean, baseline: SnapshotFrame | null, tick: number, baseTick: number): string {
+  if (keyframe) throw new WireError('invalid_message', `a keyframe carries its ${what} whole`);
+  if (!baseline) throw new WireError('missing_baseline', `snapshot ${tick} keeps the ${what} of baseline ${baseTick}`);
+  if (!kept) throw new WireError('invalid_message', `snapshot ${tick} keeps a ${what} baseline ${baseTick} lacks`);
+  return kept;
+}
+
+function readMeta(reader: ByteReader, hasVerdict: boolean, keyframe: boolean, baseline: SnapshotFrame | null, tick: number, baseTick: number): SnapshotMeta {
   const phase = reader.u8();
   if (phase > 3) throw new WireError('range', 'phase out of range');
   const countdownMs = reader.u16();
@@ -533,8 +572,18 @@ function readMeta(reader: ByteReader, hasVerdict: boolean): SnapshotMeta {
   if (hasVerdict !== (verdict !== 0)) throw new WireError('invalid_message', 'verdict flag disagrees with verdict');
   const verdictReason = hasVerdict ? reader.string(MAX_REASON_BYTES) : '';
   const destructibleRevision = reader.u32();
-  const smokeJson = reader.string(32768);
+  const smokeLength = reader.varint();
+  const smokeJson = smokeLength === KEEPS_BASELINE
+    ? keptString('smoke text', baseline?.meta.smokeJson, keyframe, baseline, tick, baseTick)
+    : reader.stringOfLength(smokeLength - 1, MAX_SMOKE_JSON_BYTES);
   return { phase: phase as PhaseId, countdownMs, battleTimeMs, verdict: verdict as VerdictId, verdictReason, destructibleRevision, ...(smokeJson ? {smokeJson} : {}) };
+}
+
+/** The mode-state JSON (HAS_MODE_STATE): its length 0 is the baseline's (wire 12). */
+function readModeState(reader: ByteReader, keyframe: boolean, baseline: SnapshotFrame | null, tick: number, baseTick: number): string {
+  const length = reader.varint();
+  if (length === KEEPS_BASELINE) return keptString('mode state', baseline?.modeStateJson, keyframe, baseline, tick, baseTick);
+  return reader.stringOfLength(length, MAX_MODE_STATE_JSON_BYTES);
 }
 
 function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => SnapshotFrame | null): SnapshotPacket {
@@ -551,9 +600,10 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const ackedFireSeq = reader.u16();
   const ackedActionSeq = reader.u16();
   const inputMarginTicks = reader.i8();
-  const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0);
-  const destroyed = readDestroyedSet(reader);
+  // resolved before the meta: since wire 12 its smoke text may be the baseline's
   const baseline = keyframe ? null : resolveBaseline(baseTick);
+  const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0, keyframe, baseline, tick, baseTick);
+  const destroyed = readDestroyedSet(reader);
   // the baseline's row for an entity: a cursor while the patches come in entity order (every host writes them so, over a
   // sorted baseline), a map built once if they ever do not (mp-scale-251: no map a snapshot)
   const baseEntities = baseline ? baseline.entities : null;
@@ -604,7 +654,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   for (let index = 0; index < shellCount; index++) shells.push(readShell(reader));
   const unseenShells = flags & SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS ? readUnseenShells(reader) : [];
   const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader, baseline?.viewer ?? null) : null;
-  const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? reader.string(MAX_MODE_STATE_JSON_BYTES) : null;
+  const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? readModeState(reader, keyframe, baseline, tick, baseTick) : null;
   let destructionBase = 0;
   let destruction: SnapshotPacket['destruction'] = [];
   if (flags & SNAPSHOT_FLAGS.HAS_DESTRUCTION) {
@@ -815,7 +865,7 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   writer.u16(frame.ackedFireSeq);
   writer.u16(frame.ackedActionSeq);
   writer.i8(frame.inputMarginTicks);
-  writeMeta(writer, frame.meta, hasVerdict);
+  writeMeta(writer, frame.meta, hasVerdict, keepsSmoke(frame.meta, baseline));
   const frameFalls = alignedFalls(frame.destroyed, frame.destroyedFalls);
   const added = baseline ? sortedAdditions(baseline.destroyed, frame.destroyed, frameFalls) : frame.destroyed;
   writeDestroyedSet(writer, added);
@@ -854,7 +904,7 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   for (const shell of frame.shells) writeShell(writer, shell);
   if (frame.unseenShells?.length) writeUnseenShells(writer, frame.unseenShells);
   if (frame.viewer) writeViewer(writer, frame.viewer, keyframe ? null : baseline.viewer ?? null);
-  if (frame.modeStateJson != null) writer.string(frame.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
+  if (frame.modeStateJson != null) writeModeState(writer, frame.modeStateJson, keepsModeState(frame.modeStateJson, baseline));
   if (destructionCount) {
     writer.u32(keyframe ? 0 : destructionBase);
     writeDestructionEntries(writer, frameDestruction.slice(destructionBase));
