@@ -33,13 +33,13 @@ A World of Tanks-style armored combat simulator built directly with Three.js and
 </tr>
 </table>
 
-These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The
+These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine. The
 [visual archive](public/media/site50-r14/archive.json) holds the fifty frames and the key moment and close portrait of each of
 the site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the 12 hero frames, the 22
 screenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the 21 versus stills, the
 3 trailers, the 24-shot mosaic and the Scene Studio loop published on the site.
 
-## Fight, inspect, and direct
+## Fight, watch, inspect, and direct
 
 <p>
   <img src="docs/media/icons/fireGun.svg" width="52" alt="Live tank combat icon" title="Fight">
@@ -47,11 +47,14 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
   <img src="docs/media/icons/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
 </p>
 
-- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, Gravity Mode, cooperative
-  Endless Horde, the six-operation Frontline Assault campaign, Juggernaut, Infected, Realistic, Gun Game, Drone, or AC-130 in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
-  terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
-- **Watch:** start a watched battle in any of twelve modes on any map: fly a spectator drone over it, ride along in any
-  tank, or take a living bot's seat and fight from there.
+- **Fight:** Standard Battle, Drone, Zone Control, Capture the Flag, Frontline Assault, armed Turbo Ball, low-gravity
+  Gravity Mode, cooperative Endless Horde, Gun Game, Juggernaut, Infected, Realistic, AC-130, or Air Support, solo against
+  bots or in a room. The six-operation campaign runs on Frontline Assault, and the Proving Ground is a practice range with
+  no enemies and no clock. Shells travel, armor has geometry, components break, structures fall, and wrecks stay.
+- **Watch:** start a watched battle in any of 13 modes (all but AC-130) on any map. Fly a spectator drone, ride along in
+  any tank, or take a living bot's seat and fight from there.
+- **Couch:** put a QR code on the big screen and up to eight phones join one local battle, each driving its own tank. The
+  lobby opens on one Shared view; Split gives each player a pane and is marked Experimental.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.
 - **Direct:** stage any roster vehicle on any battlefield in Scene Studio, animate actors and cameras, schedule game FX,
@@ -59,22 +62,39 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 
 ## Current release
 
-| | Current runtime |
+| | Live at [cot.kevinliu.studio](https://cot.kevinliu.studio) |
 | --- | --- |
-| Fleet | **222** first-party procedural vehicles in production and local development |
-| Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
+| Fleet | **311** first-party procedural vehicles, every one playable in battle |
+| Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | **14 battle modes**, solo bots, Watch mode (drone, ride-along, take control), browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
-| Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
-| Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; local reviewed catalogs managed with General Translation |
+| Play | **14 battle modes** and the Proving Ground, solo bots, Watch, couch play on phones, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
+| Platforms | Mouse and keyboard, standard controllers, and full touch controls with safe-area layout and device-adaptive rendering |
+| Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; crew radio in 38 voice packs |
+| Security | An enforced Content Security Policy that names every inline script on the production pages by hash |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
-Language selection lives under **Settings → Language → Language**. See the
-[localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
-the General Translation workflow, and release gates.
+Language selection lives under **Settings → Language → Language**. The [localization guide](docs/LOCALIZATION.md) covers
+coverage, exclusions, the General Translation workflow, and release gates. Every deploy has a row in
+[`docs/DEPLOYS.md`](docs/DEPLOYS.md).
 
-The provenance gate currently reports **303 first-party procedural battle playables**.
+### Since 270
+
+- **Twelve new vehicles**, 299 to 311. Seven are air defense: the M163 VADS with its rotary cannon, the Type 87, the
+  Marksman, the ItPsv Leopard 2, the Lvkv 9040, the K30 Biho, and the PZA Loara. Five carry 152 mm guns: Object 292,
+  Object 477 Molot, Object 195, T-14 152, and T95.
+- **Rebuilt vehicles:** the Ariete preseries and prototypes, the BMP-2 and BMP-3, and other Italian, Korean, and
+  Chieftain hulls. Object 292 and Molot got new looks. The M6 Linebacker now fights as air defense: a 1,200-round-a-minute
+  chain gun and 36 Stingers fired four at a time.
+- **Air Support:** crews earn support points in combat and spend them on recon, artillery, strafing runs, precision
+  bombs, and an AC-130 orbit. Each aircraft flies a real path, its highlighted footprint matches where the rounds land,
+  and bombs fall from the jet.
+- **Couch split screen**, Experimental, one pane per seat with that player's camera and battle HUD. Shared stays the
+  default.
+- **Battle galleries:** the Garage slideshow and the Field Manual's archive wall show all 78 stills of the battle gallery.
+- **Camouflage:** the GT camo paints the General Translation symbol, and no stamp overlaps another. The paint picker opens
+  on whole rows, and every paint has a name.
+- **Content Security Policy** moved from report-only to enforced.
 
 ## Field footage
 
@@ -109,8 +129,8 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
   <img src="docs/media/icons/layerModules.svg" width="52" alt="Internal tank modules icon" title="Internal anatomy and autoloaders">
 </p>
 
-The fleet does not reduce every vehicle to the same gun and movement model. Specifications can add their own loading,
-guidance, suspension, ammunition, anatomy, and control behavior while remaining inside the fixed-step authority.
+Vehicles do not share one gun and one movement model. A specification can add its own loading, guidance, suspension,
+ammunition, anatomy, and controls, and all of it still runs inside the fixed-step authority.
 
 <table>
 <tr>
@@ -119,19 +139,21 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </tr>
 <tr>
 <td width="50%"><img src="public/media/ui-246/gallery-modules.webp" alt="Leclerc XLR internal modules and crew shown in the Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
-<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—220 in production and local development.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, Garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same 311 vehicle specifications.</sub></td>
 </tr>
 </table>
 
-- **Magazine autoloaders** track ready rounds, intra-magazine cycle time, full replenishment, manual magazine reloads,
-  shell changes, and damage to the loading mechanism. The Leclerc, Type 90, PL-01, and four-round PL-01 105 each carry
-  their own magazine timings.
-- **Guided missiles** travel at visible weapon-specific speeds and steer toward the authority-owned aim point. Launcher
-  damage, rack damage, ammunition count, reload state, guidance, impact, and presentation all remain synchronized.
-- **Hydropneumatic aim** uses the same canonical pose for armor, muzzle, collision, wheels, tracks, remote snapshots, and
-  the camera; there is no separate visual-only tank tilt.
-- **Free look** keeps the sight and turret on target while the camera moves. Hold `Shift` on keyboard, `RB` on a standard
-  controller, or assign another binding in settings.
+- **Magazine autoloaders** track ready rounds, cycle time inside the magazine, full replenishment, manual magazine
+  reloads, shell changes, and damage to the loading mechanism. The Leclerc, Type 90, PL-01, and four-round PL-01 105 each
+  carry their own magazine timings.
+- **Guided missiles** fly at visible weapon-specific speeds and steer toward the authority's aim point. Launcher damage,
+  rack damage, ammunition count, reload state, guidance, and impact stay in sync.
+- **Air-defense vehicles** fire rotary and twin cannons at high rates from deep magazines, and some add missile racks that
+  launch in salvos.
+- **Hydropneumatic aim** uses one pose for armor, muzzle, collision, wheels, tracks, remote snapshots, and the camera.
+  There is no separate visual-only tilt.
+- **Free look** keeps the sight and turret on target while the camera moves. Hold `Caps Lock` or `Left Alt` on keyboard,
+  `RB` on a standard controller, or assign another binding in settings.
 
 ## Combat systems
 
@@ -153,13 +175,14 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </table>
 
 - **Plate-level armor** resolves the actual plate, slope, impact angle, normalization, ricochet, overmatch, spaced armor,
-  composites, ERA, and separate kinetic/chemical protection.
-- **Five ammunition families** model muzzle velocity, gravity, penetration loss, ricochet, and damage differently.
+  composites, ERA, and separate kinetic and chemical protection.
+- **Five ammunition families** (AP, APCR, APFSDS, HEAT, HE) model muzzle velocity, gravity, penetration loss, ricochet,
+  and damage differently.
 - **Internal anatomy** tracks crew, ammunition racks, engine, fuel, gun, turret ring, optics, radio, and tracks.
 - **Tank-specific mobility** combines drivetrain, terrain resistance, per-wheel support, suspension-damped hull attitude,
   flexible terrain-following tracks, collision, ramming, and crushable cover.
-- **Real battlefield knowledge** combines view range, concealment, movement/firing bloom, foliage, radio sharing, and the
-  15 m bush rule. Multiplayer authority filters hidden enemies before serializing a snapshot.
+- **Spotting** combines view range, concealment, movement and firing bloom, foliage, radio sharing, and the 15 m bush
+  rule. In multiplayer the authority drops hidden enemies before it serializes a snapshot.
 
 ## Worlds and vehicle design
 
@@ -175,14 +198,14 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/ui-246/gallery-hero.webp" alt="The Tank Gallery showing a T-90M Proryv and its technical dossier"><br><sub><b>Tank Gallery:</b> search 222 production vehicles, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/ui-246/gallery-hero.webp" alt="The Tank Gallery showing a T-90M Proryv and its technical dossier"><br><sub><b>Tank Gallery:</b> search all 311 vehicles, orbit and articulate the current rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/ui-246/garage-closeup.webp" alt="The Garage's photo mode: a first-party procedural Challenger 3 alone on the turntable"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>
 
-Every playable hull, turret, gun, fitting, suspension, road wheel, and track run is assembled by the repository's
-first-party vehicle pipeline. Vehicle changes pass combat-anatomy receipts, generated technical diagrams, geometry
-checks, visual fingerprints, and a targeted release gate.
+The repository's own vehicle pipeline builds every playable hull, turret, gun, fitting, suspension, road wheel, and track
+run. A vehicle change passes combat-anatomy receipts, generated technical diagrams, geometry checks, visual
+fingerprints, and a targeted release gate.
 
 ### Ten Garage environments
 
@@ -190,16 +213,10 @@ checks, visual fingerprints, and a targeted release gate.
   <a href="public/media/showcase-r2/process/review-01.webp"><img src="public/media/showcase-r2/process/review-01.webp" alt="All ten Claude of Tanks Garage environments shown with a varied non-Abrams fleet and the current Garage interface"></a>
 </p>
 
-The Garage is its own authored presentation system. Verdant retains the enclosed Motor Pool; the other nine locations
-use lightweight scene packs derived from a real battlefield's terrain, structures, PBR materials, detailed trees,
-approach route, horizon, sky, and atmosphere without loading that battlefield. One immutable hero pose keeps the tank
-and camera comparable across the complete set, while connected maintenance stations, heavy-lift equipment, real fleet
-exhibits, and full-detail tank parts establish a distinct service story around every platform.
-
-The release gate reviews every location from four orbit angles and responsive layouts, rejects unsupported or floating
-parts, certifies geometry-derived structure collision, and requires a score of at least 90/100 with bounded draw calls,
-triangles, transitions, cache residency, and repeated-cycle memory. See the
-[Garage environments guide](docs/GARAGE-ENVIRONMENTS.md) for the complete visual, lifecycle, and verification contract.
+Verdant keeps the enclosed Motor Pool. The other nine locations are light scene packs drawn from a real battlefield's
+terrain, structures, materials, trees, horizon, sky, and atmosphere, without loading that battlefield. One hero pose keeps
+the tank and camera comparable across all ten. The [Garage environments guide](docs/GARAGE-ENVIRONMENTS.md) has the
+visual, lifecycle, and verification contract.
 
 ## Renderer, drivers, and performance
 
@@ -207,19 +224,19 @@ triangles, transitions, cache residency, and repeated-cycle memory. See the
   <img src="docs/media/icons/gpu.svg" width="52" alt="GPU renderer icon" title="GPU-aware renderer">
 </p>
 
-The renderer treats quality as a device contract instead of a single desktop preset. It selects a GPU/driver-aware
-profile, caps pixel density, prewarms shader paths, adapts costly effects, and can recover from a black frame or WebGL
-context loss. The current presentation path combines:
+The renderer treats quality as a per-device contract. It picks a profile for the GPU and driver, caps pixel density,
+prewarms shader paths, scales costly effects, and recovers from a black frame or a lost WebGL context. The current path
+combines:
 
-- four quality-scaled, stable texel-anchored shadow cascades with articulation-aware tank shadow hulls;
-- fused output grading, anti-aliasing, adaptive render scale, fog/atmosphere, and bounded transparent depth work;
-- instance/batch paths for repeated world objects, pooled particles, and explicit GPU resource disposal;
-- reusable hot-loop scratch state, fixed-step simulation, render interpolation, and high-refresh presentation;
-- an in-game diagnostics surface for FPS, ping, frame timing, draw calls, triangles, memory, network telemetry, quality,
-  and renderer/driver identity.
+- four quality-scaled, texel-anchored shadow cascades with articulation-aware tank shadow hulls;
+- fused output grading, anti-aliasing, adaptive render scale, fog and atmosphere, and bounded transparent depth work;
+- instanced and batched repeated world objects, pooled particles, and explicit GPU resource disposal;
+- reused hot-loop scratch state, fixed-step simulation, render interpolation, and high-refresh presentation;
+- an in-game diagnostics panel (`F9`) for FPS, ping, frame timing, draw calls, triangles, memory, network telemetry,
+  quality, and renderer and driver identity.
 
-The renderer reached **120 FPS on the certified test hardware**. Actual performance depends on refresh rate, browser,
-thermal limits, GPU and driver, resolution, and quality level. Combat rules remain fixed at 60 Hz at every render rate.
+The renderer reached **120 FPS on the certified test hardware**. Real performance depends on refresh rate, browser,
+thermal limits, GPU and driver, resolution, and quality level. Combat rules stay at 60 Hz at every render rate.
 
 <table>
 <tr>
@@ -228,21 +245,29 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 </tr>
 </table>
 
-## Multiplayer
+## Multiplayer and couch play
 
 <p>
   <img src="docs/media/icons/team.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
 </p>
 
-LAN and private rooms run their match in the host commander's browser over WebRTC and use the shared renderer-free movement and combat rules. No database or dedicated game server is required; Internet rooms meet through a small rooms Worker (seats, signaling, host migration), and restricted networks may need TURN relay. See [Multiplayer v2](docs/MULTIPLAYER-V2.md).
-Clients send intent, never trusted hits or damage. Snapshot filtering, local prediction/reconciliation, bounded remote
-interpolation, reliable fire edges, reconnectable room state, and separate control/chat delivery keep a moving and firing
-7v7 battle responsive without giving the client authority.
+Private and LAN rooms run the match in the host commander's browser over WebRTC, on the same renderer-free movement and
+combat rules as solo play. There is no database and no dedicated game server. Internet rooms meet through a small rooms
+Worker (seats, signaling, host migration), and restricted networks may need a TURN relay. A room holds up to 14 players a
+side plus eight spectators. See [Multiplayer v2](docs/MULTIPLAYER-V2.md).
+
+Clients send intent, never hits or damage. Snapshot filtering, local prediction and reconciliation, bounded remote
+interpolation, reliable fire edges, reconnectable room state, and separate control and chat channels keep a battle
+responsive without giving the client authority.
+
+Couch play is a local battle on one computer. Phones join by QR code and send input over WebRTC; they never run the
+simulation. Each pane in Split view draws only the enemies its own player has spotted. See
+[Couch mode](docs/COUCH-MODE.md) and the [phone controller](docs/PHONE-CONTROLLER.md).
 
 <p align="center">
   <img src="public/media/ui-246/multiplayer-pair.webp" alt="Two players' live screens from one private room on Tarkhan Steppe: a Challenger 3 and a T-90M facing each other">
 </p>
-<p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures preserve the real battle HUD, authoritative simulation, filtered snapshots, and each commander's view.</sub></p>
+<p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures with the real battle HUD, the host's simulation, filtered snapshots, and each commander's view.</sub></p>
 
 ### Controls at a glance
 
@@ -250,24 +275,20 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 | --- | --- | --- |
 | Drive and steer | `WASD` or arrow keys | Left stick |
 | Aim and fire | Mouse + `LMB` | Right stick + `RT` |
-| Precision sight | Hold `RMB` by default; wheel in also enters | `LT` |
-| Free look without moving the turret | Hold `Shift` or `Left Alt` | `RB` |
-| Select ammunition | `1` / `2` / `3` | D-pad |
+| Precision sight | Hold `RMB` or press `Shift`; wheel in also enters | `LT` |
+| Free look without moving the turret | Hold `Caps Lock` or `Left Alt` | `RB` |
+| Select ammunition | `1` / `2` / `3` | D-pad up / left / right |
 | Vehicle-specific action | `E` | `LB` |
-| Reload a partial magazine | `C` | Remappable |
-| Consumables | `4` / `5` / `6` | Remappable |
+| Reload a partial magazine | `C` | D-pad down |
+| Consumables | `4` / `5` / `6` | `X` / `Y` / `B` |
+| Air Support strike view | `X` | Remappable |
 | Handbrake | `Space` | `A` |
-| Shot log / battle diagnostics / menu | `L` / `F9` / `Esc` | Interface controls |
+| Shot log / battle diagnostics / menu | `L` / `F9` / `Esc` | `START` opens the menu |
 
-Every desktop action is remappable. `RMB` can use hold-to-aim, toggle-aim, or classic free-look behavior. Touch devices
-receive dedicated movement, aim, scope, fire, ammunition, equipment, and special-action controls rather than a scaled
-desktop HUD.
+Every desktop action is remappable. `RMB` can hold to aim, toggle aim, or act as classic free look. Touch devices get
+their own movement, aim, scope, fire, ammunition, equipment, and special-action controls instead of a scaled desktop HUD.
 
 ## Production tools
-
-For procedural vehicle creation, use the [tank-generation handbook](docs/tank-generation/README.md):
-source-file and Gallery-markup intake, measured geometry and negative space,
-independent review gates, reusable agent briefs, and handoff templates.
 
 <p>
   <img src="docs/media/icons/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">
@@ -282,63 +303,13 @@ independent review gates, reusable agent briefs, and handoff templates.
 </tr>
 </table>
 
-Scene Studio works with the runtime rather than a separate cinematic renderer. Vehicles, camouflage, camera, lighting,
-recoil, tracers, explosions, sparks, smoke, debris, wreck state, and timeline events remain scene data. A saved scene can
-be replayed, scrubbed, edited, exported as JSON, captured as a high-resolution still, or recorded as a video.
+Scene Studio drives the game's own renderer. Vehicles, camouflage, camera, lighting, recoil, tracers, explosions,
+sparks, smoke, debris, wreck state, and timeline events are all scene data. A saved scene can be replayed, scrubbed,
+edited, exported as JSON, captured as a high-resolution still, or recorded as video.
 
-Regenerate the current public archive:
-
-```bash
-npm run shots:battle:generate
-npm run shots:battle:grade -- --root shots/marketing-battles-r3
-npm run studio:action:render
-npm run showcase:publish
-npm run showcase:check
-npm run landing:media:publish
-```
-
-The capture harness serializes concurrent jobs, starts a clean local game, verifies the requested state, and records
-current rendering diagnostics. `public/media/site50-r14/archive.json` is the source archive (the fifty frames and every take's two stills);
-`public/media/landing-r1/manifest.json` records the public hero, rail, mosaic, and Studio selections with their actor,
-effect, duration, dimensions, and byte receipts.
-
-The same run is reviewed in contact sheets before any frame becomes a 4K master. These collection views make weak
-silhouettes, obstructed cameras, repeated compositions, and overpowered effects obvious before automated grading.
-
-<table>
-<tr>
-<td width="50%"><a href="public/media/site50-r14/frames/sheet-1.webp"><img src="public/media/site50-r14/frames/sheet-1.webp" alt="Contact sheet 1 of the fifty frames, frames 1 through 10"></a><br><sub><b>Review sheet 1:</b> ten of the fifty frames, each a 4K render of a moving scene with its motion blur.</sub></td>
-<td width="50%"><a href="public/media/site50-r14/frames/sheet-2.webp"><img src="public/media/site50-r14/frames/sheet-2.webp" alt="Contact sheet 2 of the fifty frames, frames 11 through 20"></a><br><sub><b>Review sheet 2:</b> the next ten, as the manual shows them beside the battle takes.</sub></td>
-</tr>
-</table>
-
-The manual shows all five sheets; [docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the library and how it is built.
-
-## Selected field frames
-
-The landing page publishes a larger responsive mosaic. This smaller wall samples the site fifty's key moments and close portraits
-without repeating the hero's frames.
-
-<table>
-<tr>
-<td width="25%"><img src="public/media/site50-r14/stills/s05-barn-advance.webp" alt="A T-14 Armata advances past the barns of Verdant Fields"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s20-road-return-fire.webp" alt="A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s21-fields-assault.webp" alt="A T-90SM wedge assaults through the burning fields"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s27-caravanserai-kill.webp" alt="A T-62MV-1 is knocked out by the caravanserai"></td>
-</tr>
-<tr>
-<td width="25%"><img src="public/media/site50-r14/stills/s34-furnace-salvo.webp" alt="TOS-1A launchers fire a rippling salvo in the Ironworks yard at night"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s06-farm-charge.webp" alt="A KF51 Panther charges past the farmhouse through artillery"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s23-village-crossroads.webp" alt="A T-80U Husarz and a PL-01 hold the village crossroads"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s24-ice-duel.webp" alt="A duel on the frozen lake: a T-80U takes the hit"></td>
-</tr>
-<tr>
-<td width="25%"><img src="public/media/site50-r14/stills/s33-water-tower-close.webp" alt="The line advances past the burning water tower at night"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s38-church-knockout-close.webp" alt="A Leopard 2A6 is knocked out beside the onion-domed church at night"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s18-street-knockout-close.webp" alt="A T-90A is knocked out at the end of a Steinburg street at night"></td>
-<td width="25%"><img src="public/media/site50-r14/stills/s19-roof-tiles-close.webp" alt="Roof tiles rain down as a PL-01 fires up the street"></td>
-</tr>
-</table>
+[docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the public media library and how it is built and reviewed.
+The [tank-generation handbook](docs/tank-generation/README.md) covers how a vehicle is built: measured geometry, Gallery
+markup review, independent review gates, agent briefs, and handoff templates.
 
 [Browse the full archive](public/media/site50-r14/archive.json),
 [open the public Tank Gallery](https://cot.kevinliu.studio/gallery), or
@@ -359,9 +330,10 @@ controls ──► deterministic authority ──► filtered state + reliable e
 src/engine/    renderer, camera, lighting, post, quality, telemetry, GPU recovery
 src/world/     thirty-three maps, terrain, vegetation, props, collision, destruction
 src/vehicles/  specs, procedural geometry, materials, profiles, asset verification
-src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting
-src/game/      local composition, bots, input, profile, killcam, Scene Studio
+src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting, modes, Air Support
+src/game/      local composition, bots, input, profile, killcam, Watch, Scene Studio
 src/mp/        rooms, the wire, transports, the match client, the browser host, sessions
+src/pad/       the phone controller and the couch lobby
 src/ui/        garage, battle HUD, reports, Service Record, settings, the component kit, tokens, type
 src/presentation/  the public site's shell, landing, media player and the /cn build
 src/docs/      the Field Manual: chapters built from the game's own tables, prerendered
@@ -370,7 +342,7 @@ server/        the match actor, the LAN room helper, collision manifests, ICE, t
 ```
 
 Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md), [Product features](docs/FEATURES.md),
-[How it works](docs/HOW-IT-WORKS.md), [Multiplayer v2](docs/MULTIPLAYER-V2.md),
+[How it works](docs/HOW-IT-WORKS.md), [Game modes](docs/GAME-MODES.md), [Multiplayer v2](docs/MULTIPLAYER-V2.md),
 [Performance](docs/PERFORMANCE.md), [Scene Studio](docs/STUDIO.md), and [Tank Gallery](docs/GALLERY.md).
 
 ## Develop and verify
@@ -385,8 +357,8 @@ npm run build
 npm run build:private
 ```
 
-The public pages carry generated parts; after a change to a chapter, the landing,
-the shell or the tokens, rewrite them (each checks without `--write`):
+The public pages carry generated parts. After a change to a chapter, the landing, the shell, or the tokens, rewrite them
+(each checks without `--write`):
 
 ```bash
 node tools/docs-prerender.mjs --write
@@ -395,17 +367,15 @@ node tools/public-shell.mjs --write
 node tools/gen-tokens.mjs
 ```
 
-Simulation, networking, browser multiplayer, maps, collision,
-destruction, rendering policy, UI, mobile controls, vehicle provenance, anatomy, generated assets, and both build variants
-have executable checks.
+Simulation, networking, browser multiplayer, maps, collision, destruction, rendering policy, UI, mobile controls,
+vehicle provenance, anatomy, generated assets, and both build variants have executable checks.
 
 ## Deploying
 
-Production (`cot.kevinliu.studio`) is deployed **once per round, by hand**, never per commit. Git
-auto-deploys are disabled in `vercel.json` for every branch, so pushing never builds on
-Vercel; the release path is the prebuilt CLI deploy documented in [`docs/DEPLOYS.md`](docs/DEPLOYS.md)
-(`vercel pull --yes --environment=production` → `vercel build --prod` → `vercel deploy --prebuilt --prod`),
-run after the release gate is green. There is no CI deploy.
+Production (`cot.kevinliu.studio`) is deployed **once per round, by hand**, never per commit. Git auto-deploys are
+disabled in `vercel.json` for every branch, so a push never builds on Vercel. The release path is the prebuilt CLI deploy
+in [`docs/DEPLOYS.md`](docs/DEPLOYS.md) (`vercel pull --yes --environment=production` → `vercel build --prod` →
+`vercel deploy --prebuilt --prod`), run after the release gate is green. There is no CI deploy.
 
 ## Credits and licensing
 
@@ -416,5 +386,6 @@ tools, not co-authors or copyright holders.
 All gameplay code and every selectable procedural vehicle model are original first-party work by Kevin B. Liu. The
 repository is MIT-licensed by default, with procedural vehicle and battlefield source, fleet and map data, generated game
 assets, capture recipes, authored media, and first-party branding expressly excluded as proprietary Reserved Content.
-Earlier public revisions remain available under the MIT terms under which they were released. See [`LICENSE`](LICENSE), [`LICENSE-POLICY.md`](LICENSE-POLICY.md),
-[`NOTICE.md`](NOTICE.md), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) before reusing any file.
+Earlier public revisions remain available under the MIT terms under which they were released. See [`LICENSE`](LICENSE),
+[`LICENSE-POLICY.md`](LICENSE-POLICY.md), [`NOTICE.md`](NOTICE.md), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md)
+before reusing any file.
