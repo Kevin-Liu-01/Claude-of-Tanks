@@ -5986,5 +5986,13 @@
   "tutorial.garage.kit.bodyTouch": "Three slots for a repair kit, a first aid kit and an extinguisher. In battle, tap a kit's button to use it.",
   "tutorial.battle.minimap.bodyTouch": "Your team and every spotted enemy show here, each in its side's colour.",
   "tutorial.tips.done.title": "You're ready",
-  "tutorial.tips.done.body": "That is the whole tutorial. Replay it any time from Settings; now pick a tank and press Deploy."
+  "tutorial.tips.done.body": "That is the whole tutorial. Replay it any time from Settings; now pick a tank and press Deploy.",
+  "media.loading.title.s107PumaS1DesertDuelLowT70T3100Dx18Tk32M271R14": "Sirocco Wadi: Puma S1 v T-80U",
+  "media.loading.title.s100Merkava2bBadlandsReelFbM271R14": "Redrock Divide: Merkava Mk 2B and Merkava Mk 1B",
+  "media.loading.title.s105Merkava4TrophyCopperMesaDuelLowT70M271R14": "Copper Mesa Mine: Merkava Mk 4 Trophy v T-90M Proryv",
+  "media.loading.title.s118Type10bSkybridgeReelM271R14": "Skybridge Chasm: Type 10B and Type 10",
+  "media.loading.title.s276Strv105FjordReelM271R14": "Nordhavn Fjord: Strv 105 and UDES 03",
+  "media.loading.title.s84Leo1a5PoldersReelM271R14": "Tidegate Polders: Leopard 1A5 and MBT-70",
+  "media.loading.title.s72Amx10pOrchardReelM271R14": "Orchard Valley: AMX-10P and AMX-10P 25",
+  "media.loading.title.vs04RailyardLeclercT14DroneM271R13": "Cinder Junction: Leclerc SXXI v T-14 Armata"
 }

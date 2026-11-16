@@ -16,8 +16,8 @@
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
 // --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs, loading,
 // gallery), each still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
-// loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading`, a list on top of
-// the gallery's collection) and its captions in both catalogs.
+// loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading.stills`: gallery
+// and Garage stills, in order) and its gallery stills' captions in both catalogs.
 // gallery (2026-11-11) wires the owner's whole loading-screen gallery (picks.json `gallery`, built into
 // public/media/gallery-r1 by loading-media.mjs): src/ui/galleryShots.ts, which the Garage's slideshow and the manual's
 // archive wall import, and the wall's limit and count.
@@ -93,6 +93,7 @@ const heroSrc = (h) => (h.versus ? versus(h.versus).path : still(h.id, h.still))
 // a featured still: a take's, or (2026-11-03, the owner's boot pick) a versus still, whose boot opener is its own 1280
 // rung or another versus still's (bootVersus: the same scene through the boot lens, the pair under the lockup)
 const featuredSrc = (f) => (f.versus ? versus(f.versus).path : f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still));
+const featuredCap = (f) => (f.versus ? versusKey('title', f.versus) : titleKey(f.id));
 const featuredBoot = (f) => {
   if (!f.versus) return built(`${C}/stills/${f.id}-boot.webp`);
   const rung = versus(f.bootVersus ?? f.versus).rungs.find((r) => r.width === 1280);
@@ -270,7 +271,7 @@ function wireGame() {
   const entries = PICKS.featured.map((f) => {
     const lines = [`    img: '${featuredSrc(f)}',`];
     if (f.boot) lines.push(`    bootImg: '${featuredBoot(f)}',`);
-    lines.push(`    capKey: '${f.versus ? versusKey('title', f.versus) : titleKey(f.id)}',`);
+    lines.push(`    capKey: '${featuredCap(f)}',`);
     lines.push(`    ${f.maps?.length ? `maps: [${f.maps.map((m) => `'${m}'`).join(', ')}], ` : ''}focal: '${f.focal ?? '50% 50%'}',`);
     return `  {\n${lines.join('\n')}\n  },`;
   });
@@ -493,37 +494,43 @@ function wireCatalogs() {
 }
 
 // --- the loading screens (2026-11-11, the owner's loading-screen gallery) -------------------------------------------
-// picks.loading names the stills that follow the boot pick (featured[0]) on the boot splash and the transition screens:
-// a list on top of the gallery's collection (272: one collection, loading-r1 retired). tools/media-r5/loading-media.mjs
-// builds public/media/<gallery collection> and records the list in its manifest (each still's battlefield, focal and its
-// caption in both locales); this writes src/ui/featuredShots.ts LOADING_SHOTS (the gallery's files) and the captions'
-// keys, and drops the caption of a still the list no longer names.
+// picks.loading.stills names the stills that follow the boot pick (featured[0]) on the boot splash and the transition
+// screens, in their order (owner 2026-11-13): each a gallery still (public/media/<gallery collection>, built by
+// tools/media-r5/loading-media.mjs: its battlefield, its focal and its caption in both locales in the manifest) or a
+// Garage still other than the boot pick (a `featured` id or versus: its file, battlefields, focal and caption are the
+// Garage's, and a versus still's boot lens, bootVersus, shows on the boot splash). This writes src/ui/featuredShots.ts
+// LOADING_SHOTS and the gallery stills' caption keys, and drops the caption of a gallery still the list no longer names.
 const loadingKey = (id) => `media.loading.title.${camel(id)}`;
-function loadingItems() {
-  const manifest = JSON.parse(readFileSync(GALLERY_MANIFEST, 'utf8'));
-  const ids = [...PICKS.loading.close, ...PICKS.loading.elevated];
-  if (JSON.stringify(manifest.loading) !== JSON.stringify(ids)) {
-    throw new Error('the gallery manifest\'s loading list is not picks.json loading (run tools/media-r5/loading-media.mjs)');
-  }
-  const byId = new Map(manifest.items.map((item) => [item.id, item]));
+function loadingShots() {
+  const gallery = new Map(JSON.parse(readFileSync(GALLERY_MANIFEST, 'utf8')).items.map((item) => [item.id, item]));
+  const garage = new Map(PICKS.featured.filter((f) => !f.boot).map((f) => [f.versus ?? f.id, f]));
+  const ids = PICKS.loading.stills;
+  if (new Set(ids).size !== ids.length) throw new Error('picks.json loading.stills names a still twice');
   return ids.map((id) => {
-    const item = byId.get(id);
-    if (!item) throw new Error(`loading still ${id} is not a built gallery still (run tools/media-r5/loading-media.mjs)`);
-    if (!existsSync(join(ROOT, 'public', item.path))) throw new Error(`loading still ${id}: ${item.path} is not published`);
-    return item;
+    const item = gallery.get(id), f = garage.get(id);
+    if (item) {
+      if (!existsSync(join(ROOT, 'public', item.path))) throw new Error(`loading still ${id}: ${item.path} is not published`);
+      return { img: item.path, capKey: loadingKey(id), maps: [item.map], focal: item.focal, title: item.title };
+    }
+    if (f) {
+      return { img: featuredSrc(f), bootImg: f.bootVersus && featuredBoot(f), capKey: featuredCap(f), maps: f.maps,
+        focal: f.focal ?? '50% 50%' };
+    }
+    throw new Error(`loading still ${id} is neither a built gallery still (run tools/media-r5/loading-media.mjs) nor a featured pick after the boot pick`);
   });
 }
 function wireLoading() {
-  const items = loadingItems();
+  const shots = loadingShots();
   // (2026-11-11, the gallery lane) each still's focal, aimed at its hero tank (picks.json gallery.focal, in the manifest)
-  const entries = items.map((item) => `\n  {\n    img: '${item.path}',\n    capKey: '${loadingKey(item.id)}',\n    maps: ['${item.map}'], focal: '${item.focal}',\n  },`);
+  const entries = shots.map((s) => `\n  {\n    img: '${s.img}',\n${s.bootImg ? `    bootImg: '${s.bootImg}',\n` : ''}    capKey: '${s.capKey}',\n    maps: [${s.maps.map((m) => `'${m}'`).join(', ')}], focal: '${s.focal}',\n  },`);
   swap('src/ui/featuredShots.ts', /(export const LOADING_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[)[\s\S]*?(\n\]\);)/,
     (_, open, close) => `${open}${entries.join('')}${close}`, 'loading shots');
-  const keys = new Set(items.map((item) => loadingKey(item.id)));
+  const captioned = shots.filter((s) => s.title);
+  const keys = new Set(captioned.map((s) => s.capKey));
   for (const [locale, file] of [['en', 'src/ui/i18nCatalog.en-US.json'], ['zh', 'src/ui/i18nCatalog.zh-CN.json']]) {
     const catalog = JSON.parse(get(file));
     for (const key of Object.keys(catalog)) if (key.startsWith('media.loading.title.') && !keys.has(key)) delete catalog[key];
-    for (const item of items) catalog[loadingKey(item.id)] = item.title[locale];
+    for (const s of captioned) catalog[s.capKey] = s.title[locale];
     texts.set(file, keepEscapes(get(file), `${JSON.stringify(catalog, null, 2)}\n`));
   }
 }
