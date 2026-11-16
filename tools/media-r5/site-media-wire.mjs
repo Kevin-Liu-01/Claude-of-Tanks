@@ -14,7 +14,7 @@
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
 // --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
 // nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
-// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, readme, landing, catalogs, loading,
+// --only (2026-11-04) runs just the named sections (docs, topics, reels, game, social, landing, catalogs, loading,
 // gallery), each still all or nothing: a change to one surface lands while another section's pages wait to be re-wired.
 // loading (2026-11-11) wires the loading screens' rotation after the boot pick (picks.json `loading.stills`: gallery
 // and Garage stills, in order) and its gallery stills' captions in both catalogs.
@@ -312,50 +312,6 @@ function wireSocialCards() {
   }
 }
 
-// --- the README (the repository's front page) ---------------------------------------------------------------------
-function wireReadme() {
-  const M = 'README.md';
-  const R = PICKS.readme;
-  const cell = (id) => `<td width="50%"><img src="public${still(id)}" alt="${esc(take(id).en)}"></td>`;
-  const rows = [[R.stills[0], R.stills[1]], [R.stills[2], R.stills[3]]].map((pair) => `<tr>\n${pair.map(cell).join('\n')}\n</tr>`);
-  swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
-    () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
-  swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
-    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the ${PICKS.home.hero.length} hero frames, the ${PICKS.home.rail.length}\nscreenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the ${PICKS.home.versus.length} versus stills, the\n${PICKS.home.trailers.length} trailers, the ${PICKS.home.mosaic.length}-shot mosaic and the Scene Studio loop published on the site.`, 'README archive note');
-  const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
-  const p = PICKS.home.paths;
-  swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/[^"]+\.webm">[\s\S]*?<\/tr>\n<\/table>/,
-    () => `<table>\n<tr>\n${loop(p[0])}\n${loop(p[1])}\n</tr>\n<tr>\n${loop(p[2])}\n${loop(p[3])}\n</tr>\n</table>`, 'README loops');
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Thirty worlds:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.worlds.id, R.worlds.still)}${b}${esc(take(R.worlds.id).en)}${c}`, 'README worlds');
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Shared world kit:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.worldKit.id, R.worldKit.still)}${b}${esc(take(R.worldKit.id).en)}${c}`, 'README world kit');
-  // the Destruction cell (owner 2026-10-12: "no more ui_explosion anymore!"): a site-fifty knockout instead of the capture
-  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Destruction:<\/b>)/,
-    (_, a, b, c) => `${a}public${still(R.destruction.id, R.destruction.still)}${b}${esc(take(R.destruction.id).en)}${c}`, 'README destruction');
-  // the archive section: its source, two of the fifty frames' contact sheets, and a wall of the takes' stills
-  swap(M, /`public\/media\/(?:showcase-r1\/manifest\.json` defines the source archive;|site50-r\d+\/archive\.json` is the source archive \(the fifty frames and every take's two stills\);)/,
-    () => `\`public/media/${PICKS.collection}/archive.json\` is the source archive (the fifty frames and every take's two stills);`, 'README archive source');
-  const sheet = (n, side) => {
-    const url = `public${built(`${C}/frames/sheet-${n}.webp`)}`;
-    const [a, b] = [(n - 1) * 10 + 1, n * 10];
-    return `<td width="50%"><a href="${url}"><img src="${url}" alt="Contact sheet ${n} of the fifty frames, frames ${a} through ${b}"></a><br><sub><b>Review sheet ${n}:</b> ${side}</sub></td>`;
-  };
-  swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/(?:showcase-r1\/process|site50-r\d+\/frames)\/[^\n]*\n<td width="50%"><a href="public\/media\/(?:showcase-r1\/process|site50-r\d+\/frames)\/[^\n]*\n<\/tr>\n<\/table>/,
-    () => `<table>\n<tr>\n${sheet(R.sheets[0], 'ten of the fifty frames, each a 4K render of a moving scene with its motion blur.')}\n${sheet(R.sheets[1], 'the next ten, as the manual shows them beside the battle takes.')}\n</tr>\n</table>`, 'README contact sheets');
-  swap(M, /\[Open all six review sheets\]\(docs\/SHOWCASE-LIBRARY\.md#review-sheets\) and the complete admission contract\./,
-    () => 'The manual shows all five sheets; [docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the library and how it is built.', 'README sheets link',
-    /The manual shows all five sheets;/);
-  swap(M, /This smaller wall samples (?:the action and foreground collections|the site fifty's key moments and close portraits)\nwithout repeating the six hero frames\./,
-    () => "This smaller wall samples the site fifty's key moments and close portraits\nwithout repeating the hero's frames.", 'README wall copy',
-    /without repeating the hero's frames\./);
-  const wallCell = (p) => `<td width="25%"><img src="public${still(p.id, p.still)}" alt="${esc(take(p.id).en)}"></td>`;
-  const wallRows = [0, 4, 8].map((i) => `<tr>\n${R.wall.slice(i, i + 4).map(wallCell).join('\n')}\n</tr>`);
-  swap(M, /<table>\n<tr>\n<td width="25%"><img src="public\/media\/(?:showcase-r1|site50-r\d+\/stills)\/[\s\S]*?<\/tr>\n<\/table>/, () => `<table>\n${wallRows.join('\n')}\n</table>`, 'README wall');
-  swap(M, /\[Browse the full (?:showcase manifest\]\(public\/media\/showcase-r1\/manifest\.json\)|archive\]\(public\/media\/site50-r\d+\/archive\.json\)),/,
-    () => `[Browse the full archive](public/media/${PICKS.collection}/archive.json),`, 'README archive link');
-}
-
 // --- the landing contract -----------------------------------------------------------------------------------------
 function wireLandingManifest() {
   const path = 'public/media/landing-r1/manifest.json';
@@ -591,7 +547,7 @@ function wireGallery() {
 
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
-  const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards, readme: wireReadme,
+  const sections = { docs: wireDocs, topics: wireTopics, reels: wireReels, game: wireGame, social: wireSocialCards,
     landing: wireLandingManifest, catalogs: wireCatalogs, loading: wireLoading, gallery: wireGallery };
   const only = arg('only')?.split(',');
   if (only?.some((name) => !sections[name])) throw new Error(`--only takes sections of ${Object.keys(sections).join(', ')}`);
