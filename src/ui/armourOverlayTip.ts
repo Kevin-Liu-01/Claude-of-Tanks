@@ -14,7 +14,7 @@ const TIP_ID = 'cot-armour-overlay-tip';
 const TIP_MS = 12_000;
 
 export function showArmourOverlayTip(control: { readonly key: string | null }): void {
-  const path = `${t('settings.tab.gameplay')} › ${t('settings.interface.armorOverlay')}`;
+  const path = `${t('settings.title')} › ${t('settings.tab.gameplay')} › ${t('settings.interface.armorOverlay')}`;
   battleNotices.show({
     id: TIP_ID,
     severity: 'info',
