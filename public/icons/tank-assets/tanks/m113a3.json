@@ -503,14 +503,14 @@
       {
         "volumeId": "M10",
         "name": "trackL",
-        "min": [-1.34,0.043,-2.3813],
+        "min": [-1.34,0.043,-2.3798],
         "max": [-0.96,0.8997,2.3613],
         "turretLocal": false
       },
       {
         "volumeId": "M11",
         "name": "trackR",
-        "min": [0.96,0.043,-2.3813],
+        "min": [0.96,0.043,-2.3798],
         "max": [1.34,0.8997,2.3613],
         "turretLocal": false
       }
@@ -532,8 +532,8 @@
       }
     ]
   },
-  "geometryHash": "31208e5c",
-  "metadataHash": "53b49202",
+  "geometryHash": "23c76333",
+  "metadataHash": "9589fefa",
   "presentationAnchor": {
     "xM": -0.0042,
     "zM": -0.0845
@@ -590,16 +590,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28532,
-      "sha256": "82291d4ead317ea5449ac01c0ab1f2446b179a6ab69eb744fc726df9c8a4ad5a",
+      "bytes": 28800,
+      "sha256": "07177d0f4ebe5c647d415a610810f193ead3968839bea7ff1000c8f85378b078",
       "thumbnail": {
         "file": "thumbs/m113a3_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11700,
-        "sha256": "07cc497d8e560801d1ce3434741c93ee7948b3534b2ffa8d10063567fc7fb120",
-        "frame": [29,103,225,250]
+        "bytes": 11666,
+        "sha256": "e9f3542eb80b11c052ffdd7b0b2a7ef75e6e641ea97b7e0d87dcebc718cb765e",
+        "frame": [28,103,225,250]
       }
     },
     "top": {
@@ -607,56 +607,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16768,
-      "sha256": "17e8d1f84f93b5e4e957570e1bd68320a8ec015dca17c08714e457572216f257"
+      "bytes": 16714,
+      "sha256": "b77edc6c53a4a4ba1031eae902aaec1cf5c8bee680501a77f53e2aab056e1e73"
     },
     "side": {
       "file": "m113a3_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14002,
-      "sha256": "2f0b985b73301d0c9172d57732df2ce9af6179c7621d5e382df7ef5d3e77411f"
+      "bytes": 13792,
+      "sha256": "21e4f2a477b6eaf02457bc3c04906b4c78e4e884003b8e24292d91b5aaaaa7d6"
     },
     "topSilhouette": {
       "file": "m113a3_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1265,
-      "sha256": "a253496bea07bb16c1adff25b9c59316d12344cfea5a8a5769e3dd512b430381"
+      "bytes": 1264,
+      "sha256": "39131b04b09120feb0d93c3c3be68596acc401c91277d303c666bcab7472243c"
     },
     "sideSilhouette": {
       "file": "m113a3_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4911,
-      "sha256": "804abf6545696f3f2a929cf8638595d10beb50e6ade390651ddc25579da6a738"
+      "bytes": 4913,
+      "sha256": "9ca75c8eda631c128cd3a42978229fdb3cd0f0efde79c4331e4c107f4382f0c7"
     },
     "armorSide": {
       "file": "m113a3_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28604,
-      "sha256": "519618b3e0957e2f938782627113b479d4e81328d11de5e0124acf9310325a85"
+      "bytes": 28532,
+      "sha256": "0857205256b48b76e9a036d1627e45f3dcb79f5d44a0a6834f75fdd083c1c16b"
     },
     "modulesSide": {
       "file": "m113a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28788,
-      "sha256": "b29394c325bd4b0945b816e72bfe8d4fc019ba935797cfcc443164e37221f23a"
+      "bytes": 28898,
+      "sha256": "7dea2e304d7fb3158568dcc5f48f56f8ad12becdd12bc48c55833954f144dd55"
     },
     "crewSide": {
       "file": "m113a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28036,
-      "sha256": "a7302fee99835d9df5dc560ee5c5deb19aa19227fce827656c62e79e0702c0b3"
+      "bytes": 28070,
+      "sha256": "330afc34aff7cc3ffeaf2cadb0345863329f18ff68236631d6c5b8d166fb110b"
     },
     "markings": {
       "file": "m113a3_markings.png",
@@ -670,7 +670,7 @@
       "file": "m113a3_technical.json",
       "mime": "application/json",
       "bytes": 3196,
-      "sha256": "d9839befe06b195d63998d882c33ce81c31996d17c1c19b23013eef4e696192e"
+      "sha256": "b7d93b63ecad6bdb6a21314597b0c9976a8888d58b6dd25b0119c287025eab89"
     }
   }
 }

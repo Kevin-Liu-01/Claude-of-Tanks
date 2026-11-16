@@ -40,8 +40,8 @@ Implementation: DONE; qualification: the packet's envelope PASS, regeneration an
 
 The published M113A1 hull (`M113_BASE`): 4.863 m long, the roof 1.86 m and the nose 0.99 m high, the glacis 0.79 m long
 in plan, 0.43 m clearance, 0.38 m tracks 1.15 m off the centre line (2.68 m over the tracks), five 0.61 m road wheels 0.70 m
-apart (the first 1.00 m behind the nose), the sprocket 0.34 m behind the nose and the idler 0.32 m ahead of the stern, no
-return rollers. As built: 2.724 m wide, 5.409 m long (the muzzle 0.43 m ahead of the nose), 4.13 m to the whips' tips
+apart (the first 1.00 m behind the nose), the sprocket 0.34 m behind the nose and the idler 0.32 m ahead of the stern, its centre 0.46 m up (272: about 0.07 m over
+the road wheels' centres in the M163's side photographs 06 and 09; 0.56 m before), no return rollers. As built: 2.724 m wide, 5.409 m long (the muzzle 0.43 m ahead of the nose), 4.13 m to the whips' tips
 (RM Sotheby's: 2.78 m to the cupola). Gun depression (`tools/gun-depression-sweep.mjs --no-suit`): 9.7 degrees ahead and
 abeam; over the front quarters (yaw 21-59) the trim vane and the lamp guards hold it to 4.0 degrees at its least (yaw
 39-42); astern of yaw 147, 6.8 degrees (the ramp's hinge line).
