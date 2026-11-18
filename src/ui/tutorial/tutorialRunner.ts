@@ -40,6 +40,8 @@ export interface TutorialPort {
   playerPosition(): { readonly x: number; readonly z: number } | null;
   /** The chapter's screen: live, covered by a surface the step did not open, or gone. */
   screen(chapter: TutorialChapter): TutorialScreen;
+  /** 274: a step that teaches a subject another surface would teach has shown (tutorialSteps.ts `teaches`). */
+  taught?(subject: NonNullable<TutorialStep['teaches']>): void;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -196,6 +198,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       focus: !battle && input !== 'touch',
     };
     overlay.show(view);
+    if (step.teaches) port.taught?.(step.teaches);
     arm(step);
   }
 

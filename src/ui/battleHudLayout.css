@@ -187,6 +187,10 @@ body[data-cot-battle-layout][data-hud-map-large='right'] .cot-kill-lane.r{displa
 /* (as wide as its notice, to a cap: the kit's 420 px box wrapped the reconnect notice's line at 1440 and wider, where the
    type grows and the window has the room, gauntlet r17) */
 body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)));width:max-content;max-width:min(720px,calc(100vw - 32px))}
+/* (274) the guidance's one plan (guidancePlan.ts, battleHudLayout.ts writeGuidance): the toasts' box off the tutorial's
+   card, the centre notices and every control, or their wait while no such box exists (a phone under a card) */
+body[data-cot-battle-layout][data-hud-guidance~=toasts] .cot-battle-notices[data-placement=top]{left:var(--hud-battle-notices-left);top:var(--hud-battle-notices-top);width:var(--hud-battle-notices-width);max-width:none;transform:none}
+body[data-cot-battle-layout][data-hud-guidance~=toasts-wait] .cot-battle-notices:not(:has(.cot-aim-notice)){visibility:hidden}
 /* (its notices on the battle's one notice plate, the centre's angled one, their glyph and words centred on their action:
    in the kit's rounded plate a parked gun-limit chip read as another kit beside DETECTED, and the reconnect notice's line
    stood 9 px over its Leave button's middle, gauntlet r18) */

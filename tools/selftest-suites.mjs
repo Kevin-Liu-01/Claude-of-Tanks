@@ -3091,6 +3091,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // 274: the battle's guidance in one place (Kevin: "one unified thing"): the tutorial's card, the toasts and the centre
+    // notices never on each other or on a control, at every recorded HUD size
+    'src/ui/guidancePlan.selftest.mjs',
     // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',
