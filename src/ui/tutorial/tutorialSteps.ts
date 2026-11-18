@@ -13,7 +13,7 @@
  */
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
-import { TRAINING_POINTS } from '../../sim/trainingGround.ts';
+import { TRAINING_POINTS, TRAINING_RULES, trainingActor } from '../../sim/trainingGround.ts';
 
 /** Who the step is written for: a keyboard-and-mouse player, a touch layout, a connected gamepad. Absent: everyone. */
 export type TutorialInput = 'keyboard' | 'touch' | 'pad';
@@ -195,6 +195,13 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
 const marker = (point: { readonly x: number; readonly z: number; readonly radiusM: number }, label: string) =>
   ({ x: point.x, z: point.z, radiusM: point.radiusM, label }) as const;
 const PLAY = { dim: false, card: 'upper' } as const;
+/** The scenes' targets by their battle ids (a solo roster keys hulls by spec: sim/trainingGround.ts). */
+const TARGET1 = trainingActor(TRAINING_RULES, 'target1')!.specId;
+const TARGET2 = trainingActor(TRAINING_RULES, 'target2')!.specId;
+/** Where on Target 1 the aim ghost stands (tutorialGuideMath.ts actorPoint: along its hull, up, across): a green plate low
+ *  on the hull front for the loaner's APFSDS, and the turret front, red for it (armour-bands.txt). */
+const TARGET1_GREEN = { along: 3.0, up: 0.9, across: 0 } as const;
+const TARGET1_RED = { along: 1.4, up: 2.1, across: 0 } as const;
 
 export const TRAINING_STEPS: readonly TutorialStep[] = [
   // S1: the rollout card: what this battle is
@@ -245,6 +252,67 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.freeLook', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
     title: 'tutorial.training.freeLook.title', body: 'tutorial.training.freeLook.body', advance: { on: 'camera', freeLook: true },
     keys: { look: 'freeLook' } },
+
+  // S5: spotting. Target 1 waits beyond the loaner's sight; ring C brings it inside, then the player hides in bush D
+  { id: 'training.spot', chapter: 'training', target: [], ...PLAY, behindS: 60,
+    title: 'tutorial.training.spot.title', body: 'tutorial.training.spot.body', advance: { on: 'spot', actor: TARGET1 },
+    guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true } },
+  { id: 'training.bush', chapter: 'training', target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.bush.title', body: 'tutorial.training.bush.body', advance: { on: 'hidden', stillS: 3 },
+    guide: { marker: marker(TRAINING_POINTS.bushD, 'tutorial.training.marker.d'), path: true } },
+  { id: 'training.lamp', chapter: 'training', target: ['.cot-sixth'], title: 'tutorial.training.lamp.title',
+    body: 'tutorial.training.lamp.body', advance: NEXT },
+  // S6: the armour colours (on by default since 273), read through the sight, then off and on again; a touch layout and a
+  // pad have no toggle of their own until the controller-parity item, so they read the Settings row
+  { id: 'training.armourSight', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.body', advance: { on: 'camera', mode: 'sight' },
+    keys: { sight: 'sniperToggle' }, guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  { id: 'training.armourSightTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.bodyTouch', advance: { on: 'camera', mode: 'sight' },
+    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, hud: ['.cot-touch .round.scope'] } },
+  { id: 'training.armour', chapter: 'training', target: [], ...PLAY, teaches: 'armourColours',
+    title: 'tutorial.training.armour.title', body: 'tutorial.training.armour.body', advance: NEXT,
+    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  { id: 'training.armourOff', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.armourOff.title', body: 'tutorial.training.armourOff.body', advance: { on: 'armour', value: false },
+    keys: { toggle: 'hitboxOverlay' } },
+  { id: 'training.armourOn', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.armourOn.title', body: 'tutorial.training.armourOn.body', advance: { on: 'armour', value: true },
+    keys: { toggle: 'hitboxOverlay' } },
+  { id: 'training.armourSettingsTouch', chapter: 'training', when: ['touch', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.armourOff.title', body: 'tutorial.training.armourSettings.body', advance: NEXT },
+  // S7: aim and fire: a penetration on green, then a bounce off red (the shot card names each)
+  { id: 'training.firePen', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.firePen.title', body: 'tutorial.training.firePen.body',
+    advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['pen', 'he_pen'] }, keys: { fire: 'fire' },
+    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_GREEN } } },
+  { id: 'training.firePenTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.firePen.title', body: 'tutorial.training.firePen.bodyTouch',
+    advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['pen', 'he_pen'] },
+    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_GREEN }, hud: ['.cot-touch .round.fire'] } },
+  { id: 'training.fireBounce', chapter: 'training', target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.fireBounce.title', body: 'tutorial.training.fireBounce.body',
+    advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['ricochet', 'nonpen'] },
+    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_RED } } },
+  // S8: the reload, and the right round: HE turns the Leopard's plates red, and goes through the BWP-1's thin skin
+  { id: 'training.reload', chapter: 'training', target: ['.cot-ret-reload', '.cot-shells .cot-shell.sel'], ...PLAY,
+    title: 'tutorial.training.reload.title', body: 'tutorial.training.reload.body', advance: NEXT },
+  { id: 'training.loadHE', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.loadHE.title', body: 'tutorial.training.loadHE.body', advance: { on: 'shell', type: 'HE' },
+    keys: { he: 'shell3' }, guide: { hud: ['.cot-shells'], actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  { id: 'training.loadHETouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.loadHE.title', body: 'tutorial.training.loadHE.bodyTouch', advance: { on: 'shell', type: 'HE' },
+    guide: { hud: ['.cot-shells'], actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  { id: 'training.fireHE', chapter: 'training', target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.fireHE.title', body: 'tutorial.training.fireHE.body',
+    advance: { on: 'hit', by: 'player', actor: TARGET2, kinds: ['he_pen', 'pen', 'he_splash'] },
+    guide: { actor: { id: TARGET2, label: 'tutorial.training.actor.target2' } } },
+  { id: 'training.loadAP', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.loadAP.title', body: 'tutorial.training.loadAP.body', advance: { on: 'shell', type: 'APFSDS' },
+    keys: { ap: 'shell1' }, guide: { hud: ['.cot-shells'] } },
+  { id: 'training.loadAPTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.loadAP.title', body: 'tutorial.training.loadAP.bodyTouch', advance: { on: 'shell', type: 'APFSDS' },
+    guide: { hud: ['.cot-shells'] } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

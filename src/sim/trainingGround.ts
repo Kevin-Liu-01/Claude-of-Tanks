@@ -28,8 +28,10 @@ export interface TrainingActorRule {
   readonly specId: string;
   readonly x: number;
   readonly z: number;
-  /** The heading it stands at (deg; 0 faces +z). */
-  readonly yawDeg: number;
+  /** How it stands: facing the scene's firing point (a TRAINING_POINTS key), turned `presentDeg` from it (0 nose on, 90
+   *  broadside; + turns its nose to its left), so its presentation holds wherever the probe moves the two. */
+  readonly faces: keyof typeof TRAINING_POINTS;
+  readonly presentDeg: number;
 }
 
 export interface TrainingRules {
@@ -58,9 +60,14 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
   loanerSpecId: 'm1a1',
   seed: 27_301,
   start: Object.freeze({ x: -215, z: -135, yawDeg: 270 }),
+  // the armour, fire and rounds scenes' targets (S5 to S8), chosen by the overlay's own bands for the loaner's rounds
+  // (tutorial-journey evidence armour-bands.txt: tools armour-map, the sim's aim query): a Leopard 2A4 at 30 degrees shows
+  // the M1A1's APFSDS 52 % green, 19 % amber, 29 % red (the turret front), so one target gives a penetration and a
+  // bounce; HE paints it 83 % red. A BWP-1 at 60 degrees takes HE 75 % green: HE is for thin armour.
+  // (marks provisional: the south-west probe's best pair; the whole-map probe places them)
   actors: Object.freeze([
-    Object.freeze({ key: 'target1', specId: 'leo1a5', x: -150, z: -60, yawDeg: 210 }),
-    Object.freeze({ key: 'target2', specId: 'merkava2b', x: -60, z: -40, yawDeg: 180 }),
+    Object.freeze({ key: 'target1', specId: 'leo2a4', x: -350, z: -250, faces: 'ringC', presentDeg: 30 }),
+    Object.freeze({ key: 'target2', specId: 'bwp1', x: -440, z: -200, faces: 'ringC', presentDeg: 60 }),
   ]),
   timeOfDay: 'day',
 });
@@ -72,6 +79,10 @@ export const TRAINING_POINTS = Object.freeze({
   driveB: Object.freeze({ x: -265, z: -100, radiusM: 6 }),
   /** S3: the board the gun points at, 61 m south-west of ring B across the meadow (in sight from it). */
   board: Object.freeze({ x: -300, z: -150, radiusM: 3 }),
+  /** S5 to S8: the firing point the spotting, armour, fire and rounds scenes play from, and the bush the player backs into
+   *  (its canopy's centre and radius). Provisional until the whole-map probe (tools/training-layout-probe.mjs). */
+  ringC: Object.freeze({ x: -360, z: -120, radiusM: 6 }),
+  bushD: Object.freeze({ x: -380, z: -110, radiusM: 4 }),
 });
 
 /** An actor's rule by its scenes' name. */
@@ -86,6 +97,13 @@ export function trainingRoster(rules: TrainingRules): readonly string[] {
 
 const mark = (x: number, z: number, yawDeg: number): ProvingMark => Object.freeze({ x, z, yaw: yawDeg * DEG });
 
+/** An actor's heading: its nose toward its firing point, turned by its presentation angle (deg). */
+export function trainingActorYawDeg(actor: TrainingActorRule): number {
+  const point = TRAINING_POINTS[actor.faces];
+  const bearing = Math.atan2(point.x - actor.x, point.z - actor.z) / DEG;
+  return bearing + actor.presentDeg;
+}
+
 /**
  * The training ground as a range layout: the start as its origin, each actor's mark as a lane (in roster order, so the
  * solo seating hands the n-th actor the n-th mark), no plates, and the earthworks the scenes stamp (none until the
@@ -95,7 +113,8 @@ export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
   const origin = mark(rules.start.x, rules.start.z, rules.start.yawDeg);
   const lanes: ProvingLaneMark[] = rules.actors.map((actor, index) => {
     const rangeM = Math.hypot(actor.x - origin.x, actor.z - origin.z);
-    return Object.freeze({ ...mark(actor.x, actor.z, actor.yawDeg), index, rangeM, measuredM: rangeM, presentDeg: 0, lateralM: 0 });
+    return Object.freeze({ ...mark(actor.x, actor.z, trainingActorYawDeg(actor)), index, rangeM, measuredM: rangeM,
+      presentDeg: actor.presentDeg, lateralM: 0 });
   });
   const stamps: CourseStamp[] = [];
   return Object.freeze({
