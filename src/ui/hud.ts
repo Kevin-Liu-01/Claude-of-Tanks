@@ -8736,8 +8736,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   // (round 3 merge review r1) a network battle restarted under this seat (battlePresentation.ts 'battle:restarted'):
   // every hull stands at its spawn again, a revive of each with no alert (the edge above, for the whole field), and this
-  // seat's revive count and consumable tray are its fresh hull's. (round 4 E6b) A restart opens a new battle (the
-  // session's decision; Kevin may overrule): the battle's record starts over as at a battle's start (resetBattleRecord:
+  // seat's revive count and consumable tray are its fresh hull's. (round 4 E6b) A restart opens a new battle (owner
+  // approved 2026-11-13): the battle's record starts over as at a battle's start (resetBattleRecord:
   // the kill counts, the kill feed and ribbon, the contact memory, the sixth sense on the restarted clock). Before, the
   // kill ledger only re-armed its dead, so the ear rows counted the abandoned battle's kills into the restarted one's.
   on('battle:restarted', () => {

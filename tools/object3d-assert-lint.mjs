@@ -363,6 +363,8 @@ const isValue = input => {
     || ts.isRegularExpressionLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword
     || ts.isTypeOfExpression(node)) return true;
   if (ts.isPrefixUnaryExpression(node)) return true;
+  // `n < 26 ? 'close' : 'elevated'`: a choice between two values is a value (galleryShots' section label, 272)
+  if (ts.isConditionalExpression(node)) return isValue(node.whenTrue) && isValue(node.whenFalse);
   if (ts.isBinaryExpression(node)) return ARITHMETIC.has(node.operatorToken.kind);
   // An empty literal is no evidence: `assert.deepEqual(scene.children, [])` dumps the children it finds.
   if (ts.isArrayLiteralExpression(node)) return node.elements.length > 0 && node.elements.every(element => isValue(element));

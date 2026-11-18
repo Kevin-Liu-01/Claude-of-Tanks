@@ -71,6 +71,8 @@ assert.equal(other.parent?.name, 'turret'); // pass
 assert.equal(other.uuid, x.uuid); // pass
 assert.ok(other.parent === x); // pass
 assert.equal(sound.material, 'brick'); // pass
+assert.equal(item.group, n < 26 ? 'close' : 'elevated'); // pass
+assert.equal(x.group, n < 26 ? 'close' : other); // flag
 assert.equal(stats.materials, n - 1); // pass
 assert.notEqual(other.parent, null); // pass
 assert.deepEqual(other.userData.axis, [0, 0, 1]); // pass
@@ -84,7 +86,7 @@ x.equal(other.parent, x); // pass
 `;
 const shapes = lint(SHAPES), shapeLines = SHAPES.split('\n');
 const expected = shapeLines.flatMap((line, index) => /\/[/*] flag\b/.test(line) ? [index + 1] : []);
-assert.equal(expected.length, 17);
+assert.equal(expected.length, 18);
 assert.deepEqual(lines(shapes), expected,
   `flagged: ${shapes.findings.map(row => `${row.line} ${row.reason}`).join(' | ')}`);
 assert.match(shapes.findings.find(row => row.line === expected[5]).reason, /item of \.children|element of \.children/);

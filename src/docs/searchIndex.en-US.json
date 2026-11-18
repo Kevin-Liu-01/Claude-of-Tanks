@@ -171,7 +171,7 @@
   "href": "/docs/combat#penetration",
   "title": "Penetration",
   "chapter": "Armor, angling and spotting",
-  "text": "A shell goes through when its penetration, rolled 75–125 %, beats the armor it meets. Penetration falls linearly from its 100 m figure to its 1,000 m figure, then on to 2,000 m where the shell has one. Penetration and damage each roll 75–125 % of their figure. HEAT keeps its penetration at any range. The armor overlay In the sight, H paints the enemy for the shell you have loaded: green goes through, amber may, red will not. It counts the angle, spaced armor, ERA and range.\nRange (m) mm OFL 120 F2 APFSDS · OECC 120 F1 HEAT"
+  "text": "A shell goes through when its penetration, rolled 75–125 %, beats the armor it meets. Penetration falls linearly from its 100 m figure to its 1,000 m figure, then on to 2,000 m where the shell has one. Penetration and damage each roll 75–125 % of their figure. HEAT keeps its penetration at any range. The armor overlay In the sight, the armor overlay paints the enemy for the shell you have loaded: green goes through, amber may, red will not. It counts the angle, spaced armor, ERA and range. It is on from the start; H turns it off and on again, and so does Settings › Gameplay › Armor penetration shading.\nRange (m) mm OFL 120 F2 APFSDS · OECC 120 F1 HEAT"
  },
  {
   "href": "/docs/combat#angling",
