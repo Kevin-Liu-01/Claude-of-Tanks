@@ -970,6 +970,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // inside its grace, stopped past it; a refused re-queue counted), a unit past its budget never recorded, a first unit
     // queued past its budget shot warm
     'tools/cloud-sky-shots.selftest.mjs',
+    // gaps 274 (S3/S4): the pair shot tools (building-style, built-env, ground-surface) hold through withCaptureHold by
+    // one loop, on a stand-in lock and the mock clock: a checkpoint before every pair, a pair in flight at the cap kept by
+    // its grace and yielded after (stopped and the rest left at 60 s), a timed-out pair never recorded, no budget timer
+    // outliving its pair, the teardown before the release; their boot wait is the readiness probe's expression
+    'tools/shot-pairs.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget

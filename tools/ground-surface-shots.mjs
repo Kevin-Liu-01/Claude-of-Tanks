@@ -9,7 +9,8 @@
 //               "variants": ["base", "u:uName.x=0"], "maps": ["urban", ...], "poses": ["chase", ...] }, ...]
 //
 // The harness is tools/ground-banding-shots.mjs's (item 264): one render-class ticket, the first (job, map) pair staged
-// while it waits, every pair on its own page inside the hold, checkpoint() between pairs. Its poses:
+// while it waits, every pair on its own page inside the hold, checkpoint() between pairs; the hold is the one wrapper's
+// through tools/shot-pairs.mjs (gaps 274 S3/S4: its cap, grace, signals and teardown). Its poses:
 //   chase    — the battle's chase rig (cameraRig snapArcade, the 13 m orbit step) behind the staged hull: the ground 10–60 m
 //              ahead, as the driver sees it;
 //   near     — 1.9 m over the ground five metres ahead of the hull, looking 12 m on: the surface's close-range detail;
@@ -31,16 +32,16 @@
 // The streaming (ab18: the first arm of a pose missed the litter its second had, Desert's chase 15 grey pixels against 48)
 // each pose waits for the grass and the ground litter to have no cell left to build, and the arms alternate which is shot
 // first from pose to pose, so no arm is always the first.
-import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { decodePng } from './hud-ammo-frame-ink.mjs';
+import { SHOT_BOOT_EXPRESSION, runShotPairs } from './shot-pairs.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 
@@ -105,8 +106,6 @@ function parseVariant(variant) {
   }
   return out;
 }
-
-function stamp() { return new Date().toISOString().slice(11, 19); }
 
 /** The staged battlefield: the hull, its heading, the buildings and the allied hulls (page side). */
 function pageStage() {
@@ -427,7 +426,8 @@ async function bootPage(browser, baseUrl, device) {
 async function stageMap(entry, mapId) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  // the boot latch through the readiness probe's expression, and the shot hooks (tools/shot-pairs.mjs)
+  await page.waitForFunction(SHOT_BOOT_EXPRESSION, { timeout: 900000, polling: 1000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });
@@ -635,13 +635,11 @@ async function main(argv) {
     .map((job) => ({ job, mapId })));
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
-  setBrowserGuardContext({ hold: label });
-  const lock = createCaptureLock();
   const servers = new Map();
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
-  let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
+  let browser = null, entry = null, session = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   const openPair = async ({ job, mapId }) => {
     browser ??= await launch();
@@ -649,61 +647,33 @@ async function main(argv) {
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
     await stageMap(entry, mapId);
   };
-  const close = async () => {
-    // the browser goes before the capture lock (capture-hold-census: the next holder's GPU work would overlap it)
-    if (browser) await browser.close().catch(() => {});
-    if (held) lock.release();
-    held = false;
-    for (const server of servers.values()) await server.close().catch(() => {});
-  };
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
-    process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
-  }
+  const closeBrowser = async () => { if (browser) await browser.close().catch(() => {}); browser = null; };
   let shot = 0, failed = 0;
   try {
-    await lock.acquire(options.waitHours * 3600 * 1000, {
-      lockClass: 'render', prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
-    });
-    held = true;
-    for (let i = 0; i < pairs.length; i++) {
-      const { job, mapId } = pairs[i];
-      const started = Date.now();
-      let outcome = 'failed';
-      try {
-        if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pairs[i]);
-        const shooting = (async () => {
-          const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-          if (live !== mapId) await stageMap(entry, mapId);
-          const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants, poses: job.poses }, job.frames);
-          receipt.ms = Date.now() - started;
-          job.manifest.maps[mapId] = receipt;
-          writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-          return 'shot';
-        })();
-        shooting.catch(() => {});
-        outcome = await Promise.race([shooting, sleep(options.pairMinutes * 60_000).then(() => 'timeout')]);
-      } catch (error) {
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
-      } finally {
-        if (entry) await entry.page.close().catch(() => {});
-        entry = null;
-      }
-      if (outcome === 'shot') {
-        shot++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${pairs.length}`);
-      } else {
-        failed++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
-      }
-      if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
-      if (i < pairs.length - 1) {
-        const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
-        if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
-      }
-    }
+    // (gaps 274 S3/S4) the hold is the one wrapper's, through the pair loop the three pair shot tools share
+    ({ shot, failed } = await runShotPairs({
+      pairs, label, waitHours: options.waitHours, pairMinutes: options.pairMinutes,
+      // the first pair staged and frozen while the ticket waits
+      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
+      open: async (pair) => { if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pair); },
+      shoot: async ({ job, mapId }, { signal, started }) => {
+        const own = entry; // the page this pair's open made (a late answer never reaches the next pair's)
+        const live = await own.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+        if (live !== mapId) await stageMap(own, mapId);
+        const receipt = await shootMap({ ...own, mapId }, { variants: job.variants, poses: job.poses }, job.frames);
+        signal.throwIfAborted(); // a pair past its budget never records
+        receipt.ms = Date.now() - started;
+        job.manifest.maps[mapId] = receipt;
+        writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+      },
+      settle: async () => { if (entry) await entry.page.close().catch(() => {}); entry = null; },
+      after: async () => { if (pagesSinceLaunch >= 8 && browser) { await closeBrowser(); pagesSinceLaunch = 0; } },
+      // every browser of the run closed before the release, whichever way the hold ends
+      teardown: closeBrowser,
+    }));
   } finally {
-    await close();
+    await closeBrowser(); // a hold that never held closes what its prepare launched
+    for (const server of servers.values()) await server.close().catch(() => {});
   }
   console.log(`[${label}] ${shot} pair(s) shot, ${failed} failed`);
   return failed ? 1 : 0;
