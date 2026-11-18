@@ -10,15 +10,15 @@ import { queryAimArmor, tankPoseFromState, type ArmorModel, type ArmorPoseState,
 import { estimatePenRatio, type AimArmorInfo, type DamageShellSpec } from './damage.ts';
 import type { Vector3 } from 'three';
 
-/** The aim's reach (m): every line is traced this far, whatever the caller's own reach. */
+/** The aim's reach (m): the reticle and the paint judge no line longer than this. */
 export const AIM_REACH_M = 800;
 
 /**
  * The armour a round from `origin` along unit `dir` meets on a target within `maxDist` (m): the authority's closed
  * collision cells at the target's current pose, its spent ERA left out (sim/armor.ts queryAimArmor). `pose` is scratch.
- * The line is always traced to AIM_REACH_M and the caller's reach applied after: plates that meet at one point (a
- * mantlet and the sight recess beside it) are told apart by the trace's parameter along the line, so two callers that
- * traced one line to different lengths could read different plates there (274: the paint and the reticle did).
+ * Plates that meet at one point (a mantlet and the sight recess beside it) resolve the same way whatever length the
+ * line is traced to (sim/armor.ts breakCoplanarTies, 274), so the reticle, the paint and a real shot's per-tick
+ * segments read one plate there.
  */
 export function aimArmorAlong(
   origin: Vector3,
@@ -29,8 +29,7 @@ export function aimArmorAlong(
   eraSpent: ReadonlySet<string> | undefined,
   pose: TankArmorPose,
 ): AimArmorInfo | null {
-  const info = queryAimArmor(origin, dir, AIM_REACH_M, tankPoseFromState(state, pose), armor, eraSpent);
-  return info && info.distM <= maxDist ? info : null;
+  return queryAimArmor(origin, dir, maxDist, tankPoseFromState(state, pose), armor, eraSpent);
 }
 
 /** The round's penetration ratio through that armour at its range: impact angle, normalization, ricochet and shatter,

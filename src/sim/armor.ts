@@ -466,11 +466,60 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
 }
 
 /**
+ * (274) Contacts closer than this along a trace (m) are one contact: plates that meet at a point (the Leopard 2A6's
+ * mantlet and the sight recess beside it, two cells sharing an entry plane) differ there only by float noise in the
+ * segment parameter, and that noise moves with the segment's length and start. Measured on the leo2a6 and t72b3
+ * fronts: a tie's noise stays under 1e-13 m, a real gap between plates under 1e-5 m is a seam converging to an edge.
+ */
+const COPLANAR_TIE_M = 1e-6;
+/** COPLANAR_TIE_M in the traced segment's parameter, set by localizeSegment. */
+let _tieT = COPLANAR_TIE_M;
+
+/** Layers from the outside in: the outermost plate meets a shot first where two plates meet at one point. */
+const PLATE_LAYER: Readonly<Record<string, number>> = { era: 0, external: 1, spaced: 2, main: 3 };
+const plateLayer = (plate: ArmorPlate): number => PLATE_LAYER[plate.kind] ?? 4;
+const byName = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Two plates a shot meets at one point: the outermost first, then the thickest, then by name. */
+function coplanarPlateOrder(a: ArmorPlate, b: ArmorPlate): number {
+  return plateLayer(a) - plateLayer(b) || b.physicalMm - a.physicalMm || byName(a.name, b.name);
+}
+
+const HIT_KIND_ORDER = { plate: 0, module: 1, crew: 2 } as const;
+/** Two hits at one point: armour before what lies behind it, plates by coplanarPlateOrder, boxes by name. */
+function coplanarHitOrder(a: ArmorIntersection, b: ArmorIntersection): number {
+  if (a.kind !== b.kind) return HIT_KIND_ORDER[a.kind] - HIT_KIND_ORDER[b.kind];
+  if (a.kind === 'plate') return coplanarPlateOrder(a.plate, (b as ArmorPlateIntersection).plate);
+  if (a.kind === 'module') return byName(a.module, (b as ArmorModuleIntersection).module);
+  return byName(a.crew, (b as ArmorCrewIntersection).crew);
+}
+
+/**
+ * Reorder each run of a t-sorted list whose members lie within COPLANAR_TIE_M of the run's first by `order`, so the
+ * contact a trace reports first at a meeting point is the same whatever the segment's length and start. In place,
+ * stable, allocation-free (runs are a few entries).
+ */
+function breakCoplanarTies<T extends { t: number }>(list: T[], order: (a: T, b: T) => number): void {
+  for (let start = 0; start < list.length;) {
+    let end = start + 1;
+    while (end < list.length && list[end].t - list[start].t < _tieT) end++;
+    for (let i = start + 1; i < end; i++) {
+      const item = list[i];
+      let j = i - 1;
+      while (j >= start && order(list[j], item) > 0) { list[j + 1] = list[j]; j--; }
+      list[j + 1] = item;
+    }
+    start = end;
+  }
+}
+
+/**
  * Transform the world segment into every local frame.
  * @param {Vector3} from world segment start
  * @param {Vector3} to world segment end
  */
 function localizeSegment(from: Vector3, to: Vector3): void {
+  _tieT = COPLANAR_TIE_M / Math.max(from.distanceTo(to), 1e-9);
   for (let f = 0; f < 5; f++) {
     _fromL[f].copy(from).applyMatrix4(_inverse[f]);
     _toL[f].copy(to).applyMatrix4(_inverse[f]);
@@ -501,7 +550,12 @@ function intersectConvexCell(frame: FrameIndex, cell: ArmorCollisionCell): numbe
     }
     const t = -distance / denominator;
     if (denominator < 0) {
-      if (t > t0) {
+      // (274) two of the cell's faces in one plane (the 2A6's cheek and sight recess): the entry face by plate order,
+      // not by which plane's float noise reads a hair further along the segment
+      if (entryFace && t > t0 - _tieT && t <= t0 + _tieT) {
+        if (coplanarPlateOrder(face.plate, entryFace.plate) < 0) entryFace = face;
+        if (t > t0) t0 = t;
+      } else if (t > t0) {
         t0 = t;
         entryFace = face;
       }
@@ -589,6 +643,13 @@ function plateAlongShot(
   return along === own ? null : zones[along];
 }
 
+/** Cells entered at one point: by their entry faces' plates (a face-less zero entry last). */
+function coplanarCellOrder(a: CellInterval, b: CellInterval): number {
+  const pa = a.face?.plate, pb = b.face?.plate;
+  if (!pa || !pb) return (pa ? 0 : 1) - (pb ? 0 : 1);
+  return coplanarPlateOrder(pa, pb);
+}
+
 function traceCollisionShell(
   cells: readonly ArmorCollisionCell[] | undefined,
   frame: FrameIndex,
@@ -607,6 +668,9 @@ function traceCollisionShell(
     _cellIntervals.push(record);
   }
   _cellIntervals.sort((a, b) => a.t - b.t || b.tExit - a.tExit);
+  // cells sharing an entry plane merge into one hit that keeps the first cell's face: which face that is must not be
+  // float noise (274: the 2A6's cheek and sight recess, mantlet and sight recess)
+  breakCoplanarTies(_cellIntervals, coplanarCellOrder);
   for (let index = 0; index < _cellIntervals.length;) {
     const first = _cellIntervals[index++];
     let tExit = first.tExit;
@@ -1413,7 +1477,8 @@ const EMPTY_WEAPONS: readonly ExternalWeaponStock[] = Object.freeze([]);
  * Trace a world-space segment through a tank's armor model. Returns every
  * intersection — armor plates and weapon housings (front faces only, with
  * world outward normal and raw impact angle), module boxes, crew boxes and
- * the external gun barrel — sorted by distance along the segment. ERA plates whose names are
+ * the external gun barrel — sorted by distance along the segment, contacts at one point by plate
+ * (breakCoplanarTies: the same order whatever the segment's length and start). ERA plates whose names are
  * in `eraSpent` are skipped (the tile is gone).
  *
  * @param {Vector3} from world segment start
@@ -1463,6 +1528,7 @@ export function traceTank(
   traceGunBarrel(armorModel.gunBarrel, out);
 
   out.sort((a, b) => a.t - b.t);
+  breakCoplanarTies(out, coplanarHitOrder);
   return out;
 }
 
