@@ -172,10 +172,22 @@ FIFO holds between classes: a render never passes a ready timing ticket (or
 an older copy's unclassed one, which stays exclusive). The class comes from
 `--lock-class=render|timing`, else acquire's `lockClass`, else
 `COT_SHOTS_LOCK_CLASS`, else the command's script names (`classifyCommand`);
-`--status` shows it. Holds are capped at 20 min: call `lock.checkpoint()` (or
-shoot's `checkpoint` in `runWarmHold`, which freezes and thaws the pages)
-between batches, and past the cap with anyone waiting it gives the lock up and
-re-queues at the back. Raise the cap per ticket only: `holdCapMinutes` with a
+`--status` shows it. A tool holds through `tools/capture-hold.mjs`, never a
+lock of its own: `withCaptureHold(work, options)` (or `runWarmHold` on it)
+for a tool that works in units, `openCaptureHold()` (two lines: the acquire
+and the release) for a script or a browser receipt. The wrapper owns the
+refresh, the cap and its yield, SIGTERM/SIGINT/SIGHUP (the process exits
+128 + n) and the teardown, which closes the run's browsers before the release
+on every way out. A tool that shoots one (job, map) pair at a time runs its
+pairs through `runShotPairs` in `tools/shot-pairs.mjs` (building-style,
+built-env and ground-surface shots; gaps 274 S3/S4) and waits for the boot
+on its `SHOT_BOOT_EXPRESSION`, the readiness probe's `BOOT_LOADED_EXPRESSION`
+with the shot hooks. `tools/capture-hold-census.selftest.mjs` refuses a new
+direct acquirer (a tool's own `acquire()`, signal handlers or
+`lock.checkpoint()`); the listed ones keep their reasons. Holds are capped at
+20 min: call the hold's `checkpoint()` (shoot's `checkpoint` in
+`runWarmHold`, which freezes and thaws the pages) between units, and past the
+cap with anyone waiting it gives the lock up and re-queues at the back. Raise the cap per ticket only: `holdCapMinutes` with a
 `holdCapReason`. A release integrator's default tier and smokes run with
 `COT_CAPTURE_PRIORITY=release` (2026-10-31, item 266: 265's browser receipts
 waited 82 min behind lane holds): their tickets are named ahead of every
@@ -349,7 +361,14 @@ qualities) takes about 25 minutes in one process, so split it across processes f
 Standalone probes run by hand (each is its owning lane's reusable rig; none is in `npm test`):
 - `node tools/building-style-shots.mjs --out=<dir> --jobs=<jobs.json> [--tag=v1]` — every map's buildings at the battle
   camera (chase, chase2, long; desktop or phone), staged identically per build with the clouds pinned (one capture time,
-  drift held), through the capture lock and resumable: the buildings lane's blind A/B pairs (buildings-270).
+  drift held), through the capture lock and resumable: the buildings lane's blind A/B pairs (buildings-270). Holds and
+  waits through `tools/shot-pairs.mjs` (`runShotPairs`, `SHOT_BOOT_EXPRESSION`), as the next two do.
+- `node tools/built-env-shots.mjs --out=<dir> --jobs=<jobs.json> [--tag=v1] [--wait-hours=16] [--pair-minutes=10]` — every
+  map's built environment (street, road, plaza, shore and long poses, or a job's own fixed poses) at the battle camera,
+  the clouds pinned, one (job, map) pair at a time, resumable from its manifests (built-env-270).
+- `node tools/ground-surface-shots.mjs --out=<dir> --jobs=<jobs.json> [--tag=v1] [--wait-hours=16] [--pair-minutes=10]` —
+  every map's ground at the gameplay camera (chase, near, long, town and the 200/600 m readability pair), each job's
+  terrain-uniform variants and the `aa` control, one (job, map) pair at a time, resumable (ground-269).
 - `node tools/civic-census.mjs [--out=<file.jsonl>] [mapId…]` — read-only, from each map's collision shard and config:
   its town pads, the legacy kerb pass replayed, and whether the map needs the civic-area or pathway kit (maps lane).
 - `node tools/click-timeline.mjs --base=<label>=<url> --out=<dir> [--paths=all|<id>,…] [--profile=desktop|phone]`, then

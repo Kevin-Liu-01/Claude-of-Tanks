@@ -23,6 +23,8 @@
 //            once held again;
 //   control  the same run at the wrapper's default 60-s grace: the hold's stop ends the pair in flight 'stopped' (its late
 //            answer never records), the pair after it is counted and named as left, and the teardown comes before the release;
+//   opening  (fix-up r1, the correctness review's nit) the stop comes while a pair's open still runs: once the open
+//            returns the pair is 'stopped' and its shoot is never called, and the rest is left;
 //   first    a first pair still running at the cap is given the grace too (the checkpoint before it marks the work as
 //            checkpointing; without one the cap stops it at once);
 //   refused  a yield whose re-queue runs out: the pair left is counted and named, and the teardown runs with nothing held
@@ -133,7 +135,7 @@ async function onMockClock(work, { limitMs = 90 * MINUTE, drainMs = 0 } = {}) {
 
 /** One run of `maps` (one job) with each map's scripted { openMs, shootMs, openThrows }: its counts, events and lines. */
 async function pairsRun({ maps, script = {}, pairMinutes = 10, waiters = 0, requeue = 'resume', hold = {}, drainMs = 0 }) {
-  const events = [], lines = [], records = [];
+  const events = [], lines = [], records = [], called = [];
   const lock = standInLock({ waiters, events, requeue });
   const job = { name: 'job' };
   const pairs = maps.map((mapId) => ({ job, mapId }));
@@ -146,6 +148,7 @@ async function pairsRun({ maps, script = {}, pairMinutes = 10, waiters = 0, requ
       if (script[mapId]?.openThrows) throw new Error(script[mapId].openThrows);
     },
     shoot: async ({ mapId }, { signal, started }) => {
+      called.push(mapId);
       if (of(mapId, 'shootMs')) await sleep(of(mapId, 'shootMs'));
       signal.throwIfAborted(); // as the tools check it before writing their manifests
       records.push(mapId);
@@ -158,7 +161,7 @@ async function pairsRun({ maps, script = {}, pairMinutes = 10, waiters = 0, requ
     log: (line) => lines.push(line),
     hold: { lock, ...hold },
   }), { drainMs });
-  return { counts, events, lines: lines.join('\n'), records, lock };
+  return { counts, events, lines: lines.join('\n'), records, called, lock };
 }
 const before = (events, first, second) => {
   const a = events.indexOf(first), b = events.indexOf(second);
@@ -237,6 +240,19 @@ const CAP_SCRIPT = { m1: { shootMs: 9 * MINUTE }, m2: { shootMs: 9 * MINUTE }, m
   before(run.events, 'teardown@1260', 'release@1260');
 }
 
+// opening: the stop comes while m3's open runs (18 to 27 min; the grace ends at 21): m3 is stopped once open, never shot
+{
+  const run = await pairsRun({ maps: ['m1', 'm2', 'm3', 'm4'], waiters: 1, hold: { graceSeconds: 60 }, drainMs: 2 * MINUTE,
+    script: { m1: { shootMs: 9 * MINUTE }, m2: { shootMs: 9 * MINUTE }, m3: { openMs: 9 * MINUTE, shootMs: 1 * MINUTE }, m4: { shootMs: 1 * MINUTE } } });
+  assert.deepEqual(run.counts, { shot: 2, failed: 2 }, run.lines);
+  assert.deepEqual(run.called, ['m1', 'm2'], `a pair whose open outlived the hold's stop is never shot (${run.called.join(', ')})`);
+  assert.ok(run.events.includes('settle m3 stopped@1620'), run.events.join(', '));
+  assert.match(run.lines, /^\[shots\] 00:27:00 job m3 stopped$/m);
+  assert.match(run.lines, /1 pair\(s\) left for the next run \(job m4\)$/m);
+  // the stop's teardown (the run's browsers closed: a real open fails there) comes before its release, the open aside
+  before(run.events, 'teardown@1320', 'release@1440');
+}
+
 // first: a first pair running past the cap is given the grace too, and yields after it
 {
   const run = await pairsRun({ maps: ['m1', 'm2'], pairMinutes: 30, waiters: 1, script: { m1: { shootMs: 25 * MINUTE }, m2: { shootMs: 1 * MINUTE } } });
@@ -258,4 +274,4 @@ const CAP_SCRIPT = { m1: { shootMs: 9 * MINUTE }, m2: { shootMs: 9 * MINUTE }, m
 console.log(`shot-pairs.selftest: the hold's options (render, the wait, a pair's budget and a minute of grace); the boot wait the three `
   + 'tools built by hand, now the readiness probe\'s; the loop: lines, a checkpoint before every pair, teardown before the release, no budget '
   + 'timer outliving its pair, a timed-out pair never recorded, a failed open, a pair in flight at the cap kept by its grace and yielded after '
-  + '(stopped and the rest left at 60 s), a first pair past the cap, a refused re-queue');
+  + '(stopped and the rest left at 60 s), a pair stopped while it opens never shot, a first pair past the cap, a refused re-queue');

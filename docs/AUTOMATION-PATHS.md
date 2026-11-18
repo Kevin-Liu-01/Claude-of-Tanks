@@ -214,7 +214,10 @@ so a receipt's log says the legacy predicate decided. `scenePhaseExpression(phas
 who owns the scene (a Garage return writes the Garage's scene under its veil, before the screen settles), for a check
 that times how soon a hand-over began (pause-probe's Leave), followed by a READY wait before the screen is read. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
 written by src/app/bootReadiness.ts): the boot finished loading, while the entry gate may still wait on the player
-(the lifecycle's 'boot' state until it is dismissed).
+(the lifecycle's 'boot' state until it is dismissed). A tool that needs hooks of its own on the loaded page waits once on
+the probe's expression composed with them (`${BOOT_LOADED_EXPRESSION} && <hooks>`), one predicate under one budget: the
+pair shot tools wait on `SHOT_BOOT_EXPRESSION` (tools/shot-pairs.mjs: the boot mirror with `__SHOTS` and `__DEBUG`;
+gaps 274 S3), which is no hand-built wait.
 
 `tools/game-readiness.selftest.mjs` reads every tool, and every selftest that drives a page, as code (comments
 blanked by TypeScript's parser, so a glob string such as `'**/*'` is not a comment) for the facts behind those
