@@ -831,6 +831,18 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // between its own ticks (the ground covered, the hp it last saw) would read the move to this row and the hp lost
     // before the keyframe as one tick of its own; resume() restarts them from the hull, as a revive's hand-back does
     entity.aiCtl?.resume?.(actor.authority.timeS);
+    // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the integrator's spool and turn
+    // rate, which the row does not carry (a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
+    // route, cursor, mission and watchdog; game/ai.ts takeDrive), which a fresh brain planned afresh and re-planned
+    // later than the old one (a CTF raider went in by another way, 1.9 s apart at the flag)
+    if (extras && !revived.has(entity.id) && !combat.destroyed) {
+      const motion = extras.motion;
+      if (Array.isArray(motion) && Number.isFinite(motion[0]) && Number.isFinite(motion[1])) {
+        tank._spool = Math.max(0, Math.min(1, motion[0]));
+        tank.yawRate = motion[1];
+      }
+      if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS);
+    }
     restored++;
   }
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
@@ -922,6 +934,13 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
         ...(aux.stations?.length ? { stations: aux.stations.map((station): [number, number] => [station.shots, leftOf(station.nextShot, timeS)]) } : {}),
       };
       if (!auxiliaryAtRest(auxiliary, freshAuxiliaryOf(entity.spec))) extras.auxiliary = auxiliary;
+    }
+    // a live hull's drive (gaps 274, G3): the integrator's spool and turn rate, and a bot's way
+    if (!combat.destroyed) {
+      const spool = entity.state._spool ?? 0, yawRate = entity.state.yawRate ?? 0;
+      if ((spool !== 0 || yawRate !== 0) && Number.isFinite(spool) && Number.isFinite(yawRate)) extras.motion = [spool, yawRate];
+      const way = entity.aiCtl?.captureDrive?.();
+      if (way) extras.way = way;
     }
     out.push(extras);
   }

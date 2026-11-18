@@ -1,4 +1,5 @@
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
+import type { BotDrive } from '../../game/ai.ts';
 /**
  * The browser host (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13): the vocabulary between the main thread
  * (`matchHost.ts`: the room, the WebRTC acceptor, the host's own loopback client) and the Worker that runs the match
@@ -70,6 +71,11 @@ export interface MigrationEntityExtras {
   consumables?: { readyIn?: number[]; charges: (number | null)[]; activeFor?: Record<string, number> };
   /** Lights, the roof gun's switch and rounds, the smoke kit's charges and cooldown left; absent while the kit is as a fresh host builds it. */
   auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
+  /** A live hull's drive as its integrator holds it and no row carries (gaps 274, G3): the engine's torque spool (0..1)
+   *  and the hull's turn rate (rad/s); absent at rest (both 0), as a fresh host builds it. */
+  motion?: [spool: number, yawRate: number];
+  /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
+  way?: BotDrive;
 }
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */

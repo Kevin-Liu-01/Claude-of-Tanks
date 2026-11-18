@@ -99,7 +99,7 @@ import type { EquipmentCombatState } from './equipmentRules.ts';
 import { applyPendingBotNews } from '../game/ai.ts';
 import { createBotController, createOpeningPlan, openingRoute } from '../game/botConstruction.ts';
 import type { BotMatch } from '../game/botConstruction.ts';
-import type { AiDifficulty } from '../game/ai.ts';
+import type { AiDifficulty, BotDrive } from '../game/ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
@@ -225,6 +225,9 @@ interface AuthoritativeAIController {
   applyPendingNews?(): void;
   /** Hand the hull back after a revive (game/ai.ts resume; round 2 U18). */
   resume?(timeS?: number): void;
+  /** The bot's way for a migration keyframe, and a migrated host's brain taking it up (game/ai.ts; gaps 274, G3). */
+  captureDrive?(): BotDrive;
+  takeDrive?(drive: BotDrive, sinceS?: number): void;
 }
 
 export interface AuthoritativeEntity {
