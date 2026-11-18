@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 1046,
+ "count": 1047,
  "collections": [
   {
    "key": "scenes",
@@ -40,9 +40,9 @@
     "en-US": "Two sides, one frame: the duels at ground level by time of day, then from above.",
     "zh-CN": "两方同框：地面视角的对决按时段分组，然后是俯瞰视角。"
    },
-   "count": 85,
+   "count": 86,
    "sets": 3,
-   "bytes": 382772
+   "bytes": 389399
   },
   {
    "key": "combat",
