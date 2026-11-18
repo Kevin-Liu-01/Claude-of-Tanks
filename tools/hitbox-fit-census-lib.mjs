@@ -428,6 +428,18 @@ export async function hitboxFitCensus(id, options = {}) {
     if (options.applyFits) {
       const { applyPlateFits } = await import('../src/vehicles/combatAnatomy.ts');
       fits = plateFitReceipts(armor, T);
+      // each receipt with the layer's area before and after (m², the protection the READY reports)
+      const plates = [...(armor.hullPlates || []).map((p) => ['hull', p]), ...(armor.turretPlates || []).map((p) => ['turret', p])];
+      fits = fits.map((fit) => {
+        const plate = plates.find(([owner, p]) => owner === fit.owner && p.name === fit.name && plateKey(p.verts).join() === fit.at.join())?.[1];
+        return { ...fit, areaM2: round3(plate ? polygonSamples(plate.verts).area : 0),
+          areaAfterM2: round3(fit.verts ? polygonSamples(fit.verts).area : 0),
+          // how far the fit moved it: its new vertices' largest distance off the authored plane
+          moveM: plate && fit.verts && fit.action === 'fit' ? (() => {
+            const n = polygonNormal(plate.verts);
+            return round3(Math.max(...fit.verts.map((v) => Math.abs(dot(sub(v, plate.verts[0]), n)))));
+          })() : 0 };
+      });
       armor = { ...armor, hullPlates: [...(armor.hullPlates || [])], turretPlates: [...(armor.turretPlates || [])] };
       applyPlateFits(armor, fits);
     }
