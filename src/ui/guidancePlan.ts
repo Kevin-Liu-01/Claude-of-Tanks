@@ -31,7 +31,7 @@
  */
 
 export interface GuidanceBox { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }
-interface GuidanceSize { readonly w: number; readonly h: number }
+export interface GuidanceSize { readonly w: number; readonly h: number }
 
 /** Space kept between a guidance surface and anything else (px). */
 const GUIDANCE_GAP = 6;
@@ -213,6 +213,17 @@ export function planTouchGuidance(input: GuidanceInput, planNotices: (card: Guid
   // neither order keeps the card off the centre notices (the smallest landscapes): the card keeps its place and gives way
   // while a detection or an alert shows (battleHudLayout hides it under them), the toasts kept off both
   return { plan: planGuidance({ ...input, never: [...input.never, ...notices] }, card), notices, cardFirst: true, cardYields: true };
+}
+
+/**
+ * The card's natural size for this pass: as measured while it shows; the last measured while its overlay is open but
+ * the card measures nothing (a step's swap, a pause's hide and show); none once the overlay has closed. A pass that took
+ * the card as gone while it was open planned the toasts into the card's row, and the next pass put the card back on them
+ * (the browser check at 1440 x 900, 36bb485fd0).
+ */
+export function heldCardSize(last: GuidanceSize | null, open: boolean, measured: GuidanceSize | null): GuidanceSize | null {
+  if (!open) return null;
+  return measured && measured.w > 0 && measured.h > 0 ? measured : last;
 }
 
 /** True when two guidance places (or a place and any box) overlap (receipts). */

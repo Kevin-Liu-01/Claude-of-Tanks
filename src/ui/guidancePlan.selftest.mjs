@@ -17,10 +17,12 @@
 //     667x375) every surface clears every instrument and control (cleared), off the centre line only where none holds it;
 //  4. the plan is deterministic and keeps to the centre line, but for a last resort where no centred band holds a surface;
 //  5. the wiring: battleHudLayout.ts plans the card, the centre notices and the toasts in that one order and writes their
-//     places, the toasts' region and the tutorial's battle card read them, and the card asks for a re-plan as it changes.
+//     places, the toasts' region and the tutorial's battle card read them, and the card asks for a re-plan as it changes;
+//  6. a card mid-swap (its overlay open, the card measuring nothing for a pass) keeps its place and the toasts stay off it:
+//     the case the first browser check found at 1440x900, which the old wiring planned onto the card.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { guidanceOverlaps, planGuidance, planTouchGuidance } from './guidancePlan.ts';
+import { guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_ONE_ROW } from './touchNoticePlan.ts';
 
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
@@ -118,6 +120,44 @@ for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
 }
 for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds ${named}`);
 
+// 6. A card mid-swap (Main, after the first browser check: at 1440x900 a toast sat under the card while this receipt
+// passed). A pass measures the card; the next, its overlay still open, measures it as nothing (a step's swap, a pause's
+// hide and show). The size held from the last measure keeps the card's place, and the toasts stay off it; the old wiring
+// (the card taken as gone, 36bb485fd0) planned the toasts into the card's row, which this case shows too.
+{
+  const replay = (key) => {
+    const entries = FURNITURE.sizes[key];
+    const size = key.split(':')[0];
+    const [width, height] = size.replace('t', '').split('x').map(Number);
+    const touch = size.endsWith('t');
+    const hard = entries.filter((entry) => HARD.has(entry[0])).map(box);
+    const soft = entries.filter((entry) => SOFT.has(entry[0])).map(box);
+    const controls = entries.filter((entry) => CONTROLS.has(entry[0])).map(box);
+    const scoreBottom = Math.max(0, ...entries.filter((entry) => entry[0] === '.cot-top').map((entry) => entry[4]));
+    const notices = touch ? [] : [{ x0: width / 2 - 124, y0: scoreBottom + 8, x1: width / 2 + 124, y1: scoreBottom + 8 + 32 + 6 + 40 }];
+    const toasts = { w: Math.min(420, width - 32), h: 52 };
+    const pass = (card) => planGuidance({ width, height, top: scoreBottom + 6, hard, soft, never: [...controls, ...notices], card, toasts });
+    const natural = touch ? { w: width - 32, h: 270 } : { w: Math.min(480, width - 32), h: 250 };
+    // pass 1: the card measured
+    let held = heldCardSize(null, true, natural);
+    const first = pass(held);
+    assert.ok(first.card && first.toasts && !guidanceOverlaps(first.card, first.toasts), `${key}: the measured pass keeps them apart`);
+    // pass 2: the overlay open, the card measuring nothing
+    held = heldCardSize(held, true, { w: natural.w, h: 0 });
+    assert.deepEqual(held, natural, `${key}: the size is held while the overlay is open`);
+    const second = pass(held);
+    assert.deepEqual(second.card, first.card, `${key}: the card keeps its place through the swap`);
+    assert.ok(second.toasts && !guidanceOverlaps(second.toasts, first.card), `${key}: the toasts stay off the card's held box`);
+    // the old wiring: the card taken as gone for that pass; the toasts took the card's row (the browser check's frame)
+    const gone = pass(null);
+    assert.ok(gone.toasts && guidanceOverlaps(gone.toasts, first.card), `${key}: without the held size the toasts land on the card (the case this guards)`);
+    // the overlay closed: nothing held
+    assert.equal(heldCardSize(natural, false, null), null, `${key}: a closed overlay holds nothing`);
+  };
+  replay('1440x900');
+  replay('900x720');
+}
+
 // 5. The wiring: one owner places them all, and every surface reads its place from it.
 {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -137,6 +177,7 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   assert.match(tutorial, /\[data-hud-guidance~=card\] \.cot-tut:is\(\[data-chapter=battle\],\[data-chapter=training\]\) \.cot-tut-card\{\s*left:var\(--hud-guidance-card-left\);top:var\(--hud-guidance-card-top\)/,
     'a battle chapter\'s card stands where the plan puts it');
   assert.match(tutorial, /\[data-hud-guidance~=card-yields\]/, 'and gives way where it says');
+  assert.match(layout, /const card = guidanceCardSize = heldCardSize\(guidanceCardSize, !!cardNode, measured\);/, 'the layout holds the card\'s size through a swap');
   const overlay = read('src/ui/tutorial/tutorialOverlay.ts');
   assert.equal((overlay.match(/askLayout\(\);/g) ?? []).length, 3, 'the card asks the layout to re-plan when it shows, hides and goes');
 }
