@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://cot.kevinliu.studio">
-    <img src="public/brand/og-image.png" alt="Claude of Tanks armored battle with the crest badge and wordmark">
+    <img src="public/brand/og-image.png" alt="Claude of Tanks armored battle with the tank mark and wordmark">
   </a>
 </p>
 

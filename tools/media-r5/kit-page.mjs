@@ -15,7 +15,7 @@ for (const f of ['ibm-plex-sans/IBMPlexSans-Regular-Latin1.woff2', 'ibm-plex-san
   const name = f.split('/')[1];
   if (!existsSync(join(KIT, 'assets', name))) copyFileSync(join(REPO, 'public/fonts', f), join(KIT, 'assets', name));
 }
-if (!existsSync(join(KIT, 'assets/logo-mark-metal.svg'))) copyFileSync(join(REPO, 'public/brand/logo-mark-metal.svg'), join(KIT, 'assets/logo-mark-metal.svg'));
+if (!existsSync(join(KIT, 'assets/mark-metal.svg'))) copyFileSync(join(REPO, 'public/brand/mark-metal.svg'), join(KIT, 'assets/mark-metal.svg'));
 const TIME_ORDER = ['dawn', 'morning', 'day', 'golden', 'sunset', 'dusk', 'night', 'space'];
 const TIME_LABEL = { dawn: 'Dawn', morning: 'Morning', day: 'High noon', golden: 'Golden hour', sunset: 'Sunset', dusk: 'Blue hour', night: 'Night', space: 'Beyond' };
 const dl = (href, label) => href ? `<a class="dl" href="${esc(href)}" download>${esc(label)}</a>` : '';
@@ -70,7 +70,7 @@ section>p.lede{margin:0 0 28px;color:var(--muted);max-width:820px;font-size:20px
 footer{padding-block:40px 64px;border-top:1px solid var(--line);color:var(--muted)}
 @media (max-width:820px){.film{grid-template-columns:1fr}}
 </style></head><body>
-<header class="shell top"><img src="assets/logo-mark-metal.svg" alt=""><div class="t">CLAUDE <b>OF TANKS</b></div></header>
+<header class="shell top"><img src="assets/mark-metal.svg" alt=""><div class="t">CLAUDE <b>OF TANKS</b></div></header>
 <main class="shell">
 <div class="hero"><h1>Every hour of the <em>day.</em></h1><p>${esc(m.boilerplate?.Short ?? m.boilerplate?.short ?? '')}</p>
 <div class="facts">${(m.facts ?? []).map(f => `<div><b>${esc(f.value)}</b><span>${esc(f.label)}</span></div>`).join('')}</div></div>

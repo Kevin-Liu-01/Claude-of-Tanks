@@ -20,7 +20,7 @@ large, confident words laid over it, until the brand lands with weight at the cl
   for byte: Regular 400 / Medium 500 / Bold 700). Statements in Bold caps. No monospace. The face is
   retired (trial builds); new films take the UI faces in `public/fonts/` (Chakra Petch
   display, IBM Plex Sans body).
-- Logo: the crest (`logo-mark-metal.svg` on dark) and the CLAUDE / OF TANKS wordmark.
+- Logo: the tank mark (`mark-metal.svg` on dark) and the CLAUDE / OF TANKS wordmark.
   The crest is never recolored, skewed or cropped.
 
 ## Frame law

@@ -110,5 +110,6 @@ Decided on 10-23, carrying the direction forward. The name stays Claude of Tanks
 - **Social cards:** they come from `tools/marketing-shots/generate-og-images.mjs`, with the lockup clear of every tank.
   Every public page also names its family's share clip as `og:video` beside its one card (the game's, the Gallery's,
   the manual's and the Studio's, from `shareVideoForRoute` in `src/presentation/siteMetadata.ts`; owner, 2026-10-30).
-- **Archived** in `docs/references/brand/`: `v1`, `v2-roundel` and `og-logo.png`. Two consumers still use the crest
-  files (`logo-*`, `v3-shield`): the garage signage atlas and the film tools. They retire as those consumers move.
+- **One mark** (owner, 2026-11-18): the tank everywhere, the Garage signs and the film tools included. The bust, the
+  crests (`logo-mark*`, `v3-shield`) and the archived v1 and v2 sets are deleted; git history keeps them. `/brand`
+  shows the set.
