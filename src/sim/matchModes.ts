@@ -483,7 +483,11 @@ interface AttackStage { x: number; z: number; stagedAtS: number | null; pushing:
 interface WaveCheckpoint {
   wave: number; inactive: string[]; restedAt: [string, number][]; lastWaveIds: string[];
   horde?: { queued: number; special: 'runner' | 'swarm' | null; healthScale: number; nextWaveAtS: number | null;
-    nextTrickleAtS: number; spawnSector: number; stalledAtS: number | null; stranded?: number; benched?: [string, number][]; strikes?: number[]; pickups: PickupState[]; sequence: number };
+    nextTrickleAtS: number; spawnSector: number; stalledAtS: number | null; stranded?: number; benched?: [string, number][]; strikes?: number[]; pickups: PickupState[]; sequence: number;
+    /** The wave the old host began after this checkpoint's capture (gaps 274, G2), as the elected seat's newest frame
+     *  shows it (migrationState.ts checkpointAtNewestFrame); never in a captured checkpoint. The restore takes it up as
+     *  begun at nextWaveAtS (startHordeWave), and never begins it a second time. */
+    begunWave?: number };
   line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
     counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
     nextReinforceAtS: number | null; allyDownAt: [string, number][];
@@ -1227,7 +1231,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     state.horde.remaining = alive + queued;
     state.horde.special = hordeSpecial;
   };
-  const startHordeWave = (): void => {
+  /**
+   * A wave's start, its one writer: the director's at the lull's end, or (`begun`, gaps 274 G2) a migrated host taking up
+   * the wave the old host began after the keyframe it restored (restoreWaves, from the checkpoint's begunWave). Begun, it
+   * keeps the old host's bookkeeping (the same draw from the carried stream, the special, the health scale, the queue,
+   * the trickle's clock from the lull's end) and its field: a drawn hull already on it (a newer row, its revive replayed:
+   * migrationState.ts checkpointAfterRevives) stays where it stands, and a drawn hull the elected seat holds no newer row
+   * of (an arrival hidden from it) is due again at once, an arrival the first step places as it places a refused one;
+   * nothing is announced again and no ally stands up twice. Before, the restored host found the lull run out on its
+   * first step and began the wave a second time: every arrival revived again on new ring points, other hulls drawn.
+   */
+  const startHordeWave = (begun = false): void => {
     strandedPending = 0;
     strandRecycles.clear();
     strandStrikeQueue.length = 0;
@@ -1239,14 +1253,23 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     hordeHealthScale = hordeWaveHealthScale(ruleset, hordeRules, wave);
     // the fallen allies stand up first, so every arrival is placed clear of each living alpha hull (round 2: allies
     // revived at their own deployment after the arrivals were placed stood within reach or in sight of the ring)
-    for (const ally of teams.alpha) {
-      if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
+    if (!begun) {
+      for (const ally of teams.alpha) {
+        if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
+      }
     }
     const active = drawWave(opening);
-    for (const entity of hordeEnemies) if (!active.has(entity)) deactivate(entity);
+    for (const entity of hordeEnemies) if (!active.has(entity) && !(begun && entity.modeLife === 'alive')) deactivate(entity);
     let deferred = 0;
     for (const entity of hordeEnemies) {
-      if (!active.has(entity) || arriveHostile(entity)) continue;
+      if (!active.has(entity)) continue;
+      if (begun) {
+        if (entity.modeLife === 'alive') continue;
+        deactivate(entity);
+        respawnAt.set(entity.id, { atS: placementTimeS, healthScale: hordeHealthScale });
+        continue;
+      }
+      if (arriveHostile(entity)) continue;
       deactivate(entity); // no clear arrival point yet: it waits in the queue
       deferred++;
     }
@@ -1260,7 +1283,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       state.horde.healChance = cacheHealChance(ruleset, wave);
     }
     publishHorde();
-    emit('mode_wave_started', { wave, enemies: total, total, opening, special: hordeSpecial, healthScale: hordeHealthScale });
+    if (!begun) emit('mode_wave_started', { wave, enemies: total, total, opening, special: hordeSpecial, healthScale: hordeHealthScale });
   };
   /** The trickle: while some of the wave is queued and the field is short, the longest-rested identity arrives. */
   const trickleHorde = (timeS: number, alive: number): void => {
@@ -2827,6 +2850,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         state.horde.healChance = cacheHealChance(ruleset, wave);
       }
       publishHorde();
+      // a wave the old host began after the keyframe (G2): taken up as begun, on the clock it began on (the lull's end),
+      // from the streams and the rested set the keyframe carries, so the draw is the old host's
+      const begunWave = saved.horde.begunWave;
+      if (Number.isInteger(begunWave) && begunWave! > wave) {
+        const clock = placementTimeS;
+        placementTimeS = saved.horde.nextWaveAtS ?? clock;
+        wave = begunWave!;
+        startHordeWave(true);
+        placementTimeS = clock;
+      }
     }
     if (saved.line) {
       lineIndex = saved.line.index; holdUntilS = saved.line.holdUntilS;

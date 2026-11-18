@@ -361,7 +361,8 @@ function zoneAtFrame(zone: CheckpointZone, shown: ReadonlyMap<string, Record<str
  * changes it: the horde's queue and pool, the assault line's sector and its pool, pickups and their sequence, weapon
  * kills, respawn timers. The line's zones are taken only while the frame shows the keyframe's sector. The goals stand
  * where the map put them. A ball touched, scored or reset in the gap starts its idle clock at the resume (the frame
- * carries no touch time; the new host's mode clock starts at the keyframe's).
+ * carries no touch time; the new host's mode clock starts at the keyframe's). A Horde wave the frame shows begun after
+ * the keyframe is named (begunWave, gaps 274 G2): the restore takes it up as begun.
  */
 export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null): NewModeCheckpoint {
   const mode = checkpoint.mode;
@@ -398,6 +399,12 @@ export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeState
   }
   const line = mode.waves?.line, shownLine = recordOf(view.line);
   if (line && shownLine && shownLine.index === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  // a Horde wave the old host began after the keyframe (gaps 274, G2): the frame shows its number, and the restore takes
+  // it up as begun (matchModes.ts startHordeWave) rather than finding the lull run out and beginning it again
+  const horde = mode.waves?.horde, shownWave = recordOf(view.horde)?.wave;
+  if (horde && Number.isInteger(shownWave) && (shownWave as number) > mode.waves!.wave) {
+    next.waves = { ...(next.waves ?? mode.waves!), horde: { ...horde, begunWave: shownWave as number } };
+  }
   return { ...checkpoint, mode: next };
 }
 
@@ -833,6 +840,10 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   // metaOnBattleClock), this actor's authority counts from its resumed battle time
   const smoke = smokeScreensOf(state.frame.meta.smokeJson);
   if (smoke.length) actor.authority.restoreSmokeScreens(smoke, -actor.resumedBattleTimeMs / 1000);
+  // the events the actor's construction left pending are its own opening's (gaps 274, G2: the Horde's first wave and its
+  // arrivals' respawns), a battle the resume replaced: every seat heard the old host's, so none of them goes out on the
+  // first tick (the restores above announce nothing)
+  actor.authority.afterEventBroadcast();
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
 }
 
