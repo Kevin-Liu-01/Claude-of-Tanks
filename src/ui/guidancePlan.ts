@@ -226,6 +226,24 @@ export function heldCardSize(last: GuidanceSize | null, open: boolean, measured:
   return measured && measured.w > 0 && measured.h > 0 ? measured : last;
 }
 
+/** The card's natural size as one pass reads it: its step, the width it shows at, its content's height there. */
+export interface CardReading { readonly step: string; readonly width: number; readonly scrollHeight: number }
+
+/**
+ * The card's natural size, held for its step (the plan's input must not follow the plan's output): read at the card's
+ * natural width it is exact; read at a narrower place the plan gave it, the words wrapped there, an estimate from it once
+ * per step, then held. Re-estimated every pass, a phone's card flipped between two places (the estimate at one width put
+ * it at the other), the browser check at 390x844.
+ */
+export function cardNaturalSize(held: { readonly step: string; readonly size: GuidanceSize; readonly exact: boolean } | null,
+  reading: CardReading | null, naturalWidth: number): { readonly step: string; readonly size: GuidanceSize; readonly exact: boolean } | null {
+  if (!reading || reading.width <= 0 || reading.scrollHeight <= 0) return held;
+  const exact = Math.abs(reading.width - naturalWidth) <= 1;
+  if (held && held.step === reading.step && (held.exact || !exact)) return held;
+  const h = Math.ceil(exact ? reading.scrollHeight : reading.scrollHeight * Math.min(1, reading.width / naturalWidth));
+  return { step: reading.step, size: { w: naturalWidth, h }, exact };
+}
+
 /** True when two guidance places (or a place and any box) overlap (receipts). */
 export function guidanceOverlaps(a: GuidanceBox, b: GuidanceBox): boolean {
   return crosses(a, b, 0);

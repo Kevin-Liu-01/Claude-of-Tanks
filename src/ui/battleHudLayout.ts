@@ -9,7 +9,7 @@ import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurni
 import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn, publishBattleBands as publishBandsIn,
   type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
-import { heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
+import { cardNaturalSize, heldCardSize, planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan, type GuidanceSize } from './guidancePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -985,8 +985,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // last size stands: a pass without it set the toasts in the card's own row, and the next put the card back on them.
     const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
     const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
-    const measured = cardNode && cardNode.offsetWidth > 0
-      ? { w: cardWide, h: Math.ceil(cardNode.scrollHeight * Math.min(1, cardNode.offsetWidth / cardWide)) } : null;
+    const step = cardNode?.closest<HTMLElement>('.cot-tut')?.dataset.step ?? '';
+    guidanceCardNatural = cardNaturalSize(guidanceCardNatural,
+      cardNode ? { step, width: cardNode.offsetWidth, scrollHeight: cardNode.scrollHeight } : null, cardWide);
+    const measured = guidanceCardNatural && guidanceCardNatural.step === step ? guidanceCardNatural.size : null;
     const card = guidanceCardSize = heldCardSize(guidanceCardSize, !!cardNode, measured);
     // the toasts: the battle's region while it holds a notice of its own (the parked aim chip keeps its own seat)
     const region = hudQuery<HTMLElement>('.cot-battle-notices');
@@ -999,6 +1001,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
   let guidanceCardSize: GuidanceSize | null = null;
+  /** The card's natural size held for its step (guidancePlan.ts cardNaturalSize). */
+  let guidanceCardNatural: ReturnType<typeof cardNaturalSize> = null;
   /** Writes the guidance's places (battleHudLayout.css, ui/tutorial/tutorial.css read them): the card's box, the toasts'
    *  box or their wait, and the card giving way while a centre notice shows where it must. */
   function writeGuidance(plan: GuidancePlan | null, yields: boolean) {

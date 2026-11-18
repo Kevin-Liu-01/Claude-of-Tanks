@@ -22,7 +22,7 @@
 //     the case the first browser check found at 1440x900, which the old wiring planned onto the card.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
+import { cardNaturalSize, guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_ONE_ROW } from './touchNoticePlan.ts';
 
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
@@ -158,6 +158,33 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   replay('900x720');
 }
 
+// 7. The plan is a fixed point (the final browser check's phone frame flipped between two places): the card's natural
+// size is held for its step, so a pass that reads the card at the narrower place the plan gave it plans the same place.
+{
+  const natural = 358;
+  let held = cardNaturalSize(null, { step: 'battle.driveTouch', width: 358, scrollHeight: 270 }, natural);
+  assert.deepEqual(held, { step: 'battle.driveTouch', size: { w: 358, h: 270 }, exact: true });
+  // read again at the narrower place (its words wrapped: taller): the exact size stands
+  assert.deepEqual(cardNaturalSize(held, { step: 'battle.driveTouch', width: 245, scrollHeight: 360 }, natural), held, 'a narrow read keeps the exact size');
+  // a step first read at a narrow place: one estimate, then held whatever later narrow reads say
+  let narrow = cardNaturalSize(null, { step: 'battle.fireTouch', width: 245, scrollHeight: 360 }, natural);
+  assert.equal(narrow.exact, false);
+  assert.deepEqual(cardNaturalSize(narrow, { step: 'battle.fireTouch', width: 300, scrollHeight: 320 }, natural), narrow, 'an estimate is held for its step');
+  // an exact read replaces an estimate; a new step reads anew; nothing read keeps what is held
+  assert.equal(cardNaturalSize(narrow, { step: 'battle.fireTouch', width: 358, scrollHeight: 290 }, natural).size.h, 290);
+  assert.equal(cardNaturalSize(held, { step: 'battle.ammoTouch', width: 358, scrollHeight: 200 }, natural).size.h, 200);
+  assert.equal(cardNaturalSize(held, null, natural), held);
+  // and the plan from the held size is the same pass after pass at the recorded phone and desktop sizes
+  for (const key of ['390x844t', '1440x900']) {
+    const entries = FURNITURE.sizes[key];
+    const [width, height] = key.replace('t', '').split('x').map(Number);
+    const input = { width, height, top: 68, hard: entries.filter((e) => HARD.has(e[0])).map(box), soft: entries.filter((e) => SOFT.has(e[0])).map(box),
+      never: entries.filter((e) => CONTROLS.has(e[0])).map(box), card: { w: Math.min(480, width - 32), h: 270 }, toasts: { w: Math.min(420, width - 32), h: 44 } };
+    const once = planGuidance(input);
+    assert.deepEqual(planGuidance(input), once, `${key}: the same inputs plan the same places`);
+  }
+}
+
 // 5. The wiring: one owner places them all, and every surface reads its place from it.
 {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -182,6 +209,7 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     'a battle chapter\'s card stands where the plan puts it');
   assert.match(tutorial, /\[data-hud-guidance~=card-yields\]/, 'and gives way where it says');
   assert.match(layout, /const card = guidanceCardSize = heldCardSize\(guidanceCardSize, !!cardNode, measured\);/, 'the layout holds the card\'s size through a swap');
+  assert.match(layout, /guidanceCardNatural = cardNaturalSize\(guidanceCardNatural,/, 'the layout holds the card\'s natural size for its step');
   const overlay = read('src/ui/tutorial/tutorialOverlay.ts');
   assert.equal((overlay.match(/askLayout\(\);/g) ?? []).length, 3, 'the card asks the layout to re-plan when it shows, hides and goes');
 }
