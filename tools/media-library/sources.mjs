@@ -315,6 +315,12 @@ function site50(ctx) {
       out.notes.set(url, `the thumbnail of ${url.replace(/-(?:thumb|640)\.webp$/, '.webp')}`);
       continue;
     }
+    // the boot splash's copy of a still (src/ui/featuredShots.ts bootImg): the same render at the boot's size
+    const booted = sub === 'stills' && base.match(/^(.+)-boot$/)?.[1];
+    if (booted && ctx.exists(`/media/site50-r14/stills/${booted}.webp`)) {
+      out.notes.set(url, `the boot splash's copy of /media/site50-r14/stills/${booted}.webp, a picture the library shows`);
+      continue;
+    }
     if (sub === 'frames' && /^sheet-\d+$/.test(base)) { out.notes.set(url, 'a contact sheet of the motion-blur studies (the library shows each study)'); continue; }
     if (sub === 'films') { out.notes.set(url, `the poster of the ${f.film ?? base} film (a clip)`); continue; }
     if (sub === 'loops' || sub === 'reels') {
