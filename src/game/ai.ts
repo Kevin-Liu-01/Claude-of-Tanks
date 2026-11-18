@@ -203,9 +203,10 @@ interface AiController {
    * A migrated host's brain takes up the old host's way (BotDrive), right after resume(): `sinceS` is the sim time the
    * hull's restored row is newer than the capture (0: the keyframe's own). The list is taken only while the hull still
    * lies on it from where it stood at the capture (the Watch hand-back's test), else the brain keeps its own and plans
-   * afresh, as after a revive; the leg's progress watchdog is taken either way.
+   * afresh, as after a revive; the leg's progress watchdog is taken either way. `life` false: the hull no longer lives
+   * the life the record describes (revived since, or down), so the brain takes its seeded streams alone.
    */
-  takeDrive(drive: BotDrive, sinceS?: number): void;
+  takeDrive(drive: BotDrive, sinceS?: number, life?: boolean): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -7405,9 +7406,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * host's would. Both clocks age by `sinceS`, the sim time the hull's restored row is newer than the capture: the way
    * then describes the moment the pose does (a hull the old host moved on toward its leg's goal meanwhile resets the
    * watchdog on its first tick, as the old host did). A hull off its way keeps the list its brain has, and the mission's
-   * next push plans afresh, as after a revive. A record that is not one changes nothing.
+   * next push plans afresh, as after a revive. A record that is not one changes nothing. `life` false (gaps 274 fix-up
+   * r1): the hull rose since the capture or is down, and the way, watchdog and mission were a life it no longer lives
+   * (the old host's revive reset them: resume()); the streams are the brain's, which the old host's kept through the
+   * revive, and are taken alone.
    */
-  function takeDrive(drive: BotDrive, sinceS = 0): void {
+  function takeDrive(drive: BotDrive, sinceS = 0, life = true): void {
     if (!drive || typeof drive !== 'object') return;
     const since = Number.isFinite(sinceS) && sinceS > 0 ? sinceS : 0;
     const finiteAll = (values: readonly unknown[] | null | undefined, count: number): boolean =>
@@ -7416,6 +7420,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const [controllerState, planState] = Array.isArray(drive.streams) ? drive.streams : [null, null];
     if (Number.isInteger(controllerState) && typeof (rng as Partial<SeededStream>).state === 'number') (rng as SeededStream).state = controllerState!;
     if (Number.isInteger(planState) && deps.planStream && typeof deps.planStream.state === 'number') deps.planStream.state = planState!;
+    if (life === false) return;
     const nav = drive.nav;
     if (finiteAll(nav, 2) && typeof nav[3] === 'number' && Number.isFinite(nav[3])) {
       navGoalX = nav[0]; navGoalZ = nav[1];

@@ -227,7 +227,7 @@ interface AuthoritativeAIController {
   resume?(timeS?: number): void;
   /** The bot's way for a migration keyframe, and a migrated host's brain taking it up (game/ai.ts; gaps 274, G3). */
   captureDrive?(): BotDrive;
-  takeDrive?(drive: BotDrive, sinceS?: number): void;
+  takeDrive?(drive: BotDrive, sinceS?: number, life?: boolean): void;
 }
 
 export interface AuthoritativeEntity {

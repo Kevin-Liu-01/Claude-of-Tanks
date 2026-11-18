@@ -13,7 +13,10 @@
 // migrated mid-wave 4 with its queue trickling in: the trickle's arrivals and wave 5 match. [3] Frontline, migrated on
 // sector 2: its fall reinforces sector 3 with the same hulls on the same slots, and the rear trickle matches. [4] Mars,
 // migrated after the first cache: the next caches fall where the old host's do. [5] the checkpoint names both streams
-// as integers that survive the JSON round trip.
+// as integers that survive the JSON round trip. [6] (fix-up r1, the correctness review of gaps 274) Endless Horde,
+// migrated mid-wave 8, a runner wave: every standing hostile drives at the wave's pace on the new host (x1.64; the
+// restore's base stamp had it at x1.0, and only a revive stamped the wave's), at every step through wave 10, and the
+// hulls rise where the old host's do.
 import { createMatchModeController } from './matchModes.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 
@@ -153,6 +156,32 @@ console.log('[5] the checkpoint names both streams, and they survive the JSON ro
     `the checkpoint carries the draws' and the arrivals' positions as integers (${JSON.stringify(checkpoint.rng)})`);
   const text = JSON.stringify(checkpoint.rng ?? null);
   ok(checkpoint.rng !== undefined && JSON.stringify(JSON.parse(text)) === text, 'they survive the keyframe\'s JSON round trip unchanged');
+}
+
+console.log('[6] Endless Horde, migrated mid-wave 8 (a runner wave): every hostile drives at its wave\'s pace on both hosts');
+{
+  const old = host('endless_horde', 31);
+  for (let guard = 0; guard < 2000 && old.ctl.state.horde.wave < 8; guard++) play(old, 0.25, killHostiles);
+  play(old, 0.5, () => {});
+  const live = standing(old, 'bravo');
+  ok(old.ctl.state.horde.wave === 8 && old.ctl.state.horde.special === 'runner' && live.length > 0 && live[0].modeSpeedMultiplier > 1.5,
+    `the case is built: runner wave 8 is on, ${live.length} hostiles standing at x${live[0]?.modeSpeedMultiplier.toFixed(3)}`);
+  const { fresh } = migrate(old);
+  const apart = () => standing(old, 'bravo').map((e) => [e, fresh.byId(e.id)])
+    .filter(([e, twin]) => twin.modeActive !== false && !twin.combat.destroyed && !(Math.abs(e.modeSpeedMultiplier - twin.modeSpeedMultiplier) < 1e-12))
+    .map(([e, twin]) => `${e.id} ${e.modeSpeedMultiplier.toFixed(3)}/${twin.modeSpeedMultiplier.toFixed(3)}`);
+  const atRestore = apart();
+  ok(atRestore.length === 0, `right after the restore every standing hostile drives at the old host's pace (apart: ${atRestore.join(', ') || 'none'})`);
+  const killHalf = (h) => { const standingNow = standing(h, 'bravo'); for (const z of standingNow.slice(0, Math.ceil(standingNow.length / 2))) { z.combat.destroyed = true; z.combat.hp = 0; } };
+  let steps = 0, apartSteps = 0, firstApart = null;
+  for (let guard = 0; guard < 2000 && (old.ctl.state.horde.wave < 10 || fresh.ctl.state.horde.wave < 10); guard++) {
+    play(old, 0.25, killHalf); play(fresh, 0.25, killHalf); steps++;
+    const now = apart();
+    if (now.length) { apartSteps++; firstApart ??= `step ${steps}: ${now.join(', ')}`; }
+  }
+  ok(old.ctl.state.horde.wave === 10 && fresh.ctl.state.horde.wave === 10 && apartSteps === 0, `on together to wave 10 (${steps} steps), the paces never part `
+    + `(${apartSteps} steps apart${firstApart ? `; first ${firstApart}` : ''})`);
+  compare('runner', old, fresh, 10);
 }
 
 if (failures) { console.error(`modeStreamMigration.selftest: ${failures} failure(s)`); process.exit(1); }

@@ -2495,6 +2495,27 @@ Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and d
 `node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
 not ship the Worker. No protocol or room version moves.
 
+**Gaps 274 (2026-11-18, the last M1 gaps of the 2026-11-02 state-machine audit).** The mode checkpoint also carries the
+mode's two seeded streams (`ModeCheckpoint.rng`: the draws and the arrival points; a migrated host drew from its own
+seed, so the next Horde or Frontline wave and Mars's next cache differed) and, for each living Horde or Frontline hostile
+whose life began in an earlier wave, that wave (`waves.paces`: a Frontline defender alive through an advance keeps its
+slower pace; every other living hostile takes the keyframe's wave's pace on the restore, where it took the base speed).
+The resume reads the window between the keyframe and the elected seat's newest frame, never in a captured checkpoint: a
+Horde wave the frame shows begun is taken up as begun (`waves.horde.begunWave`), a Frontline advance as made
+(`waves.line.begun`: the frame's line and zones, the advance's mode time from the respawns the seat was told, the
+defenders told risen then), and a Horde trickle arrival whose revive the resume replays as made (`waves.horde.trickled`);
+none is announced, advanced or revived a second time, and the new actor's own construction events are dropped before its
+first tick. The extras carry a live hull's spool and turn rate (`motion`) and a live bot's way (`way`: `game/ai.ts`
+BotDrive, its route, mission and progress watchdog and its brain's stream positions); a hull revived since the keyframe,
+or down, takes the brain's streams alone. Cost: the way is 0.3-0.5 KB of JSON a live bot, kept exact: at 19 bots the
+extras grow from 3.4-6.5 KB to 7.2-14.9 KB a keyframe (+3.5 to +10 KB; the lane's `g3.size` probe), 4.7-13.5 KB more
+once sealed and base64url-chunked, so at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, and
+each mode event's keyframe (at most every 500 ms) carries it too; far under the `MIGRATION_MAX_CHUNKS` cap. Whether to
+trim it (millimetre rounding, or no way a fresh brain would plan alike) is open. Not carried: a bot's LOS and probe timer
+phases, its manoeuvre windows and stuck state, the spotting and the authority's combat streams. Kevin's ruling on G4
+(2026-11-18): a CTF raider's stage goes with its life, solo too; G5, the same for a Frontline attacker's plan, awaits his.
+Receipts: `modeStreamMigration`, `waveStartMigration`, `botDriveMigration`, `fallenStages`, `huntSearchMigration` [6].
+
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
 **Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable

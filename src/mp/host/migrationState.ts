@@ -290,6 +290,28 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
 }
 
 /**
+ * What the elected seat knows of the old host's window, the stretch between the keyframe and its newest frame (gaps 274
+ * fix-up r1), on the mode checkpoint's clock: the mode time each hull was told rose at (respawnTicks: the keyframe's mode
+ * time and the sim time to the tick, never past the frame's battle clock, which caps a tick count the old host's dropped
+ * ticks overstate), and the frame's mode time. The restore reads the revives it replays (an arrival of the Horde's
+ * trickle) and a line advance's moment from it.
+ */
+interface ResumeWindow {
+  readonly told: ReadonlyMap<string, number>;
+  readonly frameAtS: number;
+}
+const NO_WINDOW: ResumeWindow = { told: new Map(), frameAtS: Number.NaN };
+function resumeWindow(state: HostResumeState, checkpoint: NewModeCheckpoint, extrasTick: number, frameGapS: number): ResumeWindow {
+  const elapsedS = checkpoint.mode?.elapsedS;
+  if (typeof elapsedS !== 'number' || !Number.isFinite(elapsedS)) return NO_WINDOW;
+  const told = new Map<string, number>();
+  for (const [id, tick] of state.respawnTicks ?? []) {
+    if (typeof id === 'string' && Number.isInteger(tick)) told.set(id, elapsedS + Math.min(frameGapS, Math.max(0, tick - extrasTick) * TICK_MS / 1000));
+  }
+  return { told, frameAtS: elapsedS + frameGapS };
+}
+
+/**
  * The keyframe's mode checkpoint with the bookkeeping each of those revives did (matchModes.ts reviveAtSpawn: the pending
  * respawn dropped, alive, its death unscored, back on the field and no longer resting). Without it the new host's mode
  * revived the hull a second time when the keyframe's respawn fell due: back on its spawn, its fight reset again.
@@ -309,10 +331,25 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
  * Frontline's attack plan the same way (gaps 274 G5): the old host drops a fallen attacker's plan at its death and plans
  * the revived one afresh, so it waits at the edge for its group; the keyframe's plan for it (pushing, or staged) is
  * dropped, every other attacker's kept. huntSearchMigration.selftest [6] window revive.
+ * The Horde's trickle too (gaps 274 fix-up r1): a hostile revived in the window with a queue to trickle and no refused
+ * arrival pending was the trickle's arrival, which took it out of the queue and ran the trickle's clock on; each is named
+ * with the mode time it was told at (else the frame's), in their order, at most the queue (WaveCheckpoint.horde.trickled),
+ * and the restore takes it up as made (matchModes.ts trickleHorde). A refused arrival due again (a pending respawn) was
+ * owed by the wave already. Before, the new host's first step found the keyframe's trickle clock run out and brought one
+ * more hostile on. waveStartMigration.selftest [6].
  */
-function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
+function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>, known: ResumeWindow = NO_WINDOW): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;
   const mode = checkpoint.mode, waves = mode.waves, hunt = mode.hunt, objectives = mode.objectives;
+  const horde = waves?.horde;
+  let trickled: [string, number][] = [];
+  if (horde && horde.queued > 0) {
+    const pending = new Set(mode.respawns.map(([id]) => id));
+    const hostile = new Set(mode.teams.filter(([, team]) => team === 'bravo').map(([id]) => id));
+    trickled = [...revived].filter((id) => hostile.has(id) && !pending.has(id))
+      .map((id): [string, number] => [id, known.told.get(id) ?? known.frameAtS]).filter(([, atS]) => Number.isFinite(atS))
+      .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1)).slice(0, horde.queued);
+  }
   return {
     ...checkpoint,
     mode: {
@@ -322,7 +359,8 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
-        ...(waves.line?.attack ? { line: { ...waves.line, attack: waves.line.attack.filter(([id]) => !revived.has(id)) } } : {}) } } : {}),
+        ...(waves.line?.attack ? { line: { ...waves.line, attack: waves.line.attack.filter(([id]) => !revived.has(id)) } } : {}),
+        ...(horde && trickled.length ? { horde: { ...horde, trickled } } : {}) } } : {}),
       ...(hunt ? { hunt: { ...hunt, searches: hunt.searches.filter(([id]) => !revived.has(id)) } } : {}),
       ...(objectives?.raids ? { objectives: { ...objectives, raids: objectives.raids.filter(([id]) => !revived.has(id)) } } : {}),
     },
@@ -364,9 +402,13 @@ function zoneAtFrame(zone: CheckpointZone, shown: ReadonlyMap<string, Record<str
  * kills, respawn timers. The line's zones are taken only while the frame shows the keyframe's sector. The goals stand
  * where the map put them. A ball touched, scored or reset in the gap starts its idle clock at the resume (the frame
  * carries no touch time; the new host's mode clock starts at the keyframe's). A Horde wave the frame shows begun after
- * the keyframe is named (begunWave, gaps 274 G2): the restore takes it up as begun.
+ * the keyframe is named (begunWave, gaps 274 G2): the restore takes it up as begun. So is a Frontline line the frame
+ * shows advanced after it (line.begun, gaps 274 fix-up r1): its zones are the frame's, the advance's moment the newest
+ * time the seat was told a defender rose (the advance's reinforcement; else the frame's: the frame carries no advance
+ * time, so a counter-attack is then up to the window late), the defenders told risen then are named, and the restore
+ * takes the advance up as begun (matchModes.ts advanceLine) rather than taking the sector again and advancing twice.
  */
-export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null): NewModeCheckpoint {
+export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null, known: ResumeWindow = NO_WINDOW): NewModeCheckpoint {
   const mode = checkpoint.mode;
   if (!mode || !modeStateJson) return checkpoint;
   let view: Record<string, unknown> | null;
@@ -399,8 +441,15 @@ export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeState
     }
     next.objectives = { ...objectives, flags: objectives.flags.map(flagAtFrame), zones: objectives.zones.map((zone) => zoneAtFrame(zone, zones)), ball, ballActiveAtS };
   }
-  const line = mode.waves?.line, shownLine = recordOf(view.line);
-  if (line && shownLine && shownLine.index === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  const line = mode.waves?.line, shownIndex = recordOf(view.line)?.index;
+  if (line && shownIndex === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  else if (line && Number.isInteger(shownIndex) && (shownIndex as number) > line.index) {
+    const defenders = new Set(mode.teams.filter(([, team]) => team === 'bravo').map(([id]) => id));
+    const told = [...known.told].filter(([id]) => defenders.has(id));
+    const atS = told.length ? Math.max(...told.map(([, at]) => at)) : Number.isFinite(known.frameAtS) ? known.frameAtS : mode.elapsedS;
+    const risen = told.filter(([, at]) => at === atS).map(([id]) => id).sort();
+    next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)), begun: { index: shownIndex as number, atS, risen } } };
+  }
   // a Horde wave the old host began after the keyframe (gaps 274, G2): the frame shows its number, and the restore takes
   // it up as begun (matchModes.ts startHordeWave) rather than finding the lull run out and beginning it again
   const horde = mode.waves?.horde, shownWave = recordOf(view.horde)?.wave;
@@ -758,9 +807,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
   if (state.modeCheckpoint) {
-    // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1)
-    const checkpoint = checkpointAfterRevives(state.modeCheckpoint, revived);
-    actor.authority.restoreModeCheckpoint(state.frame.tick > extrasTick ? checkpointAtNewestFrame(checkpoint, state.frame.modeStateJson) : checkpoint);
+    // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1), and what the
+    // seat was told of the window between them (gaps 274 fix-up r1)
+    const known = resumeWindow(state, state.modeCheckpoint, extrasTick, frameGapS);
+    const checkpoint = checkpointAfterRevives(state.modeCheckpoint, revived, known);
+    actor.authority.restoreModeCheckpoint(state.frame.tick > extrasTick ? checkpointAtNewestFrame(checkpoint, state.frame.modeStateJson, known) : checkpoint);
   }
   let restored = 0;
   let skipped = 0;
@@ -836,14 +887,18 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the integrator's spool and turn
     // rate, which the row does not carry (a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
     // route, cursor, mission and watchdog; game/ai.ts takeDrive), which a fresh brain planned afresh and re-planned
-    // later than the old one (a CTF raider went in by another way, 1.9 s apart at the flag)
-    if (extras && !revived.has(entity.id) && !combat.destroyed) {
+    // later than the old one (a CTF raider went in by another way, 1.9 s apart at the flag). A hull revived since the
+    // capture, or down now, lives no more the life they describe: its brain keeps the drive resume() left it, as the old
+    // host's own revive did, and takes the brain's seeded streams alone, which outlive a life on the old host too (fix-up
+    // r1: the controller's and planner's streams went back to the construction's, and every draw after them differed)
+    if (extras) {
+      const lifeGoesOn = !revived.has(entity.id) && !combat.destroyed;
       const motion = extras.motion;
-      if (Array.isArray(motion) && Number.isFinite(motion[0]) && Number.isFinite(motion[1])) {
+      if (lifeGoesOn && Array.isArray(motion) && Number.isFinite(motion[0]) && Number.isFinite(motion[1])) {
         tank._spool = Math.max(0, Math.min(1, motion[0]));
         tank.yawRate = motion[1];
       }
-      if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS);
+      if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
     }
     restored++;
   }
