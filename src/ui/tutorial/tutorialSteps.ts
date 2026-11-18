@@ -53,6 +53,9 @@ export interface TutorialStep {
   readonly dim?: boolean;
   /** Where the card stands: the middle of the screen (default) or the upper band, clear of the sight. */
   readonly card?: 'middle' | 'upper';
+  /** A subject a step teaches that another surface would otherwise teach (274: the armour colours' one-time tip,
+   *  game/armourOverlayDefault.ts): shown here, the other stands down. */
+  readonly teaches?: 'armourColours';
 }
 
 const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });
@@ -101,6 +104,13 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'battle.firePad', chapter: 'battle', when: 'pad', target: [], dim: false, card: 'upper',
     title: 'tutorial.battle.fire.title', body: 'tutorial.battle.fire.bodyPad', advance: { on: 'fire' },
     keys: { fire: 'fire', sight: 'sniperToggle' } },
+  // the armour colours (274): the tutorial teaches them in the battle that would otherwise show their one-time tip over it
+  // (Kevin, 2026-11-18: "the armor shader hexagon and the tutorial squares at top overlap. there should be one unified
+  // thing for this"); a keyboard reads its own key, a touch layout or a pad the Settings row
+  { id: 'battle.armour', chapter: 'battle', when: 'keyboard', target: [], dim: false, card: 'upper', teaches: 'armourColours',
+    title: 'tutorial.battle.armour.title', body: 'tutorial.battle.armour.body', advance: NEXT, keys: { toggle: 'hitboxOverlay' } },
+  { id: 'battle.armourTouch', chapter: 'battle', when: ['touch', 'pad'], target: [], dim: false, card: 'upper', teaches: 'armourColours',
+    title: 'tutorial.battle.armour.title', body: 'tutorial.battle.armour.bodySettings', advance: NEXT },
   { id: 'battle.reload', chapter: 'battle', target: ['.cot-ret-reload', '.cot-shells .cot-shell.sel'], dim: false, card: 'upper',
     title: 'tutorial.battle.reload.title', body: 'tutorial.battle.reload.body', advance: NEXT },
   { id: 'battle.ammo', chapter: 'battle', when: 'keyboard', target: ['.cot-shells'], dim: false, card: 'upper',

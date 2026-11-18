@@ -1158,8 +1158,12 @@ bus.on('battle:rollout', () => { briefShownForCountdown = false; });
 // flip shows its one-time tip (ui/armourOverlayTip.ts, loaded only then). A watched or couch battle leaves it for the
 // next; colours turned off again before it need no tip. A keyboard player reads their own key; a pad or a touch layout,
 // where the colours have no control yet, the Settings row.
-bus.on('battle:rollout', () => {
-  if (game.watch || game.couch) return;
+bus.on('battle:rollout', () => setTimeout(() => {
+  if (game.watch || game.couch || game.phase !== 'battle') return;
+  // (274) a battle the tutorial teaches leaves the tip to the tutorial's own armour step (one surface, one lesson: the
+  // tip and the card drew over each other); the access raises body.cot-tutorial in this same rollout, so the check
+  // waits one task for it. A tutorial skipped before that step leaves the tip for the next battle.
+  if (document.body.classList.contains('cot-tutorial')) return;
   const due = armourTipDue(readArmourDefaultMarker(), !!input.getSettings().armorAimOverlay);
   if (due === 'none') return;
   writeArmourDefaultMarker('done');
@@ -1168,7 +1172,7 @@ bus.on('battle:rollout', () => {
   const code = keyboard ? input.getBinding('hitboxOverlay') : null;
   import('./ui/armourOverlayTip.ts').then(({ showArmourOverlayTip }) => showArmourOverlayTip({ key: code ? labelForCode(code) : null }))
     .catch(() => { /* a failed chunk loses the tip, never the battle */ });
-});
+}, 0));
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
@@ -4805,6 +4809,8 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
     && !game.ruleset?.provingGround,
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+  // 274: the tutorial's armour step teaches what the one-time tip would (game/armourOverlayDefault.ts): the tip is done
+  taught: (subject) => { if (subject === 'armourColours') writeArmourDefaultMarker('done'); },
 })));
 const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
   tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));

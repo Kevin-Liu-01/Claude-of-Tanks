@@ -8,7 +8,8 @@ import { scratchCanvas } from './uiCanvas.ts';
 import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 import { battleSightShift as sightShiftIn, onBattleSightShift as onSightShiftIn, publishBattleBands as publishBandsIn,
   type BattleBandBox } from './battleSight.ts';
-import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, touchSightKeepOut, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { planGuidance, planTouchGuidance, type GuidanceBox, type GuidanceInput, type GuidancePlan } from './guidancePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -237,6 +238,18 @@ const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
+/** The guidance's classes (guidancePlan.ts, 274): the instruments it keeps off, the controls it never covers, and what it
+ *  keeps clear where the screen has room. guidancePlan.selftest.mjs classes the recorded HUD the same way. */
+const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-drive,.cot-dp,.cot-vehicle-status,.cot-net,'
+  + '.cot-mp-status.battle,.cot-spec.show,.cot-si-cardhost:not(:empty),.cot-si-log.open,.cot-medal-toasts:not(:empty),'
+  + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat])';
+const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
+  + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
+  + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
+const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-toasthost';
+/** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
+const GUIDANCE_CARD = '.cot-tut.is-open:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card';
+const GUIDANCE_CARD_W = 480;
 const TOUCH_NOTICE_SOFT = '.cot-top,.cot-pips.show,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
@@ -955,6 +968,56 @@ export function installBattleHudLayout(root: HTMLElement): void {
     planKey.length = 0;
     for (const v of nextKey) planKey.push(v);
     return planned;
+  }
+  /** The guidance's inputs this pass (guidancePlan.ts): the HUD measured in the receipt's three classes, the card's and
+   *  the toasts' natural sizes while they show. `sight`: the sight's keep-out, kept clear where there is room. */
+  function guidanceInput(width: number, height: number, top: number, sight: readonly GuidanceBox[]): GuidanceInput {
+    const measure = (selector: string): GuidanceBox[] => {
+      const out: GuidanceBox[] = [];
+      for (const node of document.querySelectorAll(selector)) {
+        const box = shownBox(node);
+        if (box) out.push({ x0: box.left, y0: box.top, x1: box.right, y1: box.bottom });
+      }
+      return out;
+    };
+    // the card at its natural width: its height there, from the height it has at the width it shows (its words reflow)
+    const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
+    const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
+    const card = cardNode && cardNode.offsetWidth > 0
+      ? { w: cardWide, h: Math.ceil(cardNode.scrollHeight * Math.min(1, cardNode.offsetWidth / cardWide)) } : null;
+    // the toasts: the battle's region while it holds a notice of its own (the parked aim chip keeps its own seat)
+    const region = hudQuery<HTMLElement>('.cot-battle-notices');
+    const toastNodes = region ? [...region.children].filter((node) => !node.classList.contains('cot-aim-notice')) : [];
+    const toasts = toastNodes.length && region
+      ? { w: Math.min(420, width - 32), h: toastNodes.reduce((sum, node) => sum + (node as HTMLElement).offsetHeight, 0) + 8 * (toastNodes.length - 1) }
+      : null;
+    return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
+      never: measure(GUIDANCE_CONTROLS), card, toasts };
+  }
+  /** Writes the guidance's places (battleHudLayout.css, ui/tutorial/tutorial.css read them): the card's box, the toasts'
+   *  box or their wait, and the card giving way while a centre notice shows where it must. */
+  function writeGuidance(plan: GuidancePlan | null, yields: boolean) {
+    const flags: string[] = [];
+    const card = plan?.card ?? null, toasts = plan?.toasts ?? null;
+    if (card) {
+      flags.push('card');
+      setBodyVar('--hud-guidance-card-left', `${Math.round(card.x0)}px`);
+      setBodyVar('--hud-guidance-card-top', `${Math.round(card.y0)}px`);
+      setBodyVar('--hud-guidance-card-width', `${Math.floor(card.x1 - card.x0)}px`);
+      setBodyVar('--hud-guidance-card-max-h', `${Math.floor(card.y1 - card.y0)}px`);
+      if (yields && root.querySelector('.cot-sixth.on,.cot-alert.show')) flags.push('card-yields');
+    }
+    if (toasts) {
+      flags.push('toasts');
+      setBodyVar('--hud-battle-notices-left', `${Math.round(toasts.x0)}px`);
+      setBodyVar('--hud-battle-notices-top', `${Math.round(toasts.y0)}px`);
+      setBodyVar('--hud-battle-notices-width', `${Math.floor(toasts.x1 - toasts.x0)}px`);
+    } else if (plan?.toastsWait) flags.push('toasts-wait');
+    const value = flags.join(' ');
+    if ((document.body.dataset.hudGuidance ?? '') !== value) {
+      if (value) document.body.dataset.hudGuidance = value;
+      else delete document.body.dataset.hudGuidance;
+    }
   }
   function setBodyVar(name: string, value: string) {
     if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
@@ -1802,6 +1865,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-aim-warning-max', beside && altFire ? `${Math.floor(altFire.left - 4 - chipLeft)}px` : '');
     }
     let touchPlan = null;
+    // (274) the guidance's plan this pass (guidancePlan.ts): the tutorial's card and the battle's toasts
+    let guidance: GuidancePlan | null = null;
+    let guidanceYields = false;
     // (the touch dial up this pass: once it stands down it keeps its seat and scale while it fades out after GO; set to
     // the plan's default under it, it jumped 98 px over the alert as it faded, the loading census on a phone)
     let touchCountdownShown = false;
@@ -1839,14 +1905,30 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: leftLaneWidth, y1: leftAnchor + killHeightLeft });
       if (killsRight) soft.push({ x0: width - (wideFeed ? wideFeedWidth : sideWidth), y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
       // (the map apart: through the scope a notice that finds no clear place covers it before the sight's readouts)
-      touchPlan = planTouchNotices({ width, height, top, obstacles, soft, labels: boxes(TOUCH_NOTICE_LABELS),
+      // (274) the guidance in the same pass, in one order (guidancePlan.ts planTouchGuidance): the tutorial's card first and
+      // the detection and the alert round it (the card an obstacle to them), then the battle's toasts off all three
+      const touchInput = { width, height, top, soft, labels: boxes(TOUCH_NOTICE_LABELS),
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
         alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertBox?.height ?? TOUCH_COMPACT_ALERT_LINES_H },
         countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop,
-        oneRow: width > height ? height <= 340 : width <= 340, sightY: height / 2 - battleSightShift() });
+        oneRow: width > height ? height <= 340 : width <= 340, sightY: height / 2 - battleSightShift() };
+      const touchPlans = new Map<GuidanceBox | null, ReturnType<typeof planTouchNotices>>();
+      const touchCentre = (card: GuidanceBox | null): GuidanceBox[] => {
+        const placed = planTouchNotices({ ...touchInput, obstacles: card ? [...obstacles, { x0: card.x0, y0: card.y0, x1: card.x1, y1: card.y1 }] : obstacles });
+        touchPlans.set(card, placed);
+        const size = (compact: boolean, alert: boolean) => placed.oneRow ? TOUCH_ONE_ROW
+          : compact ? (alert ? TOUCH_COMPACT_ALERT : TOUCH_COMPACT_NOTICE) : alert ? touchInput.alert : noticeSize;
+        const at = (y: number, sz: TouchSize) => ({ x0: width / 2 - sz.w / 2, y0: y, x1: width / 2 + sz.w / 2, y1: y + sz.h });
+        return [at(placed.noticeTop, size(placed.noticeCompact, false)), at(placed.alertTop, size(placed.alertCompact, true))];
+      };
+      const base = guidanceInput(width, height, top, touchSightKeepOut(width, height, touchInput.scope, touchInput.seated, touchInput.sightY));
+      const guided = planTouchGuidance(base, touchCentre);
+      touchPlan = touchPlans.get(guided.cardFirst ? guided.plan.card : null) ?? planTouchNotices({ ...touchInput, obstacles });
+      guidance = guided.plan;
+      guidanceYields = guided.cardYields;
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
       // (a three-line alert over the sight sent DETECTED under it onto the damage panel at 844x390, the layout receipt)
@@ -1866,6 +1948,17 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;
       else delete document.body.dataset.touchNotices;
     }
+    // (274) a mouse layout's guidance: the centre notices keep their places (it has the room) and the card and the
+    // toasts go round them
+    if (!touch && plan) {
+      const r = Math.min(width, height) * 0.15 * 1.6, sightY = height / 2 - battleSightShift();
+      const sight = { x0: width / 2 - r, y0: sightY - r, x1: width / 2 + r, y1: sightY + r + 40 };
+      const detection = { x0: plan.detection.x, y0: plan.detection.y, x1: plan.detection.x + plan.detection.w, y1: plan.detection.y + plan.detection.h };
+      const alert = mouseAlertBox(plan.alert);
+      const base = guidanceInput(width, height, top, [sight]);
+      guidance = planGuidance({ ...base, never: [...base.never, detection, { x0: alert.x, y0: alert.y, x1: alert.x + alert.w, y1: alert.y + alert.h }] });
+    }
+    writeGuidance(guidance, guidanceYields);
     // Awards use the center lane only when the actual visible HUD leaves room.
     // Keep the card measurable while deferred; no per-frame polling is needed.
     let bannerTop = Math.ceil(touchPlan ? touchPlan.bannerTop : top + 16);

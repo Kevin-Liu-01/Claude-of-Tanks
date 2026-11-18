@@ -54,7 +54,10 @@ assert.ok(applied > 0 && flip > applied, 'the flip runs on the applied record');
 assert.ok(firstLaterSave < 0 || flip < firstLaterSave, 'and before any later save of it');
 const main = read('src/main.ts');
 const hook = main.slice(main.indexOf('armourTipDue('), main.indexOf("import('./ui/armourOverlayTip.ts')") + 200);
-assert.match(main, /if \(game\.watch \|\| game\.couch\) return;\s*const due = armourTipDue/, 'never a watched or couch battle');
+assert.match(main, /if \(game\.watch \|\| game\.couch \|\| game\.phase !== 'battle'\) return;/, 'never a watched or couch battle');
+// (274) a battle the tutorial teaches leaves the tip to the tutorial's armour step, which marks it done
+assert.match(main, /if \(document\.body\.classList\.contains\('cot-tutorial'\)\) return;\s*const due = armourTipDue/, 'the tutorial teaches it instead');
+assert.match(main, /taught: \(subject\) => \{ if \(subject === 'armourColours'\) writeArmourDefaultMarker\('done'\); \}/, 'the tutorial\'s step marks the tip done');
 assert.ok(hook.indexOf("writeArmourDefaultMarker('done')") < hook.indexOf("import('./ui/armourOverlayTip.ts')"), 'marked done before it shows: once');
 assert.match(hook, /input\.getBinding\('hitboxOverlay'\)/, 'a keyboard reads its own key');
 assert.doesNotMatch(main.slice(0, main.indexOf('armourTipDue(')), /from '\.\/ui\/armourOverlayTip\.ts'/, 'the tip module is never on the boot path');

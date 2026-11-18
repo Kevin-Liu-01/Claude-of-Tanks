@@ -247,6 +247,12 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
     if (part.cap.textContent !== cap) part.cap.textContent = cap;
   }
 
+  /** The battle's layout plans a battle chapter's card with its own guidance (battleHudLayout.ts writeGuidance, 274): it
+   *  re-plans when the card shows, changes step, hides or goes (a relayout outside a battle does nothing). */
+  function askLayout(): void {
+    window.dispatchEvent(new Event('cot-hud-relayout'));
+  }
+
   function pulseOnce(): void {
     if (prefersReducedMotion()) return;
     pulse.classList.remove('is-pulsing');
@@ -283,6 +289,7 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       // (a press step takes no focus: its Enter belongs to the lit control, the Garage's Deploy)
       if (next.focus && next.canNext) nextButton.button.focus({ preventScroll: true });
       else if (root.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      askLayout();
     },
     setHidden(value: boolean): void {
       if (hidden === value) return;
@@ -291,6 +298,7 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       if (!root.hasAttribute('popover')) return;
       if (value && root.matches(':popover-open')) root.hidePopover();
       else if (!value && view && !root.matches(':popover-open')) { root.showPopover(); measure(); }
+      askLayout();
     },
     litRect: () => lastRect,
     destroy(): void {
@@ -302,6 +310,7 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
       for (const video of media.querySelectorAll('video')) { video.pause(); video.removeAttribute('src'); video.load(); }
       if (root.hasAttribute('popover') && root.matches(':popover-open')) root.hidePopover();
       root.remove();
+      askLayout();
     },
   };
 }

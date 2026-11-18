@@ -45,6 +45,8 @@ export interface TutorialAccessDeps {
   readonly isTutorialBattle: () => boolean;
   /** A new player's first battle is a gentle one: easy bots (the Deploy screen shows the choice). */
   readonly preferEasyBots: () => void;
+  /** 274: a step taught a subject another surface would teach (the armour colours' one-time tip stands down). */
+  readonly taught: (subject: 'armourColours') => void;
 }
 
 export interface TutorialAccess {
@@ -85,7 +87,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         chapter,
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
-          screen: deps.screen },
+          screen: deps.screen, taught: deps.taught },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);
