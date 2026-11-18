@@ -85,8 +85,12 @@ assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garag
 // the loading picks (owner 2026-11-13, on the sheet of the old loop and the gallery: "lets do S C D K L M 17 25 2 6 12 9
 // 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22", then "actualy lets make 4 the first one (K)": the Orchard Valley
 // still is the boot pick): Steinburg and four stills of the old loop, then twenty-four of the gallery; a still he drops
-// leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation
-assert.equal(bootPicks[0].id, 's49-orchard-sunset', 'the Orchard Valley still opens the boot splash');
+// leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation. (11-18,
+// "the first one of the amx 30b, i want replace with modern tanks but otherwsie same exact scene setup": the boot pick
+// is that scene with Leclercs for the AMX-30Bs and the AMX-40, a versus still, its own 1280 rung on the boot splash)
+assert.equal(bootPicks[0].versus, 's49-orchard-sunset-modern-r14', 'the Orchard Valley still opens the boot splash');
+assert.deepEqual(versusItems.get(bootPicks[0].versus).tanks.map((tank) => tank.id),
+  ['leclerc_xlr', 'leclerc_s2', 'leclerc_sxxi', 't72b3', 't90m'], 'the boot opener shows modern tanks');
 const loadingPicks = sitePicks.loading.stills;
 const garagePicks = new Map(sitePicks.featured.filter((pick) => !pick.boot).map((pick) => [pick.versus ?? pick.id, pick]));
 assert.equal(loadingPicks.length, 29, 'twenty-nine stills follow the boot pick');
