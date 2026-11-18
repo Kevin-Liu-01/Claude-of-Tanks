@@ -3,7 +3,11 @@
 This guide explains how to run, test, inspect, and release Claude of Tanks. It
 is the operational companion to SYSTEMS.md.
 
-## Publishing to shared main
+## Publishing work: lanes push items, the integrator moves main
+
+A lane never pushes `main`. It pushes its own `item/<name>` branch with the owner's OK and sends READY with
+the SHA to the coordinator. Only the release integrator fast-forwards shared main, after the preflight below,
+as part of a deploy. Never force-push either one.
 
 Codex and Claude share `origin/main`. Start an isolated worktree from freshly
 fetched main and record its commit as the **starting base** before editing.
@@ -61,7 +65,8 @@ Before publishing:
    checks, acknowledge that exact remote revision with
    `--reviewed-main=<reviewed-remote-commit>`. This is the publisher's explicit
    acknowledgment, not an automated claim of semantic correctness.
-5. Push normally with `git push origin HEAD:main`. Never force-push shared main.
+5. A lane pushes its `item/<name>` branch (owner's OK) and sends READY with the SHA; the release integrator alone
+   fast-forwards main (`git push origin <validated-head>:main`) as part of a deploy. Never force-push either one.
    If another publisher wins the race, fetch, integrate, review and revalidate;
    never bypass the rejection. Retain the preflight JSON with local evidence.
 
