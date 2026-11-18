@@ -53,6 +53,8 @@ export interface TutorialAccessDeps {
   readonly view: () => import('../ui/tutorial/tutorialRunner.ts').TutorialView | null;
   readonly playerId: () => string | null;
   readonly armourOn: () => boolean;
+  /** 274: a step taught a subject another surface would teach (the armour colours' one-time tip stands down). */
+  readonly taught: (subject: 'armourColours') => void;
 }
 
 export interface TutorialAccess {
@@ -100,7 +102,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         chapter,
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
-          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn },
+          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);

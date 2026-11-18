@@ -47,6 +47,17 @@
 .cot-tut-hint[hidden]{display:none;}
 .cot-tut-cap{margin-left:var(--s1);opacity:.7;}
 .cot-tut-cap:empty{display:none;}
+/* (274) a battle chapter's card is the battle's guidance (guidancePlan.ts): it stands where the battle's one plan puts it
+   (battleHudLayout.ts writeGuidance: off the centre notices, the toasts and every control, scrolling where the band is
+   short), gives way while a centre notice shows where nothing keeps them apart, and wears the HUD's notice plate (the
+   strong plate, its hairline ring, the angled corners) as the toasts and the alerts do */
+body[data-hud-guidance~=card] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{
+  left:var(--hud-guidance-card-left);top:var(--hud-guidance-card-top);bottom:auto;width:var(--hud-guidance-card-width);
+  max-height:var(--hud-guidance-card-max-h);transform:none;}
+body[data-hud-guidance~=card-yields] .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{visibility:hidden;}
+.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{border-radius:0;background:var(--hud-plate-strong);
+  box-shadow:inset 0 0 0 1px var(--line-2),var(--e3);
+  clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px);}
 @media (prefers-reduced-motion: reduce){
   .cot-tut-pulse.is-pulsing{animation:none;}
 }

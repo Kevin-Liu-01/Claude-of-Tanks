@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { strikeView } from './strikeViewState.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
+import { armourDefaultFlip, readArmourDefaultMarker, writeArmourDefaultMarker } from './armourOverlayDefault.ts';
 import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
 import { getLocale, t } from '../ui/i18n.ts';
@@ -365,9 +366,10 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Keep blocked pre-mitigation roll details optional for new profiles;
   // applied damage and canonical outcome words are always shown by the HUD.
   showDirectionalHitValues: false,
-  // Keep scoped armor highlighting opt-in. Explicit saved preferences and
-  // the live keyboard / Interface toggle still control the overlay.
-  armorAimOverlay: false,
+  // Armour colours in the sight are on by default (273, Kevin 2026-11-12: "turn it on once for everyone with a one time
+  // tip"); every profile saved before is turned on once at load (game/armourOverlayDefault.ts), and the H key and the
+  // Interface row still turn them off, which then sticks.
+  armorAimOverlay: true,
   // Sound mix (settings panel SOUND tab). The sound engine
   // (src/audio/audioEngine.ts) reads these at graph build and live-follows
   // the 'ui:volumes' bus event the panel emits on every change.
@@ -738,6 +740,14 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (storedSettings.crewVoice === 'english' || storedSettings.crewVoice === 'interface') {
       saveJson(SETTINGS_KEY, { ...storedSettings, crewVoice: settings.crewVoice });
     }
+  }
+  // 273: armour colours on once for everyone (game/armourOverlayDefault.ts): a profile that has not run the flip is
+  // turned on (and its record saved so), and its one-time tip is marked due at the next battle's rollout
+  {
+    const flip = armourDefaultFlip(readArmourDefaultMarker(), isRecord(storedSettings), settings.armorAimOverlay);
+    if (flip.turnOn) settings.armorAimOverlay = true;
+    if (flip.saveSettings) saveJson(SETTINGS_KEY, { ...(storedSettings as Record<string, RuntimeValue>), armorAimOverlay: true });
+    if (flip.marker) writeArmourDefaultMarker(flip.marker);
   }
   // item 259 (the lead, bar line 13: one datum, one place): Aim / free look's hold or toggle is the Right click mode alone
   // (Settings › Controls). An Accessibility toggle on the RMB action saved before it carries over to Toggle Aim once, and

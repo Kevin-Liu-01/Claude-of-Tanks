@@ -8,10 +8,16 @@
 // receipt reads every range back as a WebP of the stated size, holds every cell inside its sheet, every pack covered
 // end to end, every caption worded in each locale (never a file name, never the media rounds' own words), and the
 // counts the pages print equal to the index.
+// Since 2026-11-16 (owner: "what about our /media page? its missing so much stuff ... between that page going up and
+// new stuf"; the library was a snapshot built outside the repository, three weeks and 200 pictures behind) it also
+// holds the library current with public/media (tools/media-library): every picture published there is in the library
+// or has a reason in tools/media-library/sources.mjs, the committed library is what the builder plans from the
+// manifests, and every linked picture is the file its thumbnail was cut from (a re-render in place re-cuts it).
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { census, differences, entriesOf, lockOf, planLibrary, readLibrary, readLock } from '../media-library/library.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(ROOT, 'public/media/library-r3');
@@ -75,7 +81,7 @@ function worded(text, what, optional = false) {
 }
 let captions = 0;
 assert.ok(top.collections.length >= 6, 'the library holds the finals by collection');
-let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0;
+let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0, clips = 0, clipFiles = 0;
 for (const summary of top.collections) {
   assert.match(summary.key, /^[a-z0-9-]+$/);
   worded(summary.title, `${summary.key}: the title`);
@@ -95,6 +101,22 @@ for (const summary of top.collections) {
     assert.match(set.key, /^[a-z0-9-]+$/, `${summary.key}: set key ${set.key}`);
     worded(set.title, `${summary.key}/${set.key}: the title`);
     assert.equal(set.captions?.length, set.items.length, `${summary.key}/${set.key}: a caption a picture`);
+    // a picture's clip: its moving take's published files in the player's ladder order (VP9 before H.264)
+    if (set.clips) {
+      assert.equal(set.clips.length, set.items.length, `${summary.key}/${set.key}: a clip entry a picture`);
+      set.clips.forEach((clip, k) => {
+        if (clip == null) return;
+        const what = `${summary.key}/${set.key}/${set.items[k][0]}: its clip`;
+        assert.ok(clip.sources.length > 0 && (clip.seconds == null || clip.seconds > 0), what);
+        for (const [src, type, rung] of clip.sources) {
+          assert.equal(type, /\.mp4$/.test(src) ? 'video/mp4' : 'video/webm', `${what}: ${src} is typed by its file`);
+          assert.ok(rung === undefined || rung === 'phone' || rung === 'wide', `${what}: ${src}'s rung`);
+          assert.ok(existsSync(join(ROOT, 'public', src)), `${what}: ${src} is published`);
+          clipFiles++;
+        }
+        clips++;
+      });
+    }
     set.captions.forEach(([title, about, shot], k) => {
       const what = `${summary.key}/${set.key}/${set.items[k][0]}`;
       worded(title, `${what}: the title`);
@@ -140,6 +162,33 @@ const printed = docs.match(/data-i18n="docs\.aside\.libraryTitle" data-i18n-vars
 assert.ok(printed, 'the manual index links the library with its count');
 assert.equal(Number(printed[1].replaceAll(',', '')), top.count, 'the manual index prints the library count');
 assert.match(docs, /href="\/docs\/filming#library"/, 'the manual index opens the library');
+
+// current with public/media: the census, the plan and the thumbnails' lock (fix: node tools/media-library/build.mjs --write)
+const WRITE = 'run node tools/media-library/build.mjs --write and commit the library';
+const library = readLibrary(LIB);
+const { plan, results } = planLibrary(library);
+const { problems, counts } = census(plan, results);
+assert.deepEqual(problems, [], `every picture under public/media is in the library or has a reason in tools/media-library/sources.mjs (${WRITE}, or give it a reason)`);
+assert.deepEqual(differences(plan, library), [], `the committed library is the plan the manifests make (${WRITE})`);
+const lock = readLock();
+const cut = lockOf(plan);
+assert.deepEqual(Object.keys(lock).sort(), Object.keys(cut).sort(), `lock.json names exactly the linked pictures (${WRITE})`);
+const recut = Object.keys(cut).filter((url) => cut[url] !== lock[url]);
+assert.deepEqual(recut, [], `every linked picture is the file its thumbnail was cut from (${WRITE})`);
+// the census bites: a picture the library stopped showing, with no reason, is reported by name
+const shown = entriesOf(plan).find((e) => e.item.ref.url?.startsWith('/media/gallery-r1/'));
+assert.ok(shown, 'the library shows the owner\'s gallery (public/media/gallery-r1)');
+const without = { collections: plan.collections.map((c) => ({ ...c, sets: c.sets.map((s) => ({ ...s, items: s.items.filter((i) => i !== shown.item) })) })) };
+assert.deepEqual(census(without, results).problems.map((p) => p.split(':')[0]), [shown.item.ref.url], 'a published still missing from the library fails the census');
+// and a film no picture plays, with no reason, is reported by name (a battlefield's landmark loop, here)
+const landmark = entriesOf(plan).find((e) => e.item.ref.url?.startsWith('/media/maps-r1/') && e.item.clip);
+assert.ok(landmark, 'the library plays the battlefield picker\'s loops from its landmarks (public/media/maps-r1)');
+const silent = { collections: plan.collections.map((c) => ({ ...c, sets: c.sets.map((s) => ({ ...s,
+  items: s.items.map((i) => (i === landmark.item ? { ...i, clip: null } : i)) })) })) };
+assert.deepEqual(census(silent, results).problems.map((p) => p.split(':')[0]), landmark.item.clip.sources.map(([src]) => src),
+  'a published film no picture plays fails the census');
 console.log(`media-library.selftest: ${pictures} pictures in ${top.collections.length} collections (${ranges} pack ranges, `
   + `${links} published files, ${sheets} thumbnail sheets, ${(bytes / 1048576).toFixed(0)} MB of packs) read back, `
-  + `${captions} captions worded in ${LOCALES.join(' and ')}`);
+  + `${captions} captions worded in ${LOCALES.join(' and ')}, ${clips} clips (${clipFiles} files); current with public/media (${counts.files} pictures there: `
+  + `${counts.linked} in the library, ${counts.noted} rungs, copies and older renders, ${counts.excluded} in excluded folders; `
+  + `${counts.videos} films, ${counts.played} in clips)`);

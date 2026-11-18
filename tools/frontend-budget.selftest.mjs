@@ -105,6 +105,16 @@ try {
   const bundleRow = (key) => bundleRows.find((r) => r.key === key);
   assert.deepEqual([bundleRow('bundle/game/any/brotliBytes').pass, bundleRow('bundle/game/any/brotliBytes').owner], [false, 'integrator']);
   assert.equal(bundleRow('bundle/game/any/entryBrotliBytes').pass, true, 'a hash-noise wobble under the slack passes');
+  // the entry's slack covers its commit-hash noise (201 B between builds of the same code, round seven; V11 2026-11-13)
+  const entryPasses = (over) => evaluate(collect({ bundle: { game: { brotli: pin.brotliBytes, requests: pin.requests,
+    entryBrotli: pin.entryBrotliBytes + over } } })).find((r) => r.key === 'bundle/game/any/entryBrotliBytes').pass;
+  assert.equal(entryPasses(201), true, 'the entry 201 B over its pin (commit-hash noise) passes');
+  assert.equal(entryPasses(257), false, 'the entry 257 B over its pin fails');
+  // a page total includes its entry chunk, so its slack matches the entry's (owner 2026-11-13): 255 B over passes
+  const totalPasses = (over) => evaluate(collect({ bundle: { game: { brotli: pin.brotliBytes + over, requests: pin.requests,
+    entryBrotli: pin.entryBrotliBytes } } })).find((r) => r.key === 'bundle/game/any/brotliBytes').pass;
+  assert.equal(totalPasses(255), true, 'the page total 255 B over its pin (the entry\'s commit-hash noise) passes');
+  assert.equal(totalPasses(257), false, 'the page total 257 B over its pin fails');
   assert.equal(bundleRow('bundle/gallery/any/brotliBytes').pass, true);
   assert.equal(bundleRow('bundle/gallery/any/requests').pass, false, 'one more boot request is a miss');
   const unruled = { 'bundle/game/any/brotliBytes': { value: pin.brotliBytes + 2000 } };

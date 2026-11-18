@@ -160,12 +160,18 @@ for (const file of sources) {
     'a board press keeps the keyboard in the tree');
   assert.match(tree, /if \(node\) node\.focus\(\{ preventScroll: true \}\);\s*else root\.focus\(\{ preventScroll: true \}\);/, 'an open with no node focuses the tree');
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
-  assert.match(garage, /function onKey\(e: KeyboardEvent\): void \{\s*if \(!api\.isOpen\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(foreignModalOpen\(\)\) return;/,
+  // (9bf01e0c01, round 8 Y4 residual r1) the Garage's own first check is garageScreen.interactive (open and uncovered),
+  // which replaced api.isOpen; the yield to a foreign modal is the first key decision after it
+  assert.match(garage, /function onKey\(e: KeyboardEvent\): void \{\s*(?:\/\/[^\n]*\n\s*)*if \(!garageScreen\.interactive\) return;\s*(?:\/\/[^\n]*\n\s*)*if \(foreignModalOpen\(\)\) return;/,
     'the Garage yields every key to an open foreign modal surface first');
   assert.match(garage, /function foreignModalOpen\(\): boolean \{\s*for \(const box of document\.querySelectorAll<HTMLElement>\('\[aria-modal="true"\]'\)\) \{\s*if \(!root\.contains\(box\) && box\.getClientRects\(\)\.length > 0\) return true;/,
     'a foreign modal is any shown aria-modal box outside the Garage');
-  assert.match(garage, /hide\(\) \{[\s\S]{0,600}techTreeScreen\?\.close\(\{ restoreFocus: false \}\);\s*closeContextInfo\(\);/, 'hide() closes the tree and the dossiers');
-  assert.match(garage, /techTreeScreen = screen;\s*screen\.open\(opener\);/, 'the open tree is kept for hide()');
+  // (dddfb6071b) the audit F5 lines that open hide() put the tree's close past 600 characters; one close, not two
+  assert.match(garage, /hide\(\) \{[\s\S]{0,900}techTreeScreen\?\.close\(\{ restoreFocus: false \}\);\s*closeContextInfo\(\);/, 'hide() closes the tree and the dossiers');
+  const hideBody = garage.slice(garage.indexOf('    hide() {'), garage.indexOf('closeSurfacesWithin(root);', garage.indexOf('    hide() {')));
+  assert.equal(hideBody.split('techTreeScreen?.close(').length - 1, 1, 'hide() closes the tree once');
+  // (3f437d6c27, round 8 Y4 residual) the tree opens for the press its latched opener answered
+  assert.match(garage, /techTreeScreen = screen;\s*screen\.open\(opening\.press\);/, 'the open tree is kept for hide()');
   assert.match(garage, /if \(techTreeScreen === screen\) techTreeScreen = null;/, 'and let go when it closes');
 }
 

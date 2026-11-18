@@ -1799,6 +1799,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadioInterrupt.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/turretRingGrind.selftest.mjs', // 273: a damaged turret ring's grind is one held loop, faded at its edges
     // 2026-11-03 (impact-materials-269): every impact sounds of what it struck; only steel rings
     'src/audio/impactMaterials.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',
@@ -1910,6 +1911,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
+    'src/mp/room/equipmentSelection.selftest.mjs', // 273 (fire-fx-debounce-272 audit follow-up): an unchanged Garage pick sends no select_equipment, a changed one once; the room still applies a repeat
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
@@ -2327,6 +2329,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageSmokeTableLoad.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
+    // 273: armour colours on for everyone, once, and the one-time tip (Kevin 2026-11-12)
+    'src/game/armourOverlayDefault.selftest.mjs',
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
@@ -3088,6 +3092,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // 274: the battle's guidance in one place (Kevin: "one unified thing"): the tutorial's card, the toasts and the centre
+    // notices never on each other or on a control, at every recorded HUD size
+    'src/ui/guidancePlan.selftest.mjs',
     // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',

@@ -709,14 +709,14 @@
       {
         "volumeId": "M11",
         "name": "trackL",
-        "min": [-1.34,0.043,-2.7144],
+        "min": [-1.34,0.043,-2.713],
         "max": [-0.96,0.8997,2.6943],
         "turretLocal": false
       },
       {
         "volumeId": "M12",
         "name": "trackR",
-        "min": [0.96,0.043,-2.7144],
+        "min": [0.96,0.043,-2.713],
         "max": [1.34,0.8997,2.6943],
         "turretLocal": false
       }
@@ -738,16 +738,16 @@
       }
     ]
   },
-  "geometryHash": "ea9b5f57",
-  "metadataHash": "9afb7583",
+  "geometryHash": "a0e82f0e",
+  "metadataHash": "ebbeca77",
   "presentationAnchor": {
     "xM": -0.0063,
-    "zM": -0.0276
+    "zM": -0.0277
   },
-  "presentationHash": "b0d8e751",
+  "presentationHash": "acdcb29c",
   "presentationProjection": {
     "centerYM": 2.0649,
-    "topHalfM": 3.4849,
+    "topHalfM": 3.4848,
     "sideHalfM": 2.2095
   },
   "appearance": {
@@ -795,15 +795,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29650,
-      "sha256": "7a47a50633ab2ee32897a462125d84abcb9f0bc185af8afe3b8f1481363ab30b",
+      "bytes": 29666,
+      "sha256": "15b402c52d049267ada9bd7290132390f8bc29c1d24beb3e12e9bee7a7e8ddf9",
       "thumbnail": {
         "file": "thumbs/m113as4_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12240,
-        "sha256": "4cc2c641387a43d91ece2771d58cb30f8f5b8b74b0d2e38a3b05457e0608c49c",
+        "bytes": 12334,
+        "sha256": "1dba72f2e4b23bf2e92adb922efb0944f410ec484a8bb3f60a78efef4015105c",
         "frame": [28,103,225,250]
       }
     },
@@ -812,56 +812,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18020,
-      "sha256": "dac0bb6865a8fb3ed71e4ce10f853eacd115ad6d1ebf61095d46248df7fbde89"
+      "bytes": 17868,
+      "sha256": "4c4ec2072fd68f03616998166089524f063c9d38932d62410da388c587d77242"
     },
     "side": {
       "file": "m113as4_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14356,
-      "sha256": "4e243ae8773877b5ce26882ce96c3410f613314c1e6dca99637aadb6eac4a1c3"
+      "bytes": 13066,
+      "sha256": "309c5fb7e3f6825a746da321140906858c6c3386f6c57e9849ffd942eeb66d9f"
     },
     "topSilhouette": {
       "file": "m113as4_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1262,
-      "sha256": "8cb289febd45d4b5f60726d04ab412f5d9f65c0ad7c010807e5c2c99681859f6"
+      "bytes": 1259,
+      "sha256": "9fe9ae42210261d1c231e1335c4506a33d5ffe142811ff8b97fd0e13432ba6dc"
     },
     "sideSilhouette": {
       "file": "m113as4_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4580,
-      "sha256": "d9ae47650f76159f949d079da2b84ac700a2bfa01faeecc77a998d00c2a225d3"
+      "bytes": 4640,
+      "sha256": "9661bdaafec3f60463e035d192bf67d489235358f45644fe33339f46cf88dd94"
     },
     "armorSide": {
       "file": "m113as4_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31528,
-      "sha256": "f184bf52a910b97ab5cf012a07e777f0116272bb301a239d74dcbbe1cd9ecbe8"
+      "bytes": 30452,
+      "sha256": "25b50e44562434619a04e7bf5c2b679385f84163f7542f4e1b1b076fdd6cafd6"
     },
     "modulesSide": {
       "file": "m113as4_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32254,
-      "sha256": "cc17a3deae445a15cdef1abf3646df10b3bb94100a027bdc47fd9b7a19bd8cf5"
+      "bytes": 32174,
+      "sha256": "22032e91ed9467d24b59d700be639a9a1283e0f2858da15f8968239e99251f6b"
     },
     "crewSide": {
       "file": "m113as4_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30180,
-      "sha256": "66a2bc3a19bb09d0377515d7ed6d906c145979d69e6b5dbdeba18f72b9d96be9"
+      "bytes": 30072,
+      "sha256": "6bc7d41f989031ce0ce356d4fc941787df9be249d12b1077f1e4b47564a4fa99"
     },
     "markings": {
       "file": "m113as4_markings.png",
@@ -875,7 +875,7 @@
       "file": "m113as4_technical.json",
       "mime": "application/json",
       "bytes": 5548,
-      "sha256": "b95256aaa80e3d6b807e32506af178c1f2f171916cb384503367319766342e0a"
+      "sha256": "6dd93bf3ef7f036b1c6dde0940ff7b1591bf2cb9c68dddb3312abad4a1f78e52"
     }
   }
 }

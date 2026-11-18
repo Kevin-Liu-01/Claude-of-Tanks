@@ -1,8 +1,7 @@
 // galleryShots.selftest.mjs — the owner's whole loading-screen gallery (2026-11-11: "we can also add all 78 to the
 // galleries and other image areas"): public/media/gallery-r1, src/ui/galleryShots.ts and the surfaces that show it.
 //
-// - picks.json `gallery` is the gallery in its order: 26 close-ups, then 52 elevated stills, each once; the loading
-//   screens' sixteen are among its close-ups.
+// - picks.json `gallery` is the gallery in its order: 26 close-ups, then 52 elevated stills, each once.
 // - the collection is exactly the picks (tools/media-r5/loading-media.mjs): per still one 1920x1080 webp
 //   of at most 600 KB and its 640x360 rung, each with its bytes and sha256 in the manifest, rendered on a recorded commit,
 //   on a battlefield, with its focal (two-digit CSS object-position) and its caption in both languages, the battlefield's
@@ -11,8 +10,8 @@
 //   gallery still on each Garage battlefield the gallery shows.
 // - no module imports galleryShots.ts statically and no caption is a catalog key: the rows load with the surfaces that
 //   show them (the Garage's slideshow and battle gallery, the archive's wall), never with a boot chunk.
-// - the archive wall counts them (docs.ts limit, the manual's card) and the loading screens' stills aim where the
-//   gallery's do.
+// - the archive wall counts them (docs.ts limit, the manual's card) and the loading screens' gallery stills aim where
+//   the gallery's do.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
@@ -36,9 +35,6 @@ assert.equal(G.collection, 'gallery-r1');
 assert.equal(G.close.length, 26, 'the gallery\'s 26 close-ups');
 assert.equal(G.elevated.length, 52, 'its 52 elevated stills');
 assert.equal(new Set(ids).size, 78, 'each of the 78 once');
-for (const id of [...picks.loading.close, ...picks.loading.elevated]) {
-  assert.ok(G.close.includes(id), `the loading still ${id} is one of the gallery's close-ups`);
-}
 assert.deepEqual(Object.keys(G.focal), ids, 'a focal for every still, in the gallery\'s order');
 assert.deepEqual(G.rungs, [{ width: 640, quality: 80 }]);
 
@@ -174,8 +170,9 @@ const wall = (await json('public/media/site50-r14/archive.json')).shots.length
 assert.match(readFileSync(join(ROOT, 'src/docs/docs.ts'), 'utf8'), new RegExp(`\\{ mode: 'wall', limit: ${wall}, filters: false, takeTitle \\}`));
 assert.match(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'),
   new RegExp(`data-i18n="docs\\.aside\\.archiveTitle" data-i18n-vars='\\{"count":"${wall}"\\}'>${wall} field frames`));
-// the loading screens' stills (a portrait phone crops them) aim where the gallery's do
-const loadingIds = [...picks.loading.close, ...picks.loading.elevated];
-assert.deepEqual(LOADING_SHOTS.map((shot) => shot.focal), loadingIds.map((id) => G.focal[id]), 'the loading stills keep the gallery\'s focal');
+// the loading screens' gallery stills (a portrait phone crops them) aim where the gallery's do
+const loadingFocal = LOADING_SHOTS.flatMap((shot, n) => (ids.includes(picks.loading.stills[n]) ? [shot.focal] : []));
+assert.deepEqual(loadingFocal, picks.loading.stills.filter((id) => ids.includes(id)).map((id) => G.focal[id]),
+  'the loading stills keep the gallery\'s focal');
 console.log(`galleryShots.selftest: 78 stills (${(fullBytes / 1048576).toFixed(1)} MB + ${(rungBytes / 1048576).toFixed(1)} MB of 640 rungs), `
   + `${Object.keys(GALLERY_OPENERS).length} Garage openers, a wall of ${wall}, lazy at ${lazySites.length} sites`);

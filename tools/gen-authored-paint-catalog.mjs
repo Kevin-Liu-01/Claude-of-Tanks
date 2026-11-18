@@ -11,6 +11,7 @@ import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { SHARED_CAMO_PRESETS, camoNationTag } from '../src/vehicles/camoPolicy.ts';
 import { tankDisplayName } from '../src/vehicles/tankLabels.ts';
 import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
+import { AUTHORED_PAINT_ENTRIES } from '../src/vehicles/authoredPaintCatalog.ts';
 
 const PAINT_ID_PREFIX = 'paint_';
 const SCHEME_WORD = {
@@ -149,7 +150,26 @@ const labelZh = ({ who, word, envWord, tone }) => {
   return `${nation}${ENV_ZH[envWord] || envWord}${word === envWord ? '' : PATTERN_ZH[word] || word}迷彩`;
 };
 const ROMAN = ['', ' II', ' III', ' IV', ' V', ' VI', ' VII', ' VIII', ' IX', ' X'];
-const entries = [...groups.values()].map(({ recipe, ids }) => {
+// A published paint id keeps its recipe (272, the Olifant Mk 1B's repaint): a saved selection, a room's allowlist and
+// every hull still wearing it (the TTD wore the Mk 1B's paint) must see the same coat after its lead repaints. A cluster
+// whose recipe equals a published entry's exactly keeps that entry's id, whoever leads it now; any other cluster is
+// named for its lead, and when that name is already held, takes the next free numeral (paint_<lead>_2, _3 ...). A recipe
+// edit is a new recipe, so it never matches and is named for its lead as before.
+const canonical = (v) => JSON.stringify(Object.keys(v).sort().map((k) => [k, v[k]]));
+const publishedIdByRecipe = new Map(AUTHORED_PAINT_ENTRIES.map((e) => [canonical(e.visual), e.id]));
+const clusterList = [...groups.values()];
+const keptIds = new Set(clusterList.map(({ recipe }) => publishedIdByRecipe.get(canonical(recipe))).filter(Boolean));
+const takenIds = new Set(keptIds);
+const paintIdOf = (recipe, lead) => {
+  const kept = publishedIdByRecipe.get(canonical(recipe));
+  if (kept) return kept;
+  const stem = `${PAINT_ID_PREFIX}${tankSeedId(lead)}`;
+  let id = stem;
+  for (let n = 2; takenIds.has(id); n++) id = `${stem}_${n}`;
+  takenIds.add(id);
+  return id;
+};
+const entries = clusterList.map(({ recipe, ids }) => {
   const lead = leadOf(ids); const spec = getSpec(lead);
   const nationTag = camoNationTag(spec.nation) || null;
   const env = environmentOf(recipe), style = styleOf(recipe);
@@ -157,7 +177,7 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   const parts = nameParts(recipe, spec.nation, env, spec.era);
   // A paint id is a saved and wire-sent camo id: it keeps the lead's schema-1 spelling (tankIdAliases.ts), so a rename
   // never orphans a player's paint or a room's allowlist.
-  return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
+  return { id: paintIdOf(recipe, lead), lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };
 }).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 // two paints of one nation with the same words: the paint worn by the most hulls keeps the bare name, the others
 // take numerals, so a one-off concept never displaces a fleet-wide coat's name. On a tie the paint already published

@@ -52,6 +52,8 @@ export interface TutorialPort {
   playerId?(): string | null;
   /** 273: whether the armour colours are on now (an armour step already met moves on at once). */
   armourOn?(): boolean;
+  /** 274: a step that teaches a subject another surface would teach has shown (tutorialSteps.ts `teaches`). */
+  taught?(subject: NonNullable<TutorialStep['teaches']>): void;
 }
 
 /** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
@@ -343,6 +345,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       actor: step.guide?.actor ? t(step.guide.actor.label) : '',
       distance: (metres) => t('tutorial.guide.distance', { m: String(metres) }),
     });
+    if (step.teaches) port.taught?.(step.teaches);
     arm(step);
   }
 

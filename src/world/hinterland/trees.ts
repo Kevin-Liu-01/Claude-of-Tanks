@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { applyCanopyDiffuseWrap } from '../canopyLighting.ts';
 import { resolveHorizonForestClassMix, horizonForestImpostorPick, HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from '../horizonForestImpostors.ts';
-import { TREE_IMPOSTOR_ALPHA_TEST, type TreeImpostorLibrary } from '../treeImpostors.ts';
+import { TREE_IMPOSTOR_ALPHA_TEST, type TreeImpostorLibrary, fillTreeImpostorCells } from '../treeImpostors.ts';
 import type { HinterlandNearTrees } from './buildings.ts';
 import { samplePyramid } from './pyramid.ts';
 import { HINTERLAND_FORMS, HINTERLAND_TREE_STRIDE } from './wire.ts';
@@ -155,19 +155,28 @@ ${HINTERLAND_DEPTH_WRITE_GLSL}`);
   const group = new THREE.Group();
   group.name = 'hinterland-tree-impostors';
   group.matrixAutoUpdate = false;
-  for (const [key, bucket] of buckets) {
-    const [sp, mirror] = key.split('/');
-    const geometry = library.quadGeometry(sp, mirror === '1');
-    const rows = new THREE.InstancedBufferAttribute(new Float32Array(bucket.length), 1);
+  // world-pools-272: one pool for every species and mirror, the cell per instance
+  let total = 0;
+  for (const bucket of buckets.values()) total += bucket.length;
+  const geometry = total > 0 ? library.poolGeometry(total) : null;
+  const rows = new THREE.InstancedBufferAttribute(new Float32Array(total), 1);
+  const mesh = geometry ? new THREE.InstancedMesh(geometry, material, total) : null;
+  if (geometry && mesh) {
     geometry.setAttribute('aImpRow', rows);
-    const mesh = new THREE.InstancedMesh(geometry, material, bucket.length);
-    mesh.name = `hinterland-tree-impostor-${sp}-${mirror}`;
+    mesh.name = 'hinterland-tree-impostor';
     mesh.castShadow = false; mesh.receiveShadow = false;
     mesh.matrixAutoUpdate = false; mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // (alpha-tested: the GTAO prepass would composite the quads solid)
     mesh.onBeforeRender = (_r, scene, camera) => { proj.copy(camera.projectionMatrix); air?.update(scene); };
-    for (let j = 0; j < bucket.length; j++) {
-      const tree = resolved[bucket[j]];
+  }
+  let slot0 = 0;
+  for (const [key, bucket] of buckets) {
+    if (!geometry || !mesh) break;
+    const [sp, mirror] = key.split('/');
+    fillTreeImpostorCells(geometry, slot0, bucket.length, library, sp, mirror === '1');
+    for (let k = 0; k < bucket.length; k++) {
+      const j = slot0 + k;
+      const tree = resolved[bucket[k]];
       quaternion.setFromAxisAngle(up, tree.yaw);
       scale.setScalar(tree.scale);
       position.set(tree.x, tree.y, tree.z);
@@ -176,6 +185,9 @@ ${HINTERLAND_DEPTH_WRITE_GLSL}`);
       mesh.setColorAt(j, color.setRGB(tree.tint[0], tree.tint[1], tree.tint[2]));
       rows.array[j] = tree.variant; // (the program adds the species' first row: aImpCell.x)
     }
+    slot0 += bucket.length;
+  }
+  if (mesh) {
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     group.add(mesh);

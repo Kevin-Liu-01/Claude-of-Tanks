@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 857,
+ "count": 1046,
  "collections": [
   {
    "key": "scenes",
@@ -9,12 +9,12 @@
     "zh-CN": "战斗场景"
    },
    "blurb": {
-    "en-US": "Every battle scene filmed in the game engine, by battlefield: each scene with its close-up and other moments, then the motion-blur studies.",
-    "zh-CN": "在游戏引擎中拍摄的全部战斗场景，按战场分组：每个场景附特写与其他瞬间，最后是运动模糊研究。"
+    "en-US": "Every battle scene filmed in the game engine, by battlefield: each scene with its close-up and other moments, then the Scene Studio's sequences and the motion-blur studies.",
+    "zh-CN": "在游戏引擎中拍摄的全部战斗场景，按战场分组：每个场景附特写与其他瞬间，然后是场景工作室的镜头序列与运动模糊研究。"
    },
-   "count": 227,
-   "sets": 14,
-   "bytes": 5145898
+   "count": 293,
+   "sets": 27,
+   "bytes": 4049407
   },
   {
    "key": "vehicles",
@@ -26,9 +26,9 @@
     "en-US": "Every vehicle on its battlefield, with a close-up and other moments, by country.",
     "zh-CN": "每辆载具在其战场上的画面，附特写与其他瞬间，按国家分组。"
    },
-   "count": 394,
+   "count": 405,
    "sets": 14,
-   "bytes": 23923637
+   "bytes": 20157712
   },
   {
    "key": "duels",
@@ -37,12 +37,12 @@
     "zh-CN": "正面交锋"
    },
    "blurb": {
-    "en-US": "Two tanks, one frame: the duels, by time of day.",
-    "zh-CN": "两辆坦克，同框对决：按时段分组的对决。"
+    "en-US": "Two sides, one frame: the duels at ground level by time of day, then from above.",
+    "zh-CN": "两方同框：地面视角的对决按时段分组，然后是俯瞰视角。"
    },
-   "count": 29,
+   "count": 85,
    "sets": 3,
-   "bytes": 359072
+   "bytes": 382772
   },
   {
    "key": "combat",
@@ -56,7 +56,7 @@
    },
    "count": 12,
    "sets": 2,
-   "bytes": 770115
+   "bytes": 404610
   },
   {
    "key": "gameplay",
@@ -65,12 +65,12 @@
     "zh-CN": "玩法"
    },
    "blurb": {
-    "en-US": "The pictures of the home page's features, mechanics and game modes.",
-    "zh-CN": "首页功能、机制与游戏模式的图片。"
+    "en-US": "The game's features, mechanics and modes, each mode on the Deploy screen, the campaign's operations and the first game's tips.",
+    "zh-CN": "游戏的功能、机制与模式，出击界面上的各个模式，战役中的各场行动，以及第一局的提示。"
    },
-   "count": 43,
-   "sets": 3,
-   "bytes": 1076506
+   "count": 64,
+   "sets": 6,
+   "bytes": 280112
   },
   {
    "key": "keyart",
@@ -84,7 +84,7 @@
    },
    "count": 66,
    "sets": 7,
-   "bytes": 2810413
+   "bytes": 2794085
   },
   {
    "key": "battlefields",
@@ -93,12 +93,12 @@
     "zh-CN": "战场"
    },
    "blurb": {
-    "en-US": "Every battlefield seen from above, and its map card.",
-    "zh-CN": "每个战场的俯瞰图，以及它的地图卡。"
+    "en-US": "Every battlefield at its landmark, seen from above, and its map card.",
+    "zh-CN": "每个战场的地标画面、俯瞰图，以及它的地图卡。"
    },
-   "count": 67,
-   "sets": 2,
-   "bytes": 948181
+   "count": 100,
+   "sets": 3,
+   "bytes": 1073351
   },
   {
    "key": "interface",
@@ -110,9 +110,9 @@
     "en-US": "The game's screens: in battle, the Garage, the Tank Gallery and the Scene Studio.",
     "zh-CN": "游戏的各个界面：战斗中、车库、坦克画廊与场景工作室。"
    },
-   "count": 19,
+   "count": 21,
    "sets": 4,
-   "bytes": 80321
+   "bytes": 87461
   }
  ]
 }

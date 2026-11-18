@@ -153,12 +153,10 @@ try {
       const ip = environment.expand(impostor.material).parameters;
       assert.ok(ip.fragmentShader.includes('vec3 canopyTransmit = cotCanopyTransmit( material.diffuseContribution, vCotNeedle );'), `${place.id}: the impostors transmit through the law`);
       assert.match(ip.vertexShader, /attribute float aImpNeedle;/); assert.match(ip.vertexShader, /vCotNeedle = aImpNeedle;/);
-      for (const sp of place.species) {
-        const quad = impostor.quadGeometry(sp, false);
-        const share = [...quad.getAttribute('aImpNeedle').array];
-        assert.deepEqual(share, new Array(4).fill(place.needles.includes(sp) ? 1 : 0), `${place.id}: ${sp}: the quad's needle share`);
-        quad.dispose();
-      }
+      // (world-pools-272: the shared pool carries the share per instance, written from needleOf with the slot)
+      for (const sp of place.species) assert.equal(impostor.needleOf(sp), place.needles.includes(sp) ? 1 : 0, `${place.id}: ${sp}: the quad's needle share`);
+      const pool = world.group.children.find(m => m.userData.treeImpostor === true);
+      assert.ok(pool.geometry.getAttribute('aImpNeedle').isInstancedBufferAttribute, `${place.id}: the needle share per instance`);
       // the light: the grown gain, the near translucency, the grounded light's leaf transmission at full strength
       scene.userData.lightModel = { mode: 'physical' };
       world.update(1 / 60, new THREE.Vector3());

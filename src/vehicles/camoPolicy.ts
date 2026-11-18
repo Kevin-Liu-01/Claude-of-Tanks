@@ -170,11 +170,16 @@ const AUTHORED_PAINT_IDS_AFTER_269 = Object.freeze(['paint_tunguska_m', 'paint_p
  * actual camos"): a pale sand base under grey-green and near-black bands, the surviving tank's coat before its plain green
  * repaint. Appended after 271's saved catalog indices (271 is live, so its order holds). */
 const AUTHORED_PAINT_IDS_AFTER_271 = Object.freeze(['paint_object292'] as const);
+/** Release 273: the Olifant Mk 1B's own coat, the SANDF's 1994 three-colour (MRG Stone, Buffalo Green, Military Dark Earth;
+ * southAfricaSpecs.ts). paint_olifant_mk1b keeps its recipe for the TTD and saved selections. Appended after 272's
+ * saved catalog indices (272 is live, so its order holds). */
+const AUTHORED_PAINT_IDS_AFTER_272 = Object.freeze(['paint_olifant_mk1b_2'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
   | typeof AUTHORED_PAINT_IDS_PLAIN_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_268[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_271[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_269[number] | typeof AUTHORED_PAINT_IDS_AFTER_271[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_272[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
@@ -185,7 +190,8 @@ const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_269 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_271 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_271 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_272 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -231,6 +237,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_268,
   ...AUTHORED_PAINT_IDS_AFTER_269,
   ...AUTHORED_PAINT_IDS_AFTER_271,
+  ...AUTHORED_PAINT_IDS_AFTER_272,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -984,11 +991,12 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   x1_pioneiro: 'paint_x1_pioneiro',
   // release 269: the South Africa line: the SADF's nutria brown under field disruption on the 20-pdr and 105 mm Centurions
   // of 1974-85 (the Semel's bands, the Mk 1's bush three-tone, the Mk 1A's dry-season disruptive), the 1990s SANDF
-  // three-tone on the Mk 1B and the TTD
+  // three-tone on the TTD; 272: the Mk 1B in the SANDF's 1994 three-colour of the Tempe tank (stone, Buffalo Green and
+  // Military Dark Earth), its own paint
   semel: 'paint_semel',
   olifant_mk1: 'paint_olifant_mk1',
   olifant_mk1a: 'paint_olifant_mk1a',
-  olifant_mk1b: 'paint_olifant_mk1b',
+  olifant_mk1b: 'paint_olifant_mk1b_2',
   ttd: 'paint_olifant_mk1b',
   // release 270: the second air-defence round in existing coats (no new paint; saved catalog indices hold): both Marksmen
   // in Finland's three-tone's closest coat, the CV90 Mk IV's Swedish splinter woodland (paint_cv90_mkiv: green, black and a

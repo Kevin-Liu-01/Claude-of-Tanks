@@ -36,8 +36,20 @@
 .media-library-viewer::backdrop{background:var(--scrim);backdrop-filter:blur(10px)}
 .media-library-viewer figure{margin:0;display:grid;grid-template-rows:minmax(0,1fr) auto;max-height:94vh}
 .media-library-stage{position:relative;display:grid;place-items:center;min-height:min(40vh,320px);background:var(--surface-scene)}
-.media-library-stage img{display:block;width:100%;height:auto;min-height:min(40vh,320px);max-height:82vh;object-fit:cover;object-position:center}
+.media-library-stage img{display:block;width:100%;height:auto;min-height:min(40vh,320px);max-height:82vh;object-fit:contain;object-position:center}
 .media-library-stage .media-library-wait{position:absolute;inset:auto 0 0;padding:14px 18px;text-align:center}
+/* a picture's clip plays over it, whole, once it plays; its control stands on the stage as the site's media toggles do */
+.media-library-stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface-scene)}
+.media-library-stage video[hidden]{display:none}
+.cot-c-btn.media-library-play{position:absolute;z-index:1;right:12px;bottom:12px;min-width:44px;min-height:44px;background:var(--surface-raised);color:var(--ink-1)}
+.cot-c-btn.media-library-play[hidden]{display:none}
+.cot-c-btn.media-library-play svg{display:block;width:16px;height:16px}
+/* a thumbnail whose picture has a clip carries a small play mark */
+.media-library-thumb{position:relative}
+.media-library-thumb[data-clip]::before{content:'';position:absolute;right:6px;bottom:6px;width:18px;height:18px;border-radius:50%;
+  background:var(--surface-raised);opacity:.92;pointer-events:none}
+.media-library-thumb[data-clip]::after{content:'';position:absolute;right:11px;bottom:10.5px;width:0;height:0;
+  border-block:4.5px solid transparent;border-left:7px solid var(--ink-1);pointer-events:none}
 .media-library-viewer figcaption{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border-top:1px solid var(--library-line);background:var(--library-panel)}
 .media-library-viewer figcaption div:first-child{min-width:0}
 .media-library-viewer figcaption strong{display:block;overflow:hidden;font-size:var(--fs-14);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
@@ -57,6 +69,7 @@
 @media ((pointer: coarse) or (hover: none)){:root body .media-library-controls button{min-height:44px}}
 @media(hover:hover) and (pointer:fine){
   .media-library-thumb:hover{filter:brightness(1.18)}
+  .cot-c-btn.media-library-play:hover{background:var(--surface-hover)}
   .media-library-controls button:hover{border-color:var(--library-amber);background:var(--accent-wash)}
 }
 @media(prefers-reduced-motion:reduce){.media-library-thumb,.media-library-controls button{transition:none}}
