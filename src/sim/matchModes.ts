@@ -451,6 +451,10 @@ export interface ModeCheckpoint {
    *  ring or a lead its own opening drew): each hunter's search, its plan, the sides' sightings and refresh clock, the
    *  last contact and the arrivals' lead seed. Mode time throughout; null stands for "never". */
   hunt?: HuntCheckpoint;
+  /** The mode's two seeded streams where the old host left them (gaps 274, G1: a migrated host drew from its own seed,
+   *  restarted, so the next Horde or Frontline wave fielded other hulls than the old host's, and the caches fell
+   *  elsewhere): the draws (the waves' shuffles, the caches) and the arrival points (the rings, the line slots). */
+  rng: [draws: number, arrivals: number];
 }
 interface HuntCheckpoint {
   searches: [string, HuntSearch][];
@@ -573,15 +577,19 @@ function squaredDistance(entity: MatchModeEntity, x: number, z: number): number 
   return dx * dx + dz * dz;
 }
 
-function seededRandom(seed: number): () => number {
-  let value = seed >>> 0;
-  return () => {
-    value |= 0;
+/** A seeded stream (mulberry32) whose position is readable and settable: the mode checkpoint carries it (ModeCheckpoint.rng). */
+interface SeededRandom { (): number; state: number }
+function seededRandom(seed: number): SeededRandom {
+  const draw = (() => {
+    let value = draw.state | 0;
     value = value + 0x6D2B79F5 | 0;
+    draw.state = value;
     let out = Math.imul(value ^ value >>> 15, 1 | value);
     out = out + Math.imul(out ^ out >>> 7, 61 | out) ^ out;
     return ((out ^ out >>> 14) >>> 0) / 4294967296;
-  };
+  }) as SeededRandom;
+  draw.state = seed >>> 0;
+  return draw;
 }
 
 function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): number {
@@ -2997,7 +3005,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
           ...(ruleset.mars ? { caches: { nextAtS: nextMarsCacheAtS, sequence: pickupSequence, pickups: pickups.map((p) => ({ ...p })) } } : {}),
         } } : {}),
-        ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}), ...(air ? { air: air.capture() } : {}) };
+        ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}), ...(air ? { air: air.capture() } : {}),
+        rng: [rng.state, spawnRng.state] };
     },
     restoreCheckpoint(checkpoint) {
       // the mode clock the checkpoint was taken on (round 8 Y2 fix-up r2): a restored host's first route push asks for
@@ -3006,6 +3015,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       // as waited out. The stages it reads are carried (fix-up r3: the CTF raid's, Frontline's attack plan), so on the
       // mode's clock a raider or attacker goes in when the old host would have sent it (huntSearchMigration [6])
       if (Number.isFinite(checkpoint.elapsedS)) placementTimeS = checkpoint.elapsedS;
+      // the seeded streams where the old host left them (G1), before anything below draws from them
+      if (Array.isArray(checkpoint.rng) && Number.isInteger(checkpoint.rng[0]) && Number.isInteger(checkpoint.rng[1])) {
+        rng.state = checkpoint.rng[0]; spawnRng.state = checkpoint.rng[1];
+      }
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
       weaponKills.clear(); for (const [key, value] of checkpoint.weaponKills) weaponKills.set(key, value);
       teams.alpha.length = teams.bravo.length = 0;

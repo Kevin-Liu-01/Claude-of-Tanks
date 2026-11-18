@@ -2212,6 +2212,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // gaps 274 (G1): the mode's two seeded streams ride the mode checkpoint, so a migrated host fields the old host's next
+    // Horde waves and Frontline reinforcements on the same points and drops Mars's caches where the old host would
+    'src/sim/modeStreamMigration.selftest.mjs',
     // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
     // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected). It also pins
     // the CTF raid's and Frontline's attack stages across a migration (fix-up r3 and the residual, [6]): a lone raider
