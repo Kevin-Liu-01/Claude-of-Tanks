@@ -1827,15 +1827,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
     let noticeTop: number, alertTop: number;
-    // the rows' heights, for the battle's notices under them (ui/battleNotices.ts: the region's top, UI-LOCKDOWN B14)
-    let noticeH = notice?.height ?? 48, alertH = read('.cot-alert.show')?.height ?? 32;
     if (plan) {
       noticeTop = plan.detection.y;
       // (an alert raised before the roll-out keeps off the countdown: its own slot then)
       const alertSlot = countdown ? plan.countdownAlert : plan.alert;
       alertTop = alertSlot.y;
-      noticeH = plan.detection.h;
-      alertH = alertSlot.h;
     } else {
       // Center notices below the score. On narrow screens their horizontal
       // footprint also crosses the team feeds, so clear those occupied lanes.
@@ -2080,9 +2076,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'hints-width': hints.width, 'hints-x': hints.x, 'hints-bottom': hints.bottom,
       'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
       'notice-top': noticeTop, 'alert-top': alertTop,
-      // (the pointer lock's notice and the network's banner, in the kit's battle region: under the centre's detection and
-      // alert, never on them; each stood fixed at the centre top, over the objective and each other, UI-LOCKDOWN B14)
-      'battle-notices-top': Math.ceil(Math.max(noticeTop + noticeH, alertTop + alertH) + 8),
+      // (the battle's toasts' place is the guidance's (274, writeGuidance: off the centre notices, the tutorial's card and
+      // every control); its old write here, under the detection and the alert, ran after the guidance's and put the toasts
+      // back under the card, the browser check at 1440x900)
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split; tops and widths
       // only, every element on the centre line: noticeCentreLine.ts)
       'touch-alert-w': touchPlan?.alertW ?? width - 24,

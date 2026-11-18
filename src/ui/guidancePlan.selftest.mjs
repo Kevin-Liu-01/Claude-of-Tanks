@@ -169,6 +169,10 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     '--hud-battle-notices-left', '--hud-battle-notices-top', '--hud-battle-notices-width']) {
     assert.ok(layout.includes(`'${name}'`), `battleHudLayout writes ${name}`);
   }
+  // one writer for the toasts' place: the guidance's (a second write later in the pass, the layout's properties table,
+  // set them back under the card in the first browser check)
+  assert.equal((layout.match(/battle-notices-top/g) ?? []).length, 1, 'only the guidance writes the toasts\' top');
+  assert.equal((layout.match(/battle-notices-left/g) ?? []).length, 1, 'only the guidance writes the toasts\' left');
   const css = read('src/ui/battleHudLayout.css');
   assert.match(css, /\[data-hud-guidance~=toasts\] \.cot-battle-notices\[data-placement=top\]\{left:var\(--hud-battle-notices-left\);top:var\(--hud-battle-notices-top\)/,
     'the toasts stand where the plan puts them');
