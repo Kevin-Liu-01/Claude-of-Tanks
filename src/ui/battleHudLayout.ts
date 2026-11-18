@@ -980,11 +980,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
       return out;
     };
-    // the card at its natural width: its height there, from the height it has at the width it shows (its words reflow)
+    // the card at its natural width: its height there, from the height it has at the width it shows (its words reflow).
+    // While its overlay is open but the card measures nothing for a pass (a step's swap, a pause's hide and show), the
+    // last size stands: a pass without it set the toasts in the card's own row, and the next put the card back on them.
     const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
     const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
-    const card = cardNode && cardNode.offsetWidth > 0
-      ? { w: cardWide, h: Math.ceil(cardNode.scrollHeight * Math.min(1, cardNode.offsetWidth / cardWide)) } : null;
+    const cardOpen = !!cardNode;
+    if (cardNode && cardNode.offsetWidth > 0 && cardNode.scrollHeight > 0) {
+      guidanceCardSize = { w: cardWide, h: Math.ceil(cardNode.scrollHeight * Math.min(1, cardNode.offsetWidth / cardWide)) };
+    } else if (!cardOpen) guidanceCardSize = null;
+    const card = cardOpen ? guidanceCardSize : null;
     // the toasts: the battle's region while it holds a notice of its own (the parked aim chip keeps its own seat)
     const region = hudQuery<HTMLElement>('.cot-battle-notices');
     const toastNodes = region ? [...region.children].filter((node) => !node.classList.contains('cot-aim-notice')) : [];
@@ -994,6 +999,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
       never: measure(GUIDANCE_CONTROLS), card, toasts };
   }
+  /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
+  let guidanceCardSize: { w: number; h: number } | null = null;
   /** Writes the guidance's places (battleHudLayout.css, ui/tutorial/tutorial.css read them): the card's box, the toasts'
    *  box or their wait, and the card giving way while a centre notice shows where it must. */
   function writeGuidance(plan: GuidancePlan | null, yields: boolean) {
@@ -1018,6 +1025,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (value) document.body.dataset.hudGuidance = value;
       else delete document.body.dataset.hudGuidance;
     }
+    // (the plan's boxes, for the browser receipt: tools/hud-guidance.browser.mjs reads them beside the rendered ones)
+    const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number } | null) =>
+      b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1] : null;
+    const record = JSON.stringify({ card: box(card), toasts: box(toasts), wait: !!plan?.toastsWait, yields });
+    if (document.body.dataset.hudGuidancePlan !== record) document.body.dataset.hudGuidancePlan = record;
   }
   function setBodyVar(name: string, value: string) {
     if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);

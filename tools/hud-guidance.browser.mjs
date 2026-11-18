@@ -24,6 +24,7 @@ import { nativeBrowserLaunchOptions } from './native-browser-launch.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const BEFORE = arg('before', null);
+const ONLY_AFTER = process.argv.includes('--after-only');
 const OUT = resolve(arg('out', resolve(process.cwd(), '../hud-guidance-274-evidence')));
 mkdirSync(OUT, { recursive: true });
 const VIEWS = {
@@ -41,7 +42,7 @@ try {
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 120_000, protocolTimeout: 600_000,
     defaultViewport: null, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
       '--window-size=1440,1020'] }), { label: 'hud-guidance' });
-  const trees = [...(BEFORE ? [['before', resolve(BEFORE)]] : []), ['after', process.cwd()]];
+  const trees = [...(BEFORE && !ONLY_AFTER ? [['before', resolve(BEFORE)]] : []), ['after', process.cwd()]];
   for (const [tree, root] of trees) {
     const server = await createServer({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
     await server.listen();
@@ -88,6 +89,10 @@ try {
           toasts: all('.cot-battle-notices > *'),
           detection: one('.cot-sixth.on'), alert: one('.cot-alert.show'),
           controls: all(controls), guidance: document.body.dataset.hudGuidance ?? '', step: document.querySelector('.cot-tut.is-open')?.dataset.step ?? null,
+          plan: document.body.dataset.hudGuidancePlan ?? null,
+          vars: Object.fromEntries(['--hud-guidance-card-top', '--hud-guidance-card-left', '--hud-guidance-card-max-h', '--hud-battle-notices-top',
+            '--hud-battle-notices-left'].map((name) => [name, document.body.style.getPropertyValue(name)])),
+          region: one('.cot-battle-notices'),
         };
       }, CONTROLS);
       const meets = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
@@ -100,7 +105,9 @@ try {
       for (const [name, b] of surfaces) if (facts.controls.some((c) => meets(b, c))) overlaps.push(`${name}×control`);
       const file = `${tree}-${view}.png`;
       await page.screenshot({ path: resolve(OUT, file) });
-      report.frames.push({ tree, view, file, step: facts.step, guidance: facts.guidance, surfaces: surfaces.map(([n]) => n), overlaps });
+      report.frames.push({ tree, view, file, step: facts.step, guidance: facts.guidance, plan: facts.plan, vars: facts.vars,
+        rendered: Object.fromEntries(surfaces.map(([n, b]) => [n, [b.x0, b.y0, b.x1, b.y1].map(Math.round)])),
+        region: facts.region && [facts.region.x0, facts.region.y0, facts.region.x1, facts.region.y1].map(Math.round), surfaces: surfaces.map(([n]) => n), overlaps });
       console.log(`[guidance] ${tree} ${view}: step ${facts.step} [${facts.guidance}] surfaces ${surfaces.map(([n]) => n).join(',')} overlaps ${overlaps.join(',') || 'none'}`);
       await context.close();
     }
