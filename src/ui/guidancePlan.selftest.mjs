@@ -19,7 +19,11 @@
 //  5. the wiring: battleHudLayout.ts plans the card, the centre notices and the toasts in that one order and writes their
 //     places, the toasts' region and the tutorial's battle card read them, and the card asks for a re-plan as it changes;
 //  6. a card mid-swap (its overlay open, the card measuring nothing for a pass) keeps its place and the toasts stay off it:
-//     the case the first browser check found at 1440x900, which the old wiring planned onto the card.
+//     the case the first browser check found at 1440x900, which the old wiring planned onto the card;
+//  7. the card's natural size is held for its step, and the same inputs plan the same places;
+//  8. the live loop iterated six passes at 390x844 and 1440x900, each reading the card at the width the last plan gave it:
+//     the places settle after one pass; and the flicker's mechanism as a property: the held size never moves with the
+//     width a plan gives the card (the old estimate's does, the input a two-place cycle needs).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { cardNaturalSize, guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
@@ -183,6 +187,68 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
     const once = planGuidance(input);
     assert.deepEqual(planGuidance(input), once, `${key}: the same inputs plan the same places`);
   }
+}
+
+// 8. The live loop, iterated (Main, for the final check's phone flicker): each pass reads the card at the width the last
+// pass's plan gave it, its words wrapped there (a line model: the card's chrome, then its text in lines of the width
+// left inside its padding), and plans again, six passes, as battleHudLayout.ts does pass after pass. With the size held
+// for its step (cardNaturalSize, heldCardSize) the places settle after the first pass and never change; the estimate the
+// layout made inline before (281835400c: the height read at the plan's width, scaled back by width) alternates between
+// two places at 390x844, the flicker the browser check's phone still showed.
+{
+  const CHROME = 150, PAD = 32, LINE = 21, TEXT_W = 610; // the battle card: head, bar, hint and buttons; ~80 characters of body
+  const wrap = (width) => CHROME + Math.ceil(TEXT_W / Math.max(1, width - PAD)) * LINE;
+  const oldEstimate = (natural, reading) => ({ w: natural, h: Math.ceil(reading.scrollHeight * Math.min(1, reading.width / natural)) });
+  const iterate = (key, rule) => {
+    const entries = FURNITURE.sizes[key];
+    const [width, height] = key.replace('t', '').split('x').map(Number);
+    const touch = key.endsWith('t');
+    const natural = Math.min(480, width - 32);
+    const base = { width, height, top: Math.max(0, ...entries.filter((e) => e[0] === '.cot-top').map((e) => e[4])) + 6,
+      hard: entries.filter((e) => HARD.has(e[0])).map(box), soft: entries.filter((e) => SOFT.has(e[0])).map(box),
+      never: entries.filter((e) => CONTROLS.has(e[0])).map(box), toasts: { w: Math.min(420, width - 32), h: 44 } };
+    let held = null, natural$ = null, shownWidth = natural;
+    const places = [];
+    for (let pass = 0; pass < 6; pass++) {
+      const reading = { step: 'battle.drive', width: shownWidth, scrollHeight: wrap(shownWidth) };
+      let size;
+      if (rule === 'held') { natural$ = cardNaturalSize(natural$, reading, natural); size = natural$.size; }
+      else size = oldEstimate(natural, reading);
+      held = heldCardSize(held, true, size);
+      // a touch layout's order, as the live loop runs it: the card first, the touch planner's detection and alert round it
+      const plan = touch ? planTouchGuidance({ ...base, card: held }, (card) => {
+        const placed = planTouchNotices({ width, height, top: base.top,
+          obstacles: [...base.hard, ...base.never, ...(card ? [{ x0: card.x0, y0: card.y0, x1: card.x1, y1: card.y1 }] : [])],
+          soft: base.soft, scope: entries.some((e) => e[0] === '.cot-scope-vision'), seated: true, notice: { w: 214, h: 32 },
+          alert: { w: 214, h: 40 }, alertCompact: { w: 136, h: 34 }, countdown: null, banner: null, fallbackTop: base.top + 2,
+          oneRow: width > height ? height <= 340 : width <= 340 });
+        const at = (y, h) => ({ x0: width / 2 - 107, y0: y, x1: width / 2 + 107, y1: y + h });
+        return [at(placed.noticeTop, 32), at(placed.alertTop, 40)];
+      }).plan : planGuidance({ ...base, card: held });
+      places.push(JSON.stringify([plan.card && [plan.card.x0, plan.card.y0, plan.card.x1, plan.card.y1], plan.toasts && [plan.toasts.y0]]));
+      shownWidth = plan.card ? plan.card.x1 - plan.card.x0 : natural;
+    }
+    return places;
+  };
+  for (const key of ['390x844t', '1440x900']) {
+    const places = iterate(key, 'held');
+    assert.ok(places.slice(1).every((place) => place === places[1]), `${key}: the places settle after the first pass (${places.join(' | ')})`);
+  }
+  // The flicker's mechanism, held as a property (the recorded fixture is the sniper stage's HUD, where the phone's card
+  // fits at its full width and the old rule never reads it narrowed; the live battle-sight frame narrowed it to 246 px):
+  // a two-place cycle needs the card's size input to change with the width the last plan gave it. The held size cannot:
+  // after a read at the natural width, no later read of the step at any width moves it. The old estimate does.
+  const natural = 358;
+  const widths = [358, 246, 300, 220, 358, 246, 280, 200, 358];
+  let held = null;
+  const heldSizes = widths.map((width) => (held = cardNaturalSize(held, { step: 'battle.driveTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
+  assert.equal(new Set(heldSizes).size, 1, `the held size never moves after its exact read, whatever width the plan gives (${heldSizes.join(',')})`);
+  const oldSizes = widths.map((width) => oldEstimate(natural, { width, scrollHeight: wrap(width) }).h);
+  assert.ok(new Set(oldSizes).size > 1, `the old estimate's size follows the plan's width (${oldSizes.join(',')}): the input a cycle needs`);
+  // first read narrowed (a step whose card first shows at a place the last step's plan gave it): one estimate, then held
+  held = null;
+  const narrowFirst = [246, 300, 220, 280].map((width) => (held = cardNaturalSize(held, { step: 'battle.fireTouch', width, scrollHeight: wrap(width) }, natural)).size.h);
+  assert.equal(new Set(narrowFirst).size, 1, `a narrowed first read is estimated once and held (${narrowFirst.join(',')})`);
 }
 
 // 5. The wiring: one owner places them all, and every surface reads its place from it.
