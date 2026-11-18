@@ -29,7 +29,7 @@ export async function endCard(path, plan, root) {
   const { width: w, height: h } = plan, canvas = createCanvas(w, h), ctx = canvas.getContext('2d');
   const gradient = ctx.createRadialGradient(w * .5, h * .35, 0, w * .5, h * .35, w * .6);
   gradient.addColorStop(0, '#23313b'); gradient.addColorStop(1, '#070c10'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
-  const logo = await loadImage(join(root, 'public/brand/logo-mark.svg')); ctx.drawImage(logo, w * .455, h * .13, w * .09, w * .09);
+  const logo = await loadImage(join(root, 'public/brand/mark.svg')); ctx.drawImage(logo, w * .43, h * .13 + w * .025 * (1 - 106 / 184), w * .14, w * .14 * 106 / 184);
   ctx.textAlign = 'center'; ctx.fillStyle = ink; fitText(ctx, 'CLAUDE OF TANKS', w * .064, w * .85); ctx.fillText('CLAUDE OF TANKS', w / 2, h * .50);
   ctx.fillStyle = gold; fitText(ctx, plan.cta.toUpperCase(), w * .018, w * .8); ctx.fillText(plan.cta.toUpperCase(), w / 2, h * .65);
   ctx.fillStyle = '#c3cdd3'; font(ctx, w * .021); ctx.fillText('cot.kevinliu.studio', w / 2, h * .74);

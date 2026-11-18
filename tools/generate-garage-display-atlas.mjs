@@ -8,8 +8,9 @@
 // re-run of this tool on new public/brand art with no geometry change.
 //
 // Inputs (only these; never public/media/modern, showcase-r2, garage-environments-r2 or presentation-r1):
-//   - public/brand: logo-mark.svg, logo-mark-metal.svg, logo-mark-bw.svg and wordmark.svg (the horizontal wordmark, one
-//     line on every sign; rasterised by the repo's puppeteer Chrome)
+//   - public/brand: mark.svg, mark-paper.svg, mark-metal.svg, mark-mono-ink.svg (the tank mark, tools/brand-marks.mjs;
+//     the crest retired 2026-11-18) and wordmark.svg (the horizontal wordmark, one line on every sign; rasterised by the
+//     repo's puppeteer Chrome)
 //   - public/media/site50-r14/stills: the featured battlefield stills the game already shows
 //   - public/icons: the exhibit tanks' armour and module readouts
 //   - public/maps/thumbs: the ten Garage maps
@@ -79,9 +80,10 @@ const PICTOGRAMS = Object.freeze([
 ]);
 // the name is the horizontal wordmark, one line everywhere it hangs (owner 10-26: "for all words of 'claude of tanks', it
 // should be horizontal, not the words stacked on top of each other"): a sign wide enough carries the line; a narrow
-// banner carries the crest and no words, never a stacked or turned name
+// banner carries the mark and no words, never a stacked or turned name
 const BRAND = Object.freeze({
-  mark: 'public/brand/logo-mark.svg', markMetal: 'public/brand/logo-mark-metal.svg', markBw: 'public/brand/logo-mark-bw.svg',
+  mark: 'public/brand/mark.svg', markPaper: 'public/brand/mark-paper.svg', markMetal: 'public/brand/mark-metal.svg',
+  markBw: 'public/brand/mark-mono-ink.svg',
   word: 'public/brand/wordmark.svg',
 });
 
@@ -335,9 +337,11 @@ async function generate() {
   const items = atlasItems();
   const placed = pack(items);
   const brand = await rasteriseBrand([
-    { key: 'mark', file: BRAND.mark, w: 512, h: 512 },
-    { key: 'markMetal', file: BRAND.markMetal, w: 512, h: 512 },
-    { key: 'markBw', file: BRAND.markBw, w: 512, h: 512 },
+    // the tank's 184 x 106 box at 1024 wide
+    { key: 'mark', file: BRAND.mark, w: 1024, h: 590 },
+    { key: 'markPaper', file: BRAND.markPaper, w: 1024, h: 590 },
+    { key: 'markMetal', file: BRAND.markMetal, w: 1024, h: 590 },
+    { key: 'markBw', file: BRAND.markBw, w: 1024, h: 590 },
     // the wordmark's 9956 x 700 box, at about four times the widest sign's pixels
     { key: 'word', file: BRAND.word, w: 2844, h: 200 },
   ]);
@@ -689,7 +693,9 @@ async function generate() {
       if (style === 'timber') { const random = rng(77); for (let yy = 0; yy < r.h; yy += 2) { g.fillStyle = `rgba(0,0,0,${0.08 * random()})`; g.fillRect(r.x, r.y + yy, r.w, 1); } }
       g.strokeStyle = rule; g.lineWidth = style === 'cast' ? 4 : 2; g.strokeRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10);
     }
-    fit(g, img.mark, r.x + 10, r.y + 8, r.h - 16, r.h - 16);
+    // the paper tank on a dark board, the ink tank on a light one (Sirocco's sand)
+    const luma = [1, 3, 5].reduce((sum, i, k) => sum + parseInt(bg.slice(i, i + 2), 16) * [0.299, 0.587, 0.114][k], 0) / 255;
+    fit(g, luma > 0.5 ? img.markPaper : img.mark, r.x + 10, r.y + 8, r.h - 16, r.h - 16);
     text(g, garage.name, r.x + r.h, r.y + 6, r.w - r.h - 14, r.h - 12, { color: ink, weight: 800, spacing: style === 'stencil' ? 5 : 2 });
     if (style === 'stencil') {
       // stencil bridges cut through the letters

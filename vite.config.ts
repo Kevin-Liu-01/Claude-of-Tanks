@@ -123,7 +123,7 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
     const source = existsSync(resolve(documentRoot, entry)) ? entry : `site/${entry}`;
     req.url = `/${source}${localizedQuery}`;
   }
-  else if (/^\/(?:home|gallery|docs(?:-[a-z]+)?)\.html$/.test(path)
+  else if (/^\/(?:home|gallery|brand|docs(?:-[a-z]+)?)\.html$/.test(path)
     && existsSync(resolve(documentRoot, `site${path}`))) {
     req.url = `/site${path}${query}`;
   }
@@ -403,6 +403,8 @@ export default defineConfig({
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
         docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
+        // the brand page (owner, 2026-11-18): the tank mark, its sizes, colors, rules and files
+        brand: resolve(process.cwd(), 'site/brand.html'),
         // the phone controller's page (docs/PHONE-CONTROLLER.md): its own small entry, /pad
         pad: resolve(process.cwd(), 'site/pad.html'),
       },
@@ -601,7 +603,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: [
-      'index.html', '404.html', 'site/home.html', 'site/docs.html', 'site/docs-topic.html', 'site/gallery.html',
+      'index.html', '404.html', 'site/home.html', 'site/docs.html', 'site/docs-topic.html', 'site/gallery.html', 'site/brand.html',
       'site/docs-build.html', 'site/docs-models.html',
       'site/docs-simulation.html', 'site/docs-rendering.html',
       'site/docs-ai.html',

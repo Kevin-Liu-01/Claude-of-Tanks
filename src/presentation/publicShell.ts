@@ -1,7 +1,7 @@
 /**
  * The public site's one navigation bar (brand-ui BUI-W1, the Premiere direction's nav). Copyright © 2026 Kevin B. Liu.
  *
- * Every public entry (site/home.html, gallery.html, docs.html, docs-topic.html and the thirteen docs-*.html topics)
+ * Every public entry (site/home.html, gallery.html, brand.html, docs.html, docs-topic.html and the docs-*.html topics)
  * carries the same bar and inline symbol block, written into its HTML between marker comments by
  * `node tools/public-shell.mjs --write` and checked by `node tools/public-shell.mjs` (publicNav.selftest.mjs). The
  * chrome is static markup: it paints with the document, before any script, in both locales (the /cn build localizes its
@@ -110,6 +110,7 @@ export function publicFooterHtml(shell: PublicShellPage, text: ShellText, year =
     + `<nav class="public-footer__links" aria-label="${escapeHtml(text('publicNav.footerAria'))}" data-i18n-aria-label="publicNav.footerAria">`
     + `<a href="/" data-i18n="publicNav.playNow">${escapeHtml(text('publicNav.playNow'))}</a>`
     + PUBLIC_DESTINATIONS.map((d) => `<a href="${d.href}" data-i18n="${d.key}">${escapeHtml(text(d.key))}</a>`).join('')
+    + `<a href="/brand"${shell.path === '/brand' ? ' aria-current="page"' : ''} data-i18n="publicNav.brandPage">${escapeHtml(text('publicNav.brandPage'))}</a>`
     + `<a href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 16)}<span>GitHub</span>${stars}</a></nav>`
     + languageLinks(shell.path, text, 'public-footer__lang')
     + `<p class="public-footer__credit"><span>© ${year} Kevin B. Liu</span>`
@@ -188,6 +189,8 @@ export function shellPageOf(html: string): PublicShellPage {
   const canonical = /<link rel="canonical" href="https:\/\/[^/"]+(\/[^"]*)"/.exec(html)?.[1];
   if (!canonical) return { path: '/404', page: null };
   const path = canonical.replace(/\/$/, '') || '/';
+  // /brand belongs to no destination: the footer links it
+  if (path === '/brand') return { path, page: null };
   const page: PublicPageKey = path.startsWith('/gallery') ? 'gallery'
     : path.startsWith('/docs') ? 'docs'
       : path.startsWith('/studio') ? 'studio' : 'home';

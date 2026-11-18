@@ -5,7 +5,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
  "generatedBy": "node tools/brand-marks.mjs (src/ui/brandMark.ts, src/ui/brandMarkMotion.ts)",
- "count": 69,
+ "count": 65,
  "items": [
   {
    "file": "mark.svg",
@@ -24,28 +24,16 @@
    "use": "one colour, ink"
   },
   {
+   "file": "mark-metal.svg",
+   "use": "the mark in brushed metal (Garage signs)"
+  },
+  {
    "file": "mark-motion.svg",
    "use": "the living mark (CSS loop)"
   },
   {
    "file": "mark-motion-inline.svg",
    "use": ""
-  },
-  {
-   "file": "bust.svg",
-   "use": "the icon on dark"
-  },
-  {
-   "file": "bust-paper.svg",
-   "use": "the icon on paper"
-  },
-  {
-   "file": "bust-mono.svg",
-   "use": "icon, one colour, paper"
-  },
-  {
-   "file": "bust-mono-ink.svg",
-   "use": "icon, one colour, ink"
   },
   {
    "file": "favicon.svg",
@@ -285,11 +273,6 @@
    "file": "mark-paper-1024.png",
    "from": "mark-paper.svg",
    "size": "1024x1024"
-  },
-  {
-   "file": "bust-512.png",
-   "from": "bust.svg",
-   "size": "512x512"
   },
   {
    "file": "lockup-2400.png",

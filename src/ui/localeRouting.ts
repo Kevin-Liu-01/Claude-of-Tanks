@@ -32,6 +32,7 @@ type PublicRouteId =
   | 'docsStart'
   | 'docsControls'
   | 'docsFleet'
+  | 'brand'
   | 'notFound';
 
 export interface PublicRouteRecord {
@@ -59,6 +60,7 @@ export const PUBLIC_ROUTE_RECORDS: readonly PublicRouteRecord[] = Object.freeze(
   route('docs', '/docs', 'docs.html'),
   ...DOCS_TOPICS.map((topic) => route(`docs${topic[0].toUpperCase()}${topic.slice(1)}` as PublicRouteId,
     `/docs/${topic}`, `docs-${topic}.html`)),
+  route('brand', '/brand', 'brand.html'),
   route('notFound', '/404', '404.html', '404.html', false),
 ]);
 
