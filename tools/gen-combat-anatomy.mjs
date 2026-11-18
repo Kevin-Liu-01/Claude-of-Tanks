@@ -61,10 +61,11 @@ const { measureTurretRing, measureTurretSweep, turretRingRadius, TURRET_RING_SID
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
-const { authoredCombatAnatomy, finalizeCombatAnatomy, moduleHitShapes } = await import('../src/vehicles/combatAnatomy.ts');
+const { applyEraPlateReceipts, authoredCombatAnatomy, finalizeCombatAnatomy, moduleHitShapes } = await import('../src/vehicles/combatAnatomy.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
 const { fitCrewSeats, MODULE_OUTSIDE_SHARE_LIMIT, placeModules } = await import('./crew-seat-fit.mjs');
+const { plateFitReceipts, visibleTriangles } = await import('./hitbox-fit-census-lib.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -722,6 +723,31 @@ function eraPlateReceipts(root, rigScales = {}) {
     }));
 }
 
+/** The measured build's visible triangles ride a measured row under this key; rows written to disk never carry it. */
+const VISIBLE = Symbol('visibleTriangles');
+
+/**
+ * hitbox-fit-274 (the owner, 2026-11-18: "some tanks like abrams x just have a floating hit box"): crop, fit or drop. A
+ * non-main plate (spaced, external or ERA layer) off the drawn build is listed in the row with what the finalizer does
+ * with it (combatAnatomy.ts applyPlateFits): cropped to the part it overhangs, fitted onto the part it stands off, or
+ * dropped when its part is not drawn (a donor's bustle rack or rubber skirt the vehicle lacks). The authored anatomy is
+ * finalized against this row in measurement mode, so the list never measures its own fits; the row's own ERA cassette
+ * faces are laid on first, as the finalizer lays them before the fits, and are measured like every layer (their fit
+ * stood 8-12 cm off the drawn cassettes on the Challenger 2E pair, the VT-4A1, the ZTZ-99A2 and the Centurion AVRE).
+ */
+function plateFitsFor(id, row, visible) {
+  const probe = authoredCombatAnatomy(id);
+  if (!probe) return [];
+  finalizeCombatAnatomy(probe, row);
+  applyEraPlateReceipts(probe.armor, row.eraPlates);
+  const fits = plateFitReceipts(probe.armor, visible);
+  for (const plate of fits) {
+    console.log(`[combat-anatomy] ${id}: ${plate.action}s ${plate.owner} ${plate.kind} plate ${plate.name} at [${plate.at.join(',')}] `
+      + `(its centre ${plate.gapM} m and ${Math.round(plate.offShare * 100)} % of it off the drawn build)`);
+  }
+  return fits;
+}
+
 function receiptFor(id) {
   const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const stockCapture = id === 'chieftain_mk10' ? captureChieftain10Collision(create)
@@ -771,6 +797,9 @@ function receiptFor(id) {
     const trackR = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandR']));
     if (!hull) throw new Error(`${id}: main hull receipt missing`);
     if (!trackL || !trackR) throw new Error(`${id}: running-gear receipt missing`);
+    // hitbox-fit-274: the drawn build's visible triangles (root frame; the rigid frames keep every world position), for
+    // the plate fit below (plateFitsFor)
+    const visible = visibleTriangles(tank.root);
     const hullStructures = structureReceipts(tank.root, hullRig, 'hull');
     const turretStructures = structureReceipts(tank.root, turretRig, 'turret');
     return {
@@ -802,6 +831,7 @@ function receiptFor(id) {
       tracks: { left: trackL, right: trackR },
       trackContact: trackContactReceipt(tank.contactGeom, id),
       ...(turretRing ? { turretRing } : {}),
+      [VISIBLE]: visible,
     };
   } finally {
     if (stockCapture) stockCapture.dispose();
@@ -841,8 +871,10 @@ const rows = anatomyRows({
   roster: ALL_TANK_IDS, only: onlyIds, committed: COMBAT_ANATOMY_CALIBRATIONS, part: !!partDir,
   parts: mergeFrom ? readPartRows(mergeFrom, PART_TOOL) : null,
   measure: (id) => {
-    const measured = receiptFor(id);
+    const { [VISIBLE]: visible, ...measured } = receiptFor(id);
     const row = { ...measured, ...seatsFor(id, measured) };
+    const plateFits = plateFitsFor(id, row, visible);
+    if (plateFits.length) row.plateFits = plateFits;
     console.log(`[combat-anatomy] measured ${id}`);
     return row;
   },

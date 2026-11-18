@@ -724,6 +724,8 @@ const _firstViewMatrix = new THREE.Matrix4();
 const _firstViewFrustum = new THREE.Frustum();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+const _v4 = new THREE.Vector3();
+const _skinRay = new THREE.Raycaster();
 /** a firing actor's muzzle velocity (m/s): the cinematic blast's bright parts ride it as the battle flash's do */
 const _muzzleVel: [number, number, number] = [0, 0, 0];
 const _fwd = new THREE.Vector3();
@@ -2786,9 +2788,29 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       _v2.copy(actor.state.pos);
       _v2.y += actor.spec.dims.heightM * heightFraction;
       _v2.addScaledVector(_v3, reach);
+      // (hitbox-fit-274) a mark lies on drawn skin or nowhere (fx/impactDecals.ts): seat it where the line in from the
+      // outer point to the vehicle's axis meets the drawn vehicle, with that face's normal (it used to start 4 m out,
+      // past the decal clamp's reach, and hang in the air)
+      if (!seatOnDrawnSkin(actor.visual.root, _v2, _v3)) continue;
       fx.armorScar(actor.visual, _v2, _v3, params.caliberMm || 100);
     }
     return true;
+  }
+
+  /** Move `point` to where the line from it back along `-normal` first meets a visible mesh of `root`; `normal` takes
+   * that face's world normal. False when the line meets nothing drawn. */
+  function seatOnDrawnSkin(root: THREE.Object3D, point: THREE.Vector3, normal: THREE.Vector3): boolean {
+    root.updateWorldMatrix(true, true);
+    _skinRay.set(point, _v4.copy(normal).negate());
+    for (const hit of _skinRay.intersectObject(root, true)) {
+      let shown = hit.object.visible && hit.object instanceof THREE.Mesh && !(hit.object instanceof THREE.InstancedMesh);
+      for (let parent = hit.object.parent; shown && parent && parent !== root.parent; parent = parent.parent) shown = parent.visible;
+      if (!shown || !hit.face || hit.object.name === 'fx_impactDecals') continue;
+      point.copy(hit.point);
+      normal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+      return true;
+    }
+    return false;
   }
 
   // ---- destruction core lane (P2, docs/DESTRUCTION.md §11): the Studio films the sim's own destruction ----

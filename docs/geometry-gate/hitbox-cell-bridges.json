@@ -1,0 +1,469 @@
+{
+ "about": "tools/hitbox-fit-census.mjs: per tank, its convex cells bridging a recess of the drawn shell deeper than 0.3 m (faces, deepest centre gap in m). Held, never grown, until the generator's slicing fits them.",
+ "rows": {
+  "ajax": {
+   "faces": 1,
+   "deepestM": 0.331
+  },
+  "ares_apc": {
+   "faces": 2,
+   "deepestM": 0.405
+  },
+  "bmp3m_dragun125": {
+   "faces": 2,
+   "deepestM": 0.422
+  },
+  "bmpt_terminator": {
+   "faces": 4,
+   "deepestM": 0.397
+  },
+  "bmpt_terminator2": {
+   "faces": 8,
+   "deepestM": 0.458
+  },
+  "c2_ariete": {
+   "faces": 25,
+   "deepestM": 0.486
+  },
+  "challenger2": {
+   "faces": 1,
+   "deepestM": 0.301
+  },
+  "challenger2e": {
+   "faces": 1,
+   "deepestM": 0.301
+  },
+  "challenger3": {
+   "faces": 4,
+   "deepestM": 0.466
+  },
+  "challenger3_proto": {
+   "faces": 3,
+   "deepestM": 0.466
+  },
+  "challenger3_td": {
+   "faces": 3,
+   "deepestM": 0.359
+  },
+  "challenger3_td_rws": {
+   "faces": 3,
+   "deepestM": 0.359
+  },
+  "chieftain_mk10": {
+   "faces": 58,
+   "deepestM": 0.374
+  },
+  "cv90_mk4": {
+   "faces": 1,
+   "deepestM": 0.305
+  },
+  "cv9035dk": {
+   "faces": 1,
+   "deepestM": 0.305
+  },
+  "cv9040c": {
+   "faces": 1,
+   "deepestM": 0.435
+  },
+  "ee_t4_osorio": {
+   "faces": 1,
+   "deepestM": 0.302
+  },
+  "fv4034": {
+   "faces": 1,
+   "deepestM": 0.301
+  },
+  "gepard_1a2": {
+   "faces": 1,
+   "deepestM": 0.307
+  },
+  "griffin_viper": {
+   "faces": 1,
+   "deepestM": 0.316
+  },
+  "griffin50mm": {
+   "faces": 1,
+   "deepestM": 0.316
+  },
+  "jpz_e100": {
+   "faces": 1,
+   "deepestM": 0.307
+  },
+  "k1a1": {
+   "faces": 2,
+   "deepestM": 0.372
+  },
+  "kf51_u": {
+   "faces": 2,
+   "deepestM": 0.342
+  },
+  "leo2a6": {
+   "faces": 6,
+   "deepestM": 0.309
+  },
+  "leo2a6_ua": {
+   "faces": 6,
+   "deepestM": 0.309
+  },
+  "leopard_as1": {
+   "faces": 26,
+   "deepestM": 0.397
+  },
+  "lvkv9040": {
+   "faces": 1,
+   "deepestM": 0.305
+  },
+  "m113a1_fsv": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m113a1_mrv": {
+   "faces": 1,
+   "deepestM": 0.329
+  },
+  "m113a3": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m113as4": {
+   "faces": 1,
+   "deepestM": 0.351
+  },
+  "m163_vads": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m1a1_abrams_hc": {
+   "faces": 1,
+   "deepestM": 0.304
+  },
+  "m1a1_abrams_sa": {
+   "faces": 1,
+   "deepestM": 0.308
+  },
+  "m1a1_aim_sa_aus": {
+   "faces": 14,
+   "deepestM": 0.478
+  },
+  "m1a2_abrams": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "m1a2_abrams_sepv2": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "m1a2_abrams_sepv3": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "m1a2_abrams_tusk": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "m1a2_sepv3_aus": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "m48_super": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m48a2ga2": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m48a3_patton": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m48a5_patton": {
+   "faces": 1,
+   "deepestM": 0.352
+  },
+  "m60a1": {
+   "faces": 1,
+   "deepestM": 0.361
+  },
+  "m60a2": {
+   "faces": 1,
+   "deepestM": 0.361
+  },
+  "m60a3": {
+   "faces": 2,
+   "deepestM": 0.361
+  },
+  "magach6b": {
+   "faces": 1,
+   "deepestM": 0.361
+  },
+  "magach7c": {
+   "faces": 1,
+   "deepestM": 0.361
+  },
+  "marder2": {
+   "faces": 1,
+   "deepestM": 0.301
+  },
+  "merkava4": {
+   "faces": 1,
+   "deepestM": 0.387
+  },
+  "namer_ifv": {
+   "faces": 1,
+   "deepestM": 0.304
+  },
+  "pgz95": {
+   "faces": 1,
+   "deepestM": 0.399
+  },
+  "pt91a_twardy": {
+   "faces": 1,
+   "deepestM": 0.34
+  },
+  "pt91m": {
+   "faces": 5,
+   "deepestM": 0.482
+  },
+  "puma_s1": {
+   "faces": 1,
+   "deepestM": 0.31
+  },
+  "pza_loara": {
+   "faces": 6,
+   "deepestM": 0.561
+  },
+  "spz_puma": {
+   "faces": 5,
+   "deepestM": 0.442
+  },
+  "t64bv_donbas": {
+   "faces": 1,
+   "deepestM": 0.331
+  },
+  "t64bv1": {
+   "faces": 1,
+   "deepestM": 0.331
+  },
+  "t72b_1987": {
+   "faces": 4,
+   "deepestM": 0.363
+  },
+  "t72b3": {
+   "faces": 1,
+   "deepestM": 0.336
+  },
+  "t72b3_bastion_m": {
+   "faces": 2,
+   "deepestM": 0.34
+  },
+  "t72b3_qilin": {
+   "faces": 2,
+   "deepestM": 0.34
+  },
+  "t72b3_zhuque": {
+   "faces": 2,
+   "deepestM": 0.34
+  },
+  "t72b3m_2016": {
+   "faces": 8,
+   "deepestM": 0.458
+  },
+  "t72b3m_2022": {
+   "faces": 8,
+   "deepestM": 0.458
+  },
+  "t72b3m_bulat_m": {
+   "faces": 7,
+   "deepestM": 0.458
+  },
+  "t72b3m_hetman": {
+   "faces": 8,
+   "deepestM": 0.387
+  },
+  "t72b3m_kunlun": {
+   "faces": 10,
+   "deepestM": 0.458
+  },
+  "t72b3m_wilk": {
+   "faces": 8,
+   "deepestM": 0.38
+  },
+  "t72b3m_xuanwu": {
+   "faces": 10,
+   "deepestM": 0.458
+  },
+  "t72bu": {
+   "faces": 5,
+   "deepestM": 0.482
+  },
+  "t72bu_1989": {
+   "faces": 5,
+   "deepestM": 0.482
+  },
+  "t72m1_jaguar": {
+   "faces": 1,
+   "deepestM": 0.336
+  },
+  "t80": {
+   "faces": 3,
+   "deepestM": 0.388
+  },
+  "t80b": {
+   "faces": 3,
+   "deepestM": 0.388
+  },
+  "t80bv": {
+   "faces": 1,
+   "deepestM": 0.38
+  },
+  "t84": {
+   "faces": 8,
+   "deepestM": 0.458
+  },
+  "t90": {
+   "faces": 4,
+   "deepestM": 0.526
+  },
+  "t90_1992": {
+   "faces": 6,
+   "deepestM": 0.552
+  },
+  "t90a": {
+   "faces": 3,
+   "deepestM": 0.352
+  },
+  "t90a_2004": {
+   "faces": 3,
+   "deepestM": 0.352
+  },
+  "t90a_2006": {
+   "faces": 5,
+   "deepestM": 0.527
+  },
+  "t90a_burlak": {
+   "faces": 4,
+   "deepestM": 0.526
+  },
+  "t90a_burlak_proto": {
+   "faces": 3,
+   "deepestM": 0.37
+  },
+  "t90a_vladimir": {
+   "faces": 5,
+   "deepestM": 0.502
+  },
+  "t90am": {
+   "faces": 3,
+   "deepestM": 0.494
+  },
+  "t90ms_2011": {
+   "faces": 4,
+   "deepestM": 0.501
+  },
+  "t90ms_tagil": {
+   "faces": 3,
+   "deepestM": 0.477
+  },
+  "t90sm": {
+   "faces": 3,
+   "deepestM": 0.471
+  },
+  "t90sm_2013": {
+   "faces": 3,
+   "deepestM": 0.494
+  },
+  "tos1a_tagil": {
+   "faces": 3,
+   "deepestM": 0.477
+  },
+  "type87_aw": {
+   "faces": 1,
+   "deepestM": 0.337
+  },
+  "type90": {
+   "faces": 1,
+   "deepestM": 0.306
+  },
+  "type90_kyumaru": {
+   "faces": 3,
+   "deepestM": 0.369
+  },
+  "type90a": {
+   "faces": 3,
+   "deepestM": 0.369
+  },
+  "type90b": {
+   "faces": 1,
+   "deepestM": 0.306
+  },
+  "type96_72_long": {
+   "faces": 1,
+   "deepestM": 0.336
+  },
+  "type96_72m_lei": {
+   "faces": 8,
+   "deepestM": 0.458
+  },
+  "ua_challenger2": {
+   "faces": 1,
+   "deepestM": 0.301
+  },
+  "ua_cv9040c": {
+   "faces": 1,
+   "deepestM": 0.435
+  },
+  "ua_m1a1": {
+   "faces": 1,
+   "deepestM": 0.306
+  },
+  "ua_m1a2_abrams": {
+   "faces": 1,
+   "deepestM": 0.384
+  },
+  "ua_m2a3_bradley": {
+   "faces": 1,
+   "deepestM": 0.316
+  },
+  "upior": {
+   "faces": 1,
+   "deepestM": 0.342
+  },
+  "vt4a1": {
+   "faces": 2,
+   "deepestM": 0.323
+  },
+  "vt4a1_baihu": {
+   "faces": 2,
+   "deepestM": 0.323
+  },
+  "ztz100": {
+   "faces": 2,
+   "deepestM": 0.302
+  },
+  "ztz100_prototype": {
+   "faces": 2,
+   "deepestM": 0.302
+  },
+  "ztz20": {
+   "faces": 2,
+   "deepestM": 0.302
+  },
+  "ztz20_prototype": {
+   "faces": 2,
+   "deepestM": 0.302
+  },
+  "ztz99a": {
+   "faces": 2,
+   "deepestM": 0.323
+  },
+  "ztz99a2": {
+   "faces": 2,
+   "deepestM": 0.323
+  },
+  "ztz99a2_qinglong": {
+   "faces": 2,
+   "deepestM": 0.323
+  }
+ }
+}

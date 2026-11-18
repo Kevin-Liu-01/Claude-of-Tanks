@@ -191,6 +191,13 @@ gear profile, and land per-tank changes atomically with audits. Every playable
 tank carries the core combat modules; `combatAnatomy.ts` adds only
 gameplay-backed vehicle-specific systems (autoloader, IFV feed, missile rack)
 and calibrates armor/module/crew coordinates to checked geometry receipts.
+Every authored layer (spaced, external, ERA plate) lies on the drawn build (hitbox-fit-274; the owner, 2026-11-18:
+"some tanks like abrams x just have a floating hit box"): the anatomy generator measures each finished layer and writes
+`plateFits` into the row, and `applyPlateFits` crops a layer to the part it overhangs, fits one standing up to 35 cm off
+its part onto it (never onto the main shell or the running gear), or drops one whose part is not drawn. A donor's plates
+are not the derived vehicle's: nothing authored needs re-seating by hand. `tools/hitbox-fit-census.mjs` gates it per id
+in `tank:release:check` and fleet-wide in `tank:anatomy:check` (the convex cells' bridges held to
+`docs/geometry-gate/hitbox-cell-bridges.json` until the generator's slicing fits them).
 Sides (266): +X is the vehicle's LEFT (forward +Z; `vehicleSide.ts` owns the
 convention, a `...Left` station sits at +x). Most anatomy sketches were drawn
 mirrored; `finalizeCombatAnatomy` lets the sourced stations decide each sketch

@@ -16,7 +16,8 @@ Render combat feedback from authoritative events without modifying simulation.
 owns presentation time, `effectAttachments.ts` owns the attachment policy
 (continuous emitter anchors, and which muzzle parts leave with the shooter's
 velocity: the bright parts keep it, the propellant and smoke shed it within a
-quarter second and then trail, the ground's dust stays), and `impactDecals.ts` owns bounded surface marks. Scene Studio's
+quarter second and then trail, the ground's dust stays), and `impactDecals.ts` owns bounded surface marks (a mark lies on drawn skin or nowhere: a contact with no visible surface
+under it writes none; `impactDecalSkin.selftest.mjs`, hitbox-fit-274). Scene Studio's
 cinematic layer (`cinematicFx.ts` runtime, `cinematicRecipes.ts` recipes) is
 Studio-only: it reaches the battle runtime through `effects.cinematicPort()`,
 which battle never calls, and its emitters tick on absolute timeline grids so

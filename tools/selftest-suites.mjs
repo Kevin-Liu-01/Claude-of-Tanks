@@ -375,6 +375,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-pocket-census.selftest.mjs',
     // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
     'tools/hull-contact-census.selftest.mjs',
+    // hitbox-fit-274 (the owner, 2026-11-18: floating hit boxes): crop, fit or drop, and the pinned ids' layers on their builds
+    'tools/hitbox-fit-census.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
     'src/vehicles/mudguardHangers.selftest.mjs',
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
@@ -2383,6 +2385,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamSelection.selftest.mjs',
     'src/game/killcamGround.selftest.mjs',
     'src/fx/impactDecals.selftest.mjs',
+    'src/fx/impactDecalSkin.selftest.mjs', // hitbox-fit-274: a hit mark lies on drawn skin or nowhere, never in the air
     'src/fx/impactAtlasPacing.selftest.mjs',
     'src/gallery/catalog.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',

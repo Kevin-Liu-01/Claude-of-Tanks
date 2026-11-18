@@ -109,7 +109,28 @@ export interface AnatomyCrewSeatReceipt extends Record<string, RuntimeValue> {
   readonly trimmed?: number;
 }
 
+/**
+ * hitbox-fit-274 (tools/gen-combat-anatomy.mjs plateFitsFor; tools/hitbox-fit-census-lib.mjs plateFitReceipts): an
+ * authored non-main plate (spaced, external or ERA layer) that does not lie on this build's drawn geometry: its owner
+ * frame, name and vertex mean in that frame (`at`, how the finalizer finds it), its centre's gap to the drawn mesh and the
+ * share of it off the build, and what the finalizer does with it (combatAnatomy.ts applyPlateFits): `crop` it to the part
+ * it overhangs, `fit` it onto the part it stands off (both with the new `verts`, in its frame), or `drop` it (its part is
+ * not drawn, or is drawn only as the main shell, whose cells already carry the hit).
+ */
+export interface AnatomyPlateFitReceipt extends Record<string, RuntimeValue> {
+  readonly owner: 'hull' | 'turret';
+  readonly name: string;
+  readonly kind: string;
+  readonly at: readonly number[];
+  readonly gapM: number;
+  readonly offShare: number;
+  readonly action: 'crop' | 'fit' | 'drop';
+  readonly verts?: readonly (readonly number[])[];
+}
+
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
+  /** hitbox-fit-274: the authored layers not on this build's drawn geometry (absent when every layer sits on it). */
+  readonly plateFits?: readonly AnatomyPlateFitReceipt[];
   readonly externalWeapons?: readonly AnatomyWeaponReceipt[];
   readonly hull: AnatomyCalibrationBounds;
   readonly turret?: AnatomyCalibrationBounds | null;

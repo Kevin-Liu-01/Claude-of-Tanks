@@ -15,6 +15,7 @@ assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'node-test tools/presentation-centering.mjs --check --ids=leo2a7v,t14_armata',
   'node-test tools/module-visual-align-probe.mjs --ids=leo2a7v,t14_armata --gate',
   'node-test tools/module-hit-probe.mjs --ids=leo2a7v,t14_armata',
+  'node-test tools/hitbox-fit-census.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/hitbox-cell-bridges.json --check',
   'node-test tools/spare-track-placement-check.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/spare-track.json --gate',
   'node-test tools/vehicle-material-registration.mjs --ids=leo2a7v,t14_armata',
   'node-test tools/gun-junction-census.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/gun-junction.json --check --gate',
@@ -61,7 +62,7 @@ assert.equal(steps.find(step=>step.command==='npm'&&step.args[0]==='test').captu
   'npm selftests own their phase leases; no outer lock');
 assert.equal(steps.find(step=>step.command==='npm'&&step.args[1]==='build:private').capture,true,
   'standalone private build uses the shared resource queue');
-assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,20,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check; 2026-10-11: + ledger and mission-seat checks; 2026-10-15: + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18: + the gun-junction ledger; 266: + the id-scoped tanks receipts; 267: + the whip-rod census)'); // 265 integration: + the id-scoped fill exposure beside the id-scoped tanks step (19); 267: + the whip-rod census (20).
+assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,21,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check; 2026-10-11: + ledger and mission-seat checks; 2026-10-15: + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18: + the gun-junction ledger; 266: + the id-scoped tanks receipts; 267: + the whip-rod census; 274: + the hitbox fit census)'); // 265 integration: + the id-scoped fill exposure beside the id-scoped tanks step (19); 267: + the whip-rod census (20); 274: + the hitbox fit census (21).
 // guards 229: the counter-drone step only for a release naming a pinned vehicle, on those ids, CPU only (no capture lease)
 assert.equal(byTool('counter-drone-engage').capture,false,'the counter-drone pilot runs build no geometry: no capture lease');
 assert.deepEqual(tankReleaseSteps('m1a1,t14_armata,leclerc_xlr',false,'n').find(step=>step.args[0]==='tools/counter-drone-engage.mjs').args,
