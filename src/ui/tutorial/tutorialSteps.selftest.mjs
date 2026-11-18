@@ -27,6 +27,7 @@ import { SIGNAL_RANGE_M, combineCamo, fireBloomAt } from '../../sim/spotting.ts'
 import { BASE_CAMO, equipCamoBonus } from '../../sim/spottingStats.ts';
 import { camoSelectionBonus } from '../../sim/camoPaint.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { PEN_RATIO, penVerdict } from '../../sim/penVerdict.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -167,13 +168,17 @@ assert.ok(camoSelectionBonus('auto', null, 'verdant') > 0 && camoSelectionBonus(
 const standard = matchRulesetFor('standard');
 assert.equal(standard.timeout, 'draw', 'a Standard battle that runs out of time is a draw');
 assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
-// armour (274): the colours are the overlay's own bands: red at a penetration ratio of 0.72 or under, green from 1.35, amber
-// between, for the loaded shell (game/armorAimOverlay.ts penetrationColor)
+// armour (274): the colours are the reticle's own verdict for the loaded shell from where the player looks
+// (sim/penVerdict.ts, which the reticle's ring and the scoped paint both band with): green at a penetration ratio of 1.15
+// or more goes through, amber from 0.85 may, red below will not (game/armorAimOverlay.ts VERDICT_COLOR)
 {
+  assert.equal(penVerdict(PEN_RATIO.pen), 'pen', 'green goes through (1.15 and up)');
+  assert.equal(penVerdict(1), 'marginal', 'amber may (0.85 to 1.15)');
+  assert.equal(penVerdict(PEN_RATIO.marginal - 0.01), 'nopen', 'red will not (under 0.85)');
   const overlay = read('src/game/armorAimOverlay.ts');
-  assert.match(overlay, /if \(ratio <= 0\.72\) return out\.copy\(LOW\);/, 'red is "will not" (0.72 or under)');
-  assert.match(overlay, /const LOW = new THREE\.Color\(0xe53d35\);/, 'LOW is red');
-  assert.match(overlay, /const HIGH = new THREE\.Color\(0x48d985\);/, 'HIGH is green');
+  assert.match(overlay, /pen: new THREE\.Color\(0x48d985\)/, 'the paint\'s "goes through" is green');
+  assert.match(overlay, /marginal: new THREE\.Color\(0xf0aa35\)/, 'its "may" is amber');
+  assert.match(overlay, /nopen: new THREE\.Color\(0xe53d35\)/, 'its "will not" is red');
   assert.match(text('battle.armour.body'), /green goes through, amber may, red will not/);
 }
 // reload: a gun's reload is the gun's (or the shell's), not a crew skill: no skill table exists
