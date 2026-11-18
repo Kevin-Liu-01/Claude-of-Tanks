@@ -32,9 +32,9 @@ interface FeaturedShot {
 
 export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
-    img: '/media/site50-r14/stills/s49-orchard-sunset.webp',
-    bootImg: '/media/site50-r14/stills/s49-orchard-sunset-boot.webp',
-    capKey: 'media.site50.title.s49OrchardSunset',
+    img: '/media/versus-r1/s49-orchard-sunset-modern-r14.webp',
+    bootImg: '/media/versus-r1/s49-orchard-sunset-modern-r14-1280.webp',
+    capKey: 'media.versus.title.s49OrchardSunsetModernR14',
     maps: ['orchard', 'autumn'], focal: '78% 62%',
   },
   {

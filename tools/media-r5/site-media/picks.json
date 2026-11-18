@@ -1758,7 +1758,7 @@
   },
   "featured": [
     {
-      "id": "s49-orchard-sunset",
+      "versus": "s49-orchard-sunset-modern-r14",
       "maps": [
         "orchard",
         "autumn"

@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 29,
+ "count": 30,
  "featured": [
   "f6-leo2a6-steinburg-r7-top",
   "vs09-alpine-strv122-t80bv-r7",
@@ -1663,6 +1663,78 @@
      "width": 3840,
      "path": "/media/versus-r1/s199-m1a2-x-desert-3840.webp",
      "bytes": 341270
+    }
+   ]
+  },
+  {
+   "id": "s49-orchard-sunset-modern-r14",
+   "round": 14,
+   "map": "orchard",
+   "hour": "day",
+   "view": "side",
+   "title": {
+    "en": "Orchard Valley, day: Leclerc XLR v T-72B3",
+    "zh": "果园谷，白天：Leclerc XLR 对 T-72B3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_xlr",
+     "displayName": "Leclerc XLR",
+     "paint": "sig_amx10p"
+    },
+    {
+     "role": "ally",
+     "id": "leclerc_s2",
+     "displayName": "Leclerc S2",
+     "paint": "sig_amx10p"
+    },
+    {
+     "role": "ally",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "sig_amx10p"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3",
+     "paint": "service_soviet_coldwar"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M Proryv",
+     "paint": "service_soviet_coldwar"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/s49-orchard-sunset-modern-r14.json",
+   "path": "/media/versus-r1/s49-orchard-sunset-modern-r14.webp",
+   "bytes": 283826,
+   "sha256": "34d619fb6d2faac263a0de2247b0e892195c7bca8f53d5bf1b5c137727f811ad",
+   "width": 1920,
+   "height": 1080,
+   "source": "s49-orchard-sunset-modern-r14-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/s49-orchard-sunset-modern-r14-640.webp",
+     "bytes": 28506
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/s49-orchard-sunset-modern-r14-1280.webp",
+     "bytes": 80580
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/s49-orchard-sunset-modern-r14.webp",
+     "bytes": 283826
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/s49-orchard-sunset-modern-r14-3840.webp",
+     "bytes": 406426
     }
    ]
   }
