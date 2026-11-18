@@ -1010,14 +1010,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    *  keyframe leaves its dead life's stage behind there too (migrationState.ts checkpointAfterRevives). Declared before
    *  setLife, its one deleter for a fallen raider. */
   const raidStaged = new Map<string, { atS: number; go: boolean }>();
+  /** Frontline's attack plan per bot (planAttack): its point, when it reached the stage, and whether it pushes. A plan
+   *  is its life's: setLife drops it at the down edge (gaps 274, G5), as it drops a raid stage. */
+  const attackPlan = new Map<string, { x: number; z: number; stagedAtS: number; pushing: boolean }>();
 
   /**
    * The one writer of a tank's life (ModeLife; audit M4). A move LIFE_MOVES does not list is refused (false); `restore`
    * (a migrated host taking the old one's word) sets any life. The fields follow the life: modeActive (on the field:
    * alive or down) through the drivers' setActive hook, which every move but a death calls as before; a benched hull's
    * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life; at a death (alive -> down), the
-   * stages the life held (a CTF raid's). A move to alive takes the combat state it finds: the drivers' revive hook
-   * (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
+   * stages the life held (a CTF raid's, a Frontline attack plan). A move to alive takes the combat state it finds: the
+   * drivers' revive hook (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
    */
   function setLife(entity: Entity, next: ModeLife, restore = false): boolean {
     const from = entity.modeLife ?? 'alive';
@@ -1026,7 +1029,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // a fallen hull's stage is its dead life's (gaps 274, G4; Kevin, 2026-11-18): a CTF raider that goes down drops its
     // raid stage, going in or waiting, wherever it plays (solo too), and stages afresh after the role deal it asks for
     // when it revives (assignFlagRoles). Before, only a live bot's ask dealt the drop, so a lone raider revived mid-raid.
-    if (from === 'alive' && next === 'down' && !restore) raidStaged.delete(entity.id);
+    // A Frontline attacker drops its attack plan the same way (G5), and waits for its group again when it revives.
+    if (from === 'alive' && next === 'down' && !restore) { raidStaged.delete(entity.id); attackPlan.delete(entity.id); }
     const onField = next === 'alive' || next === 'down';
     if (next === 'benched' || next === 'rescued') entity.state.speed = 0;
     if (next === 'benched') {
@@ -1623,14 +1627,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * `flankShare` of the attackers (odd ranks) until `flankConvergeM` from the zone; at the zone's edge a push waits for
    * `pushMinGroup` attackers within `pushGroupM` (the anti-suicide rule) or `pushAfterS` there, then drives in. The mode
    * checkpoint carries it (waves.line.attack), so a migrated host's attackers wait or push as the old host's did. A
-   * fallen attacker keeps its plan through the allied revive (only the line advance clears it), so a migration keeps a
-   * revived one's too (migrationState.ts checkpointAfterRevives leaves it).
+   * fallen attacker's plan goes at its death (setLife's down edge; gaps 274, G5: it came back from the allied revive
+   * still pushing and drove into the live sector alone, skipping the group wait), and the revived attacker is planned
+   * afresh at its first ask (`asker` with no plan: not up to a second later, driving at the zone meanwhile), so it waits
+   * at the edge for its group again; a migration drops a window-revived one's too (migrationState.ts
+   * checkpointAfterRevives). The line advance clears every plan.
    */
   const assaultBots = ruleset.assaultBots ?? null;
-  const attackPlan = new Map<string, { x: number; z: number; stagedAtS: number; pushing: boolean }>();
   let attackPlanAt = -Infinity;
-  function planAttack(): void {
-    if (!assaultBots || placementTimeS < attackPlanAt + 1) return;
+  function planAttack(asker: Entity | null = null): void {
+    if (!assaultBots || (placementTimeS < attackPlanAt + 1 && (!asker || attackPlan.has(asker.id)))) return;
     attackPlanAt = placementTimeS;
     const zone = liveLine();
     if (!zone) return;
@@ -2817,7 +2823,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (id === 'frontline_assault') {
       if (team === 'alpha' && entity.bot) {
         if (regroup) return { x: regroup.x, z: regroup.z, mission: 'assault' };
-        planAttack();
+        planAttack(entity);
         const plan = attackPlan.get(entity.id);
         if (plan) return { x: plan.x, z: plan.z, mission: 'assault' };
       }

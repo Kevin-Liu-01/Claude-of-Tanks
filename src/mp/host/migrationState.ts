@@ -305,9 +305,10 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
  * The CTF raid's stage too (round 8 Y2 residual): the old host drops a fallen raider's stage at its death (matchModes.ts
  * setLife's down edge; gaps 274 G4, Kevin 2026-11-18: it waited for the next role deal), so a keyframe sealed before the
  * death holds the life's stage (going in, or still waiting), and the revived raider stages afresh and waits raidWaitS
- * for its group; the keyframe's entry is dropped whatever its go, every other raider's kept, a waiting one's too. Frontline's attack plan is kept: the old host keeps a
- * fallen attacker's plan through the allied revive (planAttack deals the live squad only; only a line advance clears
- * it). huntSearchMigration.selftest [6] window revive.
+ * for its group; the keyframe's entry is dropped whatever its go, every other raider's kept, a waiting one's too.
+ * Frontline's attack plan the same way (gaps 274 G5): the old host drops a fallen attacker's plan at its death and plans
+ * the revived one afresh, so it waits at the edge for its group; the keyframe's plan for it (pushing, or staged) is
+ * dropped, every other attacker's kept. huntSearchMigration.selftest [6] window revive.
  */
 function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;
@@ -320,7 +321,8 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       destroyed: mode.destroyed.map(([id, dead]): [string, boolean] => [id, dead && !revived.has(id)]),
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
-      ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
+      ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
+        ...(waves.line?.attack ? { line: { ...waves.line, attack: waves.line.attack.filter(([id]) => !revived.has(id)) } } : {}) } } : {}),
       ...(hunt ? { hunt: { ...hunt, searches: hunt.searches.filter(([id]) => !revived.has(id)) } } : {}),
       ...(objectives?.raids ? { objectives: { ...objectives, raids: objectives.raids.filter(([id]) => !revived.has(id)) } } : {}),
     },

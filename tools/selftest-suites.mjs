@@ -2220,11 +2220,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
     // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected). It also pins
     // the CTF raid's and Frontline's attack stages across a migration (fix-up r3 and the residual, [6]): a lone raider
-    // or attacker goes in when the old host sends it, a window-revived raider stages afresh, a revived attacker keeps
-    // its plan
+    // or attacker goes in when the old host sends it, a window-revived raider or attacker stages afresh (gaps 274 G4/G5)
     'src/sim/huntSearchMigration.selftest.mjs',
-    // gaps 274 (G4, Kevin 2026-11-18): a fallen raider's stage goes at its death (setLife's down edge), solo too, and a
-    // revived bot is dealt its role at its first ask
+    // gaps 274 (G4, Kevin 2026-11-18; G5): a fallen raider's stage and a fallen attacker's plan go at its death (setLife's
+    // down edge), solo too, and a revived bot is dealt its role or plan at its first ask
     'src/sim/fallenStages.selftest.mjs',
     // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
     // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls

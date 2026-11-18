@@ -9,6 +9,10 @@
 // its group (raidWaitS). [2] G4: a revived bot asks for its role again: with other bots asking through its death, the
 // deal it missed was dealt without it, and its first ask after the revive took the raid by default until the next deal
 // up to a second later; now a bot asking with no role dealt is dealt one at once (here it guards home, nearest to it).
+// [3] G5, Frontline: an attacker that fell pushing came back from the allied revive still pushing (its plan outlived its
+// life: only a line advance cleared it) and drove into the live sector alone, skipping the group wait; now its plan goes
+// at its death, its first ask after the revive is planned at once (not driving at the sector until the next plan), and
+// back at the edge it waits pushAfterS for its group.
 import { createMatchModeController } from './matchModes.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
 
@@ -105,5 +109,55 @@ console.log('[2] G4: a revived bot asks for its role again, and is dealt one at 
     + `against the dealt ${settled?.mission}; the raid by default until the next deal)`);
 }
 
+console.log('[3] G5, Frontline: an attacker that falls pushing drops its plan at its death and waits for its group again');
+{
+  // a0 at the live sector's edge alone; a1 300 m back, never in its group, asks every step (it plans the attack each
+  // second through a0's death); the human and the defenders never ask
+  const hulls = [tank('h', 'alpha', 0, -400, false), tank('a0', 'alpha', 10, -400), tank('a1', 'alpha', -10, -400),
+    ...Array.from({ length: 6 }, (_, i) => tank(`d${i}`, 'bravo', i * 8 - 20, 400))];
+  const { ctl, ruleset, clock, byId } = match('frontline_assault', hulls);
+  const zone = ctl.state.zones[0], spawn = ctl.state.spawns.find((p) => p.team === 'alpha');
+  const ux = (spawn.x - zone.x) / Math.hypot(spawn.x - zone.x, spawn.z - zone.z), uz = (spawn.z - zone.z) / Math.hypot(spawn.x - zone.x, spawn.z - zone.z);
+  const attacker = byId('a0'), rear = byId('a1');
+  const at = (e, out) => Object.assign(e.state.pos, { x: zone.x + ux * out, z: zone.z + uz * out });
+  Object.assign(byId('h').state.pos, { x: zone.x + ux * 500, z: zone.z + uz * 500 });
+  const rules = ruleset.assaultBots;
+  let firstAsk = null;
+  const play = (seconds, place = true) => {
+    let held = 0;
+    for (const end = clock.t + seconds; clock.t < end - 1e-9;) {
+      const wasDown = attacker.combat.destroyed;
+      at(rear, 300);
+      if (place && !attacker.combat.destroyed) at(attacker, 50);
+      clock.t += STEP_S; ctl.step(1 / 60, clock.t);
+      if (!rear.combat.destroyed) ctl.botTarget(rear);
+      // revived behind the line, it is put back at the edge before its first ask
+      if (wasDown && !attacker.combat.destroyed) at(attacker, 50);
+      if (attacker.modeActive !== false && !attacker.combat.destroyed) {
+        const to = ctl.botTarget(attacker);
+        if (wasDown && firstAsk === null) firstAsk = to;
+        if (to && Math.hypot(to.x - zone.x, to.z - zone.z) > 1) held += STEP_S;
+      }
+    }
+    return held;
+  };
+  const planOf = () => ctl.captureCheckpoint(clock.t).waves?.line?.attack?.find(([id]) => id === 'a0')?.[1] ?? null;
+  play(rules.pushAfterS + 2);
+  ok(planOf()?.pushing === true, `the case is built: alone at the sector's edge past pushAfterS, a0 pushes (${planOf() ? `pushing ${planOf().pushing}` : 'no plan'})`);
+  // the plans run each second from a1's first ask (0.25 s, 1.25 s, ...): the death is seen at 17.5 s, so the allied
+  // revive falls between two plans, the last of them planned without a0
+  play(STEP_S);
+  kill(attacker);
+  play(STEP_S, false);
+  ok(planOf() === null, `the step that sees its death drops its plan (${planOf() ? `kept: pushing ${planOf().pushing}` : 'none'})`);
+  const heldFromRevive = play(ruleset.assault.allyReviveS + 0.5, false);
+  ok(!attacker.combat.destroyed && attacker.modeLife === 'alive' && firstAsk !== null, `the case is built: the allied revive brought it back and it asked (${attacker.modeLife})`);
+  ok(firstAsk && Math.hypot(firstAsk.x - zone.x, firstAsk.z - zone.z) > 1, `its first ask is planned at once: the edge, not the live sector (${firstAsk
+    ? `${Math.hypot(firstAsk.x - zone.x, firstAsk.z - zone.z).toFixed(1)} m from its centre` : 'no ask'})`);
+  const held = heldFromRevive + play(rules.pushAfterS + 2);
+  ok(held >= rules.pushAfterS - STEP_S - 1e-9, `back at the edge, the revived attacker waits for its group (held ${held.toFixed(2)} s of the `
+    + `${rules.pushAfterS} s wait; it came back pushing and went in alone)`);
+}
+
 if (failures) { console.error(`fallenStages.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('fallenStages.selftest: a fallen raider\'s stage goes at its death and a revived bot is dealt its role at once (solo and every host)');
+console.log('fallenStages.selftest: a fallen raider\'s stage and a fallen attacker\'s plan go at its death, and a revived bot is dealt its role or plan at once (solo and every host)');

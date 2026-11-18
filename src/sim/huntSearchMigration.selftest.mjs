@@ -34,9 +34,9 @@
 // the r4 reviews: a raider revived between the keyframe and the newest frame came back with its dead life's stage and
 // went in alone.) [6] window revive: a revived CTF raider stages afresh on the new host as on the old (its keyframe stage
 // dropped, whether it fell going in or still waiting, and every other raider's kept, a waiting one's included); a revived
-// Frontline attacker keeps its plan, as the old host keeps it. (Gaps 274, G4, Kevin 2026-11-18: the old host drops a
-// fallen raider's stage at its death, so the window is a keyframe sealed while the raider lived, its death and revive
-// both after it.) (Residual fix-up r2, the correctness review: the resume's
+// Frontline attacker is planned afresh and waits for its group on both hosts. (Gaps 274, G4 and G5, Kevin 2026-11-18:
+// the old host drops a fallen raider's stage and a fallen attacker's plan at its death, so the window is a keyframe
+// sealed while the hull lived, its death and revive both after it.) (Residual fix-up r2, the correctness review: the resume's
 // frames had no mode state, so [5] and the window revive, whose newest frame is newer than the keyframe, skipped
 // migrationState.ts checkpointAtNewestFrame, which every real migration in a mode runs, and a rewrite there that dropped
 // the hunt, the raid stages or the attack plan passed; the frames now carry it as the host's do, and each such case checks
@@ -473,8 +473,9 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
   // raider's, a waiting one's included (fix-up r1 of the residual, both reviews: the case had only a raider that fell
   // going in and a second raider that was going, so a drop of the going stages alone, or of every waiting stage, passed;
   // CTF now runs a raider that falls going in and one that falls waiting, beside a-1 waiting). Frontline: the old host
-  // keeps a fallen attacker's plan through the allied revive (planAttack deals the live squad only, and only a line
-  // advance clears the plan), so an attacker that was pushing comes back pushing on both hosts: its plan rides as sealed.
+  // drops a fallen attacker's plan at its death too (gaps 274, G5: it kept it through the allied revive, so an attacker
+  // that was pushing came back pushing and went in alone), and plans the revived one afresh; the new host drops the
+  // keyframe's plan for it, and both hold it at the edge for its group.
   const stageText = (entry) => (!entry ? 'none' : 'go' in entry ? `staged at ${entry.atS.toFixed(2)}, ${entry.go ? 'going in' : 'waiting'}`
     : entry.pushing ? 'pushing' : entry.stagedAtS === null ? 'not staged' : `staged at ${entry.stagedAtS.toFixed(2)}, waiting`);
   /**
@@ -595,12 +596,12 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       ok(run.oldHeldS > PUSH_S, `${name}: the case is built: put back inside the stage, the old host stages its revived ${what} afresh and `
         + `holds it ${run.oldHeldS.toFixed(2)} s for its group`);
     } else {
-      ok(run.sealed?.pushing === true && JSON.stringify(run.atRevive) === JSON.stringify(run.sealed), `${name}: the case is built: the old host `
-        + `keeps the fallen ${what}'s plan through its revive (sealed ${stageText(run.sealed)}, at the revive ${stageText(run.atRevive)})`);
-      ok(JSON.stringify(run.restored) === JSON.stringify(run.sealed), `${name}: the window-revived ${what}'s plan rides the migration as `
-        + `sealed (restored: ${stageText(run.restored)})`);
-      ok(run.oldHeldS < PUSH_S, `${name}: the case is built: put back inside the stage, the old host sends its revived ${what} straight in `
-        + `(held ${run.oldHeldS.toFixed(2)} s)`);
+      ok(run.sealed?.pushing === true && run.atRevive?.pushing !== true, `${name}: the case is built: the keyframe holds the life's plan `
+        + `(${stageText(run.sealed)}), and the old host dropped it at its death (at the revive: ${stageText(run.atRevive)})`);
+      ok(run.restored === null, `${name}: the window-revived ${what}'s dead-life plan does not come back on the new host (restored: `
+        + `${stageText(run.restored)})`);
+      ok(run.oldHeldS > PUSH_S, `${name}: the case is built: put back inside the stage, the old host plans its revived ${what} afresh and `
+        + `holds it ${run.oldHeldS.toFixed(2)} s for its group`);
     }
     ok(Math.abs(run.newHeldS - run.oldHeldS) <= PUSH_S + 1 / 60, `${name}: window revive: the new host holds its revived ${what} at the stage `
       + `within one route push of the old host (${run.newHeldS.toFixed(2)} s against ${run.oldHeldS.toFixed(2)} s)`);
