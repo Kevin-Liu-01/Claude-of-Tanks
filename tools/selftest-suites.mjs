@@ -2223,6 +2223,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // or attacker goes in when the old host sends it, a window-revived raider stages afresh, a revived attacker keeps
     // its plan
     'src/sim/huntSearchMigration.selftest.mjs',
+    // gaps 274 (G4, Kevin 2026-11-18): a fallen raider's stage goes at its death (setLife's down edge), solo too, and a
+    // revived bot is dealt its role at its first ask
+    'src/sim/fallenStages.selftest.mjs',
     // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
     // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
     'src/sim/modeLife.selftest.mjs',

@@ -1004,17 +1004,29 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return true;
   };
 
+  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. The mode
+   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have. A
+   *  raider's stage is its life's: setLife drops it at the down edge (gaps 274, G4), and a raider revived after the
+   *  keyframe leaves its dead life's stage behind there too (migrationState.ts checkpointAfterRevives). Declared before
+   *  setLife, its one deleter for a fallen raider. */
+  const raidStaged = new Map<string, { atS: number; go: boolean }>();
+
   /**
    * The one writer of a tank's life (ModeLife; audit M4). A move LIFE_MOVES does not list is refused (false); `restore`
    * (a migrated host taking the old one's word) sets any life. The fields follow the life: modeActive (on the field:
    * alive or down) through the drivers' setActive hook, which every move but a death calls as before; a benched hull's
-   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life. A move to alive takes the combat
-   * state it finds: the drivers' revive hook (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
+   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life; at a death (alive -> down), the
+   * stages the life held (a CTF raid's). A move to alive takes the combat state it finds: the drivers' revive hook
+   * (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
    */
   function setLife(entity: Entity, next: ModeLife, restore = false): boolean {
     const from = entity.modeLife ?? 'alive';
     if (!restore && !lifeMoves(from, next)) return false;
     entity.modeLife = next;
+    // a fallen hull's stage is its dead life's (gaps 274, G4; Kevin, 2026-11-18): a CTF raider that goes down drops its
+    // raid stage, going in or waiting, wherever it plays (solo too), and stages afresh after the role deal it asks for
+    // when it revives (assignFlagRoles). Before, only a live bot's ask dealt the drop, so a lone raider revived mid-raid.
+    if (from === 'alive' && next === 'down' && !restore) raidStaged.delete(entity.id);
     const onField = next === 'alive' || next === 'down';
     if (next === 'benched' || next === 'rescued') entity.state.speed = 0;
     if (next === 'benched') {
@@ -2237,10 +2249,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
-  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. The mode
-   *  checkpoint carries it (objectives.raids), so a migrated host sends a raider in when the old host would have; a
-   *  raider revived after the keyframe leaves its dead life's stage behind (migrationState.ts checkpointAfterRevives). */
-  const raidStaged = new Map<string, { atS: number; go: boolean }>();
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
   const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];
   const flagsChanged = (): boolean => {
@@ -2263,15 +2271,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * everyone else escorts our carrier when one runs, else raids — a robbed team raids back (their flag away holds their
    * capture too, the standoff that recovery then breaks).
    */
-  function assignFlagRoles(): void {
-    if (!flagsChanged() && placementTimeS < flagRolesAt + 1) return;
+  function assignFlagRoles(asker: Entity | null = null): void {
+    // a bot asking with no role dealt (one revived since the last deal: G4) is dealt one now, not up to a second later
+    if (!flagsChanged() && placementTimeS < flagRolesAt + 1 && (!asker?.bot || flagRoles.has(asker.id))) return;
     flagRolesAt = placementTimeS;
     flagRoles.clear();
     for (const team of ['alpha', 'bravo'] as const) {
       const ownFlag = flagForTeam(team), enemyFlag = flagForTeam(otherTeam(team));
       if (!ownFlag || !enemyFlag) continue;
-      // a raid's stage holds only while the enemy flag stands at its base; a fallen raider stages afresh
-      for (const e of teams[team]) if (enemyFlag.status !== 'home' || e.combat.destroyed) raidStaged.delete(e.id);
+      // a raid's stage holds only while the enemy flag stands at its base (a fallen raider's went at its death: setLife)
+      if (enemyFlag.status !== 'home') for (const e of teams[team]) raidStaged.delete(e.id);
       const squad = teams[team].filter((e) => e.bot && activeFriend(e, team) && !flagCarriedBy(e.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
       const free = new Set(squad);
       // ranks run on across two deals of one role (the escorts' leading three, then the rearguard)
@@ -2306,7 +2315,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // home is the own flag's base, where a capture is made (flagPitch)
     const home = flagHome[team];
     if (flagCarriedBy(entity.id)) return { x: home.x, z: home.z, mission: 'carrier' };
-    assignFlagRoles();
+    assignFlagRoles(entity);
     const job = flagRoles.get(entity.id) ?? { role: 'raid' as FlagRole, rank: 0 };
     const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
     const length = detMath.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;

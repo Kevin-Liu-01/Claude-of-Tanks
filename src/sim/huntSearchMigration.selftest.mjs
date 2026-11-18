@@ -34,7 +34,9 @@
 // the r4 reviews: a raider revived between the keyframe and the newest frame came back with its dead life's stage and
 // went in alone.) [6] window revive: a revived CTF raider stages afresh on the new host as on the old (its keyframe stage
 // dropped, whether it fell going in or still waiting, and every other raider's kept, a waiting one's included); a revived
-// Frontline attacker keeps its plan, as the old host keeps it. (Residual fix-up r2, the correctness review: the resume's
+// Frontline attacker keeps its plan, as the old host keeps it. (Gaps 274, G4, Kevin 2026-11-18: the old host drops a
+// fallen raider's stage at its death, so the window is a keyframe sealed while the raider lived, its death and revive
+// both after it.) (Residual fix-up r2, the correctness review: the resume's
 // frames had no mode state, so [5] and the window revive, whose newest frame is newer than the keyframe, skipped
 // migrationState.ts checkpointAtNewestFrame, which every real migration in a mode runs, and a rewrite there that dropped
 // the hunt, the raid stages or the attack plan passed; the frames now carry it as the host's do, and each such case checks
@@ -464,9 +466,10 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
 
   // [6] window revive (residual round, the r4 reviews: fix-up r3 carried the stages, and migrationState.ts
   // checkpointAfterRevives dropped only a window-revived hunter's search): a hull revived between the keyframe and the
-  // elected seat's newest frame. CTF: the old host drops a fallen raider's stage at its next role deal (assignFlagRoles),
-  // so a keyframe sealed before that deal holds the dead life's stage, going in or still waiting, while the revived raider
-  // stages afresh and waits raidWaitS for its group; the new host drops it too, whatever its go, and keeps every other
+  // elected seat's newest frame. CTF: the old host drops a fallen raider's stage at its death (gaps 274, G4: setLife's
+  // down edge; it waited for the next role deal), so a keyframe sealed while the raider lived holds its stage, going in or
+  // still waiting, while the revived raider stages afresh and waits raidWaitS for its group; the new host drops it too,
+  // whatever its go, and keeps every other
   // raider's, a waiting one's included (fix-up r1 of the residual, both reviews: the case had only a raider that fell
   // going in and a second raider that was going, so a drop of the going stages alone, or of every waiting stage, passed;
   // CTF now runs a raider that falls going in and one that falls waiting, beside a-1 waiting). Frontline: the old host
@@ -475,11 +478,11 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
   const stageText = (entry) => (!entry ? 'none' : 'go' in entry ? `staged at ${entry.atS.toFixed(2)}, ${entry.go ? 'going in' : 'waiting'}`
     : entry.pushing ? 'pushing' : entry.stagedAtS === null ? 'not staged' : `staged at ${entry.stagedAtS.toFixed(2)}, waiting`);
   /**
-   * The lone hull at its stage `fallS` seconds, then killed (past the wait: going in, or CTF 5 s: still waiting), the
-   * keyframe sealed (CTF: on the next tick, before the old host's next role deal, under an arranged 2 s respawn, the
-   * shortest a room can set; Frontline: every 0.25 s until the allied revive, allyReviveS 20 s, is told after one), the
-   * old host run until that revive is told, and the elected seat resumed from the keyframe, the newest frame and the told
-   * respawn. Both hosts then drive the revived hull 2 s, it is put inside the stage on both at one moment, and each host's
+   * The lone hull at its stage `fallS` seconds (past the wait: going in, or CTF 5 s: still waiting), the keyframe sealed,
+   * the hull killed on the next tick and the old host run until its revive is told (CTF under an arranged 2 s respawn,
+   * the shortest a room can set, Frontline under a 2 s allied revive: within the keyframe cadence's 2 s), and the elected
+   * seat resumed from that keyframe, the newest frame and the told respawn (gaps 274, G4: a keyframe sealed after the
+   * death holds no stage of the dead life, the old host having dropped it at its death). Both hosts then drive the revived hull 2 s, it is put inside the stage on both at one moment, and each host's
    * hold of it there is timed. CTF also pins a second raider (a-1) across the line, never in a-0's group: outside the
    * stage until waitS - 4 s before the kill, then inside it, so it is waiting at the keyframe and at the revive; its
    * stage must ride the migration untouched.
@@ -487,7 +490,8 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
   function migrateRevive({ mode, insideM, band, waitS }, fallS) {
     const ctf = mode === 'capture_the_flag';
     const reviveBots = ctf ? [bots[0], { playerId: 'a-1', name: 'A1', team: 'alpha', specId: spec }, bots[1]] : bots;
-    const ruleset = ctf ? { ...matchRulesetFor(mode), respawnS: 2 } : matchRulesetFor(mode);
+    const ruleset = ctf ? { ...matchRulesetFor(mode), respawnS: 2 }
+      : { ...matchRulesetFor(mode), assault: { ...matchRulesetFor(mode).assault, allyReviveS: 2 } };
     const make = (resume) => createMatchActor({ roomId: 'stage-revive', mapId: 'verdant', mode, seed: 33, seats, bots: reviveBots, ruleset,
       world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
     const old = make(null), sim = old.authority;
@@ -534,13 +538,10 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
       if (d < band[0] || d > band[1]) hold(hull, insideM);
     }
     const beforeKill = stageIn(sim.captureModeCheckpoint().mode, 'a-0');
+    const keyframe = seal();
+    told.clear();
     hull.combat.hp = 0; hull.combat.destroyed = true;
-    step(old);
-    let keyframe = null;
-    for (let guard = 0; guard < 120 && !told.has('a-0'); guard++) {
-      if (!ctf || !keyframe) { keyframe = seal(); told.clear(); }
-      for (let k = 0; k < 15 && !told.has('a-0'); k++) step(old);
-    }
+    for (let guard = 0; guard < 600 && !told.has('a-0'); guard++) step(old);
     const atRevive = sim.captureModeCheckpoint().mode;
     const { state } = resumeStateFromRetained(keyframe, 0, frameOf(), 1500, [], [], [...told]);
     const newest = { through: throughNewestFrame(state, keyframe), text: newestText(state, keyframe) };
@@ -576,14 +577,14 @@ console.log('[6] the objective modes\' stages across a migration: a lone raider 
     const ctf = mode === 'capture_the_flag';
     const run = migrateRevive(c, fallS);
     const name = `${mode} (fell ${fell})`;
-    ok(run.revivedAt !== null && run.revivedAt > run.keyTick && run.deadInKeyframe && run.beforeKill.endsWith(fell),
-      `${name}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it down `
-      + `and the old host revives it after (tick ${run.revivedAt})`);
+    ok(run.revivedAt !== null && run.revivedAt > run.keyTick && !run.deadInKeyframe && run.beforeKill.endsWith(fell),
+      `${name}: the case is built: the lone ${what} was ${run.beforeKill} when it fell; the keyframe (tick ${run.keyTick}) holds it alive, `
+      + `and the old host's death and revive of it come after (revive tick ${run.revivedAt})`);
     ok(run.newest.through, `${name}: the case is built: ${run.newest.text}, so the resume writes the frame's mode state over the `
       + 'checkpoint, its stages included, as every real migration in the mode does');
     if (ctf) {
-      ok(run.sealed?.go === (fell === 'going in') && run.atRevive === null, `${name}: the case is built: the keyframe holds the dead life's `
-        + `stage (${stageText(run.sealed)}), and the old host dropped it at its next role deal (at the revive: ${stageText(run.atRevive)})`);
+      ok(run.sealed?.go === (fell === 'going in') && run.atRevive === null, `${name}: the case is built: the keyframe holds the life's stage `
+        + `(${stageText(run.sealed)}), and the old host dropped it at its death (at the revive: ${stageText(run.atRevive)})`);
       ok(run.restored === null, `${name}: the window-revived ${what}'s dead-life stage does not come back on the new host (restored: `
         + `${stageText(run.restored)})`);
       ok(run.second?.go === false, `${name}: the case is built: the second raider a-1 is waiting at its stage in the keyframe `
