@@ -277,7 +277,6 @@ writeFileSync(join(ROOT, 'public/browserconfig.xml'), `<?xml version="1.0" encod
 // ---- the set's manifest: every file, its size, what it is for
 const purpose = {
   'mark.svg': 'the mark on dark', 'mark-paper.svg': 'the mark on paper', 'mark-mono.svg': 'one colour, paper', 'mark-mono-ink.svg': 'one colour, ink',
-  'mark-metal.svg': metal(svg(BRAND_TANK_VIEWBOX, tank('url(#cot-metal)', TUNGSTEN_600))),
   'mark-metal.svg': 'the mark in brushed metal (Garage signs)',
   'mark-motion.svg': 'the living mark (CSS loop)', 'favicon.svg': 'browser tab (32 cell master)', 'favicon-16.svg': 'browser tab at 16 px (16 cell master)',
   'favicon-mark.svg': 'the mark on the tab tile (48 and 192 px)',
