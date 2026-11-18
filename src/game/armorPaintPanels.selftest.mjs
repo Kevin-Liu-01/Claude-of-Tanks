@@ -219,27 +219,43 @@ function hullScene() {
   bakePaintPanels(roofPlain.root, tmpl, { hull: roofPlain.hull, turret: null, gun: null }, armor);
   assert.ok(faceValues(roofPlain.meshes.stowage.geometry, [0, -1, 0]).every((v) => v > 0), 'the control: no authority, the box\'s underside is painted');
 
-  // (267) a bevel at the cells (the box's front-top edge, sloped 27 degrees up) scores the roof, but a level round meets the
-  // front across it (sim/armorPlanes.ts zoneAlongShot): a whole panel of the roof at its centre, its row set by the
-  // overlay to the plate along the view (armorAimOverlay.selftest); a flat roof tile there faces no level eye: baked
+  // (274) every baked panel is a whole panel: its row (at its area-weighted centre, in its frame, with its mean facing) takes
+  // the colour of the reticle's verdict there (armorAimOverlay.selftest, armorLivePen.selftest). A bevel at the cells (the
+  // box's front-top edge, sloped 27 degrees up) scores the roof: a whole panel of the roof, facing up its slope; a flat roof
+  // tile is one too, facing up
   const bevel = new THREE.BufferGeometry();
   const corners = [[-0.5, 1.8, 1], [0.5, 1.8, 1], [0.5, 2, 0.6], [-0.5, 2, 0.6]];
   bevel.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 2, 0, 2, 3].flatMap((i) => corners[i]), 3));
   bevel.computeVertexNormals();
-  const bevelRoot = new THREE.Group(), bevelHull = new THREE.Group();
-  bevelRoot.add(bevelHull);
-  const bevelMesh = new THREE.Mesh(bevel, paint), roofTile = new THREE.Mesh(box(0.4, 0.02, 0.4, -0.5, 1.99, -0.5), paint);
-  bevelHull.add(bevelMesh, roofTile);
-  bevelRoot.updateMatrixWorld(true);
+  const bevelScene = () => {
+    const root = new THREE.Group(), hull = new THREE.Group();
+    root.add(hull);
+    const mesh = new THREE.Mesh(bevel.clone(), paint), tile = new THREE.Mesh(box(0.4, 0.02, 0.4, -0.5, 1.99, -0.5), paint);
+    hull.add(mesh, tile);
+    root.updateMatrixWorld(true);
+    return { root, hull, mesh, tile };
+  };
   const calls = [];
-  const wholePanel = (zone, point) => calls.push([zone, ...point]) - 1;
-  const bevelStats = bakePaintPanels(bevelRoot, { ...tmpl, wholePanel }, { hull: bevelHull, turret: null, gun: null }, armor, { pose });
+  const wholePanel = (zone, point, facing) => calls.push([zone, ...point, ...facing]) - 1;
+  const panelled = bevelScene();
+  const bevelStats = bakePaintPanels(panelled.root, { ...tmpl, wholePanel }, { hull: panelled.hull, turret: null, gun: null }, armor, { pose });
   const ROOF_ZONE = zones.findIndex((zone) => zone.plate === roofPlate);
-  const whole = calls.findIndex(([zone, x, y, z]) => zone === ROOF_ZONE && Math.abs(x) < 0.01 && Math.abs(y - 1.9) < 0.01 && Math.abs(z - 0.8) < 0.01);
-  assert.ok(whole >= 0, `the bevel is a whole panel of the roof at its centre (${JSON.stringify(calls)})`);
-  assert.deepEqual([...new Set(bevel.getAttribute('apZone').array)], [-66 - whole], 'its every triangle names that whole panel\'s row');
-  assert.ok(bevelStats.alongShot >= 2, `counted (${bevelStats.alongShot})`);
-  assert.deepEqual(faceValues(roofTile.geometry, [0, 1, 0]), [ROOF_ZONE + 1], 'the control: a flat roof tile stays baked, the roof');
+  const slope = new THREE.Vector3(0, 0.4, 0.2).normalize();
+  const whole = calls.findIndex(([zone, x, y, z, nx, ny, nz]) => zone === ROOF_ZONE && Math.abs(x) < 0.01 && Math.abs(y - 1.9) < 0.01
+    && Math.abs(z - 0.8) < 0.01 && Math.abs(nx) < 1e-6 && Math.abs(ny - slope.y) < 1e-6 && Math.abs(nz - slope.z) < 1e-6);
+  assert.ok(whole >= 0, `the bevel is a whole panel of the roof at its centre, facing up its slope (${JSON.stringify(calls)})`);
+  assert.deepEqual([...new Set(panelled.mesh.geometry.getAttribute('apZone').array)], [-66 - whole], 'its every triangle names that whole panel\'s row');
+  const tileRows = [...new Set(faceValues(panelled.tile.geometry, [0, 1, 0]))];
+  assert.ok(tileRows.length === 1 && tileRows[0] <= -66 && calls[-66 - tileRows[0]][0] === ROOF_ZONE && calls[-66 - tileRows[0]][5] > 0.99,
+    'the flat roof tile\'s top is a whole panel of the roof too, facing up');
+  assert.ok(bevelStats.wholePanels >= 2 && bevelStats.baked >= bevelStats.wholePanels, `counted, as baked (${bevelStats.wholePanels} of ${bevelStats.baked})`);
+  // the controls: with no rows left (or none offered), a baked panel keeps its zone's colour
+  const full = bevelScene();
+  bakePaintPanels(full.root, { ...tmpl, wholePanel: () => -1 }, { hull: full.hull, turret: null, gun: null }, armor, { pose });
+  assert.deepEqual([...new Set(full.mesh.geometry.getAttribute('apZone').array)], [ROOF_ZONE + 1], 'the control: a full table, the bevel stays baked, the roof');
+  const unoffered = bevelScene();
+  bakePaintPanels(unoffered.root, tmpl, { hull: unoffered.hull, turret: null, gun: null }, armor, { pose });
+  assert.deepEqual(faceValues(unoffered.tile.geometry, [0, 1, 0]), [ROOF_ZONE + 1], 'the control: no rows offered, the roof tile stays baked, the roof');
 }
 
 // ---- (267) gear is bare whole wherever it is drawn: equipment, a machine gun, the running gear (instanced too), a suit

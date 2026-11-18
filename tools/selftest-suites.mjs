@@ -1149,6 +1149,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 265 (the world-reds lane, Main: every vehicle's panels baked at staging, the overlay off by default): no bake
     // while the overlay is off, staging or frames; every primed vehicle baked once it is on; its control bakes
     'src/game/armorPanelsOnDemand.selftest.mjs',
+    // 274 (the owner: "update on enemy tanks when we're scoped on them based on their actual penetrability ... same way our
+    // reticle knows whether to turn red or green"): every panel the scoped paint judges carries the reticle's own verdict
+    // at its centre (t72b3, leo2a6; frontal, 30, 60 degrees, side on, the shooter moved, the shell switched)
+    'src/game/armorLivePen.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed

@@ -4299,9 +4299,9 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  *   (267) A baked panel only reads its colour: none of the per-point terms below runs for it. A panel the bake found split
  *   between up to four zones (below ARMOR_PAINT_PANEL_BARE: its set, after the footprints in the table) keeps the
  *   per-point score and its borders, scoring those zones alone instead of every zone of its frame, in their frame.
- *   (267) A whole panel (below the sets' codes: its row after the sets) reads its row's zone, which the overlay sets on
- *   each refresh to the plate a round along the current view reads there (sim/armorPlanes.ts zoneAlongShot): a bevel
- *   the roof scores, seen level, reads the cheek or front across it, as the authority does. Then it is a baked panel.
+ *   (267) A whole panel (below the sets' codes: its row after the sets) reads its row: its zone, and (274) the colour of
+ *   the reticle's verdict at its centre for the current view and shell (game/armorAimOverlay.ts), its zone's colour
+ *   until it has one. Then it is a baked panel.
  *   (267) A split panel whose scored zone does not face the eye takes the zone among its set the eye's line crosses,
  *   nearest the point (zoneAlongShot among its members): a casting split between the front and the roof at the front's
  *   top edge, seen level, reads the front across it. Its other zones only: a piece's cover is one of its own.
@@ -4334,12 +4334,14 @@ float apFlat = 0.0;
 int apBaked = int( floor( vApZone + 0.5 ) );
 bool apWholePanel = apBaked <= ${ARMOR_PAINT_PANEL_BARE - 1 - ARMOR_PAINT_SET_SLOTS};
 bool apPanel = apBaked > 0 || apWholePanel;
+vec4 apRowT = vec4( -1.0 );
 if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
   int apZone = apBaked - 1;
   if ( apWholePanel ) {
     int apRow = int( uApCounts.x + uApCounts.y + 0.5 ) * ${ARMOR_PAINT_ZONE_TEXELS} + 2 * int( uApCounts.z + 0.5 )
       + ${ARMOR_PAINT_SET_SLOTS} + ${ARMOR_PAINT_PANEL_BARE - 1 - ARMOR_PAINT_SET_SLOTS} - apBaked;
-    apZone = int( texelFetch( uApZones, ivec2( apRow, 0 ), 0 ).x + 0.5 );
+    apRowT = texelFetch( uApZones, ivec2( apRow, 0 ), 0 );
+    apZone = int( apRowT.x + 0.5 );
   }
   int apOther = -1;
   float apPx = 1e3;
@@ -4454,7 +4456,8 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     }
   }
   if ( apZone >= 0 ) {
-    vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
+    vec4 apPick = apRowT.y >= 0.0 ? vec4( apRowT.yzw, 1.0 )
+      : texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
     vec3 apOwn = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
     apColor = apOwn;
     if ( apOther >= 0 ) {

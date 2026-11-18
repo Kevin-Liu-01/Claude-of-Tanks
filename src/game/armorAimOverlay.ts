@@ -1,7 +1,14 @@
-// WoT/Blitz-style scoped armor flashlight, painted on the vehicle itself (262). Every colour sample calls queryAimArmor
-// + estimatePenRatio against the closed collision cells authoritative shell traces use, so it includes impact angle,
-// normalization, ricochet, ERA, spaced armor, tracks and shell falloff. Scope state owns visibility; direct reticle
-// contact only supplies the ordinary HUD marker.
+// WoT/Blitz-style scoped armor flashlight, painted on the vehicle itself (262). Scope state owns visibility; direct
+// reticle contact only supplies the ordinary HUD marker.
+//
+// (274; the owner, 2026-11-18: "our hitbox shading is wrong and needs to update on enemy tanks when we're scoped on them
+// based on their actual penetrability relative to when we currently look at them! same way our reticle knows whether to
+// turn red or green") Every colour is the reticle's own verdict: the line from the muzzle to a point is asked of the
+// reticle's solver (sim/aimPenetration.ts: the authority's closed collision cells at the target's pose, its spent ERA,
+// then impact angle, normalization, ricochet and shatter, spaced and composite layers and the shell's falloff at that
+// range) and banded as the reticle's ring is (sim/penVerdict.ts): green goes through, amber may, red will not. Each baked
+// panel takes the verdict at its own centre; what the bake left to the per-point score takes its zone's, the verdict at
+// the zone's largest clear sample. They follow the muzzle, the target's hull and turret, the loaded shell and spent ERA.
 //
 // Owner, 2026-10-27: "make highlighting simpler and generalized ... check how camos apply ... that camo changes colour
 // depending on where the tank part is". Until 262 the flashlight was a translucent shell drawn over the cells' outer
@@ -11,18 +18,19 @@
 // (vehicles/materials.ts ARMOR_PAINT: the authored plate — glacis, lower plate, cheek, mantlet, side, roof, rear — it
 // lies nearest, inside whose outline and facing its way; a forward surface over the mantlet's footprint, the mantlet),
 // with straight zone borders. Only what is seen is painted.
-// Each zone's colour is blended from a few samples on the cells' faces the authority gives that plate.
+// Each zone's samples sit on the cells' faces the authority gives that plate.
 //
 // The paint rides the burn hook every battle vehicle's materials carry from the warm (prewarmBurn): no program of its
 // own, nothing to compile on the first scope. This runtime fills each scoped vehicle's zone table (one small float
 // texture) and its frames.
 
 import * as THREE from 'three';
-import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
+import { tankPoseFromState } from '../sim/armor.ts';
 import type { ArmorCollisionCell, ArmorModel, ArmorPoseState } from '../sim/armor.ts';
-import { estimatePenRatio } from '../sim/damage.ts';
-import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
-import { zoneAlongShot, zonePlates, type ZonePlate } from '../sim/armorZones.ts';
+import { AIM_REACH_M, aimArmorAlong, aimPenRatio } from '../sim/aimPenetration.ts';
+import type { DamageShellSpec } from '../sim/damage.ts';
+import { penVerdict, type PenVerdict } from '../sim/penVerdict.ts';
+import { zonePlates, type ZonePlate } from '../sim/armorZones.ts';
 import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armorPaintPanels.ts';
 import {
   ARMOR_PAINT_PANEL_SLOTS as PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS,
@@ -31,15 +39,21 @@ import {
 const SAMPLE_INTERVAL_MS = 110;
 /**
  * (267) A refresh samples again only when the round's view of the vehicle moved: the muzzle, in the vehicle's hull, turret
- * and gun frames, further than this (m) or this share of the range; its ERA spent; the round changed. A sniper and a
- * target at rest pay nothing.
+ * and gun frames, further than this (m) or this share of the range (274: ~0.2°, the small angle step a verdict can turn
+ * on); its ERA spent; the round changed; the bake added panels. A sniper and a target at rest pay nothing.
  */
-const REFRESH_MOVE_M = 0.02;
-const REFRESH_MOVE_SHARE = 0.001;
+const REFRESH_MOVE_M = 0.03;
+const REFRESH_MOVE_SHARE = 0.0035;
+/** The reticle's solver calls one frame spends, across every scoped vehicle (zones' samples and panels alike). */
 const SAMPLE_BATCH_SIZE = 48;
-/** (267) Whole panels of one zone whose centres share a cell this size (m) share a row: resolved at the first's centre. */
+/** (267) Whole panels of one zone whose centres share a cell this size (m) share a row: judged at the first's centre. */
 const PANEL_ROW_CELL_M = 0.25;
-const MAX_QUERY_M = 820;
+/** A panel facing away from the muzzle this much (its facing · the unit line back to the muzzle) is not judged: the
+ * round cannot meet it there, and it shows its zone's colour until it turns back into view. */
+const PANEL_BACK_FACING = -0.1;
+/** A target's reach past a point (m) when its armour carries no bounding radius: the line runs through the whole vehicle,
+ * as the reticle's does, so a skirt's layers and the plate behind them are all read. */
+const FALLBACK_RADIUS_M = 8;
 /**
  * A zone aims at most this many samples, spread over the faces the authority gives its plate. A sample whose ray meets
  * other main armour first (a turret over the hull roof) counts only when none of the zone's is clear.
@@ -56,14 +70,17 @@ const TURRET_ENVELOPE_FLOOR_M = 0.05;
 const BARREL_RADIUS_M = 0.15;
 const BARREL_CLEAR_M = 0.05;
 
-const LOW = new THREE.Color(0xe53d35);
-const MID = new THREE.Color(0xf0aa35);
-const HIGH = new THREE.Color(0x48d985);
-const _color = new THREE.Color();
+/** The paint's tone of each of the reticle's verdicts (its ring's green, amber and red, deepened for the steel). */
+const VERDICT_COLOR: Readonly<Record<PenVerdict, THREE.Color>> = {
+  pen: new THREE.Color(0x48d985),
+  marginal: new THREE.Color(0xf0aa35),
+  nopen: new THREE.Color(0xe53d35),
+};
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-const _eyeHull = new THREE.Vector3(), _eyeTurret = new THREE.Vector3();
-const _frame = new THREE.Matrix4();
+const _back = new THREE.Vector3();
+const _hullFrame = new THREE.Matrix4();
+const _turretFrame = new THREE.Matrix4();
 const _unscale = new THREE.Matrix4();
 const _pose = {
   pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
@@ -117,13 +134,17 @@ interface ZoneSamples {
   readonly turret: boolean;
 }
 
-/** (267) A whole panel: its zone (template order), whether it rides the turret, and a frame-local point of it (its centre). */
+/** (267) A whole panel: its zone (template order), whether it rides the turret, and a frame-local point of it (its centre),
+ * where the reticle's verdict is taken (274), and its mean facing in that frame (a unit normal scaled by how flat it is). */
 interface WholePanel {
   readonly zone: number;
   readonly turret: boolean;
   readonly x: number;
   readonly y: number;
   readonly z: number;
+  readonly nx: number;
+  readonly ny: number;
+  readonly nz: number;
 }
 
 /** A spec's paint: its zones' table (planes and outlines; colours left blank), the turret envelope, the samples. */
@@ -139,12 +160,11 @@ interface PaintTemplate {
   readonly sets: Map<string, number>;
   readonly setBase: number;
   zoneSet(zones: readonly number[]): number;
-  /** (267) The whole panels (the bake adds them: wholePanel), their rows after the sets' slots, and each frame's zones. */
+  /** (267) The whole panels (the bake adds them: wholePanel) and their rows after the sets' slots: [zone, r, g, b], r < 0
+   * while the panel has no verdict (it reads its zone's colour). */
   readonly panels: WholePanel[];
   readonly panelBase: number;
-  wholePanel(zone: number, point: readonly number[]): number;
-  readonly hullList: readonly ZonePlate[];
-  readonly turretList: readonly ZonePlate[];
+  wholePanel(zone: number, point: readonly number[], facing?: readonly number[]): number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
   /** Each frame's cells' bounds, centre and half extents: their rounded box stands in for the cells' surface. */
@@ -158,7 +178,8 @@ interface PaintTemplate {
   readonly samples: ZoneSamples[];
 }
 
-interface PanelBlend {
+/** A zone's pick among its samples: the ratio of its heaviest clear one, else of its heaviest hidden one. */
+interface ZonePick {
   clear: number;
   clearWeight: number;
   hidden: number;
@@ -174,14 +195,16 @@ interface ArmorOverlayEntry {
   visible: boolean;
   inScope: boolean;
   sampling: boolean;
+  /** The refresh's place: the zone and its sample, then the panel. */
   sampleZone: number;
   samplePoint: number;
-  blend: PanelBlend;
+  samplePanel: number;
+  pick: ZonePick;
   nextSampleMs: number;
   lastShellSpec: DamageShellSpec | null;
-  /** (267) The template's zone sets this entry's table holds; its whole panels resolved for the current view. */
+  /** (267) The template's zone sets and whole panels this entry's table holds. */
   setsSynced: number;
-  panelsResolved: number;
+  panelsSynced: number;
   /** (267) The view the last refresh sampled: the muzzle in the hull's, turret's and gun's frames, the ERA spent; and
    * whether there is one. */
   view: Float64Array;
@@ -207,14 +230,6 @@ export interface ArmorAimOverlayRuntime {
   hide(): void;
   clear(): void;
   dispose(): void;
-}
-
-function penetrationColor(ratio: number, out: THREE.Color): THREE.Color | null {
-  if (!Number.isFinite(ratio)) return null;
-  if (ratio <= 0.72) return out.copy(LOW);
-  if (ratio < 1) return out.copy(LOW).lerp(MID, (ratio - 0.72) / 0.28);
-  if (ratio < 1.35) return out.copy(MID).lerp(HIGH, (ratio - 1) / 0.35);
-  return out.copy(HIGH);
 }
 
 const sub = (a: readonly number[], b: readonly number[]): number[] => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -390,12 +405,12 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     }
     return index;
   };
-  // (267) a whole panel: its row holds its zone until the overlay sets the plate along the current view (resolvePanels).
-  // One row per zone and PANEL_ROW_CELL_M cell of the centre: every vehicle of a spec, whatever its own geometry, names
-  // the same rows, and a casting cut into many small pieces (a T-72B3: ~900, a median 28 cm²) shares a few hundred
+  // (267) a whole panel: its row holds its zone, and (274) the colour of the reticle's verdict at its centre once the
+  // overlay has one. One row per zone and PANEL_ROW_CELL_M cell of the centre: every vehicle of a spec, whatever its own
+  // geometry, names the same rows, and a casting cut into many small pieces shares a few hundred
   const panels: WholePanel[] = [];
   const panelRows = new Map<string, number>();
-  const wholePanel = (zone: number, point: readonly number[]): number => {
+  const wholePanel = (zone: number, point: readonly number[], facing?: readonly number[]): number => {
     if (!(zone >= 0 && zone < zones.length)) return -1;
     const cell = (v: number): number => Math.floor(v / PANEL_ROW_CELL_M);
     const key = `${zone}:${cell(point[0])}:${cell(point[1])}:${cell(point[2])}`;
@@ -404,13 +419,15 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
       if (panels.length >= PANEL_SLOTS) return -1;
       index = panels.length;
       panelRows.set(key, index);
-      panels.push({ zone, turret: zone >= hull.length, x: point[0], y: point[1], z: point[2] });
+      panels.push({ zone, turret: zone >= hull.length, x: point[0], y: point[1], z: point[2],
+        nx: facing?.[0] ?? 0, ny: facing?.[1] ?? 0, nz: facing?.[2] ?? 0 });
       table[(panelBase + index) * 4] = zone;
+      table[(panelBase + index) * 4 + 1] = -1;
     }
     return index;
   };
   return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, sets, setBase, zoneSet, panels, panelBase,
-    wholePanel, hullList: hull, turretList: turret, turretMin,
+    wholePanel, turretMin,
     turretMax, hullCentre, turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
 }
 
@@ -420,10 +437,13 @@ function frameInverse(group: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4 
   return out.multiplyMatrices(group.matrixWorld, _unscale).invert();
 }
 
-function blendedRatio(blend: PanelBlend): number {
-  if (blend.clearWeight > 0) return blend.clear / blend.clearWeight;
-  if (blend.hiddenWeight > 0) return blend.hidden / blend.hiddenWeight;
-  return NaN;
+function pickedRatio(pick: ZonePick): number {
+  return pick.clearWeight > 0 ? pick.clear : pick.hiddenWeight > 0 ? pick.hidden : NaN;
+}
+
+/** A combat frame's world matrix (its rig group's, without the group's own scale). */
+function frameMatrix(group: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4 {
+  return out.multiplyMatrices(group.matrixWorld, _unscale.makeScale(1 / (group.scale.x || 1), 1 / (group.scale.y || 1), 1 / (group.scale.z || 1)));
 }
 
 /**
@@ -464,11 +484,12 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       sampling: false,
       sampleZone: 0,
       samplePoint: 0,
-      blend: { clear: 0, clearWeight: 0, hidden: 0, hiddenWeight: 0 },
+      samplePanel: 0,
+      pick: { clear: 0, clearWeight: 0, hidden: 0, hiddenWeight: 0 },
       nextSampleMs: -Infinity,
       lastShellSpec: null,
       setsSynced: template.sets.size,
-      panelsResolved: -1,
+      panelsSynced: template.panels.length,
       view: new Float64Array(10),
       viewKnown: false,
     };
@@ -545,32 +566,16 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     entry.texture.needsUpdate = true;
   }
 
-  /**
-   * (267) Each whole panel's row: the plate a round along the current view (the muzzle to the panel's centre) reads there
-   * (sim/armorPlanes.ts zoneAlongShot: its zone where that faces the round, else the plate across the round's path), so
-   * the paint reads as the authority does (sim/armor.ts plateAlongShot); with no muzzle, its zone. On a refresh (the
-   * view moved) and when the bake has added panels.
-   */
-  function resolvePanels(entry: ArmorOverlayEntry, muzzle: THREE.Vector3 | null | undefined): void {
-    const { panels, panelBase, hullZones, hullList, turretList } = entry.template;
-    const u = entry.paint.uniforms;
-    const hullEye = muzzle ? _eyeHull.copy(muzzle).applyMatrix4(u.uApHullInv.value) : null;
-    const turretEye = muzzle ? _eyeTurret.copy(muzzle).applyMatrix4(u.uApTurInv.value) : null;
-    let changed = false;
-    for (let index = 0; index < panels.length; index++) {
-      const panel = panels[index], eye = panel.turret ? turretEye : hullEye;
-      let zone = panel.zone;
-      if (eye) {
-        const dx = panel.x - eye.x, dy = panel.y - eye.y, dz = panel.z - eye.z, length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        const base = panel.turret ? hullZones : 0;
-        if (length > 1e-6) zone = base + zoneAlongShot(panel.turret ? turretList : hullList, panel.zone - base, panel.x, panel.y, panel.z,
-          dx / length, dy / length, dz / length);
-      }
-      const at = (panelBase + index) * 4;
-      if (entry.table[at] !== zone) { entry.table[at] = zone; changed = true; }
-    }
-    entry.panelsResolved = panels.length;
-    if (changed) entry.texture.needsUpdate = true;
+  /** (267) The whole panels its spec's bake has named since this entry's table was cut: their zones, no verdict yet. A
+   * scoped vehicle refreshes at once to judge them (274). */
+  function syncPanels(entry: ArmorOverlayEntry): void {
+    const { panels, panelBase, table } = entry.template;
+    if (entry.panelsSynced === panels.length) return;
+    entry.table.set(table.subarray((panelBase + entry.panelsSynced) * 4, (panelBase + panels.length) * 4), (panelBase + entry.panelsSynced) * 4);
+    entry.panelsSynced = panels.length;
+    entry.viewKnown = false;
+    entry.nextSampleMs = -Infinity;
+    entry.texture.needsUpdate = true;
   }
 
   /** The vehicle's frames this frame (its hull and turret move under the paint). */
@@ -623,13 +628,41 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     visibleEntries.length = 0;
   }
 
-  function paintZone(entry: ArmorOverlayEntry, zone: number, ratio: number): void {
-    const color = penetrationColor(ratio, _color);
-    const at = (zone * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_ZONE_TEXELS - 1) * 4;
-    if (color) { entry.table[at] = color.r; entry.table[at + 1] = color.g; entry.table[at + 2] = color.b; entry.table[at + 3] = 1; }
-    else entry.table[at + 3] = 0;
+  function writeVerdict(entry: ArmorOverlayEntry, at: number, ratio: number): void {
+    const verdict = penVerdict(ratio);
+    if (!verdict) { entry.table[at] = -1; return; }
+    const color = VERDICT_COLOR[verdict];
+    entry.table[at] = color.r; entry.table[at + 1] = color.g; entry.table[at + 2] = color.b;
   }
 
+  /** A zone's colour (its last texel: rgb, a = 1 when it has a verdict). */
+  function paintZone(entry: ArmorOverlayEntry, zone: number, ratio: number): void {
+    const at = (zone * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_ZONE_TEXELS - 1) * 4;
+    writeVerdict(entry, at, ratio);
+    entry.table[at + 3] = penVerdict(ratio) ? 1 : 0;
+  }
+
+  /**
+   * The reticle's ratio along the line from the muzzle to a world point on the target (NaN: none), as the reticle reads
+   * it when laid on that point (game/aimController.ts): the same solver, the line run through the whole vehicle. Leaves
+   * the last call's armour in `lastInfo` for the zones' clear test.
+   */
+  let lastInfo: ReturnType<typeof aimArmorAlong> = null;
+  let lastReach = 0;
+  function ratioAt(state: ArmorPoseState, armor: ArmorOverlayModel, eraSpent: ReadonlySet<string> | undefined,
+    shellSpec: DamageShellSpec, muzzle: THREE.Vector3, point: THREE.Vector3): number {
+    lastInfo = null;
+    _dir.copy(point).sub(muzzle);
+    const reach = _dir.length();
+    if (!(reach > 0.05) || reach > AIM_REACH_M) return NaN;
+    _dir.multiplyScalar(1 / reach);
+    lastReach = reach;
+    lastInfo = aimArmorAlong(muzzle, _dir, Math.min(AIM_REACH_M, reach + (armor.boundingRadiusM ?? FALLBACK_RADIUS_M)), state, armor,
+      eraSpent, _pose);
+    return lastInfo ? aimPenRatio(shellSpec, lastInfo) : NaN;
+  }
+
+  /** One frame's share of an entry's refresh: its zones' samples, then its whole panels. True when it is done. */
   function sampleBatch(
     entry: ArmorOverlayEntry,
     shellSpec: DamageShellSpec | null | undefined,
@@ -638,64 +671,60 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const target = entry.target;
     const armor = target.spec?.armor;
     if (!target?.state || !target?.combat || !armor || !shellSpec || !muzzle) return true;
-    const pose = tankPoseFromState(target.state, _pose);
+    const { hull, turret } = entry.paint;
+    frameMatrix(hull, _hullFrame);
+    if (turret) frameMatrix(turret, _turretFrame);
     const zones = entry.template.samples;
-    const blend = entry.blend;
+    const pick = entry.pick;
     let remaining = SAMPLE_BATCH_SIZE;
     let painted = false;
     while (entry.sampleZone < zones.length && remaining > 0) {
       const zone = zones[entry.sampleZone];
-      if (entry.samplePoint === 0) {
-        blend.clear = 0; blend.clearWeight = 0; blend.hidden = 0; blend.hiddenWeight = 0;
-      }
-      const owner = zone.turret ? entry.paint.turret : entry.paint.hull;
-      if (owner) {
-        _frame.multiplyMatrices(owner.matrixWorld, _unscale.makeScale(1 / (owner.scale.x || 1), 1 / (owner.scale.y || 1), 1 / (owner.scale.z || 1)));
-      }
+      if (entry.samplePoint === 0) { pick.clear = 0; pick.clearWeight = 0; pick.hidden = 0; pick.hiddenWeight = 0; }
+      const owner = zone.turret ? turret : hull;
       while (entry.samplePoint < zone.points.length && remaining > 0) {
         const k = entry.samplePoint++;
         remaining--;
         if (!owner) continue;
-        _world.fromArray(zone.points[k]).applyMatrix4(_frame);
-        _dir.copy(_world).sub(muzzle);
-        const reach = _dir.length();
-        if (!(reach > 0.05) || reach > MAX_QUERY_M) continue;
-        _dir.multiplyScalar(1 / reach);
-        const maxDist = Math.min(MAX_QUERY_M, reach + 0.3);
-        const info = queryAimArmor(muzzle, _dir, maxDist, pose, armor, target.combat.eraSpent) as AimArmorInfo | null;
-        if (!info) continue;
-        // clear: the ray's first main armour is the sample's own face (within 12 cm of it); else it saw another first
-        const last = info.layers[info.layers.length - 1];
-        // (267) a face of this zone the round reads through the plate across its path (its own plate does not face the
-        // round: sim/armor.ts plateAlongShot) is painted in that plate's zone, so here it is judged as this zone's plate
-        // at the face's own angle (as the authority reads a round that does meet it)
-        const own = entry.template.zones[entry.sampleZone].plate;
-        const face = last?.collisionFace;
-        if (last && face && last.plate !== own && face.plate === own && !face.gunSplit) {
-          const n = face.normal;
-          const cos = -(n[0] * (last.impactLocalDirX ?? 0) + n[1] * (last.impactLocalDirY ?? 0) + n[2] * (last.impactLocalDirZ ?? 0));
-          const angle = (Math.acos(Math.min(1, Math.max(0, cos))) * 180) / Math.PI;
-          if (info.plate === last.plate) { info.plate = own as typeof info.plate; info.impactAngleDeg = angle; }
-          last.plate = own as typeof last.plate;
-          last.impactAngleDeg = angle;
-        }
-        const ratio = estimatePenRatio(shellSpec, info.distM, info);
-        if (!Number.isFinite(ratio)) continue;
+        _world.fromArray(zone.points[k]).applyMatrix4(zone.turret ? _turretFrame : _hullFrame);
+        const ratio = ratioAt(target.state, armor, target.combat.eraSpent, shellSpec, muzzle, _world);
+        if (!Number.isFinite(ratio) || !lastInfo) continue;
+        // clear: the line's first main armour is the sample's own face (within 12 cm of it); else it met another first (a
+        // layer's t is along the solver's whole line, AIM_REACH_M)
+        const last = lastInfo.layers[lastInfo.layers.length - 1];
         const weight = zone.weights[k];
-        if (last && last.plate.kind === 'main' && last.t * maxDist < reach - 0.12) {
-          blend.hidden += ratio * weight; blend.hiddenWeight += weight;
-        } else {
-          blend.clear += ratio * weight; blend.clearWeight += weight;
-        }
+        if (last && last.plate.kind === 'main' && last.t * AIM_REACH_M < lastReach - 0.12) {
+          if (weight > pick.hiddenWeight) { pick.hidden = ratio; pick.hiddenWeight = weight; }
+        } else if (weight > pick.clearWeight) { pick.clear = ratio; pick.clearWeight = weight; }
       }
       if (entry.samplePoint < zone.points.length) break;
-      paintZone(entry, entry.sampleZone, blendedRatio(blend));
+      paintZone(entry, entry.sampleZone, pickedRatio(pick));
       painted = true;
       entry.sampleZone++;
       entry.samplePoint = 0;
     }
+    const { panels, panelBase } = entry.template;
+    const count = Math.min(entry.panelsSynced, panels.length);
+    while (entry.sampleZone >= zones.length && entry.samplePanel < count && remaining > 0) {
+      const panel = panels[entry.samplePanel], at = (panelBase + entry.samplePanel) * 4 + 1;
+      entry.samplePanel++;
+      remaining--;
+      if (panel.turret && !turret) { entry.table[at] = -1; continue; }
+      const frame = panel.turret ? _turretFrame : _hullFrame;
+      _world.set(panel.x, panel.y, panel.z).applyMatrix4(frame);
+      _dir.set(panel.nx, panel.ny, panel.nz).transformDirection(frame).multiplyScalar(Math.hypot(panel.nx, panel.ny, panel.nz));
+      _back.copy(muzzle).sub(_world);
+      const backLength = _back.length();
+      if (backLength > 1e-6 && _dir.dot(_back) < PANEL_BACK_FACING * backLength) {
+        if (entry.table[at] >= 0) { entry.table[at] = -1; painted = true; }
+        remaining++;
+        continue;
+      }
+      writeVerdict(entry, at, ratioAt(target.state, armor, target.combat.eraSpent, shellSpec, muzzle, _world));
+      painted = true;
+    }
     if (painted) entry.texture.needsUpdate = true;
-    return entry.sampleZone >= zones.length;
+    return entry.sampleZone >= zones.length && entry.samplePanel >= count;
   }
 
   function addScopedTarget(candidate: ArmorOverlayTarget | null | undefined): void {
@@ -710,6 +739,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     }
     setVisible(entry, true);
     syncSets(entry);
+    syncPanels(entry);
     syncFrames(entry);
     visibleEntries.push(entry);
   }
@@ -744,13 +774,12 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         entry.sampling = false;
         entry.viewKnown = false;
       }
-      if (entry.panelsResolved !== entry.template.panels.length) resolvePanels(entry, muzzle);
       if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
       if (!viewMoved(entry, muzzle)) { entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS; continue; }
-      resolvePanels(entry, muzzle);
       entry.sampling = true;
       entry.sampleZone = 0;
       entry.samplePoint = 0;
+      entry.samplePanel = 0;
     }
   }
 

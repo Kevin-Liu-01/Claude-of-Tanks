@@ -3,15 +3,11 @@ import { usesLauncherMuzzles, launcherMuzzleIndex } from '../sim/launcherPolicy.
 import { magazineFeedRounds, magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import * as THREE from 'three';
-import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
+import { tankPoseFromState, traceTank } from '../sim/armor.ts';
+import { AIM_REACH_M, aimArmorAlong, aimPenRatio } from '../sim/aimPenetration.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
-import { estimatePenRatio } from '../sim/damage.ts';
 import { provingPlateStrike, type ProvingPlateMark } from '../sim/provingGround.ts';
-import type {
-  DamageArmorPlate,
-  DamageShellSpec,
-  PlateHit,
-} from '../sim/damage.ts';
+import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 import type { ShellCard } from './playerBattleActions.ts';
 import type { HydropneumaticAim } from '../vehicles/specContracts.ts';
 import { pendingAmmoSelectionSlot } from './ammoSelectionPresentation.ts';
@@ -52,14 +48,6 @@ interface AimSpec {
 interface ArmorTraceHit {
   point: THREE.Vector3;
   normal: THREE.Vector3;
-}
-
-interface AimArmorInfo {
-  plate: DamageArmorPlate;
-  impactAngleDeg: number;
-  point: THREE.Vector3;
-  distM: number;
-  layers: PlateHit[];
 }
 
 interface AimVisual {
@@ -384,14 +372,8 @@ export function createAimController(deps: AimControllerDependencies): AimControl
           projection > armorSelection.distanceM + tank.spec.armor.boundingRadiusM) continue;
       const radius = tank.spec.armor.boundingRadiusM * AIM_STICKY_INFLATE;
       if (targetDelta.lengthSq() - projection * projection > radius * radius) continue;
-      const info = queryAimArmor(
-        muzzle,
-        bore,
-        Math.min(800, armorSelection.distanceM + tank.spec.armor.boundingRadiusM),
-        tankPoseFromState(tank.state, aimPose),
-        tank.spec.armor,
-        tank.combat.eraSpent,
-      ) as AimArmorInfo | null;
+      const info = aimArmorAlong(muzzle, bore, Math.min(AIM_REACH_M, armorSelection.distanceM + tank.spec.armor.boundingRadiusM), tank.state,
+        tank.spec.armor, tank.combat.eraSpent, aimPose);
       if (!info || info.distM >= armorSelection.distanceM) continue;
       armorSelection.distanceM = info.distM;
       armorSelection.info = info;
@@ -408,7 +390,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
       frame.gunMarker.copy(info.point);
       frame.gunDistM = armorSelection.distanceM;
       frame.gunTargetId = armorSelection.targetId;
-      frame.penRatio = estimatePenRatio(shellSpec, armorSelection.distanceM, info);
+      frame.penRatio = aimPenRatio(shellSpec, info);
       lastPenRatio = frame.penRatio;
       lastGunTargetId = armorSelection.targetId;
       lastPenUntilMs = now() + AIM_STICKY_HOLD_MS;
