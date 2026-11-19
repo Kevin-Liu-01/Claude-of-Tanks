@@ -13,7 +13,8 @@
 // a round's own targets (a square, an approach, a bank), chosen to keep treeline skylines out of the frame's middle.
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first (job, map) pair
-// staged while it waits, every pair on its own page inside the hold, checkpoint() between pairs. Its poses, all at the
+// staged while it waits, every pair on its own page inside the hold, checkpoint() between pairs; the hold is the one
+// wrapper's through tools/shot-pairs.mjs (gaps 274 S3/S4: its cap, grace, signals and teardown). Its poses, all at the
 // chase eye (3.4 m over the ground) unless named:
 //   street — 6–11 m off a road's centreline among the map's densest buildings (six or more within 70 m), looking 30 m
 //            along the street: the carriageway, its kerb, the pavement and the frontage;
@@ -32,15 +33,15 @@
 // pose's frame is taken with the cloud layer at CLOUD_TIME_S of scene time (volumetricClouds.setCaptureTime, a fresh trace
 // sequence and history), its drift held there (each frame's dt 0) for CLOUD_FRAMES frames, then the trace and resolve
 // held, so two builds draw one sky; each pose's receipt records the pin.
-import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { startViteChild } from './capture-hold.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
+import { SHOT_BOOT_EXPRESSION, runShotPairs } from './shot-pairs.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
@@ -91,8 +92,6 @@ function parse(argv) {
   }
   return out;
 }
-
-function stamp() { return new Date().toISOString().slice(11, 19); }
 
 /** The staged battlefield's buildings (page side). */
 function pageStage() {
@@ -364,7 +363,8 @@ async function bootPage(browser, baseUrl, device) {
 async function stageMap(entry, mapId) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  // the boot latch through the readiness probe's expression, and the shot hooks (tools/shot-pairs.mjs)
+  await page.waitForFunction(SHOT_BOOT_EXPRESSION, { timeout: 900000, polling: 1000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });
@@ -482,13 +482,11 @@ async function main(argv) {
     .map((mapId) => ({ job, mapId })));
   if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
   const label = `${TOOL} ${path.basename(options.out)}`;
-  setBrowserGuardContext({ hold: label });
-  const lock = createCaptureLock();
   const servers = new Map();
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
-  let browser = null, held = false, entry = null, pagesSinceLaunch = 0;
+  let browser = null, entry = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   const dropBrowser = async () => { if (browser) await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; };
   const openPair = async ({ job, mapId }) => {
@@ -500,76 +498,50 @@ async function main(argv) {
     entry.staged = 0;
     await stageMap(entry, mapId);
   };
-  const close = async () => {
-    // the browser goes before the capture lock (capture-hold-census: the next holder's GPU work would overlap it)
-    if (browser) await browser.close().catch(() => {});
-    if (held) lock.release();
-    held = false;
-    for (const server of servers.values()) await server.close().catch(() => {});
-  };
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
-    process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
-  }
   let shot = 0, failed = 0;
   try {
-    await lock.acquire(options.waitHours * 3600 * 1000, {
+    // (gaps 274 S3/S4) the hold is the one wrapper's, through the pair loop the three pair shot tools share
+    ({ shot, failed } = await runShotPairs({
+      pairs, label, waitHours: options.waitHours, pairMinutes: options.pairMinutes,
       // (ab6: a page warmed and frozen while queued never settled its grass after the thaw — the hold's first pair timed
       // out three runs running) no warm page: the first pair boots inside the hold
-      lockClass: 'render', place: `${TOOL}-${path.basename(options.out)}`,
-    });
-    held = true;
-    for (let i = 0; i < pairs.length; i++) {
-      const { job, mapId } = pairs[i];
-      const started = Date.now();
-      let outcome = 'failed';
-      try {
-        if (!entry) await openPair(pairs[i]);
-        const shooting = (async () => {
-          const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-          if (live !== mapId) await stageMap(entry, mapId);
-          entry.staged++;
-          const receipt = await shootMap({ ...entry, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses, custom: job.customByMap?.[mapId] }, job.frames);
-          receipt.ms = Date.now() - started;
-          job.manifest.maps[mapId] = receipt;
-          writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-          return 'shot';
-        })();
-        shooting.catch(() => {});
-        outcome = await Promise.race([shooting, sleep(options.pairMinutes * 60_000).then(() => 'timeout')]);
-      } catch (error) {
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
-      } finally {
+      place: `${TOOL}-${path.basename(options.out)}`,
+      open: async (pair) => { if (!entry) await openPair(pair); },
+      shoot: async ({ job, mapId }, { signal, started }) => {
+        const own = entry; // the page this pair's open made or kept (a late answer never reaches the next page)
+        const live = await own.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+        if (live !== mapId) await stageMap(own, mapId);
+        own.staged++;
+        const receipt = await shootMap({ ...own, mapId }, { poses: job.posesByMap?.[mapId] ?? job.poses, custom: job.customByMap?.[mapId] }, job.frames);
+        signal.throwIfAborted(); // a pair past its budget never records
+        receipt.ms = Date.now() - started;
+        job.manifest.maps[mapId] = receipt;
+        writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+      },
+      settle: async (pair, outcome, i) => {
         // (ab6: a browser that died while queued failed seven maps in one second, and its successor could not fetch
-        // modules) a pair that does not shoot takes the browser down with it, and goes once more to the run's end
+        // modules) a pair that does not shoot takes the browser down with it, and goes once more to the run's end (one
+        // its hold's stop ended is left for the next run with the rest)
         if (outcome !== 'shot') {
           if (entry) await entry.page.close().catch(() => {});
           entry = null;
           await dropBrowser();
-          if (!pairs[i].retried) pairs.push({ ...pairs[i], retried: true });
+          if (!pair.retried && outcome !== 'stopped') pairs.push({ ...pair, retried: true });
         }
         // the page goes on to the job's next map unless this pair failed, the job changes or the page has staged its share
-        const keep = entry && pairs[i + 1]?.job === job && entry.staged < MAPS_PER_PAGE;
+        const keep = entry && pairs[i + 1]?.job === pair.job && entry.staged < MAPS_PER_PAGE;
         if (!keep && entry) { await entry.page.close().catch(() => {}); entry = null; }
-      }
-      if (outcome === 'shot') {
-        shot++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${pairs.length}`);
-      } else {
-        failed++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
-      }
-      if (!entry && pagesSinceLaunch >= 8) await dropBrowser();
-      if (i < pairs.length - 1) {
-        const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
-          // (a page kept for the next map is closed while others hold: it draws nothing in their holds, and a frozen page
-          // did not come back settled; the browser goes too — one left idle through an 84-min wait was dead at the resume)
-          beforeYield: async () => { if (entry) { await entry.page.close().catch(() => {}); entry = null; } await dropBrowser(); held = false; },
-          afterResume: async () => { held = true; } });
-        if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
-      }
-    }
+      },
+      after: async () => { if (!entry && pagesSinceLaunch >= 8) await dropBrowser(); },
+      // (a page kept for the next map is closed while others hold: it draws nothing in their holds, and a frozen page
+      // did not come back settled; the browser goes too — one left idle through an 84-min wait was dead at the resume)
+      onYield: async () => { if (entry) { await entry.page.close().catch(() => {}); entry = null; } await dropBrowser(); },
+      // every browser of the run closed before the release, whichever way the hold ends
+      teardown: dropBrowser,
+    }));
   } finally {
-    await close();
+    await dropBrowser();
+    for (const server of servers.values()) await server.close().catch(() => {});
   }
   console.log(`[${label}] ${shot} pair(s) shot, ${failed} failed`);
   return failed ? 1 : 0;

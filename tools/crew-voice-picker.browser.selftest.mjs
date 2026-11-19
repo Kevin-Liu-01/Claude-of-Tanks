@@ -7,15 +7,15 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+import { selftestLockTimeoutMs } from './capture-lock.mjs';
 import { CREW_LANGUAGES } from '../src/audio/vehicleAudioProfiles.ts';
 
-const lock = createCaptureLock();
-let server, browser, refresh;
+// the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit; gaps 274 S4)
+let hold, server, browser;
 const report = [];
 try {
-  await lock.acquire(selftestLockTimeoutMs());
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'crew-voice-picker.browser.selftest', timeoutMs: selftestLockTimeoutMs() });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
   await server.listen();
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
@@ -98,8 +98,7 @@ try {
   }
   console.log(`crew-voice-picker.browser.selftest: ${report.map((r) => `${r.view} ${r.rows} rows, ${r.last} and ur scrolled to and chosen (list ${r.lastList?.clientHeight}/${r.lastList?.scrollHeight} px)`).join('; ')}; no flags`);
 } finally {
-  clearInterval(refresh);
   await browser?.close();
   await server?.close();
-  lock.release();
+  await hold?.release();
 }

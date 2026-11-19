@@ -11,9 +11,10 @@
 //               lightTune; cloudTime is the cloud layer's capture time in seconds instead of 0 — the same build's sky drifted
 //               on, the A/A control's other side)
 //
-// The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first unit staged while
-// it waits, checkpoint() between units; units run job by job, each on a fresh page, the whole unit (its staging too)
-// within ten minutes. A unit is a map (its battle, under
+// The harness is the pair shot tools' (item ground-269; since gaps 274 S3/S4 their loop is tools/shot-pairs.mjs
+// runShotPairs, and this tool's own unit loop below, createUnitRun, makes the same decisions beside it, owed onto
+// runShotPairs at its next browser run): one render-class ticket, the first unit staged while it waits, checkpoint()
+// between units; units run job by job, each on a fresh page, the whole unit (its staging too) within ten minutes. A unit is a map (its battle, under
 // the pinned scene and a day sky) or a Garage yard (its opening view). Poses of a map:
 //   battle  — the battle's chase rig (cameraRig snapArcade, the 13 m orbit step) behind the staged hull, pitched 12° up:
 //             the sky the driver sees over the battlefield;

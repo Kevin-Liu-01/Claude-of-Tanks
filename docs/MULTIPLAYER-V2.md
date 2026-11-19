@@ -2495,6 +2495,73 @@ Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and d
 `node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
 not ship the Worker. No protocol or room version moves.
 
+**Gaps 274 (2026-11-18, the last M1 gaps of the 2026-11-02 state-machine audit).** The mode checkpoint also carries the
+mode's two seeded streams (`ModeCheckpoint.rng`: the draws and the arrival points; a migrated host drew from its own
+seed, so the next Horde or Frontline wave and Mars's next cache differed) and, for each living Horde or Frontline hostile
+whose life began in an earlier wave, that wave (`waves.paces`: a Frontline defender alive through an advance keeps its
+slower pace; every other living hostile takes the keyframe's wave's pace on the restore, where it took the base speed).
+
+The resume reads the window between the keyframe and the elected seat's newest frame (never in a captured checkpoint)
+and takes up as made what the wave directors did there: a Horde wave the frame shows begun (`waves.horde.begunWave`) or
+cleared (`waves.horde.cleared`: the lull from the clear, its cache from the same draws, no second repair); a Frontline
+advance (`waves.line.begun`: the frame's line and zones, the advance's mode time from the respawns the seat was told,
+the defenders told risen then); a Horde trickle arrival or a Frontline reinforce-trickle arrival whose revive the resume
+replays (`waves.horde.trickled`, `waves.line.reinforced`: the clock runs from it); a counter-attack whose moment the
+frame is past (`waves.line.counter.launched`: its squad is picked on the first step); and a cache the frame no longer
+lists, which stays taken. None of these is announced or made a second time, and the new actor's own construction
+events are dropped before its first tick. A replayed arrival's draws from the arrival-point stream are taken as the old
+host took them: a line slot's exactly, and in slot order for a begun advance's hidden arrivals; a ring arrival's as its
+first candidate's, which is exact on open ground but unknown for a later candidate or a refused ring.
+
+The extras carry a live hull's spool and turn rate (`motion`), a live bot's way (`way`: `game/ai.ts` BotDrive, its
+route, mission and progress watchdog and its brain's stream positions) and a down bot's brain streams alone (`streams`).
+A bot revived since the keyframe takes its brain's streams alone: its way, watchdog and mission are the life it left.
+Cost: the way is 0.3-0.5 KB of JSON a live bot, kept exact. At 19 bots the extras grow from 3.4-6.5 KB to 7.2-14.9 KB a
+keyframe (+3.5 to +10 KB; the lane's `g3.size` probe). That is 4.7-13.5 KB more once sealed and base64url-chunked, so
+at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, and each mode event's keyframe (at most
+every 500 ms) carries it too. It stays far under the `MIGRATION_MAX_CHUNKS` cap. A down bot adds two integers. Whether
+to trim the way (millimetre rounding, or no way a fresh brain would plan alike) is open.
+
+Not taken up (each still needs an owner; the figures are from Node probes of the receipts' staging):
+- The window's other moves: a Horde hostile benched as stranded (read as a death; its slot is not queued again), a
+  refused Horde arrival or an Infected arrival revived there (their ring draws), a Mars cache dropped there (dropped and
+  announced again), and an AC-130 supply drop there (lost).
+- Window moves taken up inexactly: a Horde arrival the old host deferred at a begun wave's start is due at once; an ally
+  whose revive the seat holds no row of stays down until the next wave start (Horde) or its allied revive (Frontline); a
+  defender that fell before a begun advance counts as living in the replayed draw; the advance's time is the newest told
+  defender respawn, else the frame's (up to the window late); attack plans and the reinforce clock the old host set
+  after a begun advance are set again at the new host's first asks; a trickle or reinforce clock taken from a told tick
+  can sit a tick off; a clear's repair for a hull whose row is from before the clear is lost; and a begun advance's
+  hidden arrival rises where the line guard finds the attack on the first step, 9.1-22.0 m from the old host's spot when
+  the attack drove on (0.00 m with it held).
+- A clear taken up as made: its cache's kind reads the constructed actor's wave-1 heal chance (latent: every shipped
+  Horde has unlimited rounds); a cache it made that the window took is made active again; and the keyframe's queue,
+  which the frame shows emptied, trickles in the lull.
+- Draws: a begun Horde wave's hidden arrivals draw after its seen ones', not among them (all hidden: within 0.8 m through
+  wave 5); and the hunt's arrivals lead seed stays the keyframe's after the replayed arrivals (6 against the old host's 7
+  after a trickle, the next arrival's lead about 150 m off; 12 against 18 after a begun wave).
+- The mode clock: a resumed host reads mode time as `timeS + modeTimeOffsetS`, not the old host's one accumulated sum,
+  so Horde trickle arrivals drift a tick each (every 90 ticks against 91, 0.10 s early by the sixth; a wave cleared in
+  the window clears the next 0.25 s early). integ/273 does the same.
+- In the director: the Horde's stranded tracker (`strandTrack`, `strandCheckAtS`; a cut-off hostile benched 30.5 s
+  late) and the role deals' clocks (CTF, hold, zone and Turbo Ball roles; re-dealt within a second, but a striker's
+  commit is lost).
+- A keyframe the new host seals in its resume hold, before its first step, does not carry a begun advance's hidden
+  arrivals (`lineArrivalDue`): a host elected from it would revive them at their own spawns, their slot draws spent (by
+  reading).
+- In the brain: the LOS and probe timer phases, the manoeuvre windows, the stuck and progress state, and the ally-yield
+  and hold timers.
+- In the integrator: `_rollover`, `_susp`, `_hold`, `_holdSeat` and `_prevSpeed`, and a hidden hull's tail.
+- In the authority: the route-push clocks and each bot's last pushed target, and the spotting and combat streams.
+- A window-revived bot's own first moves, which it plans afresh from the newer row.
+- Frontline attackers part after any migration, even with no window: 112.5 m in 14 s, against 0.0 m for an unmigrated
+  twin. A probe that carried the route-push clocks and targets left that gap unchanged, so the cause lies in the brain
+  state above and is not isolated.
+
+Kevin's ruling on G4 (2026-11-18): a CTF raider's stage goes with its life, solo too. G5, the same for a Frontline
+attacker's plan, awaits his ruling. Receipts: `modeStreamMigration`, `waveStartMigration`, `botDriveMigration`,
+`fallenStages`, `huntSearchMigration` [6].
+
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 
 **Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable

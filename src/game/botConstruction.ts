@@ -114,6 +114,7 @@ export function createBotController(entity: BotEntity, index: number, difficulty
           start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
           useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
         }),
+        planStream: searchRng,
       } : {}),
     },
   });

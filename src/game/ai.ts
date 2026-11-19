@@ -79,6 +79,28 @@ type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
 /** Who wrote a controller's waypoints (audit M7; see claimWaypoints). */
 type RouteOwner = 'none' | 'patrol' | 'route' | 'destination' | 'sector' | 'search' | 'level';
+/**
+ * A bot's way as a migrated host's brain takes it up (gaps 274, G3; migrationState.ts captureEntityExtras and
+ * applyResumeState): the waypoints and their cursor with whose they are (a mission's destination, an integration's own
+ * list or the patrol loop; a search, sector or level leg carries evidence of its own and is planned afresh), where the
+ * hull stood when they were read, the mission's destination and how long before its route was planned, and the progress
+ * watchdog on the leg it drives (its goal, best distance and the seconds without progress). JSON-safe: a distance never
+ * measured is null. A fresh brain planned afresh from the hull and re-planned 4 s of watchdog later than the old one
+ * (huntSearchMigration's CTF raider took another way in and lifted the flag 1.9 s apart).
+ */
+export interface BotDrive {
+  way: [x: number, z: number][];
+  at: number;
+  owner: RouteOwner;
+  loop: boolean;
+  planned: boolean;
+  from: [x: number, y: number, z: number, yaw: number];
+  mission: [x: number, z: number, ageS: number] | null;
+  end: boolean;
+  nav: [goalX: number, goalZ: number, bestD: number | null, stuckS: number];
+  /** The brain's seeded streams' positions (the controller's, the planner's; null: not a readable stream). */
+  streams: [controller: number | null, plan: number | null];
+}
 /** Hit reaction (bot philosophy r1): what a struck hull does for the next few seconds. */
 type Reaction = 'cover' | 'backoff' | 'angle' | 'jink';
 type RandomSource = () => number;
@@ -175,6 +197,22 @@ interface AiController {
    * id then (an earlier round's result is not this bot's).
    */
   resume(timeS?: number, firstShellId?: number): void;
+  /** The bot's way for a migration keyframe (BotDrive; gaps 274, G3). */
+  captureDrive(): BotDrive;
+  /**
+   * A migrated host's brain takes up the old host's way (BotDrive), right after resume(): `sinceS` is the sim time the
+   * hull's restored row is newer than the capture (0: the keyframe's own). The list is taken only while the hull still
+   * lies on it from where it stood at the capture (the Watch hand-back's test), else the brain keeps its own and plans
+   * afresh, as after a revive; the leg's progress watchdog is taken either way. `life` false: the hull no longer lives
+   * the life the record describes (it rose since the capture), so the brain takes its seeded streams alone (takeStreams).
+   */
+  takeDrive(drive: BotDrive, sinceS?: number, life?: boolean): void;
+  /** The brain's seeded streams' positions (BotDrive.streams): what a migration keyframe carries of a bot that is down
+   *  when it is sealed (gaps 274 fix-up r2), whose way is no life it will drive again. */
+  captureStreams(): BotDrive['streams'];
+  /** The brain draws on from the old host's positions of its streams (BotDrive.streams), the one writer of them on a
+   *  migrated host (takeDrive takes a living bot's through it); a record that is not one changes nothing. */
+  takeStreams(streams: BotDrive['streams']): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -421,6 +459,8 @@ interface AiDependencies {
    */
   planRoute?(start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
     options?: { requireGoalLevel?: boolean }): ReadonlyArray<readonly [number, number]>;
+  /** planRoute's own seeded stream, whose position a migration carries (gaps 274, G3; BotDrive.streams). */
+  planStream?: { state: number };
   /**
    * What this bot's TEAM knows (gameplay-modes-228, `searchRouting: 'spotted'`): its freshest sighting of an enemy and
    * the enemy's public deployment centre. The honest no-contact search routes on these, never on a live position.
@@ -451,13 +491,26 @@ interface RoleSpec {
   weightTons?: number;
 }
 
+/** A seeded stream whose position is readable and settable (gaps 274, G3: a migration carries a bot's, BotDrive.streams). */
+export interface SeededStream { (): number; state: number }
 /**
- * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
+ * Canonical deterministic PRNG (ARCHITECTURE.md §1.4): the same sequence as the verbatim copy, its position held in
+ * `state` (gaps 274, G3) rather than a closure variable.
  * @param {number} a seed
  * @returns {() => number} generator of floats in [0,1)
  */
-export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
-  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+export function mulberry32(a: number): SeededStream {
+  const next = (() => {
+    let s = next.state | 0;
+    s = s + 0x6D2B79F5 | 0;
+    next.state = s;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }) as SeededStream;
+  next.state = a;
+  return next;
+}
 
 // ---------------------------------------------------------------------------
 // Tuning
@@ -7325,6 +7378,101 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     missionRouteX = missionRouteZ = Infinity;
     missionRouteAtS = -Infinity;
   }
+  /** A stream's position, or null for a source that holds none readably. */
+  const streamState = (source: unknown): number | null => {
+    const state = (source as Partial<SeededStream> | null | undefined)?.state;
+    return typeof state === 'number' && Number.isInteger(state) ? state : null;
+  };
+  /**
+   * The bot's way for a migration keyframe (BotDrive; gaps 274, G3). A search, sector or level leg is not carried. A
+   * one-way list is carried from its cursor on (its last waypoint once used up): the waypoints behind the hull are no
+   * part of its way, and every keyframe carries the list to every peer.
+   */
+  function captureDrive(): BotDrive {
+    const carried = routeOwner === 'destination' || routeOwner === 'route' || routeOwner === 'patrol';
+    const start = !carried || loopWaypoints ? 0 : Math.min(wpIndex, Math.max(0, waypoints.length - 1));
+    const st = entity.state;
+    return {
+      way: carried ? waypoints.slice(start).map((point): [number, number] => [point.x, point.z]) : [], at: carried ? wpIndex - start : 0,
+      owner: carried ? routeOwner : 'none', loop: loopWaypoints, planned: carried && waypointsPlanned,
+      from: [st.pos.x, st.pos.y, st.pos.z, st.yaw],
+      mission: Number.isFinite(missionRouteX) && Number.isFinite(missionRouteZ) && Number.isFinite(missionRouteAtS)
+        ? [missionRouteX, missionRouteZ, Math.max(0, nowS - missionRouteAtS)] : null,
+      end: missionRouteHasEnd,
+      nav: [navGoalX, navGoalZ, Number.isFinite(navBestD) ? navBestD : null, navNoProgressT],
+      streams: captureStreams(),
+    };
+  }
+  /** The brain's two seeded streams' positions (the controller's, the planner's; BotDrive.streams). */
+  function captureStreams(): BotDrive['streams'] {
+    return [streamState(rng), streamState(deps.planStream)];
+  }
+  /**
+   * The brain's seeded streams where the old host's brain left them (gaps 274, G3; fix-up r2: a bot down when the keyframe
+   * was sealed carries them alone). They outlive a life on the old host: a dead bot's brain draws nothing, and a revive
+   * keeps them (resume() resets the way, watchdog and mission, never the streams). Before fix-up r2 a bot down at the
+   * keyframe carried none, so its brain drew from the construction's positions: a CTF raider down at the keyframe drove
+   * 55 m off the old host's track once both revived.
+   */
+  function takeStreams(streams: BotDrive['streams']): void {
+    const [controllerState, planState] = Array.isArray(streams) ? streams : [null, null];
+    if (Number.isInteger(controllerState) && typeof (rng as Partial<SeededStream>).state === 'number') (rng as SeededStream).state = controllerState!;
+    if (Number.isInteger(planState) && deps.planStream && typeof deps.planStream.state === 'number') deps.planStream.state = planState!;
+  }
+  /**
+   * A migrated host's brain takes up the old host's way (BotDrive; gaps 274, G3), right after resume() restarted what it
+   * measures from the hull: the watchdog on the leg, so its 4 s re-plan falls when the old host's would; the waypoints
+   * with their cursor while the hull still lies on them from where it stood at the capture (hullOnItsWay, the Watch
+   * hand-back's test: a newer row may have it past a waypoint, or off the way), and with a mission's list its destination
+   * and the age of its route, so a push to the same destination keeps the route and its 6 s re-plan falls when the old
+   * host's would. Both clocks age by `sinceS`, the sim time the hull's restored row is newer than the capture: the way
+   * then describes the moment the pose does (a hull the old host moved on toward its leg's goal meanwhile resets the
+   * watchdog on its first tick, as the old host did). A hull off its way keeps the list its brain has, and the mission's
+   * next push plans afresh, as after a revive. A record that is not one changes nothing. `life` false (gaps 274 fix-up
+   * r1): the hull rose since the capture, and the way, watchdog and mission were a life it no longer lives (the old
+   * host's revive reset them: resume()); the streams are the brain's, which the old host's kept through the revive, and
+   * are taken alone (takeStreams). A bot down when the keyframe was sealed carries its streams alone (fix-up r2).
+   */
+  function takeDrive(drive: BotDrive, sinceS = 0, life = true): void {
+    if (!drive || typeof drive !== 'object') return;
+    const since = Number.isFinite(sinceS) && sinceS > 0 ? sinceS : 0;
+    const finiteAll = (values: readonly unknown[] | null | undefined, count: number): boolean =>
+      Array.isArray(values) && values.length >= count && values.slice(0, count).every((value) => typeof value === 'number' && Number.isFinite(value));
+    // the streams first: whatever the brain draws next, its route plans included, is what the old host's would draw
+    takeStreams(drive.streams);
+    if (life === false) return;
+    const nav = drive.nav;
+    if (finiteAll(nav, 2) && typeof nav[3] === 'number' && Number.isFinite(nav[3])) {
+      navGoalX = nav[0]; navGoalZ = nav[1];
+      navBestD = typeof nav[2] === 'number' && Number.isFinite(nav[2]) ? nav[2] : Infinity;
+      navNoProgressT = Math.max(0, nav[3]) + since;
+    }
+    const way = Array.isArray(drive.way) ? drive.way : [];
+    const owner = drive.owner;
+    if ((owner !== 'destination' && owner !== 'route' && owner !== 'patrol') || !way.length || !way.every((point) => finiteAll(point, 2))
+      || !finiteAll(drive.from, 4)) return;
+    // the brain's own list, kept should the hull lie off the old host's
+    const kept = { owner: routeOwner, loop: loopWaypoints, planned: waypointsPlanned, at: wpIndex, points: waypoints.map((point) => ({ x: point.x, z: point.z })) };
+    claimWaypoints(owner, drive.loop === true);
+    for (const [x, z] of way) waypoints.push({ x, z });
+    wpIndex = Math.max(0, Math.min(waypoints.length, Math.floor(Number(drive.at) || 0)));
+    waypointsPlanned = drive.planned === true && !loopWaypoints;
+    // where the hull stood at the capture is where its way starts (hullOnItsWay reads it as a park's start)
+    [parkHullX, parkHullY, parkHullZ, parkHullYaw] = drive.from;
+    if (hullOnItsWay()) {
+      // the mission's route is this list: a push to its destination keeps it until the old host's re-plan would fall
+      const mission = drive.mission;
+      if (owner === 'destination' && finiteAll(mission, 3)) {
+        missionRouteX = mission![0]; missionRouteZ = mission![1]; missionRouteAtS = nowS - Math.max(0, mission![2]) - since;
+        missionRouteHasEnd = drive.end === true;
+      }
+      return;
+    }
+    claimWaypoints(kept.owner, kept.loop);
+    for (const point of kept.points) waypoints.push(point);
+    wpIndex = kept.at;
+    waypointsPlanned = kept.planned;
+  }
   /** The park's stretch is no time of the bot's own record: the clocks timed since its own events move on by it. */
   function shiftRecordClocks(parkS: number): void {
     lastFiredAtS += parkS;       // the stalemate push, the search gate and the settle's starved test
@@ -8096,6 +8244,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     applyPendingNews: drainPendingEvents,
     park,
     resume,
+    captureDrive,
+    takeDrive,
+    captureStreams,
+    takeStreams,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },

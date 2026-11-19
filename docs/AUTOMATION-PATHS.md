@@ -103,6 +103,7 @@ Through `__DEBUG.startBattle` (no countdown, no cover):
 Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 
 <!-- census:beginSoloBattle -->
+- `tools/armour-default.browser.mjs`
 - `tools/audio-mix-balance.mjs`
 - `tools/battle-entry-sweep.mjs`
 - `tools/battle-memory-probe.mjs`
@@ -213,7 +214,10 @@ so a receipt's log says the legacy predicate decided. `scenePhaseExpression(phas
 who owns the scene (a Garage return writes the Garage's scene under its veil, before the screen settles), for a check
 that times how soon a hand-over began (pause-probe's Leave), followed by a READY wait before the screen is read. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
 written by src/app/bootReadiness.ts): the boot finished loading, while the entry gate may still wait on the player
-(the lifecycle's 'boot' state until it is dismissed).
+(the lifecycle's 'boot' state until it is dismissed). A tool that needs hooks of its own on the loaded page waits once on
+the probe's expression composed with them (`${BOOT_LOADED_EXPRESSION} && <hooks>`), one predicate under one budget: the
+pair shot tools wait on `SHOT_BOOT_EXPRESSION` (tools/shot-pairs.mjs: the boot mirror with `__SHOTS` and `__DEBUG`;
+gaps 274 S3), which is no hand-built wait.
 
 `tools/game-readiness.selftest.mjs` reads every tool, and every selftest that drives a page, as code (comments
 blanked by TypeScript's parser, so a glob string such as `'**/*'` is not a comment) for the facts behind those
@@ -224,17 +228,13 @@ itself is listed below with its reason.
 Waits and polls built by hand:
 
 <!-- census:handBuiltWaits -->
-- `tools/air-support-shots.mjs`: release 270's file: its page helper's `ready` predicate is the boot mirror itself (`window.__GAME_READY === true`); move it onto `BOOT_LOADED_EXPRESSION` in a later round
 - `tools/battle-entry-sweep.mjs`: the covered entry is its subject: each run samples the reveal latch and the loader to judge that entry
 - `tools/battle-memory-probe.mjs`: its entry time is measured to the phase edge itself
 - `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
 - `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
-- `tools/building-style-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
-- `tools/built-env-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
 - `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
 - `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
 - `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
-- `tools/ground-surface-shots.mjs`: release 270's file: one hand-built wait for the boot mirror and the shot hooks (`__SHOTS`, `__DEBUG`) together; move it onto `waitForBootLoaded` and a hook wait in a later round
 - `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times
 - `tools/loading-budget-probe.mjs`: measures the loading screens and the exit, polling the phase inside the timed page function
 - `tools/marketing-shots/mode-battle-shots.mjs`: another lane's file (tools-chains); migrate after it lands

@@ -18,6 +18,7 @@ import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { runWarmHold, rememberWarm, rewarmPage, stubViteSocket } from './capture-hold.mjs';
 import { datumProblems } from './datum-census.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } from './map-probe-runtime.mjs';
 
@@ -624,7 +625,7 @@ await runWarmHold({
       await stubViteSocket(page);
       if (locale !== 'en-US') await page.evaluateOnNewDocument((value) => { try { localStorage.setItem('cot.locale', value); } catch {} }, locale);
       rememberWarm(page, {
-        url: `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, ready: 'window.__GAME_READY === true',
+        url: `http://127.0.0.1:${port}/?nosplash=1&tier=${TIERS[tag]}&gfxreset=1`, ready: BOOT_LOADED_EXPRESSION,
         after: (page) => beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId, gameMode: 'air_support', settleMs: 2500, timeoutMs: 900_000 }),
       });
       await rewarmPage(page);

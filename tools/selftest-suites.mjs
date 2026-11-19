@@ -114,6 +114,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/objectiveModesMigration.selftest.mjs', // 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff
     'src/mp/host/combatMigration.selftest.mjs', // 2026-11-02 audit M1: reload channels, module hp, fires, magazines, consumables, smoke and pillboxes survive a host handoff; a newer frame's rows win, mode stamps hold
     'src/mp/host/reviveMigration.selftest.mjs', // 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh life and is not revived again
+    'src/mp/host/waveStartMigration.selftest.mjs', // gaps 274 (G2): a Horde wave begun or cleared, a cache taken (Horde, Mars and AC-130 lists), a Frontline advance, reinforce arrival or counter-attack launched, or a trickle arrival made after the keyframe is taken up as made, never made twice, at the old host's paces; a counter-attack due after the resume is still announced once; the new host's own opening events are dropped
+    'src/mp/host/botDriveMigration.selftest.mjs', // gaps 274 (G3): a migrated bot keeps its spool, its way (route, cursor, mission, watchdog) and its seeded streams, and drives on as the old host's; a revived one keeps its fresh drive and the brain's streams; a bot down at the keyframe keeps its streams, still down at the resume or revived in the window
     'src/mp/host/resumeAging.selftest.mjs', // 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row's to the resume frame too
     'src/mp/host/resumeHullBody.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host restores each hull's ground contact, body mode, spring and ride from its row
     'src/mp/host/migrationExtrasSize.selftest.mjs', // 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore is unchanged
@@ -968,6 +970,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // inside its grace, stopped past it; a refused re-queue counted), a unit past its budget never recorded, a first unit
     // queued past its budget shot warm
     'tools/cloud-sky-shots.selftest.mjs',
+    // gaps 274 (S3/S4): the pair shot tools (building-style, built-env, ground-surface) hold through withCaptureHold by
+    // one loop, on a stand-in lock and the mock clock: a checkpoint before every pair, a pair in flight at the cap kept by
+    // its grace and yielded after (stopped and the rest left at 60 s), a timed-out pair never recorded, no budget timer
+    // outliving its pair, the teardown before the release; their boot wait is the readiness probe's expression
+    'tools/shot-pairs.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
@@ -2221,12 +2228,17 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // gaps 274 (G1): the mode's two seeded streams ride the mode checkpoint, so a migrated host fields the old host's next
+    // Horde waves and Frontline reinforcements on the same points and drops Mars's caches where the old host would
+    'src/sim/modeStreamMigration.selftest.mjs',
     // round 8 Y2 (s2-06): each hunter's search is one record, carried with the hunt's plans, sightings and last contact
     // in the mode checkpoint: a migrated host's hunters keep their leads and sweeps (Horde and Infected). It also pins
     // the CTF raid's and Frontline's attack stages across a migration (fix-up r3 and the residual, [6]): a lone raider
-    // or attacker goes in when the old host sends it, a window-revived raider stages afresh, a revived attacker keeps
-    // its plan
+    // or attacker goes in when the old host sends it, a window-revived raider or attacker stages afresh (gaps 274 G4/G5)
     'src/sim/huntSearchMigration.selftest.mjs',
+    // gaps 274 (G4, Kevin 2026-11-18; G5): a fallen raider's stage and a fallen attacker's plan go at its death (setLife's
+    // down edge), solo too, and a revived bot is dealt its role or plan at its first ask
+    'src/sim/fallenStages.selftest.mjs',
     // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
     // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
     'src/sim/modeLife.selftest.mjs',
