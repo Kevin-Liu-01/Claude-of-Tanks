@@ -1064,6 +1064,25 @@ export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsD
 }
 
 /**
+ * The solo host's answer to the mode controller's setActive: the hull on or off the field, its visual with it, but a
+ * training battle's parked hull stays off until its scene's cue (273: the controller's setLife puts every hull on the
+ * field as it starts, after the seating parked them; the whole-chapter walk found the skirmish fighting from S1).
+ */
+export function trainingHostSetActive(game: Pick<SoloGameState, '_trainingParked'>,
+  entity: { id: string; modeActive?: boolean; visual?: { setVisible(on: boolean): void } | null }, active: boolean): void {
+  const on = active && !game._trainingParked?.has(entity.id);
+  entity.modeActive = on;
+  entity.visual?.setVisible(on);
+}
+
+/** A training battle's parked hulls off the field (after the mode controller's construction has put every hull on). */
+export function trainingHoldParked(game: Pick<SoloGameState, '_trainingParked'>,
+  entities: Iterable<{ id: string; modeActive?: boolean; visual?: { setVisible(on: boolean): void } | null }>): void {
+  if (!game._trainingParked?.size) return;
+  for (const entity of entities) if (game._trainingParked.has(entity.id)) trainingHostSetActive(game, entity, false);
+}
+
+/**
  * The training battle's verdict (273): its chapter is complete, the player's side has won. Quiet: no battle:ended (the
  * training battle keeps no record and shows no report; the tutorial returns to the Garage itself, main.ts). Returns
  * whether it ended the battle.
@@ -1452,13 +1471,7 @@ export function setupBattle(
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     // what each side has spotted (the honest hunt); the solo battle names its sides player / enemy
     spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
-    setActive(modeEntity, active) {
-      // a training battle's parked hull stays off the field until its scene's cue (the controller puts every hull on as
-      // it starts)
-      const on = active && !game._trainingParked?.has(modeEntity.id);
-      modeEntity.modeActive = on;
-      modeEntity.visual?.setVisible(on);
-    },
+    setActive(modeEntity, active) { trainingHostSetActive(game, modeEntity, active); },
     // the training battle (273): a scene's finished goal and the skirmish stay down (sim/trainingGround.ts trainingRespawns)
     ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(game.ruleset.training!, ent.specId) } : {}),
     revive(ent: SoloEntity, rawSpawn: MatchModeSpawn, healthScale: number) {
@@ -1505,6 +1518,9 @@ export function setupBattle(
       holdRevivedBrain(game, ent);
     },
   });
+  // the controller's construction puts every hull on the field outright (modeActive = true, no setActive): a training
+  // battle's parked hulls go back off at once (273; the whole-chapter walk found the skirmish fighting from S1)
+  trainingHoldParked(game, game.tanks);
   for (const entity of game.tanks) {
     initializeAerial(entity, game.ruleset);
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');

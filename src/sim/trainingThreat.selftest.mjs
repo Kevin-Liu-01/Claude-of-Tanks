@@ -307,8 +307,38 @@ assert.equal(finishTrainingBattle(fakeGame), false, 'once');
 assert.equal(finishTrainingBattle({ ruleset: {}, result: null }), false, 'and only a training battle');
 // (the whole-chapter walk, 2026-11-18: the controller's start put every hull on the field, so the skirmish fought from
 // S1 on; the solo host keeps a parked hull off until its cue)
-assert.match(state, /const on = active && !game\._trainingParked\?\.has\(modeEntity\.id\);\s*modeEntity\.modeActive = on;/,
-  'the host keeps a parked hull off the field through the controller\'s start');
+assert.match(state, /setActive\(modeEntity, active\) \{ trainingHostSetActive\(game, modeEntity, active\); \},/, 'the solo host answers setActive by the training rule');
+// the exact failure, on a real mode controller: the hulls seated and parked, then the controller is built (its
+// construction writes modeActive = true on every hull, no setActive) and steps (its setLife answers through setActive).
+// The old host (no hold after the construction, modeActive = active) leaves the hull unparked; the training host (the hold
+// after construction, the parked-aware setActive) keeps it off until its cue, and on after it.
+{
+  const { createMatchModeController } = await import('./matchModes.ts');
+  const { trainingHostSetActive, trainingHoldParked } = await import('../game/state.ts');
+  const hull = (id, team, x) => ({ id, team, bot: team === 'bravo', state: { pos: { x, y: 0, z: 0 }, yaw: 0, speed: 0 },
+    combat: { hp: 100, maxHp: 100, destroyed: false, ammo: [10], ammoCapacity: [10] } });
+  const start = (setActive, hold = () => {}) => {
+    const player = hull('player', 'alpha', 0), parked = hull('parked', 'bravo', 200), live = hull('live', 'bravo', 300);
+    parked.modeActive = false;
+    const match = createMatchModeController({ mode: 'training', ruleset: matchRulesetFor('training'), entities: [player, parked, live],
+      seed: 27301, terrainHeight: () => 0, setActive, revive() {} });
+    hold([player, parked, live]);
+    for (let tick = 1; tick <= 120; tick++) match.step(1 / 60, tick / 60);
+    return { match, parked, live };
+  };
+  const old = start((target, active) => { target.modeActive = active; });
+  assert.notEqual(old.parked.modeActive, false, 'the failure as the walk met it: the controller\'s start unparks a hull under the old host');
+  const parkedSet = { _trainingParked: new Set(['parked']) };
+  const run = start((target, active) => trainingHostSetActive(parkedSet, target, active), (all) => trainingHoldParked(parkedSet, all));
+  assert.match(state, /\}\);\s*\/\/ the controller's construction puts every hull on the field outright[\s\S]{0,200}trainingHoldParked\(game, game\.tanks\);/,
+    'the solo setup holds the parked hulls right after the controller is built');
+  assert.equal(run.parked.modeActive, false, 'under the training rule the parked hull stays off through the controller\'s start and 120 steps');
+  assert.notEqual(run.live.modeActive, false, 'and a hull that was never parked stands on the field');
+  parkedSet._trainingParked.delete('parked');
+  run.parked.modeActive = true; // its cue (game/state.ts cueTrainingActor)
+  for (let tick = 121; tick <= 240; tick++) run.match.step(1 / 60, tick / 60);
+  assert.equal(run.parked.modeActive, true, 'released by its cue, it stays on');
+}
 assert.match(state, /\(game\._trainingParked \?\?= new Set\(\)\)\.add\(entity\.id\);/, 'parking records the hull');
 assert.equal((state.match(/game\._trainingParked\.delete\(entity\.id\);/g) ?? []).length, 2, 'and only a cue releases it (an actor\'s, the skirmish\'s)');
 assert.ok(state.indexOf('game._trainingParked = undefined;') < state.indexOf('spawnBattleEntities(spawnContext);'), 'cleared before each battle seats its hulls');
