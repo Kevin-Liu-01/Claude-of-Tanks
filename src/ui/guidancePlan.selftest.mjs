@@ -23,11 +23,16 @@
 //  7. the card's natural size is held for its step, and the same inputs plan the same places;
 //  8. the live loop iterated six passes at 390x844 and 1440x900, each reading the card at the width the last plan gave it:
 //     the places settle after one pass; and the flicker's mechanism as a property: the held size never moves with the
-//     width a plan gives the card (the old estimate's does, the input a two-place cycle needs).
+//     width a plan gives the card (the old estimate's does, the input a two-place cycle needs);
+//  9. the card's box is never shorter than its words at the box's width (Main, after 273.2's phone frame cut a line in
+//     half: a box 148 px tall over 241 px of words): at every recorded size, and on the live battle-sight HUD of that frame
+//     (tools/fixtures/hud-battle-sight-390x844.json) over every natural height a card may have, whole words or a type
+//     step smaller wherever a place holds them, and scrolling under its affordance only where none does; the live loop on
+//     that HUD settles, and every pass's box holds the words it shows.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cardNaturalSize, guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
-import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_ONE_ROW } from './touchNoticePlan.ts';
+import { cardNaturalSize, GUIDANCE_COMPACT_H, guidanceOverlaps, heldCardSize, planGuidance, planTouchGuidance } from './guidancePlan.ts';
+import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_ONE_ROW, touchSightKeepOut } from './touchNoticePlan.ts';
 
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
 const HARD = new Set(['.cot-top', '.cot-drive', '.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-dp', '.cot-touch.on .quick',
@@ -40,8 +45,17 @@ const CONTROLS = new Set(['.cot-shell', '.cot-con', '.cot-vehicle-controls>butto
 const NAMED = ['1440x900', '900x720', '390x844t', '375x667t', '844x390t', '667x375t'];
 
 const box = ([, x0, y0, x1, y1]) => ({ x0, y0, x1, y1 });
+/** The card's words at a box's width as the plan models them (their height reflowing as the width narrows), at its fit's
+ *  type step. */
+const wordsAt = (card, place) => Math.ceil(card.h * (place.fit === 'compact' ? GUIDANCE_COMPACT_H : 1) * (card.w / (place.x1 - place.x0)));
+/** 9. A card's box holds its words, or scrolls (under the affordance) only because no place holds them. */
+const holdsWords = (card, place, label) => {
+  if (place.fit === 'scroll') assert.ok(place.y1 - place.y0 < wordsAt(card, { ...place, fit: 'full' }), `${label}: a card marked scroll is shorter than its words`);
+  else assert.ok(place.y1 - place.y0 >= wordsAt(card, place) - 1,
+    `${label}: the card's box (${Math.round(place.y1 - place.y0)} px) is shorter than its words at its width (${wordsAt(card, place)} px), fit ${place.fit}`);
+};
 let laid = 0;
-const uncleared = [], waits = [], offCentre = [], yields = [];
+const uncleared = [], waits = [], offCentre = [], yields = [], scrolls = [], compacts = [];
 for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
   const size = key.split(':')[0];
   const [width, height] = size.replace('t', '').split('x').map(Number);
@@ -113,6 +127,11 @@ for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
     // (toasts wait where nothing keeps them off the controls and the other notices: behind a card, or on the smallest
     // phones; never at a named size, below)
     if (withCard) assert.ok(plan.card, `${key} ${state}: the card always has a place`);
+    if (plan.card) {
+      holdsWords(card, plan.card, `${key} ${state}`);
+      if (plan.card.fit === 'scroll') scrolls.push(`${key} ${state}`);
+      if (plan.card.fit === 'compact') compacts.push(`${key} ${state}`);
+    }
     // 3. the named sizes clear everything
     if (NAMED.includes(key)) {
       // (a surface may stand off the centre line there, clear of everything: a phone landscape's upper right, where a
@@ -251,6 +270,70 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   assert.equal(new Set(narrowFirst).size, 1, `a narrowed first read is estimated once and held (${narrowFirst.join(',')})`);
 }
 
+// 9. The card's box holds its words (Main, after 273.2: at 390x844, step battle.driveTouch, the battle sight in arcade, the
+// card stood at [72,438,318,586], 148 px over 241 px of words at 246 px: its last line cut in half, in two frames). The
+// planner chose a shrunk card clear of the sight over a whole one on it, and the card scrolled with nothing to show it. On
+// that frame's own HUD (the recorded instruments and controls, the risen sight that reproduces its plan), for every
+// natural height a card may have, the plan gives the words whole, then a type step smaller, and only where no place holds
+// either a scrolling box (the fade and chevron, data-more); the old order fails this at the frame's own card.
+{
+  const LIVE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-battle-sight-390x844.json', import.meta.url), 'utf8'));
+  const entries = LIVE.sizes['390x844t'];
+  const width = 390, height = 844, natural = 358;
+  const hard = entries.filter((e) => HARD.has(e[0])).map(box);
+  const base = { width, height, top: LIVE.top, hard, soft: [...entries.filter((e) => SOFT.has(e[0])).map(box), ...touchSightKeepOut(width, height, false, true, LIVE.sightY)],
+    never: entries.filter((e) => CONTROLS.has(e[0])).map(box), toasts: null };
+  const centre = (card) => {
+    const placed = planTouchNotices({ width, height, top: base.top, obstacles: [...hard, ...(card ? [{ x0: card.x0, y0: card.y0, x1: card.x1, y1: card.y1 }] : [])],
+      soft: base.soft, scope: false, seated: true, notice: { w: 214, h: 32 }, alert: { w: 214, h: 40 }, alertCompact: { w: 136, h: 34 },
+      countdown: null, banner: null, fallbackTop: base.top + 2, oneRow: false });
+    const at = (y, h) => ({ x0: width / 2 - 107, y0: y, x1: width / 2 + 107, y1: y + h });
+    return [at(placed.noticeTop, 32), at(placed.alertTop, 40)];
+  };
+  // the recorded frame: the box shorter than the words it held (the case)
+  const [x0, y0, x1, y1] = LIVE.plan.card;
+  assert.ok(y1 - y0 < LIVE.card.scrollHeight && Math.abs(x1 - x0 - LIVE.card.offsetWidth) <= 1,
+    `the recorded frame cut the card (${y1 - y0} px over ${LIVE.card.scrollHeight} px of words at ${LIVE.card.offsetWidth} px)`);
+  // the frame's card as a line model (its chrome, then the body in lines of the width inside its padding), set so it is
+  // the recorded 241 px at 246 px; its natural height at 358 px is 220 px, the size that planned the recorded box before
+  const CHROME = 136, PAD = 32, LINE = 21, TEXT_W = 1070;
+  const words = (w, compact = false) => compact
+    ? Math.round(CHROME + Math.ceil(TEXT_W * (13 / 14) / Math.max(1, w - PAD)) * LINE * (13 / 14))
+    : CHROME + Math.ceil(TEXT_W / Math.max(1, w - PAD)) * LINE;
+  assert.equal(words(LIVE.card.offsetWidth), LIVE.card.scrollHeight, 'the line model is the recorded card');
+  const frameCard = { w: natural, h: words(natural) };
+  const plan = planTouchGuidance({ ...base, card: frameCard }, centre).plan;
+  holdsWords(frameCard, plan.card, '390x844 battle sight, the frame\'s card');
+  assert.notEqual(plan.card.fit, 'scroll', `the frame's card fits whole or a step smaller (${JSON.stringify(plan.card)})`);
+  // every natural height a card may have on that HUD
+  const fits = { full: 0, compact: 0, scroll: 0 };
+  for (let h = 120; h <= 420; h += 4) {
+    const card = { w: natural, h };
+    const { plan: at, notices } = planTouchGuidance({ ...base, card }, centre);
+    holdsWords(card, at.card, `390x844 battle sight, a ${h} px card`);
+    for (const control of base.never) assert.ok(!guidanceOverlaps(at.card, control), `a ${h} px card stays off the controls`);
+    for (const notice of notices) assert.ok(!guidanceOverlaps(at.card, notice), `a ${h} px card stays off the centre notices`);
+    fits[at.card.fit]++;
+  }
+  assert.ok(fits.full > 0 && fits.compact > 0, `the sweep meets whole and compact cards (${JSON.stringify(fits)})`);
+  // the live loop on that HUD, iterated (as §8): each pass reads the card at the width and type the last plan gave it; the
+  // places settle after the first pass, and each pass's box holds the words the model says it shows there
+  let held = null, size = null, shown = { w: natural, compact: false };
+  const places = [];
+  for (let pass = 0; pass < 6; pass++) {
+    const reading = { step: 'battle.driveTouch', width: shown.w, scrollHeight: words(shown.w, shown.compact), compact: shown.compact };
+    held = cardNaturalSize(held, reading, natural);
+    size = heldCardSize(size, true, held.size);
+    const at = planTouchGuidance({ ...base, card: size }, centre).plan.card;
+    const tall = at.y1 - at.y0, need = words(at.x1 - at.x0, at.fit === 'compact');
+    if (at.fit !== 'scroll') assert.ok(tall >= need, `pass ${pass}: the box (${tall} px) holds the words it shows (${need} px)`);
+    places.push(JSON.stringify([at.x0, at.y0, at.x1, at.y1, at.fit]));
+    shown = { w: at.x1 - at.x0, compact: at.fit === 'compact' };
+  }
+  assert.ok(places.slice(1).every((p) => p === places[1]), `the live loop settles after one pass (${places.join(' | ')})`);
+  console.log(`guidancePlan §9: the 273.2 frame's card now ${places[1]}; ${JSON.stringify(fits)} over natural heights 120 to 420 px`);
+}
+
 // 5. The wiring: one owner places them all, and every surface reads its place from it.
 {
   const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -276,7 +359,13 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   assert.match(tutorial, /\[data-hud-guidance~=card-yields\]/, 'and gives way where it says');
   assert.match(layout, /const card = guidanceCardSize = heldCardSize\(guidanceCardSize, !!cardNode, measured\);/, 'the layout holds the card\'s size through a swap');
   assert.match(layout, /guidanceCardNatural = cardNaturalSize\(guidanceCardNatural,/, 'the layout holds the card\'s natural size for its step');
+  // 9. the fit reaches the card: its type step and its affordance (data-more) where its words run on
+  assert.match(layout, /if \(card\.fit !== 'full'\) flags\.push\(`card-\$\{card\.fit\}`\);/, 'the layout writes the fit of the card');
+  assert.match(layout, /scrollHeight: cardNode\.scrollHeight, compact \}/, 'a read at the compact type says so');
+  assert.match(layout, /markCardMore\(cardNode\);/, 'the layout marks a card whose words run on');
+  assert.match(tutorial, /\[data-hud-guidance~=card-compact\] [^{]+\.cot-tut-body\{font-size:var\(--fs-13\);\}/, 'the compact type step');
+  assert.match(tutorial, /\.cot-tut-card\[data-more\]::after\{content:'\\25BE';position:sticky;bottom:0;/, 'the affordance over the foot of the card');
   const overlay = read('src/ui/tutorial/tutorialOverlay.ts');
   assert.equal((overlay.match(/askLayout\(\);/g) ?? []).length, 3, 'the card asks the layout to re-plan when it shows, hides and goes');
 }
-console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''})`);
+console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''}; the card's words whole or a type step smaller wherever a place holds them${compacts.length ? `, a type step smaller at ${compacts.length}` : ''}${scrolls.length ? `, scrolling at ${scrolls.length}: ${scrolls.slice(0, 6).join(', ')}` : ''})`);
