@@ -21,7 +21,10 @@
 //     one at ring Q seen; Sentry 3 stands parked until its cue and never fires at what it cannot see; the steps take cover,
 //     count two peek cycles and finish it;
 //  7. S12, the kit: Sentry 4 (parked until its cue) lays HE on the running gear on the side the hull shows it, from a
-//     line to ring Q; the step waits for either track hit and stands it down, then the repair kit, the kit row and smoke.
+//     line to ring Q; the step waits for either track hit and stands it down, then the repair kit, the kit row and smoke;
+//  8. S13, flank the heavy: Bulwark's front reads mostly red to the loaner's APFSDS and its side mostly green (the
+//     reticle's solver over a grid on each face); its turret turns 8 degrees a second; rings U and V stand outside its
+//     firing arc, U where its front shows and V at its side; it fires only on the player and inside the arc.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -34,6 +37,9 @@ const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSt
 const { planTrainingRange } = await import('./trainingGround.ts');
 const { createTerrainDeformation } = await import('./terrainDeformation.ts');
 const { trainingExposure } = await import('./trainingSight.ts');
+const { trainingArcAllows, trainingTraverse } = await import('./trainingGround.ts');
+const { aimArmorAlong, aimPenRatio } = await import('./aimPenetration.ts');
+const { penVerdict } = await import('./penVerdict.ts');
 
 const DEG = Math.PI / 180;
 
@@ -182,11 +188,48 @@ const Qpose = { x: Q.x, y: 0, z: Q.z, yaw: 0 };
 const leftAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x + 50, z: Q.z });
 const rightAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x - 50, z: Q.z });
 assert.ok(leftAim.x - Q.x > 1.4 && Q.x - rightAim.x > 1.4 && Math.abs(leftAim.y - 0.45) < 1e-9, 'it aims low on the side the hull shows it');
-const s12 = ids.slice(ids.indexOf('training.toKit')).filter((id) => !id.endsWith('Touch'));
+const s12 = ids.slice(ids.indexOf('training.toKit'), ids.indexOf('training.toU')).filter((id) => !id.endsWith('Touch'));
 assert.deepEqual(s12, ['training.toKit', 'training.trackHit', 'training.repair', 'training.kitRow', 'training.smoke'], 'S12 (keyboard)');
 const trackHit = TRAINING_STEPS.find((step) => step.id === 'training.trackHit');
 assert.equal(trackHit.cue, 'sentry4', 'Sentry 4 fires only while the track step shows');
 assert.deepEqual({ ...trackHit.advance, module: [...trackHit.advance.module], state: [...trackHit.advance.state] },
   { on: 'module', module: ['trackL', 'trackR'], state: ['yellow', 'red'] }, 'either track, damaged or broken');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear)`);
+// 8. S13.
+const bulwark = trainingActor(TRAINING_RULES, 'bulwark');
+const heavy = TANK_SPECS[bulwark.specId];
+const loanerAp = TANK_SPECS[TRAINING_RULES.loanerSpecId].gun.shells.find((round) => round.type === 'APFSDS');
+const faceShare = (sideDeg) => {
+  const pose = { pos: new Vector3(0, 0, 0), yaw: sideDeg * DEG, visualPitch: 0, visualRoll: 0, turretYaw: -sideDeg * DEG, gunPitch: 0 };
+  const count = { pen: 0, marginal: 0, nopen: 0, n: 0 };
+  const span = sideDeg ? heavy.dims.hullLengthM : heavy.dims.widthM;
+  for (let a = -0.4; a <= 0.41; a += 0.1) for (let h = 0.15; h <= 0.96; h += 0.1) {
+    const from = new Vector3(0, 2.4, 120), to = new Vector3(a * span, h * heavy.dims.heightM, 0);
+    const dir = to.clone().sub(from); const len = dir.length(); dir.normalize();
+    const info = aimArmorAlong(from, dir, len + 20, pose, heavy.armor, undefined, {});
+    if (info) { count.n++; count[penVerdict(aimPenRatio(loanerAp, info))]++; }
+  }
+  return { red: count.nopen / count.n, green: count.pen / count.n };
+};
+const front = faceShare(0), side = faceShare(90);
+assert.ok(front.red >= 0.7, `Bulwark's front mostly red to the loaner's APFSDS (${Math.round(front.red * 100)} %)`);
+assert.ok(side.green >= 0.75, `its side mostly green (${Math.round(side.green * 100)} %)`);
+assert.ok(Math.abs(trainingTraverse(0, Math.PI / 2, 1, 8) - 8 * DEG) < 1e-9, 'its turret turns 8 degrees in a second');
+assert.ok(Math.abs(trainingTraverse(0, 2 * DEG, 1, 8) - 2 * DEG) < 1e-9, 'and stops on its mark');
+const hullYaw = trainingActorYawDeg(bulwark) * DEG;
+const bearingTo = (p) => Math.atan2(p.x - bulwark.x, p.z - bulwark.z);
+const offNose = (p) => Math.abs(Math.atan2(Math.sin(bearingTo(p) - hullYaw), Math.cos(bearingTo(p) - hullYaw))) / DEG;
+const U = TRAINING_POINTS.ringU, V = TRAINING_POINTS.ringV;
+assert.ok(Math.abs(offNose(U) - 45) < 2, `ring U 45 degrees off its nose (${offNose(U).toFixed(1)})`);
+assert.ok(Math.abs(offNose(V) - 90) < 3, `ring V at its side (${offNose(V).toFixed(1)})`);
+for (const [name, p] of [['U', U], ['V', V]]) {
+  assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(p), bearingTo(p)), false, `no fire at ring ${name}, outside its arc`);
+}
+const ahead = { x: bulwark.x + Math.sin(hullYaw) * 80, z: bulwark.z + Math.cos(hullYaw) * 80 };
+assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead), bearingTo(ahead)), true, 'fire in front of it, its gun on the player');
+assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead) + 5 * DEG, bearingTo(ahead)), false, 'not while its gun is still turning');
+const s13 = ids.slice(ids.indexOf('training.toU'));
+assert.deepEqual(s13, ['training.toU', 'training.bulwarkFront', 'training.flank', 'training.flankFire', 'training.finishBulwark'], 'S13');
+assert.deepEqual([...TRAINING_STEPS.find((step) => step.id === 'training.flankFire').advance.kinds], ['pen'], 'a round through its side');
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side)`);

@@ -37,6 +37,10 @@ export interface TrainingVolley {
   /** Its trigger only while it sees the player's hull or turret over the ground (sim/trainingSight.ts): S11's Sentry 3
    *  fires at a tank that peeks out, never through the wall it hides behind. */
   readonly whenSeen?: boolean;
+  /** S13's Bulwark: its gun laid by a turret that turns only this fast (deg/s), and its trigger only while the player
+   *  stands inside this arc either side of its hull's nose (deg) and the gun is on the player. */
+  readonly traverseDegPerS?: number;
+  readonly frontArcDeg?: number;
 }
 
 /** One hull the scenes use: a target that never fires, or a scripted shooter. */
@@ -157,6 +161,13 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2).
     Object.freeze({ key: 'sentry4', specId: 't55a', x: -260, z: -10, faces: 'ringQ', presentDeg: 0, entersOnCue: true,
       volley: Object.freeze({ shellType: 'HE', firstS: 2.5, aim: Object.freeze({ alongM: 0, upM: 0.45, acrossM: 1.55 }) }) }),
+    // S13's Bulwark: an Object 477 whose front reads 75 % red to the loaner's APFSDS at 120 m and its side 80 % green
+    // (evidence s13 fit). Parked until its scene on the open meadow, facing west; its turret turns 8 degrees a second and
+    // it fires only into a 30 degree arc either side of its nose, its gun on the player, after a 1.5 s telegraph. Ring U
+    // stands 45 degrees off its nose (outside the arc), ring V at its side.
+    Object.freeze({ key: 'bulwark', specId: 'object477_molot', x: -270, z: -125, faces: 'ringU', presentDeg: -45, entersOnCue: true,
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.5, whenSeen: true, traverseDegPerS: 8, frontArcDeg: 30,
+        aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
   // S10's berm: 1.9 m high across the line to Sentry 2, a gentle back slope (7 m) the player creeps up, a 2 m crest and a
   // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (sim/trainingSight.ts EXPOSURE_POINTS)
@@ -193,6 +204,11 @@ export const TRAINING_POINTS = Object.freeze({
   ringG: Object.freeze({ x: S10_BERM.x - S10_LINE.x * S10_RING_BACK_M, z: S10_BERM.z - S10_LINE.z * S10_RING_BACK_M, radiusM: 3 }),
   /** S11: the cover spot behind the wall, and the peek spot beside it, out past the wall's end in Sentry 3's sight. */
   ringP: Object.freeze({ x: S11_COVER.x, z: S11_COVER.z, radiusM: 3 }),
+  /** S13: 70 m from Bulwark, 45 degrees off its nose (outside its firing arc), where the player sees its front; and its
+   *  side, 45 m off, where the loaner's APFSDS goes through. Lines from both clear the ground by 1.4 m; the way from ring Q
+   *  to U and on to V has no trunk on it (tools route). */
+  ringU: Object.freeze({ x: -319.5, z: -75.5, radiusM: 5 }),
+  ringV: Object.freeze({ x: -270, z: -80, radiusM: 5 }),
   // (the side the search cleared: its line to Sentry 3 1.9 m over the ground)
   ringQ: Object.freeze({ x: S11_COVER.x + S11_LINE.z * S11_PEEK_SIDE_M, z: S11_COVER.z - S11_LINE.x * S11_PEEK_SIDE_M, radiusM: 3 }),
 });
@@ -216,6 +232,21 @@ export function trainingVolleyAim(hull: { readonly x: number; readonly y: number
   out.y = hull.y + volley.aim.upM;
   out.z = hull.z + Math.cos(hull.yaw) * along + lz * across;
   return out;
+}
+
+/** A turret that turns at most `degPerS` toward `targetYaw` (rad) over `dt` (s), from `yaw`: its new yaw. Pure. */
+export function trainingTraverse(yaw: number, targetYaw: number, dt: number, degPerS: number): number {
+  const diff = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
+  const step = (degPerS * Math.PI / 180) * dt;
+  return yaw + Math.max(-step, Math.min(step, diff));
+}
+
+/** Whether a shooter with a front arc may fire: the player inside the arc either side of its hull's nose, and its gun
+ *  within 1.5 degrees of the player. Yaws in rad. */
+export function trainingArcAllows(volley: TrainingVolley, hullYaw: number, gunYaw: number, bearing: number): boolean {
+  if (volley.frontArcDeg == null) return true;
+  const off = (a: number, b: number): number => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) * 180 / Math.PI;
+  return off(bearing, hullYaw) <= volley.frontArcDeg && off(bearing, gunYaw) <= 1.5;
 }
 
 /** Whether a cued shooter's trigger is held at `timeS`: from `firstS` after its cue on (its loaded gun fires; the reload

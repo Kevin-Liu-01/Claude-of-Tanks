@@ -223,6 +223,7 @@ const SENTRY = trainingActor(TRAINING_RULES, 'sentry')!.specId;
 const SENTRY2 = trainingActor(TRAINING_RULES, 'sentry2')!.specId;
 const SENTRY3 = trainingActor(TRAINING_RULES, 'sentry3')!.specId;
 const SENTRY4 = trainingActor(TRAINING_RULES, 'sentry4')!.specId;
+const BULWARK = trainingActor(TRAINING_RULES, 'bulwark')!.specId;
 /** S9's window: the hull turned between these from the line to the Sentry, where its HEAT on the loaner's front plate
  *  reads red (32 to 62 degrees at ring F, sim/trainingThreat.ts; tutorialSteps.selftest.mjs holds it). */
 export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
@@ -421,6 +422,24 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
     title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.body', advance: { on: 'smoke' }, keys: { smoke: 'smoke' } },
   { id: 'training.smokeTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.bodyTouch', advance: { on: 'smoke' } },
+  // S13: flank the heavy. Bulwark (parked until now) stands on the meadow; its front is red to the loaner's rounds, its turret
+  // turns slowly and it fires only into the arc before its nose. Ring U shows its front from outside that arc; ring V is its
+  // side, where a round goes through.
+  { id: 'training.toU', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 60,
+    title: 'tutorial.training.toU.title', body: 'tutorial.training.toU.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringU, 'tutorial.training.marker.u'), path: true } },
+  { id: 'training.bulwarkFront', chapter: 'training', target: [], ...PLAY, cue: 'bulwark',
+    title: 'tutorial.training.bulwarkFront.title', body: 'tutorial.training.bulwarkFront.body', advance: NEXT,
+    guide: { actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
+  { id: 'training.flank', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 45,
+    title: 'tutorial.training.flank.title', body: 'tutorial.training.flank.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringV, 'tutorial.training.marker.v'), path: true, actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
+  { id: 'training.flankFire', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 45,
+    title: 'tutorial.training.flankFire.title', body: 'tutorial.training.flankFire.body',
+    advance: { on: 'hit', by: 'player', actor: BULWARK, kinds: ['pen'] }, guide: { actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
+  { id: 'training.finishBulwark', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 90,
+    title: 'tutorial.training.finishBulwark.title', body: 'tutorial.training.finishBulwark.body', advance: { on: 'destroy', actor: BULWARK },
+    guide: { actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

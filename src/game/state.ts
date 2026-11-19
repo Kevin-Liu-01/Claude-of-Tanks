@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { planTrainingRange, trainingActor, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { planTrainingRange, trainingActor, trainingArcAllows, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -425,6 +425,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _navigationWreckTicks?: number;
   /** A training battle's cued shooters (273): each actor's scene name and the battle time its scene cued it at. */
   _trainingCues?: Map<string, number>;
+  /** A slow-turret shooter's laid gun (S13): each actor's scene name and the yaw its gun points along (rad). */
+  _trainingGunYaw?: Map<string, number>;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
@@ -1008,13 +1010,25 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   const pos = target.state.pos;
   const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw };
   trainingVolleyAim(hull, actor.volley, entity.input.aimPoint, entity.state.pos);
+  // a slow turret (S13): its gun laid along a yaw that turns toward the plate at its own rate, the aim point on that line
+  let arcAllows = true;
+  if (actor.volley.traverseDegPerS != null) {
+    const from = entity.state.pos, aim = entity.input.aimPoint;
+    const bearing = Math.atan2(aim.x - from.x, aim.z - from.z);
+    const yaws = game._trainingGunYaw ??= new Map();
+    const gunYaw = trainingTraverse(yaws.get(actor.key) ?? entity.state.yaw, bearing, SIM_DT, actor.volley.traverseDegPerS);
+    yaws.set(actor.key, gunYaw);
+    const reach = Math.hypot(aim.x - from.x, aim.z - from.z);
+    aim.set(from.x + Math.sin(gunYaw) * reach, aim.y, from.z + Math.cos(gunYaw) * reach);
+    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, Math.atan2(pos.x - from.x, pos.z - from.z));
+  }
   // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
   const ground = game._groundSampler;
   const seen = !actor.volley.whenSeen || !ground ? true : (() => {
     const exposure = trainingExposure(entity.state.pos, hull, ground);
     return exposure.hull || exposure.turret;
   })();
-  entity.input.fire = trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
+  entity.input.fire = arcAllows && trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
 }
 
 /** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
