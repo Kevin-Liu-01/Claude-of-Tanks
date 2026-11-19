@@ -262,5 +262,18 @@ assert.deepEqual([...fight.advance.actors], skirmish.enemies.map((b) => b.specId
 assert.equal(ids.at(-1), 'training.complete', 'the chapter closes on its card');
 assert.match(state, /if \(!isPlayer && context\.provingLayout && !skirmishBot\) seatProvingTarget\(context, entity, spawn\);/, 'skirmish bots get brains, not marks');
 assert.match(state, /if \(rules && key === TRAINING_SKIRMISH_CUE\)/, 'its cue brings every bot in');
+// (Main: the training rows alone move; every other mode's limits and field as main e5e937cb71 has them)
+const pinned = JSON.parse(readFileSync(new URL('../../tools/fixtures/training-other-mode-limits.json', import.meta.url), 'utf8'));
+const { TEAM_ARRANGEMENT_LIMITS } = await import('./matchRuleset.ts');
+assert.equal(TEAM_ARRANGEMENT_LIMITS.field, pinned.field, 'the field limit unchanged');
+assert.deepEqual([...TEAM_ARRANGEMENT_LIMITS.waveSize], pinned.waveSize, 'the wave size unchanged');
+const otherModes = Object.keys(TEAM_ARRANGEMENT_LIMITS.allies).filter((mode) => mode !== 'training').sort();
+assert.deepEqual(otherModes, Object.keys(pinned.modes), 'the same modes');
+for (const mode of otherModes) {
+  const ruleset = matchRulesetFor(mode);
+  assert.deepEqual({ allies: [...TEAM_ARRANGEMENT_LIMITS.allies[mode]], enemies: [...TEAM_ARRANGEMENT_LIMITS.enemies[mode]],
+    rulesetAllies: ruleset.allies ?? null, rulesetEnemies: ruleset.enemies ?? null, respawnS: ruleset.respawnS ?? null }, pinned.modes[mode],
+  `${mode}: its limits and field unchanged`);
+}
 
 console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight)`);
