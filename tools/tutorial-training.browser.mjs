@@ -296,10 +296,17 @@ try {
       const target = await actorPose(actorId);
       if (!target) { await sleep(500); continue; }
       const at = await project(actorPoint(target, local.along, local.up, local.across));
-      if (at.behind) { await page.mouse.move(vp.width * 0.5, vp.height * 0.5); await sleep(500); continue; }
-      await page.mouse.move(at.x, at.y, { steps: 4 });
       const p = await pose();
       const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
+      // off the screen or behind the camera (the third walk: the hull faced away after the bush, the ×8 sight narrow):
+      // the cursor rests at the edge on the target's side and the view and gun come round, as the turret step does
+      const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
+      if (!inView) {
+        await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 });
+        await sleep(600);
+        continue;
+      }
+      await page.mouse.move(at.x, at.y, { steps: 4 });
       if (Math.abs(err) > 0.03) { await sleep(400); continue; }
       await sleep(1800); // the aim settles
       const again = await project(actorPoint(await actorPose(actorId), local.along, local.up, local.across));
