@@ -47,6 +47,8 @@ export interface MainEntity extends Omit<
   specialAction: SpecialActionState | null;
   equip?: readonly string[] | null;
   visual: MainVisual | null;
+  /** Off the field (sim/hullField.ts). */
+  modeActive?: boolean;
 }
 
 interface MainSpottingRuntime {

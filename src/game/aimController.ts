@@ -1,4 +1,5 @@
 import type { AerialView } from '../sim/aerialCombat.ts';
+import { onField } from '../sim/hullField.ts';
 import { usesLauncherMuzzles, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import { magazineFeedRounds, magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -58,6 +59,8 @@ interface AimVisual {
 interface AimTank {
   aerial?: AerialView;
   id: string;
+  /** Off the field (sim/hullField.ts): never a target. */
+  modeActive?: boolean;
   team?: string;
   isPlayer?: boolean;
   _networkShellSlot?: number;
@@ -197,7 +200,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     // tank another pane may aim at); a view with no player skips the page's flagged one, as before
     const own = game.player;
     for (const tank of game.tanks) {
-      if ((own ? tank === own : tank.isPlayer) || !tank.state || !tank.combat || tank.combat.destroyed) continue;
+      if ((own ? tank === own : tank.isPlayer) || !onField(tank) || !tank.state || !tank.combat || tank.combat.destroyed) continue;
       const radius = tank.spec.armor.boundingRadiusM;
       const inflatedRadius = radius * AIM_STICKY_INFLATE;
       armTo.copy(tank.state.pos);
@@ -362,7 +365,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     armorSelection.worldHit = worldHit;
     armorSelection.distanceM = worldHit ? worldHit.dist : 800;
     for (const tank of game.tanks) {
-      if (tank.isPlayer || tank.team === player.team || !tank.state || !tank.combat) continue;
+      if (tank.isPlayer || tank.team === player.team || !onField(tank) || !tank.state || !tank.combat) continue;
       if (tank.combat.destroyed || !deps.targetVisible(tank)) continue;
       targetDelta.copy(tank.state.pos);
       targetDelta.y += tank.spec.dims.heightM * 0.5;

@@ -1,4 +1,5 @@
 import './ui/richTooltip.css';
+import { onField } from './sim/hullField.ts';
 import { armourTipDue, readArmourDefaultMarker, writeArmourDefaultMarker } from './game/armourOverlayDefault.ts';
 import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
@@ -4830,7 +4831,11 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     },
     groundY: (x, z) => groundSampler(x, z),
     player: () => tutorialPose(game.phase === 'battle' ? game.player : null),
-    actor: (id) => tutorialPose(game.phase === 'battle' ? game.tankById.get(id) ?? null : null),
+    // (273) an actor off the field has no pose for the guide: no bracket, no edge pointer, no arc (sim/hullField.ts)
+    actor: (id) => {
+      const hull = game.phase === 'battle' ? game.tankById.get(id) ?? null : null;
+      return tutorialPose(hull && onField(hull) ? hull : null);
+    },
     // S9: the angling arc's colours, the scripted shooter's round on the player's plate (game/state.ts trainingThreatFor)
     threat: (id, offsets) => (game.phase === 'battle' && isSoloBattleRuntimeReady()
       ? trainingThreatFor(game, id, offsets) as Array<PenVerdict | null> : []),

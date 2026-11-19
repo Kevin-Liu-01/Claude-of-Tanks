@@ -1,4 +1,5 @@
 import { applyJuggernautScale } from '../sim/juggernautScale.ts';
+import { onField } from '../sim/hullField.ts';
 import { lodDistanceScale } from '../engine/lodDistanceScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
 import { modeLightsTanks } from '../sim/matchRuleset.ts';
@@ -76,6 +77,8 @@ interface TankVisual {
 interface TankEntity {
   aerial?: AerialView;
   id: string;
+  /** Off the field (sim/hullField.ts): never drawn. */
+  modeActive?: boolean;
   team: string;
   isPlayer?: boolean;
   state: TankState | null;
@@ -259,6 +262,11 @@ export function createBattlePresentationRuntime({
     const visual = entity.visual as TankVisual;
     const combat = entity.combat as NonNullable<TankEntity['combat']>;
     if (game.phase !== 'battle') return true;
+    // (273) a hull off the field is never drawn (sim/hullField.ts): an allied one was shown each frame below
+    if (!onField(entity)) {
+      visual.setVisible(false);
+      return false;
+    }
     // a watched battle with no driver shows every hull (stateCore.ts watchRevealsAll)
     if (spotState && !watchRevealsAll(game) && entity.team !== (currentPlayer?.team ?? 'player')) {
       const spotted = combat.destroyed

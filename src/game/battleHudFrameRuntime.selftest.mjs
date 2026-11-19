@@ -84,7 +84,9 @@ assert.equal(hudFrames[0].mode, 'sniper');
 assert.equal(hudFrames[0].pingMs, 73);
 assert.equal(hudFrames[0].selfRightKeyLabel, 'F');
 assert.equal(hudFrames[0].keyCaps?.shell1, 'F', 'the frame carries every key cap (game/battleKeyCaps.ts)');
-assert.equal(hudFrames[0].rosterTanks, game.tanks);
+// (273) the frame's roster is the hulls on the field, in a list of its own (sim/hullField.ts; this fixture parks none)
+assert.deepEqual(hudFrames[0].rosterTanks, game.tanks);
+assert.deepEqual(hudFrames[0].tanks, game.tanks);
 assert.deepEqual(hudFrames[0].spotting.player, { id: 'player', timeS: 12 });
 assert.equal(hudFrames[0].spotting.isSpotted('enemy'), true);
 assert.equal(aimUpdates, 1);
@@ -115,7 +117,7 @@ game.tanks = [enemy];
 game.shells = [];
 runtime.reset();
 assert.equal(runtime.frameInfo.player, null);
-assert.equal(runtime.frameInfo.tanks, game.tanks);
+assert.deepEqual(runtime.frameInfo.tanks, game.tanks);
 assert.equal(runtime.frameInfo.shells, game.shells);
 
 // Names/counts use the full announcement; targeting and world UI remain spotted-only.
@@ -125,13 +127,23 @@ game.player = player;
 game.rosterTanks = [player, enemy, hiddenEnemy, ally];
 game.tanks = [player, enemy, ally];
 runtime.update(true, false);
-assert.equal(runtime.frameInfo.rosterTanks, game.rosterTanks);
-assert.equal(runtime.frameInfo.tanks, game.tanks);
+assert.deepEqual(runtime.frameInfo.rosterTanks, game.rosterTanks);
+assert.deepEqual(runtime.frameInfo.tanks, game.tanks);
 assert.equal(runtime.frameInfo.spotting.isSpotted('hidden'), false);
 assert.deepEqual(overlayFrames.at(-1).targets, [enemy]);
 game.rosterTanks = undefined;
 runtime.reset();
-assert.equal(runtime.frameInfo.rosterTanks, game.tanks, 'solo restores the ordinary complete roster');
+assert.deepEqual(runtime.frameInfo.rosterTanks, game.tanks, 'solo restores the ordinary complete roster');
+// (273) a hull off the field (modeActive false: a training scene's parked hull) is in neither list, nor the armour paint's
+// targets, and back in all of them once its cue brings it on (sim/hullField.ts)
+enemy.modeActive = false;
+runtime.update(true, false);
+assert.ok(!runtime.frameInfo.tanks.includes(enemy) && !runtime.frameInfo.rosterTanks.includes(enemy), 'a parked hull is in neither list');
+assert.ok(!overlayFrames.at(-1).targets.includes(enemy), 'nor the armour paint\'s targets');
+enemy.modeActive = true;
+runtime.update(true, false);
+assert.ok(runtime.frameInfo.tanks.includes(enemy) && runtime.frameInfo.rosterTanks.includes(enemy), 'back in both after its cue');
+delete enemy.modeActive;
 
 // A converted local player must use infected intel, not the original faction.
 player.team='bravo';
