@@ -1835,8 +1835,9 @@ const PLATE_FIT_MATCH_M = 0.002;
  * hitbox-fit-274 (the owner, 2026-11-18: "some hitboxes of tanks seem to be incorrect, because i can see hitmarks that are
  * floating in air ... some tanks like abrams x just have a floating hit box"): every authored layer lies on the drawn
  * build. tools/gen-combat-anatomy.mjs measures the finished plates (after the turret seat, so this runs after it too) and
- * lists each layer off the build: one overhanging its part is cropped to it, one standing off it is fitted onto it, and one
- * whose part is not drawn (a donor's bustle rack or rubber skirt the vehicle lacks) is dropped. Main plates are never
+ * lists each layer off the build: one overhanging its part is cropped to it, one standing off it is fitted onto it, one
+ * whose part is not drawn (a donor's bustle rack or rubber skirt the vehicle lacks) is dropped, and one whose part is drawn
+ * but not as one sheet (a skirt fused into the hull's solid block) is held where it stands. Main plates are never
  * listed (their frames' cells are hulled from the drawn shell).
  */
 export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPlateFitReceipt[] | undefined): void {
@@ -1855,7 +1856,8 @@ export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPl
     const key = owner === 'hull' ? 'hullPlates' : 'turretPlates';
     armor[key] = (armor[key] || []).flatMap((plate): ArmorPlate[] => {
       const receipt = listed.find((entry) => named(plate, entry));
-      if (!receipt) return [plate];
+      // a held layer stays where it stands: its part is drawn but not as one sheet (the census holds it to its ledger)
+      if (!receipt || receipt.action === 'hold') return [plate];
       if (receipt.action === 'drop' || !receipt.pieces?.length) return [];
       // one plate per piece (a folded part is fitted face by face), all under the layer's name: a round meets the piece it
       // strikes, and an ERA bank is still spent once by name (sim/damage.ts)

@@ -1,5 +1,5 @@
 {
- "about": "tools/hitbox-fit-census.mjs: per tank, its convex cells bridging a recess of the drawn shell deeper than 0.3 m (faces, deepest centre gap in m). Held, never grown, until the generator's slicing fits them.",
+ "about": "tools/hitbox-fit-census.mjs: per tank, its convex cells bridging a recess of the drawn shell deeper than 0.3 m (faces, deepest centre gap in m; until the generator's slicing fits them) and the layers it holds off the drawn build (held, \"frame name\": count; their parts are drawn, not as one sheet, and the model owes the sheet). Held, never grown.",
  "rows": {
   "ajax": {
    "faces": 1,
@@ -39,7 +39,11 @@
   },
   "challenger3_proto": {
    "faces": 3,
-   "deepestM": 0.466
+   "deepestM": 0.466,
+   "held": {
+    "hull skirt_R": 1,
+    "hull skirt_L": 1
+   }
   },
   "challenger3_td": {
    "faces": 3,
@@ -96,6 +100,20 @@
   "kf51_u": {
    "faces": 2,
    "deepestM": 0.342
+  },
+  "leo2a5": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "turret turret_chevron_R_lower_2": 1
+   }
+  },
+  "leo2a5dk": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "turret turret_chevron_R_lower_2": 1
+   }
   },
   "leo2a6": {
    "faces": 6,
@@ -193,6 +211,13 @@
    "faces": 2,
    "deepestM": 0.361
   },
+  "magach3": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "turret magach3_turret_era_R": 1
+   }
+  },
   "magach6b": {
    "faces": 1,
    "deepestM": 0.361
@@ -237,6 +262,13 @@
    "faces": 5,
    "deepestM": 0.442
   },
+  "t64bv": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_rubber_L": 1
+   }
+  },
   "t64bv_donbas": {
    "faces": 1,
    "deepestM": 0.331
@@ -255,15 +287,46 @@
   },
   "t72b3_bastion_m": {
    "faces": 2,
-   "deepestM": 0.34
+   "deepestM": 0.34,
+   "held": {
+    "hull skirt_rubber_L": 1
+   }
   },
   "t72b3_qilin": {
    "faces": 2,
-   "deepestM": 0.34
+   "deepestM": 0.34,
+   "held": {
+    "hull skirt_rubber_R": 1
+   }
+  },
+  "t72b3_sich": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_rubber_R": 1,
+    "hull skirt_rubber_L": 1
+   }
   },
   "t72b3_zhuque": {
    "faces": 2,
-   "deepestM": 0.34
+   "deepestM": 0.34,
+   "held": {
+    "hull skirt_rubber_R": 1
+   }
+  },
+  "t72b3_zubr": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_rubber_L": 1
+   }
+  },
+  "t72b3_zubr_ii": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_rubber_L": 1
+   }
   },
   "t72b3m_2016": {
    "faces": 8,
@@ -275,7 +338,11 @@
   },
   "t72b3m_bulat_m": {
    "faces": 7,
-   "deepestM": 0.458
+   "deepestM": 0.458,
+   "held": {
+    "hull skirt_rubber_L": 9,
+    "hull skirt_rubber_R": 8
+   }
   },
   "t72b3m_hetman": {
    "faces": 8,
@@ -317,6 +384,38 @@
    "faces": 1,
    "deepestM": 0.38
   },
+  "t80u_bars_m": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_L": 3,
+    "hull skirt_R": 2
+   }
+  },
+  "t80u_husarz": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_L": 3,
+    "hull skirt_R": 3
+   }
+  },
+  "t80u_yun": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_L": 3,
+    "hull skirt_R": 3
+   }
+  },
+  "t80u_zoria": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull skirt_L": 5,
+    "hull skirt_R": 4
+   }
+  },
   "t84": {
    "faces": 8,
    "deepestM": 0.458
@@ -356,6 +455,13 @@
   "t90am": {
    "faces": 3,
    "deepestM": 0.494
+  },
+  "t90m_proryv": {
+   "faces": 0,
+   "deepestM": 0,
+   "held": {
+    "hull slat_cage": 1
+   }
   },
   "t90ms_2011": {
    "faces": 4,

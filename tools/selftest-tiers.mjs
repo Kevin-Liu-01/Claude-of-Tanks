@@ -257,7 +257,7 @@ export const MANUAL_SUITES = Object.freeze({
       // tank:release:check runs it per id with --lane), moved here from tools/gate.mjs's fills step
       Object.freeze(['node', 'tools/interior-fill-exposure.mjs', '--all', '--check', '--jobs=4']),
       // hitbox-fit-274: every plate and housing the fleet traces lies on its drawn build; the cells' bridges held to the ledger
-      Object.freeze(['node', 'tools/hitbox-fit-census.mjs', '--all', '--ledger=docs/geometry-gate/hitbox-cell-bridges.json', '--check']),
+      Object.freeze(['node', 'tools/hitbox-fit-census.mjs', '--all', '--ledger=docs/geometry-gate/hitbox-fit-ledger.json', '--check']),
     ]) }),
   tanks: suite('per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane\'s ids)', [
     'src/game/missionAttachmentVisual.selftest.mjs',

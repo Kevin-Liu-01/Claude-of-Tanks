@@ -72,7 +72,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     cpu('module-hit-probe',selected),
     // hitbox-fit-274 (the owner, 2026-11-18: "some tanks like abrams x just have a floating hit box"): every plate and housing
     // the ids trace lies on their drawn builds; their convex cells' bridges held to the ledger (CPU only)
-    cpu('hitbox-fit-census',selected,'--ledger=docs/geometry-gate/hitbox-cell-bridges.json','--check'),
+    cpu('hitbox-fit-census',selected,'--ledger=docs/geometry-gate/hitbox-fit-ledger.json','--check'),
     // VEH-13 (2026-10-15): every spare-track run measured afresh, equal to its ledger row and clean
     cpu('spare-track-placement-check',selected,'--ledger=docs/geometry-gate/spare-track.json',...(gate?['--gate']:[])),
     // 2026-10-17 (the wheel-band lane): every opaque lit material each id draws holds its own vehicle registration (an

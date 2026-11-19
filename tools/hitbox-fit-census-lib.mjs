@@ -293,6 +293,9 @@ const FIT_SPLIT_DEPTH = 2;
  * share of the layer those part hits must cover (the fitted layer is then cropped to them). */
 const SHEET_SHARE = 0.3;
 const FIT_MIN_SHARE = 0.1;
+/** A drawn face a layer turns with lies on the frame's own main plates (the structural wall) within this (m). A layer that
+ * finds the wall and nothing else has no part drawn: a missing skirt beside the hull side. */
+const WALL_TOL_M = 0.05;
 /** The fitting grid's step (m); a large layer is sampled on at most about FIT_GRID_MAX points, a small one on at least
  * about FIT_GRID_MIN (a 15 cm ERA face is not judged on a dozen points). */
 const FIT_GRID_M = 0.04;
@@ -437,6 +440,7 @@ function fitLayer(verts, index, backing, T, support, centre, onBuild, depth = 0)
   const { points } = layerGrid(f);
   const rows = [];
   let hits = 0, sheets = 0;
+  const aligned = [];
   for (const p of points) {
     const at = fromUv(f, p);
     const near = index.nearest(at[0], at[1], at[2], FIT_REACH_M);
@@ -447,11 +451,12 @@ function fitLayer(verts, index, backing, T, support, centre, onBuild, depth = 0)
     // only a drawn face turning with the layer can be its part (an edge of a fender or a deck is not judged)
     if (Math.abs(dot(triangleNormal(T, near.o), f.n)) < FIT_FACING_MIN) continue;
     hits++;
+    aligned.push(near.point);
     if (!isLayerPart(index, backing, T, near.point, near.o, f.n)) continue;
     sheets++;
     rows.push([p[0], p[1], along]);
   }
-  if (depth === 0) fitLayer.aligned = hits / Math.max(1, points.length);
+  if (depth === 0) { fitLayer.aligned = hits / Math.max(1, points.length); fitLayer.alignedAt = aligned; }
   if (rows.length < Math.max(3, FIT_MIN_SHARE * points.length) || sheets < SHEET_SHARE * hits) return null;
   // a plane through the offsets, robust: a slope only along an axis the part's hits span at least half the layer (a
   // narrow drawn band must not tilt a tall layer), the rows beyond 2.5 median deviations dropped, then fitted again
@@ -512,13 +517,27 @@ function fitLayer(verts, index, backing, T, support, centre, onBuild, depth = 0)
   return pieces.length ? pieces : null;
 }
 
+/** The distance (m) to a frame's main plates, placed in the root frame: its structural wall as authored. */
+function mainWall(plates, offset) {
+  const M = [];
+  for (const plate of plates || []) {
+    if ((plate.kind || 'main') !== 'main' || !Array.isArray(plate.verts) || plate.verts.length < 3) continue;
+    const v = plate.verts.map((p) => [p[0] + offset[0], p[1] + offset[1], p[2] + offset[2]]);
+    for (let i = 1; i + 1 < v.length; i++) M.push(...v[0], ...v[i], ...v[i + 1]);
+  }
+  return M.length ? surfaceDistance(new Float32Array(M), FIT_REACH_M) : () => Infinity;
+}
+
 /**
  * The fit-or-drop receipts of one measured anatomy row (tools/gen-combat-anatomy.mjs): every non-main plate the armour
  * traces directly (spaced, external and ERA layers, authored against a donor's or the vehicle's own parts) is measured
  * against the drawn build's visible triangles (`visibleTriangles`, the root frame). A layer within FLOAT_TOL_M of the
  * build stays as authored. A floating layer whose part is drawn near it (a skirt, cage, wedge or screen standing up to
  * FIT_REACH_M off) is FITTED onto that part along its normal; one whose part is not drawn (a donor's bustle rack or rubber
- * skirt the vehicle lacks) is DROPPED. A layer is fitted only to a layer's part (isLayerPart: a sheet facing with it and
+ * skirt the vehicle lacks: nothing but the structural wall, the frame's main plates, turns with it) or that lies buried in
+ * the main shell is DROPPED; one whose part is drawn but is not one sheet (a skirt fused into the hull's solid block) is
+ * HELD where it stands: a visible skirt keeps its skirt value, the census holds it to its ledger, and the model owes the
+ * part as a separate sheet. A layer is fitted only to a layer's part (isLayerPart: a sheet facing with it and
  * backed by drawn stock), even one merged into the hull or turret mesh: never to the structural shell (a missing skirt
  * would land on the hull side and double its armour) nor to the running gear. The finalizer applies each receipt
  * (combatAnatomy.ts applyPlateFits).
@@ -529,7 +548,7 @@ export function plateFitReceipts(armor, T) {
   const distance = surfaceDistance(T);
   const hasTrackShape = (link) => !!link && (armor.trackShapes || []).some((track) => track.module === link);
   let support = null, stock = null, stockT = null, backing = null, inShell = null, centre = null;
-  const out = [];
+  const out = [], walls = {};
   for (const [owner, plates] of [['hull', armor.hullPlates], ['turret', armor.turretPlates]]) {
     const offset = owner === 'turret' ? (armor.turretPivot || [0, 0, 0]) : [0, 0, 0];
     for (const plate of plates || []) {
@@ -554,22 +573,30 @@ export function plateFitReceipts(armor, T) {
       }
       const receipt = { owner, name: plate.name, kind, at: plateKey(plate.verts), gapM: round3(fit.centreM),
         offShare: Math.round(fit.offShare * 100) / 100 };
-      fitLayer.aligned = 0;
+      fitLayer.aligned = 0; fitLayer.alignedAt = [];
       const cropped = cropLayer(placed, support);
       const onBuild = (piece) => !polygonFit(piece, distance, FLOAT_TOL_M).floating;
       const pieces = cropped && onBuild(cropped) ? [cropped]
         : (fitLayer(placed, stock, backing, stockT, support, centre, onBuild) || []).filter(onBuild);
-      const action = !pieces.length ? 'drop' : pieces[0] === cropped ? 'crop' : 'fit';
-      // why a layer is dropped: buried in the main shell (a round meets the cells first: no change in play), nothing drawn
-      // near it (the model lacks the part), or a drawn part it could not be fitted to
-      const why = action !== 'drop' ? null : (() => {
-        const { points } = polygonSamples(placed);
-        const buried = points.filter((p) => inShell(p, -0.01)).length / points.length;
-        // unfitted: drawn faces turning with the layer lie under FIT_MIN_SHARE of it or more, yet no fit holds
-        return buried >= 0.5 ? 'inShell' : (fitLayer.aligned ?? 0) >= FIT_MIN_SHARE ? 'unfitted' : 'notDrawn';
-      })();
-      out.push(action === 'drop' ? { ...receipt, action, why }
-        : { ...receipt, action, pieces: pieces.map((piece) => piece.map((p) => [round3(p[0] - offset[0]), round3(p[1] - offset[1]), round3(p[2] - offset[2])])) });
+      if (pieces.length) {
+        out.push({ ...receipt, action: pieces[0] === cropped ? 'crop' : 'fit',
+          pieces: pieces.map((piece) => piece.map((p) => [round3(p[0] - offset[0]), round3(p[1] - offset[1]), round3(p[2] - offset[2])])) });
+        continue;
+      }
+      // no fit: buried in the main shell (a round meets the cells first: dropped, no change in play); a part drawn where
+      // it stands that is not one sheet (a skirt modelled fused into the hull's solid block: HELD where it is, a visible
+      // skirt keeps its skirt value, and the model owes a separate sheet); or nothing drawn there but the structural wall
+      // (a donor's rubber skirt or bustle rack the vehicle lacks: dropped)
+      const { points } = polygonSamples(placed);
+      const buried = points.filter((p) => inShell(p, -0.01)).length / points.length;
+      if (buried >= 0.5) { out.push({ ...receipt, action: 'drop', why: 'inShell' }); continue; }
+      // held: drawn faces turning with the layer lie under FIT_MIN_SHARE of it or more (fitLayer's grid hits), most of
+      // them off the frame's main plates (a slat cage's bars are sparse: the share is of the layer, not of its part)
+      const wall = (walls[owner] ||= mainWall(owner === 'turret' ? armor.turretPlates : armor.hullPlates, offset));
+      const at = fitLayer.alignedAt, drawn = at.filter((p) => wall(p[0], p[1], p[2]) > WALL_TOL_M).length;
+      if (process.env.COT_FIT_DEBUG) console.error(`[fit] ${owner} ${plate.name}: aligned ${fitLayer.aligned.toFixed(3)} (${at.length}), off the wall ${drawn}`);
+      out.push(fitLayer.aligned >= FIT_MIN_SHARE && drawn * 2 > at.length
+        ? { ...receipt, action: 'hold', why: 'unfitted' } : { ...receipt, action: 'drop', why: 'notDrawn' });
     }
   }
   return out;
@@ -596,7 +623,8 @@ export async function hitboxFitCensus(id, options = {}) {
       fits = fits.map((fit) => {
         const plate = plates.find(([owner, p]) => owner === fit.owner && p.name === fit.name && plateKey(p.verts).join() === fit.at.join())?.[1];
         return { ...fit, areaM2: round3(plate ? polygonSamples(plate.verts).area : 0),
-          areaAfterM2: round3((fit.pieces || []).reduce((sum, piece) => sum + polygonSamples(piece).area, 0)),
+          areaAfterM2: round3(fit.action === 'hold' ? (plate ? polygonSamples(plate.verts).area : 0)
+            : (fit.pieces || []).reduce((sum, piece) => sum + polygonSamples(piece).area, 0)),
           // how far the fit moved it: its new vertices' largest distance off the authored plane
           moveM: plate && fit.pieces && fit.action === 'fit' ? (() => {
             const n = polygonNormal(plate.verts);
@@ -621,6 +649,15 @@ export async function hitboxFitCensus(id, options = {}) {
       rows.push({ ...primitive, verts: undefined, areaM2: +area.toFixed(4), centreM: +centreM.toFixed(3), minM: +minM.toFixed(3),
         maxM: +maxM.toFixed(3), offShare: +offShare.toFixed(2), floating,
         centre: points[0].map((v) => +v.toFixed(3)) });
+    }
+    // a floating layer the receipts hold (its part drawn, not as one sheet): named per frame and counted for the ledger
+    if (rows.some((row) => row.floating && row.type !== 'cell')) {
+      const holds = {};
+      for (const fit of plateFitReceipts(armor, T)) if (fit.action === 'hold') holds[`${fit.owner} ${fit.name}`] = (holds[`${fit.owner} ${fit.name}`] || 0) + 1;
+      for (const row of rows) {
+        const key = `${row.frame === 'gun' ? 'turret' : row.frame} ${row.name}`;
+        if (row.floating && row.type !== 'cell' && holds[key] > 0) { holds[key]--; row.held = true; }
+      }
     }
     rows.sort((a, b) => Number(b.floating) - Number(a.floating) || b.centreM - a.centreM);
     const floating = rows.filter((row) => row.floating);
