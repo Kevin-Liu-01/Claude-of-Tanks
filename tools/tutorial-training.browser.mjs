@@ -7,11 +7,11 @@
 // Shift (the scope button) takes the sight and CapsLock holds free look. Each step is shot, with how it moved on and how
 // long it took, to the evidence folder's report.json; --clip records the run.
 //
-// S5 to S9 (desktop): the keys drive to ring C, into bush D and back, H turns the armour colours off and on, the digits
-// load HE and APFSDS, the mouse lays the gun on a target's plate and clicks to fire, and A or D turn the hull against the
-// Sentry and hold it while its rounds land. A desktop walk aims in the game's cursor-aim mode (its fallback where the
-// pointer lock is refused: the gun lays on what lies under the cursor), so the cursor can rest on a plate the page
-// projects; --clip-s9 records S9's angle and volley alone (training-s9-volley.webm), --clip-s14 the fight (training-s14-fight.webm). --through=<step id> ends the walk
+// S5 to S14 (desktop): the keys drive to the rings, into bush D and behind the earthworks, H turns the armour colours off
+// and on, the digits load the rounds, the mouse lays the gun on a target's plate and clicks to fire, and A or D turn the
+// hull against the Sentry. A desktop walk aims as a player does, under the pointer lock: the mouse turns the view, and a
+// plate the page projects is brought to the screen's centre (the reticle) before a click. (The cursor-aim fallback the
+// walk used before never turns the view at all: Main's item from run 5.) --clip-s9 records S9's angle and volley alone (training-s9-volley.webm), --clip-s14 the fight (training-s14-fight.webm). --through=<step id> ends the walk
 // once that step has moved on (the chapter's later scenes not walked).
 //
 // What it reads from the page is only for steering: the player's pose and the step's marker (as a player reads the
@@ -78,10 +78,6 @@ try {
       localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
     } catch { /* none */ }
   });
-  // a desktop walk aims with the cursor: the lock refused outright, as an embedded pane refuses it (input.ts requestLock)
-  if (!touch) await page.evaluateOnNewDocument(() => {
-    Element.prototype.requestPointerLock = function refuse() { throw new DOMException('walk: cursor aim', 'SecurityError'); };
-  });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}${LOCALE === 'cn' ? '/cn' : ''}/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`,
     { waitUntil: 'domcontentloaded', timeout: 300_000 });
@@ -133,10 +129,62 @@ try {
   const locked = () => page.evaluate(() => !!document.pointerLockElement);
   async function takeLock() {
     if (touch || (await locked())) return;
-    if (await page.evaluate(() => !!window.__DEBUG?.input?.isCursorAim?.())) return; // cursor aim: a click would fire
-    await page.mouse.move(vp.width / 2, vp.height * 0.6);
-    await page.mouse.click(vp.width / 2, vp.height * 0.6);
+    // (the click that takes the lock is a press on the battle: it may fire a round; the walk counts it)
+    await page.mouse.move(vmx, vmy);
+    await page.mouse.click(vmx, vmy);
+    report.lockClicks = (report.lockClicks ?? 0) + 1;
+    await sleep(400);
+  }
+  // ── Pointer-lock aim (Main, 2026-11-18). Under the lock the game reads movementX/Y, so the mouse moves from a virtual
+  // position that walks one way per move, never out and back (out and back nets zero: the first desktop walk's turret
+  // stall). If Chrome clamps the synthetic position at the window's edge under the lock, the view stops answering: after
+  // two moves that turn nothing the walk re-centres (the lock released, the mouse home, the lock taken again).
+  const cx = vp.width / 2, cy = vp.height / 2;
+  let vmx = cx, vmy = cy, deadMoves = 0;
+  /** rad of view per px of mouse, per view (the sight's is the zoom's share), measured as the walk turns. */
+  const gainBy = { third: 0.0025, sight: 0.0004 };
+  const viewOf = async () => ((await sightMode()) ? 'sight' : 'third');
+  const camAim = () => page.evaluate(() => {
+    const camera = window.__DEBUG.camera;
+    const d = camera.getWorldDirection(camera.position.clone());
+    return { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: Math.atan2(d.x, d.z), pitch: Math.asin(Math.max(-1, Math.min(1, d.y))) };
+  });
+  async function recentre() {
+    await page.evaluate(() => document.exitPointerLock?.());
     await sleep(300);
+    vmx = cx; vmy = cy;
+    await page.mouse.move(vmx, vmy);
+    report.recentres = (report.recentres ?? 0) + 1;
+    await takeLock();
+  }
+  /** Turn the view by yaw (rad, + toward +x, the hull's left) and pitch (rad, + up), the gain learnt from the answer. */
+  async function turnView(yaw, pitch) {
+    if (!touch && !(await locked())) await takeLock();
+    const view = await viewOf();
+    const gain = gainBy[view];
+    // screen-right (movementX > 0) lowers the yaw (input.ts SIGN CONTRACT); mouse-down lowers the pitch (cameraRig.ts)
+    const dx = Math.max(-500, Math.min(500, -yaw / gain)), dy = Math.max(-250, Math.min(250, -pitch / gain));
+    const before = await camAim();
+    vmx += dx; vmy += dy;
+    await page.mouse.move(vmx, vmy, { steps: Math.max(2, Math.ceil(Math.hypot(dx, dy) / 80)) });
+    await sleep(350);
+    const after = await camAim();
+    const moved = wrap(after.yaw - before.yaw);
+    if (Math.abs(dx) > 30) {
+      if (Math.abs(moved) < 1e-5) { if (++deadMoves >= 2) { deadMoves = 0; await recentre(); } }
+      else { deadMoves = 0; gainBy[view] = 0.5 * gain + 0.5 * Math.abs(moved / dx); }
+    }
+  }
+  /** Bring a world point to the screen's centre (the reticle): within `tolPx` when on screen. Returns whether it is there. */
+  async function layOn(point, tolPx = 4) {
+    const cam = await camAim();
+    const dx = point.x - cam.x, dy = point.y - cam.y, dz = point.z - cam.z;
+    const yawErr = wrap(Math.atan2(dx, dz) - cam.yaw);
+    const pitchErr = Math.atan2(dy, Math.hypot(dx, dz)) - cam.pitch;
+    const at = await project(point);
+    if (!at.behind && Math.abs(at.x - cx) <= tolPx && Math.abs(at.y - cy) <= tolPx) return true;
+    await turnView(yawErr * 0.85, pitchErr * 0.85);
+    return false;
   }
   /** The step's marker on the screen: the guide's ring (null while it is off screen). */
   const markerOnScreen = () => page.evaluate(() => {
@@ -186,46 +234,25 @@ try {
   /** Turn the gun onto a marker: the mouse (a finger) by small moves, the sign learnt from the gun's answer once the
    *  turret has caught up with the sight (it traverses at its own rate behind the camera). */
   async function aimAt(marker, stepId) {
-    let sign = 1, worse = 0;
     const until = Date.now() + 60_000;
     while (Date.now() < until) {
       if ((await stepNow()) !== stepId) return true;
-      const p = await pose();
-      const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.gun);
-      if (Math.abs(err) < 0.06) { await sleep(300); continue; }
-      const dx = Math.max(-90, Math.min(90, -err * 180)) * sign;
-      if (!touch && !(await locked())) {
-        // cursor aim (no pointer lock): the gun lays on the ground under the cursor; rest it on the marker, or toward the
-        // side the marker lies on while it is off screen
-        const at = await markerOnScreen();
-        await page.mouse.move(at ? at.x : err > 0 ? vp.width * 0.1 : vp.width * 0.9, at ? at.y : vp.height * 0.55, { steps: 6 });
-        await sleep(800);
-        // (the cursor branch's record: the gun's error to the marker after the move, where the cursor rested, and what the
-        // game says of the parked hulls, so a stall here names its cause; the chapter walk of 2026-11-18 stalled here)
-        const after = await pose();
-        (report.aimLog ??= []).push({ cursor: at ? [Math.round(at.x), Math.round(at.y)] : 'edge',
-          err: Math.round(err * 1000) / 1000, after: Math.round(wrap(Math.atan2(marker.x - after.x, marker.z - after.z) - after.gun) * 1000) / 1000,
-          parked: await page.evaluate(() => {
-            const g = window.__DEBUG.game;
-            return g.tanks.filter((t) => t.modeActive === false).map((t) => ({ id: t.id, spotted: !!g.spotting?.isSpotted(t.id, g.player?.team ?? 'player'),
-              visible: t.visual?.root?.visible ?? null }));
-          }).catch(() => null) });
-        continue;
-      }
       if (touch) {
+        const p = await pose();
+        const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.gun);
+        if (Math.abs(err) < 0.06) { await sleep(300); continue; }
+        const dx = Math.max(-90, Math.min(90, -err * 180));
         const x = vp.width * 0.62, y = vp.height * 0.4;
         await page.touchscreen.touchStart(x, y); await page.touchscreen.touchMove(x + dx, y); await page.touchscreen.touchEnd();
-      } else {
-        await page.mouse.move(vp.width / 2 + dx, vp.height * 0.6, { steps: 4 });
-        await page.mouse.move(vp.width / 2, vp.height * 0.6, { steps: 1 });
+        await sleep(800);
+        continue;
       }
-      await sleep(800);
-      const after = await pose();
-      const errAfter = wrap(Math.atan2(marker.x - after.x, marker.z - after.z) - after.gun);
-      (report.aimLog ??= []).push({ err: Math.round(err * 1000) / 1000, after: Math.round(errAfter * 1000) / 1000, dx: Math.round(dx), sign,
-        locked: !touch && (await locked()) });
-      worse = Math.abs(errAfter) > Math.abs(err) + 0.02 ? worse + 1 : 0;
-      if (worse >= 2) { sign = -sign; worse = 0; }
+      // the view onto the marker's foot (the turret follows the view)
+      const ground = await page.evaluate(({ x, z }) => window.__DEBUG.game._groundSampler?.(x, z) ?? 0, marker);
+      const laid = await layOn({ x: marker.x, y: ground + 1, z: marker.z }, 8);
+      const p = await pose();
+      (report.aimLog ??= []).push({ laid, err: Math.round(wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.gun) * 1000) / 1000 });
+      if (laid) await sleep(400);
     }
     return false;
   }
@@ -300,68 +327,32 @@ try {
       await set('throttle', null);
     }
   }
-  /** Lay the gun on a point of an actor (its own frame) with the cursor and fire until the step moves on: the cursor rests
-   *  on the point, the gun traverses onto it and settles, then a click; the reload spaces the shots. */
+  /** Lay the gun on a point of an actor (its own frame) and fire until the step moves on: the point brought to the
+   *  reticle, the turret settled on it, then a click; the reload spaces the shots. */
   async function fireAt(actorId, local, stepId) {
-    const until = Date.now() + 120_000;
+    const until = Date.now() + 150_000;
     let shots = 0;
-    while (Date.now() < until) {
-      if ((await stepNow()) !== stepId) return shots;
-      const target = await actorPose(actorId);
-      if (!target) { await sleep(500); continue; }
-      const at = await project(actorPoint(target, local.along, local.up, local.across));
-      const p = await pose();
-      const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
-      // off the screen or behind the camera (the third walk: the hull faced away after the bush, the ×8 sight narrow):
-      // the cursor rests at the edge on the target's side and the view and gun come round, as the turret step does
-      const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
-      if (!inView) {
-        await bringRound(err);
-        (report.fireLog ??= []).push({ step: stepId, offScreen: true, err: Math.round(err * 1000) / 1000 });
-        continue;
+    while (Date.now() < until && (await stepNow()) === stepId) {
+      if (await fireAtOnce(actorId, local, stepId)) {
+        shots += 1;
+        if ((await waitChange(stepId, 7500)) !== undefined) return shots;
       }
-      await page.mouse.move(at.x, at.y, { steps: 4 });
-      if (Math.abs(err) > 0.03) { await sleep(400); continue; }
-      await sleep(1800); // the aim settles
-      const again = await project(actorPoint(await actorPose(actorId), local.along, local.up, local.across));
-      await page.mouse.move(again.x, again.y, { steps: 2 });
-      await page.mouse.down(); await sleep(60); await page.mouse.up();
-      shots += 1;
-      (report.shots ??= []).push({ step: stepId, actor: actorId, at: [Math.round(again.x), Math.round(again.y)] });
-      if ((await waitChange(stepId, 7500)) !== undefined) return shots;
     }
     return shots;
   }
-  /** A target out of view, brought round: out of the sight, then the hull pivots toward it (A or D, the camera follows the
-   *  hull) while it lies more than 0.5 rad off, else the cursor rests at the screen's edge on its side (the turret step's
-   *  way). The chapter walk of 2026-11-18 found an edge cursor alone lays the gun on a fixed point and stops (Target 2
-   *  132 degrees behind: the error held at -2.308 for 189 tries). */
-  async function bringRound(err) {
-    if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(500); }
-    if (Math.abs(err) > 0.5) {
-      // a bearing that grows turns toward +x, the hull's left (A)
-      const key = err > 0 ? 'KeyA' : 'KeyD';
-      await page.keyboard.down(key); await sleep(Math.min(1500, 250 + Math.abs(err) * 500)); await page.keyboard.up(key);
-      await sleep(300);
-      return;
-    }
-    await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 });
-    await sleep(600);
-  }
-  /** One shot at an actor's point: laid on it, settled, fired (fireAt's loop, once). */
+  /** One shot at an actor's point: laid at the reticle, the gun on it and settled, fired. */
   async function fireAtOnce(actorId, local, stepId) {
-    const until = Date.now() + 20_000;
+    const until = Date.now() + 30_000;
     while (Date.now() < until && (await stepNow()) === stepId) {
       const target = await actorPose(actorId);
       if (!target) return false;
-      const at = await project(actorPoint(target, local.along, local.up, local.across));
+      const point = actorPoint(target, local.along, local.up, local.across);
+      if (!(await layOn(point, 3))) { (report.fireLog ??= []).push({ step: stepId, laying: true }); continue; }
       const p = await pose();
       const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
-      const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
-      if (!inView) { await bringRound(err); continue; }
-      await page.mouse.move(at.x, at.y, { steps: 4 });
-      if (Math.abs(err) > 0.03) { await sleep(300); continue; }
-      await sleep(1200);
+      if (Math.abs(err) > 0.03) { await sleep(300); continue; } // the turret still traversing behind the view
+      await sleep(1200); // the aim settles
+      if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), 3))) continue;
       await page.mouse.down(); await sleep(60); await page.mouse.up();
       (report.shots ??= []).push({ step: stepId, actor: actorId });
       return true;
@@ -407,8 +398,7 @@ try {
       while (Date.now() < until && (await stepNow()) === now) {
         const me = await pose(), sentry = await actorPose(ACTOR.sentry);
         const head = headingFromLine(me, sentry);
-        const sp = await project({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z });
-        if (!sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        await layOn({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z }, 12); // the gun kept on it
         const want = Math.abs(head) < 42 ? (head >= 0 ? 'KeyA' : 'KeyD') : Math.abs(head) > 50 ? (head >= 0 ? 'KeyD' : 'KeyA') : null;
         if (want !== key) { if (key) await page.keyboard.up(key); if (want) await page.keyboard.down(want); key = want; }
         await sleep(100);
@@ -428,8 +418,7 @@ try {
       const until = Date.now() + 90_000;
       while (Date.now() < until && (await stepNow()) === now) {
         const them = await actorPose(shooter);
-        const sp = them ? await project({ x: them.x, y: them.y + 1.5, z: them.z }) : null;
-        if (sp && !sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        if (them) await layOn({ x: them.x, y: them.y + 1.5, z: them.z }, 12);
         await sleep(400);
       }
     }
@@ -492,8 +481,7 @@ try {
       const until = Date.now() + 90_000;
       while (Date.now() < until && (await stepNow()) === now) {
         const sentry = await actorPose(ACTOR.sentry);
-        const sp = await project({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z });
-        if (!sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        await layOn({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z }, 12);
         await sleep(400);
       }
       report.hitsTaken = await page.evaluate(() => window.__walkHits ?? []);
@@ -511,7 +499,9 @@ try {
     else if (id === 'training.freeLook') {
       how = 'held CapsLock';
       await page.keyboard.down('CapsLock');
-      await page.mouse.move(vp.width / 2 + 200, vp.height * 0.6, { steps: 6 });
+      // (one way, as every move under the lock)
+      vmx += 200;
+      await page.mouse.move(vmx, vmy, { steps: 6 });
       await sleep(1600);
       await page.keyboard.up('CapsLock');
     }
