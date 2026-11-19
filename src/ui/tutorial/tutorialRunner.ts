@@ -23,7 +23,7 @@
 import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
 import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
-import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
+import { TRAINING_LESSONS, chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
 import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
 import { headingFromLine } from './tutorialGuideMath.ts';
@@ -60,6 +60,40 @@ export interface TutorialPort {
   cue?(actor: string, on: boolean): void;
   /** 273: a ring reached: the training battle's checkpoint. */
   checkpoint?(x: number, z: number): void;
+  /** 273: the last training battle's run, as the debrief reads it; null without one. */
+  trainingRun?(): TrainingRunView | null;
+}
+
+/** 273: what the debrief reads of the training battle the player just finished (app/tutorialAccess.ts records it). */
+export interface TrainingRunView {
+  readonly seconds: number;
+  readonly shots: number;
+  readonly pens: number;
+  /** The rounds the player's armour held (ricochet, no penetration, spaced armour). */
+  readonly held: number;
+  readonly destroyed: number;
+  /** The steps it showed, in order. */
+  readonly shown: readonly string[];
+  /** Its last step passed. */
+  readonly complete: boolean;
+}
+
+/** The debrief's figures: the run's time (m:ss) and counts. */
+function trainingFigures(view: TrainingRunView | null): Record<string, string> {
+  if (!view) return {};
+  const seconds = Math.max(0, Math.round(view.seconds));
+  return { time: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`, shots: String(view.shots), pens: String(view.pens),
+    held: String(view.held), destroyed: String(view.destroyed) };
+}
+
+/** The debrief's checklist: a lesson is ticked once the run got past its proof (a later step showed), or finished. */
+export function trainingLessonTicks(view: TrainingRunView | null): Array<{ label: string; done: boolean }> {
+  const base = (id: string): string => id.replace(/(Touch|Pad)$/, '');
+  const shown = (view?.shown ?? []).map(base);
+  return TRAINING_LESSONS.map((lesson) => {
+    const at = shown.indexOf(lesson.proof);
+    return { label: lesson.label, done: !!view && (view.complete || (at >= 0 && at < shown.length - 1)) };
+  });
 }
 
 /** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
@@ -103,6 +137,8 @@ export interface RunOptions {
   readonly startAt?: number;
   /** The screen went away mid-chapter: the run closed at this step, nothing recorded. */
   onClose?(index: number, stepId: string): void;
+  /** A step has shown (273: the training battle's lessons are read from the steps it got to). */
+  onStep?(stepId: string): void;
 }
 
 const DRIVE_POLL_MS = 250;
@@ -133,15 +169,23 @@ const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, 
 function bodyHtml(step: TutorialStep, port: TutorialPort): string {
   const keys = step.keys ?? {};
   const marks = Object.fromEntries(Object.keys(keys).map((name, i) => [name, `\u0000${i}\u0000`]));
-  let html = esc(t(step.body, marks));
+  // (273) a step's figures from its run (the debrief), and its lines (the tour's three: tells, shows, lets)
+  const figures = step.params === 'trainingSummary' ? trainingFigures(port.trainingRun?.() ?? null) : {};
+  let html = esc(t(step.body, { ...figures, ...marks })).split('\n').join('<br>');
   Object.values(keys).forEach((action, i) => {
     const cap = port.keyLabel(action);
     html = html.split(`\u0000${i}\u0000`).join(`<kbd class="cot-c-kbd"${/[㐀-鿿]/.test(cap) ? ' data-cjk' : ''}>${esc(cap)}</kbd>`);
   });
+  // (273) the debrief's checklist: each lesson, ticked where the player got past it
+  const lessons = step.checklist === 'trainingLessons' ? trainingLessonTicks(port.trainingRun?.() ?? null) : [];
+  if (lessons.length) {
+    html += `<ul class="cot-tut-checklist">${lessons.map((lesson) =>
+      `<li${lesson.done ? ' data-done' : ''}><span class="cot-tut-tick" aria-hidden="true"></span>${esc(t(lesson.label))}</li>`).join('')}</ul>`;
+  }
   return html;
 }
 
-export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose }: RunOptions): TutorialRun {
+export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose, onStep }: RunOptions): TutorialRun {
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
   // the training battle's chapter takes a battle's keys and caps (its keys drive the tank, its pointer aims)
@@ -375,6 +419,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     clearStep();
     const step = steps[index]!;
     overlay.root.dataset.step = step.id;
+    onStep?.(step.id);
     const last = index === steps.length - 1;
     const acting = step.advance.on !== 'next';
     const pad = input === 'pad';
@@ -391,7 +436,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       target: resolver(step),
       dim: step.dim ?? true,
       place: step.card ?? 'middle',
-      nextLabel: t(last ? 'tutorial.done' : 'tutorial.next'),
+      nextLabel: t(step.nextLabel ?? (last ? 'tutorial.done' : 'tutorial.next')),
       backLabel: t('tutorial.back'),
       skipLabel: t('tutorial.skip'),
       canBack: index > 0,

@@ -123,6 +123,12 @@ export interface TutorialStep {
   readonly cue?: string;
   /** The body shown once the step's actor puts a round through the player (S9: the hull was square again). */
   readonly penBody?: string;
+  /** The body's figures from the run that led here (the debrief: the training battle's time, shots, hits, kills). */
+  readonly params?: 'trainingSummary';
+  /** A checklist under the body (the debrief: the training battle's lessons, each ticked or not). */
+  readonly checklist?: 'trainingLessons';
+  /** The Next button's words (a catalog key) where the step's own fit better ("Show me around"). */
+  readonly nextLabel?: string;
 }
 
 const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });
@@ -451,7 +457,44 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
     body: 'tutorial.training.complete.body', advance: NEXT },
 ];
 
+// ── After the training battle (273): the debrief on the Garage, then the five-stop tour and the close ───────────────
+/**
+ * The training battle's twelve lessons (storyboard §6.1), each proved by the step that ends it: the debrief's checklist
+ * ticks a lesson whose proof the player got past (a hand's variant of the step counts: Touch, Pad).
+ */
+export const TRAINING_LESSONS: ReadonlyArray<{ readonly id: string; readonly label: string; readonly proof: string }> = Object.freeze([
+  { id: 'drive', label: 'tutorial.lesson.drive', proof: 'training.driveB' },
+  { id: 'look', label: 'tutorial.lesson.look', proof: 'training.zoom' },
+  { id: 'spot', label: 'tutorial.lesson.spot', proof: 'training.peek' },
+  { id: 'armour', label: 'tutorial.lesson.armour', proof: 'training.armour' },
+  { id: 'fire', label: 'tutorial.lesson.fire', proof: 'training.fireBounce' },
+  { id: 'rounds', label: 'tutorial.lesson.rounds', proof: 'training.fireHE' },
+  { id: 'angle', label: 'tutorial.lesson.angle', proof: 'training.volley' },
+  { id: 'hullDown', label: 'tutorial.lesson.hullDown', proof: 'training.hullDownFire' },
+  { id: 'peek', label: 'tutorial.lesson.peek', proof: 'training.finish3' },
+  { id: 'kit', label: 'tutorial.lesson.kit', proof: 'training.kitRow' },
+  { id: 'flank', label: 'tutorial.lesson.flank', proof: 'training.finishBulwark' },
+  { id: 'fight', label: 'tutorial.lesson.fight', proof: 'training.fight' },
+].map((lesson) => Object.freeze(lesson)));
+
+/** A tour stop: its nav control lit on every layout (the desktop bar, the phone's menu, the tab bar). */
+const STOP = (id: string, target: readonly string[]): TutorialStep =>
+  ({ id: `tour.${id}`, chapter: 'tour', target, title: `tutorial.tour.${id}.title`, body: `tutorial.tour.${id}.body`, advance: NEXT });
+
+export const AFTER_TRAINING_STEPS: readonly TutorialStep[] = [
+  { id: 'debrief.summary', chapter: 'debrief', target: [], title: 'tutorial.debrief.title', body: 'tutorial.debrief.body',
+    params: 'trainingSummary', checklist: 'trainingLessons', nextLabel: 'tutorial.debrief.next', advance: NEXT },
+  STOP('gallery', ['[data-nav="gallery"]', '[data-mobile-nav="gallery"]', '[data-tabbar="gallery"]']),
+  STOP('techTree', ['[data-nav="techTree"]', '[data-mobile-nav="techTree"]', '[data-tabbar="more"]']),
+  STOP('studio', ['[data-nav="studio"]', '[data-mobile-nav="studio"]', '[data-tabbar="more"]']),
+  STOP('record', ['.cot-record-trigger', '[data-tabbar="record"]']),
+  STOP('docs', ['[data-nav="docs"]', '[data-mobile-nav="docs"]', '[data-tabbar="more"]']),
+  { id: 'tour.complete', chapter: 'tour', target: ['.cot-battle', '[data-tabbar="deploy"]'], title: 'tutorial.tour.complete.title',
+    body: 'tutorial.tour.complete.body', advance: NEXT },
+];
+
 /** A chapter's steps for this player's hands, in order. */
 export function chapterSteps(chapter: TutorialChapter, input: TutorialInput): TutorialStep[] {
-  return (chapter === 'training' ? TRAINING_STEPS : TUTORIAL_STEPS).filter((step) => step.chapter === chapter && (!step.when || (typeof step.when === 'string' ? step.when === input : step.when.includes(input))));
+  const list = chapter === 'training' ? TRAINING_STEPS : chapter === 'debrief' || chapter === 'tour' ? AFTER_TRAINING_STEPS : TUTORIAL_STEPS;
+  return list.filter((step) => step.chapter === chapter && (!step.when || (typeof step.when === 'string' ? step.when === input : step.when.includes(input))));
 }

@@ -94,6 +94,31 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
   const resumeAt: Partial<Record<TutorialChapter, number>> = {};
   /** The Garage closed on its Deploy step: the battle that follows decides (a tutorial battle is Deploy pressed). */
   let closedOnDeploy = false;
+  /** 273: the training battle's run as the debrief reads it (the one running, or the last finished), and whether its
+   *  debrief waits for the Garage. */
+  let training: { startedAt: number; endedAt: number | null; shots: number; pens: number; held: number; destroyed: number;
+    shown: string[]; complete: boolean } | null = null;
+  let debriefDue = false;
+  const HELD_KINDS = new Set(['ricochet', 'nonpen', 'spaced_absorb']);
+  const counting = (): boolean => !!training && run?.chapter === 'training';
+  deps.on('shell:fired', (payload) => { if (counting() && (payload as { isPlayer?: boolean } | null)?.isPlayer) training!.shots += 1; });
+  deps.on('shell:hit', (payload) => {
+    if (!counting()) return;
+    const hit = payload as { kind?: string; attackerId?: string; targetId?: string } | null;
+    const me = deps.playerId();
+    if (!me || !hit?.kind) return;
+    if (hit.attackerId === me && hit.kind === 'pen') training!.pens += 1;
+    if (hit.targetId === me && HELD_KINDS.has(hit.kind)) training!.held += 1;
+  });
+  deps.on('tank:destroyed', (payload) => {
+    const kill = payload as { id?: string; killerId?: string } | null;
+    const me = deps.playerId();
+    if (counting() && me && kill?.killerId === me && kill.id !== me) training!.destroyed += 1;
+  });
+  const trainingRun = (): import('../ui/tutorial/tutorialRunner.ts').TrainingRunView | null => (training ? {
+    seconds: ((training.endedAt ?? performance.now()) - training.startedAt) / 1000, shots: training.shots, pens: training.pens,
+    held: training.held, destroyed: training.destroyed, shown: training.shown, complete: training.complete,
+  } : null);
   /** Diagnostics' guide (debugGuide), apart from any run. */
   let debugLayer: import('../ui/tutorial/tutorialGuide.ts').TutorialGuideLayer | null = null;
 
@@ -109,7 +134,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
           screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue,
-          checkpoint: deps.checkpoint },
+          checkpoint: deps.checkpoint, trainingRun },
+        onStep: (stepId) => { if (chapter === 'training') training?.shown.push(stepId); },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);
@@ -122,7 +148,18 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
           setBodyFlag(BODY_FLAG, 'battle', false);
           // the training battle keeps no record yet (tutorialRecord.ts TutorialChapter): its Skip ends its own run only;
           // its last card ends the battle and brings the Garage back
-          if (chapter === 'training') { if (outcome !== 'skipped') deps.trainingComplete(); return; }
+          if (chapter === 'training') {
+            if (outcome !== 'skipped' && training) {
+              training.complete = true;
+              training.endedAt = performance.now();
+              debriefDue = true;
+              deps.trainingComplete();
+            }
+            return;
+          }
+          // the debrief's "Show me around" brings the tour (Skip ends both)
+          if (chapter === 'debrief') { debriefDue = false; if (outcome !== 'skipped') start('tour', deps.onGarage); return; }
+          if (chapter === 'tour') return;
           if (outcome === 'skipped') markTutorialChapter('all', 'skipped');
           else markTutorialChapter(chapter, 'done');
         },
@@ -149,6 +186,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
     if (run) stopRun();
     closedOnDeploy = false;
     delete resumeAt.training;
+    training = { startedAt: performance.now(), endedAt: null, shots: 0, pens: 0, held: 0, destroyed: 0, shown: [], complete: false };
+    debriefDue = false;
     start('training', deps.isTrainingBattle);
   }
   deps.on('battle:rollout', () => {
@@ -176,6 +215,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
     },
     garageShown(): void {
       if (!deps.onGarage()) return;
+      // 273: a training battle just finished: its debrief, then the tour (the debrief's Show me around)
+      if (debriefDue) { start('debrief', deps.onGarage); return; }
       if (tutorialChapterDue('garage')) {
         if (readTutorialRecord() === null) deps.preferEasyBots();
         start('garage', deps.onGarage);

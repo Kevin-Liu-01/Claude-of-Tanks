@@ -39,6 +39,12 @@
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
 .cot-tut-body{margin:0;font-size:var(--fs-14);line-height:1.5;color:var(--ink-2);}
 .cot-tut-body .cot-c-kbd{margin:0 1px;}
+/* (273) the debrief's checklist: the training battle's lessons, a tick where the player got past one, a hollow one where not */
+.cot-tut-checklist{margin:var(--s2) 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px var(--s3);}
+.cot-tut-checklist li{display:flex;align-items:center;gap:var(--s2);font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3);}
+.cot-tut-checklist li[data-done]{color:var(--ink-1);}
+.cot-tut-tick{flex:none;width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--line-2);}
+.cot-tut-checklist li[data-done] .cot-tut-tick{background:var(--accent);box-shadow:none;}
 .cot-tut-foot{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;}
 .cot-tut-foot .cot-tut-skip{margin-right:auto;}
 /* the kit's buttons set their own display: a hidden one (Back on a first step, Next on a press step) stays hidden */

@@ -50,7 +50,9 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 const { TRAINING_RULES } = await import('../src/sim/trainingGround.ts');
 const { chapterSteps } = await import('../src/ui/tutorial/tutorialSteps.ts');
-const allSteps = chapterSteps('training', touch ? 'touch' : 'keyboard');
+// the training chapter, then (its last card ends the battle) the debrief and the tour on the Garage
+const allSteps = [...chapterSteps('training', touch ? 'touch' : 'keyboard'), ...chapterSteps('debrief', touch ? 'touch' : 'keyboard'),
+  ...chapterSteps('tour', touch ? 'touch' : 'keyboard')];
 const THROUGH = arg('through', null);
 const stepsFor = THROUGH ? allSteps.slice(0, allSteps.findIndex((step) => step.id === THROUGH) + 1) : allSteps;
 assert.ok(stepsFor.length, `--through names a step of this walk's chapter (${THROUGH})`);
@@ -439,6 +441,17 @@ try {
     }
     else if (id === 'training.repair') { how = '4'; await page.keyboard.press('Digit4'); }
     else if (id === 'training.kitRow' || id === 'training.bulwarkFront' || id === 'training.complete') { how = 'next'; await page.keyboard.press('Enter'); }
+    // the debrief and the tour on the Garage: read, then Next (Enter, or the card's button on a phone)
+    else if (id.startsWith('debrief.') || id.startsWith('tour.')) {
+      how = 'next';
+      if (id === 'debrief.summary') report.debrief = await page.evaluate(() => ({
+        body: document.querySelector('.cot-tut.is-open .cot-tut-body')?.textContent ?? null,
+        ticked: document.querySelectorAll('.cot-tut-checklist li[data-done]').length,
+        lessons: document.querySelectorAll('.cot-tut-checklist li').length,
+        next: document.querySelector('.cot-tut-next')?.textContent ?? null,
+      }));
+      if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter');
+    }
     else if (id === 'training.smoke') { how = 'G'; await page.keyboard.press('KeyG'); }
     else if (id === 'training.toU' || id === 'training.flank') {
       how = 'drove'; await driveTo(TRAINING_POINTS[id === 'training.toU' ? 'ringU' : 'ringV'], now);
@@ -505,7 +518,20 @@ try {
       await sleep(1600);
       await page.keyboard.up('CapsLock');
     }
-    const next = await waitChange(now, id === 'training.rollout' ? 10_000 : id === 'training.volley' ? 5_000 : 30_000);
+    // (the last training card ends the battle: its chapter closes, the Garage comes back, then the debrief shows)
+    let next = await waitChange(now, id === 'training.rollout' ? 10_000 : id === 'training.volley' ? 5_000 : 30_000);
+    if (id === 'training.complete' && next === null) {
+      const until = Date.now() + 120_000;
+      while (Date.now() < until && (next = await stepNow()) !== 'debrief.summary') await sleep(500);
+      if (next !== 'debrief.summary') next = null;
+      report.garageReturn = { debriefShown: next === 'debrief.summary', phase: await page.evaluate(() => window.__DEBUG.game.phase).catch(() => null) };
+    }
+    // (the debrief's Show me around closes it and opens the tour: the next card after a moment without one)
+    if (id === 'debrief.summary' && next === null) {
+      const until = Date.now() + 30_000;
+      while (Date.now() < until && (next = await stepNow()) !== 'tour.gallery') await sleep(250);
+      if (next !== 'tour.gallery') next = null;
+    }
     if (clipS9 && id === 'training.volley') { await sleep(2500); await clipS9.stop().catch(() => {}); clipS9 = null; }
     if (clipS14 && id === 'training.fight') { await sleep(2500); await clipS14.stop().catch(() => {}); clipS14 = null; }
     const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== undefined,
