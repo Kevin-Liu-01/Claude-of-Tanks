@@ -301,7 +301,9 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     } else if (advance.on === 'module') {
       stepOff.push(port.on('module:state', (payload) => {
         const change = payload as { id?: string; module?: string; state?: string } | null;
-        if (change?.id === port.playerId?.() && change?.module === advance.module && change?.state === advance.state) go();
+        const modules: readonly string[] = typeof advance.module === 'string' ? [advance.module] : advance.module;
+        const states: readonly string[] = typeof advance.state === 'string' ? [advance.state] : advance.state;
+        if (change?.id === port.playerId?.() && modules.includes(change?.module ?? '') && states.includes(change?.state ?? '')) go();
       }));
     } else if (advance.on === 'spot') {
       stepOff.push(port.on('tank:spotted', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
@@ -327,6 +329,8 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
         since ||= performance.now();
         return performance.now() - since >= advance.holdS * 1000;
       });
+    } else if (advance.on === 'smoke') {
+      stepOff.push(port.on('auxiliary:smokeScreens', go));
     } else if (advance.on === 'peek') {
       // a cycle: the player fires while the actor sees it, then gets out of its sight (behind the wall)
       let fired = false, cycles = 0;

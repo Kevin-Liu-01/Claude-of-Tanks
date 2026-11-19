@@ -1007,7 +1007,7 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   if (slot >= 0) entity.input.shellSlot = slot;
   const pos = target.state.pos;
   const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw };
-  trainingVolleyAim(hull, actor.volley, entity.input.aimPoint);
+  trainingVolleyAim(hull, actor.volley, entity.input.aimPoint, entity.state.pos);
   // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
   const ground = game._groundSampler;
   const seen = !actor.volley.whenSeen || !ground ? true : (() => {

@@ -31,8 +31,9 @@ const DEG = Math.PI / 180;
 export interface TrainingVolley {
   readonly shellType: string;
   readonly firstS: number;
-  /** Where on the loaner's hull it aims (m): along the hull from its centre, and up from its origin. */
-  readonly aim: { readonly alongM: number; readonly upM: number };
+  /** Where on the loaner's hull it aims (m): along the hull from its centre, up from its origin, and across it to the side
+   *  that faces the shooter (S12: the running gear). */
+  readonly aim: { readonly alongM: number; readonly upM: number; readonly acrossM?: number };
   /** Its trigger only while it sees the player's hull or turret over the ground (sim/trainingSight.ts): S11's Sentry 3
    *  fires at a tank that peeks out, never through the wall it hides behind. */
   readonly whenSeen?: boolean;
@@ -151,6 +152,11 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // it: out past the wall's end, never behind it. 127 m from the cover spot.
     Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
+    // S12's Sentry 4: a T-55A parked until the kit scene, firing HE at the running gear on the side the player shows it, each
+    // time its gun loads, until a track is hit (the step stands it down). 77 m from ring Q, the peek spot the player stops
+    // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2).
+    Object.freeze({ key: 'sentry4', specId: 't55a', x: -260, z: -10, faces: 'ringQ', presentDeg: 0, entersOnCue: true,
+      volley: Object.freeze({ shellType: 'HE', firstS: 2.5, aim: Object.freeze({ alongM: 0, upM: 0.45, acrossM: 1.55 }) }) }),
   ]),
   // S10's berm: 1.9 m high across the line to Sentry 2, a gentle back slope (7 m) the player creeps up, a 2 m crest and a
   // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (sim/trainingSight.ts EXPOSURE_POINTS)
@@ -199,11 +205,16 @@ export function trainingActor(rules: TrainingRules, key: string): TrainingActorR
 /** The point a scripted shooter lays its gun on: the player's hull (its origin and heading) and the volley's aim. Pure;
  *  `out` is written and returned. */
 export function trainingVolleyAim(hull: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number },
-  volley: TrainingVolley, out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  volley: TrainingVolley, out: { x: number; y: number; z: number },
+  shooter: { readonly x: number; readonly z: number } | null = null): { x: number; y: number; z: number } {
   const along = volley.aim.alongM;
-  out.x = hull.x + Math.sin(hull.yaw) * along;
+  // across: toward the shooter's side of the hull (its left is +x at a yaw of 0)
+  const lx = Math.cos(hull.yaw), lz = -Math.sin(hull.yaw);
+  const side = shooter && (shooter.x - hull.x) * lx + (shooter.z - hull.z) * lz < 0 ? -1 : 1;
+  const across = (volley.aim.acrossM ?? 0) * side;
+  out.x = hull.x + Math.sin(hull.yaw) * along + lx * across;
   out.y = hull.y + volley.aim.upM;
-  out.z = hull.z + Math.cos(hull.yaw) * along;
+  out.z = hull.z + Math.cos(hull.yaw) * along + lz * across;
   return out;
 }
 

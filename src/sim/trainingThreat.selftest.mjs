@@ -19,7 +19,9 @@
 //     hull; the steps drive to G, hold hull down, take Sentry 2's rounds and fire back;
 //  6. S11, peek, shoot, hide: the wall is stamped between ring P and Sentry 3; from Sentry 3 a tank at P is hidden whole and
 //     one at ring Q seen; Sentry 3 stands parked until its cue and never fires at what it cannot see; the steps take cover,
-//     count two peek cycles and finish it.
+//     count two peek cycles and finish it;
+//  7. S12, the kit: Sentry 4 (parked until its cue) lays HE on the running gear on the side the hull shows it, from a
+//     line to ring Q; the step waits for either track hit and stands it down, then the repair kit, the kit row and smoke.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -162,7 +164,7 @@ for (const yaw of [facing, along]) {
   assert.ok(atQ.hull && atQ.turret, `out at ring Q, seen (yaw ${(yaw / DEG).toFixed(0)})`);
 }
 assert.ok(trainingExposure(s3eye, { x: P.x, y: 0, z: P.z, yaw: facing }, () => 0).hull, 'without the wall, ring P is in its sight');
-const s11 = ids.slice(ids.indexOf('training.toP'));
+const s11 = ids.slice(ids.indexOf('training.toP'), ids.indexOf('training.toKit'));
 assert.equal(new Set(ids).size, ids.length, 'every training step id is unique');
 assert.deepEqual(s11, ['training.toP', 'training.peekShoot', 'training.finish3'], 'S11: into cover, peek twice, finish it');
 const peek = TRAINING_STEPS.find((step) => step.id === 'training.peekShoot');
@@ -172,4 +174,19 @@ assert.ok(peek.guide.reload && peek.penBody, 'with its reload ring, and a re-pro
 assert.match(state, /if \(!isPlayer && game\.ruleset\.training\) parkTrainingActor\(game, entity\);/, 'the setup parks a hull that enters on its cue');
 assert.match(state, /if \(entity && entity\.modeActive === false\) \{\s*entity\.modeActive = true;/, 'its first cue brings it in');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued)`);
+// 7. S12.
+const sentry4 = trainingActor(TRAINING_RULES, 'sentry4');
+assert.ok(sentry4.entersOnCue && sentry4.volley.shellType === 'HE', 'Sentry 4: parked, firing HE');
+assert.ok(TANK_SPECS[sentry4.specId].gun.shells.some((round) => round.type === 'HE'), 'from its own rack');
+const Qpose = { x: Q.x, y: 0, z: Q.z, yaw: 0 };
+const leftAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x + 50, z: Q.z });
+const rightAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x - 50, z: Q.z });
+assert.ok(leftAim.x - Q.x > 1.4 && Q.x - rightAim.x > 1.4 && Math.abs(leftAim.y - 0.45) < 1e-9, 'it aims low on the side the hull shows it');
+const s12 = ids.slice(ids.indexOf('training.toKit')).filter((id) => !id.endsWith('Touch'));
+assert.deepEqual(s12, ['training.toKit', 'training.trackHit', 'training.repair', 'training.kitRow', 'training.smoke'], 'S12 (keyboard)');
+const trackHit = TRAINING_STEPS.find((step) => step.id === 'training.trackHit');
+assert.equal(trackHit.cue, 'sentry4', 'Sentry 4 fires only while the track step shows');
+assert.deepEqual({ ...trackHit.advance, module: [...trackHit.advance.module], state: [...trackHit.advance.state] },
+  { on: 'module', module: ['trackL', 'trackR'], state: ['yellow', 'red'] }, 'either track, damaged or broken');
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear)`);

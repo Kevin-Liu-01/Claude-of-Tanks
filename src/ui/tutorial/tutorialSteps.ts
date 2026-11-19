@@ -19,6 +19,8 @@ import { TRAINING_POINTS, TRAINING_RULES, trainingActor } from '../../sim/traini
 export type TutorialInput = 'keyboard' | 'touch' | 'pad';
 
 /** What moves a step on. */
+type ModuleState = 'ok' | 'yellow' | 'red';
+
 export type TutorialAdvance =
   | { readonly on: 'next' }
   /** A press on the lit control itself (the Garage's Deploy). */
@@ -47,8 +49,10 @@ export type TutorialAdvance =
   | { readonly on: 'hit'; readonly kinds: readonly string[]; readonly by: 'player' | 'actor'; readonly actor?: string; readonly count?: number }
   /** The player used this consumable (sim/consumableRules.ts id). */
   | { readonly on: 'consumable'; readonly item: string }
-  /** A module of the player's tank reaches this state (module:state). */
-  | { readonly on: 'module'; readonly module: string; readonly state: 'ok' | 'yellow' | 'red' }
+  /** A module of the player's tank reaches one of these states (module:state): one module, or any of several. */
+  | { readonly on: 'module'; readonly module: string | readonly string[]; readonly state: ModuleState | readonly ModuleState[] }
+  /** The player popped smoke (auxiliary:smokeScreens: in a training battle only the player can). */
+  | { readonly on: 'smoke' }
   /** The player's side spotted this actor. */
   | { readonly on: 'spot'; readonly actor: string }
   /** This actor is destroyed. */
@@ -218,6 +222,7 @@ const TARGET2 = trainingActor(TRAINING_RULES, 'target2')!.specId;
 const SENTRY = trainingActor(TRAINING_RULES, 'sentry')!.specId;
 const SENTRY2 = trainingActor(TRAINING_RULES, 'sentry2')!.specId;
 const SENTRY3 = trainingActor(TRAINING_RULES, 'sentry3')!.specId;
+const SENTRY4 = trainingActor(TRAINING_RULES, 'sentry4')!.specId;
 /** S9's window: the hull turned between these from the line to the Sentry, where its HEAT on the loaner's front plate
  *  reads red (32 to 62 degrees at ring F, sim/trainingThreat.ts; tutorialSteps.selftest.mjs holds it). */
 export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
@@ -394,6 +399,28 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.finish3', chapter: 'training', target: [], ...PLAY, cue: 'sentry3', behindS: 90,
     title: 'tutorial.training.finish3.title', body: 'tutorial.training.finish3.body', advance: { on: 'destroy', actor: SENTRY3 },
     guide: { actor: { id: SENTRY3, label: 'tutorial.training.actor.sentry3' }, reload: { id: SENTRY3 } } },
+  // S12: the kit. Out at ring Q, Sentry 4 (parked until now) fires HE at the running gear until a track is hit; the repair
+  // kit mends it, the card reads the kit row, and smoke is popped once.
+  { id: 'training.toKit', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.toKit.title', body: 'tutorial.training.toKit.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringQ, 'tutorial.training.marker.q'), path: true } },
+  { id: 'training.trackHit', chapter: 'training', target: [], ...PLAY, cue: 'sentry4',
+    title: 'tutorial.training.trackHit.title', body: 'tutorial.training.trackHit.body',
+    advance: { on: 'module', module: ['trackL', 'trackR'], state: ['yellow', 'red'] },
+    guide: { actor: { id: SENTRY4, label: 'tutorial.training.actor.sentry4' } } },
+  { id: 'training.repair', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+    title: 'tutorial.training.repair.title', body: 'tutorial.training.repair.body', advance: { on: 'consumable', item: 'repair' },
+    keys: { repair: 'consumable1' }, guide: { hud: ['.cot-cons'] } },
+  { id: 'training.repairTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.repair.title', body: 'tutorial.training.repair.bodyTouch', advance: { on: 'consumable', item: 'repair' },
+    guide: { hud: ['.cot-cons'] } },
+  { id: 'training.kitRow', chapter: 'training', target: ['.cot-cons'], title: 'tutorial.training.kitRow.title',
+    body: 'tutorial.training.kitRow.body', advance: NEXT },
+  // (a pad has no smoke button until the controller-parity item binds one: its players meet smoke there)
+  { id: 'training.smoke', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+    title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.body', advance: { on: 'smoke' }, keys: { smoke: 'smoke' } },
+  { id: 'training.smokeTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.bodyTouch', advance: { on: 'smoke' } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */
