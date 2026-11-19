@@ -318,6 +318,26 @@ try {
     }
     return shots;
   }
+  /** One shot at an actor's point: laid on it, settled, fired (fireAt's loop, once). */
+  async function fireAtOnce(actorId, local, stepId) {
+    const until = Date.now() + 20_000;
+    while (Date.now() < until && (await stepNow()) === stepId) {
+      const target = await actorPose(actorId);
+      if (!target) return false;
+      const at = await project(actorPoint(target, local.along, local.up, local.across));
+      const p = await pose();
+      const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
+      const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
+      if (!inView) { await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 }); await sleep(500); continue; }
+      await page.mouse.move(at.x, at.y, { steps: 4 });
+      if (Math.abs(err) > 0.03) { await sleep(300); continue; }
+      await sleep(1200);
+      await page.mouse.down(); await sleep(60); await page.mouse.up();
+      (report.shots ??= []).push({ step: stepId, actor: actorId });
+      return true;
+    }
+    return false;
+  }
   const TARGET_POINTS = { green: { along: 3.0, up: 0.9, across: 0 }, red: { along: 1.4, up: 2.1, across: 0 }, hull: { along: 0, up: 1.2, across: 0 } };
   const ACTOR = Object.fromEntries(TRAINING_RULES.actors.map((actor) => [actor.key, actor.specId]));
   const { TRAINING_POINTS } = await import('../src/sim/trainingGround.ts');
@@ -365,6 +385,75 @@ try {
       }
       if (key) await page.keyboard.up(key);
       report.angleAt = Math.round(Math.abs(headingFromLine(await pose(), await actorPose(ACTOR.sentry))));
+    }
+    // S10 to S14
+    else if (id === 'training.toG' || id === 'training.toP' || id === 'training.toKit') {
+      how = 'drove in, stopped';
+      await driveInto(TRAINING_POINTS[{ 'training.toG': 'ringG', 'training.toP': 'ringP', 'training.toKit': 'ringQ' }[id]], now);
+    }
+    else if (id === 'training.hullDown' || id === 'training.hullDownFire' || id === 'training.trackHit') {
+      // hold still where the scene put the hull, the cursor on the shooter (the gun kept on it)
+      how = 'held still';
+      const shooter = { 'training.hullDown': ACTOR.sentry2, 'training.hullDownFire': ACTOR.sentry2, 'training.trackHit': ACTOR.sentry4 }[id];
+      const until = Date.now() + 90_000;
+      while (Date.now() < until && (await stepNow()) === now) {
+        const them = await actorPose(shooter);
+        const sp = them ? await project({ x: them.x, y: them.y + 1.5, z: them.z }) : null;
+        if (sp && !sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        await sleep(400);
+      }
+    }
+    else if (id === 'training.fireBack') { how = 'fired at Sentry 2 over the berm'; how += ` (${await fireAt(ACTOR.sentry2, { along: 0.6, up: 2.1, across: 0 }, now)} shots)`; }
+    else if (id === 'training.peekShoot' || id === 'training.finish3') {
+      // out to ring Q, one shot at Sentry 3, back behind the wall at ring P, until the step moves on
+      how = 'peeked, fired, hid';
+      let rounds = 0;
+      while ((await stepNow()) === now && rounds < 8) {
+        await driveInto(TRAINING_POINTS.ringQ, now);
+        if ((await stepNow()) !== now) break;
+        await fireAtOnce(ACTOR.sentry3, TARGET_POINTS.hull, now);
+        await driveInto(TRAINING_POINTS.ringP, now);
+        await sleep(1500);
+        rounds += 1;
+      }
+      how += ` (${rounds} rounds)`;
+    }
+    else if (id === 'training.repair') { how = '4'; await page.keyboard.press('Digit4'); }
+    else if (id === 'training.kitRow' || id === 'training.bulwarkFront' || id === 'training.complete') { how = 'next'; await page.keyboard.press('Enter'); }
+    else if (id === 'training.smoke') { how = 'G'; await page.keyboard.press('KeyG'); }
+    else if (id === 'training.toU' || id === 'training.flank') {
+      how = 'drove'; await driveTo(TRAINING_POINTS[id === 'training.toU' ? 'ringU' : 'ringV'], now);
+    }
+    else if (id === 'training.flankFire' || id === 'training.finishBulwark') {
+      how = 'fired into its side'; how += ` (${await fireAt(ACTOR.bulwark, TARGET_POINTS.hull, now)} shots)`;
+    }
+    else if (id === 'training.fight') {
+      // the nearest enemy bot still up: drive toward it to 150 m, then lay on it and fire, until every one is down
+      how = 'fought';
+      const enemies = TRAINING_RULES.skirmish.enemies.map((bot) => bot.specId);
+      const until = Date.now() + 8 * 60_000;
+      while (Date.now() < until && (await stepNow()) === now) {
+        const me = await pose();
+        const alive = await page.evaluate((ids) => ids.map((id) => {
+          const t = window.__DEBUG.game.tankById.get(id);
+          return t && !t.combat.destroyed && t.modeActive !== false ? { id, x: t.state.pos.x, z: t.state.pos.z } : null;
+        }).filter(Boolean), enemies);
+        if (!alive.length) { await sleep(500); continue; }
+        alive.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z));
+        const target = alive[0];
+        if (Math.hypot(target.x - me.x, target.z - me.z) > 150) {
+          await page.keyboard.down('KeyW');
+          const err = wrap(Math.atan2(target.x - me.x, target.z - me.z) - me.yaw);
+          const key = err > 0.1 ? 'KeyA' : err < -0.1 ? 'KeyD' : null;
+          if (key) await page.keyboard.down(key);
+          await sleep(500);
+          if (key) await page.keyboard.up(key);
+          await page.keyboard.up('KeyW');
+          continue;
+        }
+        await fireAtOnce(target.id, TARGET_POINTS.hull, now);
+      }
+      report.fightLeft = await page.evaluate((ids) => ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat.destroyed), enemies);
     }
     else if (id === 'training.volley') {
       // hold the angle, the cursor on the Sentry, while its rounds land
