@@ -228,6 +228,9 @@ interface AuthoritativeAIController {
   /** The bot's way for a migration keyframe, and a migrated host's brain taking it up (game/ai.ts; gaps 274, G3). */
   captureDrive?(): BotDrive;
   takeDrive?(drive: BotDrive, sinceS?: number, life?: boolean): void;
+  /** A down bot's brain streams alone, for a migration keyframe and a migrated host's brain (gaps 274 fix-up r2). */
+  captureStreams?(): BotDrive['streams'];
+  takeStreams?(streams: BotDrive['streams']): void;
 }
 
 export interface AuthoritativeEntity {

@@ -493,11 +493,25 @@ interface WaveCheckpoint {
     begunWave?: number;
     /** The trickle's arrivals the old host made after this checkpoint's capture, whose revives the resume replayed, with
      *  the mode time each was told at (gaps 274 fix-up r1; migrationState.ts checkpointAfterRevives); never in a captured
-     *  checkpoint. The restore takes each up as made (trickleHorde): out of the queue, the trickle's clock from it. */
-    trickled?: [string, number][] };
+     *  checkpoint. The restore takes each up as made (trickleHorde): out of the queue, the trickle's clock from it, and
+     *  (fix-up r2) its draws from the arrival points' stream. */
+    trickled?: [string, number][];
+    /** A wave the old host cleared after this checkpoint's capture, as the elected seat's newest frame shows it (gaps 274
+     *  fix-up r2; migrationState.ts checkpointAtNewestFrame): the frame's mode time and the lull it shows left then (0:
+     *  the frame is the clear's own step); never in a captured checkpoint. The restore takes the clear up as made
+     *  (clearHordeWave): the lull from it, the cache's draws, nothing repaired or announced again. */
+    cleared?: [atS: number, leftS: number] };
   line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
-    counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
+    /** `launched` (gaps 274 fix-up r2; migrationState.ts checkpointAtNewestFrame): the elected seat's newest frame is past
+     *  `atS`, so the old host launched it (stepCounterAttack) and announced it; captured again only by a migrated host
+     *  that has not yet picked the squad (a keyframe sealed in its resume hold). */
+    counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number; launched?: boolean } | null; fresh: string[];
     nextReinforceAtS: number | null; allyDownAt: [string, number][];
+    /** The reinforce trickle's arrivals the old host made after this checkpoint's capture, whose revives the resume
+     *  replayed, with the mode time each was told at (gaps 274 fix-up r2; migrationState.ts checkpointAfterRevives); never
+     *  in a captured checkpoint. The restore takes each up as made (stepReinforceTrickle): the trickle's clock from it and
+     *  its rear slot's draw from the arrival points' stream. */
+    reinforced?: [string, number][];
     zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
     /** The attack's plan per bot (round 8 Y2 fix-up r3: a migrated host staged every attacker afresh); absent if none. */
     attack?: [string, AttackStage][];
@@ -1098,7 +1112,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * draw, so the draw is the old host's (the carried stream); a drawn arrival already on the field (its revive replayed:
    * migrationState.ts checkpointAfterRevives) stays where it stands, at the advance's pace, its slot's draws taken from
    * the arrival points' stream as the old host's placing took them; one the seat holds no newer row of (an arrival
-   * hidden from it, the line guard's usual case) is due at once and rises on the first step on its slot (lineArrivalDue).
+   * hidden from it, the line guard's usual case) is due at once and rises on the first step on its slot (lineArrivalDue)
+   * with the draws its slot took here, in slot order with the rest (fix-up r2: it drew them on the first step, in entity
+   * order, so each hidden arrival took another slot's depth and jitter, and the stream stood behind a seen one's).
    */
   const reinforceLine = (targetCount: number, healthScale: number, risen: ReadonlySet<string> | null = null): void => {
     const living = hordeEnemies.filter((enemy) => enemy.modeActive !== false && !enemy.combat.destroyed && !risen?.has(enemy.id));
@@ -1112,10 +1128,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const arrivals = pool.slice(0, Math.max(0, Math.min(pool.length, targetCount - living.length)));
     arrivals.forEach((enemy, slot) => {
       if (!risen) { reviveAtSpawn(enemy, healthScale, lineSlot(enemy, slot, arrivals.length, false)); return; }
-      if (enemy.modeLife === 'alive') { lineSlotDraws(false); stampLifePace(enemy); return; }
+      const drawn = lineSlotDraws(false);
+      if (enemy.modeLife === 'alive') { stampLifePace(enemy); return; }
       deactivate(enemy);
       respawnAt.set(enemy.id, { atS: placementTimeS, healthScale });
-      lineArrivalDue.set(enemy.id, [slot, arrivals.length]);
+      lineArrivalDue.set(enemy.id, [slot, arrivals.length, drawn]);
     });
     lastWaveIds = new Set([...living, ...arrivals].map((entity) => entity.id));
     freshDefenders = arrivals.map((entity) => entity.id);
@@ -1255,11 +1272,23 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     return at;
   };
+  /**
+   * The draws a ring arrival took from the arrival points' stream when its first candidate stood clear (arrivalPoint: two
+   * a candidate, and the sector due next moves on): a migrated host taking up an arrival the old host placed after the
+   * keyframe (gaps 274 fix-up r2), so the stream stands where the old host's does and the next arrival lands where the
+   * old host's did. The seat sees where the hull stands, not which candidate it was: a later candidate's draws, or a
+   * refused ring's (the base arrival), are not known, and the stream is then the new host's own.
+   */
+  const arrivalDraws = (rules: ArrivalRules): void => {
+    spawnRng(); spawnRng();
+    spawnSector = (spawnSector + 1) % Math.max(1, Math.floor(rules.spawnSectors));
+  };
   /** One hostile arrives (see above); `risen`: a migrated host taking up an arrival the old host made after the keyframe,
-   *  its revive replayed (trickleHorde), which keeps the arrival's bookkeeping (the stall, a straggler's slot) and places
-   *  nothing. */
+   *  its revive replayed (trickleHorde), which keeps the arrival's bookkeeping (the stall, a straggler's slot) and its
+   *  ring's draws (arrivalDraws) and places nothing. */
   const arriveHostile = (entity: Entity, risen = false): boolean => {
     const straggler = strandedPending > 0;
+    if (risen) arrivalDraws(straggler ? strandedArrival : hordeRules);
     const at = risen ? null : hostileArrival(entity, straggler);
     if (!risen && !at) { arrivalStalledAtS ??= placementTimeS; return false; }
     arrivalStalledAtS = null;
@@ -1298,7 +1327,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * of (an arrival hidden from it) is due again at once, an arrival the first step places as it places a refused one;
    * nothing is announced again and no ally stands up twice. Before, the restored host found the lull run out on its
    * first step and began the wave a second time: every arrival revived again on new ring points, other hulls drawn.
-   * A kept arrival drives at the begun wave's pace (stampLifePace), as the old host's revive stamped it.
+   * A kept arrival drives at the begun wave's pace (stampLifePace), as the old host's revive stamped it, and (fix-up r2)
+   * its ring's draws are taken from the arrival points' stream (arrivalDraws), so the next arrival lands where the old
+   * host's did (they placed nothing, and every later arrival took the point the old host gave the one before it).
    */
   const startHordeWave = (begun = false): void => {
     strandedPending = 0;
@@ -1323,7 +1354,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     for (const entity of hordeEnemies) {
       if (!active.has(entity)) continue;
       if (begun) {
-        if (entity.modeLife === 'alive') { stampLifePace(entity); continue; }
+        if (entity.modeLife === 'alive') { arrivalDraws(hordeRules); stampLifePace(entity); continue; }
         deactivate(entity);
         respawnAt.set(entity.id, { atS: placementTimeS, healthScale: hordeHealthScale });
         continue;
@@ -1365,7 +1396,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (pick && arriveHostile(pick, risen !== null)) hordeQueued--;
   };
 
-  const spawnPickup = (): void => {
+  /** A cache drops (the Horde's at a wave's clear, Mars's on its clock); `made`: a migrated host taking up the clear
+   *  the old host made (clearHordeWave), which places the old host's cache from the same draws and announces nothing. */
+  const spawnPickup = (made = false): void => {
     if (!state.horde && id !== 'mars') return;
     // the draw is kept under unlimited rounds (every cache a repair), so the seeded stream does not shift
     const healChance = state.horde?.healChance ?? cacheHealChance(ruleset, wave);
@@ -1408,7 +1441,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     next.active = true;
     next.spawnedWave = wave;
     if (!pickup) pickups.push(next);
-    emit('mode_pickup_spawned', { ...next });
+    if (!made) emit('mode_pickup_spawned', { ...next });
   };
 
   if (id === 'endless_horde') startHordeWave();
@@ -1430,12 +1463,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const assaultRules = ruleset.assault ?? matchRulesetFor('frontline_assault').assault!;
   // gameplay-modes-228: the counter-attack on a sector just taken, the trickle from the rear and the fresh arrivals
-  let counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null = null;
+  // `made` (gaps 274 fix-up r2): a counter-attack the old host launched after the keyframe a migrated host restored
+  // (restoreWaves, the checkpoint's counter.launched); its squad is picked on the first step, from the restored hulls,
+  // and not announced again
+  let counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number; made?: boolean } | null = null;
   const counterIds = new Set<string>();
   let freshDefenders: string[] = [];
   let nextReinforceAtS = Infinity;
-  /** A begun advance's arrivals hidden from the elected seat, due at once on their slots (reinforceLine): slot, count. */
-  const lineArrivalDue = new Map<string, [slot: number, count: number]>();
+  /** A begun advance's arrivals hidden from the elected seat, due at once on their slots (reinforceLine): slot, count and
+   *  the slot's draws, taken at the restore in slot order as the old host's placing took them (fix-up r2). */
+  const lineArrivalDue = new Map<string, [slot: number, count: number, drawn: [back: number, jitter: number] | null]>();
   /**
    * A defender's slot on the live line (defendersStartOnLine): lineBandM behind the sector's centre, spread across it,
    * facing the attack; `rear` puts it reinforceRearM back (the trickle). Null keeps the hostile's own spawn.
@@ -1454,8 +1491,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
     return [back, (spawnRng() - 0.5) * assaultRules.lineJitterM];
   }
-  function lineSlot(entity: Entity, slot: number, count: number, rear: boolean): MatchModeSpawn | null {
-    const drawn = lineSlotDraws(rear);
+  function lineSlot(entity: Entity, slot: number, count: number, rear: boolean,
+    taken: [back: number, jitter: number] | null | undefined = undefined): MatchModeSpawn | null {
+    // a begun advance's hidden arrival rises on the draws its slot took at the restore (lineArrivalDue)
+    const drawn = taken === undefined ? lineSlotDraws(rear) : taken;
     const zone = liveLine();
     if (!drawn || !zone) return null;
     const [back, jitter] = drawn;
@@ -1562,7 +1601,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
   if (id === 'frontline_assault') startAssaultWave();
 
-  /** The counter-attack falls due: the squad's fresh defenders drive at the sector just taken. */
+  /**
+   * The counter-attack falls due: the squad's fresh defenders drive at the sector just taken. Its one writer; a launch the
+   * old host made after the keyframe a migrated host restored (`made`, fix-up r2) picks its squad on the first step and
+   * announces nothing: before, the restored counter had no squad, and the new host launched it again with a second
+   * mode_counter_attack. A first pick that finds no squad leaves the launch to a later step, announced as ever.
+   */
   const stepCounterAttack = (timeS: number): void => {
     if (!counter) return;
     if (!counter.ids.length && timeS >= counter.atS) {
@@ -1573,7 +1617,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         .slice(0, assaultRules.counterAttack?.squad ?? 0);
       counter.ids = squad.map((entity) => entity.id);
       for (const key of counter.ids) counterIds.add(key);
-      if (counter.ids.length) emit('mode_counter_attack', { line: counter.line, squad: counter.ids.length, x: counter.x, z: counter.z });
+      if (counter.made) counter.made = false;
+      else if (counter.ids.length) emit('mode_counter_attack', { line: counter.line, squad: counter.ids.length, x: counter.x, z: counter.z });
     }
     if (timeS >= counter.untilS) {
       counterIds.clear();
@@ -1600,9 +1645,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * assaultRules.allyReviveBackM)), yaw: detMath.atan2(axisX, axisZ) } : null);
     }
   };
-  /** The trickle: while the live sector is contested and its line is short, one defender arrives from the rear. */
-  const stepReinforceTrickle = (zone: ZoneState, timeS: number): void => {
+  /**
+   * The trickle: while the live sector is contested and its line is short, one defender arrives from the rear. Its one
+   * writer of the trickle's clock; `risen` (gaps 274 fix-up r2) is a migrated host taking up an arrival the old host's
+   * trickle made at `timeS` after the keyframe, its revive replayed (restoreWaves, the checkpoint's line.reinforced): the
+   * clock runs from it and the rear slot's draw is taken from the arrival points' stream, nothing placed or announced.
+   * Before, the restored clock was the keyframe's, run out: the new host's first step brought a second defender on (with
+   * a second mode_line_reinforced) 45 s before the old host's next, and every later arrival drew one draw behind.
+   */
+  const stepReinforceTrickle = (zone: ZoneState, timeS: number, risen: Entity | null = null): void => {
     if (assaultRules.reinforceTrickleS <= 0) return;
+    if (risen) { nextReinforceAtS = timeS + assaultRules.reinforceTrickleS; lineSlotDraws(true); return; }
     let contested = false;
     const reachSq = (ZONE_RADIUS_M + assaultRules.contestReachM) ** 2;
     for (const attacker of teams.alpha) {
@@ -1832,18 +1885,23 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const handleDeathsAndRespawns = (timeS: number): void => {
+    // a begun advance's arrivals hidden from the elected seat (reinforceLine): on their slots of the live line, in slot
+    // order as the old host placed them (fix-up r2: in entity order, each was placed among the others as they were not)
+    if (lineArrivalDue.size) {
+      for (const [key, [slot, count, drawn]] of [...lineArrivalDue].sort((a, b) => a[1][0] - b[1][0])) {
+        const entity = entityById.get(key), due = respawnAt.get(key);
+        if (!entity || !due || timeS < due.atS) continue;
+        lineArrivalDue.delete(key);
+        reviveAtSpawn(entity, due.healthScale, lineSlot(entity, slot, count, false, drawn));
+      }
+    }
     for (const entity of entities) {
       if (entity.modeActive === false && !respawnAt.has(entity.id)) continue;
       observeEntityDeath(entity, timeS);
       const due = respawnAt.get(entity.id);
       if (due == null || timeS < due.atS) continue;
       if (id === 'endless_horde' && hordeEnemies.includes(entity)) retryArrival(entity, due.healthScale);
-      else if (lineArrivalDue.has(entity.id)) {
-        // a begun advance's arrival hidden from the elected seat (reinforceLine): on its slot of the live line
-        const [slot, count] = lineArrivalDue.get(entity.id)!;
-        lineArrivalDue.delete(entity.id);
-        reviveAtSpawn(entity, due.healthScale, lineSlot(entity, slot, count, false));
-      } else reviveAtSpawn(entity, due.healthScale);
+      else reviveAtSpawn(entity, due.healthScale);
     }
   };
 
@@ -2104,23 +2162,34 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return retrying;
   }
 
+  /**
+   * A wave's clear, its one writer (the lull's start): the lull's end, a cache, the survivors' patch-up, the
+   * announcement. `made` (gaps 274 fix-up r2) is a migrated host taking up the clear the old host made at `timeS` after
+   * the keyframe it restored (restoreWaves, the checkpoint's horde.cleared): the lull runs from it and the cache is the
+   * old host's (its draws from the carried stream, its place and id); nothing is patched up or announced again (the rows
+   * carry the repaired hulls; every seat heard the old host's). Before, the new host's first step found the field empty
+   * and no lull due, and cleared the wave a second time: a second repair of every survivor (1960 -> 3430 -> 4900 hp), a
+   * second cache and mode_wave_cleared, and a lull that ended the window late.
+   */
+  const clearHordeWave = (timeS: number, made = false): void => {
+    nextWaveAtS = timeS + hordeRules.intermissionS;
+    spawnPickup(made);
+    if (made) return;
+    // the survivors patch up between waves (waveRepair of maximum hull)
+    let repaired = 0;
+    for (const ally of teams.alpha) {
+      if (ally.combat.destroyed || ally.modeActive === false) continue;
+      const next = Math.min(ally.combat.maxHp, ally.combat.hp + Math.round(ally.combat.maxHp * hordeRules.waveRepair));
+      repaired += next - ally.combat.hp;
+      ally.combat.hp = next;
+    }
+    emit('mode_wave_cleared', { wave, nextWaveInS: hordeRules.intermissionS, repaired });
+  };
   const updateHordeIntermission = (alive: number, timeS: number): void => {
     if (state.horde) {
       state.horde.nextWaveInS = nextWaveAtS == null ? 0 : Math.max(0, nextWaveAtS - timeS);
     }
-    if (alive === 0 && hordeQueued <= 0 && nextWaveAtS == null) {
-      nextWaveAtS = timeS + hordeRules.intermissionS;
-      spawnPickup();
-      // the survivors patch up between waves (waveRepair of maximum hull)
-      let repaired = 0;
-      for (const ally of teams.alpha) {
-        if (ally.combat.destroyed || ally.modeActive === false) continue;
-        const next = Math.min(ally.combat.maxHp, ally.combat.hp + Math.round(ally.combat.maxHp * hordeRules.waveRepair));
-        repaired += next - ally.combat.hp;
-        ally.combat.hp = next;
-      }
-      emit('mode_wave_cleared', { wave, nextWaveInS: hordeRules.intermissionS, repaired });
-    }
+    if (alive === 0 && hordeQueued <= 0 && nextWaveAtS == null) clearHordeWave(timeS);
     if (nextWaveAtS != null && timeS >= nextWaveAtS) {
       wave++;
       startHordeWave();
@@ -2957,6 +3026,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const risen = entityById.get(key);
         if (risen && risen.modeLife === 'alive' && finite(atS)) trickleHorde(atS, 0, risen);
       }
+      // a clear the old host made after the keyframe (fix-up r2): taken up as made at its moment, the frame's mode time
+      // less the lull it showed gone (the clear's own step shows none gone), so the new host's first step clears nothing
+      const cleared = saved.horde.cleared;
+      if (Array.isArray(cleared) && finite(cleared[0]) && finite(cleared[1]) && nextWaveAtS === null) {
+        clearHordeWave(cleared[1] > 0 ? cleared[0] + cleared[1] - hordeRules.intermissionS : cleared[0], true);
+      }
       if (state.horde) {
         state.horde.wave = wave; state.horde.total = hordeWaveTotal(hordeRules, wave, hordeHumans);
         state.horde.healChance = cacheHealChance(ruleset, wave);
@@ -2976,7 +3051,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (saved.line) {
       lineIndex = saved.line.index; holdUntilS = saved.line.holdUntilS;
       regroup = saved.line.regroup ? { ...saved.line.regroup } : null;
-      counter = saved.line.counter ? { ...saved.line.counter, ids: [...saved.line.counter.ids] } : null;
+      // a launch the old host made after the keyframe (fix-up r2): its squad is picked on the first step, unannounced
+      const savedCounter = saved.line.counter;
+      counter = savedCounter ? { x: savedCounter.x, z: savedCounter.z, atS: savedCounter.atS, untilS: savedCounter.untilS, ids: [...savedCounter.ids],
+        line: savedCounter.line, ...(savedCounter.launched === true && !savedCounter.ids.length ? { made: true } : {}) } : null;
       counterIds.clear(); if (counter) for (const key of counter.ids) counterIds.add(key);
       freshDefenders = [...saved.line.fresh];
       nextReinforceAtS = saved.line.nextReinforceAtS ?? Infinity;
@@ -2990,6 +3068,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       for (const [key, plan] of saved.line.attack ?? []) {
         if (!finite(plan?.x) || !finite(plan?.z)) continue;
         attackPlan.set(key, { x: plan.x, z: plan.z, stagedAtS: finite(plan.stagedAtS) ? plan.stagedAtS : Infinity, pushing: plan.pushing === true });
+      }
+      // the reinforce trickle's arrivals the old host made after the keyframe (fix-up r2), before any advance there: taken
+      // up as made, in their order (the trickle's clock from the last, each one's rear slot draw)
+      const zone = liveLine();
+      for (const [key, atS] of saved.line.reinforced ?? []) {
+        const risen = entityById.get(key);
+        if (zone && risen && risen.modeLife === 'alive' && finite(atS)) stepReinforceTrickle(zone, atS, risen);
       }
       // a line advance the old host made after the keyframe (fix-up r1): taken up as begun, on the advance's clock, its
       // reinforcement drawn as the old host drew it (the defenders told risen at it are none of the draw's living)
@@ -3144,7 +3229,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           ...(strandRecycles.size ? { benched: [...strandRecycles] } : {}), ...(strandStrikeQueue.length ? { strikes: [...strandStrikeQueue] } : {}), pickups: pickups.map((p) => ({ ...p })),
           sequence: pickupSequence } } : {}),
         ...(ruleset.assault ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
-          counter: counter ? { ...counter, ids: [...counter.ids] } : null, fresh: [...freshDefenders],
+          counter: counter ? { x: counter.x, z: counter.z, atS: counter.atS, untilS: counter.untilS, ids: [...counter.ids], line: counter.line,
+            ...(counter.made ? { launched: true } : {}) } : null, fresh: [...freshDefenders],
           nextReinforceAtS: Number.isFinite(nextReinforceAtS) ? nextReinforceAtS : null, allyDownAt: [...allyDownAt],
           zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ...(attackPlan.size ? { attack: [...attackPlan].map(([key, plan]): [string, AttackStage] => [key,

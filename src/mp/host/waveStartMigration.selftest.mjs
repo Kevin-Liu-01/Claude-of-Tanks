@@ -25,6 +25,11 @@
 // keeps that sector's pace (WaveCheckpoint.paces). [5] the same with the arrivals hidden from the seat (the line guard's
 // usual case): they rise on the new host's first step, on their slots. [6] a Horde trickle arrival in the window: the new
 // host takes it up as made (out of the queue, the trickle's clock from it) rather than bringing one more on at once.
+// Fix-up r2 (the reviews of fix-up r1) adds: the arrival points' stream after a seen begun wave [1] and a trickle arrival
+// [6] (each later arrival lands where the old host's does), and [5b] the hidden arrivals of a begun advance on their own
+// slots' draws in slot order; and the director's other moves a window can hold, each made a second time before: [7] a
+// Horde wave cleared ([7b] the frame at the clear's own step), [8] a cache taken, [9] a Frontline reinforce trickle
+// arrival, [10] a counter-attack launched.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -119,6 +124,10 @@ for (const [label, hidden] of [['[1] every arrival in the seat\'s newest frame',
     + 'the draws\' stream past the same shuffle');
   ok(Math.abs(a.nextTrickleAtS - b.nextTrickleAtS) <= 1 / 60 + 1e-9, `the trickle's clock runs from the lull's end (old ${a.nextTrickleAtS.toFixed(3)}, `
     + `new ${b.nextTrickleAtS.toFixed(3)})`);
+  // fix-up r2 (the correctness review: the kept arrivals placed nothing, so the stream stood behind the old host's and a
+  // later arrival landed on another's point, the same hull 266 m apart by wave 4)
+  if (!hidden) ok(oldMode.rng[1] === freshMode.rng[1] && a.spawnSector === b.spawnSector, `the arrival points' stream and the sector due next are where `
+    + `the old host's arrivals left them (${freshMode.rng[1]}, sector ${b.spawnSector} against ${oldMode.rng[1]}, sector ${a.spawnSector})`);
   // both hosts on together: the new host's first steps (its start, as matchActor.ts start() readies a loading authority)
   fresh.authority.onMatchReady();
   const heard = [];
@@ -209,9 +218,10 @@ console.log('[3] an ally down when the lull ends, its row in the seat\'s newest 
  * it is from before the advance (a far tier's held row), so the resume cannot replay that revive. The keyframe is sealed
  * as sector 2 is about to fall; the old host advances to the last sector in the window and runs 0.5 s on; the elected
  * seat resumes from that keyframe, its newest frame (`hidden`: no defender row: every one rose, or stood, out of its
- * sight) and the respawns it was told.
+ * sight) and the respawns it was told. `holdAttack` (fix-up r2): the attack stands still where it took sector 2, through
+ * the window and on both hosts after it, so the line guard reads it where it stood at the advance.
  */
-function frontlineWindow(hidden) {
+function frontlineWindow(hidden, holdAttack = false) {
   const lineSeats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
   const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -226,14 +236,24 @@ function frontlineWindow(hidden) {
   const pin = { x: zones[1].x - az / al * 300, z: zones[1].z + ax / al * 300 };
   const SURVIVOR = 'd-7';
   const pinSurvivor = (actor) => { const e = actor.authority.entityById.get(SURVIVOR); e.state.pos.x = pin.x; e.state.pos.z = pin.z; e.state.speed = 0; };
-  const takeSector = (actor) => {
-    const zone = zoneOf(actor);
+  // held, each attacker on a spot of its own (stacked on one, the hulls push each other apart, a metre a host)
+  const heldAt = { h0: 0, 'a-0': 10, 'a-1': -10, 'a-2': 20 };
+  const placeAttack = (actor, zone) => {
     for (const e of actor.authority.entities) {
-      if (e.team === 'alpha' && e.modeActive !== false && !e.combat.destroyed) { e.state.pos.x = zone.x + (e.id === 'h0' ? 0 : 6); e.state.pos.z = zone.z; }
+      if (e.team !== 'alpha' || e.modeActive === false || e.combat.destroyed) continue;
+      e.state.pos.x = zone.x + (holdAttack ? heldAt[e.id] ?? 0 : e.id === 'h0' ? 0 : 6); e.state.pos.z = zone.z;
+      if (holdAttack) e.state.speed = 0;
+    }
+  };
+  const takeSector = (actor) => {
+    placeAttack(actor, zoneOf(actor));
+    for (const e of actor.authority.entities) {
       if (e.team === 'bravo' && e.id !== SURVIVOR && e.modeActive !== false && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; }
     }
     pinSurvivor(actor);
   };
+  // after the advance: the survivor pinned, and with `holdAttack` the attack where it took sector 2
+  const hold = (actor) => { pinSurvivor(actor); if (holdAttack) placeAttack(actor, zones[1]); };
   let tick = 0;
   const step = (actor, n, heard, fight) => {
     for (let k = 0; k < n; k++) {
@@ -252,9 +272,12 @@ function frontlineWindow(hidden) {
   const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
   const allyLives = ally.modeLives;
-  const told = new Map(), heard = [];
-  const fight = (actor) => (lineOf(actor) < 2 ? takeSector(actor) : pinSurvivor(actor));
-  const listen = (ev) => { heard.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, tick); };
+  const told = new Map(), heard = [], rose = new Map();
+  const fight = (actor) => (lineOf(actor) < 2 ? takeSector(actor) : hold(actor));
+  const listen = (ev) => {
+    heard.push(ev.type);
+    if (ev.type === 'mode_respawn') { told.set(ev.id, tick); const p = sim.entityById.get(ev.id).state.pos; rose.set(ev.id, { x: p.x, z: p.z }); }
+  };
   // the sector falls in the window; from the advance on, the fight stops (the arrivals stand on their slots)
   step(old, 1, listen, fight);
   const heldAlly = captureEntityRow(ally, old.wireIdOf('a-2'), era, tick);
@@ -265,7 +288,7 @@ function frontlineWindow(hidden) {
   const fresh = makeLine({ tick: state.tick, battleTimeMs: state.battleTimeMs });
   const serial = fresh.authority.modeEventSerial;
   applyResumeState(fresh, state);
-  return { old, fresh, sim, step, tick, keyframe, frame, told, heard, pinSurvivor, SURVIVOR, lineOf, announced: fresh.authority.modeEventSerial - serial,
+  return { old, fresh, sim, step, tick, keyframe, frame, told, rose, heard, pinSurvivor, hold, SURVIVOR, lineOf, announced: fresh.authority.modeEventSerial - serial,
     pendingAfter: fresh.authority.pendingEventCount, ally: { lives: allyLives, held: heldAlly, oldLives: ally.modeLives, freshLives: fresh.authority.entityById.get('a-2').modeLives } };
 }
 const lineDirector = (actor) => {
@@ -308,8 +331,11 @@ for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyf
     `the regroup before the last sector runs on the old host's clock (until old ${a.regroup?.untilS.toFixed(3)}, new ${b.regroup?.untilS.toFixed(3)})`);
   if (!hidden) ok(a.rng[1] === b.rng[1], `the arrival points' stream stands where the old host's placing left it (${a.rng[1]} against ${b.rng[1]})`);
   fresh.authority.onMatchReady();
-  const freshHeard = [], respawned = [];
-  step(fresh, 20, (ev) => { freshHeard.push(ev.type); if (ev.type === 'mode_respawn') respawned.push(ev.id); }, run.pinSurvivor);
+  const freshHeard = [], respawned = [], freshRose = new Map();
+  step(fresh, 20, (ev) => {
+    freshHeard.push(ev.type);
+    if (ev.type === 'mode_respawn') { respawned.push(ev.id); const p = fresh.authority.entityById.get(ev.id).state.pos; freshRose.set(ev.id, { x: p.x, z: p.z }); }
+  }, run.pinSurvivor);
   step(old, 20, null, run.pinSurvivor);
   ok(count(freshHeard, 'mode_line_advanced') === 0 && count(freshHeard, 'mode_wave_started') === 0,
     `the new host never advances or announces the sector again (${count(freshHeard, 'mode_line_advanced')} advance, `
@@ -332,7 +358,29 @@ for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyf
       + `against the old host's ${arrivals.join(', ')})`);
     const c = lineDirector(old), d = lineDirector(fresh);
     ok(c.rng[1] === d.rng[1], `once they stand, the arrival points' stream is where the old host's is (${c.rng[1]} against ${d.rng[1]})`);
+    // where they rise against the old host's: the line guard reads the attack where it stands on the new host's first
+    // step, which drove on 0.5 s from where it took the sector (a residual, fix-up r2; [5b] holds the attack still)
+    const placed = arrivals.map((id) => [id, Math.hypot(freshRose.get(id)?.x - run.rose.get(id)?.x, freshRose.get(id)?.z - run.rose.get(id)?.z)]);
+    console.log(`      (the attack moved on 0.5 s: each rises ${placed.map(([id, d]) => `${id} ${d.toFixed(1)} m`).join(', ')} from the old host's)`);
   }
+  old.stop(); fresh.stop();
+}
+
+console.log('[5b] the arrivals hidden from the seat, the attack held where it took the sector: each rises where the old host placed it');
+{
+  // fix-up r2 (the correctness review: they rose in entity order, each drawing another slot's depth and jitter on the
+  // first step, 19.8 m apart 2 s on): the restore takes each hidden slot's draws in slot order with the seen ones', and
+  // they rise in slot order, so with the attack where the line guard read it at the advance each stands on the old
+  // host's spot
+  const run = frontlineWindow(true, true);
+  const { old, fresh, step } = run;
+  const arrivals = [...run.told.keys()].filter((id) => id.startsWith('d-')).sort();
+  fresh.authority.onMatchReady();
+  const freshRose = new Map();
+  step(fresh, 20, (ev) => { if (ev.type === 'mode_respawn') { const p = fresh.authority.entityById.get(ev.id).state.pos; freshRose.set(ev.id, { x: p.x, z: p.z }); } }, run.hold);
+  const placed = arrivals.map((id) => [id, Math.hypot(freshRose.get(id)?.x - run.rose.get(id)?.x, freshRose.get(id)?.z - run.rose.get(id)?.z)]);
+  ok(arrivals.length > 1 && placed.every(([, d]) => d < 0.5), `each hidden arrival rises where the old host placed it: its own slot's draws, in slot order `
+    + `(${placed.map(([id, d]) => `${id} ${d.toFixed(2)} m`).join(', ')})`);
   old.stop(); fresh.stop();
 }
 
@@ -372,19 +420,246 @@ console.log('[6] a Horde trickle arrival after the keyframe: taken up as made, n
   const a = hordeOf(old), b = hordeOf(fresh);
   ok(a.queued === b.queued && Math.abs(a.nextTrickleAtS - b.nextTrickleAtS) <= 1 / 60 + 1e-9, `the queue and the trickle's clock are the old `
     + `host's (queued ${b.queued} against ${a.queued}; next at ${b.nextTrickleAtS.toFixed(3)} against ${a.nextTrickleAtS.toFixed(3)})`);
+  // fix-up r2 (the correctness review: the arrival placed nothing, so the stream stood one arrival behind and every later
+  // arrival landed on the point the old host gave the one before it, 266 m off by wave 4)
+  const ra = old.authority.captureModeCheckpoint().mode, rb = fresh.authority.captureModeCheckpoint().mode;
+  ok(ra.rng[1] === rb.rng[1] && ra.waves.horde.spawnSector === rb.waves.horde.spawnSector, `the arrival points' stream and the sector due next are where `
+    + `the old host's arrival left them (${rb.rng[1]}, sector ${rb.waves.horde.spawnSector} against ${ra.rng[1]}, sector ${ra.waves.horde.spawnSector})`);
   fresh.authority.onMatchReady();
-  const oldArrivals = [], newArrivals = [];
+  const oldArrivals = [], newArrivals = [], oldAt = [], newAt = [];
+  const at = (actor, id) => { const p = actor.authority.entityById.get(id).state.pos; return `${id}@(${p.x.toFixed(1)},${p.z.toFixed(1)})`; };
   for (let k = 0; k < 150; k++) {
-    step(fresh, 1, (ev) => { if (ev.type === 'mode_respawn') newArrivals.push(k); });
-    step(old, 1, (ev) => { if (ev.type === 'mode_respawn') oldArrivals.push(k); });
+    step(fresh, 1, (ev) => { if (ev.type === 'mode_respawn') { newArrivals.push(k); newAt.push(at(fresh, ev.id)); } });
+    step(old, 1, (ev) => { if (ev.type === 'mode_respawn') { oldArrivals.push(k); oldAt.push(at(old, ev.id)); } });
   }
   ok(oldArrivals.length > 0 && newArrivals.length === oldArrivals.length && newArrivals.every((k, i) => Math.abs(k - oldArrivals[i]) <= 1),
     `over the next 2.5 s the new host brings hostiles on when the old host does, none sooner (ticks ${newArrivals.join(', ') || 'none'} against `
       + `${oldArrivals.join(', ') || 'none'})`);
   ok(hordeOf(old).queued === hordeOf(fresh).queued && fielded(old).length === fielded(fresh).length, `and the queue and the field stay the old host's `
     + `(queued ${hordeOf(fresh).queued} against ${hordeOf(old).queued}; ${fielded(fresh).length} against ${fielded(old).length} on the field)`);
+  ok(oldAt.length > 0 && JSON.stringify(newAt) === JSON.stringify(oldAt), `each later arrival lands where the old host's does (${newAt.join(' ') || 'none'} `
+    + `against ${oldAt.join(' ') || 'none'})`);
+  old.stop(); fresh.stop();
+}
+
+// Fix-up r2 (the completeness review's census of the wave directors: three more moves the window can hold, each made a
+// second time by the new host). Each keyframe is sealed 0.3 s before the move, the old host runs 30 ticks on, and the
+// elected seat resumes from that keyframe, its newest frame and the respawns it was told.
+for (const [label, windowTicks] of [['[7] a Horde wave cleared after the keyframe: taken up as made, never cleared twice', 30],
+  ['[7b] the seat\'s newest frame is the clear\'s own step (its lull not yet counted down)', 1]]) {
+  console.log(label);
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = (actor, n, heard, each) => {
+    for (let k = 0; k < n; k++) {
+      each?.(actor);
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  const living = (actor) => actor.authority.entities.filter((e) => e.team === 'bravo' && e.modeActive !== false && !e.combat.destroyed);
+  // one hostile stands (the lowest id), the rest fall as they come, until the queue is empty; the survivor is worn
+  const fellAllButOne = (actor) => { for (const e of living(actor).sort((p, q) => (p.id < q.id ? -1 : 1)).slice(1)) { e.combat.hp = 0; e.combat.destroyed = true; } };
+  for (let guard = 0; guard < 2000 && !(hordeOf(old).queued === 0 && living(old).length === 1); guard++) step(old, 15, null, fellAllButOne);
+  const h0 = sim.entityById.get('h0');
+  h0.combat.hp = Math.round(h0.combat.maxHp * 0.4);
+  step(old, 2);
+  const era = createEraIndexer();
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  const sealed = keyframe.modeCheckpoint.mode.waves.horde, hpAtKeyframe = h0.combat.hp;
+  const last = living(old)[0];
+  last.combat.hp = 0; last.combat.destroyed = true;
+  const heardOld = [];
+  step(old, windowTicks, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const frame = hostFrame(old, tick, era, false);
+  const shownLull = JSON.parse(frame.modeStateJson).horde.nextWaveInS;
+  ok(sealed.nextWaveAtS === null && sealed.queued === 0 && count(heardOld, 'mode_wave_cleared') === 1 && h0.combat.hp > hpAtKeyframe
+    && (windowTicks === 1 ? shownLull === 0 : shownLull > 0),
+  `the case is built: the keyframe holds wave 1's last hostile standing and no lull, the old host clears the wave after it (${heardOld.join(', ')}) `
+      + `and patches h0 up (${hpAtKeyframe} -> ${h0.combat.hp} hp); the frame shows ${shownLull.toFixed(3)} s of the lull left`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  const serial = fresh.authority.modeEventSerial;
+  applyResumeState(fresh, state);
+  const a = hordeOf(old), b = hordeOf(fresh), ma = old.authority.captureModeCheckpoint().mode, mb = fresh.authority.captureModeCheckpoint().mode;
+  ok(b.nextWaveAtS !== null && Math.abs(a.nextWaveAtS - b.nextWaveAtS) <= 1 / 60 + 1e-9 && fresh.authority.modeEventSerial - serial === 0,
+    `the restore takes the clear up, announcing nothing: the lull ends when the old host's does (${b.nextWaveAtS?.toFixed(3)} against ${a.nextWaveAtS.toFixed(3)})`);
+  const caches = (m) => JSON.stringify(m.waves.horde.pickups.map((p) => [p.id, p.kind, p.active, p.x.toFixed(3), p.z.toFixed(3)]));
+  ok(caches(mb) === caches(ma) && mb.waves.horde.sequence === ma.waves.horde.sequence && mb.rng[0] === ma.rng[0] && mb.rng[1] === ma.rng[1],
+    `the clear's cache is the old host's (${caches(mb)}), and both streams stand where the old host's clear left them`);
+  fresh.authority.onMatchReady();
+  const heardNew = [];
+  for (let k = 0; k < 120; k++) { step(fresh, 1, (ev) => { if (ev.type.startsWith('mode_')) heardNew.push(ev.type); }); step(old, 1); }
+  const fh0 = fresh.authority.entityById.get('h0');
+  ok(count(heardNew, 'mode_wave_cleared') === 0 && count(heardNew, 'mode_pickup_spawned') === 0, `the new host never clears the wave again (${heardNew.join(', ') || 'no mode events'} in 2 s)`);
+  ok(fh0.combat.hp === h0.combat.hp, `h0 is patched up once (${fh0.combat.hp} hp on the new host against ${h0.combat.hp} on the old)`);
+  ok(Math.abs(hordeOf(old).nextWaveAtS - hordeOf(fresh).nextWaveAtS) <= 1 / 60 + 1e-9 && hordeOf(fresh).nextWaveAtS !== null,
+    `and the lull still ends when the old host's does (${hordeOf(fresh).nextWaveAtS?.toFixed(3)} against ${hordeOf(old).nextWaveAtS?.toFixed(3)})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[8] a cache taken after the keyframe: taken once');
+{
+  // wave 1 played out (every hostile falls as it stands): its clear drops a cache; h0, worn, drives onto it after the
+  // keyframe and the old host hands it over
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = (actor, n, heard) => {
+    for (let k = 0; k < n; k++) {
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  const killAll = () => { for (const e of sim.entities) if (e.team === 'bravo' && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; } };
+  for (let guard = 0; guard < 400 && !(sim.modeController.state.horde.nextWaveInS > 0.4); guard++) { killAll(); step(old, 15); }
+  const cache = hordeOf(old).pickups.find((p) => p.active);
+  const h0 = sim.entityById.get('h0');
+  h0.combat.hp = 1000;
+  step(old, 2);
+  const era = createEraIndexer();
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  h0.state.pos.x = cache.x; h0.state.pos.z = cache.z; h0.state.speed = 0;
+  const heardOld = [];
+  step(old, 30, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const frame = hostFrame(old, tick, era, false);
+  ok(!!cache && keyframe.modeCheckpoint.mode.waves.horde.pickups.some((p) => p.id === cache.id && p.active) && count(heardOld, 'mode_pickup_collected') === 1
+    && h0.combat.hp > 1000, `the case is built: the keyframe holds ${cache?.id} (${cache?.kind}) on the ground, and h0 takes it after (${heardOld.join(', ')}; `
+      + `1000 -> ${h0.combat.hp} hp)`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  applyResumeState(fresh, state);
+  ok(!hordeOf(fresh).pickups.some((p) => p.id === cache.id && p.active), `the restore holds the cache taken (${JSON.stringify(hordeOf(fresh).pickups.map((p) => [p.id, p.active]))})`);
+  fresh.authority.onMatchReady();
+  const heardNew = [];
+  for (let k = 0; k < 60; k++) { step(fresh, 1, (ev) => { if (ev.type.startsWith('mode_')) heardNew.push(ev.type); }); step(old, 1); }
+  const fh0 = fresh.authority.entityById.get('h0');
+  ok(count(heardNew, 'mode_pickup_collected') === 0 && fh0.combat.hp === h0.combat.hp, `h0, still on the spot, does not take it again (${heardNew.join(', ') || 'no mode events'} `
+    + `in 1 s; ${fh0.combat.hp} hp on the new host against ${h0.combat.hp} on the old)`);
+  old.stop(); fresh.stop();
+}
+
+/** Frontline as shipped (seed 7, the attackers 3 allied bots and h0, eight defenders) for [9] and [10]. */
+const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
+  ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
+const makeFront = (resume, roomId) => createMatchActor({ roomId, mapId: 'verdant', mode: 'frontline_assault', seed: 7, seats, bots: lineBots,
+  ruleset: matchRulesetFor('frontline_assault'), world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
+const lineCheckpoint = (actor) => actor.authority.captureModeCheckpoint().mode;
+const stepper = (old) => {
+  const run = { tick: 0 };
+  run.step = (actor, n, heard, each) => {
+    for (let k = 0; k < n; k++) {
+      each?.(actor);
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) run.tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  return run;
+};
+const sealAt = (old, run) => {
+  const sim = old.authority, era = createEraIndexer();
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick: run.tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, run.tick, era, false) }));
+  return { keyframe, era };
+};
+
+console.log('[9] a Frontline reinforce trickle arrival after the keyframe: taken up as made, never brought on twice');
+{
+  const old = makeFront(null, 'reinforce-window'), sim = old.authority, run = stepper(old);
+  sim.onMatchReady();
+  const zoneOf = (actor) => { const st = actor.authority.modeController.state; return st.zones[Math.min(st.line.index, st.zones.length - 1)]; };
+  const zones = sim.modeController.state.zones;
+  const ax = zones.at(-1).x - zones[0].x, az = zones.at(-1).z - zones[0].z, al = Math.hypot(ax, az) || 1;
+  const reach = matchRulesetFor('frontline_assault').assault.contestReachM;
+  // the attack contests the live sector from inside its contest reach, never in the zone (it never falls)
+  const contest = (actor) => {
+    const zone = zoneOf(actor);
+    for (const e of actor.authority.entities) {
+      if (e.team !== 'alpha' || e.modeActive === false || e.combat.destroyed) continue;
+      const back = 30 + reach * 0.5 + (e.id === 'h0' ? 0 : 3);
+      e.state.pos.x = zone.x - ax / al * back; e.state.pos.z = zone.z - az / al * back; e.state.speed = 0;
+    }
+  };
+  const fellDefenders = (actor) => { for (const e of actor.authority.entities) if (e.team === 'bravo' && e.modeActive !== false && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; } };
+  const fight = (actor) => { contest(actor); fellDefenders(actor); };
+  run.step(old, 60, null, fight);
+  for (let guard = 0; guard < 6000 && !Number.isFinite(lineCheckpoint(old).waves.line.nextReinforceAtS ?? NaN); guard++) run.step(old, 1, null, fight);
+  const dueAt = lineCheckpoint(old).waves.line.nextReinforceAtS;
+  for (let guard = 0; guard < 6000 && lineCheckpoint(old).elapsedS < dueAt - 0.3; guard++) run.step(old, 1, null, fight);
+  const { keyframe, era } = sealAt(old, run);
+  const told = new Map(), heardOld = [];
+  run.step(old, 30, (ev) => { heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); }, contest);
+  const frame = hostFrame(old, run.tick, era, false);
+  ok(count(heardOld, 'mode_line_reinforced') === 1 && told.size === 1 && keyframe.modeCheckpoint.mode.waves.line.nextReinforceAtS === dueAt,
+    `the case is built: the keyframe holds the trickle due at ${dueAt.toFixed(3)} (mode ${keyframe.modeCheckpoint.mode.elapsedS.toFixed(3)}), and the old host's `
+      + `trickle brings ${[...told.keys()].join(', ')} on after it (${count(heardOld, 'mode_line_reinforced')} mode_line_reinforced)`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = makeFront({ tick: state.tick, battleTimeMs: state.battleTimeMs }, 'reinforce-window');
+  applyResumeState(fresh, state);
+  const la = lineCheckpoint(old), lb = lineCheckpoint(fresh);
+  ok(Math.abs(la.waves.line.nextReinforceAtS - lb.waves.line.nextReinforceAtS) <= 1 / 60 + 1e-9, `the trickle's clock runs from the arrival `
+    + `(next at ${lb.waves.line.nextReinforceAtS?.toFixed(3)} against the old host's ${la.waves.line.nextReinforceAtS?.toFixed(3)})`);
+  ok(la.rng[0] === lb.rng[0] && la.rng[1] === lb.rng[1], `both streams stand where the old host's arrival left them, its rear slot's draw taken `
+    + `([${lb.rng.join(', ')}] against [${la.rng.join(', ')}])`);
+  fresh.authority.onMatchReady();
+  const heardNew = [];
+  for (let k = 0; k < 180; k++) {
+    run.step(fresh, 1, (ev) => { if (/mode_line_reinforced|mode_respawn/.test(ev.type)) heardNew.push(`${ev.type} ${ev.id}`); }, contest);
+    run.step(old, 1, null, contest);
+  }
+  ok(heardNew.length === 0 && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `over the next 3 s the new host brings no defender on `
+    + `(${heardNew.join(', ') || 'none'}): it fields the old host's (${fielded(fresh).join(', ')} against ${fielded(old).join(', ')})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[10] a Frontline counter-attack launched after the keyframe: its squad picked, never announced twice');
+{
+  const old = makeFront(null, 'counter-window'), sim = old.authority, run = stepper(old);
+  sim.onMatchReady();
+  const zoneOf = (actor) => { const st = actor.authority.modeController.state; return st.zones[Math.min(st.line.index, st.zones.length - 1)]; };
+  const takeSector = (actor) => {
+    const zone = zoneOf(actor);
+    for (const e of actor.authority.entities) {
+      if (e.team === 'alpha' && e.modeActive !== false && !e.combat.destroyed) { e.state.pos.x = zone.x + (e.id === 'h0' ? 0 : 6); e.state.pos.z = zone.z; }
+      if (e.team === 'bravo' && e.modeActive !== false && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; }
+    }
+  };
+  for (let guard = 0; guard < 30000 && sim.modeController.state.line.index < 1; guard++) run.step(old, 1, null, takeSector);
+  const counterAt = lineCheckpoint(old).waves.line.counter?.atS;
+  for (let guard = 0; guard < 6000 && lineCheckpoint(old).elapsedS < counterAt - 0.3; guard++) run.step(old, 1);
+  const { keyframe, era } = sealAt(old, run);
+  const told = new Map(), heardOld = [];
+  run.step(old, 30, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); });
+  const frame = hostFrame(old, run.tick, era, false);
+  const sealedCounter = keyframe.modeCheckpoint.mode.waves.line.counter, oldSquad = lineCheckpoint(old).waves.line.counter?.ids ?? [];
+  ok(!!sealedCounter && sealedCounter.ids.length === 0 && count(heardOld, 'mode_counter_attack') === 1 && oldSquad.length > 0,
+    `the case is built: the keyframe holds the counter-attack due at ${counterAt?.toFixed(3)} with no squad (mode ${keyframe.modeCheckpoint.mode.elapsedS.toFixed(3)}), `
+      + `and the old host launches it after (squad ${oldSquad.join(', ')})`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = makeFront({ tick: state.tick, battleTimeMs: state.battleTimeMs }, 'counter-window');
+  applyResumeState(fresh, state);
+  // a keyframe the new host seals in its resume hold, before its first step picks the squad, still names the launch
+  const inHold = lineCheckpoint(fresh).waves.line.counter;
+  ok(inHold?.launched === true && inHold.ids.length === 0, `a keyframe sealed before the new host's first step names the launch (${JSON.stringify(inHold)})`);
+  fresh.authority.onMatchReady();
+  const heardNew = [];
+  for (let k = 0; k < 180; k++) { run.step(fresh, 1, (ev) => { if (ev.type.startsWith('mode_')) heardNew.push(ev.type); }); run.step(old, 1); }
+  const newSquad = lineCheckpoint(fresh).waves.line.counter?.ids ?? [];
+  ok(count(heardNew, 'mode_counter_attack') === 0, `the new host never announces the counter-attack again (${heardNew.join(', ') || 'no mode events'} in 3 s)`);
+  ok(JSON.stringify(newSquad) === JSON.stringify(oldSquad), `its squad is the old host's (${newSquad.join(', ') || 'none'} against ${oldSquad.join(', ')})`);
   old.stop(); fresh.stop();
 }
 
 if (failures) { console.error(`waveStartMigration.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('waveStartMigration.selftest: a Horde wave begun, a Frontline advance made or a trickle arrival made after the keyframe is taken up as made, never made again, seen or unseen by the elected seat');
+console.log('waveStartMigration.selftest: a Horde wave begun or cleared, a cache taken, a Frontline advance, reinforcement or counter-attack, or a trickle arrival made after the keyframe is taken up as made, never made again, seen or unseen by the elected seat');

@@ -204,9 +204,15 @@ interface AiController {
    * hull's restored row is newer than the capture (0: the keyframe's own). The list is taken only while the hull still
    * lies on it from where it stood at the capture (the Watch hand-back's test), else the brain keeps its own and plans
    * afresh, as after a revive; the leg's progress watchdog is taken either way. `life` false: the hull no longer lives
-   * the life the record describes (revived since, or down), so the brain takes its seeded streams alone.
+   * the life the record describes (it rose since the capture), so the brain takes its seeded streams alone (takeStreams).
    */
   takeDrive(drive: BotDrive, sinceS?: number, life?: boolean): void;
+  /** The brain's seeded streams' positions (BotDrive.streams): what a migration keyframe carries of a bot that is down
+   *  when it is sealed (gaps 274 fix-up r2), whose way is no life it will drive again. */
+  captureStreams(): BotDrive['streams'];
+  /** The brain draws on from the old host's positions of its streams (BotDrive.streams), the one writer of them on a
+   *  migrated host (takeDrive takes a living bot's through it); a record that is not one changes nothing. */
+  takeStreams(streams: BotDrive['streams']): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -7394,8 +7400,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         ? [missionRouteX, missionRouteZ, Math.max(0, nowS - missionRouteAtS)] : null,
       end: missionRouteHasEnd,
       nav: [navGoalX, navGoalZ, Number.isFinite(navBestD) ? navBestD : null, navNoProgressT],
-      streams: [streamState(rng), streamState(deps.planStream)],
+      streams: captureStreams(),
     };
+  }
+  /** The brain's two seeded streams' positions (the controller's, the planner's; BotDrive.streams). */
+  function captureStreams(): BotDrive['streams'] {
+    return [streamState(rng), streamState(deps.planStream)];
+  }
+  /**
+   * The brain's seeded streams where the old host's brain left them (gaps 274, G3; fix-up r2: a bot down when the keyframe
+   * was sealed carries them alone). They outlive a life on the old host: a dead bot's brain draws nothing, and a revive
+   * keeps them (resume() resets the way, watchdog and mission, never the streams). Before fix-up r2 a bot down at the
+   * keyframe carried none, so its brain drew from the construction's positions: a CTF raider down at the keyframe drove
+   * 55 m off the old host's track once both revived.
+   */
+  function takeStreams(streams: BotDrive['streams']): void {
+    const [controllerState, planState] = Array.isArray(streams) ? streams : [null, null];
+    if (Number.isInteger(controllerState) && typeof (rng as Partial<SeededStream>).state === 'number') (rng as SeededStream).state = controllerState!;
+    if (Number.isInteger(planState) && deps.planStream && typeof deps.planStream.state === 'number') deps.planStream.state = planState!;
   }
   /**
    * A migrated host's brain takes up the old host's way (BotDrive; gaps 274, G3), right after resume() restarted what it
@@ -7407,9 +7429,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * then describes the moment the pose does (a hull the old host moved on toward its leg's goal meanwhile resets the
    * watchdog on its first tick, as the old host did). A hull off its way keeps the list its brain has, and the mission's
    * next push plans afresh, as after a revive. A record that is not one changes nothing. `life` false (gaps 274 fix-up
-   * r1): the hull rose since the capture or is down, and the way, watchdog and mission were a life it no longer lives
-   * (the old host's revive reset them: resume()); the streams are the brain's, which the old host's kept through the
-   * revive, and are taken alone.
+   * r1): the hull rose since the capture, and the way, watchdog and mission were a life it no longer lives (the old
+   * host's revive reset them: resume()); the streams are the brain's, which the old host's kept through the revive, and
+   * are taken alone (takeStreams). A bot down when the keyframe was sealed carries its streams alone (fix-up r2).
    */
   function takeDrive(drive: BotDrive, sinceS = 0, life = true): void {
     if (!drive || typeof drive !== 'object') return;
@@ -7417,9 +7439,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const finiteAll = (values: readonly unknown[] | null | undefined, count: number): boolean =>
       Array.isArray(values) && values.length >= count && values.slice(0, count).every((value) => typeof value === 'number' && Number.isFinite(value));
     // the streams first: whatever the brain draws next, its route plans included, is what the old host's would draw
-    const [controllerState, planState] = Array.isArray(drive.streams) ? drive.streams : [null, null];
-    if (Number.isInteger(controllerState) && typeof (rng as Partial<SeededStream>).state === 'number') (rng as SeededStream).state = controllerState!;
-    if (Number.isInteger(planState) && deps.planStream && typeof deps.planStream.state === 'number') deps.planStream.state = planState!;
+    takeStreams(drive.streams);
     if (life === false) return;
     const nav = drive.nav;
     if (finiteAll(nav, 2) && typeof nav[3] === 'number' && Number.isFinite(nav[3])) {
@@ -8226,6 +8246,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     resume,
     captureDrive,
     takeDrive,
+    captureStreams,
+    takeStreams,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },

@@ -2500,21 +2500,45 @@ mode's two seeded streams (`ModeCheckpoint.rng`: the draws and the arrival point
 seed, so the next Horde or Frontline wave and Mars's next cache differed) and, for each living Horde or Frontline hostile
 whose life began in an earlier wave, that wave (`waves.paces`: a Frontline defender alive through an advance keeps its
 slower pace; every other living hostile takes the keyframe's wave's pace on the restore, where it took the base speed).
-The resume reads the window between the keyframe and the elected seat's newest frame, never in a captured checkpoint: a
-Horde wave the frame shows begun is taken up as begun (`waves.horde.begunWave`), a Frontline advance as made
-(`waves.line.begun`: the frame's line and zones, the advance's mode time from the respawns the seat was told, the
-defenders told risen then), and a Horde trickle arrival whose revive the resume replays as made (`waves.horde.trickled`);
-none is announced, advanced or revived a second time, and the new actor's own construction events are dropped before its
-first tick. The extras carry a live hull's spool and turn rate (`motion`) and a live bot's way (`way`: `game/ai.ts`
-BotDrive, its route, mission and progress watchdog and its brain's stream positions); a hull revived since the keyframe,
-or down, takes the brain's streams alone. Cost: the way is 0.3-0.5 KB of JSON a live bot, kept exact: at 19 bots the
-extras grow from 3.4-6.5 KB to 7.2-14.9 KB a keyframe (+3.5 to +10 KB; the lane's `g3.size` probe), 4.7-13.5 KB more
-once sealed and base64url-chunked, so at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, and
-each mode event's keyframe (at most every 500 ms) carries it too; far under the `MIGRATION_MAX_CHUNKS` cap. Whether to
-trim it (millimetre rounding, or no way a fresh brain would plan alike) is open. Not carried: a bot's LOS and probe timer
-phases, its manoeuvre windows and stuck state, the spotting and the authority's combat streams. Kevin's ruling on G4
-(2026-11-18): a CTF raider's stage goes with its life, solo too; G5, the same for a Frontline attacker's plan, awaits his.
-Receipts: `modeStreamMigration`, `waveStartMigration`, `botDriveMigration`, `fallenStages`, `huntSearchMigration` [6].
+
+The resume reads the window between the keyframe and the elected seat's newest frame (never in a captured checkpoint)
+and takes up as made what the wave directors did there: a Horde wave the frame shows begun (`waves.horde.begunWave`) or
+cleared (`waves.horde.cleared`: the lull from the clear, its cache from the same draws, no second repair); a Frontline
+advance (`waves.line.begun`: the frame's line and zones, the advance's mode time from the respawns the seat was told,
+the defenders told risen then); a Horde trickle arrival or a Frontline reinforce-trickle arrival whose revive the resume
+replays (`waves.horde.trickled`, `waves.line.reinforced`: the clock runs from it); a counter-attack whose moment the
+frame is past (`waves.line.counter.launched`: its squad is picked on the first step); and a cache the frame no longer
+lists, which stays taken. None of these is announced or made a second time, and the new actor's own construction
+events are dropped before its first tick. A replayed arrival's draws from the arrival-point stream are taken as the old
+host took them: a line slot's exactly, and in slot order for a begun advance's hidden arrivals; a ring arrival's as its
+first candidate's, which is exact on open ground but unknown for a later candidate or a refused ring.
+
+The extras carry a live hull's spool and turn rate (`motion`), a live bot's way (`way`: `game/ai.ts` BotDrive, its
+route, mission and progress watchdog and its brain's stream positions) and a down bot's brain streams alone (`streams`).
+A bot revived since the keyframe takes its brain's streams alone: its way, watchdog and mission are the life it left.
+Cost: the way is 0.3-0.5 KB of JSON a live bot, kept exact. At 19 bots the extras grow from 3.4-6.5 KB to 7.2-14.9 KB a
+keyframe (+3.5 to +10 KB; the lane's `g3.size` probe). That is 4.7-13.5 KB more once sealed and base64url-chunked, so
+at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, and each mode event's keyframe (at most
+every 500 ms) carries it too. It stays far under the `MIGRATION_MAX_CHUNKS` cap. A down bot adds two integers. Whether
+to trim the way (millimetre rounding, or no way a fresh brain would plan alike) is open.
+
+Not taken up (the lane's m1.json lists each with its measure and an owner to assign):
+- The window's other moves: a Horde hostile benched as stranded (read as a death; its slot is not queued again), a
+  refused Horde arrival or an Infected arrival revived there (their ring draws), a Mars cache dropped there (dropped and
+  announced again), and an AC-130 supply drop there (lost). The G2 residuals (a) to (f) and a clear's repair for a hull
+  whose row is from before the clear are also open.
+- In the brain: the LOS and probe timer phases, the manoeuvre windows, the stuck and progress state, and the ally-yield
+  and hold timers.
+- In the integrator: `_rollover`, `_susp`, `_hold`, `_holdSeat` and `_prevSpeed`, and a hidden hull's tail.
+- In the authority: the route-push clocks and each bot's last pushed target, and the spotting and combat streams.
+- A window-revived bot's own first moves, which it plans afresh from the newer row.
+- Frontline attackers part after any migration, even with no window: 112.5 m in 14 s, against 0.0 m for an unmigrated
+  twin. A probe that carried the route-push clocks and targets left that gap unchanged, so the cause lies in the brain
+  state above and is not isolated.
+
+Kevin's ruling on G4 (2026-11-18): a CTF raider's stage goes with its life, solo too. G5, the same for a Frontline
+attacker's plan, awaits his ruling. Receipts: `modeStreamMigration`, `waveStartMigration`, `botDriveMigration`,
+`fallenStages`, `huntSearchMigration` [6].
 
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
 

@@ -20,6 +20,11 @@
 // the keyframe and the seat's newest frame: its brain keeps the drive resume() left it (the old host's revive reset its
 // watchdog and mission too), not its dead life's way and watchdog, and takes the brain's streams, which outlive a life
 // on the old host as well (before, a revived or fallen hull took none, and its streams went back to the construction's).
+// Fix-up r2 (both reviews' major): [7] a raider DOWN when the keyframe is sealed carried no streams at all (the extras
+// wrote a bot's way, and its streams with it, only for a live hull), so its brain drew its next life from the
+// construction's: the two raiders parted 55 m within 25 s. A down bot's extras now carry its streams alone: [7a] still down
+// at the resume, the raiders keep one track; [7b] revived before the seat's frame, within 4 m (the old brain planned that
+// life from its spawn and drove it 0.25 s before the frame, the new one plans it from the newer row).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -254,6 +259,97 @@ console.log('[6] a raider revived after the keyframe: the fresh brain\'s drive, 
   ok(brain.streams[0] === deadLife?.streams[0] && brain.streams[1] === deadLife?.streams[1], `and the brain's streams go on from the keyframe's (controller `
     + `${brain.streams[0]}, planner ${brain.streams[1]}; the old brain kept its own through the revive and stands at ${oldBrain.streams[0]}, ${oldBrain.streams[1]})`);
   old.stop(); fresh.stop();
+}
+
+/**
+ * Fix-up r2 (the correctness and completeness reviews' major): a raider DOWN when the keyframe is sealed ([6]'s staging,
+ * the raider killed 0.5 s before it). The extras carried a bot's way, and its streams with it, only for a live hull, so
+ * the new brain drew its next life from the construction's positions: the two raiders parted 55 m within 25 s. Now a down
+ * bot's extras carry its brain's streams alone (MigrationEntityExtras.streams, taken by takeStreams). `revivedInWindow`:
+ * the old host revives it before the seat's newest frame (taken 0.25 s after the revive it was told).
+ */
+function downAtKeyframe(revivedInWindow) {
+  const reviveRules = { ...matchRulesetFor(mode), respawnS: 2 };
+  const makeRevive = (resume) => createMatchActor({ roomId: 'bot-drive-revive', mapId: 'verdant', mode, seed: 33, seats, bots, ruleset: reviveRules,
+    world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
+  const old = makeRevive(null), sim = old.authority;
+  sim.onMatchReady();
+  const live = sim.modeController.state;
+  const hull = sim.entityById.get('a-0'), pilot = sim.entityById.get('pilot'), enemy = sim.entityById.get('b-0');
+  const own = live.flags.find((f) => f.team === 'alpha'), goal = live.flags.find((f) => f.team === 'bravo');
+  const dx = own.x - goal.x, dz = own.z - goal.z, length = Math.hypot(dx, dz) || 1;
+  const hold = (e, out) => { e.state.pos.set(goal.x + dx / length * out, 0, goal.z + dz / length * out); e.state.speed = 0; };
+  pilot.state.pos.set(own.x, 0, own.z);
+  const enemyAt = { x: enemy.state.pos.x, z: enemy.state.pos.z };
+  let tick = 0;
+  const told = new Map();
+  const step = (actor) => {
+    const s = actor.authority;
+    s.step({ dt: 1 / 60, inputs });
+    for (const ev of s.eventsForViewer('pilot')) if (actor === old && ev.type === 'mode_respawn') told.set(ev.id, tick + 1);
+    s.afterEventBroadcast();
+    s.entityById.get('pilot').state.speed = 0;
+    const b = s.entityById.get('b-0'); b.state.pos.set(enemyAt.x, 0, enemyAt.z); b.state.speed = 0;
+    if (actor === old) tick++;
+  };
+  hold(hull, 100);
+  for (let s = 0; s < 18; s++) {
+    for (let k = 0; k < 60; k++) step(old);
+    const d = Math.hypot(hull.state.pos.x - goal.x, hull.state.pos.z - goal.z);
+    if (d < 60 || d > 115) hold(hull, 100);
+  }
+  for (let k = 0; k < 60; k++) step(old);
+  hull.combat.hp = 0; hull.combat.destroyed = true;
+  for (let k = 0; k < 30; k++) step(old);
+  const atKeyframe = hull.aiCtl.captureDrive().streams;
+  const era = createEraIndexer();
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era) }));
+  const sealed = keyframe.entities.find((e) => e.entityId === old.wireIdOf('a-0'));
+  let latest = null;
+  if (revivedInWindow) {
+    for (let k = 0; k < 600 && !told.has('a-0'); k++) step(old);
+    for (let k = 0; k < 15; k++) step(old);
+    latest = hostFrame(old, tick, era);
+  }
+  const { state } = resumeStateFromRetained(keyframe, 0, latest, latest ? 500 : null, [], [], [...told]);
+  const fresh = makeRevive({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  applyResumeState(fresh, state);
+  const twin = fresh.authority.entityById.get('a-0');
+  const taken = twin.aiCtl.captureDrive().streams;
+  const built = makeRevive(null);
+  const constructed = built.authority.entityById.get('a-0').aiCtl.captureDrive().streams;
+  built.stop();
+  const downAtResume = hull.combat.destroyed && twin.combat.destroyed;
+  fresh.authority.onMatchReady();
+  let apart = 0, apartAt = null, together = 0;
+  for (let k = 1; k <= 60 * 25; k++) {
+    step(old); step(fresh);
+    if (hull.combat.destroyed || twin.combat.destroyed) continue;
+    together++;
+    const d = Math.hypot(hull.state.pos.x - twin.state.pos.x, hull.state.pos.z - twin.state.pos.z);
+    if (d > apart) { apart = d; apartAt = k / 60; }
+  }
+  old.stop(); fresh.stop();
+  return { sealed, atKeyframe, taken, constructed, downAtResume, apart, apartAt, together, told: told.get('a-0') ?? null, keyTick: keyframe.tick };
+}
+for (const [label, revivedInWindow] of [['[7a] a raider down when the keyframe is sealed, still down at the resume', false],
+  ['[7b] a raider down when the keyframe is sealed, revived before the seat\'s newest frame', true]]) {
+  console.log(label);
+  const run = downAtKeyframe(revivedInWindow);
+  ok(!!run.sealed && !run.sealed.way && Number.isInteger(run.atKeyframe[0]) && Number.isInteger(run.atKeyframe[1])
+    && run.atKeyframe[0] !== run.constructed[0] && run.atKeyframe[1] !== run.constructed[1] && (revivedInWindow ? run.told > run.keyTick && !run.downAtResume : run.downAtResume),
+  `the case is built: the raider is down at the keyframe (no way carried), its brain drew from both streams before (controller ${run.atKeyframe[0]}, `
+    + `planner ${run.atKeyframe[1]}; a fresh brain's ${run.constructed[0]}, ${run.constructed[1]}), and ${revivedInWindow ? `the old host revives it after the `
+      + `keyframe (told at tick ${run.told})` : 'it is still down on both hosts at the resume'}`);
+  ok(JSON.stringify(run.sealed?.streams ?? null) === JSON.stringify(run.atKeyframe), `the keyframe carries the down raider's streams alone `
+    + `(${JSON.stringify(run.sealed?.streams ?? null)})`);
+  ok(run.taken[0] === run.atKeyframe[0] && run.taken[1] === run.atKeyframe[1], `the new brain draws on from the keyframe's positions of both `
+    + `(controller ${run.taken[0]}, planner ${run.taken[1]}), not a fresh brain's`);
+  const bound = revivedInWindow ? 4 : 0.5;
+  ok(run.together > 60 * 10 && run.apart < bound, `once both are up the two raiders keep one track for 25 s (at most ${run.apart.toFixed(2)} m apart`
+    + `${run.apartAt === null ? '' : `, at +${run.apartAt.toFixed(2)} s`}; ${(run.together / 60).toFixed(1)} s together; bound ${bound} m${revivedInWindow
+      ? ': the old brain drove its revived life 0.25 s and planned it from its spawn before the seat\'s frame, which the new one plans from the newer row' : ''})`);
 }
 
 if (failures) { console.error(`botDriveMigration.selftest: ${failures} failure(s)`); process.exit(1); }

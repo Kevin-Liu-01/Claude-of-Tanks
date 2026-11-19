@@ -337,19 +337,24 @@ function resumeWindow(state: HostResumeState, checkpoint: NewModeCheckpoint, ext
  * and the restore takes it up as made (matchModes.ts trickleHorde). A refused arrival due again (a pending respawn) was
  * owed by the wave already. Before, the new host's first step found the keyframe's trickle clock run out and brought one
  * more hostile on. waveStartMigration.selftest [6].
+ * Frontline's reinforce trickle the same way (gaps 274 fix-up r2): a defender revived in the window with no refused
+ * arrival pending was the trickle's arrival from the rear (or a line advance's, which checkpointAtNewestFrame tells
+ * apart by its moment), named with the mode time it was told at (WaveCheckpoint.line.reinforced); the restore takes it
+ * up as made (matchModes.ts stepReinforceTrickle). Before, the new host's first step found the keyframe's clock run out
+ * and brought a second defender on, 45 s before the old host's next. waveStartMigration.selftest [9].
  */
 function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>, known: ResumeWindow = NO_WINDOW): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;
   const mode = checkpoint.mode, waves = mode.waves, hunt = mode.hunt, objectives = mode.objectives;
-  const horde = waves?.horde;
-  let trickled: [string, number][] = [];
-  if (horde && horde.queued > 0) {
-    const pending = new Set(mode.respawns.map(([id]) => id));
-    const hostile = new Set(mode.teams.filter(([, team]) => team === 'bravo').map(([id]) => id));
-    trickled = [...revived].filter((id) => hostile.has(id) && !pending.has(id))
-      .map((id): [string, number] => [id, known.told.get(id) ?? known.frameAtS]).filter(([, atS]) => Number.isFinite(atS))
-      .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1)).slice(0, horde.queued);
-  }
+  const horde = waves?.horde, line = waves?.line;
+  // the hostiles revived in the window as a director's arrival (none was a refused arrival due again), in their order
+  const pending = new Set(mode.respawns.map(([id]) => id));
+  const hostile = new Set(mode.teams.filter(([, team]) => team === 'bravo').map(([id]) => id));
+  const arrived = (): [string, number][] => [...revived].filter((id) => hostile.has(id) && !pending.has(id))
+    .map((id): [string, number] => [id, known.told.get(id) ?? known.frameAtS]).filter(([, atS]) => Number.isFinite(atS))
+    .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
+  const trickled = horde && horde.queued > 0 ? arrived().slice(0, horde.queued) : [];
+  const reinforced = line ? arrived() : [];
   return {
     ...checkpoint,
     mode: {
@@ -359,7 +364,8 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
-        ...(waves.line?.attack ? { line: { ...waves.line, attack: waves.line.attack.filter(([id]) => !revived.has(id)) } } : {}),
+        ...(line && (line.attack || reinforced.length) ? { line: { ...line, ...(line.attack ? { attack: line.attack.filter(([id]) => !revived.has(id)) } : {}),
+          ...(reinforced.length ? { reinforced } : {}) } } : {}),
         ...(horde && trickled.length ? { horde: { ...horde, trickled } } : {}) } } : {}),
       ...(hunt ? { hunt: { ...hunt, searches: hunt.searches.filter(([id]) => !revived.has(id)) } } : {}),
       ...(objectives?.raids ? { objectives: { ...objectives, raids: objectives.raids.filter(([id]) => !revived.has(id)) } } : {}),
@@ -406,7 +412,16 @@ function zoneAtFrame(zone: CheckpointZone, shown: ReadonlyMap<string, Record<str
  * shows advanced after it (line.begun, gaps 274 fix-up r1): its zones are the frame's, the advance's moment the newest
  * time the seat was told a defender rose (the advance's reinforcement; else the frame's: the frame carries no advance
  * time, so a counter-attack is then up to the window late), the defenders told risen then are named, and the restore
- * takes the advance up as begun (matchModes.ts advanceLine) rather than taking the sector again and advancing twice.
+ * takes the advance up as begun (matchModes.ts advanceLine) rather than taking the sector again and advancing twice; a
+ * defender told risen before it was the reinforce trickle's (line.reinforced), and none after it is. Fix-up r2 names the
+ * director's other moves the window held: a Horde wave cleared there (horde.cleared: the frame shows the lull running,
+ * or the clear's own step, where the keyframe had none due), taken up as made (matchModes.ts clearHordeWave); and a
+ * counter-attack launched there (line.counter.launched: the frame is past its moment and the keyframe's had no squad),
+ * whose squad the new host picks on its first step and does not announce. Before, the new host cleared the wave again
+ * (a second repair and cache) and launched the counter again (a second mode_counter_attack). And a cache taken there:
+ * the frame lists the active caches (serialize), so one the keyframe holds active that the frame does not list was taken
+ * (or an air drop expired) and stays taken; the hull's row carries its repair or rounds. Before, it lay there again, and
+ * the hull that took it, still on it, took it a second time on the new host's first step.
  */
 export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeStateJson: string | null, known: ResumeWindow = NO_WINDOW): NewModeCheckpoint {
   const mode = checkpoint.mode;
@@ -422,6 +437,13 @@ export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeState
   const zones = new Map((Array.isArray(view.zones) ? view.zones : []).map(recordOf).filter((zone): zone is Record<string, unknown> => !!zone && typeof zone.id === 'string')
     .map((zone) => [zone.id as string, zone]));
   const next: ModeCheckpoint = { ...mode, score, teams };
+  // the caches the frame lists active: one the keyframe holds active and the frame does not was taken in the window
+  const shownCaches = Array.isArray(view.pickups)
+    ? new Set(view.pickups.map(recordOf).filter((cache): cache is Record<string, unknown> => !!cache && typeof cache.id === 'string').map((cache) => cache.id as string)) : null;
+  const caches = <T extends { id: string; active: boolean }>(list: T[]): T[] =>
+    (shownCaches && Array.isArray(list) ? list.map((cache) => (cache.active && !shownCaches.has(cache.id) ? { ...cache, active: false } : cache)) : list);
+  if (mode.support) next.support = { ...mode.support, pickups: caches(mode.support.pickups) };
+  if (mode.waves?.horde) next.waves = { ...mode.waves, horde: { ...mode.waves.horde, pickups: caches(mode.waves.horde.pickups) } };
   const objectives = mode.objectives;
   if (objectives) {
     const flags = new Map((Array.isArray(view.flags) ? view.flags : []).map(recordOf).filter((flag): flag is Record<string, unknown> => !!flag && isTeam(flag.team))
@@ -439,22 +461,35 @@ export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeState
       ball = { x: shownBall.x as number, y: shownBall.y as number, z: shownBall.z as number, vx: shownBall.vx as number, vy: shownBall.vy as number, vz: shownBall.vz as number, lastTouchId: shownBall.lastTouchId as string | null };
       if (changedHands) ballActiveAtS = Math.max(ballActiveAtS, mode.elapsedS);
     }
-    next.objectives = { ...objectives, flags: objectives.flags.map(flagAtFrame), zones: objectives.zones.map((zone) => zoneAtFrame(zone, zones)), ball, ballActiveAtS };
+    next.objectives = { ...objectives, flags: objectives.flags.map(flagAtFrame), zones: objectives.zones.map((zone) => zoneAtFrame(zone, zones)), ball, ballActiveAtS,
+      ...(objectives.caches ? { caches: { ...objectives.caches, pickups: caches(objectives.caches.pickups) } } : {}) };
   }
   const line = mode.waves?.line, shownIndex = recordOf(view.line)?.index;
-  if (line && shownIndex === line.index) next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
+  // a counter-attack due by the frame's moment with no squad at the keyframe: the old host launched it in the window
+  const counter = line?.counter && !line.counter.ids.length && Number.isFinite(known.frameAtS) && known.frameAtS >= line.counter.atS
+    ? { ...line.counter, launched: true } : line?.counter ?? null;
+  if (line && shownIndex === line.index) next.waves = { ...(next.waves ?? mode.waves!), line: { ...line, counter, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)) } };
   else if (line && Number.isInteger(shownIndex) && (shownIndex as number) > line.index) {
     const defenders = new Set(mode.teams.filter(([, team]) => team === 'bravo').map(([id]) => id));
     const told = [...known.told].filter(([id]) => defenders.has(id));
     const atS = told.length ? Math.max(...told.map(([, at]) => at)) : Number.isFinite(known.frameAtS) ? known.frameAtS : mode.elapsedS;
     const risen = told.filter(([, at]) => at === atS).map(([id]) => id).sort();
-    next.waves = { ...mode.waves!, line: { ...line, zones: line.zones.map((zone) => zoneAtFrame(zone, zones)), begun: { index: shownIndex as number, atS, risen } } };
+    // the reinforce trickle's arrivals came before the advance (its reinforcement is the newest told)
+    const reinforced = (line.reinforced ?? []).filter(([, at]) => at < atS);
+    const { reinforced: _named, ...rest } = line;
+    next.waves = { ...(next.waves ?? mode.waves!), line: { ...rest, counter, ...(reinforced.length ? { reinforced } : {}), zones: line.zones.map((zone) => zoneAtFrame(zone, zones)),
+      begun: { index: shownIndex as number, atS, risen } } };
   }
   // a Horde wave the old host began after the keyframe (gaps 274, G2): the frame shows its number, and the restore takes
   // it up as begun (matchModes.ts startHordeWave) rather than finding the lull run out and beginning it again
-  const horde = mode.waves?.horde, shownWave = recordOf(view.horde)?.wave;
+  const shownHorde = recordOf(view.horde), horde = mode.waves?.horde, shownWave = shownHorde?.wave;
   if (horde && Number.isInteger(shownWave) && (shownWave as number) > mode.waves!.wave) {
-    next.waves = { ...(next.waves ?? mode.waves!), horde: { ...horde, begunWave: shownWave as number } };
+    next.waves = { ...(next.waves ?? mode.waves!), horde: { ...next.waves!.horde!, begunWave: shownWave as number } };
+  } else if (horde && shownHorde && shownWave === mode.waves!.wave && horde.nextWaveAtS === null && Number.isFinite(known.frameAtS)
+    && finiteNumber(shownHorde.nextWaveInS) && (shownHorde.nextWaveInS > 0 || (shownHorde.alive === 0 && shownHorde.queued === 0))) {
+    // a wave the old host cleared after the keyframe (fix-up r2): the lull the frame shows running, or the clear's own
+    // step (its field and queue empty, the lull not yet counted down), on the frame's mode clock
+    next.waves = { ...(next.waves ?? mode.waves!), horde: { ...next.waves!.horde!, cleared: [known.frameAtS, shownHorde.nextWaveInS] } };
   }
   return { ...checkpoint, mode: next };
 }
@@ -890,7 +925,9 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // later than the old one (a CTF raider went in by another way, 1.9 s apart at the flag). A hull revived since the
     // capture, or down now, lives no more the life they describe: its brain keeps the drive resume() left it, as the old
     // host's own revive did, and takes the brain's seeded streams alone, which outlive a life on the old host too (fix-up
-    // r1: the controller's and planner's streams went back to the construction's, and every draw after them differed)
+    // r1: the controller's and planner's streams went back to the construction's, and every draw after them differed).
+    // A bot down when the keyframe was sealed carries its streams alone (fix-up r2: it carried nothing, and its brain drew
+    // its next life from the construction's positions, 55 m off the old host's raider within 25 s)
     if (extras) {
       const lifeGoesOn = !revived.has(entity.id) && !combat.destroyed;
       const motion = extras.motion;
@@ -899,6 +936,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         tank.yawRate = motion[1];
       }
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
+      else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
     }
     restored++;
   }
@@ -992,12 +1030,16 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       };
       if (!auxiliaryAtRest(auxiliary, freshAuxiliaryOf(entity.spec))) extras.auxiliary = auxiliary;
     }
-    // a live hull's drive (gaps 274, G3): the integrator's spool and turn rate, and a bot's way
+    // a live hull's drive (gaps 274, G3): the integrator's spool and turn rate, and a bot's way; a down bot's brain
+    // streams alone (fix-up r2: down or benched, it drives a next life on from them on the old host)
     if (!combat.destroyed) {
       const spool = entity.state._spool ?? 0, yawRate = entity.state.yawRate ?? 0;
       if ((spool !== 0 || yawRate !== 0) && Number.isFinite(spool) && Number.isFinite(yawRate)) extras.motion = [spool, yawRate];
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
+    } else {
+      const streams = entity.aiCtl?.captureStreams?.();
+      if (streams && (streams[0] !== null || streams[1] !== null)) extras.streams = streams;
     }
     out.push(extras);
   }

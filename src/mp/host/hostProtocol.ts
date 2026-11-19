@@ -76,6 +76,9 @@ export interface MigrationEntityExtras {
   motion?: [spool: number, yawRate: number];
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
+  /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the
+   *  controller's, the planner's), which its next life draws on from on the old host; its way is no life it drives again. */
+  streams?: BotDrive['streams'];
 }
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
