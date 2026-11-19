@@ -94,6 +94,8 @@ export interface MigrationKeyframe {
   battleTimeMs: number;
   /** The authority clock (s) at `tick` (authority.timeS; battleTimeMs also counts a resumed host's offset). */
   timeS?: number;
+  /** The battle clock (s) at `tick`, exact (275; authority.battleS): the float sum a new host's battle clock goes on from. */
+  battleS?: number;
   phase: 'countdown' | 'playing' | 'ended';
   frame: SnapshotFrame;
   entities: MigrationEntityExtras[];
@@ -101,7 +103,7 @@ export interface MigrationKeyframe {
 
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
+  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, timeS: keyframe.timeS, ...(typeof keyframe.battleS === 'number' ? { battleS: keyframe.battleS } : {}), phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint,
     ...(keyframe.battleId ? { battleId: keyframe.battleId } : {}) }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
@@ -132,6 +134,7 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
   return {
     tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities,
     ...(typeof extras.timeS === 'number' && Number.isFinite(extras.timeS) && extras.timeS >= 0 ? { timeS: extras.timeS } : {}),
+    ...(typeof extras.battleS === 'number' && Number.isFinite(extras.battleS) && extras.battleS >= 0 ? { battleS: extras.battleS } : {}),
     ...(extras.modeCheckpoint ? { modeCheckpoint: extras.modeCheckpoint as NewModeCheckpoint } : {}),
     ...(isBattleId(extras.battleId) && extras.battleId !== 0 ? { battleId: extras.battleId } : {}),
   };
@@ -357,6 +360,8 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
   const reinforced = line ? arrived() : [];
   return {
     ...checkpoint,
+    // a revive clears the bot's last pushed target (matchModes.ts reviveAtSpawn), so its next route push is made (275)
+    ...(checkpoint.host ? { host: { ...checkpoint.host, targets: checkpoint.host.targets.filter(([id]) => !revived.has(id)) } } : {}),
     mode: {
       ...mode,
       respawns: mode.respawns.filter(([id]) => !revived.has(id)),
@@ -666,6 +671,22 @@ function restoreRowCounts(combat: CombatState, row: EntityRow, spec: DamageTankS
  * A hull a mode revived between the keyframe and its newer row is named (revivedEntityIds, respawnTicks from the
  * `mode_respawn` ticks this seat was told of): the keyframe's extras are the life it left.
  */
+/**
+ * The old host's battle clock at a newer frame (275): the keyframe's exact clock (MigrationKeyframe.battleS) with one
+ * step's dt (TICK_MS / 1000, the fixed-step loop's) added a step, as the old host's authority added them, for each step between the two frames' milliseconds. Absent
+ * (an older keyframe, or a step count the frame's milliseconds do not bear out): the frame's milliseconds stand alone.
+ */
+function battleClockAt(keyframe: MigrationKeyframe, battleTimeMs: number): number | undefined {
+  const from = keyframe.battleS;
+  if (typeof from !== 'number' || !Number.isFinite(from) || !Number.isFinite(battleTimeMs)) return undefined;
+  const dt = TICK_MS / 1000;
+  const steps = Math.round((battleTimeMs - keyframe.battleTimeMs) / TICK_MS);
+  if (steps < 0 || steps > 60 * 60) return undefined;
+  let clock = from;
+  for (let k = 0; k < steps; k++) clock += dt;
+  return Math.abs(clock * 1000 - battleTimeMs) <= 2 ? clock : undefined;
+}
+
 export function resumeStateFromRetained(
   keyframe: MigrationKeyframe,
   keyframeAtMs: number,
@@ -699,6 +720,7 @@ export function resumeStateFromRetained(
       destruction: (latest.destruction ?? []).length >= (state.frame.destruction ?? []).length ? latest.destruction : state.frame.destruction };
     state.tick = latest.tick;
     state.battleTimeMs = latest.meta.battleTimeMs;
+    state.battleS = battleClockAt(keyframe, latest.meta.battleTimeMs);
     baseTick = latest.tick;
     baseAtMs = latestAtMs;
   }
@@ -918,7 +940,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // a bot's brain takes the hull as restored (round 3 M3): the fresh actor built it at the spawn, so what it measures
     // between its own ticks (the ground covered, the hp it last saw) would read the move to this row and the hp lost
     // before the keyframe as one tick of its own; resume() restarts them from the hull, as a revive's hand-back does
-    entity.aiCtl?.resume?.(actor.authority.timeS);
+    entity.aiCtl?.resume?.(actor.authority.battleS);
     // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the integrator's spool and turn
     // rate, which the row does not carry (a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
     // route, cursor, mission and watchdog; game/ai.ts takeDrive), which a fresh brain planned afresh and re-planned
@@ -935,8 +957,19 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         tank._spool = Math.max(0, Math.min(1, motion[0]));
         tank.yawRate = motion[1];
       }
+      // the rest of the integrator no row carries (275): the gun's bloom first among them
+      if (lifeGoesOn && extras.integrator) restoreIntegrator(tank, extras.integrator);
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
+      // the brain itself (275): its traffic with its allies, its detours, windows, timers' phases, aim and search, as the
+      // old host's had them (a new brain began at its construction's, and Frontline attackers parted 112 m in 14 s). A
+      // hull that rose since the capture, or lies down, takes it too and then the revive's hand-back, as the old host's
+      // own revive handed the brain its new life (resume() keeps what outlives a life: the windows on match time, the
+      // counts, the aim's draw)
+      if (extras.brain) {
+        entity.aiCtl?.takeBrain?.(extras.brain, lifeGoesOn ? gapS : 0, (id) => actor.authority.entityById.get(id));
+        if (!lifeGoesOn) entity.aiCtl?.resume?.(actor.authority.battleS);
+      }
     }
     restored++;
   }
@@ -979,6 +1012,61 @@ function freshAuxiliaryOf(spec: { id?: string }): AuxiliaryState {
 function auxiliaryAtRest(entry: NonNullable<MigrationEntityExtras['auxiliary']>, fresh: AuxiliaryState): boolean {
   return entry.lights === fresh.lights && entry.gunOn === fresh.gunOn && entry.smokeCharges === fresh.smokeCharges && entry.smokeReadyIn === 0 &&
     entry.shots === fresh.shots && entry.nextShotIn === 0 && (entry.stations ?? []).every(([shots, nextShotIn]) => shots === 0 && nextShotIn === 0);
+}
+
+/** The integrator parts a migration carries (MigrationEntityExtras.integrator; 275), as the hull's state holds them. */
+interface IntegratorState {
+  bloomF: number; turretYawRate: number; _prevSpeed: number; rolloverCountdownS: number;
+  _rollover: { elapsedS: number; expired: boolean };
+  _hold: { p: number; r: number; pv: number; rv: number }; _holdSeat: { p: number; r: number; pv: number; rv: number };
+  _susp: { p: number; r: number; pv: number; rv: number; d: number; dv: number; c: number; cv: number };
+  _spring: { pitch: number; roll: number; pitchV: number; rollV: number; recoilVX: number; recoilVZ: number };
+}
+const ROCK_KEYS = ['p', 'r', 'pv', 'rv'] as const;
+const SUSP_KEYS = ['p', 'r', 'pv', 'rv', 'd', 'dv', 'c', 'cv'] as const;
+const SPRING_KEYS = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
+/** A live hull's integrator state no row carries (275), each part absent at rest (a fresh host's own); null: all at rest. */
+function captureIntegrator(state: IntegratorState): MigrationEntityExtras['integrator'] | null {
+  const out: NonNullable<MigrationEntityExtras['integrator']> = {};
+  const finite = (value: number): boolean => typeof value === 'number' && Number.isFinite(value);
+  if (finite(state.bloomF) && state.bloomF !== 1) out.bloom = state.bloomF;
+  if (finite(state.turretYawRate) && state.turretYawRate !== 0) out.slew = state.turretYawRate;
+  if (finite(state._prevSpeed) && state._prevSpeed !== 0) out.prevSpeed = state._prevSpeed;
+  const rollover = state._rollover;
+  if (rollover && (rollover.elapsedS || rollover.expired || state.rolloverCountdownS) && finite(rollover.elapsedS) && finite(state.rolloverCountdownS)) {
+    out.rollover = [rollover.elapsedS, rollover.expired === true, state.rolloverCountdownS];
+  }
+  const part = <K extends string>(from: Record<K, number> | undefined, keys: readonly K[]): number[] | null => {
+    if (!from) return null;
+    const values = keys.map((key) => from[key]);
+    return values.every(finite) && values.some((value) => value !== 0) ? values : null;
+  };
+  const hold = part(state._hold, ROCK_KEYS), seat = part(state._holdSeat, ROCK_KEYS);
+  const susp = part(state._susp, SUSP_KEYS), spring = part(state._spring, SPRING_KEYS);
+  if (hold) out.hold = hold;
+  if (seat) out.seat = seat;
+  if (susp) out.susp = susp;
+  if (spring) out.spring = spring;
+  return Object.keys(out).length ? out : null;
+}
+/** The old host's integrator taken up (275): each part that is one, onto the fresh hull's own state objects. */
+function restoreIntegrator(state: IntegratorState, carried: NonNullable<MigrationEntityExtras['integrator']>): void {
+  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+  if (finite(carried.bloom) && carried.bloom >= 1) state.bloomF = carried.bloom;
+  if (finite(carried.slew)) state.turretYawRate = carried.slew;
+  if (finite(carried.prevSpeed)) state._prevSpeed = carried.prevSpeed;
+  const rollover = carried.rollover;
+  if (Array.isArray(rollover) && finite(rollover[0]) && finite(rollover[2]) && state._rollover) {
+    state._rollover.elapsedS = rollover[0]; state._rollover.expired = rollover[1] === true; state.rolloverCountdownS = rollover[2];
+  }
+  const part = <K extends string>(to: Record<K, number> | undefined, keys: readonly K[], values: unknown): void => {
+    if (!to || !Array.isArray(values) || values.length !== keys.length || !values.every(finite)) return;
+    keys.forEach((key, i) => { to[key] = values[i] as number; });
+  };
+  part(state._hold, ROCK_KEYS, carried.hold);
+  part(state._holdSeat, ROCK_KEYS, carried.seat);
+  part(state._susp, SUSP_KEYS, carried.susp);
+  part(state._spring, SPRING_KEYS, carried.spring);
 }
 
 /**
@@ -1035,12 +1123,17 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     if (!combat.destroyed) {
       const spool = entity.state._spool ?? 0, yawRate = entity.state.yawRate ?? 0;
       if ((spool !== 0 || yawRate !== 0) && Number.isFinite(spool) && Number.isFinite(yawRate)) extras.motion = [spool, yawRate];
+      const integrator = captureIntegrator(entity.state);
+      if (integrator) extras.integrator = integrator;
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {
       const streams = entity.aiCtl?.captureStreams?.();
       if (streams && (streams[0] !== null || streams[1] !== null)) extras.streams = streams;
     }
+    // a bot's brain, live or down (275; game/ai.ts BotBrain): absent where it is the construction's
+    const brain = entity.aiCtl?.captureBrain?.();
+    if (brain) extras.brain = brain;
     out.push(extras);
   }
   return out;

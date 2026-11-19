@@ -101,6 +101,44 @@ export interface BotDrive {
   /** The brain's seeded streams' positions (the controller's, the planner's; null: not a readable stream). */
   streams: [controller: number | null, plan: number | null];
 }
+/**
+ * The brain's own state a migration keyframe carries beside its way (275; migrationState.ts captureEntityExtras and
+ * applyResumeState): every field it decides on from one tick to the next (its target and mode, the ally-traffic
+ * negotiation, its detours, windows, timers' phases, aim errors, stuck and progress state, search, press, ram and
+ * jockey state and their counts), each only where it differs from the brain's construction, which both hosts build
+ * alike from the same seed. The way, the world's lists, a tick's own scratch, the news queue, a Watch park and a
+ * commander's order are not in it (botBrainMigration.selftest's census names each createAI field one way or the other).
+ * Clocks on the brain's clock, the battle's (275: the authority's battleS, which a migrated host's goes on from the old
+ * host's), so they are taken as they are. Before, a migrated brain began at its construction's: Frontline attackers
+ * that had settled who passes whom (the ally deadlock and escape, a committed passing path, a detour's side) negotiated
+ * it again and parted 112 m from the old host's in 14 s. JSON-safe: a non-finite number travels as its name.
+ */
+export interface BotBrain {
+  /** The layout (BRAIN_LAYOUT): a record of another build's lists is refused whole. */
+  v: number;
+  /** The numbers that differ from the construction's: index, value pairs, flat. */
+  n?: (number | string)[];
+  /** The flags that differ from the construction's (each flipped), by index. */
+  f?: number[];
+  /** The names that differ (its mode, the ids and kinds it holds): index, value pairs, flat. */
+  s?: (number | string | null)[];
+  /** The hulls it holds (its target, the suspect, the gun under whose fire it is, the hull it rams), by id: index, id pairs. */
+  h?: (number | string)[];
+  /** The combat route it drives (flat x, z), when it has one. */
+  r?: number[];
+  /** The friendly-fire risk it last met: the ally, its kind and the clearance. */
+  k?: [allyId: string, kind: string, clearanceM: number];
+  /** Its ability planner's clocks (game/botAbilities.ts), when they differ from the construction's. */
+  a?: (number | string)[];
+}
+/** The brain record's layout (BotBrain.v): botBrainMigration.selftest pins the lists' text to it; bump it with them. */
+export const BRAIN_LAYOUT = 1;
+const encodeNumber = (value: number): number | string => (Number.isFinite(value) ? value : String(value));
+const decodeNumber = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value
+  : value === 'Infinity' ? Infinity : value === '-Infinity' ? -Infinity : value === 'NaN' ? NaN : null);
+const AI_MODES: readonly string[] = ['patrol', 'engage', 'seekCover', 'flank'];
+const SCOOT_KINDS: readonly string[] = ['scoot', 'probe', 'arc', 'lane', 'gun', 'escape'];
+const REACTIONS: readonly string[] = ['cover', 'backoff', 'angle', 'jink'];
 /** Hit reaction (bot philosophy r1): what a struck hull does for the next few seconds. */
 type Reaction = 'cover' | 'backoff' | 'angle' | 'jink';
 type RandomSource = () => number;
@@ -164,7 +202,12 @@ interface FriendlyFireRisk {
 }
 
 interface AiController {
-  update(dt: number, timeS: number): void;
+  /**
+   * One tick of the brain on its clock, `timeS` (the match's: the authority's battle clock, which a migrated host's
+   * goes on from the old host's; 275). `hullTimeS`, when it differs, is the clock the hull's own timers count on (its
+   * consumables' cooldowns and running items, its smoke kit's): a migrated authority restarts that one at 0.
+   */
+  update(dt: number, timeS: number, hullTimeS?: number): void;
   setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean; planned?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void;
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
@@ -213,6 +256,15 @@ interface AiController {
   /** The brain draws on from the old host's positions of its streams (BotDrive.streams), the one writer of them on a
    *  migrated host (takeDrive takes a living bot's through it); a record that is not one changes nothing. */
   takeStreams(streams: BotDrive['streams']): void;
+  /** The brain's own state for a migration keyframe (BotBrain; 275), or null where it is the construction's. */
+  captureBrain(): BotBrain | null;
+  /**
+   * A migrated host's brain takes up the old host's (BotBrain; 275), after resume() and takeDrive: `sinceS` is the sim time
+   * the hull's restored row is newer than the capture, and what the brain measured from the hull (where it stood, its
+   * hp, its gun's and its target's reload) stays resume()'s then. `hullOf` finds a hull it holds by id. A record of
+   * another layout, or one that is not one, changes nothing.
+   */
+  takeBrain(brain: BotBrain, sinceS: number, hullOf: (id: string) => AiEntity | null | undefined): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -1816,6 +1868,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // grid's order, keep their own tests of a record's state and stop where they always did (collision.ts ClearanceScan)
   const clearanceScan = (deps.queryObstacles as Partial<ObstacleQuery> | null | undefined)?.clearance ?? null;
   let nowS = 0;                              // last timeS seen by update()
+  let hullNowS = 0;                          // the hull's own clock at that update (update's hullTimeS; 275)
 
   resampleAimError();
 
@@ -7163,7 +7216,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     supportContext.engaged = !!target && losClear;
     supportContext.retreating = mode === 'seekCover' || timeS < fallbackUntilS || (orderActive() && order!.posture === 'retreat');
     supportContext.stationary = Math.abs(entity.state.speed) < 0.5;
-    input.actionBits = chooseAiSupportActionBits(entity, timeS, supportContext);
+    // the hull's consumables count on the hull's clock (275: a migrated authority's restarts at 0, the brain's goes on)
+    input.actionBits = chooseAiSupportActionBits(entity, hullNowS, supportContext);
     abilityContext.retreating = mode === 'seekCover' || timeS < fallbackUntilS
       || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');
     abilityContext.reloadS = slotReloadS(chosenSlot);
@@ -7171,6 +7225,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     abilityContext.airThreatM = deps.intel?.airThreatM?.() ?? Infinity;
     abilityContext.safeJump = false;
     abilityContext.offensive = offensiveJumpDue();
+    abilityContext.hullS = hullNowS;
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
       const st = entity.state;
       const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
@@ -7472,6 +7527,215 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (const point of kept.points) waypoints.push(point);
     wpIndex = kept.at;
     waypointsPlanned = kept.planned;
+  }
+  // ---- the brain a migration carries (BotBrain; 275) --------------------------------------------------------------
+  // Four lists, each read and written in one order: brainNumbers and setBrainNumbers name the same fields, as do the
+  // flags' pair (botBrainMigration.selftest's census holds them to it and pins their text to BRAIN_LAYOUT).
+  function brainNumbers(): number[] {
+    return [
+      terrainCheckAtS, terrainAvoidUntilS, terrainEscapeYaw, gunLaneNextCheckS, gunLaneBlockedT, gunLaneChecks,
+      gunLaneMoves, acquiredAtS, lastSeenAtS, lastSeen.x, lastSeen.z, losBlockedT, vantageVetoIdx, lastEngagedS,
+      moveTarget.x, moveTarget.z, vantage.x, vantage.z, vantageVeto[0].x, vantageVeto[0].z, vantageVeto[0].untilS,
+      vantageVeto[1].x, vantageVeto[1].z, vantageVeto[1].untilS, vantageVeto[2].x, vantageVeto[2].z,
+      vantageVeto[2].untilS, vantageVeto[3].x, vantageVeto[3].z, vantageVeto[3].untilS, coverPoint.x, coverPoint.z,
+      flankIndex, flankUntilS, flankPoints[0].x, flankPoints[0].z, flankPoints[1].x, flankPoints[1].z,
+      flankPoints[2].x, flankPoints[2].z, nonPenCount, shotsFromSpot, spotPos.x, spotPos.z, scootPoint.x,
+      scootPoint.z, scootUntilS, pocketEscapeUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x,
+      fallbackPoint.z, fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x,
+      reactPoint.z, reactUntilS, reactCdUntilS, reactSide, threatBearing, reactions, suspectUntilS, kitePoint.x,
+      kitePoint.z, kiteUntilS, orbitSide, orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT,
+      targetStillS, targetLastShotS, prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS,
+      passivePresses, passivePressRepicks, passivePressCandidate, passivePressArcT, pressVetoes[0].x,
+      pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z, pressVetoes[1].untilS,
+      pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x, pressVetoes[3].z,
+      pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, missVerdicts, pressPickS,
+      pressReachByS, pressUnreached, flankLaneCheckS, searchDisplacedAtS, searchLegsDisplaced, searchLegs,
+      searchFailures, searchGoal.x, searchGoal.z, searchLegStartS, searchLegBudgetS, searchLegStartDistM,
+      searchStrikesAtStart, searchSweepIndex, searchNextCheckS, strikeEvents, colliderStops, heBurstBest,
+      heBurstHFrac, heBurstLatFrac, hitChance, conserveHolds, rackSpentT, rackSpentUntilS, rackSpentVerdicts,
+      cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, objectiveShifts, zoneHold.x, zoneHold.z,
+      zoneHoldForX, zoneHoldForZ, zoneHoldMoves, missionReleaseUntilS, missionReleases, elevationLockT, levelGoal.x,
+      levelGoal.z, levelGoal.y, levelRouteUntilS, levelRouteStrikes, levelRoutes, levelRoutesSuperseded,
+      unbearableUntilS, unbearableVerdicts, ramRuns, lastRuns, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
+      ramLineCheckS, ramContactUntilS, ramPoint.x, ramPoint.z, laneFallbackUntilS, settleUntilS, settleStreak,
+      settleCdUntilS, friendlyBlockT, friendlyBlockCount, friendlyLaneMoves, friendlyLaneRetryS,
+      friendlyLaneSearches, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot, cachedPenRatio, errYawRad,
+      errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad, playerYawRad, playerPitchRad,
+      losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT, allyDeadlockT, allyEmergencyStops,
+      allyReverseEscapes, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
+      trafficNear.z, trafficFar.x, trafficFar.z, allyHoldT, allyHoldLastS, allyHoldAnchor.x, allyHoldAnchor.z,
+      allyHoldGiveWays, lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate,
+      stuckStrikes, freeMoveT, detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z,
+      leg.yaw, leg.atS, leg.dirX, leg.dirZ, deadLegs, blockedTravel.x, blockedTravel.z, blockedTravel.untilS,
+      lastFiredAtS, pressUntilS, ordersTaken, dispGateT, probeVisible[0], probeVisible[1], probeVisible[2],
+      probeVisible[3], probeVisible[4], probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX,
+      routeGoalZ, routeCorner.x, routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, steerGoalX, steerGoalZ,
+      routeCornerGivenUp.x, routeCornerGivenUp.z, routeCornerGivenUp.atS, routeCornerSettledUntilS, routeCornerFlips,
+      lastCorner.x, lastCorner.z, lastCorner.untilS, terrainRouteUntilS, wedgeReleaseUntilS, wedgeReleases,
+      cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, gunNudgeAtS, contactReleases, plannedLegRuns,
+      plannedLegRejoins, plannedLeg.ax, plannedLeg.az, plannedLeg.ex, plannedLeg.ez, plannedLeg.t, combatRouteIndex,
+      combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x, combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z,
+      openExposedAtS, aimLateralX, aimLateralZ, ballShots, airShots, squadThinkAtS, squadFlankAtS, offensiveJumps,
+      jockeyDir, jockeyStandS, jockeyStallS, jockeyLegs, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange, colliderLostMps,
+      colliderContactAtS, ramHoldOffs, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
+      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
+    ];
+  }
+  function setBrainNumbers(values: number[]): void {
+    [
+      terrainCheckAtS, terrainAvoidUntilS, terrainEscapeYaw, gunLaneNextCheckS, gunLaneBlockedT, gunLaneChecks,
+      gunLaneMoves, acquiredAtS, lastSeenAtS, lastSeen.x, lastSeen.z, losBlockedT, vantageVetoIdx, lastEngagedS,
+      moveTarget.x, moveTarget.z, vantage.x, vantage.z, vantageVeto[0].x, vantageVeto[0].z, vantageVeto[0].untilS,
+      vantageVeto[1].x, vantageVeto[1].z, vantageVeto[1].untilS, vantageVeto[2].x, vantageVeto[2].z,
+      vantageVeto[2].untilS, vantageVeto[3].x, vantageVeto[3].z, vantageVeto[3].untilS, coverPoint.x, coverPoint.z,
+      flankIndex, flankUntilS, flankPoints[0].x, flankPoints[0].z, flankPoints[1].x, flankPoints[1].z,
+      flankPoints[2].x, flankPoints[2].z, nonPenCount, shotsFromSpot, spotPos.x, spotPos.z, scootPoint.x,
+      scootPoint.z, scootUntilS, pocketEscapeUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x,
+      fallbackPoint.z, fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x,
+      reactPoint.z, reactUntilS, reactCdUntilS, reactSide, threatBearing, reactions, suspectUntilS, kitePoint.x,
+      kitePoint.z, kiteUntilS, orbitSide, orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT,
+      targetStillS, targetLastShotS, prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS,
+      passivePresses, passivePressRepicks, passivePressCandidate, passivePressArcT, pressVetoes[0].x,
+      pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z, pressVetoes[1].untilS,
+      pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x, pressVetoes[3].z,
+      pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, missVerdicts, pressPickS,
+      pressReachByS, pressUnreached, flankLaneCheckS, searchDisplacedAtS, searchLegsDisplaced, searchLegs,
+      searchFailures, searchGoal.x, searchGoal.z, searchLegStartS, searchLegBudgetS, searchLegStartDistM,
+      searchStrikesAtStart, searchSweepIndex, searchNextCheckS, strikeEvents, colliderStops, heBurstBest,
+      heBurstHFrac, heBurstLatFrac, hitChance, conserveHolds, rackSpentT, rackSpentUntilS, rackSpentVerdicts,
+      cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, objectiveShifts, zoneHold.x, zoneHold.z,
+      zoneHoldForX, zoneHoldForZ, zoneHoldMoves, missionReleaseUntilS, missionReleases, elevationLockT, levelGoal.x,
+      levelGoal.z, levelGoal.y, levelRouteUntilS, levelRouteStrikes, levelRoutes, levelRoutesSuperseded,
+      unbearableUntilS, unbearableVerdicts, ramRuns, lastRuns, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
+      ramLineCheckS, ramContactUntilS, ramPoint.x, ramPoint.z, laneFallbackUntilS, settleUntilS, settleStreak,
+      settleCdUntilS, friendlyBlockT, friendlyBlockCount, friendlyLaneMoves, friendlyLaneRetryS,
+      friendlyLaneSearches, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot, cachedPenRatio, errYawRad,
+      errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad, playerYawRad, playerPitchRad,
+      losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT, allyDeadlockT, allyEmergencyStops,
+      allyReverseEscapes, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
+      trafficNear.z, trafficFar.x, trafficFar.z, allyHoldT, allyHoldLastS, allyHoldAnchor.x, allyHoldAnchor.z,
+      allyHoldGiveWays, lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate,
+      stuckStrikes, freeMoveT, detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z,
+      leg.yaw, leg.atS, leg.dirX, leg.dirZ, deadLegs, blockedTravel.x, blockedTravel.z, blockedTravel.untilS,
+      lastFiredAtS, pressUntilS, ordersTaken, dispGateT, probeVisible[0], probeVisible[1], probeVisible[2],
+      probeVisible[3], probeVisible[4], probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX,
+      routeGoalZ, routeCorner.x, routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, steerGoalX, steerGoalZ,
+      routeCornerGivenUp.x, routeCornerGivenUp.z, routeCornerGivenUp.atS, routeCornerSettledUntilS, routeCornerFlips,
+      lastCorner.x, lastCorner.z, lastCorner.untilS, terrainRouteUntilS, wedgeReleaseUntilS, wedgeReleases,
+      cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, gunNudgeAtS, contactReleases, plannedLegRuns,
+      plannedLegRejoins, plannedLeg.ax, plannedLeg.az, plannedLeg.ex, plannedLeg.ez, plannedLeg.t, combatRouteIndex,
+      combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x, combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z,
+      openExposedAtS, aimLateralX, aimLateralZ, ballShots, airShots, squadThinkAtS, squadFlankAtS, offensiveJumps,
+      jockeyDir, jockeyStandS, jockeyStallS, jockeyLegs, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange, colliderLostMps,
+      colliderContactAtS, ramHoldOffs, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
+      overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
+    ] = values;
+  }
+  function brainFlags(): boolean[] {
+    return [
+      terrainBlocked, losClear, gunLaneClear, autoPatrolBuilt, hasMoveTarget, hasVantage, hasCoverPoint,
+      coverRollPassed, coverRolled, lineScootUp, fallbackReverse, probeMiss, passivePressing, flankLaneClear,
+      searching, heWorth, conserving, emptyRack, objectiveShifting, levelRouting, ramming, lastRun, ramLineClear,
+      directlyUnderFire, penGateOk, allyYielding, allyEmergencyActive, arcScoot, leg.driven, routeActive,
+      driveIntent, openExposed, jockeyAnchored, missionOffObjective,
+    ];
+  }
+  function setBrainFlags(values: boolean[]): void {
+    [
+      terrainBlocked, losClear, gunLaneClear, autoPatrolBuilt, hasMoveTarget, hasVantage, hasCoverPoint,
+      coverRollPassed, coverRolled, lineScootUp, fallbackReverse, probeMiss, passivePressing, flankLaneClear,
+      searching, heWorth, conserving, emptyRack, objectiveShifting, levelRouting, ramming, lastRun, ramLineClear,
+      directlyUnderFire, penGateOk, allyYielding, allyEmergencyActive, arcScoot, leg.driven, routeActive,
+      driveIntent, openExposed, jockeyAnchored, missionOffObjective,
+    ] = values;
+  }
+  function brainNames(): (string | null)[] {
+    return [mode, gunLaneTargetId, scootKind, reaction, targetActivityId, missStreakTargetId, searchKind, rackDwellId, rackSpentId, levelRouteTargetId, unbearableId, ramContactId, trafficDetourAllyId, routeOutcome];
+  }
+  /** Whether `value` may stand at brainNames' `index` (its mode, scoot kind and reaction are their unions'; the search
+   *  kind and the route's outcome strings; the rest an id or none). */
+  function brainNameFits(index: number, value: unknown): boolean {
+    if (index === 0) return AI_MODES.includes(value as string);
+    if (index === 2) return SCOOT_KINDS.includes(value as string);
+    if (index === 3) return value === null || REACTIONS.includes(value as string);
+    if (index === 6 || index === 13) return typeof value === 'string';
+    return value === null || typeof value === 'string';
+  }
+  function setBrainNames(values: readonly (string | null)[]): void {
+    mode = values[0] as AiMode;
+    gunLaneTargetId = values[1]!;
+    scootKind = values[2] as typeof scootKind;
+    reaction = values[3] as Reaction | null;
+    [, , , , targetActivityId, missStreakTargetId] = values;
+    searchKind = values[6]!;
+    [, , , , , , , rackDwellId, rackSpentId, levelRouteTargetId, unbearableId, ramContactId, trafficDetourAllyId] = values;
+    routeOutcome = values[13]!;
+  }
+  const brainHulls = (): (AiEntity | null)[] => [target, suspect, underFire, ramHull];
+  /** The brain's construction (BotBrain's sparse base): both hosts build it alike from the same seed (set at the end). */
+  let brainBuilt: { n: number[]; f: boolean[]; s: (string | null)[]; a: number[] } | null = null;
+  function captureBrain(): BotBrain | null {
+    const built = brainBuilt;
+    if (!built) return null;
+    const brain: BotBrain = { v: BRAIN_LAYOUT };
+    const numbers = brainNumbers(), n: (number | string)[] = [];
+    for (let i = 0; i < numbers.length; i++) if (!Object.is(numbers[i], built.n[i])) n.push(i, encodeNumber(numbers[i]));
+    const flags = brainFlags(), f: number[] = [];
+    for (let i = 0; i < flags.length; i++) if (flags[i] !== built.f[i]) f.push(i);
+    const names = brainNames(), s: (number | string | null)[] = [];
+    for (let i = 0; i < names.length; i++) if (names[i] !== built.s[i]) s.push(i, names[i]);
+    const hulls = brainHulls(), h: (number | string)[] = [];
+    for (let i = 0; i < hulls.length; i++) { const held = hulls[i]; if (held) h.push(i, held.id); }
+    const clocks = abilities.clocks(), a: (number | string)[] = [];
+    if (clocks.some((value, i) => !Object.is(value, built.a[i]))) for (const value of clocks) a.push(encodeNumber(value));
+    if (n.length) brain.n = n;
+    if (f.length) brain.f = f;
+    if (s.length) brain.s = s;
+    if (h.length) brain.h = h;
+    if (combatRoute.length) brain.r = combatRoute.flatMap(([x, z]) => [x, z]);
+    if (lastFriendlyRisk) brain.k = [lastFriendlyRisk.allyId, lastFriendlyRisk.kind, lastFriendlyRisk.clearanceM];
+    if (a.length) brain.a = a;
+    return n.length || f.length || s.length || h.length || brain.r || brain.k || a.length ? brain : null;
+  }
+  function takeBrain(brain: BotBrain, sinceS: number, hullOf: (id: string) => AiEntity | null | undefined): void {
+    const built = brainBuilt;
+    if (!built || !brain || typeof brain !== 'object' || brain.v !== BRAIN_LAYOUT) return;
+    // decode everything first: a record that is not one changes nothing
+    const numbers = built.n.slice(), flags = built.f.slice(), names = built.s.slice();
+    const pairs = (list: unknown, count: number, read: (value: unknown, index: number) => boolean): boolean => {
+      if (list === undefined) return true;
+      if (!Array.isArray(list) || list.length % 2) return false;
+      for (let i = 0; i < list.length; i += 2) {
+        const index = list[i];
+        if (!Number.isInteger(index) || index < 0 || index >= count || !read(list[i + 1], index)) return false;
+      }
+      return true;
+    };
+    const hulls: (AiEntity | null)[] = [null, null, null, null];
+    const clocks = Array.isArray(brain.a) ? brain.a.map(decodeNumber) : built.a.slice();
+    const route = Array.isArray(brain.r) ? brain.r : [];
+    const risk = brain.k;
+    if (!pairs(brain.n, numbers.length, (value, index) => { const v = decodeNumber(value); if (v === null) return false; numbers[index] = v; return true; })
+      || !(brain.f === undefined || (Array.isArray(brain.f) && brain.f.every((index) => Number.isInteger(index) && index >= 0 && index < flags.length)))
+      || !pairs(brain.s, names.length, (value, index) => { if (!brainNameFits(index, value)) return false; names[index] = value as string | null; return true; })
+      || !pairs(brain.h, hulls.length, (value, index) => { if (typeof value !== 'string') return false; hulls[index] = hullOf(value) ?? null; return true; })
+      || clocks.length !== 5 || clocks.some((value) => value === null)
+      || route.length % 2 || !route.every((value) => typeof value === 'number' && Number.isFinite(value))
+      || !(risk === undefined || (Array.isArray(risk) && typeof risk[0] === 'string' && (risk[1] === 'corridor' || risk[1] === 'blast')
+        && typeof risk[2] === 'number' && Number.isFinite(risk[2])))) return;
+    for (const index of brain.f ?? []) flags[index] = !flags[index];
+    // what the brain measured from the hull, as resume() read it from the restored row, when the row is newer than the
+    // capture: where it stood, its hp, its gun's and its target's reload (the old host's are the capture's moment's)
+    const since = Number.isFinite(sinceS) && sinceS > 0;
+    const measured = since ? [progX, progZ, lastHp, prevReloadT, prevTargetReloadT] : null;
+    setBrainNumbers(numbers);
+    setBrainFlags(flags);
+    setBrainNames(names);
+    [target, suspect, underFire, ramHull] = hulls;
+    combatRoute = Array.from({ length: route.length / 2 }, (_, i): readonly [number, number] => [route[2 * i]!, route[2 * i + 1]!]);
+    lastFriendlyRisk = risk ? { allyId: risk[0], kind: risk[1] as FriendlyFireRisk['kind'], clearanceM: risk[2] } : null;
+    abilities.setClocks(clocks as number[]);
+    if (measured) [progX, progZ, lastHp, prevReloadT, prevTargetReloadT] = measured;
   }
   /** The park's stretch is no time of the bot's own record: the clocks timed since its own events move on by it. */
   function shiftRecordClocks(parkS: number): void {
@@ -7810,7 +8074,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     targetLastShotS = timeS;
   }
 
-  function update(dt: number, timeS: number): void {
+  function update(dt: number, timeS: number, hullTimeS: number = timeS): void {
+    hullNowS = Number.isFinite(hullTimeS) ? hullTimeS : timeS;
     // anything still queued lands first, in its declared order (the drivers flush it earlier: applyPendingBotNews;
     // this is the fallback for a caller that steps the controller alone, audit M7)
     drainPendingEvents();
@@ -8248,6 +8513,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     takeDrive,
     captureStreams,
     takeStreams,
+    captureBrain,
+    takeBrain,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },
@@ -8344,5 +8611,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     state: mode,
   };
   (entity as ControllerOwnedEntity).ai = controller;
+  // the brain as it was built (BotBrain's sparse base; 275): both hosts build it alike, the same seed and spawn
+  brainBuilt = { n: brainNumbers(), f: brainFlags(), s: brainNames(), a: abilities.clocks() };
   return controller;
 }

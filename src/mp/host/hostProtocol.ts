@@ -1,5 +1,5 @@
 import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
-import type { BotDrive } from '../../game/ai.ts';
+import type { BotBrain, BotDrive } from '../../game/ai.ts';
 /**
  * The browser host (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13): the vocabulary between the main thread
  * (`matchHost.ts`: the room, the WebRTC acceptor, the host's own loopback client) and the Worker that runs the match
@@ -74,11 +74,23 @@ export interface MigrationEntityExtras {
   /** A live hull's drive as its integrator holds it and no row carries (gaps 274, G3): the engine's torque spool (0..1)
    *  and the hull's turn rate (rad/s); absent at rest (both 0), as a fresh host builds it. */
   motion?: [spool: number, yawRate: number];
+  /**
+   * A live hull's integrator state no row carries (275), each part absent at rest as a fresh host builds it: the gun's
+   * dispersion bloom and the turret's slew rate that drives it, the speed it last stepped at, the rollover's clock and
+   * countdown, the posture held over its tracks (_hold) and seated off them (_holdSeat), the suspension rock (_susp) and
+   * the attitude spring (_spring). The bloom is the one that steers a fight: a migrated gun read as settled (a fresh
+   * bloom of 1 against the old host's 3), its bot laid and fired otherwise, and Frontline attackers parted 5 m in 14 s.
+   */
+  integrator?: { bloom?: number; slew?: number; prevSpeed?: number; rollover?: [elapsedS: number, expired: boolean, countdownS: number];
+    hold?: number[]; seat?: number[]; susp?: number[]; spring?: number[] };
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the
    *  controller's, the planner's), which its next life draws on from on the old host; its way is no life it drives again. */
   streams?: BotDrive['streams'];
+  /** A bot's brain beside its way (game/ai.ts BotBrain; 275), live or down: what it decides on from tick to tick, where
+   *  it differs from the brain's construction. A down bot's is the brain its next life drives on from. */
+  brain?: BotBrain;
 }
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
@@ -108,6 +120,11 @@ export interface HostResumeState {
   keyframeBattleTimeMs?: number;
   /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
   timeS?: number;
+  /**
+   * The old host's battle clock (s) at `tick`, exact (275; AuthoritativeMatch.battleS, gone on to a newer frame by its
+   * steps): the new authority's battle clock starts from it (MatchActorResume.battleS). Absent: `battleTimeMs` alone.
+   */
+  battleS?: number;
   /**
    * The hulls a mode revived between the keyframe and their newer rows, by wire id (audit M1, review round 2): the
    * keyframe's row has them destroyed, the newer row alive. Their extras describe the life they left.
