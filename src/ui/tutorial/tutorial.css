@@ -93,6 +93,10 @@ body[data-hud-guidance~=card-yields] .cot-tut:is([data-chapter=battle],[data-cha
    watching tank sees it, a hairline outline while hidden */
 .cot-tut-guide-exposure rect{fill:oklch(from var(--surface-scene) l c h / .55);stroke:var(--ink-2);stroke-width:1.5;}
 .cot-tut-guide-exposure rect.is-seen{fill:var(--text-enemy);stroke:var(--text-enemy);}
+/* (273, S11) an actor's reload ring: a track, and its fill as the gun loads; full, it can fire (the enemy's colour) */
+.cot-tut-guide-reload-track{fill:oklch(from var(--surface-scene) l c h / .45);stroke:var(--line-2);stroke-width:4;}
+.cot-tut-guide-reload-fill{fill:none;stroke:var(--ink-1);stroke-width:4;stroke-linecap:round;}
+.cot-tut-guide-reload.is-ready .cot-tut-guide-reload-fill{stroke:var(--text-enemy);}
 .cot-tut-guide-edge-arrow{fill:var(--accent);stroke:oklch(0 0 0 / .5);stroke-width:1.5;}
 .cot-tut-guide-hud{position:absolute;left:0;top:0;width:22px;height:14px;margin-left:-11px;
   background:var(--accent);clip-path:polygon(0 0,50% 100%,100% 0,78% 0,50% 58%,22% 0);}

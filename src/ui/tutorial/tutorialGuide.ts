@@ -23,10 +23,11 @@
  * tutorialGuideMath.ts, held by tutorialGuide.selftest.mjs.
  */
 import {
-  ARC_RADII_M, EXPOSURE_POINTS, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox, trainingExposure,
+  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox,
   type ScreenPoint, type Viewport, type WorldPoint,
 } from './tutorialGuideMath.ts';
 import type { PenVerdict } from '../../sim/penVerdict.ts';
+import { EXPOSURE_POINTS, trainingExposure } from '../../sim/trainingSight.ts';
 import { PEN_INK } from '../penInk.ts';
 import type { TutorialGuideSpec } from './tutorialSteps.ts';
 
@@ -46,6 +47,8 @@ export interface GuidePort {
   /** S9: the verdict of a scripted shooter's round on the player's front plate, the hull turned by each offset (deg) from
    *  its heading now, its gun kept on the shooter (sim/trainingThreat.ts), in the reticle's bands; absent, no arc. */
   threat?(actorId: string, offsetsDeg: readonly number[]): ReadonlyArray<PenVerdict | null>;
+  /** S11: an actor's gun loaded, 0 just fired to 1 ready; null when it is not in the battle. */
+  actorReload?(actorId: string): number | null;
 }
 
 /** The guide's words, resolved by the runner in the player's language. */
@@ -71,6 +74,8 @@ export interface TutorialGuideLayer {
 interface GuideSnapshot {
   /** The angling arc's sectors drawn, and the needle's verdict (the hull's heading now). */
   readonly arc: number;
+  /** The reload ring over an actor (S11): how loaded its gun reads, or null while it does not show. */
+  readonly reload: number | null;
   /** The exposure shape (S10): which of the hull and turret it lit, or null while it does not show. */
   readonly exposure: { readonly hull: boolean; readonly turret: boolean } | null;
   readonly needle: PenVerdict | null;
@@ -94,6 +99,7 @@ const BRACKET_PX = 14;
 const AIM_RING_PX = 16;
 /** The angling arc's verdicts are asked again at most this often (ms): each ask traces a line per sector. */
 const ARC_ASK_MS = 300;
+const RELOAD_RING_PX = 13;
 const ARC_LIFT_M = 0.12;
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, className: string, parent: Element): SVGElementTagNameMap[K] {
@@ -136,6 +142,13 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let arcVerdicts: ReadonlyArray<PenVerdict | null> = [];
   let needleVerdict: PenVerdict | null = null;
   let arcAskedAt = -Infinity;
+  // the reload ring (S11): over an actor, a ring that fills as its gun loads
+  const reloadGroup = svgEl('g', 'cot-tut-guide-reload', world.svg);
+  const reloadTrack = svgEl('circle', 'cot-tut-guide-reload-track', reloadGroup);
+  const reloadFill = svgEl('circle', 'cot-tut-guide-reload-fill', reloadGroup);
+  for (const node of [reloadTrack, reloadFill]) node.setAttribute('r', String(RELOAD_RING_PX));
+  const reloadLength = 2 * Math.PI * RELOAD_RING_PX;
+  reloadFill.setAttribute('stroke-dasharray', `${reloadLength.toFixed(1)} ${reloadLength.toFixed(1)}`);
   // the exposure shape (S10): the hull and the turret over the player's tank, each lit while the actor sees it
   const exposureShape = svgEl('g', 'cot-tut-guide-exposure', world.svg);
   const exposureHull = svgEl('rect', 'cot-tut-guide-exposure-hull', exposureShape);
@@ -158,7 +171,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let escalated = false;
   let hidden = false;
   let frame = 0;
-  let drawn: GuideSnapshot = { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+  let drawn: GuideSnapshot = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
 
   const show = (node: Element, on: boolean): void => {
     if (on) node.removeAttribute('display'); else node.setAttribute('display', 'none');
@@ -191,9 +204,22 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     const marker = spec?.marker ?? null;
     const actorSpec = spec?.actor ?? null;
     const actor = actorSpec ? port.actor(actorSpec.id) : null;
-    const next: { exposure: { hull: boolean; turret: boolean } | null; arc: number; needle: PenVerdict | null; ring: boolean; chevrons: number;
-      bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
-      { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+    const next: { reload: number | null; exposure: { hull: boolean; turret: boolean } | null; arc: number; needle: PenVerdict | null; ring: boolean;
+      chevrons: number; bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
+      { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+
+    // the reload ring over its actor: the track, and the fill as far as its gun has loaded
+    const reloadSpec = spec?.reload ?? null;
+    const loader = reloadSpec ? port.actor(reloadSpec.id) : null;
+    const loaded = reloadSpec && port.actorReload ? port.actorReload(reloadSpec.id) : null;
+    const ringAt = loader ? port.project({ x: loader.x, y: loader.y + 5, z: loader.z }) : null;
+    if (ringAt && !ringAt.behind && loaded != null) {
+      reloadGroup.setAttribute('transform', `translate(${ringAt.x.toFixed(1)} ${ringAt.y.toFixed(1)}) rotate(-90)`);
+      reloadFill.setAttribute('stroke-dashoffset', (reloadLength * (1 - loaded)).toFixed(1));
+      reloadGroup.classList.toggle('is-ready', loaded >= 0.999);
+      next.reload = loaded;
+    }
+    show(reloadGroup, next.reload != null);
 
     // the exposure shape: over the player's tank, its hull and turret each lit while the actor sees it over the ground
     const exposureSpec = spec?.exposure ?? null;
@@ -381,7 +407,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       arcAskedAt = -Infinity;
       arcVerdicts = [];
       needleVerdict = null;
-      drawn = { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      drawn = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
       schedule();
     },
     setEscalated(on): void {

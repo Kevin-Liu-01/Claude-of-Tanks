@@ -4832,6 +4832,11 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     // S9: the angling arc's colours, the scripted shooter's round on the player's plate (game/state.ts trainingThreatFor)
     threat: (id, offsets) => (game.phase === 'battle' && isSoloBattleRuntimeReady()
       ? trainingThreatFor(game, id, offsets) as Array<PenVerdict | null> : []),
+    // S11: an actor's gun loaded (0 just fired, 1 ready), its own reload's
+    actorReload: (id) => {
+      const reload = game.phase === 'battle' ? game.tankById.get(id)?.combat?.reload : null;
+      return reload && reload.totalS > 0 ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : reload ? 1 : null;
+    },
   },
   view: () => {
     const state = game.phase === 'battle' ? game.player?.state : null;

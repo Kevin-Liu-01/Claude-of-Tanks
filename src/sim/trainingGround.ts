@@ -33,6 +33,9 @@ export interface TrainingVolley {
   readonly firstS: number;
   /** Where on the loaner's hull it aims (m): along the hull from its centre, and up from its origin. */
   readonly aim: { readonly alongM: number; readonly upM: number };
+  /** Its trigger only while it sees the player's hull or turret over the ground (sim/trainingSight.ts): S11's Sentry 3
+   *  fires at a tank that peeks out, never through the wall it hides behind. */
+  readonly whenSeen?: boolean;
 }
 
 /** One hull the scenes use: a target that never fires, or a scripted shooter. */
@@ -48,6 +51,9 @@ export interface TrainingActorRule {
   readonly presentDeg: number;
   /** A scripted shooter's fire; none for a target. */
   readonly volley?: TrainingVolley;
+  /** Parked out of the battle (no body, no shots, unseen) until its scene first cues it, then on its mark for good: a
+   *  later scene's hull need not be hidden from the earlier scenes' ground. */
+  readonly entersOnCue?: boolean;
 }
 
 /**
@@ -87,6 +93,17 @@ const S10_SENTRY2 = Object.freeze({ x: -280, z: 50 });
  *  slope's foot (8 m), where the crest hides the loaner's hull and its turret clears it; climbing the slope, its nose
  *  rises over the crest and the hull shows (trainingThreat.selftest.mjs holds both). */
 const S10_RING_BACK_M = 10;
+/** S11's cover spot and Sentry 3 (tools s11-search: the line from Sentry 3 to the spot and to the peek beside it clear of
+ *  the ground by 1.9 m), and the wall stamped between them. */
+const S11_COVER = Object.freeze({ x: -320, z: 38 });
+const S11_SENTRY3 = Object.freeze({ x: -220, z: -40 });
+/** The wall stands this far in front of the cover spot toward Sentry 3 (m); the peek spot this far to the spot's side. */
+const S11_WALL_AHEAD_M = 6;
+const S11_PEEK_SIDE_M = 10;
+const S11_LINE = (() => {
+  const dx = S11_SENTRY3.x - S11_COVER.x, dz = S11_SENTRY3.z - S11_COVER.z, length = Math.hypot(dx, dz);
+  return { x: dx / length, z: dz / length };
+})();
 const S10_LINE = (() => {
   const dx = S10_SENTRY2.x - S10_BERM.x, dz = S10_SENTRY2.z - S10_BERM.z, length = Math.hypot(dx, dz);
   return { x: dx / length, z: dz / length };
@@ -129,11 +146,20 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // point, ring F among them (tools s10-search). It fires at the turret, the part a hull-down tank shows.
     Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 2.0, aim: Object.freeze({ alongM: 1.0, upM: 2.25 }) }) }),
+    // S11's Sentry 3: an AMX-30B2 whose APFSDS goes through the loaner's upper hull about three times in five (1.06), a hit
+    // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires at the player's hull only while it sees
+    // it: out past the wall's end, never behind it. 127 m from the cover spot.
+    Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true,
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
   // S10's berm: 1.9 m high across the line to Sentry 2, a gentle back slope (7 m) the player creeps up, a 2 m crest and a
-  // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (tutorialGuideMath.ts EXPOSURE_POINTS)
+  // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (sim/trainingSight.ts EXPOSURE_POINTS)
   earthworks: Object.freeze([
     Object.freeze({ x: S10_BERM.x, z: S10_BERM.z, toward: 'sentry2', profile: Object.freeze([-8, 0, -1, 1.9, 1, 1.9, 4.5, 0]), halfWidthM: 7, skirtM: 2.5 }),
+    // S11's wall: 2.8 m high (over the loaner's 2.44 m), 1 m thick at its top, 10 m long across the line to Sentry 3, 6 m in
+    // front of the cover spot; its end 5 m to the side, so a tank at the peek spot 10 m over stands clear of it
+    Object.freeze({ x: S11_COVER.x + S11_LINE.x * S11_WALL_AHEAD_M, z: S11_COVER.z + S11_LINE.z * S11_WALL_AHEAD_M, toward: 'sentry3',
+      profile: Object.freeze([-1.6, 0, -0.5, 2.8, 0.5, 2.8, 1.6, 0]), halfWidthM: 5, skirtM: 0.6 }),
   ]),
   timeOfDay: 'day',
 });
@@ -157,8 +183,12 @@ export const TRAINING_POINTS = Object.freeze({
    *  Target 2, no trunk on it): open for 8 m round, a grade under 0.07, the Sentry 170 m off. */
   fireF: Object.freeze({ x: -430, z: -50, radiusM: 6 }),
   /** S10: behind the berm (its centre 70 m north of ring F), the ring the player stops in, hull down to Sentry 2
-   *  (tutorialGuideMath.ts trainingExposure). Set from the berm's line (S10_RING_BACK_M). */
+   *  (sim/trainingSight.ts trainingExposure). Set from the berm's line (S10_RING_BACK_M). */
   ringG: Object.freeze({ x: S10_BERM.x - S10_LINE.x * S10_RING_BACK_M, z: S10_BERM.z - S10_LINE.z * S10_RING_BACK_M, radiusM: 3 }),
+  /** S11: the cover spot behind the wall, and the peek spot beside it, out past the wall's end in Sentry 3's sight. */
+  ringP: Object.freeze({ x: S11_COVER.x, z: S11_COVER.z, radiusM: 3 }),
+  // (the side the search cleared: its line to Sentry 3 1.9 m over the ground)
+  ringQ: Object.freeze({ x: S11_COVER.x + S11_LINE.z * S11_PEEK_SIDE_M, z: S11_COVER.z - S11_LINE.x * S11_PEEK_SIDE_M, radiusM: 3 }),
 });
 
 /** An actor's rule by its scenes' name. */
@@ -178,9 +208,9 @@ export function trainingVolleyAim(hull: { readonly x: number; readonly y: number
 }
 
 /** Whether a cued shooter's trigger is held at `timeS`: from `firstS` after its cue on (its loaded gun fires; the reload
- *  spaces the rounds). */
-export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, timeS: number): boolean {
-  return timeS - cuedAtS >= volley.firstS;
+ *  spaces the rounds), and, for one that fires only at what it sees, while `seen`. */
+export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, timeS: number, seen = true): boolean {
+  return timeS - cuedAtS >= volley.firstS && (!volley.whenSeen || seen);
 }
 
 /** The training roster after the player: each actor's tank, in order. */

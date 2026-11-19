@@ -26,7 +26,8 @@ import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
 import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
 import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
-import { headingFromLine, trainingExposure } from './tutorialGuideMath.ts';
+import { headingFromLine } from './tutorialGuideMath.ts';
+import { trainingExposure } from '../../sim/trainingSight.ts';
 
 /** Diagnostics (app/tutorialAccess.ts debugGuide): the guide alone, on whatever battle is showing. */
 export { createTutorialGuide };
@@ -326,6 +327,22 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
         since ||= performance.now();
         return performance.now() - since >= advance.holdS * 1000;
       });
+    } else if (advance.on === 'peek') {
+      // a cycle: the player fires while the actor sees it, then gets out of its sight (behind the wall)
+      let fired = false, cycles = 0;
+      const seenNow = (): boolean | null => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        if (!me || !them || !port.guide) return null;
+        const seen = trainingExposure(them, me, port.guide.groundY);
+        return seen.hull || seen.turret;
+      };
+      stepOff.push(port.on('shell:fired', (payload) => {
+        if ((payload as { isPlayer?: boolean } | null)?.isPlayer && seenNow()) fired = true;
+      }));
+      poll(() => {
+        if (fired && seenNow() === false) { fired = false; cycles += 1; }
+        return cycles >= advance.cycles;
+      });
     } else if (advance.on === 'drive') {
       let from = port.playerPosition();
       const timer = window.setInterval(() => {
@@ -386,7 +403,8 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       stepOff.push(() => port.cue?.(cue, false));
     }
     // the step's actor put a round through the player: the card says why, and how to stop the next
-    const shooter = step.advance.on === 'hit' && step.advance.by === 'actor' ? step.advance.actor : null;
+    const shooter = step.advance.on === 'hit' && step.advance.by === 'actor' ? step.advance.actor
+      : step.advance.on === 'peek' ? step.advance.actor : null;
     if (step.penBody && shooter) {
       const penBody = step.penBody;
       stepOff.push(port.on('shell:hit', (payload) => {

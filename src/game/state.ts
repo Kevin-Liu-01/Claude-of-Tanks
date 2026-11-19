@@ -170,6 +170,7 @@ import {
 } from './provingRange.ts';
 import { planTrainingRange, trainingActor, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
+import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
@@ -1005,8 +1006,24 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   const slot = entity.spec.gun.shells.findIndex((shell) => shell.type === actor.volley!.shellType);
   if (slot >= 0) entity.input.shellSlot = slot;
   const pos = target.state.pos;
-  trainingVolleyAim({ x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw }, actor.volley, entity.input.aimPoint);
-  entity.input.fire = trainingVolleyFires(actor.volley, cuedAtS, game.timeS);
+  const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw };
+  trainingVolleyAim(hull, actor.volley, entity.input.aimPoint);
+  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
+  const ground = game._groundSampler;
+  const seen = !actor.volley.whenSeen || !ground ? true : (() => {
+    const exposure = trainingExposure(entity.state.pos, hull, ground);
+    return exposure.hull || exposure.turret;
+  })();
+  entity.input.fire = trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
+}
+
+/** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
+ *  shots, unseen, its visual hidden. */
+function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
+  const actor = game.ruleset.training?.actors.find((rule) => rule.specId === entity.specId);
+  if (!actor?.entersOnCue) return;
+  entity.modeActive = false;
+  entity.visual?.setVisible(false);
 }
 
 /**
@@ -1033,6 +1050,13 @@ export function cueTrainingActor(game: SoloGameState, key: string, on: boolean):
   const cues = game._trainingCues ??= new Map();
   if (!on) cues.delete(key);
   else if (!cues.has(key)) cues.set(key, game.timeS);
+  // its first cue brings a parked hull onto its mark, for the rest of the battle
+  const actor = trainingActor(rules, key)!;
+  const entity = on ? game.tanks.find((tank) => tank.specId === actor.specId) : undefined;
+  if (entity && entity.modeActive === false) {
+    entity.modeActive = true;
+    entity.visual?.setVisible(true);
+  }
   return true;
 }
 
@@ -1071,6 +1095,7 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
       prepareWatchSeat(game, entity);
     }
     warmStartBattleEntity(entity, context.world);
+    if (!isPlayer && game.ruleset.training) parkTrainingActor(game, entity);
   }
 }
 

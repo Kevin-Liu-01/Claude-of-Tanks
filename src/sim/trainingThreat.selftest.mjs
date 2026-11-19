@@ -15,8 +15,11 @@
 //     runner cues a step's shooter while it shows and stands it down after (wiring);
 //  5. S10, hull down: Sentry 2's APFSDS reads red on the loaner's turret front and green on its hull; the berm is stamped
 //     across the line to it; on its ground (level, the berm raised) a tank at ring G is hull down to Sentry 2 (its hull
-//     hidden, its turret seen: tutorialGuideMath.ts trainingExposure), and one whose nose climbs the back slope shows its
-//     hull; the steps drive to G, hold hull down, take Sentry 2's rounds and fire back.
+//     hidden, its turret seen: sim/trainingSight.ts trainingExposure), and one whose nose climbs the back slope shows its
+//     hull; the steps drive to G, hold hull down, take Sentry 2's rounds and fire back;
+//  6. S11, peek, shoot, hide: the wall is stamped between ring P and Sentry 3; from Sentry 3 a tank at P is hidden whole and
+//     one at ring Q seen; Sentry 3 stands parked until its cue and never fires at what it cannot see; the steps take cover,
+//     count two peek cycles and finish it.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -28,7 +31,7 @@ const { hullAngleToDeg, trainingThreatVerdicts } = await import('./trainingThrea
 const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSteps.ts');
 const { planTrainingRange } = await import('./trainingGround.ts');
 const { createTerrainDeformation } = await import('./terrainDeformation.ts');
-const { trainingExposure } = await import('../ui/tutorial/tutorialGuideMath.ts');
+const { trainingExposure } = await import('./trainingSight.ts');
 
 const DEG = Math.PI / 180;
 
@@ -133,7 +136,7 @@ for (const back of [9, 10, 12, 14]) assert.deepEqual(exposedAt(back), { hull: fa
 assert.equal(exposedAt(5).hull, true, 'the nose up the back slope shows the hull');
 assert.equal(trainingExposure({ x: sentry2.x, y: 0, z: sentry2.z }, { x: G.x, y: 0, z: G.z, yaw: line }, () => 0).hull, true,
   'without the berm, the hull is seen');
-const s10 = ids.slice(ids.indexOf('training.toG'));
+const s10 = ids.slice(ids.indexOf('training.toG'), ids.indexOf('training.toP'));
 assert.deepEqual(s10.filter((id) => !id.endsWith('Touch')), ['training.toG', 'training.hullDown', 'training.hullDownFire', 'training.fireBack'],
   'S10: behind the berm, hull down, its rounds on the turret, fire back');
 const hd = TRAINING_STEPS.find((step) => step.id === 'training.hullDown');
@@ -141,4 +144,32 @@ assert.deepEqual({ ...hd.advance }, { on: 'hullDown', actor: sentry2.specId, hol
 assert.equal(TRAINING_STEPS.find((step) => step.id === 'training.hullDownFire').cue, 'sentry2', 'Sentry 2 fires once hull down');
 assert.deepEqual({ ...TRAINING_STEPS.find((step) => step.id === 'training.fireBack').advance }, { on: 'destroy', actor: sentry2.specId });
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm)`);
+// 6. S11.
+const sentry3 = trainingActor(TRAINING_RULES, 'sentry3');
+assert.ok(sentry3.entersOnCue, 'Sentry 3 stands parked until its scene cues it');
+assert.ok(sentry3.volley.whenSeen, 'and fires only at what it sees');
+assert.equal(trainingVolleyFires(sentry3.volley, 0, 60, false), false, 'never at a tank out of its sight');
+assert.equal(trainingVolleyFires(sentry3.volley, 0, 60, true), true, 'at one in it, once its telegraph has run');
+const P = TRAINING_POINTS.ringP, Q = TRAINING_POINTS.ringQ;
+const s3eye = { x: sentry3.x, y: ground(sentry3.x, sentry3.z), z: sentry3.z };
+const facing = Math.atan2(sentry3.x - P.x, sentry3.z - P.z);
+// the peek: the hull alongside the wall, its nose toward Q, at the cover spot and at the peek spot
+const along = Math.atan2(Q.x - P.x, Q.z - P.z);
+for (const yaw of [facing, along]) {
+  const atP = trainingExposure(s3eye, { x: P.x, y: ground(P.x, P.z), z: P.z, yaw }, ground);
+  assert.deepEqual(atP, { hull: false, turret: false }, `behind the wall at ring P the whole tank is hidden (yaw ${(yaw / DEG).toFixed(0)})`);
+  const atQ = trainingExposure(s3eye, { x: Q.x, y: ground(Q.x, Q.z), z: Q.z, yaw }, ground);
+  assert.ok(atQ.hull && atQ.turret, `out at ring Q, seen (yaw ${(yaw / DEG).toFixed(0)})`);
+}
+assert.ok(trainingExposure(s3eye, { x: P.x, y: 0, z: P.z, yaw: facing }, () => 0).hull, 'without the wall, ring P is in its sight');
+const s11 = ids.slice(ids.indexOf('training.toP'));
+assert.equal(new Set(ids).size, ids.length, 'every training step id is unique');
+assert.deepEqual(s11, ['training.toP', 'training.peekShoot', 'training.finish3'], 'S11: into cover, peek twice, finish it');
+const peek = TRAINING_STEPS.find((step) => step.id === 'training.peekShoot');
+assert.deepEqual({ ...peek.advance }, { on: 'peek', actor: sentry3.specId, cycles: 2 });
+assert.equal(peek.cue, 'sentry3', 'the peek step brings Sentry 3 in and lets it fire');
+assert.ok(peek.guide.reload && peek.penBody, 'with its reload ring, and a re-prompt when it catches the player out');
+assert.match(state, /if \(!isPlayer && game\.ruleset\.training\) parkTrainingActor\(game, entity\);/, 'the setup parks a hull that enters on its cue');
+assert.match(state, /if \(entity && entity\.modeActive === false\) \{\s*entity\.modeActive = true;/, 'its first cue brings it in');
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued)`);

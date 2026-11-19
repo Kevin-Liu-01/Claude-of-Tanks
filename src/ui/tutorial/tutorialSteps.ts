@@ -55,9 +55,11 @@ export type TutorialAdvance =
   | { readonly on: 'destroy'; readonly actor: string }
   /** The player's hull stands turned from the line to this actor between the two angles (deg, 0 nose on), this long. */
   | { readonly on: 'angle'; readonly actor: string; readonly minDeg: number; readonly maxDeg: number; readonly holdS: number }
-  /** The player's hull is hidden from this actor and its turret seen over the ground (tutorialGuideMath.ts
+  /** The player's hull is hidden from this actor and its turret seen over the ground (sim/trainingSight.ts
    *  trainingExposure: hull down), this long. */
-  | { readonly on: 'hullDown'; readonly actor: string; readonly holdS: number };
+  | { readonly on: 'hullDown'; readonly actor: string; readonly holdS: number }
+  /** Peek, shoot, hide (S11): the player fires while this actor sees it, then gets out of its sight, this many times. */
+  | { readonly on: 'peek'; readonly actor: string; readonly cycles: number };
 
 /**
  * A step's guidance over the battle (tutorialGuide.ts draws it): a marker to drive to, the path toward it, an actor to
@@ -76,6 +78,8 @@ export interface TutorialGuideSpec {
   readonly angle?: { readonly id: string };
   /** S10: the player's hull and turret over its tank, each lit while this actor can see it (trainingExposure). */
   readonly exposure?: { readonly id: string };
+  /** S11: this actor's reload, a ring over it that fills as its gun loads (full: it can fire). */
+  readonly reload?: { readonly id: string };
 }
 
 export interface TutorialMedia {
@@ -213,6 +217,7 @@ const TARGET1 = trainingActor(TRAINING_RULES, 'target1')!.specId;
 const TARGET2 = trainingActor(TRAINING_RULES, 'target2')!.specId;
 const SENTRY = trainingActor(TRAINING_RULES, 'sentry')!.specId;
 const SENTRY2 = trainingActor(TRAINING_RULES, 'sentry2')!.specId;
+const SENTRY3 = trainingActor(TRAINING_RULES, 'sentry3')!.specId;
 /** S9's window: the hull turned between these from the line to the Sentry, where its HEAT on the loaner's front plate
  *  reads red (32 to 62 degrees at ring F, sim/trainingThreat.ts; tutorialSteps.selftest.mjs holds it). */
 export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
@@ -376,6 +381,19 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.fireBackTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry2', behindS: 60,
     title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.bodyTouch', advance: { on: 'destroy', actor: SENTRY2 },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 }, hud: ['.cot-touch .round.fire'] } },
+  // S11: peek, shoot, hide. A 2.8 m wall is stamped in front of ring P; Sentry 3 (parked until now) waits past it and
+  // fires only at what it sees, each time its gun is loaded (the ring over it). The player pulls out to ring Q, fires,
+  // and backs into cover before that ring fills, twice, then finishes it.
+  { id: 'training.toP', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.toP.title', body: 'tutorial.training.toP.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringP, 'tutorial.training.marker.p'), path: true } },
+  { id: 'training.peekShoot', chapter: 'training', target: [], ...PLAY, cue: 'sentry3', penBody: 'tutorial.training.peekShoot.caught', behindS: 60,
+    title: 'tutorial.training.peekShoot.title', body: 'tutorial.training.peekShoot.body', advance: { on: 'peek', actor: SENTRY3, cycles: 2 },
+    guide: { marker: marker(TRAINING_POINTS.ringQ, 'tutorial.training.marker.q'), actor: { id: SENTRY3, label: 'tutorial.training.actor.sentry3' },
+      reload: { id: SENTRY3 } } },
+  { id: 'training.finish3', chapter: 'training', target: [], ...PLAY, cue: 'sentry3', behindS: 90,
+    title: 'tutorial.training.finish3.title', body: 'tutorial.training.finish3.body', advance: { on: 'destroy', actor: SENTRY3 },
+    guide: { actor: { id: SENTRY3, label: 'tutorial.training.actor.sentry3' }, reload: { id: SENTRY3 } } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */
