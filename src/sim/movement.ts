@@ -5274,6 +5274,17 @@ function selectDriveRate(
   }
 }
 
+/**
+ * The drive spool after `steps` steps of an open throttle from rest, summed step by step as updateDriveSpool sums it (275:
+ * a migrated host's reading of a hull the old host stood up after the keyframe, driving since; no row or keyframe
+ * carries its spool, and one built at rest pulled away 0.3 s behind the old host's: Horde arrivals parted 65 m).
+ */
+export function spoolFromRest(steps: number, dt: number = SIM_DT): number {
+  let spool = 0;
+  for (let k = 0; k < steps && spool < 1; k++) spool = Math.min(1, spool + dt / SPOOL_S);
+  return spool;
+}
+
 function updateDriveSpool(state: TankState, drive: DriveStep, dt: number): void {
   if (!drive.grounded) {
     drive.rate = 0;

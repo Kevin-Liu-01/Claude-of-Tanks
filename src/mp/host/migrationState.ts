@@ -28,6 +28,7 @@ import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import { spoolFromRest } from '../../sim/movement.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -358,6 +359,10 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
     .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   const trickled = horde && horde.queued > 0 ? arrived().slice(0, horde.queued) : [];
   const reinforced = line ? arrived() : [];
+  // the hostiles a due respawn stood up (275): a Horde arrival refused and due again, an Infected arrival on its ring
+  const ringRisen = [...revived].filter((id) => hostile.has(id) && pending.has(id))
+    .map((id): [string, number] => [id, known.told.get(id) ?? known.frameAtS]).filter(([, atS]) => Number.isFinite(atS))
+    .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
   return {
     ...checkpoint,
     // a revive clears the bot's last pushed target (matchModes.ts reviveAtSpawn), so its next route push is made (275)
@@ -368,6 +373,7 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       destroyed: mode.destroyed.map(([id, dead]): [string, boolean] => [id, dead && !revived.has(id)]),
       ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
+      ...(ringRisen.length ? { ringRisen } : {}),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)),
         ...(line && (line.attack || reinforced.length) ? { line: { ...line, ...(line.attack ? { attack: line.attack.filter(([id]) => !revived.has(id)) } : {}),
           ...(reinforced.length ? { reinforced } : {}) } } : {}),
@@ -863,6 +869,13 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
   const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
+  // every hull where its row has it before the mode is restored (275): the restore's replays read where the hulls stand
+  // (an arrival's ring round the humans, a hunt's plans, a line slot's placement), which were the construction's spawns;
+  // the rows are applied again in full below
+  for (const row of state.frame.entities) {
+    const entity = actor.entityForWireId(row.entityId);
+    if (entity) applyAuthorityRow(entity.state, row);
+  }
   if (state.modeCheckpoint) {
     // the mode as the newest frame shows it, when that frame is newer than the keyframe (review round 1), and what the
     // seat was told of the window between them (gaps 274 fix-up r1)
@@ -873,6 +886,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
+  const toldRevives = new Map(state.respawnTicks ?? []);
   for (const row of state.frame.entities) {
     const entity = actor.entityForWireId(row.entityId);
     if (!entity) { skipped++; continue; }
@@ -959,6 +973,12 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       }
       // the rest of the integrator no row carries (275): the gun's bloom first among them
       if (lifeGoesOn && extras.integrator) restoreIntegrator(tank, extras.integrator);
+      // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
+      // revive it was told, as a fresh life's does under an open throttle (275; a spool at rest pulled away 0.3 s behind)
+      const roseAt = toldRevives.get(entity.id);
+      if (revived.has(entity.id) && !combat.destroyed && roseAt !== undefined && row.tick > roseAt && Math.abs(tank.speed) > 0.05) {
+        tank._spool = spoolFromRest(row.tick - roseAt);
+      }
       if (extras.way) entity.aiCtl?.takeDrive?.(extras.way, gapS, lifeGoesOn);
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
       // the brain itself (275): its traffic with its allies, its detours, windows, timers' phases, aim and search, as the
