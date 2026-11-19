@@ -255,6 +255,8 @@ export interface InputLayer {
   onLockDenied(callback: () => void): () => void;
   onLockRestored(callback: () => void): () => void;
   getCursorNdc(out: InputVector): InputVector;
+  /** The cursor is on the page (cursor-aim-pan-274: leaving it stops the edge pan until it next moves over the battle). */
+  isCursorOnPage(): boolean;
   releaseLock(): void;
 }
 
@@ -854,6 +856,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   let cursorClientX: number | null = null;
   let cursorClientY: number | null = null;
   const forgetCursor = () => { cursorClientX = null; cursorClientY = null; };
+  // cursor-aim-pan-274: the cursor left the page (an embedded pane's host, another window). The aim point stays where
+  // it was; only the edge pan stops, so a cursor parked outside never spins the view.
+  let cursorOffPage = false;
   const lockDeniedHandlers = new Set<() => void>();
   const lockRestoredHandlers = new Set<() => void>();
   // content_breadth r6 (minor: first aggressive click swallowed in no-lock
@@ -1098,11 +1103,14 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     press(`Mouse${event.button}`, event);
   };
   const onMouseUp = (event: MouseEvent) => release(`Mouse${event.button}`);
+  // a mouseout with no element to go to has left the page
+  const onMouseOut = (event: MouseEvent) => { if (!event.relatedTarget) cursorOffPage = true; };
   const onMouseMove = (event: MouseEvent) => {
     // cursor-aim raycasts through the cursor, but only once it moves over the battle itself
     if (event.target === lockElement) {
       cursorClientX = event.clientX;
       cursorClientY = event.clientY;
+      cursorOffPage = false;
     }
     if (lockElement && document.pointerLockElement === lockElement) {
       rawDX += event.movementX;
@@ -1149,6 +1157,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);
   window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseout', onMouseOut);
   window.addEventListener('wheel', onWheel, { passive: true });
   window.addEventListener('blur', onBlurClear);
   document.addEventListener('visibilitychange', () => { if (document.hidden) onBlurClear(); });
@@ -1647,6 +1656,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       out.y = clamp(-(((cursorClientY - r.top) / r.height) * 2 - 1), -1, 1);
       return out;
     },
+
+    isCursorOnPage() { return !cursorOffPage; },
 
     /** Release pointer lock if held. (round 5 Q2) An attempt still in flight (requested, not yet locked or refused)
      *  is withdrawn: its lock is released as it lands, so a caller that gives the cursor back right after asking (a
