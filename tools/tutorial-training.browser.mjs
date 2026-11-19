@@ -385,7 +385,8 @@ try {
   report.chapterEnded = report.steps.at(-1)?.step === stepsFor.at(-1)?.id && (THROUGH ? report.steps.at(-1)?.advanced === true : report.steps.at(-1)?.ended === true);
   report.leftOver = THROUGH ? 0 : await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
-  const expected = stepsFor.map((s) => s.id);
+  // (a desktop walk aims with the cursor, where the game has no free look: the runner moves that step on by itself)
+  const expected = stepsFor.map((s) => s.id).filter((stepId) => touch || stepId !== 'training.freeLook');
   report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id)) && report.chapterEnded
     && report.leftOver === 0;
   assert.ok(report.ok, `every step moved on through the game's input: ${JSON.stringify(report.steps.map((s) => [s.step, s.advanced]))}`);

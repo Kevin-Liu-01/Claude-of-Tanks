@@ -95,6 +95,10 @@ assert.equal(volley.advance.count, 2);
 assert.ok(volley.penBody, 'a round through the plate brings the re-prompt');
 const runner = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
 assert.match(runner, /port\.cue\?\.\(cue, true\);\s*stepOff\.push\(\(\) => port\.cue\?\.\(cue, false\)\);/, 'the runner cues while the step shows, and stands it down after');
+assert.match(runner, /if \(advance\.on === 'camera' && advance\.freeLook && port\.view\?\.\(\)\?\.freeLookAvailable === false\)/,
+  'a free-look step moves on by itself where the game has no free look (cursor aim, a virtual stick)');
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /freeLookAvailable: !input\.isCursorAim\(\) && !input\.virtualActive\(\),/, 'read as the game gates it (playerFrameInput.ts)');
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 assert.match(state, /else if \(training && entity\._provingMark && !entity\.combat\.destroyed\) driveTrainingActor\(game, entity\);/,
   'the solo step drives the training hulls');

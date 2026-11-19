@@ -72,6 +72,9 @@ export interface TutorialView {
   /** The loaded round's type ('APFSDS', 'HEAT', 'HE', ...), and the hull's speed (m/s). */
   readonly shellType: string | null;
   readonly speedMps: number;
+  /** Whether free look can be held now: not in the cursor-aim fallback or on a virtual stick, where the game turns it off
+   *  (game/playerFrameInput.ts updateAimActions). */
+  readonly freeLookAvailable: boolean;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -192,6 +195,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
   function arm(step: TutorialStep): void {
     const advance = step.advance;
     const go = (): void => { if (!ended && steps[index] === step) api.next(); };
+    // a step that teaches what this player's aiming cannot do moves on by itself: free look in the cursor-aim fallback (a
+    // pane that refuses the pointer lock) would hold the chapter at a step nothing can meet (the S1-S9 walk, 2026-11-18)
+    if (advance.on === 'camera' && advance.freeLook && port.view?.()?.freeLookAvailable === false) {
+      const timer = window.setTimeout(go, 0);
+      stepOff.push(() => window.clearTimeout(timer));
+      return;
+    }
     /** A condition read every DRIVE_POLL_MS (the port's state has no event of its own). */
     const poll = (met: () => boolean): void => {
       const timer = window.setInterval(() => { if (!hiddenByPause && !covered && met()) go(); }, DRIVE_POLL_MS);

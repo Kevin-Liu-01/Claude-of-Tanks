@@ -4843,6 +4843,7 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
       gunYaw: state.yaw + (state.turretYaw ?? 0),
       shellType: game.player.spec?.gun?.shells?.[game.player.combat?.shellSlot ?? 0]?.type ?? null,
       speedMps: Math.abs(state.speed ?? 0),
+      freeLookAvailable: !input.isCursorAim() && !input.virtualActive(),
     };
   },
   playerId: () => (game.phase === 'battle' ? game.player?.id ?? null : null),
