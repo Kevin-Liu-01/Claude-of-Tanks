@@ -247,28 +247,44 @@ try {
     const v = camera.position.clone().set(x, y, z).project(camera);
     return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, behind: v.z > 1 };
   }, point);
-  /** Into a marker and stop there (bush D): the forward key until inside it, then the back key to a stand. */
+  /** Into a marker and stop there (bush D): the hull's speed read from the page. The forward key while far, coasting in
+   *  from 14 m, the back key held until the hull stands, then a creep back into the ring if it rolled past (the first run
+   *  of 2026-11-18 entered at 8 m/s, tapped the back key for half a second and rolled out of the 5 m ring). */
+  /** The hull's signed speed (m/s: + forward). */
+  const speed = () => page.evaluate(() => window.__DEBUG.game.player.state.speed ?? 0);
   async function driveInto(marker, stepId) {
-    const until = Date.now() + 90_000;
-    let steer = null;
-    await page.keyboard.down('KeyW');
+    const until = Date.now() + 120_000;
+    let steer = null, throttle = null;
+    const set = async (key, want) => {
+      if (key === 'steer' ? steer === want : throttle === want) return;
+      const was = key === 'steer' ? steer : throttle;
+      if (was) await page.keyboard.up(was);
+      if (want) await page.keyboard.down(want);
+      if (key === 'steer') steer = want; else throttle = want;
+    };
     try {
       while (Date.now() < until) {
         if ((await stepNow()) !== stepId) return true;
-        const p = await pose();
+        const p = await pose(), v = await speed();
         const d = Math.hypot(marker.x - p.x, marker.z - p.z);
-        if (d < marker.radiusM * 0.5) break;
         const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.yaw);
-        const want = err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null;
-        if (want !== steer) { if (steer) await page.keyboard.up(steer); if (want) await page.keyboard.down(want); steer = want; }
-        await sleep(100);
+        const inside = d < marker.radiusM * 0.6;
+        // facing away from it (it rolled past): reverse toward it, steering as a reversing hull does
+        const behind = Math.abs(err) > Math.PI / 2;
+        // inside: brake against the way it moves until it stands (the step wants it still 3 s)
+        if (inside) { await set('steer', null); await set('throttle', v > 0.3 ? 'KeyS' : v < -0.3 ? 'KeyW' : null); }
+        else if (behind && d < 20) { await set('steer', null); await set('throttle', v < -2 ? null : 'KeyS'); }
+        else {
+          await set('steer', err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null);
+          await set('throttle', d > 14 ? 'KeyW' : v > 3 ? 'KeyS' : v < 1.5 ? 'KeyW' : null);
+        }
+        await sleep(80);
       }
+      return false;
     } finally {
-      if (steer) await page.keyboard.up(steer);
-      await page.keyboard.up('KeyW');
+      await set('steer', null);
+      await set('throttle', null);
     }
-    await page.keyboard.down('KeyS'); await sleep(500); await page.keyboard.up('KeyS');
-    return true;
   }
   /** Lay the gun on a point of an actor (its own frame) with the cursor and fire until the step moves on: the cursor rests
    *  on the point, the gun traverses onto it and settles, then a click; the reload spaces the shots. */
