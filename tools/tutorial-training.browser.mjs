@@ -11,7 +11,7 @@
 // load HE and APFSDS, the mouse lays the gun on a target's plate and clicks to fire, and A or D turn the hull against the
 // Sentry and hold it while its rounds land. A desktop walk aims in the game's cursor-aim mode (its fallback where the
 // pointer lock is refused: the gun lays on what lies under the cursor), so the cursor can rest on a plate the page
-// projects; --clip-s9 records S9's angle and volley alone (training-s9-volley.webm). --through=<step id> ends the walk
+// projects; --clip-s9 records S9's angle and volley alone (training-s9-volley.webm), --clip-s14 the fight (training-s14-fight.webm). --through=<step id> ends the walk
 // once that step has moved on (the chapter's later scenes not walked).
 //
 // What it reads from the page is only for steering: the player's pose and the step's marker (as a player reads the
@@ -55,7 +55,7 @@ const THROUGH = arg('through', null);
 const stepsFor = THROUGH ? allSteps.slice(0, allSteps.findIndex((step) => step.id === THROUGH) + 1) : allSteps;
 assert.ok(stepsFor.length, `--through names a step of this walk's chapter (${THROUGH})`);
 
-let server, browser, hold, recorder, clipS9 = null;
+let server, browser, hold, recorder, clipS9 = null, clipS14 = null;
 try {
   hold = await openCaptureHold({ label: 'tutorial-training', place: `training-${VIEW}-${LOCALE}`, lockClass: 'render', timeoutMs: 90 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
@@ -430,6 +430,7 @@ try {
     else if (id === 'training.fight') {
       // the nearest enemy bot still up: drive toward it to 150 m, then lay on it and fire, until every one is down
       how = 'fought';
+      if (flag('clip-s14') && !clipS14) clipS14 = await page.screencast({ path: resolve(OUT, 'training-s14-fight.webm'), scale: 0.5 });
       const enemies = TRAINING_RULES.skirmish.enemies.map((bot) => bot.specId);
       const until = Date.now() + 8 * 60_000;
       while (Date.now() < until && (await stepNow()) === now) {
@@ -486,6 +487,7 @@ try {
     }
     const next = await waitChange(now, id === 'training.rollout' ? 10_000 : id === 'training.volley' ? 5_000 : 30_000);
     if (clipS9 && id === 'training.volley') { await sleep(2500); await clipS9.stop().catch(() => {}); clipS9 = null; }
+    if (clipS14 && id === 'training.fight') { await sleep(2500); await clipS14.stop().catch(() => {}); clipS14 = null; }
     const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== undefined,
       ended: next === null };
     report.steps.push(entry);
@@ -511,6 +513,7 @@ try {
 } finally {
   await recorder?.stop().catch(() => {});
   await clipS9?.stop().catch(() => {});
+  await clipS14?.stop().catch(() => {});
   report.finishedAt = new Date().toISOString();
   writeFileSync(resolve(OUT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   await browser?.close().catch(() => {});
