@@ -2599,7 +2599,17 @@ ticks into it (62-68 m). CTF raiders (`botDriveMigration`): 0.01 m, 0.02 m with 
 (4 m). A Frontline advance in the window: defenders within 1 m (86 m), attackers 29 m (114 m; their ally traffic changed in
 the window, which the staging stacks on one spot). `modeWindowMigration.selftest` holds the clock (every trickle on the old
 host's tick), the lead seed, the ring arrivals' draws, the tracker, the deals, the resume hold's dues and the authority's
-state. Cost: SIZE_PLACEHOLDER.
+state.
+
+Cost (the lane's size probes, 19 bots): a keyframe's extras grow by 6.8-19 KB (the brains 0.3-1.1 KB a bot, the
+integrators 0.1-0.2 KB a live hull) and its checkpoint by the authority's block (2.3-4.8 KB, the spotting most of it) and
+CTF's deals (0.4 KB): 9-24 KB raw, 12-32 KB sealed and base64url-chunked, at the 2 s cadence 48-128 kbit/s more to each
+seat, and each mode event's keyframe carries it too. The brains' and integrators' numbers travel packed, exact (base64url
+Float64s, 10.7 characters a number against JSON's 18-20). A full field (42 hulls, CTF, a minute in) seals at 112 KB, 47 of
+the `MIGRATION_MAX_CHUNKS` 64 (gaps 274's head: 55 KB, 23); past the cap a keyframe would be none at all, so
+`encodeMigrationKeyframeWithin` sheds the brains, then the integrators, then the spotting, and logs it (matchHostCore.ts).
+Rounding the brains' numbers to 7 significant digits would take 40 % off them and let the Frontline attackers part 2.3 m
+instead of 0.36 m; they ride exact, a choice left open.
 
 Not taken up by 275 (beside the 274 list above):
 - A bot's play inside the window: its brain's ticks after a revive, and after an advance re-routes it (the ally traffic it

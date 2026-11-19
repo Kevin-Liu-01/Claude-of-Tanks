@@ -13,7 +13,8 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
 import { consumeAmmunition } from '../../sim/ammunition.ts';
 import { startPostShotReload } from '../../sim/damage.ts';
-import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe } from './migrationState.ts';
+import { MIGRATION_CHUNK_BYTES, applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, encodeMigrationKeyframeWithin } from './migrationState.ts';
+import { MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 
 const kit = ['track_links', 'foliage', 'ir_jammer'];
@@ -83,5 +84,21 @@ if (wrong.length) {
   console.error(`migrationExtrasSize: ${wrong.length} readings changed across the handoff:\n  ${wrong.join('\n  ')}`);
   assert.fail('leaving fresh values out of the extras must not change the restore');
 }
+// ---- 275: a keyframe always fits the chunk cap. The brains, integrators and spotting a migration now carries brought a full
+// field's keyframe (42 hulls, CTF, a minute in) to 47 of the 64 chunks; past the cap a blob is no keyframe at all
+// (chunkMigrationBlob throws), so the encoder sheds those parts, the brains first, rather than the keyframe
+const capS = MIGRATION_CHUNK_BYTES * MIGRATION_MAX_CHUNKS - 12 - 16;
+const plain = { tick, battleTimeMs, timeS: sim.timeS, phase: 'playing', modeCheckpoint: sim.captureModeCheckpoint(), entities: captured, frame };
+const kept = encodeMigrationKeyframeWithin(plain);
+assert.ok(kept.shed.length === 0 && kept.bytes.byteLength === encodeMigrationKeyframe(plain).byteLength, 'a keyframe within the cap sheds nothing');
+// every entity's brain and integrator padded far past the cap (a stand-in for a field of brains no room fields today)
+const pad = 'A'.repeat(Math.ceil(capS / captured.length) + 64);
+const swollen = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, integrator: 'AA' })) };
+const fitted = encodeMigrationKeyframeWithin(swollen);
+assert.ok(fitted.shed.join() === 'brains' && fitted.bytes.byteLength <= capS && decodeMigrationKeyframe(fitted.bytes).entities.every((e) => !e.brain && e.integrator === 'AA'),
+  `a keyframe past the cap sheds its brains first and fits (${fitted.shed.join(', ')}; ${fitted.bytes.byteLength} bytes of ${capS})`);
+const both = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, integrator: pad })) };
+const fittedBoth = encodeMigrationKeyframeWithin(both);
+assert.ok(fittedBoth.shed.join() === 'brains,integrators' && fittedBoth.bytes.byteLength <= capS, `then its integrators (${fittedBoth.shed.join(', ')})`);
 old.stop(); fresh.stop();
-console.log(`migrationExtrasSize: an entity at rest carries ${Math.round(bytes / atRest.length)} bytes of extras (its tallies, modules, crew, fire flag and charges), and the restore of a keyframe with entities at rest and in a fight is unchanged`);
+console.log(`migrationExtrasSize: an entity at rest carries ${Math.round(bytes / atRest.length)} bytes of extras (its tallies, modules, crew, fire flag and charges), the restore of a keyframe with entities at rest and in a fight is unchanged, and a keyframe past the chunk cap sheds the brains, then the integrators, and fits`);
