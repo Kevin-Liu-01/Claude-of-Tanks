@@ -61,13 +61,16 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
   seed: 27_301,
   start: Object.freeze({ x: -215, z: -135, yawDeg: 270 }),
   // the armour, fire and rounds scenes' targets (S5 to S8), chosen by the overlay's own bands for the loaner's rounds
-  // (tutorial-journey evidence armour-bands.txt: tools armour-map, the sim's aim query): a Leopard 2A4 at 30 degrees shows
-  // the M1A1's APFSDS 52 % green, 19 % amber, 29 % red (the turret front), so one target gives a penetration and a
-  // bounce; HE paints it 83 % red. A BWP-1 at 60 degrees takes HE 75 % green: HE is for thin armour.
-  // (marks provisional: the south-west probe's best pair; the whole-map probe places them)
+  // (tutorial-journey evidence armour-bands-penverdict.txt: tools armour-map, the sim's aim query, penVerdict's bands, at
+  // the placed ranges): a Leopard 2A4 at 30 degrees and 100 m shows the M1A1's APFSDS 58 % green and 47 % of its turret
+  // front red, so one target gives a penetration and a bounce; HE paints it 89 % red. A BWP-1 at 60 degrees and 85 m
+  // takes HE 79 % green: HE is for thin armour.
+  // Marks from the whole-map probe of 2026-11-18 (evidence training-layout-full, tools s5-search, s5-route, s5-t2): the
+  // ground hides Target 1 from every point of the meadow, and it stands 100 m from ring C on a clear line; trees hide
+  // Target 2 from the meadow, ring C and bush D, and ring E sees it 85 m off.
   actors: Object.freeze([
     Object.freeze({ key: 'target1', specId: 'leo2a4', x: -350, z: -250, faces: 'ringC', presentDeg: 30 }),
-    Object.freeze({ key: 'target2', specId: 'bwp1', x: -440, z: -200, faces: 'ringC', presentDeg: 60 }),
+    Object.freeze({ key: 'target2', specId: 'bwp1', x: -405, z: -75, faces: 'ringE', presentDeg: 60 }),
   ]),
   timeOfDay: 'day',
 });
@@ -79,10 +82,14 @@ export const TRAINING_POINTS = Object.freeze({
   driveB: Object.freeze({ x: -265, z: -100, radiusM: 6 }),
   /** S3: the board the gun points at, 61 m south-west of ring B across the meadow (in sight from it). */
   board: Object.freeze({ x: -300, z: -150, radiusM: 3 }),
-  /** S5 to S8: the firing point the spotting, armour, fire and rounds scenes play from, and the bush the player backs into
-   *  (its canopy's centre and radius). Provisional until the whole-map probe (tools/training-layout-probe.mjs). */
-  ringC: Object.freeze({ x: -360, z: -120, radiusM: 6 }),
-  bushD: Object.freeze({ x: -380, z: -110, radiusM: 4 }),
+  /** S5 to S7: the firing point the spotting, armour and fire scenes play from, 107 m from ring B down the meadow's west
+   *  bank (a 0.33 grade at most, no trunk or canopy on the line), 100 m from Target 1 with the line 1.5 m over the ground. */
+  ringC: Object.freeze({ x: -360, z: -150, radiusM: 6 }),
+  /** S5: the bush the player backs into (its canopy's centre; the ring inside its 5.3 m crown), 26 m from ring C, the trees
+   *  between it and Target 1. */
+  bushD: Object.freeze({ x: -380, z: -166, radiusM: 5 }),
+  /** S8: the firing point for HE, 41 m west of ring C, the only one of the three that sees Target 2. */
+  ringE: Object.freeze({ x: -400, z: -160, radiusM: 6 }),
 });
 
 /** An actor's rule by its scenes' name. */

@@ -257,11 +257,16 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.spot', chapter: 'training', target: [], ...PLAY, behindS: 60,
     title: 'tutorial.training.spot.title', body: 'tutorial.training.spot.body', advance: { on: 'spot', actor: TARGET1 },
     guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true } },
+  // Target 1 sees the player as the player sees it (the open line from ring C), so the lamp lights: the card reads it, then
+  // the player backs out of its sight into bush D (the trees between) and drives back to ring C to study it
+  { id: 'training.lamp', chapter: 'training', target: ['.cot-sixth'], title: 'tutorial.training.lamp.title',
+    body: 'tutorial.training.lamp.body', advance: NEXT },
   { id: 'training.bush', chapter: 'training', target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.bush.title', body: 'tutorial.training.bush.body', advance: { on: 'hidden', stillS: 3 },
     guide: { marker: marker(TRAINING_POINTS.bushD, 'tutorial.training.marker.d'), path: true } },
-  { id: 'training.lamp', chapter: 'training', target: ['.cot-sixth'], title: 'tutorial.training.lamp.title',
-    body: 'tutorial.training.lamp.body', advance: NEXT },
+  { id: 'training.peek', chapter: 'training', target: [], ...PLAY, behindS: 30,
+    title: 'tutorial.training.peek.title', body: 'tutorial.training.peek.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true } },
   // S6: the armour colours (on by default since 273), read through the sight, then off and on again; a touch layout and a
   // pad have no toggle of their own until the controller-parity item, so they read the Settings row
   { id: 'training.armourSight', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
@@ -303,6 +308,10 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.loadHETouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.loadHE.title', body: 'tutorial.training.loadHE.bodyTouch', advance: { on: 'shell', type: 'HE' },
     guide: { hud: ['.cot-shells'], actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  // Target 2 stands past the trees, seen only from ring E
+  { id: 'training.toE', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.toE.title', body: 'tutorial.training.toE.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringE, 'tutorial.training.marker.e'), path: true } },
   { id: 'training.fireHE', chapter: 'training', target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.fireHE.title', body: 'tutorial.training.fireHE.body',
     advance: { on: 'hit', by: 'player', actor: TARGET2, kinds: ['he_pen', 'pen', 'he_splash'] },
