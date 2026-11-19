@@ -39,7 +39,12 @@ import { PAIR_CLOSE_S, SHOT_BOOT_EXPRESSION, runShotPairs, shotPairsHoldOptions 
 const SECOND = 1000, MINUTE = 60 * SECOND;
 const CAP_MS = 20 * MINUTE; // the lock's base hold cap (capture-lock.mjs DEFAULT_HOLD_CAP_MS)
 const REQUEUE_MS = 2 * MINUTE; // the waiter's turn: a yielded hold is held again this long after its release
-const TOOLS = ['building-style-shots', 'built-env-shots', 'ground-surface-shots'];
+// literal specifiers: the receipt cache reads a template import as every module in tools/ (selftest-scans)
+const TOOLS = {
+  'building-style-shots': () => import('./building-style-shots.mjs'),
+  'built-env-shots': () => import('./built-env-shots.mjs'),
+  'ground-surface-shots': () => import('./ground-surface-shots.mjs'),
+};
 const at = () => Math.round(Date.now() / SECOND);
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -57,14 +62,14 @@ for (const [waitHours, pairMinutes] of [[Number.NaN, 10], [0, 10], [16, Number.N
 // the predicate the three tools built by hand, character for character: the wait is the same, only its owner moved
 assert.equal(SHOT_BOOT_EXPRESSION, 'window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG');
 assert.ok(SHOT_BOOT_EXPRESSION.startsWith(`${BOOT_LOADED_EXPRESSION} && `), 'the boot latch is the readiness probe\'s own expression');
-for (const tool of TOOLS) {
+for (const [tool, link] of Object.entries(TOOLS)) {
   const source = readFileSync(new URL(`./${tool}.mjs`, import.meta.url), 'utf8');
   assert.equal(source.split('await page.waitForFunction(SHOT_BOOT_EXPRESSION, { timeout: 900000, polling: 1000 });').length - 1, 1,
     `${tool}: its boot wait is the shared expression, its budget unchanged`);
   assert.doesNotMatch(source, /__GAME_READY/, `${tool}: no hand-built boot mirror`);
   assert.equal(source.split('await runShotPairs({').length - 1, 1, `${tool}: holds through runShotPairs`);
   assert.doesNotMatch(source, /createCaptureLock|lock\.checkpoint\(|process\.once\(signal/, `${tool}: no lock, checkpoint or signal handler of its own`);
-  await import(`./${tool}.mjs`); // it links (its main runs only as the entry module)
+  await link(); // it links (its main runs only as the entry module)
 }
 
 // ---- the loop on the mock clock ---------------------------------------------------------------------------------------
