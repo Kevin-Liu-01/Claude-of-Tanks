@@ -1043,6 +1043,9 @@ interface IntegratorState {
   _susp: { p: number; r: number; pv: number; rv: number; d: number; dv: number; c: number; cv: number };
   _spring: { pitch: number; roll: number; pitchV: number; rollV: number; recoilVX: number; recoilVZ: number };
 }
+/** A gun's bloom within this of 1 is at rest (MigrationEntityExtras.integrator): at most a 0.1 % wider cone (a fresh host's own guns settle
+ *  to 1.0002 in their construction steps), against a keyframe entry for every hull. */
+const BLOOM_REST = 1e-3;
 const ROCK_KEYS = ['p', 'r', 'pv', 'rv'] as const;
 const SUSP_KEYS = ['p', 'r', 'pv', 'rv', 'd', 'dv', 'c', 'cv'] as const;
 const SPRING_KEYS = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
@@ -1050,7 +1053,8 @@ const SPRING_KEYS = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ']
 function captureIntegrator(state: IntegratorState): MigrationEntityExtras['integrator'] | null {
   const out: NonNullable<MigrationEntityExtras['integrator']> = {};
   const finite = (value: number): boolean => typeof value === 'number' && Number.isFinite(value);
-  if (finite(state.bloomF) && state.bloomF !== 1) out.bloom = state.bloomF;
+  // (a bloom decays toward 1 and never quite reaches it: within BLOOM_REST of it, a gun is at rest, as a fresh host builds it)
+  if (finite(state.bloomF) && state.bloomF > 1 + BLOOM_REST) out.bloom = state.bloomF;
   if (finite(state.turretYawRate) && state.turretYawRate !== 0) out.slew = state.turretYawRate;
   if (finite(state._prevSpeed) && state._prevSpeed !== 0) out.prevSpeed = state._prevSpeed;
   const rollover = state._rollover;

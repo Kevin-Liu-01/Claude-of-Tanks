@@ -7540,47 +7540,42 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       vantageVeto[2].untilS, vantageVeto[3].x, vantageVeto[3].z, vantageVeto[3].untilS, coverPoint.x, coverPoint.z,
       flankIndex, flankUntilS, flankPoints[0].x, flankPoints[0].z, flankPoints[1].x, flankPoints[1].z,
       flankPoints[2].x, flankPoints[2].z, nonPenCount, shotsFromSpot, spotPos.x, spotPos.z, scootPoint.x,
-      scootPoint.z, scootUntilS, pocketEscapeUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x,
-      fallbackPoint.z, fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x,
-      reactPoint.z, reactUntilS, reactCdUntilS, reactSide, threatBearing, reactions, suspectUntilS, kitePoint.x,
-      kitePoint.z, kiteUntilS, orbitSide, orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT,
-      targetStillS, targetLastShotS, prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS,
-      passivePresses, passivePressRepicks, passivePressCandidate, passivePressArcT, pressVetoes[0].x,
-      pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z, pressVetoes[1].untilS,
-      pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x, pressVetoes[3].z,
-      pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, missVerdicts, pressPickS,
-      pressReachByS, pressUnreached, flankLaneCheckS, searchDisplacedAtS, searchLegsDisplaced, searchLegs,
-      searchFailures, searchGoal.x, searchGoal.z, searchLegStartS, searchLegBudgetS, searchLegStartDistM,
-      searchStrikesAtStart, searchSweepIndex, searchNextCheckS, strikeEvents, colliderStops, heBurstBest,
-      heBurstHFrac, heBurstLatFrac, hitChance, conserveHolds, rackSpentT, rackSpentUntilS, rackSpentVerdicts,
-      cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, objectiveShifts, zoneHold.x, zoneHold.z,
-      zoneHoldForX, zoneHoldForZ, zoneHoldMoves, missionReleaseUntilS, missionReleases, elevationLockT, levelGoal.x,
-      levelGoal.z, levelGoal.y, levelRouteUntilS, levelRouteStrikes, levelRoutes, levelRoutesSuperseded,
-      unbearableUntilS, unbearableVerdicts, ramRuns, lastRuns, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
+      scootPoint.z, scootUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x, fallbackPoint.z,
+      fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x, reactPoint.z, reactUntilS,
+      reactCdUntilS, reactSide, threatBearing, reactions, kitePoint.x, kitePoint.z, kiteUntilS, orbitSide,
+      orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT, targetStillS, targetLastShotS,
+      prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS, passivePressArcT,
+      pressVetoes[0].x, pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z,
+      pressVetoes[1].untilS, pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x,
+      pressVetoes[3].z, pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, pressPickS,
+      pressReachByS, flankLaneCheckS, searchDisplacedAtS, searchFailures, searchGoal.x, searchGoal.z,
+      searchLegStartS, searchLegBudgetS, searchLegStartDistM, searchStrikesAtStart, searchSweepIndex,
+      searchNextCheckS, strikeEvents, heBurstBest, heBurstHFrac, heBurstLatFrac, hitChance, rackSpentT,
+      rackSpentUntilS, cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, zoneHold.x, zoneHold.z,
+      zoneHoldForX, zoneHoldForZ, missionReleaseUntilS, elevationLockT, levelGoal.x, levelGoal.z, levelGoal.y,
+      levelRouteUntilS, levelRouteStrikes, unbearableUntilS, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
       ramLineCheckS, ramContactUntilS, ramPoint.x, ramPoint.z, laneFallbackUntilS, settleUntilS, settleStreak,
-      settleCdUntilS, friendlyBlockT, friendlyBlockCount, friendlyLaneMoves, friendlyLaneRetryS,
-      friendlyLaneSearches, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot, cachedPenRatio, errYawRad,
-      errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad, playerYawRad, playerPitchRad,
-      losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT, allyDeadlockT, allyEmergencyStops,
-      allyReverseEscapes, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
+      settleCdUntilS, friendlyBlockT, friendlyLaneRetryS, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot,
+      cachedPenRatio, errYawRad, errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad,
+      playerYawRad, playerPitchRad, losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT,
+      allyDeadlockT, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
       trafficNear.z, trafficFar.x, trafficFar.z, allyHoldT, allyHoldLastS, allyHoldAnchor.x, allyHoldAnchor.z,
-      allyHoldGiveWays, lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate,
-      stuckStrikes, freeMoveT, detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z,
-      leg.yaw, leg.atS, leg.dirX, leg.dirZ, deadLegs, blockedTravel.x, blockedTravel.z, blockedTravel.untilS,
-      lastFiredAtS, pressUntilS, ordersTaken, dispGateT, probeVisible[0], probeVisible[1], probeVisible[2],
-      probeVisible[3], probeVisible[4], probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX,
-      routeGoalZ, routeCorner.x, routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, steerGoalX, steerGoalZ,
-      routeCornerGivenUp.x, routeCornerGivenUp.z, routeCornerGivenUp.atS, routeCornerSettledUntilS, routeCornerFlips,
-      lastCorner.x, lastCorner.z, lastCorner.untilS, terrainRouteUntilS, wedgeReleaseUntilS, wedgeReleases,
-      cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, gunNudgeAtS, contactReleases, plannedLegRuns,
-      plannedLegRejoins, plannedLeg.ax, plannedLeg.az, plannedLeg.ex, plannedLeg.ez, plannedLeg.t, combatRouteIndex,
-      combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x, combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z,
-      openExposedAtS, aimLateralX, aimLateralZ, ballShots, airShots, squadThinkAtS, squadFlankAtS, offensiveJumps,
-      jockeyDir, jockeyStandS, jockeyStallS, jockeyLegs, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange, colliderLostMps,
-      colliderContactAtS, ramHoldOffs, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
+      lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate, stuckStrikes, freeMoveT,
+      detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z, leg.yaw, leg.atS,
+      leg.dirX, leg.dirZ, blockedTravel.x, blockedTravel.z, blockedTravel.untilS, lastFiredAtS, pressUntilS,
+      dispGateT, probeVisible[0], probeVisible[1], probeVisible[2], probeVisible[3], probeVisible[4],
+      probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX, routeGoalZ, routeCorner.x,
+      routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, routeCornerGivenUp.x, routeCornerGivenUp.z,
+      routeCornerGivenUp.atS, routeCornerSettledUntilS, lastCorner.x, lastCorner.z, lastCorner.untilS,
+      terrainRouteUntilS, wedgeReleaseUntilS, gunNudgeAtS, plannedLeg.ax, plannedLeg.az, plannedLeg.ex,
+      plannedLeg.ez, plannedLeg.t, combatRouteIndex, combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x,
+      combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z, openExposedAtS, aimLateralX, aimLateralZ, squadThinkAtS,
+      squadFlankAtS, jockeyDir, jockeyStandS, jockeyStallS, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange,
+      colliderLostMps, colliderContactAtS, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
       overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
     ];
   }
+
   function setBrainNumbers(values: number[]): void {
     [
       terrainCheckAtS, terrainAvoidUntilS, terrainEscapeYaw, gunLaneNextCheckS, gunLaneBlockedT, gunLaneChecks,
@@ -7590,47 +7585,42 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       vantageVeto[2].untilS, vantageVeto[3].x, vantageVeto[3].z, vantageVeto[3].untilS, coverPoint.x, coverPoint.z,
       flankIndex, flankUntilS, flankPoints[0].x, flankPoints[0].z, flankPoints[1].x, flankPoints[1].z,
       flankPoints[2].x, flankPoints[2].z, nonPenCount, shotsFromSpot, spotPos.x, spotPos.z, scootPoint.x,
-      scootPoint.z, scootUntilS, pocketEscapeUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x,
-      fallbackPoint.z, fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x,
-      reactPoint.z, reactUntilS, reactCdUntilS, reactSide, threatBearing, reactions, suspectUntilS, kitePoint.x,
-      kitePoint.z, kiteUntilS, orbitSide, orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT,
-      targetStillS, targetLastShotS, prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS,
-      passivePresses, passivePressRepicks, passivePressCandidate, passivePressArcT, pressVetoes[0].x,
-      pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z, pressVetoes[1].untilS,
-      pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x, pressVetoes[3].z,
-      pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, missVerdicts, pressPickS,
-      pressReachByS, pressUnreached, flankLaneCheckS, searchDisplacedAtS, searchLegsDisplaced, searchLegs,
-      searchFailures, searchGoal.x, searchGoal.z, searchLegStartS, searchLegBudgetS, searchLegStartDistM,
-      searchStrikesAtStart, searchSweepIndex, searchNextCheckS, strikeEvents, colliderStops, heBurstBest,
-      heBurstHFrac, heBurstLatFrac, hitChance, conserveHolds, rackSpentT, rackSpentUntilS, rackSpentVerdicts,
-      cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, objectiveShifts, zoneHold.x, zoneHold.z,
-      zoneHoldForX, zoneHoldForZ, zoneHoldMoves, missionReleaseUntilS, missionReleases, elevationLockT, levelGoal.x,
-      levelGoal.z, levelGoal.y, levelRouteUntilS, levelRouteStrikes, levelRoutes, levelRoutesSuperseded,
-      unbearableUntilS, unbearableVerdicts, ramRuns, lastRuns, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
+      scootPoint.z, scootUntilS, scootLine, relocations, prevReloadT, fallbackPoint.x, fallbackPoint.z,
+      fallbackUntilS, fallbackCdS, lastHp, burstDamage, burstDamageUntilS, reactPoint.x, reactPoint.z, reactUntilS,
+      reactCdUntilS, reactSide, threatBearing, reactions, kitePoint.x, kitePoint.z, kiteUntilS, orbitSide,
+      orbitFlipS, guardT, guardLastS, guardReleaseUntilS, probeMissT, penDeniedT, targetStillS, targetLastShotS,
+      prevTargetReloadT, lastPenAtS, pressPoint.x, pressPoint.z, passivePressRepickS, passivePressArcT,
+      pressVetoes[0].x, pressVetoes[0].z, pressVetoes[0].untilS, pressVetoes[1].x, pressVetoes[1].z,
+      pressVetoes[1].untilS, pressVetoes[2].x, pressVetoes[2].z, pressVetoes[2].untilS, pressVetoes[3].x,
+      pressVetoes[3].z, pressVetoes[3].untilS, missStreak, missSpot.x, missSpot.z, missLastShotS, pressPickS,
+      pressReachByS, flankLaneCheckS, searchDisplacedAtS, searchFailures, searchGoal.x, searchGoal.z,
+      searchLegStartS, searchLegBudgetS, searchLegStartDistM, searchStrikesAtStart, searchSweepIndex,
+      searchNextCheckS, strikeEvents, heBurstBest, heBurstHFrac, heBurstLatFrac, hitChance, rackSpentT,
+      rackSpentUntilS, cannotFightT, objectiveShiftPoint.x, objectiveShiftPoint.z, zoneHold.x, zoneHold.z,
+      zoneHoldForX, zoneHoldForZ, missionReleaseUntilS, elevationLockT, levelGoal.x, levelGoal.z, levelGoal.y,
+      levelRouteUntilS, levelRouteStrikes, unbearableUntilS, ramCommitUntilS, ramBackoffUntilS, ramCapMps,
       ramLineCheckS, ramContactUntilS, ramPoint.x, ramPoint.z, laneFallbackUntilS, settleUntilS, settleStreak,
-      settleCdUntilS, friendlyBlockT, friendlyBlockCount, friendlyLaneMoves, friendlyLaneRetryS,
-      friendlyLaneSearches, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot, cachedPenRatio, errYawRad,
-      errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad, playerYawRad, playerPitchRad,
-      losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT, allyDeadlockT, allyEmergencyStops,
-      allyReverseEscapes, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
+      settleCdUntilS, friendlyBlockT, friendlyLaneRetryS, underFireUntilS, aimHFrac, aimLatFrac, chosenSlot,
+      cachedPenRatio, errYawRad, errPitchRad, targetTrackLagS, targetLeadScale, blindYawRad, blindPitchRad,
+      playerYawRad, playerPitchRad, losTimer, probeTimer, coverTimer, errTimer, obstacleTimer, allyYieldT,
+      allyDeadlockT, allyEscapeUntilS, allyEscapeSteer, trafficDetourUntilS, trafficDetourStage, trafficNear.x,
       trafficNear.z, trafficFar.x, trafficFar.z, allyHoldT, allyHoldLastS, allyHoldAnchor.x, allyHoldAnchor.z,
-      allyHoldGiveWays, lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate,
-      stuckStrikes, freeMoveT, detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z,
-      leg.yaw, leg.atS, leg.dirX, leg.dirZ, deadLegs, blockedTravel.x, blockedTravel.z, blockedTravel.untilS,
-      lastFiredAtS, pressUntilS, ordersTaken, dispGateT, probeVisible[0], probeVisible[1], probeVisible[2],
-      probeVisible[3], probeVisible[4], probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX,
-      routeGoalZ, routeCorner.x, routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, steerGoalX, steerGoalZ,
-      routeCornerGivenUp.x, routeCornerGivenUp.z, routeCornerGivenUp.atS, routeCornerSettledUntilS, routeCornerFlips,
-      lastCorner.x, lastCorner.z, lastCorner.untilS, terrainRouteUntilS, wedgeReleaseUntilS, wedgeReleases,
-      cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, gunNudgeAtS, contactReleases, plannedLegRuns,
-      plannedLegRejoins, plannedLeg.ax, plannedLeg.az, plannedLeg.ex, plannedLeg.ez, plannedLeg.t, combatRouteIndex,
-      combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x, combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z,
-      openExposedAtS, aimLateralX, aimLateralZ, ballShots, airShots, squadThinkAtS, squadFlankAtS, offensiveJumps,
-      jockeyDir, jockeyStandS, jockeyStallS, jockeyLegs, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange, colliderLostMps,
-      colliderContactAtS, ramHoldOffs, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
+      lowSpeedT, slopeBlockT, unstickUntilS, unstickSteer, progX, progZ, progressRate, stuckStrikes, freeMoveT,
+      detourUntilS, detourSide, gunLimitT, nudgeUntilS, arcLimitedT, legKind, leg.x, leg.z, leg.yaw, leg.atS,
+      leg.dirX, leg.dirZ, blockedTravel.x, blockedTravel.z, blockedTravel.untilS, lastFiredAtS, pressUntilS,
+      dispGateT, probeVisible[0], probeVisible[1], probeVisible[2], probeVisible[3], probeVisible[4],
+      probeVisible[5], probeVisible[6], probeVisible[7], routeTimer, routeGoalX, routeGoalZ, routeCorner.x,
+      routeCorner.z, driveGoalX, driveGoalZ, driveGoalAtS, routeCornerGivenUp.x, routeCornerGivenUp.z,
+      routeCornerGivenUp.atS, routeCornerSettledUntilS, lastCorner.x, lastCorner.z, lastCorner.untilS,
+      terrainRouteUntilS, wedgeReleaseUntilS, gunNudgeAtS, plannedLeg.ax, plannedLeg.az, plannedLeg.ex,
+      plannedLeg.ez, plannedLeg.t, combatRouteIndex, combatRouteAtS, combatGoalX, combatGoalZ, combatGoal.x,
+      combatGoal.z, chaseUntilS, chasePoint.x, chasePoint.z, openExposedAtS, aimLateralX, aimLateralZ, squadThinkAtS,
+      squadFlankAtS, jockeyDir, jockeyStandS, jockeyStallS, jockeyAtS, jockeyAX, jockeyAZ, jockeyRange,
+      colliderLostMps, colliderContactAtS, ramGap, ramCross, rushBackOffUntilS, rushBackOffTurn, lateRecoveryTurns,
       overriddenRecoveryTurns, abilityContext.hitBearing, abilityContext.hitAtS,
     ] = values;
   }
+
   function brainFlags(): boolean[] {
     return [
       terrainBlocked, losClear, gunLaneClear, autoPatrolBuilt, hasMoveTarget, hasVantage, hasCoverPoint,
@@ -7650,15 +7640,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     ] = values;
   }
   function brainNames(): (string | null)[] {
-    return [mode, gunLaneTargetId, scootKind, reaction, targetActivityId, missStreakTargetId, searchKind, rackDwellId, rackSpentId, levelRouteTargetId, unbearableId, ramContactId, trafficDetourAllyId, routeOutcome];
+    return [mode, gunLaneTargetId, scootKind, reaction, targetActivityId, missStreakTargetId, searchKind, rackDwellId, rackSpentId, levelRouteTargetId, unbearableId, ramContactId, trafficDetourAllyId];
   }
+
   /** Whether `value` may stand at brainNames' `index` (its mode, scoot kind and reaction are their unions'; the search
-   *  kind and the route's outcome strings; the rest an id or none). */
+   *  kind a string; the rest an id or none). */
   function brainNameFits(index: number, value: unknown): boolean {
     if (index === 0) return AI_MODES.includes(value as string);
     if (index === 2) return SCOOT_KINDS.includes(value as string);
     if (index === 3) return value === null || REACTIONS.includes(value as string);
-    if (index === 6 || index === 13) return typeof value === 'string';
+    if (index === 6) return typeof value === 'string';
     return value === null || typeof value === 'string';
   }
   /** brainNames' fields, each from its index (brainNameFits has held each to its type). */
@@ -7676,7 +7667,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     unbearableId = values[10] as string | null;
     ramContactId = values[11] as string | null;
     trafficDetourAllyId = values[12] as string | null;
-    routeOutcome = values[13] as string;
   }
   const brainHulls = (): (AiEntity | null)[] => [target, suspect, underFire, ramHull];
   /** The brain's construction (BotBrain's sparse base): both hosts build it alike from the same seed (set at the end). */

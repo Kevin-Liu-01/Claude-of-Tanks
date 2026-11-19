@@ -13,7 +13,8 @@
 // [4] the Horde's stranded tracker: a hostile cut off from the humans is benched on the old host's tick (a new host
 //     tracked every hostile afresh and benched it 30 s late).
 // [5] the bots' role deals and their clocks (CTF roles, a Turbo Ball striker's commit, Zone Control's assignments): the
-//     new host deals on the old host's second, the same roles, and a striker keeps its commit.
+//     new host deals on the old host's second, the same roles, and a striker keeps its commit: the same route pushes, the
+//     hulls within the rows' quantization.
 // [6] a keyframe the new host seals in its resume hold, before its first step: a begun advance's arrivals hidden from the
 //     seat (lineArrivalDue) ride it, and a host elected from it raises them on their slots (it raised them at their own
 //     spawns, their slot draws spent).
@@ -232,13 +233,22 @@ for (const mode of ['capture_the_flag', 'turbo_ball', 'zone_control']) {
   ok(!!sealed?.[part] && Number.isFinite(sealed[part].atS), `${mode}: the case is built: the keyframe carries the ${part} deal (dealt at ${sealed?.[part]?.atS?.toFixed(3)})`);
   ok(JSON.stringify(deals(fresh)) === JSON.stringify(sealed), `${mode}: the new host holds the old host's deal and its clock before its first step`);
   fresh.authority.onMatchReady();
-  let same = 0, apart = null;
-  for (let k = 1; k <= 60 * 4; k++) {
+  let same = 0, apart = null, widest = 0, targets = 0;
+  for (let k = 1; k <= 60 * 8; k++) {
     step(old); step(fresh);
     const a = JSON.stringify(deals(old)), b = JSON.stringify(deals(fresh));
     if (a === b) same++; else if (apart === null) apart = `step ${k}: ${a.slice(0, 160)} / ${b.slice(0, 160)}`;
+    for (const e of old.authority.entities) {
+      if (!e.bot) continue;
+      const t = fresh.authority.entityById.get(e.id);
+      widest = Math.max(widest, Math.hypot(e.state.pos.x - t.state.pos.x, e.state.pos.z - t.state.pos.z));
+      if (Math.hypot((e._modeTargetX ?? 0) - (t._modeTargetX ?? 0), (e._modeTargetZ ?? 0) - (t._modeTargetZ ?? 0)) > 0.01) targets++;
+    }
   }
-  ok(same === 240, `${mode}: over 4 s both hosts deal the same roles on the same steps (${same} of 240 steps alike${apart ? `; first apart ${apart}` : ''})`);
+  ok(same === 480, `${mode}: over 8 s both hosts deal the same roles on the same steps (${same} of 480 steps alike${apart ? `; first apart ${apart}` : ''})`);
+  // (Turbo Ball's bots meet the ball, whose contacts carry the rows' millimetres on: its hulls part 0.6-0.8 m whatever the deal)
+  if (mode !== 'turbo_ball') ok(targets === 0 && widest < 0.05, `${mode}: and send their bots to the same places: every route push alike (${targets} apart), the hulls `
+    + `within ${widest.toFixed(3)} m (bound 0.05 m)`);
   old.stop(); fresh.stop();
 }
 
