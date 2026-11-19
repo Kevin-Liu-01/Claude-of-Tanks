@@ -200,6 +200,16 @@ try {
         const at = await markerOnScreen();
         await page.mouse.move(at ? at.x : err > 0 ? vp.width * 0.1 : vp.width * 0.9, at ? at.y : vp.height * 0.55, { steps: 6 });
         await sleep(800);
+        // (the cursor branch's record: the gun's error to the marker after the move, where the cursor rested, and what the
+        // game says of the parked hulls, so a stall here names its cause; the chapter walk of 2026-11-18 stalled here)
+        const after = await pose();
+        (report.aimLog ??= []).push({ cursor: at ? [Math.round(at.x), Math.round(at.y)] : 'edge',
+          err: Math.round(err * 1000) / 1000, after: Math.round(wrap(Math.atan2(marker.x - after.x, marker.z - after.z) - after.gun) * 1000) / 1000,
+          parked: await page.evaluate(() => {
+            const g = window.__DEBUG.game;
+            return g.tanks.filter((t) => t.modeActive === false).map((t) => ({ id: t.id, spotted: !!g.spotting?.isSpotted(t.id, g.player?.team ?? 'player'),
+              visible: t.visual?.root?.visible ?? null }));
+          }).catch(() => null) });
         continue;
       }
       if (touch) {
