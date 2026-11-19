@@ -2522,11 +2522,33 @@ at the 2 s cadence 19-54 kbit/s more to each seat beside 13.9.6's measured 20, a
 every 500 ms) carries it too. It stays far under the `MIGRATION_MAX_CHUNKS` cap. A down bot adds two integers. Whether
 to trim the way (millimetre rounding, or no way a fresh brain would plan alike) is open.
 
-Not taken up (the lane's m1.json lists each with its measure and an owner to assign):
+Not taken up (each still needs an owner; the figures are from Node probes of the receipts' staging):
 - The window's other moves: a Horde hostile benched as stranded (read as a death; its slot is not queued again), a
   refused Horde arrival or an Infected arrival revived there (their ring draws), a Mars cache dropped there (dropped and
-  announced again), and an AC-130 supply drop there (lost). The G2 residuals (a) to (f) and a clear's repair for a hull
-  whose row is from before the clear are also open.
+  announced again), and an AC-130 supply drop there (lost).
+- Window moves taken up inexactly: a Horde arrival the old host deferred at a begun wave's start is due at once; an ally
+  whose revive the seat holds no row of stays down until the next wave start (Horde) or its allied revive (Frontline); a
+  defender that fell before a begun advance counts as living in the replayed draw; the advance's time is the newest told
+  defender respawn, else the frame's (up to the window late); attack plans and the reinforce clock the old host set
+  after a begun advance are set again at the new host's first asks; a trickle or reinforce clock taken from a told tick
+  can sit a tick off; a clear's repair for a hull whose row is from before the clear is lost; and a begun advance's
+  hidden arrival rises where the line guard finds the attack on the first step, 9.1-22.0 m from the old host's spot when
+  the attack drove on (0.00 m with it held).
+- A clear taken up as made: its cache's kind reads the constructed actor's wave-1 heal chance (latent: every shipped
+  Horde has unlimited rounds); a cache it made that the window took is made active again; and the keyframe's queue,
+  which the frame shows emptied, trickles in the lull.
+- Draws: a begun Horde wave's hidden arrivals draw after its seen ones', not among them (all hidden: within 0.8 m through
+  wave 5); and the hunt's arrivals lead seed stays the keyframe's after the replayed arrivals (6 against the old host's 7
+  after a trickle, the next arrival's lead about 150 m off; 12 against 18 after a begun wave).
+- The mode clock: a resumed host reads mode time as `timeS + modeTimeOffsetS`, not the old host's one accumulated sum,
+  so Horde trickle arrivals drift a tick each (every 90 ticks against 91, 0.10 s early by the sixth; a wave cleared in
+  the window clears the next 0.25 s early). integ/273 does the same.
+- In the director: the Horde's stranded tracker (`strandTrack`, `strandCheckAtS`; a cut-off hostile benched 30.5 s
+  late) and the role deals' clocks (CTF, hold, zone and Turbo Ball roles; re-dealt within a second, but a striker's
+  commit is lost).
+- A keyframe the new host seals in its resume hold, before its first step, does not carry a begun advance's hidden
+  arrivals (`lineArrivalDue`): a host elected from it would revive them at their own spawns, their slot draws spent (by
+  reading).
 - In the brain: the LOS and probe timer phases, the manoeuvre windows, the stuck and progress state, and the ally-yield
   and hold timers.
 - In the integrator: `_rollover`, `_susp`, `_hold`, `_holdSeat` and `_prevSpeed`, and a hidden hull's tail.

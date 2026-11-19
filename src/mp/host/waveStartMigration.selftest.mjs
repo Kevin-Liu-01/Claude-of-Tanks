@@ -30,6 +30,10 @@
 // slots' draws in slot order; and the director's other moves a window can hold, each made a second time before: [7] a
 // Horde wave cleared ([7b] the frame at the clear's own step), [8] a cache taken, [9] a Frontline reinforce trickle
 // arrival, [10] a counter-attack launched.
+// Fix-up r3 (the round-3 correctness review: two guards no receipt held) adds: [8b] a Mars cache and [8c] an AC-130
+// supply drop taken in the window (the objectives' and the escort's cache lists, not the Horde's), and [10b] a
+// counter-attack due after the resume, still launched and announced once (checkpointAtNewestFrame names a launch only
+// when the frame is past the counter's moment).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -548,6 +552,87 @@ console.log('[8] a cache taken after the keyframe: taken once');
   old.stop(); fresh.stop();
 }
 
+/**
+ * [8b] and [8c]: [8]'s case on another mode's cache list. `mode` and `roster` make the match (seed 7, h0 the seat);
+ * `setUp` plays it to its first cache, `listOf` reads that list from a mode checkpoint, `landed` says the cache can be
+ * taken, and `pin` holds a hull in place each step. The taker, worn to 30 %, is held 300 m off the cache until the
+ * keyframe and on it after; the old host runs 30 ticks on, and the elected seat resumes from that keyframe, its newest
+ * frame and the respawns it was told. Both hosts then run 1 s side by side.
+ */
+function cacheWindow({ mode, roomId, roster, taker, setUp, listOf, landed, pin }) {
+  const makeMode = (resume) => createMatchActor({ roomId, mapId: 'verdant', mode, seed: 7, seats, bots: roster, ruleset: matchRulesetFor(mode), world,
+    countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
+  const old = makeMode(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0, cache = null, onCache = false;
+  const told = new Map();
+  const hold = (actor) => {
+    pin?.(actor);
+    if (!cache) return;
+    const e = actor.authority.entityById.get(taker);
+    e.state.pos.set(cache.x + (onCache ? 0 : 300), 0, cache.z); e.state.speed = 0;
+  };
+  const step = (actor, n, heard) => {
+    for (let k = 0; k < n; k++) {
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+      hold(actor);
+    }
+  };
+  const cachesOf = (actor) => listOf(actor.authority.captureModeCheckpoint().mode);
+  setUp?.(old, step);
+  for (let guard = 0; guard < 60 * 300 && !cachesOf(old).some((p) => p.active); guard++) step(old, 1);
+  cache = cachesOf(old).find((p) => p.active) ?? null;
+  const t = sim.entityById.get(taker);
+  t.combat.hp = Math.round(t.combat.maxHp * 0.3);
+  hold(old);
+  for (let guard = 0; guard < 60 * 30 && cache && !landed(old, cache); guard++) step(old, 1);
+  step(old, 2);
+  const era = createEraIndexer();
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  const hpAtKeyframe = t.combat.hp;
+  onCache = true;
+  hold(old);
+  const heardOld = [];
+  step(old, 30, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const frame = hostFrame(old, tick, era, false);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = makeMode({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  applyResumeState(fresh, state);
+  const restored = cachesOf(fresh).map((p) => [p.id, p.active]);
+  fresh.authority.onMatchReady();
+  const heardNew = [];
+  for (let k = 0; k < 60; k++) { step(fresh, 1, (ev) => { if (ev.type.startsWith('mode_')) heardNew.push(ev.type); }); step(old, 1); }
+  const result = { cache, sealed: listOf(keyframe.modeCheckpoint.mode), heardOld, hpAtKeyframe, hpOld: t.combat.hp,
+    hpNew: fresh.authority.entityById.get(taker).combat.hp, restored, heardNew };
+  old.stop(); fresh.stop();
+  return result;
+}
+
+for (const [label, setting] of [
+  ['[8b] a Mars cache taken after the keyframe (the objectives\' cache list): taken once', {
+    // Mars with its one enemy held far off; h0 takes the first cache dropped
+    mode: 'mars', roomId: 'mars-cache', roster: [{ playerId: 'b-0', name: 'B0', team: 'bravo', specId: spec }], taker: 'h0',
+    listOf: (mode) => mode.objectives?.caches?.pickups ?? [], landed: () => true,
+    pin: (actor) => { const b = actor.authority.entityById.get('b-0'); b.state.pos.set(400, 0, 400); b.state.speed = 0; } }],
+  ['[8c] an AC-130 supply drop taken after the keyframe (the escort\'s support list): taken once', {
+    // the gunship (h0) calls a repair drop at its aim; an escort tank takes it once it has landed
+    mode: 'ac130', roomId: 'ac130-drop', roster: Array.from({ length: 4 }, (_, i) => ({ playerId: `g-${i}`, name: `G${i}`, team: 'alpha', specId: spec })), taker: 'g-0',
+    setUp: (actor, step) => { step(actor, 120); actor.authority.modeController.requestSupply('h0', 'heal', actor.authority.timeS); },
+    listOf: (mode) => mode.support?.pickups ?? [], landed: (actor, cache) => actor.authority.timeS > (cache.landAtS ?? 0) }],
+]) {
+  console.log(label);
+  const { cache, sealed, heardOld, hpAtKeyframe, hpOld, hpNew, restored, heardNew } = cacheWindow(setting);
+  ok(!!cache && sealed.some((p) => p.id === cache.id && p.active) && count(heardOld, 'mode_pickup_collected') === 1 && hpOld > hpAtKeyframe,
+    `the case is built: the keyframe holds ${cache?.id} (${cache?.kind}) down, and ${setting.taker} takes it after (${heardOld.join(', ')}; ${hpAtKeyframe} -> ${hpOld} hp)`);
+  ok(!!cache && restored.some(([id, active]) => id === cache.id && !active), `the restore holds the cache taken (${JSON.stringify(restored)})`);
+  ok(count(heardNew, 'mode_pickup_collected') === 0 && hpNew === hpOld, `${setting.taker}, still on the spot, does not take it again (${heardNew.join(', ') || 'no mode events'} `
+    + `in 1 s; ${hpNew} hp on the new host against ${hpOld} on the old)`);
+}
+
 /** Frontline as shipped (seed 7, the attackers 3 allied bots and h0, eight defenders) for [9] and [10]. */
 const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
   ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -623,8 +708,12 @@ console.log('[9] a Frontline reinforce trickle arrival after the keyframe: taken
   old.stop(); fresh.stop();
 }
 
-console.log('[10] a Frontline counter-attack launched after the keyframe: its squad picked, never announced twice');
-{
+/**
+ * [10] and [10b]: the attack takes sector 1 (each defender falls as it stands), the keyframe is sealed `leadS` before the
+ * counter-attack falls due, and the old host runs 30 ticks on; the elected seat resumes from that keyframe, its newest
+ * frame and the respawns it was told.
+ */
+function counterWindow(leadS) {
   const old = makeFront(null, 'counter-window'), sim = old.authority, run = stepper(old);
   sim.onMatchReady();
   const zoneOf = (actor) => { const st = actor.authority.modeController.state; return st.zones[Math.min(st.line.index, st.zones.length - 1)]; };
@@ -637,18 +726,24 @@ console.log('[10] a Frontline counter-attack launched after the keyframe: its sq
   };
   for (let guard = 0; guard < 30000 && sim.modeController.state.line.index < 1; guard++) run.step(old, 1, null, takeSector);
   const counterAt = lineCheckpoint(old).waves.line.counter?.atS;
-  for (let guard = 0; guard < 6000 && lineCheckpoint(old).elapsedS < counterAt - 0.3; guard++) run.step(old, 1);
+  for (let guard = 0; guard < 6000 && lineCheckpoint(old).elapsedS < counterAt - leadS; guard++) run.step(old, 1);
   const { keyframe, era } = sealAt(old, run);
   const told = new Map(), heardOld = [];
   run.step(old, 30, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, run.tick); });
   const frame = hostFrame(old, run.tick, era, false);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = makeFront({ tick: state.tick, battleTimeMs: state.battleTimeMs }, 'counter-window');
+  applyResumeState(fresh, state);
+  return { old, fresh, run, keyframe, heardOld, counterAt, frameAtS: lineCheckpoint(old).elapsedS };
+}
+
+console.log('[10] a Frontline counter-attack launched after the keyframe: its squad picked, never announced twice');
+{
+  const { old, fresh, run, keyframe, heardOld, counterAt } = counterWindow(0.3);
   const sealedCounter = keyframe.modeCheckpoint.mode.waves.line.counter, oldSquad = lineCheckpoint(old).waves.line.counter?.ids ?? [];
   ok(!!sealedCounter && sealedCounter.ids.length === 0 && count(heardOld, 'mode_counter_attack') === 1 && oldSquad.length > 0,
     `the case is built: the keyframe holds the counter-attack due at ${counterAt?.toFixed(3)} with no squad (mode ${keyframe.modeCheckpoint.mode.elapsedS.toFixed(3)}), `
       + `and the old host launches it after (squad ${oldSquad.join(', ')})`);
-  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
-  const fresh = makeFront({ tick: state.tick, battleTimeMs: state.battleTimeMs }, 'counter-window');
-  applyResumeState(fresh, state);
   // a keyframe the new host seals in its resume hold, before its first step picks the squad, still names the launch
   const inHold = lineCheckpoint(fresh).waves.line.counter;
   ok(inHold?.launched === true && inHold.ids.length === 0, `a keyframe sealed before the new host's first step names the launch (${JSON.stringify(inHold)})`);
@@ -661,5 +756,30 @@ console.log('[10] a Frontline counter-attack launched after the keyframe: its sq
   old.stop(); fresh.stop();
 }
 
+console.log('[10b] a Frontline counter-attack due after the resume: still launched and announced, once, as the old host does');
+{
+  // the keyframe sealed 3 s before the counter-attack falls due and the seat's frame 0.5 s on: neither is past its moment,
+  // so the restore names no launch (migrationState.ts checkpointAtNewestFrame's frame-moment test) and the new host
+  // launches it when it falls due, announced
+  const { old, fresh, run, keyframe, heardOld, counterAt, frameAtS } = counterWindow(3);
+  const sealedCounter = keyframe.modeCheckpoint.mode.waves.line.counter;
+  ok(!!sealedCounter && sealedCounter.ids.length === 0 && frameAtS < counterAt && count(heardOld, 'mode_counter_attack') === 0,
+    `the case is built: the keyframe holds the counter-attack due at ${counterAt?.toFixed(3)} with no squad (mode ${keyframe.modeCheckpoint.mode.elapsedS.toFixed(3)}), `
+      + `and the seat's frame (mode ${frameAtS.toFixed(3)}) is before it`);
+  const restored = lineCheckpoint(fresh).waves.line.counter;
+  ok(!!restored && restored.launched === undefined && restored.ids.length === 0, `the restore names no launch (${JSON.stringify(restored)})`);
+  fresh.authority.onMatchReady();
+  const heardNew = [], heardOldAfter = [];
+  for (let k = 0; k < 240; k++) {
+    run.step(fresh, 1, (ev) => { if (ev.type === 'mode_counter_attack') heardNew.push(k); });
+    run.step(old, 1, (ev) => { if (ev.type === 'mode_counter_attack') heardOldAfter.push(k); });
+  }
+  const oldSquad = lineCheckpoint(old).waves.line.counter?.ids ?? [], newSquad = lineCheckpoint(fresh).waves.line.counter?.ids ?? [];
+  ok(heardOldAfter.length === 1 && heardNew.length === 1 && Math.abs(heardNew[0] - heardOldAfter[0]) <= 1,
+    `the new host announces the counter-attack once, on the old host's tick (step ${heardNew.join(', ') || 'never'} after the resume against ${heardOldAfter.join(', ') || 'never'})`);
+  ok(oldSquad.length > 0 && JSON.stringify(newSquad) === JSON.stringify(oldSquad), `its squad is the old host's (${newSquad.join(', ') || 'none'} against ${oldSquad.join(', ') || 'none'})`);
+  old.stop(); fresh.stop();
+}
+
 if (failures) { console.error(`waveStartMigration.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('waveStartMigration.selftest: a Horde wave begun or cleared, a cache taken, a Frontline advance, reinforcement or counter-attack, or a trickle arrival made after the keyframe is taken up as made, never made again, seen or unseen by the elected seat');
+console.log('waveStartMigration.selftest: a Horde wave begun or cleared, a Horde, Mars or AC-130 cache taken, a Frontline advance, reinforcement or counter-attack, or a trickle arrival made after the keyframe is taken up as made, never made again, seen or unseen by the elected seat; a counter-attack due after the resume is still announced');
