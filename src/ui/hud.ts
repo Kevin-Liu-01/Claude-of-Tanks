@@ -44,6 +44,7 @@ import { battleSightShift } from './battleSight.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
+import { penVerdict } from '../sim/penVerdict.ts';
 import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
@@ -2355,9 +2356,10 @@ body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 
 `;
 
+/** The ring's colour: the reticle's verdict (sim/penVerdict.ts penVerdict, which the scoped armour paint reads too). */
 function penColor(r: number | null | undefined): string {
-  if (r == null || !isFinite(r)) return PEN_NONE;
-  return r >= 1.15 ? PEN_GREEN : r >= 0.85 ? PEN_ORANGE : PEN_RED;
+  const verdict = penVerdict(r);
+  return verdict === 'pen' ? PEN_GREEN : verdict === 'marginal' ? PEN_ORANGE : verdict === 'nopen' ? PEN_RED : PEN_NONE;
 }
 
 function fmtTimer(s: number): string {

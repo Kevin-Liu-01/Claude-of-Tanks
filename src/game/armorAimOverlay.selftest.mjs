@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createArmorAimOverlay } from './armorAimOverlay.ts';
+import { aimArmorAlong, aimPenRatio } from '../sim/aimPenetration.ts';
+import { penVerdict } from '../sim/penVerdict.ts';
 import { ARMOR_PAINT_PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS, ARMOR_PAINT_ZONE_TEXELS, makeBurnUniforms } from '../vehicles/materials.ts';
 
 // 262: the scoped flashlight is paint (vehicles/materials.ts ARMOR_PAINT, riding the burn hook): this runtime fills
-// each scoped vehicle's zone table — every authored main plate's plane and outline, and its colour blended from samples
-// on the cells' faces the authority gives that plate — and its frames, and turns the paint on only in scope.
+// each scoped vehicle's zone table — every authored main plate's plane and outline, and (274) the colour of the reticle's
+// verdict at its largest clear sample on the cells' faces the authority gives that plate — and its frames, and turns the
+// paint on only in scope.
 const glacis = {
   name: 'test_glacis', kind: 'main', physicalMm: 50, keMm: 50, ceMm: 50,
   verts: [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]],
@@ -118,7 +121,7 @@ assert.deepEqual([...target.uniforms.uApHullC.value.toArray(), ...target.uniform
   assert.equal(secondEntry.table[at + 3], 0, 'one update keeps the single-batch query budget');
   // the rear plate is behind the glacis from the muzzle: its samples see the glacis first, so they stand in hidden
   const rearAt = (2 * ARMOR_PAINT_ZONE_TEXELS - 1) * 4;
-  assert.equal(entry.table[rearAt + 3], 1, 'a zone seen only through other armour still takes its blended colour');
+  assert.equal(entry.table[rearAt + 3], 1, 'a zone seen only through other armour still takes the verdict of a line to it');
 }
 
 overlay.update({ enabled: true, scoped: false, targets: [target, secondTarget], shellSpec, nowMs: 100 });
@@ -148,30 +151,43 @@ assert.equal(target.uniforms.uApOn.value, 0, 'the setting turns the paint off at
   still.dispose();
 }
 
-// (267) a whole panel's row is the plate a round along the current view reads at its centre: a bevel the roof scores, seen
-// level, reads the front across it (the authority's plateAlongShot); seen from above, the roof
+// (274) a whole panel's row is the colour of the reticle's verdict at its centre (sim/aimPenetration.ts, banded by
+// sim/penVerdict.ts) for the current view and shell: it turns with the shell, and a panel facing away is not judged
 {
-  const front = { name: 'test_front', kind: 'main', physicalMm: 600, keMm: 600, ceMm: 600, verts: [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]] };
-  const roof = { name: 'test_roof', kind: 'main', physicalMm: 40, keMm: 40, ceMm: 40, verts: [[-1, 2.2, 0.6], [1, 2.2, 0.6], [1, 2.2, -1], [-1, 2.2, -1]] };
-  const bevelTarget = makeTarget('overlay-bevel', 0);
-  bevelTarget.spec = { armor: { ...bevelTarget.spec.armor, hullPlates: [front, roof, rear] } };
+  const lone = makeTarget('overlay-panel', 0);
   const panels = createArmorAimOverlay();
-  const bevelEntry = panels.prime(bevelTarget);
-  const { template } = bevelEntry;
-  const ROOF = template.zones.findIndex((zone) => zone.plate === roof), FRONT = template.zones.findIndex((zone) => zone.plate === front);
-  const index = template.wholePanel(ROOF, [0, 1.9, 0.8]);
+  const panelEntry = panels.prime(lone);
+  const { template } = panelEntry;
+  const GLACIS = template.zones.findIndex((zone) => zone.plate === glacis);
+  const index = template.wholePanel(GLACIS, [0, 1, 1], [0, 0, 1]);
   assert.ok(index >= 0 && template.panels.length === 1, 'the bake names a whole panel');
-  const row = () => bevelEntry.table[(template.panelBase + index) * 4];
-  const view = (muzzle, nowMs) => panels.update({ enabled: true, scoped: true, targets: [bevelTarget], shellSpec, muzzle, nowMs });
-  view(new THREE.Vector3(0, 1.9, 60), 0);
-  assert.equal(row(), FRONT, 'seen level, the bevel reads the front across it');
-  view(new THREE.Vector3(0, 60, 0.8), 1000);
-  assert.equal(row(), ROOF, 'seen from above, the roof it faces');
-  // a panel above the front's outline (between its top and the roof) seen level: the roof (the authority's too)
-  const high = template.wholePanel(ROOF, [0, 2.1, 0.7]);
-  view(new THREE.Vector3(0, 2.1, 60), 2000);
-  assert.equal(bevelEntry.table[(template.panelBase + high) * 4], ROOF, 'above the front\'s outline, seen level: the roof');
-  assert.equal(row(), FRONT, 'and the bevel below it, the front');
+  const row = () => [...panelEntry.table.slice((template.panelBase + index) * 4, (template.panelBase + index) * 4 + 4)];
+  assert.deepEqual([...template.table.slice((template.panelBase + index) * 4, (template.panelBase + index) * 4 + 4)], [GLACIS, -1, 0, 0],
+    'a new row: its zone, no verdict yet (a scoped vehicle\'s table takes it on its next frame)');
+  let clock = 0;
+  const view = (muzzle, shell) => {
+    for (let k = 0; k < 4; k++) panels.update({ enabled: true, scoped: true, targets: [lone], shellSpec: shell, muzzle, nowMs: (clock += 1000) });
+  };
+  const verdictColor = (muzzle, shell) => {
+    const centre = new THREE.Vector3(0, 1, 1);
+    const dir = centre.clone().sub(muzzle).normalize();
+    const info = aimArmorAlong(muzzle, dir, 800, lone.state, lone.spec.armor, lone.combat.eraSpent,
+      { pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 });
+    const color = { pen: 0x48d985, marginal: 0xf0aa35, nopen: 0xe53d35 }[penVerdict(aimPenRatio(shell, info))];
+    return new THREE.Color(color).toArray();
+  };
+  const near = (a, b) => a.every((v, k) => Math.abs(v - b[k]) < 1e-6);
+  const front = new THREE.Vector3(0, 1, 60);
+  view(front, shellSpec);
+  assert.ok(near(row().slice(1), verdictColor(front, shellSpec)), 'the row is the reticle\'s verdict at the panel\'s centre');
+  assert.ok(near(row().slice(1), new THREE.Color(0x48d985).toArray()), 'a 150 mm round on a 50 mm face head-on: green');
+  const weak = { ...shellSpec, name: 'test weak AP', pen100Mm: 25, pen1000Mm: 15 };
+  view(front, weak);
+  assert.ok(near(row().slice(1), new THREE.Color(0xe53d35).toArray()), 'the loaded shell changes: 25 mm on 50 mm is red');
+  assert.ok(near(row().slice(1), verdictColor(front, weak)), 'and still the reticle\'s verdict');
+  view(new THREE.Vector3(0, 1, -60), shellSpec);
+  assert.equal(row()[1], -1, 'seen from behind, the glacis panel is not judged (it reads its zone\'s colour)');
+  assert.equal(row()[0], GLACIS, 'and keeps its zone');
   panels.dispose();
 }
 
@@ -246,4 +262,4 @@ overlay.dispose();
   firstBattle.dispose();
 }
 
-console.log('armorAimOverlay.selftest: zone tables, mantlet footprints, scope-owned paint on every enemy, frames, bounded sampling and cleanup passed; a bake cut off by clear() is baked again');
+console.log('armorAimOverlay.selftest: zone tables, mantlet footprints, scope-owned paint on every enemy, frames, bounded sampling, whole panels painted with the reticle\'s verdict (turning with the shell, back faces unjudged) and cleanup passed; a bake cut off by clear() is baked again');

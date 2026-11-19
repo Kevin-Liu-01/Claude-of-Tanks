@@ -15,6 +15,7 @@
  */
 import { Vector3 } from 'three';
 import { penAtDistanceMm } from './ballistics.ts';
+import { penVerdict } from './penVerdict.ts';
 import { estimatePenRatio, type AimArmorInfo, type DamageShellSpec } from './damage.ts';
 import {
   queryAimArmor, tankPoseFromState, type ArmorModel, type ArmorPlate, type ArmorPlateIntersection, type ArmorPoseState,
@@ -396,12 +397,9 @@ export function provingPatrolInput(
   out.steer = Math.max(-1, Math.min(1, patrol.steerGain * error)) * (reversing ? -1 : 1);
 }
 
-/** The aim overlay's colour bands (sim/damage.ts estimatePenRatio): green at or above 1.15, amber to 0.85, red below. */
-export const PROVING_PEN_RATIO = Object.freeze({ pen: 1.15, marginal: 0.85 });
-
+/** A range card's outcome: the reticle's verdict (sim/penVerdict.ts penVerdict); no ratio, no penetration. */
 export function provingOutcome(ratio: number): ProvingOutcome {
-  if (!(ratio > 0)) return 'nopen';
-  return ratio >= PROVING_PEN_RATIO.pen ? 'pen' : ratio >= PROVING_PEN_RATIO.marginal ? 'marginal' : 'nopen';
+  return penVerdict(ratio > 0 ? ratio : 0) ?? 'nopen';
 }
 
 const _origin = new Vector3();
