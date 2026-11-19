@@ -429,6 +429,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _trainingGunYaw?: Map<string, number>;
   /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
   _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
+  /** The training battle's parked hulls (273): their ids, off the field until their scene's cue. The mode controller's
+   *  setActive puts every hull on the field as it starts; the solo host keeps these off (the first walk found the
+   *  skirmish fighting from the start). */
+  _trainingParked?: Set<string>;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
@@ -1040,6 +1044,7 @@ function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   const actor = rules?.actors.find((rule) => rule.specId === entity.specId);
   // (S14's skirmish bots too: parked, brains and all, until the fight's cue)
   if (!actor?.entersOnCue && !(rules && trainingSkirmishSide(rules, entity.specId))) return;
+  (game._trainingParked ??= new Set()).add(entity.id);
   entity.modeActive = false;
   entity.visual?.setVisible(false);
 }
@@ -1087,7 +1092,8 @@ export function cueTrainingActor(game: SoloGameState, key: string, on: boolean):
   const rules = game.ruleset.training;
   // S14: the skirmish's cue brings every one of its bots in, for good
   if (rules && key === TRAINING_SKIRMISH_CUE) {
-    if (on) for (const entity of game.tanks) if (entity.modeActive === false && trainingSkirmishSide(rules, entity.specId)) {
+    if (on) for (const entity of game.tanks) if (game._trainingParked?.has(entity.id) && trainingSkirmishSide(rules, entity.specId)) {
+      game._trainingParked.delete(entity.id);
       entity.modeActive = true;
       entity.visual?.setVisible(true);
     }
@@ -1100,7 +1106,8 @@ export function cueTrainingActor(game: SoloGameState, key: string, on: boolean):
   // its first cue brings a parked hull onto its mark, for the rest of the battle
   const actor = trainingActor(rules, key)!;
   const entity = on ? game.tanks.find((tank) => tank.specId === actor.specId) : undefined;
-  if (entity && entity.modeActive === false) {
+  if (entity && game._trainingParked?.has(entity.id)) {
+    game._trainingParked.delete(entity.id);
     entity.modeActive = true;
     entity.visual?.setVisible(true);
   }
@@ -1225,6 +1232,7 @@ export function setupBattle(
   game._trainingCues = undefined;
   game._trainingGunYaw = undefined;
   game._trainingCheckpoint = null;
+  game._trainingParked = undefined;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
   // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
   // with them in its resetDestructibles, before the battle (soloBattleStartRuntime.ts); a bare collision world has no
@@ -1445,8 +1453,11 @@ export function setupBattle(
     // what each side has spotted (the honest hunt); the solo battle names its sides player / enemy
     spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
     setActive(modeEntity, active) {
-      modeEntity.modeActive = active;
-      modeEntity.visual?.setVisible(active);
+      // a training battle's parked hull stays off the field until its scene's cue (the controller puts every hull on as
+      // it starts)
+      const on = active && !game._trainingParked?.has(modeEntity.id);
+      modeEntity.modeActive = on;
+      modeEntity.visual?.setVisible(on);
     },
     // the training battle (273): a scene's finished goal and the skirmish stay down (sim/trainingGround.ts trainingRespawns)
     ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(game.ruleset.training!, ent.specId) } : {}),

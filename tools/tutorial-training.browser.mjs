@@ -105,7 +105,11 @@ try {
   await page.evaluate(() => {
     window.__walkHits = [];
     window.__DEBUG.bus?.on?.('shell:hit', (hit) => {
-      if (hit?.targetId === window.__DEBUG.game.player?.id) window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, t: Math.round(performance.now()) });
+      const me = window.__DEBUG.game.player?.id;
+      // the rounds that strike the player, and the player's own rounds' outcomes (a shooting step's stall reads them)
+      if (hit?.targetId === me || hit?.attackerId === me) {
+        window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, on: hit.targetId, t: Math.round(performance.now()) });
+      }
     });
   });
 
@@ -489,7 +493,11 @@ try {
     if (clipS9 && id === 'training.volley') { await sleep(2500); await clipS9.stop().catch(() => {}); clipS9 = null; }
     if (clipS14 && id === 'training.fight') { await sleep(2500); await clipS14.stop().catch(() => {}); clipS14 = null; }
     const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== undefined,
-      ended: next === null };
+      ended: next === null,
+      // what the game stood at as the step ended: the armour colours, the player's health, the hulls on the field
+      armour: await page.evaluate(() => window.__DEBUG.input?.getSettings?.().armorAimOverlay ?? null).catch(() => null),
+      hp: await page.evaluate(() => Math.round(window.__DEBUG.game.player?.combat?.hp ?? -1)).catch(() => null),
+      onField: await page.evaluate(() => window.__DEBUG.game.tanks.filter((t) => t.modeActive !== false && !t.combat.destroyed).length).catch(() => null) };
     report.steps.push(entry);
     console.log(`[training] ${now}: ${how} → ${next === undefined ? 'STUCK' : next === null ? 'chapter done' : 'moved on'} (${entry.seconds} s)`);
     if (next === undefined || next === null) break;
@@ -498,6 +506,7 @@ try {
   }
   // the chapter ended on its last step, and the battle goes on (the card is gone, nothing over the field)
   report.chapterEnded = report.steps.at(-1)?.step === stepsFor.at(-1)?.id && (THROUGH ? report.steps.at(-1)?.advanced === true : report.steps.at(-1)?.ended === true);
+  report.hits = await page.evaluate(() => window.__walkHits ?? []).catch(() => []);
   report.leftOver = THROUGH ? 0 : await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
   // (a desktop walk aims with the cursor, where the game has no free look: the runner moves that step on by itself)

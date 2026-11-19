@@ -305,6 +305,13 @@ assert.equal(finishTrainingBattle(fakeGame), true, 'the chapter complete ends th
 assert.deepEqual([fakeGame.result, fakeGame.resultReason, ended], ['victory', 'training_complete', [['alpha', 'training_complete']]]);
 assert.equal(finishTrainingBattle(fakeGame), false, 'once');
 assert.equal(finishTrainingBattle({ ruleset: {}, result: null }), false, 'and only a training battle');
+// (the whole-chapter walk, 2026-11-18: the controller's start put every hull on the field, so the skirmish fought from
+// S1 on; the solo host keeps a parked hull off until its cue)
+assert.match(state, /const on = active && !game\._trainingParked\?\.has\(modeEntity\.id\);\s*modeEntity\.modeActive = on;/,
+  'the host keeps a parked hull off the field through the controller\'s start');
+assert.match(state, /\(game\._trainingParked \?\?= new Set\(\)\)\.add\(entity\.id\);/, 'parking records the hull');
+assert.equal((state.match(/game\._trainingParked\.delete\(entity\.id\);/g) ?? []).length, 2, 'and only a cue releases it (an actor\'s, the skirmish\'s)');
+assert.ok(state.indexOf('game._trainingParked = undefined;') < state.indexOf('spawnBattleEntities(spawnContext);'), 'cleared before each battle seats its hulls');
 const runner2 = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
 assert.match(runner2, /port\.checkpoint\?\.\(marker\.x, marker\.z\);\s*return true;/, 'each ring reached is the checkpoint');
 const access = readFileSync(new URL('../app/tutorialAccess.ts', import.meta.url), 'utf8');
