@@ -316,11 +316,7 @@ try {
       // the cursor rests at the edge on the target's side and the view and gun come round, as the turret step does
       const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
       if (!inView) {
-        // (the chapter walk of 2026-11-18: in the ×8 sight under cursor aim a cursor at the edge never brings the view
-        // round, "GUN TRAVEL LIMIT"; in the third-person view it does, as the turret step's aim): out of the sight first
-        if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(500); }
-        await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 });
-        await sleep(600);
+        await bringRound(err);
         (report.fireLog ??= []).push({ step: stepId, offScreen: true, err: Math.round(err * 1000) / 1000 });
         continue;
       }
@@ -336,6 +332,22 @@ try {
     }
     return shots;
   }
+  /** A target out of view, brought round: out of the sight, then the hull pivots toward it (A or D, the camera follows the
+   *  hull) while it lies more than 0.5 rad off, else the cursor rests at the screen's edge on its side (the turret step's
+   *  way). The chapter walk of 2026-11-18 found an edge cursor alone lays the gun on a fixed point and stops (Target 2
+   *  132 degrees behind: the error held at -2.308 for 189 tries). */
+  async function bringRound(err) {
+    if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(500); }
+    if (Math.abs(err) > 0.5) {
+      // a bearing that grows turns toward +x, the hull's left (A)
+      const key = err > 0 ? 'KeyA' : 'KeyD';
+      await page.keyboard.down(key); await sleep(Math.min(1500, 250 + Math.abs(err) * 500)); await page.keyboard.up(key);
+      await sleep(300);
+      return;
+    }
+    await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 });
+    await sleep(600);
+  }
   /** One shot at an actor's point: laid on it, settled, fired (fireAt's loop, once). */
   async function fireAtOnce(actorId, local, stepId) {
     const until = Date.now() + 20_000;
@@ -346,10 +358,7 @@ try {
       const p = await pose();
       const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
       const inView = !at.behind && at.x > 40 && at.x < vp.width - 40 && at.y > 40 && at.y < vp.height - 40;
-      if (!inView) {
-        if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(500); }
-        await page.mouse.move(err > 0 ? vp.width * 0.1 : vp.width * 0.9, vp.height * 0.55, { steps: 4 }); await sleep(500); continue;
-      }
+      if (!inView) { await bringRound(err); continue; }
       await page.mouse.move(at.x, at.y, { steps: 4 });
       if (Math.abs(err) > 0.03) { await sleep(300); continue; }
       await sleep(1200);

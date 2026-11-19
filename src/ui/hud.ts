@@ -8424,12 +8424,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     while (hitDirs.length > 5) hitDirs.shift();
   }
 
-  function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
+  function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}, slot: string | null = null): void {
     const severity = ALERT_SEVERITY[tone] ?? 'warning';
     const now = performance.now();
     dropStaleAlerts(now);
-    // (a fresh id each time and the words as the dedupe key: a repeat counts on the alert it repeats, "×3")
-    const toast = alertQueue.push(`alert-${++alertSerial}`, { text, icon: icon as IconId, severity, dedupeKey: `${severity}|${text}`,
+    // (a fresh id each time and the words as the dedupe key: a repeat counts on the alert it repeats, "×3"; a setting's
+    // own slot instead keeps one alert per setting, the newer state replacing the older in place: 273, the chapter walk's
+    // OFF outliving the ON pressed a moment after it)
+    const toast = alertQueue.push(slot ? `alert-${slot}` : `alert-${++alertSerial}`, { text, icon: icon as IconId, severity, dedupeKey: `${severity}|${text}`,
       priority: ALERT_PRIORITY[severity], durationMs: ALERT_HOLD_MS, dismissible: false });
     alertBorn.set(toast.id, now);
     scheduleAlert();
@@ -8640,7 +8642,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   // round 30: the armour-overlay key confirms its state the way the auto-aim lock does
   on('ui:armorOverlayState', ({ on }) => {
-    showAlert(t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), { icon: 'armorFlashlight', tone: on ? 'success' : 'info' });
+    showAlert(t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), { icon: 'armorFlashlight', tone: on ? 'success' : 'info' }, 'armorOverlay');
   });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
     if (on) showAlert(t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
