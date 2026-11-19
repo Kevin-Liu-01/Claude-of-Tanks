@@ -8,6 +8,9 @@ interface SoloBattleRuntime {
   /** The proving ground's quick reset and its moving-target switch (game/state.ts). */
   resetProvingRange(...args: RuntimeValue[]): RuntimeValue;
   setProvingTargetsMoving(...args: RuntimeValue[]): RuntimeValue;
+  /** The training battle's scripted shooters (273): a step's cue, and the angling arc's verdicts (game/state.ts). */
+  cueTrainingActor(...args: RuntimeValue[]): RuntimeValue;
+  trainingThreatFor(...args: RuntimeValue[]): RuntimeValue;
 }
 
 /** The chunk as loaded: the runtime, and (round 3 X10) a wait for its world kernels (round 4 F3: each call its own bound). */
@@ -63,5 +66,7 @@ export function createSoloBattleRuntimeAccess(
     prepareNextOpeningRoute: (...args) => requireRuntime().prepareNextOpeningRoute(...args),
     resetProvingRange: (...args) => requireRuntime().resetProvingRange(...args),
     setProvingTargetsMoving: (...args) => requireRuntime().setProvingTargetsMoving(...args),
+    cueTrainingActor: (...args) => requireRuntime().cueTrainingActor(...args),
+    trainingThreatFor: (...args) => requireRuntime().trainingThreatFor(...args),
   };
 }

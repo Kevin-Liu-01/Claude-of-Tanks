@@ -55,6 +55,8 @@ export interface TutorialAccessDeps {
   readonly armourOn: () => boolean;
   /** 274: a step taught a subject another surface would teach (the armour colours' one-time tip stands down). */
   readonly taught: (subject: 'armourColours') => void;
+  /** 273: a training step cues its scripted shooter while it shows (game/state.ts cueTrainingActor). */
+  readonly cue: (actor: string, on: boolean) => void;
 }
 
 export interface TutorialAccess {
@@ -102,7 +104,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         chapter,
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
-          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught },
+          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);

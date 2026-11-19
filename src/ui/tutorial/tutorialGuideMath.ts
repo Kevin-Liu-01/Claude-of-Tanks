@@ -137,3 +137,36 @@ export function insideInsets(point: ScreenPoint, view: Viewport, insets: EdgeIns
 export function screenAngle(from: ScreenPoint, toward: ScreenPoint): number {
   return Math.atan2(toward.y - from.y, toward.x - from.x);
 }
+
+/** The angling arc (S9): the hull headings it shows, as offsets from the line to the shooter (deg), every ARC_STEP_DEG
+ *  from −ARC_SPAN_DEG to +ARC_SPAN_DEG; and its band on the ground round the player (m). */
+export const ARC_SPAN_DEG = 90;
+export const ARC_STEP_DEG = 10;
+export const ARC_RADII_M = Object.freeze({ inner: 5.5, outer: 7.5 });
+
+/** The arc's headings, nose on (0) to broadside each way: one sector per heading. */
+export function arcHeadings(): number[] {
+  const out: number[] = [];
+  for (let deg = -ARC_SPAN_DEG; deg <= ARC_SPAN_DEG; deg += ARC_STEP_DEG) out.push(deg);
+  return out;
+}
+
+/**
+ * One sector of the arc on the ground: the wedge round `centre` between radii `inner` and `outer`, spanning a half step
+ * either side of the heading `bearing + headingDeg` (rad bearing; 0 faces +z, turning toward +x), as a closed outline.
+ */
+export function arcSector(centre: GroundPoint, bearing: number, headingDeg: number, inner: number, outer: number): GroundPoint[] {
+  const half = (ARC_STEP_DEG / 2) * (Math.PI / 180);
+  const mid = bearing + headingDeg * (Math.PI / 180);
+  const at = (angle: number, r: number): GroundPoint => ({ x: centre.x + Math.sin(angle) * r, z: centre.z + Math.cos(angle) * r });
+  const out: GroundPoint[] = [];
+  for (let i = 0; i <= 3; i++) out.push(at(mid - half + (2 * half * i) / 3, outer));
+  for (let i = 3; i >= 0; i--) out.push(at(mid - half + (2 * half * i) / 3, inner));
+  return out;
+}
+
+/** The hull's heading relative to the line to `toward` (deg, −180 to 180; + as yaw grows past the line). */
+export function headingFromLine(pose: GroundPoint & { readonly yaw: number }, toward: GroundPoint): number {
+  const bearing = Math.atan2(toward.x - pose.x, toward.z - pose.z);
+  return (Math.atan2(Math.sin(pose.yaw - bearing), Math.cos(pose.yaw - bearing)) * 180) / Math.PI;
+}

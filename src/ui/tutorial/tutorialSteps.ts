@@ -52,7 +52,9 @@ export type TutorialAdvance =
   /** The player's side spotted this actor. */
   | { readonly on: 'spot'; readonly actor: string }
   /** This actor is destroyed. */
-  | { readonly on: 'destroy'; readonly actor: string };
+  | { readonly on: 'destroy'; readonly actor: string }
+  /** The player's hull stands turned from the line to this actor between the two angles (deg, 0 nose on), this long. */
+  | { readonly on: 'angle'; readonly actor: string; readonly minDeg: number; readonly maxDeg: number; readonly holdS: number };
 
 /**
  * A step's guidance over the battle (tutorialGuide.ts draws it): a marker to drive to, the path toward it, an actor to
@@ -67,6 +69,8 @@ export interface TutorialGuideSpec {
   readonly hud?: readonly string[];
   /** A point in the actor's own frame (tutorialGuideMath.ts actorPoint): along its hull, up, and across it (+ its left). */
   readonly aimAt?: { readonly id: string; readonly along: number; readonly up: number; readonly across: number };
+  /** S9: the angling arc round the player against a scripted shooter (its battle id), in its reticle's colours. */
+  readonly angle?: { readonly id: string };
 }
 
 export interface TutorialMedia {
@@ -100,6 +104,10 @@ export interface TutorialStep {
   /** A subject a step teaches that another surface would otherwise teach (274: the armour colours' one-time tip,
    *  game/armourOverlayDefault.ts): shown here, the other stands down. */
   readonly teaches?: 'armourColours';
+  /** A training battle's scripted shooter (its scenes' name, sim/trainingGround.ts) that fires while the step shows (273). */
+  readonly cue?: string;
+  /** The body shown once the step's actor puts a round through the player (S9: the hull was square again). */
+  readonly penBody?: string;
 }
 
 const still = (slot: string): TutorialMedia => ({ src: `/media/docs-r1/${slot}-640.webp`, kind: 'image' });
@@ -198,6 +206,12 @@ const PLAY = { dim: false, card: 'upper' } as const;
 /** The scenes' targets by their battle ids (a solo roster keys hulls by spec: sim/trainingGround.ts). */
 const TARGET1 = trainingActor(TRAINING_RULES, 'target1')!.specId;
 const TARGET2 = trainingActor(TRAINING_RULES, 'target2')!.specId;
+const SENTRY = trainingActor(TRAINING_RULES, 'sentry')!.specId;
+/** S9's window: the hull turned between these from the line to the Sentry, where its HEAT on the loaner's front plate
+ *  reads red (32 to 62 degrees at ring F, sim/trainingThreat.ts; tutorialSteps.selftest.mjs holds it). */
+export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
+/** The Sentry's rounds the plate holds, and the one it lets through. */
+const HELD = ['ricochet', 'nonpen', 'spaced_absorb'] as const;
 /** Where on Target 1 the aim ghost stands (tutorialGuideMath.ts actorPoint: along its hull, up, across): a green plate low
  *  on the hull front for the loaner's APFSDS, and the turret front, red for it (armour-bands.txt). */
 const TARGET1_GREEN = { along: 3.0, up: 0.9, across: 0 } as const;
@@ -322,6 +336,20 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.loadAPTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.loadAP.title', body: 'tutorial.training.loadAP.bodyTouch', advance: { on: 'shell', type: 'APFSDS' },
     guide: { hud: ['.cot-shells'] } },
+  // S9: angling under fire (Kevin, 2026-11-18, option (a)). The Sentry, a T-72BU, waits 170 m past ring F out of sight of
+  // every earlier scene; the arc round the player shows its HEAT on the player's front plate at each heading, in its
+  // reticle's colours: amber square on, red from 32 degrees. Turned and held, the player takes its real rounds.
+  { id: 'training.toF', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.toF.title', body: 'tutorial.training.toF.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.fireF, 'tutorial.training.marker.f'), path: true } },
+  { id: 'training.angle', chapter: 'training', target: [], ...PLAY, behindS: 45,
+    title: 'tutorial.training.angle.title', body: 'tutorial.training.angle.body',
+    advance: { on: 'angle', actor: SENTRY, ...ANGLE_WINDOW, holdS: 2 },
+    guide: { actor: { id: SENTRY, label: 'tutorial.training.actor.sentry' }, angle: { id: SENTRY } } },
+  { id: 'training.volley', chapter: 'training', target: [], ...PLAY, cue: 'sentry', penBody: 'tutorial.training.volley.square',
+    title: 'tutorial.training.volley.title', body: 'tutorial.training.volley.body',
+    advance: { on: 'hit', by: 'actor', actor: SENTRY, kinds: HELD, count: 2 },
+    guide: { actor: { id: SENTRY, label: 'tutorial.training.actor.sentry' }, angle: { id: SENTRY } } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

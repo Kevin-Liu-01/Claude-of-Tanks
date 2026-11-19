@@ -26,6 +26,7 @@ import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
 import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
 import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
+import { headingFromLine } from './tutorialGuideMath.ts';
 
 /** Diagnostics (app/tutorialAccess.ts debugGuide): the guide alone, on whatever battle is showing. */
 export { createTutorialGuide };
@@ -54,6 +55,8 @@ export interface TutorialPort {
   armourOn?(): boolean;
   /** 274: a step that teaches a subject another surface would teach has shown (tutorialSteps.ts `teaches`). */
   taught?(subject: NonNullable<TutorialStep['teaches']>): void;
+  /** 273: cue or stand down a training battle's scripted shooter by its scenes' name (game/state.ts cueTrainingActor). */
+  cue?(actor: string, on: boolean): void;
 }
 
 /** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
@@ -293,6 +296,16 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       stepOff.push(port.on('tank:spotted', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
     } else if (advance.on === 'destroy') {
       stepOff.push(port.on('tank:destroyed', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
+    } else if (advance.on === 'angle') {
+      // the hull's angle from the line to the actor, inside the window and held (a turn through it does not count)
+      let since = 0;
+      poll(() => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        const angle = me && them ? Math.abs(headingFromLine(me, them)) : null;
+        if (angle == null || angle < advance.minDeg || angle > advance.maxDeg) { since = 0; return false; }
+        since ||= performance.now();
+        return performance.now() - since >= advance.holdS * 1000;
+      });
     } else if (advance.on === 'drive') {
       let from = port.playerPosition();
       const timer = window.setInterval(() => {
@@ -346,6 +359,23 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       distance: (metres) => t('tutorial.guide.distance', { m: String(metres) }),
     });
     if (step.teaches) port.taught?.(step.teaches);
+    // a scripted shooter fires while its step shows, and stands down with it (a step's swap, Back, Skip, the run's end)
+    if (step.cue) {
+      const cue = step.cue;
+      port.cue?.(cue, true);
+      stepOff.push(() => port.cue?.(cue, false));
+    }
+    // the step's actor put a round through the player: the card says why, and how to stop the next
+    const shooter = step.advance.on === 'hit' && step.advance.by === 'actor' ? step.advance.actor : null;
+    if (step.penBody && shooter) {
+      const penBody = step.penBody;
+      stepOff.push(port.on('shell:hit', (payload) => {
+        const hit = payload as { kind?: string; attackerId?: string; targetId?: string } | null;
+        if (hit?.kind === 'pen' && hit.attackerId === shooter && hit.targetId === port.playerId?.()) {
+          overlay.show({ ...view, bodyHtml: bodyHtml({ ...step, body: penBody }, port) });
+        }
+      }));
+    }
     arm(step);
   }
 

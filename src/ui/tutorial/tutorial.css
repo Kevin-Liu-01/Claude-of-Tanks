@@ -85,6 +85,10 @@ body[data-hud-guidance~=card-yields] .cot-tut:is([data-chapter=battle],[data-cha
 @keyframes cot-tut-guide-flow{0%,100%{opacity:.35;}40%{opacity:1;}}
 .cot-tut-guide-bracket{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:square;}
 .cot-tut-guide-aim{fill:none;stroke:var(--accent-hi);stroke-width:2.5;stroke-dasharray:6 5;}
+/* (273, S9) the angling arc: each sector a hull heading, in the shooter's reticle ink for its round on the player's front
+   plate (ui/penInk.ts); the needle the hull's heading now, in its ink */
+.cot-tut-guide-arc{fill:oklch(from var(--arc-ink) l c h / .42);stroke:var(--arc-ink);stroke-width:1;stroke-linejoin:round;}
+.cot-tut-guide-needle{stroke:var(--arc-ink);stroke-width:4;stroke-linecap:round;}
 .cot-tut-guide-edge-arrow{fill:var(--accent);stroke:oklch(0 0 0 / .5);stroke-width:1.5;}
 .cot-tut-guide-hud{position:absolute;left:0;top:0;width:22px;height:14px;margin-left:-11px;
   background:var(--accent);clip-path:polygon(0 0,50% 100%,100% 0,78% 0,50% 58%,22% 0);}

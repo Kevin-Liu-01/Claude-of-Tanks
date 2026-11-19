@@ -168,7 +168,9 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { planTrainingRange } from '../sim/trainingGround.ts';
+import { planTrainingRange, trainingActor, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
+import type { PenVerdict } from '../sim/penVerdict.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
   APS_BURST_OFFSET_M, type ConsumableId, type ConsumableState,
@@ -420,6 +422,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _supportField?: StructureSupportField | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
+  /** A training battle's cued shooters (273): each actor's scene name and the battle time its scene cued it at. */
+  _trainingCues?: Map<string, number>;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
@@ -982,12 +986,54 @@ function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spaw
   context.provingTargets.push(entity);
 }
 
-/** A training battle's hull the scene does not drive (273): it holds its mark, braked, and never fires. */
-function holdTrainingActor(entity: SoloEntity): void {
+/**
+ * A training battle's hull (273): it holds its mark, braked. A scripted shooter its scene has cued (cueTrainingActor)
+ * lays its gun on the player's upper front plate with its volley's round loaded, and from its telegraph on holds the
+ * trigger: its loaded gun fires and its reload spaces the rounds (sim/trainingGround.ts TrainingVolley). Every input is
+ * the battle's time and the player's pose, so the same inputs give the same rounds.
+ */
+function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   entity.input.throttle = 0;
   entity.input.steer = 0;
   entity.input.brake = true;
   entity.input.fire = false;
+  const rules = game.ruleset.training;
+  const actor = rules?.actors.find((rule) => rule.specId === entity.specId) ?? null;
+  const cuedAtS = actor ? game._trainingCues?.get(actor.key) : undefined;
+  const target = game.player;
+  if (!actor?.volley || cuedAtS === undefined || !target || target.combat.destroyed) return;
+  const slot = entity.spec.gun.shells.findIndex((shell) => shell.type === actor.volley!.shellType);
+  if (slot >= 0) entity.input.shellSlot = slot;
+  const pos = target.state.pos;
+  trainingVolleyAim({ x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw }, actor.volley, entity.input.aimPoint);
+  entity.input.fire = trainingVolleyFires(actor.volley, cuedAtS, game.timeS);
+}
+
+/**
+ * The verdict of a training battle's scripted shooter's round (by its battle id) on the player's front plate, the hull
+ * turned by each offset (deg) from its heading now (sim/trainingThreat.ts): the angling arc's colours (S9). Empty where
+ * the battle has no such shooter or no player.
+ */
+export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsDeg: readonly number[]): Array<PenVerdict | null> {
+  const shooter = game.tankById.get(actorId);
+  const player = game.player;
+  const volley = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId)?.volley : undefined;
+  const shell = volley ? shooter!.spec.gun.shells.find((round) => round.type === volley.shellType) : undefined;
+  if (!shooter?.state || !player?.state || !volley || !shell) return [];
+  return trainingThreatVerdicts(shooter.state.pos, player.state, player.spec.armor, player.combat.eraSpent, shell, volley, offsetsDeg);
+}
+
+/**
+ * Cue or stand down a training battle's scripted shooter by its scenes' name (273): the tutorial's step cues it while it
+ * shows (ui/tutorial/tutorialSteps.ts `cue`). Returns whether the battle has that shooter.
+ */
+export function cueTrainingActor(game: SoloGameState, key: string, on: boolean): boolean {
+  const rules = game.ruleset.training;
+  if (!rules || !trainingActor(rules, key)?.volley) return false;
+  const cues = game._trainingCues ??= new Map();
+  if (!on) cues.delete(key);
+  else if (!cues.has(key)) cues.set(key, game.timeS);
+  return true;
 }
 
 function warmStartBattleEntity(
@@ -2361,7 +2407,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
-    else if (training && entity._provingMark && !entity.combat.destroyed) holdTrainingActor(entity);
+    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity);
     applyHullActions(entity, host);
     tickHullConsumables(entity, host);
   }

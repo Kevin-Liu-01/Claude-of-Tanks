@@ -4,6 +4,7 @@ import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
+import type { PenVerdict } from './sim/penVerdict.ts';
 import type { RuntimeValue } from './runtimeTypes.ts';
 /**
  * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
@@ -375,6 +376,8 @@ const {
   prepareNextOpeningRoute,
   resetProvingRange,
   setProvingTargetsMoving,
+  cueTrainingActor,
+  trainingThreatFor,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -4826,6 +4829,9 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     groundY: (x, z) => groundSampler(x, z),
     player: () => tutorialPose(game.phase === 'battle' ? game.player : null),
     actor: (id) => tutorialPose(game.phase === 'battle' ? game.tankById.get(id) ?? null : null),
+    // S9: the angling arc's colours, the scripted shooter's round on the player's plate (game/state.ts trainingThreatFor)
+    threat: (id, offsets) => (game.phase === 'battle' && isSoloBattleRuntimeReady()
+      ? trainingThreatFor(game, id, offsets) as Array<PenVerdict | null> : []),
   },
   view: () => {
     const state = game.phase === 'battle' ? game.player?.state : null;
@@ -4843,6 +4849,8 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   armourOn: () => !!input.getSettings().armorAimOverlay,
   // 274: the tutorial's armour step teaches what the one-time tip would (game/armourOverlayDefault.ts): the tip is done
   taught: (subject) => { if (subject === 'armourColours') writeArmourDefaultMarker('done'); },
+  // 273: a training step cues its scripted shooter (game/state.ts cueTrainingActor; a local battle only)
+  cue: (actor, on) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) cueTrainingActor(game, actor, on); },
 })));
 const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
   tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));

@@ -1172,6 +1172,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 273: the tutorial's guide (marker, path, bracket, edge pointer, HUD chevron, aim ghost): its geometry, and that it
     // never takes the pointer and goes with its run
     'src/ui/tutorial/tutorialGuide.selftest.mjs',
+    // 273 S9 (Kevin: a T-72BU firing HEAT, the plate amber square and red at 35 degrees in the reticle's colours, real rounds):
+    // the Sentry's fire and aim, the arc's colours from the reticle's solver, the angle step's window inside red
+    'src/sim/trainingThreat.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
     // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and

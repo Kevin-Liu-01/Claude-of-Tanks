@@ -45,6 +45,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
 import { penVerdict } from '../sim/penVerdict.ts';
+import { PEN_INK } from './penInk.ts';
 import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
@@ -831,11 +832,12 @@ function isHudHitEvent(payload: HudEventPayload): payload is HudEventPayload & H
 }
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
-const PEN_GREEN = '#7ee87e';
+// (the verdict inks are ui/penInk.ts's, which the training battle's angling arc shows too)
+const PEN_GREEN = PEN_INK.pen;
 /** The zoom readout's rules: the ring's green, translucent. */
 const ZOOM_RULE_INK = 'rgba(126,232,126,0.5)';
-const PEN_ORANGE = '#f0b04a';
-const PEN_RED = '#f05a5a';
+const PEN_ORANGE = PEN_INK.marginal;
+const PEN_RED = PEN_INK.nopen;
 const PEN_NONE = 'rgba(236,242,248,0.95)';
 /** The team inks a canvas paints (brand-ui H1): the team tokens under the player's colour preset, re-read only when the
  *  preset changes (tokenEpoch), so the minimap's blips follow the same Own/Enemy pair as every CSS team mark. */

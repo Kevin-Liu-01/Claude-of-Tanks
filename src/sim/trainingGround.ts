@@ -21,7 +21,21 @@ import type { ProvingLaneMark, ProvingMark, ProvingRangeLayout } from './proving
 
 const DEG = Math.PI / 180;
 
-/** One hull the scenes use: a target that never fires, or (later scenes) a scripted shooter. */
+/**
+ * A scripted shooter's fire (S9 on): while its scene cues it (the tutorial's step, game/state.ts cueTrainingActor), it
+ * lays its gun on the player's upper front plate and fires `shellType` each time its gun is loaded, the first round
+ * `firstS` after the cue (the telegraph). The simulation resolves every round: the gun's dispersion, the plate it meets,
+ * the penetration roll and the damage are the battle's own (Kevin, 2026-11-18: real shots with the shot card, no rule
+ * changed).
+ */
+export interface TrainingVolley {
+  readonly shellType: string;
+  readonly firstS: number;
+  /** Where on the loaner's hull it aims (m): along the hull from its centre, and up from its origin. */
+  readonly aim: { readonly alongM: number; readonly upM: number };
+}
+
+/** One hull the scenes use: a target that never fires, or a scripted shooter. */
 export interface TrainingActorRule {
   /** The scenes' name for it ("target1"); its battle id is its tank's spec id (a solo roster keys hulls by spec). */
   readonly key: string;
@@ -32,6 +46,8 @@ export interface TrainingActorRule {
    *  broadside; + turns its nose to its left), so its presentation holds wherever the probe moves the two. */
   readonly faces: keyof typeof TRAINING_POINTS;
   readonly presentDeg: number;
+  /** A scripted shooter's fire; none for a target. */
+  readonly volley?: TrainingVolley;
 }
 
 export interface TrainingRules {
@@ -71,6 +87,14 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
   actors: Object.freeze([
     Object.freeze({ key: 'target1', specId: 'leo2a4', x: -350, z: -250, faces: 'ringC', presentDeg: 30 }),
     Object.freeze({ key: 'target2', specId: 'bwp1', x: -405, z: -75, faces: 'ringE', presentDeg: 60 }),
+    // S9's Sentry (Kevin, 2026-11-18: option (a)): a T-72BU firing HEAT at the loaner's upper front plate. Its HEAT there
+    // reads 1.01 (amber, a coin toss through the ±25 % penetration roll) with the hull square, and 0.82 (red, about one
+    // round in seventeen) turned 35 degrees (evidence s9-angling-fit-penverdict.txt, penVerdict by import). 170 m north of
+    // ring F on a line 2.5 m over the ground; the ground and the woods hide it from the meadow, ring C, bush D and ring E
+    // (tools s9-search), so it is neither seen nor shot before its scene. It faces F nose on. It aims where the fit
+    // measured: the upper front plate's centre, 2.94 m ahead of the hull's centre and 1 m up.
+    Object.freeze({ key: 'sentry', specId: 't72bu_1989', x: -420, z: 120, faces: 'fireF', presentDeg: 0,
+      volley: Object.freeze({ shellType: 'HEAT', firstS: 2.5, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
   timeOfDay: 'day',
 });
@@ -90,11 +114,31 @@ export const TRAINING_POINTS = Object.freeze({
   bushD: Object.freeze({ x: -380, z: -166, radiusM: 5 }),
   /** S8: the firing point for HE, 41 m west of ring C, the only one of the three that sees Target 2. */
   ringE: Object.freeze({ x: -400, z: -160, radiusM: 6 }),
+  /** S9: where the player angles against the Sentry, 114 m north of ring E (122 m by the way through the bushes west of
+   *  Target 2, no trunk on it): open for 8 m round, a grade under 0.07, the Sentry 170 m off. */
+  fireF: Object.freeze({ x: -430, z: -50, radiusM: 6 }),
 });
 
 /** An actor's rule by its scenes' name. */
 export function trainingActor(rules: TrainingRules, key: string): TrainingActorRule | null {
   return rules.actors.find((actor) => actor.key === key) ?? null;
+}
+
+/** The point a scripted shooter lays its gun on: the player's hull (its origin and heading) and the volley's aim. Pure;
+ *  `out` is written and returned. */
+export function trainingVolleyAim(hull: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number },
+  volley: TrainingVolley, out: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  const along = volley.aim.alongM;
+  out.x = hull.x + Math.sin(hull.yaw) * along;
+  out.y = hull.y + volley.aim.upM;
+  out.z = hull.z + Math.cos(hull.yaw) * along;
+  return out;
+}
+
+/** Whether a cued shooter's trigger is held at `timeS`: from `firstS` after its cue on (its loaded gun fires; the reload
+ *  spaces the rounds). */
+export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, timeS: number): boolean {
+  return timeS - cuedAtS >= volley.firstS;
 }
 
 /** The training roster after the player: each actor's tank, in order. */

@@ -23,9 +23,11 @@
  * tutorialGuideMath.ts, held by tutorialGuide.selftest.mjs.
  */
 import {
-  actorCorners, actorPoint, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, ringPoints, screenAngle, screenBox,
+  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox,
   type ScreenPoint, type Viewport, type WorldPoint,
 } from './tutorialGuideMath.ts';
+import type { PenVerdict } from '../../sim/penVerdict.ts';
+import { PEN_INK } from '../penInk.ts';
 import type { TutorialGuideSpec } from './tutorialSteps.ts';
 
 /** A pose in the world: a point and a yaw (radians; 0 faces +z). */
@@ -41,6 +43,9 @@ export interface GuidePort {
   player(): GuidePose | null;
   /** A battle actor by its entity id (a target, a scripted shooter), or null when it is not in the battle. */
   actor(id: string): GuidePose | null;
+  /** S9: the verdict of a scripted shooter's round on the player's front plate, the hull turned by each offset (deg) from
+   *  its heading now, its gun kept on the shooter (sim/trainingThreat.ts), in the reticle's bands; absent, no arc. */
+  threat?(actorId: string, offsetsDeg: readonly number[]): ReadonlyArray<PenVerdict | null>;
 }
 
 /** The guide's words, resolved by the runner in the player's language. */
@@ -64,6 +69,9 @@ export interface TutorialGuideLayer {
 }
 
 interface GuideSnapshot {
+  /** The angling arc's sectors drawn, and the needle's verdict (the hull's heading now). */
+  readonly arc: number;
+  readonly needle: PenVerdict | null;
   readonly ring: boolean;
   readonly chevrons: number;
   readonly bracket: boolean;
@@ -82,6 +90,9 @@ const MARKER_LIFT_M = 0.15;
 const ACTOR_BOX = { halfLength: 4, halfWidth: 2, height: 3 } as const;
 const BRACKET_PX = 14;
 const AIM_RING_PX = 16;
+/** The angling arc's verdicts are asked again at most this often (ms): each ask traces a line per sector. */
+const ARC_ASK_MS = 300;
+const ARC_LIFT_M = 0.12;
 
 function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, className: string, parent: Element): SVGElementTagNameMap[K] {
   const node = document.createElementNS(SVG_NS, tag);
@@ -116,6 +127,13 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   const bracketLabel = svgEl('text', 'cot-tut-guide-label cot-tut-guide-label--actor', world.svg);
   const aim = svgEl('circle', 'cot-tut-guide-aim', world.svg);
   aim.setAttribute('r', String(AIM_RING_PX));
+  // the angling arc (S9): a sector per hull heading round the player, in the shooter's reticle colours, and the needle
+  const headings = arcHeadings();
+  const sectors = headings.map(() => svgEl('path', 'cot-tut-guide-arc', world.svg));
+  const needle = svgEl('line', 'cot-tut-guide-needle', world.svg);
+  let arcVerdicts: ReadonlyArray<PenVerdict | null> = [];
+  let needleVerdict: PenVerdict | null = null;
+  let arcAskedAt = -Infinity;
 
   const edge = svgEl('g', 'cot-tut-guide-edge', over.svg);
   const edgeArrow = svgEl('path', 'cot-tut-guide-edge-arrow', edge);
@@ -131,7 +149,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let escalated = false;
   let hidden = false;
   let frame = 0;
-  let drawn: GuideSnapshot = { ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+  let drawn: GuideSnapshot = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
 
   const show = (node: Element, on: boolean): void => {
     if (on) node.removeAttribute('display'); else node.setAttribute('display', 'none');
@@ -164,8 +182,49 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     const marker = spec?.marker ?? null;
     const actorSpec = spec?.actor ?? null;
     const actor = actorSpec ? port.actor(actorSpec.id) : null;
-    const next: { ring: boolean; chevrons: number; bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
-      { ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+    const next: { arc: number; needle: PenVerdict | null; ring: boolean; chevrons: number; bracket: boolean; edge: { x: number; y: number } | null;
+      hud: boolean; aim: boolean } = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+
+    // the angling arc: each sector a hull heading against the line to the shooter, coloured by the shooter's round on the
+    // player's front plate at that heading (asked again every ARC_ASK_MS: the hull turns, the line moves)
+    const arcSpec = spec?.angle ?? null;
+    const shooter = arcSpec ? port.actor(arcSpec.id) : null;
+    if (arcSpec && shooter && player && port.threat) {
+      const now = performance.now();
+      const turned = headingFromLine(player, shooter);
+      if (now - arcAskedAt >= ARC_ASK_MS) {
+        arcAskedAt = now;
+        const asked = port.threat(arcSpec.id, [0, ...headings.map((heading) => heading - turned)]);
+        needleVerdict = asked[0] ?? null;
+        arcVerdicts = asked.slice(1);
+      }
+      const bearing = Math.atan2(shooter.x - player.x, shooter.z - player.z);
+      sectors.forEach((sector, i) => {
+        const verdict = arcVerdicts[i] ?? null;
+        const outline = arcSector(player, bearing, headings[i]!, ARC_RADII_M.inner, ARC_RADII_M.outer)
+          .map((p) => port.project(lifted(p.x, p.z, ARC_LIFT_M)));
+        const ok = !!verdict && outline.every((p) => p && !p.behind);
+        if (ok) {
+          sector.setAttribute('d', `M${outline.map((p) => `${p!.x.toFixed(1)},${p!.y.toFixed(1)}`).join('L')}Z`);
+          sector.style.setProperty('--arc-ink', PEN_INK[verdict!]);
+          next.arc += 1;
+        }
+        show(sector, ok);
+      });
+      const from = port.project(lifted(player.x, player.z, ARC_LIFT_M));
+      const reach = ARC_RADII_M.outer + 1.5;
+      const to = port.project(lifted(player.x + Math.sin(player.yaw) * reach, player.z + Math.cos(player.yaw) * reach, ARC_LIFT_M));
+      const needleOk = !!from && !!to && !from.behind && !to.behind && !!needleVerdict;
+      if (needleOk) {
+        needle.setAttribute('x1', from!.x.toFixed(1)); needle.setAttribute('y1', from!.y.toFixed(1));
+        needle.setAttribute('x2', to!.x.toFixed(1)); needle.setAttribute('y2', to!.y.toFixed(1));
+        needle.style.setProperty('--arc-ink', PEN_INK[needleVerdict!]);
+      }
+      show(needle, needleOk);
+      next.needle = needleOk ? needleVerdict : null;
+    } else {
+      for (const node of [...sectors, needle]) show(node, false);
+    }
 
     // the marker: its ring, column, label and distance
     let subject: { point: ScreenPoint; label: string; metres: number | null } | null = null;
@@ -296,7 +355,10 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       spec = nextSpec;
       labels = nextLabels;
       escalated = false;
-      drawn = { ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      arcAskedAt = -Infinity;
+      arcVerdicts = [];
+      needleVerdict = null;
+      drawn = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
       schedule();
     },
     setEscalated(on): void {
