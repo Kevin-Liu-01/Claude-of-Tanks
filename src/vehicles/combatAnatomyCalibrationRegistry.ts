@@ -114,8 +114,9 @@ export interface AnatomyCrewSeatReceipt extends Record<string, RuntimeValue> {
  * authored non-main plate (spaced, external or ERA layer) that does not lie on this build's drawn geometry: its owner
  * frame, name and vertex mean in that frame (`at`, how the finalizer finds it), its centre's gap to the drawn mesh and the
  * share of it off the build, and what the finalizer does with it (combatAnatomy.ts applyPlateFits): `crop` it to the part
- * it overhangs, `fit` it onto the part it stands off (both with the new `verts`, in its frame), or `drop` it (its part is
- * not drawn, or is drawn only as the main shell, whose cells already carry the hit).
+ * it overhangs, `fit` it onto the part it stands off (both with its new outlines, `pieces`, in its frame: one, or one per
+ * face of a folded part), or `drop` it (`why`: its part is not drawn, it lies buried in the main shell, or the drawn
+ * stock near it is no part it can be fitted to).
  */
 export interface AnatomyPlateFitReceipt extends Record<string, RuntimeValue> {
   readonly owner: 'hull' | 'turret';
@@ -125,7 +126,8 @@ export interface AnatomyPlateFitReceipt extends Record<string, RuntimeValue> {
   readonly gapM: number;
   readonly offShare: number;
   readonly action: 'crop' | 'fit' | 'drop';
-  readonly verts?: readonly (readonly number[])[];
+  readonly pieces?: readonly (readonly (readonly number[])[])[];
+  readonly why?: 'notDrawn' | 'inShell' | 'unfitted';
 }
 
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {

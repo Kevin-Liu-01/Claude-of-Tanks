@@ -82,6 +82,69 @@ export function selectTriangles(T, keep) {
   return Float64Array.from(out);
 }
 
+/**
+ * A uniform grid over T's triangles: `nearest(x, y, z, reach)` gives the nearest triangle within reach ({ d, o, point }, o
+ * its offset in T) and `crossings(p, dir, len)` the distances along the segment p + t dir (t in 0..len, dir a unit vector)
+ * at which it crosses a triangle, sorted (coincident faces each count).
+ */
+export function triangleIndex(T) {
+  const grid = new Map(), cell = (x) => Math.floor(x / GRID_M);
+  const key = (i, j, k) => (i + 4096) * 67108864 + (j + 4096) * 8192 + (k + 4096);
+  for (let o = 0; o < T.length; o += 9) {
+    const lo = [0, 1, 2].map((a) => cell(Math.min(T[o + a], T[o + 3 + a], T[o + 6 + a])));
+    const hi = [0, 1, 2].map((a) => cell(Math.max(T[o + a], T[o + 3 + a], T[o + 6 + a])));
+    for (let i = lo[0]; i <= hi[0]; i++) for (let j = lo[1]; j <= hi[1]; j++) for (let k = lo[2]; k <= hi[2]; k++) {
+      const kk = key(i, j, k);
+      let list = grid.get(kk);
+      if (!list) grid.set(kk, list = []);
+      list.push(o);
+    }
+  }
+  const tri = new THREE.Triangle(), closest = new THREE.Vector3(), probe = new THREE.Vector3(), seen = new Set();
+  return {
+    nearest(x, y, z, reach) {
+      let best = null;
+      seen.clear();
+      const ci = cell(x), cj = cell(y), ck = cell(z);
+      for (let r = 0; r * GRID_M <= reach + GRID_M; r++) {
+        if (best && best.d <= (r - 1) * GRID_M) break;
+        for (let i = ci - r; i <= ci + r; i++) for (let j = cj - r; j <= cj + r; j++) for (let k = ck - r; k <= ck + r; k++) {
+          if (Math.max(Math.abs(i - ci), Math.abs(j - cj), Math.abs(k - ck)) !== r) continue;
+          for (const o of grid.get(key(i, j, k)) || []) {
+            if (seen.has(o)) continue;
+            seen.add(o);
+            tri.a.set(T[o], T[o + 1], T[o + 2]); tri.b.set(T[o + 3], T[o + 4], T[o + 5]); tri.c.set(T[o + 6], T[o + 7], T[o + 8]);
+            const d = tri.closestPointToPoint(probe.set(x, y, z), closest).distanceTo(probe);
+            if (d < reach && (!best || d < best.d)) best = { d, o, point: [closest.x, closest.y, closest.z] };
+          }
+        }
+      }
+      return best;
+    },
+    crossings(p, dir, len) {
+      const ts = [];
+      seen.clear();
+      for (let s = 0; s <= len + GRID_M / 2; s += GRID_M / 2) {
+        const t = Math.min(s, len);
+        for (const o of grid.get(key(cell(p[0] + dir[0] * t), cell(p[1] + dir[1] * t), cell(p[2] + dir[2] * t))) || []) {
+          if (seen.has(o)) continue;
+          seen.add(o);
+          const e1 = [T[o + 3] - T[o], T[o + 4] - T[o + 1], T[o + 5] - T[o + 2]], e2 = [T[o + 6] - T[o], T[o + 7] - T[o + 1], T[o + 8] - T[o + 2]];
+          const h = cross(dir, e2), det = dot(e1, h);
+          if (Math.abs(det) < 1e-12) continue;
+          const sv = [p[0] - T[o], p[1] - T[o + 1], p[2] - T[o + 2]], u = dot(sv, h) / det;
+          if (u < 0 || u > 1) continue;
+          const q = cross(sv, e1), v = dot(dir, q) / det;
+          if (v < 0 || u + v > 1) continue;
+          const hit = dot(e2, q) / det;
+          if (hit >= 0 && hit <= len) ts.push(hit);
+        }
+      }
+      return ts.sort((a, b) => a - b);
+    },
+  };
+}
+
 /** Nearest-triangle distance over a uniform grid; with `out`, the nearest point is written there. */
 export function surfaceDistance(T, reach = REACH_M) {
   const grid = new Map(), cell = (x) => Math.floor(x / GRID_M);
@@ -215,12 +278,25 @@ export const FIT_REACH_M = 0.35;
 /** The share of a layer's area that must find its drawn part within FIT_REACH_M for it to be fitted, not dropped. */
 export const FIT_COVER_SHARE = 0.5;
 /** The fitted plane's weighted RMS residual (m) above which the part under it is not one sheet: dropped. */
-export const FIT_RESIDUAL_M = 0.04;
-/** A drawn triangle whose centroid lies within this (m) of the main shell's cells is the shell, never a layer's part. */
-const SHELL_SKIN_M = 0.015;
-/** The fitting grid's step (m) at most; a large layer is sampled on at most about FIT_GRID_MAX points. */
+export const FIT_RESIDUAL_M = 0.05;
+/** A layer's part is a sheet: from its face, inward along the layer's normal, its back face lies within this (m)... */
+const SHEET_MAX_M = 0.6;
+/** ...and drawn stock stands behind that back face within this (m): a skirt over its wheels, a wedge, a Trophy box or an
+ * ERA brick on its turret, a cage over its deck. The structural shell is solid (its far side metres in) and never one. */
+const SHEET_BACKING_M = 0.8;
+/** A part's face must turn with the layer: |cos| of the angle between their normals at least this. */
+const FIT_FACING_MIN = 0.7;
+/** How many times a layer whose part is not one sheet is split in four to fit it face by face. */
+const FIT_SPLIT_DEPTH = 2;
+/** The share of a layer's hits on faces turning with it that must be on such a part for the layer to be fitted, and the
+ * share of the layer those part hits must cover (the fitted layer is then cropped to them). */
+const SHEET_SHARE = 0.3;
+const FIT_MIN_SHARE = 0.1;
+/** The fitting grid's step (m); a large layer is sampled on at most about FIT_GRID_MAX points, a small one on at least
+ * about FIT_GRID_MIN (a 15 cm ERA face is not judged on a dozen points). */
 const FIT_GRID_M = 0.04;
 const FIT_GRID_MAX = 1600;
+const FIT_GRID_MIN = 100;
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -258,8 +334,10 @@ function shellTest(armor) {
 }
 
 /** A layer's own plane frame: origin, normal, in-plane axes, and its outline in (u, v). */
-function layerFrame(verts) {
-  const n = polygonNormal(verts);
+function layerFrame(verts, away = null) {
+  let n = polygonNormal(verts);
+  // facing out of the vehicle whatever the outline's winding (`away`: from the vehicle's centre to the layer)
+  if (away && dot(n, away) < 0) n = [-n[0], -n[1], -n[2]];
   const u = unit(sub(verts[1], verts[0])), v = cross(n, u);
   const o = verts[0];
   return { o, n, u, v, outline: verts.map((p) => [dot(sub(p, o), u), dot(sub(p, o), v)]) };
@@ -277,7 +355,8 @@ function insideOutline(outline, x, y) {
 function layerGrid(f) {
   const us = f.outline.map((p) => p[0]), vs = f.outline.map((p) => p[1]);
   const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
-  const step = Math.max(FIT_GRID_M, Math.sqrt(((u1 - u0) * (v1 - v0)) / FIT_GRID_MAX));
+  const box = (u1 - u0) * (v1 - v0);
+  const step = Math.max(Math.min(FIT_GRID_M, Math.sqrt(box / FIT_GRID_MIN)), Math.sqrt(box / FIT_GRID_MAX), 1e-3);
   const points = [];
   for (let x = u0 + step / 2; x < u1; x += step) for (let y = v0 + step / 2; y < v1; y += step) {
     if (insideOutline(f.outline, x, y)) points.push([x, y]);
@@ -306,14 +385,15 @@ function clipToRect(outline, [u0, u1, v0, v1]) {
 
 /**
  * Crop a layer to its part: the part of the layer within SUPPORT_TOL_M of drawn stock, as the rectangle (in the layer's
- * own axes) that spans it, cut from the outline. Null when under CROP_MIN_SHARE of the layer lies on anything.
+ * own axes) that spans it, cut from the outline. Null when under `minShare` of the layer lies on anything (CROP_MIN_SHARE
+ * for a layer as authored; a layer already fitted onto its part needs only FIT_MIN_SHARE).
  */
-function cropLayer(verts, support) {
+function cropLayer(verts, support, minShare = CROP_MIN_SHARE) {
   const f = layerFrame(verts);
   const { points, step } = layerGrid(f);
   if (points.length < 4) return null;
   const on = points.filter((p) => { const q = fromUv(f, p); return support(q[0], q[1], q[2]) <= SUPPORT_TOL_M; });
-  if (on.length < CROP_MIN_SHARE * points.length) return null;
+  if (on.length < minShare * points.length) return null;
   // a side the supported grid reaches keeps the outline's own edge; elsewhere the cut falls half a step past the last
   // supported row
   const edge = (axis, pick, sign) => {
@@ -325,42 +405,109 @@ function cropLayer(verts, support) {
   return clipped ? clipped.map((p) => fromUv(f, p)) : null;
 }
 
+/** The unit normal of triangle o of T. */
+function triangleNormal(T, o) {
+  return unit(cross([T[o + 3] - T[o], T[o + 4] - T[o + 1], T[o + 5] - T[o + 2]], [T[o + 6] - T[o], T[o + 7] - T[o + 1], T[o + 8] - T[o + 2]]));
+}
+
 /**
- * Fit a layer standing off its part onto it: each grid point's nearest drawn layer stock (outside the main shell, never
- * the running gear) within FIT_REACH_M gives its offset along the layer's normal; a plane through those offsets (affine in
- * the layer's axes) moves every vertex along the normal, and the moved layer is cropped to its part. Null when the part is
- * not there (under FIT_COVER_SHARE of the layer finds stock, or the stock is not one sheet).
+ * Whether the drawn surface at `q` (triangle o) is a layer's part for a layer facing `n`: its face turns with the layer,
+ * and it is a sheet with drawn stock behind it (SHEET_MAX_M, SHEET_BACKING_M), whichever bucket it was merged into. The
+ * structural shell is a solid whose far side lies metres in, so a layer is never fitted onto the hull or turret itself.
  */
-function fitLayer(verts, layerDistance, support) {
-  const f = layerFrame(verts);
+function isLayerPart(index, backing, T, q, o, n) {
+  if (Math.abs(dot(triangleNormal(T, o), n)) < FIT_FACING_MIN) return false;
+  const start = [q[0] + n[0] * 0.01, q[1] + n[1] * 0.01, q[2] + n[2] * 0.01], inward = [-n[0], -n[1], -n[2]];
+  const ts = backing.crossings(start, inward, 0.02 + SHEET_MAX_M + SHEET_BACKING_M).filter((t) => t > 0.0125);
+  // ts[0]: the sheet's back face (its front face lies at t ~ 0.01); ts[1]: the stock behind it
+  return ts.length >= 2 && ts[0] <= 0.02 + SHEET_MAX_M && ts[1] - ts[0] <= SHEET_BACKING_M;
+}
+
+/**
+ * Fit a layer standing off its part onto it: each grid point's nearest drawn surface (never the running gear) within
+ * FIT_REACH_M that is a layer's part (isLayerPart) gives its offset along the layer's normal; a plane through those
+ * offsets (affine in the layer's axes) moves every vertex along the normal, and the moved layer is cropped to its part.
+ * Null when the part is not there (under FIT_MIN_SHARE of the layer finds one, or under SHEET_SHARE of the faces turning
+ * with it are a layer's part), or the part is not one sheet (FIT_RESIDUAL_M).
+ */
+function fitLayer(verts, index, backing, T, support, centre, onBuild, depth = 0) {
+  const mean = [0, 1, 2].map((axis) => verts.reduce((sum, v) => sum + v[axis], 0) / verts.length);
+  const f = layerFrame(verts, sub(mean, centre));
   const { points } = layerGrid(f);
-  const rows = [], q = [0, 0, 0];
+  const rows = [];
+  let hits = 0, sheets = 0;
   for (const p of points) {
     const at = fromUv(f, p);
-    if (layerDistance(at[0], at[1], at[2], q) >= FIT_REACH_M) continue;
-    const d = sub(q, at), along = dot(d, f.n);
+    const near = index.nearest(at[0], at[1], at[2], FIT_REACH_M);
+    if (!near) continue;
+    const d = sub(near.point, at), along = dot(d, f.n);
     // the nearest stock must lie across the layer's face, not off its edge
     if (Math.hypot(...sub(d, f.n.map((c) => c * along))) > Math.max(0.05, Math.abs(along))) continue;
+    // only a drawn face turning with the layer can be its part (an edge of a fender or a deck is not judged)
+    if (Math.abs(dot(triangleNormal(T, near.o), f.n)) < FIT_FACING_MIN) continue;
+    hits++;
+    if (!isLayerPart(index, backing, T, near.point, near.o, f.n)) continue;
+    sheets++;
     rows.push([p[0], p[1], along]);
   }
-  if (rows.length < Math.max(3, FIT_COVER_SHARE * points.length)) return null;
-  const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], r = [0, 0, 0];
-  for (const [x, y, t] of rows) {
-    const g = [1, x, y];
-    for (let i = 0; i < 3; i++) { r[i] += g[i] * t; for (let j = 0; j < 3; j++) M[i][j] += g[i] * g[j]; }
-  }
-  const det3 = (A) => A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0])
-    + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
-  const D = det3(M);
-  const coef = Math.abs(D) < 1e-12 ? [r[0] / M[0][0], 0, 0]
-    : [0, 1, 2].map((k) => det3(M.map((row, i) => row.map((value, j) => (j === k ? r[i] : value)))) / D);
-  const plane = (x, y) => coef[0] + coef[1] * x + coef[2] * y;
+  if (rows.length < Math.max(3, FIT_MIN_SHARE * points.length) || sheets < SHEET_SHARE * hits) return null;
+  // a plane through the offsets, robust: a slope only along an axis the part's hits span at least half the layer (a
+  // narrow drawn band must not tilt a tall layer), the rows beyond 2.5 median deviations dropped, then fitted again
+  const us = f.outline.map((p) => p[0]), vs = f.outline.map((p) => p[1]);
+  const spanOf = (values) => Math.max(...values) - Math.min(...values);
+  const free = [true, spanOf(rows.map((r) => r[0])) >= 0.5 * spanOf(us), spanOf(rows.map((r) => r[1])) >= 0.5 * spanOf(vs)];
+  const solve = (set) => {
+    const k = free.map((on, i) => (on ? i : -1)).filter((i) => i >= 0), g = (x, y) => [1, x, y];
+    const M = k.map(() => k.map(() => 0)), r = k.map(() => 0);
+    for (const [x, y, t] of set) {
+      const row = g(x, y);
+      k.forEach((i, a) => { r[a] += row[i] * t; k.forEach((j, b) => { M[a][b] += row[i] * row[j]; }); });
+    }
+    // Gauss-Jordan on at most 3 unknowns
+    for (let c = 0; c < k.length; c++) {
+      let pivot = c;
+      for (let rr = c + 1; rr < k.length; rr++) if (Math.abs(M[rr][c]) > Math.abs(M[pivot][c])) pivot = rr;
+      [M[c], M[pivot]] = [M[pivot], M[c]]; [r[c], r[pivot]] = [r[pivot], r[c]];
+      if (Math.abs(M[c][c]) < 1e-12) return null;
+      for (let rr = 0; rr < k.length; rr++) {
+        if (rr === c) continue;
+        const factor = M[rr][c] / M[c][c];
+        for (let cc = c; cc < k.length; cc++) M[rr][cc] -= factor * M[c][cc];
+        r[rr] -= factor * r[c];
+      }
+    }
+    const coef = [0, 0, 0];
+    k.forEach((i, a) => { coef[i] = r[a] / M[a][a]; });
+    return coef;
+  };
+  let coef = solve(rows);
+  if (!coef) return null;
+  let plane = (x, y) => coef[0] + coef[1] * x + coef[2] * y;
+  const deviations = rows.map(([x, y, t]) => Math.abs(t - plane(x, y))).sort((a, b) => a - b);
+  const mad = deviations[Math.floor(deviations.length / 2)];
+  const kept = rows.filter(([x, y, t]) => Math.abs(t - plane(x, y)) <= Math.max(0.01, 2.5 * mad));
+  if (kept.length < Math.max(3, FIT_MIN_SHARE * points.length)) return null;
+  coef = solve(kept);
+  if (!coef) return null;
+  plane = (x, y) => coef[0] + coef[1] * x + coef[2] * y;
   let sse = 0;
-  for (const [x, y, t] of rows) sse += (t - plane(x, y)) ** 2;
-  if (Math.sqrt(sse / rows.length) > FIT_RESIDUAL_M) return null;
+  for (const [x, y, t] of kept) sse += (t - plane(x, y)) ** 2;
+  if (process.env.COT_FIT_DEBUG) console.error(`[fit] residual ${Math.sqrt(sse / kept.length).toFixed(3)} coef ${coef.map((c) => c.toFixed(3))} kept ${kept.length}/${rows.length}`);
   const moved = f.outline.map((p) => fromUv(f, p, plane(p[0], p[1])));
-  if (moved.some((p, i) => Math.hypot(...sub(p, verts[i])) > FIT_REACH_M)) return null;
-  return cropLayer(moved, support);
+  const one = Math.sqrt(sse / kept.length) <= FIT_RESIDUAL_M && !moved.some((p, i) => Math.hypot(...sub(p, verts[i])) > FIT_REACH_M)
+    ? cropLayer(moved, support, FIT_MIN_SHARE) : null;
+  if (one && onBuild(one)) return [one];
+  // a folded part (a wedge's faces, a stepped ERA array) is not one sheet: fit each quarter of the layer on its own, to
+  // FIT_SPLIT_DEPTH, keeping the quarters that land on their part
+  if (depth >= FIT_SPLIT_DEPTH) return null;
+  const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
+  const um = (u0 + u1) / 2, vm = (v0 + v1) / 2, pieces = [];
+  for (const rect of [[u0, um, v0, vm], [um, u1, v0, vm], [u0, um, vm, v1], [um, u1, vm, v1]]) {
+    const quarter = clipToRect(f.outline, rect);
+    if (!quarter) continue;
+    pieces.push(...(fitLayer(quarter.map((p) => fromUv(f, p)), index, backing, T, support, centre, onBuild, depth + 1) || []));
+  }
+  return pieces.length ? pieces : null;
 }
 
 /**
@@ -369,7 +516,8 @@ function fitLayer(verts, layerDistance, support) {
  * against the drawn build's visible triangles (`visibleTriangles`, the root frame). A layer within FLOAT_TOL_M of the
  * build stays as authored. A floating layer whose part is drawn near it (a skirt, cage, wedge or screen standing up to
  * FIT_REACH_M off) is FITTED onto that part along its normal; one whose part is not drawn (a donor's bustle rack or rubber
- * skirt the vehicle lacks) is DROPPED. A layer is fitted only to layer stock: never to the main shell (a missing skirt
+ * skirt the vehicle lacks) is DROPPED. A layer is fitted only to a layer's part (isLayerPart: a sheet facing with it and
+ * backed by drawn stock), even one merged into the hull or turret mesh: never to the structural shell (a missing skirt
  * would land on the hull side and double its armour) nor to the running gear. The finalizer applies each receipt
  * (combatAnatomy.ts applyPlateFits).
  * `armor` is the anatomy as the finalizer leaves it before the fits: finalized against this row in measurement mode, with
@@ -378,7 +526,7 @@ function fitLayer(verts, layerDistance, support) {
 export function plateFitReceipts(armor, T) {
   const distance = surfaceDistance(T);
   const hasTrackShape = (link) => !!link && (armor.trackShapes || []).some((track) => track.module === link);
-  let support = null, layerDistance = null;
+  let support = null, stock = null, stockT = null, backing = null, inShell = null, centre = null;
   const out = [];
   for (const [owner, plates] of [['hull', armor.hullPlates], ['turret', armor.turretPlates]]) {
     const offset = owner === 'turret' ? (armor.turretPivot || [0, 0, 0]) : [0, 0, 0];
@@ -391,22 +539,33 @@ export function plateFitReceipts(armor, T) {
       const fit = polygonFit(placed, distance, FLOAT_TOL_M);
       if (!fit.floating) continue;
       if (!support) {
-        // what a layer may lie on: the drawn build without its running gear; what it may be fitted to: that, off the shell
-        support = surfaceDistance(selectTriangles(T, (o) => !T.gear?.[o / 9]), SUPPORT_TOL_M * 4);
-        const inShell = shellTest(armor);
-        layerDistance = surfaceDistance(selectTriangles(T, (o) => {
-          if (T.gear?.[o / 9]) return false;
-          const c = [0, 1, 2].map((axis) => (T[o + axis] + T[o + 3 + axis] + T[o + 6 + axis]) / 3);
-          return !inShell(c, SHELL_SKIN_M);
-        }), FIT_REACH_M);
+        // what a layer may lie on, and be fitted to where that is a layer's part: the drawn build without its running gear
+        stockT = selectTriangles(T, (o) => !T.gear?.[o / 9]);
+        support = surfaceDistance(stockT, SUPPORT_TOL_M * 4);
+        stock = triangleIndex(stockT);
+        // what stands behind a layer's part may be the running gear (a skirt over its wheels)
+        backing = triangleIndex(T);
+        inShell = shellTest(armor);
+        const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < stockT.length; i += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], stockT[i + a]); hi[a] = Math.max(hi[a], stockT[i + a]); }
+        centre = lo.map((v, a) => (v + hi[a]) / 2);
       }
       const receipt = { owner, name: plate.name, kind, at: plateKey(plate.verts), gapM: round3(fit.centreM),
         offShare: Math.round(fit.offShare * 100) / 100 };
       const cropped = cropLayer(placed, support);
-      const moved = cropped && !polygonFit(cropped, distance, FLOAT_TOL_M).floating ? cropped : fitLayer(placed, layerDistance, support);
-      const action = !moved || polygonFit(moved, distance, FLOAT_TOL_M).floating ? 'drop' : moved === cropped ? 'crop' : 'fit';
-      out.push(action === 'drop' ? { ...receipt, action }
-        : { ...receipt, action, verts: moved.map((p) => [round3(p[0] - offset[0]), round3(p[1] - offset[1]), round3(p[2] - offset[2])]) });
+      const onBuild = (piece) => !polygonFit(piece, distance, FLOAT_TOL_M).floating;
+      const pieces = cropped && onBuild(cropped) ? [cropped]
+        : (fitLayer(placed, stock, backing, stockT, support, centre, onBuild) || []).filter(onBuild);
+      const action = !pieces.length ? 'drop' : pieces[0] === cropped ? 'crop' : 'fit';
+      // why a layer is dropped: buried in the main shell (a round meets the cells first: no change in play), nothing drawn
+      // near it (the model lacks the part), or a drawn part it could not be fitted to
+      const why = action !== 'drop' ? null : (() => {
+        const { points } = polygonSamples(placed);
+        const buried = points.filter((p) => inShell(p, -0.01)).length / points.length;
+        return buried >= 0.5 ? 'inShell' : fit.d.slice(1).every((d) => d > 0.06) ? 'notDrawn' : 'unfitted';
+      })();
+      out.push(action === 'drop' ? { ...receipt, action, why }
+        : { ...receipt, action, pieces: pieces.map((piece) => piece.map((p) => [round3(p[0] - offset[0]), round3(p[1] - offset[1]), round3(p[2] - offset[2])])) });
     }
   }
   return out;
@@ -433,11 +592,11 @@ export async function hitboxFitCensus(id, options = {}) {
       fits = fits.map((fit) => {
         const plate = plates.find(([owner, p]) => owner === fit.owner && p.name === fit.name && plateKey(p.verts).join() === fit.at.join())?.[1];
         return { ...fit, areaM2: round3(plate ? polygonSamples(plate.verts).area : 0),
-          areaAfterM2: round3(fit.verts ? polygonSamples(fit.verts).area : 0),
+          areaAfterM2: round3((fit.pieces || []).reduce((sum, piece) => sum + polygonSamples(piece).area, 0)),
           // how far the fit moved it: its new vertices' largest distance off the authored plane
-          moveM: plate && fit.verts && fit.action === 'fit' ? (() => {
+          moveM: plate && fit.pieces && fit.action === 'fit' ? (() => {
             const n = polygonNormal(plate.verts);
-            return round3(Math.max(...fit.verts.map((v) => Math.abs(dot(sub(v, plate.verts[0]), n)))));
+            return round3(Math.max(...fit.pieces.flat().map((v) => Math.abs(dot(sub(v, plate.verts[0]), n)))));
           })() : 0 };
       });
       armor = { ...armor, hullPlates: [...(armor.hullPlates || [])], turretPlates: [...(armor.turretPlates || [])] };

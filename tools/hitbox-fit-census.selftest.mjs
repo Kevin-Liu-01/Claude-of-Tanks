@@ -59,9 +59,9 @@ const actions = Object.fromEntries(fits.map((fit) => [fit.name, fit.action]));
 assert.deepEqual(actions, { skirt_overhang: 'crop', skirt_off: 'fit', skirt_missing: 'drop', skirt_over_wheels: 'drop', skirt_era: 'drop', bustle_rack: 'drop' },
   'an overhang is cropped, a stand-off fitted, a missing part dropped; main plates and layers on their parts left alone');
 const byName = Object.fromEntries(fits.map((fit) => [fit.name, fit]));
-const ys = byName.skirt_overhang.verts.map((p) => p[1]);
+const ys = byName.skirt_overhang.pieces[0].map((p) => p[1]);
 assert.ok(Math.min(...ys) > 0.45 && Math.min(...ys) < 0.52 && Math.max(...ys) >= 0.99, 'the overhang is cut at the skirt\'s foot');
-assert.ok(byName.skirt_off.verts.every((p) => Math.abs(p[0] - 1.31) < 0.02), 'the stand-off lies on the skirt\'s outer face');
+assert.ok(byName.skirt_off.pieces.flat().every((p) => Math.abs(p[0] - 1.31) < 0.02), 'the stand-off lies on the skirt\'s outer face');
 assert.ok(fits.every((fit) => fit.gapM > 0 && fit.offShare > 0) && byName.bustle_rack.at.join() === plateKey(armor.turretPlates[0].verts).join(),
   'each receipt carries its reason and names its plate by its place');
 
@@ -70,12 +70,33 @@ finalized.hullPlates.push(quad('skirt_missing', 'spaced', 1.31, 0.5, 1, -1.5, 1.
 applyPlateFits(finalized, fits);
 assert.deepEqual(finalized.hullPlates.map((p) => p.name),
   ['hull_side_R', 'skirt_on', 'skirt_overhang', 'skirt_off', 'skirt_missing'], 'drops by name and place only');
-assert.deepEqual(finalized.hullPlates[2].verts, byName.skirt_overhang.verts, 'a cropped layer takes its receipt\'s outline');
+assert.deepEqual(finalized.hullPlates[2].verts, byName.skirt_overhang.pieces[0], 'a cropped layer takes its receipt\'s outline');
 assert.deepEqual(finalized.turretPlates, [], 'the floating rack is dropped');
 applyPlateFits(finalized, [{ owner: 'hull', name: 'hull_side_R', kind: 'main', at: plateKey(armor.hullPlates[0].verts), gapM: 0.6, offShare: 1, action: 'drop' }]);
 assert.equal(finalized.hullPlates[0].name, 'hull_side_R', 'a main plate is never dropped');
 const after = plateFitReceipts(finalized, T);
 assert.deepEqual(after, [], 'once applied, every layer lies on the drawn build');
+// A skirt merged into the hull's own mesh (one draw, as a builder merges its bucket) is still a layer's part: a sheet with
+// the road wheels behind it. The layer is fitted onto it, never onto the solid hull wall beside it.
+{
+  const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+  const merged = new THREE.Group();
+  const geometry = mergeGeometries([new THREE.BoxGeometry(2, 1, 4).translate(0, 0.5, 0), new THREE.BoxGeometry(0.03, 0.5, 3).translate(1.4, 0.75, 0)]);
+  merged.add(Object.assign(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()), { name: 'hull' }));
+  const wheels = Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 3), new THREE.MeshBasicMaterial()), { name: 'gearRoadWheelsR' });
+  wheels.position.set(1.15, 0.35, 0); merged.add(wheels);
+  const left = Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 3), new THREE.MeshBasicMaterial()), { name: 'gearRoadWheelsL' });
+  left.position.set(-1.15, 0.35, 0); merged.add(left);
+  const Tm = visibleTriangles(merged);
+  // its cell is hulled from the whole mesh, skirt included (as the generator's are): the skirt lies on the shell's cells
+  const hulled = { ...boxCell, vertices: boxCell.vertices.map(([x, y, z]) => [x > 0 ? 1.415 : x, y, z]) };
+  const mergedArmor = { turretPivot: [0, 0, 0], turretPlates: [], collisionShells: { hull: [hulled], turret: [] },
+    hullPlates: [quad('skirt_merged', 'spaced', 1.55, 0.55, 0.95, -1.4, 1.4), quad('skirt_by_the_wall', 'spaced', 1.15 - 2.3, 0.6, 0.95, -1.4, 1.4)] };
+  const mergedFits = Object.fromEntries(plateFitReceipts(mergedArmor, Tm).map((fit) => [fit.name, fit]));
+  assert.equal(mergedFits.skirt_merged?.action, 'fit', 'a layer is fitted onto its part merged into the hull\'s mesh');
+  assert.ok(mergedFits.skirt_merged.pieces.flat().every((p) => Math.abs(p[0] - 1.415) < 0.02), 'onto the skirt\'s outer face');
+  assert.equal(mergedFits.skirt_by_the_wall?.action, 'drop', 'and never onto the solid hull wall');
+}
 console.log('hitbox-fit-census.selftest: the measure and crop, fit or drop passed');
 
 // 3. The pinned vehicles: abramsx (the owner's report) and the worst offenders of the 2026-11-18 census: the Abrams

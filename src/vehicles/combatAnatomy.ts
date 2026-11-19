@@ -1856,17 +1856,21 @@ export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPl
     armor[key] = (armor[key] || []).flatMap((plate): ArmorPlate[] => {
       const receipt = listed.find((entry) => named(plate, entry));
       if (!receipt) return [plate];
-      if (receipt.action === 'drop' || !receipt.verts?.length) return [];
-      const verts = receipt.verts.map((point) => [point[0], point[1], point[2]] as Vec3);
-      const next: ArmorPlate = { ...plate, verts };
-      // a reshaped outline keeps no cut-edge indices of the old one; a convex face's trace box follows its new outline
-      delete next.openEdges;
-      if (plate.convexPolygon) {
-        const bounds = convexArmorTraceBounds(verts as [number, number, number][]);
-        if (bounds) next.traceBounds = { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 };
-        else delete next.traceBounds;
-      }
-      return [next];
+      if (receipt.action === 'drop' || !receipt.pieces?.length) return [];
+      // one plate per piece (a folded part is fitted face by face), all under the layer's name: a round meets the piece it
+      // strikes, and an ERA bank is still spent once by name (sim/damage.ts)
+      return receipt.pieces.map((piece): ArmorPlate => {
+        const verts = piece.map((point) => [point[0], point[1], point[2]] as Vec3);
+        const next: ArmorPlate = { ...plate, verts };
+        // a reshaped outline keeps no cut-edge indices of the old one; a convex face's trace box follows its new outline
+        delete next.openEdges;
+        if (plate.convexPolygon) {
+          const bounds = convexArmorTraceBounds(verts as [number, number, number][]);
+          if (bounds) next.traceBounds = { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 };
+          else delete next.traceBounds;
+        }
+        return next;
+      });
     });
   }
 }

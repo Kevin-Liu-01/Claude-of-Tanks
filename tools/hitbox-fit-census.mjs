@@ -41,7 +41,10 @@ for (const id of ids) {
   console.log(`${id}: ${row.primitives} primitives, ${layers.length} floating plates or housings, ${bridge.faces} cell bridges`
     + `${bridge.faces ? ` (deepest ${bridge.deepestM} m)` : ''}${row.pivotGapM ? `, turret rig ${row.pivotGapM} m off pivot` : ''}`
     + ` (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
-  for (const fit of row.fits || []) console.log(`   ${fit.action.toUpperCase()} ${fit.owner} ${fit.name} (${fit.kind}) was ${fit.gapM} m off`);
+  for (const fit of row.fits || []) {
+    console.log(`   ${fit.action.toUpperCase()} ${fit.owner} ${fit.name} (${fit.kind}) was ${fit.gapM} m off`
+      + `${fit.why ? ` (${fit.why})` : fit.pieces?.length > 1 ? ` (${fit.pieces.length} pieces)` : ''}`);
+  }
   for (const r of floating) {
     console.log(`   FLOAT ${r.type} ${r.frame} ${r.name} (${r.kind}) centre ${r.centreM} m, min ${r.minM} m, off ${Math.round(r.offShare * 100)} %, `
       + `${r.areaM2} m2 at [${r.centre.join(',')}]`);
