@@ -115,6 +115,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/dev-perf-probe.mjs`
 - `tools/environment-motion-probe.mjs`
 - `tools/gunship-lens-strip.browser.mjs`
+- `tools/hud-guidance.browser.mjs`
 - `tools/map-probe-runtime.mjs`
 - `tools/marketing-shots/mode-battle-shots.mjs`
 - `tools/mobilelap.mjs`

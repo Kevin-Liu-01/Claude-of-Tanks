@@ -17,8 +17,8 @@ body.brand-page{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:
 
 /* the two grounds: graphite and paper, edge to edge */
 .brand-half{display:grid;place-items:center;padding:var(--s8) var(--s6)}
-.brand-half--dark{background:var(--graphite-800)}
-.brand-half--paper{background:var(--paper-50);color:var(--graphite-800)}
+.brand-half--dark{background:var(--surface-raised)}
+.brand-half--paper{background:var(--ink-1);color:var(--surface-raised)}
 .brand-hero,.brand-split{position:relative;display:grid;grid-template-columns:1fr}
 .brand-hero .brand-half{min-height:min(62vh,560px)}
 .brand-hero img{width:min(100%,552px)}
@@ -29,7 +29,7 @@ body.brand-page{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:
 @media (width >= 768px){.brand-hero,.brand-split{grid-template-columns:1fr 1fr}}
 
 .brand-band{display:grid;gap:var(--s6);padding:var(--s9) var(--brand-pad)}
-.brand-band--dark{background:var(--graphite-800)}
+.brand-band--dark{background:var(--surface-raised)}
 
 /* the ladder: the vector mark to 20 px tall, then the tab's pixel masters at their own size and at 8x */
 .brand-ladder{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--s7) var(--s8);margin:0;padding:0;list-style:none}
@@ -42,11 +42,11 @@ body.brand-page{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:
 .brand-swatches li{display:flex;flex-direction:column;justify-content:flex-end;gap:var(--s1);min-height:200px;padding:var(--s4);background:var(--sw);color:var(--sw-ink)}
 .brand-swatches b{font-size:var(--fs-16)}
 .brand-swatches .num{font-size:var(--fs-14)}
-.sw-paper{--sw:var(--paper-50);--sw-ink:var(--graphite-800)}
-.sw-tungsten{--sw:var(--tungsten-500);--sw-ink:var(--graphite-800)}
-.sw-tungsten600{--sw:var(--tungsten-600);--sw-ink:var(--graphite-800)}
-.sw-graphite{--sw:var(--graphite-800);--sw-ink:var(--paper-50)}
-.sw-ground{--sw:var(--graphite-850);--sw-ink:var(--paper-50)}
+.sw-paper{--sw:var(--ink-1);--sw-ink:var(--surface-raised)}
+.sw-tungsten{--sw:var(--accent);--sw-ink:var(--surface-raised)}
+.sw-tungsten600{--sw:var(--accent-lo);--sw-ink:var(--surface-raised)}
+.sw-graphite{--sw:var(--surface-raised);--sw-ink:var(--ink-1)}
+.sw-ground{--sw:var(--surface-page);--sw-ink:var(--ink-1)}
 
 /* clear space: the mark (184:106) inside a wash half its height deep on every side; the whole figure fits a phone */
 .brand-clear{--w:min(276px,calc((100vw - 2 * var(--shell-gutter)) / 1.576));--c:calc(var(--w) * .288);justify-self:start;margin:var(--c)}
