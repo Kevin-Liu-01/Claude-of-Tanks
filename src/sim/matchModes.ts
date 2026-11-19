@@ -336,7 +336,7 @@ export interface MatchModePresentationState {
   range?: ProvingRangePresentation;
 }
 
-/** A round's expected outcome on the range card: the aim overlay's bands (sim/provingGround.ts PROVING_PEN_RATIO). */
+/** A round's expected outcome on the range card: the reticle's bands (sim/penVerdict.ts PEN_RATIO). */
 export type ProvingOutcome = 'pen' | 'marginal' | 'nopen';
 
 /** One round of the player's loadout measured at one lane's range. */

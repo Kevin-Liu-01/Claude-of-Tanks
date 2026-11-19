@@ -12,11 +12,12 @@ import {
   rulesetLines, acceptsTeamArrangement,
 } from './matchRuleset.ts';
 import {
-  PROVING_PEN_RATIO, planProvingCourse, planProvingRange, plateLimitMm, provingCentreAim, provingOutcome, provingPatrolInput,
+  planProvingCourse, planProvingRange, plateLimitMm, provingCentreAim, provingOutcome, provingPatrolInput,
   provingPlateIndex, provingPlateStrike, provingShellCard, wrapAngle,
 } from './provingGround.ts';
 import { courseProfile, createTerrainDeformation, stampBounds } from './terrainDeformation.ts';
 import { resolvePlateStrike } from './damage.ts';
+import { PEN_RATIO } from './penVerdict.ts';
 import { mulberry32 } from '../game/stateCore.ts';
 import { penAtDistanceMm } from './ballistics.ts';
 import { createTankState } from './movement.ts';
@@ -336,7 +337,7 @@ for (const distM of [100, 450, 650]) {
 }
 assert.ok(plateLimitMm(shell, 650, 0) <= plateLimitMm(shell, 100, 0), 'penetration falls with range');
 assert.ok(plateLimitMm(shell, 100, 85) < plateLimitMm(shell, 100, 0) * 0.2, 'near grazing only an overmatched plate falls');
-assert.deepEqual([provingOutcome(PROVING_PEN_RATIO.pen), provingOutcome(1), provingOutcome(PROVING_PEN_RATIO.marginal - 0.01), provingOutcome(0), provingOutcome(NaN)],
+assert.deepEqual([provingOutcome(PEN_RATIO.pen), provingOutcome(1), provingOutcome(PEN_RATIO.marginal - 0.01), provingOutcome(0), provingOutcome(NaN)],
   ['pen', 'marginal', 'nopen', 'nopen', 'nopen'], 'the aim overlay\'s bands');
 const blind = provingShellCard(shell, 200, null, rules.plateAnglesDeg);
 assert.equal(blind.outcome, 'nopen'); assert.equal(blind.ratio, 0); assert.ok(blind.plateMm[0] > 0, 'the plates still measure with no hull on the line');
