@@ -1,0 +1,179 @@
+{
+ "note": "the live battle-sight HUD at 390x844 (273.2, step battle.driveTouch, arcade), recorded 2026-11-18T23:52:28Z: the card planned at [72,438,318,586], 148 px tall over 241 px of words at 246 px (its last line cut). sightY: the risen sight the touch keep-out took (touchNoticePlan.ts touchSightKeepOut), the one that with this HUD reproduces that plan; guidancePlan.selftest.mjs §9",
+ "sightY": 338,
+ "top": 42,
+ "sizes": {
+  "390x844t": [
+   [
+    ".cot-top",
+    88.42,
+    0,
+    301.58,
+    36
+   ],
+   [
+    ".cot-drive",
+    14,
+    593.76,
+    98.24,
+    678
+   ],
+   [
+    ".cot-dp",
+    136.5,
+    796,
+    253.5,
+    836
+   ],
+   [
+    ".cot-vehicle-controls>button",
+    79,
+    230,
+    123,
+    274
+   ],
+   [
+    ".cot-vehicle-controls>button",
+    126,
+    230,
+    170,
+    274
+   ],
+   [
+    ".cot-vehicle-controls>button",
+    173,
+    230,
+    217,
+    274
+   ],
+   [
+    ".cot-vehicle-controls>button",
+    220,
+    230,
+    264,
+    274
+   ],
+   [
+    ".cot-vehicle-controls>button",
+    267,
+    230,
+    311,
+    274
+   ],
+   [
+    ".cot-shell",
+    324,
+    468,
+    376,
+    520
+   ],
+   [
+    ".cot-con",
+    324,
+    538,
+    376,
+    590
+   ],
+   [
+    ".cot-con",
+    324,
+    599,
+    376,
+    651
+   ],
+   [
+    ".cot-con",
+    324,
+    660,
+    376,
+    712
+   ],
+   [
+    ".cot-touch.on .quick",
+    250,
+    46,
+    294,
+    90
+   ],
+   [
+    ".cot-touch.on .quick",
+    296,
+    46,
+    340,
+    90
+   ],
+   [
+    ".cot-touch.on .quick",
+    342,
+    46,
+    386,
+    90
+   ],
+   [
+    ".cot-touch.on .joy",
+    14,
+    702,
+    132,
+    820
+   ],
+   [
+    ".cot-touch.on .round",
+    137,
+    608,
+    193,
+    664
+   ],
+   [
+    ".cot-touch.on .round",
+    164,
+    685,
+    218,
+    739
+   ],
+   [
+    ".cot-touch.on .round",
+    224,
+    685,
+    278,
+    739
+   ],
+   [
+    ".cot-touch.on .round",
+    288,
+    740,
+    370,
+    822
+   ],
+   [
+    ".cot-minimap",
+    12,
+    108,
+    104,
+    200
+   ]
+  ]
+ },
+ "card": {
+  "box": [
+   72,
+   438,
+   318,
+   586
+  ],
+  "offsetWidth": 246,
+  "scrollHeight": 241,
+  "step": "battle.driveTouch"
+ },
+ "plan": {
+  "card": [
+   72,
+   438,
+   318,
+   586,
+   0
+  ],
+  "toasts": null,
+  "wait": false,
+  "yields": false
+ }
+}

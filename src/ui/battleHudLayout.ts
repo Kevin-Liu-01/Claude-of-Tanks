@@ -986,8 +986,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
     const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
     const step = cardNode?.closest<HTMLElement>('.cot-tut')?.dataset.step ?? '';
+    // (read at the type the last plan gave it: a compact read is taken back to the full type's height)
+    const compact = (document.body.dataset.hudGuidance ?? '').split(' ').includes('card-compact');
     guidanceCardNatural = cardNaturalSize(guidanceCardNatural,
-      cardNode ? { step, width: cardNode.offsetWidth, scrollHeight: cardNode.scrollHeight } : null, cardWide);
+      cardNode ? { step, width: cardNode.offsetWidth, scrollHeight: cardNode.scrollHeight, compact } : null, cardWide);
+    // the guard under the plan's estimate: while a card's words run on below what it shows, whatever fit the plan gave it,
+    // the card says so (tutorial.css data-more), here each pass and on its own scroll, so no line is cut without a sign
+    if (cardNode) {
+      if (!guidanceCardsWatched.has(cardNode)) {
+        guidanceCardsWatched.add(cardNode);
+        cardNode.addEventListener('scroll', () => markCardMore(cardNode), { passive: true });
+      }
+      markCardMore(cardNode);
+    }
     const measured = guidanceCardNatural && guidanceCardNatural.step === step ? guidanceCardNatural.size : null;
     const card = guidanceCardSize = heldCardSize(guidanceCardSize, !!cardNode, measured);
     // the toasts: the battle's region while it holds a notice of its own (the parked aim chip keeps its own seat)
@@ -999,6 +1010,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
       never: measure(GUIDANCE_CONTROLS), card, toasts };
   }
+  /** The cards whose scroll marks their data-more (guidanceInput): each once. */
+  const guidanceCardsWatched = new WeakSet<HTMLElement>();
+  /** data-more on a card while its words run on below what it shows (the fade and chevron, tutorial.css). */
+  const markCardMore = (node: HTMLElement) => {
+    const more = node.scrollHeight - node.clientHeight - node.scrollTop > 1;
+    if (more !== node.hasAttribute('data-more')) node.toggleAttribute('data-more', more);
+  };
   /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
   let guidanceCardSize: GuidanceSize | null = null;
   /** The card's natural size held for its step (guidancePlan.ts cardNaturalSize). */
@@ -1014,6 +1032,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-guidance-card-top', `${Math.round(card.y0)}px`);
       setBodyVar('--hud-guidance-card-width', `${Math.floor(card.x1 - card.x0)}px`);
       setBodyVar('--hud-guidance-card-max-h', `${Math.floor(card.y1 - card.y0)}px`);
+      // its words a type step smaller, or scrolling under the affordance, where the plan found no room for them whole
+      if (card.fit !== 'full') flags.push(`card-${card.fit}`);
       if (yields && root.querySelector('.cot-sixth.on,.cot-alert.show')) flags.push('card-yields');
     }
     if (toasts) {
@@ -1028,8 +1048,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.hudGuidance;
     }
     // (the plan's boxes, for the browser receipt: tools/hud-guidance.browser.mjs reads them beside the rendered ones)
-    const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number } | null) =>
-      b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1] : null;
+    const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number; fit?: string } | null) =>
+      b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1, b.fit ?? 'full'] : null;
     const record = JSON.stringify({ card: box(card), toasts: box(toasts), wait: !!plan?.toastsWait, yields });
     if (document.body.dataset.hudGuidancePlan !== record) document.body.dataset.hudGuidancePlan = record;
   }
