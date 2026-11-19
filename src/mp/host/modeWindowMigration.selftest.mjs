@@ -333,11 +333,14 @@ for (const mode of ['capture_the_flag', 'turbo_ball', 'zone_control']) {
     const target = actor.authority.modeController.botTarget(e);
     return `${e.id} ${target?.mission ?? '-'}${mode === 'turbo_ball' || !target ? '' : ` ${Math.round(target.x)},${Math.round(target.z)}`}`;
   }).join('; ');
-  let same = 0, apart = null, widest = 0, targets = 0;
+  let same = 0, apart = null, widest = 0, targets = 0, dealsAlike = 0, dealsApart = null;
   for (let k = 1; k <= 60 * 8; k++) {
     step(old); step(fresh);
     const a = errands(old), b = errands(fresh);
     if (a === b) same++; else if (apart === null) apart = `step ${k}: ${a.slice(0, 160)} / ${b.slice(0, 160)}`;
+    // the deals themselves (the capture's view: a restore that dropped a part shows here)
+    const da = JSON.stringify(deals(old)), db = JSON.stringify(deals(fresh));
+    if (da === db) dealsAlike++; else if (dealsApart === null) dealsApart = `step ${k}: ${da.slice(0, 120)} / ${db.slice(0, 120)}`;
     for (const e of old.authority.entities) {
       if (!e.bot) continue;
       const t = fresh.authority.entityById.get(e.id);
@@ -346,6 +349,7 @@ for (const mode of ['capture_the_flag', 'turbo_ball', 'zone_control']) {
     }
   }
   ok(same === 480, `${mode}: over 8 s both hosts send every bot on the same errand on the same steps (${same} of 480 steps alike${apart ? `; first apart ${apart}` : ''})`);
+  ok(dealsAlike === 480, `${mode}: and deal the same roles on the same steps, a striker's commit with them (${dealsAlike} of 480 steps alike${dealsApart ? `; first apart ${dealsApart}` : ''})`);
   // (Turbo Ball's bots meet the ball, whose contacts carry the rows' millimetres on: its hulls part 0.6-0.8 m whatever the deal)
   if (mode !== 'turbo_ball') ok(targets === 0 && widest < 0.05, `${mode}: and send their bots to the same places: every route push alike (${targets} apart), the hulls `
     + `within ${widest.toFixed(3)} m (bound 0.05 m)`);
@@ -515,4 +519,4 @@ console.log('[8] the integrator a row does not carry: every part from the keyfra
 }
 
 if (failures) { console.error(`modeWindowMigration.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('modeWindowMigration.selftest: the battle clock, the lead seed, a window\'s ring arrivals, the stranded tracker, the role deals, a resume hold\'s due arrivals and the authority\'s own state carry over as the old host had them');
+console.log('modeWindowMigration.selftest: the battle clock (from the keyframe or a newer frame), the lead seed, a window\'s ring arrivals (Infected and a refused Horde arrival), a begun wave\'s refused arrivals, the stranded tracker, the role deals, the hold ranks, a resume hold\'s due arrivals, the authority\'s own state and the integrator carry over as the old host had them');
