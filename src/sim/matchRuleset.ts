@@ -1111,7 +1111,10 @@ const COOP_ALLIES = range(0, 6);
 // the proving ground fields no allied bot and exactly one target hull per lane
 const PROVING_ALLIES = range(0, 0), PROVING_TARGETS = range(PROVING_GROUND_RULES.lanes.length, PROVING_GROUND_RULES.lanes.length);
 // the training battle fields exactly its scenes' hulls (273)
-const TRAINING_ALLIES = range(0, 0), TRAINING_ACTORS = range(TRAINING_RULES.actors.length, TRAINING_RULES.actors.length);
+// (and S14's skirmish: its allied bots on the player's side, its enemies with the actors)
+const TRAINING_ALLY_COUNT = TRAINING_RULES.skirmish.allies.length;
+const TRAINING_ENEMY_COUNT = TRAINING_RULES.actors.length + TRAINING_RULES.skirmish.enemies.length;
+const TRAINING_ALLIES = range(TRAINING_ALLY_COUNT, TRAINING_ALLY_COUNT), TRAINING_ACTORS = range(TRAINING_ENEMY_COUNT, TRAINING_ENEMY_COUNT);
 export const TEAM_ARRANGEMENT_LIMITS: {
   readonly field: number;
   readonly allies: Readonly<Record<GameModeId, IntRange>>;
@@ -1753,7 +1756,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // hides its target until the player finds it), unlimited rounds, a destroyed hull back on its mark in 3 s, no clock, no
   // record. The standard physics, damage and destruction apply unchanged: every outcome the scenes teach is a battle's.
   training: Object.freeze({
-    ...STANDARD, mode: 'training', ammo: 'unlimited', allies: 0, enemies: TRAINING_RULES.actors.length, respawnS: 3,
+    ...STANDARD, mode: 'training', ammo: 'unlimited', allies: TRAINING_ALLY_COUNT, enemies: TRAINING_ENEMY_COUNT, respawnS: 3,
     respawnSafeM: null, timeLimitS: null, records: false, training: TRAINING_RULES,
   }),
 });

@@ -75,6 +75,23 @@ export interface TrainingEarthwork {
   readonly skirtM: number;
 }
 
+/** A bot of S14's skirmish: its tank and its mark (deg yaw). */
+export interface TrainingBotRule {
+  readonly specId: string;
+  readonly x: number;
+  readonly z: number;
+  readonly yawDeg: number;
+}
+
+/**
+ * S14, the real fight: bots with their own brains under the normal rules, parked (each on its mark) until the scene's
+ * cue, the allies on the player's side. The tutorial counts the enemies destroyed.
+ */
+export interface TrainingSkirmish {
+  readonly allies: readonly TrainingBotRule[];
+  readonly enemies: readonly TrainingBotRule[];
+}
+
 export interface TrainingRules {
   readonly mapId: string;
   /** The loaner: every player trains in this tank. */
@@ -87,6 +104,8 @@ export interface TrainingRules {
   readonly actors: readonly TrainingActorRule[];
   /** The earthworks the scenes stand behind, stamped at the battle's setup. */
   readonly earthworks: readonly TrainingEarthwork[];
+  /** S14's skirmish. */
+  readonly skirmish: TrainingSkirmish;
   /** One light whatever the player's battle times (the scenes read in daylight). */
   readonly timeOfDay: 'day';
 }
@@ -169,6 +188,20 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.5, whenSeen: true, traverseDegPerS: 8, frontArcDeg: 30,
         aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
+  // S14's skirmish (storyboard: two allies against three enemies, normal AI and rules): the allies on the meadow beside
+  // ring V, where S13 ends; the enemies 260 m east on open ground (the whole-map probe: no canopy or obstacle within 5 m,
+  // a grade under 0.12). Each tank is its own (a solo roster keys hulls by spec): none an actor's or the loaner.
+  skirmish: Object.freeze({
+    allies: Object.freeze([
+      Object.freeze({ specId: 'm60a3', x: -245, z: -100, yawDeg: 90 }),
+      Object.freeze({ specId: 'leo1a5dk', x: -240, z: -115, yawDeg: 90 }),
+    ]),
+    enemies: Object.freeze([
+      Object.freeze({ specId: 'm48a5_patton', x: 20, z: -90, yawDeg: 270 }),
+      Object.freeze({ specId: 'chieftain5', x: 30, z: -110, yawDeg: 270 }),
+      Object.freeze({ specId: 'centurion5_2', x: 10, z: -60, yawDeg: 270 }),
+    ]),
+  }),
   // S10's berm: 1.9 m high across the line to Sentry 2, a gentle back slope (7 m) the player creeps up, a 2 m crest and a
   // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (sim/trainingSight.ts EXPOSURE_POINTS)
   earthworks: Object.freeze([
@@ -255,9 +288,19 @@ export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, tim
   return timeS - cuedAtS >= volley.firstS && (!volley.whenSeen || seen);
 }
 
-/** The training roster after the player: each actor's tank, in order. */
+/** The training roster after the player: each actor's tank, then the skirmish's allies and enemies, in order. */
 export function trainingRoster(rules: TrainingRules): readonly string[] {
-  return rules.actors.map((actor) => actor.specId);
+  return [...rules.actors.map((actor) => actor.specId), ...rules.skirmish.allies.map((bot) => bot.specId),
+    ...rules.skirmish.enemies.map((bot) => bot.specId)];
+}
+
+/** The cue that brings S14's skirmish in (a step's `cue`, game/state.ts cueTrainingActor). */
+export const TRAINING_SKIRMISH_CUE = 'skirmish';
+
+/** Which side of S14's skirmish a tank fights on, or null for the scenes' hulls and the player. */
+export function trainingSkirmishSide(rules: TrainingRules, specId: string): 'ally' | 'enemy' | null {
+  return rules.skirmish.allies.some((bot) => bot.specId === specId) ? 'ally'
+    : rules.skirmish.enemies.some((bot) => bot.specId === specId) ? 'enemy' : null;
 }
 
 const mark = (x: number, z: number, yawDeg: number): ProvingMark => Object.freeze({ x, z, yaw: yawDeg * DEG });
@@ -276,11 +319,16 @@ export function trainingActorYawDeg(actor: TrainingActorRule): number {
  */
 export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
   const origin = mark(rules.start.x, rules.start.z, rules.start.yawDeg);
-  const lanes: ProvingLaneMark[] = rules.actors.map((actor, index) => {
-    const rangeM = Math.hypot(actor.x - origin.x, actor.z - origin.z);
-    return Object.freeze({ ...mark(actor.x, actor.z, trainingActorYawDeg(actor)), index, rangeM, measuredM: rangeM,
-      presentDeg: actor.presentDeg, lateralM: 0 });
-  });
+  const lane = (x: number, z: number, yawDeg: number, presentDeg: number, index: number): ProvingLaneMark => {
+    const rangeM = Math.hypot(x - origin.x, z - origin.z);
+    return Object.freeze({ ...mark(x, z, yawDeg), index, rangeM, measuredM: rangeM, presentDeg, lateralM: 0 });
+  };
+  // in roster order (trainingRoster): the actors, then the skirmish's allies and enemies
+  const bots = [...rules.skirmish.allies, ...rules.skirmish.enemies];
+  const lanes: ProvingLaneMark[] = [
+    ...rules.actors.map((actor, index) => lane(actor.x, actor.z, trainingActorYawDeg(actor), actor.presentDeg, index)),
+    ...bots.map((bot, index) => lane(bot.x, bot.z, bot.yawDeg, 0, rules.actors.length + index)),
+  ];
   const stamps: CourseStamp[] = rules.earthworks.map((work) => {
     const toward = trainingActor(rules, work.toward)!;
     const yaw = Math.atan2(toward.x - work.x, toward.z - work.z);

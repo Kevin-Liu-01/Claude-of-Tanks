@@ -129,8 +129,10 @@ for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
   assert.ok(!roster.includes(TRAINING_RULES.loanerSpecId), 'no actor is the loaner');
   const layout = planTrainingRange(TRAINING_RULES);
   assert.deepEqual([layout.origin.x, layout.origin.z], [TRAINING_RULES.start.x, TRAINING_RULES.start.z], 'the player on the start');
-  layout.lanes.forEach((lane, i) => assert.deepEqual([lane.x, lane.z], [TRAINING_RULES.actors[i].x, TRAINING_RULES.actors[i].z],
-    `actor ${i} on its own mark`));
+  // (the actors, then S14's skirmish bots: trainingRoster's order)
+  const seated = [...TRAINING_RULES.actors, ...TRAINING_RULES.skirmish.allies, ...TRAINING_RULES.skirmish.enemies];
+  assert.equal(layout.lanes.length, roster.length, 'a mark for every hull of the roster');
+  layout.lanes.forEach((lane, i) => assert.deepEqual([lane.x, lane.z], [seated[i].x, seated[i].z], `hull ${i} on its own mark`));
   for (const point of Object.values(TRAINING_POINTS)) assert.ok(Number.isFinite(point.x) && Number.isFinite(point.z) && point.radiusM > 0);
   // the mode: never offered, no record, no clock, its own seed and roster size
   assert.ok(isTutorialMode('training') && !isPracticeMode('training') && !DEPLOY_MODE_ORDER.includes('training'),
@@ -139,11 +141,13 @@ for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
   const ruleset = matchRulesetFor('training');
   assert.equal(ruleset.records, false, 'nothing recorded');
   assert.equal(ruleset.timeLimitS, null, 'no clock');
-  assert.equal(ruleset.enemies, TRAINING_RULES.actors.length, 'the field is the scenes\' hulls');
-  assert.equal(ruleset.allies, 0);
+  // the field: the scenes' hulls and S14's enemy bots; the allies S14's allied bots
+  const enemies = TRAINING_RULES.actors.length + TRAINING_RULES.skirmish.enemies.length;
+  assert.equal(ruleset.enemies, enemies, 'the field is the scenes\' hulls and the skirmish\'s enemies');
+  assert.equal(ruleset.allies, TRAINING_RULES.skirmish.allies.length, 'the allies the skirmish\'s');
   assert.equal(ruleset.training, TRAINING_RULES);
-  assert.equal(matchRulesetFor('training', null, { allies: 5, enemies: 9, teamNations: 'random' }).enemies, TRAINING_RULES.actors.length,
-    'no arrangement changes it');
+  const arranged = matchRulesetFor('training', null, { allies: 5, enemies: 9, teamNations: 'random' });
+  assert.ok(arranged.enemies === enemies && arranged.allies === TRAINING_RULES.skirmish.allies.length, 'no arrangement changes it');
 }
 
 // 3. The 272.1 rules for the guide.

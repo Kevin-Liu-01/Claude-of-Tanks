@@ -777,6 +777,11 @@ export function splitBattleAllies<T extends Pick<RosterEntity, 'id' | 'specId' |
     nationalAllyIds: ReadonlySet<string> | null;
   },
 ): T[] {
+  // the training battle (273): S14's allied bots, and no other
+  if (ruleset.training) {
+    const allies = new Set(ruleset.training.skirmish.allies.map((bot) => bot.specId));
+    return candidates.filter((entity) => allies.has(entity.specId));
+  }
   if (!randomBattle) {
     // The staged screenshot battle takes the first three roster entities as
     // allies; the archived WWII preference list retired with those hulls

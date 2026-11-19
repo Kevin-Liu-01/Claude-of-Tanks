@@ -329,6 +329,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
         since ||= performance.now();
         return performance.now() - since >= advance.holdS * 1000;
       });
+    } else if (advance.on === 'destroyAll') {
+      const down = new Set<string>();
+      stepOff.push(port.on('tank:destroyed', (payload) => {
+        const id = (payload as { id?: string } | null)?.id;
+        if (id && advance.actors.includes(id)) down.add(id);
+        if (down.size >= advance.actors.length) go();
+      }));
     } else if (advance.on === 'smoke') {
       stepOff.push(port.on('auxiliary:smokeScreens', go));
     } else if (advance.on === 'peek') {

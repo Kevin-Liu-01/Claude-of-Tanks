@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { planTrainingRange, trainingActor, trainingArcAllows, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingActor, trainingArcAllows, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -1034,8 +1034,10 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
 /** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
  *  shots, unseen, its visual hidden. */
 function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
-  const actor = game.ruleset.training?.actors.find((rule) => rule.specId === entity.specId);
-  if (!actor?.entersOnCue) return;
+  const rules = game.ruleset.training;
+  const actor = rules?.actors.find((rule) => rule.specId === entity.specId);
+  // (S14's skirmish bots too: parked, brains and all, until the fight's cue)
+  if (!actor?.entersOnCue && !(rules && trainingSkirmishSide(rules, entity.specId))) return;
   entity.modeActive = false;
   entity.visual?.setVisible(false);
 }
@@ -1060,6 +1062,14 @@ export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsD
  */
 export function cueTrainingActor(game: SoloGameState, key: string, on: boolean): boolean {
   const rules = game.ruleset.training;
+  // S14: the skirmish's cue brings every one of its bots in, for good
+  if (rules && key === TRAINING_SKIRMISH_CUE) {
+    if (on) for (const entity of game.tanks) if (entity.modeActive === false && trainingSkirmishSide(rules, entity.specId)) {
+      entity.modeActive = true;
+      entity.visual?.setVisible(true);
+    }
+    return true;
+  }
   if (!rules || !trainingActor(rules, key)?.volley) return false;
   const cues = game._trainingCues ??= new Map();
   if (!on) cues.delete(key);
@@ -1098,7 +1108,9 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
       entity.id, placementTankRadius(entity.spec));
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
-    if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
+    // a training battle's skirmish bots (S14) stand on their marks with brains of their own, not as the scenes' hulls
+    const skirmishBot = !isPlayer && !!game.ruleset.training && trainingSkirmishSide(game.ruleset.training, entity.specId) !== null;
+    if (!isPlayer && context.provingLayout && !skirmishBot) seatProvingTarget(context, entity, spawn);
     // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
     // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
     else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }

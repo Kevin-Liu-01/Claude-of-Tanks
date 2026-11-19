@@ -13,7 +13,7 @@
  */
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
-import { TRAINING_POINTS, TRAINING_RULES, trainingActor } from '../../sim/trainingGround.ts';
+import { TRAINING_POINTS, TRAINING_RULES, TRAINING_SKIRMISH_CUE, trainingActor } from '../../sim/trainingGround.ts';
 
 /** Who the step is written for: a keyboard-and-mouse player, a touch layout, a connected gamepad. Absent: everyone. */
 export type TutorialInput = 'keyboard' | 'touch' | 'pad';
@@ -63,7 +63,9 @@ export type TutorialAdvance =
    *  trainingExposure: hull down), this long. */
   | { readonly on: 'hullDown'; readonly actor: string; readonly holdS: number }
   /** Peek, shoot, hide (S11): the player fires while this actor sees it, then gets out of its sight, this many times. */
-  | { readonly on: 'peek'; readonly actor: string; readonly cycles: number };
+  | { readonly on: 'peek'; readonly actor: string; readonly cycles: number }
+  /** Every one of these hulls destroyed, each counted once (S14: the skirmish's enemies). */
+  | { readonly on: 'destroyAll'; readonly actors: readonly string[] };
 
 /**
  * A step's guidance over the battle (tutorialGuide.ts draws it): a marker to drive to, the path toward it, an actor to
@@ -440,6 +442,13 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.finishBulwark', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 90,
     title: 'tutorial.training.finishBulwark.title', body: 'tutorial.training.finishBulwark.body', advance: { on: 'destroy', actor: BULWARK },
     guide: { actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
+  // S14: the real fight. Two allied bots beside the player and three enemy bots 260 m east, normal brains and rules, come in
+  // on the cue; the guidance falls away, and the chapter ends once every enemy bot is destroyed
+  { id: 'training.fight', chapter: 'training', target: [], ...PLAY, cue: TRAINING_SKIRMISH_CUE,
+    title: 'tutorial.training.fight.title', body: 'tutorial.training.fight.body',
+    advance: { on: 'destroyAll', actors: TRAINING_RULES.skirmish.enemies.map((bot) => bot.specId) } },
+  { id: 'training.complete', chapter: 'training', target: [], title: 'tutorial.training.complete.title',
+    body: 'tutorial.training.complete.body', advance: NEXT },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

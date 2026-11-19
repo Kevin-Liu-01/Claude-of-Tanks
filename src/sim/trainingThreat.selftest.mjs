@@ -24,7 +24,10 @@
 //     line to ring Q; the step waits for either track hit and stands it down, then the repair kit, the kit row and smoke;
 //  8. S13, flank the heavy: Bulwark's front reads mostly red to the loaner's APFSDS and its side mostly green (the
 //     reticle's solver over a grid on each face); its turret turns 8 degrees a second; rings U and V stand outside its
-//     firing arc, U where its front shows and V at its side; it fires only on the player and inside the arc.
+//     firing arc, U where its front shows and V at its side; it fires only on the player and inside the arc;
+//  9. S14, the real fight: the roster is the actors, then the skirmish's allies and enemies, each its own tank; the range
+//     layout seats each on its mark in that order; the ruleset fields them; the ally split takes the allies; the fight's
+//     cue brings every bot in; the step waits for every enemy bot destroyed, then the chapter's closing card.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -37,7 +40,9 @@ const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSt
 const { planTrainingRange } = await import('./trainingGround.ts');
 const { createTerrainDeformation } = await import('./terrainDeformation.ts');
 const { trainingExposure } = await import('./trainingSight.ts');
-const { trainingArcAllows, trainingTraverse } = await import('./trainingGround.ts');
+const { trainingArcAllows, trainingTraverse, trainingRoster, trainingSkirmishSide, TRAINING_SKIRMISH_CUE } = await import('./trainingGround.ts');
+const { matchRulesetFor } = await import('./matchRuleset.ts');
+const { splitBattleAllies } = await import('../game/rosterState.ts');
 const { aimArmorAlong, aimPenRatio } = await import('./aimPenetration.ts');
 const { penVerdict } = await import('./penVerdict.ts');
 
@@ -228,8 +233,34 @@ for (const [name, p] of [['U', U], ['V', V]]) {
 const ahead = { x: bulwark.x + Math.sin(hullYaw) * 80, z: bulwark.z + Math.cos(hullYaw) * 80 };
 assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead), bearingTo(ahead)), true, 'fire in front of it, its gun on the player');
 assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead) + 5 * DEG, bearingTo(ahead)), false, 'not while its gun is still turning');
-const s13 = ids.slice(ids.indexOf('training.toU'));
+const s13 = ids.slice(ids.indexOf('training.toU'), ids.indexOf('training.fight'));
 assert.deepEqual(s13, ['training.toU', 'training.bulwarkFront', 'training.flank', 'training.flankFire', 'training.finishBulwark'], 'S13');
 assert.deepEqual([...TRAINING_STEPS.find((step) => step.id === 'training.flankFire').advance.kinds], ['pen'], 'a round through its side');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side)`);
+// 9. S14.
+const roster = trainingRoster(TRAINING_RULES);
+const skirmish = TRAINING_RULES.skirmish;
+assert.deepEqual(roster, [...TRAINING_RULES.actors.map((a) => a.specId), ...skirmish.allies.map((b) => b.specId), ...skirmish.enemies.map((b) => b.specId)],
+  'the roster: the actors, then the allies, then the enemies');
+assert.equal(new Set(roster).size, roster.length, 'each its own tank');
+assert.ok(!roster.includes(TRAINING_RULES.loanerSpecId), 'none the loaner');
+for (const id of roster) assert.ok(TANK_SPECS[id], `${id} is a fleet tank`);
+assert.equal(planTrainingRange(TRAINING_RULES).lanes.length, roster.length, 'a mark for each, in roster order');
+const lastLane = planTrainingRange(TRAINING_RULES).lanes.at(-1);
+assert.ok(Math.abs(lastLane.x - skirmish.enemies.at(-1).x) < 1e-9 && Math.abs(lastLane.z - skirmish.enemies.at(-1).z) < 1e-9, 'the last mark the last enemy\'s');
+const trainingRules = matchRulesetFor('training');
+assert.equal(trainingRules.allies, skirmish.allies.length, 'the ruleset fields the allies');
+assert.equal(trainingRules.enemies, TRAINING_RULES.actors.length + skirmish.enemies.length, 'and the actors with the enemies');
+const fakes = roster.map((specId) => ({ id: specId, specId, spec: TANK_SPECS[specId] }));
+assert.deepEqual(splitBattleAllies(fakes, { playerSpecId: TRAINING_RULES.loanerSpecId, randomBattle: true, ruleset: trainingRules,
+  campaignOperationId: null, nationalAllyIds: null }).map((e) => e.specId), skirmish.allies.map((b) => b.specId), 'the ally split takes the allies alone');
+assert.equal(trainingSkirmishSide(TRAINING_RULES, skirmish.enemies[0].specId), 'enemy');
+assert.equal(trainingSkirmishSide(TRAINING_RULES, sentry.specId), null);
+const fight = TRAINING_STEPS.find((step) => step.id === 'training.fight');
+assert.equal(fight.cue, TRAINING_SKIRMISH_CUE, 'the fight step brings the skirmish in');
+assert.deepEqual([...fight.advance.actors], skirmish.enemies.map((b) => b.specId), 'and ends when every enemy bot is down');
+assert.equal(ids.at(-1), 'training.complete', 'the chapter closes on its card');
+assert.match(state, /if \(!isPlayer && context\.provingLayout && !skirmishBot\) seatProvingTarget\(context, entity, spawn\);/, 'skirmish bots get brains, not marks');
+assert.match(state, /if \(rules && key === TRAINING_SKIRMISH_CUE\)/, 'its cue brings every bot in');
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight)`);
