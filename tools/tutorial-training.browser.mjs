@@ -327,8 +327,9 @@ try {
     if (id === 'training.rollout') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
     else if (id === 'training.driveA' || id === 'training.driveB') { how = 'drove'; await takeLock(); await driveTo(TRAINING_POINTS[MARKERS[id]], now); }
     else if (id === 'training.spot' || id === 'training.peek' || id === 'training.toE' || id === 'training.toF') {
-      // the drives (S9's in the third-person view, so the arc and the Sentry are in the frame)
-      if (id === 'training.toF' && (await sightMode())) await page.keyboard.press('ShiftLeft');
+      // the drives in the third-person view (S5's after the zoom step left the sight on; S9's so the arc and the Sentry
+      // are in the frame), as a player drives
+      if ((id === 'training.spot' || id === 'training.toF') && (await sightMode())) { await page.keyboard.press('ShiftLeft'); await sleep(400); }
       how = 'drove'; await driveTo(TRAINING_POINTS[MARKERS[id]], now);
     }
     else if (id === 'training.bush') { how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
