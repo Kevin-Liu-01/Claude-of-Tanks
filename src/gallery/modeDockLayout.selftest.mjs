@@ -58,5 +58,67 @@ assert.deepEqual(viewportQueryViolations(css, 'gallery.css'), [],
 // Short landscape viewports keep the shell inside the visual viewport below the shorter navigation.
 assert.match(css, /@media \(\(height < 520px\) or \(width < 900px\) or \(\(width < 1440px\) and \(\(pointer: coarse\) or \(hover: none\)\)\)\)\{\s*\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - var\(--shell-nav-h\)\)\}/);
 
+// (274, owner 2026-11-18) A hero card fits its own grid row and keeps the hero art's 264/188 shape. Every part of a card is
+// absolute, and Chrome sizes a grid row from a card's definite height and its min-height alone: an aspect-ratio and a
+// percentage-padded ::before both add nothing, and a card with an auto height stretches to the row (measured on /gallery
+// 2026-11-18 at 1440 and 1024: ratio cards drew 85 and 70 px in 48 px rows, 291 overlapping pairs; padded and ratio
+// ::before sizers left 48 px cards; only a definite height in the list's container units gave 85 and 69.9 px rows, no
+// overlaps). From 242 each card hid the one above it but its tier chip and flag. The model below is that measurement: the
+// rules that reach a grid card are resolved by specificity and order, media-scoped ones included (the worst case).
+{
+  const HERO = 188 / 264;
+  const rules = [];
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const [, selectors, body] of flat.matchAll(/([^{};]+)\{([^{}]*)\}/g)) {
+    for (const selector of selectors.split(',').map((one) => one.trim())) rules.push({ selector, body, order: rules.length });
+  }
+  const resolve = (pattern) => {
+    const declared = {};
+    rules.filter((rule) => pattern.test(rule.selector))
+      .sort((a, b) => (a.selector.includes('[data-layout=grid]') - b.selector.includes('[data-layout=grid]')) || a.order - b.order)
+      .forEach((rule) => { for (const [, key, value] of rule.body.matchAll(/([\w-]+)\s*:\s*([^;]+)/g)) declared[key] = value.trim(); });
+    return declared;
+  };
+  const card = resolve(/^\.fam(?:\[data-layout=grid\])?\s+\.it$/);
+  const px = (value) => (/^(?:-?[\d.]+px|0)$/.test(value ?? '') ? parseFloat(value) : null);
+  // a card's width is --fam-col wherever the grid lays cards out: the desktop pair splits the list (an inline-size
+  // container) by the gap that --fam-col subtracts, and the phone strip's columns read its fixed --fam-col
+  const listRules = rules.filter((rule) => rule.selector === '.fam[data-layout=grid]');
+  const declared = (rule, property) => rule.body.match(new RegExp(`(?:^|;)\\s*${property}:([^;]+)`))?.[1].trim();
+  const pair = listRules.find((rule) => declared(rule, 'grid-template-columns'));
+  const strip = listRules.filter((rule) => declared(rule, '--fam-col')).pop();
+  const gap = pair && declared(pair, 'gap');
+  const columnsReadWidth = !!pair && !!strip && pair !== strip && declared(pair, 'container-type') === 'inline-size'
+    && declared(pair, 'grid-template-columns') === 'repeat(2,minmax(0,1fr))' && declared(pair, '--fam-col') === `calc((100cqw - ${gap}) / 2)`
+    && px(declared(strip, '--fam-col')) !== null && declared(strip, 'grid-auto-columns') === 'var(--fam-col)';
+  // the list's own properties never read its container units: there they resolve against an outer container, the viewport
+  // (the 274 check found 718 px cards when the list's columns read --fam-col)
+  for (const rule of rules.filter((one) => /^\.fam(?:\[data-layout=grid\])?$/.test(one.selector))) {
+    for (const [, property, value] of rule.body.matchAll(/([\w-]+)\s*:\s*([^;]+)/g)) {
+      assert.ok(property.startsWith('--') || !/\bcq(?:[whib]|min|max)\b|var\(--fam-col\)/.test(value) || property === 'grid-auto-columns' && px(declared(rule, '--fam-col')) !== null,
+        `${rule.selector} ${property} reads its own container units (${value}): only the cards inside may`);
+    }
+  }
+  const scaled = (card.height ?? '').match(/^calc\(var\(--fam-col\) \* ([\d.]+) \/ ([\d.]+)\)$/);
+  const definite = (width) => (scaled && columnsReadWidth ? width * Number(scaled[1]) / Number(scaled[2]) : px(card.height));
+  const [rw, rh] = (card['aspect-ratio'] ?? '').split('/').map(Number);
+  const minHeight = px(card['min-height']) ?? 0;
+  const card$ = (width) => {
+    const height = definite(width);
+    const row = Math.max(minHeight, height ?? 0);
+    return { row, drawn: height === null ? (rw && rh ? Math.max(minHeight, width * rh / rw) : row) : Math.max(minHeight, height) };
+  };
+  for (let width = 60; width <= 400; width += 1) {
+    const { row, drawn } = card$(width);
+    assert.ok(drawn <= row + 0.5, `a ${width} px grid card draws ${drawn.toFixed(1)} px in a ${row.toFixed(1)} px row: the card below `
+      + 'covers it (a grid card needs a definite height; its aspect-ratio and padding never size the row)');
+  }
+  for (let width = 60; width <= 400; width += 1) {
+    const { drawn } = card$(width);
+    assert.ok(Math.abs(drawn / width - HERO) < 0.01, `a ${width} px grid card is ${drawn.toFixed(1)} px tall, not the hero art's `
+      + `${(width * HERO).toFixed(1)} px (264/188)`);
+  }
+}
+
 console.log('modeDockLayout.selftest: three panes, the direction page\'s structure, the stage plates in its places, layer names kept '
-  + 'as accessible names, the scrolling and stacked layouts on the responsiveLayout bands pass');
+  + 'as accessible names, the scrolling and stacked layouts on the responsiveLayout bands, grid cards that fit their rows pass');
