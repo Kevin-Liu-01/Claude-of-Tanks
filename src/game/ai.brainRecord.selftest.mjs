@@ -39,9 +39,21 @@ const NOT_CARRIED = {
   'a commander\'s order (a solo battle\'s Jev)': ['order'],
   'carried as its own part of the record (BotBrain.r, .k)': ['combatRoute', 'lastFriendlyRisk'],
   'the record\'s own base (the construction)': ['brainBuilt'],
+  // counts and readings the brain decides nothing on: read by debugInfo alone (the probes' surface), so they cost the
+  // keyframe bytes and change no play
+  'read by debugInfo alone': [
+    'pocketEscapeUntilS', 'suspectUntilS', 'passivePresses', 'passivePressRepicks', 'passivePressCandidate',
+    'missVerdicts', 'pressUnreached', 'searchLegsDisplaced', 'searchLegs', 'colliderStops', 'conserveHolds',
+    'rackSpentVerdicts', 'objectiveShifts', 'zoneHoldMoves', 'missionReleases', 'levelRoutes', 'levelRoutesSuperseded',
+    'unbearableVerdicts', 'ramRuns', 'lastRuns', 'friendlyBlockCount', 'friendlyLaneMoves', 'friendlyLaneSearches',
+    'allyEmergencyStops', 'allyReverseEscapes', 'allyHoldGiveWays', 'deadLegs', 'ordersTaken', 'steerGoalX',
+    'steerGoalZ', 'routeCornerFlips', 'wedgeReleases', 'cornersCrowded', 'pivotCreeps', 'pivotRollCuts', 'solidBrakes',
+    'contactReleases', 'plannedLegRuns', 'plannedLegRejoins', 'ballShots', 'airShots', 'offensiveJumps', 'jockeyLegs',
+    'ramHoldOffs', 'routeOutcome',
+  ],
 };
 /** The record's lists' text, pinned to BRAIN_LAYOUT: change the lists, bump the layout and pin the new digest here. */
-const LAYOUT_DIGESTS = { 1: '7b4e583381f6fc27' };
+const LAYOUT_DIGESTS = { 1: '0dcbb987c19e9f64' };
 
 console.log('[1] the census: every createAI field carried or named, each list read and written in one order');
 {
