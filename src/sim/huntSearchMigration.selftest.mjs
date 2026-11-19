@@ -19,8 +19,11 @@
 // [5] (fix-up r2, the correctness review: a hunter revived between the keyframe and the elected seat's newest frame came
 // back with its dead life's search, its old anchor and director lead) through the real resume: a Horde match actor, a
 // trickle arrival told after the keyframe, resumeStateFromRetained and applyResumeState (migrationState.ts
-// checkpointAfterRevives). [5a] A returning hunter holds no record until its first plan anchors it where it stands, with
-// no lead; every other hunter keeps the keyframe's record, and the plans and their clock are the keyframe's. [5b] A first
+// checkpointAfterRevives). [5a] A returning hunter's dead life's record does not come back; every other hunter keeps the
+// keyframe's record, and the plans and their clock are the keyframe's. (275: the restore takes the arrival up as the old
+// host made it, its point found again from the arrival points' stream: the returning hunter holds the search and lead the
+// old host's revive started, and hunts on as the old host's does. Before, it held none until its first plan anchored it
+// where it then stood, with no lead.) [5b] A first
 // arrival has no plan in the keyframe, so the new host's first route push (before its first step sets the mode clock)
 // plans every hunter at once: on the keyframe's clock, not on 0. (Fix-up r3, the completeness review: both checks also
 // passed for a hunter that held no record at all; each now requires the record.)
@@ -283,17 +286,19 @@ console.log('[5] a trickle arrival after the keyframe, through the real resume (
   }
   const describe = (record) => (record ? `${record.phase} at ${fmt(record)}, lead ${fmt(record.lead)}, atS ${record.atS.toFixed(2)}` : record === null ? 'none' : 'not exposed');
 
-  console.log(' [5a] a returning hunter: its dead life\'s search stays behind');
+  console.log(' [5a] a returning hunter: its dead life\'s search stays behind, the old host\'s revive\'s is taken up');
   {
     const { old, fresh, zs, revived, keyframe, sealedSearch, sealedAtS, recordOf } = gapArrival(6);
     ok(revived.length > 0 && revived.every((id) => sealedSearch.has(id)), `the case is built: ${revived.join(', ') || 'no hostile'} arrived after the `
       + `keyframe (tick ${keyframe?.tick}) with its dead life's record in it (${revived.map((id) => sealedSearch.get(id)?.phase ?? 'none').join(', ')})`);
     ok(revived.every((id) => { const now = recordOf(old, id); return !!now && JSON.stringify(now) !== JSON.stringify(sealedSearch.get(id)); }),
       `the case is built: the old host started each one's search over (${revived.map((id) => describe(recordOf(old, id))).join('; ')})`);
+    const near = (a, b, m) => !!a && !!b && Math.hypot(a.x - b.x, a.z - b.z) < m;
+    const sameSearch = (a, b) => !!a && !!b && near(a, b, 0.5) && Math.abs(a.atS - b.atS) < 1e-9 && ((!a.lead && !b.lead) || near(a.lead, b.lead, 0.5));
     for (const id of revived) {
-      const record = recordOf(fresh, id), dead = sealedSearch.get(id);
-      ok(record === null, `${id}'s dead life's search does not come back on the new host (restored: ${describe(record)}; the dead life's at `
-        + `${fmt(dead)}, lead ${fmt(dead?.lead)})`);
+      const record = recordOf(fresh, id), dead = sealedSearch.get(id), theirs = recordOf(old, id);
+      ok(!!record && !sameSearch(record, dead) && sameSearch(record, theirs), `${id}'s dead life's search does not come back on the new host: it holds the one the `
+        + `old host's revive started (restored: ${describe(record)}; the old host's: ${describe(theirs)}; the dead life's at ${fmt(dead)}, lead ${fmt(dead?.lead)})`);
     }
     const kept = zs.filter((z) => !revived.includes(z.id));
     const keptSame = kept.filter((z) => JSON.stringify(recordOf(fresh, z.id)) === JSON.stringify(sealedSearch.get(z.id) ?? null));
@@ -303,14 +308,13 @@ console.log('[5] a trickle arrival after the keyframe, through the real resume (
     ok(!!sealedHunt && restoredHunt?.planAtS === sealedHunt.planAtS && plansOf(restoredHunt) === plansOf(sealedHunt)
       && revived.every((id) => sealedHunt.plans.some(([planned]) => planned === id)),
     `the plans and their clock are the keyframe's, the returning hunter's included (planAtS ${sealedHunt?.planAtS} -> ${restoredHunt?.planAtS})`);
-    // the new host plays on: the first plan that finds the hunter no quarry anchors it where it then stands, with no lead
-    const at = new Map(revived.map((id) => [id, { ...fresh.authority.entityById.get(id).state.pos }]));
+    // both hosts play on: the returning hunter's search goes on as the old host's does
     fresh.authority.onMatchReady();
-    for (let n = 0; n < 90; n++) { fresh.authority.step({ dt: 1 / 60, inputs }); fresh.authority.eventsForViewer('h0'); fresh.authority.afterEventBroadcast(); }
+    for (let n = 0; n < 90; n++) for (const actor of [fresh, old]) { actor.authority.step({ dt: 1 / 60, inputs }); actor.authority.eventsForViewer('h0'); actor.authority.afterEventBroadcast(); }
     for (const id of revived) {
-      const record = recordOf(fresh, id), from = at.get(id);
-      ok(!!record && record.lead === null && record.atS >= sealedAtS && Math.hypot(record.x - from.x, record.z - from.z) < 30,
-        `${id} hunts on from where it rose, 1.5 s on (${describe(record)}; restored at ${fmt(from)})`);
+      const record = recordOf(fresh, id), theirs = recordOf(old, id);
+      ok(!!record && record.atS >= sealedAtS && record.phase === theirs?.phase && sameSearch(record, theirs),
+        `${id} hunts on as the old host's does, 1.5 s on (${describe(record)}; the old host's: ${describe(theirs)})`);
     }
     old.stop(); fresh.stop();
   }

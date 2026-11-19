@@ -7661,15 +7661,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (index === 6 || index === 13) return typeof value === 'string';
     return value === null || typeof value === 'string';
   }
+  /** brainNames' fields, each from its index (brainNameFits has held each to its type). */
   function setBrainNames(values: readonly (string | null)[]): void {
     mode = values[0] as AiMode;
-    gunLaneTargetId = values[1]!;
+    gunLaneTargetId = values[1] as string | null;
     scootKind = values[2] as typeof scootKind;
     reaction = values[3] as Reaction | null;
-    [, , , , targetActivityId, missStreakTargetId] = values;
-    searchKind = values[6]!;
-    [, , , , , , , rackDwellId, rackSpentId, levelRouteTargetId, unbearableId, ramContactId, trafficDetourAllyId] = values;
-    routeOutcome = values[13]!;
+    targetActivityId = values[4] as string | null;
+    missStreakTargetId = values[5] as string | null;
+    searchKind = values[6] as string;
+    rackDwellId = values[7] as string | null;
+    rackSpentId = values[8] as string | null;
+    levelRouteTargetId = values[9] as string | null;
+    unbearableId = values[10] as string | null;
+    ramContactId = values[11] as string | null;
+    trafficDetourAllyId = values[12] as string | null;
+    routeOutcome = values[13] as string;
   }
   const brainHulls = (): (AiEntity | null)[] => [target, suspect, underFire, ramHull];
   /** The brain's construction (BotBrain's sparse base): both hosts build it alike from the same seed (set at the end). */

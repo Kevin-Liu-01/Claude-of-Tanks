@@ -346,10 +346,13 @@ for (const [label, revivedInWindow] of [['[7a] a raider down when the keyframe i
     + `(${JSON.stringify(run.sealed?.streams ?? null)})`);
   ok(run.taken[0] === run.atKeyframe[0] && run.taken[1] === run.atKeyframe[1], `the new brain draws on from the keyframe's positions of both `
     + `(controller ${run.taken[0]}, planner ${run.taken[1]}), not a fresh brain's`);
-  const bound = revivedInWindow ? 4 : 0.5;
+  // 275: 0.5 m revived in the window too (it was 4 m: the new brain began its life from its construction's state and its
+  // engine at rest; the record carries the brain the dead life left, the revive's hand-back runs on it, and the spool is
+  // the ramp's since the told revive)
+  const bound = 0.5;
   ok(run.together > 60 * 10 && run.apart < bound, `once both are up the two raiders keep one track for 25 s (at most ${run.apart.toFixed(2)} m apart`
     + `${run.apartAt === null ? '' : `, at +${run.apartAt.toFixed(2)} s`}; ${(run.together / 60).toFixed(1)} s together; bound ${bound} m${revivedInWindow
-      ? ': the old brain drove its revived life 0.25 s and planned it from its spawn before the seat\'s frame, which the new one plans from the newer row' : ''})`);
+      ? ': the old brain drove its revived life 0.25 s before the seat\'s frame' : ''})`);
 }
 
 if (failures) { console.error(`botDriveMigration.selftest: ${failures} failure(s)`); process.exit(1); }

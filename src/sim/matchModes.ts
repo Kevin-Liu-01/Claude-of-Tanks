@@ -483,6 +483,17 @@ interface ObjectiveCheckpoint {
   /** Gravity Mode's boost caches (improve-271 plan 009: a migrated host dropped every cache on the ground and restarted
    *  the drop clock): the next drop, the pickup sequence and the pickups. Absent in other modes and older checkpoints. */
   caches?: { nextAtS: number; sequence: number; pickups: PickupState[] };
+  /**
+   * The bots' role deals and their clocks (275), each a second apart: CTF's roles (role and rank per bot, and the flags'
+   * state they were dealt for), Zone Control's zone per bot, Turbo Ball's roles and each striker's commit (strikerHoldS).
+   * A migrated host dealt them afresh on its own second, and a striker that had the ball lost its commit to a teammate.
+   * Mode time; null: never dealt. Absent: none dealt.
+   */
+  deals?: {
+    flag?: { atS: number | null; roles: [id: string, role: string, rank: number][]; seen: [status: FlagState['status'] | null, carrierId: string | null][] };
+    zone?: { atS: number | null; zones: [id: string, zoneId: string][] };
+    ball?: { atS: number | null; roles: [id: string, role: string, rank: number][]; strikers: [id: string, untilS: number][] };
+  };
 }
 /** One raider's stage (flagBots.raidStageM): when it reached it, and whether it has gone in. */
 interface RaidStage { atS: number; go: boolean }
@@ -500,6 +511,12 @@ interface WaveCheckpoint {
      *  shows it (migrationState.ts checkpointAtNewestFrame); never in a captured checkpoint. The restore takes it up as
      *  begun at nextWaveAtS (startHordeWave), and never begins it a second time. */
     begunWave?: number;
+    /** The stranded tracker (275): when it last looked (null: never) and each hostile's best reach of the humans and since
+     *  when (strandedS). A migrated host tracked every hostile afresh: a cut-off one was benched 30 s late. */
+    strand?: { atS: number | null; track: [id: string, bestM: number, sinceS: number][] };
+    /** A begun wave's arrivals hidden from the elected seat, due on the first step (275; hordeArrivalDue): each one's point
+     *  and lead seed. Captured by a host still in its resume hold. */
+    due?: [id: string, x: number, z: number, yaw: number, seed: number][];
     /** The trickle's arrivals the old host made after this checkpoint's capture, whose revives the resume replayed, with
      *  the mode time each was told at (gaps 274 fix-up r1; migrationState.ts checkpointAfterRevives); never in a captured
      *  checkpoint. The restore takes each up as made (trickleHorde): out of the queue, the trickle's clock from it, and
@@ -528,7 +545,13 @@ interface WaveCheckpoint {
      *  mode time of the advance and the defenders told risen at it (gaps 274 fix-up r1; migrationState.ts
      *  checkpointAtNewestFrame); never in a captured checkpoint. The restore takes the advance up as begun (advanceLine),
      *  and never advances or reinforces a second time. */
-    begun?: { index: number; atS: number; risen: string[] } };
+    begun?: { index: number; atS: number; risen: string[] };
+    /** The defenders' hold ranks on the ring and when they were dealt (275; holdSlot, once a second; null: never). */
+    hold?: { atS: number | null; ranks: [id: string, rank: number, of: number][] };
+    /** A begun advance's arrivals hidden from the elected seat, due on the first step on their slots (275;
+     *  lineArrivalDue): slot, count and the slot's draws. Captured by a host still in its resume hold; before, a host
+     *  elected from that keyframe revived them at their own spawns, their slot draws spent. */
+    due?: [id: string, slot: number, count: number, drawn: [back: number, jitter: number] | null][] };
 }
 
 /** Why every viewer sees a hull its side has not spotted (the authority's spotting filter reads it). */
@@ -2441,6 +2464,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // defendShare of a large squad guards home and the rest raid on lanes.
   const flagRules = ruleset.flagBots ?? matchRulesetFor('capture_the_flag').flagBots!;
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
+  const FLAG_ROLES: readonly FlagRole[] = ['recover', 'escort', 'defend', 'raid'];
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
@@ -2610,6 +2634,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // crowdCap of a team stand within crowdM of the ball. The ball is public.
   const ballRules = ruleset.ballBots ?? matchRulesetFor('turbo_ball').ballBots!;
   type BallRole = 'striker' | 'support' | 'keeper' | 'screen' | 'wing';
+  const BALL_ROLES: readonly BallRole[] = ['striker', 'support', 'keeper', 'screen', 'wing'];
   const ballRoles = new Map<string, { role: BallRole; rank: number }>();
   const strikerUntil = new Map<string, number>();
   let ballRolesAt = -Infinity;
@@ -2663,6 +2688,48 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       keepers.forEach((e, k) => ballRoles.set(e.id, { role: 'keeper', rank: k }));
       const field = rest.filter((e) => !keepers.includes(e)).sort((a, b) => reach(a) - reach(b) || (a.id < b.id ? -1 : 1));
       field.forEach((e, k) => ballRoles.set(e.id, k < ballRules.screens ? { role: 'screen', rank: k } : { role: 'wing', rank: k - ballRules.screens }));
+    }
+  }
+  /** The role deals for a checkpoint (275; ObjectiveCheckpoint.deals), each part absent when never dealt. */
+  function captureDeals(): { deals?: NonNullable<ObjectiveCheckpoint['deals']> } {
+    const deals: NonNullable<ObjectiveCheckpoint['deals']> = {};
+    const at = (value: number): number | null => (Number.isFinite(value) ? value : null);
+    if (flagRoles.size || Number.isFinite(flagRolesAt)) {
+      deals.flag = { atS: at(flagRolesAt), roles: [...flagRoles].map(([key, job]): [string, string, number] => [key, job.role, job.rank]),
+        seen: flagRolesSeen.map((seen): [FlagState['status'] | null, string | null] => [seen.status, seen.carrierId]) };
+    }
+    if (zoneAssignments.size || Number.isFinite(zoneAssignmentAt)) {
+      deals.zone = { atS: at(zoneAssignmentAt), zones: [...zoneAssignments].map(([key, zone]): [string, string] => [key, zone.id]) };
+    }
+    if (ballRoles.size || strikerUntil.size || Number.isFinite(ballRolesAt)) {
+      deals.ball = { atS: at(ballRolesAt), roles: [...ballRoles].map(([key, job]): [string, string, number] => [key, job.role, job.rank]),
+        strikers: [...strikerUntil] };
+    }
+    return Object.keys(deals).length ? { deals } : {};
+  }
+  /** The role deals as the old host had them (275): its clocks, the roles and commits it dealt; an entry that is not one is
+   *  skipped, so its bot is dealt afresh at the next deal. */
+  function restoreDeals(saved: ObjectiveCheckpoint['deals']): void {
+    const at = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : -Infinity);
+    const rank = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+    if (saved?.flag) {
+      flagRolesAt = at(saved.flag.atS);
+      flagRoles.clear();
+      for (const [key, role, n] of saved.flag.roles ?? []) if ((FLAG_ROLES as readonly string[]).includes(role) && rank(n)) flagRoles.set(key, { role: role as FlagRole, rank: n });
+      flagRolesSeen.length = 0;
+      for (const [status, carrierId] of saved.flag.seen ?? []) flagRolesSeen.push({ status, carrierId });
+    }
+    if (saved?.zone) {
+      zoneAssignmentAt = at(saved.zone.atS);
+      zoneAssignments.clear();
+      for (const [key, zoneId] of saved.zone.zones ?? []) { const zone = zones.find((candidate) => candidate.id === zoneId); if (zone) zoneAssignments.set(key, zone); }
+    }
+    if (saved?.ball) {
+      ballRolesAt = at(saved.ball.atS);
+      ballRoles.clear();
+      for (const [key, role, n] of saved.ball.roles ?? []) if ((BALL_ROLES as readonly string[]).includes(role) && rank(n)) ballRoles.set(key, { role: role as BallRole, rank: n });
+      strikerUntil.clear();
+      for (const [key, untilS] of saved.ball.strikers ?? []) if (typeof untilS === 'number' && Number.isFinite(untilS)) strikerUntil.set(key, untilS);
     }
   }
   const ballBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
@@ -3068,6 +3135,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       spawnSector = saved.horde.spawnSector; arrivalStalledAtS = saved.horde.stalledAtS; strandedPending = saved.horde.stranded ?? 0;
       strandRecycles.clear(); for (const [id, n] of saved.horde.benched ?? []) strandRecycles.set(id, n);
       strandStrikeQueue.length = 0; strandStrikeQueue.push(...(saved.horde.strikes ?? []));
+      // the stranded tracker and a resume hold's due arrivals as the old host had them (275)
+      const strand = saved.horde.strand;
+      strandCheckAtS = finite(strand?.atS) ? strand!.atS! : -Infinity;
+      strandTrack.clear();
+      for (const [key, bestM, sinceS] of strand?.track ?? []) if (finite(bestM) && finite(sinceS)) strandTrack.set(key, { bestM, sinceS });
+      hordeArrivalDue.clear();
+      for (const [key, x, z, yaw, seed] of saved.horde.due ?? []) if ([x, z, yaw].every(finite) && Number.isInteger(seed)) hordeArrivalDue.set(key, [x, z, yaw, seed]);
       pickups.length = 0; pickups.push(...saved.horde.pickups.map((p) => ({ ...p }))); pickupSequence = saved.horde.sequence;
       // the trickle's arrivals the old host made after the keyframe, their revives replayed (fix-up r1): taken up as made,
       // in their order (out of the queue, the clock run from the last), so the new host's first step brings none twice
@@ -3118,6 +3192,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       freshDefenders = [...saved.line.fresh];
       nextReinforceAtS = saved.line.nextReinforceAtS ?? Infinity;
       allyDownAt.clear(); for (const [key, at] of saved.line.allyDownAt) allyDownAt.set(key, at);
+      // the defenders' hold ranks and a resume hold's due arrivals as the old host had them (275)
+      holdRanksAt = finite(saved.line.hold?.atS) ? saved.line.hold!.atS! : -Infinity;
+      holdRanks.clear();
+      for (const [key, rank, of] of saved.line.hold?.ranks ?? []) if (Number.isInteger(rank) && Number.isInteger(of)) holdRanks.set(key, { rank, of });
+      lineArrivalDue.clear();
+      for (const [key, slot, count, drawn] of saved.line.due ?? []) {
+        if (Number.isInteger(slot) && Number.isInteger(count) && (drawn === null || (Array.isArray(drawn) && finite(drawn[0]) && finite(drawn[1])))) {
+          lineArrivalDue.set(key, [slot, count, drawn ? [drawn[0], drawn[1]] : null]);
+        }
+      }
       for (const zone of saved.line.zones) {
         const live = zones.find((candidate) => candidate.id === zone.id);
         if (live) { live.control = zone.control; live.owner = zone.owner; live.contested = zone.contested; }
@@ -3286,14 +3370,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         ...(ruleset.horde ? { horde: { queued: hordeQueued, special: hordeSpecial, healthScale: hordeHealthScale,
           nextWaveAtS, nextTrickleAtS, spawnSector, stalledAtS: arrivalStalledAtS, stranded: strandedPending,
           ...(strandRecycles.size ? { benched: [...strandRecycles] } : {}), ...(strandStrikeQueue.length ? { strikes: [...strandStrikeQueue] } : {}), pickups: pickups.map((p) => ({ ...p })),
-          sequence: pickupSequence } } : {}),
+          sequence: pickupSequence,
+          ...(strandTrack.size || Number.isFinite(strandCheckAtS) ? { strand: { atS: Number.isFinite(strandCheckAtS) ? strandCheckAtS : null,
+            track: [...strandTrack].map(([key, track]): [string, number, number] => [key, track.bestM, track.sinceS]) } } : {}),
+          ...(hordeArrivalDue.size ? { due: [...hordeArrivalDue].map(([key, due]): [string, number, number, number, number] => [key, ...due]) } : {}) } } : {}),
         ...(ruleset.assault ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
           counter: counter ? { x: counter.x, z: counter.z, atS: counter.atS, untilS: counter.untilS, ids: [...counter.ids], line: counter.line,
             ...(counter.made ? { launched: true } : {}) } : null, fresh: [...freshDefenders],
           nextReinforceAtS: Number.isFinite(nextReinforceAtS) ? nextReinforceAtS : null, allyDownAt: [...allyDownAt],
           zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
           ...(attackPlan.size ? { attack: [...attackPlan].map(([key, plan]): [string, AttackStage] => [key,
-            { x: plan.x, z: plan.z, stagedAtS: Number.isFinite(plan.stagedAtS) ? plan.stagedAtS : null, pushing: plan.pushing }]) } : {}) } } : {}),
+            { x: plan.x, z: plan.z, stagedAtS: Number.isFinite(plan.stagedAtS) ? plan.stagedAtS : null, pushing: plan.pushing }]) } : {}),
+          ...(holdRanks.size || Number.isFinite(holdRanksAt) ? { hold: { atS: Number.isFinite(holdRanksAt) ? holdRanksAt : null,
+            ranks: [...holdRanks].map(([key, slot]): [string, number, number] => [key, slot.rank, slot.of]) } } : {}),
+          ...(lineArrivalDue.size ? { due: [...lineArrivalDue].map(([key, [slot, count, drawn]]): [string, number, number, [number, number] | null] =>
+            [key, slot, count, drawn ? [drawn[0], drawn[1]] : null]) } : {}) } } : {}),
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]),
@@ -3306,6 +3397,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
           ...(raidStaged.size ? { raids: [...raidStaged].map(([key, staged]): [string, RaidStage] => [key, { atS: staged.atS, go: staged.go }]) } : {}),
           ...(ruleset.mars ? { caches: { nextAtS: nextMarsCacheAtS, sequence: pickupSequence, pickups: pickups.map((p) => ({ ...p })) } } : {}),
+          ...captureDeals(),
         } } : {}),
         ...(huntSearch.size || huntPlan.size ? { hunt: captureHunt() } : {}), ...(air ? { air: air.capture() } : {}),
         rng: [rng.state, spawnRng.state] };
@@ -3380,6 +3472,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           nextMarsCacheAtS = saved.caches.nextAtS; pickupSequence = saved.caches.sequence;
           pickups.length = 0; pickups.push(...saved.caches.pickups.map((p) => ({ ...p })));
         }
+        restoreDeals(saved.deals);
       }
     },
     huntSearchOf(entity) {
