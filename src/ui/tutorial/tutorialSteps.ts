@@ -54,7 +54,10 @@ export type TutorialAdvance =
   /** This actor is destroyed. */
   | { readonly on: 'destroy'; readonly actor: string }
   /** The player's hull stands turned from the line to this actor between the two angles (deg, 0 nose on), this long. */
-  | { readonly on: 'angle'; readonly actor: string; readonly minDeg: number; readonly maxDeg: number; readonly holdS: number };
+  | { readonly on: 'angle'; readonly actor: string; readonly minDeg: number; readonly maxDeg: number; readonly holdS: number }
+  /** The player's hull is hidden from this actor and its turret seen over the ground (tutorialGuideMath.ts
+   *  trainingExposure: hull down), this long. */
+  | { readonly on: 'hullDown'; readonly actor: string; readonly holdS: number };
 
 /**
  * A step's guidance over the battle (tutorialGuide.ts draws it): a marker to drive to, the path toward it, an actor to
@@ -71,6 +74,8 @@ export interface TutorialGuideSpec {
   readonly aimAt?: { readonly id: string; readonly along: number; readonly up: number; readonly across: number };
   /** S9: the angling arc round the player against a scripted shooter (its battle id), in its reticle's colours. */
   readonly angle?: { readonly id: string };
+  /** S10: the player's hull and turret over its tank, each lit while this actor can see it (trainingExposure). */
+  readonly exposure?: { readonly id: string };
 }
 
 export interface TutorialMedia {
@@ -207,6 +212,7 @@ const PLAY = { dim: false, card: 'upper' } as const;
 const TARGET1 = trainingActor(TRAINING_RULES, 'target1')!.specId;
 const TARGET2 = trainingActor(TRAINING_RULES, 'target2')!.specId;
 const SENTRY = trainingActor(TRAINING_RULES, 'sentry')!.specId;
+const SENTRY2 = trainingActor(TRAINING_RULES, 'sentry2')!.specId;
 /** S9's window: the hull turned between these from the line to the Sentry, where its HEAT on the loaner's front plate
  *  reads red (32 to 62 degrees at ring F, sim/trainingThreat.ts; tutorialSteps.selftest.mjs holds it). */
 export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
@@ -350,6 +356,26 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
     title: 'tutorial.training.volley.title', body: 'tutorial.training.volley.body',
     advance: { on: 'hit', by: 'actor', actor: SENTRY, kinds: HELD, count: 2 },
     guide: { actor: { id: SENTRY, label: 'tutorial.training.actor.sentry' }, angle: { id: SENTRY } } },
+  // S10: hull down. A 1.9 m berm stands across the line to Sentry 2, a T-62MV whose APFSDS goes through the loaner's hull
+  // and not its turret; behind it the hull is hidden and the turret clears the top. The shape over the player's tank lights
+  // what Sentry 2 sees; it fires at the turret, then the player fires back.
+  { id: 'training.toG', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.toG.title', body: 'tutorial.training.toG.body', advance: { on: 'reach' },
+    guide: { marker: marker(TRAINING_POINTS.ringG, 'tutorial.training.marker.g'), path: true } },
+  { id: 'training.hullDown', chapter: 'training', target: [], ...PLAY, behindS: 40,
+    title: 'tutorial.training.hullDown.title', body: 'tutorial.training.hullDown.body', advance: { on: 'hullDown', actor: SENTRY2, holdS: 2 },
+    guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 },
+      marker: marker(TRAINING_POINTS.ringG, 'tutorial.training.marker.g') } },
+  { id: 'training.hullDownFire', chapter: 'training', target: [], ...PLAY, cue: 'sentry2', penBody: 'tutorial.training.hullDownFire.exposed',
+    title: 'tutorial.training.hullDownFire.title', body: 'tutorial.training.hullDownFire.body',
+    advance: { on: 'hit', by: 'actor', actor: SENTRY2, kinds: HELD, count: 2 },
+    guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 } } },
+  { id: 'training.fireBack', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, cue: 'sentry2', behindS: 60,
+    title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.body', advance: { on: 'destroy', actor: SENTRY2 },
+    keys: { fire: 'fire' }, guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 } } },
+  { id: 'training.fireBackTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry2', behindS: 60,
+    title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.bodyTouch', advance: { on: 'destroy', actor: SENTRY2 },
+    guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 }, hud: ['.cot-touch .round.fire'] } },
 ];
 
 /** A chapter's steps for this player's hands, in order. */

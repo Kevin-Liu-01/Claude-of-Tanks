@@ -26,7 +26,7 @@ import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
 import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
 import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
-import { headingFromLine } from './tutorialGuideMath.ts';
+import { headingFromLine, trainingExposure } from './tutorialGuideMath.ts';
 
 /** Diagnostics (app/tutorialAccess.ts debugGuide): the guide alone, on whatever battle is showing. */
 export { createTutorialGuide };
@@ -303,6 +303,16 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
         const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
         const angle = me && them ? Math.abs(headingFromLine(me, them)) : null;
         if (angle == null || angle < advance.minDeg || angle > advance.maxDeg) { since = 0; return false; }
+        since ||= performance.now();
+        return performance.now() - since >= advance.holdS * 1000;
+      });
+    } else if (advance.on === 'hullDown') {
+      // hull hidden from the actor and turret seen over the ground (the berm's included), held
+      let since = 0;
+      poll(() => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        const seen = me && them && port.guide ? trainingExposure(them, me, port.guide.groundY) : null;
+        if (!seen || seen.hull || !seen.turret) { since = 0; return false; }
         since ||= performance.now();
         return performance.now() - since >= advance.holdS * 1000;
       });

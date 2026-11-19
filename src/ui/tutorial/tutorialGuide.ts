@@ -23,7 +23,7 @@
  * tutorialGuideMath.ts, held by tutorialGuide.selftest.mjs.
  */
 import {
-  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox,
+  ARC_RADII_M, EXPOSURE_POINTS, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox, trainingExposure,
   type ScreenPoint, type Viewport, type WorldPoint,
 } from './tutorialGuideMath.ts';
 import type { PenVerdict } from '../../sim/penVerdict.ts';
@@ -71,6 +71,8 @@ export interface TutorialGuideLayer {
 interface GuideSnapshot {
   /** The angling arc's sectors drawn, and the needle's verdict (the hull's heading now). */
   readonly arc: number;
+  /** The exposure shape (S10): which of the hull and turret it lit, or null while it does not show. */
+  readonly exposure: { readonly hull: boolean; readonly turret: boolean } | null;
   readonly needle: PenVerdict | null;
   readonly ring: boolean;
   readonly chevrons: number;
@@ -134,6 +136,13 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let arcVerdicts: ReadonlyArray<PenVerdict | null> = [];
   let needleVerdict: PenVerdict | null = null;
   let arcAskedAt = -Infinity;
+  // the exposure shape (S10): the hull and the turret over the player's tank, each lit while the actor sees it
+  const exposureShape = svgEl('g', 'cot-tut-guide-exposure', world.svg);
+  const exposureHull = svgEl('rect', 'cot-tut-guide-exposure-hull', exposureShape);
+  const exposureTurret = svgEl('rect', 'cot-tut-guide-exposure-turret', exposureShape);
+  for (const [node, x, y, w, h] of [[exposureHull, -26, -6, 52, 12], [exposureTurret, -12, -18, 24, 11]] as const) {
+    node.setAttribute('x', String(x)); node.setAttribute('y', String(y)); node.setAttribute('width', String(w)); node.setAttribute('height', String(h));
+  }
 
   const edge = svgEl('g', 'cot-tut-guide-edge', over.svg);
   const edgeArrow = svgEl('path', 'cot-tut-guide-edge-arrow', edge);
@@ -149,7 +158,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
   let escalated = false;
   let hidden = false;
   let frame = 0;
-  let drawn: GuideSnapshot = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+  let drawn: GuideSnapshot = { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
 
   const show = (node: Element, on: boolean): void => {
     if (on) node.removeAttribute('display'); else node.setAttribute('display', 'none');
@@ -182,8 +191,22 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
     const marker = spec?.marker ?? null;
     const actorSpec = spec?.actor ?? null;
     const actor = actorSpec ? port.actor(actorSpec.id) : null;
-    const next: { arc: number; needle: PenVerdict | null; ring: boolean; chevrons: number; bracket: boolean; edge: { x: number; y: number } | null;
-      hud: boolean; aim: boolean } = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+    const next: { exposure: { hull: boolean; turret: boolean } | null; arc: number; needle: PenVerdict | null; ring: boolean; chevrons: number;
+      bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
+      { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+
+    // the exposure shape: over the player's tank, its hull and turret each lit while the actor sees it over the ground
+    const exposureSpec = spec?.exposure ?? null;
+    const watcher = exposureSpec ? port.actor(exposureSpec.id) : null;
+    const above = exposureSpec && player ? port.project({ x: player.x, y: player.y + EXPOSURE_POINTS.turret[1]!.up + 2.4, z: player.z }) : null;
+    if (watcher && player && above && !above.behind) {
+      const seen = trainingExposure(watcher, player, port.groundY);
+      exposureShape.setAttribute('transform', `translate(${above.x.toFixed(1)} ${above.y.toFixed(1)})`);
+      exposureHull.classList.toggle('is-seen', seen.hull);
+      exposureTurret.classList.toggle('is-seen', seen.turret);
+      next.exposure = seen;
+    }
+    show(exposureShape, !!next.exposure);
 
     // the angling arc: each sector a hull heading against the line to the shooter, coloured by the shooter's round on the
     // player's front plate at that heading (asked again every ARC_ASK_MS: the hull turns, the line moves)
@@ -358,7 +381,7 @@ export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
       arcAskedAt = -Infinity;
       arcVerdicts = [];
       needleVerdict = null;
-      drawn = { arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      drawn = { exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
       schedule();
     },
     setEscalated(on): void {

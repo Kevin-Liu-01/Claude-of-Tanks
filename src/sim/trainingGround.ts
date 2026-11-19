@@ -50,6 +50,20 @@ export interface TrainingActorRule {
   readonly volley?: TrainingVolley;
 }
 
+/**
+ * An earthwork the scenes stamp onto the ground (S10's berm): a course stamp (sim/terrainDeformation.ts) across the line
+ * from its centre toward an actor, its profile along that line (knots u, h: metres from the centre toward the actor, and
+ * the height there), `halfWidthM` either side of it, blended into the ground over `skirtM`.
+ */
+export interface TrainingEarthwork {
+  readonly x: number;
+  readonly z: number;
+  readonly toward: string;
+  readonly profile: readonly number[];
+  readonly halfWidthM: number;
+  readonly skirtM: number;
+}
+
 export interface TrainingRules {
   readonly mapId: string;
   /** The loaner: every player trains in this tank. */
@@ -60,9 +74,23 @@ export interface TrainingRules {
   readonly start: { readonly x: number; readonly z: number; readonly yawDeg: number };
   /** The scenes' hulls, in roster order (each spec once, none the loaner). */
   readonly actors: readonly TrainingActorRule[];
+  /** The earthworks the scenes stand behind, stamped at the battle's setup. */
+  readonly earthworks: readonly TrainingEarthwork[];
   /** One light whatever the player's battle times (the scenes read in daylight). */
   readonly timeOfDay: 'day';
 }
+
+/** S10's berm and Sentry 2 (tools s10-search), named once: the berm's line, the ring behind it and the hull read them. */
+const S10_BERM = Object.freeze({ x: -430, z: 20 });
+const S10_SENTRY2 = Object.freeze({ x: -280, z: 50 });
+/** Where the player stops behind the berm: this far back from its centre along its line (m), on the level past its back
+ *  slope's foot (8 m), where the crest hides the loaner's hull and its turret clears it; climbing the slope, its nose
+ *  rises over the crest and the hull shows (trainingThreat.selftest.mjs holds both). */
+const S10_RING_BACK_M = 10;
+const S10_LINE = (() => {
+  const dx = S10_SENTRY2.x - S10_BERM.x, dz = S10_SENTRY2.z - S10_BERM.z, length = Math.hypot(dx, dz);
+  return { x: dx / length, z: dz / length };
+})();
 
 /**
  * The training battle (storyboard §2): the south-west of Verdant Fields. The drive, turret and vision scenes (S1 to S4)
@@ -95,6 +123,17 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // measured: the upper front plate's centre, 2.94 m ahead of the hull's centre and 1 m up.
     Object.freeze({ key: 'sentry', specId: 't72bu_1989', x: -420, z: 120, faces: 'fireF', presentDeg: 0,
       volley: Object.freeze({ shellType: 'HEAT', firstS: 2.5, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
+    // S10's Sentry 2: a T-62MV whose APFSDS reads red on the loaner's turret front (0.78) and green on its upper hull
+    // (1.34) at 160 m (evidence s10 fit), so the berm is what keeps the player's hull whole. 153 m east of the berm, the
+    // line from it over the crest clear of the ground by 2.4 m elsewhere; the ground and woods hide it from every earlier
+    // point, ring F among them (tools s10-search). It fires at the turret, the part a hull-down tank shows.
+    Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0,
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 2.0, aim: Object.freeze({ alongM: 1.0, upM: 2.25 }) }) }),
+  ]),
+  // S10's berm: 1.9 m high across the line to Sentry 2, a gentle back slope (7 m) the player creeps up, a 2 m crest and a
+  // steeper front; the M1A1's hull top stands about 1.6 m, its turret roof 2.4 m (tutorialGuideMath.ts EXPOSURE_POINTS)
+  earthworks: Object.freeze([
+    Object.freeze({ x: S10_BERM.x, z: S10_BERM.z, toward: 'sentry2', profile: Object.freeze([-8, 0, -1, 1.9, 1, 1.9, 4.5, 0]), halfWidthM: 7, skirtM: 2.5 }),
   ]),
   timeOfDay: 'day',
 });
@@ -117,6 +156,9 @@ export const TRAINING_POINTS = Object.freeze({
   /** S9: where the player angles against the Sentry, 114 m north of ring E (122 m by the way through the bushes west of
    *  Target 2, no trunk on it): open for 8 m round, a grade under 0.07, the Sentry 170 m off. */
   fireF: Object.freeze({ x: -430, z: -50, radiusM: 6 }),
+  /** S10: behind the berm (its centre 70 m north of ring F), the ring the player stops in, hull down to Sentry 2
+   *  (tutorialGuideMath.ts trainingExposure). Set from the berm's line (S10_RING_BACK_M). */
+  ringG: Object.freeze({ x: S10_BERM.x - S10_LINE.x * S10_RING_BACK_M, z: S10_BERM.z - S10_LINE.z * S10_RING_BACK_M, radiusM: 3 }),
 });
 
 /** An actor's rule by its scenes' name. */
@@ -157,8 +199,8 @@ export function trainingActorYawDeg(actor: TrainingActorRule): number {
 
 /**
  * The training ground as a range layout: the start as its origin, each actor's mark as a lane (in roster order, so the
- * solo seating hands the n-th actor the n-th mark), no plates, and the earthworks the scenes stamp (none until the
- * hull-down and cover scenes).
+ * solo seating hands the n-th actor the n-th mark), no plates, and the earthworks the scenes stamp (S10's berm, as a
+ * course stamp the solo setup raises in the ground overlay, game/state.ts).
  */
 export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
   const origin = mark(rules.start.x, rules.start.z, rules.start.yawDeg);
@@ -167,7 +209,12 @@ export function planTrainingRange(rules: TrainingRules): ProvingRangeLayout {
     return Object.freeze({ ...mark(actor.x, actor.z, trainingActorYawDeg(actor)), index, rangeM, measuredM: rangeM,
       presentDeg: actor.presentDeg, lateralM: 0 });
   });
-  const stamps: CourseStamp[] = [];
+  const stamps: CourseStamp[] = rules.earthworks.map((work) => {
+    const toward = trainingActor(rules, work.toward)!;
+    const yaw = Math.atan2(toward.x - work.x, toward.z - work.z);
+    return Object.freeze({ kind: 'course' as const, cx: work.x, cz: work.z, yaw, c: Math.cos(yaw), s: Math.sin(yaw), hw: work.halfWidthM,
+      skirtM: work.skirtM, profile: new Float64Array(work.profile) });
+  });
   return Object.freeze({
     origin,
     lanes: Object.freeze(lanes),

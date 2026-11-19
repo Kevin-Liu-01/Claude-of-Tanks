@@ -12,7 +12,11 @@
 //     (ui/tutorial/tutorialSteps.ts ANGLE_WINDOW) with room either side, and green once the side shows (the arc's three
 //     colours); the hull angle reads 0 nose on and the turn's size either way;
 //  4. the steps: S9 drives to F, holds the window, then cues the Sentry and counts the rounds the plate holds; the
-//     runner cues a step's shooter while it shows and stands it down after (wiring).
+//     runner cues a step's shooter while it shows and stands it down after (wiring);
+//  5. S10, hull down: Sentry 2's APFSDS reads red on the loaner's turret front and green on its hull; the berm is stamped
+//     across the line to it; on its ground (level, the berm raised) a tank at ring G is hull down to Sentry 2 (its hull
+//     hidden, its turret seen: tutorialGuideMath.ts trainingExposure), and one whose nose climbs the back slope shows its
+//     hull; the steps drive to G, hold hull down, take Sentry 2's rounds and fire back.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -22,6 +26,9 @@ const { TANK_SPECS } = await import('../vehicles/specs.ts');
 const { TRAINING_POINTS, TRAINING_RULES, trainingActor, trainingActorYawDeg, trainingVolleyAim, trainingVolleyFires } = await import('./trainingGround.ts');
 const { hullAngleToDeg, trainingThreatVerdicts } = await import('./trainingThreat.ts');
 const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSteps.ts');
+const { planTrainingRange } = await import('./trainingGround.ts');
+const { createTerrainDeformation } = await import('./terrainDeformation.ts');
+const { trainingExposure } = await import('../ui/tutorial/tutorialGuideMath.ts');
 
 const DEG = Math.PI / 180;
 
@@ -36,7 +43,7 @@ assert.equal(sentry.presentDeg, 0, 'nose on');
 const F = TRAINING_POINTS.fireF;
 const range = Math.hypot(sentry.x - F.x, sentry.z - F.z);
 assert.ok(range >= 150 && range <= 220, `170 m or so from F (${range.toFixed(0)} m)`);
-for (const actor of TRAINING_RULES.actors) if (actor.key !== 'sentry') assert.ok(!actor.volley, `${actor.key} never fires`);
+for (const actor of TRAINING_RULES.actors) if (actor.key.startsWith('target')) assert.ok(!actor.volley, `${actor.key} never fires`);
 assert.equal(new Set(TRAINING_RULES.actors.map((actor) => actor.specId)).size, TRAINING_RULES.actors.length, 'each actor its own spec (a solo roster keys hulls by spec)');
 assert.ok(!TRAINING_RULES.actors.some((actor) => actor.specId === TRAINING_RULES.loanerSpecId), 'none the loaner');
 
@@ -74,7 +81,7 @@ assert.ok(Math.abs(trainingActorYawDeg(sentry) - square / DEG) < 1e-9 || Math.ab
 
 // 4. The steps and the wiring.
 const ids = TRAINING_STEPS.map((step) => step.id);
-const s9 = ids.slice(ids.indexOf('training.toF'));
+const s9 = ids.slice(ids.indexOf('training.toF'), ids.indexOf('training.toF') + 3);
 assert.deepEqual(s9, ['training.toF', 'training.angle', 'training.volley'], 'S9: drive to F, angle, take its fire');
 const angle = TRAINING_STEPS.find((step) => step.id === 'training.angle');
 assert.deepEqual({ ...angle.advance }, { on: 'angle', actor: sentry.specId, ...ANGLE_WINDOW, holdS: 2 }, 'the angle step holds the window 2 s');
@@ -94,4 +101,40 @@ assert.match(state, /else if \(training && entity\._provingMark && !entity\.comb
 assert.ok(!/Math\.random|Date\.now|performance\.now/.test(state.slice(state.indexOf('function driveTrainingActor'), state.indexOf('export function trainingThreatFor'))),
   'the shooter\'s controls read no clock and no random');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring)`);
+// 5. S10, hull down.
+const sentry2 = trainingActor(TRAINING_RULES, 'sentry2');
+const s2shell = TANK_SPECS[sentry2.specId].gun.shells.find((round) => round.type === sentry2.volley.shellType);
+const G = TRAINING_POINTS.ringG;
+const line = Math.atan2(sentry2.x - G.x, sentry2.z - G.z);
+const s2verdict = (aim) => trainingThreatVerdicts({ x: sentry2.x, y: 0, z: sentry2.z },
+  { pos: new Vector3(G.x, 0, G.z), yaw: line, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 },
+  TANK_SPECS[TRAINING_RULES.loanerSpecId].armor, undefined, s2shell, { ...sentry2.volley, aim }, [0])[0];
+assert.equal(s2verdict(sentry2.volley.aim), 'nopen', 'Sentry 2\'s round on the turret it aims at: red');
+assert.equal(s2verdict(sentry.volley.aim), 'pen', 'and on the hull it cannot see: green (the berm is what saves it)');
+const layout = planTrainingRange(TRAINING_RULES);
+assert.equal(layout.course.stamps.length, TRAINING_RULES.earthworks.length, 'each earthwork stamped');
+const overlay = createTerrainDeformation();
+for (const stamp of layout.course.stamps) overlay.addCourse(stamp);
+const ground = (x, z) => overlay.offsetAt(x, z);
+const berm = TRAINING_RULES.earthworks[0];
+assert.ok(Math.abs(ground(berm.x, berm.z) - 1.9) < 0.05, `the crest stands 1.9 m (${ground(berm.x, berm.z).toFixed(2)})`);
+const toward = { x: Math.sin(line), z: Math.cos(line) };
+const exposedAt = (back) => {
+  const x = berm.x - toward.x * back, z = berm.z - toward.z * back;
+  return trainingExposure({ x: sentry2.x, y: ground(sentry2.x, sentry2.z), z: sentry2.z }, { x, y: ground(x, z), z, yaw: line }, ground);
+};
+assert.deepEqual(trainingExposure({ x: sentry2.x, y: 0, z: sentry2.z }, { x: G.x, y: ground(G.x, G.z), z: G.z, yaw: line }, ground),
+  { hull: false, turret: true }, 'at ring G: hull hidden, turret seen');
+for (const back of [9, 10, 12, 14]) assert.deepEqual(exposedAt(back), { hull: false, turret: true }, `hull down ${back} m behind the crest`);
+assert.equal(exposedAt(5).hull, true, 'the nose up the back slope shows the hull');
+assert.equal(trainingExposure({ x: sentry2.x, y: 0, z: sentry2.z }, { x: G.x, y: 0, z: G.z, yaw: line }, () => 0).hull, true,
+  'without the berm, the hull is seen');
+const s10 = ids.slice(ids.indexOf('training.toG'));
+assert.deepEqual(s10.filter((id) => !id.endsWith('Touch')), ['training.toG', 'training.hullDown', 'training.hullDownFire', 'training.fireBack'],
+  'S10: behind the berm, hull down, its rounds on the turret, fire back');
+const hd = TRAINING_STEPS.find((step) => step.id === 'training.hullDown');
+assert.deepEqual({ ...hd.advance }, { on: 'hullDown', actor: sentry2.specId, holdS: 2 });
+assert.equal(TRAINING_STEPS.find((step) => step.id === 'training.hullDownFire').cue, 'sentry2', 'Sentry 2 fires once hull down');
+assert.deepEqual({ ...TRAINING_STEPS.find((step) => step.id === 'training.fireBack').advance }, { on: 'destroy', actor: sentry2.specId });
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm)`);
