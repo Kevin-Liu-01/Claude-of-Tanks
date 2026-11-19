@@ -1349,11 +1349,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const retryArrival = (entity: Entity, healthScale: number): void => {
     // a begun wave's arrival hidden from the elected seat rises on the point and lead seed the restore found for it among
     // the others, in the old host's draw order (hordeArrivalDue; 275), not on new draws after them
+    // (its outcome on the stall's clock was taken at the restore, in the draw's order: the revive leaves the clock alone)
     const due = hordeArrivalDue.get(entity.id);
     if (due) {
       hordeArrivalDue.delete(entity.id);
       const [x, z, yaw, seed] = due;
-      if (reviveAtSpawn(entity, healthScale, { x, z, yaw }, seed)) { arrivalStalledAtS = null; return; }
+      if (reviveAtSpawn(entity, healthScale, { x, z, yaw }, seed)) return;
     }
     const at = hostileArrival(entity, false);
     if (at && reviveAtSpawn(entity, healthScale, at)) { arrivalStalledAtS = null; return; }
@@ -1410,11 +1411,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         // each drawn hull's arrival found as the old host's was, in its draw order (275): its point's draws taken, a seen
         // hull's hunter search and lead from it, and a hidden hull's point and lead seed set aside for its revive on the
         // first step; a point the search no longer finds was one the old host's did not either (it waited in the queue)
+        // each outcome on the stall's clock in draw order, as the old host's arriveHostile took it: a refusal starts it, an
+        // arrival clears it (round 2 review: a refusal then an arrival left it running where the old host's had stopped)
         const at = hostileArrival(entity, false);
-        if (entity.modeLife === 'alive') { takeArrival(entity, at); stampLifePace(entity); continue; }
+        if (entity.modeLife === 'alive') { takeArrival(entity, at); arrivalStalledAtS = null; stampLifePace(entity); continue; }
         deactivate(entity);
-        // (the old host's refusal started the stall's clock: arriveHostile)
         if (!at) { arrivalStalledAtS ??= placementTimeS; deferred++; continue; }
+        arrivalStalledAtS = null;
         hordeArrivalDue.set(entity.id, [at.x, at.z, at.yaw, arrivals++]);
         respawnAt.set(entity.id, { atS: placementTimeS, healthScale: hordeHealthScale });
         continue;
@@ -3181,6 +3184,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         // on the step the old host began it on (275): the first of its steps from the keyframe's clock at or past the lull's
         // end, summed a step's dt at a time as its battle clock was (it was the lull's end itself, a step early: the trickle's
         // and the stall's clocks then fell a tick off)
+        // (a step is the authorities' fixed SIM_DT, 1 / STRIKE_TICK_HZ: airSupport.ts holds the rate for the mode)
         const due = saved.horde.nextWaveAtS ?? clock;
         let at = clock;
         for (let k = 0; at < due && k < STRIKE_TICK_HZ * 600; k++) at += 1 / STRIKE_TICK_HZ;

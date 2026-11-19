@@ -2575,7 +2575,7 @@ new one part by part (the lane's bisect), and what carries it now:
   the keyframe (the usual resume) only the bloom and the slew: the rest belongs with the pose, which the newer row seats.
   On the receipts' flat ground only the bloom moves play; the other parts are held by a round trip. A hull revived in the
   window drives from its revive on, and its engine's spool is the ramp's since the told revive (`movement.ts`
-  `spoolFromRest`); one built at rest pulled away 0.3 s behind (a Horde wave's arrivals 65 m apart, 6.8 m now).
+  `spoolFromRest`); one built at rest pulled away 0.3 s behind (a Horde wave's arrivals 65 m apart, 0.07 m now).
 - The authority's own state (`NewModeCheckpoint.host`): the spotting (it began empty; without this block a Horde wave the
   new host fields from a keyframe in the lull parts 61 m, 0.002 m with it), the combat stream, the fire tick, the route push's clocks and each bot's last pushed target,
   and the wreck grid's phase. It is restored before the mode, whose restore reads the spotting.
@@ -2588,7 +2588,8 @@ new one part by part (the lane's bisect), and what carries it now:
   the arrival points' stream taken through any candidate, and from it its hunter's search and lead, the lead seed taken in
   turn (it stood at the keyframe's: 6 against 7 after a trickle, 12 against 18 after a wave). A begun wave's arrival hidden
   from the seat rises on the point and seed set aside for it in the old host's draw order (`waves.horde.due`); a point the
-  search no longer finds waited in the queue on the old host too, its stall clock started; and the wave is taken up on the
+  search no longer finds waited in the queue on the old host too, and each outcome is taken on the stall's clock in draw
+  order, a refusal starting it and an arrival stopping it, as the old host's arrivals did; and the wave is taken up on the
   step the old host began it on (the first battle-clock step at or past the lull's end, not the lull's end itself, which
   put the trickle's and the stall's clocks a tick off). The plans the old host made for its risen hunters are
   made on the arrival's clock, unless an arrival rises on the first step. The hunt is restored before the waves (it put the
@@ -2599,8 +2600,9 @@ new one part by part (the lane's bisect), and what carries it now:
 Twins (`migrationTwins.selftest`: the old host run on against the migrated one, the same inputs, 14 s; gaps 274's head on
 the same staging in brackets): Frontline attackers after an advance, the keyframe alone, 0.36 m (112.5 m), equal to a
 quantized twin's, an unmigrated host snapped to the rows' precision at the same moment; a Horde wave the new host begins
-from a keyframe in the lull, 0.002 m (27 m); a wave begun in the window, 6.0-6.8 m with its arrivals in the seat's frame
-(51-63 m), and with them hidden 1.0 m 2 ticks in (6.2 m) but 4.2 m and 10.0 m 12 and 30 ticks in, as at 274 (a hidden
+from a keyframe in the lull, 0.002 m (27 m); a wave begun in the window, with its arrivals in the seat's frame 5.5 m, 5.9 m
+and 0.07 m 2, 12 and 30 ticks in (62.3, 63.0 and 51.0 m), and with them hidden 1.0 m 2 ticks in (6.2 m) but 4.2 m and 10.0
+m 12 and 30 ticks in, as at 274 (a hidden
 arrival rises on the new host's first step, the window late); a Frontline advance in the window, defenders 0.95 m (86.4
 m) and attackers 28.7 m (114.0 m; their traffic with each other went on in the window, which the staging stacks on one
 spot). CTF raiders (`botDriveMigration`): 0.01 m, 0.02 m with a newer frame, 0.04 m revived in the window (4 m; the
@@ -2623,12 +2625,16 @@ Not taken up by 275 (beside the 274 list above):
   which no keyframe records. Fighting bots part by tens of metres in 10 s after a 30-tick window (a 4v4 CTF fight: 26-43
   m, against 0.1-0.24 m with no window; the brain record still helps there: 21-66 m without it, the round 1 correctness
   review's probe), as do bots after a revive or an advance there (the window bounds above). A revived hull's turn rate.
+  A bot revived in the window takes the record its dead life left and then the revive's hand-back: the hand-back is
+  pinned (no first-tick spike), the record's part in its new life is not (no staging shows it).
 - The rows' millimetre quantization of a hull's pose: the floor above. An exact pose rides no keyframe, and a newer row,
   the usual case, is quantized anyway; Turbo Ball's ball carries it on through each contact (0.6-0.8 m in 8 s).
 - The arrival stall rule and a replayed arrival's placement read the field as the seat's frame has it (later arrivals
   counted, the hulls a few ticks on).
 - Unpinned by a receipt (by reading): a revived bot's last pushed target dropped from the carried ones, and the smoke
-  kit read on the hull's own clock now that the brain runs on the battle clock.
+  kit read on the hull's own clock now that the brain runs on the battle clock. A begun wave's stall clock taken in draw
+  order is pinned only by the round 2 correctness review's probe, through a copy that refuses chosen arrivals (natural
+  ground gave no mixed refusal in a sweep of sight ranges): 9 of 12 runs apart without it, none with it.
 
 Receipts: `migrationTwins`, `modeWindowMigration`, `ai.brainRecord`; `huntSearchMigration` [5a] (a returning hunter holds
 the search and lead the old host's revive started), `botDriveMigration` [7a] (a down bot's brain) and [7b] (0.5 m),
