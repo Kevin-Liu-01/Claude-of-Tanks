@@ -116,6 +116,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/reviveMigration.selftest.mjs', // 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh life and is not revived again
     'src/mp/host/waveStartMigration.selftest.mjs', // gaps 274 (G2): a Horde wave begun or cleared, a cache taken (Horde, Mars and AC-130 lists), a Frontline advance, reinforce arrival or counter-attack launched, or a trickle arrival made after the keyframe is taken up as made, never made twice, at the old host's paces; a counter-attack due after the resume is still announced once; the new host's own opening events are dropped
     'src/mp/host/botDriveMigration.selftest.mjs', // gaps 274 (G3): a migrated bot keeps its spool, its way (route, cursor, mission, watchdog) and its seeded streams, and drives on as the old host's; a revived one keeps its fresh drive and the brain's streams; a bot down at the keyframe keeps its streams, still down at the resume or revived in the window
+    'src/mp/host/migrationTwins.selftest.mjs', // 275 (migration drift): a migrated host's bots keep the old host's tracks: Frontline attackers within the rows' quantization floor (+0.05 m), a Horde wave from the keyframe alone within 0.05 m, a wave begun in the window within a stated bound, seen or hidden (the brain, its battle clock, the integrator's bloom, the spotting and the window's arrivals carried)
+    'src/mp/host/modeWindowMigration.selftest.mjs', // 275: the battle clock exact (trickles on the old host's ticks), the hunt's lead seed and leads after the window's arrivals, an Infected ring arrival's draws, the stranded tracker, the role deals, a resume hold's due arrivals and the authority's own state carry over
     'src/mp/host/resumeAging.selftest.mjs', // 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row's to the resume frame too
     'src/mp/host/resumeHullBody.selftest.mjs', // 2026-11-02 audit U2 (round 2): a migrated host restores each hull's ground contact, body mode, spring and ride from its row
     'src/mp/host/migrationExtrasSize.selftest.mjs', // 2026-11-02 audit U2 (round 2): keyframe extras carry only what differs from a fresh host's state; the restore is unchanged
@@ -2363,6 +2365,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.reviveResume.selftest.mjs',
     // 2026-11-02 audit M7 (round 2 U18, split off in round 3 B17): the solo battle's revive hands the bot's brain back
     'src/game/ai.reviveResumeSolo.selftest.mjs',
+    // 275 (migration drift): every createAI field is carried by the brain record or named with its reason; the record
+    // round-trips JSON exactly, a brain built alike takes it up exactly, and a bad one changes nothing
+    'src/game/ai.brainRecord.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     // (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the commander's

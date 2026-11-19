@@ -666,21 +666,10 @@ function restoreRowCounts(combat: CombatState, row: EntityRow, spec: DamageTankS
 }
 
 /**
- * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
- * own newest frame — that frame's rows overlaid on the keyframe's, hidden entities keeping the keyframe's — and every
- * prop it was told fell. A `world_prop_destroyed` reaches a peer the tick its prop falls; the destroyed list rides the
- * next snapshot, up to two ticks later. A host that died between the two left the fall in the seat's event queue alone
- * (fix/mp-migration-props, 2026-10-02: 1 world-events audit run in 3 on the PR head): the new host booted without it,
- * stood the prop again, a hull crushed it a second time and every peer crunched a tree the old host had felled. The
- * list is the base's plus those falls, at the base's revision plus one per fall it adds — the old host counted each
- * when it destroyed it — and never below the list's length (the host actor republishes its list when the revision moves).
- * A hull a mode revived between the keyframe and its newer row is named (revivedEntityIds, respawnTicks from the
- * `mode_respawn` ticks this seat was told of): the keyframe's extras are the life it left.
- */
-/**
  * The old host's battle clock at a newer frame (275): the keyframe's exact clock (MigrationKeyframe.battleS) with one
- * step's dt (TICK_MS / 1000, the fixed-step loop's) added a step, as the old host's authority added them, for each step between the two frames' milliseconds. Absent
- * (an older keyframe, or a step count the frame's milliseconds do not bear out): the frame's milliseconds stand alone.
+ * step's dt (TICK_MS / 1000, the fixed-step loop's) added a step, as the old host's authority added them, for each step
+ * between the two frames' milliseconds. Absent (an older keyframe, or a step count the frame's milliseconds do not bear
+ * out): the frame's milliseconds stand alone.
  */
 function battleClockAt(keyframe: MigrationKeyframe, battleTimeMs: number): number | undefined {
   const from = keyframe.battleS;
@@ -693,6 +682,18 @@ function battleClockAt(keyframe: MigrationKeyframe, battleTimeMs: number): numbe
   return Math.abs(clock * 1000 - battleTimeMs) <= 2 ? clock : undefined;
 }
 
+/**
+ * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
+ * own newest frame — that frame's rows overlaid on the keyframe's, hidden entities keeping the keyframe's — and every
+ * prop it was told fell. A `world_prop_destroyed` reaches a peer the tick its prop falls; the destroyed list rides the
+ * next snapshot, up to two ticks later. A host that died between the two left the fall in the seat's event queue alone
+ * (fix/mp-migration-props, 2026-10-02: 1 world-events audit run in 3 on the PR head): the new host booted without it,
+ * stood the prop again, a hull crushed it a second time and every peer crunched a tree the old host had felled. The
+ * list is the base's plus those falls, at the base's revision plus one per fall it adds — the old host counted each
+ * when it destroyed it — and never below the list's length (the host actor republishes its list when the revision moves).
+ * A hull a mode revived between the keyframe and its newer row is named (revivedEntityIds, respawnTicks from the
+ * `mode_respawn` ticks this seat was told of): the keyframe's extras are the life it left.
+ */
 export function resumeStateFromRetained(
   keyframe: MigrationKeyframe,
   keyframeAtMs: number,
