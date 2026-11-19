@@ -649,6 +649,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
    */
   let lastInfo: ReturnType<typeof aimArmorAlong> = null;
   let lastReach = 0;
+  let lastTraceM = 0;
   function ratioAt(state: ArmorPoseState, armor: ArmorOverlayModel, eraSpent: ReadonlySet<string> | undefined,
     shellSpec: DamageShellSpec, muzzle: THREE.Vector3, point: THREE.Vector3): number {
     lastInfo = null;
@@ -657,8 +658,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (!(reach > 0.05) || reach > AIM_REACH_M) return NaN;
     _dir.multiplyScalar(1 / reach);
     lastReach = reach;
-    lastInfo = aimArmorAlong(muzzle, _dir, Math.min(AIM_REACH_M, reach + (armor.boundingRadiusM ?? FALLBACK_RADIUS_M)), state, armor,
-      eraSpent, _pose);
+    lastTraceM = Math.min(AIM_REACH_M, reach + (armor.boundingRadiusM ?? FALLBACK_RADIUS_M));
+    lastInfo = aimArmorAlong(muzzle, _dir, lastTraceM, state, armor, eraSpent, _pose);
     return lastInfo ? aimPenRatio(shellSpec, lastInfo) : NaN;
   }
 
@@ -690,10 +691,10 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         const ratio = ratioAt(target.state, armor, target.combat.eraSpent, shellSpec, muzzle, _world);
         if (!Number.isFinite(ratio) || !lastInfo) continue;
         // clear: the line's first main armour is the sample's own face (within 12 cm of it); else it met another first (a
-        // layer's t is along the solver's whole line, AIM_REACH_M)
+        // layer's t is along the traced line, lastTraceM)
         const last = lastInfo.layers[lastInfo.layers.length - 1];
         const weight = zone.weights[k];
-        if (last && last.plate.kind === 'main' && last.t * AIM_REACH_M < lastReach - 0.12) {
+        if (last && last.plate.kind === 'main' && last.t * lastTraceM < lastReach - 0.12) {
           if (weight > pick.hiddenWeight) { pick.hidden = ratio; pick.hiddenWeight = weight; }
         } else if (weight > pick.clearWeight) { pick.clear = ratio; pick.clearWeight = weight; }
       }

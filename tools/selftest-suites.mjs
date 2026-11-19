@@ -1161,6 +1161,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/armorZonePlates.selftest.mjs',
     // 267 (Main's ruling, a fleet balance move): a round whose face's plate cannot meet it reads the plate across its path
     'src/sim/armorAlongShot.selftest.mjs',
+    // 274 (the armour-live-pen lane): plates that meet at one point resolve by plate, not by the trace's float noise, so
+    // a round flown tick by tick meets the reticle's plates (the leo2a6's mantlet / sight recess)
+    'src/sim/coplanarTie.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
