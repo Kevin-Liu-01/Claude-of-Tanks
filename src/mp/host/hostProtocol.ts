@@ -80,18 +80,27 @@ export interface MigrationEntityExtras {
    * countdown, the posture held over its tracks (_hold) and seated off them (_holdSeat), the suspension rock (_susp) and
    * the attitude spring (_spring). The bloom is the one that steers a fight: a migrated gun read as settled (a fresh
    * bloom of 1 against the old host's 3), its bot laid and fired otherwise, and Frontline attackers parted 5 m in 14 s.
+   * Packed (migrationState.ts packIntegrator): base64url of a byte naming the parts present, then their doubles, exact.
    */
-  integrator?: { bloom?: number; slew?: number; prevSpeed?: number; rollover?: [elapsedS: number, expired: boolean, countdownS: number];
-    hold?: number[]; seat?: number[]; susp?: number[]; spring?: number[] };
+  integrator?: string;
   /** A live bot's way (game/ai.ts BotDrive; gaps 274, G3): its route, cursor, mission and progress watchdog. */
   way?: BotDrive;
   /** A bot down when the keyframe is sealed (gaps 274 fix-up r2): its brain's two seeded streams' positions alone (the
    *  controller's, the planner's), which its next life draws on from on the old host; its way is no life it drives again. */
   streams?: BotDrive['streams'];
   /** A bot's brain beside its way (game/ai.ts BotBrain; 275), live or down: what it decides on from tick to tick, where
-   *  it differs from the brain's construction. A down bot's is the brain its next life drives on from. */
-  brain?: BotBrain;
+   *  it differs from the brain's construction. A down bot's is the brain its next life drives on from. Its numbers and
+   *  ability clocks packed (MigrationBrain: base64url doubles, exact). */
+  brain?: MigrationBrain;
 }
+
+/**
+ * A brain record as a keyframe carries it (275; migrationState.ts packBrain): BotBrain with its numbers packed, `n` the
+ * base64url of a little-endian u16 mask length, the mask of the numbers present and their Float64 values, and `a` the
+ * ability clocks' Float64s. JSON's shortest round-trip text ran 18-20 characters a number, the packed form 10.7, and a
+ * full field's keyframe (42 hulls, CTF, 60 s) came to 61 of the 64 chunks with them as text.
+ */
+export type MigrationBrain = Omit<BotBrain, 'n' | 'a'> & { n?: string; a?: string };
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
 export interface HostResumeState {

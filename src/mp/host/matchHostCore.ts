@@ -25,7 +25,7 @@ import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
-  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, resumePhaseOf, sealMigrationBlob,
+  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframeWithin, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
@@ -450,7 +450,10 @@ export function createMatchHostCore({
     try {
       keyframedModeEvents = live.authority.modeEventSerial;
       const keyframe = buildKeyframe(live);
-      await broadcastSealed(MIGRATION_EVENT_KIND.KEYFRAME, ++keyframeSeq, keyframe.tick, encodeMigrationKeyframe(keyframe));
+      // within the chunk cap (275): a full field sheds its brains first, and a keyframe always goes out
+      const { bytes, shed } = encodeMigrationKeyframeWithin(keyframe);
+      if (shed.length) log('warn', 'migration keyframe shed', { shed: shed.join(','), bytes: bytes.byteLength });
+      await broadcastSealed(MIGRATION_EVENT_KIND.KEYFRAME, ++keyframeSeq, keyframe.tick, bytes);
       migrationKeyframes++;
     } catch (error) {
       log('warn', 'migration keyframe failed', { error: error instanceof Error ? error.message : String(error) });
