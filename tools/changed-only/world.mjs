@@ -5,14 +5,19 @@
 // battlefields in Node. Their keys mirror the fleet's, per map instead of per tank id:
 //   inKey(step, map)  = H(schema, toolchain, tool(step), mapConfig(step, map), fleet, donors(step, map))
 //   outKey(step, map) = H(the map's rows in every table the step writes)
-//   tool(step)        = the step definition, the tool's static closure stopped at the fleet entry modules and with the map
+//   tool(step)        = the step definition, the tool's static closure stopped at the fleet core (274: at its entry
+//                       modules before, so a world tool walked the core again and keyed what core modules only name,
+//                       docs/ATTRIBUTION.md through src/authorship.ts, and every core file's bytes besides fleet) and with the map
 //                       registry's config imports dropped (the world core), its declared dynamic reads and the environment
 //                       variables any closure file reads (with values). The steps' own outputs are never inputs.
 //   mapConfig(step,m) = the files the map's config module reaches beyond that world core (a config another config
 //                       imports is in both)
 //   fleet             = the fleet's shared core and roster (specs, factory, kits, materials, generated spec data): every map
-//                       imports the fleet entry modules (the wreck casts filter on spec data), so every map takes them
+//                       imports the fleet entry modules (the wreck casts filter on spec data), so every map takes them;
+//                       the core as the fleet keys it (shader text masked: steps.mjs SHADER_TEXT, 274)
 //   donors(step, m)   = per donor id: its builder key and build-read rows (the fleet's builderKey and rows, chain-wide)
+// The core reaches beyond itself only through the loader files (the builder groups) and the balance importer, so a world
+// file that imports a loader file directly is a fleet API user as one importing an entry module is (274).
 // A map is changed when its row is missing, its inKey moved or its outKey moved. A world file that reaches the fleet
 // through an entry module must be declared and pinned (FLEET_API_USERS), every dynamic read declared and pinned
 // (DECLARED_DYNAMIC), or the step runs on every map. A frame edit of a written file (index version, seeds, plan header)
@@ -70,7 +75,8 @@ export function tokenPin(text, tokens) {
  */
 export function computeWorldState(ctx) {
   const { root, graph, world: data, steps, toolchain, schema, fleetEntries, builderKey, chainOf,
-    rowOf, buildReadTables, dynamicProblem, environmentOf, envRows, config, fleetKey } = ctx;
+    rowOf, buildReadTables, dynamicProblem, environmentOf, envRows, config, fleetKey, rowsOf = graph.rowsOf,
+    fleetCore = [], loaderFiles = [] } = ctx;
   if (!data || !steps.length) return null;
   const abs = (rel) => resolve(root, rel), rel = (path) => relative(root, path);
   const globalReasons = data.errors.map((error) => `world rows: ${error}`);
@@ -87,7 +93,10 @@ export function computeWorldState(ctx) {
 
   const outputRoots = config.outputs.map(abs);
   const isOutput = (file) => outputRoots.some((root) => file === root || file.startsWith(`${root}/`));
-  const fleetStop = new Set(fleetEntries);
+  // (274) stopAtFleetCore: the closures stop at every core file (fleetKey holds them), and a world file that imports an
+  // entry module or a loader file must be a declared fleet API user
+  const fleetStop = new Set(config.stopAtFleetCore ? [...fleetEntries, ...fleetCore] : fleetEntries);
+  const fleetApi = new Set(config.stopAtFleetCore ? [...fleetEntries, ...loaderFiles] : fleetEntries);
 
   const stepStates = {}, comps = { 'world:fleet': fleetKey };
   for (const step of steps) {
@@ -112,7 +121,7 @@ export function computeWorldState(ctx) {
       const problem = dynamicProblem(file);
       if (problem) reasons.push(problem);
       // A world file that imports a fleet entry module must be a declared, pinned user of the per-id API.
-      if ([...graph.edges(file).exec].some((target) => fleetStop.has(target))) {
+      if ([...graph.edges(file).exec].some((target) => fleetApi.has(target))) {
         const declaration = config.fleetApiUsers[rel(file)];
         if (!declaration) reasons.push(`undeclared fleet use in ${rel(file)}`);
         else {
@@ -123,12 +132,12 @@ export function computeWorldState(ctx) {
     }
     const declaredReads = [...new Set([...executed, ...mapExecuted])].flatMap((file) => config.declared[rel(file)]?.reads ?? []);
     const readFiles = config.expandGlobs(root, declaredReads).map(abs).filter((file) => !isOutput(file));
-    const tool = H(`step:${config.stepDefinition(step)}`, ...graph.rowsOf(toolFiles),
+    const tool = H(`step:${config.stepDefinition(step)}`, ...rowsOf(toolFiles),
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`), ...envRows(environmentOf([...executed, ...mapExecuted])));
     comps[`world:tool:${step.name}`] = tool;
     const mapKey = {};
     for (const map of mapIds) {
-      mapKey[map] = H(...graph.rowsOf(mapFiles[map] ?? new Set()));
+      mapKey[map] = H(...rowsOf(mapFiles[map] ?? new Set()));
       comps[`world:map:${step.name}:${map}`] = mapKey[map];
     }
     stepStates[step.name] = {

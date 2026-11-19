@@ -9,8 +9,8 @@ import {
   hrefForLocale,
   localizeDocumentLinks,
   synchronizeLocaleRoute,
-  type SupportedLocale,
 } from '../ui/localeRouting.ts';
+import type { SupportedLocale } from '../ui/localePrefix.ts';
 
 // The public shell's behaviour (brand-ui BUI-W1). The bar and its menu sheet are static markup
 // (src/presentation/publicShell.ts writes them into every public entry), so they paint before this module runs; it

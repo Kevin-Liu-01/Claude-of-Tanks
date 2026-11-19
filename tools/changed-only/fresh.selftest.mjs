@@ -28,7 +28,10 @@ if (actual.toolchain !== manifest.toolchain) {
   console.log(`changed-only fresh.selftest: note: this toolchain differs from the manifest's (${toolchainChange(manifest, actual.toolchainParts)}); judged on the manifest's`);
 }
 assert.deepEqual(state.errors, [], 'every per-id table reads');
-const result = resolveChanged(state, manifest);
+// (274) the steps a plain chain owes: an opt-in step (the gate, off under the owner rule) is judged only by its stamp
+// controls below, so its stale rows (main's since the rule) no longer turn this red
+const OWED = STEPS.filter((entry) => !entry.optIn).map((entry) => entry.name);
+const result = resolveChanged(state, manifest, { steps: OWED });
 const stale = Object.entries(result).filter(([, entry]) => entry.mode !== 'none');
 const lines = stale.map(([name, entry]) => {
   const why = entry.reasons['*'] ?? [...new Set(entry.ids.flatMap((id) => entry.reasons[id] ?? []))];
@@ -94,6 +97,6 @@ assert.ok(gateOf(stamped('page error, previous row kept: probe'), view({ outKey:
   .reasons[probe]?.includes('output edited outside chain since the stamp'), `${gateStep}: a stamp never hides a hand edit`);
 const notRunHere = Object.values(result).flatMap((entry) => Object.values(entry.stamped ?? {}));
 const byCode = Object.entries(Object.groupBy(notRunHere, (why) => why.split(':')[0])).map(([code, list]) => `${code} ${list.length}`).join(', ');
-console.log(`changed-only fresh.selftest: PASS (${STEPS.length} steps x ${state.ids.length} ids current for ${MANIFEST_PATH}`
+console.log(`changed-only fresh.selftest: PASS (${OWED.length} steps x ${state.ids.length} ids current for ${MANIFEST_PATH}`
   + `${notRunHere.length ? `, ${notRunHere.length} stamped not runnable here (${byCode})` : ''}; negative controls: an edited ${step} `
   + `generator, a moved input, a hand-edited output, a stale ${rowFile} and an unreasoned or hand-edited stamp caught)`);

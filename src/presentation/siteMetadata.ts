@@ -7,8 +7,8 @@ import {
   hrefForLocale,
   resolveLocalePath,
   type PublicRouteRecord,
-  type SupportedLocale,
 } from '../ui/localeRouting.ts';
+import type { SupportedLocale } from '../ui/localePrefix.ts';
 
 /** The canonical origin, from the deployment policy module (api/_lib/policy.ts). */
 export const SITE_ORIGIN = CANONICAL_ORIGIN;

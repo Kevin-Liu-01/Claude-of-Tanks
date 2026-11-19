@@ -1369,13 +1369,44 @@ World steps (2026-10-17). After the tank steps the chain runs the wreck bake pla
 the collision shards (`tools/capture-world-collision-manifests.mjs --node`) and the assault-trench shards
 (`--variant=assault-trenches`) per map, on the maps whose keys moved (`--no-world` skips them;
 `--steps=wreckPlan,collision,trenches` runs them alone; `npm run tank:changed -- --maps` reports them). A map's key
-(`tools/changed-only/world.mjs`) holds the step's world core (the tool's closure stopped at the fleet entry modules, with
+(`tools/changed-only/world.mjs`) holds the step's world core (the tool's closure stopped at the fleet core (274), with
 the map registry's config imports dropped: about 500 files, so a world-core edit marks every map), the map's own config
 closure (one to five files; a config another config imports marks both), the fleet core and roster (every map reads
 spec data), and per wreck donor (the wreck plan's rows, plus any roster id the config names) its builder key and
 build-read rows. A tank edit therefore recaptures only the maps that bake that tank (a t90am builder edit: coastal).
 World files that reach the fleet are pinned in `FLEET_API_USERS`; the world outputs are never inputs. A frame edit of
 the index or the plan file, a map roster change or a missing record runs the step on every map.
+
+What a key holds (274). A step's key holds what the step reads, measured finer than a file where a file's bytes reach
+some steps and not others. 273.1 (a public route, brand media, `docs/ATTRIBUTION.md`) marked centering and icons on
+every id and the world steps on every map, and 274.0 (armour-paint GLSL in `src/vehicles/materials.ts`) marked every
+step on every id; both regens wrote identical bytes. Recording each tool's file reads at run time would not have
+narrowed either: the icons page loads `localeRouting.ts` and every geometry tool loads `materials.ts`. So:
+- Shader text (`SHADER_TEXT` in `tools/changed-only/steps.mjs`, `tools/changed-only/shader-text.mjs`). The declared GLSL
+  constants are keyed only by the GPU steps, whose page compiles them; the core, the groups, the CPU steps and the world
+  hash their file with those declarations masked. The checker proves each one is private text named only inside an
+  `onBeforeCompile` hook body; one that fails keeps the file keyed whole (`partition.shaderText.problems`).
+  `closure-trace.mjs --groups=<g> --shaders` changes the text as the module loads and fails if a ledger digest follows it.
+- The world closures stop at the whole fleet core, which every map's key holds already, so a world tool no longer
+  re-walks the core into files a core module only names (`docs/ATTRIBUTION.md` through `src/authorship.ts`). A world
+  file that imports a fleet loader file directly must be a declared `FLEET_API_USERS` entry, like one that imports an
+  entry module.
+- The icons page's i18n imports the locale prefix (`src/ui/localePrefix.ts`), not the public route table, and
+  `tools/media-r5/paths.mjs` names its `shots/media-r5` folders without reading them (`namesOnly`).
+`tools/changed-only/regen-keys.selftest.mjs` replays both rounds on the real fleet through the graph's in-memory overlay:
+273.1 marks nothing, 274.0 marks only the GPU steps, and the controls (a constant outside the shader text, shader text
+named outside a hook, `localePrefix.ts`, the wreck plan tool) mark the steps that read them.
+
+The gate is an opt-in step (274, `optIn`; the owner rule keeps it off outside models): the chain runs it only when
+`--steps` names it, and a chain of every other step is full, so it re-stamps the table's shared lines (272 and 273 did
+this by hand). `fresh.selftest.mjs` judges the steps the plain chain owes.
+
+Re-keying after 274 lands (once, integrator). The narrowed keys differ from the ones main's table recorded, so every
+id reads as due until the table is re-keyed. On the merged tree, before anything else moves, run
+`node tools/changed-only/rekey.mjs` (`--dry-run` first): each (step, id) and (step, map) current under 273's keys
+(`KEYS_273`) takes its new key without a regen, and the rest stays due. On 274's own tree that leaves centering and icons
+on every id (their page's `i18n.ts` moved); run `npm run tank:regen:changed` for them and commit the table with any
+outputs. Then delete `rekey.mjs` and `KEYS_273`.
 
 Runtime proofs (scratch trees, niced): `node tools/changed-only/trace-check.mjs --root=<tree> --ids=<ids>` runs each CPU
 step under the read trace (`trace-reads.mjs`) and fails on any repository read outside the step's key (module loads of

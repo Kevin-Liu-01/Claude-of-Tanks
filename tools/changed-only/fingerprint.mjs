@@ -8,7 +8,9 @@
 //                      (canonical flags included)
 //   builderKey(id)   = H(core, roster, group(g) for every fleet group on the id's spec chain)
 //   core             = every file the fleet entry modules reach without going through a group's builder registration
-//                      (specs, the factory, kits, materials, generated spec data, the index/loader maps)
+//                      (specs, the factory, kits, materials, generated spec data, the index/loader maps); a file with
+//                      declared shader text (steps.mjs SHADER_TEXT, 274) keyed with that text masked, which only the GPU
+//                      steps key (their page compiles it)
 //   group(g)         = the files fleetFactory GROUP_LOADERS[g] reaches beyond the core
 //   rowsKey          = the rows of every per-id table the fleet reaches, for every id on the spec chain, minus the
 //                      step's own rows of this id; with the balance pass out of the core (steps.mjs BALANCE), each id's
@@ -29,8 +31,9 @@ import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { budgetedSync, watchChild } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
-  stepDefinition } from './steps.mjs';
+  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SHADER_TEXT, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS,
+  WORLD_STEPS, stepDefinition } from './steps.mjs';
+import { maskShaderText } from './shader-text.mjs';
 import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
 import { computeWorldState, tokenPin } from './world.mjs';
 
@@ -97,7 +100,7 @@ const rowsChildEnv = (env) => ({ ...env, NODE_OPTIONS: '' });
 /** The rows, read synchronously for a caller outside a chain (computeState without `rows`): the runner and its child stay
  *  in the caller's process group, so a terminal's ^C reaches them, and the runner stops the child's tree when it is
  *  signalled or its caller dies (childBudget.mjs budgetedSync). */
-function readRows(root, env, tableModule = null) {
+export function readRows(root, env, tableModule = null) {
   const out = budgetedSync(process.execPath, rowsChildArgv(root, tableModule), {
     budgetS: ROWS_CPU_S, cwd: root, encoding: 'utf8', maxBuffer: ROWS_MAX_BYTES,
     env: rowsChildEnv(env), stdio: ['ignore', 'pipe', 'pipe'],
@@ -211,9 +214,23 @@ export function installRefusal(root, drift = installDrift) {
 export const DEFAULT_CONFIG = Object.freeze({
   tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
   groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS, balance: BALANCE,
+  // (274) shader text the CPU and world keys mask (steps.mjs SHADER_TEXT)
+  shaderText: SHADER_TEXT,
+  // (274) stopAtFleetCore: the world closures stop at the whole fleet core, which `fleetKey` holds, not only at its entry
+  // modules (world.mjs)
   world: Object.freeze({ registryFile: MAP_REGISTRY_FILE, outputs: WORLD_OUTPUTS, fleetApiUsers: FLEET_API_USERS,
-    fleetApiTokens: FLEET_API_TOKENS }),
+    fleetApiTokens: FLEET_API_TOKENS, stopAtFleetCore: true }),
 });
+
+/**
+ * (274) The keys as 273 took them: no shader text masked, the world closures stopped at the fleet entry modules alone, and
+ * tools/media-r5/paths.mjs's folders still read as inputs. Only tools/changed-only/rekey.mjs (and its receipt) reads it, to
+ * carry a table recorded under 273's keys over to these without a regen; delete it with that tool once main's table is
+ * re-keyed.
+ */
+export const KEYS_273 = Object.freeze({ ...DEFAULT_CONFIG, shaderText: Object.freeze({}),
+  declared: Object.freeze(Object.fromEntries(Object.entries(DECLARED_DYNAMIC).filter(([file]) => file !== 'tools/media-r5/paths.mjs'))),
+  world: Object.freeze({ ...DEFAULT_CONFIG.world, stopAtFleetCore: false }) });
 
 
 /** The tokens that pin the balance pass's importers (steps.mjs BALANCE): its own `tokens` and every name its entries
@@ -233,7 +250,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
-    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS, balance: BALANCE_PASS } = { ...DEFAULT_CONFIG, ...config };
+    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS, balance: BALANCE_PASS,
+    shaderText: SHADER_DECLARED = {} } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
@@ -259,7 +277,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // catalog ("absent" where it has none). A pattern ending in `*` takes every key with that prefix.
   let catalogs = null;
   const catalogValues = (patterns) => {
-    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(readFileSync(abs(file), 'utf8')); } catch { return {}; } });
+    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(graph.readText(abs(file))); } catch { return {}; } });
     const keys = [...new Set(catalogs.flatMap((catalog) => Object.keys(catalog)))].filter((key) => patterns.some((pattern) =>
       (pattern.endsWith('*') ? key.startsWith(pattern.slice(0, -1)) : key === pattern)));
     const named = new Set([...patterns.filter((pattern) => !pattern.endsWith('*')), ...keys]);
@@ -401,10 +419,23 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     }
   }
   const executedOf = (files) => [...files].filter((file) => executed.has(file));
-  const core = H(...graph.rowsOf(coreSet), ...envRows(environmentOf(executedOf(coreSet))),
+  // (274) Shader text (steps.mjs SHADER_TEXT): a fleet file's declared GLSL runs only inside a compile hook, which Node never
+  // calls, so the core, the groups, the CPU steps and the world key the file with it masked; the GPU steps key its bytes
+  // (their page compiles it). A declaration the checker refuses keeps the file keyed by its bytes everywhere.
+  const shaderMasked = new Map(), shaderProblems = [];
+  for (const [file, declaration] of Object.entries(SHADER_DECLARED)) {
+    if (!graph.isFile(abs(file))) { shaderProblems.push(`${file}: no such file`); continue; }
+    const { masked, problems } = maskShaderText(graph.readText(abs(file)), file, declaration.consts);
+    if (masked === null) shaderProblems.push(...problems.map((problem) => `${file}: ${problem}`));
+    else shaderMasked.set(abs(file), sha256(masked));
+  }
+  const nodeRows = (files, options = {}) => graph.rowsOf(files, { ...options, masked: shaderMasked });
+  const core = H(...nodeRows(coreSet), ...envRows(environmentOf(executedOf(coreSet))),
     ...[...aggregateFiles].map((file) => `agg:${rel(file)}:${graph.hashFile(file)}`));
   const groups = Object.fromEntries(Object.entries(groupFiles).map(([group, files]) =>
-    [group, H(...graph.rowsOf(files), ...envRows(environmentOf(executedOf(files))))]));
+    [group, H(...nodeRows(files), ...envRows(environmentOf(executedOf(files))))]));
+  // what a page compiles: the bytes of every masked file the fleet builds with
+  const shaderRows = [...shaderMasked.keys()].filter((file) => executed.has(file)).map((file) => `shader:${rel(file)}:${graph.hashFile(file)}`).sort();
 
   // Per-step tool keys.
   const stepStates = {};
@@ -473,7 +504,10 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     // (267) a step that declares the catalog keys its page draws keys their values, not the whole string catalogs
     const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys) : [];
     const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !CATALOG_FILES.includes(rel(file)))) : toolFiles;
-    const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),
+    const gpu = step.device === 'gpu';
+    const tool = H(`step:${stepDefinition(step)}`,
+      ...(gpu ? graph.rowsOf : nodeRows)(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),
+      ...(gpu ? shaderRows : []),
       ...catalogRows,
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`),
       ...envRows(environmentOf(toolExecuted)),
@@ -539,7 +573,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   const world = computeWorldState({
     root, graph, world: data.world, steps: worldSteps, toolchain, schema: SCHEMA, fleetEntries: [...FLEET_ENTRIES.map(abs)],
     fleetKey: H(`core:${core}`, `roster:${roster}`, ...specsKey), builderKey, chainOf, rowOf, buildReadTables, dynamicProblem,
-    environmentOf, envRows,
+    environmentOf, envRows, rowsOf: nodeRows, fleetCore: coreSet, loaderFiles: [...loaderFiles],
     config: { ...worldConfig, declared: DECLARED_DYNAMIC, expandGlobs, stepDefinition },
   });
 
@@ -562,6 +596,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       balance: [...balanceFiles].map(rel).sort(), balanceReason,
       // modules the tables import (keyed through the rows they decode)
       tableImports: [...tableImports].map(rel).sort(),
+      // (274) files keyed with their shader text masked, and why a declared one is keyed whole
+      shaderText: { masked: [...shaderMasked.keys()].map(rel).sort(), problems: shaderProblems },
     },
   };
 }
@@ -716,6 +752,39 @@ export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set(
   // taken, so their roster change still reads as one
   if (!ids) (manifest.rosters ??= {})[name] = after.roster;
   manifest.files[name] = Object.fromEntries(after.steps[name].outputFiles.map((file) => [file, after.fileHash(file)]));
+}
+
+/**
+ * (274) Carry a table over a narrowing of the keys without a regen. `before` and `after` are this tree's state under the
+ * table's formula (KEYS_273) and under this one, on the same rows. A (step, id) whose recorded keys are current under
+ * `before` (its in-key, out-key, and its step's roster) takes its in-key under `after`; any other stays as recorded, so it
+ * stays due. Sound only while `after` keys a part of what `before` keys (masked shader text, the world's closures stopped
+ * at the core): an id no input of its old key moved for has no input of its new key moved either. A stamp current under
+ * `before` is re-taken the same way. The component lines move for every step that carried all of its ids (and the
+ * shared lines); a step left with due ids keeps its lines, so its reasons stay true. Returns { step: { carried, left } }.
+ */
+export function rekeyManifest(manifest, before, after) {
+  const report = {}, whole = [];
+  const carry = (name, view0, view1) => {
+    const keys = manifest.keys[name] ?? {}, stamps = manifest.stamps?.[name] ?? {};
+    const rosterHolds = manifest.rosters?.[name] === view0.roster; // the resolver's first test (resolveChanged)
+    let carried = 0, left = 0;
+    for (const id of view0.ids) {
+      const recorded = keys[id], stamp = stamps[id];
+      if (stamp && rosterHolds && stamp.code && stamp.reason && stamp.key === view0.stampKey?.(name, id, stamp.files) && stamp.out === view0.outKey(name, id)) {
+        stamp.key = view1.stampKey(name, id, stamp.files, view1.inKey(name, id)); carried++; continue;
+      }
+      if (recorded && rosterHolds && recorded.in === view0.inKey(name, id) && recorded.out === view0.outKey(name, id)) {
+        recorded.in = view1.inKey(name, id); carried++;
+      } else left++;
+    }
+    report[name] = { carried, left };
+    if (!left) whole.push(name);
+  };
+  for (const name of Object.keys(after.steps)) carry(name, before, after);
+  if (after.world && before.world) for (const name of Object.keys(after.world.steps)) carry(name, before.world, after.world);
+  refreshComponents(manifest, after, { ran: whole, shared: true });
+  return report;
 }
 
 // ---------------------------------------------------------------- resolve

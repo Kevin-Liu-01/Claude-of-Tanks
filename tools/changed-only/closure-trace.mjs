@@ -11,16 +11,18 @@
 // would miss it, so fix the import (or merge the groups) before trusting changed-only for that group.
 // --combat (266): every registered spec's combat leaves (steps.mjs BALANCE.combat) are moved before the builds
 // (combat-perturb.mjs), so 2. proves that no id's geometry follows them: the geometry steps need not key SPEC_COMBAT.
+// --shaders (274): the text of every declared shader constant (steps.mjs SHADER_TEXT) is changed as its module loads
+// (shader-perturb.mjs), so 2. proves that no id's geometry follows it: the CPU and world keys may mask it.
 // First-party tooling: Kevin B. Liu.
 //
-//   node tools/changed-only/closure-trace.mjs [--groups=a,b] [--jobs=2] [--json=out.json] [--combat]
+//   node tools/changed-only/closure-trace.mjs [--groups=a,b] [--jobs=2] [--json=out.json] [--combat] [--shaders]
 import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { computeState } from './fingerprint.mjs';
-import { AGGREGATES, TABLES } from './steps.mjs';
+import { AGGREGATES, SHADER_TEXT, TABLES } from './steps.mjs';
 import { expandGlobs } from './globs.mjs';
 
 const run = promisify(execFile);
@@ -28,7 +30,8 @@ const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const root = resolve(value('root') ?? process.cwd());
 const jobs = Math.max(1, Number(value('jobs') ?? 2) | 0);
-const COMBAT = args.includes('--combat');
+const COMBAT = args.includes('--combat'), SHADERS = args.includes('--shaders');
+const moved = COMBAT ? 'the combat leaves' : SHADERS ? 'the shader text' : null;
 const state = computeState({ root });
 const groups = value('groups')?.split(',') ?? Object.keys(state.groups).sort();
 const ledger = JSON.parse(readFileSync(join(root, 'docs/references/fleet-geometry-ledger.json'), 'utf8')).tanks;
@@ -53,21 +56,26 @@ async function worker() {
     try {
       ({ stdout: out } = await run('nice', ['-n', '10', process.execPath, '--max-old-space-size=4096',
         ...(COMBAT ? [`--import=${join(import.meta.dirname, 'combat-perturb.mjs')}`] : []),
+        ...(SHADERS ? [`--import=${join(import.meta.dirname, 'shader-perturb.mjs')}`] : []),
         join(import.meta.dirname, 'closure-trace-child.mjs'), root, ids.join(','), loadIds.join(',')],
       { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 1_800_000,
-        env: { ...process.env, NODE_OPTIONS: '', COT_COMBAT_PERTURB: COMBAT ? '1' : '' } }));
+        env: { ...process.env, NODE_OPTIONS: '', COT_COMBAT_PERTURB: COMBAT ? '1' : '', COT_SHADER_PERTURB: SHADERS ? '1' : '' } }));
     } catch (error) {
       problems.push(`${group}: child failed: ${String(error.stderr ?? error.message).split('\n').slice(-3).join(' ')}`);
       continue;
     }
     const { loaded, digests } = JSON.parse(out);
+    // --shaders proves nothing for a group that never loads the declared file
+    if (SHADERS) for (const file of Object.keys(SHADER_TEXT)) {
+      if (!loaded.some((url) => relative(root, fileURLToPath(url)) === file)) problems.push(`${group}: never loaded ${file}, so its shader text was not moved`);
+    }
     const outside = loaded.map((url) => relative(root, fileURLToPath(url)))
       .filter((file) => !file.startsWith('..') && !file.startsWith('node_modules/') && !allowed.has(file));
     for (const file of outside) problems.push(`${group}: loaded ${file}, outside the core and its chain's group closures`);
     for (const id of ids) for (const [quality, digest] of Object.entries(digests[id] ?? {})) {
       const want = ledger[id]?.[quality];
       if (JSON.stringify(digest) !== JSON.stringify(want)) {
-        problems.push(`${group}: ${id} ${quality} ${COMBAT ? 'geometry follows the combat leaves (digest with them moved' : 'demand-loaded digest'} differs from the eager ledger row${COMBAT ? ')' : ''}`);
+        problems.push(`${group}: ${id} ${quality} ${moved ? `geometry follows ${moved} (digest with it moved` : 'demand-loaded digest'} differs from the eager ledger row${moved ? ')' : ''}`);
       }
     }
     report[group] = { ids: ids.length, loadedRepoModules: loaded.length, outside, seconds: Math.round((Date.now() - started) / 1000) };
@@ -77,5 +85,5 @@ async function worker() {
 await Promise.all(Array.from({ length: jobs }, worker));
 if (value('json')) writeFileSync(value('json'), `${JSON.stringify({ problems, report }, null, 1)}\n`);
 for (const problem of problems) console.error(`[closure-trace] ${problem}`);
-console.log(`[closure-trace] ${problems.length ? `FAIL (${problems.length})` : 'PASS'}: ${Object.keys(report).length} groups${COMBAT ? ', combat leaves moved' : ''}`);
+console.log(`[closure-trace] ${problems.length ? `FAIL (${problems.length})` : 'PASS'}: ${Object.keys(report).length} groups${moved ? `, ${moved} moved` : ''}`);
 if (problems.length) process.exitCode = 1;
