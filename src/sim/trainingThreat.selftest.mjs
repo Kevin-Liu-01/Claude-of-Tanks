@@ -187,7 +187,7 @@ assert.deepEqual({ ...peek.advance }, { on: 'peek', actor: sentry3.specId, cycle
 assert.equal(peek.cue, 'sentry3', 'the peek step brings Sentry 3 in and lets it fire');
 assert.ok(peek.guide.reload && peek.penBody, 'with its reload ring, and a re-prompt when it catches the player out');
 assert.match(state, /if \(!isPlayer && game\.ruleset\.training\) parkTrainingActor\(game, entity\);/, 'the setup parks a hull that enters on its cue');
-assert.match(state, /if \(entity && entity\.modeActive === false\) \{\s*entity\.modeActive = true;/, 'its first cue brings it in');
+assert.match(state, /if \(entity && game\._trainingParked\?\.has\(entity\.id\)\) \{\s*game\._trainingParked\.delete\(entity\.id\);\s*entity\.modeActive = true;/, 'its first cue brings it in');
 
 // 7. S12.
 const sentry4 = trainingActor(TRAINING_RULES, 'sentry4');
