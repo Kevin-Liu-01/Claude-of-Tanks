@@ -362,9 +362,10 @@ export interface NewModeCheckpoint {
   /**
    * The authority's own match state beside the mode's (275): the combat rolls' stream (dispersion, shell hits, fire
    * ticks), the fire tick's accumulator, the route push's next moments and each bot's last pushed target, the wreck
-   * grid's tick count (its re-test phase) and the spotting (sim/spotting.ts SpottingCheckpoint). Its times are seconds
-   * from `atS`, the battle clock at the capture. A migrated host's were its construction's: its spotting began empty, its
-   * rolls from the seed, and every bot was pushed on its first step. Absent (an older host): those.
+   * grid's tick count (its re-test phase) and the spotting (sim/spotting.ts SpottingCheckpoint). Its times are on the
+   * battle clock, as they are (the route push and the spotting run on it); `atS` is the battle clock at the capture. A
+   * migrated host's were its construction's: its spotting began empty, its rolls from the seed, and every bot was pushed
+   * on its first step. Absent (an older host): those.
    */
   host?: {
     atS: number;
@@ -1878,7 +1879,7 @@ export function createAuthoritativeMatch({
     selectFallbackAfterShot(entity, firedSlot);
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
-    spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
+    spotting.notifyFired(entity.id, battleS, shellSpec.caliberMm);
     // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
     deliverShotFired(entities, entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot, cannonMuzzle);
@@ -2228,7 +2229,9 @@ export function createAuthoritativeMatch({
 
   function updateVisibility(): void {
     const started = profile ? profile.clock() : 0;
-    for (const event of spotting.update(SIM_DT, timeS)) {
+    // the spotting's checks and lingers on the battle clock (275: a migrated host's goes on from the old host's, so its
+    // records carry over as they are and a check that falls on a tick's edge falls on the old host's tick)
+    for (const event of spotting.update(SIM_DT, battleS)) {
       emit('tank_spotted', { ...event });
       modeController.airSupport?.recordSpot(event.spotterId, event.id, battleS);
     }
@@ -2301,8 +2304,10 @@ export function createAuthoritativeMatch({
   }
 
   /** The mode route push, one for both drivers (268, sim/modeRoutePush.ts). */
+  // the route push on the battle clock (275: on this host's own clock a migrated host's pushes fell a tick late at every
+  // push on a tick's edge, the delay adding up: a staged attacker went in a push early or late)
   function refreshModeBotRoutes(): void {
-    pushModeRoutes(entities, normalizedGameMode, ruleset, timeS, nextModeRouteS, (entity) => modeController.botTarget(entity));
+    pushModeRoutes(entities, normalizedGameMode, ruleset, battleS, nextModeRouteS, (entity) => modeController.botTarget(entity));
   }
 
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
@@ -2512,7 +2517,7 @@ export function createAuthoritativeMatch({
   function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
     const shell:DamageShell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
     shell.gravityMps2*=entity.modeGravityScale??1;shell.roofStation=true;shells.push(shell);
-    spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
+    spotting.notifyFired(entity.id,battleS,auxiliaryShot.shell.caliberMm);
   }
   function advanceWeapons(dt: number): void {
     for(let i=auxiliarySmokeScreens.length-1;i>=0;i--)if(timeS-auxiliarySmokeScreens[i]!.born>18)auxiliarySmokeScreens.splice(i,1);
@@ -2936,31 +2941,31 @@ export function createAuthoritativeMatch({
         if (Number.isFinite(entity._modeTargetX) && Number.isFinite(entity._modeTargetZ)) targets.push([entity.id, entity._modeTargetX!, entity._modeTargetZ!]);
       }
       const host: NonNullable<NewModeCheckpoint['host']> = { atS: battleS, stream: Number.isInteger(rng.state) ? rng.state : null, fireTickS: fireTickAcc,
-        routeDue: [nextModeRouteS.alpha - timeS, nextModeRouteS.bravo - timeS], targets, wreckTicks: navigationWreckTicks, spotting: spotting.capture(timeS) };
+        routeDue: [nextModeRouteS.alpha, nextModeRouteS.bravo], targets, wreckTicks: navigationWreckTicks, spotting: spotting.capture(0) };
       return { mode: modeController.captureCheckpoint(battleS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}), host };
     },
     restoreModeCheckpoint(checkpoint) {
-      // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
-      // up to a keyframe interval older than the newest frame the match resumed from
-      modeController.restoreCheckpoint(checkpoint.mode);
-      for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
-      if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
-      // the authority's own (275), on this host's clock: the moment the capture's battle clock names
+      // the authority's own first (275), its clocks the battle's as they are: the mode's restore reads the spotting (a
+      // hunt's quarries when it takes up a wave's arrivals and re-plans them)
       const host = checkpoint.host;
       if (host && Number.isFinite(host.atS)) {
-        const nowS = timeS - (battleS - host.atS);
         if (Number.isInteger(host.stream)) rng.state = host.stream!;
         if (Number.isFinite(host.fireTickS)) fireTickAcc = Math.max(0, host.fireTickS);
         if (Array.isArray(host.routeDue) && Number.isFinite(host.routeDue[0]) && Number.isFinite(host.routeDue[1])) {
-          nextModeRouteS.alpha = nowS + host.routeDue[0]; nextModeRouteS.bravo = nowS + host.routeDue[1];
+          nextModeRouteS.alpha = host.routeDue[0]; nextModeRouteS.bravo = host.routeDue[1];
         }
         for (const entry of Array.isArray(host.targets) ? host.targets : []) {
           const entity = Array.isArray(entry) ? entityById.get(entry[0]) : undefined;
           if (entity && Number.isFinite(entry[1]) && Number.isFinite(entry[2])) { entity._modeTargetX = entry[1]; entity._modeTargetZ = entry[2]; }
         }
         if (Number.isInteger(host.wreckTicks) && host.wreckTicks >= 0) navigationWreckTicks = host.wreckTicks;
-        if (host.spotting) spotting.restore(host.spotting, nowS);
+        if (host.spotting) spotting.restore(host.spotting, 0);
       }
+      // the mode clock stays on the battle clock (resumedAtS): the checkpoint's elapsedS is the sealed keyframe's,
+      // up to a keyframe interval older than the newest frame the match resumed from
+      modeController.restoreCheckpoint(checkpoint.mode);
+      for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
+      if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
     },
     restoreDestroyedObstacles,
     restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {

@@ -439,6 +439,15 @@ export interface ModeCheckpoint {
   destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[]; support?:{ammoAt:number;healAt:number;sequence:number;pickups:PickupState[]};
   /** Every tank's life (audit M4); a checkpoint written before it derives them from `destroyed` and the waves' inactive. */
   lives?: [string, ModeLife][];
+  /**
+   * The hostiles the old host stood up after this checkpoint's capture from a respawn they were due (275), whose revives
+   * the resume replayed, with the mode time each was told at (migrationState.ts checkpointAfterRevives); never in a
+   * captured checkpoint: a Horde arrival refused and due again (retryArrival), an Infected arrival on its ring. The
+   * restore takes each up as made, in its turn among the Horde's trickle arrivals: its point found as the old host's was
+   * (the draws), the hunter's search and lead from it (takeArrival). Before, their draws and leads were not taken: the
+   * next arrival took the point the old host had given this one.
+   */
+  ringRisen?: [string, number][];
   /** Air Support's ledger, cooldowns and strikes in the air. */
   air?: AirSupportCheckpoint;
   /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
@@ -971,26 +980,62 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     stampPhysics(entity, paced ? baseSpeed * hordeWaveSpeedScale(hordeRules, lifeWave) : baseSpeed);
   };
   /**
+   * The infected's arrival point (infectionBots.arrival): they rise round the survivors, a convert's first life included
+   * (out of reach and sight first; else out of reach in sight — never the far base while survivors stand). A converted
+   * HUMAN's ring is centred on what its side has spotted (its freshest sighting), never on the survivors' live centroid:
+   * the client is sent its own pose, so a live-centred ring would hand it the hidden survivors' bearing and range (round
+   * 2, E1); with no sighting it rises at its own spawn (null). A bot's ring is the director's decision.
+   */
+  const infectedArrival = (entity: Entity): MatchModeSpawn | null => {
+    if (!infectionArrival) return null;
+    const around = entity.bot ? null : freshestFor('bravo', entity.state.pos.x, entity.state.pos.z);
+    if (!entity.bot && !around) return null;
+    let at = arrivalPoint(entity, infectionArrival, false, around) ?? arrivalPoint(entity, infectionArrival, true, around);
+    if (!at && infectionWideArrival) at = arrivalPoint(entity, infectionWideArrival, false, around) ?? arrivalPoint(entity, infectionWideArrival, true, around);
+    return at;
+  };
+  /**
+   * The lead a director's arrival (the Horde's ring, the infected's ring) goes in toward, along its facing, on toward what
+   * its side knows (268, item 10; Main: everything an arriving hostile acts on comes from its side's knowledge, the freshest
+   * sighting, else the humans' public deployment centre; it read the humans' live centroid, an unsighted position, and on
+   * the wave's first seconds led zombies onto a human still on its slot), at a seeded reach and spread: the arrivals'
+   * count is the seed (`arrivals`, one a lead), or `seed` where one was set aside for it (275: a begun wave's arrival
+   * hidden from the elected seat rises on its first step on the seed the old host's revive drew among the others').
+   * Null: no director's point, or no human standing.
+   */
+  const arrivalLead = (entity: Entity, safeSpawn: { x: number; z: number }, at: MatchModeSpawn | null, seed: number | null = null): { x: number; z: number } | null => {
+    if (!at || !(ruleset.horde || infectionArrival) || !teams.alpha.some((human) => human.modeActive !== false && !human.combat.destroyed)) return null;
+    const known = sideKnowledgeOf(teamOf(entity), safeSpawn.x, safeSpawn.z);
+    const rules = HUNT_RULES.lead, k = seed ?? arrivals++;
+    const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
+    const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (rules.reachMin + (rules.reachMax - rules.reachMin) * u1);
+    const heading = at.yaw + (u2 - 0.5) * 2 * rules.spreadDeg * Math.PI / 180;
+    const lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
+    const lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
+    return Number.isFinite(lx) && Number.isFinite(lz) ? { x: lx, z: lz } : null; // (a point it cannot drive to is no lead)
+  };
+  /**
+   * A director's arrival the old host made after the keyframe, its revive replayed (275): `at` is the point the caller's
+   * search found as the old host's did (its draws taken from the arrival points' stream, any candidate's, the stream's
+   * own decision), and from it the hunter's search starts over with its lead (the lead's seed taken in turn), as the old
+   * host's revive started it; the hull stands where its newer row has it. Before, a replayed arrival took its first
+   * candidate's draws alone, and no lead or seed: its search began where the new host's first plan found it, and every
+   * later arrival's lead was the one the old host gave the arrival before it.
+   */
+  const takeArrival = (entity: Entity, at: MatchModeSpawn | null): void => {
+    if (!entity.bot || teamOf(entity) !== 'bravo') return;
+    const safeSpawn = at && placement && !at.placed ? placement.respawn(at, entity.id, occupiedBy(entity)) ?? at : at;
+    if (safeSpawn) resetHunterSearch(entity.id, safeSpawn.x, safeSpawn.z, arrivalLead(entity, safeSpawn, at));
+    else resetHunterSearch(entity.id, entity.state.pos.x, entity.state.pos.z, null);
+  };
+  /**
    * Revive at the entity's own spawn, or at `at` (a Horde arrival point, a Frontline line slot) when given: the life's
    * one revive (a new life, one mode_respawn). False when the hull did not rise: a rescued hull never does, and a
    * placement that found no clear ground retries on a one-second deadline.
    */
-  const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): boolean => {
+  const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null, leadSeed: number | null = null): boolean => {
     if (!lifeMoves(entity.modeLife ?? 'alive', 'alive')) return false;
-    // the infected rise round the survivors (infectionBots.arrival), a convert's first life included
-    // (out of reach and sight first; else out of reach in sight — never the far base while survivors stand)
-    // A converted HUMAN's ring is centred on what its side has spotted (its freshest sighting), never on the survivors'
-    // live centroid: the client is sent its own pose, so a live-centred ring would hand it the hidden survivors' bearing
-    // and range (round 2, E1); with no sighting it rises at its own spawn. A bot's ring is the director's decision.
-    if (!at && infectionArrival && teamOf(entity) === 'bravo') {
-      const around = entity.bot ? null : freshestFor('bravo', entity.state.pos.x, entity.state.pos.z);
-      if (entity.bot || around) {
-        at = arrivalPoint(entity, infectionArrival, false, around) ?? arrivalPoint(entity, infectionArrival, true, around);
-        if (!at && infectionWideArrival) {
-          at = arrivalPoint(entity, infectionWideArrival, false, around) ?? arrivalPoint(entity, infectionWideArrival, true, around);
-        }
-      }
-    }
+    if (!at && infectionArrival && teamOf(entity) === 'bravo') at = infectedArrival(entity);
     // a director's point (an arrival ring, a line slot, the kick-off) keeps its own rules; a revive at the hull's own
     // spawn or its flag / ball revive slot keeps the ruleset's safe radius from live enemies (respawnSafeM) while the
     // rings within 2.5 times it hold one, else stands on its spawn as before
@@ -1013,24 +1058,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     entity._modeTargetZ = undefined;
     revive(entity, safeSpawn, healthScale);
     restedAt.delete(entity.id);
-    if (entity.bot && teamOf(entity) === 'bravo') {
-      let lead: { x: number; z: number } | null = null;
-      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, on toward what its side knows
-      // (268, item 10; Main: everything an arriving hostile acts on comes from its side's knowledge, the freshest sighting,
-      // else the humans' public deployment centre; it read the humans' live centroid, an unsighted position, and on the
-      // wave's first seconds led zombies onto a human still on its slot)
-      if (at && (ruleset.horde || infectionArrival) && teams.alpha.some((human) => human.modeActive !== false && !human.combat.destroyed)) {
-        const known = sideKnowledgeOf(teamOf(entity), safeSpawn.x, safeSpawn.z);
-        const rules = HUNT_RULES.lead, k = arrivals++;
-        const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
-        const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (rules.reachMin + (rules.reachMax - rules.reachMin) * u1);
-        const heading = at.yaw + (u2 - 0.5) * 2 * rules.spreadDeg * Math.PI / 180;
-        const lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
-        const lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
-        if (Number.isFinite(lx) && Number.isFinite(lz)) lead = { x: lx, z: lz }; // (a point it cannot drive to is no lead)
-      }
-      resetHunterSearch(entity.id, safeSpawn.x, safeSpawn.z, lead);
-    }
+    if (entity.bot && teamOf(entity) === 'bravo') resetHunterSearch(entity.id, safeSpawn.x, safeSpawn.z, arrivalLead(entity, safeSpawn, at, leadSeed));
     stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
     // wave pressure: Horde / Frontline defenders drive faster every wave (the ruleset's capped ramp)
@@ -1272,29 +1300,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     return at;
   };
-  /**
-   * The draws a ring arrival took from the arrival points' stream when its first candidate stood clear (arrivalPoint: two
-   * a candidate, and the sector due next moves on): a migrated host taking up an arrival the old host placed after the
-   * keyframe (gaps 274 fix-up r2), so the stream stands where the old host's does and the next arrival lands where the
-   * old host's did. The seat sees where the hull stands, not which candidate it was: a later candidate's draws, or a
-   * refused ring's (the base arrival), are not known, and the stream is then the new host's own.
-   */
-  const arrivalDraws = (rules: ArrivalRules): void => {
-    spawnRng(); spawnRng();
-    spawnSector = (spawnSector + 1) % Math.max(1, Math.floor(rules.spawnSectors));
-  };
+  /** A begun wave's arrivals hidden from the elected seat (275; startHordeWave's begun restore): the point and the lead seed
+   *  the restore found for each in the old host's draw order, taken by its revive on the first step (retryArrival). */
+  const hordeArrivalDue = new Map<string, [x: number, z: number, yaw: number, seed: number]>();
   /** One hostile arrives (see above); `risen`: a migrated host taking up an arrival the old host made after the keyframe,
-   *  its revive replayed (trickleHorde), which keeps the arrival's bookkeeping (the stall, a straggler's slot) and its
-   *  ring's draws (arrivalDraws) and places nothing. */
+   *  its revive replayed (trickleHorde), which keeps the arrival's bookkeeping (the stall, a straggler's slot), finds its
+   *  point as the old host did (its draws taken) and from it the hunter's lead (takeArrival; 275), and places nothing. */
   const arriveHostile = (entity: Entity, risen = false): boolean => {
     const straggler = strandedPending > 0;
-    if (risen) arrivalDraws(straggler ? strandedArrival : hordeRules);
-    const at = risen ? null : hostileArrival(entity, straggler);
+    const at = hostileArrival(entity, straggler);
     if (!risen && !at) { arrivalStalledAtS ??= placementTimeS; return false; }
     arrivalStalledAtS = null;
     if (straggler) { strandedPending--; strandRecycles.set(entity.id, strandStrikeQueue.shift() ?? 1); }
     else strandRecycles.delete(entity.id);
-    if (at) reviveAtSpawn(entity, hordeHealthScale, at);
+    if (risen) takeArrival(entity, at);
+    else reviveAtSpawn(entity, hordeHealthScale, at);
     return true;
   };
   /**
@@ -1304,6 +1324,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * stall rule off and the intermission waiting for as long as that base refused it.
    */
   const retryArrival = (entity: Entity, healthScale: number): void => {
+    // a begun wave's arrival hidden from the elected seat rises on the point and lead seed the restore found for it among
+    // the others, in the old host's draw order (hordeArrivalDue; 275), not on new draws after them
+    const due = hordeArrivalDue.get(entity.id);
+    if (due) {
+      hordeArrivalDue.delete(entity.id);
+      const [x, z, yaw, seed] = due;
+      if (reviveAtSpawn(entity, healthScale, { x, z, yaw }, seed)) { arrivalStalledAtS = null; return; }
+    }
     const at = hostileArrival(entity, false);
     if (at && reviveAtSpawn(entity, healthScale, at)) { arrivalStalledAtS = null; return; }
     arrivalStalledAtS ??= placementTimeS;
@@ -1354,8 +1382,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     for (const entity of hordeEnemies) {
       if (!active.has(entity)) continue;
       if (begun) {
-        if (entity.modeLife === 'alive') { arrivalDraws(hordeRules); stampLifePace(entity); continue; }
+        // each drawn hull's arrival found as the old host's was, in its draw order (275): its point's draws taken, a seen
+        // hull's hunter search and lead from it, and a hidden hull's point and lead seed set aside for its revive on the
+        // first step; a point the search no longer finds was one the old host's did not either (it waited in the queue)
+        const at = hostileArrival(entity, false);
+        if (entity.modeLife === 'alive') { takeArrival(entity, at); stampLifePace(entity); continue; }
         deactivate(entity);
+        if (!at) { deferred++; continue; }
+        hordeArrivalDue.set(entity.id, [at.x, at.z, at.yaw, arrivals++]);
         respawnAt.set(entity.id, { atS: placementTimeS, healthScale: hordeHealthScale });
         continue;
       }
@@ -1364,6 +1398,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       deferred++;
     }
     hordeQueued = total - opening + deferred;
+    // the old host planned its risen hunters once, all of them together: here too, unless some rise on the first step (a
+    // hidden arrival's revive asks with no plan, and that ask re-plans every hunter, the risen ones with it)
+    if (begun && !hordeArrivalDue.size) replanForRisen();
     nextTrickleAtS = placementTimeS + hordeTrickleS(hordeRules, wave);
     nextWaveAtS = null;
     if (state.horde) {
@@ -2880,6 +2917,18 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     intelAt = saved.intelAtS ?? -Infinity;
     arrivals = saved.arrivals;
   }
+  /**
+   * The hunt's plans after arrivals the restore took up as made (275): the old host's risen hunters asked for their
+   * destinations on their first step (hordeBotTarget), which re-planned every hunter once the plans' interval had run
+   * (refreshHunts; a lull's plans are its last hunters', seconds old) or at once for a hunter with no plan, on the
+   * arrival's clock. The new host made them on its first step, its cadence a window late. Taken up on the arrival's clock,
+   * the plans and their cadence are the old host's; they are made from the hulls as the elected seat's newest frame has
+   * them, a few ticks on from the old host's.
+   */
+  function replanForRisen(): void {
+    if (teams.bravo.some((e) => e.bot && activeFriend(e, 'bravo') && !huntPlan.has(e.id))) huntPlanAt = -Infinity;
+    refreshHunts();
+  }
   const hunterScratch: Entity[] = [];
   function refreshHunts(): void {
     if (placementTimeS < huntPlanAt + HUNT_RULES.assignEveryS) return;
@@ -2992,7 +3041,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // and the reach a gun with no ground target takes an aircraft at (a tank gun's practical anti-aircraft range)
   const AIR_SHOT_RANGE_M = 900, airShotPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 }, airShotOut = { x: 0, y: 0, z: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
-  function restoreWaves(saved: WaveCheckpoint): void {
+  function restoreWaves(saved: WaveCheckpoint, ringRisen: readonly (readonly [string, number])[] = []): void {
     wave = saved.wave;
     const inactive = new Set(saved.inactive);
     // through the life's one writer (audit M4): a resting hull is benched, combat.destroyed with it as on the old host
@@ -3022,9 +3071,19 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       pickups.length = 0; pickups.push(...saved.horde.pickups.map((p) => ({ ...p }))); pickupSequence = saved.horde.sequence;
       // the trickle's arrivals the old host made after the keyframe, their revives replayed (fix-up r1): taken up as made,
       // in their order (out of the queue, the clock run from the last), so the new host's first step brings none twice
-      for (const [key, atS] of saved.horde.trickled ?? []) {
+      // with them, in told order, a refused arrival due again that the old host's retry stood up (275: its point's draws
+      // and its hunter's lead), each on its own clock (its search, the stall rule and the hunter's search read it)
+      const arrivals = [...(saved.horde.trickled ?? []).map(([key, atS]) => [key, atS, true] as const),
+        ...ringRisen.map(([key, atS]) => [key, atS, false] as const)].sort((a, b) => a[1] - b[1]);
+      for (const [key, atS, trickled] of arrivals) {
         const risen = entityById.get(key);
-        if (risen && risen.modeLife === 'alive' && finite(atS)) trickleHorde(atS, 0, risen);
+        if (!risen || risen.modeLife !== 'alive' || !finite(atS) || (!trickled && !hordeEnemies.includes(risen))) continue;
+        const clock = placementTimeS;
+        placementTimeS = atS;
+        if (trickled) trickleHorde(atS, 0, risen);
+        else { takeArrival(risen, hostileArrival(risen, false)); arrivalStalledAtS = null; }
+        replanForRisen();
+        placementTimeS = clock;
       }
       // a clear the old host made after the keyframe (fix-up r2): taken up as made at its moment, the frame's mode time
       // less the lull it showed gone (the clear's own step shows none gone), so the new host's first step clears nothing
@@ -3280,7 +3339,22 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
       escort?.restore(checkpoint.escortRescued??[]);
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
-      if (checkpoint.waves) restoreWaves(checkpoint.waves);
+      // the hunt before the waves (275): an arrival the waves' restore takes up as made reads the side's sightings for its
+      // lead and starts its hunter's search over (takeArrival); restored after them, the hunt put the keyframe's searches
+      // and lead seed back over what the replay took
+      if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
+      if (checkpoint.waves) restoreWaves(checkpoint.waves, checkpoint.ringRisen ?? []);
+      // an Infected arrival the old host stood up in the window (275): its ring's draws and its hunter's lead, on its clock
+      if (infectionArrival) {
+        for (const [key, atS] of checkpoint.ringRisen ?? []) {
+          const risen = entityById.get(key);
+          if (!risen || risen.modeLife !== 'alive' || teamOf(risen) !== 'bravo' || !finite(atS)) continue;
+          const clock = placementTimeS;
+          placementTimeS = atS;
+          takeArrival(risen, infectedArrival(risen));
+          placementTimeS = clock;
+        }
+      }
       if (air && checkpoint.air) air.restore(checkpoint.air);
       if (checkpoint.objectives) {
         const saved = checkpoint.objectives;
@@ -3307,7 +3381,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           pickups.length = 0; pickups.push(...saved.caches.pickups.map((p) => ({ ...p })));
         }
       }
-      if (checkpoint.hunt) restoreHunt(checkpoint.hunt);
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);

@@ -172,9 +172,9 @@ export interface SpottingCheckpoint {
 
 export interface SpottingSystem {
   update(dt: number, timeS: number): SpottingEvent[];
-  /** The spotting for a migration keyframe (275), its times from `timeS`. */
+  /** The spotting for a migration keyframe (275), its times less `timeS` (0: as they stand, on the clock it runs on). */
   capture(timeS: number): SpottingCheckpoint;
-  /** A migrated host's spotting as the old host's had it (275), its times from `timeS`; a record that is not one is skipped,
+  /** A migrated host's spotting as the old host's had it (275), its times plus `timeS`; a record that is not one is skipped,
    *  a checkpoint that is not one changes nothing. */
   restore(saved: SpottingCheckpoint, timeS: number): void;
   forceCheck(timeS: number): SpottingEvent[];
