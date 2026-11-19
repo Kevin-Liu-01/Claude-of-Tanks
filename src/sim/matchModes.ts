@@ -10,7 +10,7 @@ import {
   totalAmmunitionCapacity,
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
-import { createAirSupport, type AirSupport, type AirSupportCheckpoint, type AirSupportView } from './airSupport.ts';
+import { createAirSupport, STRIKE_TICK_HZ, type AirSupport, type AirSupportCheckpoint, type AirSupportView } from './airSupport.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
 import { setModeMultiplier } from './consumableRules.ts';
 import { botDriven } from './botDriven.ts';
@@ -1376,14 +1376,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * A wave's start, its one writer: the director's at the lull's end, or (`begun`, gaps 274 G2) a migrated host taking up
    * the wave the old host began after the keyframe it restored (restoreWaves, from the checkpoint's begunWave). Begun, it
    * keeps the old host's bookkeeping (the same draw from the carried stream, the special, the health scale, the queue,
-   * the trickle's clock from the lull's end) and its field: a drawn hull already on it (a newer row, its revive replayed:
-   * migrationState.ts checkpointAfterRevives) stays where it stands, and a drawn hull the elected seat holds no newer row
-   * of (an arrival hidden from it) is due again at once, an arrival the first step places as it places a refused one;
-   * nothing is announced again and no ally stands up twice. Before, the restored host found the lull run out on its
-   * first step and began the wave a second time: every arrival revived again on new ring points, other hulls drawn.
-   * A kept arrival drives at the begun wave's pace (stampLifePace), as the old host's revive stamped it, and (fix-up r2)
-   * its ring's draws are taken from the arrival points' stream (arrivalDraws), so the next arrival lands where the old
-   * host's did (they placed nothing, and every later arrival took the point the old host gave the one before it).
+   * the trickle's clock from the lull's end) and its field. Each drawn hull's arrival is found as the old host found it,
+   * in the draw's order (275: hostileArrival, its point's draws taken from the arrival points' stream through any
+   * candidate): a hull already on the field (a newer row, its revive replayed: migrationState.ts checkpointAfterRevives)
+   * stays where it stands and takes its hunter's search and lead from the point (takeArrival); one the elected seat holds
+   * no newer row of (an arrival hidden from it) rises on the first step on the point and lead seed set aside for it
+   * (hordeArrivalDue); one whose point the search no longer finds waited in the queue on the old host too, its stall
+   * clock started. Nothing is announced again and no ally stands up twice. Before (gaps 274), a kept arrival took its
+   * first candidate's draws alone and no lead, and a hidden one drew after the seen ones, at once. Before G2, the
+   * restored host found the lull run out on its first step and began the wave a second time. A kept arrival drives at
+   * the begun wave's pace (stampLifePace), as the old host's revive stamped it.
    */
   const startHordeWave = (begun = false): void => {
     strandedPending = 0;
@@ -1414,7 +1416,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const at = hostileArrival(entity, false);
         if (entity.modeLife === 'alive') { takeArrival(entity, at); stampLifePace(entity); continue; }
         deactivate(entity);
-        if (!at) { deferred++; continue; }
+        // (the old host's refusal started the stall's clock: arriveHostile)
+        if (!at) { arrivalStalledAtS ??= placementTimeS; deferred++; continue; }
         hordeArrivalDue.set(entity.id, [at.x, at.z, at.yaw, arrivals++]);
         respawnAt.set(entity.id, { atS: placementTimeS, healthScale: hordeHealthScale });
         continue;
@@ -3178,7 +3181,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const begunWave = saved.horde.begunWave;
       if (Number.isInteger(begunWave) && begunWave! > wave) {
         const clock = placementTimeS;
-        placementTimeS = saved.horde.nextWaveAtS ?? clock;
+        // on the step the old host began it on (275): the first of its steps from the keyframe's clock at or past the lull's
+        // end, summed a step's dt at a time as its battle clock was (it was the lull's end itself, a step early: the trickle's
+        // and the stall's clocks then fell a tick off)
+        const due = saved.horde.nextWaveAtS ?? clock;
+        let at = clock;
+        for (let k = 0; at < due && k < STRIKE_TICK_HZ * 600; k++) at += 1 / STRIKE_TICK_HZ;
+        placementTimeS = at;
         wave = begunWave!;
         startHordeWave(true);
         placementTimeS = clock;

@@ -1001,9 +1001,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         tank._spool = Math.max(0, Math.min(1, motion[0]));
         tank.yawRate = motion[1];
       }
-      // the rest of the integrator no row carries (275): the gun's bloom first among them
+      // the rest of the integrator no row carries (275): the gun's bloom first among them. From a row newer than the
+      // keyframe only the bloom and the turret's slew (round 1 review): the last speed, the rollover's clock and the
+      // attitude's parts belong with the pose, and the newer row's reseat already stands them there
       const integrator = lifeGoesOn && extras.integrator ? unpackIntegrator(extras.integrator) : null;
-      if (integrator) restoreIntegrator(tank, integrator);
+      if (integrator) restoreIntegrator(tank, gapS > 0 ? { bloom: integrator.bloom, slew: integrator.slew } : integrator);
       // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
       // revive it was told, as a fresh life's does under an open throttle (275; a spool at rest pulled away 0.3 s behind)
       const roseAt = toldRevives.get(entity.id);

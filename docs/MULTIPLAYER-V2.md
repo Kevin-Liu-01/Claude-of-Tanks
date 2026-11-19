@@ -2570,36 +2570,45 @@ new one part by part (the lane's bisect), and what carries it now:
   so a trickle on a tick's edge fell a tick early (every 90 ticks against 91); a route push on the new host's own clock
   fell a tick late at every push, the delay adding up (a staged attacker went in a push early).
 - The hull's integrator no row carries (`MigrationEntityExtras.integrator`): the gun's dispersion bloom above all (a fresh
-  gun read as settled, and its bot laid and fired otherwise: 5.3 m of the Frontline gap), the turret's slew, the last
-  step's speed, the rollover's clock, the held posture, the suspension rock and the attitude spring. A hull revived in the
+  gun read as settled, and its bot laid and fired otherwise: 5.1 m of the Frontline gap), the turret's slew, the last
+  step's speed, the rollover's clock, the held posture, the suspension rock and the attitude spring. From a row newer than
+  the keyframe (the usual resume) only the bloom and the slew: the rest belongs with the pose, which the newer row seats.
+  On the receipts' flat ground only the bloom moves play; the other parts are held by a round trip. A hull revived in the
   window drives from its revive on, and its engine's spool is the ramp's since the told revive (`movement.ts`
   `spoolFromRest`); one built at rest pulled away 0.3 s behind (a Horde wave's arrivals 65 m apart, 6.8 m now).
-- The authority's own state (`NewModeCheckpoint.host`): the spotting (it began empty; a Horde wave the new host fields
-  parted 51 m, 0.002 m now), the combat stream, the fire tick, the route push's clocks and each bot's last pushed target,
+- The authority's own state (`NewModeCheckpoint.host`): the spotting (it began empty; without this block a Horde wave the
+  new host fields from a keyframe in the lull parts 61 m, 0.002 m with it), the combat stream, the fire tick, the route push's clocks and each bot's last pushed target,
   and the wreck grid's phase. It is restored before the mode, whose restore reads the spotting.
 - The director's clocks and deals (`waves.horde.strand`, `objectives.deals`, `waves.line.hold`): the Horde's stranded
   tracker (a cut-off hostile was benched 30 s late), CTF's roles and the flags they were dealt for, Zone Control's
-  assignments, Turbo Ball's roles and each striker's commit, Frontline's hold ranks, each on the old host's second.
+  assignments, Turbo Ball's roles and each striker's commit, Frontline's hold ranks, each on the old host's second (with
+  the hold ranks left behind, Frontline defenders re-ranked after a fall parted 17 m in 4 s).
 - The window's arrivals. A replayed arrival (a trickle's, a begun wave's, and those `ModeCheckpoint.ringRisen` names with
   their told times: a refused Horde arrival due again, an Infected ring arrival) finds its point by the old host's search,
   the arrival points' stream taken through any candidate, and from it its hunter's search and lead, the lead seed taken in
   turn (it stood at the keyframe's: 6 against 7 after a trickle, 12 against 18 after a wave). A begun wave's arrival hidden
   from the seat rises on the point and seed set aside for it in the old host's draw order (`waves.horde.due`); a point the
-  search no longer finds waited in the queue on the old host too. The plans the old host made for its risen hunters are
+  search no longer finds waited in the queue on the old host too, its stall clock started; and the wave is taken up on the
+  step the old host began it on (the first battle-clock step at or past the lull's end, not the lull's end itself, which
+  put the trickle's and the stall's clocks a tick off). The plans the old host made for its risen hunters are
   made on the arrival's clock, unless an arrival rises on the first step. The hunt is restored before the waves (it put the
   keyframe's searches and seed back over the replay), and every hull stands where its row has it before the mode is
   restored (the replays read the construction's spawns). A keyframe sealed in the resume hold carries the due arrivals of
   a begun advance or wave (`waves.line.due`, `waves.horde.due`).
 
-Twins (`migrationTwins.selftest`: the old host run on against the migrated one, the same inputs, 14 s): Frontline attackers
-after an advance, the keyframe alone, 0.36 m (gaps 274's head: 112.5 m), equal to a quantized twin's, an unmigrated host
-snapped to the rows' precision at the same moment; a Horde wave the new host begins from a keyframe in the lull, 0.002 m
-(51 m); a wave begun in the window, 6.0-6.8 m with its arrivals in the seat's frame and 1.0-10.0 m hidden, the frame 2-30
-ticks into it (62-68 m). CTF raiders (`botDriveMigration`): 0.01 m, 0.02 m with a newer frame, 0.04 m revived in the window
-(4 m). A Frontline advance in the window: defenders within 1 m (86 m), attackers 29 m (114 m; their ally traffic changed in
-the window, which the staging stacks on one spot). `modeWindowMigration.selftest` holds the clock (every trickle on the old
-host's tick), the lead seed, the ring arrivals' draws, the tracker, the deals, the resume hold's dues and the authority's
-state.
+Twins (`migrationTwins.selftest`: the old host run on against the migrated one, the same inputs, 14 s; gaps 274's head on
+the same staging in brackets): Frontline attackers after an advance, the keyframe alone, 0.36 m (112.5 m), equal to a
+quantized twin's, an unmigrated host snapped to the rows' precision at the same moment; a Horde wave the new host begins
+from a keyframe in the lull, 0.002 m (27 m); a wave begun in the window, 6.0-6.8 m with its arrivals in the seat's frame
+(51-63 m), and with them hidden 1.0 m 2 ticks in (6.2 m) but 4.2 m and 10.0 m 12 and 30 ticks in, as at 274 (a hidden
+arrival rises on the new host's first step, the window late); a Frontline advance in the window, defenders 0.95 m (86.4
+m) and attackers 28.7 m (114.0 m; their traffic with each other went on in the window, which the staging stacks on one
+spot). CTF raiders (`botDriveMigration`): 0.01 m, 0.02 m with a newer frame, 0.04 m revived in the window (4 m; the
+revived spool); a raider down at the keyframe takes up the brain the old host's revives it with, field for field.
+`modeWindowMigration.selftest` holds the clock (every trickle on the old host's tick, from the keyframe or a newer
+frame), the lead seed, the ring arrivals' draws (Infected and a refused Horde arrival), a begun wave's arrivals that find
+no point, the tracker, the deals (each bot's errand step for step), the hold ranks, the resume hold's dues, the
+authority's state and the integrator's round trip.
 
 Cost (the lane's size probes, 19 bots): a keyframe's extras grow by 6.8-19 KB (the brains 0.3-1.1 KB a bot, the
 integrators 0.1-0.2 KB a live hull) and its checkpoint by the authority's block (2.3-4.8 KB, the spotting most of it) and
@@ -2608,20 +2617,23 @@ seat, and each mode event's keyframe carries it too. The brains' and integrators
 Float64s, 10.7 characters a number against JSON's 18-20). A full field (42 hulls, CTF, a minute in) seals at 112 KB, 47 of
 the `MIGRATION_MAX_CHUNKS` 64 (gaps 274's head: 55 KB, 23); past the cap a keyframe would be none at all, so
 `encodeMigrationKeyframeWithin` sheds the brains, then the integrators, then the spotting, and logs it (matchHostCore.ts).
-Rounding the brains' numbers to 7 significant digits would take 40 % off them and let the Frontline attackers part 2.3 m
-instead of 0.36 m; they ride exact, a choice left open.
 
 Not taken up by 275 (beside the 274 list above):
-- A bot's play inside the window: its brain's ticks after a revive, and after an advance re-routes it (the ally traffic it
-  negotiates there); and a revived hull's turn rate. The window bounds above are this.
+- A bot's play inside the window: every bot's brain ticks and stream draws between the keyframe and the seat's frame,
+  which no keyframe records. Fighting bots part by tens of metres in 10 s after a 30-tick window (a 4v4 CTF fight: 26-43
+  m, against 0.1-0.24 m with no window; the brain record still helps there: 21-66 m without it, the round 1 correctness
+  review's probe), as do bots after a revive or an advance there (the window bounds above). A revived hull's turn rate.
 - The rows' millimetre quantization of a hull's pose: the floor above. An exact pose rides no keyframe, and a newer row,
   the usual case, is quantized anyway; Turbo Ball's ball carries it on through each contact (0.6-0.8 m in 8 s).
 - The arrival stall rule and a replayed arrival's placement read the field as the seat's frame has it (later arrivals
   counted, the hulls a few ticks on).
+- Unpinned by a receipt (by reading): a revived bot's last pushed target dropped from the carried ones, and the smoke
+  kit read on the hull's own clock now that the brain runs on the battle clock.
 
 Receipts: `migrationTwins`, `modeWindowMigration`, `ai.brainRecord`; `huntSearchMigration` [5a] (a returning hunter holds
-the search and lead the old host's revive started), `botDriveMigration` [7b] (0.5 m). Seventeen mutants, each one fix
-reverted, fail them (the lane's record). The match build's prediction digest moves (`movement.ts`), so a tab open on an
+the search and lead the old host's revive started), `botDriveMigration` [7a] (a down bot's brain) and [7b] (0.5 m),
+`ai.reviveResume` [2] (the hand-back on the battle clock), `migrationExtrasSize` (the shedding). Twenty-seven mutants, each
+one fix reverted, fail them (the lane's record). The match build's prediction digest moves (`movement.ts`), so a tab open on an
 older build is asked to refresh.
 
 ### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)

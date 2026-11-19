@@ -107,7 +107,7 @@ export interface BotDrive {
  * negotiation, its detours, windows, timers' phases, aim errors, stuck and progress state, search, press, ram and
  * jockey state and their counts), each only where it differs from the brain's construction, which both hosts build
  * alike from the same seed. The way, the world's lists, a tick's own scratch, the news queue, a Watch park and a
- * commander's order are not in it (botBrainMigration.selftest's census names each createAI field one way or the other).
+ * commander's order are not in it (ai.brainRecord.selftest's census names each createAI field one way or the other).
  * Clocks on the brain's clock, the battle's (275: the authority's battleS, which a migrated host's goes on from the old
  * host's), so they are taken as they are. Before, a migrated brain began at its construction's: Frontline attackers
  * that had settled who passes whom (the ally deadlock and escape, a committed passing path, a detour's side) negotiated
@@ -131,7 +131,7 @@ export interface BotBrain {
   /** Its ability planner's clocks (game/botAbilities.ts), when they differ from the construction's. */
   a?: (number | string)[];
 }
-/** The brain record's layout (BotBrain.v): botBrainMigration.selftest pins the lists' text to it; bump it with them. */
+/** The brain record's layout (BotBrain.v): ai.brainRecord.selftest pins the lists' text to it; bump it with them. */
 export const BRAIN_LAYOUT = 1;
 const encodeNumber = (value: number): number | string => (Number.isFinite(value) ? value : String(value));
 const decodeNumber = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value
@@ -7530,7 +7530,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
   // ---- the brain a migration carries (BotBrain; 275) --------------------------------------------------------------
   // Four lists, each read and written in one order: brainNumbers and setBrainNumbers name the same fields, as do the
-  // flags' pair (botBrainMigration.selftest's census holds them to it and pins their text to BRAIN_LAYOUT).
+  // flags' pair (ai.brainRecord.selftest's census holds them to it and pins their text to BRAIN_LAYOUT).
   function brainNumbers(): number[] {
     return [
       terrainCheckAtS, terrainAvoidUntilS, terrainEscapeYaw, gunLaneNextCheckS, gunLaneBlockedT, gunLaneChecks,
@@ -7721,10 +7721,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       || !(risk === undefined || (Array.isArray(risk) && typeof risk[0] === 'string' && (risk[1] === 'corridor' || risk[1] === 'blast')
         && typeof risk[2] === 'number' && Number.isFinite(risk[2])))) return;
     for (const index of brain.f ?? []) flags[index] = !flags[index];
-    // what the brain measured from the hull, as resume() read it from the restored row, when the row is newer than the
-    // capture: where it stood, its hp, its gun's and its target's reload (the old host's are the capture's moment's)
+    // what the brain measured from its own hull, as resume() read it from the restored row, when the row is newer than the
+    // capture: where it stood, its hp and its gun's reload (the old host's are the capture's moment's). Its target's reload
+    // stays the record's (round 1 review): resume() read none (a new brain holds no target), and from the record a shot
+    // the target fired after the capture still reads as one, where 0 read every reloading target as just fired
     const since = Number.isFinite(sinceS) && sinceS > 0;
-    const measured = since ? [progX, progZ, lastHp, prevReloadT, prevTargetReloadT] : null;
+    const measured = since ? [progX, progZ, lastHp, prevReloadT] : null;
     setBrainNumbers(numbers);
     setBrainFlags(flags);
     setBrainNames(names);
@@ -7732,7 +7734,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     combatRoute = Array.from({ length: route.length / 2 }, (_, i): readonly [number, number] => [route[2 * i]!, route[2 * i + 1]!]);
     lastFriendlyRisk = risk ? { allyId: risk[0], kind: risk[1] as FriendlyFireRisk['kind'], clearanceM: risk[2] } : null;
     abilities.setClocks(clocks as number[]);
-    if (measured) [progX, progZ, lastHp, prevReloadT, prevTargetReloadT] = measured;
+    if (measured) [progX, progZ, lastHp, prevReloadT] = measured;
   }
   /** The park's stretch is no time of the bot's own record: the clocks timed since its own events move on by it. */
   function shiftRecordClocks(parkS: number): void {
