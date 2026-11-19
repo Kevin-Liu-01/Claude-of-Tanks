@@ -281,9 +281,10 @@ export const FIT_COVER_SHARE = 0.5;
 export const FIT_RESIDUAL_M = 0.05;
 /** A layer's part is a sheet: from its face, inward along the layer's normal, its back face lies within this (m)... */
 const SHEET_MAX_M = 0.6;
-/** ...and drawn stock stands behind that back face within this (m): a skirt over its wheels, a wedge, a Trophy box or an
- * ERA brick on its turret, a cage over its deck. The structural shell is solid (its far side metres in) and never one. */
-const SHEET_BACKING_M = 0.8;
+/** ...and drawn stock stands behind that back face within this (m): a skirt over its wheels (or the track's far run, 0.9 m
+ * in on a Leopard 2A7), a wedge, a Trophy box or an ERA brick on its turret, a cage over its deck. The structural shell is
+ * solid, its far side two metres and more in, and is never one. */
+const SHEET_BACKING_M = 1.2;
 /** A part's face must turn with the layer: |cos| of the angle between their normals at least this. */
 const FIT_FACING_MIN = 0.7;
 /** How many times a layer whose part is not one sheet is split in four to fit it face by face. */
@@ -450,6 +451,7 @@ function fitLayer(verts, index, backing, T, support, centre, onBuild, depth = 0)
     sheets++;
     rows.push([p[0], p[1], along]);
   }
+  if (depth === 0) fitLayer.aligned = hits / Math.max(1, points.length);
   if (rows.length < Math.max(3, FIT_MIN_SHARE * points.length) || sheets < SHEET_SHARE * hits) return null;
   // a plane through the offsets, robust: a slope only along an axis the part's hits span at least half the layer (a
   // narrow drawn band must not tilt a tall layer), the rows beyond 2.5 median deviations dropped, then fitted again
@@ -552,6 +554,7 @@ export function plateFitReceipts(armor, T) {
       }
       const receipt = { owner, name: plate.name, kind, at: plateKey(plate.verts), gapM: round3(fit.centreM),
         offShare: Math.round(fit.offShare * 100) / 100 };
+      fitLayer.aligned = 0;
       const cropped = cropLayer(placed, support);
       const onBuild = (piece) => !polygonFit(piece, distance, FLOAT_TOL_M).floating;
       const pieces = cropped && onBuild(cropped) ? [cropped]
@@ -562,7 +565,8 @@ export function plateFitReceipts(armor, T) {
       const why = action !== 'drop' ? null : (() => {
         const { points } = polygonSamples(placed);
         const buried = points.filter((p) => inShell(p, -0.01)).length / points.length;
-        return buried >= 0.5 ? 'inShell' : fit.d.slice(1).every((d) => d > 0.06) ? 'notDrawn' : 'unfitted';
+        // unfitted: drawn faces turning with the layer lie under FIT_MIN_SHARE of it or more, yet no fit holds
+        return buried >= 0.5 ? 'inShell' : (fitLayer.aligned ?? 0) >= FIT_MIN_SHARE ? 'unfitted' : 'notDrawn';
       })();
       out.push(action === 'drop' ? { ...receipt, action, why }
         : { ...receipt, action, pieces: pieces.map((piece) => piece.map((p) => [round3(p[0] - offset[0]), round3(p[1] - offset[1]), round3(p[2] - offset[2])])) });
