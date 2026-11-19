@@ -7,6 +7,13 @@
 // Shift (the scope button) takes the sight and CapsLock holds free look. Each step is shot, with how it moved on and how
 // long it took, to the evidence folder's report.json; --clip records the run.
 //
+// S5 to S9 (desktop): the keys drive to ring C, into bush D and back, H turns the armour colours off and on, the digits
+// load HE and APFSDS, the mouse lays the gun on a target's plate and clicks to fire, and A or D turn the hull against the
+// Sentry and hold it while its rounds land. A desktop walk aims in the game's cursor-aim mode (its fallback where the
+// pointer lock is refused: the gun lays on what lies under the cursor), so the cursor can rest on a plate the page
+// projects; --clip-s9 records S9's angle and volley alone (training-s9-volley.webm). --through=<step id> ends the walk
+// once that step has moved on (the chapter's later scenes not walked).
+//
 // What it reads from the page is only for steering: the player's pose and the step's marker (as a player reads the
 // screen). Every step moves on through the game's own input.
 //
@@ -43,9 +50,12 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 const { TRAINING_RULES } = await import('../src/sim/trainingGround.ts');
 const { chapterSteps } = await import('../src/ui/tutorial/tutorialSteps.ts');
-const stepsFor = chapterSteps('training', touch ? 'touch' : 'keyboard');
+const allSteps = chapterSteps('training', touch ? 'touch' : 'keyboard');
+const THROUGH = arg('through', null);
+const stepsFor = THROUGH ? allSteps.slice(0, allSteps.findIndex((step) => step.id === THROUGH) + 1) : allSteps;
+assert.ok(stepsFor.length, `--through names a step of this walk's chapter (${THROUGH})`);
 
-let server, browser, hold, recorder;
+let server, browser, hold, recorder, clipS9 = null;
 try {
   hold = await openCaptureHold({ label: 'tutorial-training', place: `training-${VIEW}-${LOCALE}`, lockClass: 'render', timeoutMs: 90 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
@@ -68,6 +78,10 @@ try {
       localStorage.setItem('cot.tutorial.v1', JSON.stringify({ garage: 'done', battle: 'done', tips: 'done' }));
     } catch { /* none */ }
   });
+  // a desktop walk aims with the cursor: the lock refused outright, as an embedded pane refuses it (input.ts requestLock)
+  if (!touch) await page.evaluateOnNewDocument(() => {
+    Element.prototype.requestPointerLock = function refuse() { throw new DOMException('walk: cursor aim', 'SecurityError'); };
+  });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}${LOCALE === 'cn' ? '/cn' : ''}/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`,
     { waitUntil: 'domcontentloaded', timeout: 300_000 });
@@ -87,6 +101,13 @@ try {
   assert.equal(report.battle.player, TRAINING_RULES.loanerSpecId, 'the player trains in the loaner');
   assert.equal(report.battle.seed, TRAINING_RULES.seed, 'the training battle runs on its own seed');
   if (flag('clip')) recorder = await page.screencast({ path: resolve(OUT, 'training-s1-s4.webm'), scale: touch ? 1 : 0.5 });
+  // the rounds that strike the player, as the shot card hears them (the walk's report of S9's volley)
+  await page.evaluate(() => {
+    window.__walkHits = [];
+    window.__DEBUG.bus?.on?.('shell:hit', (hit) => {
+      if (hit?.targetId === window.__DEBUG.game.player?.id) window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, t: Math.round(performance.now()) });
+    });
+  });
 
   const stepNow = () => page.evaluate(() => document.querySelector('.cot-tut.is-open')?.dataset.step ?? null);
   const pose = () => page.evaluate(() => {
@@ -108,6 +129,7 @@ try {
   const locked = () => page.evaluate(() => !!document.pointerLockElement);
   async function takeLock() {
     if (touch || (await locked())) return;
+    if (await page.evaluate(() => !!window.__DEBUG?.input?.isCursorAim?.())) return; // cursor aim: a click would fire
     await page.mouse.move(vp.width / 2, vp.height * 0.6);
     await page.mouse.click(vp.width / 2, vp.height * 0.6);
     await sleep(300);
@@ -211,7 +233,70 @@ try {
     await client.detach();
   }
 
-  const MARKERS = { 'training.driveA': 'driveA', 'training.driveB': 'driveB', 'training.turret': 'board' };
+  const MARKERS = { 'training.driveA': 'driveA', 'training.driveB': 'driveB', 'training.turret': 'board', 'training.spot': 'ringC',
+    'training.peek': 'ringC', 'training.toE': 'ringE', 'training.toF': 'fireF' };
+  const { actorPoint, headingFromLine } = await import('../src/ui/tutorial/tutorialGuideMath.ts');
+  const sightMode = () => page.evaluate(() => window.__DEBUG.rig?.mode === 'SNIPER');
+  const actorPose = (id) => page.evaluate((key) => {
+    const s = window.__DEBUG.game.tankById.get(key)?.state;
+    return s ? { x: s.pos.x, y: s.pos.y, z: s.pos.z, yaw: s.yaw } : null;
+  }, id);
+  /** A world point on the screen through the battle camera (CSS px), as the guide projects it. */
+  const project = (point) => page.evaluate(({ x, y, z }) => {
+    const camera = window.__DEBUG.camera;
+    const v = camera.position.clone().set(x, y, z).project(camera);
+    return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, behind: v.z > 1 };
+  }, point);
+  /** Into a marker and stop there (bush D): the forward key until inside it, then the back key to a stand. */
+  async function driveInto(marker, stepId) {
+    const until = Date.now() + 90_000;
+    let steer = null;
+    await page.keyboard.down('KeyW');
+    try {
+      while (Date.now() < until) {
+        if ((await stepNow()) !== stepId) return true;
+        const p = await pose();
+        const d = Math.hypot(marker.x - p.x, marker.z - p.z);
+        if (d < marker.radiusM * 0.5) break;
+        const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.yaw);
+        const want = err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null;
+        if (want !== steer) { if (steer) await page.keyboard.up(steer); if (want) await page.keyboard.down(want); steer = want; }
+        await sleep(100);
+      }
+    } finally {
+      if (steer) await page.keyboard.up(steer);
+      await page.keyboard.up('KeyW');
+    }
+    await page.keyboard.down('KeyS'); await sleep(500); await page.keyboard.up('KeyS');
+    return true;
+  }
+  /** Lay the gun on a point of an actor (its own frame) with the cursor and fire until the step moves on: the cursor rests
+   *  on the point, the gun traverses onto it and settles, then a click; the reload spaces the shots. */
+  async function fireAt(actorId, local, stepId) {
+    const until = Date.now() + 120_000;
+    let shots = 0;
+    while (Date.now() < until) {
+      if ((await stepNow()) !== stepId) return shots;
+      const target = await actorPose(actorId);
+      if (!target) { await sleep(500); continue; }
+      const at = await project(actorPoint(target, local.along, local.up, local.across));
+      if (at.behind) { await page.mouse.move(vp.width * 0.5, vp.height * 0.5); await sleep(500); continue; }
+      await page.mouse.move(at.x, at.y, { steps: 4 });
+      const p = await pose();
+      const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
+      if (Math.abs(err) > 0.03) { await sleep(400); continue; }
+      await sleep(1800); // the aim settles
+      const again = await project(actorPoint(await actorPose(actorId), local.along, local.up, local.across));
+      await page.mouse.move(again.x, again.y, { steps: 2 });
+      await page.mouse.down(); await sleep(60); await page.mouse.up();
+      shots += 1;
+      (report.shots ??= []).push({ step: stepId, actor: actorId, at: [Math.round(again.x), Math.round(again.y)] });
+      if ((await waitChange(stepId, 7500)) !== undefined) return shots;
+    }
+    return shots;
+  }
+  const TARGET_POINTS = { green: { along: 3.0, up: 0.9, across: 0 }, red: { along: 1.4, up: 2.1, across: 0 }, hull: { along: 0, up: 1.2, across: 0 } };
+  const ACTOR = Object.fromEntries(TRAINING_RULES.actors.map((actor) => [actor.key, actor.specId]));
   const { TRAINING_POINTS } = await import('../src/sim/trainingGround.ts');
   let shot = 0;
   let now = await waitChange(null, 60_000);
@@ -225,6 +310,50 @@ try {
     let how = '';
     if (id === 'training.rollout') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
     else if (id === 'training.driveA' || id === 'training.driveB') { how = 'drove'; await takeLock(); await driveTo(TRAINING_POINTS[MARKERS[id]], now); }
+    else if (id === 'training.spot' || id === 'training.peek' || id === 'training.toE' || id === 'training.toF') {
+      // the drives (S9's in the third-person view, so the arc and the Sentry are in the frame)
+      if (id === 'training.toF' && (await sightMode())) await page.keyboard.press('ShiftLeft');
+      how = 'drove'; await driveTo(TRAINING_POINTS[MARKERS[id]], now);
+    }
+    else if (id === 'training.bush') { how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
+    else if (id === 'training.lamp' || id === 'training.armour' || id === 'training.reload') { how = 'next'; await page.keyboard.press('Enter'); }
+    else if (id === 'training.armourSight') { how = 'shift'; if (!(await sightMode())) await page.keyboard.press('ShiftLeft'); }
+    else if (id === 'training.armourOff' || id === 'training.armourOn') { how = 'H'; await page.keyboard.press('KeyH'); }
+    else if (id === 'training.firePen') { how = 'fired at the green plate'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.green, now)} shots)`; }
+    else if (id === 'training.fireBounce') { how = 'fired at the turret front'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.red, now)} shots)`; }
+    else if (id === 'training.loadHE') { how = '3'; await page.keyboard.press('Digit3'); }
+    else if (id === 'training.fireHE') { how = 'fired HE at Target 2'; how += ` (${await fireAt(ACTOR.target2, TARGET_POINTS.hull, now)} shots)`; }
+    else if (id === 'training.loadAP') { how = '1'; await page.keyboard.press('Digit1'); }
+    else if (id === 'training.angle') {
+      if (flag('clip-s9') && !clipS9) clipS9 = await page.screencast({ path: resolve(OUT, 'training-s9-volley.webm'), scale: 0.5 });
+      // pivot with the hull keys until it stands 45 degrees from the line, the cursor kept on the Sentry (the gun on it)
+      how = 'turned the hull';
+      const until = Date.now() + 60_000;
+      let key = null;
+      while (Date.now() < until && (await stepNow()) === now) {
+        const me = await pose(), sentry = await actorPose(ACTOR.sentry);
+        const head = headingFromLine(me, sentry);
+        const sp = await project({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z });
+        if (!sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        const want = Math.abs(head) < 42 ? (head >= 0 ? 'KeyA' : 'KeyD') : Math.abs(head) > 50 ? (head >= 0 ? 'KeyD' : 'KeyA') : null;
+        if (want !== key) { if (key) await page.keyboard.up(key); if (want) await page.keyboard.down(want); key = want; }
+        await sleep(100);
+      }
+      if (key) await page.keyboard.up(key);
+      report.angleAt = Math.round(Math.abs(headingFromLine(await pose(), await actorPose(ACTOR.sentry))));
+    }
+    else if (id === 'training.volley') {
+      // hold the angle, the cursor on the Sentry, while its rounds land
+      how = 'held the angle';
+      const until = Date.now() + 90_000;
+      while (Date.now() < until && (await stepNow()) === now) {
+        const sentry = await actorPose(ACTOR.sentry);
+        const sp = await project({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z });
+        if (!sp.behind) await page.mouse.move(sp.x, sp.y, { steps: 2 });
+        await sleep(400);
+      }
+      report.hitsTaken = await page.evaluate(() => window.__walkHits ?? []);
+    }
     else if (id === 'training.turret') {
       await takeLock();
       how = touch ? 'aimed (drag)' : (await locked()) ? 'aimed (mouse, pointer lock)' : 'aimed (cursor aim)';
@@ -242,17 +371,19 @@ try {
       await sleep(1600);
       await page.keyboard.up('CapsLock');
     }
-    const next = await waitChange(now, id === 'training.rollout' ? 10_000 : 30_000);
+    const next = await waitChange(now, id === 'training.rollout' ? 10_000 : id === 'training.volley' ? 5_000 : 30_000);
+    if (clipS9 && id === 'training.volley') { await sleep(2500); await clipS9.stop().catch(() => {}); clipS9 = null; }
     const entry = { step: now, file, how, seconds: Math.round((Date.now() - started) / 100) / 10, advanced: next !== undefined,
       ended: next === null };
     report.steps.push(entry);
     console.log(`[training] ${now}: ${how} → ${next === undefined ? 'STUCK' : next === null ? 'chapter done' : 'moved on'} (${entry.seconds} s)`);
     if (next === undefined || next === null) break;
+    if (THROUGH && now === THROUGH) { report.stoppedAfter = now; break; }
     now = next;
   }
   // the chapter ended on its last step, and the battle goes on (the card is gone, nothing over the field)
-  report.chapterEnded = report.steps.at(-1)?.ended === true && report.steps.at(-1)?.step === stepsFor.at(-1)?.id;
-  report.leftOver = await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
+  report.chapterEnded = report.steps.at(-1)?.step === stepsFor.at(-1)?.id && (THROUGH ? report.steps.at(-1)?.advanced === true : report.steps.at(-1)?.ended === true);
+  report.leftOver = THROUGH ? 0 : await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
   const expected = stepsFor.map((s) => s.id);
   report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id)) && report.chapterEnded
@@ -265,6 +396,7 @@ try {
   process.exitCode = 1;
 } finally {
   await recorder?.stop().catch(() => {});
+  await clipS9?.stop().catch(() => {});
   report.finishedAt = new Date().toISOString();
   writeFileSync(resolve(OUT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   await browser?.close().catch(() => {});
