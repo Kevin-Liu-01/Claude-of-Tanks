@@ -27,7 +27,11 @@
 //     firing arc, U where its front shows and V at its side; it fires only on the player and inside the arc;
 //  9. S14, the real fight: the roster is the actors, then the skirmish's allies and enemies, each its own tank; the range
 //     layout seats each on its mark in that order; the ruleset fields them; the ally split takes the allies; the fight's
-//     cue brings every bot in; the step waits for every enemy bot destroyed, then the chapter's closing card.
+//     cue brings every bot in; the step waits for every enemy bot destroyed, then the chapter's closing card;
+// 10. the battle's life: a scene's finished goal and the skirmish stay down (the controller's respawns hook, which only
+//     the solo training host passes; every other caller keeps every hull's respawn), the targets and the player come
+//     back, the player at the checkpoint (each ring reached), and the chapter's last card ends the battle quietly and
+//     returns to the Garage.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -40,7 +44,7 @@ const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSt
 const { planTrainingRange } = await import('./trainingGround.ts');
 const { createTerrainDeformation } = await import('./terrainDeformation.ts');
 const { trainingExposure } = await import('./trainingSight.ts');
-const { trainingArcAllows, trainingTraverse, trainingRoster, trainingSkirmishSide, TRAINING_SKIRMISH_CUE } = await import('./trainingGround.ts');
+const { trainingArcAllows, trainingTraverse, trainingRoster, trainingSkirmishSide, trainingRespawns, TRAINING_SKIRMISH_CUE } = await import('./trainingGround.ts');
 const { matchRulesetFor } = await import('./matchRuleset.ts');
 const { splitBattleAllies } = await import('../game/rosterState.ts');
 const { aimArmorAlong, aimPenRatio } = await import('./aimPenetration.ts');
@@ -276,4 +280,34 @@ for (const mode of otherModes) {
   `${mode}: its limits and field unchanged`);
 }
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight)`);
+// 10. The battle's life.
+for (const key of ['sentry2', 'sentry3', 'bulwark']) assert.equal(trainingRespawns(TRAINING_RULES, trainingActor(TRAINING_RULES, key).specId), false, `${key} stays down`);
+for (const key of ['target1', 'target2', 'sentry', 'sentry4']) assert.equal(trainingRespawns(TRAINING_RULES, trainingActor(TRAINING_RULES, key).specId), true, `${key} comes back`);
+for (const bot of [...skirmish.allies, ...skirmish.enemies]) assert.equal(trainingRespawns(TRAINING_RULES, bot.specId), false, `${bot.specId} (the skirmish) stays down`);
+assert.equal(trainingRespawns(TRAINING_RULES, TRAINING_RULES.loanerSpecId), true, 'the player comes back');
+const modes = readFileSync(new URL('./matchModes.ts', import.meta.url), 'utf8');
+assert.match(modes, /respawns = \(\) => true,/, 'the controller keeps every hull\'s respawn unless its host says otherwise');
+assert.match(modes, /if \(ruleset\.respawnS != null && respawns\(entity\)\) respawnAt\.set/, 'and asks the host per hull');
+assert.equal((modes.match(/respawns\(entity\)/g) ?? []).length, 1, 'in one place');
+assert.match(state, /\.\.\.\(game\.ruleset\.training \? \{ respawns: \(ent: SoloEntity\) => trainingRespawns\(game\.ruleset\.training!, ent\.specId\) \} : \{\}\),/,
+  'only the solo training host passes it');
+const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
+assert.ok(!/respawns:/.test(authority), 'the authority keeps the shared rule');
+assert.match(state, /const checkpoint = game\.ruleset\.training && ent\.isPlayer \? game\._trainingCheckpoint : null;/, 'the training player revives at the checkpoint');
+assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
+const { finishTrainingBattle, setTrainingCheckpoint } = await import('../game/state.ts');
+const ended = [];
+const fakeGame = { ruleset: { training: TRAINING_RULES }, result: null, resultReason: null, player: { state: { yaw: 1.25 } },
+  matchModeController: { matchEnded: (winner, reason) => ended.push([winner, reason]) } };
+assert.equal(setTrainingCheckpoint(fakeGame, 10, 20), true);
+assert.deepEqual(fakeGame._trainingCheckpoint, { x: 10, z: 20, yaw: 1.25 }, 'a ring reached, with the hull\'s heading then');
+assert.equal(finishTrainingBattle(fakeGame), true, 'the chapter complete ends the battle');
+assert.deepEqual([fakeGame.result, fakeGame.resultReason, ended], ['victory', 'training_complete', [['alpha', 'training_complete']]]);
+assert.equal(finishTrainingBattle(fakeGame), false, 'once');
+assert.equal(finishTrainingBattle({ ruleset: {}, result: null }), false, 'and only a training battle');
+const runner2 = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
+assert.match(runner2, /port\.checkpoint\?\.\(marker\.x, marker\.z\);\s*return true;/, 'each ring reached is the checkpoint');
+const access = readFileSync(new URL('../app/tutorialAccess.ts', import.meta.url), 'utf8');
+assert.match(access, /if \(chapter === 'training'\) \{ if \(outcome !== 'skipped'\) deps\.trainingComplete\(\); return; \}/, 'the last card ends the battle (a Skip ends the run only)');
+
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);

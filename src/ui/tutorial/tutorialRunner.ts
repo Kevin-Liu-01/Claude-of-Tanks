@@ -58,6 +58,8 @@ export interface TutorialPort {
   taught?(subject: NonNullable<TutorialStep['teaches']>): void;
   /** 273: cue or stand down a training battle's scripted shooter by its scenes' name (game/state.ts cueTrainingActor). */
   cue?(actor: string, on: boolean): void;
+  /** 273: a ring reached: the training battle's checkpoint. */
+  checkpoint?(x: number, z: number): void;
 }
 
 /** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
@@ -249,7 +251,10 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
           if (!at) return false;
           const from = last ?? at;
           last = { x: at.x, z: at.z };
-          return segmentDistance(from, at, marker) <= radius;
+          if (segmentDistance(from, at, marker) > radius) return false;
+          // the ring reached is the training battle's checkpoint: a death comes back here
+          port.checkpoint?.(marker.x, marker.z);
+          return true;
         });
       }
     } else if (advance.on === 'camera') {

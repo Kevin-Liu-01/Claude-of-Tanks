@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingActor, trainingArcAllows, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -427,6 +427,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _trainingCues?: Map<string, number>;
   /** A slow-turret shooter's laid gun (S13): each actor's scene name and the yaw its gun points along (rad). */
   _trainingGunYaw?: Map<string, number>;
+  /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
+  _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
@@ -1057,6 +1059,27 @@ export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsD
 }
 
 /**
+ * The training battle's verdict (273): its chapter is complete, the player's side has won. Quiet: no battle:ended (the
+ * training battle keeps no record and shows no report; the tutorial returns to the Garage itself, main.ts). Returns
+ * whether it ended the battle.
+ */
+export function finishTrainingBattle(game: SoloGameState): boolean {
+  if (!game.ruleset.training || game.result !== null) return false;
+  game.result = 'victory';
+  game.resultReason = 'training_complete';
+  game.matchModeController?.matchEnded('alpha', 'training_complete');
+  return true;
+}
+
+/** The training battle's checkpoint (273): the tutorial sets it as the player reaches each ring, with the hull's heading
+ *  then; a death brings the player back there. */
+export function setTrainingCheckpoint(game: SoloGameState, x: number, z: number): boolean {
+  if (!game.ruleset.training || !game.player?.state) return false;
+  game._trainingCheckpoint = { x, z, yaw: game.player.state.yaw };
+  return true;
+}
+
+/**
  * Cue or stand down a training battle's scripted shooter by its scenes' name (273): the tutorial's step cues it while it
  * shows (ui/tutorial/tutorialSteps.ts `cue`). Returns whether the battle has that shooter.
  */
@@ -1198,6 +1221,10 @@ export function setupBattle(
   const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world)
     : game.ruleset.training ? planTrainingRange(game.ruleset.training) : null;
   game._provingRange = provingLayout;
+  // a training battle's scene state starts clean each battle (a replay's shooters uncued, the checkpoint the start)
+  game._trainingCues = undefined;
+  game._trainingGunYaw = undefined;
+  game._trainingCheckpoint = null;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
   // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
   // with them in its resetDestructibles, before the battle (soloBattleStartRuntime.ts); a bare collision world has no
@@ -1421,7 +1448,12 @@ export function setupBattle(
       modeEntity.modeActive = active;
       modeEntity.visual?.setVisible(active);
     },
-    revive(ent: SoloEntity, spawn: MatchModeSpawn, healthScale: number) {
+    // the training battle (273): a scene's finished goal and the skirmish stay down (sim/trainingGround.ts trainingRespawns)
+    ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(game.ruleset.training!, ent.specId) } : {}),
+    revive(ent: SoloEntity, rawSpawn: MatchModeSpawn, healthScale: number) {
+      // the training player comes back at the checkpoint (the last ring reached), not the start
+      const checkpoint = game.ruleset.training && ent.isPlayer ? game._trainingCheckpoint : null;
+      const spawn = checkpoint ? { x: checkpoint.x, z: checkpoint.z, yaw: checkpoint.yaw } : rawSpawn;
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);

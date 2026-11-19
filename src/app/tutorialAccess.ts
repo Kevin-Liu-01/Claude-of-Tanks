@@ -57,6 +57,10 @@ export interface TutorialAccessDeps {
   readonly taught: (subject: 'armourColours') => void;
   /** 273: a training step cues its scripted shooter while it shows (game/state.ts cueTrainingActor). */
   readonly cue: (actor: string, on: boolean) => void;
+  /** 273: a ring reached is the training battle's checkpoint (game/state.ts setTrainingCheckpoint). */
+  readonly checkpoint: (x: number, z: number) => void;
+  /** 273: the training chapter is complete: the battle ends and the Garage comes back. */
+  readonly trainingComplete: () => void;
 }
 
 export interface TutorialAccess {
@@ -104,7 +108,8 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         chapter,
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
-          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue },
+          screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue,
+          checkpoint: deps.checkpoint },
         onClose: (index, stepId) => {
           run = null;
           setBodyFlag(BODY_FLAG, 'battle', false);
@@ -115,8 +120,9 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
           run = null;
           delete resumeAt[chapter];
           setBodyFlag(BODY_FLAG, 'battle', false);
-          // the training battle keeps no record yet (tutorialRecord.ts TutorialChapter): its Skip ends its own run only
-          if (chapter === 'training') return;
+          // the training battle keeps no record yet (tutorialRecord.ts TutorialChapter): its Skip ends its own run only;
+          // its last card ends the battle and brings the Garage back
+          if (chapter === 'training') { if (outcome !== 'skipped') deps.trainingComplete(); return; }
           if (outcome === 'skipped') markTutorialChapter('all', 'skipped');
           else markTutorialChapter(chapter, 'done');
         },

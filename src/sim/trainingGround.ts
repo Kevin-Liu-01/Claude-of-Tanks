@@ -59,6 +59,9 @@ export interface TrainingActorRule {
   /** Parked out of the battle (no body, no shots, unseen) until its scene first cues it, then on its mark for good: a
    *  later scene's hull need not be hidden from the earlier scenes' ground. */
   readonly entersOnCue?: boolean;
+  /** A scene's goal (its scene ends with it destroyed): once down it stays down, a wreck, where the ruleset's respawn
+   *  brings the targets back for another shot. */
+  readonly staysDown?: boolean;
 }
 
 /**
@@ -168,12 +171,12 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // (1.34) at 160 m (evidence s10 fit), so the berm is what keeps the player's hull whole. 153 m east of the berm, the
     // line from it over the crest clear of the ground by 2.4 m elsewhere; the ground and woods hide it from every earlier
     // point, ring F among them (tools s10-search). It fires at the turret, the part a hull-down tank shows.
-    Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0,
+    Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 2.0, aim: Object.freeze({ alongM: 1.0, upM: 2.25 }) }) }),
     // S11's Sentry 3: an AMX-30B2 whose APFSDS goes through the loaner's upper hull about three times in five (1.06), a hit
     // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires at the player's hull only while it sees
     // it: out past the wall's end, never behind it. 127 m from the cover spot.
-    Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true,
+    Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
     // S12's Sentry 4: a T-55A parked until the kit scene, firing HE at the running gear on the side the player shows it, each
     // time its gun loads, until a track is hit (the step stands it down). 77 m from ring Q, the peek spot the player stops
@@ -184,7 +187,7 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // (evidence s13 fit). Parked until its scene on the open meadow, facing west; its turret turns 8 degrees a second and
     // it fires only into a 30 degree arc either side of its nose, its gun on the player, after a 1.5 s telegraph. Ring U
     // stands 45 degrees off its nose (outside the arc), ring V at its side.
-    Object.freeze({ key: 'bulwark', specId: 'object477_molot', x: -270, z: -125, faces: 'ringU', presentDeg: -45, entersOnCue: true,
+    Object.freeze({ key: 'bulwark', specId: 'object477_molot', x: -270, z: -125, faces: 'ringU', presentDeg: -45, entersOnCue: true, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.5, whenSeen: true, traverseDegPerS: 8, frontArcDeg: 30,
         aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
@@ -296,6 +299,15 @@ export function trainingRoster(rules: TrainingRules): readonly string[] {
 
 /** The cue that brings S14's skirmish in (a step's `cue`, game/state.ts cueTrainingActor). */
 export const TRAINING_SKIRMISH_CUE = 'skirmish';
+
+/**
+ * Whether a training hull comes back after it is destroyed: the player, the targets and the shooters a later scene may
+ * still need do; a scene's goal (`staysDown`) and S14's skirmish (its enemies are the fight's count) stay down.
+ */
+export function trainingRespawns(rules: TrainingRules, specId: string): boolean {
+  if (trainingSkirmishSide(rules, specId)) return false;
+  return !rules.actors.find((actor) => actor.specId === specId)?.staysDown;
+}
 
 /** Which side of S14's skirmish a tank fights on, or null for the scenes' hulls and the player. */
 export function trainingSkirmishSide(rules: TrainingRules, specId: string): 'ally' | 'enemy' | null {

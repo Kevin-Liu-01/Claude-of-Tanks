@@ -378,6 +378,8 @@ const {
   setProvingTargetsMoving,
   cueTrainingActor,
   trainingThreatFor,
+  finishTrainingBattle,
+  setTrainingCheckpoint,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -4857,6 +4859,13 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   taught: (subject) => { if (subject === 'armourColours') writeArmourDefaultMarker('done'); },
   // 273: a training step cues its scripted shooter (game/state.ts cueTrainingActor; a local battle only)
   cue: (actor, on) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) cueTrainingActor(game, actor, on); },
+  // 273: each ring reached is the training battle's checkpoint (a death comes back there, game/state.ts)
+  checkpoint: (x, z) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) setTrainingCheckpoint(game, x, z); },
+  // 273: the training chapter complete: the battle's quiet verdict, then the Garage by the Leave's own path (no report)
+  trainingComplete: () => {
+    if (game.phase !== 'battle' || onlineMatchActive() || !isSoloBattleRuntimeReady() || !finishTrainingBattle(game)) return;
+    void leaveBattleToGarage();
+  },
 })));
 const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
   tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));

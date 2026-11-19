@@ -10,6 +10,9 @@ interface SoloBattleRuntime {
   setProvingTargetsMoving(...args: RuntimeValue[]): RuntimeValue;
   /** The training battle's scripted shooters (273): a step's cue, and the angling arc's verdicts (game/state.ts). */
   cueTrainingActor(...args: RuntimeValue[]): RuntimeValue;
+  /** The training battle's end and its checkpoint (273, game/state.ts). */
+  finishTrainingBattle(...args: RuntimeValue[]): RuntimeValue;
+  setTrainingCheckpoint(...args: RuntimeValue[]): RuntimeValue;
   trainingThreatFor(...args: RuntimeValue[]): RuntimeValue;
 }
 
@@ -67,6 +70,8 @@ export function createSoloBattleRuntimeAccess(
     resetProvingRange: (...args) => requireRuntime().resetProvingRange(...args),
     setProvingTargetsMoving: (...args) => requireRuntime().setProvingTargetsMoving(...args),
     cueTrainingActor: (...args) => requireRuntime().cueTrainingActor(...args),
+    finishTrainingBattle: (...args) => requireRuntime().finishTrainingBattle(...args),
+    setTrainingCheckpoint: (...args) => requireRuntime().setTrainingCheckpoint(...args),
     trainingThreatFor: (...args) => requireRuntime().trainingThreatFor(...args),
   };
 }
