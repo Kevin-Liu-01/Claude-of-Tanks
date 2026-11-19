@@ -91,7 +91,7 @@ for (const fmt of ['land', 'port', 'square']) {
   }
 }
 const logos = [];
-for (const [name, label] of [['logo-mark-metal.svg', 'Crest, metal'], ['logo-mark.svg', 'Crest']]) {
+for (const [name, label] of [['mark-metal.svg', 'Mark, metal'], ['mark.svg', 'Mark']]) {
   const file = join(REPO, 'public/brand', name); if (!existsSync(file)) continue; const dst = join(KIT, 'logos', basename(file)); copyFileSync(file, dst); logos.push({ file: rel(dst), label });
 }
 

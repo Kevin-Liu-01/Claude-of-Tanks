@@ -224,7 +224,7 @@ assert.deepEqual(real.issues, [], `a public page could show a raw key:\n${real.i
 // 2026-10-06: main's 1f4c1d003 added site/hud-preview.html (the HUD editor's frame of the production HUD); it loads
 // its own `hudPreview` page catalog.
 // 2026-10-30 (phone-controller-266): site/pad.html, the phone controller's page, loads its own `pad` page catalog.
-assert.deepEqual(Object.keys(real.catalogs), ['docs', 'docsTopic', 'gallery', 'game', 'home', 'hudPreview', 'notFound', 'pad']);
+assert.deepEqual(Object.keys(real.catalogs), ['brand', 'docs', 'docsTopic', 'gallery', 'game', 'home', 'hudPreview', 'notFound', 'pad']);
 assert.deepEqual(real.catalogs[FULL_CATALOG].pages, ['index.html'], 'only the game loads the full catalogs');
 assert.deepEqual(real.catalogs.docsTopic.pages.sort(), topicPages.sort());
 const fullKeys = Object.keys(en);
@@ -262,8 +262,9 @@ assert.ok(game.keys.length > fullKeys.length * 0.4 && game.keys.length < fullKey
 assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chunk');
 // (246) the shared shell's bar, menu and footer carry seventeen keys of their own; the page adds its title, its sentence,
 // its search's three and its report link; (264) every page's boot runtime adds the kit's load failure, two
-// (components/loadFailure.ts: a trigger whose chunk did not arrive says so with no chunk of its own)
-assert.ok(real.catalogs.notFound.keys.length <= 26 && real.catalogs.notFound.keys.includes('notFound.metaTitle')
+// (components/loadFailure.ts: a trigger whose chunk did not arrive says so with no chunk of its own); (274) the footer's
+// Brand link, one
+assert.ok(real.catalogs.notFound.keys.length <= 27 && real.catalogs.notFound.keys.includes('notFound.metaTitle')
   && real.catalogs.notFound.keys.includes('loadFailed.reload'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and

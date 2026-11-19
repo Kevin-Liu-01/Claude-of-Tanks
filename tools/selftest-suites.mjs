@@ -1103,6 +1103,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
+    // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
+    'src/engine/cameraViewRoundTrip.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
@@ -3101,6 +3103,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // 274: the battle's guidance in one place (Kevin: "one unified thing"): the tutorial's card, the toasts and the centre
+    // notices never on each other or on a control, at every recorded HUD size
+    'src/ui/guidancePlan.selftest.mjs',
     // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',

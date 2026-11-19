@@ -28,7 +28,7 @@ export const FILMS_DIR = dirname(fileURLToPath(import.meta.url));
 export const BED = 'music/music-gen.wv';
 /** What every project's assets/ takes from the repo: [repo path, project path]. */
 export const SHARED = [
-  ...['logo-full-metal.svg', 'logo-mark-metal.svg', 'logo-mark.svg'].map((f) => [`public/brand/${f}`, `assets/brand/${f}`]),
+  ...['logo-full-metal.svg', 'mark-metal.svg', 'mark.svg'].map((f) => [`public/brand/${f}`, `assets/brand/${f}`]),
 ];
 /** The retired face the films were cut with, from a local archive outside the repository: [archive file, project path]. */
 export const RETIRED_FONTS = ['Regular', 'Medium', 'Bold'].map((w) => `ABCMonumentGrotesk-${w}.woff2`).map((f) => [f, `assets/fonts/${f}`]);

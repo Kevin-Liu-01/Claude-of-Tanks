@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// The Claude of Tanks mark set (owner, 2026-10-24: "make new logos for everything and all devices and all marks"): every
-// master and raster of the commander mark, derived from its one source, src/ui/brandMark.ts (and the motion from
-// src/ui/brandMarkMotion.ts). Copyright © 2026 Kevin B. Liu.
+// The Claude of Tanks mark set (owner, 2026-10-24: "make new logos for everything and all devices and all marks"; 2026-11-18:
+// the tank is the only mark; the bust and the crests are retired): every master and raster of the tank mark, derived
+// from its one source, src/ui/brandMark.ts (and the motion from src/ui/brandMarkMotion.ts). Copyright © 2026 Kevin B. Liu.
 //   node tools/brand-marks.mjs          write public/brand/* (SVG masters, PNG and ICO rasters, manifest.json)
 //   node tools/brand-marks.mjs --svg    the SVG masters only (no browser)
 // The wordmark comes from tools/brand/wordmark.py's outputs (src/ui/brandWordmark.ts). The name is one line everywhere
@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BRAND_BOOT_STACK, BRAND_BUST_VIEWBOX, BRAND_TANK_VIEWBOX, brandBustBody, brandTankBody, brandWordmarkStack,
+  BRAND_BOOT_STACK, BRAND_TANK_VIEWBOX, brandTankBody, brandWordmarkStack,
 } from '../src/ui/brandMark.ts';
 import { BRAND_MOTION_CSS, brandMarkMotionSVG } from '../src/ui/brandMarkMotion.ts';
 import { WORDMARK_OF, WORDMARK_VIEWBOX, WORDMARK_WORDS } from '../src/ui/brandWordmark.ts';
@@ -25,7 +25,6 @@ const NOTICE = 'Copyright (c) 2026 Kevin B. Liu. The commander is the Claude Cod
 const PAPER = '#f6f3ec', TUNGSTEN = '#f0a030', GRAPHITE = '#11151a', GROUND = '#0b0e11', TUNGSTEN_600 = '#c97f1c';
 
 const [tx, ty, tw, th] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
-const [bx, by, bw, bh] = BRAND_BUST_VIEWBOX.split(' ').map(Number);
 const [wx, wy, ww, wh] = WORDMARK_VIEWBOX.split(' ').map(Number);
 
 const svg = (viewBox, body, label = 'Claude of Tanks') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" role="img" `
@@ -35,8 +34,7 @@ const place = (body, [vx, vy, vw, vh], x, y, w) => {
   return `<g transform="translate(${(x - vx * k).toFixed(2)} ${(y - vy * k).toFixed(2)}) scale(${k.toFixed(5)})">${body}</g>`;
 };
 const tank = (ink, accent, keyline = false, id = 'mk') => brandTankBody({ ink, accent, keyline, id });
-const bust = (ink, accent, keyline = false, id = 'bk') => brandBustBody({ ink, accent, keyline, id });
-const TANK = [tx, ty, tw, th], BUST = [bx, by, bw, bh];
+const TANK = [tx, ty, tw, th];
 const words = (ink, accent) => `<path fill="${ink}" d="${WORDMARK_WORDS}"/><path fill="${accent}" d="${WORDMARK_OF}"/>`;
 
 /** The horizontal lockup: the tank 3.8 cap heights tall, a gap of one cap, the wordmark centred on the tank. */
@@ -67,13 +65,11 @@ function lockupBoot(ink, accent) {
   return svg(`${tx} ${ty} ${(tw + BRAND_BOOT_STACK.gap + width).toFixed(1)} ${th}`, tank(ink, accent)
     + place(stack.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''), [0, 0, sw, sh], x, BRAND_BOOT_STACK.top, width));
 }
-/** The in-world sign's lockup in brushed metal (the Garage display atlas's brand.wordmark.metal): the horizontal lockup
- *  with its ink a steel ramp. */
-function lockupMetal() {
-  const ramp = '<defs><linearGradient id="cot-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/>'
-    + '<stop offset=".48" stop-color="#b9c0c8"/><stop offset=".52" stop-color="#9aa3ad"/><stop offset="1" stop-color="#dfe3e8"/></linearGradient></defs>';
-  return lockup('url(#cot-metal)', TUNGSTEN_600).replace(/(<!--[^>]*-->)/, `$1${ramp}`);
-}
+/** Brushed metal (the Garage display atlas's metal crest and sign): the ink a steel ramp, the commander tungsten. */
+const RAMP = '<defs><linearGradient id="cot-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/>'
+  + '<stop offset=".48" stop-color="#b9c0c8"/><stop offset=".52" stop-color="#9aa3ad"/><stop offset="1" stop-color="#dfe3e8"/></linearGradient></defs>';
+const metal = (master) => master.replace(/(<!--[^>]*-->)/, `$1${RAMP}`);
+const lockupMetal = () => metal(lockup('url(#cot-metal)', TUNGSTEN_600));
 /** A square tile: `ground` behind, the full mark `share` of the side wide, centred on its box. A `crew` above 1 draws the
  *  commander and the helmet that much larger about the cupola's top, as the tab's pixel masters do, where the mark is
  *  too small for the commander's eyes. */
@@ -156,28 +152,18 @@ function pixelTile(cells, radius) {
     + Object.entries(runs).map(([cell, d]) => `<path fill="${CELL_INK[cell]}" d="${d.join('')}"/>`).join(''));
 }
 
-/** A square tile: `ground` behind, the bust `share` of the side wide, centred (a little low, for its optical centre). */
-function tile(size, ground, share, radius = 0, ink = PAPER, accent = TUNGSTEN) {
-  const w = size * share, h = w * bh / bw;
-  const back = ground ? `<rect width="${size}" height="${size}"${radius ? ` rx="${radius}"` : ''} fill="${ground}"/>` : '';
-  return svg(`0 0 ${size} ${size}`, back + place(bust(ink, accent), BUST, (size - w) / 2, (size - h) / 2 + size * 0.015, w));
-}
-
 const masters = {
   'mark.svg': svg(BRAND_TANK_VIEWBOX, tank(PAPER, TUNGSTEN)),
   'mark-paper.svg': svg(BRAND_TANK_VIEWBOX, tank(GRAPHITE, TUNGSTEN_600)),
   'mark-mono.svg': svg(BRAND_TANK_VIEWBOX, tank(PAPER, PAPER, true)),
   'mark-mono-ink.svg': svg(BRAND_TANK_VIEWBOX, tank(GRAPHITE, GRAPHITE, true)),
+  'mark-metal.svg': metal(svg(BRAND_TANK_VIEWBOX, tank('url(#cot-metal)', TUNGSTEN_600))),
   'mark-motion.svg': svg(BRAND_TANK_VIEWBOX, `<style>${BRAND_MOTION_CSS.replace(/\.cot-mark--motion/g, ':root')}</style>`
     + brandMarkMotionSVG(106, PAPER, TUNGSTEN).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')),
   // the hover roll's drawing (src/ui/brandMarkRoll.ts inlines its body into a still mark): the host's ink and accent, the
   // loop's rules scoped to .cot-mark--motion. A file, not a module, so the roll adds no script to any page's graph.
   'mark-motion-inline.svg': svg(BRAND_TANK_VIEWBOX, `<style>${BRAND_MOTION_CSS.trim()}</style>`
     + brandMarkMotionSVG(106).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')),
-  'bust.svg': svg(BRAND_BUST_VIEWBOX, bust(PAPER, TUNGSTEN)),
-  'bust-paper.svg': svg(BRAND_BUST_VIEWBOX, bust(GRAPHITE, TUNGSTEN_600)),
-  'bust-mono.svg': svg(BRAND_BUST_VIEWBOX, bust(PAPER, PAPER, true)),
-  'bust-mono-ink.svg': svg(BRAND_BUST_VIEWBOX, bust(GRAPHITE, GRAPHITE, true)),
   // a browser tab: the 32 cell master on a graphite tile, so it reads on light and dark tab strips alike (a 2x tab draws
   // it cell for cell; the 16 px rasters take the 16 cell master)
   'favicon.svg': pixelTile(FAVICON_32, 6),
@@ -187,7 +173,7 @@ const masters = {
   // the app icon: full bleed (the system rounds it); the maskable keeps the mark inside the 80 % safe circle
   'app-icon.svg': markTile(1024, GRAPHITE, 0.78),
   'maskable.svg': markTile(1024, GRAPHITE, 0.66),
-  'social-avatar.svg': tile(400, GROUND, 0.66),
+  'social-avatar.svg': markTile(400, GROUND, 0.78),
   'lockup.svg': lockup(PAPER, TUNGSTEN),
   'lockup-paper.svg': lockup(GRAPHITE, TUNGSTEN_600),
   'lockup-mono.svg': lockup(PAPER, PAPER).replace(tank(PAPER, PAPER), tank(PAPER, PAPER, true, 'lm')),
@@ -221,7 +207,7 @@ const rasters = [
   ...IOS.map((size) => [`app-icons/ios/icon-${size}.png`, 'app-icon.svg', size]),
   ...MACOS.map((size) => [`app-icons/macos/icon-${size}.png`, 'app-icon.svg', size]),
   ['social-avatar-400.png', 'social-avatar.svg', 400],
-  ['mark-1024.png', 'mark.svg', 1024], ['mark-paper-1024.png', 'mark-paper.svg', 1024], ['bust-512.png', 'bust.svg', 512],
+  ['mark-1024.png', 'mark.svg', 1024], ['mark-paper-1024.png', 'mark-paper.svg', 1024],
   ['lockup-2400.png', 'lockup.svg', 2400], ['lockup-paper-2400.png', 'lockup-paper.svg', 2400],
 ];
 const { default: puppeteer } = await import('puppeteer');
@@ -291,8 +277,8 @@ writeFileSync(join(ROOT, 'public/browserconfig.xml'), `<?xml version="1.0" encod
 // ---- the set's manifest: every file, its size, what it is for
 const purpose = {
   'mark.svg': 'the mark on dark', 'mark-paper.svg': 'the mark on paper', 'mark-mono.svg': 'one colour, paper', 'mark-mono-ink.svg': 'one colour, ink',
-  'mark-motion.svg': 'the living mark (CSS loop)', 'bust.svg': 'the icon on dark', 'bust-paper.svg': 'the icon on paper',
-  'bust-mono.svg': 'icon, one colour, paper', 'bust-mono-ink.svg': 'icon, one colour, ink', 'favicon.svg': 'browser tab (32 cell master)', 'favicon-16.svg': 'browser tab at 16 px (16 cell master)',
+  'mark-metal.svg': 'the mark in brushed metal (Garage signs)',
+  'mark-motion.svg': 'the living mark (CSS loop)', 'favicon.svg': 'browser tab (32 cell master)', 'favicon-16.svg': 'browser tab at 16 px (16 cell master)',
   'favicon-mark.svg': 'the mark on the tab tile (48 and 192 px)',
   'app-icon.svg': 'app icon master (full bleed)', 'maskable.svg': 'maskable and tile master (80 % safe zone)',
   'social-avatar.svg': 'X / GitHub avatar', 'lockup.svg': 'horizontal lockup on dark', 'lockup-paper.svg': 'horizontal lockup on paper',

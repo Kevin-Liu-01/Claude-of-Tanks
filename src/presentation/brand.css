@@ -1,0 +1,64 @@
+/* /brand (owner, 2026-11-18): the tank mark and nothing else. Full-bleed paper and graphite halves carry the mark and the
+   lockup, the size ladder runs from the vector mark down to the hand-hinted pixel masters, then the colors, the clear
+   space and size rules, the files and the reservation. Tokens only; the kit is imported here. */
+@import url('../ui/components/components.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+*{box-sizing:border-box}
+html{min-width:280px;background:var(--surface-scene)}
+/* the shell's weight-voiced family only (as the missing page), so the head stays inside its type budget */
+body.brand-page{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:0;background:var(--surface-scene);color:var(--ink-1);font-family:var(--font-ui);-webkit-font-smoothing:antialiased;
+  --brand-pad:max(var(--shell-gutter),calc((100% - var(--shell-max)) / 2))}
+.brand-page main{display:block}
+.brand-page h1,.brand-page h2,.brand-page h3{margin:0;font-weight:700;text-transform:uppercase}
+.brand-page h2{font-size:var(--fs-28);line-height:var(--lh-title)}
+.brand-page h3{font-size:var(--fs-14);color:var(--ink-3)}
+.brand-page img{display:block;max-width:100%;height:auto}
+
+/* the two grounds: graphite and paper, edge to edge */
+.brand-half{display:grid;place-items:center;padding:var(--s8) var(--s6)}
+.brand-half--dark{background:var(--graphite-800)}
+.brand-half--paper{background:var(--paper-50);color:var(--graphite-800)}
+.brand-hero,.brand-split{position:relative;display:grid;grid-template-columns:1fr}
+.brand-hero .brand-half{min-height:min(62vh,560px)}
+.brand-hero img{width:min(100%,552px)}
+.brand-hero__title{position:absolute;left:var(--brand-pad);top:var(--s6);z-index:1;font-size:var(--fs-20);color:var(--ink-1)}
+.brand-split__title{position:absolute;left:var(--brand-pad);top:var(--s6);z-index:1;color:var(--ink-1)}
+.brand-split .brand-half{min-height:320px}
+.brand-split img{width:min(100%,640px)}
+@media (width >= 768px){.brand-hero,.brand-split{grid-template-columns:1fr 1fr}}
+
+.brand-band{display:grid;gap:var(--s6);padding:var(--s9) var(--brand-pad)}
+.brand-band--dark{background:var(--graphite-800)}
+
+/* the ladder: the vector mark to 20 px tall, then the tab's pixel masters at their own size and at 8x */
+.brand-ladder{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--s7) var(--s8);margin:0;padding:0;list-style:none}
+.brand-ladder li{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3)}
+.brand-ladder img{max-width:none}
+.brand-ladder .num{font-size:var(--fs-13);color:var(--ink-3)}
+.brand-px{image-rendering:pixelated}
+
+.brand-swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:0;padding:0;list-style:none}
+.brand-swatches li{display:flex;flex-direction:column;justify-content:flex-end;gap:var(--s1);min-height:200px;padding:var(--s4);background:var(--sw);color:var(--sw-ink)}
+.brand-swatches b{font-size:var(--fs-16)}
+.brand-swatches .num{font-size:var(--fs-14)}
+.sw-paper{--sw:var(--paper-50);--sw-ink:var(--graphite-800)}
+.sw-tungsten{--sw:var(--tungsten-500);--sw-ink:var(--graphite-800)}
+.sw-tungsten600{--sw:var(--tungsten-600);--sw-ink:var(--graphite-800)}
+.sw-graphite{--sw:var(--graphite-800);--sw-ink:var(--paper-50)}
+.sw-ground{--sw:var(--graphite-850);--sw-ink:var(--paper-50)}
+
+/* clear space: the mark (184:106) inside a wash half its height deep on every side; the whole figure fits a phone */
+.brand-clear{--w:min(276px,calc((100vw - 2 * var(--shell-gutter)) / 1.576));--c:calc(var(--w) * .288);justify-self:start;margin:var(--c)}
+.brand-clear img{width:var(--w);box-shadow:0 0 0 var(--c) var(--accent-wash)}
+
+.brand-copy{display:grid;gap:var(--s4);max-width:var(--measure-body)}
+.brand-copy p{margin:0;font-size:var(--fs-16);line-height:var(--lh-body);color:var(--ink-2)}
+
+.brand-files{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s6)}
+.brand-files ul{display:grid;gap:var(--s2);margin:var(--s3) 0 0;padding:0;list-style:none}
+.brand-files a,.brand-use__links a{color:var(--ink-1);font-family:var(--font-mono);font-size:var(--fs-14);text-underline-offset:3px}
+.brand-files a:hover,.brand-use__links a:hover{color:var(--accent)}
+.brand-use__links{display:flex;flex-wrap:wrap;gap:var(--s5)}
+.brand-use__links a{font-family:var(--font-ui)}
+}

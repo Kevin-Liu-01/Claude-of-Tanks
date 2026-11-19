@@ -93,6 +93,14 @@ and loading policy; those contracts extend beyond this directory.
   `seoMetadata.selftest.mjs`, and `analytics.selftest.mjs` as applicable.
 - Archive changes: inspect the packaged manifest and recipe mappings before
   changing cards, filters, or their shared manual integration.
+- The media library (/media, `mediaLibrary.ts` on the Filming manual): after
+  publishing or re-rendering pictures under `public/media`, run
+  `node tools/media-library/build.mjs --write` and commit the library with them.
+  A new folder gets a rule in `tools/media-library/sources.mjs` (its pictures'
+  collection, set and caption from its manifest or the catalogs, and a
+  picture's clip from its moving take) or a reason to stay out, films included;
+  `media-library.selftest.mjs` fails until then. The viewer plays a clip only
+  on its play control's press, through `mediaPlayer.ts` (`mode: 'click'`).
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

@@ -2,6 +2,7 @@ import { getLocale, onLocaleChange, t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs as kitTabs, wireRoving } from '../ui/components/components.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
+import { createMediaPlayer, type MediaRung } from './mediaPlayer.ts';
 
 // The media library: every finished picture of the media rounds' current takes (library-r3, 2026-10-21: r2's one final
 // a subject left out "so many pictures"; r1's 11,215, every render, review sheet and candidate, were "way too much"),
@@ -10,7 +11,8 @@ import { dialogSurface } from '../ui/components/surfaceStack.ts';
 // files (the pictures' WebP files end to end, fetched with an HTTP range request). A picture the site already shows
 // elsewhere names that file instead. The collections are grouped by what the pictures show (battle scenes by
 // battlefield, vehicles by country...), and every picture has a caption in each locale: its title, a line about it,
-// and its shot (close-up, another moment...).
+// and its shot (close-up, another moment...). tools/media-library/build.mjs builds it from the published folders'
+// manifests (2026-11-16; before, a snapshot built outside the repository fell three weeks behind the site).
 const ROOT_URL = '/media/library-r3';
 /** [name, width, height, sheet, x, y, thumb width, thumb height, pack, offset, length] or [..., published url] */
 type LibraryItem = [string, number, number, number, number, number, number, number, ...(number | string)[]];
@@ -18,7 +20,11 @@ type LibraryItem = [string, number, number, number, number, number, number, numb
 type LibraryText = string | Partial<Record<string, string>>;
 /** [title, about, shot] */
 type LibraryCaption = [LibraryText, LibraryText | null, LibraryText | null];
-interface LibrarySet { key: string; title: LibraryText; kind: string; items: LibraryItem[]; captions?: LibraryCaption[] }
+/** A picture's clip (2026-11-16): its moving take's files in the player's ladder order, each [file, type, rung?]. */
+interface LibraryClip { seconds: number | null; sources: [string, string, MediaRung?][] }
+interface LibrarySet {
+  key: string; title: LibraryText; kind: string; items: LibraryItem[]; captions?: LibraryCaption[]; clips?: (LibraryClip | null)[];
+}
 interface LibraryCollection {
   key: string; title: LibraryText; blurb: LibraryText; count: number;
   packs: string[]; sheets: [string, number, number][]; sets: LibrarySet[];
@@ -98,7 +104,8 @@ function createViewer(): Viewer {
   dialog.className = 'media-library-viewer';
   dialogSurface(dialog, 'media-library');
   dialog.setAttribute('aria-label', t('mediaLibrary.viewerAria'));
-  dialog.innerHTML = `<figure><div class="media-library-stage"><img alt=""><p class="media-library-wait" hidden></p></div>`
+  dialog.innerHTML = `<figure><div class="media-library-stage"><img alt=""><video class="media-library-clip" hidden></video>`
+    + `<p class="media-library-wait" hidden></p></div>`
     + `<figcaption><div><strong data-library-name></strong><p data-library-about></p></div>`
     + `<div class="media-library-controls"><button type="button" data-library-step="-1" aria-label="${t('mediaLibrary.previousAria')}">${icon('chevronLeft', { size: 20 })}</button>`
     + `<output data-library-position></output>`
@@ -106,12 +113,24 @@ function createViewer(): Viewer {
     + `<button type="button" data-library-close aria-label="${t('mediaLibrary.closeAria')}">${icon('close', { size: 20 })}</button></div></figcaption></figure>`;
   document.body.appendChild(dialog);
   const image = dialog.querySelector<HTMLImageElement>('img')!;
+  const stage = dialog.querySelector<HTMLElement>('.media-library-stage')!;
+  const video = dialog.querySelector<HTMLVideoElement>('video')!;
   const wait = dialog.querySelector<HTMLElement>('.media-library-wait')!;
   const name = dialog.querySelector<HTMLElement>('[data-library-name]')!;
   const about = dialog.querySelector<HTMLElement>('[data-library-about]')!;
   const position = dialog.querySelector<HTMLOutputElement>('[data-library-position]')!;
   let current: { collection: LibraryCollection; set: LibrarySet; index: number } | null = null;
   let request = 0;
+  // a picture with a clip plays it on its play control's press, through the site's one playback policy
+  // (src/presentation/mediaPlayer.ts): nothing transfers before the press, the ladder picks the file this screen plays
+  const player = createMediaPlayer(video, {
+    mode: 'click', frame: stage, controlParent: stage, control: 'always', controlClass: 'cot-c-btn cot-c-btn--icon media-library-play',
+    label: (playing) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria',
+      { label: current ? pictureTitle(current.set, current.index) : '' }),
+    tip: (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip'),
+  });
+  video.loop = true;
+  video.addEventListener('playing', () => { video.hidden = false; });
 
   const caption = (): void => {
     if (!current) return;
@@ -121,12 +140,20 @@ function createViewer(): Viewer {
     about.textContent = say(aboutText);
     position.value = `${index + 1} / ${set.items.length}`;
     image.alt = [pictureTitle(set, index), say(aboutText)].filter(Boolean).join(': ');
+    video.setAttribute('aria-label', image.alt);
+    player.sync();
   };
   const show = (): void => {
     if (!current) return;
     const { collection, set, index } = current;
     const item = set.items[index];
     const own = ++request;
+    const clip = set.clips?.[index] ?? null;
+    video.hidden = true;
+    player.show(clip ? {
+      sources: clip.sources.map(([src, type, rung]) => (rung ? { src, type, rung } : { src, type })),
+      ...(clip.seconds ? { seconds: clip.seconds } : {}),
+    } : null);
     caption();
     image.style.aspectRatio = `${item[1]} / ${item[2]}`;
     wait.hidden = false;
@@ -156,7 +183,7 @@ function createViewer(): Viewer {
     if (event.key === 'ArrowLeft') { event.preventDefault(); step(-1); }
     if (event.key === 'ArrowRight') { event.preventDefault(); step(1); }
   });
-  dialog.addEventListener('close', () => { request++; image.removeAttribute('src'); });
+  dialog.addEventListener('close', () => { request++; image.removeAttribute('src'); video.hidden = true; player.show(null); });
   return {
     open(collection, set, index) {
       current = { collection, set, index };
@@ -185,6 +212,7 @@ function setSection(collection: LibraryCollection, set: LibrarySet, viewer: View
     button.setAttribute('role', 'listitem');
     button.setAttribute('aria-label', t('mediaLibrary.openAria', { name: pictureTitle(set, index), set: say(set.title) }));
     button.dataset.tip = pictureTitle(set, index);
+    if (set.clips?.[index]) button.dataset.clip = '';
     button.style.width = `${Math.round(tw * scale)}px`;
     button.style.height = `${Math.round(th * scale)}px`;
     button.style.backgroundImage = `url("${ROOT_URL}/${collection.key}/${sheetName}")`;

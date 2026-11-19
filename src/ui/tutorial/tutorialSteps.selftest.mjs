@@ -50,7 +50,9 @@ for (const step of TUTORIAL_STEPS) {
 const subjects = (chapter, input) => chapterSteps(chapter, input).map((step) => step.id.split('.')[1].replace(/(Touch|Pad)$/, ''));
 for (const input of INPUTS) {
   assert.deepEqual(subjects('garage', input), ['welcome', 'tank', 'nation', 'ammo', 'kit', 'camo', 'deploy'], `the Garage chapter (${input})`);
-  assert.deepEqual(subjects('battle', input), ['drive', 'fire', 'reload', 'ammo', 'spotting', 'minimap', 'win'], `the battle chapter (${input})`);
+  assert.deepEqual(subjects('battle', input), ['drive', 'fire', 'armour', 'reload', 'ammo', 'spotting', 'minimap', 'win'], `the battle chapter (${input})`);
+  // (274) the armour colours are taught by the battle's own step, which stands the one-time tip down (one surface)
+  assert.equal(chapterSteps('battle', input).find((step) => step.id.startsWith('battle.armour'))?.teaches, 'armourColours', `${input}: the armour step stands the tip down`);
   const tips = chapterSteps('tips', input).filter((step) => step.id !== 'tips.done');
   assert.ok(tips.length >= 5 && tips.length <= 8, `five to eight strategy tips (${tips.length})`);
   assert.equal(chapterSteps('tips', input).at(-1).id, 'tips.done', `${input}: the tips close on a card that says where Replay lives`);
@@ -165,6 +167,15 @@ assert.ok(camoSelectionBonus('auto', null, 'verdant') > 0 && camoSelectionBonus(
 const standard = matchRulesetFor('standard');
 assert.equal(standard.timeout, 'draw', 'a Standard battle that runs out of time is a draw');
 assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
+// armour (274): the colours are the overlay's own bands: red at a penetration ratio of 0.72 or under, green from 1.35, amber
+// between, for the loaded shell (game/armorAimOverlay.ts penetrationColor)
+{
+  const overlay = read('src/game/armorAimOverlay.ts');
+  assert.match(overlay, /if \(ratio <= 0\.72\) return out\.copy\(LOW\);/, 'red is "will not" (0.72 or under)');
+  assert.match(overlay, /const LOW = new THREE\.Color\(0xe53d35\);/, 'LOW is red');
+  assert.match(overlay, /const HIGH = new THREE\.Color\(0x48d985\);/, 'HIGH is green');
+  assert.match(text('battle.armour.body'), /green goes through, amber may, red will not/);
+}
 // reload: a gun's reload is the gun's (or the shell's), not a crew skill: no skill table exists
 assert.ok(!existsSync(resolve(ROOT, 'src/sim/crewSkills.ts')), 'no crew skills change a reload');
 
