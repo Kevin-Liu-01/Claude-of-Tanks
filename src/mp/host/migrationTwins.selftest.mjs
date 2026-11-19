@@ -21,10 +21,15 @@
 // [1] Frontline attackers, the keyframe 30 ticks after the advance to the second sector (no window): within the quantized
 //     twin's gap plus 0.05 m, and 0.5 m, over 14 s; the defenders within 1.5 m. Gaps 274's head: 112.5 m (a-2), 1.7 m.
 // [2] Endless Horde, the keyframe in the lull 0.3 s before it ends (no window): the wave the new host begins itself keeps
-//     the old host's hulls within 0.05 m over 14 s. Gaps 274's head: 51 m.
+//     the old host's hulls within 0.05 m over 14 s. Gaps 274's head: 27 m.
 // [3] Endless Horde, the wave begun in the window (the seat's newest frame 2, 12 and 30 ticks into it: a mode event's
 //     keyframe follows within MODE_KEYFRAME_SPACING_MS), its arrivals seen or hidden from the seat: within 8 m seen, and
-//     6 m hidden (12 m 30 ticks in: they rise on the new host's first step), over 14 s. Gaps 274's head: 62-68 m seen.
+//     2 m hidden 2 ticks in (6 m 12 ticks in, 12 m 30 ticks in: they rise on the new host's first step, the window late,
+//     as gaps 274's did), over 14 s. Gaps 274's head: 51-63 m seen.
+// [4] Frontline, the line advanced in the window (the seat's newest frame 30 ticks after it): the defenders within 1.5 m,
+//     the attackers within 35 m over 14 s (gaps 274's head: 86.4 m and 114.0 m). The attackers' traffic with each other
+//     (the ally deadlock, escape and passing path) went on in the window, which no keyframe records; the staging stacks
+//     them on the sector's centre each tick until it falls.
 //     What is left is the window's own play, which no keyframe or frame records: the risen bots' first moves and their
 //     brains' first ticks.
 import { Vector3 } from 'three';
@@ -176,14 +181,59 @@ console.log('[2] Endless Horde, the keyframe alone in the lull: the wave the new
 {
   const run = hordeTwin(0, false);
   ok(run.waves === '2/2' && run.gap < 0.05, `the wave's hostiles keep the old host's tracks for 14 s: at most ${run.gap.toFixed(3)} m apart (${run.at || 'none'}; `
-    + `waves ${run.waves}; bound 0.05 m; gaps 274's head 51 m)`);
+    + `waves ${run.waves}; bound 0.05 m; gaps 274's head 27 m)`);
 }
 
 console.log('[3] Endless Horde, the wave begun in the window: its arrivals seen or hidden from the seat');
-for (const [window, hidden, bound] of [[20, false, 8], [30, false, 8], [48, false, 8], [20, true, 6], [30, true, 6], [48, true, 12]]) {
+// (gaps 274's head on this staging: 62.3, 63.0 and 51.0 m seen; 6.2, 4.5 and 10.0 m hidden, which 275 holds as it found
+// them 12 and 30 ticks in: a hidden arrival rises on the new host's first step, the window late)
+for (const [window, hidden, bound, note] of [[20, false, 8, 'gaps 274\'s head 62.3 m'], [30, false, 8, 'gaps 274\'s head 63.0 m'], [48, false, 8, 'gaps 274\'s head 51.0 m'],
+  [20, true, 2, 'gaps 274\'s head 6.2 m'], [30, true, 6, 'gaps 274\'s head 4.5 m: no gain'], [48, true, 12, 'gaps 274\'s head 10.0 m: no gain']]) {
   const run = hordeTwin(window, hidden);
   ok(run.told > 0 && run.waves === '2/2' && run.gap < bound, `the frame ${window - 18} ticks into wave 2, its arrivals ${hidden ? 'hidden from' : 'in'} the seat's `
-    + `frame (${run.told} told): at most ${run.gap.toFixed(2)} m apart over 14 s (${run.at}; bound ${bound} m${hidden ? '' : '; gaps 274\'s head 63-64 m'})`);
+    + `frame (${run.told} told): at most ${run.gap.toFixed(2)} m apart over 14 s (${run.at}; bound ${bound} m; ${note})`);
+}
+
+console.log('[4] Frontline, the line advanced in the window');
+{
+  const bots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
+    ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
+  const make = (resumed) => createMatchActor({ roomId: 'twin-line-window', mapId: 'verdant', mode: 'frontline_assault', seed: 7, seats, bots,
+    ruleset: matchRulesetFor('frontline_assault'), world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: resumed });
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  const zones = sim.modeController.state.zones;
+  const ax = zones.at(-1).x - zones[0].x, az = zones.at(-1).z - zones[0].z, al = Math.hypot(ax, az) || 1;
+  const pin = { x: zones[1].x - az / al * 300, z: zones[1].z + ax / al * 300 };
+  const pinSurvivor = (a) => { const e = a.authority.entityById.get('d-7'); e.state.pos.x = pin.x; e.state.pos.z = pin.z; e.state.speed = 0; };
+  const lineOf = (a) => a.authority.modeController.state.line.index;
+  const zoneOf = (a) => { const s = a.authority.modeController.state; return s.zones[Math.min(s.line.index, s.zones.length - 1)]; };
+  const takeSector = (a) => {
+    const zone = zoneOf(a);
+    for (const e of a.authority.entities) {
+      if (e.team === 'alpha' && e.modeActive !== false && !e.combat.destroyed) { e.state.pos.x = zone.x + (e.id === 'h0' ? 0 : 6); e.state.pos.z = zone.z; }
+      if (e.team === 'bravo' && e.id !== 'd-7' && e.modeActive !== false && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; }
+    }
+    pinSurvivor(a);
+  };
+  let tick = 0;
+  const told = new Map();
+  const step = (fight) => { fight(old); sim.step({ dt: 1 / 60, inputs }); tick++; for (const ev of sim.eventsForViewer('h0')) if (ev.type === 'mode_respawn') told.set(ev.id, tick); sim.afterEventBroadcast(); };
+  const fight = (a) => (lineOf(a) < 2 ? takeSector(a) : pinSurvivor(a));
+  for (let guard = 0; guard < 30000 && !(lineOf(old) === 1 && zoneOf(old).control > 0.95); guard++) step(takeSector);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era);
+  for (let guard = 0; guard < 600 && lineOf(old) < 2; guard++) step(fight);
+  for (let k = 0; k < 30; k++) step(fight);
+  const fresh = resume(make, keyframe, hostFrame(old, tick, era), told);
+  fresh.authority.onMatchReady();
+  ok(lineOf(old) === 2 && lineOf(fresh) === 2 && [...told.keys()].some((id) => id.startsWith('d-')), `the case is built: the old host advanced in the window `
+    + `(${[...told.keys()].join(', ')} told) and the new host took the advance up`);
+  const run = together(old, fresh, 14, pinSurvivor);
+  ok(run.widest.bravo < 1.5, `the defenders keep the old host's tracks: at most ${run.widest.bravo.toFixed(2)} m apart (${run.at.bravo}; bound 1.5 m; gaps 274's head 86.4 m)`);
+  ok(run.widest.alpha < 35, `the attackers within 35 m (${run.widest.alpha.toFixed(2)} m, ${run.at.alpha}; gaps 274's head 114.0 m): their traffic in the window is no `
+    + 'keyframe\'s');
+  old.stop(); fresh.stop();
 }
 
 if (failures) { console.error(`migrationTwins.selftest: ${failures} failure(s)`); process.exit(1); }

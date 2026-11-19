@@ -2,7 +2,7 @@
 // its target and mode, the traffic it had settled with its allies (the deadlock and escape, a committed passing path),
 // its detour side, its settle and press windows, its timers' phases, aim errors and stuck state. Frontline attackers
 // that had sorted out who passes whom sorted it out again and parted 112 m from the old host's in 14 s (the lane's
-// bisect: copying nine of those fields alone held them within 9 m; botDriveMigration [8] pins the whole). The record
+// bisect: copying nine of those fields alone held them within 9 m; migrationTwins [1] pins the whole). The record
 // carries every field the brain decides on from one tick to the next, where it differs from the construction both hosts
 // build alike from the same seed.
 //
@@ -52,6 +52,8 @@ const NOT_CARRIED = {
     'ramHoldOffs', 'routeOutcome',
   ],
 };
+/** brainNumbers' fields in order (read by [1]; [2] finds one by name). */
+const NUMBER_FIELDS = [];
 /** The record's lists' text, pinned to BRAIN_LAYOUT: change the lists, bump the layout and pin the new digest here. */
 const LAYOUT_DIGESTS = { 1: '0dcbb987c19e9f64' };
 
@@ -78,6 +80,7 @@ console.log('[1] the census: every createAI field carried or named, each list re
   const assigned = (fn) => { const st = fn?.body?.statements?.find((s) => ts.isExpressionStatement(s) && ts.isBinaryExpression(s.expression) && ts.isArrayLiteralExpression(s.expression.left));
     return st ? st.expression.left.elements.map((e) => e.getText(sf)) : null; };
   const numbers = returned(fns.get('brainNumbers')), numbersSet = assigned(fns.get('setBrainNumbers'));
+  NUMBER_FIELDS.push(...(numbers ?? []));
   const flags = returned(fns.get('brainFlags')), flagsSet = assigned(fns.get('setBrainFlags'));
   const names = returned(fns.get('brainNames'));
   const hullsNode = arrows.get('brainHulls');
@@ -133,6 +136,19 @@ console.log('[2] the record through the authority\'s bots: JSON-safe, taken up e
   const target = taker.authority.entityById.get('a-0').aiCtl;
   target.takeBrain(parsed, 0, (id) => taker.authority.entityById.get(id));
   ok(JSON.stringify(target.captureBrain()) === text, 'a brain built alike takes the record up exactly: its own capture after the take is the record');
+  // from a row newer than the capture, what the brain measures from its own hull is resume()'s, but its target's reload is
+  // the record's (round 1 review: resume() reads none, a new brain holding no target, and 0 read a reloading target as just
+  // fired on the first tick)
+  const reloadAt = NUMBER_FIELDS.indexOf('prevTargetReloadT');
+  const pairs = [];
+  for (let i = 0; i < (parsed.n ?? []).length; i += 2) if (parsed.n[i] !== reloadAt) pairs.push(parsed.n[i], parsed.n[i + 1]);
+  const withReload = { ...parsed, n: [...pairs, reloadAt, 3.25] };
+  const later = make(), laterBrain = later.authority.entityById.get('a-0').aiCtl;
+  laterBrain.takeBrain(withReload, 0.5, (id) => later.authority.entityById.get(id));
+  const takenN = laterBrain.captureBrain()?.n ?? [];
+  const takenReload = takenN.find((v, i) => i % 2 === 0 && v === reloadAt) === undefined ? null : takenN[takenN.indexOf(reloadAt) + 1];
+  ok(reloadAt >= 0 && takenReload === 3.25, `taken from a row 0.5 s newer, the target's reload is the record's (${takenReload} against 3.25)`);
+  later.stop();
   const corrupt = [
     ['another layout', { ...parsed, v: BRAIN_LAYOUT + 1 }],
     ['an index out of range', { ...parsed, n: [100000, 1] }],

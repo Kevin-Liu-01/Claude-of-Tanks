@@ -25,6 +25,10 @@
 // construction's: the two raiders parted 55 m within 25 s. A down bot's extras now carry its streams alone: [7a] still down
 // at the resume, the raiders keep one track; [7b] revived before the seat's frame, within 4 m (the old brain planned that
 // life from its spawn and drove it 0.25 s before the frame, the new one plans it from the newer row).
+// 275: [7a] also holds the brain a down bot carries (game/ai.ts BotBrain): once both hosts revive the raider, its new
+// brain is the old host's, field for field. [7b]'s bound is 0.5 m (it was 4 m): a hull the old host stood up in the
+// window drives from its revive on, and the new host spools its engine from the told revive (movement.ts spoolFromRest;
+// built at rest, it pulled away 0.3 s behind: 3.1 m without it).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -303,7 +307,8 @@ function downAtKeyframe(revivedInWindow) {
   for (let k = 0; k < 30; k++) step(old);
   const atKeyframe = hull.aiCtl.captureDrive().streams;
   const era = createEraIndexer();
-  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
+  // sealed as matchHostCore.ts seals it, the battle clock exact (275)
+  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, battleS: sim.battleS, phase: 'playing',
     modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era) }));
   const sealed = keyframe.entities.find((e) => e.entityId === old.wireIdOf('a-0'));
   let latest = null;
@@ -313,7 +318,7 @@ function downAtKeyframe(revivedInWindow) {
     latest = hostFrame(old, tick, era);
   }
   const { state } = resumeStateFromRetained(keyframe, 0, latest, latest ? 500 : null, [], [], [...told]);
-  const fresh = makeRevive({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  const fresh = makeRevive({ tick: state.tick, battleTimeMs: state.battleTimeMs, ...(state.battleS !== undefined ? { battleS: state.battleS } : {}) });
   applyResumeState(fresh, state);
   const twin = fresh.authority.entityById.get('a-0');
   const taken = twin.aiCtl.captureDrive().streams;
@@ -322,16 +327,38 @@ function downAtKeyframe(revivedInWindow) {
   built.stop();
   const downAtResume = hull.combat.destroyed && twin.combat.destroyed;
   fresh.authority.onMatchReady();
-  let apart = 0, apartAt = null, together = 0;
+  // the first step: what each brain measures from its hull (a brain handed the dead life's record and no hand-back read the
+  // move from its death to its spawn as one tick's progress)
+  step(old); step(fresh);
+  const firstTick = { old: hull.aiCtl.debugInfo(), fresh: twin.aiCtl.debugInfo() };
+  let apart = 0, apartAt = null, together = 0, brainsOnRise = null;
   for (let k = 1; k <= 60 * 25; k++) {
     step(old); step(fresh);
     if (hull.combat.destroyed || twin.combat.destroyed) continue;
+    // the first step both are up: the brain each drives its new life with (275)
+    if (brainsOnRise === null) brainsOnRise = [JSON.stringify(hull.aiCtl.captureBrain()), JSON.stringify(twin.aiCtl.captureBrain())];
     together++;
     const d = Math.hypot(hull.state.pos.x - twin.state.pos.x, hull.state.pos.z - twin.state.pos.z);
     if (d > apart) { apart = d; apartAt = k / 60; }
   }
   old.stop(); fresh.stop();
-  return { sealed, atKeyframe, taken, constructed, downAtResume, apart, apartAt, together, told: told.get('a-0') ?? null, keyTick: keyframe.tick };
+  return { sealed, atKeyframe, taken, constructed, downAtResume, apart, apartAt, together, told: told.get('a-0') ?? null, keyTick: keyframe.tick, brainsOnRise,
+    sealedBrain: !!sealed?.brain, firstTick };
+}
+/** The fields two brain records hold apart, as `part[index] old/new` (game/ai.ts BotBrain's lists). */
+function brainApart(a, b) {
+  const x = JSON.parse(a) ?? {}, y = JSON.parse(b) ?? {}, out = [];
+  for (const key of new Set([...Object.keys(x), ...Object.keys(y)])) {
+    const p = x[key], q = y[key];
+    if (JSON.stringify(p) === JSON.stringify(q)) continue;
+    if (Array.isArray(p) && Array.isArray(q) && (key === 'n' || key === 's' || key === 'h')) {
+      const mp = new Map(), mq = new Map();
+      for (let i = 0; i < p.length; i += 2) mp.set(p[i], p[i + 1]);
+      for (let i = 0; i < q.length; i += 2) mq.set(q[i], q[i + 1]);
+      for (const i of new Set([...mp.keys(), ...mq.keys()])) if (JSON.stringify(mp.get(i)) !== JSON.stringify(mq.get(i))) out.push(`${key}[${i}] ${JSON.stringify(mp.get(i))}/${JSON.stringify(mq.get(i))}`);
+    } else out.push(`${key} ${JSON.stringify(p)?.slice(0, 60)}/${JSON.stringify(q)?.slice(0, 60)}`);
+  }
+  return out.join(', ') || 'none';
 }
 for (const [label, revivedInWindow] of [['[7a] a raider down when the keyframe is sealed, still down at the resume', false],
   ['[7b] a raider down when the keyframe is sealed, revived before the seat\'s newest frame', true]]) {
@@ -346,9 +373,17 @@ for (const [label, revivedInWindow] of [['[7a] a raider down when the keyframe i
     + `(${JSON.stringify(run.sealed?.streams ?? null)})`);
   ok(run.taken[0] === run.atKeyframe[0] && run.taken[1] === run.atKeyframe[1], `the new brain draws on from the keyframe's positions of both `
     + `(controller ${run.taken[0]}, planner ${run.taken[1]}), not a fresh brain's`);
-  // 275: 0.5 m revived in the window too (it was 4 m: the new brain began its life from its construction's state and its
-  // engine at rest; the record carries the brain the dead life left, the revive's hand-back runs on it, and the spool is
-  // the ramp's since the told revive)
+  // 275: 0.5 m revived in the window too (it was 4 m: the engine at rest; the spool is now the ramp's since the told revive)
+  if (revivedInWindow) {
+    const { old: a, fresh: b } = run.firstTick;
+    ok(Math.abs(b.progressRate - a.progressRate) < 3 && b.burstDamage === a.burstDamage, `the revived raider's brain, handed its hull after the record, reads `
+      + `no spike on its first tick (progressRate ${b.progressRate} m/s against the old host's ${a.progressRate}, burstDamage ${b.burstDamage}/${a.burstDamage})`);
+  }
+  if (!revivedInWindow) {
+    ok(run.sealedBrain && !!run.brainsOnRise && run.brainsOnRise[0] !== 'null' && run.brainsOnRise[0] === run.brainsOnRise[1], `the keyframe carries the down `
+      + `raider's brain, and once both hosts revive it the new brain is the old host's, field for field (${run.brainsOnRise ? `${run.brainsOnRise[0].length} `
+      + `bytes of record${run.brainsOnRise[0] === run.brainsOnRise[1] ? ', alike' : `; apart: ${brainApart(run.brainsOnRise[0], run.brainsOnRise[1])}`}` : 'never both up'})`);
+  }
   const bound = 0.5;
   ok(run.together > 60 * 10 && run.apart < bound, `once both are up the two raiders keep one track for 25 s (at most ${run.apart.toFixed(2)} m apart`
     + `${run.apartAt === null ? '' : `, at +${run.apartAt.toFixed(2)} s`}; ${(run.together / 60).toFixed(1)} s together; bound ${bound} m${revivedInWindow
