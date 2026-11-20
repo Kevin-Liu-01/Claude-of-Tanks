@@ -43,6 +43,7 @@ const CSS = `
 .cot-couch-brief-roll .cot-couch-brief-seat{min-width:44px;height:36px;border-color:var(--line-2);color:var(--ink-3);}
 .cot-couch-brief-roll .cot-couch-brief-seat[data-ready='true']{border-color:var(--accent);background:var(--accent-wash);color:var(--ink-1);}
 .cot-couch-brief-hint{font-size:var(--fs-13);color:var(--ink-3);}
+.cot-couch-brief-modal .cot-c-btn[hidden]{display:none;}
 `;
 
 export interface CouchBriefingRequest {
@@ -190,13 +191,19 @@ export function openCouchBriefing(request: CouchBriefingRequest): CouchBriefingH
   const act = (outcome: string): void => { if (outcome === 'go') deploy(); else paint(); };
   next.addEventListener('click', () => act(briefing.next()));
   back.addEventListener('click', () => { if (briefing.back()) paint(); });
-  // Enter and Space move it on from anywhere on the plate; on a focused button the button's own press does it
+  // Enter and Space move it on from wherever the focus is on the plate (the modal focuses its close at open: the first
+  // couch look's Enter pressed the close and went back to the lobby); on Back they step back. Taken in the capture
+  // phase with the key's own button press cancelled, so a key acts once; Escape still goes back to the lobby.
+  const stepKey = (event: KeyboardEvent): boolean => (event.key === 'Enter' || event.key === ' ') && !event.altKey && !event.ctrlKey && !event.metaKey;
   controller.root.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    if ((event.target as HTMLElement | null)?.closest('button')) return;
+    if (!stepKey(event)) return;
     event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) return;
+    if ((event.target as HTMLElement | null)?.closest('button') === back) { if (briefing.back()) paint(); return; }
     act(briefing.next());
-  });
+  }, true);
+  controller.root.addEventListener('keyup', (event) => { if (stepKey(event)) { event.preventDefault(); event.stopPropagation(); } }, true);
 
   const handle: CouchBriefingHandle = {
     briefing,
