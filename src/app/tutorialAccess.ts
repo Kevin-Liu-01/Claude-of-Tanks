@@ -75,7 +75,7 @@ export interface TutorialAccess {
   /** The chapter running and its step (receipts and the capture tool), or null. */
   current(): { chapter: TutorialChapter; step: string | null } | null;
   /** Diagnostics only (main.ts gates it): clear the record and run one chapter now, on whatever screen is showing. */
-  debugStart(chapter: TutorialChapter): void;
+  debugStart(chapter: TutorialChapter, atStep?: number): void;
   /** Diagnostics only (273): show a guide spec over the battle showing (null clears it), its labels taken as written;
    *  resolves to a reader of what it drew (the receipts' snapshot). */
   debugGuide(spec: import('../ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null): Promise<() => unknown>;
@@ -233,9 +233,11 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
       resetTutorialRecord();
       if (deps.onGarage()) start('garage', deps.onGarage);
     },
-    debugStart(chapter: TutorialChapter): void {
+    debugStart(chapter: TutorialChapter, atStep?: number): void {
       stopRun();
-      if (chapter === 'training') { delete resumeAt.training; start('training', () => true); return; }
+      // (atStep: the chapter opened at that step, the capture tools' stills of one card; diagnostics only)
+      const at = (): void => { if (atStep != null && atStep > 0) resumeAt[chapter] = atStep; else delete resumeAt[chapter]; };
+      if (chapter === 'training') { at(); start('training', () => true); return; }
       for (const name of ['garage', 'battle', 'tips'] as const) delete resumeAt[name];
       closedOnDeploy = false;
       resetTutorialRecord();
@@ -243,6 +245,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         if (earlier === chapter) break;
         markTutorialChapter(earlier, 'done');
       }
+      at();
       start(chapter, () => true);
     },
     current: () => (run ? { chapter: run.chapter, step: run.stepId } : starting ? { chapter: starting, step: null } : null),

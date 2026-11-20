@@ -4906,7 +4906,7 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
   if (diagnosticsRequested) {
     Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
-      value: (chapter: 'garage' | 'battle' | 'tips' | 'training') => withTutorial((access) => access.debugStart(chapter)) });
+      value: (chapter: 'garage' | 'battle' | 'tips' | 'training', atStep?: number) => withTutorial((access) => access.debugStart(chapter, atStep)) });
     // 273: the guide alone over the battle showing (tools/tutorial-guide.browser.mjs); resolves to its snapshot reader
     Object.defineProperty(window, '__TUTORIAL_GUIDE', { configurable: true,
       value: (spec: import('./ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null) => tutorialAccess.load().then((access) => access.debugGuide(spec)) });
