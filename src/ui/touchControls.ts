@@ -147,6 +147,8 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
    (their names stay for assistive technology), and the graphics button prints only its level under the monitor. */
 .cot-touch .quick:is(.sound,.settings) .ql{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-touch .quick.muted{color:var(--danger);border-color:oklch(from var(--danger) l c h / .55);}
+/* (mobile-hud-274) the toolbar's fold: only a phone shows the menu button (battleHudLayout.css, the phone HUD) */
+.cot-touch .quick.menu{display:none;}
 /* Recompose the existing live HUD instead of duplicating ammo/state UI. */
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
@@ -290,6 +292,7 @@ const SOUND = uiIconSVG('sound', 20);
 const SOUND_OFF = uiIconSVG('soundOff', 20);
 const GRAPHICS = uiIconSVG('graphics', 20);
 const SETTINGS = uiIconSVG('settings', 20);
+const MENU = uiIconSVG('menu', 20);
 
 interface MobileFireGestureState {
   readonly active: boolean;
@@ -443,6 +446,8 @@ export function createTouchControls({
   // (the pad is its own instruction: no "swipe to aim" or "landscape recommended" over the battlefield, owner 2026-10-22)
   aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>`;
   root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
+    // (mobile-hud-274) a phone shows the toolbar as this one button; a tap opens the three under it (battleHudLayout.css)
+    `<button class="quick menu" type="button" aria-label="${t('touch.toolbar')}" aria-expanded="false">${MENU}</button>` +
     `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
     `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +
     `<button class="quick settings" type="button" aria-label="${t('touch.settingsAria')}">${SETTINGS}<span class="ql">${t('touch.settings')}</span></button></div>` +
@@ -472,6 +477,7 @@ export function createTouchControls({
   let aimPointer: number | null = null;
   let aimX = 0, aimY = 0;
   let cancelFireGesture = (): void => {};
+  let closeMenu = (): void => {};
   // MOBILE-UX r1 PINCH = SCOPE: live touches on the aim surface. Two or more
   // fingers switch the pad from swipe-aim to a zoom gesture (aimPointer is
   // parked, so the joystick and one-finger aim are never disturbed).
@@ -516,7 +522,7 @@ export function createTouchControls({
       scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
     }
     // (2026-11-02 audit F8) the flight's climb rail holds the virtual handbrake: a hidden rail may never see the lift
-    if (!layout || !battle) { resetMove(); cancelFireGesture(); releaseClimb(); }
+    if (!layout || !battle) { resetMove(); cancelFireGesture(); releaseClimb(); closeMenu(); }
     // (improve-271 plan 024) a preset chosen in Settings shows on the chip at the next phase, resize or rotation
     renderGraphicsButton();
   }
@@ -868,8 +874,26 @@ export function createTouchControls({
     bus.emit('ui:click', {});
   });
   renderGraphicsButton();
+  // (mobile-hud-274, owner 2026-11-20: "mobile ui is way too cluttered") on a phone the toolbar is one menu button; a tap
+  // opens sound, graphics and settings under it, and it folds again on a second tap, after a settings tap, or after
+  // MENU_OPEN_MS untouched. The buttons drop under the chrome's box, so opening it moves nothing the planner placed.
+  const chrome = root.querySelector<HTMLElement>('.mobile-chrome')!;
+  const menuButton = root.querySelector<HTMLButtonElement>('.quick.menu')!;
+  const MENU_OPEN_MS = 5000;
+  let menuTimer: ReturnType<typeof setTimeout> | null = null;
+  const setMenu = (open: boolean): void => {
+    if (menuTimer) { clearTimeout(menuTimer); menuTimer = null; }
+    if (open) menuTimer = setTimeout(() => setMenu(false), MENU_OPEN_MS);
+    if (chrome.classList.contains('open') === open) return;
+    chrome.classList.toggle('open', open);
+    menuButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  closeMenu = () => setMenu(false);
+  tapButton(menuButton, () => { bus.emit('ui:click', {}); setMenu(!chrome.classList.contains('open')); });
+  // (a tap in the open menu keeps it up its full time again)
+  chrome.addEventListener('pointerdown', () => { if (chrome.classList.contains('open')) setMenu(true); });
   tapButton(root.querySelector<HTMLButtonElement>('.quick.settings')!, () => {
-    bus.emit('ui:click', {}); onOpenSettings();
+    setMenu(false); bus.emit('ui:click', {}); onOpenSettings();
   });
 
   bus.on('phase:change', (payload) => {

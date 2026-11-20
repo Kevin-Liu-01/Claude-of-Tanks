@@ -1,4 +1,4 @@
-import { layoutViewportSize, settleResponsiveLayout } from './responsiveLayout.ts';
+import { layoutViewportSize, settleResponsiveLayout, VIEWPORT_WIDTH_BANDS } from './responsiveLayout.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
@@ -263,6 +263,11 @@ const TOUCH_COMPACT_ALERT_LINES_H = 28;
 const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
 /** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
 const PORTRAIT_SIGHT_ROOM_H = 720;
+/** Whether a portrait touch window's systems row takes the top slot right of the map: under PORTRAIT_SIGHT_ROOM_H tall
+ *  (r10g), and on every phone-width window (mobile-hud-274, owner 2026-11-20: "less obtrusive to the actual game play"):
+ *  over the sight at 390x844 the row stood in the middle of the battlefield. */
+const portraitSystemsSlot = (width: number, height: number): boolean => width < height
+  && (height < PORTRAIT_SIGHT_ROOM_H || width <= VIEWPORT_WIDTH_BANDS.phone.max);
 /** Where a touch layout parks the gun travel chip under the map instead of seating it by the sight (hud.ts
  *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
  *  left FIRE button, the map or the speedometer at 320x568). */
@@ -1170,7 +1175,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (a portrait phone under PORTRAIT_SIGHT_ROOM_H tall whose systems row shows: the row takes the top slot right of the
     // map, and the map drops level with it (battleHudLayout.css data-map-slot), marked before the map is measured so this
     // pass places everything off its new edges)
-    const mapSlot = touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && !!read('.cot-vehicle-controls')?.height;
+    const mapSlot = touch && portraitSystemsSlot(width, height) && !!read('.cot-vehicle-controls')?.height;
     if ((document.body.dataset.mapSlot === '') !== mapSlot) {
       if (mapSlot) document.body.dataset.mapSlot = '';
       else delete document.body.dataset.mapSlot;
@@ -1444,9 +1449,17 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // row stood 17.5 px off the map's top and foot, and 12.5 px over the map in a scope, gauntlet r12 at 320x568.
     let systemsSlot = '';
     let systemsPerRow = 0;
-    if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
+    if (touch && portraitSystemsSlot(width, height) && systemsHeight && map && map.left < width / 2) {
       const slotTop = Math.max(touchChrome?.bottom ?? 0, top, map.top - SLOT_GAP) + SLOT_GAP;
-      if (slotTop <= systemsTop) {
+      // (a window PORTRAIT_SIGHT_ROOM_H tall or more takes the slot only where its rows end above the sight's band: beside
+      // the map's large step on a 430x1000 phone the slot began at 407, its rows down to the reticle)
+      const slotWidth = Math.max(52, width - map.right - 8 - 14);
+      let shown = 0;
+      for (const button of systemsElement?.children ?? []) if (button.checkVisibility?.()) shown++;
+      const slotRowCount = Math.max(1, Math.ceil(shown / Math.max(1, Math.floor((slotWidth + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)))));
+      const slotFoot = slotTop + slotRowCount * TOUCH_TARGET + (slotRowCount - 1) * SLOT_ROW_GAP;
+      const slotClear = height < PORTRAIT_SIGHT_ROOM_H || slotFoot <= height / 2 - SIGHT_BAND_ABOVE - 8;
+      if (slotTop <= systemsTop && slotClear) {
         systemsSlot = 'top';
         systemsTop = slotTop;
         systemsLeft = map.right + 8;
@@ -1557,7 +1570,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       left: Math.min(lensBox.left, lensLabel?.left ?? Infinity), right: Math.max(lensBox.right, lensLabel?.right ?? -Infinity),
       top: Math.min(lensBox.top, lensLabel?.top ?? Infinity) };
     const leftBottom = Math.min(leftFloor(height, touch),
-      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      // (a row in the top slot stands above the lanes, their ceiling, never their floor: mobile-hud-274's phone row there
+      // left both lanes no row at 390x844)
+      !systemsSlot && systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
       lensRow && lensRow.left < sideWidth && lensRow.top > leftAnchor ? lensRow.top - 8 : height,
       watchLow && watchLow.left < sideWidth ? watchLow.top - 8 : height);
     const earRight = read('.cot-ear.r');
@@ -1571,7 +1586,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // A phone-width mouse window has no roster above the right-hand feeds: they start below the strip's lane, which
     // follows the objective's bottom measured in this pass.
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
-    let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
+    let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom,
+      systemsSlot && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop + systemsHeight : 0) + 8;
+    // (under a row in the top slot the global feed keeps its one wide row right of the map, the personal lane two pitches
+    // under it, so the two never stand side by side off one baseline: gauntlet r14 at 390x844)
+    if (systemsSlot && systemsLeft < sideWidth + 12) leftAnchor = Math.max(leftAnchor, systemsTop + systemsHeight + 8, rightAnchor + 2 * 29);
     const lowerCorners = [read('.cot-dp'), read('.cot-drive'), map];
     const rackCentre = fillRack ? systemsLeft + systemsWidth / 2 : width / 2;
     // (the controls strip and the kill ribbon over a mouse layout's rack take the rack's edges, where the rack lies inside
@@ -1620,7 +1639,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const scopeVision = read('.cot-scope-vision');
     const reportShown = !!hudQuery('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
     const rightBottom = Math.min(rightFloor(height, width, map), ribbonFloor,
-      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      !systemsSlot && systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
       // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
       watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height,
       // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane

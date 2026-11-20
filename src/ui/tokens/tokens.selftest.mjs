@@ -293,6 +293,24 @@ floor('focus ring/gap', contrast(opaque('paper-50'), opaque('graphite-900')), 3)
 floor('focus ring/page', contrast(opaque('paper-50'), page), 3);
 assert.ok(rgbaOf('hud-plate')[3] >= 0.92, 'HUD plates are never below .92');
 assert.ok(rgbaOf('hud-plate-strong')[3] >= 0.96, 'strong HUD plates are .96 or more');
+// (mobile-hud-274, owner 2026-11-20: "slightly more transparent backgrounds" on a phone) the touch plates may be thinner, as
+// far as their marks stay legible over the bright battlefield: a text plate's every ink 4.5:1 over sky, sand and grass
+// (ink-1, ink-2 and the accent over white too), an icon-only control's glyphs 3:1 over sky and grass
+const FIELD = { sky: BRIGHT.sky, sand: BRIGHT.sand, grass: hexToRgb('#9cb85a') };
+for (const [bgName, bg] of Object.entries(FIELD)) {
+  for (const ink of ['ink-1', 'ink-2', 'ink-3', 'accent-hi']) {
+    floor(`${ink}/hud-plate-touch over ${bgName}`, contrast(opaque(ink), composite(rgbaOf('hud-plate-touch'), bg)), 4.5);
+  }
+  if (bgName !== 'sand') for (const ink of ['ink-1', 'accent-hi']) {
+    floor(`${ink}/hud-plate-touch-control over ${bgName}`, contrast(opaque(ink), composite(rgbaOf('hud-plate-touch-control'), bg)), 3);
+  }
+}
+for (const ink of ['ink-1', 'ink-2', 'accent-hi']) {
+  floor(`${ink}/hud-plate-touch over white`, contrast(opaque(ink), composite(rgbaOf('hud-plate-touch'), BRIGHT.white)), 4.5);
+}
+assert.ok(rgbaOf('hud-plate-touch-well')[3] < rgbaOf('hud-plate-touch-control')[3]
+  && rgbaOf('hud-plate-touch-control')[3] < rgbaOf('hud-plate-touch')[3] && rgbaOf('hud-plate-touch')[3] < rgbaOf('hud-plate')[3],
+  'the touch plates thin from text plate to control to well, all under the mouse plate');
 
 // What a colour sits on: the opaque surfaces, and both plates composited over the brightest backgrounds.
 const presetSource = (axis, preset) => Object.fromEntries(Object.entries(source.preset[axis][preset]).filter(([k]) => !meta(k)));

@@ -499,9 +499,8 @@ try {
 
 // Touch portrait, solved end to end (critic r3: the source pins above let the wiring drift). The measured 390x844
 // phone (tools/fixtures/battle-hud-layout.html in Chrome, layout-r3): the tray's collapsed slot at 468-520 parks the
-// systems row at 416, across the sight centred at 422; the lower cluster (speedometer 594, left FIRE 628, stick 702)
-// leaves no room under the scope readouts, so the row moves above the ring (314). The side kill lanes then end above
-// the moved row. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
+// systems row at 416, across the sight centred at 422; a phone-width portrait's row takes the top slot right of the map
+// instead (mobile-hud-274), and the side kill lanes start under it. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
 // lanes keep the floor the row's natural place gave them: a moved row lends them nothing.
 {
   const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
@@ -548,20 +547,21 @@ try {
       '.cot-dp': box(797,836,136.5,253.5), '.cot-net': box(822,842,14,102),
     }, 366);
     const centre = 844 / 2;
-    assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
-    // (on the window's centre line by its rendered width, 364 px: gauntlet r5 found it pressed to the right edge)
-    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [13, 366], '390x844: whole, on the centre line');
-    // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
-    // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
-    // gauntlet r5)
-    assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
-    assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
-    assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
-    // (a 171 px half lane would stack its rows 41 px apart beside the personal lane's 29, on no common baseline, gauntlet
-    // r14: the global feed takes one row the width right of the map instead, above the personal lane)
+    // (mobile-hud-274, owner 2026-11-20: "less obtrusive to the actual game play") a phone-width portrait's row leaves the
+    // sight for the top slot right of the map, 7 px under the touch chrome (155 + SLOT_GAP), the map's width and its gap in
+    // from the left and 14 px from the right edge; it stood across the band over the ring at 314 before
+    assert.equal(phone.px('systems-top'), 162, '390x844: the row takes the top slot, off the sight');
+    assert.ok(phone.px('systems-top') + 44 <= centre - SIGHT_BAND_ABOVE, '390x844: the row ends above the sight band');
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [108, 390 - 108 - 14], '390x844: right of the map');
+    // the lanes start under the row in the slot, never end at it: the global feed's one wide row right of the map under
+    // the row (206 + 8), the personal lane two pitches under it, so the two never stand side by side off one baseline
+    // (gauntlet r14), its rows above the reticle's band (422 - 64 - 8 = 350: two rows)
+    assert.equal(phone.px('kill-right-top'), 214, 'the global feed starts under the row in the top slot');
     assert.equal(phone.px('kill-right-height'), 29 - 3, '390x844: one wide row of the global feed, above the personal lane');
     assert.equal(phone.px('kill-right-width'), 390 - 100 - 8, '390x844: the global feed the width right of the map');
-    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
+    assert.equal(phone.px('kill-left-top'), 214 + 2 * 29, 'the personal lane two pitches under the global feed');
+    assert.equal(phone.px('kill-left-height'), 2 * 29 - 3, '390x844: the personal lane stops above the reticle\'s band');
+    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 2,
       'the left lane shows only the rows that fit');
     // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
     // chrome expanded, so the lanes hold fewer than their eight rows and their floor shows)
