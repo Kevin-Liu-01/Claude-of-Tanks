@@ -197,7 +197,11 @@ ring follows every pane. Battle Again keeps the screen the battle had.
   (`game/aimController.ts`) read a view of the battle whose player is the seat's tank (`Object.create(game)` with its
   own `player`), the pane's camera and the pane's rig, so the HUD's player, camera, reticle, shells, damage panel and
   spotting are the seat's. The page player's events that name no tank (`ui:shellSelect`, `ui:consumableUsed`, the sixth
-  sense, the killcam) never reach a pane's HUD, and nothing a pane's HUD emits reaches the page.
+  sense, the killcam) never reach a pane's HUD, and nothing a pane's HUD emits reaches the page. Whose tank a HUD reads as its
+  own is one predicate (`hud.ts` `isOwnTank`, couch-split-274): a pane's HUD (`initHud`'s view `own: 'frame'`) owns its
+  seat's tank, so its rosters' own row and sides, the objective's enemy count and the team pips are the seat's. Before,
+  every pane read the page player's flag, and in a Teams battle each pane but seat 1's listed seat 1 as itself, on its side
+  (`src/ui/hudOwnTank.selftest.mjs`).
 - **Panes and the seat cap, one rule from the screen** (`game/couchPanes.ts`): each seat count has its grids, the
   screen's preferred shape first: 1 the whole screen; 2 side by side on a screen at least 1.6 wide, else stacked; 3 or
   4 a 2 x 2 grid; 5 or 6 3 x 2 (2 x 3 on a narrow screen); 7 or 8 4 x 2 (3 x 3 on a narrow screen). The grid is the

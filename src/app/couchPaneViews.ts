@@ -494,7 +494,8 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
   };
 
   const mountHud = (view: PaneView, modules: { hud: HudModule; damagePanel: DamagePanelModule }): void => {
-    const hud = modules.hud.initHud(seatBus(ports.bus), { mount: view.doc.body });
+    // the pane's HUD owns its frame's player, the seat's tank (never the page player's flagged tank: hud.ts isOwnTank)
+    const hud = modules.hud.initHud(seatBus(ports.bus), { mount: view.doc.body, own: 'frame' });
     const damagePanel = modules.damagePanel.createDamagePanel({ telemetry: null });
     hud.setDamagePanel(damagePanel);
     hud.shotInfo.setPlayer(view.entity.id);
