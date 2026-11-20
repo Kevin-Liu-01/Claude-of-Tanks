@@ -373,7 +373,9 @@ try {
     }
     return false;
   }
-  const TARGET_POINTS = { green: { along: 3.0, up: 0.9, across: 0 }, red: { along: 1.4, up: 2.1, across: 0 }, hull: { along: 0, up: 1.2, across: 0 } };
+  // Target 1's green and red points are the steps' own aim ghosts (what a player is shown)
+  const aimGhost = (id) => { const { along, up, across } = stepsFor.find((step) => step.id.startsWith(id)).guide.aimAt; return { along, up, across }; };
+  const TARGET_POINTS = { green: aimGhost('training.firePen'), red: aimGhost('training.fireBounce'), hull: { along: 0, up: 1.2, across: 0 } };
   const ACTOR = Object.fromEntries(TRAINING_RULES.actors.map((actor) => [actor.key, actor.specId]));
   const { TRAINING_POINTS } = await import('../src/sim/trainingGround.ts');
   let shot = 0;

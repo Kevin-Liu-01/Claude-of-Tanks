@@ -122,6 +122,28 @@ assert.match(state, /else if \(training && entity\._provingMark && !entity\.comb
 assert.ok(!/Math\.random|Date\.now|performance\.now/.test(state.slice(state.indexOf('function driveTrainingActor'), state.indexOf('export function trainingThreatFor'))),
   'the shooter\'s controls read no clock and no random');
 
+// 4b. S7's aim points on Target 1 (the steps' aim ghosts): green and red to the loaner's APFSDS from anywhere in ring C, at
+//     its sight's height and up to 4 m above it (the ground between is not flat)
+{
+  const { actorPoint } = await import('../ui/tutorial/tutorialGuideMath.ts');
+  const t1 = trainingActor(TRAINING_RULES, 'target1');
+  const t1yaw = trainingActorYawDeg(t1) * DEG;
+  const t1pose = { pos: new Vector3(t1.x, 0, t1.z), yaw: t1yaw, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 };
+  const loanerAp = TANK_SPECS[TRAINING_RULES.loanerSpecId].gun.shells.find((round) => round.type === 'APFSDS');
+  const C = TRAINING_POINTS.ringC;
+  const aimOf = (id) => TRAINING_STEPS.find((step) => step.id === id).guide.aimAt;
+  for (const [id, want] of [['training.firePen', 'pen'], ['training.fireBounce', 'nopen']]) {
+    const aim = aimOf(id);
+    const p = actorPoint({ x: t1.x, y: 0, z: t1.z, yaw: t1yaw }, aim.along, aim.up, aim.across);
+    for (const dx of [-4, 0, 4]) for (const dz of [-4, 0, 4]) for (const dy of [0, 4]) {
+      const from = new Vector3(C.x + dx, 2.4 + dy, C.z + dz), to = new Vector3(p.x, p.y, p.z);
+      const dir = to.clone().sub(from); const len = dir.length(); dir.normalize();
+      const info = aimArmorAlong(from, dir, len + 20, t1pose, TANK_SPECS[t1.specId].armor, undefined, {});
+      assert.equal(info ? penVerdict(aimPenRatio(loanerAp, info)) : null, want, `${id}: its aim point reads ${want} from ring C (${dx}, ${dz}, +${dy} m)`);
+    }
+  }
+}
+
 // 5. S10, hull down.
 const sentry2 = trainingActor(TRAINING_RULES, 'sentry2');
 const s2shell = TANK_SPECS[sentry2.specId].gun.shells.find((round) => round.type === sentry2.volley.shellType);

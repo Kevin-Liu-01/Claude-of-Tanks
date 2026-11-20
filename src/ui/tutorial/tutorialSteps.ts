@@ -213,10 +213,12 @@ const BULWARK = trainingActor(TRAINING_RULES, 'bulwark')!.specId;
 export const ANGLE_WINDOW = Object.freeze({ minDeg: 35, maxDeg: 55 });
 /** The Sentry's rounds the plate holds, and the one it lets through. */
 const HELD = ['ricochet', 'nonpen', 'spaced_absorb'] as const;
-/** Where on Target 1 the aim ghost stands (tutorialGuideMath.ts actorPoint: along its hull, up, across): a green plate low
- *  on the hull front for the loaner's APFSDS, and the turret front, red for it (armour-bands.txt). */
-const TARGET1_GREEN = { along: 3.0, up: 0.9, across: 0 } as const;
-const TARGET1_RED = { along: 1.4, up: 2.1, across: 0 } as const;
+/** Where on Target 1 the aim ghost stands (tutorialGuideMath.ts actorPoint: along its hull, up, across): the hull side it
+ *  shows ring C, green to the loaner's APFSDS from anywhere in the ring, and the turret front, red from there
+ *  (trainingThreat.selftest.mjs holds both). The low hull front it named before read red from ring C (0.65 to 0.75: the
+ *  end walk of 2026-11-20 put eleven rounds into it without one going through). */
+const TARGET1_GREEN = { along: 0, up: 1.2, across: -1.2 } as const;
+const TARGET1_RED = { along: 1.2, up: 2.3, across: 0.4 } as const;
 
 export const TRAINING_STEPS: readonly TutorialStep[] = [
   // (Kevin, 2026-11-20: "both of these actually": shorter cards and fewer of them.) A "do X" is one compact card with no
