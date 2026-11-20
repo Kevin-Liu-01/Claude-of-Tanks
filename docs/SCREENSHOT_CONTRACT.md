@@ -74,10 +74,9 @@ showcase-r1 contract below `showcase:publish` describes the retired library.
 ### Open Graph branding
 
 `npm run og:images` regenerates the default game card and all 17 route/private-room
-cards at 1200×630. Each uses the current `public/brand/logo-mark.svg` at its native
-square aspect ratio, with the bottom-left Chakra Petch Bold lockup (the display face): white
-CLAUDE, amber OF TANKS. Do not substitute the compact all-white website lockup
-or a precomposed raster logo. The default retains the owner-selected T-90 column
+cards at 1200×630 into `public/brand/og-r2/`. Each draws the horizontal lockup
+`public/brand/lockup.svg` (the tank mark and the outlined wordmark, `tools/brand-marks.mjs`):
+paper CLAUDE and TANKS, the tungsten "of". Do not substitute a precomposed raster logo. The default retains the owner-selected T-90 column
 photo; route companions retain their own photography and page labels.
 
 Preview three representatives with `npm run og:images -- --only=game,home,docs-models`,

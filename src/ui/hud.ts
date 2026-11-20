@@ -2435,12 +2435,19 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
 export interface HudView {
   /** The body the HUD's root mounts on; its document is the view's. */
   readonly mount: HTMLElement;
+  /**
+   * Whose tank the HUD reads as its own (couch-split-274): 'frame', its frame's player (a couch split pane's seat, of
+   * however many seats share the page); otherwise the page's player, the tank whose entity is flagged its player.
+   */
+  readonly own?: 'frame';
 }
 
 export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime {
   // the view's document and window (the page's with no view): the HUD's reads of its layout, its flags and its resize
   const document = view?.mount.ownerDocument ?? globalThis.document;
   const window = (document?.defaultView ?? globalThis.window) as Window & typeof globalThis;
+  /** This HUD owns its frame's player (a couch split pane), not the page player's flagged tank (isOwnTank). */
+  const ownsFramePlayer = view?.own === 'frame';
   ensureFonts();
   // (the page's head: a pane's document carries the page's style sheets, src/app/couchPaneViews.ts)
   ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
@@ -3780,7 +3787,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const spotting = frame.spotting?.isSpotted ? frame.spotting : null;
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
-      if (!tank?.state || tank.isPlayer || tank.team === ownSide()) continue;
+      if (!tank?.state || isOwnTank(tank) || tank.team === ownSide()) continue;
       // Wave reserves are off the battlefield. Discard their previous wave's
       // contact so reactivation cannot resurrect a stale map position.
       if (tank.modeActive === false) {
@@ -3815,7 +3822,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   const nickById = new Map<string, string>(); // entity id -> stable bot nickname (per battle)
   function nickFor(t: HudTank): string {
     if (t.displayName) return t.displayName;
-    if (t.isPlayer) return PLAYER_NICK;
+    if (isOwnTank(t)) return PLAYER_NICK;
     let nick = nickById.get(t.id);
     if (!nick) {
       nick = botCallsign(t.id, t.spec?.id ?? null, new Set(nickById.values()));
@@ -3851,7 +3858,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     let validIndex = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== !!tank.isPlayer || rosterTeams[validIndex] !== tank.team) {
+      if (rosterIds[validIndex] !== tank.id || rosterPlayers[validIndex] !== isOwnTank(tank) || rosterTeams[validIndex] !== tank.team) {
         return true;
       }
       validIndex++;
@@ -3866,7 +3873,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     for (const tank of tanks) {
       if (!tank?.spec) continue;
       rosterIds.push(tank.id);
-      rosterPlayers.push(!!tank.isPlayer);
+      rosterPlayers.push(isOwnTank(tank));
       rosterTeams.push(tank.team);
     }
   }
@@ -3884,7 +3891,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   /** The bots' nicknames over the battle's tanks in their order (botCallsigns.ts rosterCallsigns' walk), before any
    *  surface asks for one, so the order the HUD's parts ask in never reorders them. */
   function assignNicknames(tanks: readonly HudTank[]): void {
-    for (const tank of tanks) if (tank && !tank.displayName && !tank.isPlayer) nickFor(tank);
+    for (const tank of tanks) if (tank && !tank.displayName && !isOwnTank(tank)) nickFor(tank);
   }
 
   function createEarRow(tank: HudTank, ally: boolean): EarRow {
@@ -3905,7 +3912,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       // further out than the short ones under it, gauntlet r5; the enemy ear's mirror turns the inner edge to its left)
       iconEl.style.maskPosition = iconEl.style.webkitMaskPosition = 'right center';
     }
-    const me = !!tank.isPlayer || tank.id === riddenId();
+    const me = isOwnTank(tank) || tank.id === riddenId();
     if (me) rootEl.classList.add('me');
     requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
@@ -3935,7 +3942,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
 
   function updateEarRow(tank: HudTank, ally: boolean, dead: boolean): void {
     const row = earRows.get(tank.id) || createEarRow(tank, ally);
-    const me = !!tank.isPlayer || tank.id === riddenId();
+    const me = isOwnTank(tank) || tank.id === riddenId();
     if (me !== row.me) {
       row.root.classList.toggle('me', me);
       row.me = me;
@@ -3988,7 +3995,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     resetTeamTally();
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      const ally = tank.team === ownSide() || !!tank.isPlayer;
+      const ally = tank.team === ownSide() || isOwnTank(tank);
       const dead = !!tank.combat?.destroyed;
       tallyTank(ally, dead);
       updateEarRow(tank, ally, dead);
@@ -4003,7 +4010,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     }
     root.classList.toggle('compact-shot-report', Math.max(teamTally.allyTotal, teamTally.enemyTotal) >= 14);
     // spectating, the ridden tank is ringed on its own side (never counted as the watcher's)
-    teamPips.updateTeams(tanks, ownSide(), watchSide !== null ? null : playerId, riddenId());
+    teamPips.updateTeams(tanks, ownSide(), watchSide !== null ? null : playerId, riddenId(), isOwnTank);
     // (the pips' row counts the sides where it shows: the rosters' own "5 / 6" yields to it, UI-LOCKDOWN B4; a side too
     // long for its pips hides the row, and the rosters' counts are the only ones again)
     const pipsCount = !pipsRow.hidden;
@@ -7682,7 +7689,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
       if (!t || !t.state) continue;
-      if (t.team === ownSide() || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
+      if (t.team === ownSide() || isOwnTank(t)) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
@@ -8493,7 +8500,16 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   let couchView = false;
   /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying, nor on a
    *  couch battle's shared screen. */
-  const isSelf = (tank: HudTank): boolean => !couchView && (!!tank.isPlayer || (!watchDrone && tank === playerRef));
+  const isSelf = (tank: HudTank): boolean => !couchView && (isOwnTank(tank) || (!watchDrone && tank === playerRef));
+  /**
+   * The HUD's own tank, from one place (couch-split-274): a view that owns its frame's player (a couch split pane, view.own
+   * 'frame') owns the seat's tank; the page's HUD owns the player's (the entity's own flag). Every read of whose tank is
+   * the HUD's (the rosters' own row and sides, the objective's enemy count, the team pips, the spotting, the call sign)
+   * asks this: a pane once read the page player's flag, so every pane but seat 1's listed seat 1 as itself, on its side.
+   */
+  function isOwnTank(tank: { readonly id: string; readonly isPlayer?: boolean }): boolean {
+    return ownsFramePlayer ? !!playerRef && tank.id === playerRef.id : !!tank.isPlayer;
+  }
   // Watch mode's spectator frame (setWatchSide): the side the HUD reads as its own, and the ridden tank it highlights
   let watchSide: string | null = null;
   let lastOwnSide: string | null = null;

@@ -36,7 +36,8 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       const view=entity.aerial;
       if(!view?.active){
         camera.userData.thermalFlight=false;camera.userData.aerialPilotId=null;
-        if(previousKind){camera.fov=60;camera.updateProjectionMatrix();previousKind='';owner=null;}
+        // the lens is left to the view the flight hands back to (cameraRig solves it the same frame): no guessed field of view
+        if(previousKind){previousKind='';owner=null;}
         return false;
       }
       if(owner!==entity||previousKind!==view.kind){

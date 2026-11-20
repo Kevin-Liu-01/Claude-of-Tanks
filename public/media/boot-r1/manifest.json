@@ -1,0 +1,58 @@
+{
+ "libraryId": "claude-of-tanks-boot-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The boot splash's own stills: each a frame of a Scene Studio clip the owner picked, cut as its crop says (frame pixels), at full size and the 1280 rung the boot splash opens on (the 1280x720 frame, cut the same way).",
+ "generatedBy": "tools/media-r5/boot-media.mjs",
+ "sources": "the clips named per item (clip.file, its sha256 and the frame cut from it), kept outside the repository",
+ "dimensions": {
+  "width": 1920,
+  "height": 1080
+ },
+ "count": 1,
+ "items": [
+  {
+   "id": "verdant-blast-f16",
+   "map": "verdant",
+   "hour": "day",
+   "title": {
+    "en": "Verdant Fields, day",
+    "zh": "翠野原，白天"
+   },
+   "clip": {
+    "file": "studio_verdant_1080p30 (2).mp4",
+    "bytes": 1749703,
+    "sha256": "abaa3d88101cd1dd538c20efcd0bf587e574108bb01b1be0fe0f7e9d9169e2f6",
+    "rate": "30/1",
+    "frames": 30,
+    "frame": 16
+   },
+   "crop": {
+    "left": 0.05,
+    "x": 96,
+    "y": 0,
+    "width": 1824,
+    "height": 1080
+   },
+   "path": "/media/boot-r1/verdant-blast-f16.webp",
+   "bytes": 364518,
+   "sha256": "6401be23bd412e0ca6a792a9f3acee088e569868a19f3e29cdf55de2346461d5",
+   "width": 1824,
+   "height": 1080,
+   "quality": 90,
+   "rungs": [
+    {
+     "rung": 1280,
+     "width": 1216,
+     "height": 720,
+     "quality": 80,
+     "path": "/media/boot-r1/verdant-blast-f16-1280.webp",
+     "bytes": 107976,
+     "sha256": "89efb807c4095f01cb9e72f0840147b95ea4dbf544c2cafd6a2546685df4ad36"
+    }
+   ]
+  }
+ ]
+}

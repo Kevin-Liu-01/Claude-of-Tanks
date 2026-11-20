@@ -356,4 +356,28 @@ assert.throws(
   /battle ending presentation requires/,
 );
 
-console.log('battleResultPresentationRuntime.selftest: replay, death beat, reviving modes (alive at the verdict: no death replay; dead: last-life replay), final-kill requests, the director\'s camera beats (time\'s up, objective, wreck orbit, skip, decline, reset) and the verdict receipt pass');
+// couch-split-274: a couch battle's player is seat 1's tank, one of several seats on one screen. Its death is that seat's
+// own: no death beat, death cam, death replay or spectate hand-off takes the room's screen (seat 1's replay drew over every
+// split pane). The verdict's final-kill replay is still the room's, never seat 1's own death.
+{
+  const couch = createHarness();
+  couch.game.ruleset = { respawnS: null, couch: { seats: 8 } };
+  couch.game.player.combat.destroyed = true;
+  couch.framesTo(100 + 2600 + 200);
+  assert.deepEqual(couch.plays, [], 'no death replay mid-battle in a couch battle');
+  assert.ok(!names(couch.calls).includes('deathCam'), 'and no death cam on the page rig');
+  assert.ok(!names(couch.calls).includes('veil'), 'and the HUD is not veiled for it');
+  couch.game.result = 'defeat';
+  couch.runtime.update();
+  assert.equal(couch.plays.length <= 1, true);
+  for (const play of couch.plays) assert.equal(play.options.ownDeath, false, "the verdict never replays seat 1's own death");
+  // the same death in a keyboard battle still runs its beat (the gate is the couch, nothing else)
+  const solo = createHarness();
+  solo.game.ruleset = { respawnS: null };
+  solo.game.player.combat.destroyed = true;
+  solo.framesTo(100 + 2600 + 200);
+  assert.ok(names(solo.calls).includes('deathCam'), 'a solo death still opens its death cam');
+  assert.equal(solo.plays.length, 1, 'and its replay');
+}
+
+console.log('battleResultPresentationRuntime.selftest: replay, death beat, reviving modes (alive at the verdict: no death replay; dead: last-life replay), final-kill requests, no death flow for a couch battle\'s seat 1, the director\'s camera beats (time\'s up, objective, wreck orbit, skip, decline, reset) and the verdict receipt pass');

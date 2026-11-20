@@ -52,6 +52,9 @@ const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(r
 const VERSUS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-r1/manifest.json'), 'utf8'));
 // the versus films (versus-films.mjs: public/media/versus-films-r1), which the landing's versus section plays above its wall
 const VERSUS_FILMS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-films-r1/manifest.json'), 'utf8'));
+// the boot splash's own stills (boot-media.mjs: public/media/boot-r1), each a frame of a Studio clip the owner picked
+const BOOT_MANIFEST = PICKS.boot && join(ROOT, 'public/media', PICKS.boot.collection, 'manifest.json');
+const BOOT = BOOT_MANIFEST && existsSync(BOOT_MANIFEST) ? JSON.parse(readFileSync(BOOT_MANIFEST, 'utf8')) : { items: [] };
 
 // --- names --------------------------------------------------------------------------------------------------------
 const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -73,6 +76,14 @@ const versus = (id) => {
   if (!existsSync(join(ROOT, 'public', v.path))) throw new Error(`versus still ${id}: ${v.path} is not published`);
   return v;
 };
+const bootStill = (id) => {
+  const b = BOOT.items.find((item) => item.id === id);
+  if (!b) throw new Error(`unknown boot still ${id} (run tools/media-r5/boot-media.mjs)`);
+  for (const path of [b.path, ...b.rungs.map((r) => r.path)]) {
+    if (!existsSync(join(ROOT, 'public', path))) throw new Error(`boot still ${id}: ${path} is not published`);
+  }
+  return b;
+};
 const versusFilm = (id) => {
   const f = VERSUS_FILMS.items.find((item) => item.id === id);
   if (!f) throw new Error(`unknown versus film ${id} (public/media/versus-films-r1/manifest.json)`);
@@ -91,10 +102,18 @@ const versusParts = (title) => {
 // a hero slide: a take's still, or (2026-10-19) a versus still
 const heroSrc = (h) => (h.versus ? versus(h.versus).path : still(h.id, h.still));
 // a featured still: a take's, or (2026-11-03, the owner's boot pick) a versus still, whose boot opener is its own 1280
-// rung or another versus still's (bootVersus: the same scene through the boot lens, the pair under the lockup)
-const featuredSrc = (f) => (f.versus ? versus(f.versus).path : f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still));
-const featuredCap = (f) => (f.versus ? versusKey('title', f.versus) : titleKey(f.id));
+// rung or another versus still's (bootVersus: the same scene through the boot lens, the pair under the lockup), or
+// (2026-11-20) a boot still (bootStill: a frame of a Studio clip, public/media/boot-r1), captioned with its battlefield's
+// name and opening on its 1280 rung
+const featuredSrc = (f) => (f.bootStill ? bootStill(f.bootStill).path : f.versus ? versus(f.versus).path
+  : f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still));
+const featuredCap = (f) => (f.bootStill ? `map.${bootStill(f.bootStill).map}` : f.versus ? versusKey('title', f.versus) : titleKey(f.id));
 const featuredBoot = (f) => {
+  if (f.bootStill) {
+    const rung = bootStill(f.bootStill).rungs.find((r) => r.rung === 1280); // its 1280 rung, by name: a cut still's is narrower
+    if (!rung) throw new Error(`featured ${f.bootStill}: no 1280 rung`);
+    return rung.path;
+  }
   if (!f.versus) return built(`${C}/stills/${f.id}-boot.webp`);
   const rung = versus(f.bootVersus ?? f.versus).rungs.find((r) => r.width === 1280);
   if (!rung) throw new Error(`featured ${f.versus}: ${f.bootVersus ?? f.versus} has no 1280 rung`);
@@ -276,7 +295,7 @@ function wireGame() {
     return `  {\n${lines.join('\n')}\n  },`;
   });
   swap(F, /(export const FEATURED_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[\n)[\s\S]*?(\n\]\);)/, (_, open, close) => `${open}${entries.join('\n')}${close}`, 'featured shots');
-  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${f.versus ? versus(f.versus).path : still(f.id, f.still)}"`);
+  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${f.bootStill ? bootStill(f.bootStill).path : f.versus ? versus(f.versus).path : still(f.id, f.still)}"`);
   swap('index.html', /("screenshot": \[\n)(?:[ \t]*"https:\/\/cot\.kevinliu\.studio\/media\/[^"]+",?\n)+/, (_, open) => `${open}${shots.join(',\n')}\n`, 'JSON-LD screenshots');
   swap('src/ui/garage.ts', /  \/\/ Assets \+ captions come from the marketing-shots pipeline\n  \/\/ \(tools\/marketing-shots, encoded to public\/media\/featured\/\)\. The panel is\n/,
     () => `  // Assets + captions are the site fifty's stills (public/media/${PICKS.collection}/stills, picked in\n  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is\n`, 'Garage panel comment',

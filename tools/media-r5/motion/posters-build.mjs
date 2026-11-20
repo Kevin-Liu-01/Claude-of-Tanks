@@ -32,8 +32,8 @@ for (const [fmt, [W, H]] of Object.entries(FORMATS)) {
     // pos_<fmt>: where a crop sits on the art (CSS object-position), for a hero that is not centred in the landscape frame
     const pos = p[`pos_${fmt}`];
     let inner = `<img class="art" src="assets/art/${name}"${pos ? ` style="object-position:${pos}"` : ''} alt="">`;
-    if (fmt === 'land' && t === 'cinema') inner += `<div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div>`;
-    else if (t !== 'clean') inner += `<div class="scrim"></div><div class="lock"><img class="mk" src="assets/brand/logo-mark-metal.svg" alt=""><div class="wm"><div class="a">CLAUDE</div><div class="b">OF TANKS</div></div></div>`;
+    if (fmt === 'land' && t === 'cinema') inner += `<div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div>`;
+    else if (t !== 'clean') inner += `<div class="scrim"></div><div class="lock"><img class="mk" src="assets/brand/mark-metal.svg" alt=""><div class="wm"><div class="a">CLAUDE</div><div class="b">OF TANKS</div></div></div>`;
     els.push(`<div id="p${i}" class="clip poster ${t}" data-start="${i}" data-duration="1">${inner}</div>`);
     index.push({ id: p.id, fmt, treatment: t, at: i + 0.5 });
   });
@@ -53,7 +53,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#07090c}
     ? 'linear-gradient(0deg, rgba(7,9,12,.78) 0%, rgba(7,9,12,.42) 18%, rgba(7,9,12,0) 34%)'
     : 'radial-gradient(70% 60% at 0% 100%, rgba(7,9,12,.7) 0%, rgba(7,9,12,0) 70%)'}}
 .lock{position:absolute;${fmt === 'port' ? `left:0;right:0;bottom:${px(220)};flex-direction:column;align-items:center;` : `left:${px(80)};bottom:${px(96)};align-items:center;`}display:flex;gap:${px(30)}}
-.lock .mk{width:${px(fmt === 'port' ? 220 : 190)};height:${px(fmt === 'port' ? 220 : 190)}}
+.lock .mk{width:${px(fmt === 'port' ? 220 : 190)};height:auto}
 .lock .wm{display:flex;flex-direction:column;${fmt === 'port' ? 'align-items:center;' : ''}gap:${px(6)}}
 .lock .a{font-weight:700;font-size:${px(fmt === 'port' ? 168 : 148)};line-height:.9;letter-spacing:.02em;text-shadow:0 4px 30px rgba(7,9,12,.5)}
 .lock .b{font-weight:500;font-size:${px(fmt === 'port' ? 70 : 62)};letter-spacing:.3em;color:#ffd27a;text-shadow:0 2px 18px rgba(7,9,12,.5)}`;

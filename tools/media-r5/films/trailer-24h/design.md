@@ -15,7 +15,7 @@ grid references and calibers — until the brand lands with weight at the close.
   display sizes, +0.18em on small caps labels.
 - Data face: JetBrains Mono 400/700 (bundled, OFL) — clock, grid refs, map names,
   calibers, timecode. Never used for statements.
-- Logo: the crest (`logo-mark-metal.svg` on dark, `logo-mark.svg` for color) and the
+- Logo: the tank mark (`mark-metal.svg` on dark, `mark.svg` for color) and the
   metal full lockup. Crest is never recolored, skewed or cropped.
 
 ## Frame law

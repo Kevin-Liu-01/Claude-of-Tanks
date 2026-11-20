@@ -9,7 +9,9 @@ e.aerial.x=90;e.aerial.z=0;rig.update(e,input,1/60);
 assert.ok(e.input.aimPoint.distanceTo(focus)<1e-8,'orbit preserves chosen ground target');
 input.mouseDX=100;rig.update(e,input,1/60);assert.ok(e.input.aimPoint.distanceTo(focus)>10,'mouse pans the gimbal over the map');
 input.mouseDX=0;input.wheel=1;rig.update(e,input,1/60);assert.ok(camera.fov<55,'zoom-in input magnifies');
-e.aerial.active=false;assert.equal(rig.update(e,input,1/60),false);assert.equal(camera.fov,60,'return clears flight camera');
+e.aerial.active=false;const flightFov=camera.fov;assert.equal(rig.update(e,input,1/60),false);assert.equal(camera.userData.thermalFlight,false,'return clears the flight flags');
+// the lens is left for the view the flight hands back to (cameraRig solves it that frame; cameraViewRoundTrip.selftest)
+assert.equal(camera.fov,flightFov,'return guesses no field of view');
 console.log('aerialCamera: stable orbital targeting, mouse pan, zoom and exit passed');
 
 // Match the input.ts contract: physical right is negative mouseDX. Assert

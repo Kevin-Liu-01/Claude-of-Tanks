@@ -28,6 +28,7 @@ import { readinessExpression } from './game-readiness.mjs';
 import { installFramePassTimer, summarizePassFrames, projectFrameMs, proxyRatios, MID_RANGE_PROXIES } from './frame-pass-timer.mjs';
 import { PAD_PHONE_STATE, PAD_SEAT_STATE } from './pad-states.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
+import { TUTORIAL_CHAPTERS, TUTORIAL_STORAGE_KEY } from '../src/ui/tutorial/tutorialRecord.ts';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -97,6 +98,11 @@ try {
   report.step = 'desktop boot';
   const desktop = await browser.newPage();
   await desktop.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+  // a fresh profile is a new player: the first-run tutorial's block covers the lobby's and the battle's controls
+  // ("Control blocked"); the run is no first visit, so every chapter is recorded skipped before the page boots
+  await desktop.evaluateOnNewDocument((key, record) => {
+    try { if (!localStorage.getItem(key)) localStorage.setItem(key, record); } catch { /* no storage: the page decides */ }
+  }, TUTORIAL_STORAGE_KEY, JSON.stringify(Object.fromEntries(TUTORIAL_CHAPTERS.map((chapter) => [chapter, 'skipped']))));
   desktop.on('pageerror', (error) => report.errors.desktop.push(String(error).slice(0, 300)));
   desktop.on('console', (message) => { if (message.type() === 'error') report.errors.desktop.push(`console: ${message.text().slice(0, 300)}`); });
   await desktop.goto(`${origin}/?nosplash=1&tier=desktop&padService=${encodeURIComponent(padService)}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });

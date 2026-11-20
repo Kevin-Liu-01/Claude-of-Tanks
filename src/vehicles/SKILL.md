@@ -517,8 +517,9 @@ the spec-only `authorityFleet.ts` (the host Worker and the Node match service;
 order). Add a spec pack to `fleetRegistration.ts`, never to one facade;
 `fleetParity.selftest.mjs` digests every spec as each facade finalizes it.
 After this sequence passes, commit each tank edit atomically, integrate it from
-an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
-and report the resulting main hash. Never push a failing or partially verified
+an isolated clean worktree onto the current `origin/main`, push the lane's own
+`item/<name>` branch (owner's OK) and send READY with its SHA to the coordinator; only
+the release integrator moves main. Never push a failing or partially verified
 tank edit.
 
 ## Gotchas

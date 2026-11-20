@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 1046,
+ "count": 1048,
  "collections": [
   {
    "key": "scenes",
@@ -12,9 +12,9 @@
     "en-US": "Every battle scene filmed in the game engine, by battlefield: each scene with its close-up and other moments, then the Scene Studio's sequences and the motion-blur studies.",
     "zh-CN": "在游戏引擎中拍摄的全部战斗场景，按战场分组：每个场景附特写与其他瞬间，然后是场景工作室的镜头序列与运动模糊研究。"
    },
-   "count": 293,
+   "count": 294,
    "sets": 27,
-   "bytes": 4049407
+   "bytes": 4053403
   },
   {
    "key": "vehicles",
@@ -40,9 +40,9 @@
     "en-US": "Two sides, one frame: the duels at ground level by time of day, then from above.",
     "zh-CN": "两方同框：地面视角的对决按时段分组，然后是俯瞰视角。"
    },
-   "count": 85,
+   "count": 86,
    "sets": 3,
-   "bytes": 382772
+   "bytes": 389399
   },
   {
    "key": "combat",

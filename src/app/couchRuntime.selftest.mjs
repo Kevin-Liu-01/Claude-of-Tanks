@@ -277,7 +277,8 @@ function portLobby() {
 // build); a refused launch, a shared-camera battle and the Garage return let it go; without the panes' page ports (a page
 // that cannot split) the tier is never asked for
 {
-  const h = createHarness({ paneViews: {} });
+  const screen = { clientWidth: 1920, clientHeight: 1080 };
+  const h = createHarness({ paneViews: { canvas: () => screen } });
   h.runtime.open();
   h.seat([{ seat: 1, presence: 'here', view: null }, { seat: 2, presence: 'here', view: null }]);
   let tierAtLaunch = null;
@@ -301,4 +302,32 @@ function portLobby() {
   assert.equal(plain.runtime.renderViews(1 / 60, 1 / 60), false, 'and draws the frame as usual');
 }
 
-console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, a seat\'s Pause only in a couch battle, and a seat\'s refused shell pick on its own phone passed');
+// couch-split-274: Split is the default screen, and the screen's plan (game/couchPanes.ts couchScreenPlan) is the one
+// owner of split or shared, read again when the screen changes: a battle whose window is made too small for its panes
+// draws the shared camera (no pane LOD bias, no split draw), and splits again when it has room
+{
+  const screen = { clientWidth: 1920, clientHeight: 1080 };
+  const h = createHarness({ paneViews: { canvas: () => screen } });
+  h.runtime.open();
+  h.seat([1, 2, 3, 4, 5].map((seat) => ({ seat, presence: 'here', view: null })));
+  let tierAtLaunch = null;
+  assert.equal(h.runtime.startBattle(() => { tierAtLaunch = couchTierActive(); return true; }), true);
+  assert.equal(tierAtLaunch, true, 'a Start with no screen named is a split Start (the couch tier is asked for)');
+  const five = h.session();
+  five.view = 'split';
+  five.seats = [1, 2, 3, 4, 5].map((seat) => ({ seat, entity: five.seats[0].entity }));
+  h.battle(five);
+  const bias = h.runtime.lodBias();
+  assert.ok(bias > 1, `five panes at 1080p: the hulls take their far meshes sooner (${bias})`);
+  screen.clientWidth = 1366; screen.clientHeight = 768;
+  assert.equal(h.runtime.lodBias(), 1, 'at 1366 x 768 five seats outgrow the split: no pane bias');
+  assert.equal(h.runtime.renderViews(1 / 60, 1 / 60), false, 'and the frame draws as usual (the shared camera)');
+  assert.equal(h.runtime.paneViews, null);
+  assert.equal(h.runtime.frame(1 / 60), true, 'the shared camera owns the frame');
+  screen.clientWidth = 1920; screen.clientHeight = 1080;
+  assert.equal(h.runtime.lodBias(), bias, 'with room again the plan is the split one');
+  h.garage();
+  h.runtime.close();
+}
+
+console.log('couchRuntime.selftest: the couch view by its own reason in every couch battle of a session, dropped as the battle and the lobby end, Start closing the join window before it deploys, a seat\'s Pause only in a couch battle, a seat\'s refused shell pick on its own phone, Split by default and the screen\'s plan read again on a resize passed');

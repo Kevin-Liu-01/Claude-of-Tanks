@@ -58,7 +58,7 @@ step's distance and a lens shift that raises the picture and the sight together,
 tracks clear the bottom band at every layout, with the player's camera settings (height, distance,
 shoulder, framing, field of view) over it; the rig writes the shift into `camera.view` (never
 `setViewOffset`, which also resets the aspect) and takes it off in sniper, isometric, aerial,
-death, spectate, external poses and whenever another owner drives the camera (`suspendFraming`); `watchCamera.ts` owns Watch mode's two cameras (the spectator drone, eased and terrain-following, with its orbit lock, and the ride-along on the player's chase and sight poses); settled showroom framing is pumped
+death, spectate, external poses and whenever another owner drives the camera (`suspendFraming`); its field of view and lens shift are compared against the live camera, never a cache, since the flight, Watch, the Studio and couch panes write them too (drone-aim-camera-274, `cameraViewRoundTrip.selftest.mjs`); without pointer lock, a cursor in an edge band pans the chase view and the sight toward that side (`cursorEdgePan.ts`, the sight's rate divided by its zoom; pointer lock and touch never pan; cursor-aim-pan-274); `watchCamera.ts` owns Watch mode's two cameras (the spectator drone, eased and terrain-following, with its orbit lock, and the ride-along on the player's chase and sight poses); settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.ts` and `deviceDiag.ts`
 own tiering and rescue behavior. `adaptiveQualityPolicy.ts` owns the typed,
 side-effect-free decision ladder for measured shading trim, resolution relief,

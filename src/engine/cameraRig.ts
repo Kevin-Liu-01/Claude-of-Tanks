@@ -25,6 +25,7 @@ import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { createAerialCamera } from './aerialCamera.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { createIsometricCamera } from './isometricCamera.ts';
+import { cursorEdgePan } from './cursorEdgePan.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import {
@@ -200,6 +201,8 @@ interface CameraInputFrame {
   cursorAim?: boolean;
   cursorX?: number;
   cursorY?: number;
+  /** Cursor aim may pan the view at the screen edge (cursorEdgePan.ts): false while the cursor is off the page. */
+  cursorPan?: boolean;
   autoAimPoint?: { x: number; y: number; z: number } | null;
 }
 
@@ -374,8 +377,6 @@ export function createCameraRig(
   let chaseFov = framing.fovDeg;
   let shoulder = 0;
   let lensShift = 0;
-  /** The lens shift camera.view carries (0: none). */
-  let lensOn = 0;
 
   // the camera's one owner (CameraOwner, 2026-11-02 audit F7); cine, death and spec are the owners' payloads, set only
   // right after enterOwner and cleared only by its teardown
@@ -385,6 +386,7 @@ export function createCameraRig(
   let shakeT = 0;
   let recoil = 0; // gun-fire pitch kick (rad), decays fast — additive like shake
   let fovKick = 0; // gun-fire FOV punch (0..1), ~120 ms concussion pulse
+  // the unpunched field of view the last solve asked for (applyFovKick's base); never a record of what the camera holds
   let lastFov = 0;
   // battle-start cinematic flyby state (null when inactive)
   let cine: CinematicState | null = null;
@@ -557,12 +559,20 @@ export function createCameraRig(
     deps.publishSightShift?.(px);
   }
 
+  /** The lens shift camera.view carries now: 0 for none, NaN for a view in another shape than applyLens writes. */
+  function liveLens(): number {
+    const view = camera.view;
+    if (!view || !view.enabled) return 0;
+    const ours = view.fullWidth === 1 && view.fullHeight === 1 && view.width === 1 && view.height === 1 && view.offsetX === 0;
+    return ours ? view.offsetY : NaN;
+  }
+
   /** The lens shift on the camera (camera.view: the picture rises by `shift` of its height; 0 takes it off). The view is
-   *  written directly: setViewOffset would also set the aspect to its full width over its full height. */
+   *  written directly: setViewOffset would also set the aspect to its full width over its full height. Compared against
+   *  the live camera, never a cache: other owners write it too (couch panes clear it on close; drone-aim-camera-274). */
   function applyLens(shift: number): void {
     const next = Math.abs(shift) < 1e-4 ? 0 : shift;
-    if (next === lensOn) return;
-    lensOn = next;
+    if (next === liveLens()) return;
     if (next === 0) { camera.clearViewOffset(); return; }
     const view = camera.view ?? { enabled: true, fullWidth: 1, fullHeight: 1, offsetX: 0, offsetY: 0, width: 1, height: 1 };
     view.enabled = true;
@@ -595,11 +605,14 @@ export function createCameraRig(
     return out;
   }
 
+  /** The camera's field of view. Compared against the live camera, never a cache: the flight, Watch, the Studio and the
+   *  combat warm write camera.fov too, and a cached value left the scope on the drone's lens after a flight
+   *  (drone-aim-camera-274: aim at x4, fly the drone, return, and the sight kept 60 degrees). */
   function setFov(fovDeg: number): void {
-    if (lastFov !== fovDeg) {
+    lastFov = fovDeg;
+    if (camera.fov !== fovDeg) {
       camera.fov = fovDeg;
       camera.updateProjectionMatrix();
-      lastFov = fovDeg;
     }
   }
 
@@ -725,6 +738,7 @@ export function createCameraRig(
   let cursorAimOn = false;
   let cursorNdcX = 0;
   let cursorNdcY = 0;
+  const _edgePan = { yaw: 0, pitch: 0 };
 
   /** Server-aim raycast from the camera through screen center — or through
    *  the real cursor position in cursor-aim mode (both camera modes). */
@@ -1127,7 +1141,18 @@ export function createCameraRig(
     aimPitch = THREE.MathUtils.clamp(
       aimPitch - camInput.mouseDY * sensitivity, PITCH_MIN, PITCH_MAX,
     );
+    if (cursorAimOn && camInput.cursorPan) panAtCursorEdge(dt);
     updateAutoAim(player, dt, camInput.autoAimPoint);
+  }
+
+  /** cursor-aim-pan-274: cursor aim has no movement deltas, so a cursor in an edge band turns the view toward that
+   *  side (chase and sight; the sight's rate divides by its zoom). Pointer lock and touch never get here. */
+  function panAtCursorEdge(dt: number): void {
+    cursorEdgePan(cursorNdcX, cursorNdcY, dt, rig.mode === 'SNIPER' ? rig.zoom : 1, _edgePan);
+    if (_edgePan.yaw === 0 && _edgePan.pitch === 0) return;
+    aimYaw += _edgePan.yaw;
+    aimPitch = THREE.MathUtils.clamp(aimPitch + _edgePan.pitch, PITCH_MIN, PITCH_MAX);
+    aimTouched = true;
   }
 
   // Every camera motion the player does not steer (sight sway, trauma shake, recoil kick, FOV punch) is scaled by the
@@ -1234,7 +1259,9 @@ export function createCameraRig(
       if (!player) return;
 
       if (aerialCamera.update(player, camInput, dt)) {
+        // the flight owns the lens; the scope's flags come off it (the gun view's solve puts them back the frame it ends)
         applyLens(0);
+        camera.userData.scoped = false;
         cursorAimOn = false;
         camera.getWorldDirection(_rayDir);
         const aerialHit = aimRaycast(camera.position, _rayDir, 1600);

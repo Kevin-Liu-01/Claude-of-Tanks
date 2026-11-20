@@ -103,6 +103,7 @@ Through `__DEBUG.startBattle` (no countdown, no cover):
 Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 
 <!-- census:beginSoloBattle -->
+- `tools/armour-default.browser.mjs`
 - `tools/audio-mix-balance.mjs`
 - `tools/battle-entry-sweep.mjs`
 - `tools/battle-memory-probe.mjs`
@@ -114,6 +115,7 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/dev-perf-probe.mjs`
 - `tools/environment-motion-probe.mjs`
 - `tools/gunship-lens-strip.browser.mjs`
+- `tools/hud-guidance.browser.mjs`
 - `tools/map-probe-runtime.mjs`
 - `tools/marketing-shots/mode-battle-shots.mjs`
 - `tools/mobilelap.mjs`

@@ -317,6 +317,8 @@ const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 const RACK_SNAP_INSET = 4;
 /** Up to this width the map's large step takes the kill ribbon's room and the right-hand kill feed's beside it. */
 const MAP_TAKES_LANES_W = 1024;
+/** The map plate's solo width before its zoom step (hud.ts .cot-minimap: 220 px x --mm-k). */
+const COUCH_MAP_SOLO_PX = 220;
 /** The map's large step as its plate names it (hud.ts MM_SCALES: data-zoom). */
 const MAP_LARGE_STEP = '2';
 /** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 8px))), the hints plate's 8 px in the
@@ -986,8 +988,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
     const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
     const step = cardNode?.closest<HTMLElement>('.cot-tut')?.dataset.step ?? '';
+    // (read at the type the last plan gave it: a compact read is taken back to the full type's height)
+    const compact = (document.body.dataset.hudGuidance ?? '').split(' ').includes('card-compact');
     guidanceCardNatural = cardNaturalSize(guidanceCardNatural,
-      cardNode ? { step, width: cardNode.offsetWidth, scrollHeight: cardNode.scrollHeight } : null, cardWide);
+      cardNode ? { step, width: cardNode.offsetWidth, scrollHeight: cardNode.scrollHeight, compact } : null, cardWide);
+    // the guard under the plan's estimate: while a card's words run on below what it shows, whatever fit the plan gave it,
+    // the card says so (tutorial.css data-more), here each pass and on its own scroll, so no line is cut without a sign
+    if (cardNode) {
+      if (!guidanceCardsWatched.has(cardNode)) {
+        guidanceCardsWatched.add(cardNode);
+        cardNode.addEventListener('scroll', () => markCardMore(cardNode), { passive: true });
+      }
+      markCardMore(cardNode);
+    }
     const measured = guidanceCardNatural && guidanceCardNatural.step === step ? guidanceCardNatural.size : null;
     const card = guidanceCardSize = heldCardSize(guidanceCardSize, !!cardNode, measured);
     // the toasts: the battle's region while it holds a notice of its own (the parked aim chip keeps its own seat)
@@ -999,6 +1012,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
       never: measure(GUIDANCE_CONTROLS), card, toasts };
   }
+  /** The cards whose scroll marks their data-more (guidanceInput): each once. */
+  const guidanceCardsWatched = new WeakSet<HTMLElement>();
+  /** data-more on a card while its words run on below what it shows (the fade and chevron, tutorial.css). */
+  const markCardMore = (node: HTMLElement) => {
+    const more = node.scrollHeight - node.clientHeight - node.scrollTop > 1;
+    if (more !== node.hasAttribute('data-more')) node.toggleAttribute('data-more', more);
+  };
   /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
   let guidanceCardSize: GuidanceSize | null = null;
   /** The card's natural size held for its step (guidancePlan.ts cardNaturalSize). */
@@ -1014,6 +1034,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-guidance-card-top', `${Math.round(card.y0)}px`);
       setBodyVar('--hud-guidance-card-width', `${Math.floor(card.x1 - card.x0)}px`);
       setBodyVar('--hud-guidance-card-max-h', `${Math.floor(card.y1 - card.y0)}px`);
+      // its words a type step smaller, or scrolling under the affordance, where the plan found no room for them whole
+      if (card.fit !== 'full') flags.push(`card-${card.fit}`);
       if (yields && root.querySelector('.cot-sixth.on,.cot-alert.show')) flags.push('card-yields');
     }
     if (toasts) {
@@ -1028,8 +1050,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.hudGuidance;
     }
     // (the plan's boxes, for the browser receipt: tools/hud-guidance.browser.mjs reads them beside the rendered ones)
-    const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number } | null) =>
-      b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1] : null;
+    const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number; fit?: string } | null) =>
+      b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1, b.fit ?? 'full'] : null;
     const record = JSON.stringify({ card: box(card), toasts: box(toasts), wait: !!plan?.toastsWait, yields });
     if (document.body.dataset.hudGuidancePlan !== record) document.body.dataset.hudGuidancePlan = record;
   }
@@ -1294,8 +1316,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // log's left edge, gauntlet r8)
     const sightStop = touch ? Infinity
       : Math.max(176, width / 2 - Math.max(Math.min(width, height) * 0.15 + 8, 80) - (mapNow ? width - mapNow.right : 12));
-    const mapCap = Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity, sightStop,
-      mapRoom - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0));
+    // (couch-split-274: a split-screen pane keeps the solo HUD's sizes, so a pane under 1000 px wide keeps the TV's inline
+    // tray, which leaves the map no room beside it at its solo size: the map stands over the tray's systems row instead,
+    // on the pane's right edge, capped by the sight and the score, never by the right roster: the pane's fit gives up the
+    // rosters before the map, src/game/couchPanes.ts COUCH_HUD_PRIORITY. Every 2 and 4 seat pane lost its map before.)
+    const mapPlate = !touch && document.body.hasAttribute('data-couch-pane') ? root.querySelector<HTMLElement>('.cot-minimap') : null;
+    const mapSoloW = mapPlate ? COUCH_MAP_SOLO_PX * (parseFloat(window.getComputedStyle(mapPlate).getPropertyValue('--mm-k')) || 1) : 0;
+    const liftMap = !!mapPlate && rackRight > width / 2 && width - 16 - rackRight - 12 < mapSoloW;
+    setBodyVar('--hud-map-lift', liftMap ? `${Math.round(height - systemsTop + 8)}px` : '');
+    const mapCap = liftMap
+      ? Math.min(sightStop, systemsTop - 8 - scoreBottom - 8 - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0))
+      : Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity, sightStop,
+        mapRoom - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0));
     setBodyVar('--hud-map-max', mapCap < Infinity ? `${Math.floor(mapCap)}px` : '');
     // (as many tiles as the rack has slots: each tile stands over its slot, as wide, the separator's gap with it, so the
     // row's dividers are the rack's, gauntlet r4; otherwise the tiles share the rack's width evenly)

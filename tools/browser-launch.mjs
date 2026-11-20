@@ -33,6 +33,8 @@
 //   sampled in this browser's own process group.
 // - Caps: options on the third argument, else COT_BROWSER_HEAP_MB, COT_BROWSER_RENDERER_CAP_MB, COT_BROWSER_TREE_CAP_MB,
 //   COT_BROWSER_GUARD_INTERVAL_MS and COT_BROWSER_RENDERER_LIMIT.
+// - (mp-one-map-274) Every page sees the first-game tutorial skipped (tools/game-readiness.mjs TUTORIAL_SKIP_SCRIPT): a fresh
+//   profile's tutorial card blocked the Garage controls the tools press. `{ tutorial: 'keep' }` on the third argument keeps it.
 // - (267) The launch is judged on the launching browser's own CPU, never a fixed wall: under machine load Chrome took past
 //   30 s to print its DevTools endpoint ("Chrome WS endpoint timeout after 30 s", vehicle-ground-occlusion in 266's tier).
 //   The launcher waits without a wall limit, and the caller's `timeout` becomes a budget of that browser's CPU (its
@@ -41,7 +43,7 @@
 //   `launchHangMs` of wall (10 min) is called a hang.
 import { execFile, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { prepareToolBrowser } from './game-readiness.mjs';
+import { keepTutorial, prepareToolBrowser } from './game-readiness.mjs';
 import { appendFileSync, writeSync } from 'node:fs';
 import { basename } from 'node:path';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
@@ -554,7 +556,9 @@ export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
       watch.stop();
     }
     // (2026-11-02 audit S3) every page this browser hands out asks for the harness path before its first navigation,
-    // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts)
+    // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts), and (mp-one-map-274)
+    // sees the first-game tutorial skipped unless its tool keeps it (`tutorial: 'keep'`: the tutorial's own tools)
+    if (guard.tutorial === 'keep') keepTutorial(target);
     await prepareToolBrowser(target);
     let rootPid = null;
     try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }

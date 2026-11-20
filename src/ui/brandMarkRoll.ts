@@ -10,7 +10,7 @@
  * would split the boot graph's brandMark chunk into one request more (src/ui/battleLoad.ts met the same split).
  * Copyright © 2026 Kevin B. Liu.
  */
-const STILL = 'svg.cot-mark:not(.cot-mark--motion):not(.cot-mark--bust)';
+const STILL = 'svg.cot-mark:not(.cot-mark--motion)';
 const MOTION_URL = '/brand/mark-motion-inline.svg';
 /** A roll ends on its first loop (the wheels' animationiteration); this bounds it if no animation runs. */
 const ROLL_CAP_MS = 2400;

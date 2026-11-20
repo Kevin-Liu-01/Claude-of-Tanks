@@ -2,7 +2,7 @@
  * The Claude of Tanks mark (the owner's pick, 2026-10-24: "the commander"): the Claude Code commander in a tanker helmet,
  * standing in the open hatch of a low modern tank advancing to the right. The hatch's cupola stands on the turret roof
  * with its lid hinged at the rear rim, and the bustle is one form with the turret's rear (the owner's two fixes). The
- * full tank is the mark; the commander's bust is the icon where the tank is too small to read. Copyright © 2026
+ * full tank is the mark at every size; below 32 px the tab's pixel masters (tools/brand-marks.mjs) draw it. Copyright © 2026
  * Kevin B. Liu (the tank, the helmet, the goggles, the cupola and the lid).
  *
  * The commander is the Claude Code mascot glyph (Anthropic; docs/ATTRIBUTION.md), drawn verbatim: only scaled and placed,
@@ -20,9 +20,6 @@ export const COMMANDER_GLYPH = 'M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2
 /** The full mark's box (184 x 106: the pennant to the muzzle, the helmet to the track) and its width per unit height. */
 export const BRAND_TANK_VIEWBOX = '30 34 184 106';
 export const BRAND_TANK_ASPECT = 184 / 106;
-/** The bust's box (62 x 46) and its width per unit height. */
-export const BRAND_BUST_VIEWBOX = '1 10 62 46';
-export const BRAND_BUST_ASPECT = 62 / 46;
 
 /** The six road wheels along the track (their centres), shared with the motion. */
 export const ROAD_WHEELS: readonly (readonly [x: number, y: number])[] = [56, 79, 102, 125, 148, 171].map((x) => [x, 128.5] as const);
@@ -96,20 +93,6 @@ export function brandTankLayers({ ink, accent }: MarkInk): Record<'run' | 'hull'
   };
 }
 
-/** The commander's bust (inside an svg whose viewBox is BRAND_BUST_VIEWBOX): helmet and goggles, arms on the cupola. */
-export function brandBustBody({ ink, accent, keyline = false, id = 'cot-bk' }: MarkInk): string {
-  const cupola = 'M6 44.6h52l3 10.4H3Z';
-  const helmet = 'M15 25a17 8 0 0 1 34 0ZM23 19.2h18v3.6H23Z';
-  const rim = '<rect x="12" y="24" width="40" height="3.6" rx="1.8"/>';
-  const key = keyline
-    ? `<mask id="${id}-key" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/>`
-      + `<g fill="#000" stroke="#000" stroke-width="1.6"><path d="${cupola}"/><path d="${helmet}"/>${rim}</g></mask>`
-    : '';
-  return `${key}<path style="fill:${accent}" fill-rule="evenodd" d="${COMMANDER_GLYPH}" transform="translate(8 14) scale(2)"${keyline ? ` mask="url(#${id}-key)"` : ''}/>`
-    + `<g fill="${ink}"><path d="${cupola}"/><path fill-rule="evenodd" d="${helmet}"/>${rim}</g>`
-    + `<g fill="none" stroke="${ink}" stroke-width="1"><circle cx="28" cy="21" r="2.1"/><circle cx="36" cy="21" r="2.1"/></g>`;
-}
-
 /**
  * The wordmark, CLAUDE —of— TANKS, as the outlined master (src/ui/brandWordmark.ts, SPEC 3.1: never live text): the
  * words take the surrounding ink, the "of" and its rules the accent. Its host names the game; the drawing is decorative.
@@ -175,8 +158,3 @@ export function brandMarkSVG(height: number): string {
     + `aria-hidden="true" focusable="false">${brandTankBody({ ink: 'currentColor', accent: 'var(--accent)' })}</svg>`;
 }
 
-/** The bust, `size` px tall, for a square slot (a tab, a badge). */
-export function brandBustSVG(size: number): string {
-  return `<svg class="cot-mark cot-mark--bust" viewBox="${BRAND_BUST_VIEWBOX}" width="${Math.round(size * BRAND_BUST_ASPECT)}" height="${size}" `
-    + `aria-hidden="true" focusable="false">${brandBustBody({ ink: 'currentColor', accent: 'var(--accent)' })}</svg>`;
-}
