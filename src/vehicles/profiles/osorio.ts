@@ -430,10 +430,12 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       P.addEquipment('turret', box(0.30, 0.25, 0.32), -0.60, roof + 0.24 + 0.125, -0.12);
       P.add('turretGlass', box(0.20, 0.10, 0.008), -0.60, roof + 0.39, 0.044);
       P.add('turretDark', box(0.32, 0.025, 0.12), -0.60, roof + 0.50, -0.02);
-      // the Philips thermal head, round-topped, inboard of the gunner
-      P.addEquipment('turret', cylY(0.12, 0.13, 0.18, P.q ? 18 : 12), -0.26, roof + 0.09, 0.42);
-      P.addEquipment('turret', xform(sph(0.12, P.q ? 16 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), -0.26, roof + 0.18, 0.42);
-      P.add('turretGlass', cylZ(0.05, 0.01, 12), -0.26, roof + 0.11, 0.545);
+      // the Philips thermal head, round-topped, inboard of the gunner (brazil-kit-274, the owner's "unique turrets" ruled on
+      // the record: the P.2's own heads read bolder against the P.1's low pair, the thermal drum a size up with its hood)
+      P.addEquipment('turret', cylY(0.15, 0.16, 0.20, P.q ? 20 : 12), -0.26, roof + 0.10, 0.42);
+      P.addEquipment('turret', xform(sph(0.15, P.q ? 18 : 10, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), -0.26, roof + 0.20, 0.42);
+      P.add('turretGlass', cylZ(0.065, 0.01, 14), -0.26, roof + 0.12, 0.575);
+      P.add('turretDark', box(0.20, 0.02, 0.08), -0.26, roof + 0.19, 0.55);
     } else {
       // the P.1's two low OIP LRS-5 heads in a row (2.68 m over the ground), and behind the cupola the commander's tall
       // sight head under its rounded hood (the 2015 museum photograph; blind critic, round 3)
@@ -478,9 +480,20 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     P.addEquipment('turret', box(0.38, 0.18, 0.40), 0.58, roof + 0.09, -1.80);
     // (its lid painted on both marks: blind critics, rounds 5 and 9)
     P.addEquipment('turret', box(0.40, 0.02, 0.42), 0.58, roof + 0.19, -1.80);
-    if (p2) {
+    if (mark === 'p2') {
+      // (brazil-kit-274) the P.2's laser-warning detector (Nita) on its post over the rear roof, its four quadrant windows
+      P.addEquipment('turret', cylY(0.028, 0.034, 0.22, 10), -0.40, roof + 0.11, -2.05);
+      P.addEquipment('turret', cylY(0.085, 0.09, 0.09, P.q ? 16 : 10), -0.40, roof + 0.265, -2.05);
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + Math.PI / 4;
+        P.add('turretDark', box(0.07, 0.045, 0.01), -0.40 + Math.sin(a) * 0.091, roof + 0.265, -2.05 + Math.cos(a) * 0.091, 0, a, 0);
+      }
+      P.add('turretGlass', xform(sph(0.06, 12, Math.PI / 2), 0, 0, 0), -0.40, roof + 0.31, -2.05);
+    } else if (p2) {
       P.addEquipment('turret', cylY(0.06, 0.06, 0.12, 12), -0.40, roof + 0.06, -2.05);
       P.add('turretGlass', xform(sph(0.05, 12, Math.PI / 2), 0, 0, 0), -0.40, roof + 0.12, -2.05);
+    }
+    if (p2) {
       for (const dx of [0, 0.15]) P.addEquipment('turret', cylY(0.065, 0.065, 0.34, 12), -0.96 + dx, roof + 0.17, -2.12);
     }
     P.addEquipment('turretDark', cylY(0.018, 0.022, 0.52, 8), -0.20, roof + 0.26, -2.20);
@@ -499,7 +512,8 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     const bLow = 0.08, bTop = 0.46;
     if (p2) {
       // (on the EE-T3/T4 the basket keeps the wall's rear third, behind the side armour)
-      const xo = -(T.hw + 0.20), xi = -(T.hw + 0.004), zf = modern ? -0.64 : 0.15, zr = -1.42, top = 0.56;
+      // (brazil-kit-274: the P.2's a hand taller and fuller, its kit heaped over the top rail)
+      const xo = -(T.hw + 0.20), xi = -(T.hw + 0.004), zf = modern ? -0.64 : 0.15, zr = -1.42, top = modern ? 0.56 : 0.64;
       for (const y of [bLow, (bLow + top) / 2, top]) rail([xo, y, zf], [xo, y, zr]);
       for (const z of [zf, zr]) for (const y of [bLow, top]) rail([xi, y, z], [xo, y, z]);
       for (let k = 0; k <= 5; k++) rail([xo, bLow, zf - (zf - zr) * k / 5], [xo, top, zf - (zf - zr) * k / 5]);
@@ -510,16 +524,18 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
       stowage(P, 'turretCloth', rng, modern
         ? [[-(T.hw + 0.10), bLow + 0.15, -0.86, 0.17, 0.28, 0.36], [-(T.hw + 0.10), bLow + 0.16, -1.20, 0.17, 0.30, 0.34]]
-        : [[-(T.hw + 0.10), bLow + 0.15, -0.10, 0.17, 0.28, 0.44], [-(T.hw + 0.10), bLow + 0.13, -0.66, 0.16, 0.24, 0.52],
-          [-(T.hw + 0.10), bLow + 0.16, -1.16, 0.17, 0.30, 0.40]]);
+        : [[-(T.hw + 0.10), bLow + 0.19, -0.10, 0.17, 0.36, 0.44], [-(T.hw + 0.10), bLow + 0.17, -0.66, 0.16, 0.32, 0.52],
+          [-(T.hw + 0.10), bLow + 0.20, -1.16, 0.17, 0.38, 0.40], [-(T.hw + 0.10), 0.51, -0.38, 0.15, 0.12, 0.70]]);
     } else {
+      // (brazil-kit-274: the P.1's grid in heavier bar, so its flat face reads against the P.2's deep basket)
+      const heavy = (a: readonly [number, number, number], b: readonly [number, number, number]): void => bar('turretOpenLattice', a, b, 0.02);
       const xo = -(T.hw + 0.05), xi = -(T.hw + 0.004), zf = 0.14, zr = -1.58, low = 0.06, top = 0.64;
-      for (const z of [zf, zr]) rail([xo, low, z], [xo, top, z]);
-      for (const y of [low, top]) rail([xo, y, zf], [xo, y, zr]);
-      for (const z of [zf, (zf + zr) / 2, zr]) for (const y of [low + 0.04, top - 0.04]) rail([xi, y, z], [xo, y, z]);
-      for (let k = 1; k < 5; k++) rail([xo, low + (top - low) * k / 5, zf], [xo, low + (top - low) * k / 5, zr]);
+      for (const z of [zf, zr]) heavy([xo, low, z], [xo, top, z]);
+      for (const y of [low, top]) heavy([xo, y, zf], [xo, y, zr]);
+      for (const z of [zf, (zf + zr) / 2, zr]) for (const y of [low + 0.04, top - 0.04]) heavy([xi, y, z], [xo, y, z]);
+      for (let k = 1; k < 5; k++) heavy([xo, low + (top - low) * k / 5, zf], [xo, low + (top - low) * k / 5, zr]);
       for (let k = 1, m = Math.round((zf - zr) / 0.15); k < m; k++) {
-        P.addEquipment('turretOpenLattice', box(0.016, top - low, 0.016), xo, (low + top) / 2, zf - (zf - zr) * k / m);
+        P.addEquipment('turretOpenLattice', box(0.026, top - low, 0.026), xo, (low + top) / 2, zf - (zf - zr) * k / m);
       }
     }
     // the bustle rack across the rear face (the 1987 and 2024 photographs): rails and uprights on a mesh floor, the tall

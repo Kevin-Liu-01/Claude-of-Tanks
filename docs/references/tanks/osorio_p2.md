@@ -89,3 +89,19 @@ and tank decorations on all brazilian tanks."
 Clearances: the wedges' inner faces stay at the recess's 0.475 m (the mantlet 0.86-0.90 m wide, the gun's sweep inside
 it); the roots 2 cm ahead of the gunner's sight head and its visor. Hit zones follow the drawn wedges through the
 combat-anatomy regeneration (the turret bucket's envelope and collision cells).
+
+### P.1 and P.2 turrets (owner 2026-11-20 via Main: "unique turrets"; ruled "Keep record, bolder kit")
+
+The record keeps one turret: Vickers designed and supplied both and they were interchangeable (Bastos, ARMOR, Forças
+Terrestres 2015). The owner chose to keep the shared shell and make each mark's own kit read bolder; the EE-T3/T4 are
+byte-identical to their approved build.
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 6 | P.2 Philips thermal head | 0.12 m drum and dome | 0.15 m drum and dome with a hood over its window |
+| 7 | P.2 laser-warning detector (Nita) | a 12 cm stub on the rear roof | a squat head with four quadrant windows on a 0.22 m post |
+| 8 | P.2 right-wall basket | top rail 0.56 m, three loads | top rail 0.64 m, four loads heaped to the top rail |
+| 9 | P.1 right-wall grid | 13 mm bars, 16 mm slats | 20 mm bars, 26 mm slats: a heavier flat grid against the P.2's deep basket |
+
+Fender mirrors stay off the P.1: the photo review behind this build found none on either prototype (osorio.ts), though
+the research table lists them.
