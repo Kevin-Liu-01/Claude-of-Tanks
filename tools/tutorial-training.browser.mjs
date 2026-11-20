@@ -64,7 +64,10 @@ try {
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 120_000, protocolTimeout: 600_000,
     defaultViewport: null, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
-      `--window-size=${vp.width},${vp.height + 120}`] }), { label: 'tutorial-training' });
+      `--window-size=${vp.width},${vp.height + 120}`] }),
+    // (from 274.0 a tool browser seeds the tutorial record all-skipped where it has none, item/mp-one-map-274: the walk
+    // keeps the tutorial, or it would open with training skipped; ignored by a launcher before it)
+    { label: 'tutorial-training', tutorial: 'keep' });
   const page = await browser.newPage();
   await page.setViewport(vp);
   if (touch) {
