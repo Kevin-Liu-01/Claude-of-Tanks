@@ -9,7 +9,8 @@ import {
   PAD_AIM_SCALE, PAD_AXES_BYTES, PAD_AXES_TYPE, PAD_HOLD_ACTIONS, PAD_TOUR_MAX_PARTS, PAD_TOUR_PARTS, PAD_TOUR_PART_BYTES,
   PAD_TOUR_STOPS, PAD_TOUR_STOP_BYTES, PAD_TOUR_VERSION, padFromBase64,
 } from './padProtocol.ts';
-import type { PadAxes, PadCtlMessage, PadHoldAction, PadTapAction, PadTourLayout } from './padProtocol.ts';
+import { padActBit } from './padLayout.ts';
+import type { PadAxes, PadCommand, PadCtlMessage, PadHoldAction, PadTapAction, PadTourLayout } from './padProtocol.ts';
 
 /** The phone page's address for a code. The code rides in the fragment, which a browser never sends to a server; the
  *  page speaks the phone's own language (its stored choice, else the device's), whatever the desktop's. */
@@ -100,7 +101,10 @@ const PAD_STALE_MAX_MS = 1500;
 /** The aim pad's drag in phone px, scaled to the mouse's units (the touch HUD's aim drag uses 1.18). */
 export const PAD_AIM_GAIN = 1.25;
 
-export function createPadInputMapper(input: PadInputPort, onPause?: () => void): PadInputMapper {
+/** A command no input action names (padProtocol.ts PAD_COMMANDS), handed to the desktop's own calls. */
+export type PadCommandPort = (command: PadCommand, n?: number) => void;
+
+export function createPadInputMapper(input: PadInputPort, onPause?: () => void, onCommand?: PadCommandPort): PadInputMapper {
   const pressed = new Set<PadHoldAction>();
   /** The phone's axes seq at each hold's newest ctl event: a frame at or past it is the hold's truth. */
   const ctlSeq = new Map<PadHoldAction, number>();
@@ -163,6 +167,7 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
         case 'down': ctlSeq.set(message.a, message.s); press(message.a); return;
         case 'up': ctlSeq.set(message.a, message.s); release(message.a); return;
         case 'tap': input.tapVirtual(message.a); return;
+        case 'cmd': onCommand?.(message.c, message.n); return;
         case 'pause': onPause?.(); return;
         default: return;
       }
@@ -180,4 +185,12 @@ export function createPadInputMapper(input: PadInputPort, onPause?: () => void):
     },
   };
   return mapper;
+}
+
+/** The grant mask the status carries (padProtocol.ts PadStatus `a`): the optional controls this player has, by
+ *  padLayout.ts PAD_ACTS; the phone shows those and no others. */
+export function padActsMask(ids: Iterable<string>): number {
+  let mask = 0;
+  for (const id of ids) mask |= padActBit(id);
+  return mask;
 }

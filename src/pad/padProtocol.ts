@@ -213,14 +213,33 @@ function isIceServer(value: unknown): value is PadIceServer {
 
 // ---- The `ctl` channel (reliable, ordered, JSON) -----------------------------------------------------------------
 
-/** The controls a phone may name. Each is an action id of src/game/input.ts (padInput.selftest pins them). */
-export const PAD_HOLD_ACTIONS = ['fire', 'handbrake', 'freeLook'] as const;
+/** The controls a phone may name. Each is an action id of src/game/input.ts (padInput.selftest pins them). A hold's bit
+ *  in the axes frame is its index here, so new holds go on the end. Watch reads its descend and boost with isDown, so
+ *  reloadMagazine and sniperToggle are holds as well as taps (padLayout.ts says which a mode's key sends). */
+export const PAD_HOLD_ACTIONS = ['fire', 'handbrake', 'freeLook', 'reloadMagazine', 'sniperToggle'] as const;
 export const PAD_TAP_ACTIONS = [
   'sniperToggle', 'zoomIn', 'zoomOut', 'shell1', 'shell2', 'shell3', 'consumable1', 'consumable2', 'consumable3',
-  'reloadMagazine', 'specialAction', 'selfRight', 'smoke', 'autoAim',
+  'reloadMagazine', 'specialAction', 'selfRight', 'smoke', 'autoAim', 'atgm', 'drone', 'lights', 'roofGun', 'strikeView',
+  'aerialVision', 'supplyAmmo', 'supplyHeal', 'hitboxOverlay', 'rangeReset', 'rangeMoving', 'minimapZoom', 'shotLog',
+  'networkPanel',
 ] as const;
 export type PadHoldAction = (typeof PAD_HOLD_ACTIONS)[number];
 export type PadTapAction = (typeof PAD_TAP_ACTIONS)[number];
+
+/** What the desktop is doing with this player's input, so the phone lays out that mode's controls (padLayout.ts): nothing
+ *  to drive, a tank, Air Support's binoculars, the drone, the AC-130, Watch's spectator camera, or destroyed. */
+export const PAD_MODES = ['idle', 'tank', 'strike', 'drone', 'gunship', 'watch', 'dead'] as const;
+export type PadMode = (typeof PAD_MODES)[number];
+/** What a phone may ask that no input action names (the desktop's own calls, as its touch buttons make them): Watch's
+ *  tank picks and seat, a call-in by its number (0..4) and lowering the binoculars, the killcam's skip and the
+ *  spectator's steps. */
+export const PAD_COMMANDS = [
+  'watchPrev', 'watchNext', 'watchRide', 'watchDrone', 'watchSeat', 'strikePick', 'strikeClose', 'killcamSkip',
+  'spectatePrev', 'spectateNext',
+] as const;
+export type PadCommand = (typeof PAD_COMMANDS)[number];
+/** The call-ins a strikePick may name (sim/matchRuleset.ts AIR_STRIKE_KINDS has five). */
+export const PAD_STRIKE_PICKS = 5;
 
 /** What the battle tells the phone's hands (desktop → phone, sent the moment it happens; padCues.ts maps the game's
  *  events onto them and names each one's buzz): the gun fired, a hit given that hurt or glanced off, a hit taken that
@@ -235,8 +254,8 @@ export type PadCue = (typeof PAD_CUES)[number];
  *  the phone's frame, every control's box in it, and the guide's stops, each with its ring and where its name sits.
  *  Whole frame px; the desktop names each stop in its own language. It travels as compact text (encodePadTour): the
  *  guide opens while a pairing may still be on the relay, whose payload is at most PAD_RELAY_DATA_MAX. */
-export const PAD_TOUR_PARTS = ['chip', 'key', 'round', 'dial', 'lever', 'sight', 'fire'] as const;
-export const PAD_TOUR_STOPS = ['tilt', 'throttle', 'stick', 'aim', 'fire', 'scope', 'lock'] as const;
+export const PAD_TOUR_PARTS = ['chip', 'key', 'round', 'stick', 'sight', 'fire'] as const;
+export const PAD_TOUR_STOPS = ['stick', 'aim', 'fire', 'deck', 'left', 'right'] as const;
 export type PadTourPart = (typeof PAD_TOUR_PARTS)[number];
 export type PadTourStop = (typeof PAD_TOUR_STOPS)[number];
 /** The guide on the phone, as its diagnostics name it: hidden, shown, or how it last ended (Skip on the phone, its time
@@ -290,6 +309,10 @@ export interface PadStatus {
   /** The sight's lock on the enemy nearest the reticle (the autoAim tap): absent where there is none to have (a couch
    *  seat's sight is its own bearing). */
   lock?: boolean;
+  /** The mode the phone lays out (padLayout.ts), absent as `idle`, and the optional controls this player has in it
+   *  (padLayout.ts PAD_ACTS bits): a vehicle's kit, a mode's grants. */
+  m?: PadMode;
+  a?: number;
 }
 
 export type PadCtlMessage =
@@ -297,6 +320,8 @@ export type PadCtlMessage =
   | { k: 'down'; a: PadHoldAction; s: number }
   | { k: 'up'; a: PadHoldAction; s: number }
   | { k: 'tap'; a: PadTapAction }
+  /** A command no input action names (PAD_COMMANDS); `n` is strikePick's call-in. */
+  | { k: 'cmd'; c: PadCommand; n?: number }
   | { k: 'pause' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number; d: number; apply: number }
@@ -310,6 +335,8 @@ export type PadCtlMessage =
 const HOLDS = new Set<string>(PAD_HOLD_ACTIONS);
 const TAPS = new Set<string>(PAD_TAP_ACTIONS);
 const CUES = new Set<string>(PAD_CUES);
+const COMMANDS = new Set<string>(PAD_COMMANDS);
+const MODES = new Set<string>(PAD_MODES);
 
 // ---- The guide's picture as text (base64 of bytes, big-endian) ----------------------------------------------------
 // [0] version 1, [1..4] the frame's w and h (uint16), [5] the part count, then per part its kind (uint8) and its x, y,
@@ -378,6 +405,12 @@ export function readPadCtl(text: string): PadCtlMessage | null {
       return typeof record.a === 'string' && HOLDS.has(record.a) && Number.isInteger(record.s)
         ? { k: record.k, a: record.a as PadHoldAction, s: Number(record.s) & 0xffff } : null;
     case 'tap': return typeof record.a === 'string' && TAPS.has(record.a) ? { k: 'tap', a: record.a as PadTapAction } : null;
+    case 'cmd': {
+      if (typeof record.c !== 'string' || !COMMANDS.has(record.c)) return null;
+      if (record.c !== 'strikePick') return { k: 'cmd', c: record.c as PadCommand };
+      return Number.isInteger(record.n) && Number(record.n) >= 0 && Number(record.n) < PAD_STRIKE_PICKS
+        ? { k: 'cmd', c: 'strikePick', n: Number(record.n) } : null;
+    }
     case 'pause': return { k: 'pause' };
     case 'ping': return Number.isFinite(record.t) ? { k: 'ping', t: Number(record.t) } : null;
     case 'pong':
@@ -409,7 +442,9 @@ function isStatus(value: unknown): value is PadStatus {
     (s.spec === undefined || (typeof s.spec === 'string' && /^[a-z0-9_]{1,48}$/.test(s.spec))) &&
     (s.turret === undefined || Number.isFinite(s.turret)) &&
     (s.kmh === undefined || Number.isFinite(s.kmh)) && (s.topKmh === undefined || Number.isFinite(s.topKmh)) &&
-    (s.lock === undefined || typeof s.lock === 'boolean');
+    (s.lock === undefined || typeof s.lock === 'boolean') &&
+    (s.m === undefined || (typeof s.m === 'string' && MODES.has(s.m))) &&
+    (s.a === undefined || (Number.isInteger(s.a) && (s.a as number) >= 0 && (s.a as number) < 2 ** 31));
 }
 
 // ---- The `axes` frame (binary, 24 bytes) -------------------------------------------------------------------------
@@ -418,9 +453,6 @@ export const PAD_AXES_TYPE = 1;
 export const PAD_AXES_BYTES = 24;
 /** Aim totals travel in eighths of a pixel. */
 export const PAD_AIM_SCALE = 8;
-/** flags: the steering came from the tilt (not the on-screen stick). */
-export const PAD_FLAG_TILT = 1;
-
 export interface PadAxes {
   flags: number;
   /** 0..65535, wrapping. */

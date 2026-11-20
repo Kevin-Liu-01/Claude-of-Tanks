@@ -48,7 +48,7 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   game: {
     readonly phase: string;
     readonly couch?: CouchSession<E> | null;
-    readonly ruleset: { readonly couch?: CouchRules };
+    readonly ruleset: { readonly couch?: CouchRules; readonly consumables?: boolean };
   };
   camera: {
     readonly fov: number;
@@ -181,7 +181,9 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
   const source = (seat: number): PadStatusSource | null => {
     const entity = seatEntity(seat);
     const battle = ports.game.phase === 'battle' && !!ports.game.ruleset.couch && !!entity;
-    return { battle, paused: ports.paused(), sniper: false, player: battle ? entity : null, shellCode: ports.shellCode };
+    // a seat drives its tank or waits out its respawn; its controls are couchSeats.ts's few (facts.couch)
+    return { battle, paused: ports.paused(), sniper: false, player: battle ? entity : null, shellCode: ports.shellCode,
+      mode: entity?.combat?.destroyed ? 'dead' as const : 'tank' as const, facts: { couch: true, consumables: ports.game.ruleset.consumables !== false } };
   };
 
   /** A new couch battle: each seat's sight starts along its own gun, and the camera along seat 1's side's facing. */

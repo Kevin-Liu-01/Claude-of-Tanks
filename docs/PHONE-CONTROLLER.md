@@ -6,14 +6,21 @@ code or smthg through some way. explore and build!"
 
 ## Value case and pass rule (stated before building)
 
-The phone becomes a second input device for the desktop game: held landscape like a wheel, tilt steers, the thumbs work
-the throttle, the aim pad and the buttons. It earns its place if it feels like a controller, not a remote desktop.
+The phone becomes a second input device for the desktop game, held landscape in two hands: the left thumb drives a stick,
+the right thumb aims and fires, and big keys in fixed zones reach every capability a keyboard player has, in every mode
+(pad-controls-274; owner 2026-11-20: "no more need for gyroscope features, use joysticks buttons in specific areas, big
+buttons and surface areas for all capabilities, special sections from left and right for the special abilities, so you
+can play all special modes from couch/mobile controller mode"). The first build (266) steered by tilt, like a wheel; 274
+removed the tilt, its `deviceorientation` reader and the motion-permission ask whole. It earns its place if it feels like
+a controller, not a remote desktop.
 
 Pass rule:
 
-1. Steering latency (phone sensor or touch event to the tank's input in a rendered desktop frame): p95 under 60 ms on a
+1. Steering latency (a touch event on the phone to the tank's input in a rendered desktop frame): p95 under 60 ms on a
    LAN, under 120 ms on cellular.
-2. A full battle is drivable from the phone alone: drive, aim, scope, switch ammunition, fire.
+2. A full battle is playable from the phone alone, in every mode: drive, aim, scope, switch ammunition, fire, the
+   consumables and the vehicle's systems, the drone, Air Support's binoculars, the AC-130, Watch and a destroyed player's
+   killcam and spectator camera.
 3. Zero network requests while no phone is paired, and no new boot request on the game, Gallery or /cn pages.
 
 ## Hard rules it keeps
@@ -44,7 +51,8 @@ Pass rule:
   (`cloudflare/rooms/src/padPair.ts`) and the LAN helper (`server/rooms/localPadService.ts`, mounted by
   `server/rooms/serve.ts`) host the same code, so receipts run it in Node.
 - `src/pad/padLink.ts`: the transport both pages use: the signaling socket, the RTC peer, the relay fallback.
-- `src/pad/padInput.ts`: the steering and aim models, and `src/pad/padBuzz.ts`: each cue's buzz; the phone's, pure.
+- `src/pad/padInput.ts`: the stick and aim models and the frame's turn, `src/pad/padLayout.ts`: every mode's zones and
+  keys, and `src/pad/padBuzz.ts`: each cue's buzz; the phone's, pure.
 - `src/pad/padDesk.ts`: the desktop's half, pure: the frame-to-action mapping, the axes and guide decoders, the pairing
   page's address. With `src/pad/padCues.ts` (which events are cues) the phone's page never imports it: a module both
   sides import rides whole to the phone, so each export lives on the side that runs it
@@ -95,50 +103,93 @@ allowance (1,000 GB a month), and a controller uses well under 50 MB an hour.
 ## Wire
 
 - `axes` (phone → desktop, unreliable, unordered, 24 bytes, every frame while anything moves, 10 Hz idle heartbeat):
-  type, flags, seq, the phone's clock, steer and throttle (int16), the aim pad's running totals (int32, 1/8 px; totals
-  rather than deltas so a lost frame loses no aim), held-button bits.
-- `ctl` (both ways, reliable, ordered, JSON): button press/release/tap by action id, pause, ping/pong for the clock and
-  RTT, and the desktop's status (in battle, ammunition slot, counts and types, reload, consumables, sniper, paused).
+  type, flags (none set since the tilt left), seq, the phone's clock, the stick's x and y (int16), the aim pad's running
+  totals (int32, 1/8 px; totals rather than deltas so a lost frame loses no aim), held-button bits (bit i is
+  `PAD_HOLD_ACTIONS[i]`: fire, handbrake, freeLook, then reloadMagazine and sniperToggle, Watch's descend and boost).
+- `ctl` (both ways, reliable, ordered, JSON): button press/release/tap by action id, `cmd` for what no input action
+  names (Watch's tank picks and seat, a call-in by number and lowering the binoculars, the killcam's skip, the spectator's
+  steps), pause, ping/pong for the clock and RTT, and the desktop's status (in battle, ammunition slot, counts and types,
+  reload, sniper, paused, the lock, and the mode `m` with its grant mask `a`, below). No Worker change: the pairing actor
+  relays `ctl` text without reading it, and a full status is about 300 characters, inside one relay payload.
 - The desktop applies only the newest `axes` seq, takes aim as the difference of totals, and releases every held control
   and zeroes the stick when no frame arrives for 400 ms (a phone that sleeps never leaves the tank driving).
 
-## Controls: a tank's control panel in the hand
+## Controls: five zones, two thumbs
 
-Underneath its features the controller is the tank's own control panel, held in two hands like a yoke (owner
-2026-10-30: "make it look more realistic"). Its material is the `surface-pad` tokens (`src/ui/tokens/tokens.json`):
-brushed gunmetal, rubber grips, turned bezels over glass, amber and red lamps. Every control moves by transform alone
-and shows a press at once, with no transition.
+The controller is still the tank's own control panel in the hand (owner 2026-10-30: "make it look more realistic"): its
+material is the `surface-pad` tokens (`src/ui/tokens/tokens.json`), gunmetal keys, a rubber stick, the gunner's sight
+under glass, amber and red lamps; every key wears the game's own glyph over its word in the UI face, and every count
+sits on a mono counter. Every control moves by transform alone and shows a press at once, with no transition. Since 274
+it is laid out in five fixed zones, the same in every mode, so a thumb learns where things are once
+(`src/pad/padLayout.ts`):
 
-- The ammunition selector: three illuminated keys, the loaded shell's lamp lit, its rounds on a counter drum that rolls
-  one on when a round is spent.
-- Consumables: guarded switches. A press lifts the red cover on its hinge and throws the switch under it.
-- Throttle: a rubber T-handle in a gate over a scale, neutral at the notch, spring-loaded back to it. With no tilt (a
-  refusal, no sensor, tilt off) the gate becomes a cross and the handle a stick that steers too. The brake is a rubber
-  pad under it.
-- The repeater: the tank on the field (its plan view, `/icons/<spec>_top.webp`) under glass, its hull turning as the
-  phone turns, so the dial is the steering's readout, and the gun's bearing as a pointer on the rim. A tap re-centres the
-  wheel. Beside it, the speedometer: a needle over a 240° sweep to the tank's top speed, and the km/h on a counter.
-- The gun: the gunner's sight under the right thumb, a dark optic with a stadia reticle that leans toward the drag. The
-  fire button sits in a turned collar; the ring around it fills as the gun loads (two half rings turned by transform),
-  and the button lights red when the gun is ready. Scope is a latching key that lights while the sight is engaged, zoom
-  a rocker beside it while scoped, Look a held key, and Lock on (the autoAim tap, the T key's lock on the enemy nearest
-  the reticle) a key over the trigger that lights while it holds a target; a couch seat has none (its sight is its own
-  bearing).
-- Aiming (owner 2026-11-03: looking around, shooting and firing "needs to be a lot more intuitive"). Before, a swipe
-  across the sight turned the gun about 30° at the mouse's gain, so a turn to the rear took six swipes, and the thumb had
-  to leave the sight to fire. Now:
-  - The sight's gain follows the finger's speed (`padInput.ts` `aimGain`): a slow drag keeps the mouse's precision
-    (1×), a swipe at 0.5 px/ms turns 2.6 times as far, and a flick up to 5 times (2 times in the scope, so a flick never
-    throws the sight off a target). A 150 px flick turns the gun about 118°.
-  - A thumb on the fire button drags to aim once it has moved 10 px (a press's wobble never nudges the gun), so one
-    thumb aims and shoots; held, the gun fires again the moment it loads. A finger that lands on the sight takes the aim
-    from it.
-- Steering: tilt like a wheel. The phone's up vector from `deviceorientation` (β, γ) is taken in the locked frame (below),
-  and the wheel angle is its angle in the screen plane, so how far the phone leans back does not matter. A 3° dead zone,
-  a 1.6 power curve, full lock at 35° (25 to 60 in options). Level is the centre.
-- Options (a native modal, two columns so it fits the short side whole): tilt on or off, the fire hand (a left-handed
-  mirror), steering lock and aim speed.
-- Screen Wake Lock keeps the phone awake. The phone is felt as well as seen (below, Haptics).
+| LEFT special column | Left thumb | Deck (centre) | Right thumb | RIGHT special column |
+|---|---|---|---|---|
+| survival, or the mode's holds | the stick (it floats to where the thumb lands) and its hold key | the rounds, or the call-ins | the gunner's sight to drag in, FIRE in its collar, the scope, look and zoom keys | systems, or the mode's picks |
+
+The phone's own battle HUD (mobile-hud-274) keeps the same sides: survival on the left edge, systems on the right.
+
+- The stick (`padInput.ts` `stickValue`): a 64 px ring, a 12 % dead zone for a resting thumb, a 1.3 power curve; the push
+  keeps its direction (a diagonal stays a diagonal), forward is up. Its well comes to the thumb anywhere in the zone, and
+  springs back on the lift.
+- The sight: a drag aims, the gain following the finger's speed (`aimGain`): a slow drag keeps the mouse's precision
+  (1×), a swipe at 0.5 px/ms turns 2.6 times as far, a flick up to 5 times (2 in the scope, so a flick never throws the
+  sight off a target). A thumb on FIRE drags to aim once it has moved 10 px, so one thumb aims and shoots; held, the gun
+  fires again the moment it loads. A rate ring (hold past it to keep turning) was weighed and left out: a slow drag that
+  stops on a target would keep the gun turning.
+- FIRE sits in its turned collar; the ring around it fills as the gun loads, and the button lights red when it is ready.
+- The rounds are illuminated keys, the loaded one's lamp lit, its count on a drum that rolls one on when a round is
+  spent. The consumables are guarded switches: the red cover lifts while the thumb is on the key.
+- The top strip: the link's lamp and round trip, the mode's name on its plate, the speed on a counter, the status line,
+  Pause and Menu.
+- Menu (a native modal, two columns so it fits the short side whole): the fire hand (a left-handed mirror of all five
+  zones), vibration, the portrait turn (below), the guide, the aim speed, and the game screen's own panels (the minimap's
+  zoom, the shot log, the network panel).
+
+### Modes
+
+The desktop's status names the mode the player's input drives now (`m`) and grants the optional keys this player has in
+it (`a`, a bit per `PAD_ACTS` id). The composition root reads where each mode lives (`src/main.ts` `phoneMode`: the
+flight's `player.aerial`, the strike view and the killcam heard on the bus, the Watch controller's view), and the
+receiver's lazy chunk turns the facts into grants (`padReceiver.ts` `padGrants`): the vehicle's own kit by the table the
+HUD and the Garage read (`game/vehicleActions.ts`, the fitted kit from the Garage's light summary), the battle mode's
+grants (the jump, the drone, Air Support, consumables, the Proving Ground), and Watch's and death's keys. The phone lays
+that mode out and nothing else, so no key is dead; a swap ticks the hands once, and a hold whose key leaves lets go first.
+
+| Capability (input action) | Tank | Binoculars | Drone | AC-130 | Watch | Destroyed | Couch seat |
+|---|---|---|---|---|---|---|---|
+| drive (forward/back/left/right) | stick | stick (the crew drives on) | stick = fly | none (it flies its orbit) | stick = move the camera | none | stick |
+| aim / look | sight | sight = lay the reticle | sight = look (the drone flies where it looks) | sight = lay the guns | sight = look | none | sight |
+| fire | FIRE (held = auto) | FIRE = CALL | none (the drone is the warhead) | FIRE (held = auto) | none | none | FIRE |
+| handbrake | Brake (hold) | Brake | Climb (hold) | none | Climb (hold, left) | none | Brake |
+| reloadMagazine | Reload* (right) | none | none | none | Descend (hold, left) | none | Reload* |
+| sniperToggle | Scope (lit while in) | none: it would drop the view | none | never: it steps the zoom every frame it reads down | Boost (hold, left) | none | Scope |
+| zoomIn / zoomOut | over FIRE while scoped | over FIRE | none | over FIRE | Slower / Faster | none | over FIRE |
+| freeLook | Look (hold) | none | none | none | none | none | Look |
+| shell1-3 | deck | none | none | deck (the guns) | none | none | deck |
+| consumable1-3, smoke, selfRight | left* | none | none | none | none | none | left* |
+| autoAim | right*, lit while locked | none | none | none | right (lock the camera on a tank) | none | none |
+| strikeView | right* | Lower (right) | none | none | none | none | none |
+| the five call-ins | none | deck | none | none | none | none | none |
+| drone | right* (launch) | none | right: home | none | none | none | none |
+| atgm, roofGun, specialAction, lights, hitboxOverlay | right* | none | none | none | none | none | specialAction* |
+| aerialVision | none | none | right | right | none | none | none |
+| supplyAmmo / supplyHeal | none | none | none | right | none | none | none |
+| rangeReset / rangeMoving | right* (Proving Ground) | none | none | none | none | none | none |
+| Watch: previous / next tank, ride, back to the drone, take control | none | none | none | none | right | none | none |
+| Watch: leave the taken seat | right* (the seat plays as a tank) | none | none | none | none | none | none |
+| killcam skip, spectator previous / next | none | none | none | none | none | right* | none |
+| minimapZoom, shotLog, networkPanel | Menu | Menu | Menu | Menu | Menu | Menu | none |
+
+\* where this vehicle or mode has it. Kept off the phone: leaveBattle (leaving stays the computer's choice, 266),
+settingsMenu (Pause sends the pause message, Escape's toggle), perfHud (a developer readout) and freeCamera (its job,
+hold or toggle aim and free look, is the scope and Look keys). `padLayout.selftest.mjs` holds every input action to
+this: reachable in some mode, on Menu, or named as kept off with its reason.
+
+The commands the desktop runs for `cmd` (`src/main.ts` `phoneCommand`) are its own touch bar's and binoculars' calls:
+the Watch controller's `cycle`, `rideAt(0, 0)`, `drone` and `toggleSeat`; the bus's `ui:strikePick` (by
+`AIR_STRIKE_KINDS`), `ui:strikeViewClose`, `spectate:cycle`, and `killcam:skip` (the killcam's Escape path,
+`src/game/killcam.ts`). A couch seat has no command port, and its keys never offer one.
 
 Every button goes through input actions, so the hold-or-toggle Accessibility setting applies to the phone as to keys.
 
@@ -172,19 +223,18 @@ hands the moment they happen:
 ### The controls guide
 
 Owner 2026-11-03: "a tutorial should show up on first phone pairing mode that u can skip and also disappears after like
-10 seconds". The first status after a phone's first pairing (`cot.pad.tour` in its storage) shows a ring on each control
-and its name beside it over the live panel: tilt to steer (with tilt on), the throttle (or the stick), drag to aim and
-flick to turn, tap to fire and drag to aim, the scope, and Lock on where there is one. A ghost thumb strokes the
-throttle and the sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
-running out under Skip, ends it; Options shows it again. Skip stands at the foot of the middle column, where the status
-line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
+10 seconds". The first status after a phone's first pairing (`cot.pad.tour.v2` in its storage; the 274 layout shows it
+again once) shows a ring on each zone and its name beside it over the live panel: the stick, drag to aim and flick to
+turn, tap to fire and drag to aim, the deck, and the two special columns. A ghost thumb strokes the stick and the
+sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
+running out under Skip, ends it; Options shows it again. Skip stands on the top strip, where the status line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
 with it, and each name takes the first side with room, clear of the other controls and names.
 
 The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
 the phone"), because the big screen is where the player looks:
 
 - With the guide the phone sends its picture of itself on `ctl` (`tour`, `PadTourLayout`): its frame, every control's
-  box (as outlines: keys, round keys, dials, the lever, the sight, the trigger), each stop's ring and where its name
+  box (as outlines: keys, round keys, the stick, the sight, the trigger), each stop's ring and where its name
   sits, in whole frame px. It travels as compact text (`encodePadTour`: base64 of 9 bytes a part and 14 a stop, about
   340 characters for a full panel), because the guide opens while a pairing may still be on the relay, whose payload
   the actor takes up to 512 characters. The first build sent it as JSON, about 700 characters: the actor dropped the
@@ -204,27 +254,16 @@ the phone"), because the big screen is where the player looks:
   its own Skip, when its link leaves live (a closed tab or a dropped link sends no ending), or when that time runs out,
   whichever comes first (`padReceiver.ts`; `padTour.selftest.mjs`).
 
-### Locked landscape
+### The frame
 
-iOS Safari has no orientation lock (`screen.orientation.lock` is unsupported and the manifest's orientation is ignored),
-and a phone turned hard as a wheel tips past the system's threshold, so before 266's round the page re-laid out mid-turn
-and the steering read the new screen angle: a 20° turn read as −70°, full left lock. Now the page locks itself
-(`src/pad/padPage.ts`, the pure maths in `src/pad/padInput.ts`):
-
-- At the Start tap the controller is laid out once, in the landscape the phone is in (or the quarter turn from portrait,
-  the top to the left, until the system first shows a landscape). That is the frame's lock angle.
-- When the system turns the page, the frame turns back by the same angle (`frameTurn`) and scales to fit, a transform
-  and nothing else. A resize that is no rotation (the keyboard leaving, Safari's bars) lays it out again.
-- The wheel angle reads β and γ against the lock angle, never the screen's, so the system's rotation never reaches the
-  steering. Touch movements are turned into the frame's axes (`frameDelta`), and the safe areas onto its own sides
-  (`frameInsets`). The options modal sits in the top layer and turns with the frame's variables.
-- On Android, where full screen is offered, the Start tap also asks `screen.orientation.lock` for the landscape in use.
-- Proof, iOS Simulator with rotation lock off (`sim/after/` in the evidence folder): at 90°, 0°, 270° and 180° the panel
-  stays where it was on the phone, and a fixed 20° wheel pose read 0.36 steer at every one. In Safari's portrait the panel
-  shrinks to fit between Safari's own bars (scale 0.82 on an iPhone 16); from the Home Screen it does not.
-- One gap is WebKit's: a flip from one landscape straight to the other that passes through upside-down portrait (the
-  simulator's 270 → 180 → 90) reports no event and leaves `screen.orientation.angle` stale, so the panel shows upside down
-  until the next reported rotation (any turn through portrait) puts it back. The steering is unaffected.
+The panel is always laid out landscape. Before 274 the page locked itself to the landscape it started in and turned
+back against every system rotation, because a wheel turned hard tipped the phone past the system's threshold and the
+re-layout moved the steering mid-turn. Without the tilt nothing reads the phone's angle, so the page follows the system:
+a rotation lays it out again (a held stick or sight keeps its finger). One case still needs a turn: an iPhone with
+rotation lock on keeps the page portrait while it is held sideways, so a portrait page lays the panel out turned a
+quarter, the top to the left (`padInput.ts` `frameTurnFor`), and Menu's portrait turn turns it the other way. A finger's
+movement reads in the frame's own axes (`frameDelta`) and the safe areas land on its own sides (`frameInsets`). On
+Android, where full screen is offered, the Start tap also asks `screen.orientation.lock` for the landscape in use.
 
 ### Presses (what "the buttons don't work" was)
 
@@ -273,9 +312,8 @@ a battle, while paused and while its tab is hidden (the pause button still works
 | Wi-Fi drops, Wi-Fi ↔ cellular | the signalling socket reconnects with the resume token (backoff to 8 s, for 60 s); a dead data channel falls back to the relay; the lamp shows Linking, Relay or Computer away | `padLink.selftest` (relay without WebRTC, resume); pad e2e (relay path) |
 | A reload on either side mid-battle | phone: the tab's resume token, one Start tap; desktop: the tab keeps its token (`cot.pad.desk`) and the game's boot resumes the pairing inside its 5-minute grace, with no new code | pad e2e: a desktop reload comes back live on both sides by itself |
 | A code expired, wrong or used; two phones on one code | refused alike ("That code didn't work"); a code is single-use and lives 120 s | `padActor.selftest`; Simulator: an expired code ended on that screen |
-| Motion access refused, or no sensor | the throttle becomes a stick that steers (a cross gate) and the dial dims | Simulator: before motion access was allowed the gate showed as the stick; `padInput.selftest` maps the stick to steering |
 | Battle over, Garage, map change, respawn, pause menu, killcam | the desktop drives only in a battle, unpaused, tab shown; the phone dims the dial and reads the state (Start a battle, Paused, Destroyed) | pad e2e: pause from the phone opens and closes the menu |
-| Low-power mode, throttled timers | presses and tilt go on their own events; the heartbeat may run late, so the desktop's stale window is four of the phone's usual gaps (a median of eight), 400 ms to 1.5 s | `padInput.selftest`: a 1 s heartbeat holds, a 100 ms one keeps 400 ms |
+| Low-power mode, throttled timers | presses and the stick go on their own events; the heartbeat may run late, so the desktop's stale window is four of the phone's usual gaps (a median of eight), 400 ms to 1.5 s | `padInput.selftest`: a 1 s heartbeat holds, a 100 ms one keeps 400 ms |
 | Notch, Dynamic Island, home indicator | the safe areas are measured once and laid onto the locked frame's own sides | Simulator: 59 px clear of the island, 20 px over the home bar, in every rotation |
 | A very long session | no allocation per frame on the phone beyond one key string per event, bounded rings (the debug trace), one heartbeat timer, ping timers cleared on each state; a pairing lives 6 h, the relay 12,000 frames | by construction; the relay budget in `padActor.selftest` |
 | Android Chrome | the same page; full screen and `screen.orientation.lock` at Start | pad e2e runs Chromium with touch emulation (CDP touch points) |
@@ -287,19 +325,23 @@ a battle, while paused and while its tab is hidden (the pause button still works
 
 - Receipts: `src/pad/padProtocol.selftest.mjs` (codes, routes, frame codec), `src/pad/padActor.selftest.mjs` (a code
   expires, is single use, a wrong code is refused, resume, limits, relay budget), `src/pad/padInput.selftest.mjs` (the
-  steering model and the action mapping), `src/pad/padPhoneHalf.selftest.mjs` (no desktop-only export rides to the
+  stick, the portrait turn and the action mapping), `src/pad/padLayout.selftest.mjs` (every mode's keys real, every
+  keyboard action reachable, the grants by kit, mode, couch seat, Watch and death), `src/pad/padPhoneHalf.selftest.mjs` (no desktop-only export rides to the
   phone), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
   sockets), `cloudflare/rooms/test/pad.test.ts` (the Worker route and the DO).
-- `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic orientation and touch events drive a tank
+- `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic stick and touch events drive a tank
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
   pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
   shows on the first pairing on the phone and on the game screen together, a thumb works through it, it leaves both by
   itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
   on fire dragging to aim while the gun loads, and the loaded buzz.
 - `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
-- iOS Simulator for the pad page: the locked frame at every rotation, two-finger presses against a Node desktop that logs
-  every input (`desk.mjs` in the evidence folder, which also replays a fixed tilt and reports the screen angle, the
-  viewport and its scale), zoom, backgrounding and the desktop vanishing; a real phone on the preview by the owner.
+- iOS Simulator for the pad page (266, the tilt build): two-finger presses against a Node desktop that logs every input
+  (`desk.mjs` in that lane's evidence folder), zoom, backgrounding and the desktop vanishing; a real phone on the preview
+  by the owner. 274's look: the desktop and the phone page at 844x390 and 390x844 in a browser, every mode laid out
+  (`~/cot-lanes/pad-controls-274-evidence/`); the new layout on real hardware is the owner's check.
+- Measured below: 266's latency runs drove the steering by tilt; `pad-e2e` now pushes the stick (one pointer event to the
+  tank's steer), the same path from the link on.
 
 ## Measured
 
