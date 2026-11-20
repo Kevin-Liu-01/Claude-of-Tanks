@@ -615,7 +615,9 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 .cot-battle-notices .cot-aim-notice .cot-c-notice__glyph,.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph svg{width:16px;height:16px}
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
+  /* (mobile-hud-274: only while the region holds the chip alone; a toast of its own (the armour colours' tip, 273) takes
+     the guidance's place, data-hud-guidance~=toasts: seated at the chip's, the tip covered the left edge's section) */
+  body[data-cot-battle-layout].cot-touch-layout:not([data-hud-guidance~=toasts]) .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
 }
 /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
    300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
@@ -830,6 +832,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column!important;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}
+/* (the map at the tight height's 92 px on a short landscape phone, as the tight rule meant: at the short rule's 106 its
+   foot ran 6 px onto the items' column at 844x390) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{
+  width:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
 /* (a short landscape's side lanes and hit rows stand beside the sections, inset by their widths: battleHudLayout.ts
    --hud-left-inset, --hud-right-inset) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] :is(.cot-kill-lane.l,.cot-hud .cot-si-toasthost){left:var(--hud-left-inset,0px);
