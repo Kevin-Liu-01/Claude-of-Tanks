@@ -88,11 +88,44 @@ function fullRoom({ teamSize = 14 } = {}) {
   applyRoomCommand(room, 'admin', { type: 'set_locked', locked: false }, T0 + 12);
   reject(() => applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 0 }, T0 + 13), 'invalid_team_size');
   reject(() => applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 15 }, T0 + 13), 'invalid_team_size');
-  // both on alpha with team size 1: reducing further is refused, the admin moves the guest across
-  reject(() => applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 1 }, T0 + 14), 'team_size_too_small');
-  applyRoomCommand(room, 'admin', { type: 'move_player', playerId: 'g1', team: 'bravo' }, T0 + 15);
+  // both on alpha, shrinking to 1v1 (owner 2026-11-19): the newer seat moves across, the admin keeps its side
+  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 1 }, T0 + 14);
+  assert.equal(room.settings.teamSize, 1);
+  assert.equal(room.players.find((p) => p.id === 'admin').team, 'alpha');
   assert.equal(room.players.find((p) => p.id === 'g1').team, 'bravo');
-  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 1 }, T0 + 16);
+  assert.ok(room.players.every((p) => !p.ready), 'a new format unreadies the room');
+}
+
+// ---- shrinking the format re-seats the newest overflow: across while the other side has room, then to spectators
+{
+  const room = createRoom({ roomCode: 'ROOM5A', mode: 'private', creator: { id: 'admin', name: 'Admin' }, settings: { teamSize: 3, maxSpectators: 1 }, now: T0 });
+  for (let index = 1; index <= 5; index++) joinRoom(room, { player: { id: `g${index}`, name: `Guest ${index}` }, now: T0 + index });
+  const teams = () => Object.fromEntries(room.players.map((p) => [p.id, p.team]));
+  assert.deepEqual(teams(), { admin: 'alpha', g1: 'bravo', g2: 'alpha', g3: 'bravo', g4: 'alpha', g5: 'bravo' });
+  // 3v3 → 2v2: each side's newest (g4 on alpha, g5 on bravo) — no room across, one spectator seat: refused, nothing moved
+  const before = JSON.stringify(room);
+  reject(() => applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 2 }, T0 + 10), 'team_size_too_small');
+  assert.equal(JSON.stringify(room), before, 'a refused shrink moves nobody');
+  applyRoomCommand(room, 'admin', { type: 'set_spectators', maxSpectators: 4 }, T0 + 11);
+  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 2 }, T0 + 12);
+  assert.deepEqual(teams(), { admin: 'alpha', g1: 'bravo', g2: 'alpha', g3: 'bravo', g4: 'spectator', g5: 'spectator' });
+  // 2v2 → 1v1: the admin stays; g2 and g3 go to the spectators (no room across)
+  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 1 }, T0 + 13);
+  assert.deepEqual(teams(), { admin: 'alpha', g1: 'bravo', g2: 'spectator', g3: 'spectator', g4: 'spectator', g5: 'spectator' });
+  // growing never moves anyone; a guest still cannot change the format; and only while the room waits
+  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 5 }, T0 + 14);
+  assert.equal(room.players.filter((p) => p.team === 'spectator').length, 4);
+  reject(() => applyRoomCommand(room, 'g1', { type: 'set_team_size', teamSize: 1 }, T0 + 15), 'admin_only');
+  room.phase = 'playing';
+  reject(() => applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 1 }, T0 + 16), 'lobby_locked');
+}
+{
+  // a lopsided room: three on alpha, none on bravo; 3 → 2 moves alpha's newest across
+  const room = createRoom({ roomCode: 'ROOM5B', mode: 'private', creator: { id: 'admin', name: 'Admin' }, settings: { teamSize: 3 }, now: T0 });
+  joinRoom(room, { player: { id: 'g1', name: 'Guest 1' }, team: 'alpha', now: T0 + 1 });
+  joinRoom(room, { player: { id: 'g2', name: 'Guest 2' }, team: 'alpha', now: T0 + 2 });
+  applyRoomCommand(room, 'admin', { type: 'set_team_size', teamSize: 2 }, T0 + 3);
+  assert.deepEqual(room.players.map((p) => p.team), ['alpha', 'alpha', 'bravo']);
 }
 {
   const room = createRoom({ roomCode: 'ROOM06', mode: 'private', creator: { id: 'admin', name: 'Admin' }, settings: { teamSize: 2, allowTeamSwitch: false }, now: T0 });

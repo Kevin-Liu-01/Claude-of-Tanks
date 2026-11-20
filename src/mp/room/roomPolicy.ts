@@ -404,6 +404,33 @@ function applyTeam(room: RoomSnapshot, actor: RoomPlayer, target: RoomPlayer, te
 }
 
 /**
+ * A versus room shrinking to `size` a side (owner 2026-11-19: the room's owner changes the format after creating it):
+ * each side's newest seats past `size` move to the other side while it has room, then to the spectators while they
+ * have room. The admin, the most senior seat, never moves. The whole plan is checked before any seat moves, so a
+ * refusal (team_size_too_small) leaves the room as it was.
+ */
+function planTeamSizeReseat(room: RoomSnapshot, size: number): [RoomPlayer, RoomTeam][] {
+  const sides = ['alpha', 'bravo'] as const;
+  const free = { alpha: size - countTeam(room, 'alpha'), bravo: size - countTeam(room, 'bravo') };
+  let spectatorRoom = room.settings.maxSpectators - countTeam(room, 'spectator');
+  const moves: [RoomPlayer, RoomTeam][] = [];
+  for (const side of sides) {
+    if (free[side] >= 0) continue;
+    const other = side === 'alpha' ? 'bravo' : 'alpha';
+    const newestFirst = room.players.filter((player) => player.team === side && player.id !== room.adminId)
+      .sort((a, b) => b.joinedAt - a.joinedAt);
+    for (let excess = -free[side], index = 0; excess > 0; excess--, index++) {
+      const player = newestFirst[index];
+      if (!player) throw new RoomError('team_size_too_small');
+      if (free[other] > 0) { free[other]--; moves.push([player, other]); }
+      else if (spectatorRoom > 0) { spectatorRoom--; moves.push([player, 'spectator']); }
+      else throw new RoomError('team_size_too_small');
+    }
+  }
+  return moves;
+}
+
+/**
  * Apply one validated command. Policy is centralized here so the Durable
  * Object, the LAN service and the loopback receipts cannot disagree.
  */
@@ -503,7 +530,11 @@ export function applyRoomCommand(
       // a co-op room takes any legal size and seats up to its mode's; a versus room up to its mode's (or the host guard's)
       const rules = roomSizeRulesFor(room.settings.gameMode);
       const size = cleanTeamSize(command.teamSize, rules.sides === 'coop' ? ROOM_MAX_TEAM_SIZE : maxTeamSizeFor(room.settings.gameMode, guards));
-      if (countTeam(room, 'alpha') > size || countTeam(room, 'bravo') > size) throw new RoomError('team_size_too_small');
+      if (rules.sides === 'coop') {
+        if (countTeam(room, 'alpha') > size) throw new RoomError('team_size_too_small');
+      } else {
+        for (const [target, team] of planTeamSizeReseat(room, size)) target.team = team;
+      }
       room.settings.teamSize = rules.sides === 'coop' ? Math.min(size, rules.maxTeamSize) : size;
       resetReadiness(room);
       break;

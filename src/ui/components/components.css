@@ -181,4 +181,17 @@ button.cot-c-chip{cursor:pointer}
 [data-mode-tone='gun_game']{--mode-ink:var(--mode-gun-game)}[data-mode-tone='juggernaut']{--mode-ink:var(--mode-juggernaut)}
 [data-mode-tone='infected']{--mode-ink:var(--mode-infected)}[data-mode-tone='realistic']{--mode-ink:var(--mode-realistic)}
 [data-mode-tone='ac130']{--mode-ink:var(--mode-ac130)}[data-mode-tone='proving_ground']{--mode-ink:var(--mode-proving-ground)}[data-mode-tone='air_support']{--mode-ink:var(--mode-air-support)}
+/* ---- the room's ready control and roster tag (readyControl.ts): each surface keeps its button frame ---- */
+.cot-ready{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.cot-ready__copy{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
+.cot-ready__hint{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);letter-spacing:normal;text-transform:none;white-space:nowrap}
+.cot-ready[data-ready-state='ready']{color:var(--text-ok);background:var(--accent-wash);box-shadow:var(--ring-ok)}
+.cot-ready[data-ready-state='ready'] .cot-ready__mark{flex:none;color:var(--text-ok)}
+.cot-ready[data-ready-state='ready']:not(:disabled):hover .cot-ready__hint{color:var(--ink-1)}
+.cot-ready-tag{display:inline-flex;align-items:center;gap:4px;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
+  letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
+.cot-ready-tag svg{flex:none}
+.cot-ready-tag[data-ready-state='ready']{color:var(--text-ok)}
+.cot-ready-tag[data-ready-state='waiting']{color:var(--text-warn)}
+.cot-ready-tag[data-ready-state='offline']{color:var(--text-danger)}
 }
