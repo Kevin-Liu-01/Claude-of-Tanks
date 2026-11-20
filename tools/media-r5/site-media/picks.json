@@ -1757,7 +1757,7 @@
     }
   },
   "boot": {
-    "about": "The boot splash's own stills (owner 2026-11-20, of a one-second Scene Studio clip of Verdant Fields, three tanks on a grass hill: \"use a frame from this as the first loading screen\"). tools/media-r5/boot-media.mjs --clips <dir> cuts each still's frame from its clip and builds public/media/boot-r1 (1920 and the 1280 rung the boot splash opens on); a featured pick names one as `bootStill`. Frame 27 of the clip's 30 keeps its drifting pollen clearest of the three tanks.",
+    "about": "The boot splash's own stills (owner 2026-11-20, of a one-second Scene Studio clip of Verdant Fields, three tanks on a grass hill: \"use a frame from this as the first loading screen\"; then of its re-take with a blast behind the tanks: \"actually use this one i think the explosions are cooler\"). tools/media-r5/boot-media.mjs --clips <dir> cuts each still's frame from its clip and builds public/media/boot-r1 (1920 and the 1280 rung the boot splash opens on); a featured pick names one as `bootStill`. Frame 16 of the re-take's 30 is the one whose blast still reads as fire under the boot scrim (an orange core in dark smoke, debris flying; the frames after it bloom pale and then settle to tan dust), above the lockup at 1440x900.",
     "collection": "boot-r1",
     "rungs": [
       {
@@ -1767,9 +1767,9 @@
     ],
     "stills": [
       {
-        "id": "verdant-hill-f27",
-        "clip": "studio_verdant_1080p30.mp4",
-        "frame": 27,
+        "id": "verdant-blast-f16",
+        "clip": "studio_verdant_1080p30 (2).mp4",
+        "frame": 16,
         "map": "verdant",
         "hour": "day"
       }
@@ -1777,12 +1777,12 @@
   },
   "featured": [
     {
-      "bootStill": "verdant-hill-f27",
+      "bootStill": "verdant-blast-f16",
       "maps": [
         "verdant"
       ],
       "boot": true,
-      "focal": "45% 60%"
+      "focal": "35% 60%"
     },
     {
       "versus": "s49-orchard-sunset-modern-r14",

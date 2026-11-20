@@ -93,13 +93,14 @@ assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garag
 // leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation. (11-18,
 // "the first one of the amx 30b, i want replace with modern tanks but otherwsie same exact scene setup": the boot pick
 // is that scene with Leclercs for the AMX-30Bs and the AMX-40, a versus still, its own 1280 rung on the boot splash)
-// (11-20, of a one-second Studio clip of Verdant Fields: "use a frame from this as the first loading screen") the boot
-// pick is a frame of that clip, the one whose drifting pollen sits clearest of the three tanks; the Orchard Valley still
-// that opened the splash before it now leads the loading picks, on its own 1280 rung
-assert.equal(bootPicks[0].bootStill, 'verdant-hill-f27', 'the Verdant Fields frame opens the boot splash');
+// (11-20, of a one-second Studio clip of Verdant Fields: "use a frame from this as the first loading screen", then of its
+// re-take with a blast behind the tanks: "actually use this one i think the explosions are cooler") the boot pick is
+// frame 16 of the re-take, its fireball in dark smoke, which still reads as fire under the boot scrim; the Orchard Valley
+// still that opened the splash before it now leads the loading picks, on its own 1280 rung
+assert.equal(bootPicks[0].bootStill, 'verdant-blast-f16', 'the Verdant Fields blast opens the boot splash');
 {
   const item = bootItems.get(bootPicks[0].bootStill);
-  assert.deepEqual([item.map, item.clip.file, item.clip.frame], ['verdant', 'studio_verdant_1080p30.mp4', 27], 'frame 27 of the owner\'s clip');
+  assert.deepEqual([item.map, item.clip.file, item.clip.frame], ['verdant', 'studio_verdant_1080p30 (2).mp4', 16], 'frame 16 of the owner\'s re-take');
   assert.match(item.clip.sha256, /^[0-9a-f]{64}$/, 'the clip it was cut from, by its sha256');
   assert.equal(bootManifest.count, bootManifest.items.length);
   for (const file of [item, ...item.rungs]) {
