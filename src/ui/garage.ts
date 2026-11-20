@@ -47,7 +47,7 @@ import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { heroCardChunk } from './heroCardChunk.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, segmented, setRoving, statChip, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
@@ -855,15 +855,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
     `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
     // Couch (docs/COUCH-MODE.md): phones join by QR and each drives a tank of this battle. Couch and Watch are the kit's
-    // secondary and Deploy its primary (components.css .cot-c-btn): one family, its focus, press and unavailable states
-    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-couch data-ui-sound="deploy" aria-label="${t('couch.entry')}">` +
-    `${uiIconSVG('couch', 20)}<span>${t('couch.entry')}</span></button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--secondary" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
-    `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
+    // secondary icon keys and Deploy its primary (components.css .cot-c-btn): one family, its focus, press and unavailable
+    // states. The two keys name themselves by their accessible name and hover tip at every width (owner 2026-11-19: their
+    // labels pushed Deploy's word off its edge), so the row has one layout (deploy.css .cot-deploy-acts)
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary cot-c-btn--icon" data-battle-couch data-ui-sound="deploy" ` +
+    `aria-label="${t('couch.entry')}" data-tip="${t('couch.entry')}">${uiIconSVG('couch', 20)}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--secondary cot-c-btn--icon" data-battle-watch data-ui-sound="deploy" ` +
+    `aria-label="${t('watch.entry')}" data-tip="${t('watch.entry')}">${uiIconSVG('freeLook', 20)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--primary" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
-    // the launch's estimate and the key hints load with deployScreen.ts (972c9575b3); the extra </div> closes Watch's .cot-deploy-acts
-    `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
+    // the launch's estimate (deployScreen.ts, 972c9575b3) fills the room between the word and its key, shown only whole;
+    // the key cap is the button's own last column; the extra </div> closes .cot-deploy-acts
+    `<span class="cot-deploy-end"></span>${keycap(t('garage.key.enter'))}</button></div></div>` +
     `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
@@ -4587,13 +4590,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
   }
-  // the tank you deploy with (the direction's .tank): its hero card; its name over its flag and its readiness; its rounds
-  // (type and penetration at 100 m, the kit's stat chips) and its fittings (glyph chips named by their tips); and the
-  // control that returns to the roster to change it (its name is its hover tip)
+  // the tank you deploy with (the direction's .tank): its hero render alone, fitted to its thumb by the fleet's placement
+  // bounds (deploy.css .cot-deploy-thumb); its name beside its flag chip; its rounds (type and penetration at 100 m, the
+  // kit's stat chips) and its fittings (glyph chips named by their tips); and the control that returns to the roster to
+  // change it (its name is its hover tip). (owner 2026-11-19) The roster card's cloth flag, name floor and chips stay on the
+  // roster: the thumb is the tank, and the nation is the chip beside its name. The "Ready" tag it wore went too: it showed
+  // whenever a room had not locked the tank, so outside a room it was always on, and in one it read the reverse of the
+  // player's readiness (the room's own control says that).
   function renderDeployTank(): void {
     const spec = selectedId ? specById.get(selectedId) : null;
     const copy = selectedId ? heroCopy(selectedId) : null;
     if (!copy || !spec) { deployTank.replaceChildren(); return; }
+    for (const part of copy.querySelectorAll('img.hc-flag, .flag, .nm, .hc-tier, .hc-class, .dev-tag')) {
+      (part.matches('img.hc-flag') ? part.closest('picture') ?? part : part).remove();
+    }
+    copy.classList.add('cot-deploy-thumb');
     deployTank.replaceChildren(copy);
     const mm = t('garage.unit.mm');
     const rounds = (spec.gun.shells || []).map((shell) => {
@@ -4608,7 +4619,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }).join('');
     deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b${datumAttr('tank-name')}>${flagIconHTML(spec.nation, 22, 16)}` +
       `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
-      `${vehicleLocked ? '' : tag(t('garage.deploy.ready'), 'ok')}</div><div class="load">${rounds}${fittings}</div></div>` +
+      `</div><div class="load">${rounds}${fittings}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
       `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }
@@ -4723,8 +4734,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // hover tip, components/hoverTip.ts)
     const couchOff = !opts.onCouch ? 'couch.unavailable' : !solo ? 'couch.off.room' : !isCouchMode(battleGameMode) ? 'couch.off.mode' : '';
     setupCouch.disabled = Boolean(couchOff);
-    if (couchOff) setupCouch.dataset.tip = t(couchOff);
-    else delete setupCouch.dataset.tip;
+    setupCouch.dataset.tip = t(couchOff || 'couch.entry');
     setupCouch.hidden = range;
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
