@@ -14,7 +14,7 @@
 //   Laptop proxy, docs/PERFORMANCE.md "Frame budget").
 // Run alone under the capture lock (tools/capture-hold.mjs, FIFO; the run stops itself at 18 minutes):
 //   node tools/couch-panes.browser.mjs [--layouts=2,4] [--sides=teams] [--measure [--no-baseline]] [--frames=180]
-//     [--max-load=10] [--load-wait-min=0]
+//     [--max-load=10] [--load-wait-min=0] [--profile[=seconds]]
 //     [--preview=<root with dist>] [--port=5298] [--out=.qa-dev/couch-panes]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
@@ -30,6 +30,45 @@ import { PAD_PHONE_STATE, PAD_SEAT_STATE } from './pad-states.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 import { TUTORIAL_CHAPTERS, TUTORIAL_STORAGE_KEY } from '../src/ui/tutorial/tutorialRecord.ts';
 
+/**
+ * Self time per function over `seconds` of the main thread (a CDP profile; each sample charged the delta to the next
+ * one), per frame. Readable only on an unminified build (`vite build --minify false`): a minified one names nothing.
+ */
+async function profileByFunction(page, seconds) {
+  const cdp = await page.target().createCDPSession();
+  try {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+    await page.evaluate(() => {
+      window.__COUCH_PROFILE_FRAMES = 0;
+      const tick = () => { window.__COUCH_PROFILE_FRAMES++; window.__COUCH_PROFILE_RAF = requestAnimationFrame(tick); };
+      window.__COUCH_PROFILE_RAF = requestAnimationFrame(tick);
+    });
+    await cdp.send('Profiler.start');
+    await sleep(seconds * 1000);
+    const { profile } = await cdp.send('Profiler.stop');
+    const frames = await page.evaluate(() => { cancelAnimationFrame(window.__COUCH_PROFILE_RAF); return window.__COUCH_PROFILE_FRAMES; });
+    const nameOf = new Map();
+    for (const node of profile.nodes) {
+      const f = node.callFrame ?? {};
+      const file = String(f.url ?? '').split('/').pop().split('?')[0];
+      nameOf.set(node.id, `${f.functionName || '(anonymous)'}${file ? ` ${file}:${(f.lineNumber ?? 0) + 1}` : ''}`);
+    }
+    const totals = new Map();
+    const { samples = [], timeDeltas = [] } = profile;
+    for (let i = 0; i < samples.length; i++) {
+      const name = nameOf.get(samples[i]) ?? '(unknown)';
+      totals.set(name, (totals.get(name) || 0) + (timeDeltas[i + 1] ?? 0));
+    }
+    const perFrame = (us) => (frames ? Math.round((us / 1000 / frames) * 1000) / 1000 : null);
+    const rows = [...totals].sort((a, b) => b[1] - a[1]);
+    return { seconds, frames, topPerFrameMs: rows.slice(0, 40).map(([fn, us]) => ({ fn, ms: perFrame(us) })) };
+  } finally {
+    await cdp.send('Profiler.disable').catch(() => {});
+    await cdp.detach().catch(() => {});
+  }
+}
+
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -41,6 +80,8 @@ const baseline = !flag('no-baseline');
 /** A quiet machine: the 1-minute load the run waits for before it takes the capture lock, and records against. */
 const maxLoad = Number(arg('max-load', 10));
 const loadWaitMin = Number(arg('load-wait-min', 0));
+/** --profile[=s] (with --measure): a CDP CPU profile of the main thread per measured row, self time per function. */
+const profileSeconds = flag('profile') ? 3 : Math.max(0, Number(arg('profile', 0)) || 0);
 let soloEntry = null;
 /** Pane 1's core at the first layout (one pane: the solo HUD's size), the size every later layout's core keeps. */
 let coreAtOne = null;
@@ -164,6 +205,7 @@ try {
       const med = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? Math.round(s[s.length >> 1] * 100) / 100 : null; };
       return { hudMs: med(hud), drawMs: med(draw), n: hud.length };
     }, 60);
+    const profile = profileSeconds ? await profileByFunction(desktop, profileSeconds) : null;
     // what the scene pass draws for the first view, by the scene's top-level owner (meshes in the view's frustum, on its
     // layers, every ancestor visible): the categories the detail rule acts on
     const census = await desktop.evaluate(() => {
@@ -214,10 +256,11 @@ try {
     const projected = projectFrameMs({ gpuMs: summary.gpuFrame.p25 ?? summary.gpuFrame.med, cpuMs: summary.cpuFrame.med }, ratios);
     const row = { loadBefore, loadAfter: os.loadavg().map((v) => Math.round(v * 10) / 10), quiet: loadBefore[0] <= maxLoad,
       gpuFrame: summary.gpuFrame, cpuFrame: summary.cpuFrame, interval: summary.interval, calls: summary.calls, tris: summary.tris,
-      projected, split, census, cpuByLabel: Object.fromEntries(Object.entries(summary.passes).map(([k, pass]) => [k, pass.cpu.med])) };
+      projected, split, census, ...(profile ? { profile } : {}), cpuByLabel: Object.fromEntries(Object.entries(summary.passes).map(([k, pass]) => [k, pass.cpu.med])) };
     console.log(`frames ${label}: GPU p25 ${summary.gpuFrame.p25} med ${summary.gpuFrame.med} ms; main ${summary.cpuFrame.med} ms; `
       + `scene ${row.cpuByLabel.scene} ms; draws ${summary.calls.med}; projected ${projected.frameMs} ms (${projected.fps} fps, ${projected.bound}); `
       + `panes' HUD ${split.hudMs} ms, draw ${split.drawMs} ms; load ${loadBefore.join(' ')}${row.quiet ? '' : ' (NOT QUIET)'}`);
+    if (profile) console.log(`profile ${label} (${profile.frames} frames): ${profile.topPerFrameMs.slice(0, 10).map((r) => `${r.fn} ${r.ms}`).join('; ')}`);
     await desktop.evaluate(() => window.__FRAME_PASS_TIMER?.uninstall?.());
     return row;
   };
