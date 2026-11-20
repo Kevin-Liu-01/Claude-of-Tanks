@@ -23,6 +23,7 @@ import type { CouchSeatControls, CouchSeatInput, CouchSession, CouchView } from 
 import { createCouchPaneViews } from './couchPaneViews.ts';
 import type { CouchPaneSeat, CouchPaneViewPorts, CouchPaneViews } from './couchPaneViews.ts';
 import { setCouchTier } from '../engine/quality.ts';
+import { setCouchPaneLever } from '../engine/couchPaneLevers.ts';
 import { couchScreenPlan, type CouchScreenPlan } from '../game/couchPanes.ts';
 import { solveCouchPose } from '../game/couchCamera.ts';
 import type { CouchPoint } from '../game/couchCamera.ts';
@@ -112,6 +113,8 @@ export interface CouchRuntime {
   holdTierForProbe(on: boolean): void;
   /** The harness's like-for-like baseline: the same split battle drawn the solo way (couchPaneViews.ts probeSolo). */
   probeSoloView(on: boolean): void;
+  /** The harness's in-page A/B (couch-perf-275): one cost lever off or on (engine/couchPaneLevers.ts); false for no such lever. */
+  setLever(name: string, on: boolean): boolean;
   /** The split screen's vehicle LOD bias (couchPaneDetail: hulls take their far meshes sooner in a small pane), else 1. */
   lodBias(): number;
   /** The split screen's other panes' cameras (the world's detail follows every pane), or null outside one. */
@@ -262,6 +265,7 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
     },
     get paneViews() { return splitActive() && !soloView ? panes : null; },
     holdTierForProbe(on) { setCouchTier(on); },
+    setLever(name, on) { return setCouchPaneLever(name, on); },
     probeSoloView(on) {
       soloView = on;
       panes?.probeSolo(on);

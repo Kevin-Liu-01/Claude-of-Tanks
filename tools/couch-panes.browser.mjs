@@ -14,7 +14,7 @@
 //   Laptop proxy, docs/PERFORMANCE.md "Frame budget").
 // Run alone under the capture lock (tools/capture-hold.mjs, FIFO; the run stops itself at 18 minutes):
 //   node tools/couch-panes.browser.mjs [--layouts=2,4] [--sides=teams] [--measure [--no-baseline]] [--frames=180]
-//     [--max-load=10] [--load-wait-min=0] [--profile[=seconds]]
+//     [--max-load=10] [--load-wait-min=0] [--profile[=seconds]] [--ab=<lever>[,<lever>]] [--ab-frames=120]
 //     [--preview=<root with dist>] [--port=5298] [--out=.qa-dev/couch-panes]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
@@ -69,6 +69,54 @@ async function profileByFunction(page, seconds) {
   }
 }
 
+/**
+ * Page side, load-independent: per frame over `n` whole frames, the renders (renderer.render calls; a render of the
+ * battle scene is a full scene-graph projection and render list), the draws (renderBufferDirect calls that reach the
+ * GPU; an instanced call with count 0 is a submission) by pass and, for the main scene, by owner (every hull one row),
+ * and the triangles.
+ */
+function countFrames(n) {
+  const D = window.__DEBUG; const R = D.renderer; const scene = D.scene;
+  const ownerOf = (o) => {
+    let top = o; const chain = [];
+    for (let p = o; p && p.parent && p !== scene; p = p.parent) { chain.unshift(p.name || p.type); top = p; }
+    const head = chain[0] ?? '(scene)';
+    if (/^tank_/.test(head)) return 'hulls';
+    return /^world/.test(head) && chain[1] ? `${head.replace(/^world-[a-z]+/, 'world')}/${chain[1]}` : head;
+  };
+  const owners = {}; const passes = {}; let renders = 0; let sceneRenders = 0; let tris = 0;
+  const origDraw = R.renderBufferDirect; const origRender = R.render;
+  R.renderBufferDirect = function (camera, sc, geometry, material, object, group) {
+    const inst = object.isInstancedMesh ? object.count : (geometry?.isInstancedBufferGeometry ? geometry.instanceCount : 1);
+    if (inst > 0) {
+      const pass = sc === null ? 'shadow' : (sc === scene ? 'main' : 'other');
+      passes[pass] = (passes[pass] ?? 0) + 1;
+      if (pass === 'main') { const k = ownerOf(object); owners[k] = (owners[k] ?? 0) + 1; }
+    }
+    return origDraw.call(this, camera, sc, geometry, material, object, group);
+  };
+  R.render = function (sc, camera) {
+    renders++; if (sc === scene) sceneRenders++;
+    const before = R.info.render.triangles;
+    const out = origRender.call(this, sc, camera);
+    tris += Math.max(0, R.info.render.triangles - before);
+    return out;
+  };
+  return new Promise((resolve) => {
+    let left = n + 1; let armed = false;
+    const tick = () => {
+      if (!armed) { armed = true; for (const k of Object.keys(owners)) delete owners[k]; for (const k of Object.keys(passes)) delete passes[k]; renders = 0; sceneRenders = 0; tris = 0; }
+      if (--left > 0) { requestAnimationFrame(tick); return; }
+      R.renderBufferDirect = origDraw; R.render = origRender;
+      const per = (v) => Math.round((v / n) * 10) / 10;
+      resolve({ frames: n, renders: per(renders), sceneRenders: per(sceneRenders), triangles: Math.round(tris / n),
+        draws: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])),
+        mainByOwner: Object.fromEntries(Object.entries(owners).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => [k, per(v)])) });
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -82,6 +130,12 @@ const maxLoad = Number(arg('max-load', 10));
 const loadWaitMin = Number(arg('load-wait-min', 0));
 /** --profile[=s] (with --measure): a CDP CPU profile of the main thread per measured row, self time per function. */
 const profileSeconds = flag('profile') ? 3 : Math.max(0, Number(arg('profile', 0)) || 0);
+/**
+ * --ab (with --measure): each named lever (src/engine/couchPaneLevers.ts) measured inside the same page, off on on off, at
+ * every layout of two or more panes: a relative number that holds on a loaded machine (each pair shares the load).
+ */
+const abLevers = String(arg('ab', '')).split(',').map((v) => v.trim()).filter(Boolean);
+const abFrames = Number(arg('ab-frames', 120));
 let soloEntry = null;
 /** Pane 1's core at the first layout (one pane: the solo HUD's size), the size every later layout's core keeps. */
 let coreAtOne = null;
@@ -206,6 +260,7 @@ try {
       return { hudMs: med(hud), drawMs: med(draw), n: hud.length };
     }, 60);
     const profile = profileSeconds ? await profileByFunction(desktop, profileSeconds) : null;
+    const counts = await desktop.evaluate(countFrames, 10);
     // what the scene pass draws for the first view, by the scene's top-level owner (meshes in the view's frustum, on its
     // layers, every ancestor visible): the categories the detail rule acts on
     const census = await desktop.evaluate(() => {
@@ -256,12 +311,49 @@ try {
     const projected = projectFrameMs({ gpuMs: summary.gpuFrame.p25 ?? summary.gpuFrame.med, cpuMs: summary.cpuFrame.med }, ratios);
     const row = { loadBefore, loadAfter: os.loadavg().map((v) => Math.round(v * 10) / 10), quiet: loadBefore[0] <= maxLoad,
       gpuFrame: summary.gpuFrame, cpuFrame: summary.cpuFrame, interval: summary.interval, calls: summary.calls, tris: summary.tris,
-      projected, split, census, ...(profile ? { profile } : {}), cpuByLabel: Object.fromEntries(Object.entries(summary.passes).map(([k, pass]) => [k, pass.cpu.med])) };
+      projected, split, census, counts, ...(profile ? { profile } : {}), cpuByLabel: Object.fromEntries(Object.entries(summary.passes).map(([k, pass]) => [k, pass.cpu.med])) };
     console.log(`frames ${label}: GPU p25 ${summary.gpuFrame.p25} med ${summary.gpuFrame.med} ms; main ${summary.cpuFrame.med} ms; `
       + `scene ${row.cpuByLabel.scene} ms; draws ${summary.calls.med}; projected ${projected.frameMs} ms (${projected.fps} fps, ${projected.bound}); `
       + `panes' HUD ${split.hudMs} ms, draw ${split.drawMs} ms; load ${loadBefore.join(' ')}${row.quiet ? '' : ' (NOT QUIET)'}`);
+    console.log(`counts ${label}: renders ${counts.renders} (scene ${counts.sceneRenders}); draws ${JSON.stringify(counts.draws)}; `
+      + `triangles ${counts.triangles}; main by owner ${Object.entries(counts.mainByOwner).slice(0, 8).map(([k, v]) => `${k} ${v}`).join(', ')}`);
     if (profile) console.log(`profile ${label} (${profile.frames} frames): ${profile.topPerFrameMs.slice(0, 10).map((r) => `${r.fn} ${r.ms}`).join('; ')}`);
     await desktop.evaluate(() => window.__FRAME_PASS_TIMER?.uninstall?.());
+    return row;
+  };
+  /**
+   * One lever inside this page, off on on off (`abFrames` frames a block; the same staging as measureFrames): the two pairs'
+   * deltas (on minus off) of the main thread's median, the GPU's p25 and the draws, and their mean. Each pair shares
+   * the machine's load, so the delta holds where the absolute numbers do not.
+   */
+  const abLever = async (label, lever) => {
+    const block = async (on) => {
+      await desktop.evaluate((name, value) => window.__COT_COUCH.setLever(name, value), lever, on);
+      await sleep(1200);
+      await desktop.evaluate(installFramePassTimer);
+      const result = await desktop.evaluate((n) => window.__FRAME_PASS_TIMER.sample({ frames: n, block: 30, modes: ['whole'], timeoutMs: 120000 }), abFrames);
+      await desktop.evaluate(() => window.__FRAME_PASS_TIMER?.uninstall?.());
+      const counts = await desktop.evaluate(countFrames, 6);
+      const summary = summarizePassFrames(result);
+      return { on, main: summary.cpuFrame.med, gpu: summary.gpuFrame.p25 ?? summary.gpuFrame.med, draws: summary.calls.med,
+        scene: summary.passes.scene?.cpu.med ?? null, mainDraws: counts.draws.main ?? 0, renders: counts.renders,
+        load: os.loadavg()[0] };
+    };
+    const blocks = [];
+    try {
+      for (const on of [false, true, true, false]) blocks.push(await block(on));
+    } finally {
+      await desktop.evaluate((name) => window.__COT_COUCH.setLever(name, false), lever);
+    }
+    const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
+    const delta = (key) => {
+      const pairs = [blocks[1][key] - blocks[0][key], blocks[2][key] - blocks[3][key]];
+      return { pairs: pairs.map(r2), mean: r2((pairs[0] + pairs[1]) / 2) };
+    };
+    const row = { lever, blocks, delta: { main: delta('main'), gpu: delta('gpu'), scene: delta('scene'), draws: delta('draws'), mainDraws: delta('mainDraws') } };
+    console.log(`ab ${label} ${lever}: main ${row.delta.main.mean} ms (${row.delta.main.pairs.join(', ')}), GPU ${row.delta.gpu.mean} ms, `
+      + `scene ${row.delta.scene.mean} ms, draws ${row.delta.draws.mean} (main pass ${row.delta.mainDraws.mean}); off main `
+      + `${blocks[0].main}/${blocks[3].main} ms, load ${blocks.map((b) => b.load.toFixed(1)).join(' ')}`);
     return row;
   };
   /** The solo baseline: the same spec, mode and map, at the couch tier, the page's one view (no couch session). */
@@ -469,6 +561,11 @@ try {
           gameMode: window.__DEBUG.game.gameMode ?? 'standard' }));
       }
       report.frames[count] = await measureFrames(`${count} panes`);
+      if (count > 1 && abLevers.length) {
+        report.ab ??= {};
+        report.ab[count] = [];
+        for (const lever of abLevers) { deadline(); report.ab[count].push(await abLever(`${count} panes`, lever)); }
+      }
       if (count === 1 && baseline) {
         // the like-for-like baseline: this battle, seat 1's same camera, drawn the solo way (one view, the page's HUD)
         await desktop.evaluate(() => window.__COT_COUCH.probeSoloView(true));
