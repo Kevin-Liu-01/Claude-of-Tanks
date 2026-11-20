@@ -40,13 +40,14 @@ export function buildT80UXHullCore(P:TankBuilderPort):void {
   ]));
 }
 
-function hull(P:TankBuilderPort):void {
+function hull(P:TankBuilderPort,apron=true,skirts=true):void {
   buildT80UXHullCore(P);
   for(const side of [-1,1]) {
     fenderShell(P,side);
-    skirt(P,side);
+    if(skirts)skirt(P,side);
     fenderReinforcements(P,side);
   }
+  if(!apron)return;
   // The broad low apron is a separate thin hanging sheet, not a filled hull: the T-80U's rubber mat over the lower
   // front plate, bare rubber (owner 2026-10-21: "they are technically supposed to be made of rubber"). Art fixes 230:
   // a bolted steel clamp strip holds its top edge under the hanger struts. Its measured extent is unchanged.
@@ -280,6 +281,8 @@ function nsvtRiser(P:TankBuilderPort,station:THREE.Group):void {
   finish();
 }
 
+/** The T-80U X's 125 mm gun, its jacket and mantlet (the T-80 marks carry it too, profiles/t80Marks.ts). */
+export function buildT80UXGun(P:TankBuilderPort):void { mainGun(P); }
 function mainGun(P:TankBuilderPort):void {
   const muzzle=T80U_X_DATUMS.muzzleZ,floor=5.83777;
   KIT.buildGun(P,{len:floor-GUN[2],r:.100,baseR:.124,sleeve:false,collar:false});
@@ -300,8 +303,8 @@ function mainGun(P:TankBuilderPort):void {
 
 /** The hull, running gear and engine deck without the glacis Kontakt-5 (release 269: the Object 292's T-80BV-pattern
  * glacis carries its own Kontakt-1 studs, profiles/object292X.ts). */
-export function buildT80UXHullBase(P:TankBuilderPort):void {
-  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);
+export function buildT80UXHullBase(P:TankBuilderPort,{apron=true,skirts=true}:{apron?:boolean;skirts?:boolean}={}):void {
+  P.hullG.position.set(0,0,0);hull(P,apron,skirts);runningGear(P);engineDeck(P);
 }
 
 export function buildT80UXHull(P:TankBuilderPort):void {

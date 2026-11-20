@@ -1,4 +1,5 @@
 import {buildOplotModern} from './oplotModern.ts';
+import {T80_MARK_PROFILES} from './t80Marks.ts';
 // Pure family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
@@ -823,8 +824,6 @@ const buildT80BV = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 2)
 
 
 export const T80_PROFILES = {
-  t80: { build: buildT80 },
-  t80b: { build: buildT80B },
-  t80bv: { build: buildT80BV },
+  ...T80_MARK_PROFILES,
   t84: { build: buildOplotModern },
 } satisfies VehicleProfileRecord;
