@@ -179,7 +179,7 @@ assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
   assert.match(overlay, /pen: new THREE\.Color\(0x48d985\)/, 'the paint\'s "goes through" is green');
   assert.match(overlay, /marginal: new THREE\.Color\(0xf0aa35\)/, 'its "may" is amber');
   assert.match(overlay, /nopen: new THREE\.Color\(0xe53d35\)/, 'its "will not" is red');
-  assert.match(text('battle.armour.body'), /green goes through, amber may, red will not/);
+  assert.match(text('battle.armour.body'), /green goes through, amber might, red won't/);
 }
 // reload: a gun's reload is the gun's (or the shell's), not a crew skill: no skill table exists
 assert.ok(!existsSync(resolve(ROOT, 'src/sim/crewSkills.ts')), 'no crew skills change a reload');
