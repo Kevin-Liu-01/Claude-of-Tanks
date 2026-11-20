@@ -516,18 +516,20 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-s
    2026-11-19: Deploy's word ran off its edge under its key): the keys are squares, Deploy fills the rest and never
    narrows below its glyph and word (min-content), and its key cap and the launch estimate show only whole. The row
    keeps that minimum (no min-width:0), so a dock's thumb gives up its width before the row is cut */
-.cot-garage .cot-deploy-acts{--act-h:var(--deploy-act-h);display:flex;align-items:stretch;gap:var(--s3);}
+.cot-garage .cot-deploy-acts{--act-h:var(--deploy-act-h);--act-pad:var(--deploy-act-pad);--act-word:var(--fs-24);display:flex;align-items:stretch;gap:var(--s3);}
 .cot-garage .cot-deploy-acts>.cot-c-btn{--h:var(--act-h);gap:var(--s3);font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);}
 .cot-garage .cot-deploy-acts>.cot-c-btn svg{width:20px;height:20px;flex:none;}
-.cot-garage .cot-deploy-acts>.cot-c-btn--secondary{flex:none;width:var(--h);padding:0;}
+/* the keys are squares while the row has room and narrow to the touch floor (deploy-key-min) when it is short, before a
+   dock's thumb gives up any width (the flex basis is the square; no width, so the floor is their minimum) */
+.cot-garage .cot-deploy-acts>.cot-c-btn--secondary{flex:0 1 var(--h);width:auto;min-width:var(--deploy-key-min);padding:0;}
 @media (hover:hover){.cot-garage .cot-deploy-acts>.cot-c-btn--secondary:hover:not(:disabled){box-shadow:var(--btn-secondary-ring-hover);}}
 /* Deploy, the one primary, fills the row: its glyph and word, then the room for its key cap and estimate (the key cap is
    hidden on touch by the kit). Its edge is the kit's bevel (a lit top, a shaded foot) under the lift, and a press sinks it
    (the lift goes, the kit's drop and darker fill) */
 .cot-garage .cot-deploy-acts>.cot-c-btn--primary{flex:1 1 0;min-width:min-content;display:grid;grid-template-columns:max-content minmax(0,1fr);
-  align-items:center;justify-content:stretch;padding:0 var(--s5);box-shadow:var(--btn-primary-lift);}
+  align-items:center;justify-content:stretch;padding:0 var(--act-pad);box-shadow:var(--btn-primary-lift);}
 .cot-garage .cot-deploy-acts>.cot-c-btn--primary:active{box-shadow:var(--btn-primary-bevel);}
-.cot-garage .cot-deploy-go{display:flex;align-items:center;gap:var(--s3);font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label);}
+.cot-garage .cot-deploy-go{display:flex;align-items:center;gap:var(--s3);font:700 var(--act-word)/1 var(--font-display);letter-spacing:var(--track-label);}
 /* the key cap and the estimate (deployScreen.ts): one line as tall as the button, filled from its right edge behind an
    empty first item, the key cap before the estimate; whatever does not fit whole wraps to a second line under the clip
    (the estimate first, then the key cap), so neither ever crosses the word or the button's edge */
@@ -607,13 +609,15 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-name{font-size:var
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{position:fixed;z-index:var(--z-lift);left:0;right:0;bottom:0;
   flex-direction:row;align-items:center;gap:var(--s3);padding:var(--s3) var(--s3) max(10px,env(safe-area-inset-bottom));background:var(--surface-page);
   border-top:1px solid var(--line-1);}
-/* the dock holds the thumb and the row at the dock's height: the row keeps its own minimum and the thumb gives up its
-   width first (a 390 px phone's thumb is about square, a tablet's whole), so nothing in the dock is ever cut */
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank:not(:empty){display:block;flex:0 1 calc(var(--deploy-dock-act-h) * var(--deploy-thumb-ratio));min-width:0;
+/* the dock holds the thumb and the row at the dock's height, in one order of giving way: Couch and Watch narrow to their
+   touch floor first (the row's minimum is those floors and Deploy's glyph and word), then the thumb, down to its own
+   floor (deploy-thumb-min), so a phone's tank still reads (Main 2026-11-19: 50 px at 390 was the tiny tank again) */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank:not(:empty){display:block;flex:0 1 calc(var(--deploy-dock-act-h) * var(--deploy-thumb-ratio));min-width:var(--deploy-thumb-min);
   padding:0;background:none;box-shadow:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank .cot-deploy-thumb{width:100%;height:var(--deploy-dock-act-h);aspect-ratio:auto;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank :is(.info,.chg){display:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{--act-h:var(--deploy-dock-act-h);flex:1 1 0;gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{--act-h:var(--deploy-dock-act-h);--act-pad:var(--deploy-dock-act-pad);--act-word:var(--fs-20);
+  flex:1 1 0;gap:var(--s2);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s3);padding:var(--s3);}
 /* a phone's Launch takes its own line under the operation, so every row's text keeps the row's width */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-launch{grid-column:1/-1;justify-self:stretch;}
