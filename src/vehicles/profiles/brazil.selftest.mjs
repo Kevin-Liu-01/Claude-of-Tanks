@@ -91,6 +91,8 @@ assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt(
 const t3 = receipt('ee_t3_osorio', 'osorioTurretReceipt'), t4 = receipt('ee_t4_osorio', 'osorioTurretReceipt');
 assert.deepEqual([p2.armourKit, t3.armourKit, t4.armourKit, t3.activeProtection, t4.activeProtection, t3.remoteStation],
   ['none', 'front', 'full', false, true, true], 'the fictional EE-T3\'s front kit and remote station, the EE-T4\'s full kit and APS');
+// (brazil-kit-274, owner 2026-11-20: the cheeks' add-ons became the Leopard 2A4M's chevron wedges, osorioChevron.ts)
+assert.deepEqual([p2.cheekWedges, t3.cheekWedges, t4.cheekWedges], ['none', 'chevron', 'chevron'], 'the EE pair\'s chevron wedges, none on the P.2');
 const x1 = receipt('x1_pioneiro', 'x1TurretReceipt'), x1a2 = receipt('x1a2_carcara', 'x1TurretReceipt');
 assert.deepEqual([x1.flankSmokeBoxes, x1a2.flankSmokeBoxes, x1.cupola, x1a2.cupola], [false, true, 'tall-slit', 'rect-periscope'],
   'the X1A2\'s six-tube boxes on its rear flanks; the X1\'s tall slit cupola, the X1A2\'s raised rectangular periscope cupola');

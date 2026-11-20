@@ -17,8 +17,8 @@
 // - t3, t4: the fictional EE-T3 and EE-T4 Osório (owner 2026-10-30: "now make a super modernized hypotehtical version a
 //   tier 9 and a tier 10"; Main's ruling the same day), continuing Engesa's numbering as the Challenger 1's fictional
 //   FV4030/5 and /6 continue Vickers': the P.2's hull and turret under a bolted armour kit. The EE-T3 (tier IX): a nose
-//   module on the glacis, composite modules on the front three skirt panels, wedge modules on the cheeks and side armour
-//   boxes, a stabilised panoramic sight, the ARES-type remote 12.7 mm station, a 120 mm L/55, two 200 L fuel drums
+//   module on the glacis, composite modules on the front three skirt panels, chevron wedges over the cheeks (the Leopard
+//   2A4M's arrowhead, osorioChevron.ts; owner 2026-11-20) and side armour boxes, a stabilised panoramic sight, the ARES-type remote 12.7 mm station, a 120 mm L/55, two 200 L fuel drums
 //   across the stern. The EE-T4 (tier X): the EE-T3's kit heavier and full length, a hard-kill active protection system
 //   (four radar panels and two launchers), laser-warning heads, slat armour over the rear plate with the drums behind
 //   it, a 130 mm L/51.
@@ -29,6 +29,7 @@ import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, place } from '../accessoryPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { CHEVRON_ROOT_Z, addOsorioChevron, type OsorioChevron } from './osorioChevron.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -46,6 +47,13 @@ const RING = Object.freeze({ y: 1.60, z: 0.40 });
 const T = Object.freeze({ hw: 1.145, roofY: 0.77, bevelY: 0.66, bevelX: 1.05, floorY: 0.02, frontZ: 1.00, rearZ: -2.38,
   recessX: 0.45, cheekNoseZ: 1.44, cheekNoseY: 0.46, cheekNoseX: 0.56, cheekFootZ: 1.00, roofEdgeZ: 0.87 });
 const TRUNNION = Object.freeze({ y: 0.28, z: 0.85 });
+/** The EE-T3's and EE-T4's chevron wedges (osorioChevron.ts): the EE-T4's longer, broader and with the taller, blunter face. */
+const CHEVRONS: Readonly<Record<'t3' | 't4', OsorioChevron>> = Object.freeze({
+  t3: { innerX: T.recessX + 0.025, roofY: T.roofY + 0.012, floorY: 0.05, turnZ: 1.22, shoulder: [1.10, 1.56], tip: [0.515, 1.98],
+    faceTopY: 0.40, frontSlope: 0.62, bevelSlope: 1.6, bevelRun: 0.24, floorRise: 0.30 },
+  t4: { innerX: T.recessX + 0.025, roofY: T.roofY + 0.03, floorY: 0.05, turnZ: 1.26, shoulder: [1.16, 1.68], tip: [0.555, 2.18],
+    faceTopY: 0.46, frontSlope: 0.62, bevelSlope: 1.6, bevelRun: 0.26, floorRise: 0.26 },
+});
 /** Each mark's muzzle, hull metres ahead of the hull's centre with the gun ahead and level. */
 const OSORIO_MUZZLE_HULL_Z = Object.freeze({ p1: 5.795, p2: 6.535, t3: 6.895, t4: 7.85 });
 
@@ -545,66 +553,29 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       // dark gap along their tops and fronts and between them, the front pack's face swept back, bracket stubs under each,
       // a bolt row along each top; on the right as far back as the basket, which a modern mark keeps on the rear third
       // (blind critics, rounds c1 and c2: packs with a visible stand-off, not bare wall and not a bin)
+      // (brazil-kit-274: the front pack ends square at the chevron's root, which carries the side armour's outer face on)
       const mt = t4 ? 0.17 : 0.13, gap = 0.08, my0 = 0.06, my1 = 0.62;
-      const packs: ReadonlyArray<readonly [number, number]> = [[0.95, 0.42], [0.39, -0.08], [-0.11, -0.58]];
+      const packs: ReadonlyArray<readonly [number, number]> = [[CHEVRON_ROOT_Z - 0.01, 0.42], [0.39, -0.08], [-0.11, -0.58]];
       for (const s of [-1, 1] as const) {
         const xa = s * (T.hw + gap), xb = s * (T.hw + gap + mt);
         P.add('turretDark', box(gap, my1 - my0 - 0.04, packs[0][0] - packs.at(-1)![1]), s * (T.hw + gap / 2), (my0 + my1) / 2,
           (packs[0][0] + packs.at(-1)![1]) / 2);
-        packs.forEach(([z1, z0], k) => {
-          const zs = k === 0 ? z1 - 0.12 : z1;
-          P.add('turret', slab([xa, my0, z0], [xb, my0, z0], [xb, my0, zs], [xa, my0, z1],
-            [xa, my1, z0], [xb, my1, z0], [xb, my1, zs], [xa, my1, z1]));
-          for (const z of [z0 + 0.08, z1 - (k === 0 ? 0.20 : 0.08)]) {
+        packs.forEach(([z1, z0]) => {
+          P.add('turret', slab([xa, my0, z0], [xb, my0, z0], [xb, my0, z1], [xa, my0, z1],
+            [xa, my1, z0], [xb, my1, z0], [xb, my1, z1], [xa, my1, z1]));
+          for (const z of [z0 + 0.08, z1 - 0.08]) {
             P.add('turret', box(gap + mt * 0.6, 0.04, 0.06), s * (T.hw + (gap + mt * 0.6) / 2), my0 - 0.02, z);
           }
           for (let b = 0; b < 3; b++) {
-            P.add('turretDetail', cylY(0.022, 0.022, 0.014, 8), (xa + xb) / 2, my1 + 0.007, z0 + (zs - z0) * (b + 0.5) / 3);
+            P.add('turretDetail', cylY(0.022, 0.022, 0.014, 8), (xa + xb) / 2, my1 + 0.007, z0 + (z1 - z0) * (b + 0.5) / 3);
           }
         });
       }
-      // the wedge modules on the cheeks (the Leopard 2A5 pattern): closed solids from just ahead of the gunner's sight,
-      // their tops a hair proud of the roof and falling to an apex well past the cheeks' noses beside the mantlet, their
-      // outer faces carried down over the roof bevel (no fin stands over it); the EE-T4's longer, broader and carried down
-      // to the mantlet's foot, ending in a tall blunt face (blind critics, rounds c2 and c3: the tier X's frontal outline
-      // heavier, the void under the horns filled); dark trims along their top edges so the plan reads
-      const facetY = (z: number): number => z <= T.roofEdgeZ ? T.roofY
-        : T.roofY - (z - T.roofEdgeZ) / (T.cheekNoseZ - T.roofEdgeZ) * (T.roofY - T.cheekNoseY);
-      const cheekBot = (z: number): number => z <= T.cheekFootZ ? T.floorY
-        : T.floorY + (z - T.cheekFootZ) / (T.cheekNoseZ - T.cheekFootZ) * (T.cheekNoseY - 0.02 - T.floorY);
-      const bevel = (z: number): number => Math.min(T.roofY - T.bevelY, (facetY(z) - cheekBot(z)) * 0.3);
-      const xi = T.recessX + 0.025, wz0 = 0.88, tipZ = T.cheekNoseZ + (t4 ? 0.80 : 0.50), tipY = t4 ? 0.12 : 0.40;
-      const yt0 = T.roofY + (t4 ? 0.05 : 0.012), edge = t4 ? 0.44 : 0.03, tipW = t4 ? 0.22 : 0.03;
-      // (the EE-T4's inner faces stop at the cheeks' line and fall only to 0.30 at the face, the outer flanks carried down:
-      // a shallow, lit slot over the mantlet block, not a dark well; round c5)
-      const noseFoot = t4 ? 0.20 : T.cheekNoseY - 0.03, tipInner = t4 ? 0.30 : tipY;
-      const wedgeTop = (z: number): number => yt0 + (z - wz0) / (tipZ - wz0) * (tipY + edge - yt0);
-      // (in plan a straight edge from the wall's front corner to the apex, overhanging the cheeks' swept noses; the EE-T4's
-      // flaring 12 cm past the walls ahead of the side armour, so its outline grows head-on: round c3)
-      const flare = t4 ? 0.12 : 0, flareZ = 0.95;
-      const wedgeX = (z: number): number => z <= flareZ ? T.hw + 0.006
-        : z <= T.frontZ ? T.hw + 0.006 + (z - flareZ) / (T.frontZ - flareZ) * flare
-          : T.hw + 0.006 + flare + (z - T.frontZ) / (tipZ - T.frontZ) * (xi + tipW - T.hw - 0.006 - flare);
-      for (const s of [-1, 1] as const) {
-        const ringAt = (z: number, yb: number, yo: number): SectionPoint[] => s > 0
-          ? [[xi, yb], [wedgeX(z), yo], [wedgeX(z), wedgeTop(z)], [xi, wedgeTop(z)]]
-          : [[-wedgeX(z), yo], [-xi, yb], [-xi, wedgeTop(z)], [-wedgeX(z), wedgeTop(z)]];
-        const behind = (z: number) => ({ z, ring: ringAt(z, facetY(z) - 0.03, facetY(z) - bevel(z) - 0.01) });
-        const wedge = sectionSolid([
-          behind(wz0), ...(t4 ? [behind(flareZ)] : []), behind(T.frontZ),
-          { z: T.cheekNoseZ, ring: ringAt(T.cheekNoseZ, T.cheekNoseY - 0.03, noseFoot) },
-          { z: tipZ, ring: ringAt(tipZ, tipInner, tipY) },
-        ]);
-        wedge.userData.primaryStockRole = 'osorio-cheek-module';
-        P.add('turret', wedge);
-        const top = (x: number, z: number): [number, number, number] => [s * x, wedgeTop(z), z];
-        if (t4) {
-          bar('turretDark', top(wedgeX(wz0), wz0), top(wedgeX(flareZ), flareZ), 0.011);
-          bar('turretDark', top(wedgeX(flareZ), flareZ), top(wedgeX(T.frontZ), T.frontZ), 0.011);
-        } else bar('turretDark', top(wedgeX(wz0), wz0), top(wedgeX(T.frontZ), T.frontZ), 0.011);
-        bar('turretDark', top(wedgeX(T.frontZ), T.frontZ), top(wedgeX(tipZ), tipZ), 0.011);
-        bar('turretDark', top(xi, wz0), top(xi, tipZ), 0.011);
-      }
+      // the chevron wedges over the cheeks (owner 2026-11-20: "make the front turret attachment things in front of cheeks
+      // chevrons like the leopard 2a4 instead of those weird add ons"): the arrowhead of our Leopard 2A4M's wedge front
+      // (leopard2A4Wedge.ts, the 2A6-look cheek on the 2A4 core; the plain 2A4 keeps the square block), in its plan and
+      // its three roof planes, on the Osório's turret (osorioChevronWedge)
+      for (const s of [-1, 1] as const) addOsorioChevron(P, s, CHEVRONS[t4 ? 't4' : 't3'], T.hw + gap + mt);
     }
     if (t4) {
       // the EE-T4's hard-kill active protection: four radar housings at the turret's corners, all at one height, each in
@@ -659,10 +630,10 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-266-r11', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-274-r12', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
       sightHeads: modern ? 2 : 3, gunBoot: p2 ? 'canvas' : 'black', armourKit: modern ? (t4 ? 'full' : 'front') : 'none',
-      activeProtection: t4, remoteStation: modern,
+      activeProtection: t4, remoteStation: modern, cheekWedges: modern ? 'chevron' : 'none',
     };
   };
   buildOsorioTurretFittings();

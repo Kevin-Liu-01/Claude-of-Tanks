@@ -71,3 +71,21 @@ Published: 43.7 t / 41.0 t, 1,040 hp MWM TBD 234, 70 km/h, 45 km/h reverse (Nita
 traverse, +20/-10. The P.2 fires the French 120 mm rounds of its trials at the AMX-40's footing; the P.1 the L7's rounds at
 the fleet's 105 mm footing. Fire control: the P.2's stabilised VS580 sights (accuracy 0.29, aim 1.75 s); the P.1's sights
 mechanically linked (Forças Terrestres: poorer on the move: bloom x1.15).
+
+## Round brazil-kit-274 (2026-11-20): EE-T3/T4 chevrons and the Brazilian crew kit
+
+Owner, 2026-11-20: "for the eet3 osorio, osorio t4, make the front turret attachment things in front of cheeks chevrons
+like the leopard 2a4 instead of those weird add ons because they look kind of goofy. also add more add ons attachments
+and tank decorations on all brazilian tanks."
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 1 | EE-T3/T4 cheek kit | thin wedge plates riding the cheeks' upper facets to a spike past the mantlet (T3 tip z 1.94, T4 2.24) | two chevron wedges (profiles/osorioChevron.ts) on the Leopard 2A4M's arrowhead: our plain leo2a4 keeps the square block (LEOPARD2A4_FAMILY_FRONT 'block'), the arrowhead is the 2A4M's 2A6-look front (leopard2A4Wedge.ts) |
+| 2 | Wedge plan | wall's corner to an apex at the gun | the side armour's outer face carried forward from z 0.88, a 2 cm turn in, the swept face from the shoulder (T3 x 1.10 z 1.56, T4 1.16/1.68) to a blunt tip beside the mantlet (T3 0.515/1.98, T4 0.555/2.18) |
+| 3 | Wedge top | one sloped plate | the lowest of the flat roof, a 32-degree front slope rising from the face's top edge (T3 0.40, T4 0.46) and a 58-degree outer bevel; floor rising 0.30 (T4 0.26) a metre past the turn; strips cut on the planes' meeting lines, every face planar |
+| 4 | Side armour's front pack | face swept back to z 0.95 | square at z 0.87, 1 cm behind the wedge's root |
+| 5 | Crew kit (all eight) | the tow shackles only (the tools row never seated) | 6-8 seated pieces per id through the decoration layer (decorations.ts BRAZIL_MANIFESTS): cables, spare links, tarps, nets, cans, crates, packs and tools on routed seats off the turret roofs |
+
+Clearances: the wedges' inner faces stay at the recess's 0.475 m (the mantlet 0.86-0.90 m wide, the gun's sweep inside
+it); the roots 2 cm ahead of the gunner's sight head and its visor. Hit zones follow the drawn wedges through the
+combat-anatomy regeneration (the turret bucket's envelope and collision cells).
