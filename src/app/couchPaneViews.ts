@@ -25,7 +25,7 @@ import { createBattleHudFrameRuntime, type BattleHudFrameRuntime } from '../game
 import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { CouchCameraIntent, CouchSeatControls } from '../game/couchSeats.ts';
 import {
-  couchHudFitStep, couchPaneAreaFraction, couchPaneDetail, couchPaneLayout,
+  couchHudFitStep, couchScreenPlan,
   type CouchHudPart, type CouchHudPartBox, type CouchPaneLayout, type CouchPaneRect,
 } from '../game/couchPanes.ts';
 import { encodeAimIntent } from '../sim/aimIntent.ts';
@@ -133,8 +133,26 @@ const PANES_CSS = '.cot-couch-panes{position:fixed;inset:0;pointer-events:none;z
   + 'pointer-events:none;color-scheme:normal}'
   + '.cot-couch-spare{position:absolute;background:var(--surface-scene)}'
   + 'body.cot-couch-split .cot-hud{visibility:hidden}';
-/** A pane's own ground: the canvas shows through its document (the overrides layer outranks the page's html and body). */
-const PANE_GROUND_CSS = 'html,body{background:transparent;margin:0;overflow:hidden}';
+/**
+ * A pane's own ground: the canvas shows through its document (the overrides layer outranks the page's html and body).
+ * - Whose pane it is: an edge in the seat's side's colour round the pane and the seat's name under the score, where the
+ *   rosters start (--hud-ears-top), so a player finds their pane at a glance; a seat whose phone has gone dims both.
+ * - The minimap at its solo size: a pane keeps the solo HUD's pixel sizes (the page's bands), so the map's cap is its
+ *   room, never a share of the pane's own short height (the solo 32vh); where the tray leaves no room beside it the HUD's
+ *   layout lifts it over the tray (battleHudLayout.ts --hud-map-lift), and the fit gives up the rosters before the map.
+ */
+const PANE_GROUND_CSS = 'html,body{background:transparent;margin:0;overflow:hidden}'
+  + 'body[data-couch-pane]::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483000;'
+  + 'box-shadow:inset 0 0 0 3px var(--couch-seat-ink,var(--team-own))}'
+  + 'body[data-couch-pane][data-couch-away]::after{opacity:.35}'
+  + '.cot-couch-seat-tag{position:fixed;left:50%;top:var(--hud-ears-top,52px);transform:translateX(-50%);z-index:2147483000;'
+  + 'pointer-events:none;padding:2px 10px;border-radius:var(--r1,4px);background:var(--hud-plate,rgba(10,14,18,.72));'
+  + 'box-shadow:inset 0 0 0 2px var(--couch-seat-ink,var(--team-own));color:var(--ink-1,#fff);'
+  + 'font:600 var(--battle-fs-13,13px)/1.4 var(--hud-font,inherit);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}'
+  + 'body[data-couch-away] .cot-couch-seat-tag{opacity:.45}'
+  + 'body[data-couch-pane][data-cot-battle-layout]:not(.cot-touch-layout) .cot-minimap{'
+  + 'max-width:var(--mm-cap,var(--hud-map-max,100vw));max-height:var(--mm-cap,var(--hud-map-max,100vw));'
+  + 'bottom:var(--hud-map-lift,16px)}';
 
 /** Classes of the page's body a pane's document never copies: they are each view's own. */
 const VIEW_OWN_BODY_CLASSES = new Set(['cot-spectating', 'cot-gun-dry', 'cot-hud-aerial', 'cot-couch-split']);
@@ -148,6 +166,10 @@ interface PaneView {
   hudFrame: BattleHudFrameRuntime;
   frame: HTMLIFrameElement;
   doc: Document;
+  /** The seat's name under the score (whose pane this is). */
+  tag: HTMLElement;
+  /** The seat's phone has gone (its tank brakes and holds fire until it comes back): the pane's edge and tag dim. */
+  away: boolean;
   hud: PaneHud | null;
   damagePanel: PaneDamagePanel | null;
   cards: ShellCard[];
@@ -196,6 +218,8 @@ interface CouchPaneProbe {
   hudSpotted(id: string): boolean;
   /** The seat's HUD shows GUN TRAVEL LIMIT (the gun held at its limit past the label's dwell). */
   atGunLimit: boolean;
+  /** Whose pane: the seat's name as the pane shows it, the edge's colour, and whether its phone has gone. */
+  tag: { text: string; ink: string; away: boolean };
 }
 
 export interface CouchPaneViews {
@@ -424,8 +448,10 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
     const key = `${views.length}:${width}x${height}`;
     if (key === layoutKey && layout) return;
     layoutKey = key;
-    layout = couchPaneLayout(views.length, width, height);
-    paneLodBias = couchPaneDetail(couchPaneAreaFraction(views.length, width, height)).lodBias;
+    // the one owner of the split (game/couchPanes.ts couchScreenPlan): the runtime splits only where it says so
+    const plan = couchScreenPlan('split', views.length, width, height);
+    layout = plan.layout!;
+    paneLodBias = plan.detail?.lodBias ?? 1;
     const box = ensureHost();
     views.forEach((view, index) => {
       const rect = layout!.panes[index];
@@ -526,8 +552,13 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       getDamagePanel: () => view.damagePanel,
     });
     const paneDoc = createPaneDocument(ensureHost());
+    // whose pane: the seat's name (its tank wears it while the session lasts, game/couchSeats.ts) in its side's colour
+    const tag = paneDoc.doc.createElement('div');
+    tag.className = 'cot-couch-seat-tag';
+    tag.textContent = (entity as { displayName?: string | null }).displayName || `P${seat.seat}`;
+    paneDoc.doc.body.appendChild(tag);
     Object.assign(view, {
-      seat: seat.seat, entity, camera, rig, aim, hudFrame, frame: paneDoc.frame, doc: paneDoc.doc,
+      seat: seat.seat, entity, camera, rig, aim, hudFrame, frame: paneDoc.frame, doc: paneDoc.doc, tag, away: false,
       hud: null, damagePanel: null, cards: [], cardShells: null, minimapSrc: null, drawn: [], objectRatio: 1,
       dropped: new Set<CouchHudPart>(), lastBoxes: [], lastClash: [], clashLog: [], fitWait: FIT_SETTLE_FRAMES, fitted: false, coreFits: true,
       dispose() {
@@ -554,6 +585,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         dropped: [...view.dropped], fitted: view.fitted, coreFits: view.coreFits, boxes: view.lastBoxes, clash: view.lastClash, clashLog: view.clashLog,
         hudSpotted: (id) => view.hudFrame.frameInfo.spotting?.isSpotted(id) ?? true,
         atGunLimit: !!view.hudFrame.frameInfo.aim.gunLimitSpec,
+        tag: { text: view.tag.textContent ?? '', ink: view.doc.body.style.getPropertyValue('--couch-seat-ink'), away: view.away },
       }));
     },
     get layout() { return layout; },
@@ -567,6 +599,10 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
       disposeViews();
       const mine = ++generation;
       for (const seat of seats) views.push(createView(seat));
+      // each pane's edge and tag in its seat's side's colour: seat 1's side is the room's own (as the lobby colours them)
+      for (const view of views) {
+        view.doc.body.style.setProperty('--couch-seat-ink', view.entity.team === views[0].entity.team ? 'var(--team-own)' : 'var(--team-enemy)');
+      }
       placePanes();
       const mount = (modules: { hud: HudModule; damagePanel: DamagePanelModule }): void => {
         if (mine !== generation) return;
@@ -590,10 +626,18 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         const controls = ports.controls(view.seat);
         if (controls) controls.drainCamera(intent);
         else { intent.aimDx = 0; intent.aimDy = 0; intent.sniperToggles = 0; intent.zoom = 0; }
-        if (intent.sniperToggles % 2 === 1 && !view.entity.combat?.destroyed) {
+        if (view.away !== !controls) {
+          view.away = !controls;
+          view.doc.body.toggleAttribute('data-couch-away', view.away);
+        }
+        const destroyed = !!view.entity.combat?.destroyed;
+        if (intent.sniperToggles % 2 === 1 && !destroyed) {
           if (view.rig.mode === 'ARCADE') view.rig.enterSniper();
           else view.rig.exitSniper(true);
         }
+        // a destroyed seat's pane leaves the gunner's sight for the chase view over its wreck (the solo death view; no
+        // replay takes the room's screen mid-battle: battleResultPresentationRuntime.ts, a couch battle)
+        if (destroyed && view.rig.mode === 'SNIPER') view.rig.exitSniper(true);
         fitPane(view, layout!.panes[views.indexOf(view)]);
         camInput.mouseDX = intent.aimDx * AIM_UNIT_PX;
         camInput.mouseDY = intent.aimDy * AIM_UNIT_PX;
