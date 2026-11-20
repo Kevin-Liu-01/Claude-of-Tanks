@@ -799,15 +799,42 @@ body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-
 /* the objective is one line: where its parts would stack (or take the side seat's line each), its first part alone */
 body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-mode-status.stacked .mv .seg~:is(.seg,.sep),
 body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short'])[data-objective-seat='side'] .cot-mode-status .mv .seg~:is(.seg,.sep){display:none}
-/* the toolbar is its menu button: a tap opens sound, graphics and settings in a column under it, off the chrome's box
-   (touchControls.ts), so the planner's places stay where they are */
-body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome .quick.menu{display:flex}
+/* the toolbar is its menu button: a tap opens sound, graphics and settings beside it on the corner plate, which grows
+   leftward (its foot, which the planner reads, stays where it is; dropped under the plate, the plate's clip cut them off) */
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome .quick.menu{display:flex;order:1}
 body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome:not(.open) .quick:not(.menu){display:none}
-body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome.open .quick:not(.menu){
-  position:absolute;right:max(4px,env(safe-area-inset-right));top:calc(100% + 4px);background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
-body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome.open .quick.graphics{top:calc(100% + 52px)}
-body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome.open .quick.settings{top:calc(100% + 100px)}
 body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome.open .quick.menu{color:var(--accent-hi)}
+/* (Kevin 2026-11-20: "special sections from left and right for the special abilities", one grammar with the phone
+   controller) two edge sections (battleHudLayout.ts, the edge seat). The right edge's: the systems over the ammunition,
+   thumb tiles 52 px (44 in a short landscape), a column from the rack up or a small grid growing inward, column by
+   column. The left edge's: survival, the items in a column standing on the speedometer (beside the stick's top in a
+   short landscape, under the map), the smoke and the jump over them (beside them in a short landscape). The row's
+   jump tile stands down for the touch kit's own jump button: one of each. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='edge'] .cot-vehicle-controls{--edge-tile:52px;--edge-gap:8px;
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(var(--hud-systems-rows,1),var(--edge-tile));grid-auto-columns:var(--edge-tile);
+  gap:var(--edge-gap);width:var(--hud-systems-width);max-width:none;overflow:visible;padding:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']){--edge-tile:52px;--edge-gap:8px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short']{--edge-tile:44px;--edge-gap:5px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-systems-slot='edge'] .cot-vehicle-controls{--edge-tile:44px;--edge-gap:5px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='edge'] .cot-vehicle-controls>button{--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);
+  width:var(--edge-tile)!important;height:var(--edge-tile);min-width:0;min-height:0;flex:none;margin:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed!important;
+  left:var(--hud-smoke-left);top:var(--hud-smoke-top);--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);min-width:0;min-height:0;margin:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump{left:var(--hud-jump-left);top:var(--hud-jump-top);right:auto;bottom:auto;
+  width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump .lb{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{flex-direction:column!important;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 69px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column!important;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}
+/* (a short landscape's side lanes and hit rows stand beside the sections, inset by their widths: battleHudLayout.ts
+   --hud-left-inset, --hud-right-inset) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] :is(.cot-kill-lane.l,.cot-hud .cot-si-toasthost){left:var(--hud-left-inset,0px);
+  max-width:calc(50vw - var(--hud-left-inset,0px) - 74px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] .cot-kill-lane.r{right:var(--hud-right-inset,0px);max-width:calc(50vw - var(--hud-right-inset,0px) - 74px)}
 /* the speedometer, read rarely, a smaller dial over the stick in portrait */
 body[data-cot-battle-layout].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-drive{transform:scale(.72);transform-origin:left bottom}
 /* Every battle centre notice on the window's centre line, on both layouts (noticeCentreLine.ts; owner 2026-10-22 on live

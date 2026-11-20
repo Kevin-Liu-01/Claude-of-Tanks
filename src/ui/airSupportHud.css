@@ -162,6 +162,17 @@ html[data-cot-strike-view] body[data-cot-battle-layout][data-cot-width][data-cot
  .cot-binoculars .binocular-facts{display:none}
  .cot-hud .cot-strike-warning{left:auto;right:max(12px,env(safe-area-inset-right));transform:none;top:calc(max(10px,env(safe-area-inset-top)) + 46px)}
 }
+/* (mobile-hud-274) a phone's systems in the right edge's section (battleHudLayout.ts data-systems-slot=edge): Support heads
+   the section on its right edge, and with the binoculars up the call-ins and the readout open inward, leftward from the
+   section's edge, at its top */
+@media(pointer:coarse){
+ body[data-systems-slot=edge] .cot-strike-dock{left:calc(var(--hud-systems-left,12px) + var(--hud-systems-width,52px) - 44px);
+   top:calc(var(--hud-systems-top,50%) - 52px)}
+ body[data-systems-slot=edge][data-cot-height=short] .cot-strike-dock{top:calc(var(--hud-systems-top,50%) - 49px)}
+ body[data-systems-slot=edge] .cot-strike-rack{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);top:var(--hud-systems-top,50%);flex-direction:row-reverse}
+ body[data-systems-slot=edge] .cot-binoculars .binocular-readout{left:auto;right:calc(100% - var(--hud-systems-left,0px) + 8px);
+   top:calc(var(--hud-systems-top,50%) + 52px);bottom:auto}
+}
 /* a portrait phone: the call-ins and the readout under the controls row, the readout without the name the lit slot
    shows (its 390 px held no more); CALL and close on the centre line over the second FIRE; INCOMING over the row */
 @media(pointer:coarse) and (orientation:portrait){

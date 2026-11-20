@@ -446,7 +446,7 @@ export function createTouchControls({
   // (the pad is its own instruction: no "swipe to aim" or "landscape recommended" over the battlefield, owner 2026-10-22)
   aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>`;
   root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
-    // (mobile-hud-274) a phone shows the toolbar as this one button; a tap opens the three under it (battleHudLayout.css)
+    // (mobile-hud-274) a phone shows the toolbar as this one button; a tap opens the three beside it (battleHudLayout.css)
     `<button class="quick menu" type="button" aria-label="${t('touch.toolbar')}" aria-expanded="false">${MENU}</button>` +
     `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
     `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +
@@ -875,8 +875,8 @@ export function createTouchControls({
   });
   renderGraphicsButton();
   // (mobile-hud-274, owner 2026-11-20: "mobile ui is way too cluttered") on a phone the toolbar is one menu button; a tap
-  // opens sound, graphics and settings under it, and it folds again on a second tap, after a settings tap, or after
-  // MENU_OPEN_MS untouched. The buttons drop under the chrome's box, so opening it moves nothing the planner placed.
+  // opens sound, graphics and settings beside it, and it folds again on a second tap, after a settings tap, or after
+  // MENU_OPEN_MS untouched. The corner plate grows leftward and keeps its foot, so opening it moves nothing below it.
   const chrome = root.querySelector<HTMLElement>('.mobile-chrome')!;
   const menuButton = root.querySelector<HTMLButtonElement>('.quick.menu')!;
   const MENU_OPEN_MS = 5000;

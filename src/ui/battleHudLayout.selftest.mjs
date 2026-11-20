@@ -91,7 +91,8 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
 const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 // (battle-camera-264) on the battle sight, the centre's unless the chase framing raises it (battleSight.ts); the scope's
 // band stays the centre's
-assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
+// (a phone's systems stand in the left edge's section instead, mobile-hud-274: the solver is the other portraits')
+assert.match(layoutSource, /if \(touch && !phoneHud\(touch\) && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
   'the solver applies it to touch portraits, on the battle sight');
 assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
@@ -499,24 +500,28 @@ try {
 
 // Touch portrait, solved end to end (critic r3: the source pins above let the wiring drift). The measured 390x844
 // phone (tools/fixtures/battle-hud-layout.html in Chrome, layout-r3): the tray's collapsed slot at 468-520 parks the
-// systems row at 416, across the sight centred at 422; a phone-width portrait's row takes the top slot right of the map
-// instead (mobile-hud-274), and the side kill lanes start under it. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
+// systems row at 416, across the sight centred at 422; the lower cluster (speedometer 594, left FIRE 628, stick 702)
+// leaves no room under the scope readouts, so the row moves above the ring (314). The side kill lanes then end above
+// the moved row. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
 // lanes keep the floor the row's natural place gave them: a moved row lends them nothing.
 {
   const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
     'setTimeout','clearTimeout']
     .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
-  function solvePortrait(width, height, rects, rowWidth) {
+  function solvePortrait(width, height, rects, rowWidth, { dataset = {}, controls = 0 } = {}) {
     const props = new Map(); let frame = null;
     const element = (rect, extra={}) => ({ getClientRects: () => [rect], getBoundingClientRect: () => rect, children: [],
       childElementCount: 0, dataset: {}, getAttribute: () => null, hasAttribute: () => false, toggleAttribute() {}, ...extra });
     const lane = (rect) => { const children = Array.from({length:8}, () => ({hidden:false}));
       return element(rect, {children, childElementCount: children.length}); };
     const nodes = Object.fromEntries(Object.entries(rects).map(([selector, rect]) => [selector, element(rect)]));
-    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2});
+    const tiles = Array.from({ length: controls }, () => ({ classList: { contains: () => false }, checkVisibility: () => true,
+      hasAttribute: () => false, removeAttribute() {}, setAttribute() {}, dataset: {}, style: { getPropertyValue: () => '', setProperty() {} } }));
+    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2, children: tiles,
+      childElementCount: tiles.length});
     const kills = {'.cot-kill-lane.l': lane(box(0,84,0,171)), '.cot-kill-lane.r': lane(box(0,84,219,390))};
-    const body = { dataset: {}, classList: { contains: (name) => name === 'cot-touch-layout' },
+    const body = { dataset: { ...dataset }, classList: { contains: (name) => name === 'cot-touch-layout' },
       style: { getPropertyValue: (key) => props.get(key) ?? '', setProperty: (key, value) => props.set(key, value),
         removeProperty: (key) => props.delete(key) },
       hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
@@ -547,21 +552,20 @@ try {
       '.cot-dp': box(797,836,136.5,253.5), '.cot-net': box(822,842,14,102),
     }, 366);
     const centre = 844 / 2;
-    // (mobile-hud-274, owner 2026-11-20: "less obtrusive to the actual game play") a phone-width portrait's row leaves the
-    // sight for the top slot right of the map, 7 px under the touch chrome (155 + SLOT_GAP), the map's width and its gap in
-    // from the left and 14 px from the right edge; it stood across the band over the ring at 314 before
-    assert.equal(phone.px('systems-top'), 162, '390x844: the row takes the top slot, off the sight');
-    assert.ok(phone.px('systems-top') + 44 <= centre - SIGHT_BAND_ABOVE, '390x844: the row ends above the sight band');
-    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [108, 390 - 108 - 14], '390x844: right of the map');
-    // the lanes start under the row in the slot, never end at it: the global feed's one wide row right of the map under
-    // the row (206 + 8), the personal lane two pitches under it, so the two never stand side by side off one baseline
-    // (gauntlet r14), its rows above the reticle's band (422 - 64 - 8 = 350: two rows)
-    assert.equal(phone.px('kill-right-top'), 214, 'the global feed starts under the row in the top slot');
+    assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
+    // (on the window's centre line by its rendered width, 364 px: gauntlet r5 found it pressed to the right edge)
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [13, 366], '390x844: whole, on the centre line');
+    // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
+    // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
+    // gauntlet r5)
+    assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
+    assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
+    assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
+    // (a 171 px half lane would stack its rows 41 px apart beside the personal lane's 29, on no common baseline, gauntlet
+    // r14: the global feed takes one row the width right of the map instead, above the personal lane)
     assert.equal(phone.px('kill-right-height'), 29 - 3, '390x844: one wide row of the global feed, above the personal lane');
     assert.equal(phone.px('kill-right-width'), 390 - 100 - 8, '390x844: the global feed the width right of the map');
-    assert.equal(phone.px('kill-left-top'), 214 + 2 * 29, 'the personal lane two pitches under the global feed');
-    assert.equal(phone.px('kill-left-height'), 2 * 29 - 3, '390x844: the personal lane stops above the reticle\'s band');
-    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 2,
+    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
       'the left lane shows only the rows that fit');
     // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
     // chrome expanded, so the lanes hold fewer than their eight rows and their floor shows)
@@ -580,6 +584,35 @@ try {
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 0, 'tall: no left lane row through the reticle');
     assert.equal(tall.px('kill-right-height'), 0, 'tall: no right lane row through the reticle');
+    // (mobile-hud-274, Kevin 2026-11-20: "special sections from left and right for the special abilities", one grammar with
+    // the phone controller) a phone's controls stand in two edge sections: the systems the right edge's, over the rack
+    // (which keeps its place by FIRE), survival the left edge's (the items, standing on the speedometer). A 390x844
+    // phone's five systems one column of 52 px tiles 8 px apart, on the rack's right edge and 8 px over it, never in the
+    // band over the sight; the right lane ends over the column, the left over the items
+    const edge = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-mode-status.show': box(62,103,56,334), '.cot-minimap': box(111,203,8,100),
+      '.cot-touch.on .mobile-chrome': box(111,155,336,380), '.cot-shells': box(468,520,328,380),
+      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(593.76,678,14,98.24), '.cot-cons': box(437,609,8,60),
+      '.cot-touch.on .joy': box(702,820,14,132), '.cot-dp': box(797,836,136.5,253.5),
+    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5 });
+    assert.deepEqual([edge.px('systems-left'), edge.px('systems-width')], [380 - 52, 52], '390x844 phone: one column on the right edge');
+    assert.equal(edge.px('systems-top'), 468 - 8 - (5 * 52 + 4 * 8), '390x844 phone: the column stands on the rack');
+    // (a five-system column reaches the top band: the global feed's lane gives way to it, the personal lane keeps four rows)
+    assert.equal(edge.px('kill-right-height'), 0, '390x844 phone: no global feed row over the column');
+    assert.equal(edge.px('kill-left-height'), 4 * 29 - 3, '390x844 phone: the personal lane keeps four rows');
+    assert.ok(edge.px('kill-left-top') + edge.px('kill-left-height') <= 437 - 8, '390x844 phone: the left lane ends over the items');
+    assert.deepEqual([edge.px('smoke-left'), edge.px('smoke-top')], [8, 437 - 8 - 52], '390x844 phone: the smoke over the items');
+    // an 844x390 landscape phone: two 44 px rows between the menu and the rack hold the five in three columns, growing
+    // inward, never paged; the side lanes stand beside the sections, inset by their widths
+    const short = solvePortrait(844, 390, {
+      '.cot-top': box(0,48,275,569), '.cot-minimap': box(8,100,12,104), '.cot-touch.on .mobile-chrome': box(0,48,744,844),
+      '.cot-shells': box(166,214,778,830), '.cot-vehicle-controls': box(300,344,250,560), '.cot-drive': box(310,372,126,186),
+      '.cot-cons': box(108,250,12,56), '.cot-touch.on .joy': box(258,366,12,120), '.cot-dp': box(340,372,218,330),
+    }, 236, { dataset: { cotWidth: 'tablet', cotHeight: 'short' }, controls: 5 });
+    assert.deepEqual([short.px('systems-left'), short.px('systems-width')], [830 - 142, 3 * 44 + 2 * 5], '844x390 phone: three columns');
+    assert.equal(short.px('systems-top'), 166 - 8 - (2 * 44 + 5), '844x390 phone: two rows standing on the rack');
+    assert.deepEqual([short.px('left-inset'), short.px('right-inset')], [56 + 8, 844 - 688 + 8], '844x390 phone: the lanes inset');
+    assert.deepEqual([short.px('smoke-left'), short.px('smoke-top')], [56 + 5, 250 - 44], '844x390 phone: the smoke beside the items');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
