@@ -4,7 +4,7 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The boot splash's own stills: each a frame of a Scene Studio clip the owner picked, at 1920 and the 1280 rung the boot splash opens on.",
+ "description": "The boot splash's own stills: each a frame of a Scene Studio clip the owner picked, cut as its crop says (frame pixels), at full size and the 1280 rung the boot splash opens on (the 1280x720 frame, cut the same way).",
  "generatedBy": "tools/media-r5/boot-media.mjs",
  "sources": "the clips named per item (clip.file, its sha256 and the frame cut from it), kept outside the repository",
  "dimensions": {
@@ -29,20 +29,28 @@
     "frames": 30,
     "frame": 16
    },
+   "crop": {
+    "left": 0.05,
+    "x": 96,
+    "y": 0,
+    "width": 1824,
+    "height": 1080
+   },
    "path": "/media/boot-r1/verdant-blast-f16.webp",
-   "bytes": 390770,
-   "sha256": "d7b520a10208413e06a4af315e328066c7c496ea75d2e1b6ef520aae2b8f45b7",
-   "width": 1920,
+   "bytes": 364518,
+   "sha256": "6401be23bd412e0ca6a792a9f3acee088e569868a19f3e29cdf55de2346461d5",
+   "width": 1824,
    "height": 1080,
    "quality": 90,
    "rungs": [
     {
-     "width": 1280,
+     "rung": 1280,
+     "width": 1216,
      "height": 720,
      "quality": 80,
      "path": "/media/boot-r1/verdant-blast-f16-1280.webp",
-     "bytes": 115336,
-     "sha256": "2dbfbee0bb2fc790d7bf1f7d0ad1ce8013d604e076b78967761ba7eaaf4a5453"
+     "bytes": 107976,
+     "sha256": "89efb807c4095f01cb9e72f0840147b95ea4dbf544c2cafd6a2546685df4ad36"
     }
    ]
   }

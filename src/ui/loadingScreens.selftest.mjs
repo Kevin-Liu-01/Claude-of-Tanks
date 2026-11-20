@@ -78,7 +78,7 @@ const bootManifest = JSON.parse(await readFile(new URL(`../../public/media/${sit
 const bootItems = new Map(bootManifest.items.map((item) => [item.id, item]));
 const pickImg = (pick) => (pick.bootStill ? bootItems.get(pick.bootStill).path : pick.versus ? versusItems.get(pick.versus).path
   : `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`);
-const pickBoot = (pick) => (pick.bootStill ? bootItems.get(pick.bootStill).rungs.find((rung) => rung.width === 1280).path
+const pickBoot = (pick) => (pick.bootStill ? bootItems.get(pick.bootStill).rungs.find((rung) => rung.rung === 1280).path
   : pick.versus ? versusItems.get(pick.bootVersus ?? pick.versus).rungs.find((rung) => rung.width === 1280).path
     : `${siteStills}${pick.id}-boot.webp`);
 const bootPicks = sitePicks.featured.filter((pick) => pick.boot);
@@ -96,23 +96,33 @@ assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garag
 // (11-20, of a one-second Studio clip of Verdant Fields: "use a frame from this as the first loading screen", then of its
 // re-take with a blast behind the tanks: "actually use this one i think the explosions are cooler") the boot pick is
 // frame 16 of the re-take, its fireball in dark smoke, which still reads as fire under the boot scrim; the Orchard Valley
-// still that opened the splash before it now leads the loading picks, on its own 1280 rung
+// still that opened the splash before it now leads the loading picks, on its own 1280 rung. (274, the owner on the 273.4
+// splash: "i think we should crop the left of the loading shot a little"; on a sheet of 5%, 10% and 15% cuts, 5%) the
+// still drops the left twentieth of the frame (fewer of the trees and the windmill): 1824x1080, its 1280 rung 1216x720;
+// the focal moves from 35% to 30% across so a 390x844 phone opens on the same picture
 assert.equal(bootPicks[0].bootStill, 'verdant-blast-f16', 'the Verdant Fields blast opens the boot splash');
 {
   const item = bootItems.get(bootPicks[0].bootStill);
+  const pick = sitePicks.boot.stills.find((still) => still.id === item.id);
   assert.deepEqual([item.map, item.clip.file, item.clip.frame], ['verdant', 'studio_verdant_1080p30 (2).mp4', 16], 'frame 16 of the owner\'s re-take');
   assert.match(item.clip.sha256, /^[0-9a-f]{64}$/, 'the clip it was cut from, by its sha256');
   assert.equal(bootManifest.count, bootManifest.items.length);
+  assert.equal(bootManifest.trial, undefined, 'the published cut is the picks\' own, not a trial (--crop-left)');
+  assert.equal(pick.cropLeft, 0.05, 'the left twentieth of the frame is cut');
+  assert.deepEqual(item.crop, { left: pick.cropLeft, x: 96, y: 0, width: 1824, height: 1080 }, 'the manifest records the pick\'s cut');
+  assert.deepEqual([item.width, item.height], [1824, 1080], 'the frame less its left 96 px');
+  assert.deepEqual(item.rungs.map((rung) => [rung.rung, rung.width, rung.height]), [[1280, 1216, 720]], 'its 1280 rung, cut the same way');
   for (const file of [item, ...item.rungs]) {
     const bytes = await readFile(new URL(`../../public${file.path}`, import.meta.url));
-    assert.deepEqual(webpDimensions(bytes), [file.width, file.width * 9 / 16], `${file.path}: ${file.width} wide, 16:9`);
+    assert.deepEqual(webpDimensions(bytes), [file.width, file.height], `${file.path}: ${file.width}x${file.height}`);
+    assert.equal(file.width * 1080, file.height * 1824, `${file.path}: the cut's 1824:1080`);
     assert.equal(bytes.length, file.bytes, `${file.path}: the manifest's bytes`);
     assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256, `${file.path}: the manifest's sha256`);
   }
-  assert.equal(item.width, 1920);
   assert.ok(item.bytes <= 600 * 1024, `${item.path}: ${item.bytes} B, at most 600 KB`);
   const boot = FEATURED_SHOTS[0];
   assert.deepEqual([boot.capKey, boot.maps], ['map.verdant', ['verdant']], 'captioned with its battlefield\'s name, in every locale');
+  assert.equal(boot.focal, '30% 60%', 'the phone crop opens on the Abrams whole, the fire beside and above the lockup');
 }
 const loadingPicks = sitePicks.loading.stills;
 const garagePicks = new Map(sitePicks.featured.filter((pick) => !pick.boot).map((pick) => [pick.versus ?? pick.id, pick]));

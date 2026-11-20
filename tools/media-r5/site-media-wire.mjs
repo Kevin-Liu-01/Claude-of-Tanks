@@ -110,7 +110,7 @@ const featuredSrc = (f) => (f.bootStill ? bootStill(f.bootStill).path : f.versus
 const featuredCap = (f) => (f.bootStill ? `map.${bootStill(f.bootStill).map}` : f.versus ? versusKey('title', f.versus) : titleKey(f.id));
 const featuredBoot = (f) => {
   if (f.bootStill) {
-    const rung = bootStill(f.bootStill).rungs.find((r) => r.width === 1280);
+    const rung = bootStill(f.bootStill).rungs.find((r) => r.rung === 1280); // its 1280 rung, by name: a cut still's is narrower
     if (!rung) throw new Error(`featured ${f.bootStill}: no 1280 rung`);
     return rung.path;
   }

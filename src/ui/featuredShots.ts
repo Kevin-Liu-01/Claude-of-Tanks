@@ -37,7 +37,7 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
     img: '/media/boot-r1/verdant-blast-f16.webp',
     bootImg: '/media/boot-r1/verdant-blast-f16-1280.webp',
     capKey: 'map.verdant',
-    maps: ['verdant'], focal: '35% 60%',
+    maps: ['verdant'], focal: '30% 60%',
   },
   {
     img: '/media/versus-r1/s49-orchard-sunset-modern-r14.webp',
