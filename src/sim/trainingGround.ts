@@ -230,8 +230,12 @@ export const TRAINING_POINTS = Object.freeze({
   /** S5: the bush the player backs into (its canopy's centre; the ring inside its 5.3 m crown), 26 m from ring C, the trees
    *  between it and Target 1. */
   bushD: Object.freeze({ x: -380, z: -166, radiusM: 5 }),
-  /** S8: the firing point for HE, 41 m west of ring C, the only one of the three that sees Target 2. */
-  ringE: Object.freeze({ x: -400, z: -160, radiusM: 6 }),
+  /** S8: the firing point for HE, 41 m west of ring C, the only one of the three that sees Target 2. Moved 5 m north onto
+   *  ground the gun can lay from (the end walk of 2026-11-20: at -400,-160 the hull stood 11.6 degrees nose up on a hump,
+   *  past the loaner's 10 degrees of depression, and every round flew over). The live ground sampler's heights put every
+   *  stop within 4 m of it at 2.5 degrees of depression at most toward Target 2, the line 1.9 m over the ground and no
+   *  trunk on it (evidence ring-e-heights.json, tools/ring-e-heights.mjs). */
+  ringE: Object.freeze({ x: -401, z: -155, radiusM: 4 }),
   /** S9: where the player angles against the Sentry, 114 m north of ring E (122 m by the way through the bushes west of
    *  Target 2, no trunk on it): open for 8 m round, a grade under 0.07, the Sentry 170 m off. */
   fireF: Object.freeze({ x: -430, z: -50, radiusM: 6 }),

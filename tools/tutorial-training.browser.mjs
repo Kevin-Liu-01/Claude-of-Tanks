@@ -374,7 +374,22 @@ try {
       await sleep(1200); // the aim settles
       if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), 3))) continue;
       await page.mouse.down(); await sleep(60); await page.mouse.up();
-      (report.shots ??= []).push({ step: stepId, actor: actorId });
+      const me = await pose();
+      const shotOf = (report.shots ??= []).filter((x) => x.step === stepId).length;
+      report.shots.push({ step: stepId, actor: actorId, at: [Math.round(me.x), Math.round(me.z)],
+        rangeM: Math.round(Math.hypot(target.x - me.x, target.z - me.z)), shell: await page.evaluate(() => {
+          const p = window.__DEBUG.game.player; return p?.spec?.gun?.shells?.[p?.combat?.shellSlot ?? 0]?.type ?? null; }),
+        // the hull's tilt and the gun's lay against its limits (a stalled shot's why)
+        lay: await page.evaluate((id) => {
+          const p = window.__DEBUG.game.player, st = p?.state, g = p?.spec?.gun, t = window.__DEBUG.game.tankById.get(id)?.state;
+          const r = (v) => (v == null ? null : Math.round((v * 180) / Math.PI * 10) / 10);
+          return { y: st?.pos?.y != null ? Math.round(st.pos.y * 10) / 10 : null, targetY: t?.pos?.y != null ? Math.round(t.pos.y * 10) / 10 : null,
+            pitch: r(st?.visualPitch ?? st?.pitch), roll: r(st?.visualRoll ?? st?.roll), gunPitch: r(st?.gunPitch),
+            elev: g?.gunElevationDeg ?? null, depr: g?.gunDepressionDeg ?? null,
+            aim: p?.input?.aimPoint ? [Math.round(p.input.aimPoint.x), Math.round(p.input.aimPoint.y * 10) / 10, Math.round(p.input.aimPoint.z)] : null };
+        }, actorId) });
+      // the first shots of each step, as they land (what a stalled shooting step shows)
+      if (shotOf < 4) { await sleep(450); await page.screenshot({ path: resolve(OUT, `shot-${stepId}-${shotOf + 1}.png`) }); }
       return true;
     }
     return false;
