@@ -337,8 +337,46 @@ export function createWorldActivationRuntime<
     options.setSun(skyConfig);
   };
 
+  /**
+   * (mp-one-map-274; the owner, 2026-11-19: "in multiplayer, the map literally was like merged together with another map
+   * with a town") One battlefield drawn per frame. Every built world sits in the scene hidden (map.ts, the coordinator);
+   * the presented one is drawn, and a covered warm may lift the world it warms so the frames under the cover upload it.
+   * That lift drew the warmed world beside a battlefield still presented awake (a round after a battle: the result
+   * screen's world stays mounted until the next one presents), and every wait between the lift and the present (the
+   * cloud bake, which waits on animation frames a hidden tab never gives) kept both drawn: two terrains, two towns, one
+   * scene. Now a world the warm lifts is drawn between frames only while no other world is presented awake; otherwise it
+   * is drawn only inside the warm's synchronous compile and shadow calls, and the present swaps the two in one step.
+   * `lifted` is the one world drawn without being presented.
+   */
+  let lifted: World | null = null;
+  const otherPresentedAwake = (world: World): boolean => current !== null && current !== world && !dormant;
+  /** The warm's lift, by the rule above: the presented world is drawn, another is drawn only when no world is. */
+  const settleLift = (world: World): void => {
+    if (world === current && !dormant) { world.group.visible = true; return; }
+    const drawn = !otherPresentedAwake(world);
+    world.group.visible = drawn;
+    if (drawn) {
+      if (lifted && lifted !== world) lifted.group.visible = false;
+      lifted = world;
+    } else if (lifted === world) lifted = null;
+  };
+  /** A synchronous warm call (program compile, shadow warm) that needs the world drawn: drawn for the call alone. */
+  const whileDrawn = (world: World, work: () => void): void => {
+    world.group.visible = true;
+    try { work(); } finally { settleLift(world); }
+  };
+  /** The world drawn without being presented goes hidden (a superseded or failed warm, another world presented). */
+  const dropLift = (world: World | null = lifted): void => {
+    if (!world) return;
+    if (world !== current || dormant) world.group.visible = false;
+    if (lifted === world) lifted = null;
+  };
+
   const presentWorld = (world: World, { services = true, atmosphere }: WorldSceneActivationOptions = {}): World => {
+    // one step: the presented world swaps in, the last one leaves, and no other lift stays drawn beside it
     options.swapSceneWorld(current?.group ?? null, world.group);
+    if (lifted && lifted !== world) dropLift(lifted);
+    lifted = null;
     current = world;
     dormant = false;
     options.ensureCloudTextures();
@@ -462,12 +500,13 @@ export function createWorldActivationRuntime<
     for (const _ of options.linkerBreathingSlices(maxSlices)) await options.nextFrame();
   };
 
-  const compileWorldPrograms = async (root: THREE.Object3D): Promise<void> => {
-    try { options.compilePrograms(root); } catch { /* real render remains fallback */ }
+  const compileWorldPrograms = async (world: World): Promise<void> => {
+    try { whileDrawn(world, () => options.compilePrograms(world.group)); } catch { /* real render remains fallback */ }
     await drainLinker(24);
   };
 
   const warmShadowCohort = async (
+    world: World,
     children: THREE.Object3D[],
     lastVisible: number,
   ): Promise<void> => {
@@ -479,21 +518,23 @@ export function createWorldActivationRuntime<
       hidden.push(child);
     }
     try {
-      options.updateShadowFrustums();
-      options.warmShadowFrame();
+      whileDrawn(world, () => {
+        options.updateShadowFrustums();
+        options.warmShadowFrame();
+      });
     } catch { /* real render remains fallback */ }
     for (const child of hidden) child.visible = true;
     await drainLinker(24);
     await options.nextFrame();
   };
 
-  const warmWorldShadows = async (root: THREE.Object3D, live: () => boolean): Promise<void> => {
-    const children = root.children.slice();
+  const warmWorldShadows = async (world: World, live: () => boolean): Promise<void> => {
+    const children = world.group.children.slice();
     const cohorts = Math.min(3, Math.max(1, children.length));
     for (let cohort = 0; cohort < cohorts; cohort += 1) {
       if (!live()) return;
       const lastVisible = Math.ceil(((cohort + 1) / cohorts) * children.length) - 1;
-      await warmShadowCohort(children, lastVisible);
+      await warmShadowCohort(world, children, lastVisible);
     }
   };
 
@@ -510,26 +551,27 @@ export function createWorldActivationRuntime<
     const precompile = activationOptions?.precompile !== false;
     // (2026-10-19, black-screen-228 RC5) the world sits out one frame only while no one presents it, and comes back on
     // every exit: a rejected or abandoned frame wait never leaves a cached (reused) world hidden, and the active,
-    // presented world is never hidden
+    // presented world is never hidden. (mp-one-map-274) It comes back by the lift rule (settleLift): drawn only while no
+    // other world is presented awake.
     const hide = world !== current || dormant;
     try {
       if (hide) world.group.visible = false;
       if (precompile) await options.nextFrame();
     } finally {
-      world.group.visible = true;
+      settleLift(world);
     }
     if (!live()) return;
     mark('present');
 
     if (precompile || activationOptions?.compilePrograms === true) {
-      await compileWorldPrograms(world.group);
+      await compileWorldPrograms(world);
       if (!live()) return;
       // Round 77c: the far-tree impostor atlas bakes with the programs, before any presented frame needs it
       try { world.warmImpostors?.(); } catch { /* the first update bakes lazily */ }
     }
     mark('compile');
     if (precompile) await options.nextFrame();
-    if (precompile && live()) await warmWorldShadows(world.group, live);
+    if (precompile && live()) await warmWorldShadows(world, live);
     if (!live()) return;
     mark('shadowWarm');
   };
@@ -614,7 +656,7 @@ export function createWorldActivationRuntime<
       if (warmed === current && !dormant) return;
       if (latestRequest && latestRequest !== request && latestRequest.world === warmed
         && latestRequest.state === 'warming') return;
-      warmed.group.visible = false;
+      dropLift(warmed);
     };
     let releaseDemand: (() => void) | null = null;
     // (round 2 U26) run by supersedeActivations the moment a later request supersedes this one, and again (idempotent)
@@ -749,6 +791,8 @@ export function createWorldActivationRuntime<
       if (dormant === nextDormant) return;
       dormant = nextDormant;
       options.setSceneWorldActive(current.group, !nextDormant);
+      // (mp-one-map-274) the battlefield woken is the one drawn: a world a warm lifted meanwhile waits hidden for its present
+      if (!nextDormant && lifted && lifted !== current) dropLift(lifted);
     },
   };
 }
