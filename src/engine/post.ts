@@ -37,6 +37,7 @@
  */
 import { STRIKE_MARKS_GLSL, createStrikeMarkUniforms, syncStrikeMarkUniforms } from './strikeMarks.ts';
 import * as THREE from 'three';
+import { couchPaneLevers } from './couchPaneLevers.ts';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
@@ -3328,7 +3329,10 @@ export function createPost(
         plan.beforeView(index);
         viewEndsFrame = index === views.length - 1;
         if (index === 1) { shadowMap.autoUpdate = false; shadowMap.needsUpdate = false; scene.matrixWorldAutoUpdate = false; }
-        renderChain(dt, frameWallDtSeconds, index === 0);
+        // couch-perf-275 lever 1's ceiling (measurement only, the image is wrong): the panes after the first skip the
+        // per-pixel passes from the grade on, the most that running them once over the canvas could save
+        const ceiling = index > 0 && couchPaneLevers.postCeiling ? skipPassesFrom(grade) : null;
+        try { renderChain(dt, frameWallDtSeconds, index === 0); } finally { if (ceiling) restorePasses(ceiling); }
       }
     } finally {
       shadowMap.autoUpdate = priorShadowAuto;
@@ -3338,6 +3342,20 @@ export function createPost(
       renderer.setScissorTest(priorScissorTest);
       renderer.setViewport(0, 0, renderer.getDrawingBufferSize(_viewNative).x / ratio, canvasH);
     }
+  }
+
+  /** couch-perf-275: every pass from `first` on disabled; returns their prior flags for restorePasses. */
+  function skipPassesFrom(first: Pass): boolean[] {
+    const passes = composer.passes;
+    const from = passes.indexOf(first);
+    const prior: boolean[] = [];
+    for (let i = Math.max(0, from); i < passes.length; i++) { prior.push(passes[i].enabled); passes[i].enabled = false; }
+    return prior;
+  }
+  function restorePasses(prior: boolean[]): void {
+    const passes = composer.passes;
+    const from = passes.length - prior.length;
+    for (let i = 0; i < prior.length; i++) passes[from + i].enabled = prior[i];
   }
 
   function renderChain(dt: number, frameWallDtSeconds: number, governs: boolean): void {

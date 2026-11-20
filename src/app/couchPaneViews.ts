@@ -18,6 +18,7 @@
  *   tank is hidden only in its own gunner's sight.
  */
 import { PerspectiveCamera, Vector3, type Object3D } from 'three';
+import { couchPaneLevers } from '../engine/couchPaneLevers.ts';
 import { lodDistanceScale } from '../engine/lodDistanceScale.ts';
 import { createCameraRig, type CameraRig, type CameraRigDeps } from '../engine/cameraRig.ts';
 import { createAimController, type AimController, type AimControllerDependencies } from '../game/aimController.ts';
@@ -89,7 +90,17 @@ export interface CouchPaneViewPorts {
   controls(seat: number): CouchSeatControls | null;
   /** The terrain's detail for the other panes' cameras besides seat 1's (map.ts setTerrainDetailFoci); null lets go. */
   detailFoci?(points: readonly { readonly x: number; readonly z: number }[] | null): void;
+  /** The battle world's root (couch-perf-275 lever 3: the pieces a pane's coarse tier leaves out), or null. */
+  worldRoot?(): Object3D | null;
 }
+
+/**
+ * couch-perf-275 lever 3, a pane-only coarse world tier: the dressing outside the battle and on its floor that no
+ * player reads (border hedgerows and farmsteads, the horizon forest, the ground litter). The panorama ring and the far
+ * range stay (the skyline), and nothing that conceals or covers a tank is left out.
+ */
+const PANE_COARSE_NAMES: readonly string[] = ['border-hedgerows', 'border-farmsteads', 'ground-litter'];
+const PANE_COARSE_PREFIXES: readonly string[] = ['horizon-forest-'];
 
 /** The page's player's events, which name no tank: a pane's HUD never hears them (each seat's phone acts for its tank). */
 const PAGE_PLAYER_EVENTS = new Set([
@@ -413,6 +424,22 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
   let heardShotMs = -Infinity;
   const listenerForward = new Vector3();
   const detailFoci: { x: number; z: number }[] = [];
+  /** Lever 3's pieces, found once per world root (couch-perf-275), and their visibility while a frame hides them. */
+  let coarseRoot: Object3D | null = null;
+  const coarseSet: Object3D[] = [];
+  const coarseVisible: boolean[] = [];
+  const paneCoarseSet = (): readonly Object3D[] => {
+    const root = ports.worldRoot?.() ?? null;
+    if (root !== coarseRoot) {
+      coarseRoot = root;
+      coarseSet.length = 0;
+      root?.traverse((object) => {
+        const name = object.name;
+        if (PANE_COARSE_NAMES.includes(name) || PANE_COARSE_PREFIXES.some((prefix) => name.startsWith(prefix))) coarseSet.push(object);
+      });
+    }
+    return coarseSet;
+  };
   const timing = { hudMs: 0, drawMs: 0 };
   /** The panes' LOD bias (couchPaneDetail, by the layout's pane share), solved with the layout. */
   let paneLodBias = 1;
@@ -689,6 +716,8 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         const root = (tanks[i].visual as { root?: { visible: boolean } } | null | undefined)?.root;
         baseVisible[i] = !!root?.visible;
       }
+      const coarse = couchPaneLevers.coarseWorld ? paneCoarseSet() : null;
+      if (coarse) for (const object of coarse) { coarseVisible.push(object.visible); object.visible = false; }
       try {
         ports.post.renderViews(dt, wallDt, layout.panes, (index) => {
           const view = views[index];
@@ -709,6 +738,7 @@ export function createCouchPaneViews(ports: CouchPaneViewPorts): CouchPaneViews 
         {
           restorePaneDetail(tanks);
         }
+        if (coarse) { for (let i = 0; i < coarse.length; i++) coarse[i].visible = coarseVisible[i]; coarseVisible.length = 0; }
         copyCamera(views[0].camera, ports.camera);
         timing.drawMs = performance.now() - drawStart;
       }

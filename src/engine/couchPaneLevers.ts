@@ -5,12 +5,13 @@
  * does not goes whole.
  */
 export const couchPaneLevers = {
-  /** Lever 3: a pane-only coarse world tier (couchPaneViews.ts applyPaneCoarse). */
+  /** Lever 3: a pane-only coarse world tier, the dressing no player reads (couchPaneViews.ts PANE_COARSE_NAMES). */
   coarseWorld: false,
-  /** Lever 2: the panes after the first draw a flat view of the scene (post.ts renderViewFrames). */
-  flatView: false,
-  /** Lever 1: the per-pixel passes once over the whole canvas after every pane draws (post.ts renderViewFrames). */
-  onePost: false,
+  /**
+   * Lever 1's ceiling, measurement only (the image is wrong): the panes after the first skip every pass from the grade on
+   * (post.ts renderViewFrames), the most that running the per-pixel passes once over the whole canvas could save.
+   */
+  postCeiling: false,
 };
 
 export type CouchPaneLever = keyof typeof couchPaneLevers;

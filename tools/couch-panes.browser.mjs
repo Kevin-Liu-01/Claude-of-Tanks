@@ -326,9 +326,26 @@ try {
    * deltas (on minus off) of the main thread's median, the GPU's p25 and the draws, and their mean. Each pair shares
    * the machine's load, so the delta holds where the absolute numbers do not.
    */
+  /**
+   * A lever off or on in the page: the couch levers (src/engine/couchPaneLevers.ts), or `propBatch`, world-pools-272's
+   * destructible-prop batches (window.__DRAW_BATCH_DEBUG, on a measurement build that carries them). A lever the build
+   * does not have stops the run, so an A/B never measures a switch that switched nothing.
+   */
+  const setLever = async (lever, on) => {
+    const ok = await desktop.evaluate((name, value) => {
+      if (name === 'propBatch') {
+        const batch = window.__DRAW_BATCH_DEBUG;
+        if (!batch || !batch.batches) return false;
+        batch.set(value);
+        return true;
+      }
+      return window.__COT_COUCH.setLever(name, value) === true;
+    }, lever, on);
+    if (!ok) throw new Error(`couch-panes: --ab lever ${lever} is not in this build`);
+  };
   const abLever = async (label, lever) => {
     const block = async (on) => {
-      await desktop.evaluate((name, value) => window.__COT_COUCH.setLever(name, value), lever, on);
+      await setLever(lever, on);
       await sleep(1200);
       await desktop.evaluate(installFramePassTimer);
       const result = await desktop.evaluate((n) => window.__FRAME_PASS_TIMER.sample({ frames: n, block: 30, modes: ['whole'], timeoutMs: 120000 }), abFrames);
@@ -343,7 +360,7 @@ try {
     try {
       for (const on of [false, true, true, false]) blocks.push(await block(on));
     } finally {
-      await desktop.evaluate((name) => window.__COT_COUCH.setLever(name, false), lever);
+      await setLever(lever, false);
     }
     const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
     const delta = (key) => {
@@ -560,6 +577,7 @@ try {
         soloEntry = await desktop.evaluate(() => ({ specId: window.__DEBUG.game.player?.specId ?? null,
           gameMode: window.__DEBUG.game.gameMode ?? 'standard' }));
       }
+      for (const lever of abLevers) await setLever(lever, false);
       report.frames[count] = await measureFrames(`${count} panes`);
       if (count > 1 && abLevers.length) {
         report.ab ??= {};

@@ -4027,6 +4027,7 @@ const couchOwner = createLazyRuntimeOwner(
       bus,
       loadHud: () => Promise.all([import('./ui/hud.ts'), import('./ui/damagePanel.ts')]).then(([hud, damagePanel]) => ({ hud, damagePanel })),
       detailFoci: (points) => currentWorld()?.setTerrainDetailFoci?.(points),
+      worldRoot: () => currentWorld()?.group ?? null,
       minimap: () => {
         const src = currentHud()?.exportMinimapBackground('image/png');
         return src ? { heightField: hfProxy, src } : null;
