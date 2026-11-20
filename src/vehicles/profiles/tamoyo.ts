@@ -8,6 +8,8 @@
 // - t3: the Tamoyo 3 as Bernardini showed it in May 1987 (the Festa da Cavalaria; Bastos' photograph): open running gear
 //   under fenders, the boxy spaced-armour turret with its vertical front plate and the concertina gun boot, the 105 mm L7A3
 //   with its fume extractor, the dischargers at the turret's rear corners, the bustle rack, the BERNARDINI plate.
+// brazil-kit-274 (owner 2026-11-20, "unique turrets"): the Tamoyo 1's turret takes the M41 family's bevelled roof edge and
+// a plan narrowing to the wedge and the bustle; the Tamoyo 3's a fuller, squarer spaced front and its bustle rack.
 // Datums: the published 6.5 m hull, 8.77 m (T1) and 8.9 m (T3) over the gun, 3.22 m and 3.29 m wide, 2.2 m and 2.35 m to
 // the turret roof (Tanks Encyclopedia, Bastos 2022); stations from Vesp's two profiles for Tanks Encyclopedia, drawn on one
 // hull at one scale (scaled on the 6.5 m hull: the nose tip 1.15 m up, a 20-degree glacis to the 1.565 m deck, the engine
@@ -264,27 +266,47 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
   // the Tamoyo 1's wedge: the roof's front edge, the wedge's foot over the gun shield, the chin's top at the front
   const T1_WEDGE = Object.freeze({ z0: 0.75, z1: 1.45, y1: 0.40, yTip: 0.32 });
   const wedgeY = (z: number): number => roof - (z - T1_WEDGE.z0) * (roof - T1_WEDGE.y1) / (T1_WEDGE.z1 - T1_WEDGE.z0);
-  /** The turret's side at height y (the slab sides lean in to the roof; the bustle from its raised floor). */
-  const sideX = (y: number, bustle: boolean): number => {
-    const f = bustle ? bustleFloor : 0.02;
-    return hwBase + (hwRoof - hwBase) * (y - f) / (roof - f);
+  // (brazil-kit-274, the owner 2026-11-20: "update the osorio 120, tamoyo 3, osorio 105 and tamoyo 3 now with unique
+  // turrets too"): the two turrets pushed apart on their records. The Tamoyo 1's is the M41 family's shape it shares
+  // (Tanks Encyclopedia: new designs on the M41's concepts): a bevelled roof edge all round and a plan that narrows to the
+  // wedge and to the bustle's rear plate. The Tamoyo 3's keeps its slab walls and gains a fuller, squarer spaced front and
+  // the bustle rack Vesp draws.
+  /** The Tamoyo 1's roof bevel (its height and its inset) and its plan: the half-width factor along the turret. */
+  const bevelH = t3 ? 0 : 0.06, bevelW = t3 ? 0 : 0.08;
+  const plan = (z: number): number => {
+    if (t3) return 1;
+    if (z < bustleZ) return 1 - (bustleZ - z) / (bustleZ - rear) * 0.18;
+    if (z > 0.20) return 1 - Math.min(1, (z - 0.20) / (front - 0.20)) * 0.22;
+    return 1;
   };
+  /** The turret's side at height y and station z (the slab sides lean in to the roof; the bustle from its raised floor). */
+  const sideX = (y: number, bustle: boolean, z = 0): number => {
+    const f = bustle ? bustleFloor : 0.02;
+    return (hwBase + (hwRoof - hwBase) * (y - f) / (roof - f)) * plan(z);
+  };
+  /** Where the flat roof ends at z (inside the Tamoyo 1's bevel). */
+  const roofEdgeX = (z: number): number => hwRoof * plan(z) - bevelW;
   const buildTamoyoTurret = (): void => {
     P.add('turret', cylY(0.92, 0.96, 0.10, P.q ? 28 : 18), 0, -0.04, 0);
     // the body: slab sides leaning in to the roof, the bustle's underside raised over the engine deck
-    const ring = (floor: number, hw0: number, hw1: number, top = roof): SectionPoint[] => [[-hw0, floor], [hw0, floor], [hw1, top], [-hw1, top]];
+    const ring = (floor: number, hw0: number, hw1: number, top = roof): SectionPoint[] => bevelH
+      ? [[-hw0, floor], [hw0, floor], [hw1, top - bevelH], [hw1 - bevelW, top], [-(hw1 - bevelW), top], [-hw1, top - bevelH]]
+      : [[-hw0, floor], [hw0, floor], [hw1, top], [-hw1, top]];
+    /** A Tamoyo 1 station: its ring at z with the plan's narrowing. */
+    const at = (z: number, floor: number, hw0: number, hw1: number, top = roof) => ({ z, ring: ring(floor, hw0 * plan(z), hw1 * plan(z), top) });
     const bodyStations = t3
       // the Tamoyo 3: the vertical front plate with chamfered corners, its top edge chamfered to the roof (Vesp's profile)
+      // (brazil-kit-274: the front fuller and squarer, its chamfers smaller and its top nearer the roof)
       ? [{ z: rear, ring: ring(bustleFloor, hwBase - 0.04, hwRoof - 0.04) }, { z: bustleZ, ring: ring(bustleFloor, hwBase, hwRoof) },
-        { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: front - 0.24, ring: ring(0.02, hwBase, hwRoof) },
-        { z: front - 0.13, ring: ring(0.04, hwBase - 0.12, hwRoof - 0.12) },
-        { z: front, ring: ring(0.06, hwBase - 0.26, hwRoof - 0.26, roof - 0.12) }]
+        { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: front - 0.18, ring: ring(0.02, hwBase, hwRoof) },
+        { z: front - 0.09, ring: ring(0.03, hwBase - 0.07, hwRoof - 0.07) },
+        { z: front, ring: ring(0.05, hwBase - 0.17, hwRoof - 0.17, roof - 0.05) }]
       // the Tamoyo 1: the long wedge over the front quarter, from the roof's edge down to a short chin under the gun
       // (Vesp's profile: the wedge falls about 0.4 m over 0.7 m; the TI-2's front photograph)
-      : [{ z: rear, ring: ring(bustleFloor, hwBase - 0.05, hwRoof - 0.05) }, { z: bustleZ, ring: ring(bustleFloor, hwBase, hwRoof) },
-        { z: bustleZ + 0.01, ring: ring(0.02, hwBase, hwRoof) }, { z: T1_WEDGE.z0, ring: ring(0.02, hwBase, hwRoof) },
-        { z: T1_WEDGE.z1, ring: ring(0.06, hwBase - 0.06, hwRoof - 0.04, T1_WEDGE.y1) },
-        { z: front, ring: ring(0.16, hwBase - 0.14, hwRoof - 0.10, T1_WEDGE.yTip) }];
+      : [at(rear, bustleFloor, hwBase, hwRoof), at((rear + bustleZ) / 2, bustleFloor, hwBase, hwRoof),
+        at(bustleZ, bustleFloor, hwBase, hwRoof), at(bustleZ + 0.01, 0.02, hwBase, hwRoof), at(0.20, 0.02, hwBase, hwRoof),
+        at(T1_WEDGE.z0, 0.02, hwBase, hwRoof), at(T1_WEDGE.z1, 0.06, hwBase - 0.04, hwRoof - 0.02, T1_WEDGE.y1),
+        at(front, 0.16, hwBase - 0.10, hwRoof - 0.06, T1_WEDGE.yTip)];
     const body = sectionSolid(bodyStations);
     body.userData.primaryStockRole = 'tamoyo-turret';
     P.add('turret', body);
@@ -311,10 +333,11 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
       const pz = t3 ? 0.30 : 0.45;
       for (const py of [0.22, 0.40]) {
         const lean = Math.atan2(hwBase - hwRoof, roof - 0.02);
-        P.add('turretDark', xform(box(0.02, 0.035, 0.30), 0, 0, 0, 0, 0, s * lean), s * (sideX(py, false) + 0.006), py, pz);
+        P.add('turretDark', xform(box(0.02, 0.035, 0.30), 0, 0, 0, 0, 0, s * lean), s * (sideX(py, false, pz) + 0.006), py, pz);
       }
-      liftEye(P, 'turretDetail', s * (hwRoof - 0.10), roof + 0.005, t3 ? front - 0.40 : T1_WEDGE.z0 - 0.12, s * 0.4);
-      liftEye(P, 'turretDetail', s * (hwRoof - 0.10), roof + 0.005, rear + 0.25, s * 2.7);
+      const ez = t3 ? front - 0.40 : T1_WEDGE.z0 - 0.12;
+      liftEye(P, 'turretDetail', s * (roofEdgeX(ez) - 0.04 - (t3 ? 0.06 : 0)), roof + 0.005, ez, s * 0.4);
+      liftEye(P, 'turretDetail', s * (roofEdgeX(rear + 0.25) - 0.04 - (t3 ? 0.06 : 0)), roof + 0.005, rear + 0.25, s * 2.7);
     }
   };
   buildTamoyoTurret();
@@ -324,19 +347,20 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     // the commander's cupola (right) with the .50 on it, its vision blocks; the gunner's sight ahead; the loader's hatch
     // (a wide, low, boxy eight-sided cupola about 0.9 m across with large vision blocks and the .50 straight on its top, as
     // Vesp draws both marks: blind critics, rounds 10 to 12, read the round drum as too small, then the raised one as tall)
-    const cx = -0.48, cz = -0.45, cr = 0.44, ch = 0.16;
-    P.addCupola('turret', cylY(cr * 0.96, cr, ch, 8), cx, roof + ch / 2, cz, 0, Math.PI / 8, 0);
+    // (the Tamoyo 1's sunk 3 cm into its roof, so its base reaches down over the bevel)
+    const cx = -0.48, cz = -0.45, cr = 0.44, ch = 0.16, cy = t3 ? 0 : -0.03;
+    P.addCupola('turret', cylY(cr * 0.96, cr, ch, 8), cx, roof + cy + ch / 2, cz, 0, Math.PI / 8, 0);
     for (let k = 0; k < 6; k++) {
       const a = (k / 6) * Math.PI * 2 + 0.3;
-      P.add('turretDetail', box(0.17, 0.09, 0.06), cx + Math.sin(a) * cr * 0.93, roof + 0.10, cz + Math.cos(a) * cr * 0.93, 0, a, 0);
-      P.add('turretGlass', box(0.13, 0.045, 0.012), cx + Math.sin(a) * (cr * 0.93 + 0.031), roof + 0.10, cz + Math.cos(a) * (cr * 0.93 + 0.031), 0, a, 0);
+      P.add('turretDetail', box(0.17, 0.09, 0.06), cx + Math.sin(a) * cr * 0.93, roof + cy + 0.10, cz + Math.cos(a) * cr * 0.93, 0, a, 0);
+      P.add('turretGlass', box(0.13, 0.045, 0.012), cx + Math.sin(a) * (cr * 0.93 + 0.031), roof + cy + 0.10, cz + Math.cos(a) * (cr * 0.93 + 0.031), 0, a, 0);
     }
-    P.addCupola('turret', cylY(cr * 0.88, cr * 0.92, 0.05, P.q ? 24 : 14), cx, roof + ch + 0.025, cz);
+    P.addCupola('turret', cylY(cr * 0.88, cr * 0.92, 0.05, P.q ? 24 : 14), cx, roof + cy + ch + 0.025, cz);
     // the .50 low on the cupola: its mounting foot on the cupola's top ring, ahead of the hatch (both of Vesp's profiles)
     const mg = FITTINGS.americanM2({ mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: 0.62, elev: 0.03, ring: false,
       shield: false, seed: 6631, working: true });
     mg.name = 'tamoyoCommanderM2';
-    mg.position.set(cx, roof + ch + 0.05, cz + 0.12);
+    mg.position.set(cx, roof + cy + ch + 0.05, cz + 0.12);
     P.turretG.add(mg);
     // the gunner's sight head ahead of the cupola (the Tamoyo 3's Ferranti FCS with its rangefinder and thermal box; the
     // Tamoyo 1's on the flat roof behind the wedge)
@@ -390,10 +414,11 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     if (!t3) {
       const z0 = -1.02, z1 = -1.86, yLo = 0.28, yHi = 0.58, out = 1.31;
       for (const s of [-1, 1] as const) {
-        const xi0 = sideX(yLo, true) - 0.01, xi1 = sideX(yHi, true) - 0.01;
+        const xi0 = sideX(yLo, true, z0) - 0.01, xi1 = sideX(yHi, true, z0) - 0.01;
+        const xr0 = sideX(yLo, true, z1) - 0.01, xr1 = sideX(yHi, true, z1) - 0.01;
         P.addEquipment('turretDetail', slab(
-          [s * xi0, yLo, z0], [s * out, yLo, z0], [s * out, yLo, z1], [s * xi0, yLo, z1],
-          [s * xi1, yHi, z0], [s * out, yHi, z0], [s * out, yHi, z1], [s * xi1, yHi, z1]));
+          [s * xi0, yLo, z0], [s * out, yLo, z0], [s * out, yLo, z1], [s * xr0, yLo, z1],
+          [s * xi1, yHi, z0], [s * out, yHi, z0], [s * out, yHi, z1], [s * xr1, yHi, z1]));
         stowage(P, 'turretCloth', rng, [[s * (xi1 + out) / 2, yHi + 0.05, (z0 + z1) / 2, out - xi1 - 0.04, 0.12, z0 - z1 - 0.06]]);
         // the net's cords over the load and down the bin's face
         for (const z of [z0 - 0.10, (z0 + z1) / 2, z1 + 0.10]) {
@@ -407,8 +432,21 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     P.addEquipment('turretDetail', box(0.46, 0.03, 0.30), 0.42, canY - 0.255, rear - 0.15);
     for (const dx of [-0.17, 0.17]) P.addEquipment('turretDetail', box(0.03, 0.30, 0.03), 0.42 + dx, canY - 0.12, rear - 0.015);
     jerryCan(P, 'turretCloth', 0.42, canY, rear - 0.16, 0);
+    if (t3) {
+      // (brazil-kit-274) the Tamoyo 3's bustle rack across the rear plate (Vesp's profile, the record's "bustle rack"): rails
+      // and uprights on a mesh floor, the cans' bracket inside it
+      const rx = hwBase - 0.08, rz = rear - 0.36, lo = bustleFloor + 0.01, hi = 0.50;
+      const rail = (a: readonly number[], b: readonly number[]): void => bar('turretOpenLattice', a, b, 0.013);
+      for (const y of [lo, (lo + hi) / 2, hi]) rail([-rx, y, rz], [rx, y, rz]);
+      for (const sx of [-1, 1] as const) for (const y of [lo, hi]) rail([sx * rx, y, rear - 0.004], [sx * rx, y, rz]);
+      for (let k = 0; k <= 6; k++) rail([-rx + 2 * rx * k / 6, lo, rz], [-rx + 2 * rx * k / 6, hi, rz]);
+      for (let k = 1; k < 5; k++) P.addEquipment('turretOpenLattice', box(2 * rx, 0.008, 0.008), 0, lo + (hi - lo) * k / 5, rz);
+      for (let k = 1; k < 24; k++) if (k % 4) P.addEquipment('turretOpenLattice', box(0.008, hi - lo, 0.008), -rx + 2 * rx * k / 24, (lo + hi) / 2, rz);
+      P.addEquipment('turretOpenLattice', box(2 * rx, 0.012, rear - rz), 0, lo - 0.008, (rear + rz) / 2);
+    }
     P.turretG.userData.tamoyoTurretReceipt = {
-      revision: 'tamoyo-266-r8', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 12 : 8,
+      revision: 'tamoyo-274-r9', mark, roofY: roof, front, rear, sideSkirts: !t3, dischargers: t3 ? 12 : 8,
+      roofBevel: bevelH > 0, bustleRack: t3,
     };
   };
   buildTamoyoTurretFittings();

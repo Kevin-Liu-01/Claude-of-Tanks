@@ -38,3 +38,16 @@ Encyclopedia OSXAwcQ.png): spare links on the glacis, guarded twin lamps, mirror
 
 Welded steel (the Tamoyo 1: hull front 40 mm, sides 19 mm, turret front 40, shield 50, sides 25 mm); the Tamoyo 3's
 composite and spaced turret front and front-hull cavity armour at a light MBT's footing (no published figure).
+
+## Round brazil-kit-274 (2026-11-20): a turret of its own each
+
+Owner, 2026-11-20 (via Main): "update the osorio 120, tamoyo 3, osorio 105 and tamoyo 3 now with unique turrets too"
+(the second "tamoyo 3" read as the Tamoyo 1). Both turrets stood on one loft and read alike; they are pushed apart on
+their own records, guns, trunnions and armour unchanged.
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 1 | Tamoyo 1 turret plan | one width from the bustle to the wedge | narrowing 22 % to the wedge's tip and 18 % to the bustle's rear plate: the M41 family's shape it shares (Tanks Encyclopedia: new designs on the M41's concepts) |
+| 2 | Tamoyo 1 roof edge | a sharp slab edge | a 6 cm by 8 cm bevel all round; the cupola sunk 3 cm so its base covers the bevel |
+| 3 | Tamoyo 3 front | chamfered 0.26 m a side, its top 0.12 m under the roof | chamfered 0.17 m, its top 0.05 m under the roof: a fuller, squarer spaced front |
+| 4 | Tamoyo 3 bustle | the rear plate and the cans' bracket | the bustle rack Vesp draws across the rear plate (rails, uprights, a mesh floor), the bracket inside it |

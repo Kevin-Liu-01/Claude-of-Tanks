@@ -88,6 +88,13 @@ assert.deepEqual([p1.rightGrid, p2.rightGrid, p1.leftBasket, p2.leftBasket, p1.g
   ['flat', 'basket', false, false, 'black', 'canvas'], 'the P.1\'s flat grid and black boot, the P.2\'s basket; no left basket');
 assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt('tamoyo3', 'tamoyoTurretReceipt').sideSkirts], [true, false],
   'the Tamoyo 1 on its side plates, the Tamoyo 3 on open gear');
+// (brazil-kit-274, owner 2026-11-20: a turret of its own each) the Tamoyo 1's bevelled, tapering M41-family turret, the
+// Tamoyo 3's square slab turret with its bustle rack
+{
+  const t1r = receipt('tamoyo1', 'tamoyoTurretReceipt'), t3r = receipt('tamoyo3', 'tamoyoTurretReceipt');
+  assert.deepEqual([t1r.roofBevel, t3r.roofBevel, t1r.bustleRack, t3r.bustleRack], [true, false, false, true],
+    'the Tamoyo 1\'s bevelled roof, the Tamoyo 3\'s bustle rack');
+}
 const t3 = receipt('ee_t3_osorio', 'osorioTurretReceipt'), t4 = receipt('ee_t4_osorio', 'osorioTurretReceipt');
 assert.deepEqual([p2.armourKit, t3.armourKit, t4.armourKit, t3.activeProtection, t4.activeProtection, t3.remoteStation],
   ['none', 'front', 'full', false, true, true], 'the fictional EE-T3\'s front kit and remote station, the EE-T4\'s full kit and APS');
