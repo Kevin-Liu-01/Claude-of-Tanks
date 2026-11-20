@@ -100,8 +100,9 @@ const SYSTEMS: PadControl[] = [
 const SCOPE_KEYS: PadControl[] = [
   tap('sniperToggle', 'scope', 'pad.scope', { lit: 'sniper' }),
   hold('freeLook', 'freeLook', 'pad.look'),
-  tap('zoomOut', 'zoomOut', 'pad.zoomOut', { optional: true }),
+  // (the keys fill from the trigger's side, so zoom in comes first to read − + across)
   tap('zoomIn', 'zoomIn', 'pad.zoomIn', { optional: true }),
+  tap('zoomOut', 'zoomOut', 'pad.zoomOut', { optional: true }),
 ];
 
 const STRIKE_GLYPHS = ['strikeRecon', 'strikeArtillery', 'strikeStrafe', 'strikeBomb', 'modeAc130'] as const;
@@ -128,7 +129,7 @@ export const PAD_LAYOUTS: Readonly<Record<PadMode, PadModeLayout>> = Object.free
     left: [],
     right: [cmd('strikeClose', 'strikeClose', 'close', 'airSupport.lower', undefined, { short: 'pad.key.lower' })],
     stickKeys: [hold('handbrake', 'handbrake', 'pad.brake')],
-    fireKeys: [tap('zoomOut', 'zoomOut', 'pad.zoomOut'), tap('zoomIn', 'zoomIn', 'pad.zoomIn')],
+    fireKeys: [tap('zoomIn', 'zoomIn', 'pad.zoomIn'), tap('zoomOut', 'zoomOut', 'pad.zoomOut')],
     deck: STRIKE_NAMES.map((name, n) => cmd(`strike${n + 1}`, 'strikePick', STRIKE_GLYPHS[n]!, name, n)),
   },
   // the drone (sim/aerialCombat.ts): the left stick flies it (back is slower, sideways strafes), the right thumb looks and
@@ -154,7 +155,7 @@ export const PAD_LAYOUTS: Readonly<Record<PadMode, PadModeLayout>> = Object.free
       tap('supplyHeal', 'medkit', 'flight.supply.heal', { optional: true, short: 'pad.key.healDrop' }),
     ],
     stickKeys: [],
-    fireKeys: [tap('zoomOut', 'zoomOut', 'pad.zoomOut'), tap('zoomIn', 'zoomIn', 'pad.zoomIn')],
+    fireKeys: [tap('zoomIn', 'zoomIn', 'pad.zoomIn'), tap('zoomOut', 'zoomOut', 'pad.zoomOut')],
     deck: 'shells',
   },
   // Watch (game/watchController.ts): the left stick moves the spectator drone, the right thumb looks; climb, descend and
@@ -176,7 +177,7 @@ export const PAD_LAYOUTS: Readonly<Record<PadMode, PadModeLayout>> = Object.free
       cmd('watchSeat', 'watchSeat', 'player', 'pad.watch.take', undefined, { optional: true }),
     ],
     stickKeys: [],
-    fireKeys: [tap('zoomOut', 'zoomOut', 'pad.watch.slower'), tap('zoomIn', 'zoomIn', 'pad.watch.faster')],
+    fireKeys: [tap('zoomIn', 'zoomIn', 'pad.watch.faster'), tap('zoomOut', 'zoomOut', 'pad.watch.slower')],
     deck: null,
   },
   // destroyed: nothing drives; the killcam's replay can be skipped, and a spectator's camera steps from tank to tank

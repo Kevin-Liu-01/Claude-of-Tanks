@@ -313,6 +313,9 @@ export interface PadStatus {
    *  (padLayout.ts PAD_ACTS bits): a vehicle's kit, a mode's grants. */
   m?: PadMode;
   a?: number;
+  /** Couch mode's briefing, while the big screen shows it (src/game/couchBriefing.ts): its step `s` of `n`, and whether
+   *  this seat is ready (`r`). The phone shows its Ready and Skip over the panel. */
+  b?: { s: number; n: number; r: boolean };
 }
 
 export type PadCtlMessage =
@@ -322,6 +325,8 @@ export type PadCtlMessage =
   | { k: 'tap'; a: PadTapAction }
   /** A command no input action names (PAD_COMMANDS); `n` is strikePick's call-in. */
   | { k: 'cmd'; c: PadCommand; n?: number }
+  /** A seat's Ready on couch mode's briefing; `skip`: ready, and the big screen goes to the briefing's last step. */
+  | { k: 'ready'; skip?: true }
   | { k: 'pause' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number; d: number; apply: number }
@@ -411,6 +416,7 @@ export function readPadCtl(text: string): PadCtlMessage | null {
       return Number.isInteger(record.n) && Number(record.n) >= 0 && Number(record.n) < PAD_STRIKE_PICKS
         ? { k: 'cmd', c: 'strikePick', n: Number(record.n) } : null;
     }
+    case 'ready': return record.skip === true ? { k: 'ready', skip: true } : { k: 'ready' };
     case 'pause': return { k: 'pause' };
     case 'ping': return Number.isFinite(record.t) ? { k: 'ping', t: Number(record.t) } : null;
     case 'pong':
@@ -444,7 +450,15 @@ function isStatus(value: unknown): value is PadStatus {
     (s.kmh === undefined || Number.isFinite(s.kmh)) && (s.topKmh === undefined || Number.isFinite(s.topKmh)) &&
     (s.lock === undefined || typeof s.lock === 'boolean') &&
     (s.m === undefined || (typeof s.m === 'string' && MODES.has(s.m))) &&
-    (s.a === undefined || (Number.isInteger(s.a) && (s.a as number) >= 0 && (s.a as number) < 2 ** 31));
+    (s.a === undefined || (Number.isInteger(s.a) && (s.a as number) >= 0 && (s.a as number) < 2 ** 31)) &&
+    (s.b === undefined || isBrief(s.b));
+}
+
+function isBrief(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const b = value as Record<string, unknown>;
+  return Number.isInteger(b.s) && Number.isInteger(b.n) && (b.n as number) > 0 && (b.n as number) <= 8 && (b.s as number) >= 0
+    && (b.s as number) < (b.n as number) && typeof b.r === 'boolean';
 }
 
 // ---- The `axes` frame (binary, 24 bytes) -------------------------------------------------------------------------

@@ -52,6 +52,17 @@ assert.deepEqual(readPadCtl('{"k":"down","a":"fire","s":70000}'), { k: 'down', a
 assert.equal(readPadCtl('{"k":"down","a":"leaveBattle","s":1}'), null, 'only the phone\'s hold actions');
 assert.equal(readPadCtl('{"k":"tap","a":"settingsMenu"}'), null, 'only the phone\'s tap actions');
 assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq');
+// couch mode's briefing (pad-controls-274): a seat's Ready and Skip, and the briefing on the status
+assert.deepEqual(readPadCtl('{"k":"ready"}'), { k: 'ready' });
+assert.deepEqual(readPadCtl('{"k":"ready","skip":true}'), { k: 'ready', skip: true });
+{
+  const idle = { battle: false, alive: false, paused: false, sniper: false, slot: 0, shells: [], reloadS: 0, reloadTotalS: 0 };
+  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: { ...idle, b: { s: 2, n: 3, r: true } } }))?.s.b, { s: 2, n: 3, r: true });
+  for (const b of [{ s: 3, n: 3, r: true }, { s: 0, n: 0, r: false }, { s: 0, n: 3 }, { s: -1, n: 3, r: false }, 'brief']) {
+    assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...idle, b } })), null, `a briefing ${JSON.stringify(b)} is refused`);
+  }
+  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'cmd', c: 'killcamSkip' })), { k: 'cmd', c: 'killcamSkip' });
+}
 
 // the controls guide's picture of the phone: the game screen draws it, so it crosses the wire whole or not at all, and
 // it fits one relay payload (a longer one is invalid to the actor and would end the pairing). The reader checks its

@@ -61,7 +61,7 @@ const until = async (test, label, ms = 3000) => {
 };
 
 /** A desktop receiver on a socket stand-in: the test speaks for the pairing service and the phone (over the relay). */
-function pairedReceiver() {
+function pairedReceiver(ports = {}) {
   const listeners = { open: [], message: [], close: [] };
   const sent = [];
   const socket = {
@@ -75,6 +75,7 @@ function pairedReceiver() {
     input: { setVirtualMove() {}, addVirtualAim() {}, pressVirtual() {}, releaseVirtual() {}, tapVirtual() {} },
     source: () => null,
     togglePause() {},
+    ...ports,
   }, undefined, { createSocket: () => socket, remember: false });
   socket.readyState = 1;
   for (const listener of listeners.open) listener({});
@@ -140,7 +141,7 @@ const l = encodePadTour(layout);
   pair.receiver.disconnect();
 }
 
-// ---- a couch lobby: another phone's guide replaces this one's drawing; this link going away leaves the other's alone ---
+// ---- two pairings at once: another phone's guide replaces this one's drawing; this link going away leaves the other's alone
 {
   const one = pairedReceiver();
   const two = pairedReceiver();
@@ -152,6 +153,30 @@ const l = encodePadTour(layout);
   assert.equal(screenOpen(), false);
   one.receiver.disconnect();
   two.receiver.disconnect();
+}
+
+// ---- a couch seat (pad-controls-274; Kevin 2026-11-20: "the tutorial popup that happens in couch mode is terrible"): no
+// phone's guide is mirrored over the couch lobby; the room's briefing rides the seat's status between battles, and the
+// phone's Ready and Skip reach the seat's port
+{
+  const readies = [];
+  let brief = { s: 1, n: 3, r: false };
+  const seat = pairedReceiver({ mirrorTour: false, brief: () => brief, ready: (skip) => readies.push(skip) });
+  seat.fromPhone({ k: 'tour', on: true, l, ms: PAD_TOUR_MS });
+  assert.equal(screenOpen(), false, 'a couch seat\'s phone guide is not drawn on the big screen');
+  assert.equal(seat.receiver.tour, 'closed');
+  await until(() => seat.toPhone().some((m) => m.k === 'status' && m.s.b), 'the briefing rides the status');
+  assert.deepEqual(seat.toPhone().find((m) => m.k === 'status' && m.s.b).s.b, { s: 1, n: 3, r: false });
+  assert.equal(seat.toPhone().find((m) => m.k === 'status' && m.s.b).s.battle, false, 'between battles only');
+  seat.fromPhone({ k: 'ready' });
+  seat.fromPhone({ k: 'ready', skip: true });
+  assert.deepEqual(readies, [false, true], 'Ready and Skip reach the seat (no battle needed)');
+  brief = undefined;
+  await wait(1100);
+  const last = seat.toPhone().filter((m) => m.k === 'status').at(-1);
+  assert.equal(last.s.b, undefined, 'the briefing leaves the status when it ends');
+  seat.receiver.disconnect();
+  assert.equal(readPadCtl('{"k":"ready","skip":"yes"}')?.skip, undefined, 'a skip is true or absent');
 }
 
 // ---- the wire: the time left travels with the picture, bounded, and still fits one relay payload ------------------------

@@ -67,6 +67,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'context-info': { screen: 'garage', owner: 'src/ui/contextInfo.ts', box: '.cot-modal', modal: true, open: {} },
   // couch mode (docs/COUCH-MODE.md): the lobby's QR, code and seats over the Deploy screen
   'couch-lobby': { screen: 'deploy', owner: 'src/ui/couchLobby.ts', box: '.cot-modal', modal: true, open: {} },
+  // its Start: the room's briefing, centred over the whole screen until GO (pad-controls-274)
+  'couch-briefing': { screen: 'deploy', owner: 'src/ui/couchBriefing.ts', box: '.cot-modal', modal: true, open: {} },
   'modal': { screen: 'garage', owner: 'src/ui/modal.ts', box: '.cot-modal', modal: true, open: {} },
 
   // ---- Deploy

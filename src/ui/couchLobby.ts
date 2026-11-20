@@ -19,6 +19,7 @@ import { COUCH_VIEWS, type CouchBattle, type CouchView } from '../game/couchSeat
 import { couchScreenPlan } from '../game/couchPanes.ts';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
 import type { CouchSides } from '../sim/matchRuleset.ts';
+import { openCouchBriefing } from './couchBriefing.ts';
 
 const LOBBY_CSS = `
 .cot-couch{display:grid;grid-template-columns:auto 1fr;gap:var(--s6);align-items:center;}
@@ -141,12 +142,31 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
   const start = button(footer, 'primary', t('couch.start'));
   end.addEventListener('click', () => { runtime.close(); modal?.close(); });
   reopen.addEventListener('click', () => lobby.setOpen(true));
-  // (round 8 Y4 s3-09) the runtime's start edge: the join window closes, then the seats here deploy
+  // Start opens the room's briefing, centred over the whole screen (Kevin 2026-11-20: "have it be centered in screen when
+  // i press start and go through a couple things then go!"): the join window closes, the briefing walks the seats, the
+  // phone and the sides, and GO (or every phone's Ready) is the runtime's start edge (round 8 Y4 s3-09): the seats here
+  // deploy. Escape or Back on the first step comes back here.
   start.addEventListener('click', () => {
-    runtime.startBattle((inPlay) => {
-      modal?.close();
-      return request.start({ seats: inPlay, sides, view: screen, names: inPlay.map((n) => t('pad.seat', { n })) });
-    }, screen);
+    const inPlay = runtime.seatsInPlay();
+    if (!inPlay.length) return;
+    lobby.setOpen(false);
+    const asked = togetherOnly ? 'together' : sides;
+    const view = screen;
+    detach?.();
+    detach = null;
+    modal?.close({ restoreFocus: false });
+    const handle = openCouchBriefing({
+      seats: inPlay, sides: asked, view, trigger: request.trigger,
+      onGo: () => {
+        runtime.setBriefing(null);
+        return runtime.startBattle((seats) => request.start({ seats, sides: asked, view, names: seats.map((n) => t('pad.seat', { n })) }), view);
+      },
+      onBack: () => {
+        runtime.setBriefing(null);
+        if (request.ticket.current()) openCouchLobby(runtime, request);
+      },
+    });
+    runtime.setBriefing(handle);
   });
 
   let shownCode = '';

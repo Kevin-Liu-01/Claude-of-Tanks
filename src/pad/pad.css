@@ -139,11 +139,26 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
   background:var(--pad-fire-dim);box-shadow:var(--pad-fire-shade);color:var(--ink-3);}
 .pad-fire.is-down{transform:scale(.95);box-shadow:var(--pad-fire-shade);}
 /* the scope, look and zoom keys stand in a pair of rows on the sight's inner side of the trigger */
-.pad-fire-keys{position:absolute;left:var(--s2);bottom:var(--s2);display:grid;grid-template-columns:repeat(2,52px);gap:6px;}
+/* (stacked over the trigger, two to a row from its side, the scope nearest it: beside it they ran under its collar) */
+.pad-fire-keys{position:absolute;right:calc(var(--s2) + 1px);bottom:calc(var(--s2) + 120px);display:flex;flex-flow:row-reverse wrap-reverse;
+  gap:6px;width:110px;}
 .pad-fire-keys .pad-thumb-key{width:52px;height:52px;min-height:52px;padding:0;border-radius:50%;}
 .pad-fire-keys .pad-word{display:none;}
 .pad-ctl[data-hand='left'] .pad-trigger{right:auto;left:var(--s2);}
-.pad-ctl[data-hand='left'] .pad-fire-keys{left:auto;right:var(--s2);}
+.pad-ctl[data-hand='left'] .pad-fire-keys{right:auto;left:calc(var(--s2) + 1px);flex-flow:row wrap-reverse;}
+
+/* couch mode's briefing (padPage.ts): over the panel while the big screen shows it, Ready (its lamp lit once sent) and
+   Skip as the two biggest keys on the phone */
+.pad-brief{position:absolute;inset:0;z-index:var(--z-lift);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:var(--s3);background:var(--pad-panel);}
+.pad-brief-step{margin:0;font-family:var(--font-mono);font-size:var(--fs-14);color:var(--ink-3);}
+.pad-brief-note{margin:0;font-size:var(--fs-16);color:var(--ink-2);text-align:center;}
+.pad-brief-keys{display:flex;gap:var(--s4);}
+.pad-brief-keys .pad-key{flex-direction:column;width:min(220px,36cqw);height:132px;gap:var(--s1);}
+.pad-brief-keys .pad-word{font-size:var(--fs-18);}
+.pad-brief-ready .pad-lamp{position:absolute;left:var(--s3);right:var(--s3);top:6px;height:3px;border-radius:2px;background:var(--pad-lamp-off);}
+.pad-brief-ready[aria-pressed='true']{color:var(--accent-hi);}
+.pad-brief-ready[aria-pressed='true'] .pad-lamp{background:var(--pad-lamp-on);box-shadow:var(--pad-lamp-glow);}
 
 /* the controls' guide (padPage.ts showTour): a ring on each control and its name beside it over a dimmed panel that the
    thumbs work through, Skip with its ten seconds running out under it; a ghost thumb shows the throttle's and the

@@ -147,6 +147,13 @@ export interface PadReceiverPorts {
   /** What no input action names (Watch's tank picks, the call-ins, the killcam's skip): the desktop's own calls. A seat
    *  without it (a couch seat) is never offered those keys. */
   command?: PadCommandPort;
+  /** Couch mode's briefing as this seat's phone shows it (the status's `b`), while the big screen shows it. */
+  brief?(): PadStatus['b'];
+  /** This seat's Ready (or Skip) on that briefing. */
+  ready?(skip: boolean): void;
+  /** False for a couch seat: the phone's controls guide stays on the phone (the room's briefing is the big screen's), so
+   *  no phone's guide is mirrored over the couch lobby. */
+  mirrorTour?: boolean;
   /** The battle's event bus (its `on`), for the cues the phone feels (padCues.ts); without it the phone feels only its
    *  own presses. */
   listen?(type: string, listener: (payload: unknown) => void): () => void;
@@ -290,7 +297,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     onCtl(message) {
       if (message.k === 'ping') link.sendCtl({ k: 'pong', t: message.t, d: performance.now(), apply: Math.round(applyMs * 10) / 10 });
       else if (message.k === 'pong') publish({ rttMs: Math.max(0, performance.now() - message.t) });
+      // the briefing's Ready comes between battles, so it is heard whether or not the seat drives
+      else if (message.k === 'ready') ports.ready?.(message.skip === true);
       else if (message.k === 'tour') {
+        if (ports.mirrorTour === false) return;
         // the phone's guide opens here too, battle or not; Skip here ends it on the phone
         const layout = message.on && message.l ? decodePadTour(message.l) : null;
         // a picture that does not decode is refused whole (the reader checked only its shape)
@@ -347,7 +357,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     driving = nowDriving;
     if (view.state.kind !== 'live') return;
     // the phone's readout: on change, at most 5 a second (one on the billed relay), and a heartbeat every 2 s
-    const status = JSON.stringify(padStatusOf(source && hidden ? { ...source, paused: true } : source, locked) ?? IDLE_STATUS);
+    const base = padStatusOf(source && hidden ? { ...source, paused: true } : source, locked) ?? IDLE_STATUS;
+    // a couch seat's briefing rides its status between battles (never over one)
+    const brief = base.battle ? undefined : ports.brief?.();
+    const status = JSON.stringify(brief ? { ...base, b: brief } : base);
     const gap = now - lastStatusAt;
     if ((status !== lastStatus && gap >= (relay ? 1000 : 200)) || gap >= 2000) {
       if (link.sendCtl({ k: 'status', s: JSON.parse(status) as PadStatus })) { lastStatus = status; lastStatusAt = now; }

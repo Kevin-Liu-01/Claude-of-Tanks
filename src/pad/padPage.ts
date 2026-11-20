@@ -151,6 +151,14 @@ const ctl = html(`<section class="pad-ctl" hidden data-mode="idle">
       <button class="pad-key" type="button" data-close>${esc(t('pad.opt.close'))}</button>
     </div>
   </dialog>
+  <div class="pad-brief" hidden role="group">
+    <p class="pad-brief-step num" aria-live="polite"></p>
+    <p class="pad-brief-note">${esc(t('pad.brief.note'))}</p>
+    <div class="pad-brief-keys">
+      <button class="pad-key pad-brief-ready" type="button" data-brief="ready" aria-pressed="false"><i class="pad-lamp" aria-hidden="true"></i>${icon('check', { size: 28 })}<span class="pad-word">${esc(t('pad.brief.ready'))}</span></button>
+      <button class="pad-key pad-brief-skip" type="button" data-brief="skip">${icon('chevronRight', { size: 28 })}<span class="pad-word">${esc(t('pad.brief.skip'))}</span></button>
+    </div>
+  </div>
   <div class="pad-tour" hidden><button class="pad-key pad-tour-skip" type="button">${esc(t('pad.tour.skip'))}<i class="pad-tour-clock" aria-hidden="true"></i></button></div>
 </section>`);
 const end = html(`<section class="pad-end" hidden>
@@ -184,6 +192,9 @@ const fireButton = $<HTMLButtonElement>('.pad-fire');
 const ringHalves = [...ctl.querySelectorAll<HTMLElement>('.pad-ring-half i')];
 const tour = $<HTMLElement>('.pad-tour');
 const options = $<HTMLDialogElement>('.pad-opts');
+const briefOverlay = $<HTMLElement>('.pad-brief');
+const briefStep = $<HTMLElement>('.pad-brief-step');
+const briefReady = $<HTMLButtonElement>('.pad-brief-ready');
 ctl.dataset.hand = settings.hand;
 
 function show(screen: 'join' | 'controller' | 'ended'): void {
@@ -531,6 +542,10 @@ const triggerFeel = (): PadBuzz => {
 // FIRE is the trigger in every mode that has one (the binoculars' CALL too: the desktop's fire calls the strike)
 press(fireButton, () => hold('fire', true), () => hold('fire', false), triggerFeel);
 press($<HTMLElement>('[data-pause]'), () => link?.sendCtl({ k: 'pause' }));
+// couch mode's briefing (the big screen's, between Start and GO): this seat's Ready, or Skip (ready, and the screen goes
+// to the briefing's last step)
+press(briefReady, () => link?.sendCtl({ k: 'ready' }));
+press($<HTMLElement>('.pad-brief-skip'), () => link?.sendCtl({ k: 'ready', skip: true }));
 
 /** A key of the layout: its glyph over its word, a lamp when it lights, and what it sends while a thumb is on it. */
 function keyFor(control: PadControl, kind: 'col' | 'deck' | 'thumb'): HTMLButtonElement {
@@ -887,6 +902,12 @@ function paintStatus(next: PadStatus): void {
     if (!shell.unlimited && shell.count <= 0) button.dataset.empty = ''; else delete button.dataset.empty;
   });
   scoped = next.sniper;
+  // the room's briefing stands over the panel while the big screen shows it (never in a battle: the desktop sends none)
+  briefOverlay.hidden = !next.b || next.battle;
+  if (next.b && !next.battle) {
+    briefStep.textContent = t('pad.brief.step', { n: next.b.s + 1, total: next.b.n });
+    briefReady.setAttribute('aria-pressed', String(next.b.r));
+  }
   // the keys that light: the scope while it is in, the lock while it holds a target
   for (const key of ctl.querySelectorAll<HTMLElement>('[data-lit]')) {
     key.setAttribute('aria-pressed', String(key.dataset.lit === 'sniper' ? next.sniper : !!next.lock));
@@ -989,7 +1010,8 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     onCtl(message) {
       if (message.k === 'cue') feelCue(message.c, message.m);
       else if (message.k === 'tour') { if (!message.on) endTour('screen'); }
-      else if (message.k === 'status') { paintStatus(message.s); if (!toured()) showTour(); }
+      // a couch seat's phone (a lobby seat) leaves its guide to the room's briefing on the big screen
+      else if (message.k === 'status') { paintStatus(message.s); if (!toured() && !link?.seat) showTour(); }
       else if (message.k === 'pong') {
         rttMs = Math.max(0, performance.now() - message.t);
         if (debug) { debug.rttMs = rttMs; debug.applyMs = message.apply; }
