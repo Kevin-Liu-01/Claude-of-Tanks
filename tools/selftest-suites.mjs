@@ -1098,6 +1098,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
     // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
     'src/engine/cameraViewRoundTrip.selftest.mjs',
+    // cursor-aim-pan-274: cursor aim (no pointer lock) pans the chase view and the sight at the screen edge; lock and touch never
+    'src/engine/cursorEdgePan.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull

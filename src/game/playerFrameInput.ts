@@ -30,6 +30,8 @@ interface FrameInputPort {
   virtualActive(): boolean;
   consumeMouseDelta(out: Point2, dtSeconds: number, sniper: boolean): Point2;
   getCursorNdc(out: Point2): Point2;
+  /** Optional: a port without it keeps the cursor on the page. */
+  isCursorOnPage?(): boolean;
   getSettings(): Pick<InputSettings, 'rmbMode'>;
   isDown(actionId: ActionId): boolean;
   /** Hold-or-toggle latches end when the player can no longer drive (paused, kill cam, wrecked, out of battle). */
@@ -60,6 +62,8 @@ export interface CameraFrameInput {
   cursorAim: boolean;
   cursorX: number;
   cursorY: number;
+  /** cursor-aim-pan-274: cursor aim with the cursor on the page; the rig pans the view at the screen edge. */
+  cursorPan: boolean;
   autoAimPoint: Point3 | null;
 }
 
@@ -108,6 +112,7 @@ export function createPlayerFrameInput({
     cursorAim: false,
     cursorX: 0,
     cursorY: 0,
+    cursorPan: false,
     autoAimPoint: null,
   };
   let wheelStep = 0;
@@ -165,6 +170,7 @@ export function createPlayerFrameInput({
 
   function updateCursorAim(sample: PlayerFrameSample, cursorAim: boolean): void {
     camera.cursorAim = sample.inBattle && !sample.paused && !sample.cameraLocked && cursorAim;
+    camera.cursorPan = camera.cursorAim && input.isCursorOnPage?.() !== false;
     if (!camera.cursorAim) return;
     input.getCursorNdc(cursorNdc);
     camera.cursorX = cursorNdc.x;
