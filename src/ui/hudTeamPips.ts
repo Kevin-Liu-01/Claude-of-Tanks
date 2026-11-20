@@ -95,7 +95,9 @@ interface TeamPipsRuntime {
    * The rosters as the HUD tallies them; `ownTeam` is the player's side. `ringId` rings one more tank than the player's
    * (a watched battle's ridden tank, on whichever side it fights). Writes only what changed.
    */
-  updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId?: string | null): void;
+  /** `isOwn`: whether a tank is the HUD's own (hud.ts isOwnTank: a couch pane's seat); the entity's player flag by default. */
+  updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId?: string | null,
+    isOwn?: (tank: PipTank) => boolean): void;
   /** The mode's zone and sector markers (the rest are ignored). */
   updateSectors(markers: readonly ObjectiveMarker[]): void;
 }
@@ -133,17 +135,18 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
     return pip;
   }
 
-  function updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId: string | null = null): void {
+  function updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId: string | null = null,
+    isOwn: (tank: PipTank) => boolean = (tank) => !!tank.isPlayer): void {
     pass++;
     let own = 0, enemy = 0;
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      const ally = tank.team === ownTeam || tank.id === playerId || !!tank.isPlayer;
+      const ally = tank.team === ownTeam || tank.id === playerId || isOwn(tank);
       if (ally) own++; else enemy++;
       let pip = pips.get(tank.id);
       // a tank that changed sides (a lobby reshuffle) takes a new pip on its new side
       if (pip && pip.own !== ally) { pip.node.remove(); pips.delete(tank.id); pip = undefined; }
-      const me = !!tank.isPlayer || (ringId != null && tank.id === ringId);
+      const me = isOwn(tank) || (ringId != null && tank.id === ringId);
       pip ??= createPip(tank, ally, me);
       if (pip.me !== me) { pip.node.classList.toggle('me', me); pip.me = me; }
       pip.seen = pass;

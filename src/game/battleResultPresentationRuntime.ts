@@ -20,7 +20,7 @@ interface ResultGame {
   timeS: number;
   player?: ResultPlayer | null;
   /** The live match ruleset; a non-null respawn timer means a destroyed player comes back at spawn. */
-  ruleset?: { respawnS?: number | null } | null;
+  ruleset?: { respawnS?: number | null; couch?: unknown } | null;
 }
 
 interface ResultKillcam {
@@ -325,6 +325,11 @@ export function createBattleResultPresentationRuntime({
     // Reviving modes (owner 2026-09-16: "it should 3 2 1 and you're back at spawn") revive a destroyed player
     // at spawn; both branches below read the same two facts.
     const revives = game.ruleset?.respawnS != null;
+    // (couch-split-274) a couch battle's player is seat 1's tank, one of several on one screen: its death is that seat's
+    // own, so no death beat, death replay or spectate hand-off takes the room's screen from the other seats (a split pane
+    // holds its own wreck, src/app/couchPaneViews.ts; the shared camera keeps framing the living seats). Before, seat 1's
+    // death replay drew over every pane. The verdict's final-kill replay is still the room's.
+    const couch = !!game.ruleset?.couch;
     const destroyed = !!game.player?.combat?.destroyed;
     if (reviveOwed && !destroyed) rearmDeathCam();
     if (result && !endShown) {
@@ -343,7 +348,7 @@ export function createBattleResultPresentationRuntime({
         // mid-battle death replay, so the verdict is the only chance for one — and it belongs to a player who
         // is dead when the battle ends. A revived player alive at the end gets the ordinary result cinematic.
         // Non-reviving modes keep their flow unchanged. The final-kill replay (any shooter) is never barred.
-        const deathReplayBarred = result === 'defeat' && revives && !destroyed;
+        const deathReplayBarred = (result === 'defeat' && revives && !destroyed) || couch;
         armEnding(result, freshKill, !deathCamShown && !deathReplayBarred);
       }
     } else if (!result) {
@@ -353,7 +358,7 @@ export function createBattleResultPresentationRuntime({
     // Reviving modes: a destroyed player keeps the live chase view and the pointer lock while the HUD counts
     // down; no death cam, no kill-cam replay, no post-replay orbit. The mode revives the entity at spawn and
     // the camera follows it.
-    if (!result && destroyed && !deathCamShown && !revives) {
+    if (!result && destroyed && !deathCamShown && !revives && !couch) {
       deathCamShown = true;
       // Keep capture through the death beat and spectator handoff. Esc remains
       // the player's explicit release; a final result still releases above.

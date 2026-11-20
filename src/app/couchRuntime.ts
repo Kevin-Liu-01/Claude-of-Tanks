@@ -23,7 +23,7 @@ import type { CouchSeatControls, CouchSeatInput, CouchSession, CouchView } from 
 import { createCouchPaneViews } from './couchPaneViews.ts';
 import type { CouchPaneSeat, CouchPaneViewPorts, CouchPaneViews } from './couchPaneViews.ts';
 import { setCouchTier } from '../engine/quality.ts';
-import { couchPaneAreaFraction, couchPaneDetail, couchSplitCapacity } from '../game/couchPanes.ts';
+import { couchScreenPlan, type CouchScreenPlan } from '../game/couchPanes.ts';
 import { solveCouchPose } from '../game/couchCamera.ts';
 import type { CouchPoint } from '../game/couchCamera.ts';
 import type { CouchRules } from '../sim/matchRuleset.ts';
@@ -140,26 +140,32 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
   let panes: CouchPaneViews | null = null;
   let panesFor: CouchSession<E> | null = null;
   const paneSeats: CouchPaneSeat[] = [];
+  /** The screen the panes divide: the canvas's size (the panes' own measure), else the window's. */
+  const screenSize = (): { width: number; height: number } => {
+    const canvas = ports.paneViews?.canvas();
+    const width = canvas?.clientWidth || (typeof innerWidth === 'number' ? innerWidth : 1920);
+    const height = canvas?.clientHeight || (typeof innerHeight === 'number' ? innerHeight : 1080);
+    return { width, height };
+  };
+  // the screen's plan (game/couchPanes.ts couchScreenPlan, the one owner of split or shared, the panes and their detail):
+  // read every frame and for every hull, solved again only when the ask, the seats or the screen change
+  let planned: CouchScreenPlan | null = null;
+  let planKey = '';
+  const planFor = (asked: 'split' | 'shared', seats: number): CouchScreenPlan => {
+    const { width, height } = screenSize();
+    const key = `${asked}:${seats}:${width}x${height}`;
+    if (key !== planKey || !planned) { planKey = key; planned = couchScreenPlan(asked, seats, width, height); }
+    return planned;
+  };
   const splitActive = (): boolean => {
     const session = ports.game.couch;
     // (Kevin, 2026-11-11: "dont squish the uis") never more panes than the screen's panes hold the HUD's core at its solo
     // size: past that the battle shows the shared camera (the lobby offers only Shared then)
-    return !!session && session.view === 'split' && !!ports.paneViews && !!ports.game.ruleset.couch
-      && ports.game.phase === 'battle' && session.seats.length <= splitCapacity();
+    return !!session && !!ports.paneViews && !!ports.game.ruleset.couch && ports.game.phase === 'battle'
+      && planFor(session.view, session.seats.length).view === 'split';
   };
-  const biasFor = { seats: 0, width: 0, height: 0, bias: 1 };
   /** The harness's baseline: the split battle drawn the solo way (probeSoloView). */
   let soloView = false;
-  // (read every frame and for every hull: solved again only when the screen changes)
-  const capacityFor = { width: -1, height: -1, seats: 8 };
-  const splitCapacity = (): number => {
-    if (typeof innerWidth !== 'number') return 8;
-    if (innerWidth !== capacityFor.width || innerHeight !== capacityFor.height) {
-      capacityFor.width = innerWidth; capacityFor.height = innerHeight;
-      capacityFor.seats = couchSplitCapacity(innerWidth, innerHeight);
-    }
-    return capacityFor.seats;
-  };
   const dropPanes = (): void => {
     panes?.dispose();
     panesFor = null;
@@ -222,15 +228,14 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       dropPanes();
       setCouchTier(false);
     },
-    startBattle(launch, view = 'shared') {
+    startBattle(launch, view = 'split') {
       const seats = runtime.seatsInPlay();
       if (!lobby || !seats.length) return false;
       lobby.setOpen(false);
       // the split screen's tier before the battle's world builds (its light world is read at the build: quality.ts), its
-      // raster, sward and cascades by the panes' size (game/couchPanes.ts couchPaneDetail: one rule from the pane's area)
-      const splits = view === 'split' && !!ports.paneViews && seats.length <= splitCapacity();
-      setCouchTier(splits && typeof innerWidth === 'number'
-        ? couchPaneDetail(couchPaneAreaFraction(seats.length, innerWidth, innerHeight)) : splits);
+      // raster, sward and cascades by the panes' size (game/couchPanes.ts couchScreenPlan: one rule from the pane's area)
+      const plan = ports.paneViews ? planFor(view, seats.length) : null;
+      setCouchTier(plan?.detail ?? false);
       const launched = launch(seats);
       if (!launched) setCouchTier(false);
       return launched;
@@ -243,13 +248,8 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
     },
     lodBias() {
       const session = ports.game.couch;
-      if (!session || typeof innerWidth !== 'number' || !splitActive()) return 1;
-      // (read for every hull every frame: solved again only when the seats or the screen change)
-      if (session.seats.length !== biasFor.seats || innerWidth !== biasFor.width || innerHeight !== biasFor.height) {
-        biasFor.seats = session.seats.length; biasFor.width = innerWidth; biasFor.height = innerHeight;
-        biasFor.bias = couchPaneDetail(couchPaneAreaFraction(biasFor.seats, innerWidth, innerHeight)).lodBias;
-      }
-      return biasFor.bias;
+      if (!session || !splitActive()) return 1;
+      return planFor(session.view, session.seats.length).detail?.lodBias ?? 1;
     },
     extraViews() { return splitActive() && panesFor === ports.game.couch ? panes?.extraViews() ?? null : null; },
     listenerFocus() { return splitActive() && panesFor === ports.game.couch ? panes?.listenerFocus() ?? null : null; },
@@ -269,6 +269,9 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       ports.setSpectating(active && !(soloView && splitActive()));
       if (!active || !session || !rules) return false;
       if (session !== aimedFor) beginBattle(session);
+      // the screen no longer holds this many panes (a window made smaller mid-battle): the panes go whole, the page's HUD
+      // and camera come back and the shared camera frames the seats; a screen that holds them again seats the panes again
+      if (panesFor && !splitActive()) dropPanes();
       if (splitActive() && ports.paneViews) {
         const views = panes ??= createCouchPaneViews({ ...ports.paneViews, controls: (seat) => controls.get(seat) ?? null });
         if (panesFor !== session) {

@@ -3073,6 +3073,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // couch-split-274: a couch split pane's HUD owns its seat's tank (its own row, side and enemy count), not seat 1's
+    'src/ui/hudOwnTank.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

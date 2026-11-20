@@ -11,9 +11,12 @@
  * - 5 or 6 seats: 3 columns x 2 rows on a wide screen, 2 x 3 on a narrower one.
  * - 7 or 8 seats: 4 columns x 2 rows on a wide screen, 3 x 3 on a narrower one.
  * A pane never shrinks the HUD (Kevin, 2026-11-11: "dont squish the uis"): a screen whose panes would not hold the HUD's
- * core at its solo size splits for fewer seats (couchSplitCapacity: 6 on a 1080p screen); with more, the shared camera.
- * Every pane of a layout is the same size (the post chain is sized once for all of them); a cell no seat takes is a
- * spare, which the screen shows dark with the battle's score.
+ * core at its solo size splits for fewer seats (couchSplitCapacity: 8 on a 1080p screen, 3 x 3; 4 at 1366 x 768); with
+ * more, the shared camera. Every pane of a layout is the same size (the post chain is sized once for all of them); a cell
+ * no seat takes is a spare, which the screen shows dark.
+ *
+ * couchScreenPlan is the one owner of that decision: the lobby's Split button, the runtime's split-or-shared choice each
+ * frame, the couch tier's detail and the panes' rectangles all read it, from the same screen size.
  */
 
 export interface CouchPaneRect {
@@ -100,6 +103,35 @@ export function couchPaneLayout(count: number, width: number, height: number, gu
     }
   }
   return { columns, rows, panes, spares };
+}
+
+/** The lobby's screen choice: a pane per seat, or one camera framing every seat (game/couchSeats.ts CouchView). */
+export type CouchScreenView = 'split' | 'shared';
+
+/** What the big screen shows for a couch battle: the one decision the lobby, the runtime and the panes read. */
+export interface CouchScreenPlan {
+  /** 'split' only when it was asked for and this screen's panes hold the HUD's core for every seat; else 'shared'. */
+  readonly view: CouchScreenView;
+  /** The most seats the split screen holds on this screen (couchSplitCapacity). */
+  readonly capacity: number;
+  /** The panes (split), else null. */
+  readonly layout: CouchPaneLayout | null;
+  /** The world's detail for the panes' size (split), else null: the couch tier and the hulls' LOD bias. */
+  readonly detail: CouchPaneDetail | null;
+}
+
+/**
+ * The big screen for `seats` seated players on a `width` x `height` screen (CSS px), the lobby having asked for `asked`.
+ * Split is the default (Kevin, 2026-11-19: "we really need couch mode to be split screen properly"); past the screen's
+ * capacity the battle shows the shared camera, never a pane too small for the core.
+ */
+export function couchScreenPlan(asked: CouchScreenView, seats: number, width: number, height: number): CouchScreenPlan {
+  const capacity = couchSplitCapacity(width, height);
+  const count = Math.max(1, Math.min(MAX_COUCH_PANES, Math.floor(seats) || 1));
+  if (asked !== 'split' || count > capacity) return { view: 'shared', capacity, layout: null, detail: null };
+  const layout = couchPaneLayout(count, width, height);
+  const pane = layout.panes[0];
+  return { view: 'split', capacity, layout, detail: couchPaneDetail((pane.width * pane.height) / Math.max(1, width * height)) };
 }
 
 /**
