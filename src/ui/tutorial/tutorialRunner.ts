@@ -103,17 +103,11 @@ export interface TutorialView {
   readonly mode: 'third' | 'sight';
   /** The sight's magnification (the rig's zoom). */
   readonly zoom: number;
-  /** How far the third-person camera stands from the tank (m). */
-  readonly orbitM: number;
-  readonly freeLook: boolean;
   /** Where the gun points on the ground plane (rad; 0 faces +z, turning toward +x): the hull's yaw plus the turret's. */
   readonly gunYaw: number;
   /** The loaded round's type ('APFSDS', 'HEAT', 'HE', ...), and the hull's speed (m/s). */
   readonly shellType: string | null;
   readonly speedMps: number;
-  /** Whether free look can be held now: not in the cursor-aim fallback or on a virtual stick, where the game turns it off
-   *  (game/playerFrameInput.ts updateAimActions). */
-  readonly freeLookAvailable: boolean;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -145,7 +139,6 @@ export interface RunOptions {
 
 const DRIVE_POLL_MS = 250;
 /** How long free look must be held for a camera step that asks for it. */
-const FREE_LOOK_HOLD_MS = 1000;
 /** A step with no budget of its own falls behind after this long (the guide escalates once). */
 const BEHIND_DEFAULT_S = 45;
 const SCREEN_POLL_MS = 250;
@@ -244,19 +237,41 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
 
   function arm(step: TutorialStep): void {
     const advance = step.advance;
-    const go = (): void => { if (!ended && steps[index] === step) api.next(); };
-    // a step that teaches what this player's aiming cannot do moves on by itself: free look in the cursor-aim fallback (a
-    // pane that refuses the pointer lock) would hold the chapter at a step nothing can meet (the S1-S9 walk, 2026-11-18)
-    if (advance.on === 'camera' && advance.freeLook && port.view?.()?.freeLookAvailable === false) {
-      const timer = window.setTimeout(go, 0);
-      stepOff.push(() => window.clearTimeout(timer));
-      return;
-    }
+    // a step that asks for its ring first (`arrive`): what the player does before it waits there, a condition read every
+    // poll counts only from then on, and the ring is the checkpoint
+    let arrived = !step.arrive;
+    let met = false;
+    const go = (): void => {
+      met = true;
+      if (arrived && !ended && steps[index] === step) api.next();
+    };
     /** A condition read every DRIVE_POLL_MS (the port's state has no event of its own). */
-    const poll = (met: () => boolean): void => {
-      const timer = window.setInterval(() => { if (!hiddenByPause && !covered && met()) go(); }, DRIVE_POLL_MS);
+    const poll = (holds: () => boolean): void => {
+      const timer = window.setInterval(() => { if (!hiddenByPause && !covered && arrived && holds()) go(); }, DRIVE_POLL_MS);
       stepOff.push(() => window.clearInterval(timer));
     };
+    /** The player's tank crossed this ring (the path since the last read: a tank at speed crosses it between two reads). */
+    const crossing = (marker: { x: number; z: number; radiusM: number }, radius: number, reached: () => void): void => {
+      let last: { x: number; z: number } | null = null;
+      const timer = window.setInterval(() => {
+        if (hiddenByPause || covered) return;
+        const at = port.playerPosition();
+        if (!at) return;
+        const from = last ?? at;
+        last = { x: at.x, z: at.z };
+        if (segmentDistance(from, at, marker) > radius) return;
+        window.clearInterval(timer);
+        // the ring reached is the training battle's checkpoint: a death comes back here
+        port.checkpoint?.(marker.x, marker.z);
+        reached();
+      }, DRIVE_POLL_MS);
+      stepOff.push(() => window.clearInterval(timer));
+    };
+    if (!arrived) {
+      const marker = step.guide?.marker;
+      if (!marker) arrived = true;
+      else crossing(marker, marker.radiusM, () => { arrived = true; if (met) go(); });
+    }
     // a step with guidance falls behind once: its guide escalates (the aim ghost), never twice
     if (step.guide && advance.on !== 'next') {
       const timer = window.setTimeout(() => guide?.setEscalated(true), (step.behindS ?? BEHIND_DEFAULT_S) * 1000);
@@ -289,35 +304,11 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
       });
     } else if (advance.on === 'reach') {
       const marker = step.guide?.marker;
-      if (marker) {
-        const radius = advance.radiusM ?? marker.radiusM;
-        // the path since the last read, not its end alone: a tank at speed crosses a ring between two reads
-        let last: { x: number; z: number } | null = null;
-        poll(() => {
-          const at = port.playerPosition();
-          if (!at) return false;
-          const from = last ?? at;
-          last = { x: at.x, z: at.z };
-          if (segmentDistance(from, at, marker) > radius) return false;
-          // the ring reached is the training battle's checkpoint: a death comes back here
-          port.checkpoint?.(marker.x, marker.z);
-          return true;
-        });
-      }
+      if (marker) crossing(marker, advance.radiusM ?? marker.radiusM, go);
     } else if (advance.on === 'camera') {
-      let heldSince = 0;
-      /** The third-person camera's distance when the step began (its first read in that view). */
-      let orbitFrom: number | null = null;
       poll(() => {
         const view = port.view?.();
-        if (!view) return false;
-        if (view.mode === 'third') orbitFrom ??= view.orbitM;
-        const grown = advance.orbitGrowM == null || (view.mode === 'third' && orbitFrom != null && view.orbitM >= orbitFrom + advance.orbitGrowM);
-        const modeOk = (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity) && grown;
-        if (!advance.freeLook) return modeOk;
-        if (!view.freeLook) { heldSince = 0; return false; }
-        heldSince ||= performance.now();
-        return performance.now() - heldSince >= FREE_LOOK_HOLD_MS;
+        return !!view && (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity);
       });
     } else if (advance.on === 'turret') {
       const marker = step.guide?.marker;
@@ -331,10 +322,15 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
         heldSince ||= performance.now();
         return performance.now() - heldSince >= advance.holdS * 1000;
       });
-    } else if (advance.on === 'armour') {
-      if (port.armourOn?.() === advance.value) { queueMicrotask(go); return; }
-      stepOff.push(port.on('ui:armorOverlayState', (payload) => { if (!!(payload as { on?: boolean } | null)?.on === advance.value) go(); }));
-      poll(() => port.armourOn?.() === advance.value);
+    } else if (advance.on === 'armourCycle') {
+      // off, then on again: the key's event or the setting read (colours already off need only the press that brings them back)
+      let wasOff = port.armourOn?.() === false;
+      const seen = (on: boolean | undefined): boolean => {
+        if (on === false) wasOff = true;
+        return on === true && wasOff;
+      };
+      stepOff.push(port.on('ui:armorOverlayState', (payload) => { if (seen(!!(payload as { on?: boolean } | null)?.on)) go(); }));
+      poll(() => seen(port.armourOn?.()));
     } else if (advance.on === 'hit') {
       let count = 0;
       stepOff.push(port.on('shell:hit', (payload) => {
@@ -431,7 +427,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     const keys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
     const cap = (keyboard: string, padButton: number): string => (pad ? PAD_CAPS[padButton] ?? '' : input === 'touch' ? '' : keyboard);
     const view: OverlayView = {
-      mode: battle && acting ? 'act' : 'read',
+      mode: acting ? 'act' : 'read',
       label: t('tutorial.label'),
       chapter: t(`tutorial.chapter.${chapter}`),
       progress: t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }),

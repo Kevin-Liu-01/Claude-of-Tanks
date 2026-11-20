@@ -101,11 +101,12 @@ assert.ok(Math.abs(trainingActorYawDeg(sentry) - square / DEG) < 1e-9 || Math.ab
 
 // 4. The steps and the wiring.
 const ids = TRAINING_STEPS.map((step) => step.id);
-const s9 = ids.slice(ids.indexOf('training.toF'), ids.indexOf('training.toF') + 3);
-assert.deepEqual(s9, ['training.toF', 'training.angle', 'training.volley'], 'S9: drive to F, angle, take its fire');
+const s9 = ids.slice(ids.indexOf('training.angle'), ids.indexOf('training.angle') + 2);
+assert.deepEqual(s9, ['training.angle', 'training.volley'], 'S9: drive to F and angle (one card), take its fire');
 const angle = TRAINING_STEPS.find((step) => step.id === 'training.angle');
 assert.deepEqual({ ...angle.advance }, { on: 'angle', actor: sentry.specId, ...ANGLE_WINDOW, holdS: 2 }, 'the angle step holds the window 2 s');
 assert.equal(angle.guide.angle.id, sentry.specId, 'and draws the arc against the Sentry');
+assert.ok(angle.arrive && angle.guide.marker.x === F.x && angle.guide.marker.z === F.z, 'the angle counts only once at ring F');
 assert.ok(!angle.cue, 'the Sentry holds its fire until the angle is set');
 const volley = TRAINING_STEPS.find((step) => step.id === 'training.volley');
 assert.equal(volley.cue, 'sentry', 'the volley step cues the Sentry');
@@ -115,10 +116,6 @@ assert.equal(volley.advance.count, 2);
 assert.ok(volley.penBody, 'a round through the plate brings the re-prompt');
 const runner = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
 assert.match(runner, /port\.cue\?\.\(cue, true\);\s*stepOff\.push\(\(\) => port\.cue\?\.\(cue, false\)\);/, 'the runner cues while the step shows, and stands it down after');
-assert.match(runner, /if \(advance\.on === 'camera' && advance\.freeLook && port\.view\?\.\(\)\?\.freeLookAvailable === false\)/,
-  'a free-look step moves on by itself where the game has no free look (cursor aim, a virtual stick)');
-const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(main, /freeLookAvailable: !input\.isCursorAim\(\) && !input\.virtualActive\(\),/, 'read as the game gates it (playerFrameInput.ts)');
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 assert.match(state, /else if \(training && entity\._provingMark && !entity\.combat\.destroyed\) driveTrainingActor\(game, entity\);/,
   'the solo step drives the training hulls');
@@ -153,11 +150,12 @@ for (const back of [9, 10, 12, 14]) assert.deepEqual(exposedAt(back), { hull: fa
 assert.equal(exposedAt(5).hull, true, 'the nose up the back slope shows the hull');
 assert.equal(trainingExposure({ x: sentry2.x, y: 0, z: sentry2.z }, { x: G.x, y: 0, z: G.z, yaw: line }, () => 0).hull, true,
   'without the berm, the hull is seen');
-const s10 = ids.slice(ids.indexOf('training.toG'), ids.indexOf('training.toP'));
-assert.deepEqual(s10.filter((id) => !id.endsWith('Touch')), ['training.toG', 'training.hullDown', 'training.hullDownFire', 'training.fireBack'],
-  'S10: behind the berm, hull down, its rounds on the turret, fire back');
+const s10 = ids.slice(ids.indexOf('training.hullDown'), ids.indexOf('training.toP'));
+assert.deepEqual(s10.filter((id) => !id.endsWith('Touch')), ['training.hullDown', 'training.hullDownFire', 'training.fireBack'],
+  'S10: to ring G and hull down (one card), its rounds on the turret, APFSDS and fire back');
 const hd = TRAINING_STEPS.find((step) => step.id === 'training.hullDown');
 assert.deepEqual({ ...hd.advance }, { on: 'hullDown', actor: sentry2.specId, holdS: 2 });
+assert.ok(hd.arrive && hd.guide.marker.x === G.x && hd.guide.marker.z === G.z, 'hull down counts only once at ring G');
 assert.equal(TRAINING_STEPS.find((step) => step.id === 'training.hullDownFire').cue, 'sentry2', 'Sentry 2 fires once hull down');
 assert.deepEqual({ ...TRAINING_STEPS.find((step) => step.id === 'training.fireBack').advance }, { on: 'destroy', actor: sentry2.specId });
 
@@ -179,11 +177,11 @@ for (const yaw of [facing, along]) {
   assert.ok(atQ.hull && atQ.turret, `out at ring Q, seen (yaw ${(yaw / DEG).toFixed(0)})`);
 }
 assert.ok(trainingExposure(s3eye, { x: P.x, y: 0, z: P.z, yaw: facing }, () => 0).hull, 'without the wall, ring P is in its sight');
-const s11 = ids.slice(ids.indexOf('training.toP'), ids.indexOf('training.toKit'));
+const s11 = ids.slice(ids.indexOf('training.toP'), ids.indexOf('training.repair'));
 assert.equal(new Set(ids).size, ids.length, 'every training step id is unique');
-assert.deepEqual(s11, ['training.toP', 'training.peekShoot', 'training.finish3'], 'S11: into cover, peek twice, finish it');
+assert.deepEqual(s11, ['training.toP', 'training.peekShoot'], 'S11: into cover, then peek, shoot and hide until it is destroyed');
 const peek = TRAINING_STEPS.find((step) => step.id === 'training.peekShoot');
-assert.deepEqual({ ...peek.advance }, { on: 'peek', actor: sentry3.specId, cycles: 2 });
+assert.deepEqual({ ...peek.advance }, { on: 'destroy', actor: sentry3.specId });
 assert.equal(peek.cue, 'sentry3', 'the peek step brings Sentry 3 in and lets it fire');
 assert.ok(peek.guide.reload && peek.penBody, 'with its reload ring, and a re-prompt when it catches the player out');
 assert.match(state, /if \(!isPlayer && game\.ruleset\.training\) parkTrainingActor\(game, entity\);/, 'the setup parks a hull that enters on its cue');
@@ -197,12 +195,12 @@ const Qpose = { x: Q.x, y: 0, z: Q.z, yaw: 0 };
 const leftAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x + 50, z: Q.z });
 const rightAim = trainingVolleyAim(Qpose, sentry4.volley, { x: 0, y: 0, z: 0 }, { x: Q.x - 50, z: Q.z });
 assert.ok(leftAim.x - Q.x > 1.4 && Q.x - rightAim.x > 1.4 && Math.abs(leftAim.y - 0.45) < 1e-9, 'it aims low on the side the hull shows it');
-const s12 = ids.slice(ids.indexOf('training.toKit'), ids.indexOf('training.toU')).filter((id) => !id.endsWith('Touch'));
-assert.deepEqual(s12, ['training.toKit', 'training.trackHit', 'training.repair', 'training.kitRow', 'training.smoke'], 'S12 (keyboard)');
-const trackHit = TRAINING_STEPS.find((step) => step.id === 'training.trackHit');
-assert.equal(trackHit.cue, 'sentry4', 'Sentry 4 fires only while the track step shows');
-assert.deepEqual({ ...trackHit.advance, module: [...trackHit.advance.module], state: [...trackHit.advance.state] },
-  { on: 'module', module: ['trackL', 'trackR'], state: ['yellow', 'red'] }, 'either track, damaged or broken');
+const s12 = ids.slice(ids.indexOf('training.repair'), ids.indexOf('training.toU')).filter((id) => !id.endsWith('Touch'));
+assert.deepEqual(s12, ['training.repair', 'training.smoke'], 'S12 (keyboard): out to ring Q and repair the track (one card), smoke');
+const repair = TRAINING_STEPS.find((step) => step.id === 'training.repair');
+assert.equal(repair.cue, 'sentry4', 'Sentry 4 fires only while the repair step shows');
+assert.ok(repair.arrive && repair.guide.marker.x === Q.x && repair.guide.marker.z === Q.z, 'from ring Q');
+assert.deepEqual({ ...repair.advance }, { on: 'consumable', item: 'repair' }, 'until the repair kit is used');
 
 // 8. S13.
 const bulwark = trainingActor(TRAINING_RULES, 'bulwark');
@@ -238,8 +236,10 @@ const ahead = { x: bulwark.x + Math.sin(hullYaw) * 80, z: bulwark.z + Math.cos(h
 assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead), bearingTo(ahead)), true, 'fire in front of it, its gun on the player');
 assert.equal(trainingArcAllows(bulwark.volley, hullYaw, bearingTo(ahead) + 5 * DEG, bearingTo(ahead)), false, 'not while its gun is still turning');
 const s13 = ids.slice(ids.indexOf('training.toU'), ids.indexOf('training.fight'));
-assert.deepEqual(s13, ['training.toU', 'training.bulwarkFront', 'training.flank', 'training.flankFire', 'training.finishBulwark'], 'S13');
-assert.deepEqual([...TRAINING_STEPS.find((step) => step.id === 'training.flankFire').advance.kinds], ['pen'], 'a round through its side');
+assert.deepEqual(s13, ['training.toU', 'training.flank'], 'S13: its front from ring U, then round to ring V and through its side');
+const flank = TRAINING_STEPS.find((step) => step.id === 'training.flank');
+assert.ok(flank.arrive && flank.guide.marker.x === V.x && flank.guide.marker.z === V.z, 'from ring V');
+assert.deepEqual({ ...flank.advance }, { on: 'destroy', actor: bulwark.specId }, 'until Bulwark is destroyed');
 
 // 9. S14.
 const roster = trainingRoster(TRAINING_RULES);
@@ -263,7 +263,7 @@ assert.equal(trainingSkirmishSide(TRAINING_RULES, sentry.specId), null);
 const fight = TRAINING_STEPS.find((step) => step.id === 'training.fight');
 assert.equal(fight.cue, TRAINING_SKIRMISH_CUE, 'the fight step brings the skirmish in');
 assert.deepEqual([...fight.advance.actors], skirmish.enemies.map((b) => b.specId), 'and ends when every enemy bot is down');
-assert.equal(ids.at(-1), 'training.complete', 'the chapter closes on its card');
+assert.equal(ids.at(-1), 'training.fight', 'the chapter (and the battle) closes on the fight');
 assert.match(state, /if \(!isPlayer && context\.provingLayout && !skirmishBot\) seatProvingTarget\(context, entity, spawn\);/, 'skirmish bots get brains, not marks');
 assert.match(state, /if \(rules && key === TRAINING_SKIRMISH_CUE\)/, 'its cue brings every bot in');
 // (Main: the training rows alone move; every other mode's limits and field as main e5e937cb71 has them)
@@ -343,7 +343,7 @@ assert.match(state, /\(game\._trainingParked \?\?= new Set\(\)\)\.add\(entity\.i
 assert.equal((state.match(/game\._trainingParked\.delete\(entity\.id\);/g) ?? []).length, 2, 'and only a cue releases it (an actor\'s, the skirmish\'s)');
 assert.ok(state.indexOf('game._trainingParked = undefined;') < state.indexOf('spawnBattleEntities(spawnContext);'), 'cleared before each battle seats its hulls');
 const runner2 = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
-assert.match(runner2, /port\.checkpoint\?\.\(marker\.x, marker\.z\);\s*return true;/, 'each ring reached is the checkpoint');
+assert.match(runner2, /port\.checkpoint\?\.\(marker\.x, marker\.z\);\s*reached\(\);/, 'each ring reached (a drive, or a step that asks for its ring first) is the checkpoint');
 const access = readFileSync(new URL('../app/tutorialAccess.ts', import.meta.url), 'utf8');
 assert.match(access, /if \(chapter === 'training'\) \{\s*if \(outcome !== 'skipped' && training\) \{[\s\S]{0,160}deps\.trainingComplete\(\);/,
   'the last card ends the battle (a Skip ends the run only)');

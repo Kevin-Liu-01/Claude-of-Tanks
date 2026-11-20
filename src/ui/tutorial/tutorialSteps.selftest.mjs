@@ -3,8 +3,9 @@
 // Copyright © 2026 Kevin B. Liu.
 //
 // Walks every step (src/ui/tutorial/tutorialSteps.ts) and holds:
-//  1. the chapters: each player's hands (keyboard, touch, pad) get the Garage's six subjects, the battle's drive, fire,
-//     reload, shells, spotting, minimap and win, and five to eight strategy tips;
+//  1. the chapters (Kevin, 2026-11-20: "shorter and fewer"): each player's hands (keyboard, touch, pad) get the Garage's
+//     tank, rounds and Deploy, the battle's drive, fire (with the armour colours), rounds, spotting and win, and four to six
+//     strategy tips;
 //  2. the strings: every title and body is in en-US and zh-CN, and a body's {placeholders} are exactly the key caps the
 //     step names (each a bound action; a pad step's actions bound on the pad too);
 //  3. the media: every file is in public/, a still at most STILL_MAX bytes and a loop at most LOOP_MAX, all of them
@@ -25,7 +26,6 @@ import { DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS } from '../../game/input.ts';
 import { SHELL_BEHAVIOR } from '../../sim/damage.ts';
 import { SIGNAL_RANGE_M, combineCamo, fireBloomAt } from '../../sim/spotting.ts';
 import { BASE_CAMO, equipCamoBonus } from '../../sim/spottingStats.ts';
-import { camoSelectionBonus } from '../../sim/camoPaint.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { PEN_RATIO, penVerdict } from '../../sim/penVerdict.ts';
 
@@ -50,12 +50,12 @@ for (const step of TUTORIAL_STEPS) {
 }
 const subjects = (chapter, input) => chapterSteps(chapter, input).map((step) => step.id.split('.')[1].replace(/(Touch|Pad)$/, ''));
 for (const input of INPUTS) {
-  assert.deepEqual(subjects('garage', input), ['welcome', 'tank', 'nation', 'ammo', 'kit', 'camo', 'deploy'], `the Garage chapter (${input})`);
-  assert.deepEqual(subjects('battle', input), ['drive', 'fire', 'armour', 'reload', 'ammo', 'spotting', 'minimap', 'win'], `the battle chapter (${input})`);
-  // (274) the armour colours are taught by the battle's own step, which stands the one-time tip down (one surface)
-  assert.equal(chapterSteps('battle', input).find((step) => step.id.startsWith('battle.armour'))?.teaches, 'armourColours', `${input}: the armour step stands the tip down`);
+  assert.deepEqual(subjects('garage', input), ['tank', 'ammo', 'deploy'], `the Garage chapter (${input})`);
+  assert.deepEqual(subjects('battle', input), ['drive', 'fire', 'ammo', 'spotting', 'win'], `the battle chapter (${input})`);
+  // (274) the armour colours are taught by the battle's fire step, which stands the one-time tip down (one surface)
+  assert.equal(chapterSteps('battle', input).find((step) => step.id.startsWith('battle.fire'))?.teaches, 'armourColours', `${input}: the fire step stands the tip down`);
   const tips = chapterSteps('tips', input).filter((step) => step.id !== 'tips.done');
-  assert.ok(tips.length >= 5 && tips.length <= 8, `five to eight strategy tips (${tips.length})`);
+  assert.ok(tips.length >= 4 && tips.length <= 6, `four to six strategy tips (${tips.length})`);
   assert.equal(chapterSteps('tips', input).at(-1).id, 'tips.done', `${input}: the tips close on a card that says where Replay lives`);
   const acts = chapterSteps('battle', input).map((step) => step.advance.on);
   for (const deed of ['drive', 'fire', 'shell']) assert.ok(acts.includes(deed), `${input}: the battle chapter moves on when the player does ${deed}`);
@@ -111,21 +111,14 @@ assert.ok(mediaBytes <= MEDIA_TOTAL_MAX, `the tutorial's media total ${mediaByte
 const TARGET_OWNERS = {
   '.cot-carousel': ['src/ui/garage.ts', 'cot-carousel'],
   '[data-tabbar="garage"]': ['src/ui/garage.ts', 'data-tabbar'],
-  '.cot-country-chips': ['src/ui/garage.ts', 'cot-country-chips'],
   '.cot-ammo-tiles': ['src/ui/garage.ts', 'cot-ammo-tiles'],
-  '.cot-lt-consumables': ['src/ui/garage.ts', 'cot-lt-consumables'],
-  '.cot-lt-paint': ['src/ui/garage.ts', 'cot-lt-paint'],
   '.cot-overview-section': ['src/ui/garage.ts', 'cot-overview-section'],
-  '.cot-compact-equipment-trigger': ['src/ui/garage.ts', 'cot-compact-equipment-trigger'],
   '.cot-battle': ['src/ui/garage.ts', 'cot-battle'],
   '[data-tabbar="deploy"]': ['src/ui/garage.ts', 'data-tabbar'],
   '[data-drive-speed]': ['src/ui/hud.ts', 'data-drive-speed'],
   '.cot-touch .joy': ['src/ui/touchControls.ts', 'joy'],
   '.cot-touch .round.fire': ['src/ui/touchControls.ts', 'fire'],
-  '.cot-ret-reload': ['src/ui/hud.ts', 'cot-ret-reload'],
-  '.cot-shells .cot-shell.sel': ['src/ui/hud.ts', '.cot-shell.sel'],
   '.cot-shells': ['src/ui/hud.ts', 'cot-shells'],
-  '.cot-minimap': ['src/ui/hud.ts', 'cot-minimap'],
   '.cot-top': ['src/ui/hud.ts', 'cot-top'],
 };
 const targets = new Set(TUTORIAL_STEPS.flatMap((step) => step.target));
@@ -162,8 +155,6 @@ assert.ok(transparent && text('tips.reveal.body').includes(`${transparent[1]} m`
 // spotting: a bush on the sightline adds to the camo whether or not the tank moves (combineCamo has no motion input)
 assert.ok(combineCamo({ base: 0.1, bush: 0.35 }) > combineCamo({ base: 0.1 }), 'a bush hides the tank');
 assert.match(read('src/sim/spotting.ts'), /export function combineCamo\(p: CamoParts\)/, 'the bush bonus rides on top of the base camo');
-// camo: a matching pattern, or Auto, earns a small spotting bonus
-assert.ok(camoSelectionBonus('auto', null, 'verdant') > 0 && camoSelectionBonus('auto', null, 'verdant') < 0.1, 'Auto earns a small bonus');
 // win: Standard is elimination on a clock that ends in a draw
 const standard = matchRulesetFor('standard');
 assert.equal(standard.timeout, 'draw', 'a Standard battle that runs out of time is a draw');
@@ -179,10 +170,9 @@ assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
   assert.match(overlay, /pen: new THREE\.Color\(0x48d985\)/, 'the paint\'s "goes through" is green');
   assert.match(overlay, /marginal: new THREE\.Color\(0xf0aa35\)/, 'its "may" is amber');
   assert.match(overlay, /nopen: new THREE\.Color\(0xe53d35\)/, 'its "will not" is red');
-  assert.match(text('battle.armour.body'), /green goes through, amber might, red won't/);
+  assert.match(text('battle.fire.body'), /green goes through, amber might, red won't/);
+  assert.match(text('training.armour.body'), /Green goes through, amber might, red won't/);
 }
-// reload: a gun's reload is the gun's (or the shell's), not a crew skill: no skill table exists
-assert.ok(!existsSync(resolve(ROOT, 'src/sim/crewSkills.ts')), 'no crew skills change a reload');
 
 // 5b. The boot screen's tips (src/ui/bootScreen.ts TIP_KEYS) make claims of the same kind; the checkable ones are held
 //     here too, so neither the tutorial nor the boot screen can drift from the simulation.

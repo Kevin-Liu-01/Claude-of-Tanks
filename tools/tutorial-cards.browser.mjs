@@ -7,7 +7,7 @@
 // and this one) and view (desktop 1440x900, a phone 390x844), three cards are opened at their step (diagnostics:
 // __TUTORIAL_START(chapter, atStep)) and shot:
 //  - tips.angle on the Garage: a card with a picture; its figure's box against the picture's own size, once loaded;
-//  - training.driveA in the training battle: a card the player acts on;
+//  - training.drive in the training battle: a card the player acts on;
 //  - training.armour in the training battle: a card that explains; whether the battle's clock stands while it shows.
 // Writes <out>/<tree>-<view>-<card>.png and report.json.
 //
@@ -109,7 +109,7 @@ try {
       // the training battle: an act card, then an explaining one (does the battle hold?)
       await page.evaluate((specId, mapId) => window.__DEBUG.beginSoloBattle({ specId, mapId, gameMode: 'training' }), TRAINING_RULES.loanerSpecId, TRAINING_RULES.mapId);
       await page.waitForFunction(`${readinessExpression('controlsReleased')}`, { timeout: 900_000, polling: 1000 });
-      await shoot('act', 'training', 'training.driveA');
+      await shoot('act', 'training', 'training.drive');
       await shoot('explain', 'training', 'training.armour', async () => {
         const t0 = await page.evaluate(() => window.__DEBUG.game.timeS);
         await sleep(1200);

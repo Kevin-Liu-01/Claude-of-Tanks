@@ -3,9 +3,9 @@
 //
 // Boots the game (a player whose 272 tutorial is done), launches the training battle the way the tutorial does (the
 // loaner on Verdant Fields, mode `training`), and plays its chapter with real input: the keys drive to each ring, the
-// mouse (a finger on a phone) turns the gun onto the board, the wheel (a pinch) pulls the camera back and zooms the sight,
-// Shift (the scope button) takes the sight and CapsLock holds free look. Each step is shot, with how it moved on and how
-// long it took, to the evidence folder's report.json; --clip records the run.
+// mouse (a finger on a phone) turns the gun onto the board, Shift (the scope button) takes the sight and the wheel (a
+// pinch) zooms it. Each step is shot, with how it moved on and how long it took, to the evidence folder's report.json;
+// --clip records the run.
 //
 // S5 to S14 (desktop): the keys drive to the rings, into bush D and behind the earthworks, H turns the armour colours off
 // and on, the digits load the rounds, the mouse lays the gun on a target's plate and clicks to fire, and A or D turn the
@@ -129,8 +129,8 @@ try {
       await sleep(150);
     }
   }
-  /** A desktop player clicks into the battle for pointer lock; a step with its dim on (the rollout card) swallows that click,
-   *  as 272.1 has it, so the walk takes the lock on the first step that leaves the field clear. A phone has no lock. */
+  /** A desktop player clicks into the battle for pointer lock; a step with its dim on swallows that click (272.1), so the
+   *  walk takes the lock on a step that leaves the field clear (the first, the drive). A phone has no lock. */
   const locked = () => page.evaluate(() => !!document.pointerLockElement);
   async function takeLock() {
     if (touch || (await locked())) return;
@@ -200,8 +200,9 @@ try {
   });
 
   /** Drive into a marker: hold forward, steer toward it with the keys (a phone: one finger held on the stick, moved by
-   *  CDP touch events), until the step moves on. */
-  async function driveTo(marker, stepId) {
+   *  CDP touch events), until the step moves on, or (`arrive`: a step that asks for its ring first) until the hull is in
+   *  the ring. */
+  async function driveTo(marker, stepId, arrive = false) {
     let steer = null;
     const joy = touch ? await page.$('.cot-touch .joy') : null;
     const box = joy ? await joy.boundingBox() : null;
@@ -215,6 +216,7 @@ try {
       while (Date.now() < until) {
         if ((await stepNow()) !== stepId) return true;
         const p = await pose();
+        if (arrive && Math.hypot(marker.x - p.x, marker.z - p.z) < marker.radiusM * 0.7) return true;
         const err = wrap(Math.atan2(marker.x - p.x, marker.z - p.z) - p.yaw);
         // a bearing that grows turns toward +x, the hull's left
         const want = err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null;
@@ -279,8 +281,13 @@ try {
     await client.detach();
   }
 
-  const MARKERS = { 'training.driveA': 'driveA', 'training.driveB': 'driveB', 'training.turret': 'board', 'training.spot': 'ringC',
-    'training.peek': 'ringC', 'training.toE': 'ringE', 'training.toF': 'fireF' };
+  /** Out of the gunner's sight before a drive, as a player drives (in the third-person view). */
+  const thirdPerson = async () => { if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(400); } };
+  /** The player's tracks: damaged or broken (module:state; S12 waits for Sentry 4 to hit one). */
+  const trackHit = () => page.evaluate(() => {
+    const modules = window.__DEBUG.game.player?.combat?.modules ?? {};
+    return ['trackL', 'trackR'].some((name) => { const m = modules[name]; const state = typeof m === 'string' ? m : m?.state; return state === 'yellow' || state === 'red'; });
+  });
   const { actorPoint, headingFromLine } = await import('../src/ui/tutorial/tutorialGuideMath.ts');
   const sightMode = () => page.evaluate(() => window.__DEBUG.rig?.mode === 'SNIPER');
   const actorPose = (id) => page.evaluate((key) => {
@@ -298,7 +305,7 @@ try {
    *  of 2026-11-18 entered at 8 m/s, tapped the back key for half a second and rolled out of the 5 m ring). */
   /** The hull's signed speed (m/s: + forward). */
   const speed = () => page.evaluate(() => window.__DEBUG.game.player.state.speed ?? 0);
-  async function driveInto(marker, stepId) {
+  async function driveInto(marker, stepId, arrive = false) {
     const until = Date.now() + 120_000;
     let steer = null, throttle = null;
     const set = async (key, want) => {
@@ -317,7 +324,9 @@ try {
         const inside = d < marker.radiusM * 0.6;
         // facing away from it (it rolled past): reverse toward it, steering as a reversing hull does
         const behind = Math.abs(err) > Math.PI / 2;
-        // inside: brake against the way it moves until it stands (the step wants it still 3 s)
+        // inside: brake against the way it moves until it stands (the step wants it still 3 s); a step that asks for its
+        // ring first goes on from there
+        if (inside && arrive && Math.abs(v) < 0.3) return true;
         if (inside) { await set('steer', null); await set('throttle', v > 0.3 ? 'KeyS' : v < -0.3 ? 'KeyW' : null); }
         else if (behind && d < 20) { await set('steer', null); await set('throttle', v < -2 ? null : 'KeyS'); }
         else {
@@ -369,7 +378,7 @@ try {
   const { TRAINING_POINTS } = await import('../src/sim/trainingGround.ts');
   let shot = 0;
   let now = await waitChange(null, 60_000);
-  assert.equal(now, stepsFor[0].id, 'the training chapter opens on its rollout card');
+  assert.equal(now, stepsFor[0].id, 'the training chapter opens on its first move');
   while (now) {
     await sleep(700);
     const file = `${String(shot++).padStart(2, '0')}-${now}.png`;
@@ -377,27 +386,32 @@ try {
     const started = Date.now();
     const id = now.replace(/(Touch|Pad)$/, '');
     let how = '';
-    if (id === 'training.rollout') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
-    else if (id === 'training.driveA' || id === 'training.driveB') { how = 'drove'; await takeLock(); await driveTo(TRAINING_POINTS[MARKERS[id]], now); }
-    else if (id === 'training.spot' || id === 'training.peek' || id === 'training.toE' || id === 'training.toF') {
-      // the drives in the third-person view (S5's after the zoom step left the sight on; S9's so the arc and the Sentry
-      // are in the frame), as a player drives
-      if ((id === 'training.spot' || id === 'training.toF') && (await sightMode())) { await page.keyboard.press('ShiftLeft'); await sleep(400); }
-      how = 'drove'; await driveTo(TRAINING_POINTS[MARKERS[id]], now);
+    // (Kevin, 2026-11-20: "shorter and fewer") a drive to a ring and what the player does there are one card now: the
+    // walk drives in, then does it, as a player does
+    if (id === 'training.drive') {
+      how = 'drove past ring A to ring B'; await takeLock();
+      await driveTo(TRAINING_POINTS.driveA, now, true); await driveTo(TRAINING_POINTS.driveB, now);
     }
-    else if (id === 'training.bush') { how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
-    else if (id === 'training.lamp' || id === 'training.armour' || id === 'training.reload') { how = 'next'; await page.keyboard.press('Enter'); }
+    else if (id === 'training.spot') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringC, now); }
+    else if (id === 'training.bush') { await thirdPerson(); how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
+    else if (id === 'training.armourTouch') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
     else if (id === 'training.armourSight') { how = 'shift'; if (!(await sightMode())) await page.keyboard.press('ShiftLeft'); }
-    else if (id === 'training.armourOff' || id === 'training.armourOn') { how = 'H'; await page.keyboard.press('KeyH'); }
+    else if (id === 'training.armour') { how = 'H, H'; await page.keyboard.press('KeyH'); await sleep(700); await page.keyboard.press('KeyH'); }
     else if (id === 'training.firePen') { how = 'fired at the green plate'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.green, now)} shots)`; }
     else if (id === 'training.fireBounce') { how = 'fired at the turret front'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.red, now)} shots)`; }
-    else if (id === 'training.loadHE') { how = '3'; await page.keyboard.press('Digit3'); }
-    else if (id === 'training.fireHE') { how = 'fired HE at Target 2'; how += ` (${await fireAt(ACTOR.target2, TARGET_POINTS.hull, now)} shots)`; }
-    else if (id === 'training.loadAP') { how = '1'; await page.keyboard.press('Digit1'); }
+    else if (id === 'training.fireHE') {
+      how = '3, drove to ring E, fired HE at Target 2';
+      await page.keyboard.press('Digit3'); await thirdPerson();
+      await driveTo(TRAINING_POINTS.ringE, now, true);
+      how += ` (${await fireAt(ACTOR.target2, TARGET_POINTS.hull, now)} shots)`;
+    }
     else if (id === 'training.angle') {
       if (flag('clip-s9') && !clipS9) clipS9 = await page.screencast({ path: resolve(OUT, 'training-s9-volley.webm'), scale: 0.5 });
-      // pivot with the hull keys until it stands 45 degrees from the line, the cursor kept on the Sentry (the gun on it)
-      how = 'turned the hull';
+      // to ring F in the third-person view (the arc and the Sentry in the frame), then pivot with the hull keys until it
+      // stands 45 degrees from the line, the cursor kept on the Sentry (the gun on it)
+      await thirdPerson();
+      await driveInto(TRAINING_POINTS.fireF, now, true);
+      how = 'drove to ring F, turned the hull';
       const until = Date.now() + 60_000;
       let key = null;
       while (Date.now() < until && (await stepNow()) === now) {
@@ -412,27 +426,31 @@ try {
       report.angleAt = Math.round(Math.abs(headingFromLine(await pose(), await actorPose(ACTOR.sentry))));
     }
     // S10 to S14
-    else if (id === 'training.toG' || id === 'training.toP' || id === 'training.toKit') {
-      how = 'drove in, stopped';
-      await driveInto(TRAINING_POINTS[{ 'training.toG': 'ringG', 'training.toP': 'ringP', 'training.toKit': 'ringQ' }[id]], now);
-    }
-    else if (id === 'training.hullDown' || id === 'training.hullDownFire' || id === 'training.trackHit') {
-      // hold still where the scene put the hull, the cursor on the shooter (the gun kept on it)
+    else if (id === 'training.toP') { how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.ringP, now); }
+    else if (id === 'training.hullDown' || id === 'training.hullDownFire' || id === 'training.repair') {
+      // into the step's ring (hull down: ring G; the kit: ring Q), then hold still, the cursor on the shooter (the gun kept
+      // on it); the kit step presses the repair key once a track is hit
       how = 'held still';
-      const shooter = { 'training.hullDown': ACTOR.sentry2, 'training.hullDownFire': ACTOR.sentry2, 'training.trackHit': ACTOR.sentry4 }[id];
+      const ring = { 'training.hullDown': TRAINING_POINTS.ringG, 'training.repair': TRAINING_POINTS.ringQ }[id];
+      if (ring) { await thirdPerson(); await driveInto(ring, now, true); how = 'drove in, held still'; }
+      const shooter = { 'training.hullDown': ACTOR.sentry2, 'training.hullDownFire': ACTOR.sentry2, 'training.repair': ACTOR.sentry4 }[id];
       const until = Date.now() + 90_000;
       while (Date.now() < until && (await stepNow()) === now) {
         const them = await actorPose(shooter);
         if (them) await layOn({ x: them.x, y: them.y + 1.5, z: them.z }, 12);
+        if (id === 'training.repair' && (await trackHit())) { how += ', track hit, 4'; await page.keyboard.press('Digit4'); await sleep(1500); }
         await sleep(400);
       }
     }
-    else if (id === 'training.fireBack') { how = 'fired at Sentry 2 over the berm'; how += ` (${await fireAt(ACTOR.sentry2, { along: 0.6, up: 2.1, across: 0 }, now)} shots)`; }
-    else if (id === 'training.peekShoot' || id === 'training.finish3') {
-      // out to ring Q, one shot at Sentry 3, back behind the wall at ring P, until the step moves on
+    else if (id === 'training.fireBack') {
+      how = '1, fired at Sentry 2 over the berm'; await page.keyboard.press('Digit1');
+      how += ` (${await fireAt(ACTOR.sentry2, { along: 0.6, up: 2.1, across: 0 }, now)} shots)`;
+    }
+    else if (id === 'training.peekShoot') {
+      // out to ring Q, one shot at Sentry 3, back behind the wall at ring P, until it is destroyed
       how = 'peeked, fired, hid';
       let rounds = 0;
-      while ((await stepNow()) === now && rounds < 8) {
+      while ((await stepNow()) === now && rounds < 14) {
         await driveInto(TRAINING_POINTS.ringQ, now);
         if ((await stepNow()) !== now) break;
         await fireAtOnce(ACTOR.sentry3, TARGET_POINTS.hull, now);
@@ -442,8 +460,6 @@ try {
       }
       how += ` (${rounds} rounds)`;
     }
-    else if (id === 'training.repair') { how = '4'; await page.keyboard.press('Digit4'); }
-    else if (id === 'training.kitRow' || id === 'training.bulwarkFront' || id === 'training.complete') { how = 'next'; await page.keyboard.press('Enter'); }
     // the debrief and the tour on the Garage: read, then Next (Enter, or the card's button on a phone)
     else if (id.startsWith('debrief.') || id.startsWith('tour.')) {
       how = 'next';
@@ -456,11 +472,10 @@ try {
       if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter');
     }
     else if (id === 'training.smoke') { how = 'G'; await page.keyboard.press('KeyG'); }
-    else if (id === 'training.toU' || id === 'training.flank') {
-      how = 'drove'; await driveTo(TRAINING_POINTS[id === 'training.toU' ? 'ringU' : 'ringV'], now);
-    }
-    else if (id === 'training.flankFire' || id === 'training.finishBulwark') {
-      how = 'fired into its side'; how += ` (${await fireAt(ACTOR.bulwark, TARGET_POINTS.hull, now)} shots)`;
+    else if (id === 'training.toU') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringU, now); }
+    else if (id === 'training.flank') {
+      await thirdPerson(); how = 'drove to ring V, fired into its side'; await driveInto(TRAINING_POINTS.ringV, now, true);
+      how += ` (${await fireAt(ACTOR.bulwark, TARGET_POINTS.hull, now)} shots)`;
     }
     else if (id === 'training.fight') {
       // the nearest enemy bot still up: drive toward it to 150 m, then lay on it and fire, until every one is down
@@ -507,23 +522,14 @@ try {
       how = touch ? 'aimed (drag)' : (await locked()) ? 'aimed (mouse, pointer lock)' : 'aimed (cursor aim)';
       await aimAt(TRAINING_POINTS.board, now);
     }
-    else if (id === 'training.orbit') { how = touch ? 'pinched' : 'wheel out'; if (touch) await pinch(false); else await wheel(240, 4); }
-    else if (id === 'training.sight') {
-      how = touch ? 'scope button' : 'shift';
-      if (touch) await (await page.$('.cot-touch .round.scope')).tap(); else await page.keyboard.press('ShiftLeft');
-    } else if (id === 'training.zoom') { how = touch ? 'pinched' : 'wheel in'; if (touch) await pinch(true); else await wheel(-240, 4); }
-    else if (id === 'training.freeLook') {
-      how = 'held CapsLock';
-      await page.keyboard.down('CapsLock');
-      // (one way, as every move under the lock)
-      vmx += 200;
-      await page.mouse.move(vmx, vmy, { steps: 6 });
-      await sleep(1600);
-      await page.keyboard.up('CapsLock');
+    else if (id === 'training.zoom') {
+      how = touch ? 'scope button, pinched' : 'shift, wheel in';
+      if (touch) { await (await page.$('.cot-touch .round.scope')).tap(); await sleep(500); await pinch(true); }
+      else { if (!(await sightMode())) await page.keyboard.press('ShiftLeft'); await sleep(500); await wheel(-240, 4); }
     }
     // (the last training card ends the battle: its chapter closes, the Garage comes back, then the debrief shows)
-    let next = await waitChange(now, id === 'training.rollout' ? 10_000 : id === 'training.volley' ? 5_000 : 30_000);
-    if (id === 'training.complete' && next === null) {
+    let next = await waitChange(now, id === 'training.volley' ? 5_000 : 30_000);
+    if (id === 'training.fight' && next === null) {
       const until = Date.now() + 120_000;
       while (Date.now() < until && (next = await stepNow()) !== 'debrief.summary') await sleep(500);
       if (next !== 'debrief.summary') next = null;
@@ -554,8 +560,7 @@ try {
   report.hits = await page.evaluate(() => window.__walkHits ?? []).catch(() => []);
   report.leftOver = THROUGH ? 0 : await page.evaluate(() => document.querySelectorAll('.cot-tut, .cot-tut-guide').length);
   report.covered = report.steps.map((s) => s.step);
-  // (a desktop walk aims with the cursor, where the game has no free look: the runner moves that step on by itself)
-  const expected = stepsFor.map((s) => s.id).filter((stepId) => touch || stepId !== 'training.freeLook');
+  const expected = stepsFor.map((s) => s.id);
   report.ok = report.steps.every((s) => s.advanced) && expected.every((id) => report.covered.includes(id)) && report.chapterEnded
     && report.leftOver === 0;
   assert.ok(report.ok, `every step moved on through the game's input: ${JSON.stringify(report.steps.map((s) => [s.step, s.advanced]))}`);

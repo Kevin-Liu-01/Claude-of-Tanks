@@ -104,9 +104,13 @@ for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
 {
   for (const input of ['keyboard', 'touch', 'pad']) {
     const ids = chapterSteps('training', input).map((step) => step.id.replace(/(Touch|Pad)$/, ''));
-    assert.deepEqual(ids.slice(0, 4), ['training.rollout', 'training.driveA', 'training.driveB', 'training.turret'],
-      `${input}: the training opens with the rollout, the two rings and the turret`);
-    assert.ok(ids.includes('training.sight'), `${input}: the gunner's sight is taught`);
+    assert.deepEqual(ids.slice(0, 3), ['training.drive', 'training.turret', 'training.zoom'],
+      `${input}: the training opens on the drive, then the turret and the sight (no card before the first move)`);
+    // (Kevin, 2026-11-20: "shorter and fewer") about half the 45 cards it had; one card that only explains, and it waits for
+    // a hand that has no armour key
+    assert.ok(ids.length <= 22, `${input}: ${ids.length} training cards, at most 22`);
+    const reads = chapterSteps('training', input).filter((step) => step.advance.on === 'next').map((step) => step.id);
+    assert.deepEqual(reads, input === 'keyboard' ? [] : ['training.armourTouch'], `${input}: the cards that only explain`);
   }
   for (const step of TRAINING_STEPS) {
     for (const key of [step.title, step.body]) assert.ok(en[key] && zh[key], `${step.id}: ${key} in en-US and zh-CN`);
@@ -121,6 +125,7 @@ for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
       if (inputs.includes('pad')) assert.ok(DEFAULT_PAD_BINDINGS[action] != null, `${step.id}: ${action} has a pad button`);
     }
     if (step.advance.on === 'turret') assert.ok(step.guide?.marker, `${step.id}: a turret step points at a marker`);
+    if (step.arrive) assert.ok(step.guide?.marker && step.advance.on !== 'reach', `${step.id}: a step that asks for its ring first shows the ring`);
     assert.equal(step.chapter, 'training');
   }
   // the ground: every actor a distinct tank, none the loaner; seated in roster order on their own marks

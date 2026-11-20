@@ -70,11 +70,11 @@ assert.ok(trainingLessonTicks(null).every((t) => !t.done), 'no run, no ticks');
 const view = (shown, complete) => ({ seconds: 600, shots: 1, pens: 1, held: 0, destroyed: 0, shown, complete });
 assert.ok(trainingLessonTicks(view([], true)).every((t) => t.done), 'a finished run ticks all');
 const ids = TRAINING_STEPS.filter((s) => !s.when || s.when === 'keyboard' || (Array.isArray(s.when) && s.when.includes('keyboard'))).map((s) => s.id);
-const partial = ids.slice(0, ids.indexOf('training.fireBounce') + 2);
+const partial = ids.slice(0, ids.indexOf('training.fireHE') + 1);
 assert.deepEqual(trainingLessonTicks(view(partial, false)).map((t) => t.done),
   [true, true, true, true, true, false, false, false, false, false, false, false], 'a stopped run ticks the lessons it got past');
-assert.ok(trainingLessonTicks(view(['training.driveBTouch', 'training.turretTouch'], false))[0].done, 'a hand\'s variant of the proof counts');
-assert.ok(!trainingLessonTicks(view(['training.driveB'], false))[0].done, 'standing on the proof is not past it');
+assert.ok(trainingLessonTicks(view(['training.driveTouch', 'training.turretTouch'], false))[0].done, 'a hand\'s variant of the proof counts');
+assert.ok(!trainingLessonTicks(view(['training.drive'], false))[0].done, 'standing on the proof is not past it');
 
 // 4. The chapters and the access.
 const memory = new Map();

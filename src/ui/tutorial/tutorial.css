@@ -22,9 +22,16 @@
 .cot-tut-pulse.is-pulsing{animation:cot-tut-pulse var(--dur-stage) var(--ease-enter) 1 both;}
 @keyframes cot-tut-pulse{0%{opacity:0;transform:scale(1.08);}45%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(1);}}
 
+/* (Kevin, 2026-11-20: translucent, not solid black) the card's own backgrounds, a scrim the field shows through, blurred a
+   little; light ink on them holds AA over open sky (the worst case, white sky: 12:1 for the body, 4.6:1 for the header's ink-3).
+   Local to the card: the shared HUD and surface tokens belong to the HUD lane (mobile-hud-274). */
+.cot-tut{--tut-card-bg:color-mix(in srgb,var(--surface-menu) 90%,transparent);
+  --tut-card-bg-battle:color-mix(in srgb,var(--hud-plate-strong) 90%,transparent);}
+@supports not (backdrop-filter:blur(1px)){.cot-tut{--tut-card-bg:var(--surface-menu);--tut-card-bg-battle:var(--hud-plate-strong);}}
 .cot-tut-card{position:fixed;left:50%;top:50%;box-sizing:border-box;width:min(30rem,calc(100vw - 2 * var(--s4)));
   max-height:calc(100dvh - 2 * var(--s4));overflow:auto;display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);
-  border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e3);pointer-events:auto;transform:translate(-50%,-50%);
+  border-radius:var(--r2);background:var(--tut-card-bg);box-shadow:var(--e3);pointer-events:auto;transform:translate(-50%,-50%);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   transition:transform var(--dur-base) var(--ease-move),opacity var(--dur-base) var(--ease-enter);}
 .cot-tut-card[data-place='upper']{top:calc(var(--s5) + env(safe-area-inset-top));transform:translate(-50%,0);}
 /* (Kevin, 2026-11-20: "the boxes are quite intrusive") a battle step the player does: a compact card, the task and the one
@@ -81,8 +88,8 @@ body[data-hud-guidance~=card-compact] .cot-tut:is([data-chapter=battle],[data-ch
 .cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card[data-more]::after{content:'\25BE';position:sticky;bottom:0;flex:none;
   display:flex;align-items:flex-end;justify-content:center;height:28px;margin:calc(-28px - var(--s3)) calc(-1 * var(--s4)) 0;
   padding-bottom:2px;font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1;color:var(--ink-2);pointer-events:none;
-  background:linear-gradient(to bottom,transparent,var(--hud-plate-strong) 65%);}
-.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{border-radius:0;background:var(--hud-plate-strong);
+  background:linear-gradient(to bottom,transparent,var(--tut-card-bg-battle) 65%);}
+.cot-tut:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card{border-radius:0;background:var(--tut-card-bg-battle);
   box-shadow:inset 0 0 0 1px var(--line-2),var(--e3);
   clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px);}
 @media (prefers-reduced-motion: reduce){
