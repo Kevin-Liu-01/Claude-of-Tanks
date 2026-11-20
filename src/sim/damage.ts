@@ -492,7 +492,7 @@ export function ramDamage(
  * @param {string} key equipMults field
  * @returns {number}
  */
-function equipMult(combat: CombatState | null | undefined, key: string): number {
+function equipMult(combat: Pick<CombatState, 'equipMults'> | null | undefined, key: string): number {
   const m = combat && combat.equipMults;
   const v = m && m[key];
   return Number.isFinite(v) ? v! : 1;
@@ -2373,9 +2373,14 @@ export function selectFirstAvailableShell(
   return slot;
 }
 
+/** What a load cycle's duration reads from the combat state: the crew, the modules and the equipment. */
+type ReloadEffects = Pick<CombatState, 'crew' | 'modules' | 'equipMults'>;
+/** The gun fields a load cycle's duration reads. */
+export type ReloadGunSpec = Pick<DamageGunSpec, 'reloadS' | 'shells' | 'autoloader' | 'launcherMuzzles' | 'fixedLaunchCanisters'>;
+
 /** Shared crew, module, and equipment multiplier for a new load cycle. */
 function reloadMultiplier(
-  combatState: CombatState,
+  combatState: ReloadEffects,
   guided: boolean,
 ): number {
   let mult = 1;
@@ -2396,14 +2401,48 @@ function reloadMultiplier(
   return mult;
 }
 
+/** A one-round cycle: the round's own reloadS (an IFV's belt, its missile rail) or the gun's, under the effects now. */
+function shellCycleS(combatState: ReloadEffects, gun: ReloadGunSpec, loaded: DamageShellSpec | undefined): number {
+  return ((loaded && loaded.reloadS) || gun.reloadS) * reloadMultiplier(combatState, loaded?.guided === true);
+}
+
+/** A whole magazine's load, under the effects now (`gun` carries an autoloader). */
+function magazineCycleS(combatState: ReloadEffects, gun: ReloadGunSpec, slot: number): number {
+  return Math.max(0.05, Number(gun.autoloader?.fullReloadS) || gun.reloadS)
+    * reloadMultiplier(combatState, isUnguidedRocket(gun, gun.shells?.[slot]));
+}
+
+/**
+ * The reload the next shot starts, under the crew, module and equipment effects now: the duration startPostShotReload
+ * would give the cycle (the same helpers), read without starting it. The reticle shows it while the gun is loaded
+ * (owner 2026-11-20: the reload time a player plans the next shot by).
+ * - A conventional gun, a named secondary weapon (reloadGroup): the selected round's cycle.
+ * - A guided round: its launcher's full cycle. On a rack salvo that is the group reload; the short intervals between
+ *   the group's shots are the rack indicator's.
+ * - A cannon magazine: the intra-clip cycle while a round stays after the shot, the whole magazine's load on the last.
+ */
+export function nextShotReloadS(
+  combatState: ReloadEffects & Pick<CombatState, 'shellSlot' | 'magazine'>,
+  spec: { gun: ReloadGunSpec },
+): number {
+  const gun = spec.gun;
+  const loaded = gun.shells?.[combatState.shellSlot];
+  const magazine = combatState.magazine;
+  const autoloader = gun.autoloader;
+  if (loaded?.guided === true || loaded?.reloadGroup || !magazine || !autoloader) {
+    return shellCycleS(combatState, gun, loaded);
+  }
+  return magazine.rounds <= 1 ? magazineCycleS(combatState, gun, combatState.shellSlot)
+    : intraClipCycleS(autoloader, gun.reloadS);
+}
+
 function beginMagazineReload(combatState: CombatState, spec: DamageTankSpec): boolean {
   const magazine = combatState.magazine;
   const autoloader = spec.gun && spec.gun.autoloader;
   if (!magazine || !autoloader) return false;
   magazine.rounds = 0;
   const channel = combatState.gunReload || combatState.reload;
-  const totalS = Math.max(0.05, Number(autoloader.fullReloadS) || spec.gun.reloadS)
-    * reloadMultiplier(combatState, isUnguidedRocket(spec.gun, spec.gun.shells?.[combatState.shellSlot]));
+  const totalS = magazineCycleS(combatState, spec.gun, combatState.shellSlot);
   channel.totalS = totalS;
   channel.t = totalS;
   channel.kind = 'magazine';
@@ -2548,13 +2587,11 @@ function beginShellReload(
   spec: DamageTankSpec,
   loaded: DamageShellSpec | undefined,
 ): void {
-  const mult = reloadMultiplier(combatState, loaded?.guided === true);
   // PER-SHELL RELOAD (IFV support role): a shell carrying its own reloadS
   // governs its slot — autocannon belts cycle in fractions of a second while
   // the ATGM rail on the same vehicle keeps its own 2-3 s cycle. Vehicles
   // without per-shell data keep the single gun-level duration.
-  const baseS = (loaded && loaded.reloadS) || spec.gun.reloadS;
-  const totalS = baseS * mult;
+  const totalS = shellCycleS(combatState, spec.gun, loaded);
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
   combatState.reload.kind = 'shell';

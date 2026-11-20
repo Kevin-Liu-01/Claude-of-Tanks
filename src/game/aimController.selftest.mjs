@@ -12,10 +12,11 @@ const player = {
     destroyed: false, eraSpent: new Set(), shellSlot: 0,
     reload: { t: 1, totalS: 6, kind: 'single' },
     magazine: { rounds: 0, capacity: 0 },
+    crew: { loader: true }, modules: {},
   },
   spec: {
     dims: { heightM: 2.5 }, armor: { boundingRadiusM: 4 },
-    gun: { shells: [{}] },
+    gun: { shells: [{}], reloadS: 6 },
   },
   visual: {
     gunMuzzleWorld(out) { out.set(0, 2, 0); },
@@ -168,6 +169,15 @@ assert.equal(frame.shellSlot, 0, 'rejected request returns highlight to authorit
 frame.ammoSelectionPending = true;
 idleController.update(frame);
 assert.equal(frame.ammoSelectionPending, false, 'an absent player clears stale presentation state');
+
+// owner 2026-11-20: the frame carries the reload the next shot starts (sim nextShotReloadS), the reticle's loaded figure,
+// after crew effects: a dead loader stretches it ×1.5
+controller.update(frame);
+assert.equal(frame.reload.readyS, 6, 'the gun\'s reload, read from the sim');
+player.combat.crew.loader = false;
+controller.update(frame);
+assert.equal(frame.reload.readyS, 9, 'a dead loader: the sim\'s ×1.5');
+player.combat.crew.loader = true;
 
 console.log('aimController.selftest: shared camera/bore aim owner passed');
 
