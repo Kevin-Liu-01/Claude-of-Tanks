@@ -4072,9 +4072,14 @@ const worldFramePresentation = {
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
+// (Kevin, 2026-11-20: "should pause the game when showing things") a tutorial card that explains rather than asks holds
+// the battle through the same pause as the pause menu: the frame reads one predicate, so the sim, the clock and the input
+// stop together and resume together. Never online: a room's battle runs on (the tutorial never runs in one anyway).
+let tutorialHold = false;
+const tutorialHolds = (): boolean => tutorialHold && game.phase === 'battle' && !onlineMatchActive();
 const battleFrame = createBattleFrameRuntime({
   game,
-  settings,
+  settings: { isOpen: () => settings.isOpen() || tutorialHolds() },
   killcam,
   input: playerFrameInput,
   network: {
@@ -4112,7 +4117,8 @@ const battleFrame = createBattleFrameRuntime({
     couchOwner.current?.beforeStep();
     return simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
   },
-  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
+  // (who paused: a tutorial card's hold, or the pause menu; the tutorial's own card stays up under its own hold)
+  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused, by: paused && !settings.isOpen() && tutorialHolds() ? 'tutorial' : 'menu' }),
   simulationDt: SIM_DT,
 });
 const pauseInfo = battleFrame.pauseInfo;
@@ -4866,6 +4872,8 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   cue: (actor, on) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) cueTrainingActor(game, actor, on); },
   // 273: each ring reached is the training battle's checkpoint (a death comes back there, game/state.ts)
   checkpoint: (x, z) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) setTrainingCheckpoint(game, x, z); },
+  // (Kevin, 2026-11-20) a card that explains holds the battle while it shows (the frame's pause; never online)
+  hold: (on) => { tutorialHold = on; },
   // 273: the training chapter complete: the battle's quiet verdict, then the Garage by the Leave's own path (no report)
   trainingComplete: () => {
     if (game.phase !== 'battle' || onlineMatchActive() || !isSoloBattleRuntimeReady() || !finishTrainingBattle(game)) return;

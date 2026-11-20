@@ -61,6 +61,8 @@ export interface TutorialAccessDeps {
   readonly checkpoint: (x: number, z: number) => void;
   /** 273: the training chapter is complete: the battle ends and the Garage comes back. */
   readonly trainingComplete: () => void;
+  /** A battle card that explains rather than asks holds the battle while it shows (main.ts: the frame's own pause). */
+  readonly hold: (on: boolean) => void;
 }
 
 export interface TutorialAccess {
@@ -134,7 +136,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
         startAt: resumeAt[chapter] ?? 0,
         port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
           screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue,
-          checkpoint: deps.checkpoint, trainingRun },
+          checkpoint: deps.checkpoint, trainingRun, hold: deps.hold },
         onStep: (stepId) => { if (chapter === 'training') training?.shown.push(stepId); },
         onClose: (index, stepId) => {
           run = null;

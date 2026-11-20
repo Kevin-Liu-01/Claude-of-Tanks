@@ -62,6 +62,8 @@ export interface TutorialPort {
   checkpoint?(x: number, z: number): void;
   /** 273: the last training battle's run, as the debrief reads it; null without one. */
   trainingRun?(): TrainingRunView | null;
+  /** Hold the battle (its pause) while a card that explains shows; let it go (false) when the card asks or goes. */
+  hold?(on: boolean): void;
 }
 
 /** 273: what the debrief reads of the training battle the player just finished (app/tutorialAccess.ts records it). */
@@ -232,6 +234,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     if (ended) return;
     ended = true;
     clearStep();
+    port.hold?.(false);
     for (const off of runOff.splice(0)) off();
     overlay.destroy();
     guide?.destroy();
@@ -422,10 +425,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
     onStep?.(step.id);
     const last = index === steps.length - 1;
     const acting = step.advance.on !== 'next';
+    // a battle card that explains holds the battle while it shows; one that asks for a move lets it run, compact
+    port.hold?.(battle && !acting);
     const pad = input === 'pad';
     const keys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
     const cap = (keyboard: string, padButton: number): string => (pad ? PAD_CAPS[padButton] ?? '' : input === 'touch' ? '' : keyboard);
     const view: OverlayView = {
+      mode: battle && acting ? 'act' : 'read',
       label: t('tutorial.label'),
       chapter: t(`tutorial.chapter.${chapter}`),
       progress: t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }),
@@ -546,9 +552,11 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose,
   }, PAD_POLL_MS);
   runOff.push(() => window.clearInterval(padTimer));
 
-  // a paused battle (the pause menu) hides the card; it comes back with the battle
+  // a paused battle (the pause menu) hides the card; it comes back with the battle. The card's own hold is no such pause.
   runOff.push(port.on('ui:pause', (payload) => {
-    hiddenByPause = !!(payload as { on?: boolean } | null)?.on;
+    const pause = payload as { on?: boolean; by?: string } | null;
+    if (pause?.by === 'tutorial') return;
+    hiddenByPause = !!pause?.on;
     overlay.setHidden(hiddenByPause || covered);
     guide?.setHidden(hiddenByPause || covered);
   }));

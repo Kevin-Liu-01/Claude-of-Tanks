@@ -27,13 +27,22 @@
   border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e3);pointer-events:auto;transform:translate(-50%,-50%);
   transition:transform var(--dur-base) var(--ease-move),opacity var(--dur-base) var(--ease-enter);}
 .cot-tut-card[data-place='upper']{top:calc(var(--s5) + env(safe-area-inset-top));transform:translate(-50%,0);}
+/* (Kevin, 2026-11-20: "the boxes are quite intrusive") a battle step the player does: a compact card, the task and the one
+   line under it, its buttons quiet; the header, the hint and Back belong to the cards that explain */
+.cot-tut[data-mode='act'] .cot-tut-card{width:min(22rem,calc(100vw - 2 * var(--s4)));gap:var(--s2);padding:var(--s3);}
+.cot-tut[data-mode='act'] .cot-tut-head,.cot-tut[data-mode='act'] .cot-tut-hint,.cot-tut[data-mode='act'] .cot-tut-back{display:none;}
+.cot-tut[data-mode='act'] .cot-tut-title{font-size:var(--fs-16);}
+.cot-tut[data-mode='act'] .cot-tut-body{font-size:var(--fs-13);line-height:1.45;}
 .cot-tut-card[data-place='lower']{top:auto;bottom:calc(var(--s5) + env(safe-area-inset-bottom));transform:translate(-50%,0);}
 .cot-tut-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
   font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:var(--fw-semibold);color:var(--ink-3);}
 .cot-tut-chapter{color:var(--text-accent);}
 .cot-tut-bar{height:2px;border-radius:1px;background:var(--line-2);overflow:hidden;}
 .cot-tut-bar i{display:block;height:100%;background:var(--accent);transform-origin:0 50%;transition:transform var(--dur-base) var(--ease-move);}
-.cot-tut-media{margin:0;border-radius:var(--r1);overflow:hidden;background:var(--surface-scene);aspect-ratio:16 / 9;}
+/* (Kevin, 2026-11-20: "pictures in it need to be full height and show") the figure never gives up its height to a short
+   card: a flex item with overflow hidden has no minimum height, so a card held to a planned height squashed it; it keeps
+   its 16:9 and the card scrolls under its fade instead */
+.cot-tut-media{flex:none;margin:0;border-radius:var(--r1);overflow:hidden;background:var(--surface-scene);aspect-ratio:16 / 9;}
 .cot-tut-media[hidden]{display:none;}
 .cot-tut-media img,.cot-tut-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}
 .cot-tut-title{margin:0;font-family:var(--font-display);font-size:var(--fs-20);font-weight:var(--fw-bold);line-height:var(--lh-display);}
