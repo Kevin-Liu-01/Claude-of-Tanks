@@ -395,14 +395,18 @@ try {
     else if (id === 'training.spot') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringC, now); }
     else if (id === 'training.bush') { await thirdPerson(); how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
     else if (id === 'training.armourTouch') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
-    else if (id === 'training.armourSight') { how = 'shift'; if (!(await sightMode())) await page.keyboard.press('ShiftLeft'); }
+    else if (id === 'training.armourSight') {
+      // back into ring C and stopped (the spot can come before it), then the sight
+      how = 'into ring C, shift'; await thirdPerson(); await driveInto(TRAINING_POINTS.ringC, now, true);
+      if (!(await sightMode())) await page.keyboard.press('ShiftLeft');
+    }
     else if (id === 'training.armour') { how = 'H, H'; await page.keyboard.press('KeyH'); await sleep(700); await page.keyboard.press('KeyH'); }
     else if (id === 'training.firePen') { how = 'fired at the green plate'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.green, now)} shots)`; }
     else if (id === 'training.fireBounce') { how = 'fired at the turret front'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.red, now)} shots)`; }
     else if (id === 'training.fireHE') {
       how = '3, drove to ring E, fired HE at Target 2';
       await page.keyboard.press('Digit3'); await thirdPerson();
-      await driveTo(TRAINING_POINTS.ringE, now, true);
+      await driveInto(TRAINING_POINTS.ringE, now, true);
       how += ` (${await fireAt(ACTOR.target2, TARGET_POINTS.hull, now)} shots)`;
     }
     else if (id === 'training.angle') {

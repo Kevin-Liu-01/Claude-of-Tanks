@@ -258,14 +258,18 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   { id: 'training.spot', chapter: 'training', target: [], ...PLAY, behindS: 60,
     title: 'tutorial.training.spot.title', body: 'tutorial.training.spot.body', advance: { on: 'spot', actor: TARGET1 },
     guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true } },
-  // S6: the armour colours (on by default since 273), read through the sight; a keyboard turns them off and on with its own
-  // key, a touch layout and a pad (no toggle of their own until the controller-parity item) read the Settings row
-  { id: 'training.armourSight', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY,
+  // S6: the armour colours (on by default since 273), read through the sight from ring C (the spot can come before the
+  // ring, and a tank that rolls on past it drops where the ground hides Target 1: the end walk of 2026-11-20); a keyboard
+  // turns them off and on with its own key, a touch layout and a pad (no toggle of their own until the controller-parity
+  // item) read the Settings row
+  { id: 'training.armourSight', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, arrive: true,
     title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.body', advance: { on: 'camera', mode: 'sight' },
-    keys: { sight: 'sniperToggle' }, guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
-  { id: 'training.armourSightTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+    keys: { sight: 'sniperToggle' }, guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true,
+      actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
+  { id: 'training.armourSightTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, arrive: true,
     title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.bodyTouch', advance: { on: 'camera', mode: 'sight' },
-    guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, hud: ['.cot-touch .round.scope'] } },
+    guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true,
+      actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, hud: ['.cot-touch .round.scope'] } },
   { id: 'training.armour', chapter: 'training', when: 'keyboard', target: [], ...PLAY, teaches: 'armourColours',
     title: 'tutorial.training.armour.title', body: 'tutorial.training.armour.body', advance: { on: 'armourCycle' },
     keys: { toggle: 'hitboxOverlay' }, guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
