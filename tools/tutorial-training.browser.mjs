@@ -356,6 +356,12 @@ try {
   }
   /** One shot at an actor's point: laid at the reticle, the gun on it and settled, fired. */
   async function fireAtOnce(actorId, local, stepId) {
+    // through the gunner's sight, as a player lays on a plate (the third-person view's reticle stands off the screen's
+    // centre: the lay never converged there, 372 tries at Target 2 in the end walk of 2026-11-20)
+    if (!(await sightMode())) {
+      if (touch) await (await page.$('.cot-touch .round.scope'))?.tap(); else await page.keyboard.press('ShiftLeft');
+      await sleep(600);
+    }
     const until = Date.now() + 30_000;
     while (Date.now() < until && (await stepNow()) === stepId) {
       const target = await actorPose(actorId);
