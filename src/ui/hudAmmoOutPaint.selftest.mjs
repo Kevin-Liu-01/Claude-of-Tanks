@@ -371,9 +371,14 @@ const DRY_RING = 16;
   let loadedRun = { ...run() };
   for (let guard = 0; frame(tank).painted && guard < 600; guard++) loadedRun = { ...run() };
   assert.ok(countdownRun.classes.has('num'), 'the figure takes the tabular .num face');
+  // (a dark halo under it, so the grey reads over dry grass and muzzle smoke, as the countdown does; the unit too)
+  const halo = (element) => element.style.getPropertyValue('-webkit-text-stroke');
+  assert.match(halo(countdownRun), /^3px rgba\(5,8,11,0\.88\)$/, 'the loaded figure carries the dark halo');
+  assert.equal(halo(hud.sightText.run(11)), halo(countdownRun), 'and its unit');
   assert.ok(fire(tank));
   view = frame(tank, { advance: 6 * reloadMult(tank.combat) - 3.2 });
   assert.match(view.countdown, /^3\.\d s$/, 'fired: the seconds left, in the reload ink');
+  assert.match(halo(countdownRun), /^3px /, 'the countdown keeps the same halo');
   assert.equal(view.ready, null, 'fired: no grey figure beside the countdown');
   const countingRun = run();
   assert.deepEqual([countingRun.x, countingRun.y, countingRun.font], [loadedRun.x, loadedRun.y, loadedRun.font],

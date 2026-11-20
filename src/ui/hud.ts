@@ -929,6 +929,11 @@ const FONT_COUNTDOWN_WORD = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
 /** The readout's box: three tabular figures wide (reloadHudFigure), each figure set right in it, so 12, 7.4 and 0.9 end
  *  in one place and the unit after them never moves. */
 const READOUT_BOX = '0.0';
+/** The readout's dark halo (owner 2026-11-20: the grey figure faded into dry grass and muzzle smoke): a 3 px stroke under
+ *  the glyphs, 1.5 px of it past their edges, inside the 3 px every mark keeps from the ring, the rack and the furniture;
+ *  the reticle's dark contour ink. */
+const READOUT_HALO_W = 3;
+const READOUT_HALO = 'rgba(5,8,11,0.88)';
 const FONT_COUNTDOWN_UNIT = `500 11px ${FONT_COND}`;
 const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
 const FONT_SCOPE_COUNT = `700 13.5px ${FONT_COND}`;
@@ -5457,9 +5462,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     noteSightInk(x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT);
     ctx.textAlign = 'left';
     ctx.font = word ? FONT_COUNTDOWN_WORD : FONT_COUNTDOWN;
-    sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x + textW - figureW, y, ctx);
+    ctx.strokeStyle = READOUT_HALO;
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x + textW - figureW, y, ctx, READOUT_HALO_W);
     ctx.font = FONT_COUNTDOWN_UNIT;
-    sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx);
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx, READOUT_HALO_W);
     ctx.textAlign = 'center';
   }
 
