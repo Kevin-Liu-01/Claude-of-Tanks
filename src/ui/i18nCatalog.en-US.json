@@ -427,6 +427,7 @@
   "playMenu.owner.kickConfirm": "Remove {name} from the room?",
   "playMenu.owner.kickYes": "Remove",
   "playMenu.owner.kickNo": "Keep",
+  "playMenu.lobby.you": "You",
   "touch.gfx.label": "GFX {short}",
   "touch.gfx.aria": "Graphics quality: {label}",
   "touch.gfx.title": "Graphics: {label}",

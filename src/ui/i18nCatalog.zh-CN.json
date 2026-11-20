@@ -439,6 +439,7 @@
   "playMenu.owner.kickConfirm": "将 {name} 移出房间？",
   "playMenu.owner.kickYes": "移出",
   "playMenu.owner.kickNo": "保留",
+  "playMenu.lobby.you": "你",
   "touch.gfx.label": "画质 {short}",
   "touch.gfx.aria": "画质：{label}",
   "touch.gfx.title": "画质：{label}",

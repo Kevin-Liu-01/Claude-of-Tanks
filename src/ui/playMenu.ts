@@ -377,7 +377,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select--map .menu-select-trigger,.cot-play .menu-select--vehicle .menu-select-trigger{min-height:44px;padding-left:var(--s1)}
 .cot-play .menu-select-thumb{position:relative;display:block;width:60px;height:34px;flex:0 0 60px;overflow:hidden;border-radius:2px;
   background:var(--surface-hover) center/cover no-repeat;box-shadow:var(--ring-1)}
-.cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
+.cot-play .menu-select-thumb>svg{display:none}
+.cot-play .menu-select-thumb.is-random{display:grid;place-items:center;background:var(--surface-page);color:var(--ink-3)}
+.cot-play .menu-select-thumb.is-random>svg{display:block}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
 .cot-play :is(.menu-select-trigger,.mode,.op-launch):focus-visible{
@@ -441,7 +443,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select--mode .menu-select-trigger{gap:var(--s3)}
 .cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
-.cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
+/* the roster sits under the room code, above the battlefield card (owner 2026-11-19): the sticky foot (vehicle, team,
+   Ready) covered every seat after the first at 1280x800; the card scrolls under the foot now, never a seat */
+.cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.cot-play .player .you.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12));margin-block:calc((var(--name-line) - 20px) / 2)}
 .cot-play .player{--foot-track:var(--rules-col);display:grid;
   grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) calc(var(--foot-track) - 7em - var(--s3)) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
@@ -779,6 +784,7 @@ export function createPlayMenu({
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"${datumAttr('room-code')}></div></div>
         <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
+      <div class="players"></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy"><div class="field mode-field"><span class="field-label" id="cot-room-mode-label">${t('playMenu.advanced.mode')}</span>
             <div class="menu-select menu-select--mode" data-control="mode">
@@ -791,7 +797,7 @@ export function createPlayMenu({
             <div class="menu-select menu-select--map" data-control="map" data-value="random">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"
                 aria-controls="cot-room-bf" aria-labelledby="cot-room-map-label cot-room-map-value">
-                <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
+                <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true">${uiIconSVG('shuffle', 18)}</span>
                 <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value${datumAttr('map-name')}>${t('playMenu.advanced.battlefieldRandom')}</span>
                   <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
             </div>
@@ -802,7 +808,7 @@ export function createPlayMenu({
             ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
       <div class="mode-pick" id="cot-room-mode-pick" role="group" aria-labelledby="cot-room-mode-label" hidden></div>
       <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
-      <div class="players"></div><div class="controls">
+      <div class="controls">
         <div class="vehicle-pick" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
@@ -2051,6 +2057,12 @@ export function createPlayMenu({
       host.textContent = t('playMenu.lobby.host');
       playerName.append(host);
     }
+    if (isMe) {
+      const you = document.createElement('span');
+      you.className = 'you cot-c-tag cot-c-tag--accent';
+      you.textContent = t('playMenu.lobby.you');
+      playerName.append(you);
+    }
     const team = document.createElement('span');
     team.className = 'team';
     const mark = document.createElement('i');
@@ -2071,7 +2083,11 @@ export function createPlayMenu({
     playersEl.classList.toggle('can-kick', canKick() && next.players.length > 1);
     playersEl.textContent = '';
     const fragment = document.createDocumentFragment();
-    for (const player of next.players) fragment.appendChild(createLobbyPlayerRow(player, playerId));
+    // the seat's own row leads the roster, then every other seat in the room's order
+    const own = next.players.filter((player) => player.id === playerId);
+    for (const player of [...own, ...next.players.filter((player) => player.id !== playerId)]) {
+      fragment.appendChild(createLobbyPlayerRow(player, playerId));
+    }
     playersEl.appendChild(fragment);
   }
 
