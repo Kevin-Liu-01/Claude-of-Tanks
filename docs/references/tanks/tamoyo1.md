@@ -47,7 +47,8 @@ their own records, guns, trunnions and armour unchanged.
 
 | # | Read | Was | Now |
 |---|---|---|---|
-| 1 | Tamoyo 1 turret plan | one width from the bustle to the wedge | narrowing 22 % to the wedge's tip and 18 % to the bustle's rear plate: the M41 family's shape it shares (Tanks Encyclopedia: new designs on the M41's concepts) |
+| 1 | Tamoyo 1 turret plan | one width from the bustle to the wedge | narrowing 22 % to the wedge's tip and 18 % to the bustle's rear plate: low and rounded, its roof at the published 2.2 m |
 | 2 | Tamoyo 1 roof edge | a sharp slab edge | a 6 cm by 8 cm bevel all round; the cupola sunk 3 cm so its base covers the bevel |
 | 3 | Tamoyo 3 front | chamfered 0.26 m a side, its top 0.12 m under the roof | chamfered 0.17 m, its top 0.05 m under the roof: a fuller, squarer spaced front |
 | 4 | Tamoyo 3 bustle | the rear plate and the cans' bracket | the bustle rack Vesp draws across the rear plate (rails, uprights, a mesh floor), the bracket inside it |
+| 5 | Tamoyo 3 roof | 2.315 m | the published 2.35 m (+3.5 cm): the taller of the two |

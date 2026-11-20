@@ -8,8 +8,9 @@
 // - t3: the Tamoyo 3 as Bernardini showed it in May 1987 (the Festa da Cavalaria; Bastos' photograph): open running gear
 //   under fenders, the boxy spaced-armour turret with its vertical front plate and the concertina gun boot, the 105 mm L7A3
 //   with its fume extractor, the dischargers at the turret's rear corners, the bustle rack, the BERNARDINI plate.
-// brazil-kit-274 (owner 2026-11-20, "unique turrets"): the Tamoyo 1's turret takes the M41 family's bevelled roof edge and
-// a plan narrowing to the wedge and the bustle; the Tamoyo 3's a fuller, squarer spaced front and its bustle rack.
+// brazil-kit-274 (owner 2026-11-20, "unique turrets"): the Tamoyo 1's turret low and rounded, a bevelled roof edge and a
+// plan narrowing to the wedge and the bustle; the Tamoyo 3's taller (its published 2.35 m roof) and squarer, a fuller
+// spaced front and its bustle rack.
 // Datums: the published 6.5 m hull, 8.77 m (T1) and 8.9 m (T3) over the gun, 3.22 m and 3.29 m wide, 2.2 m and 2.35 m to
 // the turret roof (Tanks Encyclopedia, Bastos 2022); stations from Vesp's two profiles for Tanks Encyclopedia, drawn on one
 // hull at one scale (scaled on the 6.5 m hull: the nose tip 1.15 m up, a 20-degree glacis to the 1.565 m deck, the engine
@@ -257,7 +258,9 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
 
   // ---------------------------------------------------------------- turret --
   P.turretG.position.set(0, RING.y, RING.z);
-  const roof = t3 ? 0.75 : 0.72;
+  // (brazil-kit-274: the Tamoyo 3's roof at its published 2.35 m, 3.5 cm over round 2's 2.315; the Tamoyo 1's stays at its
+  // published 2.2)
+  const roof = t3 ? 0.785 : 0.72;
   // (the Tamoyo 1's front 0.40 m further forward than round 2: Vesp's profile puts its mantlet face 1.72 m and its roof's
   // front edge 0.86 m ahead of the ring)
   const front = t3 ? 1.42 : 1.60, rear = t3 ? -2.11 : -2.05, bustleZ = -0.90, bustleFloor = 0.13;
@@ -267,10 +270,10 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
   const T1_WEDGE = Object.freeze({ z0: 0.75, z1: 1.45, y1: 0.40, yTip: 0.32 });
   const wedgeY = (z: number): number => roof - (z - T1_WEDGE.z0) * (roof - T1_WEDGE.y1) / (T1_WEDGE.z1 - T1_WEDGE.z0);
   // (brazil-kit-274, the owner 2026-11-20: "update the osorio 120, tamoyo 3, osorio 105 and tamoyo 3 now with unique
-  // turrets too"): the two turrets pushed apart on their records. The Tamoyo 1's is the M41 family's shape it shares
-  // (Tanks Encyclopedia: new designs on the M41's concepts): a bevelled roof edge all round and a plan that narrows to the
-  // wedge and to the bustle's rear plate. The Tamoyo 3's keeps its slab walls and gains a fuller, squarer spaced front and
-  // the bustle rack Vesp draws.
+  // turrets too"): the two turrets pushed apart on their records. The Tamoyo 1's, the lower, at its published 2.2 m, is
+  // rounded: a bevelled roof edge all round and a plan that narrows to the sloped front and to the bustle's rear plate. The
+  // Tamoyo 3's, the taller, at its published 2.35 m, keeps its slab walls and gains a fuller, squarer spaced front and the
+  // bustle rack Vesp draws.
   /** The Tamoyo 1's roof bevel (its height and its inset) and its plan: the half-width factor along the turret. */
   const bevelH = t3 ? 0 : 0.06, bevelW = t3 ? 0 : 0.08;
   const plan = (z: number): number => {
