@@ -2744,14 +2744,14 @@ const RETIRED_STAND_IN: Readonly<Partial<Record<FleetEquipmentVariant, FleetEqui
 // so they carry no cable or links.
 const brazilShackles: DecorManifestRow = { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] };
 // (each load tries its seats in order, never the turret roof or the bustle top (the Tamoyos and X1s have no bustle: their
-// turretRear seat is the roof): the gun's rear arc sweeps low over these engine decks, so the rear rack, the deck's stern
-// corners, the turret's flank and the aft fender come before the deck's middle; brazil-kit-274's Node census)
+// turretRear seat is the roof) and never the deck's stern corners, which the decoration board's full-depression bore sweep
+// crosses: the rear rack, the turret's flank and the aft fender come before the deck beside the turret; brazil-kit-274's
+// Node census)
 const brazilAft = (side: 1 | -1, x = 0.12): Array<[string, DecorSlotArgs]> => [
   ['hullRearRack', { x: side * x }],
-  ['rearDeck', { corner: side, back: true, small: true }],
   ['turretSide', { side, rear: true }],
   ['fender', { side, zFrac: -0.30, small: true }],
-  ['rearDeck', { center: true, back: true, small: true }],
+  ['rearDeck', { corner: side }],
 ];
 const brazilLoad = (kit: string, v: Omit<DecorKitArgs, 'rng'>, side: 1 | -1, x = 0.12): DecorManifestRow =>
   ({ kit, p: 1, v, slot: ['fleetCargo', { routes: brazilAft(side, x) }] });
@@ -2778,7 +2778,7 @@ const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Obj
     brazilShackles, brazilCable(2.6, 1),
     brazilLoad('tarp', { v: 'fat', len: 1.0 }, -1), brazilLoad('cargo', { v: 'mechanics-tool-chest' }, 1),
     brazilLoad('packs', { n: 3 }, 1, 0.35), brazilTools(['shovel', 'axe'], 1),
-    brazilLoad('jerry', { n: 2, water: false }, -1, 0.4), brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.6),
+    brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.6),
   ],
   tamoyo3: (): DecorManifestRow[] => [
     brazilShackles, brazilCable(2.6, -1), brazilLoad('cargo', { v: 'crew-backpack' }, 1, 0.5),
