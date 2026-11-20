@@ -514,25 +514,28 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-s
    .cot-c-btn), so the three share one height, radius, glyph size and the kit's hover, press, focus and unavailable states
    (owner 2026-11-11: Couch read as a placeholder from another kit). One layout at every width and in every locale (owner
    2026-11-19: Deploy's word ran off its edge under its key): the keys are squares, Deploy fills the rest and never
-   narrows below its word and its key (min-content), and the launch estimate between them shows only whole */
-.cot-garage .cot-deploy-acts{--act-h:var(--deploy-act-h);display:flex;align-items:stretch;gap:var(--s3);min-width:0;}
+   narrows below its glyph and word (min-content), and its key cap and the launch estimate show only whole. The row
+   keeps that minimum (no min-width:0), so a dock's thumb gives up its width before the row is cut */
+.cot-garage .cot-deploy-acts{--act-h:var(--deploy-act-h);display:flex;align-items:stretch;gap:var(--s3);}
 .cot-garage .cot-deploy-acts>.cot-c-btn{--h:var(--act-h);gap:var(--s3);font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);}
 .cot-garage .cot-deploy-acts>.cot-c-btn svg{width:20px;height:20px;flex:none;}
 .cot-garage .cot-deploy-acts>.cot-c-btn--secondary{flex:none;width:var(--h);padding:0;}
 @media (hover:hover){.cot-garage .cot-deploy-acts>.cot-c-btn--secondary:hover:not(:disabled){box-shadow:var(--btn-secondary-ring-hover);}}
-/* Deploy, the one primary, fills the row: its word, then the estimate's room, then its key cap (hidden on touch by the
-   kit). Its edge is the kit's bevel (a lit top, a shaded foot) under the lift, and a press sinks it (the lift goes, the
-   kit's drop and darker fill) */
+/* Deploy, the one primary, fills the row: its glyph and word, then the room for its key cap and estimate (the key cap is
+   hidden on touch by the kit). Its edge is the kit's bevel (a lit top, a shaded foot) under the lift, and a press sinks it
+   (the lift goes, the kit's drop and darker fill) */
 .cot-garage .cot-deploy-acts>.cot-c-btn--primary{flex:1 1 0;min-width:min-content;display:grid;grid-template-columns:max-content minmax(0,1fr);
-  grid-auto-flow:column;grid-auto-columns:max-content;align-items:center;justify-content:stretch;padding:0 var(--s5);box-shadow:var(--btn-primary-lift);}
+  align-items:center;justify-content:stretch;padding:0 var(--s5);box-shadow:var(--btn-primary-lift);}
 .cot-garage .cot-deploy-acts>.cot-c-btn--primary:active{box-shadow:var(--btn-primary-bevel);}
 .cot-garage .cot-deploy-go{display:flex;align-items:center;gap:var(--s3);font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label);}
-/* the estimate (deployScreen.ts): a wrapping line as tall as the button behind an empty first item, so an estimate wider
-   than its room wraps to a second line under the clip instead of crossing the word or the key */
-.cot-garage .cot-deploy-end{display:flex;flex-wrap:wrap;align-content:flex-start;align-items:center;justify-content:flex-end;height:var(--h);
-  min-width:0;overflow:hidden;font:500 var(--fs-13)/1 var(--font-body);}
-.cot-garage .cot-deploy-end::before{content:"";height:100%;}
-.cot-garage .cot-deploy-end>*{white-space:nowrap;}
+/* the key cap and the estimate (deployScreen.ts): one line as tall as the button, filled from its right edge behind an
+   empty first item, the key cap before the estimate; whatever does not fit whole wraps to a second line under the clip
+   (the estimate first, then the key cap), so neither ever crosses the word or the button's edge */
+.cot-garage .cot-deploy-end{display:flex;flex-direction:row-reverse;flex-wrap:wrap;align-content:flex-start;align-items:center;justify-content:flex-start;
+  height:var(--h);min-width:0;overflow:hidden;font:500 var(--fs-13)/1 var(--font-body);}
+.cot-garage .cot-deploy-end::before{content:"";order:-2;height:100%;}
+.cot-garage .cot-deploy-end>.cot-c-kbd{order:-1;}
+.cot-garage .cot-deploy-end>span{margin-inline-end:var(--s3);white-space:nowrap;}
 .cot-garage .cot-deploy-acts>.cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
 /* focus: the kit's ring outside the button, on any fill (the menu's inset outline was lost in Deploy's accent) */
 .cot-garage .cot-deploy-acts>.cot-c-btn:focus-visible{outline:none;box-shadow:var(--focus-ring);}

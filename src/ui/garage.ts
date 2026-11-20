@@ -864,9 +864,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-label="${t('watch.entry')}" data-tip="${t('watch.entry')}">${uiIconSVG('freeLook', 20)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--primary" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
-    // the launch's estimate (deployScreen.ts, 972c9575b3) fills the room between the word and its key, shown only whole;
-    // the key cap is the button's own last column; the extra </div> closes .cot-deploy-acts
-    `<span class="cot-deploy-end"></span>${keycap(t('garage.key.enter'))}</button></div></div>` +
+    // the room after the word holds the key cap, then the launch's estimate (deployScreen.ts, 972c9575b3), each shown only
+    // whole and the estimate first to go (deploy.css .cot-deploy-end); the extra </div> closes .cot-deploy-acts
+    `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
     `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
