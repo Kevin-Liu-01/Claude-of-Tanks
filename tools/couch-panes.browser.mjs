@@ -129,7 +129,6 @@ try {
     await page.goto(`${origin}/${previewRoot ? 'pad.html' : 'pad'}?padService=${encodeURIComponent(padService)}&padDebug=1#${code}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await page.waitForSelector('.pad-form button[type="submit"]', { timeout: 240_000 });
     await page.tap('.pad-form button[type="submit"]');
-    await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 0, beta: 0, gamma: -60 })));
     await page.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 60_000 }, PAD_PHONE_STATE.live);
     phones.push(page);
   };
@@ -261,6 +260,12 @@ try {
     if (count === layouts[0]) await (await desktop.$('.cot-couch-modal'))?.screenshot({ path: resolve(outDir, 'lobby.png') });
     report.step = `layout ${count}: battle`;
     await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
+    // Start opens the room's briefing (docs/COUCH-MODE.md "The briefing"): the host steps it through to GO
+    await desktop.waitForSelector('.cot-brief', { timeout: 15_000 });
+    for (let step = 0; step < 3 && await desktop.$('.cot-brief'); step++) {
+      await desktop.evaluate(() => document.querySelector('.cot-brief-modal .cot-c-btn--primary')?.click());
+      await sleep(150);
+    }
     await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`, { timeout: 300_000, polling: 250 });
     await desktop.waitForFunction((n) => {
       const panes = window.__COT_COUCH?.paneViews?.panes ?? [];
