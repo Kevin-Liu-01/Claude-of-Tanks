@@ -36,6 +36,18 @@ export async function requestAutomationPath(page, path) {
 export const HARNESS_DEFAULT_SCRIPT = 'if (window.__COT_AUTOMATION === undefined && !/[?&]automation=/.test(location.search)) '
   + "window.__COT_AUTOMATION = 'harness';";
 
+/**
+ * (mp-one-map-274) The launcher's second request: a tool's fresh profile is a returning player's, so the first-game tutorial
+ * (src/ui/tutorial/tutorialRecord.ts, on since 272.1) does not open over the Garage it drives. Its card's block covered the
+ * rooms entry (`.cot-battle-mode`), and every rooms browser tool stopped on "Control blocked" before it tested anything.
+ * The record is written skipped only when the profile has none and the address asks for no replay (`?tutorial=`); a tool's
+ * own record, written by its init script after this one, wins. The tutorial's own tools launch with `{ tutorial: 'keep' }`
+ * (keepTutorial) and see a new player.
+ */
+export const TUTORIAL_SKIP_SCRIPT = "try { if (!/[?&]tutorial=/.test(location.search) && localStorage.getItem('cot.tutorial.v1') === null) "
+  + "localStorage.setItem('cot.tutorial.v1', '{\"garage\":\"skipped\",\"battle\":\"skipped\",\"tips\":\"skipped\"}'); } "
+  + 'catch { /* a page with no storage */ }';
+
 /** In-page: the path the page took ('player' | 'harness'; null on a build before src/app/automationPath.ts). */
 export const AUTOMATION_PATH_EXPRESSION = '(window.__AUTOMATION_PATH?.path ?? null)';
 
@@ -278,6 +290,16 @@ export function waitForBootLoaded(page, options = {}) {
 // Wrapping the factories cannot race the page: the script is registered before the factory returns the page.
 
 const preparedObjects = new WeakSet();
+/** (mp-one-map-274) Browsers whose tool keeps the tutorial (launchGuardedBrowser's `{ tutorial: 'keep' }`). */
+const keptTutorial = new WeakSet();
+const TOOL_PAGE_SCRIPTS = Object.freeze([HARNESS_DEFAULT_SCRIPT, TUTORIAL_SKIP_SCRIPT]);
+const KEEP_TUTORIAL_SCRIPTS = Object.freeze([HARNESS_DEFAULT_SCRIPT]);
+
+/** Mark a browser, before prepareToolBrowser, as one whose pages see the tutorial as a new player does. */
+export function keepTutorial(target) {
+  if (target && typeof target === 'object') keptTutorial.add(target);
+  return target;
+}
 
 function afterEach(owner, name, prepare) {
   const original = owner?.[name];
@@ -295,28 +317,30 @@ function forwardReadinessNotes(target) {
   });
 }
 
-/** One page: the launcher's request, registered before anything else on it. */
-export async function prepareToolPage(page) {
+/** One page: the launcher's requests (the harness path, the tutorial skipped), registered before anything else on it. */
+export async function prepareToolPage(page, scripts = TOOL_PAGE_SCRIPTS) {
   if (!page || typeof page !== 'object' || preparedObjects.has(page)) return page;
   preparedObjects.add(page);
   forwardReadinessNotes(page);
-  if (typeof page.addInitScript === 'function') await page.addInitScript(HARNESS_DEFAULT_SCRIPT); // playwright
-  else if (typeof page.evaluateOnNewDocument === 'function') await page.evaluateOnNewDocument(HARNESS_DEFAULT_SCRIPT);
+  for (const script of scripts) {
+    if (typeof page.addInitScript === 'function') await page.addInitScript(script); // playwright
+    else if (typeof page.evaluateOnNewDocument === 'function') await page.evaluateOnNewDocument(script);
+  }
   return page;
 }
 
-/** One browser context: playwright's takes one init script for all its pages; puppeteer's hands out prepared pages. */
-export async function prepareToolContext(context) {
+/** One browser context: playwright's takes the init scripts for all its pages; puppeteer's hands out prepared pages. */
+export async function prepareToolContext(context, scripts = TOOL_PAGE_SCRIPTS) {
   if (!context || typeof context !== 'object' || preparedObjects.has(context)) return context;
   preparedObjects.add(context);
   if (typeof context.addInitScript === 'function') {
-    await context.addInitScript(HARNESS_DEFAULT_SCRIPT);
+    for (const script of scripts) await context.addInitScript(script);
     forwardReadinessNotes(context); // (playwright: a context's console event carries every page's)
     return context;
   }
-  afterEach(context, 'newPage', prepareToolPage);
+  afterEach(context, 'newPage', (page) => prepareToolPage(page, scripts));
   if (typeof context.pages === 'function') {
-    try { for (const page of await context.pages()) await prepareToolPage(page); } catch { /* a context with no pages() list */ }
+    try { for (const page of await context.pages()) await prepareToolPage(page, scripts); } catch { /* a context with no pages() list */ }
   }
   return context;
 }
@@ -324,14 +348,15 @@ export async function prepareToolContext(context) {
 /** A launched browser (or a playwright persistent context): every page it hands out asks for the harness path. */
 export async function prepareToolBrowser(target) {
   if (!target || typeof target !== 'object' || preparedObjects.has(target)) return target;
-  if (typeof target.addInitScript === 'function') return prepareToolContext(target);
+  const scripts = keptTutorial.has(target) ? KEEP_TUTORIAL_SCRIPTS : TOOL_PAGE_SCRIPTS;
+  if (typeof target.addInitScript === 'function') return prepareToolContext(target, scripts);
   preparedObjects.add(target);
-  afterEach(target, 'newPage', prepareToolPage);
-  afterEach(target, 'newContext', prepareToolContext);
-  afterEach(target, 'createBrowserContext', prepareToolContext);
-  afterEach(target, 'createIncognitoBrowserContext', prepareToolContext);
+  afterEach(target, 'newPage', (page) => prepareToolPage(page, scripts));
+  afterEach(target, 'newContext', (context) => prepareToolContext(context, scripts));
+  afterEach(target, 'createBrowserContext', (context) => prepareToolContext(context, scripts));
+  afterEach(target, 'createIncognitoBrowserContext', (context) => prepareToolContext(context, scripts));
   if (typeof target.defaultBrowserContext === 'function') {
-    try { await prepareToolContext(target.defaultBrowserContext()); } catch { /* a double with no default context */ }
+    try { await prepareToolContext(target.defaultBrowserContext(), scripts); } catch { /* a double with no default context */ }
   }
   return target;
 }

@@ -2602,6 +2602,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/sim/strikeRuns.selftest.mjs` | n/a | KEEP | simulation rule, n/a s: 2026-11-11 (air-support-runs-272): each strike's flight, release points and footprint come from one run | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/guidancePlan.selftest.mjs` | n/a | KEEP | interface contract, n/a s: 274: the battle's guidance in one place (Kevin: "one unified thing"): the tutorial's card, the toasts and the | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/workerCalls.selftest.mjs` | n/a | KEEP | contract, n/a s: workerCalls.selftest — improve-271 (plans 017, 031, the surface paint prefetch; on R6's count): the plumbing. | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/world/worldActivationOneWorld.selftest.mjs` | n/a | KEEP | world rule, n/a s: mp-one-map-274 (the owner, 2026-11-19: two battlefields merged in one multiplayer scene): one battlefield draw | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/approved-openings.selftest.mjs` | n/a | KEEP | tool contract, n/a s: owner 2026-11-12: the standard check's B2 openings verdict on the build alone (pinned cells, bounded bays) | default tier (npm test, the release gate; lane mode by its closure) |
 
 ## Tank-generation checks (40, not receipts)
