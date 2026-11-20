@@ -477,11 +477,13 @@ try {
       // out to ring Q, one shot at Sentry 3, back behind the wall at ring P, until it is destroyed
       how = 'peeked, fired, hid';
       let rounds = 0;
+      // (each leg goes on once the hull stands in its ring: a leg held to its 120 s timeout kept the hull out at ring Q
+      // under Sentry 3's fire for 19 minutes in the end walk of 2026-11-20, its gun broken by the end)
       while ((await stepNow()) === now && rounds < 14) {
-        await driveInto(TRAINING_POINTS.ringQ, now);
+        await driveInto(TRAINING_POINTS.ringQ, now, true);
         if ((await stepNow()) !== now) break;
         await fireAtOnce(ACTOR.sentry3, TARGET_POINTS.hull, now);
-        await driveInto(TRAINING_POINTS.ringP, now);
+        await driveInto(TRAINING_POINTS.ringP, now, true);
         await sleep(1500);
         rounds += 1;
       }
@@ -575,6 +577,8 @@ try {
       // what the game stood at as the step ended: the armour colours, the player's health, the hulls on the field
       armour: await page.evaluate(() => window.__DEBUG.input?.getSettings?.().armorAimOverlay ?? null).catch(() => null),
       hp: await page.evaluate(() => Math.round(window.__DEBUG.game.player?.combat?.hp ?? -1)).catch(() => null),
+      hurt: await page.evaluate(() => Object.entries(window.__DEBUG.game.player?.combat?.modules ?? {})
+        .filter(([, m]) => (typeof m === 'string' ? m : m?.state) && (typeof m === 'string' ? m : m?.state) !== 'ok').map(([name, m]) => `${name}:${typeof m === 'string' ? m : m.state}`)).catch(() => null),
       onField: await page.evaluate(() => window.__DEBUG.game.tanks.filter((t) => t.modeActive !== false && !t.combat.destroyed).length).catch(() => null) };
     report.steps.push(entry);
     console.log(`[training] ${now}: ${how} → ${next === undefined ? 'STUCK' : next === null ? 'chapter done' : 'moved on'} (${entry.seconds} s)`);
