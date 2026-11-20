@@ -261,9 +261,9 @@ try {
     report.step = `layout ${count}: battle`;
     await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
     // Start opens the room's briefing (docs/COUCH-MODE.md "The briefing"): the host steps it through to GO
-    await desktop.waitForSelector('.cot-brief', { timeout: 15_000 });
-    for (let step = 0; step < 3 && await desktop.$('.cot-brief'); step++) {
-      await desktop.evaluate(() => document.querySelector('.cot-brief-modal .cot-c-btn--primary')?.click());
+    await desktop.waitForSelector('.cot-couch-brief', { timeout: 15_000 });
+    for (let step = 0; step < 3 && await desktop.$('.cot-couch-brief'); step++) {
+      await desktop.evaluate(() => document.querySelector('.cot-couch-brief-modal .cot-c-btn--primary')?.click());
       await sleep(150);
     }
     await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`, { timeout: 300_000, polling: 250 });

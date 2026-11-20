@@ -142,7 +142,7 @@ try {
   await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
   // Start opens the room's briefing, centred over the screen (docs/COUCH-MODE.md "The briefing"); every phone's Ready
   // deploys the seats
-  await desktop.waitForSelector('.cot-brief', { timeout: 15_000 });
+  await desktop.waitForSelector('.cot-couch-brief', { timeout: 15_000 });
   check('Start opens the room\'s briefing; no phone\'s guide is mirrored over it', await desktop.evaluate(() => !document.querySelector('.cot-pad-tour.is-open')));
   for (const { page } of pages) {
     await page.waitForFunction(() => !document.querySelector('.pad-brief')?.hidden, { timeout: 10_000 });
