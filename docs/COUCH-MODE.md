@@ -33,6 +33,36 @@ that gives each phone its own tank, and a renderer that draws more than one view
 4. Nothing costs anything until someone opens couch mode: zero requests and no new boot request on the game, Gallery or
    /cn pages; the couch code is its own lazy chunk.
 
+### The frame-rate rule, as measured (couch-perf-275)
+
+Rule 2 in numbers. The projection is the frame budget's (`docs/PERFORMANCE.md` "The mid-range proxy"):
+`projected = max(GPU p25 here / 0.342, main thread median here / 0.624)`.
+
+| Split | Proxy frame | Main thread here | GPU here |
+|---|---:|---:|---:|
+| 2 panes | 16.7 ms (60 fps) | 10.4 ms or less | 5.7 ms or less |
+| 4 panes | 22.2 ms (45 fps) | 13.9 ms or less | 7.6 ms or less |
+
+- The run: a production build of the branch, then the split-screen harness at 1, 2 and 4 seats with its solo-view
+  baseline (Verdant, Teams, 1920 x 1080, bots frozen, governor pinned at full scale, the couch tier by pane area):
+
+  ```
+  npm run build:private
+  node tools/couch-panes.browser.mjs --layouts=1,2,4 --measure --preview=. --max-load=10 --load-wait-min=60 --out=.qa-dev/couch-perf/<label>
+  ```
+
+  The harness takes the capture lock itself (`tools/capture-hold.mjs`) and launches through `tools/browser-launch.mjs`.
+  It runs only in the heavy slot, which the Claude of Tanks coordinator hands out one at a time.
+- A row counts toward the pass only if it is quiet: the 1-minute load is 10 or less both before and after the row. A
+  loaded row measures the machine. It still counts as evidence for a lever, but never for the pass.
+- Every harness check passes in the same run: a round object draws round in every pane, each pane's HUD reads its own
+  seat, spotting is per seat, and every pane's core matches the one-pane core.
+- A lever is judged within a single run, against that run's own baseline: draws per pane (the load does not move them),
+  main thread over the solo view, ms per added pane, and the GPU p25. A lever that leaves the draws and the ratios inside
+  the noise between runs is reported as no help and reverted.
+- The Split option loses its Experimental label only when both rows pass quietly, and when every detail ring follows
+  every pane (the list under "Detail that follows every pane").
+
 ## Hard rules it keeps
 
 - A couch battle is a local battle on this computer. It is never a multiplayer session: no rooms, no match wire, no MP
