@@ -472,6 +472,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .player .kick-confirm{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-1)}
 .cot-play .player .kick-confirm>span{margin-right:auto;font:600 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-1)}
 .cot-play .player.kicking{box-shadow:var(--ring-danger)}
+/* the confirm's Keep backs out, so the row's close steps aside while it asks */
+.cot-play .player.kicking .kick{display:none}
 
 /* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
@@ -1999,7 +2001,6 @@ export function createPlayMenu({
     kick.setAttribute('aria-label', t('playMenu.owner.kickAria', { name: player.name }));
     kick.dataset.tip = t('playMenu.owner.kickAria', { name: player.name });
     kick.innerHTML = uiIconSVG('close', 16);
-    kick.setAttribute('aria-expanded', String(pendingKickId === player.id));
     kick.addEventListener('click', () => {
       pendingKickId = pendingKickId === player.id ? null : player.id;
       if (state) renderLobbyPlayers(state, ownId());
