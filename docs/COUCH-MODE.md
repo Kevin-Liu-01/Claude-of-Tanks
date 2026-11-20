@@ -1,9 +1,9 @@
 # Couch mode — up to eight phones, one big screen
 
 Phase 1 is built (deploy 268): the lobby and its seats, each phone driving its own tank, one shared camera; "The couch
-session on the page" below says how it runs. Phase 2 is built (item/couch-panes-272, Experimental in 272: Shared stays the lobby's default until the split
-screen meets the pass rule): one pane per seat with that player's own camera and the normal battle HUD; "The split
-screen as built" says how. The phone as each
+session on the page" below says how it runs. Phase 2 is built (item/couch-panes-272; the lobby's default since
+item/couch-split-274, still labelled Experimental until the split screen meets the frame-rate pass rule): one pane per
+seat with that player's own camera and the normal battle HUD; "The split screen as built" says how. The phone as each
 player's HUD (phase 3) is still design. The owner's words (2026-11-01): "could we also hypotehtically do this with people connecting via
 qr code from their phones to a host of a computer for claude of tanks? i think that will be so much faster and easier.
 sort of like a console split screen, up to 8 people that you can share on a big screen?"
@@ -152,8 +152,10 @@ What stays single, on purpose:
 
 - The profile. A couch battle credits the host's profile only, or keeps no record (`battleKeepsRecords`,
   `matchRuleset.ts:1205`); guests have no accounts.
-- The result screen shows the battle's result per team; the killcam recorder is already whole-world
-  (`src/game/state.ts:3384`), so a destroyed seat's killcam plays in its own pane.
+- The result screen shows the battle's result per team. No death replay plays mid-battle (couch-split-274): seat 1 is
+  the page's player, and its death replay took the whole screen from every other seat. A destroyed seat's pane holds
+  its chase view over the wreck (`battleResultPresentationRuntime.ts` runs no death beat, death cam or spectate
+  hand-off in a couch battle); the verdict's final-kill replay is still the room's, never seat 1's own death.
 - Loadouts: the host's saved Garage loadout applies to seat 1 only; guests take the tank's default loadout, picked on
   the phone.
 
@@ -169,10 +171,20 @@ big screen splits like a console's split screen, and each pane shows that player
 HUD, the one the solo battle shows: hull points and the damage panel, ammunition and reload, the sight, the minimap,
 consumables, damage and kill messages, the capture and objective state, the rosters. No reduced couch HUD. This
 replaces the reduced pane HUD of "Panes' HUD and sound" below, and the four-pane stop of "Decided on the owner's
-behalf": the split screen seats as many as the screen holds (below). The lobby's Screen choice is Shared by default
-(phase 1, one camera) with Split labelled Experimental (Main, 2026-11-11): Split stays experimental until the
-quiet-machine ratio table meets the pass rule and every detail ring follows every pane. Battle Again keeps the screen
-the battle had.
+behalf": the split screen seats as many as the screen holds (below). The lobby's Screen choice is Split by default
+(Kevin, 2026-11-19: "we really need couch mode to be split screen properly"; it was Shared, Main 2026-11-11). The
+Split option keeps its Experimental label until the quiet-machine ratio table meets the pass rule and every detail
+ring follows every pane. Battle Again keeps the screen the battle had.
+
+- **One owner for the screen** (couch-split-274, `game/couchPanes.ts` `couchScreenPlan`): from the screen choice, the
+  seats and the screen's size it decides split or shared, the panes' rectangles and their detail. The lobby's Split
+  button, the runtime's choice on every frame (from the canvas's size), the couch tier at Start and the panes' own
+  placement all read it. The lobby takes Shared for the player only while more phones sit than the panes hold, and
+  gives Split back when they fit. A window made too small mid-battle drops the panes whole (the page's HUD and camera
+  come back and the shared camera frames the seats), and the panes come back when there is room.
+- **Whose pane.** Each pane has a 3 px edge in its seat's side colour (seat 1's side is `--team-own`, the other side
+  `--team-enemy`, as the lobby colours them) and the seat's name under the score. Both dim while that seat's phone is
+  gone: its tank brakes and holds fire, and its pane stays until the phone comes back.
 
 - **One HUD, many instances.** `src/ui/hud.ts` `initHud(bus, view)` takes a `HudView`: the body it mounts on, whose
   document is the HUD's. A pane's HUD mounts in its own document, a same-origin iframe over the pane
@@ -228,7 +240,11 @@ the battle had.
   (`battleHudLayout.ts` `data-couch-pane`), while its panels still anchor to the pane's own edges. A pane too small for
   every part gives up parts by one stated priority list (`COUCH_HUD_PRIORITY`, most important first: sight, health,
   ammunition, speed, hits, objective, messages, furniture, consumables, minimap, rosters); the core (sight, hull points,
-  ammunition and reload, speed) is never given up. The fit (`couchHudFitStep`, `couchPaneViews.ts` `fitPane`) measures
+  ammunition and reload, speed) is never given up. The minimap keeps its solo size. Where a pane's inline tray leaves
+  no room for the map beside it (every pane under 1000 px wide), the map stands over the tray's systems row on the
+  pane's right edge (`battleHudLayout.ts` `--hud-map-lift`). The pane's own short height never caps it (the solo
+  32vh). The fit then gives up the rosters before the map. Before 274, every 2 and 4 seat pane dropped its map, so
+  nobody had one. The fit (`couchHudFitStep`, `couchPaneViews.ts` `fitPane`) measures
   each panel in the pane's document; while two parts' panels overlap, one leaves the pane, or the minimap would draw
   under its solo size (its 32vh cap in a short pane), the least important part in that clash goes, and the planner lays
   out again. The harness checks every pane's core against one pane's, pixel for pixel, and names what each layout keeps.
