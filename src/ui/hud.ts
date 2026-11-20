@@ -862,8 +862,9 @@ function teamInk(): typeof TEAM_INK {
 const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
-/** Owner 2026-11-20: the loaded gun's reload time, in the muted ink (ink-3; the high-contrast preset lifts it). */
-const READY_INK_TOKEN = 'ink-3';
+/** Owner 2026-11-20: the loaded gun's reload time, in the grey ink-2 (ink-3, the muted grey, sat at dry grass's own
+ *  lightness and was too hard to spot; ink-2 is the grey the high-contrast preset already reads ink-3 as). */
+const READY_INK_TOKEN = 'ink-2';
 // Owner 2026-10-17 (out of ammo): a spent weapon's ink. The DOM controls read the same danger as --hud-danger.
 const DRY_ACCENT = 'rgba(240,90,90,0.92)';
 const DRY_RING = 'rgba(214,120,112,0.62)';
@@ -882,8 +883,9 @@ const RING_STROKE_REACH = 1.5;
 const RACK_CONTOUR = 1.5;
 const RACK_TURN_X = 1.1;
 const RACK_TURN_Y = 0.4;
-/** The countdown's numeral: 16 px, its digits 0.74 of that above the baseline and 0.08 below (the capture's text box). */
-const COUNTDOWN_SIZE = 16;
+/** The countdown's numeral: 18 px (owner 2026-11-20: 16 was too hard to spot), its digits 0.74 of that above the baseline
+ *  and 0.08 below (the capture's text box). */
+const COUNTDOWN_SIZE = 18;
 const COUNTDOWN_ASCENT = COUNTDOWN_SIZE * 0.74;
 const COUNTDOWN_DESCENT = COUNTDOWN_SIZE * 0.08;
 /** The least gap between the countdown and the rack above it (critic r6: the digits' tops touched the clip's shells). */
@@ -922,17 +924,18 @@ const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, bo
   ['rowAbove', false, true, false], ['rowAbove', true, true, true], ['stack', false, true, false], ['stack', true, true, true],
 ];
 /** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
-// (its figures tick in place: the .num face, IBM Plex Mono's tabular figures, so 7.4 and 0.9 keep one width and the
-// loaded figure the countdown's; SWITCHING, a word, keeps the label face)
-const FONT_COUNTDOWN = `500 ${COUNTDOWN_SIZE}px ${TYPE_STACK.mono}`;
+// (its figures tick in place: IBM Plex Sans SemiBold, whose figures are all one width (600 units) with no feature to turn
+// on, so 7.4 and 0.9 keep one width and the loaded figure the countdown's; heavier than the .num face's Plex Mono Medium,
+// which read too thin over the ground. SWITCHING, a word, keeps the label face)
+const FONT_COUNTDOWN = `600 ${COUNTDOWN_SIZE}px ${TYPE_STACK.body}`;
 const FONT_COUNTDOWN_WORD = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
 /** The readout's box: three tabular figures wide (reloadHudFigure), each figure set right in it, so 12, 7.4 and 0.9 end
  *  in one place and the unit after them never moves. */
 const READOUT_BOX = '0.0';
-/** The readout's dark halo (owner 2026-11-20: the grey figure faded into dry grass and muzzle smoke): a 3 px stroke under
- *  the glyphs, 1.5 px of it past their edges, inside the 3 px every mark keeps from the ring, the rack and the furniture;
+/** The readout's dark halo (owner 2026-11-20: the grey figure faded into dry grass and muzzle smoke): a 4 px stroke under
+ *  the glyphs, 2 px of it past their edges, inside the 3 px every mark keeps from the ring, the rack and the furniture;
  *  the reticle's dark contour ink. */
-const READOUT_HALO_W = 3;
+const READOUT_HALO_W = 4;
 const READOUT_HALO = 'rgba(5,8,11,0.88)';
 const FONT_COUNTDOWN_UNIT = `500 11px ${FONT_COND}`;
 const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
@@ -2506,8 +2509,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   // its words and figures: DOM runs over it, placed where the canvas drew them (the reload countdown is the 'reload' datum)
   const sightText = createCanvasText(root, 'cot-ret-text');
   markDatum(sightText.run(SIGHT_TEXT_COUNTDOWN), 'reload').classList.add('cot-ret-reload');
-  /** The countdown run holds figures (the .num class on; paintReloadCountdown), not the SWITCHING word. */
-  let countdownFigure = false;
   /** The loaded figure's ink under the token selection in force (READY_INK_TOKEN), read again when presets change. */
   const READY_INK = { epoch: -1, ink: '' };
   const readyInk = (): string => {
@@ -5387,10 +5388,6 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     if (!counting && !readyFigure) return;
     const word = counting && view.ammoSelectionPending;
     const text = counting ? reloadHudCountdown(view.reload, view.ammoSelectionPending) : readyFigure;
-    if (countdownFigure !== !word) {
-      countdownFigure = !word;
-      sightText.run(SIGHT_TEXT_COUNTDOWN).classList.toggle('num', countdownFigure);
-    }
     ctx.fillStyle = counting ? RELOAD_ACCENT : readyInk();
     ctx.font = word ? FONT_COUNTDOWN_WORD : FONT_COUNTDOWN;
     const figureW = ctx.measureText(text).width;
