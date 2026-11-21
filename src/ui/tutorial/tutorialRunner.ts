@@ -23,8 +23,14 @@
 import type { ActionId } from '../../game/input.ts';
 import { t } from '../i18n.ts';
 import type { TutorialChapter, TutorialOutcome } from './tutorialRecord.ts';
-import { chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
+import { TRAINING_LESSONS, chapterSteps, type TutorialInput, type TutorialStep } from './tutorialSteps.ts';
 import { createTutorialOverlay, type OverlayView, type TutorialOverlay } from './tutorialOverlay.ts';
+import { createTutorialGuide, type GuidePort, type TutorialGuideLayer } from './tutorialGuide.ts';
+import { headingFromLine } from './tutorialGuideMath.ts';
+import { trainingExposure } from '../../sim/trainingSight.ts';
+
+/** Diagnostics (app/tutorialAccess.ts debugGuide): the guide alone, on whatever battle is showing. */
+export { createTutorialGuide };
 
 export interface TutorialPort {
   /** The game's bus (its `on`): shell:fired, ui:shellSelect, ui:shellSelectionChanged, ui:pause. */
@@ -40,8 +46,68 @@ export interface TutorialPort {
   playerPosition(): { readonly x: number; readonly z: number } | null;
   /** The chapter's screen: live, covered by a surface the step did not open, or gone. */
   screen(chapter: TutorialChapter): TutorialScreen;
+  /** 273: what the guide reads over a battle (tutorialGuide.ts); absent, no step draws guidance. */
+  readonly guide?: GuidePort;
+  /** 273: the player's view in battle (the rig's mode and zoom, free look held), or null elsewhere. */
+  view?(): TutorialView | null;
+  /** 273: the player's entity id in battle (hit and module steps tell the player's tank from an actor). */
+  playerId?(): string | null;
+  /** 273: whether the armour colours are on now (an armour step already met moves on at once). */
+  armourOn?(): boolean;
   /** 274: a step that teaches a subject another surface would teach has shown (tutorialSteps.ts `teaches`). */
   taught?(subject: NonNullable<TutorialStep['teaches']>): void;
+  /** 273: cue or stand down a training battle's scripted shooter by its scenes' name (game/state.ts cueTrainingActor). */
+  cue?(actor: string, on: boolean): void;
+  /** 273: a ring reached: the training battle's checkpoint. */
+  checkpoint?(x: number, z: number): void;
+  /** 273: the last training battle's run, as the debrief reads it; null without one. */
+  trainingRun?(): TrainingRunView | null;
+  /** Hold the battle (its pause) while a card that explains shows; let it go (false) when the card asks or goes. */
+  hold?(on: boolean): void;
+}
+
+/** 273: what the debrief reads of the training battle the player just finished (app/tutorialAccess.ts records it). */
+export interface TrainingRunView {
+  readonly seconds: number;
+  readonly shots: number;
+  readonly pens: number;
+  /** The rounds the player's armour held (ricochet, no penetration, spaced armour). */
+  readonly held: number;
+  readonly destroyed: number;
+  /** The steps it showed, in order. */
+  readonly shown: readonly string[];
+  /** Its last step passed. */
+  readonly complete: boolean;
+}
+
+/** The debrief's figures: the run's time (m:ss) and counts. */
+function trainingFigures(view: TrainingRunView | null): Record<string, string> {
+  if (!view) return {};
+  const seconds = Math.max(0, Math.round(view.seconds));
+  return { time: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`, shots: String(view.shots), pens: String(view.pens),
+    held: String(view.held), destroyed: String(view.destroyed) };
+}
+
+/** The debrief's checklist: a lesson is ticked once the run got past its proof (a later step showed), or finished. */
+export function trainingLessonTicks(view: TrainingRunView | null): Array<{ label: string; done: boolean }> {
+  const base = (id: string): string => id.replace(/(Touch|Pad)$/, '');
+  const shown = (view?.shown ?? []).map(base);
+  return TRAINING_LESSONS.map((lesson) => {
+    const at = shown.indexOf(lesson.proof);
+    return { label: lesson.label, done: !!view && (view.complete || (at >= 0 && at < shown.length - 1)) };
+  });
+}
+
+/** The player's view, read for camera steps: the third-person camera or the gunner's sight. */
+export interface TutorialView {
+  readonly mode: 'third' | 'sight';
+  /** The sight's magnification (the rig's zoom). */
+  readonly zoom: number;
+  /** Where the gun points on the ground plane (rad; 0 faces +z, turning toward +x): the hull's yaw plus the turret's. */
+  readonly gunYaw: number;
+  /** The loaded round's type ('APFSDS', 'HEAT', 'HE', ...), and the hull's speed (m/s). */
+  readonly shellType: string | null;
+  readonly speedMps: number;
 }
 
 export type TutorialScreen = 'live' | 'covered' | 'gone';
@@ -67,9 +133,14 @@ export interface RunOptions {
   readonly startAt?: number;
   /** The screen went away mid-chapter: the run closed at this step, nothing recorded. */
   onClose?(index: number, stepId: string): void;
+  /** A step has shown (273: the training battle's lessons are read from the steps it got to). */
+  onStep?(stepId: string): void;
 }
 
 const DRIVE_POLL_MS = 250;
+/** How long free look must be held for a camera step that asks for it. */
+/** A step with no budget of its own falls behind after this long (the guide escalates once). */
+const BEHIND_DEFAULT_S = 45;
 const SCREEN_POLL_MS = 250;
 const PAD_POLL_MS = 90;
 /** Gamepad buttons (standard mapping) per screen: the Garage's menus take none; a battle binds all but the stick clicks. */
@@ -79,24 +150,41 @@ const PAD_KEYS = {
 } as const;
 const PAD_CAPS: Readonly<Record<number, string>> = { 0: 'A', 1: 'B', 8: 'BACK', 10: 'LS', 11: 'RS' };
 
+/** The least ground distance from point `p` to the segment a→b (m). */
+function segmentDistance(a: { x: number; z: number }, b: { x: number; z: number }, p: { x: number; z: number }): number {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const length2 = dx * dx + dz * dz;
+  const t = length2 > 1e-9 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / length2)) : 0;
+  return Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z);
+}
+
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** A body line with its {placeholders} as key caps (the line itself escaped). */
 function bodyHtml(step: TutorialStep, port: TutorialPort): string {
   const keys = step.keys ?? {};
   const marks = Object.fromEntries(Object.keys(keys).map((name, i) => [name, `\u0000${i}\u0000`]));
-  let html = esc(t(step.body, marks));
+  // (273) a step's figures from its run (the debrief), and its lines (the tour's three: tells, shows, lets)
+  const figures = step.params === 'trainingSummary' ? trainingFigures(port.trainingRun?.() ?? null) : {};
+  let html = esc(t(step.body, { ...figures, ...marks })).split('\n').join('<br>');
   Object.values(keys).forEach((action, i) => {
     const cap = port.keyLabel(action);
     html = html.split(`\u0000${i}\u0000`).join(`<kbd class="cot-c-kbd"${/[㐀-鿿]/.test(cap) ? ' data-cjk' : ''}>${esc(cap)}</kbd>`);
   });
+  // (273) the debrief's checklist: each lesson, ticked where the player got past it
+  const lessons = step.checklist === 'trainingLessons' ? trainingLessonTicks(port.trainingRun?.() ?? null) : [];
+  if (lessons.length) {
+    html += `<ul class="cot-tut-checklist">${lessons.map((lesson) =>
+      `<li${lesson.done ? ' data-done' : ''}><span class="cot-tut-tick" aria-hidden="true"></span>${esc(t(lesson.label))}</li>`).join('')}</ul>`;
+  }
   return html;
 }
 
-export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose }: RunOptions): TutorialRun {
+export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose, onStep }: RunOptions): TutorialRun {
   const input = port.inputKind();
   const steps = chapterSteps(chapter, input);
-  const battle = chapter === 'battle';
+  // the training battle's chapter takes a battle's keys and caps (its keys drive the tank, its pointer aims)
+  const battle = chapter === 'battle' || chapter === 'training';
   // the Garage's Deploy names Enter in the player's language; the card's caps match it
   const codeCap = (code: string): string => (code === 'Enter' ? t('garage.key.enter') : port.codeLabel(code));
   let index = Math.max(0, Math.min(startAt, Math.max(0, chapterSteps(chapter, input).length - 1)));
@@ -110,6 +198,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
 
   const overlay = createTutorialOverlay({ next: () => api.next(), back: () => api.back(), skip: () => api.skip() });
   overlay.root.dataset.chapter = chapter;
+  // the guide comes with the first step that asks for it, and goes with the run (273)
+  let guide: TutorialGuideLayer | null = null;
+  const guideFor = (step: TutorialStep): TutorialGuideLayer | null => {
+    if (!step.guide || !port.guide) return guide;
+    guide ??= createTutorialGuide(port.guide);
+    return guide;
+  };
 
   const resolver = (step: TutorialStep): (() => Element | null) | null => {
     if (!step.target.length) return null;
@@ -132,14 +227,56 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     if (ended) return;
     ended = true;
     clearStep();
+    port.hold?.(false);
     for (const off of runOff.splice(0)) off();
     overlay.destroy();
+    guide?.destroy();
+    guide = null;
     if (outcome) onEnd(outcome);
   }
 
   function arm(step: TutorialStep): void {
     const advance = step.advance;
-    const go = (): void => { if (!ended && steps[index] === step) api.next(); };
+    // a step that asks for its ring first (`arrive`): what the player does before it waits there, a condition read every
+    // poll counts only from then on, and the ring is the checkpoint
+    let arrived = !step.arrive;
+    let met = false;
+    const go = (): void => {
+      met = true;
+      if (arrived && !ended && steps[index] === step) api.next();
+    };
+    /** A condition read every DRIVE_POLL_MS (the port's state has no event of its own). */
+    const poll = (holds: () => boolean): void => {
+      const timer = window.setInterval(() => { if (!hiddenByPause && !covered && arrived && holds()) go(); }, DRIVE_POLL_MS);
+      stepOff.push(() => window.clearInterval(timer));
+    };
+    /** The player's tank crossed this ring (the path since the last read: a tank at speed crosses it between two reads). */
+    const crossing = (marker: { x: number; z: number; radiusM: number }, radius: number, reached: () => void): void => {
+      let last: { x: number; z: number } | null = null;
+      const timer = window.setInterval(() => {
+        if (hiddenByPause || covered) return;
+        const at = port.playerPosition();
+        if (!at) return;
+        const from = last ?? at;
+        last = { x: at.x, z: at.z };
+        if (segmentDistance(from, at, marker) > radius) return;
+        window.clearInterval(timer);
+        // the ring reached is the training battle's checkpoint: a death comes back here
+        port.checkpoint?.(marker.x, marker.z);
+        reached();
+      }, DRIVE_POLL_MS);
+      stepOff.push(() => window.clearInterval(timer));
+    };
+    if (!arrived) {
+      const marker = step.guide?.marker;
+      if (!marker) arrived = true;
+      else crossing(marker, marker.radiusM, () => { arrived = true; if (met) go(); });
+    }
+    // a step with guidance falls behind once: its guide escalates (the aim ghost), never twice
+    if (step.guide && advance.on !== 'next') {
+      const timer = window.setTimeout(() => guide?.setEscalated(true), (step.behindS ?? BEHIND_DEFAULT_S) * 1000);
+      stepOff.push(() => window.clearTimeout(timer));
+    }
     if (advance.on === 'press') {
       const onPress = (event: Event): void => {
         const lit = resolver(step)?.();
@@ -149,9 +286,122 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       stepOff.push(() => document.removeEventListener('click', onPress, true));
     } else if (advance.on === 'fire') {
       stepOff.push(port.on('shell:fired', (payload) => { if ((payload as { isPlayer?: boolean } | null)?.isPlayer) go(); }));
+    } else if (advance.on === 'shell' && advance.type) {
+      // a round of this type is loaded (273): read, so a load the player already made counts
+      poll(() => port.view?.()?.shellType === advance.type);
     } else if (advance.on === 'shell') {
       // the player's ask (a shell key, a rack press) or the load it led to: an ATGM slot answers with its own event
       stepOff.push(port.on('ui:shellSelect', go), port.on('ui:shellSelectionChanged', go));
+    } else if (advance.on === 'hidden') {
+      const marker = step.guide?.marker;
+      let stillSince = 0;
+      if (marker) poll(() => {
+        const at = port.playerPosition(), view = port.view?.();
+        const inside = !!at && !!view && Math.hypot(at.x - marker.x, at.z - marker.z) <= marker.radiusM && view.speedMps < 0.5;
+        if (!inside) { stillSince = 0; return false; }
+        stillSince ||= performance.now();
+        return performance.now() - stillSince >= advance.stillS * 1000;
+      });
+    } else if (advance.on === 'reach') {
+      const marker = step.guide?.marker;
+      if (marker) crossing(marker, advance.radiusM ?? marker.radiusM, go);
+    } else if (advance.on === 'camera') {
+      poll(() => {
+        const view = port.view?.();
+        return !!view && (!advance.mode || view.mode === advance.mode) && view.zoom >= (advance.zoomAtLeast ?? -Infinity);
+      });
+    } else if (advance.on === 'turret') {
+      const marker = step.guide?.marker;
+      let heldSince = 0;
+      if (marker) poll(() => {
+        const view = port.view?.(), at = port.playerPosition();
+        if (!view || !at) return false;
+        const bearing = Math.atan2(marker.x - at.x, marker.z - at.z);
+        const off = Math.abs(Math.atan2(Math.sin(view.gunYaw - bearing), Math.cos(view.gunYaw - bearing)));
+        if (off > (advance.toleranceDeg * Math.PI) / 180) { heldSince = 0; return false; }
+        heldSince ||= performance.now();
+        return performance.now() - heldSince >= advance.holdS * 1000;
+      });
+    } else if (advance.on === 'armourCycle') {
+      // off, then on again: the key's event or the setting read (colours already off need only the press that brings them back)
+      let wasOff = port.armourOn?.() === false;
+      const seen = (on: boolean | undefined): boolean => {
+        if (on === false) wasOff = true;
+        return on === true && wasOff;
+      };
+      stepOff.push(port.on('ui:armorOverlayState', (payload) => { if (seen(!!(payload as { on?: boolean } | null)?.on)) go(); }));
+      poll(() => seen(port.armourOn?.()));
+    } else if (advance.on === 'hit') {
+      let count = 0;
+      stepOff.push(port.on('shell:hit', (payload) => {
+        const hit = payload as { kind?: string; attackerId?: string; targetId?: string } | null;
+        const me = port.playerId?.() ?? null;
+        if (!hit?.kind || !me || !advance.kinds.includes(hit.kind)) return;
+        const mine = advance.by === 'player' ? hit.attackerId === me && (!advance.actor || hit.targetId === advance.actor)
+          : hit.targetId === me && (!advance.actor || hit.attackerId === advance.actor);
+        if (mine && ++count >= (advance.count ?? 1)) go();
+      }));
+    } else if (advance.on === 'consumable') {
+      stepOff.push(port.on('ui:consumableUsed', (payload) => {
+        const used = payload as { ok?: boolean; item?: string } | null;
+        if (used?.ok && used.item === advance.item) go();
+      }));
+    } else if (advance.on === 'module') {
+      stepOff.push(port.on('module:state', (payload) => {
+        const change = payload as { id?: string; module?: string; state?: string } | null;
+        const modules: readonly string[] = typeof advance.module === 'string' ? [advance.module] : advance.module;
+        const states: readonly string[] = typeof advance.state === 'string' ? [advance.state] : advance.state;
+        if (change?.id === port.playerId?.() && modules.includes(change?.module ?? '') && states.includes(change?.state ?? '')) go();
+      }));
+    } else if (advance.on === 'spot') {
+      stepOff.push(port.on('tank:spotted', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
+    } else if (advance.on === 'destroy') {
+      stepOff.push(port.on('tank:destroyed', (payload) => { if ((payload as { id?: string } | null)?.id === advance.actor) go(); }));
+    } else if (advance.on === 'angle') {
+      // the hull's angle from the line to the actor, inside the window and held (a turn through it does not count)
+      let since = 0;
+      poll(() => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        const angle = me && them ? Math.abs(headingFromLine(me, them)) : null;
+        if (angle == null || angle < advance.minDeg || angle > advance.maxDeg) { since = 0; return false; }
+        since ||= performance.now();
+        return performance.now() - since >= advance.holdS * 1000;
+      });
+    } else if (advance.on === 'hullDown') {
+      // hull hidden from the actor and turret seen over the ground (the berm's included), held
+      let since = 0;
+      poll(() => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        const seen = me && them && port.guide ? trainingExposure(them, me, port.guide.groundY) : null;
+        if (!seen || seen.hull || !seen.turret) { since = 0; return false; }
+        since ||= performance.now();
+        return performance.now() - since >= advance.holdS * 1000;
+      });
+    } else if (advance.on === 'destroyAll') {
+      const down = new Set<string>();
+      stepOff.push(port.on('tank:destroyed', (payload) => {
+        const id = (payload as { id?: string } | null)?.id;
+        if (id && advance.actors.includes(id)) down.add(id);
+        if (down.size >= advance.actors.length) go();
+      }));
+    } else if (advance.on === 'smoke') {
+      stepOff.push(port.on('auxiliary:smokeScreens', go));
+    } else if (advance.on === 'peek') {
+      // a cycle: the player fires while the actor sees it, then gets out of its sight (behind the wall)
+      let fired = false, cycles = 0;
+      const seenNow = (): boolean | null => {
+        const me = port.guide?.player(), them = port.guide?.actor(advance.actor);
+        if (!me || !them || !port.guide) return null;
+        const seen = trainingExposure(them, me, port.guide.groundY);
+        return seen.hull || seen.turret;
+      };
+      stepOff.push(port.on('shell:fired', (payload) => {
+        if ((payload as { isPlayer?: boolean } | null)?.isPlayer && seenNow()) fired = true;
+      }));
+      poll(() => {
+        if (fired && seenNow() === false) { fired = false; cycles += 1; }
+        return cycles >= advance.cycles;
+      });
     } else if (advance.on === 'drive') {
       let from = port.playerPosition();
       const timer = window.setInterval(() => {
@@ -168,12 +418,16 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     clearStep();
     const step = steps[index]!;
     overlay.root.dataset.step = step.id;
+    onStep?.(step.id);
     const last = index === steps.length - 1;
     const acting = step.advance.on !== 'next';
+    // a battle card that explains holds the battle while it shows; one that asks for a move lets it run, compact
+    port.hold?.(battle && !acting);
     const pad = input === 'pad';
     const keys = battle ? PAD_KEYS.battle : PAD_KEYS.menu;
     const cap = (keyboard: string, padButton: number): string => (pad ? PAD_CAPS[padButton] ?? '' : input === 'touch' ? '' : keyboard);
     const view: OverlayView = {
+      mode: acting ? 'act' : 'read',
       label: t('tutorial.label'),
       chapter: t(`tutorial.chapter.${chapter}`),
       progress: t('tutorial.progress', { n: String(index + 1), total: String(steps.length) }),
@@ -184,7 +438,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       target: resolver(step),
       dim: step.dim ?? true,
       place: step.card ?? 'middle',
-      nextLabel: t(last ? 'tutorial.done' : 'tutorial.next'),
+      nextLabel: t(step.nextLabel ?? (last ? 'tutorial.done' : 'tutorial.next')),
       backLabel: t('tutorial.back'),
       skipLabel: t('tutorial.skip'),
       canBack: index > 0,
@@ -198,7 +452,31 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
       focus: !battle && input !== 'touch',
     };
     overlay.show(view);
+    const layer = guideFor(step);
+    layer?.show(step.guide ?? null, {
+      marker: step.guide?.marker ? t(step.guide.marker.label) : '',
+      actor: step.guide?.actor ? t(step.guide.actor.label) : '',
+      distance: (metres) => t('tutorial.guide.distance', { m: String(metres) }),
+    });
     if (step.teaches) port.taught?.(step.teaches);
+    // a scripted shooter fires while its step shows, and stands down with it (a step's swap, Back, Skip, the run's end)
+    if (step.cue) {
+      const cue = step.cue;
+      port.cue?.(cue, true);
+      stepOff.push(() => port.cue?.(cue, false));
+    }
+    // the step's actor put a round through the player: the card says why, and how to stop the next
+    const shooter = step.advance.on === 'hit' && step.advance.by === 'actor' ? step.advance.actor
+      : step.advance.on === 'peek' ? step.advance.actor : null;
+    if (step.penBody && shooter) {
+      const penBody = step.penBody;
+      stepOff.push(port.on('shell:hit', (payload) => {
+        const hit = payload as { kind?: string; attackerId?: string; targetId?: string } | null;
+        if (hit?.kind === 'pen' && hit.attackerId === shooter && hit.targetId === port.playerId?.()) {
+          overlay.show({ ...view, bodyHtml: bodyHtml({ ...step, body: penBody }, port) });
+        }
+      }));
+    }
     arm(step);
   }
 
@@ -270,10 +548,13 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
   }, PAD_POLL_MS);
   runOff.push(() => window.clearInterval(padTimer));
 
-  // a paused battle (the pause menu) hides the card; it comes back with the battle
+  // a paused battle (the pause menu) hides the card; it comes back with the battle. The card's own hold is no such pause.
   runOff.push(port.on('ui:pause', (payload) => {
-    hiddenByPause = !!(payload as { on?: boolean } | null)?.on;
+    const pause = payload as { on?: boolean; by?: string } | null;
+    if (pause?.by === 'tutorial') return;
+    hiddenByPause = !!pause?.on;
     overlay.setHidden(hiddenByPause || covered);
+    guide?.setHidden(hiddenByPause || covered);
   }));
 
   // the screen the chapter belongs to (see the module comment): covered hides the card, gone closes the run where it stands
@@ -290,6 +571,7 @@ export function runTutorialChapter({ chapter, port, onEnd, startAt = 0, onClose 
     if (nowCovered === covered) return;
     covered = nowCovered;
     overlay.setHidden(hiddenByPause || covered);
+    guide?.setHidden(hiddenByPause || covered);
   };
   const screenTimer = window.setInterval(checkScreen, SCREEN_POLL_MS);
   runOff.push(() => window.clearInterval(screenTimer));

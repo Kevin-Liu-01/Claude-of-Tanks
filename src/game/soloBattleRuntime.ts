@@ -9,6 +9,11 @@ import { simKernelsFailureReason } from '../world/simKernelsStatus.ts';
 
 export {
   createCollider,
+  cueTrainingActor,
+  finishTrainingBattle,
+  setTrainingCheckpoint,
+  trainingSightFor,
+  trainingThreatFor,
   prepareNextOpeningRoute,
   resetProvingRange,
   setProvingTargetsMoving,

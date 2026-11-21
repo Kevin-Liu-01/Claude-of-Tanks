@@ -45,11 +45,12 @@ import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
 import { penVerdict } from '../sim/penVerdict.ts';
+import { PEN_INK } from './penInk.ts';
 import { roofGunSwitch, roofGunTogglable } from '../sim/roofGunSwitch.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { GAME_MODE_DEFINITIONS, isPracticeMode, isTutorialMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkersFor, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawStrikeFootprint, drawStrikeGlyph, type StrikeGlyphKind,
@@ -831,11 +832,12 @@ function isHudHitEvent(payload: HudEventPayload): payload is HudEventPayload & H
 }
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
-const PEN_GREEN = '#7ee87e';
+// (the verdict inks are ui/penInk.ts's, which the training battle's angling arc shows too)
+const PEN_GREEN = PEN_INK.pen;
 /** The zoom readout's rules: the ring's green, translucent. */
 const ZOOM_RULE_INK = 'rgba(126,232,126,0.5)';
-const PEN_ORANGE = '#f0b04a';
-const PEN_RED = '#f05a5a';
+const PEN_ORANGE = PEN_INK.marginal;
+const PEN_RED = PEN_INK.nopen;
 const PEN_NONE = 'rgba(236,242,248,0.95)';
 /** The team inks a canvas paints (brand-ui H1): the team tokens under the player's colour preset, re-read only when the
  *  preset changes (tokenEpoch), so the minimap's blips follow the same Own/Enemy pair as every CSS team mark. */
@@ -4036,6 +4038,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
 
   function additionalModeStatusCopy(modeState: HudMatchModeState): string | null {
     if (modeState.range) return t(modeState.range.moving ? 'hud.modeStatus.provingMoving' : 'hud.modeStatus.proving', { lanes: modeState.range.lanes.length });
+    // the training battle (273): no score to name; its goals are the tutorial card's
+    if (isTutorialMode(modeState.id)) return t('hud.modeStatus.training');
     if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
@@ -4074,7 +4078,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   function modeStatusIconName(modeId: string): string {
     // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
     if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
-    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport' }[modeId];
+    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130', air_support: 'modeAirSupport', training: GAME_MODE_DEFINITIONS.training.icon }[modeId];
     if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
@@ -8427,12 +8431,14 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     while (hitDirs.length > 5) hitDirs.shift();
   }
 
-  function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
+  function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}, slot: string | null = null): void {
     const severity = ALERT_SEVERITY[tone] ?? 'warning';
     const now = performance.now();
     dropStaleAlerts(now);
-    // (a fresh id each time and the words as the dedupe key: a repeat counts on the alert it repeats, "×3")
-    const toast = alertQueue.push(`alert-${++alertSerial}`, { text, icon: icon as IconId, severity, dedupeKey: `${severity}|${text}`,
+    // (a fresh id each time and the words as the dedupe key: a repeat counts on the alert it repeats, "×3"; a setting's
+    // own slot instead keeps one alert per setting, the newer state replacing the older in place: 273, the chapter walk's
+    // OFF outliving the ON pressed a moment after it)
+    const toast = alertQueue.push(slot ? `alert-${slot}` : `alert-${++alertSerial}`, { text, icon: icon as IconId, severity, dedupeKey: `${severity}|${text}`,
       priority: ALERT_PRIORITY[severity], durationMs: ALERT_HOLD_MS, dismissible: false });
     alertBorn.set(toast.id, now);
     scheduleAlert();
@@ -8652,7 +8658,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
   });
   // round 30: the armour-overlay key confirms its state the way the auto-aim lock does
   on('ui:armorOverlayState', ({ on }) => {
-    showAlert(t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), { icon: 'armorFlashlight', tone: on ? 'success' : 'info' });
+    showAlert(t(on ? 'hud.alert.armorOverlayOn' : 'hud.alert.armorOverlayOff'), { icon: 'armorFlashlight', tone: on ? 'success' : 'info' }, 'armorOverlay');
   });
   on('ui:autoAimState', ({ on, targetName, reason }) => {
     if (on) showAlert(t('hud.alert.autoAimOn', { name: String(targetName || t('hud.alert.autoAimTarget')).toUpperCase() }),
@@ -9407,7 +9413,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
       // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
-      if (!ruleset || ruleset.provingGround) return;
+      if (!ruleset || ruleset.provingGround || ruleset.training) return;
       for (const line of rulesetLines(ruleset)) {
         // (the battle's clock is the score plate's, which shows the whole limit before the start: UI-LOCKDOWN B20)
         if (line.key === 'clock') continue;

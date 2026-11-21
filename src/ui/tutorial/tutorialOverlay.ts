@@ -26,6 +26,9 @@ export interface OverlayButtonCaps {
 }
 
 export interface OverlayView {
+  /** 'act': a battle step the player does (a compact card out of the action: no header, no hint, no Back); 'read': a card
+   *  that explains (full, and in a battle it holds the battle). Kevin, 2026-11-20: "the boxes are quite intrusive". */
+  readonly mode?: 'act' | 'read';
   readonly chapter: string;
   readonly progress: string;
   /** 0..1, the share of the chapter done once this step is. */
@@ -263,6 +266,8 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
   return {
     root,
     show(next: OverlayView): void {
+      const mode = next.mode ?? 'read';
+      if (root.dataset.mode !== mode) root.dataset.mode = mode;
       const previousTarget = view?.target ?? null;
       view = next;
       root.setAttribute('aria-label', next.label);

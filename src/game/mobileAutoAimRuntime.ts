@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { fieldHulls } from '../sim/hullField.ts';
 import { Vector3, type Camera } from 'three';
 import type { EventBus } from './stateCore.ts';
 import {
@@ -92,6 +93,7 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
 
   const stopToggle = bus.on('ui:autoAimToggle', () => {
     if (disposed) return;
+    const fieldScratch: Parameters<typeof pickTarget>[0][number][] = [];
     const player = getPlayer();
     // round 30 (owner 2026-09-20): the desktop T key toggles the same lock — the layout no longer gates it
     if (getPhase() !== 'battle' || !isMobileAutoAimEntity(player) || player.combat.destroyed) return;
@@ -99,7 +101,8 @@ export function createMobileAutoAimRuntime<TTank extends AutoAimTank>({
       clear('AUTO-AIM OFF');
       return;
     }
-    const target = pickTarget(getTanks(), player, camera, isVisible);
+    // (273) the hulls on the field only (sim/hullField.ts)
+    const target = pickTarget(fieldHulls(getTanks(), fieldScratch), player, camera, isVisible);
     publish(target, target ? '' : 'NO TARGET NEAR RETICLE');
   });
 

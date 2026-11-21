@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { fieldHulls } from '../sim/hullField.ts';
 import { strikeView } from './strikeViewState.ts';
 import { Object3D, PerspectiveCamera, Vector3 } from 'three';
 
@@ -173,7 +174,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     mode: 'battle',
     camera,
     player: null,
-    tanks: game.tanks,
+    // (the hulls on the field, written each frame: writeFrameInfo, reset)
+    tanks: [],
     shells: game.shells,
     aim: {
       point: new Vector3(),
@@ -222,7 +224,12 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     player: null,
   };
 
-  const tanks = (): TEntity[] => game.tanks;
+  // (273) the HUD reads the hulls on the field only (sim/hullField.ts): a parked hull is neither plated, listed, mapped nor
+  // painted; its HUD spot map, which takes a hull with no entry as seen, never meets it
+  const fieldTanks: TEntity[] = [];
+  const fieldRoster: TEntity[] = [];
+  const tanks = (): TEntity[] => fieldHulls(game.tanks, fieldTanks);
+  const roster = (): TEntity[] => (game.rosterTanks ? fieldHulls(game.rosterTanks, fieldRoster) : tanks());
   const player = (): TEntity | null => game.player;
 
   const bridgeEntity = (value: RuntimeValue): TEntity | null => {
@@ -248,8 +255,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
 
   const reset = (): void => {
     frameInfo.player = null;
-    frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
-    frameInfo.tanks = game.tanks;
+    frameInfo.tanks = tanks();
+    frameInfo.rosterTanks = roster();
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();
@@ -269,8 +276,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     // Air Support: the strike view's binoculars ride the scope's camera, never its gun sight (ui/airSupportHud.ts)
     frameInfo.mode = (watched ? watch!.sight() : rig.mode === 'SNIPER' && !strikeView.open) ? 'sniper' : 'battle';
     frameInfo.player = focus;
-    frameInfo.tanks = game.tanks;
-    frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
+    frameInfo.tanks = tanks();
+    frameInfo.rosterTanks = roster();
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();
@@ -289,7 +296,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   const collectArmorTargets = (localPlayer: TEntity, enabled: boolean): void => {
     armorTargets.length = 0;
     if (!enabled) return;
-    for (const entity of tanks()) {
+    for (const entity of fieldTanks) {
       if (entity === localPlayer || entity.team === localPlayer.team) continue;
       if (entity.combat?.destroyed || !entity.visual?.root?.visible) continue;
       armorTargets.push(entity);

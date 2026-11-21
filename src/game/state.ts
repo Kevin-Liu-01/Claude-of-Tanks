@@ -168,6 +168,10 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
+import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSightFraction, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
+import { trainingExposure } from '../sim/trainingSight.ts';
+import type { PenVerdict } from '../sim/penVerdict.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
   APS_BURST_OFFSET_M, type ConsumableId, type ConsumableState,
@@ -419,6 +423,22 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _supportField?: StructureSupportField | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
+  /** A training battle's cued shooters (273): each actor's scene name and the battle time its scene cued it at. */
+  _trainingCues?: Map<string, number>;
+  /** A slow-turret shooter's laid gun (S13): each actor's scene name and the yaw its gun points along (rad). */
+  _trainingGunYaw?: Map<string, number>;
+  /** S13: when the player stepped inside each arc shooter's arc (sim seconds; trainingArcDwellMet). */
+  _trainingArcSince?: Map<string, number>;
+  /** S11: when each sighting shooter last came to see the player (sim seconds; trainingSightFraction). */
+  _trainingSeenSince?: Map<string, number>;
+  /** S14: the skirmish has come in (the hull floor stands down with it: trainingGround.ts hullFloorShare). */
+  _trainingFightOn?: boolean;
+  /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
+  _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
+  /** The training battle's parked hulls (273): their ids, off the field until their scene's cue. The mode controller's
+   *  setActive puts every hull on the field as it starts; the solo host keeps these off (the first walk found the
+   *  skirmish fighting from the start). */
+  _trainingParked?: Set<string>;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
@@ -761,8 +781,6 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.fireTickAcc = 0;
   // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
   // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal
-  game.matchSeed = options.seed ?? soloMatchSeed(game.battleCount, !!options.random);
-  game.combatRng = mulberry32(game.matchSeed);
   game.result = null;
   game.resultReason = null;
   game.resultTimeS = null;
@@ -772,6 +790,11 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
     options.arrangement === undefined ? readTeamArrangement(game.gameMode) : options.arrangement);
   if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
   else if (options.couch) game.ruleset = couchRulesetFor(game.ruleset);
+  // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
+  // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal. The training
+  // battle pins its own (273: the same inputs give the same battle), so it is read once the ruleset is known.
+  game.matchSeed = options.seed ?? game.ruleset.training?.seed ?? soloMatchSeed(game.battleCount, !!options.random);
+  game.combatRng = mulberry32(game.matchSeed);
   game.watch = null;
   // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
   endCouchSession(game);
@@ -978,6 +1001,180 @@ function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spaw
   context.provingTargets.push(entity);
 }
 
+/**
+ * A training battle's hull (273): it holds its mark, braked. A scripted shooter its scene has cued (cueTrainingActor)
+ * lays its gun on the player's upper front plate with its volley's round loaded, and from its telegraph on holds the
+ * trigger: its loaded gun fires and its reload spaces the rounds (sim/trainingGround.ts TrainingVolley). Every input is
+ * the battle's time and the player's pose, so the same inputs give the same rounds.
+ */
+function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
+  entity.input.throttle = 0;
+  entity.input.steer = 0;
+  entity.input.brake = true;
+  entity.input.fire = false;
+  const rules = game.ruleset.training;
+  const actor = rules?.actors.find((rule) => rule.specId === entity.specId) ?? null;
+  const cuedAtS = actor ? game._trainingCues?.get(actor.key) : undefined;
+  const target = game.player;
+  if (!actor?.volley || cuedAtS === undefined || !target || target.combat.destroyed) return;
+  const slot = entity.spec.gun.shells.findIndex((shell) => shell.type === actor.volley!.shellType);
+  if (slot >= 0) entity.input.shellSlot = slot;
+  const pos = target.state.pos;
+  // the hull's tilt with it: the aim stands on the plate the armour model has there (trainingVolleyAim)
+  const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw, pitch: target.state.visualPitch ?? 0, roll: target.state.visualRoll ?? 0 };
+  trainingVolleyAim(hull, actor.volley, entity.input.aimPoint, entity.state.pos);
+  // a slow turret (S13): its gun laid along a yaw that turns toward the plate at its own rate, the aim point on that line
+  let arcAllows = true;
+  if (actor.volley.traverseDegPerS != null) {
+    const from = entity.state.pos, aim = entity.input.aimPoint;
+    const bearing = Math.atan2(aim.x - from.x, aim.z - from.z);
+    const yaws = game._trainingGunYaw ??= new Map();
+    const gunYaw = trainingTraverse(yaws.get(actor.key) ?? entity.state.yaw, bearing, SIM_DT, actor.volley.traverseDegPerS);
+    yaws.set(actor.key, gunYaw);
+    const reach = Math.hypot(aim.x - from.x, aim.z - from.z);
+    aim.set(from.x + Math.sin(gunYaw) * reach, aim.y, from.z + Math.cos(gunYaw) * reach);
+    arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, Math.atan2(pos.x - from.x, pos.z - from.z));
+    // (S13) the arc held a while before the trigger: a tank clipping its edge is not shot for it
+    if (actor.volley.arcDwellS != null) {
+      const since = game._trainingArcSince ??= new Map();
+      if (arcAllows) { if (!since.has(actor.key)) since.set(actor.key, game.timeS); } else since.delete(actor.key);
+      arcAllows = trainingArcDwellMet(actor.volley, since.get(actor.key) ?? null, game.timeS);
+    }
+  }
+  // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
+  const ground = game._groundSampler;
+  const seen = !actor.volley.whenSeen || !ground ? true : (() => {
+    const exposure = trainingExposure(entity.state.pos, hull, ground);
+    return exposure.hull || exposure.turret;
+  })();
+  // (S11) a sighting shooter fires only once it has seen the player a while, counted afresh each time in sight
+  let sighted = true;
+  if (actor.volley.seenS != null) {
+    const since = game._trainingSeenSince ??= new Map();
+    if (seen) { if (!since.has(actor.key)) since.set(actor.key, game.timeS); } else since.delete(actor.key);
+    sighted = trainingSightFraction(actor.volley, since.get(actor.key) ?? null, game.timeS) >= 1;
+  }
+  entity.input.fire = arcAllows && sighted && trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
+}
+
+/** A training battle's hull floor (273): until the skirmish comes in, the player's hull points stand at least at the rules'
+ *  share of its full hull, raised back to it at the next step after a hit took them under. */
+function holdTrainingHullFloor(game: SoloGameState): void {
+  const rules = game.ruleset.training;
+  const combat = game.player?.combat;
+  if (!rules || !combat || combat.destroyed || game._trainingFightOn || !(combat.maxHp > 0)) return;
+  const floor = combat.maxHp * rules.hullFloorShare;
+  if (combat.hp < floor) combat.hp = floor;
+}
+
+/** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
+ *  shots, unseen, its visual hidden. */
+function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
+  const rules = game.ruleset.training;
+  const actor = rules?.actors.find((rule) => rule.specId === entity.specId);
+  // (S14's skirmish bots too: parked, brains and all, until the fight's cue)
+  if (!actor?.entersOnCue && !(rules && trainingSkirmishSide(rules, entity.specId))) return;
+  (game._trainingParked ??= new Set()).add(entity.id);
+  entity.modeActive = false;
+  entity.visual?.setVisible(false);
+}
+
+/**
+ * A sighting shooter's clock for the guide's ring over it (S11): its sight fraction (trainingSightFraction), or null for a
+ * shooter without one (the ring then reads its gun's own reload).
+ */
+export function trainingSightFor(game: SoloGameState, actorId: string): number | null {
+  const shooter = game.tankById.get(actorId);
+  const actor = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId) : undefined;
+  if (!actor?.volley || actor.volley.seenS == null) return null;
+  return trainingSightFraction(actor.volley, game._trainingSeenSince?.get(actor.key) ?? null, game.timeS);
+}
+
+/**
+ * The verdict of a training battle's scripted shooter's round (by its battle id) on the player's front plate, the hull
+ * turned by each offset (deg) from its heading now (sim/trainingThreat.ts): the angling arc's colours (S9). Empty where
+ * the battle has no such shooter or no player.
+ */
+export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsDeg: readonly number[]): Array<PenVerdict | null> {
+  const shooter = game.tankById.get(actorId);
+  const player = game.player;
+  const volley = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId)?.volley : undefined;
+  const shell = volley ? shooter!.spec.gun.shells.find((round) => round.type === volley.shellType) : undefined;
+  if (!shooter?.state || !player?.state || !volley || !shell) return [];
+  return trainingThreatVerdicts(shooter.state.pos, player.state, player.spec.armor, player.combat.eraSpent, shell, volley, offsetsDeg);
+}
+
+/**
+ * The solo host's answer to the mode controller's setActive: the hull on or off the field, its visual with it, but a
+ * training battle's parked hull stays off until its scene's cue (273: the controller's setLife puts every hull on the
+ * field as it starts, after the seating parked them; the whole-chapter walk found the skirmish fighting from S1).
+ */
+export function trainingHostSetActive(game: Pick<SoloGameState, '_trainingParked'>,
+  entity: { id: string; modeActive?: boolean; visual?: { setVisible(on: boolean): void } | null }, active: boolean): void {
+  const on = active && !game._trainingParked?.has(entity.id);
+  entity.modeActive = on;
+  entity.visual?.setVisible(on);
+}
+
+/** A training battle's parked hulls off the field (after the mode controller's construction has put every hull on). */
+export function trainingHoldParked(game: Pick<SoloGameState, '_trainingParked'>,
+  entities: Iterable<{ id: string; modeActive?: boolean; visual?: { setVisible(on: boolean): void } | null }>): void {
+  if (!game._trainingParked?.size) return;
+  for (const entity of entities) if (game._trainingParked.has(entity.id)) trainingHostSetActive(game, entity, false);
+}
+
+/**
+ * The training battle's verdict (273): its chapter is complete, the player's side has won. Quiet: no battle:ended (the
+ * training battle keeps no record and shows no report; the tutorial returns to the Garage itself, main.ts). Returns
+ * whether it ended the battle.
+ */
+export function finishTrainingBattle(game: SoloGameState): boolean {
+  if (!game.ruleset.training || game.result !== null) return false;
+  game.result = 'victory';
+  game.resultReason = 'training_complete';
+  game.matchModeController?.matchEnded('alpha', 'training_complete');
+  return true;
+}
+
+/** The training battle's checkpoint (273): the tutorial sets it as the player reaches each ring, with the hull's heading
+ *  then; a death brings the player back there. */
+export function setTrainingCheckpoint(game: SoloGameState, x: number, z: number): boolean {
+  if (!game.ruleset.training || !game.player?.state) return false;
+  game._trainingCheckpoint = { x, z, yaw: game.player.state.yaw };
+  return true;
+}
+
+/**
+ * Cue or stand down a training battle's scripted shooter by its scenes' name (273): the tutorial's step cues it while it
+ * shows (ui/tutorial/tutorialSteps.ts `cue`). Returns whether the battle has that shooter.
+ */
+export function cueTrainingActor(game: SoloGameState, key: string, on: boolean): boolean {
+  const rules = game.ruleset.training;
+  // S14: the skirmish's cue brings every one of its bots in, for good
+  if (rules && key === TRAINING_SKIRMISH_CUE) {
+    if (on) game._trainingFightOn = true;
+    if (on) for (const entity of game.tanks) if (game._trainingParked?.has(entity.id) && trainingSkirmishSide(rules, entity.specId)) {
+      game._trainingParked.delete(entity.id);
+      entity.modeActive = true;
+      entity.visual?.setVisible(true);
+    }
+    return true;
+  }
+  if (!rules || !trainingActor(rules, key)?.volley) return false;
+  const cues = game._trainingCues ??= new Map();
+  if (!on) cues.delete(key);
+  else if (!cues.has(key)) cues.set(key, game.timeS);
+  // its first cue brings a parked hull onto its mark, for the rest of the battle
+  const actor = trainingActor(rules, key)!;
+  const entity = on ? game.tanks.find((tank) => tank.specId === actor.specId) : undefined;
+  if (entity && game._trainingParked?.has(entity.id)) {
+    game._trainingParked.delete(entity.id);
+    entity.modeActive = true;
+    entity.visual?.setVisible(true);
+  }
+  return true;
+}
+
 function warmStartBattleEntity(
   entity: SoloEntity,
   world: SoloWorld,
@@ -1002,7 +1199,9 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
       entity.id, placementTankRadius(entity.spec));
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
-    if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
+    // a training battle's skirmish bots (S14) stand on their marks with brains of their own, not as the scenes' hulls
+    const skirmishBot = !isPlayer && !!game.ruleset.training && trainingSkirmishSide(game.ruleset.training, entity.specId) !== null;
+    if (!isPlayer && context.provingLayout && !skirmishBot) seatProvingTarget(context, entity, spawn);
     // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
     // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
     else if (!isPlayer && game.couch?.seats.some((seat) => seat.entity === entity)) { entity.aiCtl = null; entity.ai = null; }
@@ -1013,6 +1212,7 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
       prepareWatchSeat(game, entity);
     }
     warmStartBattleEntity(entity, context.world);
+    if (!isPlayer && game.ruleset.training) parkTrainingActor(game, entity);
   }
 }
 
@@ -1085,8 +1285,18 @@ export function setupBattle(
   world.bindGroundOverlay?.(ground.overlay);
   // the proving ground (2026-10-20): its range laid out on this battlefield, the drive course raised in the overlay after
   // the map's craters (sim/provingGround.ts; fails closed); the bound ground reads every stamp as it lands
-  const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
+  // the training battle (273) seats from the same kind of layout: the player on its start, each scene's hull on its mark
+  const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world)
+    : game.ruleset.training ? planTrainingRange(game.ruleset.training) : null;
   game._provingRange = provingLayout;
+  // a training battle's scene state starts clean each battle (a replay's shooters uncued, the checkpoint the start)
+  game._trainingCues = undefined;
+  game._trainingGunYaw = undefined;
+  game._trainingArcSince = undefined;
+  game._trainingSeenSince = undefined;
+  game._trainingFightOn = false;
+  game._trainingCheckpoint = null;
+  game._trainingParked = undefined;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
   // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
   // with them in its resetDestructibles, before the battle (soloBattleStartRuntime.ts); a bare collision world has no
@@ -1136,7 +1346,7 @@ export function setupBattle(
     game.teamNations = national.record;
   } else {
     game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-      rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national) as SoloEntity[];
+      rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national, rosterPlan.exact) as SoloEntity[];
     const flags = soloDebugFlags();
     if (flags?.forceRoster?.length && flags.forceAllies) {
       game._nationalAllyIds = new Set(flags.forceAllies);
@@ -1306,11 +1516,13 @@ export function setupBattle(
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     // what each side has spotted (the honest hunt); the solo battle names its sides player / enemy
     spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
-    setActive(modeEntity, active) {
-      modeEntity.modeActive = active;
-      modeEntity.visual?.setVisible(active);
-    },
-    revive(ent: SoloEntity, spawn: MatchModeSpawn, healthScale: number) {
+    setActive(modeEntity, active) { trainingHostSetActive(game, modeEntity, active); },
+    // the training battle (273): a scene's finished goal and the skirmish stay down (sim/trainingGround.ts trainingRespawns)
+    ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(game.ruleset.training!, ent.specId) } : {}),
+    revive(ent: SoloEntity, rawSpawn: MatchModeSpawn, healthScale: number) {
+      // the training player comes back at the checkpoint (the last ring reached), not the start
+      const checkpoint = game.ruleset.training && ent.isPlayer ? game._trainingCheckpoint : null;
+      const spawn = checkpoint ? { x: checkpoint.x, z: checkpoint.z, yaw: checkpoint.yaw } : rawSpawn;
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
@@ -1351,6 +1563,9 @@ export function setupBattle(
       holdRevivedBrain(game, ent);
     },
   });
+  // the controller's construction puts every hull on the field outright (modeActive = true, no setActive): a training
+  // battle's parked hulls go back off at once (273; the whole-chapter walk found the skirmish fighting from S1)
+  trainingHoldParked(game, game.tanks);
   for (const entity of game.tanks) {
     initializeAerial(entity, game.ruleset);
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
@@ -2338,6 +2553,8 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
       collectNavigationWrecks(game.tanks, game._navigationWrecks));
   }
   const proving = game.ruleset.provingGround;
+  const training = !!game.ruleset.training;
+  if (training) holdTrainingHullFloor(game);
   const host = soloActionsHost(game, bus, world);
   for (const entity of game.tanks) {
     if (entity.modeActive === false) continue;
@@ -2346,6 +2563,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
+    else if (training && entity._provingMark && !entity.combat.destroyed) driveTrainingActor(game, entity);
     applyHullActions(entity, host);
     tickHullConsumables(entity, host);
   }

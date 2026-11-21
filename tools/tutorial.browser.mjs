@@ -146,7 +146,7 @@ try {
   // 1. A fresh player: the Garage chapter.
   const page = await openPage(context, `/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`);
   let shot = 0;
-  let now = await waitStep(page, (s) => s?.step === 'garage.welcome', 120_000);
+  let now = await waitStep(page, (s) => s?.step === 'garage.tank', 120_000);
   for (;;) {
     const entry = await shoot(page, shot++);
     if (targeted.has(entry.step)) assert.ok(entry.lit, `${entry.step}: its control is on screen and lit`);
@@ -215,7 +215,7 @@ try {
   // 3. The strategy tips, on the Garage (the walk's battle chapter records battle done; the tips follow on the Garage's
   //    next showing, which __TUTORIAL_START stands in for so one hold stays under the cap)
   const page = await openPage(context, `/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`);
-  await waitStep(page, (s) => s?.step === 'garage.welcome', 120_000);
+  await waitStep(page, (s) => s?.step === 'garage.tank', 120_000);
   await page.evaluate(() => window.__TUTORIAL_START('tips'));
   let shot = 30;
   let now;
@@ -250,7 +250,7 @@ try {
     return { present: true, open: root.classList.contains('is-open') && style.display !== 'none', spot: root.classList.contains('has-spot') };
   });
   // (a) the dim and the hotkeys, step by step
-  let s = await waitStep(page, (x) => x?.step === 'garage.welcome', 120_000);
+  let s = await waitStep(page, (x) => x?.step === 'garage.tank', 120_000);
   for (;;) {
     if (flag('screens-only')) break;
     await sleep(700);
@@ -294,7 +294,7 @@ try {
   }
   // (b) screen changes. Settings over the Garage: the card hides while it is open and comes back on the same step.
   await page.evaluate(() => window.__TUTORIAL_START('garage'));
-  s = await waitStep(page, (x) => x?.step === 'garage.welcome');
+  s = await waitStep(page, (x) => x?.step === 'garage.tank');
   await press(page, '.cot-tut-next');
   s = await waitStep(page, (x) => x?.step === 'garage.tank');
   await page.evaluate(() => document.querySelector('.cot-gear')?.click());
@@ -339,7 +339,7 @@ try {
   } else {
   // 4. The checks: Skip from every step of every chapter, the replays, a returning player.
   const page = await openPage(context, `/?nosplash=1&telemetry=off&tier=${touch ? 'mobile' : 'desktop'}`);
-  await waitStep(page, (s) => s?.step === 'garage.welcome', 120_000);
+  await waitStep(page, (s) => s?.step === 'garage.tank', 120_000);
   await press(page, '.cot-tut-skip');
 
     const skips = [];
@@ -368,7 +368,7 @@ try {
     const replayRow = await page.waitForSelector('.cot-set-tutorial', { visible: true, timeout: 30_000 }).catch(() => null);
     if (replayRow) {
       await replayRow.click();
-      await waitStep(page, (s) => s?.step === 'garage.welcome', 30_000);
+      await waitStep(page, (s) => s?.step === 'garage.tank', 30_000);
       report.checks.settingsReplay = 'the Garage chapter ran again';
       await press(page, '.cot-tut-skip');
     } else report.checks.settingsReplay = 'the Gameplay tab did not show the row (not reached by this tool)';
@@ -386,7 +386,7 @@ try {
     // /?tutorial=1 replays
     await returning.goto(returning.url().replace(/\?.*/, '?nosplash=1&telemetry=off&tutorial=1'), { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await returning.waitForFunction(`${readinessExpression('garage')}`, { timeout: 600_000, polling: 500 });
-    await waitStep(returning, (s) => s?.step === 'garage.welcome', 60_000);
+    await waitStep(returning, (s) => s?.step === 'garage.tank', 60_000);
     report.checks.urlReplay = { started: true, addressKeepsFlag: (await returning.evaluate(() => location.search)).includes('tutorial') };
     assert.ok(!report.checks.urlReplay.addressKeepsFlag, '/?tutorial=1 replays and drops the flag');
     await back.close();

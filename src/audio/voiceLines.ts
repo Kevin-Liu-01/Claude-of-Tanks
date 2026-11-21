@@ -322,6 +322,8 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   air_support: { swap: { battle_start: 'start_air_support', ...NO_TEAM_COUNTS } },
   // a practice range: targets in lanes, reset at will, no verdict
   proving_ground: { swap: { battle_start: 'start_range', respawn: null, ...NO_TEAM_COUNTS } },
+  // the training battle (273): the range's call to start, no team counts (its hulls are the scenes')
+  training: { swap: { battle_start: 'start_range', respawn: null, ...NO_TEAM_COUNTS } },
 });
 
 /** The AC-130 crew (fire control officer, sensor operator, gunners): its own call for a tank crew's, or none. */

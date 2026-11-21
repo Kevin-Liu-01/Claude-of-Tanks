@@ -77,4 +77,17 @@ for (const [tile, action, fallback] of [['missileKey', 'atgm', 'Q'], ['reloadKey
   assert.match(hud, new RegExp(`setText\\(${tile},frame\\.auxiliaryKeyLabels\\.${action} \\?\\? '${fallback}'\\);`), `${tile} names the ${action} binding`);
 }
 assert.doesNotMatch(read('./battleHudFrameRuntime.ts'), /keys\.missile =/, 'the ATGM no longer takes its shell slot\'s digit');
+// (273) H pressed twice in a moment: the newer state replaces the older alert in place, one slot for the setting, no
+// "×2" (the chapter walk's ARMOR OVERLAY OFF outlived the ON pressed a moment after it)
+{
+  const { NoticeQueue } = await import('../ui/components/notice.ts');
+  const shown = [];
+  const queue = new NoticeQueue(1, () => 0, { show: (t) => shown.push(t), hide() {}, update() {} });
+  const off = queue.push('alert-armorOverlay', { text: 'ARMOR OVERLAY OFF', severity: 'info', dedupeKey: 'info|ARMOR OVERLAY OFF' });
+  const on = queue.push('alert-armorOverlay', { text: 'ARMOR OVERLAY ON', severity: 'success', dedupeKey: 'success|ARMOR OVERLAY ON' });
+  assert.equal(on, off, 'one alert for the setting');
+  assert.equal(on.options.text, 'ARMOR OVERLAY ON', 'showing the newer state');
+  assert.equal(on.count, 1, 'not counted as a repeat');
+  assert.match(read('../ui/hud.ts'), /tone: on \? 'success' : 'info' \}, 'armorOverlay'\);/, 'the HUD raises the overlay alert in its slot');
+}
 console.log('battleKeyActions.selftest: T auto-aim and H armour overlay bindings, desktop auto-aim runtime, rocket jump keycap and touch button, and the row tiles\' table keys (Q ATGM, C reload, E suspension)');

@@ -176,6 +176,9 @@ interface MatchModeHooks<Entity extends MatchModeEntity> {
   terrainHeight?(x: number, z: number): number;
   ballFloorHeight?(x: number, z: number, previousBottomY: number): number;
   emit?(type: string, payload: MatchModeEventPayload): void;
+  /** Whether a destroyed hull comes back under the ruleset's respawn (default: every one). The training battle's driver
+   *  answers no for a scene's hull its scene has finished (273: sim/trainingGround.ts `staysDown`); no other passes it. */
+  respawns?(entity: Entity): boolean;
 }
 
 interface MatchModeControllerOptions<Entity extends MatchModeEntity>
@@ -642,7 +645,7 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, ballFloorHeight = terrainHeight, emit = () => {},
-  placement, setWeaponStage = () => {},
+  placement, setWeaponStage = () => {}, respawns = () => true,
   ruleset: rulesetOption, range = null, spotting,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
@@ -1881,7 +1884,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       stampPhysics(entity);
       emit('mode_infected', { id: entity.id, team: 'bravo' });
     }
-    if (ruleset.respawnS != null) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
+    if (ruleset.respawnS != null && respawns(entity)) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
   };
 
   const handleDeathsAndRespawns = (timeS: number): void => {

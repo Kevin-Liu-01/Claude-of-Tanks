@@ -12,7 +12,7 @@ import {
 } from './deployment.ts';
 
 import * as detMath from './detMath.ts';
-import { objectivePlacementFor } from './matchRuleset.ts';
+import { objectivePlacementFor, rulesetKeepsMarkFacing } from './matchRuleset.ts';
 export interface PlacementPoint { x: number; z: number }
 interface PlacementSpawn extends PlacementPoint { yaw: number }
 export interface PlacementTerrain {
@@ -577,9 +577,10 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     const old = reservations.find(entry => entry.key === key);
     radius = radius ?? old?.radius ?? 4.5;
     // the facing and departure laws (spawnFacing, access.departs) hold for every battle seat; the proving ground's
-    // marks are its measured lanes, each hull presented at its lane's angle, so they stand as the range laid them out
+    // marks are its measured lanes, each hull presented at its lane's angle, and the training battle's are its scenes'
+    // (273), so they stand as their layout laid them out
     const footprint: Footprint = { radius, relief: 2, normalY: SPAWN_NORMAL_Y,
-      ...(Number.isFinite(point.yaw) && mode !== 'proving_ground' ? { facing: point.yaw } : {}) };
+      ...(Number.isFinite(point.yaw) && !rulesetKeepsMarkFacing(mode) ? { facing: point.yaw } : {}) };
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     const half = Math.abs(along) > 60 ? Math.sign(along) : 0;
     const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied, maxShiftM);

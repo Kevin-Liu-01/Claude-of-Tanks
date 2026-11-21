@@ -250,6 +250,8 @@ const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
 const GUIDANCE_CARD = '.cot-tut.is-open:is([data-chapter=battle],[data-chapter=training]) .cot-tut-card';
 const GUIDANCE_CARD_W = 480;
+/** A battle step the player does (tutorial.css data-mode=act, Kevin 2026-11-20: less intrusive): its compact card's width. */
+const GUIDANCE_CARD_ACT_W = 352;
 const TOUCH_NOTICE_SOFT = '.cot-top,.cot-pips.show,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
@@ -986,7 +988,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // While its overlay is open but the card measures nothing for a pass (a step's swap, a pause's hide and show), the
     // last size stands: a pass without it set the toasts in the card's own row, and the next put the card back on them.
     const cardNode = document.querySelector<HTMLElement>(GUIDANCE_CARD);
-    const cardWide = Math.min(GUIDANCE_CARD_W, width - 32);
+    const acting = cardNode?.closest<HTMLElement>('.cot-tut')?.dataset.mode === 'act';
+    const cardWide = Math.min(acting ? GUIDANCE_CARD_ACT_W : GUIDANCE_CARD_W, width - 32);
     const step = cardNode?.closest<HTMLElement>('.cot-tut')?.dataset.step ?? '';
     // (read at the type the last plan gave it: a compact read is taken back to the full type's height)
     const compact = (document.body.dataset.hudGuidance ?? '').split(' ').includes('card-compact');

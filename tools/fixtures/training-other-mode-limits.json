@@ -1,0 +1,205 @@
+{
+ "note": "every mode but training: its team arrangement limits and its ruleset field, as main e5e937cb71 has them (273: the training roster change must move no other mode; src/sim/trainingThreat.selftest.mjs)",
+ "field": 42,
+ "waveSize": [
+  2,
+  12
+ ],
+ "modes": {
+  "ac130": {
+   "allies": [
+    2,
+    8
+   ],
+   "enemies": [
+    4,
+    24
+   ],
+   "rulesetAllies": 4,
+   "rulesetEnemies": 12,
+   "respawnS": null
+  },
+  "air_support": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 8
+  },
+  "capture_the_flag": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 6
+  },
+  "drone": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 6
+  },
+  "endless_horde": {
+   "allies": [
+    0,
+    6
+   ],
+   "enemies": [
+    6,
+    20
+   ],
+   "rulesetAllies": 4,
+   "rulesetEnemies": 20,
+   "respawnS": null
+  },
+  "frontline_assault": {
+   "allies": [
+    0,
+    6
+   ],
+   "enemies": [
+    4,
+    14
+   ],
+   "rulesetAllies": 3,
+   "rulesetEnemies": 12,
+   "respawnS": null
+  },
+  "gun_game": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 4
+  },
+  "infected": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": 9,
+   "rulesetEnemies": 5,
+   "respawnS": 5
+  },
+  "juggernaut": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": 0,
+   "rulesetEnemies": 12,
+   "respawnS": 6
+  },
+  "mars": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 6
+  },
+  "proving_ground": {
+   "allies": [
+    0,
+    0
+   ],
+   "enemies": [
+    5,
+    5
+   ],
+   "rulesetAllies": 0,
+   "rulesetEnemies": 5,
+   "respawnS": 3
+  },
+  "realistic": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": null
+  },
+  "standard": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": null
+  },
+  "turbo_ball": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 3
+  },
+  "zone_control": {
+   "allies": [
+    0,
+    40
+   ],
+   "enemies": [
+    1,
+    41
+   ],
+   "rulesetAllies": null,
+   "rulesetEnemies": null,
+   "respawnS": 6
+  }
+ }
+}

@@ -1,0 +1,430 @@
+/**
+ * tutorialGuide.ts — the tutorial's one guidance layer over the battle: where to go, what to look at, which control to
+ * press (273). Copyright © 2026 Kevin B. Liu.
+ *
+ * A step's `guide` record (tutorialSteps.ts TutorialGuideSpec) names what to show, and this module draws it; no step
+ * draws its own arrows. It draws six pieces:
+ *
+ * - a marker: a ring on the ground, a light column, its label and the distance to it;
+ * - the path: up to five chevrons on the ground from the player toward the marker (none once the player is close);
+ * - a bracket: corners round an actor (a target or a scripted shooter) and its label;
+ * - an edge pointer: an arrow on the screen's edge toward the marker or actor while it is off screen or behind the camera,
+ *   with its label and distance;
+ * - a HUD chevron: a small bouncing chevron at a HUD control (the first selector that is on screen, as a step's target);
+ * - an aim ghost: a dashed ring on the plate to aim at, shown only once the step has fallen behind (setEscalated).
+ *
+ * World pieces are drawn in screen space from points the game projects (GuidePort.project), so the guide adds nothing to
+ * the 3D scene and costs nothing outside a run; it loads with the tutorial's chunk. It owns two layers: the world pieces
+ * under the HUD (--z-hud-world) and the pointer and chevron over it (--z-hud-score). Neither takes the pointer, so the
+ * guide can never swallow a press (the dim's inert blockers stay the overlay's, tutorialOverlay.ts). It redraws on
+ * animation frames while it shows something and is not hidden, and it goes with its run (destroy).
+ *
+ * Its geometry (where on the ring to sample, where the chevrons stand, where the pointer meets the edge) is in
+ * tutorialGuideMath.ts, held by tutorialGuide.selftest.mjs.
+ */
+import {
+  ARC_RADII_M, actorCorners, actorPoint, arcHeadings, arcSector, edgeInsets, edgePointer, groundDistance, insideInsets, onScreen, pathChevrons, headingFromLine, ringPoints, screenAngle, screenBox,
+  type ScreenPoint, type Viewport, type WorldPoint,
+} from './tutorialGuideMath.ts';
+import type { PenVerdict } from '../../sim/penVerdict.ts';
+import { EXPOSURE_POINTS, trainingExposure } from '../../sim/trainingSight.ts';
+import { PEN_INK } from '../penInk.ts';
+import type { TutorialGuideSpec } from './tutorialSteps.ts';
+
+/** A pose in the world: a point and a yaw (radians; 0 faces +z). */
+type GuidePose = WorldPoint & { readonly yaw: number };
+
+/** What the guide reads from the game (main.ts hands it in through the tutorial's port). */
+export interface GuidePort {
+  /** A world point on the screen (CSS px), or null with no camera. */
+  project(point: WorldPoint): ScreenPoint | null;
+  /** The ground's height under a point. */
+  groundY(x: number, z: number): number;
+  /** The player's tank, in battle; null elsewhere. */
+  player(): GuidePose | null;
+  /** A battle actor by its entity id (a target, a scripted shooter), or null when it is not in the battle. */
+  actor(id: string): GuidePose | null;
+  /** S9: the verdict of a scripted shooter's round on the player's front plate, the hull turned by each offset (deg) from
+   *  its heading now, its gun kept on the shooter (sim/trainingThreat.ts), in the reticle's bands; absent, no arc. */
+  threat?(actorId: string, offsetsDeg: readonly number[]): ReadonlyArray<PenVerdict | null>;
+  /** S11: an actor's gun loaded, 0 just fired to 1 ready; null when it is not in the battle. */
+  actorReload?(actorId: string): number | null;
+}
+
+/** The guide's words, resolved by the runner in the player's language. */
+interface GuideLabels {
+  readonly marker: string;
+  readonly actor: string;
+  /** "{m} m" in the player's language. */
+  readonly distance: (metres: number) => string;
+}
+
+export interface TutorialGuideLayer {
+  /** Show a step's guidance (null: none). */
+  show(spec: TutorialGuideSpec | null, labels: GuideLabels): void;
+  /** The step has fallen behind: show its aim ghost (and pulse the rest). */
+  setEscalated(on: boolean): void;
+  /** Hide while the card hides (a pause, a covering surface); show(...) or setHidden(false) brings it back. */
+  setHidden(hidden: boolean): void;
+  /** What the guide drew last (receipts): which pieces show, and the edge pointer's place when it does. */
+  snapshot(): GuideSnapshot;
+  destroy(): void;
+}
+
+interface GuideSnapshot {
+  /** The angling arc's sectors drawn, and the needle's verdict (the hull's heading now). */
+  readonly arc: number;
+  /** The reload ring over an actor (S11): how loaded its gun reads, or null while it does not show. */
+  readonly reload: number | null;
+  /** The exposure shape (S10): which of the hull and turret it lit, or null while it does not show. */
+  readonly exposure: { readonly hull: boolean; readonly turret: boolean } | null;
+  readonly needle: PenVerdict | null;
+  readonly ring: boolean;
+  readonly chevrons: number;
+  readonly bracket: boolean;
+  readonly edge: { readonly x: number; readonly y: number } | null;
+  readonly hud: boolean;
+  readonly aim: boolean;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** The edge pointer stands this far inside the screen's edges (a fifth of the height at the bottom, tutorialGuideMath.ts
+ *  edgeInsets); a subject outside that rectangle counts as off screen. */
+const EDGE_INSET = 56;
+const COLUMN_M = 7;
+const MARKER_LIFT_M = 0.15;
+/** A bracket's box round an actor: half length, half width and height (m), wide enough for any fleet hull. */
+const ACTOR_BOX = { halfLength: 4, halfWidth: 2, height: 3 } as const;
+const BRACKET_PX = 14;
+const AIM_RING_PX = 16;
+/** The angling arc's verdicts are asked again at most this often (ms): each ask traces a line per sector. */
+const ARC_ASK_MS = 300;
+const RELOAD_RING_PX = 13;
+const ARC_LIFT_M = 0.12;
+
+function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, className: string, parent: Element): SVGElementTagNameMap[K] {
+  const node = document.createElementNS(SVG_NS, tag);
+  node.setAttribute('class', className);
+  parent.append(node);
+  return node;
+}
+
+function layer(className: string): { root: HTMLDivElement; svg: SVGSVGElement } {
+  const root = document.createElement('div');
+  root.className = `cot-tut-guide ${className}`;
+  root.setAttribute('aria-hidden', 'true');
+  const svg = svgEl('svg', 'cot-tut-guide-svg', root);
+  document.body.append(root);
+  return { root, svg };
+}
+
+const CHEVRON_PATH = 'M-11,6 L0,-5 L11,6';
+const POINTER_PATH = 'M14,0 L-6,-11 L-2,0 L-6,11 Z';
+
+export function createTutorialGuide(port: GuidePort): TutorialGuideLayer {
+  const world = layer('cot-tut-guide--world');
+  const over = layer('cot-tut-guide--over');
+
+  const ring = svgEl('path', 'cot-tut-guide-ring', world.svg);
+  const column = svgEl('line', 'cot-tut-guide-column', world.svg);
+  const markerLabel = svgEl('text', 'cot-tut-guide-label', world.svg);
+  const markerDistance = svgEl('text', 'cot-tut-guide-distance', world.svg);
+  const chevrons = Array.from({ length: 5 }, () => svgEl('path', 'cot-tut-guide-chevron', world.svg));
+  for (const chevron of chevrons) chevron.setAttribute('d', CHEVRON_PATH);
+  const bracket = svgEl('path', 'cot-tut-guide-bracket', world.svg);
+  const bracketLabel = svgEl('text', 'cot-tut-guide-label cot-tut-guide-label--actor', world.svg);
+  const aim = svgEl('circle', 'cot-tut-guide-aim', world.svg);
+  aim.setAttribute('r', String(AIM_RING_PX));
+  // the angling arc (S9): a sector per hull heading round the player, in the shooter's reticle colours, and the needle
+  const headings = arcHeadings();
+  const sectors = headings.map(() => svgEl('path', 'cot-tut-guide-arc', world.svg));
+  const needle = svgEl('line', 'cot-tut-guide-needle', world.svg);
+  let arcVerdicts: ReadonlyArray<PenVerdict | null> = [];
+  let needleVerdict: PenVerdict | null = null;
+  let arcAskedAt = -Infinity;
+  // the reload ring (S11): over an actor, a ring that fills as its gun loads
+  const reloadGroup = svgEl('g', 'cot-tut-guide-reload', world.svg);
+  const reloadTrack = svgEl('circle', 'cot-tut-guide-reload-track', reloadGroup);
+  const reloadFill = svgEl('circle', 'cot-tut-guide-reload-fill', reloadGroup);
+  for (const node of [reloadTrack, reloadFill]) node.setAttribute('r', String(RELOAD_RING_PX));
+  const reloadLength = 2 * Math.PI * RELOAD_RING_PX;
+  reloadFill.setAttribute('stroke-dasharray', `${reloadLength.toFixed(1)} ${reloadLength.toFixed(1)}`);
+  // the exposure shape (S10): the hull and the turret over the player's tank, each lit while the actor sees it
+  const exposureShape = svgEl('g', 'cot-tut-guide-exposure', world.svg);
+  const exposureHull = svgEl('rect', 'cot-tut-guide-exposure-hull', exposureShape);
+  const exposureTurret = svgEl('rect', 'cot-tut-guide-exposure-turret', exposureShape);
+  for (const [node, x, y, w, h] of [[exposureHull, -26, -6, 52, 12], [exposureTurret, -12, -18, 24, 11]] as const) {
+    node.setAttribute('x', String(x)); node.setAttribute('y', String(y)); node.setAttribute('width', String(w)); node.setAttribute('height', String(h));
+  }
+
+  const edge = svgEl('g', 'cot-tut-guide-edge', over.svg);
+  const edgeArrow = svgEl('path', 'cot-tut-guide-edge-arrow', edge);
+  edgeArrow.setAttribute('d', POINTER_PATH);
+  const edgeLabel = svgEl('text', 'cot-tut-guide-edge-label', edge);
+  const edgeDistance = svgEl('text', 'cot-tut-guide-edge-distance', edge);
+  const hudChevron = document.createElement('span');
+  hudChevron.className = 'cot-tut-guide-hud';
+  over.root.append(hudChevron);
+
+  let spec: TutorialGuideSpec | null = null;
+  let labels: GuideLabels | null = null;
+  let escalated = false;
+  let hidden = false;
+  let frame = 0;
+  let drawn: GuideSnapshot = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+
+  const show = (node: Element, on: boolean): void => {
+    if (on) node.removeAttribute('display'); else node.setAttribute('display', 'none');
+  };
+
+  function viewport(): Viewport {
+    return { width: window.innerWidth, height: window.innerHeight };
+  }
+
+  function lifted(x: number, z: number, up: number): WorldPoint {
+    return { x, y: port.groundY(x, z) + up, z };
+  }
+
+  /** The HUD control the step points at: the first of its selectors with a box on screen. */
+  function hudTarget(selectors: readonly string[]): DOMRect | null {
+    for (const selector of selectors) {
+      for (const element of document.querySelectorAll(selector)) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width >= 2 && rect.height >= 2 && rect.bottom > 0 && rect.top < window.innerHeight) return rect;
+      }
+    }
+    return null;
+  }
+
+  function draw(): void {
+    const view = viewport();
+    world.svg.setAttribute('viewBox', `0 0 ${view.width} ${view.height}`);
+    over.svg.setAttribute('viewBox', `0 0 ${view.width} ${view.height}`);
+    const player = port.player();
+    const marker = spec?.marker ?? null;
+    const actorSpec = spec?.actor ?? null;
+    const actor = actorSpec ? port.actor(actorSpec.id) : null;
+    const next: { reload: number | null; exposure: { hull: boolean; turret: boolean } | null; arc: number; needle: PenVerdict | null; ring: boolean;
+      chevrons: number; bracket: boolean; edge: { x: number; y: number } | null; hud: boolean; aim: boolean } =
+      { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+
+    // the reload ring over its actor: the track, and the fill as far as its gun has loaded
+    const reloadSpec = spec?.reload ?? null;
+    const loader = reloadSpec ? port.actor(reloadSpec.id) : null;
+    const loaded = reloadSpec && port.actorReload ? port.actorReload(reloadSpec.id) : null;
+    const ringAt = loader ? port.project({ x: loader.x, y: loader.y + 5, z: loader.z }) : null;
+    if (ringAt && !ringAt.behind && loaded != null) {
+      reloadGroup.setAttribute('transform', `translate(${ringAt.x.toFixed(1)} ${ringAt.y.toFixed(1)}) rotate(-90)`);
+      reloadFill.setAttribute('stroke-dashoffset', (reloadLength * (1 - loaded)).toFixed(1));
+      reloadGroup.classList.toggle('is-ready', loaded >= 0.999);
+      next.reload = loaded;
+    }
+    show(reloadGroup, next.reload != null);
+
+    // the exposure shape: over the player's tank, its hull and turret each lit while the actor sees it over the ground
+    const exposureSpec = spec?.exposure ?? null;
+    const watcher = exposureSpec ? port.actor(exposureSpec.id) : null;
+    const above = exposureSpec && player ? port.project({ x: player.x, y: player.y + EXPOSURE_POINTS.turret[1]!.up + 2.4, z: player.z }) : null;
+    if (watcher && player && above && !above.behind) {
+      const seen = trainingExposure(watcher, player, port.groundY);
+      exposureShape.setAttribute('transform', `translate(${above.x.toFixed(1)} ${above.y.toFixed(1)})`);
+      exposureHull.classList.toggle('is-seen', seen.hull);
+      exposureTurret.classList.toggle('is-seen', seen.turret);
+      next.exposure = seen;
+    }
+    show(exposureShape, !!next.exposure);
+
+    // the angling arc: each sector a hull heading against the line to the shooter, coloured by the shooter's round on the
+    // player's front plate at that heading (asked again every ARC_ASK_MS: the hull turns, the line moves)
+    const arcSpec = spec?.angle ?? null;
+    const shooter = arcSpec ? port.actor(arcSpec.id) : null;
+    if (arcSpec && shooter && player && port.threat) {
+      const now = performance.now();
+      const turned = headingFromLine(player, shooter);
+      if (now - arcAskedAt >= ARC_ASK_MS) {
+        arcAskedAt = now;
+        const asked = port.threat(arcSpec.id, [0, ...headings.map((heading) => heading - turned)]);
+        needleVerdict = asked[0] ?? null;
+        arcVerdicts = asked.slice(1);
+      }
+      const bearing = Math.atan2(shooter.x - player.x, shooter.z - player.z);
+      sectors.forEach((sector, i) => {
+        const verdict = arcVerdicts[i] ?? null;
+        const outline = arcSector(player, bearing, headings[i]!, ARC_RADII_M.inner, ARC_RADII_M.outer)
+          .map((p) => port.project(lifted(p.x, p.z, ARC_LIFT_M)));
+        const ok = !!verdict && outline.every((p) => p && !p.behind);
+        if (ok) {
+          sector.setAttribute('d', `M${outline.map((p) => `${p!.x.toFixed(1)},${p!.y.toFixed(1)}`).join('L')}Z`);
+          sector.style.setProperty('--arc-ink', PEN_INK[verdict!]);
+          next.arc += 1;
+        }
+        show(sector, ok);
+      });
+      const from = port.project(lifted(player.x, player.z, ARC_LIFT_M));
+      const reach = ARC_RADII_M.outer + 1.5;
+      const to = port.project(lifted(player.x + Math.sin(player.yaw) * reach, player.z + Math.cos(player.yaw) * reach, ARC_LIFT_M));
+      const needleOk = !!from && !!to && !from.behind && !to.behind && !!needleVerdict;
+      if (needleOk) {
+        needle.setAttribute('x1', from!.x.toFixed(1)); needle.setAttribute('y1', from!.y.toFixed(1));
+        needle.setAttribute('x2', to!.x.toFixed(1)); needle.setAttribute('y2', to!.y.toFixed(1));
+        needle.style.setProperty('--arc-ink', PEN_INK[needleVerdict!]);
+      }
+      show(needle, needleOk);
+      next.needle = needleOk ? needleVerdict : null;
+    } else {
+      for (const node of [...sectors, needle]) show(node, false);
+    }
+
+    // the marker: its ring, column, label and distance
+    let subject: { point: ScreenPoint; label: string; metres: number | null } | null = null;
+    if (marker) {
+      const outline = ringPoints(marker, marker.radiusM).map((p) => port.project(lifted(p.x, p.z, MARKER_LIFT_M)));
+      const ringOk = outline.every((p) => p && !p.behind);
+      if (ringOk) ring.setAttribute('d', `M${outline.map((p) => `${p!.x.toFixed(1)},${p!.y.toFixed(1)}`).join('L')}Z`);
+      show(ring, ringOk);
+      next.ring = ringOk;
+      const foot = port.project(lifted(marker.x, marker.z, 0));
+      const top = port.project(lifted(marker.x, marker.z, COLUMN_M));
+      const columnOk = !!foot && !!top && !foot.behind && !top.behind;
+      if (columnOk) {
+        column.setAttribute('x1', foot!.x.toFixed(1)); column.setAttribute('y1', foot!.y.toFixed(1));
+        column.setAttribute('x2', top!.x.toFixed(1)); column.setAttribute('y2', top!.y.toFixed(1));
+        markerLabel.setAttribute('x', top!.x.toFixed(1)); markerLabel.setAttribute('y', (top!.y - 22).toFixed(1));
+        markerDistance.setAttribute('x', top!.x.toFixed(1)); markerDistance.setAttribute('y', (top!.y - 6).toFixed(1));
+      }
+      const metres = player ? Math.max(0, groundDistance(player, marker) - marker.radiusM) : null;
+      markerLabel.textContent = labels?.marker ?? '';
+      markerDistance.textContent = metres == null ? '' : labels?.distance(Math.round(metres)) ?? '';
+      show(column, columnOk); show(markerLabel, columnOk); show(markerDistance, columnOk);
+      const centre = port.project(lifted(marker.x, marker.z, 1));
+      if (centre) subject = { point: centre, label: labels?.marker ?? '', metres };
+
+      // the path toward it
+      const way = spec?.path && player ? pathChevrons(player, marker, marker.radiusM) : [];
+      chevrons.forEach((chevron, i) => {
+        const step = way[i];
+        const at = step ? port.project(lifted(step.at.x, step.at.z, MARKER_LIFT_M)) : null;
+        const ahead = step ? port.project(lifted(step.at.x + step.dir.x, step.at.z + step.dir.z, MARKER_LIFT_M)) : null;
+        const ok = !!at && !!ahead && !at.behind && !ahead.behind;
+        if (ok) {
+          // a chevron's art points up (−y): it turns by the screen angle of its way plus a quarter turn
+          const deg = (screenAngle(at!, ahead!) * 180) / Math.PI + 90;
+          chevron.setAttribute('transform', `translate(${at!.x.toFixed(1)} ${at!.y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
+          chevron.style.setProperty('--i', String(i));
+          next.chevrons += 1;
+        }
+        show(chevron, ok);
+      });
+    } else {
+      for (const node of [ring, column, markerLabel, markerDistance, ...chevrons]) show(node, false);
+    }
+
+    // the actor's bracket
+    let bracketOk = false;
+    if (actor && actorSpec) {
+      const box = screenBox(actorCorners(actor, ACTOR_BOX.halfLength, ACTOR_BOX.halfWidth, ACTOR_BOX.height)
+        .map((corner) => port.project(corner) ?? { x: 0, y: 0, behind: true }));
+      if (box) {
+        const { left: l, top: t, right: r, bottom: b } = box;
+        const c = BRACKET_PX;
+        bracket.setAttribute('d', `M${l},${t + c}V${t}H${l + c}M${r - c},${t}H${r}V${t + c}M${r},${b - c}V${b}H${r - c}M${l + c},${b}H${l}V${b - c}`);
+        bracketLabel.setAttribute('x', ((l + r) / 2).toFixed(1));
+        bracketLabel.setAttribute('y', (t - 8).toFixed(1));
+        bracketLabel.textContent = labels?.actor ?? '';
+        bracketOk = true;
+      }
+      if (!marker) {
+        const centre = port.project({ x: actor.x, y: actor.y + 1.5, z: actor.z });
+        if (centre) subject = { point: centre, label: labels?.actor ?? '', metres: player ? groundDistance(player, actor) : null };
+      }
+    }
+    show(bracket, bracketOk); show(bracketLabel, bracketOk);
+    next.bracket = bracketOk;
+
+    // the aim ghost, once the step has fallen behind
+    const aimSpec = escalated ? spec?.aimAt ?? null : null;
+    const aimPose = aimSpec ? port.actor(aimSpec.id) : null;
+    const aimAt = aimSpec && aimPose ? port.project(actorPoint(aimPose, aimSpec.along, aimSpec.up, aimSpec.across)) : null;
+    const aimOk = !!aimAt && onScreen(aimAt, view);
+    if (aimOk) { aim.setAttribute('cx', aimAt!.x.toFixed(1)); aim.setAttribute('cy', aimAt!.y.toFixed(1)); }
+    show(aim, aimOk);
+    next.aim = aimOk;
+
+    // the edge pointer, while the subject is off screen
+    const insets = edgeInsets(view, EDGE_INSET);
+    const off = subject && !insideInsets(subject.point, view, insets);
+    if (subject && off) {
+      const at = edgePointer(subject.point, view, insets);
+      edge.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`);
+      edgeArrow.setAttribute('transform', `rotate(${((at.angle * 180) / Math.PI).toFixed(1)})`);
+      // the words stand on the screen's side of the arrow
+      const inward = { x: -Math.cos(at.angle), y: -Math.sin(at.angle) };
+      const tx = (inward.x * 34).toFixed(1), ty = (inward.y * 30).toFixed(1);
+      edgeLabel.setAttribute('x', tx); edgeLabel.setAttribute('y', ty);
+      edgeDistance.setAttribute('x', tx); edgeDistance.setAttribute('y', (Number(ty) + 15).toFixed(1));
+      const anchor = inward.x > 0.35 ? 'start' : inward.x < -0.35 ? 'end' : 'middle';
+      edgeLabel.setAttribute('text-anchor', anchor); edgeDistance.setAttribute('text-anchor', anchor);
+      edgeLabel.textContent = subject.label;
+      edgeDistance.textContent = subject.metres == null ? '' : labels?.distance(Math.round(subject.metres)) ?? '';
+      next.edge = { x: at.x, y: at.y };
+    }
+    show(edge, !!next.edge);
+
+    // the HUD chevron: above its control, or below one near the top of the screen
+    const hudRect = spec?.hud?.length ? hudTarget(spec.hud) : null;
+    if (hudRect) {
+      const below = hudRect.top < 48;
+      hudChevron.dataset.side = below ? 'below' : 'above';
+      hudChevron.style.transform = `translate(${Math.round(hudRect.left + hudRect.width / 2)}px,${Math.round(below ? hudRect.bottom + 6 : hudRect.top - 6)}px)`;
+    }
+    hudChevron.hidden = !hudRect;
+    next.hud = !!hudRect;
+
+    drawn = next;
+  }
+
+  function loop(): void {
+    frame = 0;
+    if (!spec || hidden) return;
+    draw();
+    frame = requestAnimationFrame(loop);
+  }
+
+  function schedule(): void {
+    const visible = !!spec && !hidden;
+    world.root.classList.toggle('is-on', visible);
+    over.root.classList.toggle('is-on', visible);
+    if (visible && !frame) frame = requestAnimationFrame(loop);
+    if (!visible && frame) { cancelAnimationFrame(frame); frame = 0; }
+    world.root.classList.toggle('is-escalated', escalated);
+  }
+
+  return {
+    show(nextSpec, nextLabels): void {
+      spec = nextSpec;
+      labels = nextLabels;
+      escalated = false;
+      arcAskedAt = -Infinity;
+      arcVerdicts = [];
+      needleVerdict = null;
+      drawn = { reload: null, exposure: null, arc: 0, needle: null, ring: false, chevrons: 0, bracket: false, edge: null, hud: false, aim: false };
+      schedule();
+    },
+    setEscalated(on): void {
+      escalated = on;
+      schedule();
+    },
+    setHidden(on): void {
+      hidden = on;
+      schedule();
+    },
+    snapshot: () => drawn,
+    destroy(): void {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      spec = null;
+      world.root.remove();
+      over.root.remove();
+    },
+  };
+}

@@ -1,9 +1,11 @@
 import './ui/richTooltip.css';
+import { onField } from './sim/hullField.ts';
 import { armourTipDue, readArmourDefaultMarker, writeArmourDefaultMarker } from './game/armourOverlayDefault.ts';
 import { installAirSupportBridge } from './game/airSupportBridge.ts';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
 import './ui/hudCustomization.css';
+import type { PenVerdict } from './sim/penVerdict.ts';
 import type { RuntimeValue } from './runtimeTypes.ts';
 /**
  * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
@@ -375,6 +377,11 @@ const {
   prepareNextOpeningRoute,
   resetProvingRange,
   setProvingTargetsMoving,
+  cueTrainingActor,
+  trainingSightFor,
+  trainingThreatFor,
+  finishTrainingBattle,
+  setTrainingCheckpoint,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -1255,7 +1262,7 @@ const battleIntent = createBattleIntentRuntime({
   // the hover prefetch plans the battle the garage's mode would field (TEAM NATIONS included), as the loading plan does
   planRoster: (specId) => {
     const plan = soloRosterPlan(garagePreviewMode, null, true);
-    return planBattleParticipantIds(game, specId, true, plan.nations, plan.slots, plan.formationLead, plan.national)
+    return planBattleParticipantIds(game, specId, true, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact)
       .filter(id => garagePreviewMode !== 'ac130' || id !== specId);
   },
   getSpec,
@@ -2804,7 +2811,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     // team arrangement (2026-09-15): the plan sizes the field and leads with the arranged nation like setupBattle
     planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national);
+      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national, plan.exact);
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
@@ -4066,9 +4073,14 @@ const worldFramePresentation = {
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
+// (Kevin, 2026-11-20: "should pause the game when showing things") a tutorial card that explains rather than asks holds
+// the battle through the same pause as the pause menu: the frame reads one predicate, so the sim, the clock and the input
+// stop together and resume together. Never online: a room's battle runs on (the tutorial never runs in one anyway).
+let tutorialHold = false;
+const tutorialHolds = (): boolean => tutorialHold && game.phase === 'battle' && !onlineMatchActive();
 const battleFrame = createBattleFrameRuntime({
   game,
-  settings,
+  settings: { isOpen: () => settings.isOpen() || tutorialHolds() },
   killcam,
   input: playerFrameInput,
   network: {
@@ -4106,7 +4118,8 @@ const battleFrame = createBattleFrameRuntime({
     couchOwner.current?.beforeStep();
     return simStep(game, bus, currentWorld(), rig, worldRuntime.collider);
   },
-  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
+  // (who paused: a tutorial card's hold, or the pause menu; the tutorial's own card stays up under its own hold)
+  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused, by: paused && !settings.isOpen() && tutorialHolds() ? 'tutorial' : 'menu' }),
   simulationDt: SIM_DT,
 });
 const pauseInfo = battleFrame.pauseInfo;
@@ -4782,6 +4795,11 @@ if (tutorialReplay.asked) {
   try { history.replaceState(history.state, '', tutorialReplay.cleaned); } catch { /* the address keeps it */ }
 }
 let tutorialEntryPassed = false;
+const tutorialProjectScratch = new THREE.Vector3();
+const tutorialPose = (entity: { state?: { pos?: { x: number; y: number; z: number }; yaw?: number } | null } | null | undefined) => {
+  const state = entity?.state;
+  return state?.pos ? { x: state.pos.x, y: state.pos.y, z: state.pos.z, yaw: state.yaw ?? 0 } : null;
+};
 const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').then(({ createTutorialAccess }) => createTutorialAccess({
   record: {
     read: () => readTutorialRecord(), due: (chapter) => tutorialChapterDue(chapter),
@@ -4801,16 +4819,67 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
   // when its phase ends; Settings or any transient surface the step did not open covers either
   screen: (chapter) => {
     const covered = settings.isOpen() || openSurfaceIds().length > 0;
-    if (chapter === 'battle') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
+    if (chapter === 'battle' || chapter === 'training') return game.phase !== 'battle' ? 'gone' : covered ? 'covered' : 'live';
     const garageLive = tutorialEntryPassed && !STUDIO_BOOT_INTENT && game.phase === 'garage' && !battleEntryLifecycle.pending
       && !document.querySelector('.cot-bl.on');
     return !garageLive ? 'gone' : covered ? 'covered' : 'live';
   },
   isTutorialBattle: () => !onlineMatchActive() && game.gameMode === 'standard' && !game.watch && !game.couch
     && !game.ruleset?.provingGround,
+  isTrainingBattle: () => game.phase === 'battle' && !onlineMatchActive() && !!game.ruleset?.training && !game.watch && !game.couch,
   preferEasyBots: () => { if (input.getSettings().aiDifficulty === 'normal') input.setSetting('aiDifficulty', 'easy'); },
+  // 273: the battle's guide projects world points through the battle camera; the tutorial's steps read the view, the
+  // player's id and the armour colours
+  guide: {
+    project: (point) => {
+      if (game.phase !== 'battle') return null;
+      const v = tutorialProjectScratch.set(point.x, point.y, point.z).project(camera);
+      return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight, behind: v.z > 1 };
+    },
+    groundY: (x, z) => groundSampler(x, z),
+    player: () => tutorialPose(game.phase === 'battle' ? game.player : null),
+    // (273) an actor off the field has no pose for the guide: no bracket, no edge pointer, no arc (sim/hullField.ts)
+    actor: (id) => {
+      const hull = game.phase === 'battle' ? game.tankById.get(id) ?? null : null;
+      return tutorialPose(hull && onField(hull) ? hull : null);
+    },
+    // S9: the angling arc's colours, the scripted shooter's round on the player's plate (game/state.ts trainingThreatFor)
+    threat: (id, offsets) => (game.phase === 'battle' && isSoloBattleRuntimeReady()
+      ? trainingThreatFor(game, id, offsets) as Array<PenVerdict | null> : []),
+    // S11: how near the actor is to firing (0 far, 1 it can fire): its gun's own reload, and for a sighting shooter the
+    // time it has seen the player too (empty behind the wall, filling while the player is out: game/state.ts trainingSightFor)
+    actorReload: (id) => {
+      const reload = game.phase === 'battle' ? game.tankById.get(id)?.combat?.reload : null;
+      const loaded = reload && reload.totalS > 0 ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : reload ? 1 : null;
+      const sight = game.phase === 'battle' && isSoloBattleRuntimeReady() ? trainingSightFor(game, id) as number | null : null;
+      return loaded === null ? null : sight === null ? loaded : Math.min(loaded, sight);
+    },
+  },
+  view: () => {
+    const state = game.phase === 'battle' ? game.player?.state : null;
+    if (!state || !game.player) return null;
+    return {
+      mode: rig.mode === 'SNIPER' ? 'sight' : 'third', zoom: rig.zoom,
+      gunYaw: state.yaw + (state.turretYaw ?? 0),
+      shellType: game.player.spec?.gun?.shells?.[game.player.combat?.shellSlot ?? 0]?.type ?? null,
+      speedMps: Math.abs(state.speed ?? 0),
+    };
+  },
+  playerId: () => (game.phase === 'battle' ? game.player?.id ?? null : null),
+  armourOn: () => !!input.getSettings().armorAimOverlay,
   // 274: the tutorial's armour step teaches what the one-time tip would (game/armourOverlayDefault.ts): the tip is done
   taught: (subject) => { if (subject === 'armourColours') writeArmourDefaultMarker('done'); },
+  // 273: a training step cues its scripted shooter (game/state.ts cueTrainingActor; a local battle only)
+  cue: (actor, on) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) cueTrainingActor(game, actor, on); },
+  // 273: each ring reached is the training battle's checkpoint (a death comes back there, game/state.ts)
+  checkpoint: (x, z) => { if (game.phase === 'battle' && !onlineMatchActive() && isSoloBattleRuntimeReady()) setTrainingCheckpoint(game, x, z); },
+  // (Kevin, 2026-11-20) a card that explains holds the battle while it shows (the frame's pause; never online)
+  hold: (on) => { tutorialHold = on; },
+  // 273: the training chapter complete: the battle's quiet verdict, then the Garage by the Leave's own path (no report)
+  trainingComplete: () => {
+    if (game.phase !== 'battle' || onlineMatchActive() || !isSoloBattleRuntimeReady() || !finishTrainingBattle(game)) return;
+    void leaveBattleToGarage();
+  },
 })));
 const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAccess) => void): void => {
   tutorialAccess.load().then(use).catch((error) => console.warn('[tutorial] did not load; the game goes on without it', error));
@@ -4818,6 +4887,11 @@ const withTutorial = (use: (access: import('./app/tutorialAccess.ts').TutorialAc
 // the Garage's showings after the first: only once the access is resident (it was due at the entry, or replayed)
 bus.on('phase:change', () => { if (game.phase === 'garage') tutorialAccess.value?.garageShown(); });
 bus.on('ui:replayTutorial', () => { if (TUTORIAL_ON) withTutorial((access) => access.replay()); });
+// 273: the training battle is the tutorial's own mode; its rollout loads the tutorial for any player (a resident access
+// hears the rollout itself). The tutorial's switch (TUTORIAL_ON) governs it too.
+bus.on('battle:rollout', () => {
+  if (TUTORIAL_ON && game.ruleset?.training && !tutorialAccess.value) withTutorial((access) => access.trainingRolledOut());
+});
 void entryReady.then(() => {
   tutorialEntryPassed = true;
   if (testDriveSpecId || pendingRoomInvitePromise) {
@@ -4833,7 +4907,10 @@ if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__TUTORIAL', { configurable: true, get: () => tutorialAccess.value?.current() ?? null });
   if (diagnosticsRequested) {
     Object.defineProperty(window, '__TUTORIAL_START', { configurable: true,
-      value: (chapter: 'garage' | 'battle' | 'tips') => withTutorial((access) => access.debugStart(chapter)) });
+      value: (chapter: 'garage' | 'battle' | 'tips' | 'training', atStep?: number) => withTutorial((access) => access.debugStart(chapter, atStep)) });
+    // 273: the guide alone over the battle showing (tools/tutorial-guide.browser.mjs); resolves to its snapshot reader
+    Object.defineProperty(window, '__TUTORIAL_GUIDE', { configurable: true,
+      value: (spec: import('./ui/tutorial/tutorialSteps.ts').TutorialGuideSpec | null) => tutorialAccess.load().then((access) => access.debugGuide(spec)) });
   }
 }
 garageBootDone = true;
