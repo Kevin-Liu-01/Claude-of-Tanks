@@ -122,9 +122,10 @@ try {
   });
 
   const stepNow = () => page.evaluate(() => document.querySelector('.cot-tut.is-open')?.dataset.step ?? null);
+  /** The player's pose (null once the battle has handed the player back: the fight won, the Garage coming back). */
   const pose = () => page.evaluate(() => {
-    const s = window.__DEBUG.game.player.state;
-    return { x: s.pos.x, z: s.pos.z, yaw: s.yaw, gun: s.yaw + (s.turretYaw ?? 0) };
+    const s = window.__DEBUG.game.player?.state;
+    return s ? { x: s.pos.x, z: s.pos.z, yaw: s.yaw, gun: s.yaw + (s.turretYaw ?? 0) } : null;
   });
   /** The next step once the showing one moves on: its id, null when the chapter has ended (no card), undefined on a timeout. */
   async function waitChange(from, ms) {
@@ -547,6 +548,7 @@ try {
       const until = Date.now() + 12 * 60_000;
       while (Date.now() < until && (await stepNow()) === now) {
         const me = await pose();
+        if (!me) break; // the fight won and the battle over: the debrief comes next
         const alive = await page.evaluate((ids) => ids.map((id) => {
           const t = window.__DEBUG.game.tankById.get(id);
           return t?.state && !t.combat?.destroyed && t.modeActive !== false ? { id, x: t.state.pos.x, z: t.state.pos.z } : null;
@@ -567,7 +569,8 @@ try {
         // a moving tank at fighting range: a looser lay and a short settle (7 shots in 8 minutes at the 3 px lay)
         await fireAtOnce(target.id, TARGET_POINTS.hull, now, { tolPx: 12, settleMs: 300, gunTol: 0.05 });
       }
-      report.fightLeft = await page.evaluate((ids) => ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat?.destroyed), enemies);
+      report.fightLeft = await page.evaluate((ids) => (window.__DEBUG.game.phase === 'battle'
+        ? ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat?.destroyed) : []), enemies).catch(() => null);
     }
     else if (id === 'training.volley') {
       // hold the angle, the cursor on the Sentry, while its rounds land
