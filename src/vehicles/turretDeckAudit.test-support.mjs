@@ -11,7 +11,10 @@
 //      never fails): past the race's rim, wherever the turret (rig_gun and the seat collar left out) lies over the hull, its lowest surface (faces, and edges sampled every cm) stands at least DECK_CLEAR_M over
 //      the hull's highest top in that cell. Inside the rim the turret's floor may lie anywhere when the seat collar walls
 //      it in (the basket hangs in the hull, out of sight); without a collar, no near-horizontal turret face and no edge
-//      lying along the deck may stand within DECK_CLEAR_M over its top or less than ON_DECK_BURY_M under it.
+//      lying along the deck may stand within DECK_CLEAR_M over its top or less than ON_DECK_BURY_M under it. A patch
+//      fails only where it reaches the turret's foot band (within FOOT_EDGE_M of the outermost low turret surface on its
+//      bearing, at that yaw), where the eye meets it; one wholly under the turret's body (a hull plinth inside the shell,
+//      a part hanging into the hull) is reported apart, as `hidden`, and never fails.
 //  (b) props round the foot, at rest: per bearing the turret's foot is its outermost low surface (within FOOT_BAND_M of
 //      the deck), its foot height the lowest turret surface within FOOT_EDGE_M of that edge; no hull top the turret does
 //      not cover, within PROP_MARGIN_M outside the foot, stands more than PROP_RISE_M over the foot.
@@ -227,9 +230,30 @@ function cellAt(grid, k) {
   return { dx, dz, r: Math.hypot(dx, dz) };
 }
 
-/** (a) at one pose: the failing patches, and the least clearance past the rim. */
+/** The turret's foot per bearing at one pose: its outermost low surface's radius and the lowest surface near it. */
+function footOf(grid, turret) {
+  const { n, deckY } = grid;
+  const footR = new Float64Array(BEARINGS), footY = new Float64Array(BEARINGS).fill(Infinity);
+  const binOf = (p) => Math.min(BEARINGS - 1, Math.floor(((Math.atan2(p.dx, p.dz) + Math.PI) / (2 * Math.PI)) * BEARINGS));
+  for (let k = 0; k < n * n; k++) {
+    if (!(turret.low[k] <= deckY + FOOT_BAND_M)) continue;
+    const p = cellAt(grid, k), b = binOf(p);
+    if (p.r > footR[b]) footR[b] = p.r;
+  }
+  for (let k = 0; k < n * n; k++) {
+    if (!(turret.low[k] <= deckY + FOOT_BAND_M)) continue;
+    const p = cellAt(grid, k), b = binOf(p);
+    if (p.r >= footR[b] - FOOT_EDGE_M && turret.low[k] < footY[b]) footY[b] = turret.low[k];
+  }
+  return { footR, footY, binOf };
+}
+
+/** (a) at one pose: the failing patches (reaching the turret's foot band), the hidden ones under its body, the overhang
+ *  ones past the base zone, and the least clearance in the base zone. */
 function judgeDeck(grid, turret, collared) {
   const { n, rimR, baseR, hullTop, hullBy, labels } = grid;
+  const { footR, binOf } = footOf(grid, turret);
+  const atFoot = (k) => { const p = cellAt(grid, k); return p.r >= footR[binOf(p)] - FOOT_EDGE_M; };
   const failing = new Map(), beyond = new Map(), by = new Map();
   let minClear = Infinity;
   for (let k = 0; k < n * n; k++) {
@@ -245,35 +269,29 @@ function judgeDeck(grid, turret, collared) {
     if (clear < DECK_CLEAR_M) { (base ? failing : beyond).set(k, clear); by.set(k, turret.lowBy[k]); }
   }
   const describe = (map) => patches(n, map).map((cells) => {
-    let worst = cells[0], inRim = 0;
+    let worst = cells[0], inRim = 0, foot = 0;
     for (const k of cells) {
       if (map.get(k) < map.get(worst)) worst = k;
       if (cellAt(grid, k).r <= rimR + RIM_PAD_M) inRim++;
+      if (atFoot(k)) foot++;
     }
     const p = cellAt(grid, worst);
     return {
-      cells: cells.length, inRim, clearM: round3(map.get(worst)), r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
+      cells: cells.length, inRim, atFoot: foot, clearM: round3(map.get(worst)), r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
       turret: labels[by.get(worst)], hull: labels[hullBy[worst]],
     };
   }).sort((a, b) => a.clearM - b.clearM);
-  return { patches: describe(failing), overhang: describe(beyond), minClear };
+  const base = describe(failing);
+  return {
+    patches: base.filter((patch) => patch.atFoot >= MIN_CELLS), hidden: base.filter((patch) => patch.atFoot < MIN_CELLS),
+    overhang: describe(beyond), minClear,
+  };
 }
 
 /** (b) at rest: the hull's tops standing over the turret's foot just outside it. */
 function judgeProps(grid, turret) {
   const { n, deckY, rimR, hullTop, hullBy, labels } = grid;
-  const footR = new Float64Array(BEARINGS), footY = new Float64Array(BEARINGS).fill(Infinity);
-  const binOf = (p) => Math.min(BEARINGS - 1, Math.floor(((Math.atan2(p.dx, p.dz) + Math.PI) / (2 * Math.PI)) * BEARINGS));
-  for (let k = 0; k < n * n; k++) {
-    if (!(turret.low[k] <= deckY + FOOT_BAND_M)) continue;
-    const p = cellAt(grid, k), b = binOf(p);
-    if (p.r > footR[b]) footR[b] = p.r;
-  }
-  for (let k = 0; k < n * n; k++) {
-    if (!(turret.low[k] <= deckY + FOOT_BAND_M)) continue;
-    const p = cellAt(grid, k), b = binOf(p);
-    if (p.r >= footR[b] - FOOT_EDGE_M && turret.low[k] < footY[b]) footY[b] = turret.low[k];
-  }
+  const { footR, footY, binOf } = footOf(grid, turret);
   const tall = new Map();
   for (let k = 0; k < n * n; k++) {
     if (Number.isFinite(turret.low[k]) || !Number.isFinite(hullTop[k])) continue;
@@ -308,7 +326,7 @@ export function measureTurretDeck(root, receipt) {
   const rest = turretRig.quaternion.clone();
   const axis = new THREE.Vector3(0, 1, 0), turn = new THREE.Quaternion();
   let props = null, worst = null, worstYaw = 0, yawsFailing = 0, minClear = Infinity, overhang = null, overhangYaws = 0,
-    overhangYaw = 0;
+    overhangYaw = 0, hidden = null;
   try {
     for (let step = 0; step < YAWS; step++) {
       // a turn about the ring's own (rig-local) vertical axis, as a traverse turns it
@@ -319,6 +337,7 @@ export function measureTurretDeck(root, receipt) {
       minClear = Math.min(minClear, deck.minClear);
       if (deck.patches.length) yawsFailing++;
       if (deck.overhang.length) overhangYaws++;
+      if (deck.hidden.length && (!hidden || deck.hidden[0].clearM < hidden[0].clearM)) hidden = deck.hidden;
       if (deck.overhang.length && (!overhang || deck.overhang[0].clearM < overhang[0].clearM)) {
         overhang = deck.overhang;
         overhangYaw = Math.round((step / YAWS) * 360);
@@ -336,7 +355,7 @@ export function measureTurretDeck(root, receipt) {
   return {
     collared, deck: worst ?? [], deckYaws: yawsFailing, worstYawDeg: worst ? worstYaw : null,
     minClearM: Number.isFinite(minClear) ? round3(minClear) : null, overhang: overhang ?? [], overhangYaws,
-    overhangYawDeg: overhang ? overhangYaw : null,
+    overhangYawDeg: overhang ? overhangYaw : null, hidden: hidden ?? [],
     props: props.patches, footMinOverDeckM: props.footMinOverDeckM,
   };
 }

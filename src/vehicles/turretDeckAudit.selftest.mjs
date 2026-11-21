@@ -20,8 +20,8 @@ assert.deepEqual(clean.props, [], `${ID}: no hull prop over the turret's foot ($
 assert(clean.minClearM >= DECK_CLEAR_M, `${ID}: least clearance ${clean.minClearM} m`);
 assert.deepEqual([...turret.position.toArray(), ...turret.quaternion.toArray()], pose, 'the yaw sweep restores the turret');
 
-// (a) the turret lowered until its floor stands on the deck (its own least clearance, plus 5 mm into it)
-const drop = clean.minClearM + 0.005;
+// (a) the turret lowered until its floor stands 2 cm into the deck at its tightest point (its seat gap gone round its foot)
+const drop = clean.minClearM + 0.02;
 turret.position.y -= drop / hull.scale.y;
 const sunk = measureTurretDeck(tank.root, receipt);
 turret.position.y += drop / hull.scale.y;
