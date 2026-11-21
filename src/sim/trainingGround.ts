@@ -45,6 +45,9 @@ export interface TrainingVolley {
    *  that clips the arc's edge on its way round is not shot for it (the end walk of 2026-11-20: one round on the way
    *  from U to V took 800 hit points and a crewman, and the flank could not be finished with the gun frozen). */
   readonly arcDwellS?: number;
+  /** S11: with `whenSeen`, its trigger only once it has seen the player this long (s), counted afresh each time the player
+   *  shows itself; the guide's ring over it fills over that time (trainingSightFraction). */
+  readonly seenS?: number;
 }
 
 /** One hull the scenes use: a target that never fires, or a scripted shooter. */
@@ -183,12 +186,13 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 2.0, aim: Object.freeze({ alongM: 1.0, upM: 2.25 }) }) }),
     // S11's Sentry 3: an AMX-30B2 whose APFSDS goes through the loaner's upper hull about three times in five (1.06), a hit
-    // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires on every load whether it sees the player
-    // or not, its rounds into the wall while the player hides: the rhythm the card teaches (peek just after it fires, back
-    // before its ring fills). It fired only at what it saw before, so its gun stood loaded at every peek and shot first:
-    // the end walk of 2026-11-20 took 65 rounds through the hull in one scene. 127 m from the cover spot.
+    // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires only at what it sees (the stamped wall
+    // does not stop a round: fired blind, 77 rounds came through it in one walk), and only once it has seen the player
+    // 4 s at a stretch: the ring over it fills while the player is out and empties behind the wall, the card's "get back
+    // behind the wall before Sentry 3's ring fills". It fired the moment it saw the player before, its gun loaded at every
+    // peek: 65 rounds through the hull in the end walk of 2026-11-20. 127 m from the cover spot.
     Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true, staysDown: true,
-      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, seenS: 4, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
     // S12's Sentry 4: a T-55A parked until the kit scene, firing HE at the running gear on the side the player shows it, each
     // time its gun loads, until a track is hit (the step stands it down). 76 m from ring Q, the peek spot the player stops
     // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2). Moved 3 m along its rise from
@@ -314,6 +318,14 @@ export function trainingArcAllows(volley: TrainingVolley, hullYaw: number, gunYa
  *  spaces the rounds), and, for one that fires only at what it sees, while `seen`. */
 export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, timeS: number, seen = true): boolean {
   return timeS - cuedAtS >= volley.firstS && (!volley.whenSeen || seen);
+}
+
+/** How far a sighting shooter's clock has run (S11): 0 while it cannot see the player, rising to 1 over `seenS` once it
+ *  can (seen since `seenSinceS`); 1 for a shooter without one. Its trigger waits for 1. */
+export function trainingSightFraction(volley: TrainingVolley, seenSinceS: number | null, timeS: number): number {
+  if (volley.seenS == null) return 1;
+  if (seenSinceS === null) return 0;
+  return Math.max(0, Math.min(1, (timeS - seenSinceS) / volley.seenS));
 }
 
 /** Whether a shooter with an arc dwell may fire: the player inside its arc since `enteredS` (null: not inside), long

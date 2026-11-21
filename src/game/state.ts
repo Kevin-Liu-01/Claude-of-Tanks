@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSightFraction, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -429,6 +429,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _trainingGunYaw?: Map<string, number>;
   /** S13: when the player stepped inside each arc shooter's arc (sim seconds; trainingArcDwellMet). */
   _trainingArcSince?: Map<string, number>;
+  /** S11: when each sighting shooter last came to see the player (sim seconds; trainingSightFraction). */
+  _trainingSeenSince?: Map<string, number>;
   /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
   _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
   /** The training battle's parked hulls (273): their ids, off the field until their scene's cue. The mode controller's
@@ -1043,7 +1045,14 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
     const exposure = trainingExposure(entity.state.pos, hull, ground);
     return exposure.hull || exposure.turret;
   })();
-  entity.input.fire = arcAllows && trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
+  // (S11) a sighting shooter fires only once it has seen the player a while, counted afresh each time in sight
+  let sighted = true;
+  if (actor.volley.seenS != null) {
+    const since = game._trainingSeenSince ??= new Map();
+    if (seen) { if (!since.has(actor.key)) since.set(actor.key, game.timeS); } else since.delete(actor.key);
+    sighted = trainingSightFraction(actor.volley, since.get(actor.key) ?? null, game.timeS) >= 1;
+  }
+  entity.input.fire = arcAllows && sighted && trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
 }
 
 /** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
@@ -1056,6 +1065,17 @@ function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   (game._trainingParked ??= new Set()).add(entity.id);
   entity.modeActive = false;
   entity.visual?.setVisible(false);
+}
+
+/**
+ * A sighting shooter's clock for the guide's ring over it (S11): its sight fraction (trainingSightFraction), or null for a
+ * shooter without one (the ring then reads its gun's own reload).
+ */
+export function trainingSightFor(game: SoloGameState, actorId: string): number | null {
+  const shooter = game.tankById.get(actorId);
+  const actor = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId) : undefined;
+  if (!actor?.volley || actor.volley.seenS == null) return null;
+  return trainingSightFraction(actor.volley, game._trainingSeenSince?.get(actor.key) ?? null, game.timeS);
 }
 
 /**
@@ -1260,6 +1280,7 @@ export function setupBattle(
   game._trainingCues = undefined;
   game._trainingGunYaw = undefined;
   game._trainingArcSince = undefined;
+  game._trainingSeenSince = undefined;
   game._trainingCheckpoint = null;
   game._trainingParked = undefined;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);

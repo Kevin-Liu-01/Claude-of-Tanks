@@ -44,7 +44,7 @@ const { ANGLE_WINDOW, TRAINING_STEPS } = await import('../ui/tutorial/tutorialSt
 const { planTrainingRange } = await import('./trainingGround.ts');
 const { createTerrainDeformation } = await import('./terrainDeformation.ts');
 const { trainingExposure } = await import('./trainingSight.ts');
-const { trainingArcAllows, trainingArcDwellMet, trainingTraverse, trainingRoster, trainingSkirmishSide, trainingRespawns, TRAINING_SKIRMISH_CUE } = await import('./trainingGround.ts');
+const { trainingArcAllows, trainingArcDwellMet, trainingSightFraction, trainingTraverse, trainingRoster, trainingSkirmishSide, trainingRespawns, TRAINING_SKIRMISH_CUE } = await import('./trainingGround.ts');
 const { matchRulesetFor } = await import('./matchRuleset.ts');
 const { splitBattleAllies } = await import('../game/rosterState.ts');
 const { aimArmorAlong, aimPenRatio } = await import('./aimPenetration.ts');
@@ -222,8 +222,17 @@ assert.deepEqual({ ...TRAINING_STEPS.find((step) => step.id === 'training.fireBa
 // 6. S11.
 const sentry3 = trainingActor(TRAINING_RULES, 'sentry3');
 assert.ok(sentry3.entersOnCue, 'Sentry 3 stands parked until its scene cues it');
-assert.ok(!sentry3.volley.whenSeen, 'it fires on every load, seen or not (its rounds into the wall while the player hides)');
-assert.equal(trainingVolleyFires(sentry3.volley, 0, 60, false), true, 'so its reload ring runs while the player hides: the peek after its shot is safe');
+assert.ok(sentry3.volley.whenSeen, 'it fires only at what it sees (the stamped wall does not stop a round)');
+assert.equal(trainingVolleyFires(sentry3.volley, 0, 60, false), false, 'never at a tank out of its sight');
+assert.equal(sentry3.volley.seenS, 4, 'and only once it has seen the player 4 s at a stretch');
+assert.equal(trainingSightFraction(sentry3.volley, null, 100), 0, 'behind the wall its clock stands empty');
+assert.equal(trainingSightFraction(sentry3.volley, 98, 100), 0.5, 'out 2 s, half full');
+assert.equal(trainingSightFraction(sentry3.volley, 96, 100), 1, 'out 4 s, full: it fires');
+assert.equal(trainingSightFraction(sentry.volley, null, 100), 1, 'a shooter without one is always ready');
+assert.match(state, /if \(seen\) \{ if \(!since\.has\(actor\.key\)\) since\.set\(actor\.key, game\.timeS\); \} else since\.delete\(actor\.key\);/,
+  'the clock counts afresh each time the player shows itself');
+assert.match(readFileSync(new URL('../main.ts', import.meta.url), 'utf8'), /sight === null \? loaded : Math\.min\(loaded, sight\)/,
+  'the ring over it reads that clock with its reload (the card: back behind the wall before it fills)');
 const P = TRAINING_POINTS.ringP, Q = TRAINING_POINTS.ringQ;
 const s3eye = { x: sentry3.x, y: ground(sentry3.x, sentry3.z), z: sentry3.z };
 const facing = Math.atan2(sentry3.x - P.x, sentry3.z - P.z);
@@ -364,7 +373,7 @@ assert.match(state, /\.\.\.\(game\.ruleset\.training \? \{ respawns: \(ent: Solo
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
 assert.ok(!/respawns:/.test(authority), 'the authority keeps the shared rule');
 assert.match(state, /const checkpoint = game\.ruleset\.training && ent\.isPlayer \? game\._trainingCheckpoint : null;/, 'the training player revives at the checkpoint');
-assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingArcSince = undefined;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
+assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingArcSince = undefined;\s*game\._trainingSeenSince = undefined;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
 const { finishTrainingBattle, setTrainingCheckpoint } = await import('../game/state.ts');
 const ended = [];
 const fakeGame = { ruleset: { training: TRAINING_RULES }, result: null, resultReason: null, player: { state: { yaw: 1.25 } },

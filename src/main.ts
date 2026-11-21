@@ -378,6 +378,7 @@ const {
   resetProvingRange,
   setProvingTargetsMoving,
   cueTrainingActor,
+  trainingSightFor,
   trainingThreatFor,
   finishTrainingBattle,
   setTrainingCheckpoint,
@@ -4845,10 +4846,13 @@ const tutorialAccess = createLazyChunk(() => import('./app/tutorialAccess.ts').t
     // S9: the angling arc's colours, the scripted shooter's round on the player's plate (game/state.ts trainingThreatFor)
     threat: (id, offsets) => (game.phase === 'battle' && isSoloBattleRuntimeReady()
       ? trainingThreatFor(game, id, offsets) as Array<PenVerdict | null> : []),
-    // S11: an actor's gun loaded (0 just fired, 1 ready), its own reload's
+    // S11: how near the actor is to firing (0 far, 1 it can fire): its gun's own reload, and for a sighting shooter the
+    // time it has seen the player too (empty behind the wall, filling while the player is out: game/state.ts trainingSightFor)
     actorReload: (id) => {
       const reload = game.phase === 'battle' ? game.tankById.get(id)?.combat?.reload : null;
-      return reload && reload.totalS > 0 ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : reload ? 1 : null;
+      const loaded = reload && reload.totalS > 0 ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : reload ? 1 : null;
+      const sight = game.phase === 'battle' && isSoloBattleRuntimeReady() ? trainingSightFor(game, id) as number | null : null;
+      return loaded === null ? null : sight === null ? loaded : Math.min(loaded, sight);
     },
   },
   view: () => {

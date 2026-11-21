@@ -12,6 +12,7 @@ export {
   cueTrainingActor,
   finishTrainingBattle,
   setTrainingCheckpoint,
+  trainingSightFor,
   trainingThreatFor,
   prepareNextOpeningRoute,
   resetProvingRange,

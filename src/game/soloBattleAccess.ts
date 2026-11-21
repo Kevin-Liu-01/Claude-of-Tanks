@@ -13,6 +13,7 @@ interface SoloBattleRuntime {
   /** The training battle's end and its checkpoint (273, game/state.ts). */
   finishTrainingBattle(...args: RuntimeValue[]): RuntimeValue;
   setTrainingCheckpoint(...args: RuntimeValue[]): RuntimeValue;
+  trainingSightFor(...args: RuntimeValue[]): RuntimeValue;
   trainingThreatFor(...args: RuntimeValue[]): RuntimeValue;
 }
 
@@ -72,6 +73,7 @@ export function createSoloBattleRuntimeAccess(
     cueTrainingActor: (...args) => requireRuntime().cueTrainingActor(...args),
     finishTrainingBattle: (...args) => requireRuntime().finishTrainingBattle(...args),
     setTrainingCheckpoint: (...args) => requireRuntime().setTrainingCheckpoint(...args),
+    trainingSightFor: (...args) => requireRuntime().trainingSightFor(...args),
     trainingThreatFor: (...args) => requireRuntime().trainingThreatFor(...args),
   };
 }
