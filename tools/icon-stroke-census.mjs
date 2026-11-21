@@ -36,8 +36,9 @@ const MARK_DIRS = ['public/brand/nav', 'public/brand/features'];
  *  masters of the Settings rows' glyphs: 11054 to 12262 B, re-pinned at 13 KB. Merged with 260's consumables catalog (its
  *  ten cs* glyphs and, for the Settings slot rows that draw them at 16 px, their small masters): 13200 B, re-pinned at
  *  14 KB. The boot slice holds. Air Support (air-support-270), the fifteenth mode, and its strike-view key's glyph: 14382 B,
- *  re-pinned at 14.5 KB. */
-const SPRITE_GZIP_MAX = 14.5 * 1024;
+ *  re-pinned at 14.5 KB. The icon overhaul (mobile-hud-274, 2026-11-20) deleted eleven glyphs nothing drew (14300 B), then
+ *  redrew twelve battle glyphs and gave ten of them their first 16-unit masters: 15071 B, re-pinned at 15 KB. */
+const SPRITE_GZIP_MAX = 15 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;
