@@ -37,6 +37,11 @@
 /* (Kevin, 2026-11-20: "the boxes are quite intrusive") a battle step the player does: a compact card, the task and the one
    line under it, its buttons quiet; the header, the hint and Back belong to the cards that explain */
 .cot-tut[data-mode='act'] .cot-tut-card{width:min(22rem,calc(100vw - 2 * var(--s4)));gap:var(--s2);padding:var(--s3);}
+/* a card the player acts through lets the battle have the touch, its own buttons apart: on a phone it can stand over the
+   aim pad, and a swipe that landed on it aimed nothing (the touch-aim probe of 2026-11-20 at 390x844: the card under the
+   finger, no aim delta, the turret still) */
+.cot-tut[data-mode='act'] .cot-tut-card{pointer-events:none;}
+.cot-tut[data-mode='act'] .cot-tut-card :is(button,a,[role=button]){pointer-events:auto;}
 .cot-tut[data-mode='act'] .cot-tut-head,.cot-tut[data-mode='act'] .cot-tut-hint,.cot-tut[data-mode='act'] .cot-tut-back{display:none;}
 .cot-tut[data-mode='act'] .cot-tut-title{font-size:var(--fs-16);}
 .cot-tut[data-mode='act'] .cot-tut-body{font-size:var(--fs-13);line-height:1.45;}
