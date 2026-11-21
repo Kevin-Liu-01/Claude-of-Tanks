@@ -489,6 +489,11 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
   font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
   text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints.show{display:flex;}
+/* (owner 2026-11-20, mobile-hud-274: "make the bottom control bar above the abilities bar be a hexagon") the strip is the
+   HUD's angled plate, as the score's and the notices': flat top and foot, its ends cut to points 16 px deep, its keys
+   16 px inside the points */
+.cot-hints{--hints-point:16px;padding-inline:calc(var(--s4) + var(--hints-point));box-shadow:none;
+  clip-path:polygon(var(--hints-point) 0,calc(100% - var(--hints-point)) 0,100% 50%,calc(100% - var(--hints-point)) 100%,var(--hints-point) 100%,0 50%);}
 .cot-hints.fade{opacity:0;}
 .cot-hints .hg{display:flex;align-items:center;gap:var(--s2);transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints .hg.done{opacity:0;}

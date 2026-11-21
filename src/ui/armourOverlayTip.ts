@@ -6,8 +6,8 @@
  * the colours' meaning, with a picture of them on the right (owner 2026-11-20, mobile-hud-274: "make this notification a
  * lot smaller and have an image or something in the notification part maybe on right that shows what it is"): a hull in
  * the sight, its plates in the overlay's own colours (game/armorShadeColors.ts). Where the colours have a key on the
- * player's hands the line says it hides them; where to turn them off in Settings (named as Settings names them) is the
- * picture's label, for a screen reader and as its tooltip under a mouse. main.ts loads this module only when the tip is
+ * player's hands the line says it hides them and the tip has no close (it goes by its time); where to turn them off in
+ * Settings (named as Settings names them) is the picture's label, for a screen reader and as its tooltip under a mouse. main.ts loads this module only when the tip is
  * due, so no other boot and no other battle pays for it.
  */
 import { t } from './i18n.ts';
@@ -49,6 +49,8 @@ export function showArmourOverlayTip(control: { readonly key: string | null }): 
     detail: control.key ? t('hud.tip.armorOverlayOn.detailKey', { key: control.key }) : t('hud.tip.armorOverlayOn.legend'),
     media: { svg: shadedHull(), label: t('hud.tip.armorOverlayOn.detailSettings', { path }) },
     durationMs: TIP_MS,
-    dismissible: true,
+    // (owner 2026-11-20: "in desktop/laptop views, dont show the x") with the colours' key on the player's hands the tip
+    // closes by its time and the key says how to hide them; a phone and a pad, with no key, keep the close
+    dismissible: !control.key,
   });
 }
