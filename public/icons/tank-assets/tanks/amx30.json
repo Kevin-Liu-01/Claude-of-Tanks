@@ -151,36 +151,6 @@
       },
       {
         "hitboxId": "H07",
-        "name": "skirt_R",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.5638,0.4807,3.1258],
-          [1.5638,0.4807,-3.2904],
-          [1.5638,0.9352,-3.2904],
-          [1.5638,0.9352,3.1258]
-        ]
-      },
-      {
-        "hitboxId": "H08",
-        "name": "skirt_L",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [-1.5638,0.4807,-3.2904],
-          [-1.5638,0.4807,3.1258],
-          [-1.5638,0.9352,3.1258],
-          [-1.5638,0.9352,-3.2904]
-        ]
-      },
-      {
-        "hitboxId": "H09",
         "name": "track_R",
         "physicalMm": 20,
         "keMm": 20,
@@ -195,7 +165,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H08",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -210,7 +180,7 @@
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -225,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -528,7 +498,7 @@
     ]
   },
   "geometryHash": "bb7614ba",
-  "metadataHash": "c498bf56",
+  "metadataHash": "3dcdb8c1",
   "presentationAnchor": {
     "xM": -0.0037,
     "zM": -0.0432
@@ -638,8 +608,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26450,
-      "sha256": "48f720ef1cc152df39f0ae33029b3f71e34d87f310d09a44bddf99ec9455c72b"
+      "bytes": 27052,
+      "sha256": "3594c38581d72e493f87c641baeab88eceed67da65b22cd5673686f249922d25"
     },
     "modulesSide": {
       "file": "amx30_modules_side.webp",
@@ -668,8 +638,8 @@
     "technicalLabels": {
       "file": "amx30_technical.json",
       "mime": "application/json",
-      "bytes": 4542,
-      "sha256": "c3fda3b0ea83e99bfa6d7ae3d1e75ce91356186cf8ab633898ff6da33c0f1bbb"
+      "bytes": 4288,
+      "sha256": "b8d285e1e3a320423ccf433be17b8a7a210611f6c1fd3893e0fed0fcf5259b88"
     }
   }
 }

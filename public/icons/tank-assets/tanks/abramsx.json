@@ -373,21 +373,6 @@
           [1.7078,0.5162,-2.441],
           [-1.7078,0.5162,-2.441]
         ]
-      },
-      {
-        "hitboxId": "T08",
-        "name": "bustle_rack",
-        "physicalMm": 10,
-        "keMm": 10,
-        "ceMm": 10,
-        "kind": "external",
-        "turretLocal": true,
-        "verts": [
-          [1.58,0.15,-3.34],
-          [-1.58,0.15,-3.34],
-          [-1.58,0.75,-3.34],
-          [1.58,0.75,-3.34]
-        ]
       }
     ],
     "modules": [
@@ -557,7 +542,7 @@
     ]
   },
   "geometryHash": "51984c19",
-  "metadataHash": "42a78656",
+  "metadataHash": "240b796b",
   "presentationAnchor": {
     "xM": 0.0026,
     "zM": -0.095
@@ -661,8 +646,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24164,
-      "sha256": "3cef7ff15814b37063a664c5df4b8e6f253bc573acc20d13cd91115e9910fa13"
+      "bytes": 24162,
+      "sha256": "1663596cc6d3b2395d4a41c6ad3a817009f6e406517bd3102cd2b8f18ccc413c"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",
@@ -691,8 +676,8 @@
     "technicalLabels": {
       "file": "abramsx_technical.json",
       "mime": "application/json",
-      "bytes": 5025,
-      "sha256": "25c9b55d08280d533370664c1649a408cc371e9bc3ac6564b258445c7e9b147a"
+      "bytes": 4893,
+      "sha256": "75ace4bb691e0cbe6a3eb6ee5eb509f4c48221b1aab9b5fe4a59f3b91db750f2"
     }
   }
 }

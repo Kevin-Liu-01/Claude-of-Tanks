@@ -343,10 +343,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.8136,0.126,3.3845],
-          [1.8136,0.126,-3.3845],
-          [1.8136,0.9978,-3.3845],
-          [1.8136,0.9978,3.3845]
+          [1.772,0.701,-3.289],
+          [1.625,0.998,-3.288],
+          [1.639,0.998,3.384],
+          [1.786,0.701,3.384]
         ]
       },
       {
@@ -358,14 +358,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.8136,0.126,-3.3845],
-          [-1.8136,0.126,3.3845],
-          [-1.8136,0.9978,3.3845],
-          [-1.8136,0.9978,-3.3845]
+          [-1.717,0.761,0],
+          [-1.703,0.998,0],
+          [-1.707,0.998,-3.28],
+          [-1.72,0.762,-3.28]
         ]
       },
       {
         "hitboxId": "H11",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.724,0.722,3.384],
+          [-1.713,0.998,3.384],
+          [-1.707,0.998,0],
+          [-1.718,0.722,0]
+        ]
+      },
+      {
+        "hitboxId": "H12",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -380,7 +395,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H13",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -625,7 +640,7 @@
     ]
   },
   "geometryHash": "7be30066",
-  "metadataHash": "4f362208",
+  "metadataHash": "51afcb94",
   "presentationAnchor": {
     "xM": -0.0088,
     "zM": 0.1471
@@ -681,8 +696,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35878,
-      "sha256": "14f539b60632e97d626c32fdbadf77cf878d48b0d97698c5e77f8c0a2d7b200d"
+      "bytes": 37882,
+      "sha256": "91283333a92632b58cbde0016aab790d1cc86a4ca4115cc2a431d5e52c00a0da"
     },
     "modulesSide": {
       "file": "warrior_tes_h_modules_side.webp",
@@ -760,8 +775,8 @@
     "technicalLabels": {
       "file": "warrior_tes_h_technical.json",
       "mime": "application/json",
-      "bytes": 5508,
-      "sha256": "e903a48ca6d0c1dd16488dfc42f4fbc2c3836d09fb2b6dfc5ae952ead3ba72f6"
+      "bytes": 5511,
+      "sha256": "e6be806911991f2cc2cf5b1e36dbd113592df32d4feaf2d7a51933bc4bc889e5"
     }
   }
 }

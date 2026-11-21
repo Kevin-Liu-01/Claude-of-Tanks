@@ -181,21 +181,6 @@
       },
       {
         "hitboxId": "H09",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.68,0.08,3.69],
-          [1.68,0.08,-3.67],
-          [1.68,1.25,-3.67],
-          [1.68,1.25,3.69]
-        ]
-      },
-      {
-        "hitboxId": "H10",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -210,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H10",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -225,7 +210,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H11",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 40,
@@ -240,7 +225,7 @@
         ]
       },
       {
-        "hitboxId": "H13",
+        "hitboxId": "H12",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
         "keMm": 40,
@@ -255,7 +240,7 @@
         ]
       },
       {
-        "hitboxId": "H14",
+        "hitboxId": "H13",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -270,7 +255,7 @@
         ]
       },
       {
-        "hitboxId": "H15",
+        "hitboxId": "H14",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
         "keMm": 40,
@@ -285,7 +270,7 @@
         ]
       },
       {
-        "hitboxId": "H16",
+        "hitboxId": "H15",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
         "keMm": 40,
@@ -300,7 +285,7 @@
         ]
       },
       {
-        "hitboxId": "H17",
+        "hitboxId": "H16",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
         "keMm": 40,
@@ -779,7 +764,7 @@
     ]
   },
   "geometryHash": "b5afa663",
-  "metadataHash": "4ef98e1a",
+  "metadataHash": "251e064e",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0052
@@ -885,8 +870,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25090,
-      "sha256": "cec1b069692aa99f705112cde856d44c27694c4198acfd91572a47cac2dab316"
+      "bytes": 24776,
+      "sha256": "bb599de8b4817b41077e5f341dfb3664e544fdd1cf6edd5ffa3d7daac7fc55ae"
     },
     "modulesSide": {
       "file": "leopard2_proto_modules_side.webp",
@@ -915,8 +900,8 @@
     "technicalLabels": {
       "file": "leopard2_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5552,
-      "sha256": "c9765d4c9729b2dea0678ee0cf756bb1ec9d5e2b9f26317e41f88835beafabb4"
+      "bytes": 5580,
+      "sha256": "0e05379dba1d0fd403bf1310fbe24ae7910254533db0c6faf0aed0d0edf5f66e"
     }
   }
 }

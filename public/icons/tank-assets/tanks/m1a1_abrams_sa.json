@@ -1306,21 +1306,6 @@
       },
       {
         "hitboxId": "T08",
-        "name": "bustle_rack",
-        "physicalMm": 10,
-        "keMm": 10,
-        "ceMm": 10,
-        "kind": "external",
-        "turretLocal": true,
-        "verts": [
-          [1.58,0.15,-3.34],
-          [-1.58,0.15,-3.34],
-          [-1.58,0.75,-3.34],
-          [1.58,0.75,-3.34]
-        ]
-      },
-      {
-        "hitboxId": "T09",
         "name": "m1a2_tusk_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1335,7 +1320,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T09",
         "name": "m1a2_tusk_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1350,7 +1335,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T10",
         "name": "m1a2_tusk_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1365,7 +1350,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T11",
         "name": "m1a2_tusk_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1380,7 +1365,7 @@
         ]
       },
       {
-        "hitboxId": "T13",
+        "hitboxId": "T12",
         "name": "m1a2_tusk_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1395,7 +1380,7 @@
         ]
       },
       {
-        "hitboxId": "T14",
+        "hitboxId": "T13",
         "name": "m1a2_tusk_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1410,7 +1395,7 @@
         ]
       },
       {
-        "hitboxId": "T15",
+        "hitboxId": "T14",
         "name": "m1a2_tusk_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1425,7 +1410,7 @@
         ]
       },
       {
-        "hitboxId": "T16",
+        "hitboxId": "T15",
         "name": "m1a2_tusk_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1440,7 +1425,7 @@
         ]
       },
       {
-        "hitboxId": "T17",
+        "hitboxId": "T16",
         "name": "m1a2_tusk_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1455,7 +1440,7 @@
         ]
       },
       {
-        "hitboxId": "T18",
+        "hitboxId": "T17",
         "name": "m1a2_tusk_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1470,7 +1455,7 @@
         ]
       },
       {
-        "hitboxId": "T19",
+        "hitboxId": "T18",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 40,
@@ -1485,7 +1470,7 @@
         ]
       },
       {
-        "hitboxId": "T20",
+        "hitboxId": "T19",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -1500,7 +1485,7 @@
         ]
       },
       {
-        "hitboxId": "T21",
+        "hitboxId": "T20",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 40,
@@ -1515,7 +1500,7 @@
         ]
       },
       {
-        "hitboxId": "T22",
+        "hitboxId": "T21",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 40,
@@ -1530,7 +1515,7 @@
         ]
       },
       {
-        "hitboxId": "T23",
+        "hitboxId": "T22",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 40,
@@ -1708,7 +1693,7 @@
     ]
   },
   "geometryHash": "aec6626a",
-  "metadataHash": "df3fe476",
+  "metadataHash": "1af63dbe",
   "presentationAnchor": {
     "xM": 0.001,
     "zM": 0.0228
@@ -1816,8 +1801,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32334,
-      "sha256": "1bf6d09c2976e83546309e59fdece6316962a32b19b2930061f7b7386ea81623"
+      "bytes": 32348,
+      "sha256": "e8b7cc792ad554597bad0f867dd1ddcf8130942d065c9339c3461b8c9e8486e0"
     },
     "modulesSide": {
       "file": "m1a1_abrams_sa_modules_side.webp",
@@ -1847,7 +1832,7 @@
       "file": "m1a1_abrams_sa_technical.json",
       "mime": "application/json",
       "bytes": 5130,
-      "sha256": "64e185971841fa7a8f3c7598c0b2118ee36a115fcd933d6c0ac22d1371bef92c"
+      "sha256": "e8d76a95215123fdbaa6f5c5ca119c9f315df8d8e5b1dc4969926a2b0cc70ddb"
     }
   }
 }

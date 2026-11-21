@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.82,0.55,3.268],
-          [1.82,0.55,-3.44],
-          [1.82,1.15,-3.44],
-          [1.82,1.15,3.268]
+          [1.765,0.55,3.268],
+          [1.668,0.55,-3.302],
+          [1.678,1.15,-3.302],
+          [1.774,1.15,3.268]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.82,0.55,-3.44],
-          [-1.82,0.55,3.268],
-          [-1.82,1.15,3.268],
-          [-1.82,1.15,-3.44]
+          [-1.667,0.55,-3.29],
+          [-1.766,0.55,3.268],
+          [-1.776,1.15,3.268],
+          [-1.677,1.15,-3.29]
         ]
       },
       {
@@ -492,7 +492,7 @@
     ]
   },
   "geometryHash": "a494546b",
-  "metadataHash": "1716fa2f",
+  "metadataHash": "8c0fa39e",
   "presentationAnchor": {
     "xM": 0.0023,
     "zM": 0.0994
@@ -600,8 +600,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21060,
-      "sha256": "0505b2f282148f9a4a4a4668dce851e154b91dd58c6ed0a2a106a0caba06bed6"
+      "bytes": 21356,
+      "sha256": "8e0e27d4864ed517beab7ff915d53ab6ffd5ebf6493a5b8d461fbe3e83ab5521"
     },
     "modulesSide": {
       "file": "leclerc_s2_modules_side.webp",
@@ -630,8 +630,8 @@
     "technicalLabels": {
       "file": "leclerc_s2_technical.json",
       "mime": "application/json",
-      "bytes": 4508,
-      "sha256": "d0566a1788b509ca436604d88d9ef70403b5f0d1917422464e69795ab220f91b"
+      "bytes": 4510,
+      "sha256": "1b8576e940f61fe0b3ba57e0dc633e05f5f380afb334d5231494d8153e72a3e1"
     }
   }
 }

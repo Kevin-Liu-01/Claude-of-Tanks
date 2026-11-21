@@ -4958,10 +4958,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.575,0.5319,-3.78],
-          [-1.575,0.5319,-3.78],
-          [-1.575,1.3831,-3.78],
-          [1.575,1.3831,-3.78]
+          [-1.575,0.9,-3.663],
+          [-1.575,1.383,-3.663],
+          [1.575,1.383,-3.663],
+          [1.575,0.9,-3.663]
         ]
       },
       {
@@ -6168,7 +6168,7 @@
     ]
   },
   "geometryHash": "90de297f",
-  "metadataHash": "9714bb65",
+  "metadataHash": "1cc20a6b",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1211
@@ -6276,8 +6276,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24266,
-      "sha256": "72613254dcef0c40fd625ecc8a903a77133160cd5b9ecb6595bc7c232eb6bb6b"
+      "bytes": 24254,
+      "sha256": "236cccf71fe3b3ffbbee96854baa68ce71026b08740edfcc69fbca975c96325d"
     },
     "modulesSide": {
       "file": "t90a_2006_modules_side.webp",

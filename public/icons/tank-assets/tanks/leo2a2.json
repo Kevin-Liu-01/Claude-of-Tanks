@@ -218,10 +218,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.6805,0.08,3.45],
-          [1.6805,0.08,-3.55],
-          [1.6805,1.3,-3.55],
-          [1.6805,1.3,3.45]
+          [1.68,0.738,-3.55],
+          [1.68,1.3,-3.55],
+          [1.68,1.3,3.377],
+          [1.68,0.738,3.377]
         ]
       },
       {
@@ -233,10 +233,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.6805,0.08,-3.55],
-          [-1.6805,0.08,3.45],
-          [-1.6805,1.3,3.45],
-          [-1.6805,1.3,-3.55]
+          [-1.68,0.738,3.45],
+          [-1.68,1.3,3.45],
+          [-1.68,1.3,-3.55],
+          [-1.68,0.738,-3.55]
         ]
       },
       {
@@ -887,7 +887,7 @@
     ]
   },
   "geometryHash": "43b3b771",
-  "metadataHash": "9ba644bf",
+  "metadataHash": "57dfdf6f",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1422
@@ -994,8 +994,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26132,
-      "sha256": "f8e592fb276639ffb07a50f9ba1d657b5b97a8ab9a591fd5ad861ec877f8f241"
+      "bytes": 26348,
+      "sha256": "ba3873ca3c1384e14f100f2dbe6398743a446a90f6b2d679c9ea0fdfe64468d5"
     },
     "modulesSide": {
       "file": "leo2a2_modules_side.webp",
@@ -1025,7 +1025,7 @@
       "file": "leo2a2_technical.json",
       "mime": "application/json",
       "bytes": 5507,
-      "sha256": "1b724c7e6bdc1b3da9d3e56a85a4fb86532f579c81fa15c98e029f30c5a81e53"
+      "sha256": "eae20b1462229d80e28f4823edea9805f0b56044e6e86cffc019dfe2a03fcf58"
     }
   }
 }

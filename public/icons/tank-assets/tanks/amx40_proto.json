@@ -188,10 +188,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.4276,0.12,3.4],
-          [1.4276,0.12,-3.4],
-          [1.4276,1.28,-3.4],
-          [1.4276,1.28,3.4]
+          [1.628,0.612,-3.34],
+          [1.628,1.28,-3.34],
+          [1.559,1.28,3.26],
+          [1.559,0.612,3.26]
         ]
       },
       {
@@ -484,7 +484,7 @@
     ]
   },
   "geometryHash": "541c40ed",
-  "metadataHash": "c923e614",
+  "metadataHash": "33203bba",
   "presentationAnchor": {
     "xM": 0.0006,
     "zM": -0.0049
@@ -594,8 +594,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20774,
-      "sha256": "94cc872e07ad3c6df84a97ce42f5ad9b3faf5dc34c513cce9a7337e36f1a9f6c"
+      "bytes": 20696,
+      "sha256": "4266d99b43d9547d76cbe44c962c2bbb6e45700a734ca57586615ee4148e22ad"
     },
     "modulesSide": {
       "file": "amx40_proto_modules_side.webp",
@@ -624,8 +624,8 @@
     "technicalLabels": {
       "file": "amx40_proto_technical.json",
       "mime": "application/json",
-      "bytes": 4145,
-      "sha256": "bedb74b4374ebcd5f1ef98b74d7a50617e74c8bcefc95594971f35ef9b010784"
+      "bytes": 4290,
+      "sha256": "0c9d3556bb0830798d569572cfe86779cef58afbebf46a3517292dc099bb34d6"
     }
   }
 }

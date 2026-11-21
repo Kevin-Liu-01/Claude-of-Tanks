@@ -151,10 +151,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.7,0.55,3.363],
-          [1.7,0.55,-3.54],
-          [1.7,1.07,-3.54],
-          [1.7,1.07,3.363]
+          [1.678,0.739,-3.54],
+          [1.697,1.07,-3.54],
+          [1.7,1.07,3.363],
+          [1.681,0.739,3.363]
         ]
       },
       {
@@ -166,10 +166,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.7,0.55,-3.54],
-          [-1.7,0.55,3.363],
-          [-1.7,1.07,3.363],
-          [-1.7,1.07,-3.54]
+          [-1.681,0.739,3.363],
+          [-1.699,1.07,3.363],
+          [-1.697,1.07,-3.54],
+          [-1.678,0.739,-3.54]
         ]
       },
       {
@@ -902,7 +902,7 @@
     ]
   },
   "geometryHash": "0fbe0aab",
-  "metadataHash": "8d57338c",
+  "metadataHash": "143ab23b",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0363
@@ -1005,8 +1005,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29172,
-      "sha256": "da0fbce17334bb8ef7febe1186c836da7a9bcde6532b987acf54c0f80a49674f"
+      "bytes": 29734,
+      "sha256": "b0e56584efa6bb6f76ad074b30b9b3d8fd367893f369af8a111dd2a7ee8f37f5"
     },
     "modulesSide": {
       "file": "gepard_1a2_modules_side.webp",
@@ -1035,8 +1035,8 @@
     "technicalLabels": {
       "file": "gepard_1a2_technical.json",
       "mime": "application/json",
-      "bytes": 4344,
-      "sha256": "043e74d4482f6d130e87d9f473eadd8ae4f9af36bb98f04c9c83ba75246a449a"
+      "bytes": 4346,
+      "sha256": "ff334358a3ba8896aafb79f52a5316cb9d50cb33741dc1c68198cce796395304"
     }
   }
 }

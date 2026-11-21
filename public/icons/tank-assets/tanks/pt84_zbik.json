@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.763,0.6034,3.1149],
-          [1.763,0.6034,-3.1149],
-          [1.763,1.247,-3.1149],
-          [1.763,1.247,3.1149]
+          [2.111,0.603,3.115],
+          [2.113,0.603,-3.115],
+          [1.746,1.247,-3.115],
+          [1.744,1.247,3.115]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.763,0.6034,-3.1149],
-          [-1.763,0.6034,3.1149],
-          [-1.763,1.247,3.1149],
-          [-1.763,1.247,-3.1149]
+          [-2.111,0.603,-3.115],
+          [-2.112,0.603,3.115],
+          [-1.745,1.247,3.115],
+          [-1.745,1.247,-3.115]
         ]
       },
       {
@@ -3996,7 +3996,7 @@
     ]
   },
   "geometryHash": "f9b0620b",
-  "metadataHash": "012e4327",
+  "metadataHash": "d46c5cee",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": 0.27
@@ -4103,8 +4103,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26310,
-      "sha256": "d716bfef5ab9eb0ea17cbc0b9eaa2d3d75cb53d3bea79f011fd299f13d122665"
+      "bytes": 26292,
+      "sha256": "35c78205e66e74ae29a8bbe09f75267e8037871fd35a351b367897e55e824943"
     },
     "modulesSide": {
       "file": "pt84_zbik_modules_side.webp",
@@ -4134,7 +4134,7 @@
       "file": "pt84_zbik_technical.json",
       "mime": "application/json",
       "bytes": 5436,
-      "sha256": "b9008813bdb5b4b9c7efb48d5590d66fd2dbae43ee3ce058c119487390048f5a"
+      "sha256": "b172cf585ac6f78b3d220ee4151dfd4f031b7966de7909e24c7576f7bc3ca29e"
     }
   }
 }

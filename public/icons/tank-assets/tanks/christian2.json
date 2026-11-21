@@ -218,10 +218,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.6805,0.08,3.45],
-          [1.6805,0.08,-3.55],
-          [1.6805,1.3,-3.55],
-          [1.6805,1.3,3.45]
+          [1.68,0.884,-3.55],
+          [1.68,1.3,-3.55],
+          [1.68,1.3,3.377],
+          [1.68,0.884,3.377]
         ]
       },
       {
@@ -233,10 +233,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.6805,0.08,-3.55],
-          [-1.6805,0.08,3.45],
-          [-1.6805,1.3,3.45],
-          [-1.6805,1.3,-3.55]
+          [-1.68,0.884,3.45],
+          [-1.68,1.3,3.45],
+          [-1.68,1.3,-3.55],
+          [-1.68,0.884,-3.55]
         ]
       },
       {
@@ -1022,7 +1022,7 @@
     ]
   },
   "geometryHash": "362897d5",
-  "metadataHash": "519d0357",
+  "metadataHash": "77bd3083",
   "presentationAnchor": {
     "xM": -0.0035,
     "zM": -0.1609
@@ -1129,8 +1129,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34378,
-      "sha256": "f2b16d0dcaa5ef3ebae4d11017e8d276aeb5a76f37a28e4d17039aa24f94ad57"
+      "bytes": 35422,
+      "sha256": "e889bd7b243a17935a6d6ba3683b974fc38fca09f5570bafd900ef60eb7baa30"
     },
     "modulesSide": {
       "file": "christian2_modules_side.webp",
@@ -1160,7 +1160,7 @@
       "file": "christian2_technical.json",
       "mime": "application/json",
       "bytes": 5202,
-      "sha256": "a75eeb0aa9c552e71573408e54d1475f6f4f71250f4b0ae19f48bf54a10e011f"
+      "sha256": "413e753393e9319c7f49e4a3c9f43f9b8511484d942f82bcb5186501291c304f"
     }
   }
 }

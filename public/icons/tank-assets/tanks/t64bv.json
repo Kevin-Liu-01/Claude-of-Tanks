@@ -256,21 +256,6 @@
       },
       {
         "hitboxId": "H14",
-        "name": "skirt_rubber_L",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [-1.5136,1.1833,2.6762],
-          [-1.5136,1.3741,2.6762],
-          [-1.5136,1.3741,-3.1063],
-          [-1.5136,1.1833,-3.1063]
-        ]
-      },
-      {
-        "hitboxId": "H15",
         "name": "skirt_rubber_R",
         "physicalMm": 8,
         "keMm": 8,
@@ -285,7 +270,7 @@
         ]
       },
       {
-        "hitboxId": "H16",
+        "hitboxId": "H15",
         "name": "skirt_rubber_R",
         "physicalMm": 8,
         "keMm": 8,
@@ -300,37 +285,22 @@
         ]
       },
       {
+        "hitboxId": "H16",
+        "name": "skirt_rubber_R",
+        "physicalMm": 8,
+        "keMm": 8,
+        "ceMm": 8,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.624,0.686,2.984],
+          [1.624,1.076,2.984],
+          [1.624,1.075,3.184],
+          [1.624,0.707,3.184]
+        ]
+      },
+      {
         "hitboxId": "H17",
-        "name": "skirt_rubber_R",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.6242,0.6861,2.9838],
-          [1.6242,1.0764,2.9838],
-          [1.6242,1.0716,3.559],
-          [1.6242,0.7462,3.559]
-        ]
-      },
-      {
-        "hitboxId": "H18",
-        "name": "skirt_rubber_R",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.5263,1.1833,-3.1063],
-          [1.5263,1.3741,-3.1063],
-          [1.5263,1.3741,2.6762],
-          [1.5263,1.1833,2.6762]
-        ]
-      },
-      {
-        "hitboxId": "H19",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -345,7 +315,7 @@
         ]
       },
       {
-        "hitboxId": "H20",
+        "hitboxId": "H18",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -360,7 +330,7 @@
         ]
       },
       {
-        "hitboxId": "H21",
+        "hitboxId": "H19",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -375,7 +345,7 @@
         ]
       },
       {
-        "hitboxId": "H22",
+        "hitboxId": "H20",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -390,7 +360,7 @@
         ]
       },
       {
-        "hitboxId": "H23",
+        "hitboxId": "H21",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -405,7 +375,7 @@
         ]
       },
       {
-        "hitboxId": "H24",
+        "hitboxId": "H22",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -420,7 +390,7 @@
         ]
       },
       {
-        "hitboxId": "H25",
+        "hitboxId": "H23",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -435,7 +405,7 @@
         ]
       },
       {
-        "hitboxId": "H26",
+        "hitboxId": "H24",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -450,7 +420,7 @@
         ]
       },
       {
-        "hitboxId": "H27",
+        "hitboxId": "H25",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -465,7 +435,7 @@
         ]
       },
       {
-        "hitboxId": "H28",
+        "hitboxId": "H26",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -480,7 +450,7 @@
         ]
       },
       {
-        "hitboxId": "H29",
+        "hitboxId": "H27",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -495,7 +465,7 @@
         ]
       },
       {
-        "hitboxId": "H30",
+        "hitboxId": "H28",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -510,7 +480,7 @@
         ]
       },
       {
-        "hitboxId": "H31",
+        "hitboxId": "H29",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -525,7 +495,7 @@
         ]
       },
       {
-        "hitboxId": "H32",
+        "hitboxId": "H30",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -540,7 +510,7 @@
         ]
       },
       {
-        "hitboxId": "H33",
+        "hitboxId": "H31",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -555,7 +525,7 @@
         ]
       },
       {
-        "hitboxId": "H34",
+        "hitboxId": "H32",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -570,7 +540,7 @@
         ]
       },
       {
-        "hitboxId": "H35",
+        "hitboxId": "H33",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -585,7 +555,7 @@
         ]
       },
       {
-        "hitboxId": "H36",
+        "hitboxId": "H34",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -600,7 +570,7 @@
         ]
       },
       {
-        "hitboxId": "H37",
+        "hitboxId": "H35",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -615,7 +585,7 @@
         ]
       },
       {
-        "hitboxId": "H38",
+        "hitboxId": "H36",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -630,7 +600,7 @@
         ]
       },
       {
-        "hitboxId": "H39",
+        "hitboxId": "H37",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -645,7 +615,7 @@
         ]
       },
       {
-        "hitboxId": "H40",
+        "hitboxId": "H38",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -660,7 +630,7 @@
         ]
       },
       {
-        "hitboxId": "H41",
+        "hitboxId": "H39",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -675,7 +645,7 @@
         ]
       },
       {
-        "hitboxId": "H42",
+        "hitboxId": "H40",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -690,7 +660,7 @@
         ]
       },
       {
-        "hitboxId": "H43",
+        "hitboxId": "H41",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -705,7 +675,7 @@
         ]
       },
       {
-        "hitboxId": "H44",
+        "hitboxId": "H42",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -720,7 +690,7 @@
         ]
       },
       {
-        "hitboxId": "H45",
+        "hitboxId": "H43",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -735,7 +705,7 @@
         ]
       },
       {
-        "hitboxId": "H46",
+        "hitboxId": "H44",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -750,7 +720,7 @@
         ]
       },
       {
-        "hitboxId": "H47",
+        "hitboxId": "H45",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -765,7 +735,7 @@
         ]
       },
       {
-        "hitboxId": "H48",
+        "hitboxId": "H46",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -780,7 +750,7 @@
         ]
       },
       {
-        "hitboxId": "H49",
+        "hitboxId": "H47",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -795,7 +765,7 @@
         ]
       },
       {
-        "hitboxId": "H50",
+        "hitboxId": "H48",
         "name": "glacis_era_L",
         "physicalMm": 12,
         "keMm": 12,
@@ -810,7 +780,7 @@
         ]
       },
       {
-        "hitboxId": "H51",
+        "hitboxId": "H49",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -825,7 +795,7 @@
         ]
       },
       {
-        "hitboxId": "H52",
+        "hitboxId": "H50",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -840,7 +810,7 @@
         ]
       },
       {
-        "hitboxId": "H53",
+        "hitboxId": "H51",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -855,7 +825,7 @@
         ]
       },
       {
-        "hitboxId": "H54",
+        "hitboxId": "H52",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -870,7 +840,7 @@
         ]
       },
       {
-        "hitboxId": "H55",
+        "hitboxId": "H53",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -885,7 +855,7 @@
         ]
       },
       {
-        "hitboxId": "H56",
+        "hitboxId": "H54",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -900,7 +870,7 @@
         ]
       },
       {
-        "hitboxId": "H57",
+        "hitboxId": "H55",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -915,7 +885,7 @@
         ]
       },
       {
-        "hitboxId": "H58",
+        "hitboxId": "H56",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -930,7 +900,7 @@
         ]
       },
       {
-        "hitboxId": "H59",
+        "hitboxId": "H57",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -945,7 +915,7 @@
         ]
       },
       {
-        "hitboxId": "H60",
+        "hitboxId": "H58",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -960,7 +930,7 @@
         ]
       },
       {
-        "hitboxId": "H61",
+        "hitboxId": "H59",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -975,7 +945,7 @@
         ]
       },
       {
-        "hitboxId": "H62",
+        "hitboxId": "H60",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -990,7 +960,7 @@
         ]
       },
       {
-        "hitboxId": "H63",
+        "hitboxId": "H61",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1005,7 +975,7 @@
         ]
       },
       {
-        "hitboxId": "H64",
+        "hitboxId": "H62",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1020,7 +990,7 @@
         ]
       },
       {
-        "hitboxId": "H65",
+        "hitboxId": "H63",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1035,7 +1005,7 @@
         ]
       },
       {
-        "hitboxId": "H66",
+        "hitboxId": "H64",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1050,7 +1020,7 @@
         ]
       },
       {
-        "hitboxId": "H67",
+        "hitboxId": "H65",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1065,7 +1035,7 @@
         ]
       },
       {
-        "hitboxId": "H68",
+        "hitboxId": "H66",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1080,7 +1050,7 @@
         ]
       },
       {
-        "hitboxId": "H69",
+        "hitboxId": "H67",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1095,7 +1065,7 @@
         ]
       },
       {
-        "hitboxId": "H70",
+        "hitboxId": "H68",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1110,7 +1080,7 @@
         ]
       },
       {
-        "hitboxId": "H71",
+        "hitboxId": "H69",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1125,7 +1095,7 @@
         ]
       },
       {
-        "hitboxId": "H72",
+        "hitboxId": "H70",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1140,7 +1110,7 @@
         ]
       },
       {
-        "hitboxId": "H73",
+        "hitboxId": "H71",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1155,7 +1125,7 @@
         ]
       },
       {
-        "hitboxId": "H74",
+        "hitboxId": "H72",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1170,7 +1140,7 @@
         ]
       },
       {
-        "hitboxId": "H75",
+        "hitboxId": "H73",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1185,7 +1155,7 @@
         ]
       },
       {
-        "hitboxId": "H76",
+        "hitboxId": "H74",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1200,7 +1170,7 @@
         ]
       },
       {
-        "hitboxId": "H77",
+        "hitboxId": "H75",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1215,7 +1185,7 @@
         ]
       },
       {
-        "hitboxId": "H78",
+        "hitboxId": "H76",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1230,7 +1200,7 @@
         ]
       },
       {
-        "hitboxId": "H79",
+        "hitboxId": "H77",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1245,7 +1215,7 @@
         ]
       },
       {
-        "hitboxId": "H80",
+        "hitboxId": "H78",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1260,7 +1230,7 @@
         ]
       },
       {
-        "hitboxId": "H81",
+        "hitboxId": "H79",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1275,7 +1245,7 @@
         ]
       },
       {
-        "hitboxId": "H82",
+        "hitboxId": "H80",
         "name": "glacis_era_R",
         "physicalMm": 12,
         "keMm": 12,
@@ -1290,7 +1260,7 @@
         ]
       },
       {
-        "hitboxId": "H83",
+        "hitboxId": "H81",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1305,7 +1275,7 @@
         ]
       },
       {
-        "hitboxId": "H84",
+        "hitboxId": "H82",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1320,7 +1290,7 @@
         ]
       },
       {
-        "hitboxId": "H85",
+        "hitboxId": "H83",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1335,7 +1305,7 @@
         ]
       },
       {
-        "hitboxId": "H86",
+        "hitboxId": "H84",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1350,7 +1320,7 @@
         ]
       },
       {
-        "hitboxId": "H87",
+        "hitboxId": "H85",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1365,7 +1335,7 @@
         ]
       },
       {
-        "hitboxId": "H88",
+        "hitboxId": "H86",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1380,7 +1350,7 @@
         ]
       },
       {
-        "hitboxId": "H89",
+        "hitboxId": "H87",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1395,7 +1365,7 @@
         ]
       },
       {
-        "hitboxId": "H90",
+        "hitboxId": "H88",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1410,7 +1380,7 @@
         ]
       },
       {
-        "hitboxId": "H91",
+        "hitboxId": "H89",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1425,7 +1395,7 @@
         ]
       },
       {
-        "hitboxId": "H92",
+        "hitboxId": "H90",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1440,7 +1410,7 @@
         ]
       },
       {
-        "hitboxId": "H93",
+        "hitboxId": "H91",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1455,7 +1425,7 @@
         ]
       },
       {
-        "hitboxId": "H94",
+        "hitboxId": "H92",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1470,7 +1440,7 @@
         ]
       },
       {
-        "hitboxId": "H95",
+        "hitboxId": "H93",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1485,7 +1455,7 @@
         ]
       },
       {
-        "hitboxId": "H96",
+        "hitboxId": "H94",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1500,7 +1470,7 @@
         ]
       },
       {
-        "hitboxId": "H97",
+        "hitboxId": "H95",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1515,7 +1485,7 @@
         ]
       },
       {
-        "hitboxId": "H98",
+        "hitboxId": "H96",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1530,7 +1500,7 @@
         ]
       },
       {
-        "hitboxId": "H99",
+        "hitboxId": "H97",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1545,7 +1515,7 @@
         ]
       },
       {
-        "hitboxId": "H100",
+        "hitboxId": "H98",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1560,7 +1530,7 @@
         ]
       },
       {
-        "hitboxId": "H101",
+        "hitboxId": "H99",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1575,7 +1545,7 @@
         ]
       },
       {
-        "hitboxId": "H102",
+        "hitboxId": "H100",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1590,7 +1560,7 @@
         ]
       },
       {
-        "hitboxId": "H103",
+        "hitboxId": "H101",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1605,7 +1575,7 @@
         ]
       },
       {
-        "hitboxId": "H104",
+        "hitboxId": "H102",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1620,7 +1590,7 @@
         ]
       },
       {
-        "hitboxId": "H105",
+        "hitboxId": "H103",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1635,7 +1605,7 @@
         ]
       },
       {
-        "hitboxId": "H106",
+        "hitboxId": "H104",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1650,7 +1620,7 @@
         ]
       },
       {
-        "hitboxId": "H107",
+        "hitboxId": "H105",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1665,7 +1635,7 @@
         ]
       },
       {
-        "hitboxId": "H108",
+        "hitboxId": "H106",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1680,7 +1650,7 @@
         ]
       },
       {
-        "hitboxId": "H109",
+        "hitboxId": "H107",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1695,7 +1665,7 @@
         ]
       },
       {
-        "hitboxId": "H110",
+        "hitboxId": "H108",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1710,7 +1680,7 @@
         ]
       },
       {
-        "hitboxId": "H111",
+        "hitboxId": "H109",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1725,7 +1695,7 @@
         ]
       },
       {
-        "hitboxId": "H112",
+        "hitboxId": "H110",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1740,7 +1710,7 @@
         ]
       },
       {
-        "hitboxId": "H113",
+        "hitboxId": "H111",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1755,7 +1725,7 @@
         ]
       },
       {
-        "hitboxId": "H114",
+        "hitboxId": "H112",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1770,7 +1740,7 @@
         ]
       },
       {
-        "hitboxId": "H115",
+        "hitboxId": "H113",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1785,7 +1755,7 @@
         ]
       },
       {
-        "hitboxId": "H116",
+        "hitboxId": "H114",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1800,7 +1770,7 @@
         ]
       },
       {
-        "hitboxId": "H117",
+        "hitboxId": "H115",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1815,7 +1785,7 @@
         ]
       },
       {
-        "hitboxId": "H118",
+        "hitboxId": "H116",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1830,7 +1800,7 @@
         ]
       },
       {
-        "hitboxId": "H119",
+        "hitboxId": "H117",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1845,7 +1815,7 @@
         ]
       },
       {
-        "hitboxId": "H120",
+        "hitboxId": "H118",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1860,7 +1830,7 @@
         ]
       },
       {
-        "hitboxId": "H121",
+        "hitboxId": "H119",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1875,7 +1845,7 @@
         ]
       },
       {
-        "hitboxId": "H122",
+        "hitboxId": "H120",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1890,7 +1860,7 @@
         ]
       },
       {
-        "hitboxId": "H123",
+        "hitboxId": "H121",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1905,7 +1875,7 @@
         ]
       },
       {
-        "hitboxId": "H124",
+        "hitboxId": "H122",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1920,7 +1890,7 @@
         ]
       },
       {
-        "hitboxId": "H125",
+        "hitboxId": "H123",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1935,7 +1905,7 @@
         ]
       },
       {
-        "hitboxId": "H126",
+        "hitboxId": "H124",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1950,7 +1920,7 @@
         ]
       },
       {
-        "hitboxId": "H127",
+        "hitboxId": "H125",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1965,7 +1935,7 @@
         ]
       },
       {
-        "hitboxId": "H128",
+        "hitboxId": "H126",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1980,7 +1950,7 @@
         ]
       },
       {
-        "hitboxId": "H129",
+        "hitboxId": "H127",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1995,7 +1965,7 @@
         ]
       },
       {
-        "hitboxId": "H130",
+        "hitboxId": "H128",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2010,7 +1980,7 @@
         ]
       },
       {
-        "hitboxId": "H131",
+        "hitboxId": "H129",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2025,7 +1995,7 @@
         ]
       },
       {
-        "hitboxId": "H132",
+        "hitboxId": "H130",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2040,7 +2010,7 @@
         ]
       },
       {
-        "hitboxId": "H133",
+        "hitboxId": "H131",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2055,7 +2025,7 @@
         ]
       },
       {
-        "hitboxId": "H134",
+        "hitboxId": "H132",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2070,7 +2040,7 @@
         ]
       },
       {
-        "hitboxId": "H135",
+        "hitboxId": "H133",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2085,7 +2055,7 @@
         ]
       },
       {
-        "hitboxId": "H136",
+        "hitboxId": "H134",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2100,7 +2070,7 @@
         ]
       },
       {
-        "hitboxId": "H137",
+        "hitboxId": "H135",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2115,7 +2085,7 @@
         ]
       },
       {
-        "hitboxId": "H138",
+        "hitboxId": "H136",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2130,7 +2100,7 @@
         ]
       },
       {
-        "hitboxId": "H139",
+        "hitboxId": "H137",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2145,7 +2115,7 @@
         ]
       },
       {
-        "hitboxId": "H140",
+        "hitboxId": "H138",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2160,7 +2130,7 @@
         ]
       },
       {
-        "hitboxId": "H141",
+        "hitboxId": "H139",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2175,7 +2145,7 @@
         ]
       },
       {
-        "hitboxId": "H142",
+        "hitboxId": "H140",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2190,7 +2160,7 @@
         ]
       },
       {
-        "hitboxId": "H143",
+        "hitboxId": "H141",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2205,7 +2175,7 @@
         ]
       },
       {
-        "hitboxId": "H144",
+        "hitboxId": "H142",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2220,7 +2190,7 @@
         ]
       },
       {
-        "hitboxId": "H145",
+        "hitboxId": "H143",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2235,7 +2205,7 @@
         ]
       },
       {
-        "hitboxId": "H146",
+        "hitboxId": "H144",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2250,7 +2220,7 @@
         ]
       },
       {
-        "hitboxId": "H147",
+        "hitboxId": "H145",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2265,7 +2235,7 @@
         ]
       },
       {
-        "hitboxId": "H148",
+        "hitboxId": "H146",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2280,7 +2250,7 @@
         ]
       },
       {
-        "hitboxId": "H149",
+        "hitboxId": "H147",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2295,7 +2265,7 @@
         ]
       },
       {
-        "hitboxId": "H150",
+        "hitboxId": "H148",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2310,7 +2280,7 @@
         ]
       },
       {
-        "hitboxId": "H151",
+        "hitboxId": "H149",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2325,7 +2295,7 @@
         ]
       },
       {
-        "hitboxId": "H152",
+        "hitboxId": "H150",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2340,7 +2310,7 @@
         ]
       },
       {
-        "hitboxId": "H153",
+        "hitboxId": "H151",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2355,7 +2325,7 @@
         ]
       },
       {
-        "hitboxId": "H154",
+        "hitboxId": "H152",
         "name": "skirt_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -2370,7 +2340,7 @@
         ]
       },
       {
-        "hitboxId": "H155",
+        "hitboxId": "H153",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2385,7 +2355,7 @@
         ]
       },
       {
-        "hitboxId": "H156",
+        "hitboxId": "H154",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2400,7 +2370,7 @@
         ]
       },
       {
-        "hitboxId": "H157",
+        "hitboxId": "H155",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2415,7 +2385,7 @@
         ]
       },
       {
-        "hitboxId": "H158",
+        "hitboxId": "H156",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2430,7 +2400,7 @@
         ]
       },
       {
-        "hitboxId": "H159",
+        "hitboxId": "H157",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2445,7 +2415,7 @@
         ]
       },
       {
-        "hitboxId": "H160",
+        "hitboxId": "H158",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2460,7 +2430,7 @@
         ]
       },
       {
-        "hitboxId": "H161",
+        "hitboxId": "H159",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2475,7 +2445,7 @@
         ]
       },
       {
-        "hitboxId": "H162",
+        "hitboxId": "H160",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2490,7 +2460,7 @@
         ]
       },
       {
-        "hitboxId": "H163",
+        "hitboxId": "H161",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2505,7 +2475,7 @@
         ]
       },
       {
-        "hitboxId": "H164",
+        "hitboxId": "H162",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2520,7 +2490,7 @@
         ]
       },
       {
-        "hitboxId": "H165",
+        "hitboxId": "H163",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2535,7 +2505,7 @@
         ]
       },
       {
-        "hitboxId": "H166",
+        "hitboxId": "H164",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2550,7 +2520,7 @@
         ]
       },
       {
-        "hitboxId": "H167",
+        "hitboxId": "H165",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2565,7 +2535,7 @@
         ]
       },
       {
-        "hitboxId": "H168",
+        "hitboxId": "H166",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2580,7 +2550,7 @@
         ]
       },
       {
-        "hitboxId": "H169",
+        "hitboxId": "H167",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2595,7 +2565,7 @@
         ]
       },
       {
-        "hitboxId": "H170",
+        "hitboxId": "H168",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2610,7 +2580,7 @@
         ]
       },
       {
-        "hitboxId": "H171",
+        "hitboxId": "H169",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2625,7 +2595,7 @@
         ]
       },
       {
-        "hitboxId": "H172",
+        "hitboxId": "H170",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2640,7 +2610,7 @@
         ]
       },
       {
-        "hitboxId": "H173",
+        "hitboxId": "H171",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2655,7 +2625,7 @@
         ]
       },
       {
-        "hitboxId": "H174",
+        "hitboxId": "H172",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2670,7 +2640,7 @@
         ]
       },
       {
-        "hitboxId": "H175",
+        "hitboxId": "H173",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2685,7 +2655,7 @@
         ]
       },
       {
-        "hitboxId": "H176",
+        "hitboxId": "H174",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2700,7 +2670,7 @@
         ]
       },
       {
-        "hitboxId": "H177",
+        "hitboxId": "H175",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2715,7 +2685,7 @@
         ]
       },
       {
-        "hitboxId": "H178",
+        "hitboxId": "H176",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2730,7 +2700,7 @@
         ]
       },
       {
-        "hitboxId": "H179",
+        "hitboxId": "H177",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2745,7 +2715,7 @@
         ]
       },
       {
-        "hitboxId": "H180",
+        "hitboxId": "H178",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2760,7 +2730,7 @@
         ]
       },
       {
-        "hitboxId": "H181",
+        "hitboxId": "H179",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2775,7 +2745,7 @@
         ]
       },
       {
-        "hitboxId": "H182",
+        "hitboxId": "H180",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2790,7 +2760,7 @@
         ]
       },
       {
-        "hitboxId": "H183",
+        "hitboxId": "H181",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2805,7 +2775,7 @@
         ]
       },
       {
-        "hitboxId": "H184",
+        "hitboxId": "H182",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2820,7 +2790,7 @@
         ]
       },
       {
-        "hitboxId": "H185",
+        "hitboxId": "H183",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2835,7 +2805,7 @@
         ]
       },
       {
-        "hitboxId": "H186",
+        "hitboxId": "H184",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2850,7 +2820,7 @@
         ]
       },
       {
-        "hitboxId": "H187",
+        "hitboxId": "H185",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2865,7 +2835,7 @@
         ]
       },
       {
-        "hitboxId": "H188",
+        "hitboxId": "H186",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2880,7 +2850,7 @@
         ]
       },
       {
-        "hitboxId": "H189",
+        "hitboxId": "H187",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2895,7 +2865,7 @@
         ]
       },
       {
-        "hitboxId": "H190",
+        "hitboxId": "H188",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2910,7 +2880,7 @@
         ]
       },
       {
-        "hitboxId": "H191",
+        "hitboxId": "H189",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2925,7 +2895,7 @@
         ]
       },
       {
-        "hitboxId": "H192",
+        "hitboxId": "H190",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2940,7 +2910,7 @@
         ]
       },
       {
-        "hitboxId": "H193",
+        "hitboxId": "H191",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2955,7 +2925,7 @@
         ]
       },
       {
-        "hitboxId": "H194",
+        "hitboxId": "H192",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2970,7 +2940,7 @@
         ]
       },
       {
-        "hitboxId": "H195",
+        "hitboxId": "H193",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -2985,7 +2955,7 @@
         ]
       },
       {
-        "hitboxId": "H196",
+        "hitboxId": "H194",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3000,7 +2970,7 @@
         ]
       },
       {
-        "hitboxId": "H197",
+        "hitboxId": "H195",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3015,7 +2985,7 @@
         ]
       },
       {
-        "hitboxId": "H198",
+        "hitboxId": "H196",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3030,7 +3000,7 @@
         ]
       },
       {
-        "hitboxId": "H199",
+        "hitboxId": "H197",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3045,7 +3015,7 @@
         ]
       },
       {
-        "hitboxId": "H200",
+        "hitboxId": "H198",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3060,7 +3030,7 @@
         ]
       },
       {
-        "hitboxId": "H201",
+        "hitboxId": "H199",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3075,7 +3045,7 @@
         ]
       },
       {
-        "hitboxId": "H202",
+        "hitboxId": "H200",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3090,7 +3060,7 @@
         ]
       },
       {
-        "hitboxId": "H203",
+        "hitboxId": "H201",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3105,7 +3075,7 @@
         ]
       },
       {
-        "hitboxId": "H204",
+        "hitboxId": "H202",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3120,7 +3090,7 @@
         ]
       },
       {
-        "hitboxId": "H205",
+        "hitboxId": "H203",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3135,7 +3105,7 @@
         ]
       },
       {
-        "hitboxId": "H206",
+        "hitboxId": "H204",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3150,7 +3120,7 @@
         ]
       },
       {
-        "hitboxId": "H207",
+        "hitboxId": "H205",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3165,7 +3135,7 @@
         ]
       },
       {
-        "hitboxId": "H208",
+        "hitboxId": "H206",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3180,7 +3150,7 @@
         ]
       },
       {
-        "hitboxId": "H209",
+        "hitboxId": "H207",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3195,7 +3165,7 @@
         ]
       },
       {
-        "hitboxId": "H210",
+        "hitboxId": "H208",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3210,7 +3180,7 @@
         ]
       },
       {
-        "hitboxId": "H211",
+        "hitboxId": "H209",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3225,7 +3195,7 @@
         ]
       },
       {
-        "hitboxId": "H212",
+        "hitboxId": "H210",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3240,7 +3210,7 @@
         ]
       },
       {
-        "hitboxId": "H213",
+        "hitboxId": "H211",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3255,7 +3225,7 @@
         ]
       },
       {
-        "hitboxId": "H214",
+        "hitboxId": "H212",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3270,7 +3240,7 @@
         ]
       },
       {
-        "hitboxId": "H215",
+        "hitboxId": "H213",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3285,7 +3255,7 @@
         ]
       },
       {
-        "hitboxId": "H216",
+        "hitboxId": "H214",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3300,7 +3270,7 @@
         ]
       },
       {
-        "hitboxId": "H217",
+        "hitboxId": "H215",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3315,7 +3285,7 @@
         ]
       },
       {
-        "hitboxId": "H218",
+        "hitboxId": "H216",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3330,7 +3300,7 @@
         ]
       },
       {
-        "hitboxId": "H219",
+        "hitboxId": "H217",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3345,7 +3315,7 @@
         ]
       },
       {
-        "hitboxId": "H220",
+        "hitboxId": "H218",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3360,7 +3330,7 @@
         ]
       },
       {
-        "hitboxId": "H221",
+        "hitboxId": "H219",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3375,7 +3345,7 @@
         ]
       },
       {
-        "hitboxId": "H222",
+        "hitboxId": "H220",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3390,7 +3360,7 @@
         ]
       },
       {
-        "hitboxId": "H223",
+        "hitboxId": "H221",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3405,7 +3375,7 @@
         ]
       },
       {
-        "hitboxId": "H224",
+        "hitboxId": "H222",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3420,7 +3390,7 @@
         ]
       },
       {
-        "hitboxId": "H225",
+        "hitboxId": "H223",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -3435,7 +3405,7 @@
         ]
       },
       {
-        "hitboxId": "H226",
+        "hitboxId": "H224",
         "name": "skirt_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -5161,7 +5131,7 @@
     ]
   },
   "geometryHash": "f8665520",
-  "metadataHash": "ae257a73",
+  "metadataHash": "945ed8e2",
   "presentationAnchor": {
     "xM": -0.0012,
     "zM": -0.2861
@@ -5269,8 +5239,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27568,
-      "sha256": "8fdd0a2dfa541200570b94be3222e2ea9c5c45cd3d0bab539fd9d7cb84f3dcfe"
+      "bytes": 27500,
+      "sha256": "b2da216232980331426500888fbc74cd427b51f602a2430ee801b09ab0930f80"
     },
     "modulesSide": {
       "file": "t64bv_modules_side.webp",
@@ -5300,7 +5270,7 @@
       "file": "t64bv_technical.json",
       "mime": "application/json",
       "bytes": 5140,
-      "sha256": "2c49d47e114efbffec6c33dd3047f76258844913d843b543bc06889272669060"
+      "sha256": "d9a1b3f96c5a48f7b6c90ab17ce1ab18e1e9dd20fb9447fa609c174d5ff3d8a0"
     }
   }
 }

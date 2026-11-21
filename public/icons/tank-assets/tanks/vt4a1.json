@@ -788,21 +788,6 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [0.5809,0.8283,0.3848],
-          [0.5844,0.4533,1.6546],
-          [0.7312,0.0048,1.5217],
-          [0.7278,0.3797,0.252]
-        ]
-      },
-      {
-        "hitboxId": "T02",
-        "name": "turret_era_R",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
           [1.0238,0.9597,-0.0067],
           [0.9046,0.4527,1.5308],
           [1.044,-0.0285,1.3829],
@@ -810,7 +795,7 @@
         ]
       },
       {
-        "hitboxId": "T03",
+        "hitboxId": "T02",
         "name": "turret_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -825,7 +810,7 @@
         ]
       },
       {
-        "hitboxId": "T04",
+        "hitboxId": "T03",
         "name": "turret_era_R",
         "physicalMm": 15,
         "keMm": 15,
@@ -833,29 +818,14 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [1.5287,0.7484,-0.3905],
-          [1.448,0.5392,1.0088],
-          [1.7025,0.126,0.9616],
-          [1.7831,0.3352,-0.4376]
+          [1.424,0.685,-0.406],
+          [1.393,0.517,0.903],
+          [1.644,0.159,0.863],
+          [1.675,0.326,-0.445]
         ]
       },
       {
-        "hitboxId": "T05",
-        "name": "turret_era_L",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [-0.7566,0.3614,0.2607],
-          [-0.722,0.0209,1.5476],
-          [-0.5761,0.4703,1.6626],
-          [-0.6106,0.8108,0.3757]
-        ]
-      },
-      {
-        "hitboxId": "T06",
+        "hitboxId": "T04",
         "name": "turret_era_L",
         "physicalMm": 15,
         "keMm": 15,
@@ -870,7 +840,7 @@
         ]
       },
       {
-        "hitboxId": "T07",
+        "hitboxId": "T05",
         "name": "turret_era_L",
         "physicalMm": 15,
         "keMm": 15,
@@ -885,7 +855,7 @@
         ]
       },
       {
-        "hitboxId": "T08",
+        "hitboxId": "T06",
         "name": "turret_era_L",
         "physicalMm": 15,
         "keMm": 15,
@@ -893,14 +863,14 @@
         "kind": "era",
         "turretLocal": true,
         "verts": [
-          [-1.7778,0.3337,-0.4415],
-          [-1.7059,0.1172,0.9571],
-          [-1.4585,0.5308,1.0085],
-          [-1.5304,0.7474,-0.3901]
+          [-1.688,0.281,-0.454],
+          [-1.664,0.093,0.951],
+          [-1.416,0.506,1.002],
+          [-1.44,0.695,-0.403]
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T07",
         "name": "turret_cheek_R",
         "physicalMm": 700,
         "keMm": 600,
@@ -915,7 +885,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T08",
         "name": "turret_cheek_R",
         "physicalMm": 700,
         "keMm": 600,
@@ -930,7 +900,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T09",
         "name": "turret_cheek_L",
         "physicalMm": 700,
         "keMm": 600,
@@ -945,7 +915,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T10",
         "name": "turret_cheek_L",
         "physicalMm": 700,
         "keMm": 600,
@@ -960,7 +930,7 @@
         ]
       },
       {
-        "hitboxId": "T13",
+        "hitboxId": "T11",
         "name": "mantlet",
         "physicalMm": 380,
         "keMm": 266,
@@ -975,7 +945,7 @@
         ]
       },
       {
-        "hitboxId": "T14",
+        "hitboxId": "T12",
         "name": "turret_side_forward_R",
         "physicalMm": 300,
         "keMm": 300,
@@ -990,7 +960,7 @@
         ]
       },
       {
-        "hitboxId": "T15",
+        "hitboxId": "T13",
         "name": "turret_side_forward_L",
         "physicalMm": 300,
         "keMm": 300,
@@ -1005,7 +975,7 @@
         ]
       },
       {
-        "hitboxId": "T16",
+        "hitboxId": "T14",
         "name": "turret_side_rear_R",
         "physicalMm": 300,
         "keMm": 300,
@@ -1020,7 +990,7 @@
         ]
       },
       {
-        "hitboxId": "T17",
+        "hitboxId": "T15",
         "name": "turret_side_rear_L",
         "physicalMm": 300,
         "keMm": 300,
@@ -1035,7 +1005,7 @@
         ]
       },
       {
-        "hitboxId": "T18",
+        "hitboxId": "T16",
         "name": "turret_bustle_side_R",
         "physicalMm": 55,
         "keMm": 55,
@@ -1050,7 +1020,7 @@
         ]
       },
       {
-        "hitboxId": "T19",
+        "hitboxId": "T17",
         "name": "turret_bustle_side_L",
         "physicalMm": 55,
         "keMm": 55,
@@ -1065,7 +1035,7 @@
         ]
       },
       {
-        "hitboxId": "T20",
+        "hitboxId": "T18",
         "name": "turret_stowage_screen_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1080,7 +1050,7 @@
         ]
       },
       {
-        "hitboxId": "T21",
+        "hitboxId": "T19",
         "name": "turret_stowage_screen_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1095,7 +1065,7 @@
         ]
       },
       {
-        "hitboxId": "T22",
+        "hitboxId": "T20",
         "name": "turret_rear",
         "physicalMm": 55,
         "keMm": 55,
@@ -1110,7 +1080,7 @@
         ]
       },
       {
-        "hitboxId": "T23",
+        "hitboxId": "T21",
         "name": "turret_roof_forward",
         "physicalMm": 45,
         "keMm": 45,
@@ -1125,7 +1095,7 @@
         ]
       },
       {
-        "hitboxId": "T24",
+        "hitboxId": "T22",
         "name": "turret_roof_bustle",
         "physicalMm": 45,
         "keMm": 45,
@@ -1291,7 +1261,7 @@
     ]
   },
   "geometryHash": "eb9655d3",
-  "metadataHash": "d7cca064",
+  "metadataHash": "d48f428a",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.4323
@@ -1399,8 +1369,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22478,
-      "sha256": "fcfd4a360c0d68332e50239714002de41677ba9ebbb198c147d57df8bd8839b1"
+      "bytes": 22402,
+      "sha256": "daa1b6b5d464f5405e0de5edc755251350310a02545ff6fdb247859c5d29cf32"
     },
     "modulesSide": {
       "file": "vt4a1_modules_side.webp",

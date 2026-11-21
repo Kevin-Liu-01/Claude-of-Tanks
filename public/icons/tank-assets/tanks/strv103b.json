@@ -151,36 +151,6 @@
       },
       {
         "hitboxId": "H07",
-        "name": "track_R",
-        "physicalMm": 30,
-        "keMm": 30,
-        "ceMm": 30,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.5972,0.1,3.52],
-          [1.5972,0.1,-3.52],
-          [1.5972,0.88,-3.52],
-          [1.5972,0.88,3.52]
-        ]
-      },
-      {
-        "hitboxId": "H08",
-        "name": "track_L",
-        "physicalMm": 30,
-        "keMm": 30,
-        "ceMm": 30,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.5972,0.1,-3.52],
-          [-1.5972,0.1,3.52],
-          [-1.5972,0.88,3.52],
-          [-1.5972,0.88,-3.52]
-        ]
-      },
-      {
-        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -195,7 +165,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H08",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 40,
@@ -349,7 +319,7 @@
     ]
   },
   "geometryHash": "0e1e6ba4",
-  "metadataHash": "ad7425b8",
+  "metadataHash": "3ee24be4",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": 0.0962
@@ -457,8 +427,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23010,
-      "sha256": "0c08f8ccb701e998de39fab65eff0633f6a6c99b718dfed0cea7122875b3e7e6"
+      "bytes": 23262,
+      "sha256": "f311ae2e469a7952a9433fa655406bdabaf558dc51afa0b6c8327a7dde23189d"
     },
     "modulesSide": {
       "file": "strv103b_modules_side.webp",
@@ -487,8 +457,8 @@
     "technicalLabels": {
       "file": "strv103b_technical.json",
       "mime": "application/json",
-      "bytes": 3349,
-      "sha256": "2ac971f101ce0806aa0832a11b4834d44cc3c1a00e054c9016f65aa820c7b708"
+      "bytes": 3091,
+      "sha256": "7ec3dc477ad2bcc4aefe2b059d09c9b794415b863370d4a044dac3d38d3b950b"
     }
   }
 }

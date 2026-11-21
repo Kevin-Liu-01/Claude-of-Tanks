@@ -4951,21 +4951,6 @@
       },
       {
         "hitboxId": "H327",
-        "name": "slat_cage",
-        "physicalMm": 10,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.5,0.5066,-3.6],
-          [-1.5,0.5066,-3.6],
-          [-1.5,1.3172,-3.6],
-          [1.5,1.3172,-3.6]
-        ]
-      },
-      {
-        "hitboxId": "H328",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 36,
@@ -4980,7 +4965,7 @@
         ]
       },
       {
-        "hitboxId": "H329",
+        "hitboxId": "H328",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 32,
@@ -4995,7 +4980,7 @@
         ]
       },
       {
-        "hitboxId": "H330",
+        "hitboxId": "H329",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
         "keMm": 32,
@@ -5010,7 +4995,7 @@
         ]
       },
       {
-        "hitboxId": "H331",
+        "hitboxId": "H330",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 32,
@@ -5025,7 +5010,7 @@
         ]
       },
       {
-        "hitboxId": "H332",
+        "hitboxId": "H331",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
         "keMm": 32,
@@ -5040,7 +5025,7 @@
         ]
       },
       {
-        "hitboxId": "H333",
+        "hitboxId": "H332",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
         "keMm": 32,
@@ -5055,7 +5040,7 @@
         ]
       },
       {
-        "hitboxId": "H334",
+        "hitboxId": "H333",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
         "keMm": 32,
@@ -6168,7 +6153,7 @@
     ]
   },
   "geometryHash": "1eb48899",
-  "metadataHash": "7fc058a8",
+  "metadataHash": "1ed94637",
   "presentationAnchor": {
     "xM": -0.0003,
     "zM": -0.0886
@@ -6225,8 +6210,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17856,
-      "sha256": "1be64d4348e286175f686c5f357ece960eec888b2a9e56d8c23147a251a28aa0"
+      "bytes": 17820,
+      "sha256": "65483932fd100ccff3aabd7d27fd5dd1c1a5348faf5a1b22914e71e241e253c0"
     },
     "modulesSide": {
       "file": "t90a_vladimir_modules_side.webp",

@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.88,0.45,3.8],
-          [1.88,0.45,1.3],
-          [1.88,1.15,1.3],
-          [1.88,1.15,3.8]
+          [1.805,0.89,1.3],
+          [1.805,1.15,1.3],
+          [1.805,1.15,3.44],
+          [1.805,0.89,3.44]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.88,0.45,1.3],
-          [-1.88,0.45,3.8],
-          [-1.88,1.15,3.8],
-          [-1.88,1.15,1.3]
+          [-1.805,0.89,3.42],
+          [-1.805,1.15,3.42],
+          [-1.805,1.15,1.3],
+          [-1.805,0.89,1.3]
         ]
       },
       {
@@ -188,10 +188,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.88,0.45,1.3],
-          [1.88,0.45,-3.8],
-          [1.88,1.15,-3.8],
-          [1.88,1.15,1.3]
+          [1.805,0.875,-3.66],
+          [1.805,1.15,-3.66],
+          [1.805,1.15,1.3],
+          [1.805,0.875,1.3]
         ]
       },
       {
@@ -203,10 +203,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.88,0.45,-3.8],
-          [-1.88,0.45,1.3],
-          [-1.88,1.15,1.3],
-          [-1.88,1.15,-3.8]
+          [-1.805,0.875,1.3],
+          [-1.805,1.15,1.3],
+          [-1.805,1.15,-3.658],
+          [-1.805,0.875,-3.658]
         ]
       },
       {
@@ -938,14 +938,119 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [-1.22,0.579,1.912],
-          [-0.006,0.579,1.912],
-          [-0.006,0.9,1.312],
-          [-1.22,0.9,1.312]
+          [-1.151,0.583,1.914],
+          [-0.916,0.583,1.914],
+          [-0.916,0.626,1.744],
+          [-1.151,0.626,1.744]
         ]
       },
       {
         "hitboxId": "T33",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.916,0.579,1.912],
+          [-0.613,0.579,1.912],
+          [-0.613,0.59,1.892],
+          [-0.916,0.59,1.892]
+        ]
+      },
+      {
+        "hitboxId": "T34",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-1.032,0.666,1.573],
+          [-1.195,0.664,1.572],
+          [-1.195,0.623,1.743],
+          [-1.032,0.625,1.744]
+        ]
+      },
+      {
+        "hitboxId": "T35",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.613,0.582,1.913],
+          [-0.006,0.668,1.96],
+          [-0.006,0.756,1.621],
+          [-0.613,0.669,1.574]
+        ]
+      },
+      {
+        "hitboxId": "T36",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.613,0.748,1.269],
+          [-0.613,0.764,1.239],
+          [-0.917,0.764,1.239],
+          [-0.917,0.748,1.269]
+        ]
+      },
+      {
+        "hitboxId": "T37",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-1.031,0.709,1.403],
+          [-1.22,0.709,1.403],
+          [-1.22,0.66,1.57],
+          [-1.031,0.66,1.57]
+        ]
+      },
+      {
+        "hitboxId": "T38",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.916,0.757,1.236],
+          [-1.22,0.765,1.24],
+          [-1.22,0.702,1.399],
+          [-0.916,0.693,1.394]
+        ]
+      },
+      {
+        "hitboxId": "T39",
+        "name": "turret_wedge_L",
+        "physicalMm": 90,
+        "keMm": 279,
+        "ceMm": 953,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [-0.006,0.743,1.614],
+          [-0.006,0.8,1.259],
+          [-0.405,0.781,1.248],
+          [-0.405,0.723,1.603]
+        ]
+      },
+      {
+        "hitboxId": "T40",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -960,7 +1065,7 @@
         ]
       },
       {
-        "hitboxId": "T34",
+        "hitboxId": "T41",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -975,7 +1080,7 @@
         ]
       },
       {
-        "hitboxId": "T35",
+        "hitboxId": "T42",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -990,7 +1095,7 @@
         ]
       },
       {
-        "hitboxId": "T36",
+        "hitboxId": "T43",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1005,7 +1110,7 @@
         ]
       },
       {
-        "hitboxId": "T37",
+        "hitboxId": "T44",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1020,7 +1125,7 @@
         ]
       },
       {
-        "hitboxId": "T38",
+        "hitboxId": "T45",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1035,7 +1140,7 @@
         ]
       },
       {
-        "hitboxId": "T39",
+        "hitboxId": "T46",
         "name": "turret_wedge_R",
         "physicalMm": 90,
         "keMm": 279,
@@ -1043,14 +1148,14 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [1.22,0.579,1.912],
-          [-0.006,0.579,1.912],
-          [-0.006,0.9,1.312],
-          [1.22,0.9,1.312]
+          [1.198,0.539,1.89],
+          [-0.006,0.651,1.951],
+          [-0.006,0.82,1.269],
+          [1.18,0.709,1.21]
         ]
       },
       {
-        "hitboxId": "T40",
+        "hitboxId": "T47",
         "name": "turret_hatch_01_front",
         "physicalMm": 45,
         "keMm": 57,
@@ -1065,7 +1170,7 @@
         ]
       },
       {
-        "hitboxId": "T41",
+        "hitboxId": "T48",
         "name": "turret_hatch_01_rear",
         "physicalMm": 45,
         "keMm": 57,
@@ -1080,7 +1185,7 @@
         ]
       },
       {
-        "hitboxId": "T42",
+        "hitboxId": "T49",
         "name": "turret_hatch_01_right",
         "physicalMm": 45,
         "keMm": 57,
@@ -1095,7 +1200,7 @@
         ]
       },
       {
-        "hitboxId": "T43",
+        "hitboxId": "T50",
         "name": "turret_hatch_01_left",
         "physicalMm": 45,
         "keMm": 57,
@@ -1110,7 +1215,7 @@
         ]
       },
       {
-        "hitboxId": "T44",
+        "hitboxId": "T51",
         "name": "turret_hatch_01_top",
         "physicalMm": 45,
         "keMm": 57,
@@ -1125,7 +1230,7 @@
         ]
       },
       {
-        "hitboxId": "T45",
+        "hitboxId": "T52",
         "name": "turret_hatch_02_front",
         "physicalMm": 45,
         "keMm": 57,
@@ -1140,7 +1245,7 @@
         ]
       },
       {
-        "hitboxId": "T46",
+        "hitboxId": "T53",
         "name": "turret_hatch_02_rear",
         "physicalMm": 45,
         "keMm": 57,
@@ -1155,7 +1260,7 @@
         ]
       },
       {
-        "hitboxId": "T47",
+        "hitboxId": "T54",
         "name": "turret_hatch_02_right",
         "physicalMm": 45,
         "keMm": 57,
@@ -1170,7 +1275,7 @@
         ]
       },
       {
-        "hitboxId": "T48",
+        "hitboxId": "T55",
         "name": "turret_hatch_02_left",
         "physicalMm": 45,
         "keMm": 57,
@@ -1185,7 +1290,7 @@
         ]
       },
       {
-        "hitboxId": "T49",
+        "hitboxId": "T56",
         "name": "turret_hatch_02_top",
         "physicalMm": 45,
         "keMm": 57,
@@ -1379,7 +1484,7 @@
     ]
   },
   "geometryHash": "b8187f58",
-  "metadataHash": "eb33de56",
+  "metadataHash": "3e110363",
   "presentationAnchor": {
     "xM": 0.0004,
     "zM": -0.0413
@@ -1436,8 +1541,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18200,
-      "sha256": "7e7f8dc4a0556664d09f550aa0da4bb582b67c7863405c431751c9a35b759e61"
+      "bytes": 18494,
+      "sha256": "299d20e3b5160fa920a9201356a4573b15ec2ea891db0d8832e8f5316c7f43f4"
     },
     "modulesSide": {
       "file": "leo2a6m_modules_side.webp",
@@ -1516,7 +1621,7 @@
       "file": "leo2a6m_technical.json",
       "mime": "application/json",
       "bytes": 4785,
-      "sha256": "235dcd408e70b3eff744484543f94dbec515453c43990fba68df9a1989beb653"
+      "sha256": "a8e1edbf3fd16bce538fdd34d10df18297c315d31ddce1bcdd8436e5a6c11f92"
     }
   }
 }

@@ -259,10 +259,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.72,0.638,2.943],
-          [1.72,0.638,-2.943],
+          [1.72,0.688,-2.943],
           [1.72,1.31,-2.943],
-          [1.72,1.31,2.943]
+          [1.72,1.31,2.943],
+          [1.72,0.688,2.943]
         ]
       },
       {
@@ -274,10 +274,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.72,0.638,-2.943],
-          [-1.72,0.638,2.943],
+          [-1.72,0.688,2.943],
           [-1.72,1.31,2.943],
-          [-1.72,1.31,-2.943]
+          [-1.72,1.31,-2.943],
+          [-1.72,0.688,-2.943]
         ]
       },
       {
@@ -289,14 +289,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.462,0.12,3.27],
-          [1.462,0.12,-3.27],
-          [1.462,1.16,-3.27],
-          [1.462,1.16,3.27]
+          [1.66,0.677,0],
+          [1.605,1.16,0],
+          [1.626,1.16,3.16],
+          [1.681,0.68,3.16]
         ]
       },
       {
         "hitboxId": "H10",
+        "name": "track_R",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [1.582,1.16,-3.07],
+          [1.543,1.16,0],
+          [1.651,0.67,0],
+          [1.689,0.679,-3.07]
+        ]
+      },
+      {
+        "hitboxId": "H11",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -304,14 +319,29 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.462,0.12,-3.27],
-          [-1.462,0.12,3.27],
-          [-1.462,1.16,3.27],
-          [-1.462,1.16,-3.27]
+          [-1.543,1.16,-0.2],
+          [-1.578,1.16,-3.08],
+          [-1.689,0.678,-3.08],
+          [-1.655,0.671,-0.2]
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H12",
+        "name": "track_L",
+        "physicalMm": 20,
+        "keMm": 20,
+        "ceMm": 20,
+        "kind": "external",
+        "turretLocal": false,
+        "verts": [
+          [-1.626,1.16,3.19],
+          [-1.598,1.16,0],
+          [-1.656,0.676,0],
+          [-1.683,0.68,3.19]
+        ]
+      },
+      {
+        "hitboxId": "H13",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -326,7 +356,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H14",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -571,7 +601,7 @@
     ]
   },
   "geometryHash": "87c01ecb",
-  "metadataHash": "79ab84ce",
+  "metadataHash": "2d9bdc05",
   "presentationAnchor": {
     "xM": -0.0056,
     "zM": -0.0158
@@ -680,8 +710,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35540,
-      "sha256": "a516cb7443a4574abb305e00b160e1792f88d32a702bd55df680cac1f436ce3e"
+      "bytes": 37066,
+      "sha256": "2cf1d081ef04a9d60702734e9fdc457ee22593afdbab31b1d97c037a1217dc35"
     },
     "modulesSide": {
       "file": "m3a2_bradley_modules_side.webp",
@@ -710,8 +740,8 @@
     "technicalLabels": {
       "file": "m3a2_bradley_technical.json",
       "mime": "application/json",
-      "bytes": 5209,
-      "sha256": "6b5e7dedfece10268491d9942ac259e18b32b2897bbf4068bc171635be3df585"
+      "bytes": 5211,
+      "sha256": "e92da9bfa992838edfd0f806fe077b2e54eb2a98e03205b52167fc1bb5354c84"
     }
   }
 }

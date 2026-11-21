@@ -151,66 +151,6 @@
       },
       {
         "hitboxId": "H07",
-        "name": "skirt_R",
-        "physicalMm": 8,
-        "keMm": 9,
-        "ceMm": 9,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.8312,0.5038,3.1448],
-          [1.8312,0.5038,-3.3103],
-          [1.8312,0.9802,-3.3103],
-          [1.8312,0.9802,3.1448]
-        ]
-      },
-      {
-        "hitboxId": "H08",
-        "name": "skirt_L",
-        "physicalMm": 8,
-        "keMm": 9,
-        "ceMm": 9,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [-1.8312,0.5038,-3.3103],
-          [-1.8312,0.5038,3.1448],
-          [-1.8312,0.9802,3.1448],
-          [-1.8312,0.9802,-3.3103]
-        ]
-      },
-      {
-        "hitboxId": "H09",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.648,0.1099,3.4038],
-          [1.648,0.1099,-3.4038],
-          [1.648,0.8427,-3.4038],
-          [1.648,0.8427,3.4038]
-        ]
-      },
-      {
-        "hitboxId": "H10",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.648,0.1099,-3.4038],
-          [-1.648,0.1099,3.4038],
-          [-1.648,0.8427,3.4038],
-          [-1.648,0.8427,-3.4038]
-        ]
-      },
-      {
-        "hitboxId": "H11",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 28,
@@ -225,7 +165,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H08",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 22,
@@ -500,7 +440,7 @@
     ]
   },
   "geometryHash": "4f58dd63",
-  "metadataHash": "dacccee1",
+  "metadataHash": "d0dbe8ea",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.03
@@ -608,8 +548,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24546,
-      "sha256": "898ba7f25f730cd4d1aae1fd9999a158ee1de1334b0d347aa483de8e5142bcb6"
+      "bytes": 26012,
+      "sha256": "a14f3d1b285c49764de4a19a50d9a8f2c99f2e75aa3381f8a8c5ec32daaff78f"
     },
     "modulesSide": {
       "file": "t62_1975_modules_side.webp",
@@ -638,8 +578,8 @@
     "technicalLabels": {
       "file": "t62_1975_technical.json",
       "mime": "application/json",
-      "bytes": 4531,
-      "sha256": "8a1e8dbabace4742bc10cd995e48c17c6e43dab209e2b084cf1ef8309cf23af0"
+      "bytes": 4156,
+      "sha256": "b89f039900f0a8a3efedf495caa26550b141b96f0abb1b23d85eeea29b87cbe0"
     }
   }
 }

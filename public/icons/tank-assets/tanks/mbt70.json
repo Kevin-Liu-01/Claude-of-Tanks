@@ -158,14 +158,29 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.76,0.55,3.515],
-          [1.76,0.55,-3.7],
-          [1.76,1.26,-3.7],
-          [1.76,1.26,3.515]
+          [1.714,0.905,-0.092],
+          [1.778,1.26,-0.092],
+          [1.718,1.26,3.515],
+          [1.653,0.905,3.515]
         ]
       },
       {
         "hitboxId": "H08",
+        "name": "skirt_R",
+        "physicalMm": 18,
+        "keMm": 18,
+        "ceMm": 18,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [1.753,1.105,-3.7],
+          [1.753,1.26,-3.7],
+          [1.752,1.26,-0.093],
+          [1.752,1.105,-0.093]
+        ]
+      },
+      {
+        "hitboxId": "H09",
         "name": "skirt_L",
         "physicalMm": 18,
         "keMm": 18,
@@ -173,14 +188,29 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.76,0.55,-3.7],
-          [-1.76,0.55,3.515],
-          [-1.76,1.26,3.515],
-          [-1.76,1.26,-3.7]
+          [-1.752,1.105,-0.093],
+          [-1.752,1.26,-0.093],
+          [-1.753,1.26,-3.7],
+          [-1.753,1.105,-3.7]
         ]
       },
       {
-        "hitboxId": "H09",
+        "hitboxId": "H10",
+        "name": "skirt_L",
+        "physicalMm": 18,
+        "keMm": 18,
+        "ceMm": 18,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [-1.671,0.905,3.515],
+          [-1.717,1.26,3.515],
+          [-1.782,1.26,-0.093],
+          [-1.736,0.905,-0.093]
+        ]
+      },
+      {
+        "hitboxId": "H11",
         "name": "track_R",
         "physicalMm": 20,
         "keMm": 20,
@@ -195,7 +225,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H12",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -210,7 +240,7 @@
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H13",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -225,7 +255,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H14",
         "name": "hull_roof",
         "physicalMm": 38,
         "keMm": 38,
@@ -657,7 +687,7 @@
     ]
   },
   "geometryHash": "a4f77845",
-  "metadataHash": "9a890406",
+  "metadataHash": "a203d027",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1184
@@ -763,8 +793,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33384,
-      "sha256": "8005b191451981d95e7cc79d92d54bf8e32a350d239e68193f4055a9d4100b2c"
+      "bytes": 34280,
+      "sha256": "9ee39651b8f2b6b74de3db5010b58c2d82f7401a9a2b3896ae467a1aea31b0d2"
     },
     "modulesSide": {
       "file": "mbt70_modules_side.webp",
@@ -793,8 +823,8 @@
     "technicalLabels": {
       "file": "mbt70_technical.json",
       "mime": "application/json",
-      "bytes": 5224,
-      "sha256": "7f8fab675ad81841f0b0a1e1fc3f8b93c7c9ed57ce7987a9c410db1401500e92"
+      "bytes": 5166,
+      "sha256": "40cff040b93c11e54831b0db3a4012c950ba532175ff0e9cffe8116ebd4a1724"
     }
   }
 }

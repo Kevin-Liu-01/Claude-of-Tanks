@@ -158,10 +158,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [1.65,0.1128,3.4512],
-          [1.65,0.1128,-3.4512],
-          [1.65,0.9401,-3.4512],
-          [1.65,0.9401,3.4512]
+          [1.821,0.471,-3.131],
+          [1.782,0.94,-3.131],
+          [1.776,0.94,3.451],
+          [1.814,0.471,3.451]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "external",
         "turretLocal": false,
         "verts": [
-          [-1.65,0.1128,-3.4512],
-          [-1.65,0.1128,3.4512],
-          [-1.65,0.9401,3.4512],
-          [-1.65,0.9401,-3.4512]
+          [-1.813,0.471,3.451],
+          [-1.776,0.94,3.451],
+          [-1.783,0.94,-3.152],
+          [-1.82,0.471,-3.152]
         ]
       },
       {
@@ -1069,7 +1069,7 @@
     ]
   },
   "geometryHash": "193645d6",
-  "metadataHash": "f5567b7d",
+  "metadataHash": "3b86a9b4",
   "presentationAnchor": {
     "xM": -0.0012,
     "zM": -0.0233
@@ -1176,8 +1176,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22796,
-      "sha256": "288d22e0198dfd3ff03132c6319becc573e5dd7bb48d6176def09a83c70c671b"
+      "bytes": 23200,
+      "sha256": "342944efe057faa7346f2a9e95f97d272f2e4abaf12b48c0f8cbe4e21d8b5845"
     },
     "modulesSide": {
       "file": "object292_modules_side.webp",
@@ -1207,7 +1207,7 @@
       "file": "object292_technical.json",
       "mime": "application/json",
       "bytes": 5158,
-      "sha256": "6175db55dbb4f26ca7a3348d3babb1123300b597a8a0b89713c63d3c02ddcc58"
+      "sha256": "0d40460993480cbfe6d7df18a5588523142e5201c4551109ecf4fcbe80835c2b"
     }
   }
 }

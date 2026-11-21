@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.763,0.6034,3.1149],
-          [1.763,0.6034,-3.1149],
-          [1.763,1.247,-3.1149],
-          [1.763,1.247,3.1149]
+          [2.094,0.603,3.115],
+          [2.07,0.603,-3.115],
+          [1.737,1.247,-3.115],
+          [1.762,1.247,3.115]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.763,0.6034,-3.1149],
-          [-1.763,0.6034,3.1149],
-          [-1.763,1.247,3.1149],
-          [-1.763,1.247,-3.1149]
+          [-2.067,0.603,-3.115],
+          [-2.091,0.603,3.115],
+          [-1.763,1.247,3.115],
+          [-1.739,1.247,-3.115]
         ]
       },
       {
@@ -6888,7 +6888,7 @@
     ]
   },
   "geometryHash": "183a5942",
-  "metadataHash": "a1053d2e",
+  "metadataHash": "9de32f1a",
   "presentationAnchor": {
     "xM": 0.0022,
     "zM": 0.0474
@@ -6995,8 +6995,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24698,
-      "sha256": "cad8532ef954c80853ba22041cc539f5faeb2cb5eed04a6bb9260ece38637fc4"
+      "bytes": 24592,
+      "sha256": "1ae32df6b6d1fcc977a4794e256e3a7f0db9279042e58fcfd82639bbfa6869ef"
     },
     "modulesSide": {
       "file": "pt84_sokol_modules_side.webp",
@@ -7026,7 +7026,7 @@
       "file": "pt84_sokol_technical.json",
       "mime": "application/json",
       "bytes": 5450,
-      "sha256": "91a82664aee294c4727887ffea04587b1dd9d250ae0c32429206b8547d8954e9"
+      "sha256": "5d5b1aebd56413cf75a6cecd7a0572a14b6d587089066081bc70c0f2cb2b76be"
     }
   }
 }

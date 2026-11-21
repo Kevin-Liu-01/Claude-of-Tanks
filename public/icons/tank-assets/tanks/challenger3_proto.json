@@ -293,14 +293,29 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [1.72,0.2,-0.2],
-          [1.72,0.2,-2.6],
-          [1.72,0.7,-2.6],
-          [1.72,0.7,-0.2]
+          [1.899,0.522,-1.4],
+          [1.816,0.7,-1.4],
+          [1.72,0.7,-0.2],
+          [1.821,0.486,-0.2]
         ]
       },
       {
         "hitboxId": "T05",
+        "name": "trophy_R",
+        "physicalMm": 30,
+        "keMm": 60,
+        "ceMm": 200,
+        "kind": "spaced",
+        "turretLocal": true,
+        "verts": [
+          [1.857,0.56,-2.6],
+          [1.797,0.7,-2.6],
+          [1.796,0.7,-1.4],
+          [1.856,0.56,-1.4]
+        ]
+      },
+      {
+        "hitboxId": "T06",
         "name": "trophy_L",
         "physicalMm": 30,
         "keMm": 60,
@@ -308,14 +323,14 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [-1.72,0.2,-2.6],
-          [-1.72,0.2,-0.2],
-          [-1.72,0.7,-0.2],
-          [-1.72,0.7,-2.6]
+          [-1.846,0.571,-0.28],
+          [-1.794,0.7,-0.28],
+          [-1.796,0.7,-2.6],
+          [-1.849,0.571,-2.6]
         ]
       },
       {
-        "hitboxId": "T06",
+        "hitboxId": "T07",
         "name": "turret_side_R",
         "physicalMm": 300,
         "keMm": 300,
@@ -330,7 +345,7 @@
         ]
       },
       {
-        "hitboxId": "T07",
+        "hitboxId": "T08",
         "name": "turret_side_L",
         "physicalMm": 300,
         "keMm": 300,
@@ -345,7 +360,7 @@
         ]
       },
       {
-        "hitboxId": "T08",
+        "hitboxId": "T09",
         "name": "turret_rear",
         "physicalMm": 70,
         "keMm": 70,
@@ -360,7 +375,7 @@
         ]
       },
       {
-        "hitboxId": "T09",
+        "hitboxId": "T10",
         "name": "turret_roof",
         "physicalMm": 50,
         "keMm": 50,
@@ -562,7 +577,7 @@
     ]
   },
   "geometryHash": "62c911b2",
-  "metadataHash": "794c20d1",
+  "metadataHash": "a0d53a61",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0058
@@ -669,8 +684,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20218,
-      "sha256": "7552d955c1268d2c72226f372b913f69f65e84d471ee27b6d2d854e42220a68e"
+      "bytes": 20324,
+      "sha256": "d451d7a167ced2bce8dc1de64b337bff8fd6e084b7d73a2dc569ad3af1e7b2af"
     },
     "modulesSide": {
       "file": "challenger3_proto_modules_side.webp",
@@ -699,8 +714,8 @@
     "technicalLabels": {
       "file": "challenger3_proto_technical.json",
       "mime": "application/json",
-      "bytes": 5215,
-      "sha256": "0ce0ffc4818a44565a7c021f11d32d4d3798408c42ce44ac13f7e1ecb241bf33"
+      "bytes": 5346,
+      "sha256": "005189508f5f71347e8649aa1bbbe2b90e3f23ee2069b34faa83ad06148ca084"
     }
   }
 }

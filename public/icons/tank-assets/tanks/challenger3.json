@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.755,0.5,3.6],
-          [1.755,0.5,-3.9],
-          [1.755,1.12,-3.9],
-          [1.755,1.12,3.6]
+          [1.914,0.662,-3.57],
+          [1.914,1.12,-3.57],
+          [1.914,1.12,3.6],
+          [1.914,0.662,3.6]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.755,0.5,-3.9],
-          [-1.755,0.5,3.6],
-          [-1.755,1.12,3.6],
-          [-1.755,1.12,-3.9]
+          [-1.914,0.662,3.6],
+          [-1.914,1.12,3.6],
+          [-1.914,1.12,-3.577],
+          [-1.914,0.662,-3.577]
         ]
       },
       {
@@ -3326,7 +3326,7 @@
     ]
   },
   "geometryHash": "1ab6be29",
-  "metadataHash": "4e50b9fd",
+  "metadataHash": "c995d7c3",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0172
@@ -3434,8 +3434,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22706,
-      "sha256": "3023ae864821a1f90c3899638811a0c8700f93eba73aadb6cd0aba58ea8787df"
+      "bytes": 23008,
+      "sha256": "c642c739d738c5023cb122995d8fd058183e0799eca5a7ad48a3eaef966cddf3"
     },
     "modulesSide": {
       "file": "challenger3_modules_side.webp",
@@ -3464,8 +3464,8 @@
     "technicalLabels": {
       "file": "challenger3_technical.json",
       "mime": "application/json",
-      "bytes": 5481,
-      "sha256": "8f1d435fa3513c83707d93b85c968acbbaeab258a74a23c50ab7679e3fe19517"
+      "bytes": 5480,
+      "sha256": "06157e4823eb38570a986c8e1ebd34e5a0ea5dd823e1bea29c13e0234b459da3"
     }
   }
 }

@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.82,0.6863,3.1876],
-          [1.82,0.6863,-3.3554],
-          [1.82,1.2503,-3.3554],
-          [1.82,1.2503,3.1876]
+          [1.762,1.07,-2.864],
+          [1.762,1.25,-2.864],
+          [1.762,1.25,2.899],
+          [1.762,1.07,2.899]
         ]
       },
       {
@@ -173,44 +173,14 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.82,0.6863,-3.3554],
-          [-1.82,0.6863,3.1876],
-          [-1.82,1.2503,3.1876],
-          [-1.82,1.2503,-3.3554]
+          [-1.762,1.07,2.888],
+          [-1.762,1.25,2.888],
+          [-1.762,1.25,-2.875],
+          [-1.762,1.07,-2.875]
         ]
       },
       {
         "hitboxId": "H09",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.65,0.1128,3.4512],
-          [1.65,0.1128,-3.4512],
-          [1.65,0.9401,-3.4512],
-          [1.65,0.9401,3.4512]
-        ]
-      },
-      {
-        "hitboxId": "H10",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.65,0.1128,-3.4512],
-          [-1.65,0.1128,3.4512],
-          [-1.65,0.9401,3.4512],
-          [-1.65,0.9401,-3.4512]
-        ]
-      },
-      {
-        "hitboxId": "H11",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 41,
@@ -225,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 37,
@@ -638,7 +608,7 @@
     ]
   },
   "geometryHash": "3e0bf198",
-  "metadataHash": "7d5a2698",
+  "metadataHash": "a4a6eb29",
   "presentationAnchor": {
     "xM": -0.0005,
     "zM": -0.2341
@@ -742,8 +712,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18932,
-      "sha256": "34f44c476834af9e625e6b3c5b5161224ae727cb40a2ea7e858b97a22f7baa49"
+      "bytes": 20632,
+      "sha256": "7a974455ffb1be0e92b796c68f60b1e6ed7aadd2f539eece01b6cae0f0e8adc3"
     },
     "modulesSide": {
       "file": "t80_modules_side.webp",
@@ -772,8 +742,8 @@
     "technicalLabels": {
       "file": "t80_technical.json",
       "mime": "application/json",
-      "bytes": 4825,
-      "sha256": "33e47dd4b441fe889fa8e8845d8af68481083b1d008e41cbac2436313eb8ecbb"
+      "bytes": 4844,
+      "sha256": "80e7286758871013d086bae1285357eda1b1b48b5b443051f908c547b537a00f"
     }
   }
 }

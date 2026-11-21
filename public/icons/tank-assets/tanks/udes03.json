@@ -151,36 +151,6 @@
       },
       {
         "hitboxId": "H07",
-        "name": "track_R",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [1.584,0.1,3.52],
-          [1.584,0.1,-3.52],
-          [1.584,0.88,-3.52],
-          [1.584,0.88,3.52]
-        ]
-      },
-      {
-        "hitboxId": "H08",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.584,0.1,-3.52],
-          [-1.584,0.1,3.52],
-          [-1.584,0.88,3.52],
-          [-1.584,0.88,-3.52]
-        ]
-      },
-      {
-        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -195,7 +165,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H08",
         "name": "hull_roof",
         "physicalMm": 25,
         "keMm": 25,
@@ -349,7 +319,7 @@
     ]
   },
   "geometryHash": "95d9148a",
-  "metadataHash": "ee31420c",
+  "metadataHash": "30f6aee0",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0203
@@ -455,8 +425,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32362,
-      "sha256": "ecdcb130cef9aaa3718972fa5ebbf6bce8cc38f6c0f62c7dc4dec6a2a411c339"
+      "bytes": 32894,
+      "sha256": "c93e5302c0261316c36e7065e522991872f043f33644c032ebfc0f2b80aac491"
     },
     "modulesSide": {
       "file": "udes03_modules_side.webp",
@@ -485,8 +455,8 @@
     "technicalLabels": {
       "file": "udes03_technical.json",
       "mime": "application/json",
-      "bytes": 3356,
-      "sha256": "190f1cc1ca0ddf8476892ee4066aaa6c967ec299a7bab0ea531e09aceffad2d8"
+      "bytes": 3098,
+      "sha256": "27289d4a4624aa8daf8a663e7edd3d545dfb4f6bfe3ab71e6bd0bdff0fa01167"
     }
   }
 }

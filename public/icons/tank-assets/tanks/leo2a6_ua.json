@@ -2258,10 +2258,10 @@
         "kind": "spaced",
         "turretLocal": true,
         "verts": [
-          [1.1769,-0.0621,1.3652],
-          [0.259,0.1933,1.3652],
-          [0.259,0.2106,0.7652],
-          [1.3806,-0.1789,0.7652]
+          [1.184,-0.041,1.365],
+          [0.289,0.219,1.364],
+          [0.297,0.245,0.765],
+          [1.411,-0.078,0.763]
         ]
       },
       {
@@ -3435,7 +3435,7 @@
     ]
   },
   "geometryHash": "49d5ebf2",
-  "metadataHash": "8c183b2c",
+  "metadataHash": "219752d7",
   "presentationAnchor": {
     "xM": 0.0018,
     "zM": 0.0786
@@ -3540,8 +3540,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30728,
-      "sha256": "e0e6decd0ce0259a08a04c297b787a8d5f747c4f31ce69f550d523659d7e9be3"
+      "bytes": 30750,
+      "sha256": "c41f2e100c865c50a54bdad7418c990e9409bb7418a9f4f3d2ad16a580a98f4d"
     },
     "modulesSide": {
       "file": "leo2a6_ua_modules_side.webp",

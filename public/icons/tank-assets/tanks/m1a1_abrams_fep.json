@@ -1006,21 +1006,6 @@
       },
       {
         "hitboxId": "T08",
-        "name": "bustle_rack",
-        "physicalMm": 10,
-        "keMm": 10,
-        "ceMm": 10,
-        "kind": "external",
-        "turretLocal": true,
-        "verts": [
-          [1.58,0.1445,-3.34],
-          [-1.58,0.1445,-3.34],
-          [-1.58,0.7227,-3.34],
-          [1.58,0.7227,-3.34]
-        ]
-      },
-      {
-        "hitboxId": "T09",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1035,7 +1020,7 @@
         ]
       },
       {
-        "hitboxId": "T10",
+        "hitboxId": "T09",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1050,7 +1035,7 @@
         ]
       },
       {
-        "hitboxId": "T11",
+        "hitboxId": "T10",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1065,7 +1050,7 @@
         ]
       },
       {
-        "hitboxId": "T12",
+        "hitboxId": "T11",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1080,7 +1065,7 @@
         ]
       },
       {
-        "hitboxId": "T13",
+        "hitboxId": "T12",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1095,7 +1080,7 @@
         ]
       },
       {
-        "hitboxId": "T14",
+        "hitboxId": "T13",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1110,7 +1095,7 @@
         ]
       },
       {
-        "hitboxId": "T15",
+        "hitboxId": "T14",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1125,7 +1110,7 @@
         ]
       },
       {
-        "hitboxId": "T16",
+        "hitboxId": "T15",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1140,7 +1125,7 @@
         ]
       },
       {
-        "hitboxId": "T17",
+        "hitboxId": "T16",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1155,7 +1140,7 @@
         ]
       },
       {
-        "hitboxId": "T18",
+        "hitboxId": "T17",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1170,7 +1155,7 @@
         ]
       },
       {
-        "hitboxId": "T19",
+        "hitboxId": "T18",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1185,7 +1170,7 @@
         ]
       },
       {
-        "hitboxId": "T20",
+        "hitboxId": "T19",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1200,7 +1185,7 @@
         ]
       },
       {
-        "hitboxId": "T21",
+        "hitboxId": "T20",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1215,7 +1200,7 @@
         ]
       },
       {
-        "hitboxId": "T22",
+        "hitboxId": "T21",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1230,7 +1215,7 @@
         ]
       },
       {
-        "hitboxId": "T23",
+        "hitboxId": "T22",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1245,7 +1230,7 @@
         ]
       },
       {
-        "hitboxId": "T24",
+        "hitboxId": "T23",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1260,7 +1245,7 @@
         ]
       },
       {
-        "hitboxId": "T25",
+        "hitboxId": "T24",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1275,7 +1260,7 @@
         ]
       },
       {
-        "hitboxId": "T26",
+        "hitboxId": "T25",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1290,7 +1275,7 @@
         ]
       },
       {
-        "hitboxId": "T27",
+        "hitboxId": "T26",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1305,7 +1290,7 @@
         ]
       },
       {
-        "hitboxId": "T28",
+        "hitboxId": "T27",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1320,7 +1305,7 @@
         ]
       },
       {
-        "hitboxId": "T29",
+        "hitboxId": "T28",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1335,7 +1320,7 @@
         ]
       },
       {
-        "hitboxId": "T30",
+        "hitboxId": "T29",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1350,7 +1335,7 @@
         ]
       },
       {
-        "hitboxId": "T31",
+        "hitboxId": "T30",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1365,7 +1350,7 @@
         ]
       },
       {
-        "hitboxId": "T32",
+        "hitboxId": "T31",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1380,7 +1365,7 @@
         ]
       },
       {
-        "hitboxId": "T33",
+        "hitboxId": "T32",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1395,7 +1380,7 @@
         ]
       },
       {
-        "hitboxId": "T34",
+        "hitboxId": "T33",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1410,7 +1395,7 @@
         ]
       },
       {
-        "hitboxId": "T35",
+        "hitboxId": "T34",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1425,7 +1410,7 @@
         ]
       },
       {
-        "hitboxId": "T36",
+        "hitboxId": "T35",
         "name": "m1a2_sepv3_turret_era_R",
         "physicalMm": 10,
         "keMm": 10,
@@ -1440,7 +1425,7 @@
         ]
       },
       {
-        "hitboxId": "T37",
+        "hitboxId": "T36",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1455,7 +1440,7 @@
         ]
       },
       {
-        "hitboxId": "T38",
+        "hitboxId": "T37",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1470,7 +1455,7 @@
         ]
       },
       {
-        "hitboxId": "T39",
+        "hitboxId": "T38",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1485,7 +1470,7 @@
         ]
       },
       {
-        "hitboxId": "T40",
+        "hitboxId": "T39",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1500,7 +1485,7 @@
         ]
       },
       {
-        "hitboxId": "T41",
+        "hitboxId": "T40",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1515,7 +1500,7 @@
         ]
       },
       {
-        "hitboxId": "T42",
+        "hitboxId": "T41",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1530,7 +1515,7 @@
         ]
       },
       {
-        "hitboxId": "T43",
+        "hitboxId": "T42",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1545,7 +1530,7 @@
         ]
       },
       {
-        "hitboxId": "T44",
+        "hitboxId": "T43",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1560,7 +1545,7 @@
         ]
       },
       {
-        "hitboxId": "T45",
+        "hitboxId": "T44",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1575,7 +1560,7 @@
         ]
       },
       {
-        "hitboxId": "T46",
+        "hitboxId": "T45",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1590,7 +1575,7 @@
         ]
       },
       {
-        "hitboxId": "T47",
+        "hitboxId": "T46",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1605,7 +1590,7 @@
         ]
       },
       {
-        "hitboxId": "T48",
+        "hitboxId": "T47",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1620,7 +1605,7 @@
         ]
       },
       {
-        "hitboxId": "T49",
+        "hitboxId": "T48",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1635,7 +1620,7 @@
         ]
       },
       {
-        "hitboxId": "T50",
+        "hitboxId": "T49",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1650,7 +1635,7 @@
         ]
       },
       {
-        "hitboxId": "T51",
+        "hitboxId": "T50",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1665,7 +1650,7 @@
         ]
       },
       {
-        "hitboxId": "T52",
+        "hitboxId": "T51",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1680,7 +1665,7 @@
         ]
       },
       {
-        "hitboxId": "T53",
+        "hitboxId": "T52",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1695,7 +1680,7 @@
         ]
       },
       {
-        "hitboxId": "T54",
+        "hitboxId": "T53",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1710,7 +1695,7 @@
         ]
       },
       {
-        "hitboxId": "T55",
+        "hitboxId": "T54",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1725,7 +1710,7 @@
         ]
       },
       {
-        "hitboxId": "T56",
+        "hitboxId": "T55",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1740,7 +1725,7 @@
         ]
       },
       {
-        "hitboxId": "T57",
+        "hitboxId": "T56",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1755,7 +1740,7 @@
         ]
       },
       {
-        "hitboxId": "T58",
+        "hitboxId": "T57",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1770,7 +1755,7 @@
         ]
       },
       {
-        "hitboxId": "T59",
+        "hitboxId": "T58",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1785,7 +1770,7 @@
         ]
       },
       {
-        "hitboxId": "T60",
+        "hitboxId": "T59",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1800,7 +1785,7 @@
         ]
       },
       {
-        "hitboxId": "T61",
+        "hitboxId": "T60",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1815,7 +1800,7 @@
         ]
       },
       {
-        "hitboxId": "T62",
+        "hitboxId": "T61",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1830,7 +1815,7 @@
         ]
       },
       {
-        "hitboxId": "T63",
+        "hitboxId": "T62",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1845,7 +1830,7 @@
         ]
       },
       {
-        "hitboxId": "T64",
+        "hitboxId": "T63",
         "name": "m1a2_sepv3_turret_era_L",
         "physicalMm": 10,
         "keMm": 10,
@@ -1860,7 +1845,7 @@
         ]
       },
       {
-        "hitboxId": "T65",
+        "hitboxId": "T64",
         "name": "turret_hatch_01_front",
         "physicalMm": 40,
         "keMm": 40,
@@ -1875,7 +1860,7 @@
         ]
       },
       {
-        "hitboxId": "T66",
+        "hitboxId": "T65",
         "name": "turret_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -1890,7 +1875,7 @@
         ]
       },
       {
-        "hitboxId": "T67",
+        "hitboxId": "T66",
         "name": "turret_hatch_01_right",
         "physicalMm": 40,
         "keMm": 40,
@@ -1905,7 +1890,7 @@
         ]
       },
       {
-        "hitboxId": "T68",
+        "hitboxId": "T67",
         "name": "turret_hatch_01_left",
         "physicalMm": 40,
         "keMm": 40,
@@ -1920,7 +1905,7 @@
         ]
       },
       {
-        "hitboxId": "T69",
+        "hitboxId": "T68",
         "name": "turret_hatch_01_top",
         "physicalMm": 40,
         "keMm": 40,
@@ -2082,7 +2067,7 @@
     ]
   },
   "geometryHash": "aad8a76a",
-  "metadataHash": "d18d09a1",
+  "metadataHash": "0458f739",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": 0.0741
@@ -2190,8 +2175,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39712,
-      "sha256": "93555a3ceac96d26400ee5feb1f41c38a136c58ffa6b8c4fe715447ab072aa55"
+      "bytes": 39662,
+      "sha256": "fdc80c8fb6f3961bcdcb7984a431b42ce145b720b86308824e6443137d216dc4"
     },
     "modulesSide": {
       "file": "m1a1_abrams_fep_modules_side.webp",

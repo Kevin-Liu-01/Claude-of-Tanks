@@ -166,21 +166,6 @@
       },
       {
         "hitboxId": "H08",
-        "name": "track_L",
-        "physicalMm": 20,
-        "keMm": 20,
-        "ceMm": 20,
-        "kind": "external",
-        "turretLocal": false,
-        "verts": [
-          [-1.648,0.1402,-3.5271],
-          [-1.648,0.1402,3.5271],
-          [-1.648,1.0745,3.5271],
-          [-1.648,1.0745,-3.5271]
-        ]
-      },
-      {
-        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -195,7 +180,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H09",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -514,7 +499,7 @@
     ]
   },
   "geometryHash": "451fb78a",
-  "metadataHash": "0aa1c4e2",
+  "metadataHash": "f1e52aed",
   "presentationAnchor": {
     "xM": -0.0005,
     "zM": 0.0543
@@ -623,8 +608,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29220,
-      "sha256": "4962166deca479a7ed041e8e14b9b3a86805fbb38b91205c5d770175598f9a45"
+      "bytes": 30164,
+      "sha256": "3ed08fb173e149c06221e73a6f28511e6c571d3710ab74841a3180d113139b8c"
     },
     "modulesSide": {
       "file": "m48a3_patton_modules_side.webp",
@@ -653,8 +638,8 @@
     "technicalLabels": {
       "file": "m48a3_patton_technical.json",
       "mime": "application/json",
-      "bytes": 5052,
-      "sha256": "03a36da81535c58aa6606819b5a5c7c1f035f8189fe5f881672eab4f33551280"
+      "bytes": 4923,
+      "sha256": "b7cd912c3e5bcad761c92829c60266bb712d291c76c0808b4c5624ac24deacb6"
     }
   }
 }

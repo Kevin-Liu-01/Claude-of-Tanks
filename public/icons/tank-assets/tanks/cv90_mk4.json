@@ -259,10 +259,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.6687,0.3996,2.9799],
-          [1.6687,0.3996,-2.9799],
-          [1.6687,0.8345,-2.9799],
-          [1.6687,0.8345,2.9799]
+          [1.556,0.4,2.94],
+          [1.556,0.4,-2.896],
+          [1.556,0.835,-2.896],
+          [1.556,0.835,2.94]
         ]
       },
       {
@@ -946,7 +946,7 @@
     ]
   },
   "geometryHash": "ff25ade7",
-  "metadataHash": "9f10d748",
+  "metadataHash": "fc9baa58",
   "presentationAnchor": {
     "xM": -0.0349,
     "zM": 0.0375
@@ -1002,8 +1002,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35132,
-      "sha256": "3de7f5d52b4dfc046f9b19f54a97112ebd4780bd1538520ebad3b3dd9fb9cdb6"
+      "bytes": 35326,
+      "sha256": "ca52c8367619659f3e920e7d5c3fea4dc4b6bef68df01748a75beb28e4b3f815"
     },
     "modulesSide": {
       "file": "cv90_mk4_modules_side.webp",
@@ -1082,7 +1082,7 @@
       "file": "cv90_mk4_technical.json",
       "mime": "application/json",
       "bytes": 5570,
-      "sha256": "75ac83bc38794a6be92ec00474bbb04c3c8ce350c5e2a7efee6c5bbfabf93171"
+      "sha256": "ab4153042bf5af8bf183d08ddf3987d419d7ae229c0ecf4a63b7a8be57532034"
     }
   }
 }

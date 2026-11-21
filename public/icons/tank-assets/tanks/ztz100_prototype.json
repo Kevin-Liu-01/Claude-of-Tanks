@@ -1312,10 +1312,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.87,0.5775,3.123],
-          [1.87,0.5775,-3.123],
-          [1.87,1.2,-3.123],
-          [1.87,1.2,3.123]
+          [1.87,0.775,-0.426],
+          [1.87,1.2,-0.426],
+          [1.87,1.2,2.877],
+          [1.87,0.775,2.877]
         ]
       },
       {
@@ -1327,10 +1327,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.87,0.5775,-3.123],
-          [-1.87,0.5775,3.123],
-          [-1.87,1.2,3.123],
-          [-1.87,1.2,-3.123]
+          [-1.87,0.775,2.891],
+          [-1.87,1.2,2.891],
+          [-1.87,1.2,-0.461],
+          [-1.87,0.775,-0.461]
         ]
       },
       {
@@ -1841,7 +1841,7 @@
     ]
   },
   "geometryHash": "4c7330df",
-  "metadataHash": "98abe65b",
+  "metadataHash": "344e4069",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1846
@@ -1895,8 +1895,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35862,
-      "sha256": "5a181c73e23b4c265d56251e92a20725c90dfe921c646a119223cd1cb9673067"
+      "bytes": 36552,
+      "sha256": "4d13037edb9e41f55900e2794769c3a94473f06940ed790e66565d1591ec2de1"
     },
     "modulesSide": {
       "file": "ztz100_prototype_modules_side.webp",
@@ -1974,7 +1974,7 @@
       "file": "ztz100_prototype_technical.json",
       "mime": "application/json",
       "bytes": 5752,
-      "sha256": "b6166681f53836903da96a3a2d57caf5b19c8c9cae194ca36ae366f2c4ed1247"
+      "sha256": "80eacf16675a82a11a8847686ab77efd826f889f4f699d69c8d46cfd5905e9f8"
     }
   }
 }

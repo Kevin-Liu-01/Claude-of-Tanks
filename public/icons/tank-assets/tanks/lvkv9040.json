@@ -151,10 +151,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.6687,0.3996,2.9799],
-          [1.6687,0.3996,-2.9799],
-          [1.6687,0.8345,-2.9799],
-          [1.6687,0.8345,2.9799]
+          [1.556,0.4,2.94],
+          [1.556,0.4,-2.896],
+          [1.556,0.835,-2.896],
+          [1.556,0.835,2.94]
         ]
       },
       {
@@ -918,7 +918,7 @@
     ]
   },
   "geometryHash": "31e170e5",
-  "metadataHash": "77d169d1",
+  "metadataHash": "ed60aa0d",
   "presentationAnchor": {
     "xM": -0.0342,
     "zM": 0.0365
@@ -1023,8 +1023,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38430,
-      "sha256": "c1d02f5244a91a18f622e207a3d5058f2fb988e2af121170fb6add821d50ba1a"
+      "bytes": 38544,
+      "sha256": "7ec2dcfe136d63d771d0391138292a48e5270c28ed10dd478d36b76222ba52bb"
     },
     "modulesSide": {
       "file": "lvkv9040_modules_side.webp",
@@ -1054,7 +1054,7 @@
       "file": "lvkv9040_technical.json",
       "mime": "application/json",
       "bytes": 4788,
-      "sha256": "ff93fa4167d4cca260fe187d16bd7e692adbc39eed10425fc2827eaf62f00f20"
+      "sha256": "17bb0d0683e1a6a898cef1f543734233df66194de7e8d6ca68a3af976a6e4f53"
     }
   }
 }

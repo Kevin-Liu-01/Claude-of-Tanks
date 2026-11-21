@@ -10702,10 +10702,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.87,0.45,1.2],
-          [1.87,0.45,-3.2],
-          [1.87,1.02,-3.2],
-          [1.87,1.02,1.2]
+          [1.988,0.49,-3.2],
+          [1.924,1.02,-3.2],
+          [1.924,1.02,1.2],
+          [1.988,0.49,1.2]
         ]
       },
       {
@@ -10717,10 +10717,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.87,0.45,-3.2],
-          [-1.87,0.45,1.2],
-          [-1.87,1.02,1.2],
-          [-1.87,1.02,-3.2]
+          [-1.991,0.49,1.2],
+          [-1.923,1.02,1.2],
+          [-1.92,1.02,-3.2],
+          [-1.988,0.49,-3.2]
         ]
       },
       {
@@ -11048,7 +11048,7 @@
     ]
   },
   "geometryHash": "56b52cee",
-  "metadataHash": "c64a0169",
+  "metadataHash": "e3233a98",
   "presentationAnchor": {
     "xM": 0.0011,
     "zM": -0.0443
@@ -11156,8 +11156,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52300,
-      "sha256": "1c6094f2d4cce6847245498174b7bd5e2e454fb5013c72a12034139ec72bb410"
+      "bytes": 52440,
+      "sha256": "3d253d8f19c8ce17764344b6a85c92f5050a77405e3b0fd626664ed39d6680d0"
     },
     "modulesSide": {
       "file": "bmpt_terminator_modules_side.webp",
@@ -11186,8 +11186,8 @@
     "technicalLabels": {
       "file": "bmpt_terminator_technical.json",
       "mime": "application/json",
-      "bytes": 6017,
-      "sha256": "f94547584a04ae30480bb3b391f060f36c34229a330028f7b946e2250c9edcc7"
+      "bytes": 6019,
+      "sha256": "2f0adc454f2689d2dfa9ca799bf9250fcb57a9e47768f377a6fc2627673e7d77"
     }
   }
 }

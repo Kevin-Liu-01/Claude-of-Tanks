@@ -2383,36 +2383,6 @@
           [1.2825,0.95,-2.2743],
           [-1.2825,0.95,-2.2743]
         ]
-      },
-      {
-        "hitboxId": "T08",
-        "name": "magach6b_turret_era_L",
-        "physicalMm": 10,
-        "keMm": 10,
-        "ceMm": 10,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [-1,0.1,-0.5],
-          [-1,0.1,0.5],
-          [-1,0.9,0.5],
-          [-1,0.9,-0.5]
-        ]
-      },
-      {
-        "hitboxId": "T09",
-        "name": "magach6b_turret_era_R",
-        "physicalMm": 10,
-        "keMm": 10,
-        "ceMm": 10,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [1,0.1,0.5],
-          [1,0.1,-0.5],
-          [1,0.9,-0.5],
-          [1,0.9,0.5]
-        ]
       }
     ],
     "modules": [
@@ -2578,7 +2548,7 @@
     ]
   },
   "geometryHash": "4ac01461",
-  "metadataHash": "6260b66e",
+  "metadataHash": "fe7ddaf7",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0296
@@ -2686,8 +2656,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31870,
-      "sha256": "728e41fb6ba45b1a510e182bbef0da6f9f66b0f2ce42e9eab1f836f55eb35029"
+      "bytes": 31850,
+      "sha256": "9fc03b308728c623d06f878ec95715dce2e42a7f7793d2887bba3fa5d5292342"
     },
     "modulesSide": {
       "file": "magach6b_modules_side.webp",
@@ -2716,8 +2686,8 @@
     "technicalLabels": {
       "file": "magach6b_technical.json",
       "mime": "application/json",
-      "bytes": 4802,
-      "sha256": "e761ec58eea841669ada892d99ba9f36d6947d03d1284546ea3832b6edf416e2"
+      "bytes": 4776,
+      "sha256": "d3886a33286f2e7778c3052aa55b4f1967bc4a3f80e6b4fb92c0c98a93e4046c"
     }
   }
 }

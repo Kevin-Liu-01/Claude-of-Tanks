@@ -151,36 +151,6 @@
       },
       {
         "hitboxId": "H07",
-        "name": "skirt_R",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [1.6496,0.5038,2.865],
-          [1.6496,0.5038,-3.0157],
-          [1.6496,0.9802,-3.0157],
-          [1.6496,0.9802,2.865]
-        ]
-      },
-      {
-        "hitboxId": "H08",
-        "name": "skirt_L",
-        "physicalMm": 8,
-        "keMm": 8,
-        "ceMm": 8,
-        "kind": "spaced",
-        "turretLocal": false,
-        "verts": [
-          [-1.6496,0.5038,-3.0157],
-          [-1.6496,0.5038,2.865],
-          [-1.6496,0.9802,2.865],
-          [-1.6496,0.9802,-3.0157]
-        ]
-      },
-      {
-        "hitboxId": "H09",
         "name": "track_R",
         "physicalMm": 20,
         "keMm": 20,
@@ -195,7 +165,7 @@
         ]
       },
       {
-        "hitboxId": "H10",
+        "hitboxId": "H08",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -210,7 +180,7 @@
         ]
       },
       {
-        "hitboxId": "H11",
+        "hitboxId": "H09",
         "name": "hull_rear",
         "physicalMm": 25,
         "keMm": 25,
@@ -225,7 +195,7 @@
         ]
       },
       {
-        "hitboxId": "H12",
+        "hitboxId": "H10",
         "name": "hull_roof",
         "physicalMm": 20,
         "keMm": 20,
@@ -240,7 +210,7 @@
         ]
       },
       {
-        "hitboxId": "H13",
+        "hitboxId": "H11",
         "name": "hull_hatch_01_front",
         "physicalMm": 20,
         "keMm": 20,
@@ -255,7 +225,7 @@
         ]
       },
       {
-        "hitboxId": "H14",
+        "hitboxId": "H12",
         "name": "hull_hatch_01_rear",
         "physicalMm": 20,
         "keMm": 20,
@@ -270,7 +240,7 @@
         ]
       },
       {
-        "hitboxId": "H15",
+        "hitboxId": "H13",
         "name": "hull_hatch_01_right",
         "physicalMm": 20,
         "keMm": 20,
@@ -285,7 +255,7 @@
         ]
       },
       {
-        "hitboxId": "H16",
+        "hitboxId": "H14",
         "name": "hull_hatch_01_left",
         "physicalMm": 20,
         "keMm": 20,
@@ -300,7 +270,7 @@
         ]
       },
       {
-        "hitboxId": "H17",
+        "hitboxId": "H15",
         "name": "hull_hatch_01_top",
         "physicalMm": 20,
         "keMm": 20,
@@ -792,7 +762,7 @@
     ]
   },
   "geometryHash": "204a0c0c",
-  "metadataHash": "2814ca29",
+  "metadataHash": "796bc0a2",
   "presentationAnchor": {
     "xM": -0.0012,
     "zM": -0.1459
@@ -900,8 +870,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21802,
-      "sha256": "df64f7f019d8eafe8dfa7d884777d74e7d45286efc38f466b89a08a6203856e9"
+      "bytes": 22808,
+      "sha256": "42569f39674a8c5db634d7ad51fa3902799a24595c59a188431651592851b72f"
     },
     "modulesSide": {
       "file": "type59_modules_side.webp",
@@ -930,8 +900,8 @@
     "technicalLabels": {
       "file": "type59_technical.json",
       "mime": "application/json",
-      "bytes": 4982,
-      "sha256": "d6085476eebb4184a202b577db2a850111adf804677c0bc9b59e87bdf970c3d7"
+      "bytes": 4998,
+      "sha256": "2d855a7e099b044b1837ef9f74c491d5e4b704c717b5a46e1e08b82df15aea7d"
     }
   }
 }

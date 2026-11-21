@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.763,0.6034,3.1149],
-          [1.763,0.6034,-3.1149],
-          [1.763,1.247,-3.1149],
-          [1.763,1.247,3.1149]
+          [2.111,0.603,3.115],
+          [2.113,0.603,-3.115],
+          [1.746,1.247,-3.115],
+          [1.744,1.247,3.115]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.763,0.6034,-3.1149],
-          [-1.763,0.6034,3.1149],
-          [-1.763,1.247,3.1149],
-          [-1.763,1.247,-3.1149]
+          [-2.111,0.603,-3.115],
+          [-2.112,0.603,3.115],
+          [-1.745,1.247,3.115],
+          [-1.745,1.247,-3.115]
         ]
       },
       {
@@ -7904,7 +7904,7 @@
     ]
   },
   "geometryHash": "dea45b1a",
-  "metadataHash": "2b7a2f80",
+  "metadataHash": "b5c91dd7",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0214
@@ -8011,8 +8011,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28286,
-      "sha256": "adb43dc6a6e8b15e6ee3be40a97964a203f9cb3edc19a554eca6994eef542050"
+      "bytes": 28276,
+      "sha256": "f96184e49a3ada76302b38e8551bf9d2f6bb1e7614bb3b6b7e86d82679840f33"
     },
     "modulesSide": {
       "file": "pt84_orzel_modules_side.webp",
@@ -8042,7 +8042,7 @@
       "file": "pt84_orzel_technical.json",
       "mime": "application/json",
       "bytes": 5476,
-      "sha256": "69769d30b60b41eac96edc922cf85a28f32e0751399a33458c94025d2242bbea"
+      "sha256": "cb48e701ab2d71071f7a602494fc2314e2ac70914cd35ded92db8b9974d92040"
     }
   }
 }

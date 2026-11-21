@@ -398,10 +398,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.995,0.4526,0.21],
-          [1.995,0.4526,-3.465],
-          [1.995,1.056,-3.465],
-          [1.995,1.056,0.21]
+          [1.847,0.453,0.21],
+          [1.952,0.453,-3.068],
+          [2.027,1.056,-3.066],
+          [1.923,1.056,0.21]
         ]
       },
       {
@@ -413,10 +413,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.995,0.4526,-3.465],
-          [-1.995,0.4526,0.21],
-          [-1.995,1.056,0.21],
-          [-1.995,1.056,-3.465]
+          [-1.937,0.453,-3.068],
+          [-1.833,0.453,0.21],
+          [-1.926,1.056,0.21],
+          [-2.03,1.056,-3.065]
         ]
       },
       {
@@ -458,14 +458,74 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.575,0.5029,-3.78],
-          [-1.575,0.5029,-3.78],
-          [-1.575,1.3075,-3.78],
-          [1.575,1.3075,-3.78]
+          [1.146,0.905,-3.772],
+          [1.575,0.905,-3.772],
+          [1.575,0.744,-3.772],
+          [1.146,0.744,-3.772]
         ]
       },
       {
         "hitboxId": "H28",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [0,0.704,-3.496],
+          [0,0.905,-3.496],
+          [0.239,0.905,-3.496],
+          [0.239,0.704,-3.496]
+        ]
+      },
+      {
+        "hitboxId": "H29",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [-1.524,0.543,-3.797],
+          [-1.523,0.905,-3.801],
+          [0,0.905,-3.467],
+          [0,0.543,-3.463]
+        ]
+      },
+      {
+        "hitboxId": "H30",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [0,0.905,-3.495],
+          [0,1.307,-3.526],
+          [1.575,1.307,-3.828],
+          [1.575,0.905,-3.797]
+        ]
+      },
+      {
+        "hitboxId": "H31",
+        "name": "slat_cage",
+        "physicalMm": 10,
+        "keMm": 10,
+        "ceMm": 10,
+        "kind": "spaced",
+        "turretLocal": false,
+        "verts": [
+          [-1.575,0.905,-3.795],
+          [-1.575,1.307,-3.917],
+          [0,1.307,-3.573],
+          [0,0.905,-3.45]
+        ]
+      },
+      {
+        "hitboxId": "H32",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -480,7 +540,7 @@
         ]
       },
       {
-        "hitboxId": "H29",
+        "hitboxId": "H33",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 40,
@@ -495,7 +555,7 @@
         ]
       },
       {
-        "hitboxId": "H30",
+        "hitboxId": "H34",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
         "keMm": 40,
@@ -510,7 +570,7 @@
         ]
       },
       {
-        "hitboxId": "H31",
+        "hitboxId": "H35",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -525,7 +585,7 @@
         ]
       },
       {
-        "hitboxId": "H32",
+        "hitboxId": "H36",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
         "keMm": 40,
@@ -540,7 +600,7 @@
         ]
       },
       {
-        "hitboxId": "H33",
+        "hitboxId": "H37",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
         "keMm": 40,
@@ -555,7 +615,7 @@
         ]
       },
       {
-        "hitboxId": "H34",
+        "hitboxId": "H38",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
         "keMm": 40,
@@ -4189,7 +4249,7 @@
     ]
   },
   "geometryHash": "766ce178",
-  "metadataHash": "b626727c",
+  "metadataHash": "f73ec8a7",
   "presentationAnchor": {
     "xM": 0.0007,
     "zM": -0.3317
@@ -4295,8 +4355,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28020,
-      "sha256": "798d068f6fe366d693459f6aba8370384781910f96a51fd08360cfa76b459519"
+      "bytes": 28432,
+      "sha256": "55649a905dc067c73b6d64d24308813ec2961ff8bc6c1b0b7ab7442e82dbea04"
     },
     "modulesSide": {
       "file": "t90am_modules_side.webp",
@@ -4325,8 +4385,8 @@
     "technicalLabels": {
       "file": "t90am_technical.json",
       "mime": "application/json",
-      "bytes": 4828,
-      "sha256": "24c698c45aa4e0dc408d554737006f342a34316dc8a16c6094106f24c96f7377"
+      "bytes": 4775,
+      "sha256": "9d8da56217463ef5dd7b5bcf5e2f59e876d632c42f730d005a5fa398f20f3547"
     }
   }
 }

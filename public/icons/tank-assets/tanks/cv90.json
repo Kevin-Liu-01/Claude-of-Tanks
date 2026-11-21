@@ -158,10 +158,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [1.647,0.4752,2.6568],
-          [1.647,0.4752,-2.6568],
-          [1.647,0.999,-2.6568],
-          [1.647,0.999,2.6568]
+          [1.53,0.642,-2.657],
+          [1.531,0.999,-2.657],
+          [1.531,0.999,2.407],
+          [1.53,0.642,2.407]
         ]
       },
       {
@@ -173,10 +173,10 @@
         "kind": "spaced",
         "turretLocal": false,
         "verts": [
-          [-1.647,0.4752,-2.6568],
-          [-1.647,0.4752,2.6568],
-          [-1.647,0.999,2.6568],
-          [-1.647,0.999,-2.6568]
+          [-1.53,0.642,2.39],
+          [-1.531,0.999,2.39],
+          [-1.532,0.999,-2.657],
+          [-1.53,0.642,-2.657]
         ]
       },
       {
@@ -938,7 +938,7 @@
     ]
   },
   "geometryHash": "17ab65dd",
-  "metadataHash": "1f55d63f",
+  "metadataHash": "1f74559e",
   "presentationAnchor": {
     "xM": -0.0002,
     "zM": -0.0401
@@ -996,8 +996,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39878,
-      "sha256": "f61c6de68118684085235c54a20d7d06c3910ea1092b784ad11b7881f6d9b21a"
+      "bytes": 41008,
+      "sha256": "f75dace9b7be2e66dc90d4471541e480f5a7a76d62e898871acfc8c2c5f75680"
     },
     "modulesSide": {
       "file": "cv90_modules_side.webp",
@@ -1075,8 +1075,8 @@
     "technicalLabels": {
       "file": "cv90_technical.json",
       "mime": "application/json",
-      "bytes": 4896,
-      "sha256": "b57d7cb686f160fcb969ac3ecab79780ab5b6ecd08699c65ed0ee4e71bcd956b"
+      "bytes": 4905,
+      "sha256": "c9ef0bb1e0502eddddeb6bae7303b5ce44bbfba1b98b10f9ea3628a51e1f2fdb"
     }
   }
 }
