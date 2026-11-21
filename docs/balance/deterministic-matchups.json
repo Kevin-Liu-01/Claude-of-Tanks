@@ -4120,40 +4120,6 @@
       "guidedWeapons": []
     },
     {
-      "id": "type90_kyumaru",
-      "revision": "make the STC-1 the mobility alternative to the protected STC-2; 263: a 9 s magazine cycle and 2,450 HP with its STC-2 rebuild at VIII",
-      "tier": 8,
-      "era": "cold-war",
-      "role": "mbt",
-      "hp": 2450,
-      "powerWeight": 30.88,
-      "speedKmh": [
-        74,
-        34
-      ],
-      "traverseDegS": [
-        52.8,
-        46.6
-      ],
-      "primary": {
-        "damage": 500,
-        "penetrationMm": [
-          806,
-          733,
-          660
-        ],
-        "reloadS": 9,
-        "sustainedDpm": 6716.42,
-        "accuracy": 0.306,
-        "aimTimeS": 1.8
-      },
-      "armorCeilingsMm": {
-        "hullKe": 450,
-        "turretKe": 600
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "type90a",
       "revision": "an 8.5 s magazine cycle: the clip was still reloading when it died",
       "tier": 8,
