@@ -16,7 +16,8 @@
 //      bearing, at that yaw), where the eye meets it; one wholly under the turret's body (a hull plinth inside the shell,
 //      a part hanging into the hull) is reported apart, as `hidden`, and never fails.
 //  (b) props round the foot, at rest: per bearing the turret's foot is its outermost low surface (within FOOT_BAND_M of
-//      the deck), its foot height the lowest turret surface within FOOT_EDGE_M of that edge; no hull top the turret does
+//      the deck), its foot height the lowest turret surface within FOOT_EDGE_M of that edge that stands over the hull's
+//      top (a floor buried in the hull just inside the wall is out of sight); no hull top the turret does
 //      not cover, within PROP_MARGIN_M outside the foot, stands more than PROP_RISE_M over the foot.
 // A failing cell counts only in an 8-connected patch of at least MIN_CELLS cells (a stray sliver is not a face). Reads
 // only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
@@ -36,6 +37,8 @@ export const YAWS = 16;
 export const BASE_MARGIN_M = 0.25;
 const FOOT_BAND_M = 0.35;
 const FOOT_EDGE_M = 0.10;
+/** (b) A turret surface further under the hull's top than this is inside the hull, not the visible foot (m). */
+const VISIBLE_TOL_M = 0.005;
 const MIN_CELLS = 4;
 const CELL = 0.025;
 const BEARINGS = 96;
@@ -230,9 +233,12 @@ function cellAt(grid, k) {
   return { dx, dz, r: Math.hypot(dx, dz) };
 }
 
-/** The turret's foot per bearing at one pose: its outermost low surface's radius and the lowest surface near it. */
-function footOf(grid, turret) {
-  const { n, deckY } = grid;
+/** The turret's foot per bearing at one pose: its outermost low surface's radius and the lowest surface near it. With
+ *  `overHull`, the foot's height reads only turret surfaces standing over the hull's top there: a floor or basket buried
+ *  in the hull just inside the turret's wall (the M41's and the Puma's, 9 cm under the deck) is out of sight, not the foot. */
+function footOf(grid, turret, overHull = false) {
+  const { n, deckY, hullTop } = grid;
+  const over = (k) => !overHull || !(turret.low[k] < hullTop[k] - VISIBLE_TOL_M);
   const footR = new Float64Array(BEARINGS), footY = new Float64Array(BEARINGS).fill(Infinity);
   const binOf = (p) => Math.min(BEARINGS - 1, Math.floor(((Math.atan2(p.dx, p.dz) + Math.PI) / (2 * Math.PI)) * BEARINGS));
   for (let k = 0; k < n * n; k++) {
@@ -241,7 +247,7 @@ function footOf(grid, turret) {
     if (p.r > footR[b]) footR[b] = p.r;
   }
   for (let k = 0; k < n * n; k++) {
-    if (!(turret.low[k] <= deckY + FOOT_BAND_M)) continue;
+    if (!(turret.low[k] <= deckY + FOOT_BAND_M) || !over(k)) continue;
     const p = cellAt(grid, k), b = binOf(p);
     if (p.r >= footR[b] - FOOT_EDGE_M && turret.low[k] < footY[b]) footY[b] = turret.low[k];
   }
@@ -292,7 +298,7 @@ function judgeDeck(grid, turret, collared) {
 /** (b) at rest: the hull's tops standing over the turret's foot just outside it. */
 function judgeProps(grid, turret) {
   const { n, deckY, rimR, hullTop, hullBy, labels } = grid;
-  const { footR, footY, binOf } = footOf(grid, turret);
+  const { footR, footY, binOf } = footOf(grid, turret, true);
   const tall = new Map();
   for (let k = 0; k < n * n; k++) {
     if (Number.isFinite(turret.low[k]) || !Number.isFinite(hullTop[k])) continue;
