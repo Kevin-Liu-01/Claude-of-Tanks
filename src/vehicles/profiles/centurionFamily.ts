@@ -1588,10 +1588,10 @@ function buildSmokeDischargers(P: TankBuilderPort, z = 1.00, y = 0.56, xOut?: nu
 // ---- the Vickers MBT Mk 1's turret (profiles/uk.ts) ----
 const VICKERS_KX = 0.92, VICKERS_KY = 0.88;
 /** The bare-nose casting at 0.92 of the width and 0.88 of the height: the Mk 1's roof stands 2.44 m on its 1.58 m deck,
- * the turret narrower over a 3.17 m hull. */
+ * the turret narrower over a 3.17 m hull; its upper walls lean in harder to the roof (the Vijayanta side photographs). */
 const VICKERS_CASTING: readonly CastStation[] = CASTING_BARE.map((st) => ({
   z: st.z, bottom: st.bottom * VICKERS_KY, roof: st.roof * VICKERS_KY,
-  low: st.low * VICKERS_KX, mid: st.mid * VICKERS_KX, up: st.up * VICKERS_KX, edge: st.edge * VICKERS_KX,
+  low: st.low * VICKERS_KX, mid: st.mid * VICKERS_KX, up: st.up * VICKERS_KX * 0.95, edge: st.edge * VICKERS_KX * 0.90,
 }));
 
 /** The Vickers Mk 1 rides a modified Centurion turret (owner 2026-11-21, lane vickers-mk1-274: "it should still be based
@@ -1613,7 +1613,7 @@ export function buildVickersMk1Turret(P: TankBuilderPort): { readonly roofY: num
     .map(([x, z]) => [x * VICKERS_KX, z]);
   for (let i = 0; i < plate.length; i++) bead(plate[i], plate[(i + 1) % plate.length]);
   buildTurretBins(P, { st, bot: 0.30 * VICKERS_KY, top: 0.74 * VICKERS_KY, out: VICKERS_KX, hatchY: 0.45 * VICKERS_KY });
-  buildBustleBin(P, VICKERS_KX, VICKERS_KY);
+  buildBustleBin(P, VICKERS_KX, 0.78);                 // its lid 0.15 m under the roof line
   buildSmokeDischargers(P, 0.88, 0.56 * VICKERS_KY, undefined, st);
   return { roofY, halfWidth: (z: number, y: number): number => castingHalfWidth(z, y, st) };
 }

@@ -1678,7 +1678,7 @@ function fv510MilanBuild(P: UKBuilderPort): void {
 // owner's compact scale (0.95) is applied after the build. Frame: +Z forward, +X the vehicle's right (program canon).
 const VICKERS_DECK_Y = 1.58;          // hull roof and engine deck
 const VICKERS_GUARD_Y = 1.12;         // track-guard plate (the top track run and rollers show below it)
-const VICKERS_BIN_TOP = 1.60;
+const VICKERS_BIN_TOP = 1.66;        // the bins stand a little proud of the deck (photo P1)
 const VICKERS_GLACIS = { z0: 2.45, z1: 3.70, y1: 1.12 } as const;
 const vickersGlacisY = (z: number): number =>
   VICKERS_DECK_Y - (z - VICKERS_GLACIS.z0) * ((VICKERS_DECK_Y - VICKERS_GLACIS.y1) / (VICKERS_GLACIS.z1 - VICKERS_GLACIS.z0));
@@ -1696,7 +1696,7 @@ function vickersPrism(
 /** Box mudguard hood over one idler: flat top, quarter-round nose, deep outer apron (mudguard parts, not armour). */
 function vickersFrontMudguard(P: UKBuilderPort, s: number): void {
   const xi = s * 1.11, xo = s * 1.585, xa = s * 1.552;
-  const top = 1.46, th = 0.035, zTop0 = 2.40, zArc = 3.64, r = 0.36, yAxis = top - r, apronBot = 1.0;
+  const top = 1.46, th = 0.035, zTop0 = 2.40, zArc = 3.55, r = 0.45, yAxis = top - r, apronBot = 0.86;
   const label = 'vickers-mk1-front-hood';
   P.addMudguard(label, 'hull', slab(
     [xi, top - th, zTop0], [xo, top - th, zTop0], [xo, top - th, zArc], [xi, top - th, zArc],
@@ -1770,8 +1770,14 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
       [gx0, G, -2.10], [gx1, G, -2.10], [gx1, 1.42, -2.80], [gx0, 1.42, -2.80]));
     vickersPrism(P, 'hull', 1.39, 1.42, [[gx0, -2.80], [gx1, -2.80], [gx1, -3.95], [gx0, -3.95]],
       [[gx0, -2.80], [gx1, -2.80], [gx1, -3.95], [gx0, -3.95]]);
-    // guard lip along the outer edge
-    P.add('hull', box(0.03, 0.10, 4.50), s * 1.58, G - 0.06, 0.15);
+    // skirt plate hung from the guard's outer edge down to the road wheels' tops, its hem rising over the sprocket:
+    // with the bins it makes the photos' 0.8 m side wall (P1, P4) and hides the top run and return rollers
+    vickersPrism(P, 'hull', 0.84, G, [[s * 1.565, 2.40], [s * 1.595, 2.40], [s * 1.595, -2.10], [s * 1.565, -2.10]],
+      [[s * 1.565, 2.40], [s * 1.595, 2.40], [s * 1.595, -2.10], [s * 1.565, -2.10]]);
+    P.add('hull', slab(
+      [s * 1.565, 0.84, -2.10], [s * 1.595, 0.84, -2.10], [s * 1.595, 1.30, -2.95], [s * 1.565, 1.30, -2.95],
+      [s * 1.565, G, -2.10], [s * 1.595, G, -2.10], [s * 1.595, 1.40, -2.95], [s * 1.565, 1.40, -2.95]));
+    P.add('hullDetail', box(0.035, 0.03, 4.46), s * 1.582, 0.855, 0.15);
     // four lidded bins a side standing on the guard; the rearmost runs on over the rising guard (photo P1)
     for (const [za, zb] of [[2.40, 1.48], [1.42, 0.24], [0.18, -1.00], [-1.06, -2.08]] as const) {
       const len = za - zb, zc = (za + zb) / 2;
@@ -1798,8 +1804,12 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
     vickersFrontMudguard(P, s);
     P.hangMudguard('vickers-mk1-rear-flap', 'hullRubber', box(0.44, 0.30, 0.02), s * 1.345, 1.24, -3.95);
   }
-  P.add('hullDark', cylZ(0.10, 0.12, 14), -1.42, 1.50, -3.94);                 // exhaust outlet (left rear corner)
-  P.add('hullDetail', cylZ(0.115, 0.05, 14), -1.42, 1.50, -3.89);
+  // exhaust box on the right rear corner with its outlet facing aft (photo P4), and the rear deck's lip over the plate
+  P.add('hull', box(0.46, 0.24, 0.56), -1.345, 1.74, -3.62);
+  P.add('hullDetail', box(0.47, 0.02, 0.50), -1.345, 1.87, -3.62);
+  P.add('hullDark', cylZ(0.10, 0.12, 14), -1.40, 1.74, -3.94);
+  P.add('hullDetail', cylZ(0.115, 0.05, 14), -1.40, 1.74, -3.90);
+  P.add('hull', box(2.20, 0.05, 0.18), 0, D - 0.025, ZR - 0.09);
   // ---- glacis furniture ----
   for (const s of [-1, 1]) {
     // headlights in their guards at the glacis' outer corners (photo P3/P4)
@@ -1888,7 +1898,7 @@ function vickersMk1Build(P: UKBuilderPort): void {
   // and look like a modified centurion turret which we have"; centurionFamily.ts buildVickersMk1Turret). Ring frame as
   // the Centurion's: -X is the vehicle's right (the cupola), +X its left (the loader). ----
   P.turretG.position.set(0, VICKERS_DECK_Y, 0.45);
-  P.gunG.position.set(0, 0.33, 0.88);
+  P.gunG.position.set(0, 0.33, 0.98);
   const { roofY: R } = buildVickersMk1Turret(P as unknown as TankBuilderPort);
   // ---- the Mk 1's FLAT mantlet on the elevating mass (photo P4; the Mk 3 got the cast one): a face-wide plate with
   // rolled side edges, the gun collar, the coaxial and ranging guns' ports on the left, the sight window on the right ----
@@ -1904,13 +1914,13 @@ function vickersMk1Build(P: UKBuilderPort): void {
   P.add('gunDark', box(0.15, 0.09, 0.03), -0.30, 0.12, 0.135);
   P.add('gun', box(0.21, 0.035, 0.07), -0.30, 0.185, 0.115);
   // ---- L7A1: thick chase at the collar, fume extractor ~1/3 out, tapering tube, plain muzzle ----
-  buildGun(P, { len: 4.50, r: 0.118, sleeve: false, evac: null, collar: false, baseR: 0.175 });
-  P.add('gun', cylZ(0.155, 0.85, 16, 0.162), 0, 0, 0.85);
-  P.add('gun', cylZ(0.168, 0.50, 16), 0, 0, 1.85);                               // extractor
-  P.add('gun', cylZ(0.135, 0.08, 16, 0.168), 0, 0, 2.14);
-  P.add('gun', cylZ(0.168, 0.08, 16, 0.135), 0, 0, 1.56);
-  P.add('gunDark', cylZ(0.17, 0.012, 16), 0, 0, 1.98);
-  muzzleBore(P, { z: 4.50, r: 0.118 });
+  buildGun(P, { len: 4.40, r: 0.088, sleeve: false, evac: null, collar: false, baseR: 0.22 });
+  P.add('gun', cylZ(0.118, 0.85, 16, 0.124), 0, 0, 0.85);
+  P.add('gun', cylZ(0.150, 0.50, 16), 0, 0, 1.85);                               // extractor
+  P.add('gun', cylZ(0.102, 0.08, 16, 0.150), 0, 0, 2.14);
+  P.add('gun', cylZ(0.150, 0.08, 16, 0.110), 0, 0, 1.56);
+  P.add('gunDark', cylZ(0.152, 0.012, 16), 0, 0, 1.98);
+  muzzleBore(P, { z: 4.40, r: 0.088 });
   // ---- roof: commander's cupola on the right, gunner's sight ahead of it, loader's hatch and roof gun on the left ----
   const cx = -0.48, cz = -0.50;
   P.add('turret', cylY(0.37, 0.39, 0.08, 32), cx, R + 0.03, cz);
