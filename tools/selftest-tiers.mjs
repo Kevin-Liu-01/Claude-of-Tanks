@@ -79,6 +79,7 @@ export const MUST_KEEP = Object.freeze({
   'tools/attribution-audit.mjs': 'attribution audit (must-keep)',
   'tools/changed-only/chain.selftest.mjs': 'changed-only == whole-fleet regen byte for byte (must-keep: changed-only guard)',
   'tools/changed-only/fleet-partition.selftest.mjs': 'changed-only partition of the real fleet (must-keep: changed-only guard)',
+  'tools/changed-only/regen-keys.selftest.mjs': 'each step\'s key holds only what it reads: 273.1 and 274.0 replayed (must-keep: changed-only guard)',
   'tools/existing-document-route.selftest.mjs': 'the public routes serve only real documents (must-keep: site routing)',
   'tools/horizon-panorama-bake.browser.selftest.mjs': 'GPU drift receipt on the far panorama bake (cheap browser regression)',
   'tools/i18n-page-catalogs.selftest.mjs': 'every public page loads exactly its catalog keys (must-keep: i18n)',

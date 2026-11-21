@@ -205,7 +205,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // would mark every id in every lane that has none (229, critic r2).
     note: 'an optional machine-local post-process of the published images (GPU output bytes, never keyed)',
   },
-  // 229: the gun-line census (the gunLines step).
+  // 274: master-filter.mjs imports SHOTS from here. Its folders are join(SHOTS, '<name>') under shots/media-r5, the media
+  // lane's gitignored scratch; the graph resolves the bare segment against this file's directory, and tools/media-r5/motion
+  // (tracked motion scripts no icons run reads) put every brand motion edit into the icons key (273.1: all 311 ids).
+  'tools/media-r5/paths.mjs': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    namesOnly: ['tools/media-r5/motion', 'tools/media-r5/kit', 'tools/media-r5/final', 'tools/media-r5/features'],
+    note: 'names shots/media-r5 folders (SHOTS, FINAL, MOTION, KIT, the survey dumps); it reads none, and none is under tools/media-r5',
+  },
+
   'tools/gun-junction-census.mjs': {
     pin: '63939167b6ebdff6',
     reads: [],
@@ -359,6 +368,25 @@ export const DECLARED_DYNAMIC = Object.freeze({
     pin: '8fbacf8b8059103e',
     reads: [],
     note: 'spawns itself (--record) per tier: the children run this same closure; reads its own output (the plan) to keep the other maps\' rows and for --check',
+  },
+});
+
+/**
+ * Shader text (274, tools/changed-only/shader-text.mjs): GLSL constants a fleet module splices into a program inside a
+ * material's compile hook. Node compiles no program, so the CPU and world keys hash each file with these declarations
+ * masked; the GPU steps, whose page compiles them, key the file's bytes. The checker proves each constant is private text
+ * named only inside an `onBeforeCompile` hook body (or another declared constant); a constant that fails keeps the whole
+ * file keyed by its bytes, as before (fingerprint.mjs partition.shaderText names why), and fleet-partition.selftest.mjs
+ * fails until it is reviewed. tools/changed-only/closure-trace.mjs --shaders moves the text at run time: no ledger digest
+ * may follow it. 274.0: an armour-paint GLSL edit marked every step on all 311 ids and every map.
+ */
+export const SHADER_TEXT = Object.freeze({
+  'src/vehicles/materials.ts': {
+    consts: Object.freeze(['BURN_COMMON_GLSL', 'BURN_DIFFUSE_GLSL', 'BURN_EMISSIVE_GLSL', 'ARMOR_PAINT_COMMON_GLSL',
+      'ARMOR_PAINT_VERTEX_GLSL', 'ARMOR_PAINT_DIFFUSE_GLSL', 'ARMOR_PAINT_EMISSIVE_GLSL', 'CRUMPLE_COMMON_GLSL',
+      'CRUMPLE_NORMAL_GLSL']),
+    note: 'applyBurnHook\'s onBeforeCompile splices them into the vertex and fragment shaders; FIELD_DUST_GLSL stays keyed '
+      + '(vehicleAmbientFloorHook is a named export any code may call)',
   },
 });
 
@@ -621,6 +649,9 @@ export const STEPS = Object.freeze([
     // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs); each reason gateStamp
     // names is stamped (268: current until its oracle or inputs move), any other stays due
     skipped: '--skipped', stamp: gateStamp,
+    // 274: the owner rule keeps the gate off (no outside models), so the chain runs it only when --steps names it, and a
+    // chain of every other step is full (it re-stamps the shared lines; 272 and 273 stamped them by hand). Not keyed.
+    optIn: 'owner rule: the oracle gate measures against outside models; run it by name (--steps=gate)',
   },
 ]);
 
@@ -648,6 +679,21 @@ export const DEPENDENTS = Object.freeze([
   { name: 'docsPrerender', tool: 'tools/docs-prerender.mjs', check: [], write: ['--write'], after: ['icons'] },
   { name: 'publicShell', tool: 'tools/public-shell.mjs', check: [], write: ['--write'], after: ['docsPrerender'] },
 ]);
+
+/**
+ * (274) The steps a chain runs: those --steps names, else every step but the opt-in ones (`optIn`: the gate), less the
+ * GPU steps under --no-gpu and the world steps under --no-world. `partial`: a step the chain owes was left out, so it
+ * writes only the lines of the steps it ran (tools/changed-only/fingerprint.mjs refreshComponents); leaving out an opt-in
+ * step is not partial.
+ */
+export function chainSelection(steps, worldSteps, { only = null, noGpu = false, noWorld = false } = {}) {
+  const worldNames = new Set(worldSteps.map((step) => step.name));
+  const named = (step) => (only ? only.includes(step.name) : !step.optIn);
+  const runs = (step) => named(step) && !(noGpu && step.device === 'gpu') && !(noWorld && worldNames.has(step.name));
+  const all = [...steps, ...worldSteps];
+  return { selected: (name) => { const step = all.find((entry) => entry.name === name); return !!step && named(step); },
+    partial: all.some((step) => !step.optIn && !runs(step)) };
+}
 
 /** Fields of a step that decide what it writes. Scheduling fields (gb, timeouts, chunking, report paths) are not keyed. */
 const KEYED_FIELDS = ['name', 'device', 'tool', 'entries', 'flags', 'full', 'scoped', 'outputs', 'files', 'reads', 'excludeReads'];

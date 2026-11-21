@@ -123,8 +123,13 @@ export function helperImports(text, filename, helper) {
   return { literals, computed };
 }
 
-export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHelpers = {} } = {}) {
+/**
+ * `overlay` (274, the replay receipts only: tools/changed-only/regen-keys.selftest.mjs): { repository path: text } read in
+ * place of those files' bytes, so a receipt keys an edit without writing the tree.
+ */
+export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHelpers = {}, overlay = {} } = {}) {
   root = resolve(root);
+  const overlaid = new Map(Object.entries(overlay).map(([path, text]) => [resolve(root, path), text]));
   const hashes = new Map(), infos = new Map(), edgeMap = new Map(), dirPrints = new Map();
   const storePath = join(cacheDir, 'edges.json');
   let store;
@@ -135,6 +140,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
 
   const hashFile = (file) => {
     if (hashes.has(file)) return hashes.get(file);
+    if (overlaid.has(file)) { const digest = sha256(overlaid.get(file)); hashes.set(file, digest); return digest; }
     let fd, digest = 'missing';
     try {
       fd = openSync(file, 'r');
@@ -161,6 +167,8 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     dirty = true;
     return sha256;
   };
+  /** A file's text, through the overlay. */
+  const readText = (file) => (overlaid.has(file) ? overlaid.get(file) : readFileSync(file, 'utf8'));
   const walk = (dir, out, seen = new Set()) => {
     let canonical, entries;
     try { canonical = realpathSync(dir); entries = readdirSync(dir, { withFileTypes: true }); }
@@ -212,7 +220,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     const id = `${relative(root, file)}:${hashFile(file)}:${helperName}`;
     let value = store.byHash[id];
     if (!value) {
-      const text = readFileSync(file, 'utf8');
+      const text = readText(file);
       value = { ...collectSelftestInputs(text, file), sites: dynamicSites(text, file),
         // Can this module read a file or a URL by itself (fs, a child process, fetch, XHR, a dynamic import())?
         // Module URLs handed to a Worker (or fetched): `new URL('./x.ts', import.meta.url)`. Browser steps run them.
@@ -316,17 +324,19 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     }
     return { files: seen, stopped, expanded };
   };
-  /** Sorted `kind:path:hash` rows for a set of nodes (directories by fingerprint; public/models by path, see header). */
-  const rowsOf = (nodes, { exclude = null } = {}) => [...nodes]
+  /** Sorted `kind:path:hash` rows for a set of nodes (directories by fingerprint; public/models by path, see header).
+   *  `masked` (274): node -> the hash of its text with its shader text masked (shader-text.mjs), keyed in its place. */
+  const rowsOf = (nodes, { exclude = null, masked = null } = {}) => [...nodes]
     .filter((node) => !exclude?.has(node))
     .map((node) => {
       const path = relative(root, node);
       if (machineLocal(path)) return `local:${path}`;
+      if (masked?.has(node)) return `masked:${path}:${masked.get(node)}`;
       return isDir(node) ? `dir:${path}:${fingerprintDir(node, exclude)}` : `file:${path}:${hashFile(node)}`;
     })
     .sort();
   const persist = () => {
-    if (!dirty) return;
+    if (!dirty || overlaid.size) return; // an overlay's parses are a receipt's, never the shared cache's
     let previous;
     try { previous = JSON.parse(readFileSync(storePath, 'utf8')); } catch {}
     if (previous?.parserHash === parserHash) {
@@ -339,6 +349,6 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     renameSync(temporary, storePath);
     dirty = false;
   };
-  return { root, hashFile, hashLargeFile, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
+  return { root, hashFile, hashLargeFile, readText, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
     rel: (path) => relative(root, path), abs: (path) => resolve(root, path) };
 }

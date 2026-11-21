@@ -1,14 +1,9 @@
 /**
- * Canonical locale and public-route ownership for the vanilla Vite runtime.
- *
- * General Translation catalogs use BCP 47 locale codes. Public URLs use the
- * deliberately shorter `/cn` alias, while HTML `lang`, Open Graph locale, and
- * hreflang remain canonical `zh-CN` values.
+ * Public-route ownership for the vanilla Vite runtime: every public page's route, and links kept inside a locale. The
+ * locale codes and the `/cn` prefix are localePrefix.ts's (274: the i18n runtime loads them without this table).
  */
 
-export const DEFAULT_LOCALE = 'en-US' as const;
-export const SUPPORTED_LOCALES = ['en-US', 'zh-CN'] as const;
-export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+import { DEFAULT_LOCALE, splitLocalePrefix, type SupportedLocale } from './localePrefix.ts';
 
 type PublicRouteId =
   | 'game'
@@ -72,24 +67,10 @@ interface LocalePathResolution {
   readonly route: PublicRouteRecord | null;
 }
 
-function normalizePathname(pathname: string): string {
-  const raw = (String(pathname || '/').split(/[?#]/, 1)[0] || '/').replace(/^\/{2,}/, '/');
-  if (raw === '/') return raw;
-  return raw.replace(/\/+$/, '') || '/';
-}
-
 /** Resolve the locale prefix without treating the unprefixed default as explicit. */
 export function resolveLocalePath(pathname: string): LocalePathResolution {
-  const normalized = normalizePathname(pathname);
-  const isChinese = normalized === '/cn' || normalized.startsWith('/cn/');
-  const basePath = isChinese
-    ? normalizePathname(normalized.slice(3) || '/')
-    : normalized;
-  return {
-    locale: isChinese ? 'zh-CN' : null,
-    pathname: basePath,
-    route: ROUTE_BY_PATH.get(basePath) ?? null,
-  };
+  const { locale, pathname: basePath } = splitLocalePrefix(pathname);
+  return { locale, pathname: basePath, route: ROUTE_BY_PATH.get(basePath) ?? null };
 }
 
 export function publicRouteForEntry(sourceHtml: string): PublicRouteRecord | null {

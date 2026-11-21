@@ -15,6 +15,8 @@
 //   the chain refuses unless --ids, --all or --check says what to run (266: either way every id resolves as changed, so
 //   the default run used to plan the whole fleet silently); --ids then records no rows (268). A node_modules that is not
 //   the lock's install refuses every run but --dry-run (268).
+//   The gate (steps.mjs `optIn`, the owner rule: no outside models) runs only when --steps names it; a chain of every other
+//   step is full and re-stamps the table's shared lines (274).
 //   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel parts of fills, seats, spare track, anatomy, gun lines)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
@@ -45,7 +47,7 @@ import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest,
 import { loadTable } from './changed-only/table.mjs';
 import { cpuChildCommand } from './changed-only/childPriority.mjs';
 import { watchChild } from './changed-only/childBudget.mjs';
-import { gpuChunks } from './changed-only/steps.mjs';
+import { chainSelection, gpuChunks } from './changed-only/steps.mjs';
 import { expandGlobs } from './changed-only/globs.mjs';
 import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
@@ -105,11 +107,11 @@ const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : IDS ? 'ids'
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
 // The summary is rewritten after every step, so a chain stopped part-way still records what it ran.
 const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
-const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
-/** (268) A chain that leaves some step out (--steps, --no-gpu, --no-world): it writes only the lines of the steps it ran. */
-const PARTIAL = [...STEPS, ...WORLD_STEPS].some((entry) => !selected(entry.name) || (NO_GPU && entry.device === 'gpu')
-  || (NO_WORLD && WORLD_NAMES.includes(entry.name)));
+/** (268) A chain that leaves some step out (--steps, --no-gpu, --no-world): it writes only the lines of the steps it ran.
+ *  (274) An opt-in step (the gate) runs only when --steps names it, and leaving it out is no partial chain: the plain chain
+ *  re-stamps the shared lines (steps.mjs chainSelection). */
+const { selected, partial: PARTIAL } = chainSelection(STEPS, WORLD_STEPS, { only: ONLY, noGpu: NO_GPU, noWorld: NO_WORLD });
 // Flags that make a tool read a file the step key cannot see (a git revision, a hints file) are refused.
 for (const step of [...STEPS, ...WORLD_STEPS]) if (step.flags.some((flag) => /^--(?:uniform-from|hints)\b/.test(flag))) {
   throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);

@@ -94,6 +94,8 @@ export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
   // static reads of this checkout's sources (the step table names tools as data; none is run). fresh.selftest stays
   // live: its verdict reads release/fingerprints.tsv, which no closure holds (229, critic r2)
   'tools/changed-only/fleet-partition.selftest.mjs',
+  // 274: the same static reads, with replayed edits overlaid in memory (graph.mjs overlay)
+  'tools/changed-only/regen-keys.selftest.mjs',
   // the release plan and its CLI driven with fake runners; the planned tools are argument lists
   'tools/tank-release-plan.selftest.mjs',
   // the provenance CLI's blob-keyed digest cache (272) on a Git repository it writes in tmpdir; never this checkout's index

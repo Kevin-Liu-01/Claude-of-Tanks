@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
+import { DEFAULT_LOCALE, type SupportedLocale } from '../ui/localePrefix.ts';
 import {
-  DEFAULT_LOCALE,
   hrefForLocale,
   publicRouteForEntry,
   resolveLocalePath,
   type PublicRouteRecord,
-  type SupportedLocale,
 } from '../ui/localeRouting.ts';
 import { renderProductStats } from '../productStats.ts';
 import { SITE_ORIGIN, shareVideoForRoute, socialCardUrl } from './siteMetadata.ts';

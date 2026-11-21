@@ -253,6 +253,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // the changed-only fleet partition of this checkout: every module a fleet step's closure can reach (the guards-229
   // red: a new tool in a step closure broke it, and no closure named the new file)
   'tools/changed-only/fleet-partition.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
+  // 274: computeState of this checkout with replayed edits overlaid (graph.mjs overlay; it writes nothing)
+  'tools/changed-only/regen-keys.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // computeState of this checkout against release/fingerprints.tsv (live: it reads the manifest no closure holds)
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
   // 266: a copy of this checkout's src and tools (git ls-files) where a one-id balance lever is resolved by computeState
