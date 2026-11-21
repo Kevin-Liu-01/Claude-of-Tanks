@@ -217,4 +217,22 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
     for (const key of ['playMenu.versionRefusal.title', 'playMenu.versionRefusal.refresh']) assert.ok(strings[key], `${catalog}: ${key}`);
   }
 }
+// The roster (owner 2026-11-19, room-owner-274): the lobby's foot (vehicle, team, Ready/Start) is sticky at the panel's
+// bottom, so whatever sits low in the panel scrolls under it. The seats sit directly under the room code, above the
+// battlefield card, so the card and not a seat goes under the foot; the seat's own row leads and wears its tag.
+{
+  const lobby = source.slice(source.indexOf('<div class="lobby">'), source.indexOf('<div class="note"></div>'));
+  const at = (needle) => { const index = lobby.indexOf(needle); assert.ok(index >= 0, `lobby markup has ${needle}`); return index; };
+  assert.ok(at('class="roomhead"') < at('<div class="players"></div>') && at('<div class="players"></div>') < at('class="battlefield-card"'),
+    'the roster sits between the room code and the battlefield card');
+  assert.ok(at('class="battlefield-card"') < at('<div class="controls">'), 'the sticky foot follows the battlefield card');
+  assert.match(source, /\.cot-play \.lobby\.show \.controls\{position:sticky;bottom:/, 'the foot is the sticky one (the reason for the order)');
+  assert.doesNotMatch(source, /\.cot-play \.players\{[^}]*(?:overflow|max-height)/, 'the roster has no scroller of its own: the panel scrolls as one');
+  assert.match(source, /const own = next\.players\.filter\(\(player\) => player\.id === playerId\);\s*for \(const player of \[\.\.\.own, /,
+    "the seat's own row leads the roster");
+  assert.match(source, /you\.className = 'you cot-c-tag cot-c-tag--accent';\s*you\.textContent = t\('playMenu\.lobby\.you'\);/, "and wears the You tag");
+  // the Random battlefield draws a glyph, never an empty plate
+  assert.match(source, /<span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true">\$\{uiIconSVG\('shuffle', 18\)\}<\/span>/);
+  assert.match(source, /\.cot-play \.menu-select-thumb\.is-random>svg\{display:block\}/);
+}
 console.log('playMenu.selftest: separate multiplayer intent, keyboard containment, single failure presentation, localized entry refusals, and a version refusal banner with Refresh (no Rejoin while it stands)');

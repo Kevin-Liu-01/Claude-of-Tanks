@@ -54,6 +54,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { readyTagHTML, renderReadyControl, waitingOnOthers } from './components/readyControl.ts';
 import { datumAttr } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
@@ -376,7 +377,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select--map .menu-select-trigger,.cot-play .menu-select--vehicle .menu-select-trigger{min-height:44px;padding-left:var(--s1)}
 .cot-play .menu-select-thumb{position:relative;display:block;width:60px;height:34px;flex:0 0 60px;overflow:hidden;border-radius:2px;
   background:var(--surface-hover) center/cover no-repeat;box-shadow:var(--ring-1)}
-.cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
+.cot-play .menu-select-thumb>svg{display:none}
+.cot-play .menu-select-thumb.is-random{display:grid;place-items:center;background:var(--surface-page);color:var(--ink-3)}
+.cot-play .menu-select-thumb.is-random>svg{display:block}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
 .cot-play :is(.menu-select-trigger,.mode,.op-launch):focus-visible{
@@ -440,7 +443,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select--mode .menu-select-trigger{gap:var(--s3)}
 .cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
-.cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
+/* the roster sits under the room code, above the battlefield card (owner 2026-11-19): the sticky foot (vehicle, team,
+   Ready) covered every seat after the first at 1280x800; the card scrolls under the foot now, never a seat */
+.cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.cot-play .player .you.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12));margin-block:calc((var(--name-line) - 20px) / 2)}
 .cot-play .player{--foot-track:var(--rules-col);display:grid;
   grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) calc(var(--foot-track) - 7em - var(--s3)) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
@@ -464,7 +470,15 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-play .player .team{color:var(--ink-3)}.cot-play .player.alpha .team{color:var(--team-own)}.cot-play .player.bravo .team{color:var(--team-enemy)}
 .cot-play .player.offline .name{color:var(--ink-3)}
-.cot-play .player :is(.ready,.wait){white-space:nowrap}.cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
+.cot-play .player :is(.ready,.wait){display:flex;justify-content:flex-end;white-space:nowrap}
+/* the room's owner removes a seat from its row: a small close at the row's end, then a confirm across the row */
+.cot-play .players.can-kick .player{position:relative;padding-right:calc(var(--s4) + 36px)}
+.cot-play .player .kick{position:absolute;top:50%;right:var(--s2);translate:0 -50%;--h:32px;width:32px;min-height:32px;padding:0}
+.cot-play .player .kick-confirm{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-1)}
+.cot-play .player .kick-confirm>span{margin-right:auto;font:600 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-1)}
+.cot-play .player.kicking{box-shadow:var(--ring-danger)}
+/* the confirm's Keep backs out, so the row's close steps aside while it asks */
+.cot-play .player.kicking .kick{display:none}
 
 /* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
@@ -490,8 +504,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .control-actions .action{min-width:128px}
 .cot-play .control-actions .leave-room{margin-right:auto}
 .cot-play .action.needs-ready{background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);color:var(--btn-primary-ink)}
-/* Ready is a toggle: pressed, it wears the selection */
-.cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
+/* Ready is a toggle (components/readyControl.ts): pressed, it says so and what a press does */
+.cot-play .control-actions .action.cot-ready[data-ready-state='ready']{min-width:168px}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
 .cot-play :is(.note,[data-arrange-note],.arrange-cap,.brain-note){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
@@ -770,6 +784,7 @@ export function createPlayMenu({
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"${datumAttr('room-code')}></div></div>
         <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
+      <div class="players"></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy"><div class="field mode-field"><span class="field-label" id="cot-room-mode-label">${t('playMenu.advanced.mode')}</span>
             <div class="menu-select menu-select--mode" data-control="mode">
@@ -782,7 +797,7 @@ export function createPlayMenu({
             <div class="menu-select menu-select--map" data-control="map" data-value="random">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"
                 aria-controls="cot-room-bf" aria-labelledby="cot-room-map-label cot-room-map-value">
-                <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
+                <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true">${uiIconSVG('shuffle', 18)}</span>
                 <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value${datumAttr('map-name')}>${t('playMenu.advanced.battlefieldRandom')}</span>
                   <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
             </div>
@@ -793,7 +808,7 @@ export function createPlayMenu({
             ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
       <div class="mode-pick" id="cot-room-mode-pick" role="group" aria-labelledby="cot-room-mode-label" hidden></div>
       <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
-      <div class="players"></div><div class="controls">
+      <div class="controls">
         <div class="vehicle-pick" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
@@ -806,7 +821,7 @@ export function createPlayMenu({
         <div class="field"><span class="field-label">${t('playMenu.deployment')}</span>
           ${segmented({ label: t('playMenu.deployment'), options: (['alpha', 'bravo', 'spectator'] as const).map((team) => ({ value: team, label: lobbyTeamLabel(team) })), value: 'alpha', className: 'room-team', attrs: { 'data-control': 'team', 'data-value': 'alpha' } })}</div></div>
         <div class="control-actions"><button class="action alt leave-room cot-c-btn" data-action="leave" type="button">${t('playMenu.leave')}</button>
-          <button class="action alt cot-c-btn" data-action="ready" type="button">${t('playMenu.ready.iAmReady')}</button>
+          <button class="action alt cot-c-btn" data-action="ready" type="button">${t('readyControl.readyUp')}</button>
           <button class="action cot-c-btn cot-c-btn--primary" data-action="rejoin" type="button" hidden>${t('playMenu.rejoin')}</button>
           <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}<span class="start-count" data-start-count></span></button></div>
       </div><div class="note"></div>
@@ -1893,9 +1908,8 @@ export function createPlayMenu({
   function renderLobbySelf(player: LobbyPlayer | undefined, next: SerializedLobby): void {
     if (!player) {
       readyBtn.disabled = true;
-      readyBtn.textContent = t('playMenu.ready.iAmReady');
-      readyBtn.classList.remove('needs-ready', 'is-ready');
-      readyBtn.removeAttribute('aria-pressed');
+      renderReadyControl(readyBtn, { ready: false });
+      readyBtn.classList.remove('needs-ready');
       return;
     }
     if (player.specId) vehicleSelect.value = player.specId;
@@ -1905,11 +1919,9 @@ export function createPlayMenu({
       remember(PLAYER_NAME_KEY, player.name);
     }
     const spectator = player.team === 'spectator';
-    readyBtn.textContent = spectator ? t('playMenu.ready.watching') : t('playMenu.ready.iAmReady');
+    renderReadyControl(readyBtn, { ready: player.ready, spectator, waitingOn: waitingOnOthers(next.players, player.id) });
     readyBtn.disabled = spectator || !player.connected || !player.specId || next.phase !== 'waiting';
     readyBtn.classList.toggle('needs-ready', !spectator && !player.ready && next.phase === 'waiting');
-    readyBtn.classList.toggle('is-ready', !spectator && player.ready);
-    readyBtn.setAttribute('aria-pressed', String(!spectator && player.ready));
   }
 
   function updateLobbyControls(
@@ -1975,11 +1987,67 @@ export function createPlayMenu({
     return vehicle;
   }
 
+  /** The seat the room's owner is about to remove (its row shows the confirm); null when none. */
+  let pendingKickId: string | null = null;
+  const canKick = (): boolean => role === 'host' && !!state;
+
+  /** Focus a row's kick control or its confirm after the roster redraws (ids are matched as data, never as selectors). */
+  function focusKickControl(key: 'kick' | 'kickConfirm', id: string): void {
+    for (const button of playersEl.querySelectorAll<HTMLButtonElement>('button')) {
+      if (button.dataset[key] === id) { button.focus(); return; }
+    }
+  }
+
+  function createKickControls(row: HTMLDivElement, player: LobbyPlayer): void {
+    const kick = document.createElement('button');
+    kick.type = 'button';
+    kick.className = 'kick cot-c-btn cot-c-btn--ghost';
+    kick.dataset.kick = player.id;
+    kick.dataset.uiSound = 'press';
+    kick.setAttribute('aria-label', t('playMenu.owner.kickAria', { name: player.name }));
+    kick.dataset.tip = t('playMenu.owner.kickAria', { name: player.name });
+    kick.innerHTML = uiIconSVG('close', 16);
+    kick.addEventListener('click', () => {
+      pendingKickId = pendingKickId === player.id ? null : player.id;
+      if (state) renderLobbyPlayers(state, ownId());
+      focusKickControl('kickConfirm', player.id);
+    });
+    row.append(kick);
+    if (pendingKickId !== player.id) return;
+    row.classList.add('kicking');
+    const confirm = document.createElement('div');
+    confirm.className = 'kick-confirm';
+    confirm.setAttribute('role', 'group');
+    const question = document.createElement('span');
+    question.textContent = t('playMenu.owner.kickConfirm', { name: player.name });
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'action cot-c-btn cot-c-btn--danger';
+    yes.dataset.kickConfirm = player.id;
+    yes.textContent = t('playMenu.owner.kickYes');
+    yes.addEventListener('click', () => {
+      pendingKickId = null;
+      command({ type: 'kick', playerId: player.id });
+    });
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'action alt cot-c-btn';
+    no.textContent = t('playMenu.owner.kickNo');
+    no.addEventListener('click', () => {
+      pendingKickId = null;
+      if (state) renderLobbyPlayers(state, ownId());
+      focusKickControl('kick', player.id);
+    });
+    confirm.append(question, no, yes);
+    row.append(confirm);
+  }
+
   function createLobbyPlayerRow(player: LobbyPlayer, playerId: string | undefined): HTMLDivElement {
     const row = document.createElement('div');
     const isMe = player.id === playerId;
     row.className = `player ${player.team}${isMe ? ' self' : ''}${player.connected ? '' : ' offline'}${
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
+    row.dataset.playerId = player.id;
     const playerName = document.createElement('b');
     playerName.className = 'name';
     playerName.textContent = player.name;
@@ -1989,6 +2057,12 @@ export function createPlayMenu({
       host.textContent = t('playMenu.lobby.host');
       playerName.append(host);
     }
+    if (isMe) {
+      const you = document.createElement('span');
+      you.className = 'you cot-c-tag cot-c-tag--accent';
+      you.textContent = t('playMenu.lobby.you');
+      playerName.append(you);
+    }
     const team = document.createElement('span');
     team.className = 'team';
     const mark = document.createElement('i');
@@ -1997,19 +2071,23 @@ export function createPlayMenu({
     team.append(lobbyTeamLabel(player.team));
     const ready = document.createElement('span');
     ready.className = player.connected && (player.ready || player.team === 'spectator') ? 'ready' : 'wait';
-    ready.textContent = !player.connected
-      ? t('playMenu.lobby.offline')
-      : player.team === 'spectator'
-        ? ''
-        : t(player.ready ? 'playMenu.lobby.ready' : 'playMenu.lobby.notReady');
+    // a spectator's team word already says it watches; every commander shows ready, not ready or offline
+    if (player.team !== 'spectator' || !player.connected) ready.innerHTML = readyTagHTML(player);
     row.append(playerName, createLobbyVehicle(player), team, ready);
+    if (!isMe && canKick()) createKickControls(row, player);
     return row;
   }
 
   function renderLobbyPlayers(next: SerializedLobby, playerId: string | undefined): void {
+    if (pendingKickId && !next.players.some((player) => player.id === pendingKickId)) pendingKickId = null;
+    playersEl.classList.toggle('can-kick', canKick() && next.players.length > 1);
     playersEl.textContent = '';
     const fragment = document.createDocumentFragment();
-    for (const player of next.players) fragment.appendChild(createLobbyPlayerRow(player, playerId));
+    // the seat's own row leads the roster, then every other seat in the room's order
+    const own = next.players.filter((player) => player.id === playerId);
+    for (const player of [...own, ...next.players.filter((player) => player.id !== playerId)]) {
+      fragment.appendChild(createLobbyPlayerRow(player, playerId));
+    }
     playersEl.appendChild(fragment);
   }
 

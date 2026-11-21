@@ -42,6 +42,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { readyTagHTML, renderReadyControl, waitingOnOthers } from './components/readyControl.ts';
 import { ICON_IDS } from './icons/spriteIndex.ts';
 import { moduleName } from './moduleRegistry.ts';
 import { layoutBeats, type BattleBeat, type BattleSide, type PlacedBeat } from './battleBeats.ts';
@@ -862,10 +863,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const vehicle = vehicleName(player.specId) || t('endScreen.noVehicle');
     name.textContent = `${player.name || t('playMenu.commander.fallback')}${player.id === playerId ? t('endScreen.you') : ''}`;
     el('span', 'rv', copy).textContent = vehicle;
-    const status = el('span', 'rs', row);
-    const statusIcon = player.team === 'spectator' ? 'scope' : player.ready ? 'check' : 'clock';
-    const statusText = player.team === 'spectator' ? t('endScreen.watching') : player.ready ? t('endScreen.ready') : t('endScreen.notReady');
-    status.innerHTML = `${uiIconSVG(statusIcon, 13)}<span>${statusText}</span>`;
+    el('span', 'rs', row).innerHTML = readyTagHTML(player);
   }
 
   function renderRoomPlayers(
@@ -895,15 +893,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     me: LobbyPlayer | undefined,
   ): void {
     if (!me || me.team === 'spectator') return;
-    const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', me.ready ? 'close' : 'check',
-      me.ready ? t('endScreen.notReady') : t('endScreen.readyNext'), me.ready ? 'ready-now' : 'needs-ready');
+    const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', '', '', me.ready ? 'ready-now' : 'needs-ready');
+    renderReadyControl(ready, { ready: !!me.ready, waitingOn: waitingOnOthers(state.players, me.id) }, 18);
     ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
     // (a held Ready says why, as its tip and its description: it dimmed with no reason, INTERACTION-REDESIGN C)
     const heldBy = state.phase !== 'waiting' ? 'endScreen.ready.held.starting' : me.connected === false ? 'endScreen.ready.held.reconnecting'
       : !me.specId ? 'endScreen.ready.held.noTank' : '';
     if (heldBy) { ready.dataset.tip = t(heldBy); ready.setAttribute('aria-description', t(heldBy)); }
-    ready.setAttribute('aria-pressed', String(!!me.ready));
-    ready.setAttribute('aria-label', me.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
     ready.addEventListener('click', () => {
       bus.emit('ui:click', {});
       bus.emit('ui:roomReady', { ready: !me.ready });

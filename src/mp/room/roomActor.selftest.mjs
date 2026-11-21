@@ -324,6 +324,34 @@ const identity = (id, resume = token('a'), next = token('b')) => ({ roomCode: 'R
   assert.equal(h.last('a2', 'error').payload.code, 'invalid_payload');
 }
 
+// ---- the owner's lobby controls over the socket (owner 2026-11-19): a smaller format re-seats, a guest is refused,
+// nothing changes while a round runs, and the kicked seat hears why before its socket closes
+{
+  const h = createHarness();
+  h.actor.handleOpen('a'); await h.send('a', 'room_create', { ...identity('admin'), mode: 'private', settings: { teamSize: 2, maxSpectators: 2 } });
+  h.actor.handleOpen('g1'); await h.send('g1', 'room_join', { ...identity('g1', token('c'), token('d')), team: 'alpha' });
+  h.actor.handleOpen('g2'); await h.send('g2', 'room_join', { ...identity('g2', token('e'), token('f')), team: 'bravo' });
+  h.actor.handleOpen('g3'); await h.send('g3', 'room_join', { ...identity('g3', token('1'), token('2')), team: 'bravo' });
+  const teamOf = (room, id) => room.players.find((p) => p.id === id)?.team;
+  await h.send('g1', 'room_command', { command: { type: 'set_team_size', teamSize: 1 } }, 'g-size');
+  assert.equal(h.last('g1', 'error').payload.code, 'admin_only', 'only the owner changes the format');
+  assert.equal(h.actor.snapshot.settings.teamSize, 2);
+  h.drain('g2');
+  await h.send('a', 'room_command', { command: { type: 'set_team_size', teamSize: 1 } }, 'size');
+  assert.equal(h.last('a', 'room_ack').requestId, 'size');
+  const seen = h.last('g2', 'room_state').payload.room;
+  assert.equal(seen.settings.teamSize, 1, 'every seat sees the new format');
+  assert.deepEqual(['admin', 'g1', 'g2', 'g3'].map((id) => teamOf(seen, id)), ['alpha', 'spectator', 'bravo', 'spectator'],
+    'each side keeps its senior seat; the newer ones watch');
+  await h.send('a', 'room_command', { command: { type: 'set_map', mapId: 'alpine' } }, 'map');
+  await h.send('a', 'room_command', { command: { type: 'set_game_mode', gameMode: 'standard' } }, 'mode');
+  assert.equal(h.actor.snapshot.settings.mapId, 'alpine');
+  await h.send('a', 'room_command', { command: { type: 'kick', playerId: 'g3' } }, 'kick');
+  assert.equal(h.last('g3', 'room_closed').payload.reason, 'kicked');
+  assert.equal(h.closed.get('g3'), 'kicked');
+  assert.equal(teamOf(h.actor.snapshot, 'g3'), undefined);
+}
+
 // ---- a host that knows its region names it in every admission reply (the status surface shows it)
 {
   const h = createHarness({ region: 'iad' });

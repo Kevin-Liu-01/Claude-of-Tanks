@@ -47,6 +47,7 @@ import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { heroCardChunk } from './heroCardChunk.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { renderReadyControl } from './components/readyControl.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
@@ -873,7 +874,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}"${datumAttr('room-code')}>` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
-    `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
+    `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('readyControl.readyUp')}</button></div></div>` +
     // a phone held upright (the direction's 91 page): the tab bar, under the Garage and the Deploy screen alike
     `<nav class="cot-tabbar" aria-label="${t('garage.nav.menu')}">` +
     `<button type="button" data-tabbar="garage" aria-current="page">${uiIconSVG('garage', 22)}<span>${t('garage.nav.garage')}</span></button>` +
@@ -5300,9 +5301,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       root.classList.toggle('has-room', !!status);
       roomControls.classList.toggle('show', !!status);
       roomReady.disabled = !status?.canSetReady;
-      roomReady.textContent = status?.ready ? t('playMenu.ready.notReady') : t('playMenu.ready.iAmReady');
-      roomReady.setAttribute('aria-pressed', String(!!status?.ready));
-      roomReady.setAttribute('aria-label', status?.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
+      // the shared ready control (components/readyControl.ts): readyCount counts this seat too, so the rest wait on total − readyCount
+      renderReadyControl(roomReady, {
+        ready: !!status?.ready,
+        waitingOn: status ? Math.max(0, (Number(status.total) || 0) - (Number(status.readyCount) || 0)) : null,
+      }, 14);
       roomReady.dataset.tip = status?.canSetReady
         ? (status.ready ? t('garage.battle.readyCancelLoadout') : t('garage.battle.readyForNextBattle'))
         : t('garage.battle.readinessWaitingOnly');
