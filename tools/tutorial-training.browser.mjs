@@ -316,17 +316,51 @@ try {
   }
   /** A tap on a HUD control (a phone's way to every press): the index'th visible match of the selector. */
   async function tapSel(selector, index = 0) {
-    const boxes = (await Promise.all((await page.$$(selector)).map((h) => h.boundingBox()))).filter((b) => b && b.width > 2);
-    const box = boxes[index];
-    if (!box) { (report.tapMisses ??= []).push(selector); return false; }
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    // only where the control is what the finger meets (a hidden control's box can lie under the card's Skip)
+    const at = await page.evaluate((sel, i) => {
+      const reach = [...document.querySelectorAll(sel)].map((node) => {
+        const r = node.getBoundingClientRect();
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        return r.width > 2 && node.contains(document.elementFromPoint(x, y)) ? { x, y } : null;
+      }).filter(Boolean);
+      return reach[i] ?? null;
+    }, selector, index);
+    if (!at) { (report.tapMisses ??= []).push(selector); return false; }
+    await page.touchscreen.tap(at.x, at.y);
     await sleep(250);
     return true;
   }
   /** The gunner's sight on or off: Shift, or a phone's scope button. */
   const toggleSight = async () => { if (touch) await tapSel('.cot-touch .round.scope'); else await page.keyboard.press('ShiftLeft'); await sleep(400); };
-  /** A round loaded by its rack slot (0 APFSDS, 2 HE on the loaner): its digit, or a phone's tap on its tile. */
-  const loadRound = async (slot) => { if (touch) await tapSel('.cot-shells .cot-shell', slot); else await page.keyboard.press(`Digit${slot + 1}`); };
+  /** A round loaded by its rack slot (0 APFSDS, 2 HE on the loaner): its digit, or on a phone a tap on its tile where the
+   *  finger can reach it (the shipping phone HUD keeps the rack collapsed to the loaded round: a tap on it opens the rack;
+   *  a tap where a hidden tile's box lay landed on the card's Skip and ended the tutorial). */
+  async function loadRound(slot) {
+    if (!touch) { await page.keyboard.press(`Digit${slot + 1}`); return; }
+    const reachable = (want) => page.evaluate((index) => {
+      const tiles = [...document.querySelectorAll('.cot-shells .cot-shell')];
+      const tile = tiles[index];
+      if (!tile) return null;
+      const r = tile.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      return r.width > 2 && tile.contains(document.elementFromPoint(x, y)) ? { x, y } : null;
+    }, want);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const at = await reachable(slot);
+      if (at) { await page.touchscreen.tap(at.x, at.y); await sleep(400); return; }
+      // the rack collapsed: open it by its loaded round
+      const open = await page.evaluate(() => {
+        const sel = document.querySelector('.cot-shells .cot-shell.sel');
+        if (!sel) return null;
+        const r = sel.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      if (!open) break;
+      await page.touchscreen.tap(open.x, open.y);
+      await sleep(500);
+    }
+    (report.tapMisses ??= []).push(`round slot ${slot}`);
+  }
   /** Out of the gunner's sight before a drive, as a player drives (in the third-person view). */
   const thirdPerson = async () => { if (await sightMode()) await toggleSight(); };
   /** The player's tracks: damaged or broken (module:state; S12 waits for Sentry 4 to hit one). */
