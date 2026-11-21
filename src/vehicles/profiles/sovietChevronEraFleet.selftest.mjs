@@ -34,42 +34,8 @@ for (const [id, twinId] of Object.entries(T90_TWINS)) {
   assert.deepEqual(sectors, eraSectors(twinId), `${id}: carries exactly its source-X twin ${twinId}'s reactive sectors`);
 }
 
-// 274: the T-80BV left the shared carrier for its photographed Kontakt-1 wedge arrays on the T-80U X build
-// (t80Marks.selftest.mjs pins its clusters and plates).
-const cases = Object.freeze({
-  t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
-});
-
-for (const [id, expected] of Object.entries(cases)) {
-  const tank = createTank(id, null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
-  try {
-    const turret = tank.root.getObjectByName('rig_turret');
-    const receipt = turret?.userData[expected.receiptKey];
-    assert.ok(receipt, `${id}: publishes its chevron ERA receipt`);
-    assert.equal(receipt.rowsPerCheek, 2, `${id}: has two joined carrier rows per cheek`);
-    assert.ok(receipt.carriersPerRow >= 2, `${id}: has multiple plan carriers per row`);
-    assert.ok(receipt.tilesPerCarrierSurface >= 2, `${id}: has distinct ERA tiles on every carrier`);
-    assert.equal(receipt.exactSurfaceOffsets, true, `${id}: derives tile faces from carrier planes`);
-    assert.equal(receipt.forwardM, expected.forwardM,
-      `${id}: seats its chevrons on the variant's installed front datum`);
-    if (expected.minimumRidgeY != null) {
-      assert.ok(receipt.ridgeY >= expected.minimumRidgeY,
-        `${id}: keeps both front chevron rows high on the turret cheek`);
-    }
-    assert.equal(receipt.carrierSurfacesOmitted, expected.omittedCarrierSurfaces ?? 0,
-      `${id}: records only intentional equipment reliefs`);
-    assert.equal(receipt.carrierSurfacesTotal + receipt.carrierSurfacesOmitted,
-      receipt.rowsPerCheek * receipt.carriersPerRow * 2,
-      `${id}: mirrors the complete carrier topology except explicit equipment notches`);
-  } finally {
-    tank.dispose();
-  }
-}
+// 274: the shared two-row carrier (sovietChevronEra.ts) is retired with its last build: the T-80BV draws its photographed
+// Kontakt-1 wedge arrays and the T-80U Kursk the T-80U X's Kontakt-5 (t80Marks.selftest.mjs pins both).
 
 // 2026-09-15 owner roster pass: the T-90M X study carries the T-90M name; the retained hull is the T-90AM.
 // 2026-10-27 owner names (display only, ids unchanged): the X study is the T-90M Proryv, the tier X chevron the T-90AM II.
@@ -79,4 +45,4 @@ assert.equal(getSpec('t90m').name, 'T-90M Proryv', 'the source-X T-90M study is 
 assert.equal(getSpec('t90m_proryv').name, 'T-90AM II', 'the tier X chevron configuration is the T-90AM II');
 assert.equal(tankTier('t90m_proryv'), 10, 'the T-90AM II chevron occupies tier X');
 
-console.log('sovietChevronEraFleet.selftest: per-family two-row carriers, exact tile seating, and T-90M progression verified');
+console.log('sovietChevronEraFleet.selftest: rebuilt and source-X twins carry their donors\' reactive sectors; T-90M progression verified');

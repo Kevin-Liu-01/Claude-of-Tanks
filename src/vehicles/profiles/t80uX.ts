@@ -240,7 +240,7 @@ function smoke(P:TankBuilderPort):void {
   }
 }
 
-export function machineGun(P:TankBuilderPort):void {
+export function machineGun(P:TankBuilderPort,cls:'nsvt'|'m2'='nsvt',stationName='t80uCommanderNsvtStation'):THREE.Group {
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
   // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its own pintle standing
   // where the traced post stood ahead of the cupola, in place of the post, boxes and rods.
@@ -250,8 +250,10 @@ export function machineGun(P:TankBuilderPort):void {
   // x -0.955). On the sight head (top 2.3999) its shield's lower edge at the heavy MG's full 10.3 degrees of depression
   // came within 25 mm over yaws 64-176; raised 0.116 it kept 24.0 mm, 0.118 26.0, so the pintle stands NSVT_RISE = 0.12
   // higher (27.9 mm at yaw 138, bore 2.5772: 14.6 cm over the source's) on a turned riser that also closes the old gap.
-  const {station}=libraryRoofMg(P,{station:'t80uCommanderNsvtStation',cls:'nsvt',seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
+  // (274: the T-80U Kursk's field M2 stands on the same pintle and riser, profiles/t80uKursk.ts)
+  const {station}=libraryRoofMg(P,{station:stationName,cls,seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
   nsvtRiser(P,station);
+  return station;
 }
 const NSVT_PINTLE=[-.955,2.16,.251] as const,NSVT_RISE=.12;
 /** 267: the NSVT's riser on the sloping roof (2.079-2.106 within 7 cm of the pintle, falling outward to the left): a cast
@@ -316,7 +318,7 @@ export function buildT80UXCasting(P:TankBuilderPort):void { casting(P); }
 /** The source's yaw datum and trunnion (hull frame, before the ring raise). */
 export const T80U_X_YAW=YAW,T80U_X_TRUNNION=GUN;
 
-export function buildT80UX(P:TankBuilderPort):void {
+export function buildT80UX(P:TankBuilderPort,{commanderMg=true}:{commanderMg?:boolean}={}):void {
   // release 231 (t80uXArmor.ts T80U_X_RING_RAISE_M): the casting rides above the source's yaw datum on a stationary machined
   // race bedded into the sloping roof (its foot 0.7-3.4 cm under the roof, inside the hull's 1.038 m half-width), its top
   // 2 mm under the casting's ring collar (cylY .994 at -.028 to .016 in the turret frame). Turret parts stay authored
@@ -325,7 +327,7 @@ export function buildT80UX(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',machinedRing(.90,1.01,YAW[1]+T80U_X_RING_RAISE_M-.030-1.522,.004,P.q?32:20),YAW[0],1.522,YAW[2]);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];
-  buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+  buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);if(commanderMg)machineGun(P);mainGun(P);
 }
 export const T80U_X_PROFILES={t80u:{build:buildT80UX}} as const;
 

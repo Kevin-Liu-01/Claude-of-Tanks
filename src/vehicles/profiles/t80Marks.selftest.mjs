@@ -1,13 +1,17 @@
 // Release 274 (lane t80-family-274, the owner 2026-11-20: "make unique versions of them now"): the T-80, T-80B and T-80BV
 // build on the T-80U X hull (profiles/t80Marks.ts), each with its own photographed era kit, and take the T-80U X's combat
-// frame (t80MarkFrames.ts). Pins: the twin and each mark's identity (no two marks share their sights, searchlight side,
+// frame (t80MarkFrames.ts); the Ukrainian T-80BV is the BV mark in its 2015-24 fit, and the T-80U Kursk the whole T-80U X
+// build in its 2022 Ukrainian field fit (profiles/t80uKursk.ts) on the T-80U's armour record. Pins: the twin and each mark's identity (no two marks share their sights, searchlight side,
 // smoke, flank boxes, side screens and stern), the commander's NSVT on the traversing turret, and the BV's Kontakt-1 drawn
 // and in the spec both ways, at the fleet's Kontakt-1 values; the T-80 and T-80B carry no ERA. Per-tank pin (tanks suite).
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { KONTAKT1_ERA } from '../leopard2A4Kontakt1.ts';
-import { T80BV_KONTAKT1_PLATES } from '../t80MarkFrames.ts';
+import { T80BV_KONTAKT1_PLATES, T80U_KURSK_ARMOR_FACTOR, T80U_KURSK_K1_PLATES, t80SternPitchByYawDeg } from '../t80MarkFrames.ts';
+import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
+import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
+import { tankSeedId } from '../tankIdAliases.ts';
 import { eraPlateNames } from './eraAgreement.test-support.mjs';
 
 const MARKS = ['t80', 't80b', 't80bv', 'ua_t80bv'];
@@ -46,7 +50,14 @@ assert.equal(receipts.ua_t80bv.lunaSide, 'none', 'the Ukrainian 2019 upgrade ret
 assert.deepEqual(MARKS.map((id) => receipts[id].smokeTubes), [0, 9, 8, 8], 'no smoke on the 1976 tank; 5+4 on the B; 4+4 on the BV flanks');
 assert.deepEqual(MARKS.map((id) => receipts[id].flankBoxes), [3, 2, 2, 0]);
 assert.deepEqual(MARKS.map((id) => receipts[id].sideScreens), ['steel-screen', 'rubber-skirt', 'rubber-skirt', 'rubber-skirt']);
-assert.deepEqual(MARKS.map((id) => receipts[id].sternDrums), [false, false, true, false], 'drums on the Russian late service only');
+assert.deepEqual(MARKS.map((id) => receipts[id].sternDrums), [true, true, true, true], 'the owner, 2026-11-20: drums on every mark, as on the T-90 marks');
+assert.deepEqual(MARKS.map((id) => receipts[id].fenderTail), [['zip-box', 'zip-box'], ['zip-box', 'zip-box'], ['zip-box', 'zip-box'], ['zip-box', 'jerry-cans']]);
+// the gun's depression over each stern, measured with its drums, boxes and cans on (tools/gun-depression-sweep.mjs): the
+// gun rides over the drums at the rear quarters, where the T-80U's drumless curve let it pass through them
+for (const id of [...MARKS, 't80u_kursk']) {
+  assert.deepEqual(TANK_SPECS[id].gunPitchByYawDeg, t80SternPitchByYawDeg(id), `${id}: its own measured stern curve`);
+  for (const yaw of [150, 155, 160, 165]) assert.ok(minimumMechanicalGunPitch(TANK_SPECS[id], yaw * Math.PI / 180) * 180 / Math.PI >= 6, `${id}: the gun clears the drums at ${yaw} deg`);
+}
 assert.deepEqual(MARKS.map((id) => receipts[id].commanderShield), [false, false, true, false], 'the NSVT shield is Russian');
 assert.deepEqual(MARKS.map((id) => receipts[id].meshBaskets), [false, false, false, true], 'the Ukrainian 2018 mesh baskets');
 assert.deepEqual(MARKS.map((id) => receipts[id].overheadScreen), [false, false, false, true], 'the Ukrainian 2022-24 overhead screen');
@@ -82,4 +93,70 @@ for (const id of MARKS) {
   assert.equal(spec.dims.hullLengthM, twin.dims.hullLengthM, `${id}: the twin's hull length`);
 }
 
-console.log('t80Marks.selftest: T-80, T-80B, T-80BV and the Ukrainian T-80BV on the T-80U X hull, each with its own kit; BV Kontakt-1 drawn = spec');
+// the T-80U Kursk (the owner, 2026-11-20: "a ton of era at front of turret, on top of turret, on sideskirts and upper
+// glacis and different machine guns and 2 machine guns"): the T-80U X build whole under its field Kontakt-1, an M2 and an
+// M240-class gun, on the T-80U's armour record at its 1.04 factor plus the Kontakt-1's six plates
+const eraSectors = (tank) => [...(tank.root.userData.eraFinishReceipt?.sectors ?? [])].sort();
+const twinTank = createTank('t80u', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+const twinSectors = eraSectors(twinTank);
+twinTank.dispose();
+{
+  const id = 't80u_kursk';
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try {
+    const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
+    assert.deepEqual(hull.userData.familyRebuild, { donor: 't80u', revision: 1, variant: 'ua-service' });
+    const receipt = turret.userData.t80uKurskReceipt;
+    assert.deepEqual({ ...receipt, kontakt1: undefined }, { base: 't80u-x', fit: 'ua-2022-captured', kontakt1: undefined,
+      roofGuns: ['m2', 'm240'], rearKit: ['unditching-log', 'stern-drums', 'flank-crates'], ghillie: ['turret-rear-roof'], fenderIdPaint: 2, flag: 'ua', barrelBands: 2 });
+    for (const key of ['uaT80ChevronEraReceipt', 'turretEraSurfaceSeatReceipt', 't80CastTurretReceipt'])
+      assert.equal(turret.userData[key], undefined, `${id}: the retired suite's ${key} is gone`);
+    // the field Kontakt-1 in every cluster: over the glacis Kontakt-5, two rows the length of each skirt, the roof's front
+    // half and the free cheek blocks
+    const k1 = receipt.kontakt1;
+    assert.deepEqual(Object.keys(k1).sort(), [...T80U_KURSK_K1_PLATES].sort());
+    assert.ok(k1.glacis_k1_L + k1.glacis_k1_R >= 30, `${id}: the glacis field (${k1.glacis_k1_L + k1.glacis_k1_R})`);
+    assert.equal(k1.skirt_era_L, 33); assert.equal(k1.skirt_era_R, 33);
+    assert.ok(k1.turret_k1_L + k1.turret_k1_R >= 18, `${id}: the roof and cheek containers (${k1.turret_k1_L + k1.turret_k1_R})`);
+    // two working roof guns, neither an NSVT nor a Kord: the commander's M2 on the NSVT's pintle and riser, the gunner's
+    // M240-class gun on its post
+    assert.equal(turret.getObjectByName('t80uCommanderNsvtStation'), undefined, `${id}: no NSVT`);
+    const m2 = turret.getObjectByName('t80uKurskCommanderM2Station'), m240 = turret.getObjectByName('t80uKurskGunnerM240');
+    assert.ok(m2 && m2.parent === turret && m240 && m240.parent === turret, `${id}: both roof guns ride the turret`);
+    // drawn ERA = spec both ways: the T-80U's Kontakt-5 sectors and the field Kontakt-1's
+    assert.deepEqual([...(tank.root.userData.eraClusterNames ?? [])].sort(), eraPlateNames(TANK_SPECS[id]), `${id}: drawn ERA = spec`);
+    const sectors = eraSectors(tank);
+    for (const sector of twinSectors) assert.ok(sectors.includes(sector), `${id}: keeps the T-80U's ${sector}`);
+    // the field net on the turret roof's rear half only
+    const ghillie = FLEET_GHILLIE_SUITS[id];
+    assert.ok(ghillie?.fieldClearanceM > 0 && !ghillie.hull && !ghillie.turret.side, `${id}: the rear roof net only`);
+    for (const layer of ['net', 'leaves']) {
+      const mesh = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_turret_${layer}`);
+      assert.ok(mesh?.isMesh && mesh.geometry.getAttribute('position').count > 120, `${id}: turret ghillie ${layer} drawn`);
+    }
+    // the identification paint on both fender noses and the flag's two faces
+    const flags = [];
+    tank.root.traverse((o) => { if (o.name === 'vehicleMarking_flag') flags.push(o); });
+    assert.equal(flags.filter((o) => o.userData.surfaceOwner === 'hull').length, 2, `${id}: ID paint on both fender noses`);
+    assert.equal(flags.filter((o) => o.userData.surfaceOwner === 'turret').length, 2, `${id}: the flag's two faces`);
+  } finally { tank.dispose(); }
+  const spec = TANK_SPECS[id], twin = TANK_SPECS.t80u;
+  assert.deepEqual(spec.armor.turretPivot, twin.armor.turretPivot);
+  assert.equal(spec.dims.hullLengthM, twin.dims.hullLengthM);
+  const plates = (s) => [...s.armor.hullPlates, ...s.armor.turretPlates];
+  const own = plates(spec).filter((p) => !T80U_KURSK_K1_PLATES.includes(p.name));
+  assert.deepEqual(own.map((p) => p.name), plates(twin).map((p) => p.name), `${id}: the T-80U's plates`);
+  own.forEach((p, k) => {
+    const t = plates(twin)[k];
+    assert.equal(p.keMm, p.kind === 'external' ? t.keMm : Math.round(t.keMm * T80U_KURSK_ARMOR_FACTOR), `${id} ${p.name}: KE`);
+  });
+  for (const p of plates(spec).filter((p) => T80U_KURSK_K1_PLATES.includes(p.name)))
+    assert.deepEqual(p.era, { ...KONTAKT1_ERA }, `${id} ${p.name}: Kontakt-1`);
+  // the T-80U's modules, but for the roof-gun module, which follows the station the Kursk draws (the M2, not the NSVT)
+  const notRoofGun = (m) => m.module !== 'roofGun';
+  assert.deepEqual(spec.armor.modules.filter(notRoofGun), twin.armor.modules.filter(notRoofGun), `${id}: the T-80U's modules`);
+  const roofGun = spec.armor.modules.find((m) => m.module === 'roofGun');
+  assert.ok(roofGun && roofGun.max[2] > 1.2, `${id}: the roof-gun module spans the M2's 1.21 m reach`);
+}
+
+console.log('t80Marks.selftest: T-80, T-80B, T-80BV, the Ukrainian T-80BV and the T-80U Kursk on the T-80U X hull, each with its own kit; ERA drawn = spec');

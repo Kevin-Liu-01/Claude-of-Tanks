@@ -33843,17 +33843,17 @@
       }
     ]
   },
-  "geometryHash": "c86b2d7f",
+  "geometryHash": "18ed7527",
   "metadataHash": "8b76da39",
   "presentationAnchor": {
-    "xM": 0.0015,
-    "zM": -0.094
+    "xM": 0.0027,
+    "zM": -0.1981
   },
-  "presentationHash": "4ad80ba1",
+  "presentationHash": "bee71fe6",
   "presentationProjection": {
     "centerYM": 2.1594,
-    "topHalfM": 6.5235,
-    "sideHalfM": 3.2618
+    "topHalfM": 6.6349,
+    "sideHalfM": 3.3175
   },
   "appearance": {
     "version": 1,
@@ -33902,15 +33902,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32548,
-      "sha256": "07bf83183d068321aba75ab183a0eda779c4bfa72c328676b8dc0e0836c6d069",
+      "bytes": 31210,
+      "sha256": "9b42711d944772d15d6aa2568dcaf77720f1a909f8a8de3f297d9fe2cab27758",
       "thumbnail": {
         "file": "thumbs/ua_t80bv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12842,
-        "sha256": "dcead447c433a206f171404ffa9f02a1602982025217c3bf63277ba9c7e4fed1"
+        "bytes": 12278,
+        "sha256": "52d02e7bbe072af816330147ea7bc31bb519e24d8c1cac60646bc788babe70bf"
       }
     },
     "top": {
@@ -33918,56 +33918,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10904,
-      "sha256": "8413426edfb7b7ba140c4b8baa90461a1879f1e163ae5bf823275023a347f25e"
+      "bytes": 11338,
+      "sha256": "0ed601543aefdf2e4a599061cb7617d4311cb3914a7b6033024bdcafe40c84d4"
     },
     "side": {
       "file": "ua_t80bv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11048,
-      "sha256": "1a109b861c380f09b7db6c1cbcbf7a8f9951ddbe694680c68c179af9aaec73f2"
+      "bytes": 11148,
+      "sha256": "cb8d2af678de230fd0ca13efce6e43532809377f9a2b54666dde9864a2430e64"
     },
     "topSilhouette": {
       "file": "ua_t80bv_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1232,
-      "sha256": "a3d22477518d552d97df71d1166af8d08be978cc8f0536875322fe740d3bbe87"
+      "bytes": 1376,
+      "sha256": "30c2b9d069cba2d8467158eb502d3da527f6d5dd9bf981139361a0ca7fba138d"
     },
     "sideSilhouette": {
       "file": "ua_t80bv_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5052,
-      "sha256": "d6ec1b7eb0935576a17d71ba28ac0706fc66d54975e6610397ba3d7e1d7cec93"
+      "bytes": 5150,
+      "sha256": "870e228f3efeff0f41ab10ce44cf8c1919a325242d9e35a4d65c5762ce2ab56d"
     },
     "armorSide": {
       "file": "ua_t80bv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28776,
-      "sha256": "50c15462e5ddf89c8fc9211a89e245a0b39e0d7cdeac1c0a75ff71584884aaeb"
+      "bytes": 28318,
+      "sha256": "1f74ef5654409278aa9013fc116210ca8dffc46033f74f4ed1fe3d761d347017"
     },
     "modulesSide": {
       "file": "ua_t80bv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26364,
-      "sha256": "56165fbc10a302170d5f03f4f384c24e1a664366f58e87fec660c5ed5cdfc397"
+      "bytes": 25878,
+      "sha256": "e77dacffb69b4fc660bd7e815422c88c00cd43812595c18aad37c6816e7d09ef"
     },
     "crewSide": {
       "file": "ua_t80bv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23294,
-      "sha256": "d9456bda0521794161c9015c0d9003c97429f1cfa1a7f4fcc8747a9c924ada92"
+      "bytes": 23836,
+      "sha256": "7df9077672bfae6f30e6ad08642af2bab2b24136c499239cdf902484ef5baaba"
     },
     "markings": {
       "file": "ua_t80bv_markings.png",
@@ -33980,8 +33980,8 @@
     "technicalLabels": {
       "file": "ua_t80bv_technical.json",
       "mime": "application/json",
-      "bytes": 4849,
-      "sha256": "a39cc5f143c97411583aa6c7c2a55297ed787d786f37704c295e2b3032e0dfa4"
+      "bytes": 4839,
+      "sha256": "596bd3d39d6a9a29a108381f7e0716a327fdb39d63dab707cb00c197a82a200e"
     }
   }
 }

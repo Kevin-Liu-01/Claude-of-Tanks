@@ -92,7 +92,7 @@ const UKRAINE_SPECS = {
     name: 'T-80U Kursk', number: 'KURSK', base: '#4b5039', weather: '#5c5b45',
     patches: ['#303329', '#6b634a', '#80745a'], camoScale: 0.64,
     stats: { hp: 2350, enginePowerHp: 1250, weightTons: 46.0, topSpeedKmh: 70 },
-    armorFactor: 1.04,
+    // 274: its armour is the T-80U X record at its 1.04 factor, set with its frame (t80MarkFrames.ts)
   }),
   // Release 262 (owner 2026-10-27): this build is the T-84U Oplot, Object 478DU9 (tankLabels.ts); the id stays.
   // the 2000 Ukrainian service finish: olive with brown and black disruptive bands

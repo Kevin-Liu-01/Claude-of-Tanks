@@ -1,4 +1,4 @@
-# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`; release 274)
+# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`, `t80u_kursk`; release 274)
 
 Lane `item/t80-family-274`. The owner, 2026-11-20: "lets redesign the t80, t80b, t80bv, and their ukrainian counterparts
 to be like our t90 fixes - we have old models with certain design styles that make them unique, modern versions of the
@@ -40,7 +40,7 @@ The real T-80B's hull is the T-80U's apart from its fittings, so each mark's hul
 | Side screens | narrow painted steel screens, wheels bare | full-length black rubber skirts | as T-80B, a Kontakt-1 row along the top of the front two-thirds |
 | Fender noses | bare steel ends, short steel splash plate | wide rubber flaps flaring over the tracks | as T-80B |
 | Bow | self-entrenching blade (the U's rubber mat is not fitted) | as T-80 | as T-80 |
-| Stern | unditching log | log, rubber mud flaps | log, mud flaps, two 200 L drums on the X cradles |
+| Stern | unditching log, two 200 L drums on the X cradles, a ZIP box on each fender tail | as T-80, rubber mud flaps | as T-80B |
 
 Turret-side naming follows the spec: `_L` plates and clusters stand at -x, `_R` at +x (the T-80U X's own plates).
 
@@ -56,9 +56,63 @@ sibling. From the T-80BV it differs only where the photographs (lane evidence `p
 - a tall pipe-frame, net-covered overhead screen (2022-24);
 - an extra 3 x 4 Kontakt-1 brick box on the turret's +x flank;
 - the skirt Kontakt-1 row the full length (15 a side, not 10);
-- no stern drums and no NSVT shield (both Russian late-service fittings).
+- no NSVT shield (a Russian late-service fitting);
+- a strapped pair of 20 L cans on the right fender tail in place of that side's ZIP box.
 
 Its six ERA plates take the same Kontakt-1 values as the T-80BV's.
+
+## The T-80U Kursk (`t80u_kursk`)
+
+The owner approved its look on 2026-11-20 after three rounds of stills. It is the T-80U X build whole
+(`profiles/t80uKursk.ts` on `buildT80UX`), in a 2022 Ukrainian field fit, replacing the print-fitted loft and the
+T-90-style turret suite in `profiles/ukraine.ts` (retired with `sovietChevronEra.ts` and two selftests). The owner's ask:
+"a ton of era at front of turret, on top of turret, on sideskirts and upper glacis and different machine guns and 2
+machine guns", then "the log and 2 other rear things".
+
+- **Kontakt-1 over the K-5:** 133 bricks, laid with the T-80 marks' `k1` helper: 32 on the upper glacis over the K-5
+  sheet (clear of the gun's depression line, the handles, lamps and splash strip), 33 on each skirt in two rows (the
+  bricks over the track's climb to the idler and sprocket are left off), 35 on the turret roof and cheeks (14 left, 21
+  right), each seated on the casting by raycast and clear of the hatches, sights, gun channel and smoke.
+- **Two roof guns:** an M2 on the commander's station (in place of the T-80U's NSVT) and an M240 on a riding-cradle
+  pintle at the gunner's post. Ammunition: 12.7x99 mm NATO M8 API and the default 7.62x51 mm. No photograph shows
+  either gun on a T-80U; they are the owner's request.
+- **Rear kit:** the unditching log on chains, two 200 L drums on the stern cradles, a stowage crate on each rear flank
+  of the turret.
+- **Field dress:** woodland netting over the turret's rear roof, a Ukrainian flag on the snorkel bracket, yellow and
+  blue paint on the fender noses, two canvas bands on the barrel.
+- **Drone dock:** the M240 stands on the T-80U's dock seat and Kontakt-1 fills the front roof, so the dock moves to the
+  rear left behind the commander's cupola (turret -0.45, 0.559, -0.95). The M2 keeps -169 to +117 deg of traverse, off
+  the dock (`roofStationArcs.ts`).
+
+### Combat record
+
+`t80MarkFrames.ts` gives the Kursk the T-80U's armour record whole at its own 1.04 protection factor, in place of the
+plates measured on the retired loft, plus six Kontakt-1 plates (one per drawn cluster, `KONTAKT1_ERA` 0.05 KE / 280 mm
+CE) over the T-80U's K-5 (0.20 / 400). Before and after (KE / CE mm):
+
+| | before | after |
+|---|---|---|
+| Upper glacis | 499 / 572 | 499 / 572, K-5 and now Kontakt-1 over it |
+| Turret cheeks | 572 / 624 | 572 / 624, K-5 and Kontakt-1 |
+| Mantlet | 364 / 416 | 528 / 603 (the T-80U's, x 1.04) |
+| Turret sides | 312 / 364 | 312 / 364 |
+| Skirts | 2 plates, 8 | the T-80U's skirts, Kontakt-1 over them |
+| ERA plates | old drawn K-5 (12 glacis, 69 turret) | T-80U X K-5 (16 glacis, 18 turret) + Kontakt-1 |
+
+HP 2350, 12 modules and 3 crew are unchanged; the roof-gun module follows the M2.
+
+## Stern stowage (2026-11-20)
+
+The owner asked for the T-90 marks' rear kit on every new T-80 ("the fuel cans and other stuff at back"). All four marks
+now carry the two 200 L drums on the T-80U X stern cradles (`addT90CradleDrums`, as the T-90 marks and the Kursk) and a
+ZIP box on each fender tail, level on the tail's lip ahead of the drums with a foot and a bracket plate down to the slope.
+The Ukrainian tank's right-hand box is a strapped pair of 20 L cans. The photographs show drums only on the T-80BV's late
+Russian service; on the others they follow the owner's request. The T-80U's gun-depression curve, which the marks and the
+Kursk had copied, was measured without drums, so the gun could pass through them over the rear quarters (the T-80BV's
+already could). Each now has its own curve, measured with its stowage on (`tools/gun-depression-sweep.mjs`, keep 26 mm;
+`t80MarkFrames.ts`): from 148 to 169 deg the gun rides up to 7.5 deg (7.7 on the Ukrainian tank's can side) to clear
+the drums, and the fender-tail boxes and cans hold it at -3.5 to -4.6 deg just ahead of that. The three Soviet marks share
+one curve.
 
 ## Blind critic (2026-11-20)
 
@@ -85,7 +139,7 @@ the T-80U X's measured tube); smoke "on one side" from above (not a defect: 5 an
 - The roof mast on the T-80B is read as the DVE-BS crosswind sensor; not confirmed in text.
 - The deck and exhaust are the GTD-1000 family's on all four (the photographs show no external difference).
 - The T-80BV's drums and NSVT shield are its late Russian service fit (photographs t80bv/02-03); a 1985 factory tank had
-  neither.
+  neither. The other marks' drums are the owner's request, not photographed.
 
 ## Sources
 

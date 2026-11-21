@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-21T01:35:09.436Z",
+ "generatedAt": "2026-11-21T05:10:58.754Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 45,
  "total": 155,
@@ -92,9 +92,9 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 31.2,
-    "stations": 6.8,
-    "turretCurves": 11.4,
+    "hullCurves": 57.4,
+    "stations": 20.3,
+    "turretCurves": 7.4,
     "wholeCurves": 0,
     "dims": 0,
     "floaters": 100
@@ -220,11 +220,11 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 14,
-    "stations": 6.5,
+    "hullCurves": 53.1,
+    "stations": 30.1,
     "turretCurves": 0,
-    "wholeCurves": 16.4,
-    "dims": 23.9,
+    "wholeCurves": 30.5,
+    "dims": 19.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -236,11 +236,11 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 16.1,
-    "stations": 5.6,
+    "hullCurves": 31.3,
+    "stations": 2.5,
     "turretCurves": 0,
-    "wholeCurves": 26.8,
-    "dims": 0,
+    "wholeCurves": 8.4,
+    "dims": 59.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -586,6 +586,19 @@
    }
   },
   {
+   "id": "t80u_kursk",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 83.2,
+    "dims": 0,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "c2_ariete_proto",
    "geoMin": 2.7,
    "requiredMinimum": 90,
@@ -809,19 +822,6 @@
     "turretCurves": 80.8,
     "wholeCurves": 76.3,
     "dims": 32.8,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t80u_kursk",
-   "geoMin": 35.4,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 86.2,
-    "dims": 35.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

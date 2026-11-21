@@ -565,7 +565,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs',
     'src/vehicles/profiles/t64Foundation.selftest.mjs',
     'src/vehicles/profiles/t64GunClearance.selftest.mjs',
-    'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80Marks.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',
@@ -819,7 +818,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercRoofPockets.selftest.mjs',
     // release 264: the T-72B 1987's and T-62MV1's open commander's hatch opens into its cupola
     'src/vehicles/profiles/t72b1987HatchWell.selftest.mjs',
-    'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',

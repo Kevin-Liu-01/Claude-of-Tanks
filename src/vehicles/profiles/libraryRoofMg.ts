@@ -8,7 +8,7 @@ type Point = readonly [number, number, number];
 export interface LibraryRoofMgOptions {
   /** The station group's name (the hierarchy records turret -> station -> cradle -> weapon). */
   station: string;
-  cls: 'nsvt' | 'kord';
+  cls: 'nsvt' | 'kord' | 'm2';
   /** The pintle foot in the turret frame: the top of the ring or roof it stands on. */
   seat: Point;
   /** Station yaw at rest (radians, +Y), 0 = the gun along the turret's +Z. */

@@ -15,8 +15,10 @@
 // - T-80BV (1985): the T-80B with Kontakt-1: double-stacked wedge arrays on the cheeks (eight columns left, five right), a
 //   grid on the roof's right front, the glacis field tapering from eleven containers under the splash board to four at the
 //   nose and a row along the top of each skirt's front two-thirds; its 902A banks moved back to the flanks; the late
-//   service's tall shield round the commander's NSVT and the two 200 L drums on the T-80U X stern cradles.
-// All three carry the unditching log, the snorkel tube on the casting's rear and the self-entrenching blade under the bow.
+//   service's tall shield round the commander's NSVT.
+// All carry the unditching log, two 200 L drums on the T-80U X stern cradles and a ZIP box on each fender tail (the owner,
+// 2026-11-20: the T-90 marks' "fuel cans and other stuff at back"; the Ukrainian tank's right one is a pair of 20 L cans),
+// the snorkel tube on the casting's rear and the self-entrenching blade under the bow.
 // Photographs and sources: ~/cot-lanes/t80-family-274-evidence/photos (IDENTITY.md). First-party procedural geometry:
 // Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
@@ -30,6 +32,7 @@ import {libraryRoofMg} from './libraryRoofMg.ts';
 import {machinedRing} from '../machineGunGeometry.ts';
 import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {stowagePart} from './stowagePart.ts';
+import {jerrycanParts} from '../accessoryKits.ts';
 import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION} from './t80uX.ts';
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -146,11 +149,18 @@ function dozerBlade(P:TankBuilderPort):void{
   }
 }
 
-/** The stern: the unditching log on its chains across the lower rear plate and the rubber mud flaps at the fender tails; the
- * BV's late service adds two 200 L drums on the T-80U X cradles (the X build carries them empty). Hull frame. */
+/** The stern: two 200 L drums on the T-80U X cradles (the X build carries them empty), a stowage load on each fender tail
+ * ahead of them, the unditching log on its chains across the lower rear plate and the rubber mud flaps at the fender tails.
+ * The owner, 2026-11-20, as on the T-90 marks (t90CradleDrums.ts): "the fuel cans and other stuff at back" on every new
+ * T-80. Hull frame. */
 function stern(P:TankBuilderPort,m:T80Mark):void{
   // the drums lie tangent on the sloping upper rear plate (z -3.13, y 1.547 to z -3.36, y 1.347), 4 mm into it, over the cradles
-  if(m==='t80bv')addT90CradleDrums(P,1.664,-3.433,[[-1.542,-1.179],[1.179,1.542]]);
+  addT90CradleDrums(P,1.664,-3.433,[[-1.542,-1.179],[1.179,1.542]]);
+  // the fender tails: a ZIP box on each, the Ukrainian tank's right one a strapped pair of 20 L cans
+  for(const s of [-1,1]){
+    if(m==='ua_t80bv'&&s>0)tailCans(P,s);
+    else zipBox(P,s);
+  }
   // (the X hull tapers to a .533 half-width at its stern face, so a log wider than ±.70 would close the pocket between the
   // taper and the fender tails into a plan hole: the log spans the stern face and its chains)
   P.addEquipment('hullDetail',stowagePart(cylX(.135,1.40,14)),0,1.06,-3.49);
@@ -159,6 +169,49 @@ function stern(P:TankBuilderPort,m:T80Mark):void{
     P.addEquipment('hullDark',stowagePart(beamBetween([x,1.19,-3.45],[x,1.30,-3.33],.010)),0,0,0);
   }
   if(m!=='t80')for(const s of [-1,1])P.addMudguard('t80-mark-stern-flap','hullRubber',box(.62,.36,.012),s*1.40,1.00,-3.37,.10,0,0);
+}
+
+/** The fender tail behind the long fender boxes (the X fender, measured on the T-80B build, the same on both sides from x
+ * 1.25 to 1.55): flat at 1.42 from the boxes' end at z -2.735 to -2.835, a 1.44 lip to -2.91, then falling at 25 deg to
+ * 1.25 at -3.20. The load sits level on the lip, a foot under its front edge on the flat and a welded bracket plate down to
+ * the slope under its back; its back face stays 6 cm clear of the drum ahead of the cradles (front z -3.14). */
+const TAIL={x:1.40,front:-2.75,back:-3.07,base:1.438,flat:1.42} as const;
+const tailY=(z:number)=>1.38+(z+2.92)*(.13/.28);
+function tailMounts(P:TankBuilderPort,s:number,w:number):void{
+  const x=s*TAIL.x,bz=TAIL.back+.02,low=tailY(bz)-.005;
+  P.addEquipment('hullDark',stowagePart(box(w+.04,TAIL.base-TAIL.flat+.006,.035)),x,(TAIL.base+TAIL.flat)/2-.002,TAIL.front-.03);
+  P.addEquipment('hullDark',stowagePart(box(w+.04,TAIL.base-low+.004,.018)),x,(TAIL.base+low)/2,bz);
+}
+/** A ZIP (spare-parts) box: welded sheet with a lapped lid, the hinge along its inboard edge, two hasps outboard. */
+function zipBox(P:TankBuilderPort,s:number):void{
+  const w=.30,h=.22,d=TAIL.front-TAIL.back,x=s*TAIL.x,z=(TAIL.front+TAIL.back)/2,b=TAIL.base;
+  tailMounts(P,s,w);
+  P.addEquipment('hullDetail',stowagePart(box(w,h,d)),x,b+h/2,z);
+  P.addEquipment('hullDetail',stowagePart(box(w+.018,.020,d+.018)),x,b+h+.008,z);
+  P.addEquipment('hullDetail',stowagePart(box(w+.006,.016,d+.006)),x,b+h*.45,z);
+  P.addEquipment('hullDark',stowagePart(cylZ(.012,d*.86,10)),x-s*(w/2+.006),b+h+.004,z);
+  for(const dz of [-.26,.26]){
+    P.addEquipment('hullDark',stowagePart(box(.014,.07,.04)),x+s*(w/2+.007),b+h-.03,z+dz*d);
+    P.addEquipment('hullDark',stowagePart(box(.024,.016,.05)),x+s*(w/2+.010),b+h+.006,z+dz*d);
+  }
+}
+/** Two 20 L cans (accessoryKits.ts jerrycanParts) upright side by side on a tray, broad faces outboard and inboard, spouts
+ * forward, one webbing strap round the pair at two thirds of their height. */
+function tailCans(P:TankBuilderPort,s:number):void{
+  const x=s*TAIL.x,z=(TAIL.front+TAIL.back)/2+.005,tray=.008,top=TAIL.base+tray,dx=.0875;
+  tailMounts(P,s,.36);
+  P.addEquipment('hullDark',stowagePart(box(.36,tray,.37)),x,TAIL.base+tray/2,z);
+  for(const c of [-1,1]){
+    const can=jerrycanParts(1,[c],P.q!==false);
+    for(const part of [can.body,...can.stamps,can.spine,...can.grips]){
+      part.userData.designFamily='cot-field-jerry-can-v3';
+      P.addEquipment('hullDetail',stowagePart(part,'can'),x+c*dx,top-.003,z);
+    }
+    if(can.spout)P.addEquipment('hullDark',stowagePart(can.spout,'can'),x+c*dx,top-.003,z);
+  }
+  const strapY=top+.30,runX=2*dx+.165+.006,runZ=.345/2+.003;
+  for(const sz of [-1,1])P.addEquipment('hullDark',stowagePart(box(runX,.035,.006)),x,strapY,z+sz*runZ);
+  for(const sx of [-1,1])P.addEquipment('hullDark',stowagePart(box(.006,.035,2*runZ)),x+sx*runX/2,strapY,z);
 }
 
 /** The side screens under the T-80U X fender lip ([z, top, foot] of its apron; the face leans out from x 1.685 at the lip to
@@ -330,10 +383,14 @@ function turretRear(P:TankBuilderPort,m:T80Mark):void{
 
 // ------------------------------------------------------------------------------------------------------ Kontakt-1 --
 
-/** One 4S20 container (252 x 132 x 69 mm in its steel box) seated on a surface at p whose outward normal turns phi in plan
- * and leans back by tilt, its hit face outward; its mounting shoe goes into the surface behind it. */
 const K1_COUNT=new WeakMap<TankBuilderPort,Record<string,number>>();
-function k1(P:TankBuilderPort,cluster:string,owner:'hull'|'turret',p:readonly[number,number,number],phi:number,tilt:number,roll=0):void{
+/** The Kontakt-1 containers k1 has laid on this build, per cluster. */
+export const k1Counts=(P:TankBuilderPort):Readonly<Record<string,number>>=>Object.freeze({...(K1_COUNT.get(P)??{})});
+/** One 4S20 container (252 x 132 x 69 mm in its steel box) seated on a surface at p (hull frame) whose outward normal turns
+ * phi in plan and leans back by tilt, rolled by roll in its face, its hit face outward; its mounting shoe goes into the
+ * surface behind it. Counted per cluster for the receipts (k1Counts); the T-80U Kursk's field Kontakt-1 uses it too
+ * (profiles/t80uKursk.ts). */
+export function k1(P:TankBuilderPort,cluster:string,owner:'hull'|'turret',p:readonly[number,number,number],phi:number,tilt:number,roll=0):void{
   const counts=K1_COUNT.get(P)??{};counts[cluster]=(counts[cluster]??0)+1;K1_COUNT.set(P,counts);
   const T=.075,g=box(.26,.14,T).rotateZ(roll).rotateX(-tilt).rotateY(phi);
   const n=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(1,0,0),-tilt).applyAxisAngle(new THREE.Vector3(0,1,0),phi);
@@ -478,7 +535,8 @@ export function buildT80Mark(P:TankBuilderPort,m:T80Mark):void{
     flankBoxes:m==='t80'?3:m==='ua_t80bv'?0:2,
     meshBaskets:m==='ua_t80bv',overheadScreen:m==='ua_t80bv',
     sideScreens:m==='t80'?'steel-screen':'rubber-skirt',
-    sternDrums:m==='t80bv',
+    sternDrums:true,
+    fenderTail:m==='ua_t80bv'?['zip-box','jerry-cans']:['zip-box','zip-box'],
     commanderShield:m==='t80bv',
     kontakt1:Object.freeze({...(K1_COUNT.get(P)??{})}),
   });

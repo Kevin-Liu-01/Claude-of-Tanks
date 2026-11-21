@@ -69,6 +69,9 @@ const type54=ammunition(heavy,'12.7×108 mm Type 54 API');
 // the Chinese hulls fire, take their own 12.7×108 mm cartridge's name (game numbers unchanged)
 const b32Nsvt=ammunition(heavy,'12.7×108 mm B-32 API');
 const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
+// release 274 (the owner, 2026-11-20: the Kursk's "different machine guns and 2 machine guns"): the T-80U Kursk's
+// commander's M2 fires 12.7×99 mm NATO (its gunner's M240-class gun the rifle profile's 7.62×51 mm); game numbers unchanged
+const m2Nato=ammunition(heavy,'12.7×99 mm NATO M8 API');
 // Release 227 (owner 2026-10-16: the Qilin's and Kunlun's roof guns become "the more classic machine gunn emplacement"):
 // the QJC-88 on its open cupola pintle depresses 5 degrees, the real cupola mount's limit (as griffinRoofM2 is held to
 // its cradle's); the auxiliary control still aims and fires it by itself.
@@ -99,6 +102,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3_zubr_ii:wkmb,
   pt84_orzel:wkmb,pt84_sokol:wkmb,pt84_zbik:wkmb,
   t80u_zoria:b32Heavy,
+  t80u_kursk:m2Nato,
   t72b3m_hetman:ubr6,
   t72b3_sich:ubr6,
   t80u_husarz:heavy,
@@ -123,7 +127,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   mbt70:rh202,
   t62_1975:b32Nsvt,t62mv1:b32Nsvt,t64bv1:b32Nsvt,t64bv_donbas:b32Nsvt,t64bm1m:b32Nsvt,t64bv:b32Nsvt,t64b1v_2022:b32Nsvt,pt64_tur:b32Nsvt,t72bu_1989:b32Nsvt,t72bu:b32Nsvt,t72b3:b32Nsvt,
   t72b3m_2016:b32Nsvt,t72b3m_2022:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
-  t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80uk:b32Nsvt,t80u:b32Nsvt,ua_t80bv:b32Nsvt,t80u_kursk:b32Nsvt,
+  t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80uk:b32Nsvt,t80u:b32Nsvt,ua_t80bv:b32Nsvt,
   t84:b32Nsvt,t90:b32Nsvt,t90a_2004:b32Nsvt,t90a_burlak_proto:b32Nsvt,t90a_burlak:b32Nsvt,t90a_2006:b32Nsvt,
   t90am:b32Nsvt,t90sm_2013:b32Nsvt,
   type59:type54,ztz99_longwei:type54,ztz85_iii:type54,ztz99a2:type54,ztz99a:type54,
