@@ -339,6 +339,11 @@ assert.deepEqual(splitBattleAllies(fakes, { playerSpecId: TRAINING_RULES.loanerS
   campaignOperationId: null, nationalAllyIds: null }).map((e) => e.specId), skirmish.allies.map((b) => b.specId), 'the ally split takes the allies alone');
 assert.equal(trainingSkirmishSide(TRAINING_RULES, skirmish.enemies[0].specId), 'enemy');
 assert.equal(trainingSkirmishSide(TRAINING_RULES, sentry.specId), null);
+// the hull floor: until the skirmish comes in, the player never stays under half its hull (the scenes teach)
+assert.equal(TRAINING_RULES.hullFloorShare, 0.5, 'the player keeps at least half its hull until the fight');
+assert.match(state, /if \(!rules \|\| !combat \|\| combat\.destroyed \|\| game\._trainingFightOn \|\| !\(combat\.maxHp > 0\)\) return;\s*const floor = combat\.maxHp \* rules\.hullFloorShare;\s*if \(combat\.hp < floor\) combat\.hp = floor;/,
+  'raised back to it each step after a hit took it under, standing down once the fight is on');
+assert.match(state, /if \(on\) game\._trainingFightOn = true;/, 'the skirmish\'s cue stands the floor down');
 const fight = TRAINING_STEPS.find((step) => step.id === 'training.fight');
 assert.equal(fight.cue, TRAINING_SKIRMISH_CUE, 'the fight step brings the skirmish in');
 assert.deepEqual([...fight.advance.actors], skirmish.enemies.map((b) => b.specId), 'and ends when every enemy bot is down');
@@ -373,7 +378,7 @@ assert.match(state, /\.\.\.\(game\.ruleset\.training \? \{ respawns: \(ent: Solo
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
 assert.ok(!/respawns:/.test(authority), 'the authority keeps the shared rule');
 assert.match(state, /const checkpoint = game\.ruleset\.training && ent\.isPlayer \? game\._trainingCheckpoint : null;/, 'the training player revives at the checkpoint');
-assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingArcSince = undefined;\s*game\._trainingSeenSince = undefined;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
+assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingArcSince = undefined;\s*game\._trainingSeenSince = undefined;\s*game\._trainingFightOn = false;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
 const { finishTrainingBattle, setTrainingCheckpoint } = await import('../game/state.ts');
 const ended = [];
 const fakeGame = { ruleset: { training: TRAINING_RULES }, result: null, resultReason: null, player: { state: { yaw: 1.25 } },

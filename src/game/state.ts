@@ -431,6 +431,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _trainingArcSince?: Map<string, number>;
   /** S11: when each sighting shooter last came to see the player (sim seconds; trainingSightFraction). */
   _trainingSeenSince?: Map<string, number>;
+  /** S14: the skirmish has come in (the hull floor stands down with it: trainingGround.ts hullFloorShare). */
+  _trainingFightOn?: boolean;
   /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
   _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
   /** The training battle's parked hulls (273): their ids, off the field until their scene's cue. The mode controller's
@@ -1055,6 +1057,16 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   entity.input.fire = arcAllows && sighted && trainingVolleyFires(actor.volley, cuedAtS, game.timeS, seen);
 }
 
+/** A training battle's hull floor (273): until the skirmish comes in, the player's hull points stand at least at the rules'
+ *  share of its full hull, raised back to it at the next step after a hit took them under. */
+function holdTrainingHullFloor(game: SoloGameState): void {
+  const rules = game.ruleset.training;
+  const combat = game.player?.combat;
+  if (!rules || !combat || combat.destroyed || game._trainingFightOn || !(combat.maxHp > 0)) return;
+  const floor = combat.maxHp * rules.hullFloorShare;
+  if (combat.hp < floor) combat.hp = floor;
+}
+
 /** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
  *  shots, unseen, its visual hidden. */
 function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
@@ -1140,6 +1152,7 @@ export function cueTrainingActor(game: SoloGameState, key: string, on: boolean):
   const rules = game.ruleset.training;
   // S14: the skirmish's cue brings every one of its bots in, for good
   if (rules && key === TRAINING_SKIRMISH_CUE) {
+    if (on) game._trainingFightOn = true;
     if (on) for (const entity of game.tanks) if (game._trainingParked?.has(entity.id) && trainingSkirmishSide(rules, entity.specId)) {
       game._trainingParked.delete(entity.id);
       entity.modeActive = true;
@@ -1281,6 +1294,7 @@ export function setupBattle(
   game._trainingGunYaw = undefined;
   game._trainingArcSince = undefined;
   game._trainingSeenSince = undefined;
+  game._trainingFightOn = false;
   game._trainingCheckpoint = null;
   game._trainingParked = undefined;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
@@ -2540,6 +2554,7 @@ function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld):
   }
   const proving = game.ruleset.provingGround;
   const training = !!game.ruleset.training;
+  if (training) holdTrainingHullFloor(game);
   const host = soloActionsHost(game, bus, world);
   for (const entity of game.tanks) {
     if (entity.modeActive === false) continue;

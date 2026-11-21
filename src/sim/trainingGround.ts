@@ -118,6 +118,10 @@ export interface TrainingRules {
   readonly skirmish: TrainingSkirmish;
   /** One light whatever the player's battle times (the scenes read in daylight). */
   readonly timeOfDay: 'day';
+  /** Until S14's skirmish comes in, the player's hull points never stay under this share of its full hull: the scenes'
+   *  rounds teach, and a new player reaches the real fight whole enough to fight it (the walk of 2026-11-20 arrived with
+   *  130 of 2300 after the volley, Sentry 2 and Sentry 3). Its crew and modules still take their hits. */
+  readonly hullFloorShare: number;
 }
 
 /** S10's berm and Sentry 2 (tools s10-search), named once: the berm's line, the ring behind it and the hull read them. */
@@ -234,6 +238,7 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
       profile: Object.freeze([-1.6, 0, -0.5, 2.8, 0.5, 2.8, 1.6, 0]), halfWidthM: 5, skirtM: 0.6 }),
   ]),
   timeOfDay: 'day',
+  hullFloorShare: 0.5,
 });
 
 /** The scenes' points, named once: the guide's markers and the steps that wait on them read these. */
