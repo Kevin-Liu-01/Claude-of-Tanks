@@ -291,7 +291,8 @@ const SWEDEN_SPECS = {
     dims: { hullLengthM: 7.04, overallLengthM: 7.65, widthM: 3.60, heightM: 2.14 },
     fitArmor: true,
     stats: {
-      hp: 1400, enginePowerHp: 340, weightTons: 17.5, topSpeedKmh: 72,
+      // 274 (owner 2026-11-20, via Main: "match the S-tank"): the trials prototype on the 103A frame weighs and runs like it
+      hp: 1400, enginePowerHp: 340, weightTons: 37.0, topSpeedKmh: 58,
       reverseSpeedKmh: 52, hullTraverseDegS: 48, terrainResistance: udesTerrain,
       turretTraverseDegS: 32, gunPitchDegS: 30, gunElevationDeg: 20,
       gunDepressionDeg: 14, gunArcDeg: 3, hydropneumaticAim: udesAim,

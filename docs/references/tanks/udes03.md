@@ -24,3 +24,5 @@ The separate rear-engined build is retired. The UDES 03 is now mark `p` of the f
 published 7.65 overall), bare fenders without the production bins or Ksp box, plain lamps, bolted ballast plates on the
 glacis, the trials data recorder with its cable runs, the telemetry mast and trials weld seams. Dims move to the S-tank
 frame (hull 7.04, width 3.60, height 2.14); its stats are unchanged. `profiles/udes03.ts` is deleted.
+Owner 2026-11-20 (via Main, "match the S-tank"): on the 103A frame the trials prototype weighs and runs like it: 37.0 t
+(was 17.5) and 58 km/h (was 72); the rest of its stats unchanged. physics-torture drive-trench: 3 flights -> 0 (step 0.142 m).
