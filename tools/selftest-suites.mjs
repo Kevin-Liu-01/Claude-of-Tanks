@@ -263,6 +263,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, its gun
     // clear of its hull at its published stops
     'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
+    // release 274: the Leopard 2 Prototype as PT 10 / T 17 with the T 11's Rh 202: the spec, the rig the authority fires
+    // from, the width, the working roof gun and the pitching mantlet
+    'src/vehicles/profiles/leopard2Prototype.selftest.mjs',
     // release 264: the 2A4-era Leopards on the same hull (the photo packets' native fixture): the owner's square/wedge
     // split, each one's gun forward, the ring on the deck and the 2A4 turret's roof, at both qualities
     'src/vehicles/profiles/leopard2A4Family.selftest.mjs',

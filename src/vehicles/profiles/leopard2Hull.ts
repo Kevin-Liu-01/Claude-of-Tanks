@@ -239,14 +239,26 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   }
 }
 
-/** Seven measured road wheels, the raised front idler, the rear sprocket and four return rollers a side. */
-function runningGear(P: TankBuilderPort): void {
+/** Where one hull carries the Leopard 2 running gear: its wheel, idler, sprocket and return-roller stations. */
+export interface Leopard2GearStations {
+  readonly wheelZs: readonly number[];
+  readonly idler: { readonly z: number; readonly y: number; readonly r: number };
+  readonly sprocket: { readonly z: number; readonly y: number; readonly r: number };
+  readonly rollers: readonly number[];
+}
+
+/**
+ * The Leopard 2's running gear (seven road wheels, the raised front idler, the rear sprocket, four return rollers a side
+ * and the track), on a hull's own stations: the wheels, the track and their heights are the production tank's. The
+ * prototypes (profiles/leopard2Prototype.ts) ran the same wheels and track on their own hull.
+ */
+export function buildLeopard2RunningGear(P: TankBuilderPort, s: Leopard2GearStations = H): void {
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.84,
     wheelR: H.wheelR, wheelW: 0.23, wheelY: H.wheelY, xc: H.trackXc,
-    wheelZs: [...H.wheelZs],
-    idler: { ...H.idler }, sprocket: { ...H.sprocket },
-    rollers: H.rollers.map((z) => ({ z, y: H.rollerY, r: H.rollerR })),
+    wheelZs: [...s.wheelZs],
+    idler: { ...s.idler }, sprocket: { ...s.sprocket },
+    rollers: s.rollers.map((z) => ({ z, y: H.rollerY, r: H.rollerR })),
     trackW: H.trackW, topY: H.rollerY + H.rollerR + 0.045, botY: 0.075,
     paintedEnds: true, coveredTop: true,
   });
@@ -257,7 +269,7 @@ export function buildLeopard2Hull(P: TankBuilderPort, o: Leopard2HullOptions): v
   hull(P);
   skirts(P, o);
   hullFittings(P, o);
-  runningGear(P);
+  buildLeopard2RunningGear(P);
 }
 
 /**

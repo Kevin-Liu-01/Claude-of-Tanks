@@ -29,16 +29,29 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 /** The gun's recoil stroke inside its housing (metres). */
 export const MBT70_RH202_RECOIL_M = 0.025;
 
-/** Turret-local datums: the yaw ring sits on the commander's station top (x 0.62, z -0.66). */
+/**
+ * Where a turret carries the station (turret-local): the yaw ring's centre, the station's name and its traverse stops.
+ * The KPz 70 defaults sit the ring on the commander's station top (x 0.62, z -0.66). The Leopard 2 prototypes' turrets
+ * T 05 and T 11 took the same mount from the KPz 70 (profiles/leopard2Prototype.ts seats it on the T 11's left roof).
+ */
+export interface Rh202Placement {
+  readonly x: number;
+  readonly z: number;
+  readonly name: string;
+  /** Traverse stops [min, max] (radians), measured against the vehicle's own turret. */
+  readonly yawArc: readonly [number, number];
+}
+const MBT70_PLACEMENT: Rh202Placement = { x: 0.62, z: -0.66, name: 'mbt70Rh202Station', yawArc: [-2.6704, 2.6704] };
+
 type Rh202Port = Pick<TankBuilderPort, 'add' | 'addEquipment' | 'forEachBucketPart' | 'turretG'> & { readonly q?: boolean };
-export function addMbt70Rh202(P: Rh202Port, top: number): THREE.Group {
+export function addMbt70Rh202(P: Rh202Port, top: number, place: Rh202Placement = MBT70_PLACEMENT): THREE.Group {
   const { box, cylX, cylY, cylZ, lathe, slab, xform } = KIT;
   // The trunnion stands 0.25 m over the station top and 0.02 m ahead of the ring's centre. Measured in the pitch frame
   // (origin on the trunnion, +Z along the bore), the housing's lowest swept point is its rear lower edge at full
   // elevation, 0.157 m under the trunnion: 33 mm over the turntable.
-  const x = 0.62, z = -0.66, axisY = top + 0.25, pivotZ = z + 0.02, reach = 1.45, muzzleZ = pivotZ + reach;
+  const { x, z } = place, axisY = top + 0.25, pivotZ = z + 0.02, reach = 1.45, muzzleZ = pivotZ + reach;
   const HW = 0.13; // the housing's half-width; the cheeks stand 12 mm outboard of it, its bosses 4 mm short of them
-  const station = beginAuxiliaryStation(P, { name: 'mbt70Rh202Station', caliberMm: 20,
+  const station = beginAuxiliaryStation(P, { name: place.name, caliberMm: 20,
     yaw: [x, top, z], pivot: [x, axisY, pivotZ], muzzle: [x, axisY, muzzleZ], recoilM: MBT70_RH202_RECOIL_M });
   const seg = P.q ? 20 : 12;
   /** A point in the pitch frame at rest (across, up, along the bore from the trunnion), turret-local. */
@@ -126,6 +139,6 @@ export function addMbt70Rh202(P: Rh202Port, top: number): THREE.Group {
   // reach clears everything from -155 to +158 degrees; behind that the rear whip antennas stop it, so the arc keeps its
   // +-153 degrees. The gun depresses the profile's full 0.14 rad over the whole arc (a 0.25-degree scan): the left
   // whip, which held the 2.06 m barrel to 0.021 rad at -114 degrees, now stands 1.63 m out, beyond its reach.
-  station.root.userData.yawArc = [-2.6704, 2.6704];
+  station.root.userData.yawArc = [...place.yawArc];
   return station.root;
 }

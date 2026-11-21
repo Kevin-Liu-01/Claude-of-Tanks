@@ -61,10 +61,19 @@ const SPECS: FleetTankSpec[] = [
   make('chieftain_mk9', 'centurion5_2', 'Centurion Mk.5/2', 'UK',
     { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.62, widthM: 3.38, heightM: 2.94 } }),
+  // release 274 (Kevin, 2026-11-20, via Main): PT 10 / T 17 (profiles/leopard2Prototype.ts). The overall length is the
+  // drawn 120 mm's muzzle (hull z 5.85) to the stern (z -3.86); the PTs ran about 1.5 t over their MLC 50 target (about
+  // 47.5 t; joint-forces.com, "Bundeswehr Leopard 2 MBT At 40"); the kinetic round carries the 120 mm's first type
+  // designation, DM13, in place of the 1987 DM33 (its game numbers stand)
   make('leo2a2', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     {
-      hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
-      dims: { hullLengthM: 7.72, overallLengthM: 10.67, widthM: 3.70, heightM: 2.48 },
+      hp: 2050, weightTons: 49, topSpeedKmh: 68,
+      gun: {
+        reloadS: 6.8,
+        shells: requireFleetSpec('leo2a2').gun.shells.map((round) => (round.name === 'DM33 APFSDS'
+          ? { ...round, name: 'DM13 APFSDS-T' } : { ...round })),
+      },
+      dims: { hullLengthM: 7.72, overallLengthM: 9.71, widthM: 3.70, heightM: 2.48 },
     }),
   // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
   // builder code dormant in abrams.js; packet historical.

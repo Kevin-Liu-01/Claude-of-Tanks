@@ -1,10 +1,91 @@
 # Leopard 2 Prototype (`leopard2_proto`)
 
-**Exact variant modeled:** Leopard 2 prototype series (PT 1972-74, Krauss-
-Maffei) — 16 hulls / 17 turrets built; TEN turrets carried the Rheinmetall
-105 mm smoothbore. Modeled as a 105 mm-smoothbore PT with the pre-2AV spaced
-armor turret: slab-sided welded turret with stereoscopic-rangefinder blisters
-on both cheeks and the turret-base side bulge, Leopard 2 hull layout.
+**Exact variant modeled (release 274, lane leo2-proto-274):** PT 10 / T 17. Krauss-Maffei
+built hull 10 in 1972–74, and turret 17 is one of the seven prototype turrets (T 11 to T 17)
+armed with the Rheinmetall 120 mm smoothbore. The pair ran the Yuma heat trials in 1975 and
+survives at the Musée des Blindés, Saumur. The sections below this one describe the
+superseded 105 mm build (`buildLeo2Proto`, deleted in release 274) and are kept as history.
+
+## 2026-11-20 redesign (owner: "completely redesign the leopard 2 prototype")
+
+### Which prototype, and why
+- The spec is tier III between the Leopard 1A5 and the 2A2, fires the 120 mm (DM33 / DM12
+  rows) and stands 2.48 m at the roof. T 11–T 17 carried the 120 mm and T 1–T 10 the 105 mm
+  (panzerplace.eu, "Leopard 2 Prototype (PT 10 / T 17)"; en.wikipedia "Leopard 2": 10 × 105,
+  7 × 120). A 120 mm PT therefore matches the gun without a stat change.
+- T 17 is the 120 mm turret with a full modern walkaround (Saumur). The Strängnäs PT 7 / T 05
+  walkaround (panzerplace.eu, "Leopard 2 prototype") shows the same welded turret family and
+  hull.
+- The 2AV was not chosen. It has the production-shaped box turret with no EMES 12 ends, and it
+  would duplicate the new `leo2a2`.
+
+### Sources (photo class)
+1. https://panzerplace.eu/leopard-2-prototype-120-mm/ (PT 10 / T 17, Saumur: front, three-quarter,
+   side, rear, the fender headlights, the glacis travel-lock brackets, the smoke rack, T 17 D)
+2. https://panzerplace.eu/leopard-2-prototype/ (PT 7 / T 05, Strängnäs: side, three-quarter,
+   rear, turret flank, skirts and fender bins)
+3. https://panzerplace.eu/sekundarlafette-fur-turm-kpz-leopard-2-pt/ (the 20 mm roof mount:
+   T 05 and T 11 only, fitted to T 11)
+4. https://en.wikipedia.org/wiki/Leopard_2 and https://de.wikipedia.org/wiki/Leopard_2 (gun
+   split, welded spaced turret modelled on the Leopard 1A3 for the EMES 12)
+5. https://www.joint-forces.com/features/31011-bundeswehr-leopard-2-mbt-at-40-part-2 (PERI R12,
+   weight against MLC 50)
+
+No outside model is used. None of the local GLBs is a PT, and the running gear is the fleet's
+own production Leopard 2 gear (`profiles/leopard2Hull.ts`).
+
+### Gap table
+
+| # | Photo read (PT 10 / T 17, PT 7 / T 05) | Was (`buildLeo2Proto`) | Now (`profiles/leopard2Prototype.ts`) |
+|---|---|---|---|
+| 1 | Welded spaced turret modelled on the Leopard 1A3, the bridge to the Leopard 2 | vertical-walled slab loft | Leopard 1 x Leopard 2 shell (see the look rounds below): vertical lower walls, crease, leaning upper walls, swept cheek blocks, stepped bustle |
+| 2 | External wedge mantlet ("plates welded atop the gun mantlet"), canvas boot | faceted rocking plate mantlet | Leopard 1A3-pattern wedge mantlet in the cheeks' slot, pitching with the gun, T 17's welded plates, canvas boot |
+| 3 | 120 mm smoothbore, plain tube with bore evacuator (T 11–T 17) | slim 105 mm | 120 mm tube (r 0.07, 4.30 m past the trunnion) with evacuator |
+| 4 | EMES 12 ends behind flush armoured blocks on the front shoulders | domed blisters on boxes | 5 cm plates laid on the wall over the crease, leading edge, slide handle |
+| 5 | Base a little wider than the walls | ellipse bulge | 1.32 m ring under the walls |
+| 6 | Long bustle, undercut rear plate | short box bustle + basket | bustle to turret z −2.64, foot 0.22 m ahead of its top, light rear rack and tarp |
+| 7 | One rack of four smoke mortars a side on the upper wall | 2 × 4 low on the rear walls | one four-cup bank a side aft of the rangefinder block |
+| 8 | Five grab handles a side (later turrets), cross on the wall, "T 17" stencil | side bins, rails | five handles a side, cross, T 17 stencil |
+| 9 | PERI R12 ahead of the commander's cupola (right), loader's hatch (left), stand-offs for T 17's fault-detection box | cupola on the left, IR box, FLW 200 RCWS and optic tower | PERI R12 and cupola on the right (−X), loader's hatch on the left, four stand-offs; by Kevin's call the T 11's 20 mm Rh 202 on its left-roof collar (see below) |
+| 10 | Leopard-1-like wedge bow: long shallow upper glacis to a sharp nose over a raked lower glacis | production V3 hull with beak wings | own tub and sponson sections on the PT deck and belly lines |
+| 11 | PT 10's fender-integrated headlights in hoop guards; travel-lock brackets on the glacis; tow eyes on the belly plate | low glacis pods, Notek | front fenders with built-in lights and guards, two brackets, belly tow eyes |
+| 12 | Full-length panelled skirts, scalloped over the wheels; long bins on the fenders | unskirted, sponson rails | six bolted panels and a leader a side from a fender ledge, foot 0.70 over the hubs and 0.60 between; three bins a side |
+| 13 | Full-width louvred upper rear plate, big mudflaps, tail lights, rear gun crutch, round fan grilles | V3 stern | louvred band, flaps, lights, hooks, registration plate (Y-647 083), folded crutch, two fan grilles and louvres |
+| 14 | Seven road wheels, four return rollers, rear sprocket, front idler (torsion-bar PTs) | V3 gear | the production Leopard 2 gear (`buildLeopard2RunningGear`) on PT stations |
+
+### Kevin's look rounds (2026-11-20, in the lane session)
+- r3, "update the sideskirts too to fit with the hull": one fender plate along the whole side, its top the hull
+  side's line. The skirts hang under it from the sponson's rear corner (z −3.70) to the front fender over the idler
+  (z 3.62), falling with the glacis at the bow, their foot scalloped over the wheels and rising over the sprocket and
+  the idler.
+- r4, "redo the leopard 2 prototype front give it a mantlet": the Leopard 1A3-pattern external wedge mantlet, pitching
+  with the gun. On its top are T 17's two welded plates (its Yuma trial equipment), the coaxial port is in its left
+  side, and a canvas boot runs onto the tube.
+- r5, "more leopard 1 x leopard 2 turret fusion inspired": the Leopard 2's vertical lower walls to a hard crease, swept
+  cheek blocks either side of a gun slot (29° faces, bevelled tops, a brow over the slot), a bustle 0.19 m narrower
+  behind a step with its roof rising aft, and the 2A-style basket. The Leopard 1A3's upper walls lean in, its wedge
+  mantlet runs in the slot and out ahead of the cheeks, and the EMES 12 ears and the wall-mounted smoke racks stay.
+  The floor steps up ahead of the ring so the cheeks sweep clear of the fender bins.
+- Approved: "Looks good, go".
+
+### Kevin's calls (2026-11-20, via Main)
+- PT 10 / T 17 is the build target.
+- Roof gun: the 20 mm Rh 202 on the T 11's left-roof mount, a working roof gun. This tank is a T 17
+  carrying the T 11's roof gun. Only T 05 and T 11 were built with the mount, and only T 11 had the
+  gun fitted. The station is the KPz 70's own (`profiles/mbt70Rh202.ts`, seated on a raised collar
+  at turret x 0.55, z −1.30), and it fires the game's Rh 202 profile (`auxiliaryWeapons.ts`, the
+  MBT-70's). It takes the loader's MG3's place, because its barrel passes over the loader's hatch
+  at rest. The FLW 200 is gone.
+- Length: 9.71 m, measured on the build (muzzle at hull z 5.85, stern at z −3.86), was 10.67 m.
+  The combat barrel follows the drawn 120 mm when the armour is refitted at regen.
+- Weight: 49 t, was 55 t. The PTs came in about 1.5 t over the MLC 50 target. Power-to-weight
+  goes from 27.3 to 30.6 hp/t, the highest of the tier III MBTs (MBT-70 29.3, T-80 28.6, 2A2
+  27.2). Top speed stays capped at 68 km/h, so the gain is acceleration and climbing. Ram mass and
+  shell knock follow the lighter hull.
+- Rounds: the kinetic round is the 120 mm's first type designation, DM13 APFSDS-T, in place of the
+  1987 DM33. DM12 HEAT-MP and the DM12 HE proxy keep their names. All the game numbers stand. The
+  real DM13 penetrated well short of the DM33-class 586 mm, which is left for a balance call.
+
 
 ## 2026-08-12 first-party forward-loft re-certification
 

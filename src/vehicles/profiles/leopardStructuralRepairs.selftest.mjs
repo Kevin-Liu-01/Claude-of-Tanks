@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank,KIT} from '../tankFactory.ts';
-import {getSpec} from '../specs.ts';
-import {createTankState} from '../../sim/movement.ts';
 import {recessKF51BTurret,recessClosedTurret} from './kf51bGunRecess.ts';
 import {properSurfaceCrossings} from '../../../tools/base-shell-integrity.mjs';
 import {orientedSlab} from './kit.ts';
@@ -113,11 +111,6 @@ for(const quality of ['high','low'])for(const id of ['leo1a5']) {
   } finally {visual.dispose();}
 }
 
-const ray=new T.Raycaster();
-function cast(objects,frame,point,direction,far=2) {
-  ray.set(frame.localToWorld(new T.Vector3(...point)),new T.Vector3(...direction).transformDirection(frame.matrixWorld));
-  ray.near=0;ray.far=far;return ray.intersectObjects(objects,false);
-}
 for(const quality of ['high','low']) {
   const parts=[];
   const panther=createTank('kf51_u',null,{proceduralOnly:true,quality,batchStatic:false,geometryReceipt:true,
@@ -130,75 +123,5 @@ for(const quality of ['high','low']) {
     for(const [actual,expected]of[[parts[0].bounds.min.x,-1.55],[parts[0].bounds.max.x,1.55],[parts[0].bounds.min.z,-2.96],[parts[0].bounds.max.y,.75]])
       assert.ok(Math.abs(actual-expected)<1e-6,`${quality}: Panther primary silhouette remains`);
   }finally{panther.dispose();}
-  const cutStocks=[];
-  const id='leopard2_proto',tank=createTank(id,null,{proceduralOnly:true,quality,batchStatic:false,geometryReceipt:true,
-    partCensus(bucket,g,source){if(bucket==='turret'&&source==='add'&&g.userData.closedGunRecess)cutStocks.push(g);}});
-  assert.equal(cutStocks.length,4,'shell, apron and both rings use the same closed cutting path');
-  for(const [index,stock]of cutStocks.entries())assertClosedRecess(stock,`${quality} prototype cut stock ${index}`);
-  try {
-    const spec=getSpec(id),gun=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount'),dark=tank.root.getObjectByName('gunMountDark');
-    const hull=tank.root.getObjectByName('hull'),turret=tank.root.getObjectByName('turret'),recoil=tank.root.getObjectByName('rig_recoil');
-    const state=createTankState(spec,new T.Vector3(),0);
-    assert.deepEqual(gun.position.toArray(),[0,.26,1],'original installed trunnion retained');
-    assert.deepEqual(gun.position.toArray(),spec.armor.gunPivot,'recorded trunnion matches the visible gun');
-    assert.deepEqual(tank.root.getObjectByName('rig_turret').position.toArray(),spec.armor.turretPivot,'recorded turret pivot matches the visible turret');
-    assert.deepEqual(spec.armor.gunBarrel,{lengthM:5.26,radiusM:.064},'combat barrel envelope uses the retained visible tube');
-    assert.ok(Math.abs(tank.root.getObjectByName('rig_muzzle').position.z-5.26)<1e-6,'unchanged 105 mm gun length');
-    tank.root.updateMatrixWorld(true);
-    const turretFrame=tank.root.getObjectByName('rig_turret');
-    for(const x of [-.38,0,.38])for(const z of [.74,.90,1.08,1.16])
-      assert.equal(cast([turret],turretFrame,[x,.90,z],[0,-1,0],1.02).length,0,'all fixed shell, apron and base-ring stock leave a real gun throat');
-    for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2])for(const pitch of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]) {
-      state.turretYaw=yaw;state.gunPitch=T.MathUtils.degToRad(pitch);tank.syncFromState(state,1);tank.root.updateMatrixWorld(true);
-      for(const x of [-.25,.25])for(const y of [-.07,.13]) {
-        const hit=cast([mount],gun,[x,y,1],[0,0,-1])[0];assert.ok(hit,'finite armor shield around gun');
-        const p=gun.worldToLocal(hit.point.clone());
-        assert.ok(Math.abs(p.z-(.40-.28*y))<1e-5,'entire shield face follows the same natural rake');
-      }
-      assert.equal(cast([mount,dark].filter(Boolean),gun,[0,0,1],[0,0,-1],1.5).length,0,'real axial gun passage through shield and trunnion');
-      const position=mount.geometry.getAttribute('position'),seen=new Set();
-      for(let i=0;i<position.count;i++) {
-        const p=new T.Vector3().fromBufferAttribute(position,i).applyMatrix4(mount.matrixWorld),key=p.toArray().map(v=>v.toFixed(5)).join(',');
-        if(seen.has(key))continue;seen.add(key);
-        const h=new T.Raycaster(new T.Vector3(p.x,10,p.z),new T.Vector3(0,-1,0),0,15).intersectObject(hull,false)[0];
-        if(h)assert.ok(p.y-h.point.y>.005,`${quality}/${yaw}/${pitch}: complete moving shield clears hull (${p.y-h.point.y}m)`);
-      }
-      // Trunnion cap lies between both real faces of the blind receiving ear.
-      const sideWas=turret.material.side;turret.material.side=T.DoubleSide;
-      try {for(const side of [-1,1]) {
-        const journal=cast([mount],gun,[side*.6,0,0],[-side,0,0],.3)[0];assert.ok(journal,'real split trunnion');
-        const feet=cast([turret],gun,[side*.6,0,0],[-side,0,0],.3);
-        assert.ok(feet.some(h=>h.distance<journal.distance-.01)&&feet.some(h=>h.distance>journal.distance+.01),'bearing receives journal with finite contact');
-      }}finally{turret.material.side=sideWas;}
-    }
-    const recoiling=[];
-    recoil.traverseVisible(object=>{if(object.isMesh)recoiling.push(object);});
-    function assertSleeveClearance() {
-      const materials=new Map();
-      for(const object of [mount,...recoiling])for(const material of Array.isArray(object.material)?object.material:[object.material]) {
-        if(!materials.has(material))materials.set(material,material.side);
-        material.side=T.DoubleSide;
-      }
-      try {
-        for(const z of [.10,.30,.45,.55,.65])for(const a of [0,Math.PI/4,Math.PI/2,3*Math.PI/4]) {
-          const direction=[Math.cos(a),Math.sin(a),0];
-          const sleeve=cast([mount],gun,[0,0,z],direction,.3)[0];
-          const barrel=cast(recoiling,gun,[0,0,z],direction,.3);
-          assert.ok(sleeve&&barrel.length,`${quality}: real sleeve and gun surface at ${z}/${a}`);
-          const outerRadius=Math.max(...barrel.map(hit=>hit.distance));
-          assert.ok(sleeve.distance-outerRadius>.003,`${quality}: visible sleeve clears actual recoiling tube at ${z}/${a} by ${sleeve.distance-outerRadius}m`);
-        }
-      } finally {for(const [material,side] of materials)material.side=side;}
-    }
-    assertSleeveClearance();
-    const before=gun.worldToLocal(cast([mount],gun,[.25,.13,1],[0,0,-1])[0].point.clone());
-    tank.recoilKick(0,.5);tank.syncFromState(state,.06);tank.root.updateMatrixWorld(true);
-    assert.ok(recoil.position.z<-.01,'barrel actually recoils');
-    assertSleeveClearance();
-    assert.ok(gun.worldToLocal(cast([mount],gun,[.25,.13,1],[0,0,-1])[0].point.clone()).distanceTo(before)<1e-6,'shield stays on its pitch bearings during recoil');
-    const oldShaft=new T.Mesh(KIT.cylX(.23,.70,16),mount.material);gun.add(oldShaft);tank.root.updateMatrixWorld(true);
-    assert.ok(cast([oldShaft],gun,[0,0,1],[0,0,-1],1.5).length>0,'old solid cross-shaft fails the same axial passage ray');
-    gun.remove(oldShaft);oldShaft.geometry.dispose();
-  }finally{tank.dispose();}
 }
-console.log('Leopard primary stock and prototype shield: true convex mirrored KF51-U cheeks, open recoil passage, seated split journals and full HIGH/LOW articulation pass');
+console.log('Leopard primary stock: true convex mirrored KF51-U cheeks and the authored Panther silhouette pass');
