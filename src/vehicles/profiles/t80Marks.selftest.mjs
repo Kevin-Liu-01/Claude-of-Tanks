@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { KONTAKT1_ERA } from '../leopard2A4Kontakt1.ts';
-import { T80BV_KONTAKT1_PLATES, T80U_KURSK_ARMOR_FACTOR, T80U_KURSK_K1_PLATES, t80SternPitchByYawDeg } from '../t80MarkFrames.ts';
+import { T80BV_KONTAKT1_PLATES, T80U_KURSK_ARMOR_FACTOR, T80U_KURSK_K1_PLATES, T84_ERA_PLATES, t80SternPitchByYawDeg } from '../t80MarkFrames.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
@@ -159,4 +159,27 @@ twinTank.dispose();
   assert.ok(roofGun && roofGun.max[2] > 1.2, `${id}: the roof-gun module spans the M2's 1.21 m reach`);
 }
 
-console.log('t80Marks.selftest: T-80, T-80B, T-80BV, the Ukrainian T-80BV and the T-80U Kursk on the T-80U X hull, each with its own kit; ERA drawn = spec');
+// the T-84 (Object 478DU2; lane t80-family-274 step 3, the owner signed off its look 2026-11-20): the T-80U X hull, ring and
+// gun under its own welded turret, the 6TD-2 deck, Kontakt-5 drawn = spec, the T-80U's frame at the T-84's own protection
+{
+  const id = 't84', tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  try {
+    assert.deepEqual(tank.root.getObjectByName('rig_hull').userData.familyRebuild, { donor: 't80u', revision: 1, variant: 't84-478du2' });
+    assert.deepEqual({ ...tank.root.getObjectByName('rig_turret').userData.t84Receipt }, { turret: 'welded-478du2', deck: '6td-2',
+      era: 'kontakt-5', shtora: true, smokeTubes: 12, roofGun: 'kt-12.7', rearRack: true, sternDrums: true });
+    assert.ok(tank.root.getObjectByName('t84CommanderKt127'), `${id}: the KT-12.7 station`);
+    assert.equal(tank.root.getObjectByName('t80uCommanderNsvtStation'), undefined, `${id}: not the T-80U's NSVT`);
+    assert.deepEqual([...(tank.root.userData.eraClusterNames ?? [])].sort(), eraPlateNames(TANK_SPECS[id]), `${id}: drawn ERA = spec`);
+  } finally { tank.dispose(); }
+  const spec = TANK_SPECS[id], twin = TANK_SPECS.t80u;
+  assert.deepEqual(eraPlateNames(spec), [...T84_ERA_PLATES].sort(), `${id}: Kontakt-5 on the glacis, cheeks and skirt fronts`);
+  assert.deepEqual(spec.armor.turretPivot, twin.armor.turretPivot, `${id}: the twin's yaw pivot`);
+  assert.equal(spec.dims.hullLengthM, twin.dims.hullLengthM, `${id}: the twin's hull length`);
+  assert.deepEqual(spec.gunPitchByYawDeg, t80SternPitchByYawDeg(id), `${id}: its own measured stern curve`);
+  const plate = (name) => [...spec.armor.hullPlates, ...spec.armor.turretPlates].find((p) => p.name === name);
+  assert.deepEqual([plate('upper_glacis').keMm, plate('turret_cheek_L').keMm], [480, 550], `${id}: its own glacis and cheeks`);
+  assert.deepEqual(plate('glacis_era_L').era, { keReduction: 0.2, ceFlatMm: 450 }, `${id}: its glacis Kontakt-5`);
+  assert.equal(spec.hp, 2250, `${id}: its own hp`);
+}
+
+console.log('t80Marks.selftest: T-80, T-80B, T-80BV, the Ukrainian T-80BV, the T-80U Kursk and the T-84 on the T-80U X hull, each with its own kit; ERA drawn = spec');

@@ -41,6 +41,9 @@ import { resolveTankId } from './tankIdAliases.ts';
 // Re-pinned 2026-11-01 (release 267, the BMPT-72 on the T-72B3M X hull, profiles/bmpt72Station.ts): bmpt_terminator2's
 // resolved Factory visual carries that hull's 0.58 m track (spec.visual.trackWidthM) for the T-80U hull's 0.60; scheme,
 // colours, pattern and seed are unchanged. bmpt_terminator2 d90451c7ad569e1f -> fd8e4eb2ec22b153.
+// Re-pinned 2026-11-20 (release 274, lane t80-family-274: the T-84 on the T-80U X hull, profiles/t84.ts): t84's resolved
+// Factory visual carries that hull's 0.60 m track for the retired T-72B3M concept's 0.58; scheme, colours, pattern and
+// seed are unchanged (recomputed with 0.58 it equals the old digest). t84 5eefa97007ca3ead -> 624ea7808ffcf33a.
 // Re-pinned 2026-11-03 (release 269, the plain-coat pass; owner: "any tank without a proper camo need a proper camoo"):
 // the Challenger 1 Mk 3 (schema-1 challenger1_x) keeps its stock paint_challenger1_x, whose recipe moves from plain light
 // stone to the same stone under a darker sand-brown disruptive (Main: no Caunter on a 1980s hull); its Factory visual is

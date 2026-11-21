@@ -13,8 +13,9 @@ import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-
 
 const ids = [
   't64bv_donbas', 'm1a1_abrams_fep',
-  'strv103a', 'strv103b', 't84', 'ua_m1a1',
+  'strv103a', 'strv103b', 'ua_m1a1',
 ];
+// 274: the T-84 left the list with its Oplot concept's suit (it draws the T-80U X hull and its own welded turret, no net)
 // 264: the Leopard 2A6 UA's suit is a fleet field net now (ghillieFleetSuits.ts), held to the fleet rules below
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
@@ -247,32 +248,6 @@ for (const id of ids) checkSuited('suited', id, (track) => {
     ).intersectObject(turretNet, false);
     assert.ok(hits.every((hit) => hit.point.z < turretRig.position.z - 0.72),
       `${id} leaves the complete mantlet/gun corridor open`);
-  }
-
-  if (id === 't84') {
-    const net=tank.root.getObjectByName('t84_ghillie_turret_net'),hard=[];
-    turretRig.traverse(o=>{if(o.isMesh&&!/ghillie|Fill|Shadow|Decal/i.test(o.name))hard.push(o)});
-    // 2026-10-16 (integ/226 triage; VH.14 76ef67d65): the KT-12.7 is a working station, so its swept floor opens the
-    // centre and right bustle packs' net round the gun; the bustle probe reads the left pack (x -0.68), which keeps cloth
-    for(const [x,z] of [[0,-.9],[-.68,-1.73],[.74,.62]]){
-      const origin=turretRig.localToWorld(new THREE.Vector3(x,2,z));
-      const probe=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3);
-      const cloth=probe.intersectObject(net)[0],seat=probe.intersectObjects(hard)[0];
-      assert(cloth&&seat,'Oplot cloth has actual roof or stowage beneath it');
-      const gap=cloth.point.y-seat.point.y;
-      assert(gap>.005&&gap<.055,`Oplot cloth stays seated on the rebuilt hard surface (${gap}m)`);
-    }
-    // Live gunner lens and roof-MG muzzle have a clear forward view/fire lane.
-    const cover=[];turretRig.traverse(o=>{if(o.isMesh&&/ghillie/.test(o.name))cover.push(o)});
-    for(const point of [[-.56,1.035,-.16],[.52,1.21,.31]]){
-      const probe=new THREE.Raycaster(turretRig.localToWorld(new THREE.Vector3(...point)),new THREE.Vector3(0,0,1),0,8);
-      assert.equal(probe.intersectObjects(cover).length,0,'Oplot foliage leaves working roof equipment clear');
-    }
-    const local=new THREE.Vector3().fromBufferAttribute(net.geometry.getAttribute('position'),0);
-    const rest=net.localToWorld(local.clone());
-    turretRig.rotation.y=1.4;tank.root.updateMatrixWorld(true);
-    assert(net.localToWorld(local.clone()).distanceTo(rest)>.4,'bustle net turns with the turret');
-    turretRig.rotation.y=0;tank.root.updateMatrixWorld(true);
   }
 
   if (cfg.gun) {

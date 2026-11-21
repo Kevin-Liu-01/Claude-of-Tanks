@@ -8,7 +8,8 @@ import {ensureInteriorFills} from './interiorFills.ts';
 import {COMBAT_GUN_RIGS} from './combatGunRigs.generated.ts';
 
 // 267: the BMPT-72 (bmpt_terminator2) rides the T-72B3M (2016) X hull (it was the T-80U's)
-const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t72b3m_2016',t84:'t72b3m_2016',
+// 274: the T-84 left this list with its Oplot concept; it draws the T-80U X hull (t80Marks.selftest.mjs holds it)
+const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t72b3m_2016',
   type96_72_long:'t72b3',type96_80_feng:'t80u',type96_72m_lei:'t72b3m_2016'};
 const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
 assert.equal(getSpec('t72b3m_2022').name,'T-72B3M obr. 2022');
@@ -48,13 +49,6 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
     if(id==='bmpt_terminator2') {
       const sectors=tank.root.userData.eraFinishReceipt?.sectors??[];
       assert(!sectors.some(s=>s.startsWith('turret_era_')),'replaced turret cannot leave ghost donor ERA');
-    }
-    if(id==='t84') {
-      for(const sector of ['oplot_cheek_era_L','oplot_cheek_era_R','oplot_side_era_L','oplot_side_era_R']) {
-        assert(spec.armor.turretPlates.some(p=>p.name===sector&&p.era),`${id}: ${sector} retains reactive protection`);
-        assert(tank.stripEra(sector),`${id}: ${sector} removes the corresponding visible cassette`);
-      }
-      tank.resetEra();
     }
   } finally {tank.dispose();donor.dispose();}
 }

@@ -33,12 +33,13 @@ export const T80BV_KONTAKT1_PLATES = Object.freeze(['glacis_era_L', 'glacis_era_
  * 2026-11-20; checks/stern-sweep.jsonl in the lane evidence). The T-80U's curve, measured without drums, let the gun pass
  * through them over the rear quarters: from 148 to 169 deg the gun now rides up to 7.5 deg over the drums, and the fender
  * tails' ZIP boxes and cans hold it at -3.5 to -4.6 deg ahead of them. The three Soviet marks share one curve (the same
- * stern); the Ukrainian T-80BV's cans and the Kursk's stern give their own. */
+ * stern); the Ukrainian T-80BV's cans, the Kursk's stern and the T-84's diesel stern give their own. */
 const SOVIET_STERN_PITCH: [number, number][] = [[0, -5], [135, -5], [137, -3.5], [147, -3.5], [148, 2.2], [149, 4.7], [150, 6], [151, 6.5], [155, 7.1], [159, 7.2], [160, 7.5], [166, 7.5], [167, 7.3], [168, 6.4], [169, 4], [170, -1], [171, -0.8], [175, -0.8], [176, -0.9], [178, -1.9], [180, -1.9]];
 const STERN_PITCH_BY_YAW_DEG: Readonly<Record<string, [number, number][]>> = Object.freeze({
   t80: SOVIET_STERN_PITCH, t80b: SOVIET_STERN_PITCH, t80bv: SOVIET_STERN_PITCH,
   ua_t80bv: [[0, -5], [145, -5], [147, -4.6], [148, 4.3], [149, 6], [150, 7], [151, 7.3], [154, 7.7], [157, 7.7], [158, 7.6], [159, 7.2], [160, 7.5], [166, 7.5], [167, 7.3], [168, 6.4], [169, 4], [170, -1], [171, -0.8], [175, -0.8], [176, -0.9], [178, -1.9], [180, -1.9]],
   t80u_kursk: [[0, -5], [145, -5], [147, -4.6], [148, 2.2], [149, 4.7], [150, 6], [151, 6.5], [155, 7.1], [159, 7.2], [160, 7.5], [166, 7.5], [167, 7.3], [168, 6.4], [169, 4], [170, -1], [171, -0.8], [175, -0.8], [176, -0.9], [178, -1.9], [180, -1.9]],
+  t84: [[0, -5], [145, -5], [147, -4.6], [148, 2.2], [149, 4.7], [150, 6], [151, 6.5], [155, 7.1], [159, 7.2], [160, 7.5], [166, 7.5], [167, 7.3], [168, 6.4], [169, 4], [170, -1], [171, -0.8], [175, -0.8], [176, -0.9], [178, -2.5], [179, -2.5], [180, -2.7]],
 });
 /** The measured curve for a mark or the Kursk (a copy, so no spec shares an array). */
 export const t80SternPitchByYawDeg = (id: string): [number, number][] | undefined =>
@@ -84,4 +85,37 @@ export function applyT80MarkSourceFrames(specs: Record<string, FleetTankSpec>): 
   }
   kursk.visual.trackWidthM = twin.visual.trackWidthM;
   kursk.gunPitchByYawDeg = t80SternPitchByYawDeg(T80U_KURSK);
+  applyT84Frame(specs, twin);
+}
+
+/** The T-84 (profiles/t84.ts) draws the T-80U X hull, running gear, ring and gun under its own welded turret, so it takes
+ * the twin's armour record (plates, modules, crew, collision shells and contacts) at the T-84's own protection: each of the
+ * twin's plates takes the value of the T-84's plate of the same name, the welded turret's cheeks and mantlet included;
+ * its gameplay ERA is the Kontakt-5 it draws, the glacis and the turret at its own ratings and the skirts' front blocks
+ * as the turret's. Runs here, after every registration-time copy, so the
+ * vehicles built from the T-84's record (the Oplot-M and -T, the PT-84s, the Object 477) keep theirs. */
+const T84 = 't84';
+/** The T-84's Kontakt-5 ratings, as its record carried them on the Oplot concept: the glacis heavier than the turret's. */
+const T84_GLACIS_K5 = Object.freeze({ keReduction: 0.2, ceFlatMm: 450 });
+const T84_TURRET_K5 = Object.freeze({ keReduction: 0.2, ceFlatMm: 400 });
+export const T84_ERA_PLATES = Object.freeze(['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R',
+  'turret_era_L', 'turret_era_R'] as const);
+function applyT84Frame(specs: Record<string, FleetTankSpec>, twin: FleetTankSpec): void {
+  const t84 = specs[T84];
+  if (!t84) return;
+  const own = [...t84.armor.hullPlates, ...t84.armor.turretPlates];
+  const value = (name: string) => own.find((plate) => plate.name === name && plate.kind !== 'era');
+  for (const key of STRUCTURAL_DIMS) t84.dims[key] = twin.dims[key];
+  t84.armor = structuredClone(twin.armor);
+  for (const plate of [...t84.armor.hullPlates, ...t84.armor.turretPlates]) {
+    if (plate.kind === 'era') { plate.era = { ...(plate.name.startsWith('glacis') ? T84_GLACIS_K5 : T84_TURRET_K5) }; continue; }
+    const mine = value(plate.name);
+    if (mine) Object.assign(plate, { physicalMm: mine.physicalMm, keMm: mine.keMm, ceMm: mine.ceMm });
+  }
+  for (const name of ['skirt_era_L', 'skirt_era_R'])
+    t84.armor.hullPlates.push(reactivePlate(name, name.endsWith('_L') ? 'left' : 'right', { ...T84_TURRET_K5 }, 15));
+  const era = [...t84.armor.hullPlates, ...t84.armor.turretPlates].filter((plate) => plate.kind === 'era').map((plate) => plate.name).sort();
+  if (era.join() !== [...T84_ERA_PLATES].sort().join()) throw new Error(`t84: ERA plates ${era.join()} do not match its drawn Kontakt-5`);
+  t84.visual.trackWidthM = twin.visual.trackWidthM;
+  t84.gunPitchByYawDeg = t80SternPitchByYawDeg(T84) ?? twin.gunPitchByYawDeg;
 }

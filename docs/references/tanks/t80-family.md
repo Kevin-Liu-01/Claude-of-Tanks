@@ -1,4 +1,4 @@
-# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`, `t80u_kursk`; release 274)
+# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`, `t80u_kursk`, `t84`; release 274)
 
 Lane `item/t80-family-274`. The owner, 2026-11-20: "lets redesign the t80, t80b, t80bv, and their ukrainian counterparts
 to be like our t90 fixes - we have old models with certain design styles that make them unique, modern versions of the
@@ -100,6 +100,34 @@ CE) over the T-80U's K-5 (0.20 / 400). Before and after (KE / CE mm):
 | ERA plates | old drawn K-5 (12 glacis, 69 turret) | T-80U X K-5 (16 glacis, 18 turret) + Kontakt-1 |
 
 HP 2350, 12 modules and 3 crew are unchanged; the roof-gun module follows the M2.
+
+## The T-84 (`t84`, Object 478DU2)
+
+The owner signed off its look on 2026-11-20 (round 1). The base T-84 (Malyshev, mid-1990s), not the Oplot. It replaces
+the Oplot concept on the T-72B3M (2016) hull (`profiles/oplotModern.ts`, its `t84OplotTurret` selftest, its netting row
+and the concept's hybrid frame in `fleetRenewalSpecs.ts`, all retired) with `profiles/t84.ts` on the T-80U X hull and
+running gear, which the real tank shares with the T-80UD.
+
+What the photographs show (Commons "Танк Т-84" and "Object 478DU4 IDEX1999 Abu-Dhabi"; btvt, en- and uk-wiki), and the
+build draws:
+
+- **A welded turret**, not cast: the base T-84 had the angular welded turret from IDEX-1995; only the earliest 478DU
+  prototypes kept the T-80UD's casting. Flat walls, a blunt wedge front, no armoured bustle, a tube rack across the back
+  with a tarpaulin roll, boxes and the snorkel. It stands on the T-80U's ring and carries the T-80U's gun and trunnion.
+- **Built-in Kontakt-5**: flat boxes over each cheek's roof and three along each wedge face (not the T-80U's
+  clamshell); the T-80U's glacis V with its splash board; thick blocks on each skirt's three front sections.
+- **Shtora-1** dazzlers either side of the mantlet (`shtora.ts`); two banks of six smoke tubes at the turret's rear
+  sides; the remotely laid KT-12.7 (a working NSVT station) over the commander's cupola; the 1G46 head on the gunner's side.
+- **The 6TD-2 diesel deck** in place of the gas turbine's (`buildT80UXHullBase` gains a `turbineDeck` switch, on by
+  default): an intake grille behind the turret, two radiator grilles, and the wide, shallow louvred exhaust across the
+  top of the rear plate. The two 200 L drums and the unditching log below it.
+
+Combat record (`t80MarkFrames.ts`, in the same late pass as the marks, so the vehicles built from the T-84's record keep
+theirs; every other spec is byte-identical, checked by hashing all of them): the T-80U's frame (dimensions, pivots,
+barrel, plates, modules, crew) at the T-84's own protection by plate name. With the hybrid gone the hull plates are the
+T-84's own record's, not the T-72B3M chassis's: the glacis 450/500 to 480/550 KE/CE and the lower front 100 to 120; the
+turret (cheeks 550/600, mantlet 508/580, sides 300/350) and hp 2250 are unchanged. Kontakt-5: glacis 0.20/450, turret and
+skirt fronts 0.20/400. Its gun curve is measured over its own stern (up to +7.5 deg over the drums).
 
 ## Stern stowage (2026-11-20)
 

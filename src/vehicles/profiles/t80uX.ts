@@ -109,10 +109,13 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function engineDeck(P:TankBuilderPort):void {
-  P.addEquipment('hullDetail',box(1.33,.028,.846),0,1.572,-1.647);
-  P.addEquipment('hullDetail',box(1.891,.052,.56),-.0015,1.586,-2.801);
-  for(let i=0;i<13;i++)P.addEquipment('hullDark',box(1.759,.006,.014),0,1.615,-3.045+i*.041);
+function engineDeck(P:TankBuilderPort,turbineDeck=true):void {
+  // the GTD-1000 gas turbine's deck plate, rear grille and stern outlet (274: the T-84's 6TD-2 draws its own, profiles/t84.ts)
+  if(turbineDeck){
+    P.addEquipment('hullDetail',box(1.33,.028,.846),0,1.572,-1.647);
+    P.addEquipment('hullDetail',box(1.891,.052,.56),-.0015,1.586,-2.801);
+    for(let i=0;i<13;i++)P.addEquipment('hullDark',box(1.759,.006,.014),0,1.615,-3.045+i*.041);
+  }
   for(const side of [-1,1]) {
     P.addEquipment('hullDetail',box(.494,.052,1.388),side*1.35,1.516,-2.043);
     // 2026-10-19 (owner float sweep): the tread strips kept one flat seat over the bowed fender and stood 20-82 mm over
@@ -130,7 +133,7 @@ function engineDeck(P:TankBuilderPort):void {
     }
     P.addEquipment('hullDetail',beamBetween([side*1.18,1.30,-3.225],[side*1.542,1.30,-3.225],.017));
   }
-  P.addEquipment('hullDark',box(1.094,.181,.286),0,1.329,-3.17);
+  if(turbineDeck)P.addEquipment('hullDark',box(1.094,.181,.286),0,1.329,-3.17);
 }
 
 function glacisEra(P:TankBuilderPort):void {
@@ -305,9 +308,12 @@ function mainGun(P:TankBuilderPort):void {
 
 /** The hull, running gear and engine deck without the glacis Kontakt-5 (release 269: the Object 292's T-80BV-pattern
  * glacis carries its own Kontakt-1 studs, profiles/object292X.ts). */
-export function buildT80UXHullBase(P:TankBuilderPort,{apron=true,skirts=true}:{apron?:boolean;skirts?:boolean}={}):void {
-  P.hullG.position.set(0,0,0);hull(P,apron,skirts);runningGear(P);engineDeck(P);
+export function buildT80UXHullBase(P:TankBuilderPort,{apron=true,skirts=true,turbineDeck=true}:
+  {apron?:boolean;skirts?:boolean;turbineDeck?:boolean}={}):void {
+  P.hullG.position.set(0,0,0);hull(P,apron,skirts);runningGear(P);engineDeck(P,turbineDeck);
 }
+/** The glacis Kontakt-5 sheet, its lamps and splash strip alone (274: the T-84 over its own deck, profiles/t84.ts). */
+export function buildT80UXGlacisEra(P:TankBuilderPort):void { glacisEra(P); }
 
 export function buildT80UXHull(P:TankBuilderPort):void {
   buildT80UXHullBase(P);glacisEra(P);

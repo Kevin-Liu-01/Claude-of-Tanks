@@ -127,7 +127,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "t80u": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2048,1.3481],"lengthM":4.5828,"radiusM":0.1093},
   "t80u_kursk": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2135,1.3481],"lengthM":4.5828,"radiusM":0.1093},
   "t80uk": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2135,1.3481],"lengthM":4.5828,"radiusM":0.1093},
-  "t84": {"turretPivot":[0.008,1.535,0.114315],"gunPivot":[0,0.35,1.02],"lengthM":4.26,"radiusM":0.1269},
+  "t84": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2135,1.3481],"lengthM":4.5828,"radiusM":0.1093},
   "t84bm_oplot_m": {"turretPivot":[-0.0119925,1.4965,0.1850125],"gunPivot":[0,0.3115,1.333],"lengthM":5.043,"radiusM":0.1107},
   "type10_tk_x": {"turretPivot":[-0.00275904,1.50831687,0.20655021],"gunPivot":[0.0028,0.3363,1.8464],"lengthM":3.5759,"radiusM":0.102},
   "type10b": {"turretPivot":[-0.00275904,1.50831687,0.20655021],"gunPivot":[0.0028,0.3363,1.8464],"lengthM":3.5759,"radiusM":0.102},
