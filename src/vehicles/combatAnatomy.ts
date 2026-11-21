@@ -20,6 +20,7 @@ import {
   type AnatomyModuleSeatReceipt,
   type AnatomyModuleShapeReceipt,
   type AnatomyEraPlateReceipt,
+  type AnatomyPlateFitReceipt,
   type CombatAnatomyCalibration,
 } from './combatAnatomyCalibrationRegistry.ts';
 import { isCombatAnatomyMeasurementMode } from './combatAnatomyMeasurementMode.ts';
@@ -1152,7 +1153,7 @@ function applyStructureFrontPlates(
   });
 }
 
-function applyEraPlateReceipts(
+export function applyEraPlateReceipts(
   armor: ArmorAnatomy,
   receipts: readonly AnatomyEraPlateReceipt[] | undefined,
 ): void {
@@ -1827,6 +1828,55 @@ export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undef
  * flat triangles, each diagonal open on the later one so a hit on it counts once. Legacy turret plates (boxes reaching
  * into the hull) keep their authored corners: their cells already follow the seated turret.
  */
+/** How near (m) a plate's vertex mean must lie to a receipt's `at` for the receipt to name it. */
+const PLATE_FIT_MATCH_M = 0.002;
+
+/**
+ * hitbox-fit-274 (the owner, 2026-11-18: "some hitboxes of tanks seem to be incorrect, because i can see hitmarks that are
+ * floating in air ... some tanks like abrams x just have a floating hit box"): every authored layer lies on the drawn
+ * build. tools/gen-combat-anatomy.mjs measures the finished plates (after the turret seat, so this runs after it too) and
+ * lists each layer off the build: one overhanging its part is cropped to it, one standing off it is fitted onto it, one
+ * whose part is not drawn (a donor's bustle rack or rubber skirt the vehicle lacks) is dropped, and one whose part is drawn
+ * but not as one sheet (a skirt fused into the hull's solid block) is held where it stands. Main plates are never
+ * listed (their frames' cells are hulled from the drawn shell).
+ */
+export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPlateFitReceipt[] | undefined): void {
+  if (!receipts?.length) return;
+  const named = (plate: ArmorPlate, receipt: AnatomyPlateFitReceipt): boolean => {
+    if (plate.name !== receipt.name || (plate.kind || 'main') === 'main' || !plate.verts?.length) return false;
+    for (let axis = 0; axis < 3; axis++) {
+      const mean = plate.verts.reduce((sum, point) => sum + point[axis], 0) / plate.verts.length;
+      if (Math.abs(mean - receipt.at[axis]) > PLATE_FIT_MATCH_M) return false;
+    }
+    return true;
+  };
+  for (const owner of ['hull', 'turret'] as const) {
+    const listed = receipts.filter((receipt) => receipt.owner === owner);
+    if (!listed.length) continue;
+    const key = owner === 'hull' ? 'hullPlates' : 'turretPlates';
+    armor[key] = (armor[key] || []).flatMap((plate): ArmorPlate[] => {
+      const receipt = listed.find((entry) => named(plate, entry));
+      // a held layer stays where it stands: its part is drawn but not as one sheet (the census holds it to its ledger)
+      if (!receipt || receipt.action === 'hold') return [plate];
+      if (receipt.action === 'drop' || !receipt.pieces?.length) return [];
+      // one plate per piece (a folded part is fitted face by face), all under the layer's name: a round meets the piece it
+      // strikes, and an ERA bank is still spent once by name (sim/damage.ts)
+      return receipt.pieces.map((piece): ArmorPlate => {
+        const verts = piece.map((point) => [point[0], point[1], point[2]] as Vec3);
+        const next: ArmorPlate = { ...plate, verts };
+        // a reshaped outline keeps no cut-edge indices of the old one; a convex face's trace box follows its new outline
+        delete next.openEdges;
+        if (plate.convexPolygon) {
+          const bounds = convexArmorTraceBounds(verts as [number, number, number][]);
+          if (bounds) next.traceBounds = { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 };
+          else delete next.traceBounds;
+        }
+        return next;
+      });
+    });
+  }
+}
+
 function seatAuthoredTurretPlates(armor: ArmorAnatomy, receipt: TurretSeatRaceReceipt | undefined): void {
   const seat = turretSeatPlane(receipt);
   if (!seat || !receipt) return;
@@ -1891,6 +1941,8 @@ export function finalizeCombatAnatomy(
   applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   seatAuthoredTurretPlates(armor, calibration?.turretRing);
+  // the generator measures the authored layers; reapplying its previous fits would make the fit self-referential
+  if (!isCombatAnatomyMeasurementMode()) applyPlateFits(armor, calibration?.plateFits);
   // Non-playable comparison/authoring specs are intentionally outside the
   // 122-vehicle evidence registry. Keep their authored anatomy usable without
   // diluting the playable-fleet exact-coverage gate.

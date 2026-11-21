@@ -741,7 +741,8 @@ const _nm3 = new THREE.Matrix3();
  * outside the hull back along the surface normal against the struck node's
  * meshes and adopt the first visible skin point (and its face normal, when
  * it roughly agrees) so the decal always sits ON what the player sees.
- * Mutates pos/normal in place; keeps them untouched when nothing is hit.
+ * Mutates pos/normal in place; keeps them untouched when nothing is hit, and
+ * the caller then writes no mark (stampLocal: a mark never hangs in the air).
  * @returns {boolean} true when a skin point was adopted
  */
 function clampToSkin(
@@ -1326,7 +1327,9 @@ export function* createImpactDecalsSteps(
     if (!resolveStampRoute(rec, visual, impactFrame, gunPivot, pos, normal,
       dir, turretYaw, turretPivot, env)) return false;
     adoptVisualOwner(rec, visual, pos, normal);
-    clampToSkin(stampRoute.node, pos, normal);
+    // (hitbox-fit-274; the owner, 2026-11-18: "i can see hitmarks that are floating in air") a mark lies on drawn skin
+    // or nowhere: a contact with no visible surface under it (a plate the drawn build lacks) leaves no mark in the air.
+    if (!clampToSkin(stampRoute.node, pos, normal)) return false;
     orientStampTangent(fam, normal, dir);
     writeStamp(rec, fam, sizeK, caliberMm, pos, tint);
     return true;

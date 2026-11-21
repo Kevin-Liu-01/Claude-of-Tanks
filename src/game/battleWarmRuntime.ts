@@ -1734,9 +1734,11 @@ export function* createCombatRareWarmSteps(
     noteRareWarmStep('armorScars');
     for (const entity of game.tanks) {
       if (!entity.visual?.root || !entity.state) continue;
+      // on the vehicle's top, facing up (hitbox-fit-274): a mark lies on drawn skin or nowhere (fx/impactDecals.ts), and
+      // the roof is under this point at any yaw; the hull's centre, where it stood, has no skin to clamp to
       context.scratch1.copy(entity.state.pos);
-      context.scratch1.y += (entity.spec?.dims?.heightM || 2.4) * 0.5;
-      context.scratch2.set(0, 0, 1);
+      context.scratch1.y += entity.spec?.dims?.heightM || 2.4;
+      context.scratch2.set(0, 1, 0);
       const scar = { root: entity.visual.root };
       warmScars.push(scar);
       try { fx.armorScar(scar, context.scratch1, context.scratch2, 100); }
