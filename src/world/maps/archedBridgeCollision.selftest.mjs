@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { dressMapExtras } from './mapKits.ts';
+import { archedBridgeFootings } from './archedStoneBridge.ts';
 import { getMapConfig } from './index.ts';
 import { HULL_STANDABLE_HEIGHT_M, hullPassesObstacleTop, pushHullFromObstacle, rayCollisionRecord } from '../collision.ts';
 import { structureTopAt } from '../../sim/structureSupport.ts';
@@ -31,7 +32,11 @@ const [record] = bridges, deck = field.bridgeDecks[0];
 const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
 const vx = -uz, vz = ux;
 // the kit's arch arithmetic (mapKits.ts addArchedStoneBridge)
-const bodyHalf = halfLength + 1, bottom = bedY - 0.6, top = deckY - 0.45, crownY = top - 0.55, springY = waterY + 0.3;
+// (bridge-footings-275) each support on its own footing: the ground under it less 1.2 m, or the authored foot (the bed
+// less 0.6 m) where that lies deeper (footings.ts; supportFootings.selftest.mjs reads them against the ground)
+const feet = archedBridgeFootings(deck, field), bottom = bedY - 0.6;
+for (const y0 of [...feet.abutments, ...feet.piers]) assert.ok(y0 <= bottom, 'a support only ever reaches down');
+const bodyHalf = halfLength + 1, top = deckY - 0.45, crownY = top - 0.55, springY = waterY + 0.3;
 const wetSpan = Math.max(4, (halfLength - 3) * 2), arches = Math.max(1, Math.round(wetSpan / 11)), chord = (wetSpan - (arches - 1) * 2) / arches;
 const rise = Math.max(0.4, Math.min(chord * 0.32, crownY - springY)), radius = (chord * chord / 4 + rise * rise) / (2 * rise), centreY = springY + rise - radius;
 assert.equal(arches, 3, 'three arches over the narrows'); near(rise, 1.1, 1e-9, 'the rise the spandrel leaves');
@@ -49,14 +54,14 @@ assert.ok(deckPart.y1 - deckPart.y0 >= HULL_STANDABLE_HEIGHT_M + 0.05, 'the deck
 assert.equal(hullPassesObstacleTop(deckY, deckPart.y1, deckPart.y0), true, 'a hull on the deck mounts the deck part');
 assert.equal(hullPassesObstacleTop(deckY - 0.6, deckPart.y1, deckPart.y0), false, 'a hull well below the deck is pushed by it');
 assert.deepEqual([deckPart.hw, deckPart.hl], [halfWidth, bodyHalf], 'the deck spans the road and the abutments');
-for (const abutment of [abutmentA, abutmentB]) {
-  assert.equal(abutment.y0, bottom); near(abutment.y1, crownY, 1e-9, 'abutments footed below the bed up to the crown line');
+for (const [k, abutment] of [abutmentA, abutmentB].entries()) {
+  assert.equal(abutment.y0, feet.abutments[k]); near(abutment.y1, crownY, 1e-9, 'abutments footed below the bed up to the crown line');
   near(abutment.hl, (bodyHalf - wetSpan / 2) / 2, 1e-9, 'an abutment fills the body past the wet span'); assert.equal(abutment.hw, halfWidth);
 }
 for (let i = 0; i < piers.length; i++) {
   const pier = piers[i], [px, pz] = along(-wetSpan / 2 + (i + 1) * chord + i * 2 + 1);
   near(pier.cx, px, 1e-9, `pier ${i} between the arches`); near(pier.cz, pz, 1e-9, 'pier centre');
-  assert.equal(pier.hl, 1); assert.equal(pier.y0, bottom); near(pier.y1, crownY, 1e-9, 'a pier to the crown line');
+  assert.equal(pier.hl, 1); assert.equal(pier.y0, feet.piers[i]); near(pier.y1, crownY, 1e-9, 'a pier to the crown line');
 }
 assert.equal(haunches.length, arches * bands * 2);
 for (let i = 0; i < arches; i++) for (let band = 0; band < bands; band++) {
@@ -80,7 +85,7 @@ for (let i = 0; i < arches; i++) for (let band = 0; band < bands; band++) {
 // round 67: the deck part and the parapets are byte-identical to the round-63 record (the navigation reads the deck)
 assert.deepEqual([deckPart.kind, deckPart.hw, deckPart.hl, deckPart.y1], ['obb', halfWidth, bodyHalf, deckY]);
 for (const parapet of parapets) { assert.equal(parapet.y0, deckY); near(parapet.y1, deckY + 1.1, 1e-9, 'parapet height'); assert.equal(parapet.hw, 0.25); }
-assert.equal(record.min[1], bottom); near(record.max[1], deckY + 1.1, 1e-9, 'the record spans footing to parapet top');
+assert.equal(record.min[1], Math.min(...feet.abutments, ...feet.piers)); near(record.max[1], deckY + 1.1, 1e-9, 'the record spans footing to parapet top');
 
 // ------------------------------------------------------------------ shells through the openings
 const normal = new THREE.Vector3();

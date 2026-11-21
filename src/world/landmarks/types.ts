@@ -10,6 +10,7 @@ import type { SimpleCollisionShape } from '../collision.ts';
 import type { BufferGeometry } from 'three';
 import type { RegionalParts } from '../maps/regional/geometry.ts';
 import type { WeatherTints } from '../maps/regional/weather.ts';
+import type { SupportFooting } from '../footings.ts';
 
 /** Every kind the library builds, by family. */
 export type LandmarkKind =
@@ -171,6 +172,12 @@ interface LandmarkBuild {
    * and the geometries it made for them alone (disposed once the collision is derived). Absent: the parts.
    */
   collision?: (parts: RegionalParts, finish: (own: RegionalParts) => RegionalParts) => { parts: RegionalParts; made: BufferGeometry[] };
+  /**
+   * (bridge-footings-275) Its ground-standing supports (a bridge's piers, abutments, bents' sills, base plates), each
+   * footed on the ground under its own rectangle (footings.ts), in its frame. Read by supportFootings.selftest.mjs;
+   * the composer ignores it.
+   */
+  supports?: readonly SupportFooting[];
 }
 
 export type LandmarkBuilder = (ctx: LandmarkBuildContext) => LandmarkBuild;
