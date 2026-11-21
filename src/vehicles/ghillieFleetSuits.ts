@@ -151,7 +151,8 @@ function profile(stations: ReadonlyArray<readonly [number, number]>): (z: number
   };
 }
 /** The Strv 103B's and 103A's hull deck lines (the round-5 suits' measured profiles, ghillieSuit.ts). */
-const STRV103B_DECK = profile([[-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63], [2.61, 1.53], [3.22, 1.55]]);
+// 274: the 103B shares the 103A's casemate (profiles/strv103Family.ts)
+const STRV103B_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
 const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
 
 /**
@@ -1123,20 +1124,45 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // cradle and launch column); a corridor only over the fixed gun's barrel where it lies along the deck (z 1.05 on), the
   // commander's cupola with its machine gun and the driver's hatch opened as the round-5 suit had them, the lens slots
   // by the builder; each flank one drape from the deck edge over the upper running gear.
-  strv103b: {
-    id: 'strv103b', seed: 1032, style: 'leafy', density: 1.25, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+  // 274: the netted twin wears the 103B's field suit; the plain 103B carries none (owner 2026-11-20)
+  strv103b_net: {
+    id: 'strv103b_net', seed: 1032, style: 'leafy', density: 1.25, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.95,
     hull: {
       top: [laid({
-        x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 33, nz: 70, y: 1.75,
-        outline: [[-1.42, -3.76], [1.42, -3.76], [1.66, -2.70], [1.64, 2.35], [0.92, 3.24], [-0.92, 3.24], [-1.64, 2.35], [-1.66, -2.70]],
-        holes: [rect(-0.16, 0.16, 1.05, 3.36), rect(-0.22, 0.92, -0.88, 0.58), rect(-0.98, -0.30, -1.44, -0.72)],
+        // 274: on the family casemate; the net stops short of the rod fence on the beak (z 3.30)
+        x0: -1.66, x1: 1.66, z0: -3.04, z1: 3.20, nx: 33, nz: 66, y: 1.85,
+        outline: [[-1.30, -3.04], [1.30, -3.04], [1.62, -2.65], [1.62, 2.40], [1.20, 3.20], [-1.20, 3.20], [-1.62, 2.40], [-1.62, -2.65]],
+        holes: [rect(-0.16, 0.16, 1.50, 3.58), rect(0.03, 0.91, -1.30, 0.62), rect(-0.90, -0.28, -1.22, -0.46)],
         garnishRiseM: 0.14, seed: 87,
       })],
-      side: [-1, 1].map((side) => ({ side, z0: -3.58, z1: 2.72, nz: 44, ny: 7,
+      side: [-1, 1].map((side) => ({ side, z0: -3.04, z1: 2.40, nz: 40, ny: 7,
         topAt: (z: number) => STRV103B_DECK(z) - 0.02,
-        bottomAt: (z: number) => 0.98 + Math.sin(z * 2.5) * 0.04,
+        // (critic r6: a ruler-straight hem) a ragged hem, three wavelengths
+        bottomAt: (z: number) => 1.00 + Math.sin(z * 2.5) * 0.05 + Math.sin(z * 7.1 + 1.3) * 0.035 + Math.sin(z * 13.7) * 0.02,
         outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
+    },
+  },
+  // Strv 152 (274, owner 2026-11-20: "make the strv 152 have camo netting"): the field net laid over its deck and drawn
+  // down its flanks over the side modules and rubber skirts, opened round the gun's housing and breech hump, the cupola's
+  // remote station and the panoramic head, the gunner's head, the dome, both crew pintles, the crosswind mast, the smoke
+  // banks, the launchers and the rear basket.
+  strv152: {
+    id: 'strv152', seed: 1520, style: 'leafy', density: 1.15, leafScale: 0.94, foliageKind: 'spruce', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.02, hemFloorM: 1.00,
+    hull: {
+      top: [laid({
+        x0: -1.66, x1: 1.66, z0: -2.40, z1: 2.95, nx: 33, nz: 56, y: 1.85,
+        outline: [[-1.40, -2.40], [1.40, -2.40], [1.62, -2.10], [1.62, 2.40], [1.20, 2.95], [-1.20, 2.95], [-1.62, 2.40], [-1.62, -2.10]],
+        holes: [rect(-0.44, 0.44, -0.16, 3.58), rect(-0.12, 1.00, -1.42, 0.20), rect(-0.96, -0.34, -1.26, -0.68),
+          rect(-0.72, -0.32, -0.50, -0.10), rect(-0.92, -0.24, -1.98, -1.28), rect(0.48, 0.98, -1.58, -1.02),
+          rect(-0.22, 0.02, -2.20, -1.96), rect(1.18, 1.62, 0.02, 0.62), rect(-1.62, -1.18, 0.02, 0.62)],
+        garnishRiseM: 0.14, seed: 1521,
+      })],
+      side: [-1, 1].map((side) => ({ side, z0: -2.10, z1: 2.36, nz: 36, ny: 7,
+        topAt: (z: number) => STRV103B_DECK(z) - 0.02,
+        bottomAt: (z: number) => 1.06 + Math.sin(z * 2.3) * 0.05 + Math.sin(z * 6.7 + 0.8) * 0.035 + Math.sin(z * 12.9) * 0.02,
+        outAt: (_z: number, t: number) => 1.96 + (1 - t) * 0.028, seed: 1525 + side })),
     },
   },
   // Strv 103A: as the 103B; its barrel lies on the deck from z 1.5, its spare links on the right glacis shoulder keep
@@ -1146,13 +1172,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.98,
     hull: {
       top: [laid({
-        x0: -1.66, x1: 1.66, z0: -3.30, z1: 3.46, nx: 33, nz: 68, y: 1.85,
-        outline: [[-1.30, -3.30], [1.30, -3.30], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
+        x0: -1.66, x1: 1.66, z0: -3.04, z1: 3.46, nx: 33, nz: 64, y: 1.85,
+        outline: [[-1.30, -3.04], [1.30, -3.04], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
         holes: [rect(-0.16, 0.16, 1.50, 3.58), rect(0.03, 0.91, -1.30, 0.62), rect(-0.90, -0.28, -1.22, -0.46),
           rect(0.62, 1.34, 1.96, 2.64)],
         garnishRiseM: 0.14, seed: 71,
       })],
-      side: [-1, 1].flatMap((side) => [[-3.12, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
+      side: [-1, 1].flatMap((side) => [[-2.95, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
         nz: k ? 18 : 20, ny: 7,
         topAt: (z: number) => STRV103A_DECK(z) - 0.02,
         bottomAt: (z: number) => 1.02 + Math.sin(z * 2.7) * 0.04,

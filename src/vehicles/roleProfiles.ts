@@ -33,6 +33,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   udes03: { doctrine: 'precision', viewM: 430, still: 0.283, moving: 0.193 },
   strv103a: { doctrine: 'precision', viewM: 415, still: 0.263, moving: 0.173 },
   strv103b: { doctrine: 'precision', viewM: 425, still: 0.260, moving: 0.170 },
+  // the concept carries composite modules and a taller sight head: a step less concealed than the 103B
+  strv103e: { doctrine: 'precision', viewM: 445, still: 0.240, moving: 0.150 },
+  // the netted twin: the 103B with its field net (a step better concealed)
+  strv103b_net: { doctrine: 'precision', viewM: 425, still: 0.300, moving: 0.180 },
+  // the 152 mm casemate: its taller housing, hump and bustle are a step less concealed than the 103E
+  strv152: { doctrine: 'precision', viewM: 450, still: 0.220, moving: 0.135 },
   cv90: { doctrine: 'support', viewM: 445, still: 0.263, moving: 0.203 },
   cv9035dk: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },
   cv9040c: { doctrine: 'support', viewM: 450, still: 0.263, moving: 0.203 },

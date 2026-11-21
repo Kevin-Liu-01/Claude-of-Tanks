@@ -70,14 +70,14 @@ export const HISTORICAL_COLD_WAR_CANDIDATE_IDS = Object.freeze([
   'type59', 't62_1975', 't64bv1',
   'centurion3', 'centurion5_2', 'chieftain3', 'chieftain_mk9', 'vickers_mk1',
   'amx30', 'amx30b2',
-  'udes03', 'strv103b', 'strv103a', 'type74',
+  'udes03', 'strv103b', 'strv103b_net', 'strv103a', 'type74',
 ]);
 
 export const RETAINED_COLD_WAR_IDS = Object.freeze([
   'centurion3', 'centurion5_2',
   'chieftain3', 'chieftain_mk9', 'vickers_mk1',
   'amx30', 'amx30b2',
-  'type59', 'type74', 'udes03', 'strv103b', 'strv103a',
+  'type59', 'type74', 'udes03', 'strv103b', 'strv103b_net', 'strv103a',
   't62_1975', 't64bv1', 'leo1a5',
   'm46_patton', 'm47_patton', 'm48a5_patton',
   'm60a1', 'm60a2', 'm60a3', 'mbt70', 'm551_sheridan',

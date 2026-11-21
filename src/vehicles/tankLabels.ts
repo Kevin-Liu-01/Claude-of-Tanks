@@ -59,6 +59,20 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Stridsvagn 103A', shortName: 'Strv 103A',
     searchAliases: ['S-Tank A'],
   },
+  // 274: the project's modern concept on the S-tank casemate (status 'concept', vehicleFacets.ts)
+  strv103b_net: {
+    displayName: 'Stridsvagn 103B (Netted)', shortName: 'Strv 103B (Netted)',
+    searchAliases: ['S-Tank B netted', 'Strv 103B ghillie', 'Strv 103B camouflage net'],
+  },
+  // 274: the project's 152 mm concept on the S-tank casemate (status 'concept', vehicleFacets.ts)
+  strv152: {
+    displayName: 'Stridsvagn 152', shortName: 'Strv 152',
+    searchAliases: ['Strv 152 concept', 'S-Tank 152', '152 mm S-Tank'],
+  },
+  strv103e: {
+    displayName: 'Stridsvagn 103E', shortName: 'Strv 103E',
+    searchAliases: ['S-Tank E', 'Strv 103E concept', 'Modernized S-Tank', 'Strv 103 Modernized'],
+  },
   strv121: {
     displayName: 'Stridsvagn 121', shortName: 'Strv 121',
     searchAliases: ['Swedish Leopard 2', 'Strv 122A', 'Stridsvagn 122A'],

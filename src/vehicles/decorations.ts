@@ -3248,19 +3248,56 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
  * Nordic rack and two crew packs. The 103B (1970s, flotation screen round its deck) carries a rolled camouflage net, a
  * water-can pair, a steel ammunition box and three crew packs; its tools ride in its fender boxes.
  */
-const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifestRow[]>> = Object.freeze({
+type Strv103DecorId = 'strv103a' | 'strv103b' | 'strv103b_net' | 'strv103e' | 'strv152' | 'udes03';
+const STRV103_DECOR: Readonly<Record<Strv103DecorId, () => DecorManifestRow[]>> = Object.freeze({
+  // 274 (owner 2026-11-20: "add all equipment and soldier stuf and decorations"): every mark carries its crew's kit on
+  // the deck clear of the cupola, the dome, the radio hatch, the fillers, the whips and the grilles (strv103Family.ts),
+  // the rest in its bins.
   strv103a: (): DecorManifestRow[] => [
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.18, along: true }] },
     { kit: 'tarp', p: 1, v: { v: 'slim', len: 1.0 }, slot: ['hullRoof', { x: 1.32, z: -0.66 }] },
     { kit: 'bin', p: 1, v: { v: 'crate', w: 0.5, h: 0.24, d: 0.36 }, slot: ['hullRoof', { x: -1.22, z: -0.70 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: false }, slot: ['hullRoof', { x: 1.30, z: -1.42 }] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['hullRoof', { x: -1.24, z: 0.22 }] },
+    { kit: 'cargo', p: 1, v: { v: 'helmet-bundle' }, slot: ['hullRoof', { x: -1.35, z: -2.30 }] },
+    { kit: 'cargo', p: 1, v: { v: 'bedroll-pair' }, slot: ['hullRoof', { x: 1.35, z: -2.30 }] },
+    { kit: 'cargo', p: 1, v: { v: 'fire-extinguisher' }, slot: ['hullRoof', { x: -0.20, z: -1.15 }] },
   ],
   strv103b: (): DecorManifestRow[] => [
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['hullRoof', { x: -0.25, z: -1.45 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.10, along: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['hullRoof', { x: -1.35, z: -2.30 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRoof', { x: 0.65, z: -1.45 }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.28, d: 0.4 }, slot: ['hullRoof', { x: 1.15, z: -1.00 }] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['hullRoof', { x: -0.80, z: -0.20 }] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['hullRoof', { x: -1.25, z: -0.85 }] },
+    { kit: 'cargo', p: 1, v: { v: 'crew-backpack' }, slot: ['hullRoof', { x: 1.35, z: -2.30 }] },
+    { kit: 'cargo', p: 1, v: { v: 'medical-case' }, slot: ['hullRoof', { x: -0.20, z: -1.15 }] },
+  ],
+  // the netted twin carries the 103B's load under its net
+  strv103b_net: (): DecorManifestRow[] => [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.10, along: true }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRoof', { x: 0.65, z: -1.45 }] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['hullRoof', { x: -1.25, z: -0.85 }] },
+  ],
+  // the trials prototype: the trials crew's tool set and a wooden crate of test gear on the bare fenders and deck
+  udes03: (): DecorManifestRow[] => [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge'] }, slot: ['fender', { side: -1, zFrac: -0.10, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'crate', w: 0.5, h: 0.24, d: 0.36 }, slot: ['hullRoof', { x: -1.22, z: -0.70 }] },
+    { kit: 'cargo', p: 1, v: { v: 'mechanics-tool-chest' }, slot: ['hullRoof', { x: 1.30, z: -1.42 }] },
+  ],
+  // the 152 mm concept: the 103E's load, clear of its breech hump and bustle
+  strv152: (): DecorManifestRow[] => [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.05, along: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['hullRoof', { x: -1.25, z: -0.85 }] },
+    { kit: 'cargo', p: 1, v: { v: 'spare-optics-case' }, slot: ['hullRoof', { x: -0.20, z: -1.15 }] },
+  ],
+  // the concept carries its kit in its rear basket; crew packs, a rolled net and the modern cases ride the deck clear of
+  // the sight heads, the station, the crosswind mast and the launchers. No turret slots: the gun is fixed in the hull.
+  strv103e: (): DecorManifestRow[] => [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.05, along: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['hullRoof', { x: -1.25, z: -0.85 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['hullRoof', { x: 1.25, z: -0.95 }] },
+    { kit: 'cargo', p: 1, v: { v: 'spare-optics-case' }, slot: ['hullRoof', { x: -0.20, z: -1.15 }] },
+    { kit: 'cargo', p: 1, v: { v: 'ration-case' }, slot: ['hullRoof', { x: 1.40, z: -1.95 }] },
   ],
 });
 
@@ -3567,7 +3604,7 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
-  if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  if (Object.hasOwn(STRV103_DECOR, spec.id)) return STRV103_DECOR[spec.id as Strv103DecorId]();
   if (spec.id === 'type74' || spec.id === 'stb1') return JAPAN_74_DECOR[spec.id]();
   // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
   // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
@@ -4666,9 +4703,15 @@ function supportedSeat(
  * the machine-gun ring, so the gun can be neither seen nor traversed". The radius covers the ring and the gun's sweep.
  */
 const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, number, number]>>> = {
-  strv103b: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
+  // 274: the 103B on the family casemate: the 103A's cupola and dome
+  strv103b: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26], [-0.58, -1.62, 0.30]],
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
-  strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
+  strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26], [-0.58, -1.62, 0.30]],
+  strv103b_net: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26], [-0.58, -1.62, 0.30]],
+  udes03: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26], [-0.58, -1.62, 0.30]],
+  strv152: [[0.28, -0.40, 0.75], [-0.535, -0.285, 0.26], [0.66, -0.98, 0.26], [-0.66, -0.98, 0.32], [-0.58, -1.62, 0.30], [0, 0.60, 0.45], [0.72, -1.30, 0.40]],
+  // 274: the concept's station on the cupola race, its dome, the panoramic head and the gunner's head
+  strv103e: [[0.28, -0.40, 0.75], [-0.535, -0.285, 0.26], [0.66, -0.98, 0.26], [-0.66, -0.98, 0.32], [-0.58, -1.62, 0.30]],
   // round 4 (2026-10-07): the Challenger 1 roof guns' stations, so the decor's bedrolls never bury a pintle or its can.
   // Release 262: the FV4030/5's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
   challenger_x: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],

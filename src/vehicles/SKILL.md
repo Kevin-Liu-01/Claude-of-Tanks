@@ -491,10 +491,12 @@ hull is a closed `sectionSolid` loft of a station table taken from
 registered prints and the owner-supplied M48A5 model). Change a station table,
 not the loft, and keep `pattonCastProportions.selftest.mjs` and
 `pattonGunClearance.selftest.mjs` green.
-Keep the Strv 103 base build in `profiles/casemate.ts`; its strict builder,
-loft, material, and running-gear contracts must preserve the authored station
-order and fixed-hull ownership, and Swedish callers depend only on that narrow
-Strv-compatible subset. The Jagdtiger, JPz E 100, Sturmtiger, T95, ISU-152 and
+The Strv 103 family (103A, 103B and its netted twin, the concepts 103E and
+Strv 152, the UDES 03 trials prototype) is one casemate on the Leclerc rebuild
+pattern (274): `profiles/strv103Frame.ts` (datums, stations), `strv103Hull.ts`
+(closed section-solid casemate, gun port), `strv103Gear.ts`, `strv103Roof.ts`,
+`strv103Equipment.ts`, `strv103Marks.ts`, assembled by `strv103Family.ts`.
+Fixed-hull ownership throughout (rig_turret empty). The Jagdtiger, JPz E 100, Sturmtiger, T95, ISU-152 and
 ISU-122S builds and the `profiles/ww2.ts` pack left with their archived hulls
 on 2026-09-25 (owner: no archived WWII / casemate tanks outside production).
 Use `specContracts.ts` for boot-light fleet combat rows. Family packs may add

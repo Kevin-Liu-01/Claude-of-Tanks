@@ -102,7 +102,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   italy: Object.freeze(['c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto', 'carro45t']),
   sweden: Object.freeze([
-    'udes03', 'strv103b', 'strv103a', 'strv81', 'strv105', 'cv90', 'cv90_mk4_concept',
+    'udes03', 'strv103b', 'strv103a', 'strv103b_net', 'strv103e', 'strv152', 'strv81', 'strv105', 'cv90', 'cv90_mk4_concept',
   ]),
   sovietHeavy: Object.freeze(['kv2']),
   t90_1992: Object.freeze([

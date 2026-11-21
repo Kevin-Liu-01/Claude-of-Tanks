@@ -101,7 +101,11 @@ export const HULLS = Object.freeze({
   mbt: 'm1a1_abrams_hc',
   heavy: 'jpz_e100',
   tall: 'm3a3_bradley',
-  low: 'udes03',
+  // 274 (the coordinator's ruling): the lowest conventional road-wheel hull by its spec height, the T49 light tank
+  // (2.20 m, torsion bars, six road wheels); the UDES 03 now rides the S-tank's four-wheel course (stank below)
+  low: 't49',
+  // the S-tank family's shared four-wheel front-drive course with its raised end wheels (strv103Gear.ts)
+  stank: 'strv103b',
   fast: 'object695',
   long: 'challenger3',
 });

@@ -80,9 +80,15 @@ const targets={
   kf41_lynx:{expected:8,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&((p.site.includes('buildLynxTurretArmor (')&&p.part.vertices.length===30)||p.site.includes('addLynxTurretCheek ('))),sectionContour:p=>p.part.geometryType==='ExtrudeGeometry'?null:p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===30?6:5},
   lrmv_lynx:{expected:6,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&p.site.includes('buildLrmvLynx (')&&p.part.geometryType==='BufferGeometry'&&[8,24].includes(p.part.vertices.length)),sectionContour:p=>p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===24?6:4},
   carro45t:{expected:3,select:p=>p.bucket==='turret'&&p.part.geometryType==='BufferGeometry'&&p.site.includes('buildCarro45TTurretStage1 (')&&p.part.vertices.length>8,sectionContour:p=>p.part.size.x>2?8:5},
-  strv103b:{expected:14,select:p=>p.bucket==='hull'&&p.site.includes('at loft (')&&p.site.includes('casemate.ts'),convexAll:true,mirror:true},
-  strv103a:{expected:19,select:p=>p.bucket==='hull'&&p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'),convexAll:true,mirror:true},
-  udes03:{expected:8,select:p=>p.bucket==='hull'&&((p.site.includes('at loftRows (')&&p.site.includes('sweden.ts'))||(p.part.vertices.length===8&&p.part.size.z>2.15&&p.part.size.z<2.17&&p.part.size.x<.61)),convexAll:true,mirror:true},
+  // 274: the Strv 103 family's one casemate (profiles/strv103Hull.ts: the chamfered tub and the sponsoned upper body, two
+  // closed section solids over the measured stations)
+  strv103b:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
+  strv103a:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
+  strv103e:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
+  // 274: the UDES 03 (the trials prototype), the netted 103B and the Strv 152 on the same casemate
+  udes03:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
+  strv103b_net:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
+  strv152:{expected:2,select:p=>p.bucket==='hull'&&p.site.includes('at casemate (')&&p.site.includes('strv103Hull.ts'),sectionContour:p=>p.part.vertices.length<=60?6:8,mirror:true},
   m1a2_abrams:{expected:2,select:p=>p.site.includes('buildTurretArmor (')&&p.site.includes('abramsSourceX.ts')&&p.bucket==='turret'&&p.part.size.z>2&&p.part.bounds.max.z>2&&p.part.bounds.min.z>-.02&&p.part.size.x>1},
   // release 263: the rebuilt ZTZ-85-III's welded hexagon is one convex hull (profiles/ztz85iii.ts weldedShell)
   ztz85_iii:{expected:1,select:p=>p.site.includes('addTurret (')&&p.site.includes('ztz85iii.ts')&&p.bucket==='turret'&&p.part.size.x>2.2,convexAll:true,mirror:true},

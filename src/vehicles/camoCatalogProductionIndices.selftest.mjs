@@ -180,6 +180,8 @@ const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
 // Release 269: the Type 87 wears Japan's Factory coat with the Type 74 and the Type 90, the Lvkv 9040 Sweden's with the CV90.
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', t95: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
   gepard_1a2: 'service_leo2a6m', type87_aw: 'service_type10', lvkv9040: 'service_strv122',
+  // 274: the Strv 103E and Strv 152 concepts wear Sweden's Factory coat with the Strv 122
+  strv103e: 'service_strv122', strv152: 'service_strv122',
   // Release 269: the M163 VADS wears the US Factory coat, the desert tan of the owner's photograph (no new paint)
   m163_vads: 'service_usa_desert',
   // 269: the 152 mm line: the Object 195 and the T-14 152 in the T-14's Russian service digital (272: the Object 292 has
@@ -197,7 +199,9 @@ const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't
   challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100',
   centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5',
   // release 268: the M3A2 Bradley wears the M2A2's stock coat (its M2A2 spec's visual)
-  m3a2_bradley: 'm2a2_bradley' };
+  m3a2_bradley: 'm2a2_bradley',
+  // 274: the netted 103B is the 103B's twin in its coat
+  strv103b_net: 'strv103b' };
 // Added since production and repainted under a new paint id, the old id keeping its recipe for the hulls and saved
 // selections still wearing it (273: the Olifant Mk 1B in the SANDF's 1994 three-colour; the TTD keeps paint_olifant_mk1b).
 const ADDED_IN_REPAINT = { olifant_mk1b: 'paint_olifant_mk1b_2' };

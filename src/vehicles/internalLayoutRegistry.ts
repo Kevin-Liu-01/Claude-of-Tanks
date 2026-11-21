@@ -693,7 +693,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik'],
   bustleAuto: ['object292', 'type90', 'type90b', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
-  fixedAuto: ['udes03', 'strv103a', 'strv103b'],
+  fixedAuto: ['udes03', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv152'],
   mbt70: ['mbt70'],
   stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
