@@ -125,6 +125,10 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/shadow-render-truth.mjs`
 - `tools/suspension-strip-probe.mjs`
 - `tools/track-system-audit.mjs`
+- `tools/training-layout-probe.mjs`
+- `tools/tutorial-cards.browser.mjs`
+- `tools/tutorial-guide.browser.mjs`
+- `tools/tutorial-training.browser.mjs`
 - `tools/tutorial.browser.mjs`
 - `tools/water-palette-probe.mjs`
 <!-- /census -->
