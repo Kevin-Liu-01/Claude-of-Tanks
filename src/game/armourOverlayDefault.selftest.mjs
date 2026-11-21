@@ -63,9 +63,14 @@ assert.match(hook, /input\.getBinding\('hitboxOverlay'\)/, 'a keyboard reads its
 assert.doesNotMatch(main.slice(0, main.indexOf('armourTipDue(')), /from '\.\/ui\/armourOverlayTip\.ts'/, 'the tip module is never on the boot path');
 const tip = read('src/ui/armourOverlayTip.ts');
 assert.match(tip, /t\('settings\.interface\.armorOverlay'\)/, 'the tip names the feature as Settings does');
+assert.match(tip, /from '\.\.\/game\/armorShadeColors\.ts'/, 'the tip draws the overlay\'s own colours');
+assert.doesNotMatch(tip, /from 'three'/, 'the tip\'s chunk never loads three.js');
 const en = JSON.parse(read('src/ui/i18nCatalog.en-US.json'));
 const zh = JSON.parse(read('src/ui/i18nCatalog.zh-CN.json'));
-for (const [key, holder] of [['hud.tip.armorOverlayOn.text', null], ['hud.tip.armorOverlayOn.detailKey', 'key'], ['hud.tip.armorOverlayOn.detailSettings', 'path']]) {
+// (mobile-hud-274) the short tip: its line, the colours' meaning (with the key where there is one), and where Settings turns
+// it off as its picture's label
+for (const [key, holder] of [['hud.tip.armorOverlayOn.text', null], ['hud.tip.armorOverlayOn.detailKey', 'key'], ['hud.tip.armorOverlayOn.detailSettings', 'path'],
+  ['hud.tip.armorOverlayOn.legend', null]]) {
   for (const catalog of [en, zh]) {
     assert.ok(catalog[key], `${key} in both locales`);
     if (holder) assert.ok(catalog[key].includes(`{${holder}}`), `${key} names {${holder}}`);

@@ -27,6 +27,7 @@ import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armo
 import {
   ARMOR_PAINT_PANEL_SLOTS as PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS,
 } from '../vehicles/materials.ts';
+import { ARMOR_SHADE_EDGE, ARMOR_SHADE_PASSES, ARMOR_SHADE_STOPS } from './armorShadeColors.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 /**
@@ -56,9 +57,9 @@ const TURRET_ENVELOPE_FLOOR_M = 0.05;
 const BARREL_RADIUS_M = 0.15;
 const BARREL_CLEAR_M = 0.05;
 
-const LOW = new THREE.Color(0xe53d35);
-const MID = new THREE.Color(0xf0aa35);
-const HIGH = new THREE.Color(0x48d985);
+const LOW = new THREE.Color(ARMOR_SHADE_STOPS);
+const MID = new THREE.Color(ARMOR_SHADE_EDGE);
+const HIGH = new THREE.Color(ARMOR_SHADE_PASSES);
 const _color = new THREE.Color();
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();

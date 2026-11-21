@@ -37,6 +37,9 @@ interface NoticeContent {
   readonly detail?: string;
   /** A glyph in place of the severity's own. */
   readonly icon?: IconId;
+  /** A small picture after the words (first-party inline SVG markup only, never text from a player or the network), with
+   *  its label: read by a screen reader, and the picture's tooltip under a mouse. */
+  readonly media?: { readonly svg: string; readonly label: string };
   readonly className?: string;
 }
 
@@ -50,7 +53,9 @@ function content(options: NoticeContent): string {
   const severity = options.severity ?? 'info';
   return `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
     + `<span class="cot-c-notice__body"><span class="cot-c-notice__text">${esc(options.text)}</span>`
-    + `${options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`;
+    + `${options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`
+    + (options.media ? `<span class="cot-c-notice__media" role="img" aria-label="${esc(options.media.label)}" title="${esc(options.media.label)}">`
+      + `${options.media.svg}</span>` : '');
 }
 
 function actionButton(label: string, primary: boolean | undefined, extra?: Attrs): string {
