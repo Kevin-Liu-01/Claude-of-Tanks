@@ -355,7 +355,7 @@ try {
     return shots;
   }
   /** One shot at an actor's point: laid at the reticle, the gun on it and settled, fired. */
-  async function fireAtOnce(actorId, local, stepId) {
+  async function fireAtOnce(actorId, local, stepId, { tolPx = 3, settleMs = 1200, gunTol = 0.03 } = {}) {
     // through the gunner's sight, as a player lays on a plate (the third-person view's reticle stands off the screen's
     // centre: the lay never converged there, 372 tries at Target 2 in the end walk of 2026-11-20)
     if (!(await sightMode())) {
@@ -367,12 +367,12 @@ try {
       const target = await actorPose(actorId);
       if (!target) return false;
       const point = actorPoint(target, local.along, local.up, local.across);
-      if (!(await layOn(point, 3))) { (report.fireLog ??= []).push({ step: stepId, laying: true }); continue; }
+      if (!(await layOn(point, tolPx))) { (report.fireLog ??= []).push({ step: stepId, laying: true }); continue; }
       const p = await pose();
       const err = wrap(Math.atan2(target.x - p.x, target.z - p.z) - p.gun);
-      if (Math.abs(err) > 0.03) { await sleep(300); continue; } // the turret still traversing behind the view
-      await sleep(1200); // the aim settles
-      if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), 3))) continue;
+      if (Math.abs(err) > gunTol) { await sleep(300); continue; } // the turret still traversing behind the view
+      await sleep(settleMs); // the aim settles
+      if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), tolPx))) continue;
       await page.mouse.down(); await sleep(60); await page.mouse.up();
       const me = await pose();
       const shotOf = (report.shots ??= []).filter((x) => x.step === stepId).length;
@@ -518,7 +518,7 @@ try {
       how = 'fought';
       if (flag('clip-s14') && !clipS14) clipS14 = await page.screencast({ path: resolve(OUT, 'training-s14-fight.webm'), scale: 0.5 });
       const enemies = TRAINING_RULES.skirmish.enemies.map((bot) => bot.specId);
-      const until = Date.now() + 8 * 60_000;
+      const until = Date.now() + 12 * 60_000;
       while (Date.now() < until && (await stepNow()) === now) {
         const me = await pose();
         const alive = await page.evaluate((ids) => ids.map((id) => {
@@ -538,7 +538,8 @@ try {
           await page.keyboard.up('KeyW');
           continue;
         }
-        await fireAtOnce(target.id, TARGET_POINTS.hull, now);
+        // a moving tank at fighting range: a looser lay and a short settle (7 shots in 8 minutes at the 3 px lay)
+        await fireAtOnce(target.id, TARGET_POINTS.hull, now, { tolPx: 12, settleMs: 300, gunTol: 0.05 });
       }
       report.fightLeft = await page.evaluate((ids) => ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat.destroyed), enemies);
     }
