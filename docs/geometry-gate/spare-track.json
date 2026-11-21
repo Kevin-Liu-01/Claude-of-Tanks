@@ -4209,33 +4209,8 @@
    "hostSweep": []
   },
   "vickers_mk1": {
-   "inputHash": "d0e463b23cccc1d2",
-   "runs": [
-    {
-     "index": 0,
-     "site": "strip:strip@addVickersMk1Hull@profiles/uk.ts",
-     "source": "strip",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.021,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.852,
-      "host": "hull<loftBandCorridor@profiles/uk.ts:389>"
-     }
-    }
-   ],
+   "inputHash": "ef2671df03f41c5d",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

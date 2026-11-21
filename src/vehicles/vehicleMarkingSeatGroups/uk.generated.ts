@@ -271,59 +271,59 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.285,
         "pos": [
-          1.488948,
-          1.2166091,
-          -0.665
+          1.50225,
+          1.292,
+          -0.3895
         ],
         "quaternion": [
-          -0.0359369,
-          0.706193,
-          0.0359369,
-          0.706193
+          0,
+          0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.000426
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.285,
         "pos": [
-          -1.488948,
-          1.2166091,
-          -0.665
+          -1.50225,
+          1.292,
+          -0.3895
         ],
         "quaternion": [
-          -0.0359369,
-          -0.706193,
-          -0.0359369,
-          0.706193
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.000426
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "insignia",
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          1.4913831,
+          1.50225,
           1.192745,
           0.3747749
         ],
         "quaternion": [
-          -0.0359369,
-          0.706193,
-          0.0359369,
-          0.706193
+          0,
+          0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "vickers_mk1",

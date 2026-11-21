@@ -22,7 +22,7 @@ import { drainTankBuild, steppedBuilder, type TankProfileBuild } from '../tankBu
 const {
   box, cylX, cylY, cylZ, torus,
   liftEye, periscope, headlight, pintleMG, smokeCluster,
-  stowage, tarpRoll, spareTrackStrip,
+  stowage, tarpRoll,
 } = KIT;
 // §C.1 winding guard on slab. These direct aliases replace the former dynamic
 // Proxy without changing any geometry calls and make the shared UK kit visible
