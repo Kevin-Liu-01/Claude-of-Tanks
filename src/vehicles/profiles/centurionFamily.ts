@@ -890,12 +890,23 @@ function castingHalfWidth(z: number, y: number, st: readonly CastStation[] = CAS
 
 /** Stowage bins round the casting from the bin course up to the shoulder: a long one on the right, two on the left round
  * the loading hatch; chamfered lids, hinges and hasps. Each inner face sits 2 cm into the casting at its height. */
-function buildTurretBins(P: TankBuilderPort): void {
-  const BOT = 0.30, TOP = 0.74;
-  const bin = (side: number, z0: number, z1: number, outF: number, outR: number): void => {
+interface TurretBinFit {
+  readonly st: readonly CastStation[];
+  readonly bot: number;
+  readonly top: number;
+  /** scale on the bins' outer faces */
+  readonly out: number;
+  readonly hatchY: number;
+}
+const CENTURION_BIN_FIT: TurretBinFit = { st: CASTING, bot: 0.30, top: 0.74, out: 1, hatchY: 0.45 };
+
+function buildTurretBins(P: TankBuilderPort, fit: TurretBinFit = CENTURION_BIN_FIT): void {
+  const BOT = fit.bot, TOP = fit.top;
+  const bin = (side: number, z0: number, z1: number, outF0: number, outR0: number): void => {
+    const outF = outF0 * fit.out, outR = outR0 * fit.out;
     const rows: SolidSection[] = [z0, (z0 + z1) / 2, z1].map((z, i) => {
       const o = i === 0 ? outR : i === 2 ? outF : (outF + outR) / 2 + 0.015;
-      const nb = castingHalfWidth(z, BOT) - 0.02, nt = castingHalfWidth(z, TOP) - 0.02;
+      const nb = castingHalfWidth(z, BOT, fit.st) - 0.02, nt = castingHalfWidth(z, TOP, fit.st) - 0.02;
       const ring: SectionPoint[] = [[nb, BOT], [o - 0.03, BOT], [o, BOT + 0.04], [o, TOP - 0.06], [o - 0.06, TOP], [nt, TOP]];
       return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as SectionPoint).reverse() : ring };
     });
@@ -909,22 +920,22 @@ function buildTurretBins(P: TankBuilderPort): void {
   bin(1, -1.30, -0.69, 1.48, 1.44);
   // the left wall's round ammunition loading hatch between the bins, seated on the casting
   // a cast boss standing out of the bulging wall (its back buried in the casting at every height it spans) carries the lid
-  const hx = castingHalfWidth(-0.45, 0.45);
-  P.add('turret', cylX(0.18, 0.12, 24), hx - 0.03, 0.45, -0.45);
-  P.addHatch('turret', cylX(0.155, 0.03, 24), hx + 0.04, 0.45, -0.45);
-  P.add('turretDark', xform(torus(0.165, 0.010, 24, 4), 0, 0, 0, 0, 0, Math.PI / 2), hx + 0.032, 0.45, -0.45);
-  P.add('turretDark', box(0.05, 0.10, 0.06), hx + 0.035, 0.45, -0.64);
+  const hy = fit.hatchY, hx = castingHalfWidth(-0.45, hy, fit.st);
+  P.add('turret', cylX(0.18, 0.12, 24), hx - 0.03, hy, -0.45);
+  P.addHatch('turret', cylX(0.155, 0.03, 24), hx + 0.04, hy, -0.45);
+  P.add('turretDark', xform(torus(0.165, 0.010, 24, 4), 0, 0, 0, 0, 0, Math.PI / 2), hx + 0.032, hy, -0.45);
+  P.add('turretDark', box(0.05, 0.10, 0.06), hx + 0.035, hy, -0.64);
 }
 
 /** The rear bustle bin across the turret rear (the Bovington Mk 3's tall flat-faced box) up to the roof line. */
-function buildBustleBin(P: TankBuilderPort): void {
+function buildBustleBin(P: TankBuilderPort, kx = 1, ky = 1): void {
   P.add('turretDetail', slab(
-    [-0.86, 0.28, -1.40], [0.86, 0.28, -1.40], [0.86, 0.28, -1.78], [-0.86, 0.28, -1.78],
-    [-0.86, 0.90, -1.40], [0.86, 0.90, -1.40], [0.86, 0.88, -1.78], [-0.86, 0.88, -1.78]));
-  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.885, -1.785);
-  P.add('turretDark', box(1.66, 0.012, 0.012), 0, 0.30, -1.785);
-  for (const hx of [-0.42, 0.42]) P.add('turretDark', box(0.06, 0.08, 0.02), hx, 0.78, -1.79);
-  P.add('turretDark', xform(torus(0.07, 0.012, 14, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.58, -1.79);
+    [-0.86 * kx, 0.28 * ky, -1.40], [0.86 * kx, 0.28 * ky, -1.40], [0.86 * kx, 0.28 * ky, -1.78], [-0.86 * kx, 0.28 * ky, -1.78],
+    [-0.86 * kx, 0.90 * ky, -1.40], [0.86 * kx, 0.90 * ky, -1.40], [0.86 * kx, 0.88 * ky, -1.78], [-0.86 * kx, 0.88 * ky, -1.78]));
+  P.add('turretDark', box(1.66 * kx, 0.012, 0.012), 0, 0.885 * ky, -1.785);
+  P.add('turretDark', box(1.66 * kx, 0.012, 0.012), 0, 0.30 * ky, -1.785);
+  for (const hx of [-0.42, 0.42]) P.add('turretDark', box(0.06, 0.08, 0.02), hx * kx, 0.78 * ky, -1.79);
+  P.add('turretDark', xform(torus(0.07, 0.012, 14, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.58 * ky, -1.79);
 }
 
 /** The Mk 13's open mesh basket on the bustle's back, 0.5 m deep and 0.62 m tall, its top rail 0.15 m over the roof
@@ -1572,6 +1583,39 @@ function buildSmokeDischargers(P: TankBuilderPort, z = 1.00, y = 0.56, xOut?: nu
     const [bx, bz] = at(0, 0.22);
     P.add('turretDark', xform(box(0.40, 0.018, 0.018), 0, 0, 0, 0, yaw, 0), bx, y + 0.16, bz);
   }
+}
+
+// ---- the Vickers MBT Mk 1's turret (profiles/uk.ts) ----
+const VICKERS_KX = 0.92, VICKERS_KY = 0.88;
+/** The bare-nose casting at 0.92 of the width and 0.88 of the height: the Mk 1's roof stands 2.44 m on its 1.58 m deck,
+ * the turret narrower over a 3.17 m hull; its upper walls lean in harder to the roof (the Vijayanta side photographs). */
+const VICKERS_CASTING: readonly CastStation[] = CASTING_BARE.map((st) => ({
+  z: st.z, bottom: st.bottom * VICKERS_KY, roof: st.roof * VICKERS_KY,
+  low: st.low * VICKERS_KX, mid: st.mid * VICKERS_KX, up: st.up * VICKERS_KX * 0.95, edge: st.edge * VICKERS_KX * 0.90,
+}));
+
+/** The Vickers Mk 1 rides a modified Centurion turret (owner 2026-11-21, lane vickers-mk1-274: "it should still be based
+ * off and look like a modified centurion turret which we have"): the bare-nose casting scaled to the Mk 1, its welded
+ * roof plate's bead, the bins round the walls with the ammunition hatch, the bustle bin and the cheek dischargers, in
+ * the Centurion's ring frame (the cupola's side, -X, is the vehicle's right). The Vickers profile adds the Mk 1's flat
+ * mantlet, the L7A1, the cupola, the hatches and the roof gun. Returns the roof height and the walls' half-width. */
+export function buildVickersMk1Turret(P: TankBuilderPort): { readonly roofY: number; halfWidth(z: number, y: number): number } {
+  const st = VICKERS_CASTING;
+  P.add('turret', sectionSolid(st.map(castSection), { smoothSideEdges: [1, 2, 3, 4, 5, 9, 10, 11, 12, 13], centeredSideQuads: true }));
+  P.add('turret', cylY(0.93, 0.96, 0.07, 48), 0, -0.005, 0.02);
+  P.add('turretDark', torus(0.945, 0.012, 48, 6), 0, 0.03, 0.02);
+  const roofY = castingRoof(0, st);
+  const bead = (a: [number, number], b: [number, number]): void => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    P.add('turretDetail', xform(cylZ(0.012, len, 6), 0, 0, 0, 0, Math.atan2(b[0] - a[0], b[1] - a[1]), 0), (a[0] + b[0]) / 2, roofY + 0.004, (a[1] + b[1]) / 2);
+  };
+  const plate: [number, number][] = [[0.66, 0.50], [0.72, 0.02], [0.66, -0.80], [0.52, -1.24], [-0.52, -1.24], [-0.66, -0.80], [-0.72, 0.02], [-0.66, 0.50]]
+    .map(([x, z]) => [x * VICKERS_KX, z]);
+  for (let i = 0; i < plate.length; i++) bead(plate[i], plate[(i + 1) % plate.length]);
+  buildTurretBins(P, { st, bot: 0.30 * VICKERS_KY, top: 0.74 * VICKERS_KY, out: VICKERS_KX, hatchY: 0.45 * VICKERS_KY });
+  buildBustleBin(P, VICKERS_KX, 0.78);                 // its lid 0.15 m under the roof line
+  buildSmokeDischargers(P, 0.88, 0.56 * VICKERS_KY, undefined, st);
+  return { roofY, halfWidth: (z: number, y: number): number => castingHalfWidth(z, y, st) };
 }
 
 /** The mantlet, all moving with the gun (owner 2026-10-27: "mantlets need to be wider, better"; the Hum3D Mk 3 and the

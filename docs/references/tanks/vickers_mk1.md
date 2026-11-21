@@ -130,3 +130,32 @@ hash 2ca664cd and gate row 81.8 (hull 82 / whole 81.8 / turret 84.1 /
 stations 88.9 / dims 99 / floaters 100) bit-identical throughout the round.
 Evidence: shots/uk-noair/before/vickers_mk1--*.png (annotated boundary
 rects), column tables in shots/uk-noair/after/vickers_mk1.json.
+
+## 2026-11-21 PHOTO-CLASS REDESIGN (lane vickers-mk1-274) — supersedes the print build above
+Owner: "redesign the vickers mbt 1"; mid-lane: "it should still be based off and look like a modified centurion
+turret which we have"; look approved 2026-11-21 ("Looks good, regen"). The print (vertex r2) is no longer chased:
+§B7 owner ref-wrong for the whole vehicle, the Vijayanta photographs govern. The length carriers, the print's
+curved casting, its flank bins, nose cone and tip collar are gone.
+
+Photo class (Wikimedia Commons, category "Vijayanta tanks"): National_War_Memorial_tank.JPG (Pune, right side),
+Mangal_Pandey_Tank_in_Gwalior.jpg, Tank_Vijayant_(1).jpg and (2).jpg (mantlet close), Indian_Victory_Tank_monument_in_
+Jodhpur, Vickers_Vijayanta_MBT._(49242666121).jpg, MBT_Vijayant.jpg, Ambala_cantt.jpg. Facts: Wikipedia "Vickers MBT"
+(welded plate; the Mk 1's flat mantlet, the Mk 3's cast one; L7A1, L6 ranging MG; 2.44 m to the roof).
+
+Build (profiles/uk.ts addVickersMk1Hull / vickersMk1Build, authored at published dims, compact x0.95 after):
+- Hull at 7.92 m, stations off the Pune side photograph (875 px = 7.92 m): mudguard tip 4.00, idler 3.23, six
+  wheels at a 0.85 m pitch from 1.87, raised sprocket -3.27, rear plate -3.88. Deck 1.58; track guards 1.12 with
+  skirt plates to the wheels' tops (0.84) and lidded bins to 1.66 (the photos' 0.8 m side wall); guards, strips and
+  rear bins climb from z -2.10 over the sprocket (strict suspension sweep); box mudguard hoods (mudguard parts);
+  glacis 1.58 -> 1.12 over 2.45..3.70 with caged headlights, shackles and the folded gun crutch (receipt pinned by
+  vickersGlacisSeating.selftest); rear deck lip, exhaust box right rear, corner boxes, tail fittings.
+- Turret: centurionFamily.ts buildVickersMk1Turret — the Centurion bare-nose casting at 0.92 width / 0.88 height
+  (upper walls x0.95 / edge x0.90, leaning in), its bins, ammunition hatch, bustle bin (lid 0.15 m under the roof)
+  and dischargers, in the Centurion ring frame (cupola -X = the vehicle's right). Centurion-family ids keep their
+  geometry digests. The Mk 1's flat mantlet rides the gun; the loader's MAG station keeps its name (ukScaleWeapons).
+- L7A1: tube r 0.088, thick chase, fume extractor at ~40 % out, plain muzzle at 4.40 from the trunnion.
+
+Verification: blind A/B critic (new X v main Y): X picked at 0.85 confidence, mean 6.33 v 3.83 over six views, no
+holes or broken parts; its photo-backed orders taken (skirts, slimmer tube, prouder mantlet, wall lean, bustle,
+rear lip, exhaust box). Audits: turret-parent 0/0/0; track-clip front 0, hull clear of the strict sweep; tank-
+standard holes 0, contig 0, mg 1. Evidence (gap table, stills, sheets, verdict): ~/cot-lanes/vickers-mk1-274-evidence.

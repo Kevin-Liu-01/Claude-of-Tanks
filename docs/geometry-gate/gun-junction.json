@@ -315,7 +315,7 @@
   "ua_t80bv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8e16e36c33d44892","gun":"4ce96504b5985f9a"}},
   "udes03": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"2af57a598679c5e6","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
   "upior": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7bf609b4b71d2f95","gun":"51286d215d5e7922"}},
-  "vickers_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"676b5cc489087513","gun":"88f5ede8b8d535a1"}},
+  "vickers_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0c3605a4c1cd1265","gun":"a5267ae9d605d9bf"}},
   "vt4a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0f7696f1f9cf3b4c","gun":"69447aa46440a991"}},
   "vt4a1_baihu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b280a33d70aee816","gun":"6aace008d615435d"}},
   "warrior_tes_h": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a734f73519cea347","gun":"283495ac1719e5c0"}},
