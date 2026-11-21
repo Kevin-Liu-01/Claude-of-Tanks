@@ -54,10 +54,12 @@ function standaloneIconSvg(body, { tile = false } = {}) {
     + `${plate}${glyph}</svg>\n`;
 }
 
-/** The glyphs the first frame can show before the lazy sprite lands: the game bar and its controls (SPEC 16.1). */
+/** The glyphs the first frame can show before the lazy sprite lands: the game bar and its controls (SPEC 16.1). The
+ *  language globe and the narrow bar's menu joined 2026-11-20 (mobile-hud-274: a first paint with the main chunk held
+ *  back showed them blank in the bar). */
 const BOOT_ICON_IDS = Object.freeze([
   'home', 'record', 'garage', 'deploy', 'gallery', 'manual', 'studio', 'settings', 'github', 'chevronDown', 'close',
-  'sound', 'techTree',
+  'sound', 'techTree', 'globe', 'menu',
 ]);
 
 function generateSpriteIndex(spriteText) {

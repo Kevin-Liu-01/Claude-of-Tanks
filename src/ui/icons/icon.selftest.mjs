@@ -24,7 +24,7 @@ const sprite = readIconSprite();
 assert.deepEqual([...ICON_IDS], [...sprite.large.keys()], 'the generated id list is the sprite in order');
 for (const id of SMALL_MASTERS.trim().split(' ')) assert.ok(sprite.small.has(id), `${id} owns a 16-unit master`);
 for (const id of ACTIVE_MASTERS.trim().split(' ')) assert.ok(sprite.large.has(id), `${id} is drawn`);
-assert.equal((BOOT_SYMBOLS.match(/<symbol id="i-[A-Za-z]+"/g) || []).length, 13, 'about a dozen boot glyphs (the game bar\'s tech tree is the 13th)');
+assert.equal((BOOT_SYMBOLS.match(/<symbol id="i-[A-Za-z]+"/g) || []).length, 15, 'the game bar\'s glyphs boot (its tech tree the 13th, the language globe and the narrow bar\'s menu since 2026-11-20)');
 
 // The two chunks icon.ts loads (Main 2026-11-20: keep the battle sprite lean) split the sprite exactly: every symbol in one
 // of them, none in both, the lazy one holding just LAZY_ICONS (garage, gallery, Field Manual and camo glyphs) and no
