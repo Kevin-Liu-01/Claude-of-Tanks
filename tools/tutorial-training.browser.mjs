@@ -114,7 +114,9 @@ try {
         // a round into the player: where it struck and what it met (the S9 probe: the shading's verdict against the sim's)
         window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, on: hit.targetId, t: Math.round(performance.now()),
           ...(hit.targetId === me ? { zone: hit.zone ?? null, plate: hit.plateKind ?? null, local: r2(hit.impactLocalPos ?? hit.localPos), angle: r1(hit.impactAngleDeg),
-            effMm: r1(hit.effectiveMm), nomMm: r1(hit.nominalMm), roll: r1(hit.penRollMm), hp: r1(hit.hpRemoved) } : {}) });
+            effMm: r1(hit.effectiveMm), nomMm: r1(hit.nominalMm), roll: r1(hit.penRollMm), hp: r1(hit.hpRemoved),
+            // where the player stood (S11: out at ring Q, or behind the wall at ring P)
+            at: (() => { const p = window.__DEBUG.game.player?.state?.pos; return p ? [Math.round(p.x * 10) / 10, Math.round(p.z * 10) / 10] : null; })() } : {}) });
       }
     });
   });
