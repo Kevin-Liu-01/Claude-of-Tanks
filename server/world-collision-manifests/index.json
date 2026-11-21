@@ -26,8 +26,8 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 3531510,
-      "sha256": "3fef3db4c0dc766aa8812a0fdfac7c2281d5364ef385a290754c762167369aca",
+      "bytes": 3531123,
+      "sha256": "a67aedf621d25d968a0443173e2813fc7e276cf2b4458179a1f104a68a772625",
       "obstacles": 2992,
       "colliders": 8128,
       "concealers": 2491
@@ -47,8 +47,8 @@
       "concealers": 5992
     },
     "steppe": {
-      "bytes": 1165382,
-      "sha256": "d277a0b64bb375f1d2b1be753006656d3b4ece83754b90b954a788f8ce0c1c69",
+      "bytes": 1164725,
+      "sha256": "85cf6f76bdcf169a2cbaecd21a49af7cf4f9042a829aa083eb0819f30ccc67be",
       "obstacles": 2257,
       "colliders": 2323,
       "concealers": 1210
@@ -61,8 +61,8 @@
       "concealers": 1904
     },
     "frontier": {
-      "bytes": 2244569,
-      "sha256": "a706eca83d3496a870bff65b724ef4cac6ca44b57bcc0e92fa769885ca550ccc",
+      "bytes": 2244274,
+      "sha256": "897c45bec98c5a7013644c6f2bd2509eeb54c77a1da67bad7267ce254b247e30",
       "obstacles": 8363,
       "colliders": 9053,
       "concealers": 8325
@@ -159,8 +159,8 @@
       "concealers": 958
     },
     "airfield": {
-      "bytes": 1238622,
-      "sha256": "e286120f1823082bd21cfd24a91c8125450e378a06a26e15a3cac2e62d9cfe18",
+      "bytes": 1238416,
+      "sha256": "b0dcb8e522ade736cb57fc4c92d79d235b407cfd1bd1b98a462938e068999231",
       "obstacles": 4725,
       "colliders": 5405,
       "concealers": 3872
@@ -173,8 +173,8 @@
       "concealers": 874
     },
     "whiteout": {
-      "bytes": 1550669,
-      "sha256": "9bd3d174c8385e958a6ccef52f4eff8892307422c22dc2e92cf4af4ba37c427c",
+      "bytes": 1550555,
+      "sha256": "5f59738e1cbaef82aa19d0aa198975397553f04d3a6fc535969e2382f0ed8be7",
       "obstacles": 1120,
       "colliders": 1413,
       "concealers": 0
@@ -260,8 +260,8 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 3679187,
-        "sha256": "abe6275245d4e2158ceefcc97b0c3a5910891b9b92525e1aa0c0eebfef9e6590",
+        "bytes": 3678604,
+        "sha256": "5d2b3d62f3f089d41231ed4f3934bba914157e7af67ab2fd581277563ecd3734",
         "obstacles": 3118,
         "colliders": 8170,
         "concealers": 2491
@@ -281,8 +281,8 @@
         "concealers": 5431
       },
       "steppe": {
-        "bytes": 1250894,
-        "sha256": "35eaa89a9fcfa4b600711f770f01c96ca6c9e911525b12c94e2bf1940bd09b54",
+        "bytes": 1250035,
+        "sha256": "69fe226f13f7b14f1b497e7370068bf8c1a7985f69a6d30bf1fab1ee936c2fa4",
         "obstacles": 2445,
         "colliders": 2388,
         "concealers": 1210
@@ -295,8 +295,8 @@
         "concealers": 1904
       },
       "frontier": {
-        "bytes": 2296314,
-        "sha256": "656530949677c0b58ebb035a4faceb5d88e767cbe5d87571a86dfd03b8cf6b6d",
+        "bytes": 2295865,
+        "sha256": "d114b20d39960c0b650e703fd0453262b492879440822fcd4b1c6b71d36588c1",
         "obstacles": 8244,
         "colliders": 8836,
         "concealers": 7990
@@ -393,8 +393,8 @@
         "concealers": 932
       },
       "airfield": {
-        "bytes": 1352764,
-        "sha256": "e4c436955475fbd5f0fc459a3c0b71295f6577213b4f43c8c90b87b41f4d89a5",
+        "bytes": 1352324,
+        "sha256": "d8fa2df073649c8b8bac135a66e3e1af16871b4ffdc220ae09b6ca0b9451b4dc",
         "obstacles": 4768,
         "colliders": 5420,
         "concealers": 3872
@@ -407,8 +407,8 @@
         "concealers": 878
       },
       "whiteout": {
-        "bytes": 1726413,
-        "sha256": "b53e718c2934141d2361b0ca8f3786cc119f6baf6eabefed1c1e3983deaa86e7",
+        "bytes": 1726299,
+        "sha256": "cf5af6bea637215c2bb4bffab48397aac1062acf1aebd2065bc275c37e11286a",
         "obstacles": 1260,
         "colliders": 1464,
         "concealers": 0

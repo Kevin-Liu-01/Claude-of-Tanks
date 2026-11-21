@@ -29,8 +29,9 @@ function receiptFor(id) {
   } finally { tank.dispose(); }
 }
 
+// 274: the T-80, T-80B and T-80BV left this dome for their own early casting on the T-80U X hull (t80Marks.selftest.mjs).
 const built = Object.fromEntries(
-  ['t80', 't80b', 't80bv', 'ua_t80bv', 't80u_kursk']
+  ['ua_t80bv', 't80u_kursk']
     .map((id) => [id, receiptFor(id)]),
 );
 
@@ -51,21 +52,14 @@ try {
     assert.equal(built[id].receipt.planCenterZ, 0.22);
   }
 
-  const russianBV = built.t80bv.receipt;
   const ukrainianBV = built.ua_t80bv.receipt;
-  assert.equal(russianBV.scaleY, built.t80.receipt.scaleY,
-    'Russian T-80BV base shell exactly matches the accepted T-80 profile');
-  assert.equal(russianBV.crownY, built.t80.receipt.crownY);
-  assert.equal(russianBV.equipmentSeatRevision, 't80bv-family-reseat-r2',
-    'Russian T-80BV records the completed family-shell equipment reseat');
   assert.equal(ukrainianBV.scaleY, 0.94,
     'Ukrainian T-80BV preserves its installed height while sharing the canonical rings');
   assert.equal(ukrainianBV.equipmentSeatRevision, 'ua-t80bv-family-reseat-r2');
-  assert.equal(russianBV.curvedNormals, true);
   assert.equal(ukrainianBV.curvedNormals, true);
 
 } finally {
   for (const { tank } of Object.values(built)) tank.dispose();
 }
 
-console.log('t80CastTurretFamily.selftest: canonical T-80/BV cast shells and equipment reseats verified');
+console.log('t80CastTurretFamily.selftest: the Ukrainian T-80BV and Kursk cast shells and equipment reseats verified');

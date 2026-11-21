@@ -531,7 +531,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/t72b3mXSideMounts.selftest.mjs',
     'src/vehicles/profiles/t72buXGeometry.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
-    'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
+    'src/vehicles/profiles/t80Marks.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
     'src/vehicles/profiles/t90AXFenderClosures.selftest.mjs',
     'src/vehicles/profiles/t90AXGun.selftest.mjs',

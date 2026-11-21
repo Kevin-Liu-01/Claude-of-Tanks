@@ -99,14 +99,19 @@ function glacisAt(z:number):{y:number;tilt:number}{
   return {y:GLACIS[0][1],tilt:0};
 }
 const LAMP_X=.8475,LAMP_Z=2.62;
+/** The glacis' V splash board: its apex on the centreline, its arms sweeping back to the plate's sides. */
+const V_APEX=2.16,V_SWEEP=.24,V_HALF=1.0;
+const vBack=(x:number)=>V_SWEEP*Math.min(1,Math.abs(x)/V_HALF);
 
 /** The glacis' fixed fit: the splash board under the turret's front, the two headlights in their hoop guards, the tow hooks
  * at the plate's foot and the tow cables run up past the lamps. Hull frame. */
 function glacisFit(P:TankBuilderPort):void{
-  const {y,tilt}=glacisAt(2.00);
-  P.addEquipment('hullDetail',box(1.10,.024,.10),0,y+.012,2.00,tilt,0,0);
-  P.addEquipment('hullDetail',box(1.10,.08,.016),0,y+.05,2.045,tilt-.55,0,0);
-  for(const x of [-.45,0,.45])P.addEquipment('hullDetail',box(.016,.07,.08),x,y+.035,2.02,tilt,0,0);
+  // the V splash board: two boards from the plate's sides at z 1.92 to its apex on the centreline at 2.16
+  for(const s of [-1,1]){
+    const z0=V_APEX,z1=V_APEX-V_SWEEP,len=Math.hypot(V_HALF,z0-z1),zm=(z0+z1)/2,{y,tilt}=glacisAt(zm),yaw=s*Math.atan2(V_HALF,-(z0-z1));
+    P.addEquipment('hullDetail',box(.10,.024,len),s*V_HALF/2,y+.012,zm,tilt,yaw,0);
+    P.addEquipment('hullDetail',box(.016,.08,len),s*V_HALF/2,y+.05,zm,tilt,yaw,0);
+  }
   for(const s of [-1,1]){
     const g=glacisAt(LAMP_Z),lx=s*LAMP_X;
     P.addEquipment('hullDetail',box(.20,.05,.16),lx,g.y+.02,LAMP_Z-.02,g.tilt,0,0);
@@ -142,10 +147,13 @@ function dozerBlade(P:TankBuilderPort):void{
 /** The stern: the unditching log on its chains across the lower rear plate and the rubber mud flaps at the fender tails; the
  * BV's late service adds two 200 L drums on the T-80U X cradles (the X build carries them empty). Hull frame. */
 function stern(P:TankBuilderPort,m:T80Mark):void{
-  if(m==='t80bv')addT90CradleDrums(P,1.688,-3.595,[[-1.542,-1.179],[1.179,1.542]]);
-  P.addEquipment('hullDetail',stowagePart(cylX(.135,2.30,14)),0,1.06,-3.50);
-  for(const x of [-.82,0,.82]){
-    P.addEquipment('hullDark',stowagePart(torus(.142,.012,16,5).rotateY(Math.PI/2)),x,1.06,-3.50);
+  // the drums lie tangent on the sloping upper rear plate (z -3.13, y 1.547 to z -3.36, y 1.347), 4 mm into it, over the cradles
+  if(m==='t80bv')addT90CradleDrums(P,1.664,-3.433,[[-1.542,-1.179],[1.179,1.542]]);
+  // (the X hull tapers to a .533 half-width at its stern face, so a log wider than ±.70 would close the pocket between the
+  // taper and the fender tails into a plan hole: the log spans the stern face and its chains)
+  P.addEquipment('hullDetail',stowagePart(cylX(.135,1.40,14)),0,1.06,-3.49);
+  for(const x of [-.50,0,.50]){
+    P.addEquipment('hullDark',stowagePart(torus(.142,.012,16,5).rotateY(Math.PI/2)),x,1.06,-3.49);
     P.addEquipment('hullDark',stowagePart(beamBetween([x,1.19,-3.45],[x,1.30,-3.33],.010)),0,0,0);
   }
   if(m!=='t80')for(const s of [-1,1])P.addMudguard('t80-mark-stern-flap','hullRubber',box(.62,.36,.012),s*1.40,1.00,-3.37,.10,0,0);
@@ -192,7 +200,7 @@ function sideScreens(P:TankBuilderPort,m:T80Mark):void{
     // from its edge and flares forward over the track)
     const nose=Math.atan2(3.36-3.20,1.226-.939),nl=Math.hypot(.16,.287);
     P.addMudguard('t80b-nose-flap','hullRubber',box(.80,nl,.012),s*1.38,(1.226+.939)/2+.008*Math.sin(nose),3.28+.008*Math.cos(nose),-nose,0,0);
-    P.addMudguard('t80b-nose-flap','hullRubber',box(.80,.30,.012),s*1.38,.80,3.40,.25,0,0);
+    P.addMudguard('t80b-nose-flap','hullRubber',box(.80,.30,.012),s*1.38,.80,3.385,.15,0,0);
     P.addEquipment('hullDetail',box(.82,.025,.03),s*1.38,1.236,3.195,-nose,0,0);
   }
 }
@@ -301,10 +309,10 @@ function smokeBanks(P:TankBuilderPort,m:T80Mark):void{
 /** The casting's rear and left flank: the snorkel tube on its brackets across the rear; the stowage boxes on the left flank,
  * three on the T-80, two on the B marks (aft of the BV's flank smoke banks). */
 function turretRear(P:TankBuilderPort,m:T80Mark):void{
-  onTurret(P,'turretDetail',cylX(.165,1.80,24),0,1.83,-1.48);
+  onTurret(P,'turretDetail',cylX(.165,1.80,24),0,1.83,-1.42);
   for(const s of [-1,1]){
-    onTurret(P,'turretDark',torus(.168,.011,24,6).rotateY(Math.PI/2),s*.45,1.83,-1.48);
-    onTurret(P,'turretDetail',beamBetween([s*.45,1.74,-1.10],[s*.45,1.80,-1.40],.018),0,0,0);
+    onTurret(P,'turretDark',torus(.168,.011,24,6).rotateY(Math.PI/2),s*.45,1.83,-1.42);
+    onTurret(P,'turretDetail',beamBetween([s*.45,1.74,-1.12],[s*.45,1.79,-1.34],.018),0,0,0);
   }
   // the stowage boxes on the left flank: three on the T-80, two (numbered) on the B marks
   const n=m==='t80'?3:2;
@@ -320,7 +328,9 @@ function turretRear(P:TankBuilderPort,m:T80Mark):void{
 
 /** One 4S20 container (252 x 132 x 69 mm in its steel box) seated on a surface at p whose outward normal turns phi in plan
  * and leans back by tilt, its hit face outward; its mounting shoe goes into the surface behind it. */
+const K1_COUNT=new WeakMap<TankBuilderPort,Record<string,number>>();
 function k1(P:TankBuilderPort,cluster:string,owner:'hull'|'turret',p:readonly[number,number,number],phi:number,tilt:number,roll=0):void{
+  const counts=K1_COUNT.get(P)??{};counts[cluster]=(counts[cluster]??0)+1;K1_COUNT.set(P,counts);
   const T=.075,g=box(.26,.14,T).rotateZ(roll).rotateX(-tilt).rotateY(phi);
   const n=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(1,0,0),-tilt).applyAxisAngle(new THREE.Vector3(0,1,0),phi);
   const c=new THREE.Vector3(...p).addScaledVector(n,T/2-.012);
@@ -340,13 +350,14 @@ function k1(P:TankBuilderPort,cluster:string,owner:'hull'|'turret',p:readonly[nu
  * (eight columns on the left cheek, five on the right); and a grid of four by four lying on the roof's right front. */
 function turretK1(P:TankBuilderPort):void{
   for(const s of [-1,1]){
-    const cluster=`turret_era_${s>0?'L':'R'}`,n=s>0?8:5;
+    const cluster=`turret_era_${s>0?'R':'L'}`,n=s>0?8:5;
     for(let i=0;i<n;i++){
       const a=.34+i*.125,phi=s*a,y=1.78,rho=exitAt(phi,y);
       const yaw=phi-s*.55;
-      for(let k=0;k<2;k++){
-        const off=.05+k*.085,p=[(rho+off)*Math.sin(phi),y+k*.05,PLAN_CZ+(rho+off)*Math.cos(phi)] as const;
-        k1(P,cluster,'turret',p,yaw,.30,Math.PI/2);
+      // the pair stands in a V: the lower container leans back onto the casting, the upper one forward over it
+      for(const [off,dy,tilt] of [[.05,-.07,.55],[.11,.09,-.20]] as const){
+        const p=[(rho+off)*Math.sin(phi),y+dy,PLAN_CZ+(rho+off)*Math.cos(phi)] as const;
+        k1(P,cluster,'turret',p,yaw,tilt,Math.PI/2);
       }
       // the carrier frame from the casting to the containers
       onTurret(P,'turretDark',box(.06,.30,.10),(rho+.01)*Math.sin(phi),y,PLAN_CZ+(rho+.01)*Math.cos(phi),0,phi,0);
@@ -354,27 +365,26 @@ function turretK1(P:TankBuilderPort):void{
   }
   for(let r=0;r<4;r++)for(let c=0;c<4;c++){
     const x=-.30-c*.15,z=1.04-r*.27,y=roof(x,z),slope=(roof(x,z+.05)-roof(x,z-.05))/.10;
-    k1(P,'turret_era_R','turret',[x,y,z],0,Math.PI/2+Math.atan(slope),Math.PI/2);
+    k1(P,'turret_era_L','turret',[x,y,z],0,Math.PI/2+Math.atan(slope),Math.PI/2);
   }
 }
 
-/** The BV's glacis field: five courses tapering from eleven containers under the splash board to four at the nose, each
+/** The BV's glacis field: five chevron courses under the V splash board, tapering from eleven containers to four at the nose, each
  * container's long side down the slope, clear of the lamps and the tow hooks; and one row along the top of each skirt's
  * front two-thirds. Hull frame. */
 function hullK1(P:TankBuilderPort):void{
   const counts=[11,10,8,6,4];
   counts.forEach((n,row)=>{
-    const z=2.06+row*.215,{y,tilt}=glacisAt(z);
     for(let c=0;c<n;c++){
-      const x=(c-(n-1)/2)*.152;
+      const x=(c-(n-1)/2)*.152,z=V_APEX+.10+row*.18-vBack(x),{y,tilt}=glacisAt(z);
       if(Math.hypot(Math.abs(x)-LAMP_X,z-LAMP_Z)<.17)continue;
       if(Math.hypot(Math.abs(x)-.70,z-2.90)<.14)continue;
-      k1(P,`glacis_era_${x>=0?'L':'R'}`,'hull',[x,y,z],0,Math.PI/2-tilt,Math.PI/2);
+      k1(P,`glacis_era_${x>=0?'R':'L'}`,'hull',[x,y,z],0,Math.PI/2-tilt,Math.PI/2);
     }
   });
   for(const s of [-1,1])for(let k=0;k<10;k++){
     const z=2.66-k*.37,{top}=apronAt(z),y=top-.10,x=s*(screenX(z,y)+.012),lean=Math.atan2(SCREEN_X1-SCREEN_X0,top-apronAt(z).foot);
-    k1(P,`skirt_era_${s>0?'L':'R'}`,'hull',[x,y,z],s*Math.PI/2,-lean);
+    k1(P,`skirt_era_${s>0?'R':'L'}`,'hull',[x,y,z],s*Math.PI/2,-lean);
   }
 }
 
@@ -392,6 +402,18 @@ export function buildT80Mark(P:TankBuilderPort,m:T80Mark):void{
   if(m!=='t80')smokeBanks(P,m);
   if(m==='t80bv')turretK1(P);
   buildT80UXGun(P);lunaSearchlight(P,m);
+  P.hullG.userData.familyRebuild={donor:'t80u',revision:1,mark:m};
+  P.turretG.userData.t80MarkReceipt=Object.freeze({
+    casting:'t80-early-cast-r1',mark:m,
+    sights:m==='t80'?['tpd-2-49','rangefinder-housing','tpn-1-49-23']:['1g42','kobra-guidance'],
+    lunaSide:m==='t80'?'left':'right',
+    smokeTubes:m==='t80'?0:m==='t80b'?9:8,
+    flankBoxes:m==='t80'?3:2,
+    sideScreens:m==='t80'?'steel-screen':'rubber-skirt',
+    sternDrums:m==='t80bv',
+    commanderShield:m==='t80bv',
+    kontakt1:Object.freeze({...(K1_COUNT.get(P)??{})}),
+  });
   for(const s of [-1,1])P.decal('turret','number',P.spec.visual.number||'',.24,[s*(halfWidth(-.48,1.73,s)+.006),.18,-.55],s*Math.PI/2);
   P.topY=roof(-.60,-.20)+.30-YAW[1];
 }

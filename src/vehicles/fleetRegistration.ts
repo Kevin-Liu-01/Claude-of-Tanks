@@ -26,6 +26,7 @@ import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
 import { applyCenturionGunPitch } from './centurionGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
 import { applyT90MarkSourceFrames } from './t90MarkFrames.ts';
+import { applyT80MarkSourceFrames } from './t80MarkFrames.ts';
 import { applyType10FamilyFrames } from './type10FamilyFrames.ts';
 
 import './combatVariantSpecs.ts';
@@ -144,6 +145,8 @@ applyTurretScaleGunPitch(TANK_SPECS);
 applyCenturionGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyT90MarkSourceFrames(TANK_SPECS);
+// 274: the T-80, T-80B and T-80BV on the T-80U X build they draw (t80MarkFrames.ts)
+applyT80MarkSourceFrames(TANK_SPECS);
 applyType10FamilyFrames(TANK_SPECS);
 applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();

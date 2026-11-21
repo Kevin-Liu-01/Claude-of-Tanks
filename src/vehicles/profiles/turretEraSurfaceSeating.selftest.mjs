@@ -15,8 +15,8 @@ for (const [id, donorId] of [['t80uk', 't80u'], ['t72m1_jaguar', 't72b3']]) {
   assert.deepEqual(sectors(id), sectors(donorId), `${id}: turret and hull ERA follow the donor study's sectors`);
 }
 
+// 274: the T-80BV's Kontakt-1 is its own wedge arrays on carrier frames (t80Marks.selftest.mjs), not this solver's course.
 const cases = Object.freeze({
-  t80bv: Object.freeze({ cassetteSeats: 24, minimumSurfaceGapM: -0.06 }),
   ua_t80bv: Object.freeze({ cassetteSeats: 33, minimumSurfaceGapM: -0.05 }),
   t80u_kursk: Object.freeze({ cassetteSeats: 36, minimumSurfaceGapM: -0.05 }),
 });
@@ -40,12 +40,6 @@ for (const [id, expected] of Object.entries(cases)) {
       `${id} ERA remains embedded by at least 7 mm instead of floating`);
     assert.ok(receipt.minimumSurfaceGapM >= expected.minimumSurfaceGapM,
       `${id} ERA carriers do not sink excessively into the cast turret shell`);
-    if (id === 't80bv') {
-      assert.ok(receipt.supportEmbedM >= 0.055 && receipt.cassetteEmbedM >= 0.025,
-        'T-80BV flank shoes and cassettes remain positively embedded in the cast side');
-      assert.equal(receipt.maximumCarrierJointM, 0,
-        'T-80BV side ERA has a continuous attached carrier course');
-    }
   } finally {
     tank.dispose();
   }

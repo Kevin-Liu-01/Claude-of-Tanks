@@ -34,8 +34,9 @@ for (const [id, twinId] of Object.entries(T90_TWINS)) {
   assert.deepEqual(sectors, eraSectors(twinId), `${id}: carries exactly its source-X twin ${twinId}'s reactive sectors`);
 }
 
+// 274: the T-80BV left the shared carrier for its photographed Kontakt-1 wedge arrays on the T-80U X build
+// (t80Marks.selftest.mjs pins its clusters and plates).
 const cases = Object.freeze({
-  t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
 });
@@ -66,14 +67,6 @@ for (const [id, expected] of Object.entries(cases)) {
     assert.equal(receipt.carrierSurfacesTotal + receipt.carrierSurfacesOmitted,
       receipt.rowsPerCheek * receipt.carriersPerRow * 2,
       `${id}: mirrors the complete carrier topology except explicit equipment notches`);
-    if (id === 't80bv') {
-      const hull = tank.root.getObjectByName('rig_hull');
-      const bridges = hull?.userData.t80bvFenderBridgeReceipt;
-      assert.ok(bridges, 't80bv: receipts the plan-contiguous fender transition');
-      assert.equal(bridges.planSeamsOpen, 0);
-      assert.ok(bridges.minimumShoeClearanceM > 0,
-        't80bv: fender bridge remains physically above the animated shoe envelope');
-    }
   } finally {
     tank.dispose();
   }

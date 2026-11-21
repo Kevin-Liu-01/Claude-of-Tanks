@@ -566,7 +566,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t64Foundation.selftest.mjs',
     'src/vehicles/profiles/t64GunClearance.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
-    'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
+    'src/vehicles/profiles/t80Marks.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
