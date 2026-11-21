@@ -127,7 +127,7 @@ for (const id of ['garage', 'home', 'gallery', 'studio', 'manual', 'play', 'depl
 }
 assert.match(uiIconSVG('modeZones', 16), /viewBox="0 0 16 16"[^>]*stroke-width="1\.25"[\s\S]*href="#i-modeZones-s"/,
   'at 16 px a glyph with an optical master uses the 16-unit symbol and its own stroke');
-assert.match(uiIconSVG('eqRammer', 16), /viewBox="0 0 24 24"[\s\S]*href="#i-eqRammer"/,
+assert.match(uiIconSVG('link', 16), /viewBox="0 0 24 24"[\s\S]*href="#i-link"/,
   'without an optical master the 24-unit symbol serves every size');
 assert.match(uiIconSVG('tick', 12), /href="#i-check-s"/, 'retired ids resolve through the alias map');
 assert.equal(uiIconSVG('', 12), '', 'an empty id draws nothing');
