@@ -282,5 +282,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // russia-152 (main 3f31c66abc): Russia's 152 mm line on from the T-80U along its row (Object 292 VII, Object 477
 // Molot IX, Object 195 X) with the T-14 152 beside the Object 195 at X (Main's tiers, 2026-11-04); its own pin was
 // 7c47bfa998d2369b. 271 (integration): merged after the twin-aa round; re-pinned at the merge (98286838a838e422).
-assert.equal(digest, '98286838a838e422', `tree content changed: re-pin to ${digest} if deliberate`);
+// 274: the Swedish strv line's X pair, the Strv 103E (concept) from the 103B and the Strv 152 (concept) from the Strv 122,
+// and the 103B's netted twin on its node (0a0cda6e8bb31929).
+assert.equal(digest, '0a0cda6e8bb31929', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

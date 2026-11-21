@@ -229,7 +229,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   ]),
   // Casemates (Strv 103, UDES 03, Jagdpanzer E100) and missile carriers (AFT-10, Griffin Viper, Object 695).
   td: Object.freeze([
-    'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 't95', 'udes03',
+    'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv152', 't95', 'udes03',
   ]),
   spaa: Object.freeze([
     'gepard_1a2', 'itpsv_leopard2', 'k30_biho', 'lvkv9040', 'm163_vads', 'm6_linebacker', 'marksman_t55', 'pantsir_s1', 'pgz09',
@@ -280,7 +280,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   sniper: Object.freeze([
     'aft10', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'challenger2',
     'challenger2e', 'challenger3', 'challenger3_proto', 'challenger3_td', 'challenger3_td_rws', 'challenger_x', 'challenger_x_sleek', 'chieftain3',
-    'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'christian2', 'fv4034', 'object292', 'pt84_sokol', 'strv103a', 'strv103b', 'strv121',
+    'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'christian2', 'fv4034', 'object292', 'pt84_sokol', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv121', 'strv152',
     'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
@@ -321,7 +321,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy',
     'merkava4b', 'namer_ifv', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'pgz09', 'pgz95',
     'pt91a_twardy', 'pt91m', 'puma_s1', 'redback', 'sabra_mk2', 'semel', 'shot_kal', 'spz_puma', 'spz_wotan',
-    'strv103a', 'strv103b', 'strv121', 'strv122', 'strv81', 't55a', 't62_1975', 't62mv1', 't64b1v_2022', 't64bm1m',
+    'strv103a', 'strv103b', 'strv103b_net', 'strv121', 'strv122', 'strv81', 't55a', 't62_1975', 't62mv1', 't64b1v_2022', 't64bm1m',
     't64bv', 't64bv1', 't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022', 't72b_1987', 't72bu', 't72bu_1989',
     't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992',
     't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil',
@@ -351,7 +351,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   concept: Object.freeze([
     'carro45t', 'challenger3_td_rws', 'christian2', 'cv90_mk4_concept', 'ee_t3_osorio', 'ee_t4_osorio',
     'griffin_viper', 'jpz_e100', 'leo2a4m', 'm1a3', 'object695', 'pl01', 'pl01_105', 'pt64_tur', 'pt84_orzel',
-    'pt84_sokol', 'pt84_zbik', 'raiju_ifv', 't14_152', 't49', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich',
+    'pt84_sokol', 'pt84_zbik', 'raiju_ifv', 'strv103e', 'strv152', 't14_152', 't49', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich',
     't72b3_zhuque', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii',
     't72b3m_kunlun', 't72b3m_wilk', 't72b3m_xuanwu', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria',
     't95', 'type10b', 'type96_72_long', 'type96_72m_lei', 'type96_80_feng', 'upior', 'vt4a1_baihu', 'ztz20', 'ztz99_longwei',

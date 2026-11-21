@@ -71,7 +71,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1', 'vt4a1_baihu', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
   ]),
   sweden: Object.freeze([
-    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'cv90_mk4_concept', 'cv90_mk4',
+    'strv81', 'udes03', 'strv103a', 'strv103b', 'strv103b_net', 'strv103e', 'strv152', 'strv105', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'cv90_mk4_concept', 'cv90_mk4',
   ]),
   // 266: the Danish Army line (the Christian II moved here from Sweden)
   denmark: Object.freeze([

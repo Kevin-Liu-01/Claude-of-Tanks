@@ -46,7 +46,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't72bu',
     'chieftain5',
     't55a', 't62_1975', 't64bv1', 't64bv', 't72bu_1989', 't80', 't80b', 't80bv',
-    't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b',
+    't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b', 'strv103b_net',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
     // release 268: the M3A2 (1988), the M2A2's cavalry twin under the classic turret
@@ -108,7 +108,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     // 1989 Type 89 and M551A1 TTS left next generation.
     't72b3m_hetman_ii', 't72b3_zubr_ii', 't80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk',
     't72b3_zubr', 't80u_yun', 't72b3m_kunlun', 't72b3_qilin', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
-    'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
+    'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'strv103e', 'strv152', 'kf41_lynx',
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
     // release 264: the Longwei family, fleet hulls under a modernized Longwei turret
     'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',

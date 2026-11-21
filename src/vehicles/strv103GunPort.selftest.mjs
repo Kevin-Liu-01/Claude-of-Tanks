@@ -2,7 +2,7 @@
 // 105 mm tube leaves its hull through a real port and passes its gate. Until 259 the glacis cut the 103A's tube from its
 // crown to its belly over 1.4 m, its splash rail and its travel clamp's yoke ran through it and its beak lip touched it;
 // the 103B's glacis, its louvre banks, its nose shelf and its nose screen's centre bar did the same. Each tube now leaves
-// through the housing on its glacis (profiles/casemate.ts addFixedGunPort): ahead of the housing's face it stands at least
+// through the housing on its glacis (profiles/strv103Family.ts addFixedGunPort; 274: the three marks share it): ahead of the housing's face it stands at least
 // FIXED_GUN_KEEP_M from every other hull mesh (the port ring and decorations included), and behind that face it is hidden, at every
 // hull pitch the hydropneumatic aim allows (the whole tank pitches: the gun is one body with its hull). A bar laid across
 // the tube ahead of the port fails the same measure.
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { FIXED_GUN_KEEP_M, fixedGunHullProbe } from './gunHullClearance.test-support.mjs';
 
-for (const id of ['strv103a', 'strv103b']) {
+for (const id of ['strv103a', 'strv103b', 'strv103e', 'strv152', 'udes03']) {
   const probe = fixedGunHullProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] < -10 && probe.pitchesDeg[2] > 10, `${id}: the sweep spans the hull's published pitch range`);
@@ -33,4 +33,4 @@ for (const id of ['strv103a', 'strv103b']) {
     probe.dispose();
   }
 }
-console.log('strv103GunPort.selftest: both Strv 103 tubes leave through their ports and clear every hull part at every hull pitch');
+console.log('strv103GunPort.selftest: every Strv 103 tube leaves through its port and clears every hull part at every hull pitch');

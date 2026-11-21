@@ -2699,28 +2699,31 @@
    "hostSweep": []
   },
   "strv103a": {
-   "inputHash": "a20156b377573002",
+   "inputHash": "28b0183d57cc045e",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildStrv103A@profiles/sweden.ts",
+     "site": "fitting:spareTrackLinks@kitA@profiles/strv103Marks.ts",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic",
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.911,
-      "gap": 0.089,
+      "support": 0.288,
+      "gap": 0.712,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
+      "hidden": 0.003,
+      "sunkMaxM": 0.015,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<loftRows@profiles/sweden.ts:224>"
+      "exposure": 0.955,
+      "host": "hull<casemate@profiles/strv103Hull.ts:74>"
      }
     }
    ],
@@ -2728,53 +2731,20 @@
    "hostSweep": []
   },
   "strv103b": {
-   "inputHash": "75ba2982c3a2a7ad",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildStrv103Hull@profiles/casemate.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.966,
-      "gap": 0.034,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.909,
-      "host": "hull<loft@profiles/casemate.ts:158>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "fitting:spareTrackLinks@buildStrv103Hull@profiles/casemate.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.966,
-      "gap": 0.034,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.909,
-      "host": "hull<loft@profiles/casemate.ts:158>"
-     }
-    }
-   ],
+   "inputHash": "bc67b61308c794c0",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "strv103b_net": {
+   "inputHash": "757cc3daf73a73e5",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "strv103e": {
+   "inputHash": "829b823ae6c85b5c",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -2837,6 +2807,12 @@
   },
   "strv122": {
    "inputHash": "1307939e7ff5523d",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "strv152": {
+   "inputHash": "8281565fa6657fae",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4174,7 +4150,7 @@
    "hostSweep": []
   },
   "udes03": {
-   "inputHash": "d55e674825c0e871",
+   "inputHash": "577c900eaab59c97",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

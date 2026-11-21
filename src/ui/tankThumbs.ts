@@ -63,7 +63,7 @@ export interface TankMaskSpec {
     gunBarrel?: {
       lengthM?: number;
     };
-    /** A casemate (Strv 103): rig_turret stays empty by design, the gun is fused into the hull (profiles/casemate.ts). */
+    /** A casemate (Strv 103): rig_turret stays empty by design, the gun is fused into the hull (profiles/strv103Family.ts). */
     turretless?: boolean;
   };
 }
@@ -1020,7 +1020,7 @@ async function renderMaskEntry(
   const turret = completedMaskPass(await turretPass.completion);
   sourceLifetime?.assertAlive();
   // (2026-10-13, the MP stream) a turretless build whose rig_turret holds nothing (the Strv 103 and 103A casemates: the
-  // gun is fused into the hull, profiles/casemate.ts) renders an empty turret pass. The entry used to come back null and
+  // gun is fused into the hull, profiles/strv103Family.ts) renders an empty turret pass. The entry used to come back null and
   // the HUD damage panel ran without a mask for those two, retrying and failing every match; such a build now gets an
   // empty turret layer. A turretless build with turret content (UDES 03, JPz E-100) keeps its rendered layer, and an
   // empty pass on a turreted build still fails as before.

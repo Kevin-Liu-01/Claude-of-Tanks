@@ -3919,10 +3919,8 @@ const strv103aHullY = (_x: number, z: number): number => profileY([
   [-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75],
   [2.36, 1.62], [2.98, 1.52], [3.45, 1.54],
 ], z);
-const strv103bHullY = (_x: number, z: number): number => profileY([
-  [-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63],
-  [2.61, 1.53], [3.22, 1.55],
-], z);
+// 274: the 103B shares the 103A's casemate (profiles/strv103Family.ts)
+const strv103bHullY = strv103aHullY;
 // The rebuilt Oplot keeps the donor fenders and a new welded turret. Cloth
 // follows those surfaces; hatches, MG, sights and the pitching gun stay open.
 const t84HullY = (_x: number, z: number): number => profileY([
@@ -4115,9 +4113,9 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     id: 'strv103a', seed: 1031, style: 'leafy', density: 0.82, leafScale: 0.90, foliageKind: 'spruce',
     light: 0x667a43, dark: 0x32452b, netColor: 'rgba(39,55,31,0.80)',
     hull: {
-      top: [{ x0: -1.66, x1: 1.66, z0: -3.30, z1: 3.46, nx: 26, nz: 52,
+      top: [{ x0: -1.66, x1: 1.66, z0: -3.04, z1: 3.46, nx: 26, nz: 50,
         yAt: strv103aHullY,
-        outline: [[-1.30, -3.30], [1.30, -3.30], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
+        outline: [[-1.30, -3.04], [1.30, -3.04], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
         // round 4 (2026-10-07, wave 216: "the thick-corded net passes under the slab instead of over or around it"):
         // the net opens round the spare links planted on the right glacis shoulder (sweden.ts: 0.98, z 2.30, 0.60 wide)
         holes: [rect(-0.27, 0.27, 0.78, 3.58), rect(0.03, 0.91, -1.30, 0.12), rect(-0.90, -0.28, -1.22, -0.46),
@@ -4127,23 +4125,25 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // Round 5 (2026-10-08, wave 256: "the flank net hangs as a vertical strip that stops at the fender line, with no
       // drape over the running gear"): the drapes come down over the upper running gear (the carrier keeps clear of it),
       // their ragged hems a hand above the road wheels' hubs
-      side: [-1, 1].flatMap((side) => [[-3.12, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
+      side: [-1, 1].flatMap((side) => [[-2.95, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
         nz: k ? 18 : 20, ny: 7,
         topAt: (z: number) => strv103aHullY(0, z) - 0.02,
         bottomAt: (z: number) => 1.02 + Math.sin(z * 2.7) * 0.04,
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
-  strv103b: {
-    id: 'strv103b', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
+  // 274: the netted twin wears the 103B's field suit; the plain 103B carries none (owner 2026-11-20)
+  strv103b_net: {
+    id: 'strv103b_net', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
     light: 0x65783f, dark: 0x304329, netColor: 'rgba(37,53,29,0.80)',
     hull: {
-      top: [{ x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 26, nz: 54,
+      // 274: on the family casemate (the 103A's deck); the net stops short of the rod fence on the beak
+      top: [{ x0: -1.66, x1: 1.66, z0: -3.04, z1: 3.20, nx: 26, nz: 50,
         yAt: strv103bHullY,
-        outline: [[-1.42, -3.76], [1.42, -3.76], [1.66, -2.70], [1.64, 2.35], [0.92, 3.24], [-0.92, 3.24], [-1.64, 2.35], [-1.66, -2.70]],
-        holes: [rect(-0.28, 0.28, 0.76, 3.36), rect(-0.22, 0.92, -0.88, 0.20), rect(-0.98, -0.30, -1.44, -0.72)], seed: 87 }],
+        outline: [[-1.30, -3.04], [1.30, -3.04], [1.62, -2.65], [1.62, 2.40], [1.20, 3.20], [-1.20, 3.20], [-1.62, 2.40], [-1.62, -2.65]],
+        holes: [rect(-0.27, 0.27, 0.78, 3.58), rect(0.03, 0.91, -1.30, 0.12), rect(-0.90, -0.28, -1.22, -0.46)], seed: 87 }],
       // round 5 (2026-10-08, wave 256 on the 103A): down over the upper running gear, clear of it
-      side: [-1, 1].map((side) => ({ side, z0: -3.58, z1: 2.72, nz: 44, ny: 7,
+      side: [-1, 1].map((side) => ({ side, z0: -3.04, z1: 2.40, nz: 40, ny: 7,
         topAt: (z) => strv103bHullY(0, z) - 0.02,
         bottomAt: (z) => 0.98 + Math.sin(z * 2.5) * 0.04,
         outAt: (_z, t) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),

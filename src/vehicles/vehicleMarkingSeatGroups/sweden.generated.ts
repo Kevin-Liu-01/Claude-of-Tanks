@@ -61,68 +61,68 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "designation",
         "parent": "hull",
-        "size": 0.25,
+        "size": 0.26,
         "pos": [
-          1.3398032,
-          1.4978608,
-          -0.720104
+          1.6634536,
+          1.6607442,
+          -0.98
         ],
         "quaternion": [
-          0.1293037,
-          0.7013889,
-          -0.1270817,
-          0.6893362
+          -0.0439378,
+          0.7057404,
+          0.0439378,
+          0.7057404
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0898129
-      },
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.25,
-        "pos": [
-          -1.3398032,
-          1.4978608,
-          -0.720104
-        ],
-        "quaternion": [
-          0.1293037,
-          -0.7013889,
-          0.1270817,
-          0.6893362
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.0898129
-      },
-      {
-        "kind": "insignia",
-        "parent": "hull",
-        "size": 0.22,
-        "pos": [
-          1.1749343,
-          1.0205343,
-          0.8698341
-        ],
-        "quaternion": [
-          0.1379739,
-          0.7034062,
-          -0.1342123,
-          0.6842295
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "udes03",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.26,
+        "pos": [
+          -1.6634536,
+          1.6607442,
+          -0.98
+        ],
+        "quaternion": [
+          -0.0439378,
+          -0.7057404,
+          -0.0439378,
+          0.7057404
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.2,
+        "pos": [
+          0.946,
+          0.9260343,
+          0.8698341
+        ],
+        "quaternion": [
+          0,
+          0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "udes03",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.1009517
       }
     ]
   },
@@ -134,15 +134,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.6120037,
-          1.8124046,
+          -1.766,
+          1.7123546,
           -0.0140223
         ],
         "quaternion": [
-          0.3350778,
-          -0.6307997,
-          0.3283201,
-          0.618078
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103a",
@@ -183,15 +183,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          0.7380241,
+          0.946,
           1.26015,
           2.7675925
         ],
         "quaternion": [
           0,
-          0.5483037,
+          0.7071068,
           0,
-          0.8362793
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103b",
@@ -205,22 +205,191 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.27,
         "pos": [
-          -1.2555408,
-          1.483121,
-          -3.2399685
+          1.5517245,
+          1.5964334,
+          -2.684502
         ],
         "quaternion": [
-          0.3313208,
-          -0.5665081,
-          0.3809145,
-          0.6513057
+          -0.057525,
+          0.8094395,
+          0.041426,
+          0.5829086
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "strv103b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0022385
+        "maximumSurfaceErrorM": 0.003168
+      }
+    ]
+  },
+  "strv103b_net": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.2376,
+        "pos": [
+          -1.8210001,
+          0.9763,
+          -1.5358401
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "strv103b_net",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.27,
+        "pos": [
+          1.4590083,
+          1.6214436,
+          -2.9424519
+        ],
+        "quaternion": [
+          -0.0777369,
+          0.8235737,
+          0.0527989,
+          0.5593707
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "strv103b_net",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0060142
+      }
+    ]
+  },
+  "strv103e": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.26,
+        "pos": [
+          1.839233,
+          1.6610925,
+          -0.48
+        ],
+        "quaternion": [
+          -0.064649,
+          0.7041452,
+          0.064649,
+          0.7041452
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.26,
+        "pos": [
+          -1.839233,
+          1.6610925,
+          -0.48
+        ],
+        "quaternion": [
+          -0.064649,
+          -0.7041452,
+          -0.064649,
+          0.7041452
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.27,
+        "pos": [
+          1.8870862,
+          1.4026851,
+          -0.2134
+        ],
+        "quaternion": [
+          -0.064649,
+          0.7041452,
+          0.064649,
+          0.7041452
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "strv103e",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "strv152": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.26,
+        "pos": [
+          1.839233,
+          1.6610925,
+          -0.48
+        ],
+        "quaternion": [
+          -0.064649,
+          0.7041452,
+          0.064649,
+          0.7041452
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.27,
+        "pos": [
+          1.6306355,
+          1.5622857,
+          -2.647349
+        ],
+        "quaternion": [
+          -0.0454839,
+          0.7758926,
+          0.0368227,
+          0.6281448
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "strv152",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0070717
       }
     ]
   },

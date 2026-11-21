@@ -165,9 +165,19 @@ check('drive-assault-trench', 'mbt', 'earth', [
 // forces. The vertical step, 0.25 m, is the floor's one-step lift (FLOOR_LIFT_MAX_M_PER_STEP) where its nose comes down on
 // the far bank. Solo play at the PR head, on the same tracks, read 0.241 m and a 3.6 m/s landing. The vertical steps, and
 // the hull's end wedged 47 degrees nose-up against the far wall, are the next item.)
+// (274, the coordinator's ruling: the low hull is the T49, 2.20 m, the lowest conventional road-wheel hull by its spec
+// height; it crosses with no flight, vertical step 0.046 m, 69 m of progress. The UDES 03 moved onto the S-tank course and
+// measures its own case below.)
 check('drive-trench', 'low', 'earth', [
   g('vertical step (m)', (m) => m.popYMaxM, 0.26, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
   g('flights', (m) => m.falls.length, 1, 'before: 1 (off the far lip)'),
+]);
+// 274: the S-tank family's four-wheel front-drive course with its raised end wheels (strv103Gear.ts, every 103 and the
+// UDES 03) is not thrown out of the sheer trench: the 103B measures 0 flights and a 0.078 m step (the 103A: 1 flight at
+// 3.3 m/s; the UDES 03, 17.5 t at 72 km/h on the same frame, 3, and 0 at the 103A's 58 km/h: its speed, not the course).
+check('drive-trench', 'stank', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.26, 'the 103B at 0.078 m'),
+  g('flights', (m) => m.falls.length, 1, 'the 103B at 0'),
 ]);
 // Round 8 (the far lip): what the suspension travel no longer holds of the dive the bump stops take, and the drawn hull
 // gives it up over their spring. The far wall bottoming the M3 Bradley's springs cut its drawn squat by a degree in one

@@ -218,3 +218,16 @@ deocrations specialized and customized heheh for both a and b".
   give no layout for smoke launchers on the A or B); the dozer blade (one per platoon on early vehicles, every tank from
   the 103C: the A keeps its bare beak). Hull pitch (Wikipedia): A -10/+12, B-standard -11/+16; the specs' envelopes are
   unchanged (gameplay).
+
+## 274: one family casemate (owner 2026-11-20: "redesign the strv 103s")
+
+The 103A and 103B were two unrelated builds on two prints (deck 1.80 against 1.88, different wheel stations and noses); the
+real tanks share one hull. Both now build from `src/vehicles/profiles/strv103Family.ts`: the 103A's measured loft, one
+running gear (four 0.38 m wheels, front sprocket, raised rear idler, two return rollers), one fixed-gun port, the shared
+crew roof (one cupola cluster: the 103B's doubled cupola, antenna pair and stowage went), lidded fender bins, the rear
+plate's two autoloader loading doors, and each mark's kit: the 103A's bare beak, infrared lamps and glacis spare links;
+the 103B's folded dozer blade with its rams, the flotation screen boxed round the deck edge (3.63 m over its trough) and
+the 30 mm anti-HEAT rod fence on the beak (hhogman.se). `profiles/casemate.ts` and the separate 103A build are deleted.
+Reference: the local lamonekeli "strv 103b" print (CC-BY-4.0, docs/ATTRIBUTION.md; layout and kit only, it is one fused
+mesh and short) and the BFJFFK print for the 103A, with the photo class above. The concept tier X mark is
+`strv103e` (docs/references/tanks/strv103e.md).

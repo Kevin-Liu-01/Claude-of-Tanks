@@ -151,7 +151,7 @@ export function createTankAssetsAudit() {
     'sealed missile canisters retain firing tips without decorative cannon bores');
 
   const displayNames = new Set();
-  const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103b', 'strv103a']);
+  const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103b', 'strv103b_net', 'strv103a', 'strv103e', 'strv152']);
   // This independently authored fixed casemate has a separate moving cannon.
   // Unlike the old donor's hull-only assembly, it needs hull + gun, no turret.
   const FIXED_CASEMATE_GUN_SHADOW_IDS = new Set(['jpz_e100']);

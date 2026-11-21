@@ -28,6 +28,7 @@ import type {
 import {
   bindFleetRegistries,
   cloneFleetVariant,
+  cloneFleetVariantFrom,
   registerFleetSpecs,
   scaleNonExternalArmor,
 } from './fleetSpecRegistry.ts';
@@ -285,7 +286,9 @@ const SWEDEN_SPECS = {
   udes03: variant('udes03', 'strv103b', {
     name: 'UDES 03', number: '03', role: 'td', scheme: 'solid',
     base: '#45513f', weather: '#55614d', patches: [], camoScale: 0.46,
-    dims: { hullLengthM: 5.91, overallLengthM: 7.65, widthM: 2.85, heightM: 1.90 },
+    // 274 (owner 2026-11-20: "redesign the udes to be more like a prototype of the strv 103a"): the S-tank's trials
+    // prototype on the family casemate (profiles/strv103Family.ts mark p): the A frame with its shorter test tube
+    dims: { hullLengthM: 7.04, overallLengthM: 7.65, widthM: 3.60, heightM: 2.14 },
     fitArmor: true,
     stats: {
       hp: 1400, enginePowerHp: 340, weightTons: 17.5, topSpeedKmh: 72,
@@ -332,7 +335,7 @@ SWEDEN_SPECS.udes03.armor = siegeArmor(SWEDEN_SPECS.udes03.dims, {
   lowerPhysicalMm: 35, lowerKeMm: 65, lowerCeMm: 85,
   sideMm: 25, sideKeMm: 35, sideCeMm: 45,
   rearMm: 25, roofMm: 25, trackMm: 20,
-}, { axisY: 1.43, muzzleZ: 4.70, radiusM: 0.081 });
+}, { axisY: 1.59, muzzleZ: 4.13, radiusM: 0.088 });
 SWEDEN_SPECS.strv103a.armor = siegeArmor(SWEDEN_SPECS.strv103a.dims, {
   frontPhysicalMm: 65, frontKeMm: 180, frontCeMm: 240,
   lowerPhysicalMm: 55, lowerKeMm: 140, lowerCeMm: 180,
@@ -367,7 +370,8 @@ if (strv103b) {
       lowerPhysicalMm: 65, lowerKeMm: 170, lowerCeMm: 220,
       sideMm: 50, sideKeMm: 65, sideCeMm: 90,
       rearMm: 40, roofMm: 40, trackMm: 30,
-    }, { axisY: 1.56, muzzleZ: 5.26, radiusM: 0.084 }),
+    // the shared family casemate (profiles/strv103Family.ts): the 103A's bore and muzzle
+    }, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089 }),
   });
   delete strv103b.community;
   strv103b.visual = {
@@ -380,4 +384,91 @@ if (strv103b) {
   registries.modelSources.strv103b = { source: 'procedural' };
 }
 
-registerFleetSpecs(registries, SWEDEN_IDS, SWEDEN_SPECS);
+// Strv 103E (concept, tier X; owner 2026-11-20: "a new modernized souped up version in tier X with a new modern design
+// better armor etc"): the project's own design on the family casemate (profiles/strv103Family.ts). Real basis: the 103C's
+// laser fire control, diesel and bar armour, the 103D's thermal sight, the 1980s 120 mm S-tank studies; the rest is
+// invented (docs/references/tanks/strv103e.md). Tier X numbers sit with the Challenger 3 TD, the tier X casemate-role
+// peer, and the tier X 120 mm rounds; fleetBalancePass applies the shown-tier floors.
+const strv103e = cloneFleetVariant(registries.tankSpecs, 'strv103e', 'strv103b', {
+  name: 'Strv 103E', nation: 'Sweden', era: 'modern', role: 'td',
+});
+Object.assign(strv103e, {
+  hp: 2550, enginePowerHp: 1100, weightTons: 45.0, topSpeedKmh: 65, reverseSpeedKmh: 55,
+  hullTraverseDegS: 50,
+  terrainResistance: { hard: 0.58, medium: 0.72, soft: 1.12 },
+  turretTraverseDegS: 42, gunPitchDegS: 38,
+  gunElevationDeg: 12, gunDepressionDeg: 13, gunArcDeg: 4,
+  hydropneumaticAim: { noseDownDeg: 13, noseUpDeg: 12, rateDegS: 12, compressionM: 0.46, droopM: 0.46 },
+});
+strv103e.gun = siegeGun({
+  name: '12 cm kan Strv 103E', reloadS: 5.5, accuracy: 0.21, aimTimeS: 1.40, damage: 525,
+  apcrPen: 860, apcrPenFar: 790, heatPen: 600, velocityMps: 1740, heDamage: 590,
+});
+strv103e.gun.caliberMm = 120;
+strv103e.gun.shells = strv103e.gun.shells.map((shell) => ({ ...shell, caliberMm: 120, moduleDmg: 120 }));
+strv103e.gun.shells[0] = { ...strv103e.gun.shells[0], name: '12 cm slpprj APFSDS', type: 'APFSDS', tracer: 'APFSDS', pen2000Mm: 720 };
+strv103e.gun.shells[1] = { ...strv103e.gun.shells[1], name: '12 cm HEAT-MP', dmg: 480, velocityMps: 1400 };
+strv103e.gun.shells[2] = { ...strv103e.gun.shells[2], name: '12 cm HE', velocityMps: 1000 };
+// the nose module (z 3.68) to the rear boxes (-3.52), the 120 mm's muzzle at 5.70, the side modules at 3.80 m
+strv103e.dims = { hullLengthM: 7.20, overallLengthM: 9.22, widthM: 3.80, heightM: 2.14 };
+strv103e.armor = siegeArmor(strv103e.dims, {
+  frontPhysicalMm: 150, frontKeMm: 520, frontCeMm: 720,
+  lowerPhysicalMm: 120, lowerKeMm: 380, lowerCeMm: 520,
+  sideMm: 80, sideKeMm: 120, sideCeMm: 200,
+  rearMm: 40, roofMm: 45, trackMm: 30,
+}, { axisY: 1.59, muzzleZ: 5.70, radiusM: 0.092 });
+strv103e.visual = {
+  ...strv103e.visual,
+  scheme: 'splinter', base: '#3b4a3a', weather: '#4f5a49',
+  patches: ['#1f2a22', '#5e6a4d', '#8a7e5d'], marking: 'number', number: '103E', camoScale: 0.42,
+};
+enforceTurretlessArmor(strv103e);
+
+// The 103B's two builds (owner 2026-11-20: "make the 103b and 103b netted two variants"): the plain tank, and its
+// twin in the field net and garnish (ghillieFleetSuits.ts); one spec.
+const strv103bNet = cloneFleetVariant(registries.tankSpecs, 'strv103b_net', 'strv103b', {
+  name: 'Strv 103B (Netted)', nation: 'Sweden', era: 'cold-war', role: 'td',
+});
+enforceTurretlessArmor(strv103bNet);
+
+// Strv 152 (concept, tier X; owner 2026-11-20: "make a strv 152 with a 152mm and designed hull to accommodate that cannon
+// to complement the strv 103 e"): the 103E's fit on a casemate rebuilt round a fixed 152 mm (strv103Family.ts mark x).
+// Its numbers sit in the 152 mm line's tier X band (t14_152, object195: 1,000 mm, 740-820 damage, 8.5 s) a step
+// slower to aim than the 103E, with the S-tank's autoloader cycle.
+const strv152 = cloneFleetVariantFrom(strv103e, 'strv152', 'strv103e', {
+  name: 'Strv 152', nation: 'Sweden', era: 'modern', role: 'td',
+});
+Object.assign(strv152, {
+  hp: 2600, enginePowerHp: 1500, weightTons: 52.0, topSpeedKmh: 60, reverseSpeedKmh: 50,
+  hullTraverseDegS: 44,
+  terrainResistance: { hard: 0.62, medium: 0.78, soft: 1.22 },
+  turretTraverseDegS: 38, gunPitchDegS: 34,
+  gunElevationDeg: 12, gunDepressionDeg: 12, gunArcDeg: 4,
+  hydropneumaticAim: { noseDownDeg: 12, noseUpDeg: 12, rateDegS: 11, compressionM: 0.46, droopM: 0.46 },
+});
+strv152.gun = siegeGun({
+  name: '15,2 cm kan Strv 152', reloadS: 8.2, accuracy: 0.23, aimTimeS: 1.60, damage: 760,
+  apcrPen: 1000, apcrPenFar: 920, heatPen: 760, velocityMps: 1780, heDamage: 900,
+});
+strv152.gun.caliberMm = 152;
+strv152.gun.shells = strv152.gun.shells.map((shell) => ({ ...shell, caliberMm: 152, moduleDmg: 152 }));
+strv152.gun.shells[0] = { ...strv152.gun.shells[0], name: '15,2 cm slpprj APFSDS', type: 'APFSDS', tracer: 'APFSDS', pen2000Mm: 840 };
+strv152.gun.shells[1] = { ...strv152.gun.shells[1], name: '15,2 cm HEAT-MP', dmg: 680, velocityMps: 1300 };
+strv152.gun.shells[2] = { ...strv152.gun.shells[2], name: '15,2 cm HE', velocityMps: 950 };
+// the nose module (z 3.68) to the bustle (-4.12); the brake's mouth at 6.30; the side modules at 3.80 m
+strv152.dims = { hullLengthM: 7.80, overallLengthM: 10.42, widthM: 3.80, heightM: 2.14 };
+strv152.armor = siegeArmor(strv152.dims, {
+  frontPhysicalMm: 160, frontKeMm: 600, frontCeMm: 800,
+  lowerPhysicalMm: 130, lowerKeMm: 420, lowerCeMm: 560,
+  sideMm: 85, sideKeMm: 130, sideCeMm: 210,
+  rearMm: 45, roofMm: 45, trackMm: 30,
+}, { axisY: 1.70, muzzleZ: 6.30, radiusM: 0.118 });
+strv152.visual = {
+  ...strv152.visual,
+  scheme: 'splinter', base: '#3a4838', weather: '#4e5847',
+  patches: ['#1e281f', '#5b674b', '#857a5a'], marking: 'number', number: '152', camoScale: 0.42,
+};
+enforceTurretlessArmor(strv152);
+
+registerFleetSpecs(registries, [...SWEDEN_IDS, 'strv103e', 'strv103b_net', 'strv152'],
+  { ...SWEDEN_SPECS, strv103e, strv103b_net: strv103bNet, strv152 });

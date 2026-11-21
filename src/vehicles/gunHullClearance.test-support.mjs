@@ -283,7 +283,7 @@ export function fixedGunHullProbe(id, { decor = true } = {}) {
   tank.root.updateMatrixWorld(true);
   const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
   const port = hull?.userData.fixedGunPort;
-  if (!hull || !port) { tank.dispose(); throw new Error(`${id}: no fixedGunPort receipt on rig_hull (casemate.ts addFixedGunPort)`); }
+  if (!hull || !port) { tank.dispose(); throw new Error(`${id}: no fixedGunPort receipt on rig_hull (strv103Family.ts addFixedGunPort)`); }
   const isGun = (o) => /^(hullGun|muzzleBore)/.test(o.name);
   const all = meshesUnder(tank.root);
   // a fixed gun is one body with its hull: nothing it draws pitches apart from it

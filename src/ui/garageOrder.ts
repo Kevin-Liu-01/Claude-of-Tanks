@@ -60,6 +60,8 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   ]),
   Sweden: Object.freeze([
     'strv122',
+    'strv103e',
+    'strv152',
     'cv90_mk4',
     'strv103b',
     'strv121',
