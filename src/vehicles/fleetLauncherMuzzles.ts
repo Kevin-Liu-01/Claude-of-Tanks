@@ -52,7 +52,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // (profiles/bradleyClassicTurret.ts); the M2A2's since 269, whose ODS rebuild (T2) stows the launcher flush on the left
   // wall behind the front corner plate (bradleyClassicTurretLayout.ts CLASSIC_TOW_CELLS)
   m2a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
-  marder1a3: [turret(.55, .92, .445)],
+  // 274: the MILAN tube's mouth, low on the turret's left front beside the gun (profiles/marder1a3.ts)
+  marder1a3: [turret(.62, .66, 1.07)],
   // 269: the A3 turret carries the family's stowed launcher (profiles/bradleyA3Turret.ts on modern3.ts's shell) and, the
   // owner's second order ("a launcher aonn its other sdie"), the same launcher on the right wall, mirrored about the
   // shell's centre plane (modern3.ts BRADLEY_TOW_MIRROR_X, -0.07): its mouths at x -0.14 - 1.105

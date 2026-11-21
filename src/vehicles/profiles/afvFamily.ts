@@ -4,7 +4,6 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT72B3MXHull } from './t72b3mX.ts';
 import { T72B3M_X_SOURCE_DATUMS } from '../t72b3mXArmor.ts';
 import { buildBmpt72Station, addBmpt72HullKit } from './bmpt72Station.ts';
-import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
 //
 // The owner-supplied GLBs are six-view silhouette/equipment oracles only.
@@ -14,7 +13,7 @@ import { weaponAssembly } from './weaponStock.ts';
 
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore, muzzleTipDot } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleTipDot } from './kit.ts';
 import {
   BRADLEY_GLACIS,
   BRADLEY_HULL,
@@ -29,6 +28,7 @@ import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { T90_X_PROFILES } from './t90X.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
+import { buildMarder1A3 } from './marder1a3.ts';
 import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 import { fabricBody, fabricStrap, type FabricSpec } from '../accessoryPrimitives.ts';
 import { jerrycanParts } from '../accessoryKits.ts';
@@ -129,15 +129,6 @@ function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
     const step = o.step ?? 0.78;
     if (i < count - 1) P.add('hull', KIT.box(0.02, h * 0.5, step - d + 0.04),
       side * ((o.x ?? 1.68) - w / 2 + 0.006), y, z - step / 2, 0, 0, rz);
-  }
-}
-
-function bowLightPair(P: AfvBuilderPort, x: number, y: number, z: number, seed: number): void {
-  for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
-      mats: P.mats, pods: 2, spacing: 0.13, r: 0.045,
-      shield: true, rake: -0.15, seed: seed + (side > 0 ? 1 : 0),
-    }), side * x, y, z, [-0.14, 0, 0]);
   }
 }
 
@@ -399,138 +390,6 @@ function buildBWP1Variant(P: AfvBuilderPort): void {
   buildBmpBoatHull(P, 'bwp1');
   buildBwp1Rcws30(P);
   addBwp1Applique(P, BMP_HULL_OPTIONS.bwp1.binOuter);
-}
-
-// ============================ Marder 1A3 ====================================
-// §5.302 OWNER ORDER (verbatim): "now completely revert our marder hull while
-// preserving its new turret". The pre-§5.286 Bradley-donor hull returns
-// COMPLETELY — buildBradley loft/gear/skirts/glacis/ramp/fenders plus the A3
-// appliqué rails and bow lights below; the wave's ground-up hull (scalloped
-// hem, one-plane glacis + fording vane, ramp frame/drums/lights) reverts with
-// it. The §5.269-fix LOW CAST turret (external MK20 carriage, MILAN, offset
-// commander station, smoke collars) is PRESERVED verbatim in
-// addMarderCastTurret and re-seats at the old hull's ring station
-// (0.18, -0.05) — the pre-wave turret station — at y 1.895 (donor roof plate
-// top 1.905: the collar's local -0.02..0.08 band buries 0.03 into the roof,
-// §B2 no-air at the ring seam). Seat rides the spec armor turretPivot.
-function addMarderCastTurret(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, lathe, buildGun } = KIT;
-  clearUpperStructure(P);
-  // ---- LOW CAST ROUND-FRONTED turret (§5.269 rebuild: the tall two-tier
-  // box is dead — one smooth casting, longer than wide, rounded front,
-  // with the EXTERNAL MK20 carriage riding above it) ------------------------
-  P.add('turret', cylY(0.70, 0.78, 0.10, 22), 0, 0.03, 0.0);                   // seating collar
-  P.add('turret', nonUniformXform(lathe([                                       // cast body: rounded shoulder,
-    [0.70, 0.02], [0.72, 0.10], [0.70, 0.22], [0.64, 0.34],                     //   crown 2.585
-    [0.52, 0.44], [0.34, 0.52], [0.12, 0.56], [0.0, 0.565],
-  ], 22), 0, 0, 0, 0, 0, 0, [1.02, 1, 1.22]), 0, 0, 0.03);
-  // external carriage: trunnion towers rooted in the casting + cradle beam
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.14, 0.30, 0.30), s * 0.24, 0.62, 0.22);              // trunnion towers (base 0.47 buried)
-  }
-  P.add('turret', box(0.60, 0.14, 0.42), 0, 0.90, 0.20);                       // carriage beam, top 2.96
-  P.add('turret', box(0.20, 0.20, 0.34), 0, 0.76, 0.21);                       // carriage riser web
-  // §5.349 RESIDUE (§B2 sweep handoff marder(a)): the MILAN-carriage pocket
-  // — enclosed sky [y 2.66..2.87, z -0.59..-0.31] world (552px plain-side
-  // pre-landing, 631+802px at the live seat) between the cast crown, the
-  // MILAN tube underside, the carriage towers and the MG cluster. Solid
-  // carriage pedestal web closes the mount frame to the casting: spans the
-  // inter-tower bay (x +-0.17 flush to the trunnion tower inner faces),
-  // welds into the beam/riser undersides (top 0.87 vs beam bottom 0.83) and
-  // buries into the cast crown (bottom 0.42). Every §5.269 cast line and
-  // carriage/MILAN/PERI piece stays untouched (§5.354 fence).
-  P.add('turret', box(0.34, 0.45, 0.67), 0, 0.645, -0.255);
-  P.addGunExtra(box(0.30, 0.24, 0.55), 0, 0, 0.16);                            // cradle block
-  P.addGunExtra(cylZ(0.075, 0.24, 14, 0.06), 0, 0, 0.50);                      // collar taper
-  buildGun(P, { len: 2.55, r: 0.026, sleeve: false, collar: true, baseR: 0.075 });
-  muzzleBore(P, { len: 2.55, r: 0.026 });
-  P.addGunExtraDark(cylZ(0.014, 0.55, 8), 0.16, -0.05, 0.65);                  // coax MG3 tube
-  muzzleTipDot(P, 0.16, -0.05, 0.93, 0.010, { parent: 'gunG' });
-  // MILAN launcher on the RIGHT of the carriage (A3-era identity)
-  weaponAssembly(P, () => {
-    P.addEquipment('turret', box(0.14, 0.36, 0.30), 0.44, 0.66, -0.14);                   // launcher seat (rooted in the cast)
-    P.add('turretDark', cylZ(0.115, 1.05, 14), 0.55, 0.92, -0.10);               // MILAN tube, crown 3.06
-    P.add('turretDetail', cylZ(0.122, 0.03, 14), 0.55, 0.92, 0.43);              // tube mouth ring
-    P.add('turretDark', box(0.10, 0.16, 0.22), 0.42, 0.90, -0.36);               // sight/grip block
-  });
-  // PERI-Z11 commander sight LEFT + gunner sight hood on the roof front
-  P.add('turret', box(0.20, 0.40, 0.22), -0.32, 0.70, -0.10);                  // PERI tower, crown 3.04 (base
-  P.add('turretDark', box(0.16, 0.06, 0.03), -0.32, 0.86, 0.02);
-  P.add('turretGlass', box(0.13, 0.035, 0.014), -0.32, 0.855, 0.033);
-  P.add('turret', box(0.16, 0.14, 0.16), 0.16, 0.575, 0.44);                   // gunner hood (on the cast slope)
-  P.add('turretGlass', box(0.11, 0.045, 0.015), 0.16, 0.605, 0.525);
-  // commander cupola LEFT-REAR — ringed command station (owner c425f495
-  // intent, absorbed into the ground-up frame): flush ring + torus + lid
-  // plate + periscope glass trio.
-  P.add('turret', cylY(0.23, 0.25, 0.09, 16), -0.28, 0.525, -0.36);            // (ring sunk onto the casting)
-  P.add('turretDark', KIT.torus(0.23, 0.011, 16), -0.28, 0.585, -0.36);
-  P.add('turret', box(0.32, 0.05, 0.34), -0.28, 0.605, -0.36, 0, -0.10, 0);    // station lid plate
-  for (let i = -1; i <= 1; i++) {
-    P.add('turretGlass', box(0.068, 0.042, 0.022), -0.28 + i * 0.085, 0.625, -0.185, 0, -0.10, 0);
-  }
-  // unequal side service boxes low on the raked walls (owner intent + the
-  // 1A3's real flank stowage), lids seamed; they stay inside the tw plan
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.16, 0.22, side < 0 ? 0.46 : 0.38), side * 0.585, 0.27, -0.14,
-      0, 0, side * 0.045);
-    P.add('turretDark', box(0.025, 0.13, side < 0 ? 0.36 : 0.28), side * 0.665, 0.29, -0.14,
-      0, 0, side * 0.045);
-  }
-  // closed rear equipment wall + basket rails (owner "close the empty tail"
-  // + the 1A3's real turret rear bin)
-  P.add('turret', box(0.92, 0.26, 0.22), 0, 0.30, -0.80);
-  P.add('turretDark', box(0.74, 0.13, 0.035), 0, 0.31, -0.92);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 0.90, d: 0.28, h: 0.20, fill: 0.66, rails: 3, seed: 3497,
-  }), 0, 0.47, -0.86);
-  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
-  for (const sde of [-1, 1]) {
-    P.add('turret', box(0.12, 0.20, 0.34), sde * 0.60, 0.30, -0.44, 0, 0, sde * 0.10); // smoke collar seats
-    mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 3, r: 0.044, len: 0.30, spacing: 0.105,
-      splay: sde * 1.1, pitch: -0.38, arc: 0.60, slot: 'detail',
-      rotation: [0, sde * 0.08, -sde * 0.08], seed: 3510 + (sde > 0 ? 1 : 0),
-    }), sde * 0.62, 0.40, -0.46);                                              // banks READ on their collars
-  }
-  radioPair(P, 0.38, -0.58, 3520, 0.42);                                       // pots on the cast rear slope
-  P.decal('turret', 'number', 'Y-224', 0.17, [0.60, 0.32, 0.05], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 2.02);
-}
-
-function buildMarder1A3(P: AfvBuilderPort): void {
-  // §5.302 reverted hull: the Bradley donor supplies the Marder's defining
-  // six-station, tall troop-compartment hull and rear ramp more faithfully
-  // than the shallower BMP family. Only the native running gear and hull are
-  // retained; the preserved §5.269 cast turret replaces the donor's.
-  buildBradley(P);
-  addMarderCastTurret(P);
-  // The A3's horizontal appliqué rails are passive armor, not invented ERA.
-  sideArmorCourse(P, { x: 1.68, y: 1.22, h: 0.42, d: 0.72, count: 8,
-    front: 2.42, step: 0.74, cap: false });
-  for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
-    P.add('hullDetail', KIT.box(0.032, 0.045, 5.25), side * 1.72,
-      1.02 + row * 0.18, -0.18);
-  }
-  bowLightPair(P, 1.16, 1.48, 2.86, 3530);
-  // §5.349 RESIDUE (§B2 sweep handoff marder(b)): the donor under-bow window
-  // ([y 0.50..0.63, z 2.84..3.08] live read — the shared m2a2/m3a3/ua 200px
-  // class) closed with the SAME §5.341 bow-corner grammar
-  // bradleyFlankDressing lands on the other three Bradleys (side plate on
-  // the 1.40..1.44 plane, §B4-clear of the 1.395 shoe reach with the raised
-  // idler disc §B9-readable; transverse cap sealing into the bow corner
-  // slabs), authored marder-locally so the hard-gated splice takes none of
-  // the dressing's other content.
-  for (const s of [-1, 1]) {
-    const m = (x: number): number => s * x;
-    // FSP-05 (2026-09-25): same reversed right-hand copy as the shared Bradley
-    // grammar — orientedSlab re-orders it, the left plate stays byte-identical.
-    P.add('hull', orientedSlab(
-      [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
-      [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
-    P.add('hull', orientedSlab(
-      [m(1.06), 0.55, 3.10], [m(1.44), 0.55, 3.10], [m(1.44), 0.55, 3.16], [m(1.06), 0.55, 3.16],
-      [m(1.06), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.06), 1.00, 3.16]));
-  }
 }
 
 // ========================= M3A3 Bradley CFV =================================

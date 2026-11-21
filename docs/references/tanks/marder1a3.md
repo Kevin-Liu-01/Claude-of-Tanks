@@ -142,3 +142,45 @@ architecture (mesh rack apertures, pintle standoffs, carriage frame) —
 identical geometry to the ratified §5.269 build.
 EVIDENCE: §5.254 pairs shots/marder-hullrevert/before/ (at 694568) +
 after/ (at 59cb105c), probe-r1, probe-yaw35.
+
+## 274 OWNER ORDER — own hull and turret, photo class (2026-11-20)
+ORDER (verbatim): "update the marder 1a3's turret and hull. redesign it too."
+DONE: `src/vehicles/profiles/marder1a3.ts` builds the Marder's own hull and two-man turret; the §5.302 Bradley-donor
+hull (modern3.ts `buildMarderDonorSteps`, now deleted) and the §5.269 cast turret (`addMarderCastTurret`, deleted) are
+gone. Receipt: `marder1a3.selftest.mjs`.
+
+### Sources
+- **Photo class (governs details)** — Wikimedia Commons:
+  - P1 `Marder 1A3 on captured equipment exhibition in Moscow (front-right view).jpg`
+  - P2 `Marder 1A3 on captured equipment exhibition in Moscow (rear view).jpg`
+  - P3 `Marder Turm.jpg` (Panzermuseum Munster, turret from the left, 2006)
+  - P4 `Marder1A3 Turm rechts.jpg` (turret from the right; caption names the armoured thermal imager and the covered MILAN mount)
+  - P5 `Marder 1A3.jpg` (Ausbildungszentrum Munster, head-on)
+  - P6 `Marder 1A3 sights.JPG` (gun mount boss and sight heads)
+- **Published dimensions (govern dims)**: 6.88 m hull, 3.38 m over the appliqué, 3.02 m to the sight crown. No licensed
+  side or top drawing was available, so the published figures stand in for one.
+- **Proportion print (rough stations only)**: the owner's local GLB, sha256 edb6e865…8aeb, the same bytes as
+  `marder1a3_arrafi.glb` above (FUSED/SUSPECT). No license record. It was used only for belly, roof, glacis, wheel and
+  turret-ring stations scaled to the published hull. It is not shipped, read by a test, or named on any public surface.
+
+### Photo-class gap table (detail → source)
+| # | Detail | Source | Build |
+| --- | --- | --- | --- |
+| 1 | Long shallow glacis, low nose, flat roof | P1, P5; stations from the print | sectionSolid hull, glacis 13.4°, roof 1.964 |
+| 2 | A3 side armour = ribbed upper stowage boxes (lid line, latches) over a bolted skirt band, ledge between | P1, P2 | two full boxes + raked front panel a side, ribs, bolts, lid seam and latches; six skirt plates with V hems |
+| 3 | Big raked steel mudguards at bow and stern corners | P1, P2 | steel hangMudguard plates; the band's raked end plates |
+| 4 | Headlights in ring guards on the glacis corners | P1, P5 | lightCluster pods with guards |
+| 5 | Driver front-left with three periscopes; commander right | P5 | driver's hatch + 3 periscopes at +X; cupola at -X |
+| 6 | Ramp carrying a bolted armour box; foot hinges | P2 | ramp, frame, bolted moldedBox armour, hinge drums. No ramp ball port is visible in P2, so none is built; the side ports went under the A3 armour |
+| 7 | Louvred guards over the rear fuel tanks either side of the ramp | P2 | louvred guards |
+| 8 | Exhaust outlet: louvred box angled out on the right rear corner | P2 | angled louvred box at -X |
+| 9 | Low drum turret with bolted appliqué on its walls | P3, P4 | faceted drum, bolt rows |
+| 10 | Rh 202 in the rounded external weapon housing; barrel from a round mount boss | P3, P6 | rounded (wide-chamfer) housing on a pedestal, jacket, sleeve, tube, muzzle brake |
+| 11 | Smoke dischargers: two groups of three, stacked, between gun and housing, aimed forward-up | P3, P5 | three smokeBank rows of two on the feed housing's raked face |
+| 12 | MILAN low on the turret's LEFT front on a bracket beside the gun, firing-post sight on the tube | P3 (P4: covered mount) | bracket post + cradle, 1.22 m tube at gun height (z -0.15..1.07), sight unit; launcher tip (0.62, 0.66, 1.07) turret-local |
+| 13 | Armoured thermal imager with louvred front, turret front left of the gun | P4, P5 | armoured box with louvred shutter at +X |
+| 14 | Coax MG3 in the weapon mount | P3 (Commons `TMG MG3 Marder 1A3.jpg` caption) | port + MG3 tube on the gun's left |
+
+Residuals (honest): the right-rear hatch arrangement and the rear deck's light boxes follow the print, not a photo. The
+turret's left-rear equipment box is the print's block (P3 shows a large box there). The roof ventilator cowl follows the
+print; no photo in the class shows the roof behind the turret clearly.

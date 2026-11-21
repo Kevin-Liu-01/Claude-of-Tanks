@@ -171,7 +171,7 @@
   "magach3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"02ed285c374fc0ce","gun":"635004500a27b961"}},
   "magach6b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2dcad7c7481c4c2c","gun":"76df192a94fd7fce"}},
   "magach7c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"739810bdaa0d3032","gun":"8f9ec97afb42549b"}},
-  "marder1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"39fe79a95663f4ab","gun":"9409a1190c570fe1"}},
+  "marder1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9f0b9ca2e5f42dfc","gun":"407f7a810249ce76"}},
   "marder2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6d79c9599fa6a62a","gun":"b7bcd226aefc201f"}},
   "marksman_t55": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"9f7f12453ad2dd48","gun":"c25ccb750f982149"}},
   "mbt70": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a1512bd41ec57e21","gun":"8f548128a08a419f"}},

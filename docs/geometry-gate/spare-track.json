@@ -2088,31 +2088,8 @@
    "hostSweep": []
   },
   "marder1a3": {
-   "inputHash": "4f295da0bbc051ce",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.978,
-      "gap": 0.022,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:1879>"
-     }
-    }
-   ],
+   "inputHash": "becaad849eb737d2",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
