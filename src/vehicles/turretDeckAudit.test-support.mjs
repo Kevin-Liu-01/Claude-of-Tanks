@@ -6,8 +6,9 @@
 //
 // For every turreted tank (rig_turret with a published ring receipt, combatAnatomyCalibration(id).turretRing), in the
 // rig_hull frame on a 2.5 cm plan grid round the ring's axis:
-//  (a) deck clearance, at YAWS turret bearings: past the race's rim, wherever the turret (rig_gun and the seat collar left
-//      out) lies over the hull, its lowest surface (faces, and edges sampled every cm) stands at least DECK_CLEAR_M over
+//  (a) deck clearance, at YAWS turret bearings, round the turret's base (within the receipt's footR + BASE_MARGIN_M of
+//      the ring's axis; a bustle or rack further out sweeping over engine-deck kit is reported apart, as `overhang`, and
+//      never fails): past the race's rim, wherever the turret (rig_gun and the seat collar left out) lies over the hull, its lowest surface (faces, and edges sampled every cm) stands at least DECK_CLEAR_M over
 //      the hull's highest top in that cell. Inside the rim the turret's floor may lie anywhere when the seat collar walls
 //      it in (the basket hangs in the hull, out of sight); without a collar, no near-horizontal turret face and no edge
 //      lying along the deck may stand within DECK_CLEAR_M over its top or less than ON_DECK_BURY_M under it.
@@ -28,6 +29,8 @@ export const ON_DECK_BURY_M = 0.06;
 export const PROP_MARGIN_M = 0.30;
 export const PROP_RISE_M = 0.02;
 export const YAWS = 16;
+/** (a) The base zone reaches this far past the receipt's footR (the turret base's inscribed reach over the deck) (m). */
+export const BASE_MARGIN_M = 0.25;
 const FOOT_BAND_M = 0.35;
 const FOOT_EDGE_M = 0.10;
 const MIN_CELLS = 4;
@@ -35,6 +38,9 @@ const CELL = 0.025;
 const BEARINGS = 96;
 const RIM_PAD_M = 0.01;
 const COLLAR_NAME = 'turretSeatCollar';
+/** Casemate and turretless designs: a rig_turret (a fixed superstructure, a pivot for the sim) but no ring on a deck, so
+ *  no ring receipt and nothing to judge (coordinator, 274). Any other turreted tank without a receipt fails the audit. */
+export const NO_TURRET_IDS = Object.freeze(['jpz_e100', 'strv103a', 'strv103b', 't95', 'udes03']);
 
 function measurable(object) {
   if (!object.isMesh || object.isBatchedMesh || object.name === COLLAR_NAME) return false;
@@ -143,7 +149,8 @@ function hullGrid(hullRig, turretRig, receipt) {
       raster(a, b, c, (k, y) => { if (y <= yHi && y > hullTop[k]) { hullTop[k] = y; hullBy[k] = id; } });
     });
   });
-  return { hullInverse, n, x0, z0, sx, sz, deckY, rimR, yLo, yHi, region, raster, hullTop, hullBy, labels };
+  const baseR = (receipt.footR ?? rimR) + BASE_MARGIN_M;
+  return { hullInverse, n, x0, z0, sx, sz, deckY, rimR, baseR, yLo, yHi, region, raster, hullTop, hullBy, labels };
 }
 
 /** The turret's lowest surface per cell (faces, and edges every cm), and inside the rim the face or deck-hugging edge
@@ -222,8 +229,8 @@ function cellAt(grid, k) {
 
 /** (a) at one pose: the failing patches, and the least clearance past the rim. */
 function judgeDeck(grid, turret, collared) {
-  const { n, rimR, hullTop, hullBy, labels } = grid;
-  const failing = new Map(), by = new Map();
+  const { n, rimR, baseR, hullTop, hullBy, labels } = grid;
+  const failing = new Map(), beyond = new Map(), by = new Map();
   let minClear = Infinity;
   for (let k = 0; k < n * n; k++) {
     if (cellAt(grid, k).r <= rimR + RIM_PAD_M) {
@@ -233,23 +240,23 @@ function judgeDeck(grid, turret, collared) {
       continue;
     }
     if (!Number.isFinite(turret.low[k]) || !Number.isFinite(hullTop[k])) continue;
-    const clear = turret.low[k] - hullTop[k];
-    if (clear < minClear) minClear = clear;
-    if (clear < DECK_CLEAR_M) { failing.set(k, clear); by.set(k, turret.lowBy[k]); }
+    const clear = turret.low[k] - hullTop[k], base = cellAt(grid, k).r <= baseR;
+    if (base && clear < minClear) minClear = clear;
+    if (clear < DECK_CLEAR_M) { (base ? failing : beyond).set(k, clear); by.set(k, turret.lowBy[k]); }
   }
-  const found = patches(n, failing).map((cells) => {
+  const describe = (map) => patches(n, map).map((cells) => {
     let worst = cells[0], inRim = 0;
     for (const k of cells) {
-      if (failing.get(k) < failing.get(worst)) worst = k;
+      if (map.get(k) < map.get(worst)) worst = k;
       if (cellAt(grid, k).r <= rimR + RIM_PAD_M) inRim++;
     }
     const p = cellAt(grid, worst);
     return {
-      cells: cells.length, inRim, clearM: round3(failing.get(worst)), r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
+      cells: cells.length, inRim, clearM: round3(map.get(worst)), r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
       turret: labels[by.get(worst)], hull: labels[hullBy[worst]],
     };
   }).sort((a, b) => a.clearM - b.clearM);
-  return { patches: found, minClear };
+  return { patches: describe(failing), overhang: describe(beyond), minClear };
 }
 
 /** (b) at rest: the hull's tops standing over the turret's foot just outside it. */
@@ -300,7 +307,8 @@ export function measureTurretDeck(root, receipt) {
   turretRig.traverse((object) => { if (object.name === COLLAR_NAME && object.visible !== false) collared = true; });
   const rest = turretRig.quaternion.clone();
   const axis = new THREE.Vector3(0, 1, 0), turn = new THREE.Quaternion();
-  let props = null, worst = null, worstYaw = 0, yawsFailing = 0, minClear = Infinity;
+  let props = null, worst = null, worstYaw = 0, yawsFailing = 0, minClear = Infinity, overhang = null, overhangYaws = 0,
+    overhangYaw = 0;
   try {
     for (let step = 0; step < YAWS; step++) {
       // a turn about the ring's own (rig-local) vertical axis, as a traverse turns it
@@ -310,6 +318,11 @@ export function measureTurretDeck(root, receipt) {
       const deck = judgeDeck(grid, turret, collared);
       minClear = Math.min(minClear, deck.minClear);
       if (deck.patches.length) yawsFailing++;
+      if (deck.overhang.length) overhangYaws++;
+      if (deck.overhang.length && (!overhang || deck.overhang[0].clearM < overhang[0].clearM)) {
+        overhang = deck.overhang;
+        overhangYaw = Math.round((step / YAWS) * 360);
+      }
       if (deck.patches.length && (!worst || deck.patches[0].clearM < worst[0].clearM
         || (deck.patches[0].clearM === worst[0].clearM && deck.patches.length > worst.length))) {
         worst = deck.patches;
@@ -322,7 +335,8 @@ export function measureTurretDeck(root, receipt) {
   }
   return {
     collared, deck: worst ?? [], deckYaws: yawsFailing, worstYawDeg: worst ? worstYaw : null,
-    minClearM: Number.isFinite(minClear) ? round3(minClear) : null,
+    minClearM: Number.isFinite(minClear) ? round3(minClear) : null, overhang: overhang ?? [], overhangYaws,
+    overhangYawDeg: overhang ? overhangYaw : null,
     props: props.patches, footMinOverDeckM: props.footMinOverDeckM,
   };
 }
@@ -333,14 +347,16 @@ export function measureTurretDeck(root, receipt) {
  * measured but never fail (a tank another lane owns).
  */
 export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] } = {}) {
-  let turreted = 0, noReceipt = 0;
+  let turreted = 0;
+  const missing = [];
   const failures = [];
   return {
     check(id, tank) {
       const root = tank.root;
       if (!root.getObjectByName('rig_turret')) return;
       const receipt = combatAnatomyCalibration(id)?.turretRing;
-      if (!receipt || !(receipt.rimR > 0.15)) { noReceipt++; report?.push({ id, noReceipt: true }); return; }
+      if (NO_TURRET_IDS.includes(id)) { report?.push({ id, noTurret: true }); return; }
+      if (!receipt || !(receipt.rimR > 0.15)) { missing.push(id); report?.push({ id, noReceipt: true }); return; }
       const verdict = measureTurretDeck(root, receipt);
       if (!verdict) return;
       turreted++;
@@ -348,7 +364,7 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
       const own = root.getObjectByName('rig_turret').userData;
       const knobs = Object.fromEntries(['turretSeatKeepR', 'turretSeatRiseM', 'turretSeatReadM', 'turretSeatMinY',
         'turretSeatCollar'].filter((key) => own[key] !== undefined).map((key) => [key, own[key]]));
-      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, footR: receipt.footR, knobs, ...verdict };
+      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, footR: receipt.footR, baseR: round3((receipt.footR ?? receipt.rimR) + BASE_MARGIN_M), knobs, ...verdict };
       report?.push(row);
       if (exclude.includes(id)) return;
       const allowed = carry[id] ?? { deck: 0, props: 0 };
@@ -356,11 +372,12 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
     },
     finish() {
       if (report) return;
+      if (missing.length) throw new Error(`turretDeck: turreted tanks without a ring receipt: ${missing.join(', ')}`);
       if (failures.length) {
         throw new Error(`turretDeck: ${failures.length} tank(s) with a turret face within ${DECK_CLEAR_M} m of the deck `
           + `or a hull prop over the turret's foot:\n${failures.map((row) => JSON.stringify(row)).join('\n')}`);
       }
-      if (turreted < 150) throw new Error(`turretDeck: coverage regressed (${turreted} turreted tanks, ${noReceipt} without a ring receipt)`);
+      if (turreted < 150) throw new Error(`turretDeck: coverage regressed (${turreted} turreted tanks)`);
     },
   };
 }

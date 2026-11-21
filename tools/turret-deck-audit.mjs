@@ -26,5 +26,6 @@ await runFleetPass({
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);
 const offenders = report.filter((row) => row.deck?.length || row.props?.length);
-console.log(`turret-deck: ${report.length} turreted rows, ${report.filter((row) => row.noReceipt).length} without a ring receipt, `
+console.log(`turret-deck: ${report.length} rows, ${report.filter((row) => row.noReceipt).length} without a ring receipt, `
+  + `${report.filter((row) => row.noTurret).length} no-turret, `
   + `${offenders.length} with a patch; ${out}`);
