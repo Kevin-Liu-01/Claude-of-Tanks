@@ -1,21 +1,41 @@
 # Localization
 
-Claude of Tanks ships English (`en-US`) and Simplified Chinese (`zh-CN`). The
-public URL alias for Chinese is `/cn`: `/cn/`, `/cn/home`, `/cn/gallery`,
-`/cn/studio`, `/cn/docs`, and every indexed `/cn/docs/*` topic are first-class
-routes. The alias is intentionally shorter than the canonical locale code;
-HTML `lang`, Open Graph locale, Intl formatting, and hreflang use `zh-CN`.
+Claude of Tanks ships seven locales. `src/ui/localeRouting.ts` `LOCALE_RECORDS`
+is the one table every owner reads (routing, the build's catalog chunks, the
+generated pages, the sitemap, the middleware's prefixes and the switchers):
 
-The language control is available in the shared public navigation, directly in
-the Garage navigation (or its compact menu), and under **Settings → Language**.
-The selection is stored as `cot.locale`.
+| Locale | URL prefix | Name |
+|---|---|---|
+| `en-US` | (none) | English (source and fallback) |
+| `zh-CN` | `/cn` | 简体中文 |
+| `es` | `/es` | Español |
+| `ja` | `/ja` | 日本語 |
+| `de` | `/de` | Deutsch |
+| `pt-BR` | `/pt` | Português |
+| `ru` | `/ru` | Русский |
+
+Under each prefix `/`, `/home`, `/gallery`, `/studio`, `/docs`, and every
+indexed `/docs/*` topic are first-class routes. The prefixes are intentionally
+shorter than the canonical codes; HTML `lang`, Open Graph locale, Intl
+formatting, and hreflang use the codes. Adding a locale is one table row plus
+its catalog (gt writes it), its wrapper module (`i18nCatalog<Name>.ts`, one
+literal `import()` in `i18nDictionaries.ts`), the slice loaders, the middleware
+matcher and `LOCALE_PREFIXES`, and `vercel.json`'s `:lang(...)` patterns;
+`src/ui/localeRouting.selftest.mjs` and `tools/gt-enforcement.selftest.mjs`
+fail when those drift from the table.
+
+The language control is the shared public navigation's language menu (every
+locale's link in the footer and the phone menu), the Garage navigation's globe
+(or its compact menu), which opens the language picker, and **Settings →
+Language**. The selection is stored as `cot.locale`.
 Resolution follows explicit URL prefix, saved selection, supported browser
-language, then `en-US`. Switching language keeps the current route, query, and
-hash while adding or removing `/cn`.
+language (by primary subtag: `es-MX` reads `es`, `pt-PT` reads `pt-BR`), then
+`en-US`. Switching language keeps the current route, query, and hash while
+swapping the prefix.
 
 ## Current support
 
-The checked-in catalogs contain the same 3,040 keys. Coverage includes the boot
+The checked-in catalogs contain the same keys (6,034 at the seven-locale cutover, 2026-11-21). Coverage includes the boot
 flow, Garage, Settings, equipment, loading screens, battle HUD, killcam and
 results, private/LAN room controls, Tank Gallery, Scene Studio, and the public
 documentation surfaces. Route-specific titles, descriptions, Open Graph data,
@@ -28,8 +48,13 @@ current page. Most game screens are assembled once, so the reload is
 intentional: it guarantees one language across the whole surface instead of
 leaving stale labels in an already-created Garage or battle. Public links are
 localized both when mounted and at click time, covering late-rendered manual
-topics as well as static navigation. Unknown `/cn/*` documents retain a real
-localized HTTP 404 response.
+topics as well as static navigation. Unknown prefixed documents (`/cn/*`,
+`/es/*`, ...) retain a real localized HTTP 404 response.
+
+Content that only Chinese carries beyond the catalog (the zh label floor, the
+Chinese social cards, crew-line captions, Gallery shot and fleet-take titles)
+falls back to English in the other locales. A Japanese document names the
+Japanese system faces in place of the Chinese ones (`src/ui/typeFaces.ts`).
 
 The following content intentionally remains source-language content:
 
@@ -48,21 +73,27 @@ The following content intentionally remains source-language content:
   document language, and `Intl` formatting.
 - `src/ui/i18nDictionaries.ts` holds the dictionaries the document has loaded
   and ships no catalog itself (see "Page catalogs" below).
-- `src/ui/localeRouting.ts` owns the `/cn` alias, route manifest, localized
-  links, redirects, and route preservation.
+- `src/ui/localeRouting.ts` owns the locale table and prefixes, route manifest,
+  localized links, the alternate-language graph, redirects, and route
+  preservation.
 - `src/ui/i18nCatalog.en-US.json` is the source catalog.
-- `src/ui/i18nCatalog.zh-CN.json` is the reviewed Simplified Chinese catalog.
+- `src/ui/i18nCatalog.<locale>.json` are the translated catalogs (zh-CN
+  reviewed; es, ja, de, pt-BR and ru machine-translated through gt on
+  2026-11-21, pending review).
 - `src/ui/i18nCatalog.en-US.metadata.json` supplies General Translation with
   per-key terminology and placeholder context for discovery and invitation copy.
-- `src/ui/i18nCatalog.ts` registers both full catalogs for server and build-time
+- `src/ui/i18nCatalog.ts` registers every full catalog for server and build-time
   code (the middleware, the Vite config, the page generator, receipts); browser
   code never imports it.
 - `src/presentation/staticI18n.ts` translates static public-page text and
   attributes. `data-i18n-html` is restricted to source-controlled rich copy.
 - `src/presentation/localizedHtml.ts` owns crawl-time language, route metadata,
   canonical/hreflang, Open Graph locale, and JSON-LD route localization.
-- `tools/generate-localized-pages.mjs` materializes the `/cn` HTML shells after
-  every build; `tools/generate-locale-sitemap.mjs` owns the paired sitemap graph.
+- `tools/generate-localized-pages.mjs` materializes each prefix's HTML shells
+  after every build; `tools/generate-locale-sitemap.mjs` owns the sitemap's
+  alternate-language graph; `tools/docs-prerender.mjs` writes each locale's
+  prerendered chapters (`src/docs/topicPrerender.<locale>.json`) and search
+  index (`src/docs/searchIndex.<locale>.json`).
 
 ## Page catalogs
 

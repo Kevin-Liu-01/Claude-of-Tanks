@@ -12,4 +12,9 @@ import { residentSlice } from './i18nSlices.ts';
 export const ensureFleetStrings = residentSlice({
   'en-US': () => import('virtual:cot-i18n-fleet/en-US'),
   'zh-CN': () => import('virtual:cot-i18n-fleet/zh-CN'),
+  es: () => import('virtual:cot-i18n-fleet/es'),
+  ja: () => import('virtual:cot-i18n-fleet/ja'),
+  de: () => import('virtual:cot-i18n-fleet/de'),
+  'pt-BR': () => import('virtual:cot-i18n-fleet/pt-BR'),
+  ru: () => import('virtual:cot-i18n-fleet/ru'),
 });

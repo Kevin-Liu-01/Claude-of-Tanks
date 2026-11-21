@@ -50,6 +50,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
     open: { folded: ['button[data-garage-panel="equipment"]'] } },
   // (a folded layout shows no Compare row: showroom.css)
   'garage-rival': { screen: 'garage', owner: GARAGE, box: menuBox('garage-rival'), open: { docked: RIVAL_OPEN } },
+  // the language menu, opened from the bar's globe (its own trigger stays hidden)
+  'garage-language': { screen: 'garage', owner: GARAGE, box: menuBox('garage-language'), open: { docked: ['[data-nav="locale"]'] } },
   'garage-staging': { screen: 'garage', owner: GARAGE, box: menuBox('garage-staging'), open: { docked: ['[data-picker-menu="garage-staging"]'] } },
   'garage-quick-mode': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-mode'), open: { docked: ['[data-battle-quick]'], folded: ['[data-battle-quick]'] } },
   'garage-quick-battlefield': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-battlefield'), open: {} },
@@ -86,6 +88,9 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'settings-crew-voice': { screen: 'settings', owner: 'src/ui/settings.ts', box: menuBox('settings-crew-voice'), on: 'settings',
     open: { docked: [...SETTINGS_OPEN, '[data-tab="sound"]', '[data-picker-menu="settings-crew-voice"]'],
       folded: [...SETTINGS_OPEN, '[data-tab="sound"]', '[data-picker-menu="settings-crew-voice"]'] } },
+  'settings-language': { screen: 'settings', owner: 'src/ui/settings.ts', box: menuBox('settings-language'), on: 'settings',
+    open: { docked: [...SETTINGS_OPEN, '[data-tab="language"]', '[data-picker-menu="settings-language"]'],
+      folded: [...SETTINGS_OPEN, '[data-tab="language"]', '[data-picker-menu="settings-language"]'] } },
   'hud-editor': { screen: 'settings', owner: 'src/ui/hudEditor.ts', box: '.cot-modal', modal: true, on: 'settings', open: {} },
 
   // ---- the Tank Gallery and the public pages

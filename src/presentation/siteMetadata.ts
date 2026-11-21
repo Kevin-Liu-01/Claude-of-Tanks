@@ -1,10 +1,12 @@
 import { CANONICAL_ORIGIN } from '../../api/_lib/policy.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 // Resident dictionaries: the browser's runtime locale (playMenu, studio) or both on the server, where
-// middleware.ts imports the full catalog (src/ui/i18nCatalog.ts registers zh-CN).
+// middleware.ts imports the full catalog (src/ui/i18nCatalog.ts registers every locale).
 import { catalogText } from '../ui/i18nDictionaries.ts';
 import {
   hrefForLocale,
+  localeAlternates,
+  localeRecord,
   resolveLocalePath,
   type PublicRouteRecord,
   type SupportedLocale,
@@ -239,11 +241,8 @@ export function applySiteMetadataToDocument(document: Document, metadata: SiteMe
   const route = resolveLocalePath(canonicalUrl.pathname);
   const locale = route.locale ?? 'en-US';
   document.documentElement.lang = locale;
-  for (const [hreflang, href] of [
-    ['en-US', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'en-US')}`],
-    ['zh-CN', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'zh-CN')}`],
-    ['x-default', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'en-US')}`],
-  ] as const) {
+  for (const [hreflang, path] of localeAlternates(route.pathname)) {
+    const href = `${SITE_ORIGIN}${path}`;
     let alternate = document.head.querySelector<HTMLLinkElement>(
       `link[rel="alternate"][hreflang="${hreflang}"]`,
     );
@@ -261,7 +260,7 @@ export function applySiteMetadataToDocument(document: Document, metadata: SiteMe
   setMeta('meta[property="og:description"]', metadata.ogDescription || metadata.description);
   setMeta('meta[property="og:type"]', metadata.type);
   setMeta('meta[property="og:url"]', metadata.url);
-  setMeta('meta[property="og:locale"]', locale.replace('-', '_'));
+  setMeta('meta[property="og:locale"]', localeRecord(locale).og);
   setMeta('meta[property="og:image"]', metadata.image);
   setMeta('meta[property="og:image:type"]', metadata.image.endsWith('.png') ? 'image/png' : 'image/jpeg');
   setMeta('meta[property="og:image:alt"]', metadata.imageAlt);

@@ -8,11 +8,17 @@ import { catalogText } from './i18nCatalog.ts';
 import {
   currentLocationHrefForLocale,
   hrefForLocale,
+  LOCALE_RECORDS,
+  localeAlternates,
+  localeForBrowserTag,
   pathForLocale,
+  PREFIXED_LOCALES,
   PUBLIC_ROUTE_RECORDS,
   resolveLocalePath,
+  SUPPORTED_LOCALES,
   synchronizeLocaleRoute,
 } from './localeRouting.ts';
+import { LOCALE_PREFIXES } from '../../middleware.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -80,4 +86,45 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
   }
 }
 
-console.log(`localeRouting.selftest: ${PUBLIC_ROUTE_RECORDS.length} locale-prefixed routes verified`);
+// Every locale beyond English: its own prefix, its routes, its documents, and one table behind them all.
+assert.deepEqual(LOCALE_RECORDS.map(({ locale }) => locale), [...SUPPORTED_LOCALES], 'the table lists every supported locale');
+assert.deepEqual(LOCALE_PREFIXES, LOCALE_RECORDS.filter(({ prefix }) => prefix).map(({ prefix }) => prefix),
+  'middleware.ts LOCALE_PREFIXES (and its literal matcher) follow the locale table');
+const vercel = readFileSync(join(ROOT, 'vercel.json'), 'utf8');
+assert.ok(vercel.includes(`/:lang(${LOCALE_PREFIXES.join('|')})`), 'vercel.json routes every locale prefix');
+const middlewareSource = readFileSync(join(ROOT, 'middleware.ts'), 'utf8');
+for (const prefix of LOCALE_PREFIXES) {
+  assert.ok(middlewareSource.includes(`'/${prefix}', '/${prefix}/:path*'`), `middleware.ts matches /${prefix}`);
+}
+assert.equal(new Set(LOCALE_RECORDS.map(({ prefix }) => prefix)).size, LOCALE_RECORDS.length, 'prefixes are unique');
+for (const locale of PREFIXED_LOCALES) {
+  const { prefix } = LOCALE_RECORDS.find((record) => record.locale === locale);
+  assert.equal(resolveLocalePath(`/${prefix}/docs/build`).locale, locale);
+  assert.equal(resolveLocalePath(`/${prefix}/docs/build`).route?.id, 'docsBuild');
+  assert.equal(pathForLocale(`/cn/gallery`, locale), `/${prefix}/gallery`, 'a switch moves between prefixes');
+  assert.equal(pathForLocale('/', locale), `/${prefix}/`);
+  assert.equal(pathForLocale(`/${prefix}/gallery`, 'en-US'), '/gallery');
+}
+assert.equal(localeForBrowserTag('es-MX'), 'es');
+assert.equal(localeForBrowserTag('pt-PT'), 'pt-BR');
+assert.equal(localeForBrowserTag('zh-TW'), 'zh-CN');
+assert.equal(localeForBrowserTag('fr-FR'), null);
+assert.deepEqual(localeAlternates('/ja/docs').map(([hreflang]) => hreflang), [...SUPPORTED_LOCALES, 'x-default']);
+assert.equal(synchronizeLocaleRoute('de', {
+  pathname: '/es/docs', search: '', hash: '#x', replace: (href) => { replacement = href; },
+}), true);
+assert.equal(replacement, '/de/docs#x');
+for (const route of PUBLIC_ROUTE_RECORDS.filter(({ indexable }) => indexable)) {
+  const source = renderProductStats(readFileSync(join(ROOT, route.sourceHtml === 'index.html' || route.sourceHtml === '404.html' ? route.sourceHtml : `site/${route.sourceHtml}`), 'utf8'));
+  for (const locale of PREFIXED_LOCALES.filter((value) => value !== 'zh-CN')) {
+    const localized = localizeHtmlDocument(source, route, locale);
+    assert.match(localized, new RegExp(`<html\\b[^>]*lang="${locale}"`), `${route.id} (${locale}) declares its language`);
+    for (const hreflang of [...SUPPORTED_LOCALES, 'x-default']) {
+      assert.ok(localized.includes(`hreflang="${hreflang}"`), `${route.id} (${locale}) links its ${hreflang} alternate`);
+    }
+    assert.ok(localized.includes(`<title>${catalogText(locale, `metadata.${route.id}.title`).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</title>`) || route.id === 'game', `${route.id} (${locale}) takes its title`);
+  }
+}
+
+console.log(`localeRouting.selftest: ${PUBLIC_ROUTE_RECORDS.length} routes in ${SUPPORTED_LOCALES.length} locales verified`);

@@ -30,13 +30,20 @@
  * runtime stays reusable (src/ui/i18nChunkImport.selftest.mjs).
  */
 import { importCatalogChunk } from './i18nChunkImport.ts';
+import type { SupportedLocale } from './localeRouting.ts';
 
-export type CatalogLocale = 'en-US' | 'zh-CN';
+export type CatalogLocale = SupportedLocale;
 type Dictionary = Readonly<Record<string, string>>;
 
+// One literal import() per locale (the page-catalog scan and the build's game-catalog pruning read these specifiers).
 const FULL_CATALOGS: Readonly<Record<CatalogLocale, () => Promise<{ default: Dictionary }>>> = {
   'en-US': () => import('./i18nCatalogEnUS.ts'),
   'zh-CN': () => import('./i18nCatalogZhCN.ts'),
+  es: () => import('./i18nCatalogEs.ts'),
+  ja: () => import('./i18nCatalogJa.ts'),
+  de: () => import('./i18nCatalogDe.ts'),
+  'pt-BR': () => import('./i18nCatalogPtBR.ts'),
+  ru: () => import('./i18nCatalogRu.ts'),
 };
 
 const loaded: Partial<Record<CatalogLocale, Dictionary>> = {};

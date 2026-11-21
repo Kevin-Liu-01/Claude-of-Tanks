@@ -47,7 +47,7 @@ const KEY_ARGUMENT = Object.freeze({ t: 0, catalogText: 1 });
 // The catalogs themselves: data, not consumers. The scan neither reads nor follows them. (The registry imports the chunk
 // a document names through src/ui/i18nChunkImport.ts, which holds no import(); only a document's alias reaches the URL
 // import, src/ui/i18nChunkImport.browser.ts, so no module the scan follows has a computed specifier to excuse.)
-const CATALOG_MODULE_RE = /^src\/ui\/i18nCatalog(?:\.[a-zA-Z-]+\.json|EnUS\.ts|ZhCN\.ts)$/;
+const CATALOG_MODULE_RE = /^src\/ui\/i18nCatalog(?:\.[a-zA-Z-]+\.json|EnUS\.ts|ZhCN\.ts|Es\.ts|Ja\.ts|De\.ts|PtBR\.ts|Ru\.ts)$/;
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 const NAMESPACE_RE = /^[A-Za-z][\w-]*\./;
 const PREFIX_LITERAL_RE = /^[A-Za-z][\w-]*(?:\.[\w-]+)*\.$/;

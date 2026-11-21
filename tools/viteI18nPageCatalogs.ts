@@ -7,8 +7,8 @@
 //    its default export). A public page's catalog meta gains the chunks' URLs (`data-en-us`, `data-zh-cn`), which
 //    src/ui/i18nDictionaries.ts imports; the game's names none and loads the full catalogs (i18nCatalogEnUS.ts,
 //    i18nCatalogZhCN.ts) through the runtime's own imports. Every page preloads its English chunk beside the module
-//    entry and names its Chinese chunk in `<meta name="cot-locale-catalog" data-locale="zh-CN">`, which
-//    localizeHtmlDocument turns into a modulepreload on /cn/ documents.
+//    entry and names each other locale's chunk in `<meta name="cot-locale-catalog" data-locale="zh-CN">` (one per
+//    locale), which localizeHtmlDocument turns into a modulepreload on that locale's documents (/cn/, /es/, ...).
 //  - lazy (2026-10-08, the perf lane): a page's keys that only modules it reaches through import() can show are its
 //    lazy chunk (`assets/i18n.<catalog>~lazy.<locale>-<hash>.js`, named in the meta as `data-en-us-lazy`,
 //    `data-zh-cn-lazy`, the English one prefetched). Every literal import() of a module whose graph can show one of
@@ -50,6 +50,7 @@ import {
 } from './i18n-page-catalogs.mjs';
 import { LOCALE_CATALOG_META } from '../src/presentation/localizedHtml.ts';
 import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
+import { DEFAULT_LOCALE, isSupportedLocale, PREFIXED_LOCALES, SUPPORTED_LOCALES } from '../src/ui/localeRouting.ts';
 
 /** The modules every document runs at boot, bundled as one chunk. (261) The kit's surface stack (components/surfaceStack.ts,
  *  a leaf of 1.6 KB) rides here: every document opens a menu, a sheet or a dialog through it (the public nav's menu sheet,
@@ -71,13 +72,11 @@ export const CHUNK_IMPORT_ALIAS = Object.freeze({
 const BROWSER_CHUNK_IMPORT_RE = /[\\/]src[\\/]ui[\\/]i18nChunkImport\.browser\.ts$/;
 /** Vite's dynamic-import preload helper, which keeps a chunk of its own. */
 export const VITE_PRELOAD_HELPER = /^\0vite\/preload-helper\.js$/;
-const LOCALES: readonly CatalogLocale[] = ['en-US', 'zh-CN'];
+const LOCALES: readonly CatalogLocale[] = SUPPORTED_LOCALES;
 const URL_PREFIX = '/@cot-i18n/';
 const VIRTUAL_PREFIX = '\0cot-i18n:';
-const CATALOG_FILES: Readonly<Record<CatalogLocale, string>> = {
-  'en-US': 'src/ui/i18nCatalog.en-US.json',
-  'zh-CN': 'src/ui/i18nCatalog.zh-CN.json',
-};
+const CATALOG_FILES = Object.fromEntries(LOCALES.map((locale) => [locale, `src/ui/i18nCatalog.${locale}.json`])) as
+  Readonly<Record<CatalogLocale, string>>;
 type Dictionary = Readonly<Record<string, string>>;
 
 /** The dev URL, and the emitted chunk's module id, of one page catalog's dictionary (its boot or its lazy chunk). */
@@ -87,8 +86,8 @@ export function pageCatalogModuleUrl(catalog: string, locale: CatalogLocale, laz
 
 function virtualTarget(id: string): { catalog: string; locale: CatalogLocale; lazy: boolean } | null {
   if (!id.startsWith(VIRTUAL_PREFIX)) return null;
-  const match = /^([a-z][A-Za-z0-9]*)(~lazy)?\.(en-US|zh-CN)$/.exec(id.slice(VIRTUAL_PREFIX.length));
-  return match ? { catalog: match[1]!, locale: match[3] as CatalogLocale, lazy: !!match[2] } : null;
+  const match = /^([a-z][A-Za-z0-9]*)(~lazy)?\.([a-z]{2}(?:-[A-Z]{2})?)$/.exec(id.slice(VIRTUAL_PREFIX.length));
+  return match && isSupportedLocale(match[3]) ? { catalog: match[1]!, locale: match[3], lazy: !!match[2] } : null;
 }
 
 /** The call that loads a page's lazy chunk before an import() of a lazily reached module (none outside a document). */
@@ -140,9 +139,10 @@ export function insertModulePreload(html: string, href: string): string {
   return `${html.slice(0, at)}\n${link}${html.slice(at)}`;
 }
 
-const zhCatalogMeta = (href: string): HtmlTagDescriptor => ({
-  tag: 'meta', attrs: { name: LOCALE_CATALOG_META, 'data-locale': 'zh-CN', content: href }, injectTo: 'head',
-});
+/** One inert meta per locale other than English naming its chunk, which localizeHtmlDocument turns into a modulepreload
+ *  on that locale's documents. */
+const localeCatalogMetas = (files: Readonly<Record<CatalogLocale, string>>): HtmlTagDescriptor[] => PREFIXED_LOCALES
+  .map((locale) => ({ tag: 'meta', attrs: { name: LOCALE_CATALOG_META, 'data-locale': locale, content: files[locale] }, injectTo: 'head' }));
 
 /**
  * The page's catalog meta with each locale's chunk URL (`data-en-us`, `data-zh-cn`), which the runtime imports, and its
@@ -339,9 +339,8 @@ export function i18nPageCatalogs(): Plugin & { api: { gameCatalogKeys(): readonl
           if (catalog === FULL_CATALOG) return html;
           const { issues } = scanned();
           if (issues.length) ctx.server?.config.logger.warn(`cot-i18n-page-catalogs: ${issues.join('; ')}`);
-          return nameCatalogChunks(html, {
-            'en-US': pageCatalogModuleUrl(catalog, 'en-US'), 'zh-CN': pageCatalogModuleUrl(catalog, 'zh-CN'),
-          });
+          return nameCatalogChunks(html, Object.fromEntries(LOCALES.map((locale) => [locale, pageCatalogModuleUrl(catalog, locale)])) as
+            Record<CatalogLocale, string>);
         }
         const lazy = catalog !== FULL_CATALOG && !!scanned().catalogs[catalog]?.lazyKeys.length;
         const files = catalogChunkFiles(ctx.bundle ?? {}, catalog);
@@ -350,7 +349,7 @@ export function i18nPageCatalogs(): Plugin & { api: { gameCatalogKeys(): readonl
         // (the English lazy chunk is prefetched: at idle, so the first lazily reached module seldom waits on it)
         const prefetch: HtmlTagDescriptor[] = lazyFiles
           ? [{ tag: 'link', attrs: { rel: 'prefetch', href: lazyFiles['en-US'], as: 'script', crossorigin: '' }, injectTo: 'head' }] : [];
-        return { html: insertModulePreload(named, files['en-US']), tags: [zhCatalogMeta(files['zh-CN']), ...prefetch] };
+        return { html: insertModulePreload(named, files[DEFAULT_LOCALE]), tags: [...localeCatalogMetas(files), ...prefetch] };
       },
     },
   };

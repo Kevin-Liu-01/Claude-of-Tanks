@@ -9,8 +9,8 @@
 Browser-native Three.js armored combat game. The runtime combines a fixed-step
 60 Hz simulation, procedural first-party vehicle fleet, thirty-three battlefields,
 garage/showroom presentation, bots, Watch mode, armor/ballistics/modules, and
-mobile input, plus a public site (landing, Field Manual, Tank Gallery) in English
-and Chinese.
+mobile input, plus a public site (landing, Field Manual, Tank Gallery) in seven
+locales (en-US, zh-CN, es, ja, de, pt-BR, ru; docs/LOCALIZATION.md).
 Treat current `origin/main` as active shared work: isolate broad changes in a
 worktree and never stage generated tank work wholesale.
 

@@ -8,7 +8,7 @@ import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 // The server-side catalog (as middleware.ts loads it): both locales resident for the metadata helpers.
 import '../ui/i18nCatalog.ts';
 import { privateRoomMetadata, shareVideoForRoute, STUDIO_METADATA } from './siteMetadata.ts';
-import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
+import { hrefForLocale, PUBLIC_ROUTE_RECORDS, SUPPORTED_LOCALES } from '../ui/localeRouting.ts';
 import { localizeHtmlDocument } from './localizedHtml.ts';
 import { resolveVercelRequest, vercelJsonRoutes } from '../../tools/vercelRoutes.test-support.mjs';
 
@@ -178,8 +178,8 @@ assert.equal(attribute(topicFallback, 'link', 'rel', 'canonical', 'href'), `${SI
 const sitemap = readFileSync(join(ROOT, 'public/sitemap.xml'), 'utf8');
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 const expectedLocaleUrls = PUBLIC_ROUTE_RECORDS.filter(({ indexable }) => indexable)
-  .flatMap(({ pathname }) => [`${SITE}${pathname}`, `${SITE}${hrefForLocale(pathname, 'zh-CN')}`]);
-assert.deepEqual(sitemapUrls, expectedLocaleUrls, 'sitemap must exactly match both locale route sets');
+  .flatMap(({ pathname }) => SUPPORTED_LOCALES.map((locale) => `${SITE}${hrefForLocale(pathname, locale)}`));
+assert.deepEqual(sitemapUrls, expectedLocaleUrls, 'sitemap must exactly match every locale\'s route set');
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, 'sitemap URLs must be unique');
 assert.doesNotMatch(sitemap, /<priority>|<changefreq>/, 'sitemap must not invent update priorities');
 assert.match(sitemap, /xmlns:xhtml="http:\/\/www\.w3\.org\/1999\/xhtml"/);

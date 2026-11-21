@@ -3,7 +3,7 @@
  *
  * Design goals:
  * - One tiny `t(key, vars?)` function plus a string-key dictionary.
- * - Two-locale baseline: `en-US` (fallback) and `zh-CN`.
+ * - `en-US` (fallback) plus the locales localeRouting.ts LOCALE_RECORDS lists.
  * - Locale persists in `localStorage` under `cot.locale`.
  * - First boot reads `navigator.language`, falls back to `en-US`.
  * - Missing translations silently fall back to English (no throws).
@@ -26,13 +26,15 @@
  * reads the boot locale (route, storage, navigator) and awaits the document's
  * dictionaries (top-level await below), so `t()` stays synchronous for every
  * module that imports this one: English documents never download the zh-CN
- * catalog, Chinese ones never flash English (FE-P3), and a public page loads
+ * catalog, other locales never flash English (FE-P3), and a public page loads
  * only its own page catalog (i18nDictionaries.ts).
  */
 
 import { catalogText, loadLocaleDictionary, localeDictionary, registerLocaleDictionary } from './i18nDictionaries.ts';
 import {
   DEFAULT_LOCALE as FALLBACK_LOCALE,
+  isSupportedLocale,
+  localeForBrowserTag,
   resolveLocalePath,
   SUPPORTED_LOCALES,
   type SupportedLocale,
@@ -53,9 +55,7 @@ function readStoredLocale(): SupportedLocale | null {
   if (typeof localStorage === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && (SUPPORTED_LOCALES as readonly string[]).includes(raw)) {
-      return raw as SupportedLocale;
-    }
+    if (isSupportedLocale(raw)) return raw;
   } catch (_) {
     /* private mode / disabled storage — silently fall through */
   }
@@ -68,9 +68,8 @@ function readNavigatorLocale(): SupportedLocale | null {
     ? navigator.languages
     : [navigator.language || (navigator as { userLanguage?: string }).userLanguage || ''];
   for (const raw of candidates) {
-    const lower = raw.toLowerCase();
-    if (lower.startsWith('zh')) return 'zh-CN';
-    if (lower.startsWith('en')) return 'en-US';
+    const locale = localeForBrowserTag(raw);
+    if (locale) return locale;
   }
   return null;
 }
@@ -88,7 +87,7 @@ function ensureInitialised(): void {
   initialised = true;
   currentLocale = detectLocale();
   // An explicit locale route is also an explicit user preference. Persist it
-  // so later navigation from a copied `/cn/...` URL stays Chinese.
+  // so later navigation from a copied `/cn/...` (or `/es/...`) URL stays in that language.
   if (typeof window !== 'undefined' && resolveLocalePath(window.location?.pathname || '/').locale) {
     persist(currentLocale);
   }

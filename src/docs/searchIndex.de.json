@@ -1,0 +1,680 @@
+[
+ {
+  "href": "/docs/start",
+  "title": "Von der Garage zum Sieg",
+  "chapter": "Dein erstes Gefecht",
+  "text": "Fünf Schritte, die dich der Reihe nach begleiten."
+ },
+ {
+  "href": "/docs/start#garage",
+  "title": "Wähle einen Panzer",
+  "chapter": "Dein erstes Gefecht",
+  "text": "01 In der Garage erwartet dich deine Flotte aus 311 Panzern. Wähle einen aus: Sein Dossier zeigt Panzerung, Geschütz und Fahreigenschaften, und die Tank Gallery bietet einen vollständigen Einblick in seinen Aufbau."
+ },
+ {
+  "href": "/docs/start#deploy",
+  "title": "Ausrücken",
+  "chapter": "Dein erstes Gefecht",
+  "text": "02 Unter „Ausrücken“ legst du die Gefechtseinstellungen fest: einen von 14 Modi, eines von 33 Schlachtfeldern oder ein zufälliges, die Tageszeit und die Teamgrößen – 7 gegen 7 oder 14 gegen 14."
+ },
+ {
+  "href": "/docs/start#drive",
+  "title": "Fahren und zielen",
+  "chapter": "Dein erstes Gefecht",
+  "text": "03 Mit W A S D fährst du, mit der Maus drehst du den Turm. L-SHIFT wechselt ins Richtschützenvisier mit ×2 / ×4 / ×8, das Mausrad regelt den Zoom und CAPS hält das Geschütz ausgerichtet, während du dich umsiehst."
+ },
+ {
+  "href": "/docs/start#fire",
+  "title": "Feuern",
+  "chapter": "Dein erstes Gefecht",
+  "text": "04 Mit LMT feuerst du; halte die Taste gedrückt, um nach jedem Nachladen erneut zu feuern. Mit 1 2 3 wählst du die Munitionsart. Mit 4 5 6 setzt du Reparatursatz (35 s), Erste-Hilfe-Kasten (45 s) und Feuerlöscher (25 s) ein; die Abklingzeit eines Hilfsmittels beginnt erst, wenn es etwas bewirkt hat."
+ },
+ {
+  "href": "/docs/start#win",
+  "title": "Siegen",
+  "chapter": "Dein erstes Gefecht",
+  "text": "05 Im Standardgefecht gewinnst du, indem du innerhalb von 15 Minuten alle Gegner zerstörst; jeder andere Modus hat sein eigenes Ziel. Wirst du ausgeschaltet, folgt die Kamera deinen Verbündeten."
+ },
+ {
+  "href": "/docs/start#next",
+  "title": "Weiter",
+  "chapter": "Dein erstes Gefecht",
+  "text": "Tutorial im Spiel wiederholen Die Garagenführung und die Einführung ins erste Gefecht – noch einmal von Anfang an. Steuerung und Zuschauen Alle Tasten, die Touch-Steuerung und die drei Ansichten des Zuschauermodus. Spielmodi Ziel, Zeitlimit und Regeln jedes Modus – auf der Karte veranschaulicht."
+ },
+ {
+  "href": "/docs/controls",
+  "title": "Jede Taste, jede Ansicht",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Tastatur, Maus, Gamepad und Touch-Steuerung – dazu Drohne, Mitfahren und Steuerungsübernahme im Zuschauermodus."
+ },
+ {
+  "href": "/docs/controls#keys",
+  "title": "Tasten, Maus und Gamepad",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Bewegung Kampf Fahrzeug Flug Verbrauchsmaterialien Kamera Benutzeroberfläche\nAktion · Tasten · Gamepad · Vorwärts fahren · W · – · Rückwärts fahren · S · – · Nach links lenken · A · – · Nach rechts lenken · D · – · Handbremse · LEERTASTE · A · Panzer aufrichten · F · –\nAktion · Tasten · Gamepad · Geschütz abfeuern · LMT · RT · Scharfschützenmodus · L-SHIFT · LT · Munitionsplatz 1 · 1 · D-UP · Munitionsplatz 2 · 2 · D-LEFT · Munitionsplatz 3 · 3 · D-RIGHT · Automatische Zielerfassung · T · – · Panzerungseinblendung (Trefferzonen) · H · – · Angriffsansicht · X · –\nAktion · Tasten · Gamepad · Federung · E · LB · PALR · Q · – · Nachladen · C · D-DOWN · Drohne · V · – · Nebel · G · – · Beleuchtung · N · – · Automatisches Geschütz · B · –\nAktion · Tasten · Gamepad · Sensoransicht wechseln · I · – · Munitionsnachschub abwerfen · J · – · Reparaturnachschub abwerfen · K · –\nAktion · Tasten · Gamepad · Reparatursatz · 4 · X · Erste-Hilfe-Kasten · 5 · Y · Feuerlöscher · 6 · B\nAktion · Tasten · Gamepad · Turm- und Geschützarretierung (freies Zielen) · CAPS L-ALT · RB · Zielen / frei umsehen · RMT · – · Heranzoomen · WHEEL ↑ · – · Herauszoomen · WHEEL ↓ · –\nAktion · Tasten · Gamepad · Minikartenzoom · M · BACK · Schussprotokoll · L · – · Gefechtsdiagnose · F9 · – · Netzwerkdetails · F3 · – · Gefecht verlassen · F4 · – · Schießstand zurücksetzen · R · – · Bewegliche Ziele · Y · – · Einstellungsmenü · ESC · START"
+ },
+ {
+  "href": "/docs/controls#hold",
+  "title": "Gedrückthalten oder umschalten",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Unter Einstellungen › Barrierefreiheit kannst du für jede dieser Funktionen zwischen Gedrückthalten und einmaligem Drücken wählen. Geschütz abfeuern Handbremse Turm- und Geschützarretierung (freies Zielen) Teamlisten"
+ },
+ {
+  "href": "/docs/controls#touch",
+  "title": "Touch-Steuerung",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Auf Smartphones und Tablets werden im Gefecht eigene Bedienelemente angezeigt. Mit dem linken Daumen steuerst du den Joystick zum Fahren. Wische an einer beliebigen anderen Stelle, um zu zielen. Tippe auf „Feuern“, um zu schießen. Halte die Taste gedrückt und ziehe zum Zielen, lass zum Feuern los. Halte sie länger gedrückt, um weiterzufeuern. Ziehe in den Abbruchbereich, um den Schuss nicht abzugeben. „Visier“ öffnet das Richtschützenvisier. Ziehe zwei Finger zusammen oder auseinander, um die Zoomstufe des Visiers zu ändern. „Automatisches Zielen“ erfasst den Gegner, der dem Fadenkreuz am nächsten ist. „Rakete“ lässt den Panzer springen oder richtet ihn wieder auf, sofern der Modus Sprünge unterstützt."
+ },
+ {
+  "href": "/docs/controls#watch",
+  "title": "Zuschauermodus",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Schau dir von der Garage aus ein Bot-Gefecht an: „Zuschauen“ steht neben „Ausrücken“. Alle Plätze sind mit Bots besetzt, alle Panzer sind sichtbar und nichts wird aufgezeichnet. Das funktioniert in 13 Modi. Drohne Fliege frei über das Gefecht. Du startest in 70 m Höhe mit 14 m/s; das Mausrad ändert die Geschwindigkeitsstufe (4 / 8 / 14 / 24 / 40 / 64 m/s), und mit der Umschalttaste erhöhst du die Geschwindigkeit auf das ×2.5-Fache. W A S D Fliegen LEERTASTE C Steigen und sinken L-SHIFT Beschleunigen WHEEL ↑ WHEEL ↓ Geschwindigkeitsstufe ändern Mitfahren Folge einem beliebigen Panzer von hinten oder blicke durch sein Richtschützenvisier mit ×2 / ×4 / ×8. F Auf dem Panzer in der Bildmitte mitfahren Q E Nächster und vorheriger Panzer L-SHIFT Richtschützenvisier V Zurück zur Drohne Steuerung übernehmen Übernimm den Panzer, auf dem du mitfährst, und kämpfe selbst. Wird er zerstört, kehrst du nach 3.5 s zur Drohne zurück. ENTER Steuerung übernehmen oder abgeben"
+ },
+ {
+  "href": "/docs/controls#hud",
+  "title": "Dein HUD",
+  "chapter": "Steuerung und Zuschauen",
+  "text": "Einstellungen › Spielablauf › HUD-Layout bearbeiten: Verschiebe die einzelnen Elemente auf einer Schlachtfeldvorschau oder blende sie aus; Desktop, Smartphone-Hochformat und Smartphone-Querformat speichern jeweils ihre eigene Anordnung. Mit F10 wechselst du zum reduzierten Gefechts-HUD: Fadenkreuz, Entfernung, Zoom und Munition bleiben sichtbar, die anderen Elemente werden ausgeblendet. Drücke die Taste erneut, um sie wieder einzublenden. Aktiviere auf Touchscreens Minimales Gefechts-HUD in den Einstellungen; durch Tippen mit drei Fingern blendest du das vollständige HUD wieder ein."
+ },
+ {
+  "href": "/docs/modes",
+  "title": "Alle Arten zu kämpfen",
+  "chapter": "Spielmodi",
+  "text": "Alle Modi und ihre Regeln, direkt aus dem Spiel übernommen. Wähle einen unter „Ausrücken“."
+ },
+ {
+  "href": "/docs/modes#glance",
+  "title": "Auf einen Blick",
+  "chapter": "Spielmodi",
+  "text": "Dein Startpunkt Gegnerischer Startpunkt A A Zone oder Sektor Flaggenbasis Tor Ball\nModus · Siegbedingung · Zeitlimit · Wiedereinstieg · Teamgrößen · Standardgefecht · Alle Gegner zerstören · 15 Min. · – · 7 gegen 7 · Capture the Flag · 3 Eroberungen · 15 Min. · 6 s · 7 gegen 7 · Zone Control · 750 Punkte · 15 Min. · 6 s · 7 gegen 7 · Gravity Mode · 750 Punkte · 12 Min. · 6 s · 7 gegen 7 · Air Support · Wer zuerst 2000 erreicht · 12 Min. · 8 s · 7 gegen 7 · Waffenspiel · Ein Abschuss mit jedem der 5 Geschütze · 15 Min. · 4 s · 7 gegen 7 · Drohne · 20 Abschüsse · 10 Min. · 6 s · 7 gegen 7 · Realistisch · Alle Gegner zerstören · 15 Min. · – · 7 gegen 7 · Endless Horde · Die Angriffswellen überleben · – · – · 5 gegen 20 · Frontangriff · Alle Sektoren einnehmen, den letzten 20 s halten · 12 Min. · – · 4 gegen 12 · AC-130 · Die Hälfte zum Evakuierungspunkt eskortieren · 8 Min. · – · 5 gegen 12 · Juggernaut · Den Boss ausschalten oder bis zum Zeitablauf überleben · 10 Min. · 6 s · 1 gegen 12 · Infiziert · 3 Min. überleben · 3 Min. · 5 s · 10 gegen 5 · Turboball · 5 Tore · 10 Min. · 3 s · 7 gegen 7 · Proving Ground · Training ohne Wertung · – · 3 s · 5 Routen"
+ },
+ {
+  "href": "/docs/modes#team",
+  "title": "Teamgefechte",
+  "chapter": "Spielmodi",
+  "text": "Standardgefecht Vernichte das gegnerische Team, bevor die Zeit abläuft. Zeitlimit 15 Min. Teamgrößen 7 gegen 7 Wiedereinstieg – Capture the Flag Stiehl die gegnerische Flagge und bring sie zur eigenen Basis. Wer zuerst 3 Flaggen erobert, gewinnt. Zeitlimit 15 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 6 s Zone Control Erobere und halte drei Sektoren. Das erste Team mit 750 Punkten gewinnt. Zeitlimit 15 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 6 s Gravity Mode Die Schwerkraft sinkt auf 0.38 g, sodass jeder Panzer weite Sprünge macht. Halte die Zonen mit Wiedereinstiegen und Boost-Vorräten, bis ein Team 750 Punkte erreicht. Zeitlimit 12 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 6 s 0.38 g Schwerkraft +25 % Geschwindigkeit +20 % Wannenstabilität -10 % Schaden +11 % Nachladerate unbegrenzte Munition Sprung mit 9.5 m/s (F) ×3 Rückstoßschub Verstärkungskisten alle 22 s ×0.9 Aufprallstoß Rückprall bei Landungen: 30 % Fallschaden über 10.5 m/s Air Support Halte die drei Sektoren und sammle im Kampf Unterstützungspunkte. Hebe dein Fernglas, um an einer markierten Position einen Aufklärungsflug, Artilleriebeschuss, einen Bordwaffenangriff, einen Präzisionsbombenabwurf oder einen AC-130-Kreisflug anzufordern. Vor jedem Angriff wird die betroffene Seite gewarnt. Zeitlimit 12 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 8 s Aufklärung 120 Pkt. · 3 s Vorwarnzeit Artillerie 300 Pkt. · 6 s Vorwarnzeit Bordwaffenangriff 400 Pkt. · 5 s Vorwarnzeit Präzisionsbombe 450 Pkt. · 7 s Vorwarnzeit AC-130 800 Pkt. · 8 s Vorwarnzeit Waffenspiel Nach jeweils 2 bestätigten Abschüssen erhältst du die nächste Waffe. Schließe alle 5 Stufen ab, um deinem Team den Sieg zu sichern. Zeitlimit 15 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 4 s 2 Abschüsse pro Waffe · fünf Stufen unbegrenzte Munition Drohne Starte eine FPV-Angriffsdrohne von deinem Panzer aus. Steuere sie mit deiner Blickrichtung und fliege in einen Gegner, um sie zur Explosion zu bringen. Dein abgestellter Panzer bleibt verwundbar. Zeitlimit 10 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 6 s Realistisch Normale Aufklärung, verheerende Durchschläge. Schalte kritische Module aus, setze die Besatzung außer Gefecht oder bringe Munition zur Explosion. Kein schrittweiser Verlust von Wannen-TP und keine automatischen Reparaturen. Zeitlimit 15 Min. Teamgrößen 7 gegen 7 Wiedereinstieg – Nur Modulzerstörung und Besatzungsausfälle keine Verbrauchsmaterialien\nVerdant Fields\nVerdant Fields\nA A B B C C Verdant Fields\nA A B B C C Olympus Basin"
+ },
+ {
+  "href": "/docs/modes#survive",
+  "title": "Überleben und eskortieren",
+  "chapter": "Spielmodi",
+  "text": "Endless Horde Überlebe immer größere Wellen leicht zerstörbarer Gegner und jage schwebenden Reparaturvorräten nach. Zeitlimit – Teamgrößen 5 gegen 20 Wiedereinstieg – +100 % / -85 % Wannenstabilität unbegrenzte Munition horde erste Welle: 6, mit jeder Welle mehr 16 auf dem Feld · 8 s zwischen den Wellen 30 % Reparatur zwischen den Wellen Frontangriff Durchbrich die feindliche Linie: Erobere nacheinander drei Grabensektoren, wehre immer stärkere Gegenangriffe ab und halte dann den letzten Sektor. Zeitlimit 12 Min. Teamgrößen 4 gegen 12 Wiedereinstieg – +80 % / 0 % Wannenstabilität unbegrenzte Munition frontline Halte den letzten Sektor für 20 s 3 Verteidiger pro Sektor, 0 % Wannenstabilität AC-130 Beschütze verwundbare verbündete Fahrzeuge auf dem Weg zum Evakuierungspunkt. Rette mindestens die Hälfte, bevor sie zerstört werden oder die Zeit abläuft. Alle menschlichen Spieler leisten Luftunterstützung. Zeitlimit 8 Min. Teamgrößen 5 gegen 12 Wiedereinstieg – Alle Panzer sichtbar unbegrenzte Munition keine Verbrauchsmaterialien ac130 Juggernaut Werde zum gepanzerten Boss oder schließe dich den Jägern an. Jäger können wieder einsteigen. Zerstöre den Juggernaut, bevor die Zeit abläuft. Zeitlimit 10 Min. Teamgrößen 1 gegen 12 Wiedereinstieg 6 s Koloss: ×8 Wannenstruktur · ×0.5 Nachladezeit unbegrenzte Munition juggernaut Infiziert Überlebende haben 130% Gesundheit und kämpfen gegen einen Schwarm Infizierter mit 20% Gesundheit. Gefallene Überlebende schließen sich dem Schwarm an. Halte 3 Minuten durch. Zeitlimit 3 Min. Teamgrößen 10 gegen 5 Wiedereinstieg 5 s Überlebende werden nach ihrer Zerstörung infiziert +30 % / -80 % Wannenstabilität unbegrenzte Munition infected\nVerdant Fields\nE E Verdant Fields"
+ },
+ {
+  "href": "/docs/modes#arcade",
+  "title": "Arcade",
+  "chapter": "Spielmodi",
+  "text": "Turboball Blitzschnelle bewaffnete Panzer schieben oder schießen den Ball ins gegnerische Tor. Zeitlimit 10 Min. Teamgrößen 7 gegen 7 Wiedereinstieg 3 s 0.6 g Schwerkraft +85 % Geschwindigkeit +50 % Wannenstabilität -50 % Schaden +43 % Nachladerate unbegrenzte Munition keine Ausrüstung keine Verbrauchsmaterialien keine Modul-, Besatzungs- oder Brandschäden Sprung mit 13 m/s (F) ×12 Rückstoßschub ×2.5 Aufprallstoß Rückprall bei Landungen: 28 % Fallschaden über 15 m/s\nVerdant Fields"
+ },
+ {
+  "href": "/docs/modes#practice",
+  "title": "Übung",
+  "chapter": "Spielmodi",
+  "text": "Proving Ground Teste einen beliebigen Panzer auf einem vermessenen Schießstand: Panzerwannen als Ziele in festgelegten Entfernungen und Winkeln machen alle Durchschlagsergebnisse sichtbar. Keine Gegner, kein Zeitlimit, keine Aufzeichnung. Zeitlimit – Teamgrößen 5 Routen Wiedereinstieg 3 s Alle Panzer sichtbar unbegrenzte Munition keine Aufzeichnung"
+ },
+ {
+  "href": "/docs/tanks",
+  "title": "Die Flotte und ihre Ausstattung",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Was jede Klasse leistet, wie sich jede Rolle spielt und welche Ausrüstung und Hilfsmittel jeder Panzer mitführt."
+ },
+ {
+  "href": "/docs/tanks#classes",
+  "title": "Klassen",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Stufe X Kampfpanzer 211 AbramsX Stufe III Mittlerer Panzer 16 Centurion Mk 13 Stufe I Schwerer Panzer 1 KV-2 Stufe X Leichter Panzer 15 BMP-3M Dragun 125 Stufe X Schützenpanzer 39 Griffin 50 mm Stufe III Transportpanzer 3 M113AS4 Stufe X Jagdpanzer 8 Object 695 Stufe VI Flugabwehrpanzer 13 ItPsv Leopard 2 (Leopard 2 Marksman) Stufe X Feuerunterstützungsfahrzeug 5 ZTZ-100 Prototype Öffne einen beliebigen Panzer in der Tank Gallery"
+ },
+ {
+  "href": "/docs/tanks#roles",
+  "title": "Gefechtsrollen",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Die Rolle beschreibt die Spielweise des Panzers: Bots setzen ihn entsprechend ein, und in der Garage kannst du danach filtern. Durchbruch 85 Starke Panzerung und viele Trefferpunkte: führt den Vorstoß an und steckt Beschuss ein. Frontlinie 66 Ausgewogener Frontpanzer: Panzerung, Mobilität und Feuerkraft im Gleichgewicht. Flankierer 57 Schnell und wendig: greift die Flanken an und wechselt rasch die Stellung. Scharfschütze 27 Präzise Kanone mit hoher Reichweite: kämpft auf Distanz aus der Deckung heraus. Aufklärer 38 Klärt für das Team auf und vermeidet längere Gefechte. Unterstützung 38 Unterstützt die Panzer mit Maschinenkanonen, Lenkflugkörpern oder Unterstützungsfeuer."
+ },
+ {
+  "href": "/docs/tanks#tiers",
+  "title": "Stufen und Nationen",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Die Stufe eines Panzers entspricht seiner Spalte im Forschungsbaum seiner Nation. X 40 IX 42 VIII 35 VII 20 VI 27 V 23 IV 26 III 30 II 32 I 36 17 Nationen Sowjetunion 52 Deutschland 34 Vereinigte Staaten 32 Vereinigtes Königreich 28 China 25 Ukraine 19 Polen 18 Israel 16 Japan 15 Schweden 13 Frankreich 12 Dänemark 9 Südkorea 8 Italien 8 Australien 8 Brasilien 8 Südafrika 6"
+ },
+ {
+  "href": "/docs/tanks#equipment",
+  "title": "Ausrüstung",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Jeder Panzer wird mit 3 der 25 Ausrüstungsgegenstände ausgestattet, die du in der Garage auswählst. Feuerkraft Ansetzer -10% Nachladezeit Nur Fahrzeuge mit manuellem Ladesystem Vertikaler Stabilisator -20% Streuung während der Fahrt Nur moderne Panzer Verbesserter Richtantrieb -10% Einzielzeit Verbesserte Lüftung +2.5% Besatzungsleistung: Nachladen, Zielen, Sicht, Tarnung Lagerung der Bereitschaftsmunition -6% Nachladezeit, -15% Haltbarkeit des Munitionslagers Nur Fahrzeuge mit manuellem Ladesystem Feuerleitrechner -6% Einzielzeit, -10% Streuung während der Fahrt Nur moderne Panzer Wartungssatz für Ladeautomaten -6% Magazinnachladezeit, +50% Haltbarkeit von Ladeautomat und Munitionszuführung Nur Fahrzeuge mit Ladeautomat Mobilität Verbesserter Drehmechanismus +10% Wannen- und Turmdrehung Verstärktes Fahrwerk +50% Kettenhaltbarkeit Motorisierter Turmantrieb +20% Turmdrehung Nur moderne Panzer · Nur Fahrzeuge mit Turm Verstärkter Antriebsstrang +40% Motor- und +60% Getriebehaltbarkeit Schutz Splitterschutzverkleidung -25% HE-Flächenschaden, -50% Besatzungstreffer durch Flächenwirkung Seitenschürzen -12% HE-Flächenschaden, +25% Kettenhaltbarkeit Turmdrehkranzschutz +60% Haltbarkeit des Turmdrehkranzes und +30% der Geschützaufhängung Nur Fahrzeuge mit Turm Blendenpanzerung +40% Haltbarkeit des Geschützes und +30% der Optik Überlebensfähigkeit Werkzeugkiste +25% Reparaturgeschwindigkeit Nasses Munitionslager +50% Haltbarkeit des Munitionslagers Sicherheitskraftstofftanks +50% Haltbarkeit der Kraftstofftanks, -50% Motorbrandrisiko Automatische Feuerlöscher Brände dauern halb so lange und erlöschen 2-mal so oft von selbst Nur moderne Panzer Löschdecken Brände dauern 25% kürzer und erlöschen 1.5-mal so oft von selbst Aufklärung Vergütete Optik +10% Sichtweite Scherenfernrohr +25% Sichtweite im Stand Tarnnetz +12% Tarnung im Stand Abgasblenden +4% Tarnung während der Fahrt und im Stand Wärmebildvisier +15% Sichtweite Nur moderne Panzer"
+ },
+ {
+  "href": "/docs/tanks#kits",
+  "title": "Hilfsmittel, Nebel und die Drohne",
+  "chapter": "Panzer und Ausrüstung",
+  "text": "Hilfsmittel sind unbegrenzt einsetzbar; jedes hat eine Abklingzeit, die erst beginnt, wenn es tatsächlich etwas bewirkt hat. Feldreparatursatz Macht alle beschädigten Module wieder funktionsfähig · 35 s Abklingzeit Großer Reparatursatz Repariert alle Module, danach 60 s lang +50% Selbstreparatur · 60 s Abklingzeit Ersatzkettenglieder Macht beide Ketten wieder funktionsfähig · 12 s Abklingzeit Erste-Hilfe-Kasten Macht alle verletzten Besatzungsmitglieder wieder einsatzbereit · 45 s Abklingzeit Feldrationen 40 s: Nachladezeit −5%, Einzielzeit −8% · 60 s Abklingzeit Feuerlöscher Löscht einen Brand · 25 s Abklingzeit Automatische Feuerlöschanlage 45 s: Entstehende Brände werden sofort gelöscht · 60 s Abklingzeit Drehzahlbegrenzer überbrücken 10 s: Motorleistung +25%; kann den Motor belasten · 45 s Abklingzeit Bereitschaftsmunition auffüllen Füllt jeden Munitionstyp um 30% seiner Staukapazität auf · 90 s Abklingzeit Nebelgranaten-Nachschub Eine zusätzliche Nebelsalve, bis zu einem Vorrat von 3 · 40 s Abklingzeit Frisches Laub 60 s: +12% Tarnung im Stand · 60 s Abklingzeit APS-Abfangsystem 20 s: fängt die nächste von vorn anfliegende Rakete oder HEAT-Granate ab · 45 s Abklingzeit IR-Störsender 12 s: Auf dich gelenkte Raketen fliegen ungelenkt weiter · 40 s Abklingzeit Nebel Eine Nebelwand, die 18 s bestehen bleibt; 28 s zwischen den Einsätzen. Drohne 40 s Akkulaufzeit, 850 m Verbindungsreichweite und 350 m Aufklärungsreichweite; nach dem Verlust 25 s Wartezeit bis zur nächsten Drohne. Dach-MG Feuert selbstständig auf Gegner und Drohnen in Reichweite; mit B schaltest du um."
+ },
+ {
+  "href": "/docs/fleet",
+  "title": "Alle Panzer im Vergleich",
+  "chapter": "Alle Panzer",
+  "text": "Alle Panzer im Spiel nach Nation, Stufe, Epoche, Klasse und Rolle – jeweils mit einem Link zu ihrem Dossier in der Tank Gallery."
+ },
+ {
+  "href": "/docs/fleet#fleet",
+  "title": "Die Flotte",
+  "chapter": "Alle Panzer",
+  "text": "Alle Nationen Alle Stufen Alle Epochen Alle Klassen Alle Rollen Präsentationskarte Winkel Seite 311 Panzer Stufe X BMP-3M Dragun 125 Leicht Stufe X Kurganets-25 Schützenpanzer Stufe X Object 148 Proto KPz Stufe X Object 195 KPz Stufe X Object 695 JPz Stufe X T-14 152 KPz Stufe X T-14 Armata KPz Stufe X T-90AM II KPz Stufe X T-90M Proryv KPz Stufe IX Object 477 Molot KPz Stufe IX T-90A KPz Stufe IX T-90A Burlak KPz Stufe IX T-90A Burlak Prototype KPz Stufe IX T-90A obr. 2004 KPz Stufe IX T-90A obr. 2006 KPz Stufe IX T-90A Vladimir KPz Stufe IX T-90AM KPz Stufe IX T-90MS obr. 2011 KPz Stufe IX T-90MS Tagil KPz Stufe IX T-90SM KPz Stufe IX T-90SM obr. 2013 KPz Stufe VIII T-72B3 Bastion-M KPz Stufe VIII T-72B3M Bulat-M KPz Stufe VIII T-80U Bars-M KPz Stufe VII Object 292 KPz Stufe VII T-90 KPz Stufe VII T-90 obr. 1992 KPz Stufe VI BMPT T-90 Feuerunterstützung Stufe VI BMPT Terminator Feuerunterstützung Stufe VI Pantsir-S1 (tracked) FlakPz Stufe VI T-72B3 KPz Stufe VI T-72B3M obr. 2016 KPz Stufe VI T-72B3M obr. 2022 KPz Stufe VI T-80U KPz Stufe VI T-80UK KPz Stufe V 2K22M Tunguska-M FlakPz Stufe V BMPT Terminator 2 Feuerunterstützung Stufe V TOS-1A Tagil Feuerunterstützung Stufe IV T-80B KPz Stufe IV T-80BV KPz Stufe III T-64BV KPz Stufe III T-64BV1 KPz Stufe III T-72B obr. 1987 KPz Stufe III T-72BU KPz Stufe III T-72BU obr. 1989 KPz Stufe III T-80 KPz Stufe II BMP-3 Schützenpanzer Stufe II T-62MV-1 KPz Stufe I BMP-2 Schützenpanzer Stufe I KV-2 Schwer Stufe I T-55A Mittel Stufe I T-62 obr. 1975 KPz Stufe X KF51 EVO KPz Stufe X KF51 Panther KPz Stufe X KF51-U KPz Stufe X Leopard 2A7V KPz Stufe IX Leopard 2A5 KPz Stufe IX Leopard 2A5M KPz Stufe IX Leopard 2A6 KPz Stufe IX Leopard 2A6M KPz Stufe VIII Leopard 2 Improved KPz Stufe VIII Leopard 2 Revolution KPz Stufe VIII Leopard 2 Revolution Proto KPz Stufe VIII Leopard 2A4 KPz Stufe VIII Leopard 2A4 OTCO KPz Stufe VIII Leopard 2A4 V KPz Stufe VIII Leopard 2A4M KPz Stufe VIII Leopard 2A4M CAN KPz Stufe VI Puma S1 Schützenpanzer Stufe VI SPz Wotan Schützenpanzer Stufe V Flakpanzer Gepard 1A2 FlakPz Stufe V KF41 Lynx Schützenpanzer Stufe V Marder 2 Schützenpanzer Stufe IV Leopard 2A3 KPz Stufe IV Leopard 2A3 OTCO KPz Stufe IV Schützenpanzer Puma Schützenpanzer Stufe III Leopard 2 Prototype KPz Stufe III Leopard 2A2 KPz Stufe III MBT-70 KPz Stufe II M48 Super KPz Stufe II Schützenpanzer Marder 1A3 Schützenpanzer Stufe I Jagdpanzer E100 JPz Stufe I Kpz M48A2GA2 KPz Stufe I Leopard 1A2A1 KPz Stufe I Leopard 1A5 KPz Stufe I M41 (Bundeswehr) Leicht Stufe X AbramsX KPz Stufe X Griffin 50 mm Schützenpanzer Stufe X M1A2 Abrams SEPv3 KPz Stufe X M1E3 Abrams KPz Stufe IX M1A2 Abrams KPz Stufe IX M1A2 Abrams SEPv2 KPz Stufe IX M1A2 Abrams TUSK KPz Stufe VIII M1A1 Abrams KPz Stufe VIII M1A1 Abrams AIM KPz Stufe VIII M1A1 Abrams FEP KPz Stufe VIII M1A1 Abrams HA KPz Stufe VIII M1A1 Abrams HC KPz Stufe VIII M1A1 Abrams SA KPz Stufe V M3A3 Bradley CFV Schützenpanzer Stufe V M6 Linebacker FlakPz Stufe IV M163 VADS FlakPz Stufe IV M551A1 TTS Leicht Stufe III Griffin Viper JPz Stufe II M113A3 TPz Stufe II M2A2 Bradley Schützenpanzer Stufe II M3A2 Bradley Schützenpanzer Stufe II M551 Sheridan Leicht Stufe II M60A2 Starship KPz Stufe II T49 Leicht Stufe II T95 (152 mm) JPz Stufe I M41A3 Walker Bulldog Leicht Stufe I M46 Patton Mittel Stufe I M47 Patton Mittel Stufe I M48A3 Patton KPz Stufe I M48A5 Patton KPz Stufe I M60A1 Patton KPz Stufe I M60A3 KPz Stufe X Challenger 3 KPz Stufe X Challenger 3 TD KPz Stufe X Challenger 3 TD (RWS) KPz Stufe IX Challenger 2 KPz Stufe IX Challenger 2E KPz Stufe VIII Challenger 1 Mk 1 KPz Stufe VIII Challenger 1 Mk 2 KPz Stufe VIII Challenger 1 Mk 3 KPz Stufe VIII Challenger 3 Prototype KPz Stufe VIII FV4030 /5 KPz Stufe VIII FV4030 /6 KPz Stufe VI ItPsv Leopard 2 (Leopard 2 Marksman) FlakPz Stufe V Ajax Schützenpanzer Stufe V Marksman ( T-55 ) FlakPz Stufe V Warrior TES(H) Schützenpanzer Stufe IV Chieftain Mk 10 KPz Stufe IV Chieftain Mk 9 KPz Stufe IV FV4034 KPz Stufe III Centurion Mk 13 Mittel Stufe III Centurion Mk 5/2 Mittel Stufe III FV510 Warrior MILAN Schützenpanzer Stufe II Ares APC TPz Stufe II Centurion Mk 3 Mittel Stufe II Centurion Mk 5 AVRE Mittel Stufe II Chieftain Mk 3 KPz Stufe II Chieftain Mk 5 KPz Stufe II FV510 Warrior Schützenpanzer Stufe II Vickers MBT Mk 1 KPz Stufe X Type 100 IFV Schützenpanzer Stufe X ZTZ-100 KPz Stufe X ZTZ-100 Prototype Feuerunterstützung Stufe X ZTZ-20 KPz Stufe X ZTZ-20 Prototype KPz Stufe X ZTZ-99A2 KPz Stufe IX ZTZ-99A KPz Stufe IX ZTZ-99A2 Qinglong KPz Stufe VIII VT-4A1 KPz Stufe VII T-72B3 Qilin KPz Stufe VII T-72B3 Zhuque KPz Stufe VII T-72B3M Kunlun KPz Stufe VII T-72B3M Xuanwu KPz Stufe VII T-80U Yun KPz Stufe VII VT-4A1 Baihu KPz Stufe VI PGZ-09 FlakPz Stufe VI Type 96-72M Léi KPz Stufe VI Type 96-80 Fēng KPz Stufe VI Type 96B KPz Stufe VI ZTZ-99 Longwei KPz Stufe V PGZ-95 FlakPz Stufe V Type 96-72 Lóng (Concept) KPz Stufe III AFT-10 JPz Stufe I Type 59 Mittel Stufe I ZTZ-85-III KPz Stufe X T-84BM Oplot-M KPz Stufe X T-84BM Oplot-T KPz Stufe IX Challenger 2 (Ukraine) KPz Stufe IX Leopard 2A6 UA KPz Stufe IX M1A1 SA (Ukraine) KPz Stufe IX M1A2 Abrams UA KPz Stufe VII T-72B3 Sich KPz Stufe VII T-72B3M Hetman KPz Stufe VII T-72B3M Hetman II KPz Stufe VII T-80U Zoria KPz Stufe VI Object 478DU2 KPz Stufe VI T-80U Kursk KPz Stufe VI T-84U Oplot KPz Stufe V T-80BV (Ukraine) KPz Stufe IV CV9040C (Ukraine) Schützenpanzer Stufe IV M2A3 Bradley (Ukraine) Schützenpanzer Stufe IV T-64B1V mod. 2022 KPz Stufe IV T-64BM1M KPz Stufe IV T-64BV mod. 2017 KPz Stufe X PL-01 Leicht Stufe X PL-01 (105) Leicht Stufe X PT-84 Orzeł KPz Stufe X PT-84 Żbik KPz Stufe X Upiór IFV Schützenpanzer Stufe IX PT-84 Sokół KPz Stufe VII T-72B3M Wilk KPz Stufe VII T-80U Husarz KPz Stufe VI PZA Loara FlakPz Stufe VI T-72B3 Zubr KPz Stufe VI T-72B3 Zubr II KPz Stufe V Borsuk Schützenpanzer Stufe V PT-91A Twardy KPz Stufe V T-72 Ryś (Concept) KPz Stufe IV PT-64 Tur KPz Stufe IV PT-91M Pendekar KPz Stufe IV T-72M1 Jaguar KPz Stufe III BWP-1 (Bojowy Wóz Piechoty 1) Schützenpanzer Stufe IX Merkava Mk 4 KPz Stufe IX Merkava Mk 4 Barak KPz Stufe IX Merkava Mk 4 Trophy KPz Stufe IX Merkava Mk 4B KPz Stufe VIII Merkava Mk 3 Baz KPz Stufe VIII Merkava Mk 3C KPz Stufe VIII Merkava Mk 3D KPz Stufe IV Namer IFV Schützenpanzer Stufe III Merkava Mk 2B KPz Stufe III Merkava Mk 2D KPz Stufe III Sho't Kal Mittel Stufe II Magach 7C KPz Stufe II Sabra Mk 2 KPz Stufe I Magach 3 KPz Stufe I Magach 6B KPz Stufe I Merkava Mk 1B KPz Stufe X Raijū IFV Schützenpanzer Stufe X Type 10 KPz Stufe X Type 10 Kaitaku KPz Stufe IX Type 10 ( TK-X ) KPz Stufe IX Type 10B KPz Stufe VIII STC-1 KPz Stufe VIII STC-2 KPz Stufe VIII Type 90 KPz Stufe VIII Type 90 (B) KPz Stufe VI Type 89 Schützenpanzer Stufe V Type 87 Self-Propelled Anti-Aircraft Gun FlakPz Stufe II Hayate IFV Schützenpanzer Stufe I M41 (JGSDF) Leicht Stufe I STB-1 KPz Stufe I Type 74 KPz Stufe IX Stridsvagn 121 KPz Stufe IX Stridsvagn 122 KPz Stufe VII CV90 Mk 4 Schützenpanzer Stufe VII CV90 Mk 4 Concept Schützenpanzer Stufe V Lvkv 9040 FlakPz Stufe IV CV90 Schützenpanzer Stufe IV CV9040C Schützenpanzer Stufe III Strv 105 Mittel Stufe II CV90105 TML Leicht Stufe II Stridsvagn 103A JPz Stufe II Stridsvagn 103B JPz Stufe II Stridsvagn 81 Mittel Stufe I UDES 03 JPz Stufe X Leclerc XLR KPz Stufe IX AMX 56 KPz Stufe IX Leclerc S2 KPz Stufe IX Leclerc SXXI KPz Stufe VIII Leclerc S1 KPz Stufe IV AMX-10P 25 Schützenpanzer Stufe III AMX-10P Schützenpanzer Stufe III AMX-40 KPz Stufe III AMX-40 Prototype KPz Stufe I AMX-30 KPz Stufe I AMX-30B KPz Stufe I AMX-30B2 KPz Stufe X Leopard 2A7 DK KPz Stufe IX Leopard 2A5 DK KPz Stufe VIII Christian II KPz Stufe V CV9035 DK Schützenpanzer Stufe III Centurion Mk 5/2 DK Mittel Stufe II M41 DK-1 Leicht Stufe I Leopard 1A3 DK KPz Stufe I Leopard 1A5 DK KPz Stufe I Leopard 1A5 DK-1 KPz Stufe IX M1A2 SEPv3 (Aus) KPz Stufe VIII M1A1 AIM SA KPz Stufe VI AS21 Redback Schützenpanzer Stufe III M113AS4 TPz Stufe II Centurion Mk 5/1 (Aust) Mittel Stufe I Leopard AS1 KPz Stufe I M113A1 FSV Leicht Stufe I M113A1 MRV Leicht Stufe X EE-T4 Osório KPz Stufe IX EE-T3 Osório KPz Stufe IV EE-T1 Osório (120) KPz Stufe III EE-T1 Osório (105) KPz Stufe III MB-3 Tamoyo 3 KPz Stufe II MB-3 Tamoyo 1 Mittel Stufe I CCL X1 Pioneiro Leicht Stufe I CCL X1A2 Carcará Leicht Stufe VII C2 Ariete KPz Stufe VII C2 Ariete Prototype KPz Stufe VI C1 Ariete KPz Stufe VI C1 Ariete Prototype (Serie 1) KPz Stufe V LRMV Lynx Schützenpanzer Stufe IV C1 Ariete Preserie KPz Stufe IV Dardo Schützenpanzer Stufe II Carro 45t Mittel Stufe X K2 Black Panther KPz Stufe VIII K1A1 KPz Stufe VII K2B KPz Stufe VI XK2 Black Panther KPz Stufe V K21 Schützenpanzer Stufe V K30 Biho FlakPz Stufe IV K1E1 KPz Stufe III BMP-3 (ROK) Schützenpanzer Stufe III Olifant Mk 1B KPz Stufe III Olifant Mk 2 KPz Stufe III Olifant TTD KPz Stufe II Olifant Mk 1 KPz Stufe II Olifant Mk 1A KPz Stufe II Semel Mittel Kein passender Panzer gefunden. Filter zurücksetzen {\"total\":311,\"facets\":[{\"key\":\"nation\",\"label\":\"Nation\",\"options\":[{\"id\":\"\",\"name\":\"Alle Nationen\",\"count\":311,\"glyph\":\"globe\"},{\"id\":\"ru\",\"name\":\"Russland / UdSSR\",\"count\":52,\"chip\":\"Russia\"},{\"id\":\"de\",\"name\":\"Deutschland\",\"count\":34,\"chip\":\"Germany\"},{\"id\":\"us\",\"name\":\"Vereinigte Staaten\",\"count\":32,\"chip\":\"USA\"},{\"id\":\"gb\",\"name\":\"Vereinigtes Königreich\",\"count\":28,\"chip\":\"UK\"},{\"id\":\"cn\",\"name\":\"China\",\"count\":25,\"chip\":\"China\"},{\"id\":\"ua\",\"name\":\"Ukraine\",\"count\":19,\"chip\":\"Ukraine\"},{\"id\":\"pl\",\"name\":\"Polen\",\"count\":18,\"chip\":\"Poland\"},{\"id\":\"il\",\"name\":\"Israel\",\"count\":16,\"chip\":\"Israel\"},{\"id\":\"jp\",\"name\":\"Japan\",\"count\":15,\"chip\":\"Japan\"},{\"id\":\"se\",\"name\":\"Schweden\",\"count\":13,\"chip\":\"Sweden\"},{\"id\":\"fr\",\"name\":\"Frankreich\",\"count\":12,\"chip\":\"France\"},{\"id\":\"dk\",\"name\":\"Dänemark\",\"count\":9,\"chip\":\"Denmark\"},{\"id\":\"au\",\"name\":\"Australien\",\"count\":8,\"chip\":\"Australia\"},{\"id\":\"br\",\"name\":\"Brasilien\",\"count\":8,\"chip\":\"Brazil\"},{\"id\":\"it\",\"name\":\"Italien\",\"count\":8,\"chip\":\"Italy\"},{\"id\":\"kr\",\"name\":\"Südkorea\",\"count\":8,\"chip\":\"South Korea\"},{\"id\":\"za\",\"name\":\"Südafrika\",\"count\":6,\"chip\":\"South Africa\"}]},{\"key\":\"tier\",\"label\":\"Stufe\",\"options\":[{\"id\":\"\",\"name\":\"Alle Stufen\",\"count\":311,\"glyph\":\"techTree\"},{\"id\":\"10\",\"name\":\"Stufe X\",\"count\":40},{\"id\":\"9\",\"name\":\"Stufe IX\",\"count\":42},{\"id\":\"8\",\"name\":\"Stufe VIII\",\"count\":35},{\"id\":\"7\",\"name\":\"Stufe VII\",\"count\":20},{\"id\":\"6\",\"name\":\"Stufe VI\",\"count\":27},{\"id\":\"5\",\"name\":\"Stufe V\",\"count\":23},{\"id\":\"4\",\"name\":\"Stufe IV\",\"count\":26},{\"id\":\"3\",\"name\":\"Stufe III\",\"count\":30},{\"id\":\"2\",\"name\":\"Stufe II\",\"count\":32},{\"id\":\"1\",\"name\":\"Stufe I\",\"count\":36}]},{\"key\":\"era\",\"label\":\"Epoche\",\"options\":[{\"id\":\"\",\"name\":\"Alle Epochen\",\"count\":311,\"glyph\":\"clock\"},{\"id\":\"next-generation\",\"name\":\"Nächste Generation\",\"count\":23,\"glyph\":\"eraNextGeneration\"},{\"id\":\"modern\",\"name\":\"Modern\",\"count\":183,\"glyph\":\"eraModern\"},{\"id\":\"cold-war\",\"name\":\"Kalter Krieg\",\"count\":102,\"glyph\":\"eraColdWar\"},{\"id\":\"ww2\",\"name\":\"Zweiter Weltkrieg\",\"count\":3,\"glyph\":\"eraWorldWarII\"}]},{\"key\":\"class\",\"label\":\"Klasse\",\"options\":[{\"id\":\"\",\"name\":\"Alle Klassen\",\"count\":311,\"glyph\":\"vehicle\"},{\"id\":\"mbt\",\"name\":\"KPz\",\"count\":211,\"glyph\":\"classMbt\"},{\"id\":\"medium\",\"name\":\"Mittel\",\"count\":16,\"glyph\":\"classMedium\"},{\"id\":\"heavy\",\"name\":\"Schwer\",\"count\":1,\"glyph\":\"classHeavy\"},{\"id\":\"light\",\"name\":\"Leicht\",\"count\":15,\"glyph\":\"classLight\"},{\"id\":\"ifv\",\"name\":\"Schützenpanzer\",\"count\":39,\"glyph\":\"classIfv\"},{\"id\":\"apc\",\"name\":\"TPz\",\"count\":3,\"glyph\":\"classApc\"},{\"id\":\"td\",\"name\":\"JPz\",\"count\":8,\"glyph\":\"classTd\"},{\"id\":\"spaa\",\"name\":\"FlakPz\",\"count\":13,\"glyph\":\"classSpaa\"},{\"id\":\"fire-support\",\"name\":\"Feuerunterstützung\",\"count\":5,\"glyph\":\"classFireSupport\"}]},{\"key\":\"role\",\"label\":\"Rolle\",\"options\":[{\"id\":\"\",\"name\":\"Alle Rollen\",\"count\":311,\"glyph\":\"team\"},{\"id\":\"breakthrough\",\"name\":\"Durchbruch\",\"count\":85,\"glyph\":\"roleBreakthrough\"},{\"id\":\"frontline\",\"name\":\"Frontlinie\",\"count\":66,\"glyph\":\"roleFrontline\"},{\"id\":\"flanker\",\"name\":\"Flankierer\",\"count\":57,\"glyph\":\"roleFlanker\"},{\"id\":\"sniper\",\"name\":\"Scharfschütze\",\"count\":27,\"glyph\":\"roleSniper\"},{\"id\":\"scout\",\"name\":\"Aufklärer\",\"count\":38,\"glyph\":\"roleScout\"},{\"id\":\"support\",\"name\":\"Unterstützung\",\"count\":38,\"glyph\":\"roleSupport\"}]}],\"words\":{\"nation:ru\":\"ru russia ussr ussr/russia russland 俄罗斯 sowjetunion 苏联\",\"nation:de\":\"de germany deutschland 德国\",\"nation:us\":\"us usa vereinigte staaten 美国\",\"nation:gb\":\"gb uk vereinigtes königreich 英国\",\"nation:cn\":\"cn china 中国\",\"nation:ua\":\"ua ukraine 乌克兰\",\"nation:pl\":\"pl poland polen 波兰\",\"nation:il\":\"il israel 以色列\",\"nation:jp\":\"jp japan 日本\",\"nation:se\":\"se sweden schweden 瑞典\",\"nation:fr\":\"fr france frankreich 法国\",\"nation:dk\":\"dk denmark dänemark 丹麦\",\"nation:au\":\"au australia australien 澳大利亚\",\"nation:br\":\"br brazil brasilien 巴西\",\"nation:it\":\"it italy italien 意大利\",\"nation:kr\":\"kr south korea südkorea 韩国\",\"nation:za\":\"za south africa südafrika 南非\",\"tier:10\":\"10 x stufe x级\",\"tier:9\":\"9 ix stufe ix级\",\"tier:8\":\"8 viii stufe viii级\",\"tier:7\":\"7 vii stufe vii级\",\"tier:6\":\"6 vi stufe vi级\",\"tier:5\":\"5 v stufe v级\",\"tier:4\":\"4 iv stufe iv级\",\"tier:3\":\"3 iii stufe iii级\",\"tier:2\":\"2 ii stufe ii级\",\"tier:1\":\"1 i stufe i级\",\"era:next-generation\":\"next generation nächste 下一代\",\"era:modern\":\"modern 现代\",\"era:cold-war\":\"cold war kalter krieg 冷战\",\"era:ww2\":\"ww2 zweiter weltkrieg 二战\",\"era:interwar\":\"interwar zwischenkriegszeit 战间期\",\"class:mbt\":\"main battle tank mbt main-battle-tank kampfpanzer 主战坦克 kpz\",\"class:medium\":\"medium tank medium-tank mt mittlerer panzer 中型坦克 mittel\",\"class:heavy\":\"heavy tank heavy-tank ht schwerer panzer 重型坦克 schwer\",\"class:light\":\"light tank light-tank lt leichter panzer 轻型坦克 leicht\",\"class:ifv\":\"infantry fighting vehicle ifv infantry-fighting-vehicle cfv schützenpanzer 步兵战车 步战车\",\"class:apc\":\"armored personnel carrier apc armoured transportpanzer 装甲运兵车 tpz 运兵车\",\"class:td\":\"tank destroyer td tank-destroyer casemate jagdpanzer 坦克歼击车 jpz 歼击车\",\"class:spaa\":\"self-propelled anti-aircraft spaa aa anti-air air defense defence flugabwehrpanzer 自行防空车 flakpz 防空车\",\"class:fire-support\":\"fire support vehicle fire-support fsv bmpt mrl rocket artillery tank feuerunterstützungsfahrzeug 火力支援车 feuerunterstützung\",\"role:breakthrough\":\"breakthrough assault brawler spearhead durchbruch 突破\",\"role:frontline\":\"frontline front-line line all-rounder allrounder flexible frontlinie 前线\",\"role:flanker\":\"flanker flank skirmisher flankierer 侧翼\",\"role:sniper\":\"sniper precision long-range overwatch scharfschütze 狙击\",\"role:scout\":\"scout recon reconnaissance spotter aufklärer 侦察\",\"role:support\":\"support escort unterstützung 支援\",\"status:service\":\"in service in-service production series im dienst 已服役\",\"status:prototype\":\"prototype proto demonstrator pre-series prototyp 原型车\",\"status:concept\":\"concept paper fictional konzept 概念车\"},\"text\":{\"count\":\"{shown} von {total} Panzern\",\"total\":\"{total} Panzer\"}}"
+ },
+ {
+  "href": "/docs/combat",
+  "title": "Wie ein Geschoss Schaden verursacht",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Durchschlag, Winkel, Module und Besatzung sowie die Frage, wer wen sieht – anhand der Spielregeln veranschaulicht."
+ },
+ {
+  "href": "/docs/combat#penetration",
+  "title": "Durchschlag",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Ein Geschoss durchschlägt die Panzerung, wenn sein mit 75–125 % ausgewürfelter Durchschlagswert die Stärke der getroffenen Panzerung übersteigt. Der Durchschlag sinkt linear vom Wert bei 100 m zum Wert bei 1,000 m und dann weiter bis 2,000 m, sofern für das Geschoss ein entsprechender Wert vorliegt. Durchschlag und Schaden werden jeweils mit 75–125 % ihres Werts ausgewürfelt. HEAT behält seinen Durchschlag auf jede Entfernung. Die Panzerungsanzeige Im Visier färbt die Panzerungsanzeige den Gegner entsprechend dem geladenen Geschoss ein: Grün bedeutet Durchschlag, Gelb möglicher Durchschlag, Rot kein Durchschlag. Sie berücksichtigt Winkel, Schottpanzerung, ERA und Entfernung. Sie ist standardmäßig aktiv; mit H oder unter Einstellungen › Spielablauf › Durchschlagsfärbung kannst du sie aus- und wieder einschalten.\nEntfernung (m) mm OFL 120 F2 APFSDS · OECC 120 F1 HEAT"
+ },
+ {
+  "href": "/docs/combat#angling",
+  "title": "Anwinkeln",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Je stärker du die Panzerplatte anwinkelst, desto länger wird der Weg des Geschosses durch die Panzerung – bis es schließlich abprallt. Die effektive Panzerung ergibt sich aus der Plattendicke geteilt durch den Kosinus des um die Geschossnormalisierung verringerten Auftreffwinkels. APFSDS richtet sich um 2° zur Platte hin aus und prallt bei mehr als 78° ab. AP richtet sich um 5° zur Platte hin aus und prallt bei mehr als 70° ab. Ein Geschoss, dessen Kaliber das 3× der Plattendicke beträgt, prallt niemals ab. Ein Geschoss prallt höchstens 2 Mal ab; ein HEAT-Strahl erlischt beim ersten Abpraller.\nAuftreffwinkel (°) mm AP, 75 mm prallt bei mehr als 70° ab · APCR, 75 mm prallt bei mehr als 70° ab · APFSDS, 120 mm prallt bei mehr als 78° ab · HEAT, 120 mm\nLeclerc XLR: Panzerung nach Dicke"
+ },
+ {
+  "href": "/docs/combat#special",
+  "title": "Schottpanzerung, ERA und HE",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Nicht jede Panzerplatte besteht aus massivem Stahl, und nicht jedes Geschoss muss sie durchschlagen. In Luftspalten verliert HEAT pro 10 cm 5 % seines Durchschlags. ERA reduziert den Durchschlag von HEAT um einen festen Betrag und den kinetischer Geschosse anteilig; ein Tandemgefechtskopf durchdringt sie, sofern der Block nicht für den Schutz gegen Tandemladungen ausgelegt ist. HE prallt niemals ab: Es verursacht Explosionsschaden an allem, was es trifft – ob Panzerplatte oder nicht."
+ },
+ {
+  "href": "/docs/combat#modules",
+  "title": "Module und Besatzung",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Ein durchschlagender Treffer kann zerstören, was hinter der Panzerplatte liegt. Zerstörte Module werden nach 10 s automatisch repariert. Ein beschädigtes Munitionslager verlängert die Nachladezeit um den Faktor ×1.5; ein zerstörtes lässt den Panzer explodieren. Ein beschädigter Motor gerät mit einer Wahrscheinlichkeit von 15 % in Brand; ein Brand verursacht über 10 Ticks jeweils 0.5 % Schaden an der Wanne und kann von selbst erlöschen (12 % pro Tick). Ein durchschlagendes Geschoss trifft mit einer Wahrscheinlichkeit von 33 % ein Besatzungsmitglied (10 % bei HE-Explosionsschaden); fällt die gesamte Besatzung aus, ist der Panzer verloren. Beschädigte Optiken verringern die Sichtweite um 50 %. Ein intaktes Funkgerät übermittelt deine Sichtungen im Umkreis von 600 m; ein beschädigtes im Umkreis von 300 m. Die Abschusskamera Wenn du ausgeschaltet wirst, zeigt die Abschusskamera eine Wiederholung des letzten Schusses durch deinen durchsichtig dargestellten Panzer: die Flugbahn des Geschosses, alle getroffenen Module und Besatzungsmitglieder, den Schaden und den Schützen.\nLeclerc XLR: Module und Besatzung\nModul · Strukturpunkte · Trefferwahrscheinlichkeit · Geschütz · 150 · 33 % · Turmdrehkranz · 120 · 45 % · Geschützlafette · 120 · 45 % · Ladeautomat · 125 · 36 % · Munitionszuführung · 110 · 38 % · Dach-MG · 80 · 65 % · Flugkörpergestell · 120 · 30 % · Motor · 160 · 45 % · Getriebe · 140 · 45 % · Kraftstofftank · 120 · 45 % · Munitionslager · 150 · 27 % · Funkgerät · 90 · 45 % · Optik · 80 · 45 % · Kette L · 100 · 100 % · Kette R · 100 · 100 %"
+ },
+ {
+  "href": "/docs/combat#spotting",
+  "title": "Aufklärung",
+  "chapter": "Panzerung, Anwinkeln und Aufklärung",
+  "text": "Du siehst einen Panzer, sobald er sich innerhalb deiner um seine Tarnung verringerten Sichtweite befindet. Diese liegt zwischen 50 m und 445 m. Innerhalb von 50 m ist ein Panzer immer sichtbar, selbst durch Deckung hindurch. Ein Panzer bleibt nach der letzten Sichtung noch 5 s sichtbar. Die Sechster-Sinn-Lampe leuchtet 3 s, nachdem du aufgeklärt wurdest, auf und bleibt 8 s an. Beim Feuern verlierst du kurzzeitig den Großteil deiner Tarnung; Büsche in deiner Nähe werden nach dem Schuss durchsichtig. Büsche und Bäume gewähren bis zu 50 % Tarnung; ein zur Karte passender Tarnanstrich bringt zusätzlich 3.5 %.\nTarnung des Ziels (%) m 445 m Sichtweite · 380 m Sichtweite · 300 m Sichtweite"
+ },
+ {
+  "href": "/docs/battlefields",
+  "title": "Alle Schlachtfelder",
+  "chapter": "Schlachtfelder",
+  "text": "Die Karten, ihre Landschaften, die Tageszeiten und der Übungsplatz."
+ },
+ {
+  "href": "/docs/battlefields#maps",
+  "title": "Karten",
+  "chapter": "Schlachtfelder",
+  "text": "Wald 10 Wüste 9 Stadt 6 Maritim 5 Winter 4 Tropisch 3 Nacht 1 Verdant Fields Sirocco Wadi Frosthollow Steinburg Saltmere Bay Amberford Tarkhan Steppe Cinder Junction Frontier Basin Nordhavn Fjord Jade River Delta Redrock Divide Monsoon Ridge Glacier Pass Obsidian Caldera Ironworks Ruinspires Suzhou Creek Titan Gorge Skybridge Chasm Tidegate Polders Copper Mesa Mine Kestrel Airfield Sunscar Oasis Whiteout Station Orchard Valley Longleaf Crossing Mangrove Reach Saltwind Narrows Highland Reservoir Olympus Basin Earthrise Basin Aegis Crossing"
+ },
+ {
+  "href": "/docs/battlefields#breaks",
+  "title": "Was sich zerstören lässt",
+  "chapter": "Schlachtfelder",
+  "text": "Einstürzende Gebäude Beschuss und Rammen setzen einem Gebäude zu, bis es einstürzt. Dadurch verändern sich Deckung und Wege in seiner Umgebung. Überrolle, was dir im Weg steht Ein schwerer Panzer reißt Zäune, Mauern, Bäume, Hütten und Marktstände nieder, die ihm nicht standhalten. Was fällt, bleibt liegen. Zerstörbare Fahrzeuge auf der Karte Geparkte Autos und Lastwagen werden unter den Ketten zerquetscht, und ein Treffer setzt sie in Brand. Große Deckungsobjekte wie Gebäude, Mauern, Felsen und Hügel halten Geschosse auf und versperren die Sicht; Schilder, Lampen und andere kleine Objekte werden nie zu unsichtbaren Wänden."
+ },
+ {
+  "href": "/docs/battlefields#gravity",
+  "title": "Gravitationswelten",
+  "chapter": "Schlachtfelder",
+  "text": "Im Gravity Mode kämpfst du unter einem anderen Himmel: Mars 0.38 g · Mond 0.17 g · Erde 1 g. Seine beiden außerirdischen Karten sind von der zufälligen Kartenrotation ausgeschlossen."
+ },
+ {
+  "href": "/docs/battlefields#time",
+  "title": "Tageszeit",
+  "chapter": "Schlachtfelder",
+  "text": "Beim Einsatzstart kannst du die Tageszeit festlegen. Überlässt du sie dem Zufall, gilt diese Verteilung. Tag 60 % Sonnenuntergang 30 % Nacht 10 %"
+ },
+ {
+  "href": "/docs/battlefields#proving",
+  "title": "Proving Ground",
+  "chapter": "Schlachtfelder",
+  "text": "Die Probefahrt führt dich auf Kestrel Airfield: 5 Zielbahnen und ein Gestell mit Panzerplatten, ohne Zeitlimit und ohne Aufzeichnung. Bahnen 100 m Ziel um 0° gedreht 200 m Ziel um 30° gedreht 300 m Ziel um 90° gedreht 450 m Ziel um 45° gedreht 650 m Ziel um 0° gedreht Plattengestell 50 mm 100 mm 200 mm 300 mm 500 mm 100 mm · 45° 100 mm · 60° 60 mm · 82°"
+ },
+ {
+  "href": "/docs/multiplayer",
+  "title": "Zusammen spielen",
+  "chapter": "Mehrspieler",
+  "text": "Erstelle einen Raum, verschicke den Code und kämpfe an der Seite deiner Freunde oder gegen sie."
+ },
+ {
+  "href": "/docs/multiplayer#rooms",
+  "title": "Raum erstellen",
+  "chapter": "Mehrspieler",
+  "text": "Privater Raum Erstelle einen Raum und schicke deinen Freunden den sechsstelligen Code oder den Einladungslink. Raum beitreten Gib den Code deines Hosts ein oder öffne seinen Einladungslink. Lokales Netzwerk Auf einem Computer läuft npm run server:mp (Port 8792); alle im selben Netzwerk wählen „Lokales Netzwerk“ und spielen darüber."
+ },
+ {
+  "href": "/docs/multiplayer#seats",
+  "title": "Plätze",
+  "chapter": "Mehrspieler",
+  "text": "Zwei Teams und Zuschauerplätze. Die Teamgröße wird im Raum festgelegt; freie Plätze können mit Bots besetzt werden. Ein Raum bietet Platz für bis zu 28 Spieler und 8 Zuschauer. Neue Spieler kommen ins kleinere Team; der Raumersteller kann Teamwechsel sperren. Freie Plätze werden mit Bots besetzt, sofern dies im Raum nicht deaktiviert ist. Jeder bringt seinen eigenen Panzer, seine Tarnung und bis zu 3 Ausrüstungsgegenstände mit; zwei Spieler können denselben Panzer wählen. Namen dürfen bis zu 24 Zeichen lang sein; bereits vergebene Namen erhalten eine Nummer.\nTeam Alpha · v Team Bravo · Zuschauer · Standardmäßig 7 pro Team bis zu 14 pro Team"
+ },
+ {
+  "href": "/docs/multiplayer#modes",
+  "title": "Modi",
+  "chapter": "Mehrspieler",
+  "text": "In einem Raum ist jeder Gefechtsmodus spielbar; Proving Ground bleibt ein Einzelspielermodus. Standardgefecht Capture the Flag Zone Control Turboball Endless Horde Frontangriff Gravity Mode Juggernaut Infiziert Realistisch Waffenspiel Drohne AC-130 Air Support In Endless Horde und Frontangriff kämpfen bis zu 7 Spieler gemeinsam in einem Team gegen die Wellen."
+ },
+ {
+  "href": "/docs/multiplayer#start",
+  "title": "Bereit machen",
+  "chapter": "Mehrspieler",
+  "text": "1 Wähle deinen Panzer, deine Tarnung und deine Ausrüstung und drücke dann auf „Bereit“. 2 Der Raumersteller startet das Gefecht, sobald alle verbundenen Spieler bereit sind. 3 Der Browser des Erstellers hostet das Gefecht; in einem lokalen Netzwerk übernimmt das Hilfsprogramm diese Aufgabe."
+ },
+ {
+  "href": "/docs/multiplayer#leaving",
+  "title": "Verlassen und erneut beitreten",
+  "chapter": "Mehrspieler",
+  "text": "Wenn du das Spiel verlässt, bleibt dein Platz 5 Minuten reserviert; öffne den Link erneut, um ihn wieder einzunehmen. Fällt der Browser des Hosts aus, wird das Gefecht innerhalb von 8 s an einen anderen Spieler übergeben und die Partie geht weiter. Verlässt der Ersteller den Raum, übernimmt nach 30 s der am längsten anwesende Spieler die Verwaltung der Raumeinstellungen. Ein Raum wird 24 Stunden nach der letzten Nachricht geschlossen. Der Raumchat speichert die letzten 48 Nachrichten mit jeweils bis zu 240 Zeichen."
+ },
+ {
+  "href": "/docs/multiplayer#fair",
+  "title": "Faires Spiel",
+  "chapter": "Mehrspieler",
+  "text": "Der Host bestimmt jeden Treffer, Nachladevorgang und Gefechtsausgang; die anderen senden nur ihre Steuereingaben. Du erhältst nur Daten zu Gegnern, die dein Team aufgeklärt hat: Die Position eines verborgenen Panzers wird nie an deinen Browser übertragen."
+ },
+ {
+  "href": "/docs/audio",
+  "title": "Erlebe die Geräusche des Gefechts aus Sicht der Besatzung",
+  "chapter": "Ton und Funk",
+  "text": "Was dir Schüsse, Warnungen und Motoren verraten und wie du die Tonmischung einstellst."
+ },
+ {
+  "href": "/docs/audio#hits",
+  "title": "War das ein Durchschlag?",
+  "chapter": "Ton und Funk",
+  "text": "Kein Signalton der Benutzeroberfläche meldet dir einen Treffer: Du hörst den Einschlag am Ziel mit entfernungsabhängiger Verzögerung. Etwa eine halbe Sekunde später folgt die Meldung deines Richtschützen. Mit welcher Verzögerung du es hörst Erde 100 m: 0.3 s 500 m: 1.5 s 1000 m: 2.9 s Mars 100 m: 0.4 s 500 m: 2.1 s 1000 m: 4.0 s\nDeine Besatzung sagt · Das bedeutet · Penetration. Target. Through the armor. · Das Geschoss hat die Panzerung durchschlagen. · No penetration. Didn't go through. · Ein Treffer, aber kein Durchschlag: Ziele auf dünnere Panzerung. · Ricochet. Bounced. · Das Geschoss ist an einer angewinkelten Panzerplatte abgeprallt. · Miss. Short. Adjusting. Over. · Kein Treffer: Korrigiere deine Zielausrichtung. · Good hit. Something's damaged. Critical hit. · Das Geschoss hat die Panzerung durchschlagen und ein Modul zerstört. · Ammo rack hit. He's cooking off. Hit his ammo. He's done. · Seine Munition brennt: Er wird gleich explodieren. · Hit his engine. Engine hit. He's slowing. · Sein Motor wurde getroffen: Er wird langsamer oder gerät in Brand. · His track's off. He's immobilized. Tracked him. He's not moving. · Seine Kette ist abgesprungen: Bis zur Reparatur kann er sich nicht bewegen. · Their crew's hit. Crew hit inside. · Ein Mitglied seiner Besatzung ist ausgefallen. · Target destroyed. Target down. Tank knocked out. · Dein Schuss hat ihn zerstört."
+ },
+ {
+  "href": "/docs/audio#warnings",
+  "title": "Warnungen der Besatzung",
+  "chapter": "Ton und Funk",
+  "text": "Wenn deinem Panzer etwas passiert, meldet es die Besatzung, bevor du es siehst.\nDeine Besatzung sagt · Das bedeutet · We're hit. Taking hits. · Ein Geschoss hat deinen Panzer durchschlagen. · Armor held. It bounced. · Ein Geschoss hat dich getroffen, aber keinen Schaden verursacht. · Fire! Engine compartment! Fire in the hull! · Du brennst: Lösche das Feuer, sonst nimmt deine Wanne weiter Schaden. · Ammo rack hit! Ammunition damaged! · Deine Munition ist beschädigt: Das Nachladen dauert länger. · Engine's damaged. Engine hit. Losing power. · Dein Motor wurde getroffen: Er hat weniger Leistung und kann Feuer fangen. · Track's gone. We're immobilized. Lost a track. · Eine Kette ist abgesprungen: Bis zur Reparatur kannst du dich nicht bewegen. · Main gun's damaged. Gun's hit. · Deine Hauptkanone ist bis zur Reparatur beschädigt. · Armor's failing. Can't take much more. We're badly hit. Keep moving. · Deine Wanne hält kaum noch etwas aus: Geh in Deckung. · We're spotted. They have eyes on us. · Ein Gegner hat dich aufgeklärt; auch die Sechster-Sinn-Lampe leuchtet auf. · Missile incoming! Incoming missile, brace! · Eine Lenkrakete ist im Anflug: Bewege dich oder unterbrich den Sichtkontakt. · Drone inbound! Drone on us, overhead! · Eine feindliche Drohne ist über dir."
+ },
+ {
+  "href": "/docs/audio#procedure",
+  "title": "Feuerbefehl und modusspezifische Meldungen",
+  "chapter": "Ton und Funk",
+  "text": "Wenn du bei geladener Kanone einen aufgeklärten Gegner ruhig im Visier hältst, gibt der Kommandant den Feuerbefehl und der Richtschütze antwortet. Für die AC-130-Besatzung und jeden Modus gibt es eigene Meldungen. In der AC-130 In den Modi\nDeine Besatzung sagt · Das bedeutet · Gunner, sabot, tank. Gunner. Sabot. Tank. · Der Kommandant nennt die geladene Munition (hier ein Treibspiegelgeschoss; je nach Ladung auch HEAT, HE oder eine Rakete) und das Ziel. · Identified. Identified. Tank. · Der Richtschütze hat das Ziel im Visier. · On the way. Firing. Shot. · Das Geschoss wird abgefeuert. · Re-engage. Target still up. Re-engage. · Das Ziel hat den Treffer überstanden und die Kanone ist wieder geladen: Erneut feuern. · Target. Cease fire. Cease fire. Scan your sector. · Nach deinem Abschuss ist im Umkreis von 1.5 km kein aufgeklärter Gegner mehr übrig: Feuer einstellen.\nDeine Besatzung sagt · Das bedeutet · In orbit. Cleared hot. Gunship on station. Cleared to engage. · Das Kampfflugzeug befindet sich auf seiner Kreisbahn und hat Feuerfreigabe. · Tally. Armor moving. Sensor's captured. Vehicle. · Der Sensor hat feindliche Panzer im Visier. · Shifting fire. Shift fire. New target. · Das letzte Ziel ist zerstört; das nächste ist bereits im Visier. · Rifle. Rifle. Missile tracking. · Eine Rakete wurde abgefeuert. · Splash. Splash. No effect. · Die Geschosse sind eingeschlagen, ohne Schaden anzurichten. · Good hits. Good hits. Target still moving. · Die Geschosse fügen dem Ziel Schaden zu. · Danger close. Danger close. Friendlies at the impact. · Ein schweres Geschoss schlug im Umkreis von 35 m um einen verbündeten Panzer ein: Ziele weiter von ihm weg. · Rounds complete. Rounds complete. Assessing. · Die schwere Salve ist vorüber; die Besatzung begutachtet ihre Wirkung.\nDeine Besatzung sagt · Das bedeutet · They dropped our flag. Recover it. Our flag's down in the field. · Der gegnerische Flaggenträger hat deine Flagge fallen gelassen: Erreiche sie vor dem Gegner. · We're contesting their point. On their objective. Hold it. · Dein Team befindet sich am gegnerischen Kontrollpunkt und blockiert die Einnahme durch den Gegner. · They scored. Goal against. Reset. · Das gegnerische Team hat gepunktet. · Big wave. Lots of them. Swarm. They're everywhere. · Eine große Welle schneller Gegner rückt an. · Counter-attack! Enemy counter-attack. Hold the line. · Der Gegner greift eine von euch eroberte Linie an. · We've turned. Hunt the survivors. We're with them now. Find the survivors. · Du wurdest infiziert: Jetzt jagst du die Überlebenden. · Juggernaut spotted! Eyes on the Juggernaut. · Dein Team hat den Juggernaut aufgeklärt. · Last weapon. Finish it. Final gun. Two more and we win. · Du hast die letzte Waffe erreicht: Noch zwei Abschüsse bis zum Sieg."
+ },
+ {
+  "href": "/docs/audio#radio",
+  "title": "Besatzungsfunk",
+  "chapter": "Ton und Funk",
+  "text": "Die Besatzung jeder Nation spricht ihre eigene Sprache. Jeder Panzer kann auch mit der Besatzung einer anderen Nation bemannt werden: Insgesamt stehen 38 Besatzungen zur Wahl. Englisch (Vereinigte Staaten) Englisch (Vereinigtes Königreich) Deutsch Russisch Ukrainisch Chinesisch Französisch Schwedisch Japanisch Koreanisch Italienisch Polnisch Hebräisch Dänisch Portugiesisch (Brasilien) Englisch (Australien) Afrikaans Weitere 21 Besatzungen sprechen Sprachen von Ländern, die nicht im Spiel vertreten sind, jeweils nach den Funkverfahren einer realen Armee. Wähle in den Einstellungen eine für alle Panzer: Spanisch (Spanien) Español (España) Spanisch (Lateinamerika) Español (Latinoamérica) Portugiesisch (Portugal) Português (Portugal) Niederländisch Nederlands Norwegisch Norsk Finnisch Suomi Griechisch Ελληνικά Tschechisch Čeština Ungarisch Magyar Rumänisch Română Türkisch Türkçe Arabisch العربية Persisch فارسی Hindi हिन्दी Urdu اردو Bengalisch বাংলা Indonesisch Indonesia Malaiisch Melayu Vietnamesisch Tiếng Việt Thailändisch ไทย Filipino Es wird immer nur ein Funkspruch abgespielt; lebenswichtige Warnungen haben Vorrang. Ein beschädigtes Funkgerät lässt die Stimme dünner klingen, fügt Rauschen hinzu und verschluckt Wörter. Einstellungen › Ton › Besatzungsstimmen: Nationale Besatzungen richten sich nach der Nation des jeweiligen Panzers. Alternativ kannst du eine der 38 Sprachen für alle Panzerbesatzungen wählen; die Auswahl bleibt auch nach Gefechten und beim Neuladen gespeichert."
+ },
+ {
+  "href": "/docs/audio#gunfire",
+  "title": "Geschützfeuer",
+  "chapter": "Ton und Funk",
+  "text": "Der Schussknall jeder Waffe gehört zu einer von 24 Klassen; je größer das Geschütz, desto lauter und länger sein Schussknall. Maschinengewehr im Gewehrkaliber 118 dB Schweres Maschinengewehr 124 dB 20 mm Maschinenkanone 128 dB 25 mm Maschinenkanone 130 dB 30 mm Maschinenkanone 132 dB Panzerabwehrlenkflugkörper 132 dB 35 mm Maschinenkanone 133.5 dB AC-130-Maschinenkanone 134 dB 40 mm Maschinenkanone 135 dB AC-130-Lenkflugkörper 136 dB 50 mm Maschinenkanone 137 dB 76 mm Kanone 139 dB 84 mm Kanone 140 dB 90 mm Kanone 141 dB 100 mm Kanone 142.5 dB 105 mm Kanone 144 dB Schwere Rakete 145 dB 120 mm Kanone 147 dB 125 mm Kanone 148 dB 165 mm Kanone 148 dB 130 mm Kanone 150 dB AC-130-Haubitze 150 dB 152 mm Kanone 152 dB 170 mm Kanone 152 dB Einen entfernten Schuss siehst du, bevor du ihn hörst; Hügel zwischen dir und der Schallquelle dämpfen den Knall. Auf dem Mars breitet sich Schall mit 240 m/s aus und kommt um 14 dB leiser und dünner im Klang an. Auf dem Mond wird kaum Schall übertragen (60 dB weniger): Deinen eigenen Panzer hörst du über seine Wanne. In der Zielansicht hörst du dein eigenes Geschütz aus dem Turminneren, während die Geräusche der Außenwelt dumpfer werden."
+ },
+ {
+  "href": "/docs/audio#engines",
+  "title": "Motoren und Ketten",
+  "chapter": "Ton und Funk",
+  "text": "Jeder Panzer hat den charakteristischen Klang seines Antriebsstrangs: Gasturbinen heulen beim Hochlaufen, Dieselmotoren brummen und lassen Gangwechsel hören. Kettengeräusche ändern sich je nach Geschwindigkeit und Untergrund: Erde, fester Boden, Schlamm, Sand, Schnee und Wasser. Das Summen einer feindlichen Drohne ist aus ihrer jeweiligen Richtung zu hören; der Ton wird höher, wenn sie näher kommt."
+ },
+ {
+  "href": "/docs/audio#settings",
+  "title": "Toneinstellungen",
+  "chapter": "Ton und Funk",
+  "text": "Unter Einstellungen › Ton findest du sechs Regler und zwei Warnsignale; Änderungen werden sofort wirksam. Gesamtlautstärke Lautstärke für Motor- und Mechanikgeräusche Lautstärke für Schüsse und Einschläge Lautstärke der Umgebungsgeräusche Lautstärke für Benutzeroberfläche und Musik Lautstärke für Besatzungsstimmen und Alarme Herzschlag bei kritischem Schaden Ohrensausen bei Erschütterungen Jeder Klang ist eine Aufnahme, die vor der Veröffentlichung mit ElevenLabs für Claude of Tanks erstellt wurde; während des Spielens wird nichts generiert."
+ },
+ {
+  "href": "/docs/studio",
+  "title": "Filme deine eigenen Schlachten",
+  "chapter": "Scene Studio",
+  "text": "Jedes Schlachtfeld, jeder Panzer und sämtliche Gefechtseffekte – auf einer Zeitleiste unter deiner Regie, exportiert als Standbilder oder Film."
+ },
+ {
+  "href": "/docs/studio#open",
+  "title": "Studio öffnen",
+  "chapter": "Scene Studio",
+  "text": "Über die obere Leiste Öffne das Studio über die obere Leiste, um eine neue Szene zu beginnen. In Studio öffnen Jeder Film auf dieser Website bietet die Option „In Studio öffnen“: Damit wird seine Szene so wiederhergestellt, wie sie aufgenommen wurde. Szenenlink kopieren Ein Szenenlink enthält die gesamte Szene; beim Öffnen wird sie in deinem Studio wiederhergestellt. Filme von dieser Website Object 148 Proto, Tarkhan Steppe Leopard 2 Improved, Ruinspires M1A2 Abrams, Sirocco Wadi Challenger 1 Mk 2, Saltwind Narrows Stridsvagn 121, Frosthollow ZTZ-99 Longwei, Titan Gorge"
+ },
+ {
+  "href": "/docs/studio#scene",
+  "title": "Szene einrichten",
+  "chapter": "Scene Studio",
+  "text": "Wähle ein beliebiges Schlachtfeld, auch Olympus Basin und Earthrise Basin, platziere Panzer, richte ihre Türme aus und lege ihren Zustand fest. Tageszeit Morgendämmerung Morgen Tag Goldene Stunde Sonnenuntergang Blaue Stunde Nacht Panzerzustände Intakt Motor raucht Brennend Zerstört Ausgebranntes Wrack Turm abgesprengt Einzelbilder 16:9 Film 9:16 Hochformat 1:1 Quadrat"
+ },
+ {
+  "href": "/docs/studio#shots",
+  "title": "Einstellungen und Zeitleiste",
+  "chapter": "Scene Studio",
+  "text": "Füge Kameraeinstellungen auf der Zeitleiste hinzu; die Kamera bewegt sich von einer zur nächsten. Kamera-Rigs Heldenansicht Verfolgung Verfolgung von hinten Vogelperspektive Detail Objektive Weitwinkel · 58° Natürlich · 42° Nah · 28° Fahrten zwischen Einstellungen Weich Linear Schnitt Bézier Spline Eine Sequenz dauert 1 bis 20 s; ein Film bis zu 60 s. Geschwindigkeitsrampen ermöglichen bis zu 8× für schnelle Schnitte und Zeitlupe. Inszenierte Sequenzen Stählerne Verfolgung Begleitfahrt auf Kettenhöhe, eine Kamerafahrt an der Kanone vorbei nach vorn und zum Abschluss eine aufsteigende Kamera, die den Blick auf das Schlachtfeld freigibt. Verdant Fields · Tag · 8 s · 3 Einstellungen Kreuzfeuer in der Wüste Ein Gefecht bei Sonnenuntergang: Annäherung, Rückstoß und Leuchtspur, dann die Folgen des Einschlags. Sirocco Wadi · Sonnenuntergang · 8 s · 3 Einstellungen Küstenaufklärung Eine Küstenpatrouille in Bewegung: Verfolgung von hinten, Seitenporträt und ein abschließender Blick aufs Meer. Saltmere Bay · Tag · 8 s · 3 Einstellungen Vormarsch zur goldenen Stunde Zwei Leopard-Panzer durchqueren die Felder im goldenen Licht der tief stehenden Sonne: ein Frontalporträt, eine Vorbeifahrt auf Kettenhöhe, ein Blick über die Scheunen hinweg. Verdant Fields · Goldene Stunde · 8 s · 3 Einstellungen Winterkolonne Eine Kolonne kämpft sich im ersten Tageslicht die verschneite Straße hinauf: eine Verfolgungsaufnahme von hinten, eine Nahaufnahme des Laufwerks, ein Überblick aus der Höhe. Frosthollow · Morgen · 8 s · 3 Einstellungen Angriff über die Felder Vier Panzer rücken im Schutz ihres eigenen Sperrfeuers vor: die Kolonne von hinten, das zweite Geschütz beim Feuern, die sich auffächernde Linie von oben. Verdant Fields · Tag · 8 s · 3 Einstellungen Nächtlicher Abschuss Im Licht einer Fallschirmleuchtkugel trifft ein T-90 an der Kreuzung bei der Kirche auf einen Leopard: die Annäherung, der Schusswechsel, der Abschuss. Frosthollow · Nacht · 8 s · 3 Einstellungen Nacht am Hochofen Zwei schwere Panzer rollen im Schein von Leuchtkugeln unter den Kranbrücken des Hüttenwerks hindurch, die Geschütze über den Werkshof hinweg ausgerichtet. Ironworks · Nacht · 8 s · 3 Einstellungen Salve am Rangierbahnhof Drei Abrams feuern zur goldenen Stunde entlang der Gleise, während der hintere Bahnhofsbereich unter Sperrfeuer liegt. Cinder Junction · Goldene Stunde · 8 s · 3 Einstellungen Duell am See Zwei schwedische Panzer treffen über den Alpensee hinweg auf einen T-80: eine Verfolgungsaufnahme von hinten, der erste Schuss, der Abschuss aus der Vogelperspektive. Glacier Pass · Tag · 8 s · 3 Einstellungen Patrouille im Morgengrauen Japanische Panzer verlassen im Morgengrauen die Bauernhöfe im Grenzland: die Ketten in Nahaufnahme, eine bodennahe Vorbeifahrt, der Talkessel von oben. Frontier Basin · Morgendämmerung · 8 s · 3 Einstellungen Fjordstraße Challenger-Panzer folgen der Uferstraße durch das Fjorddorf, immer am Wasser entlang. Nordhavn Fjord · Tag · 8 s · 3 Einstellungen Hafen zur goldenen Stunde Eine britische Kolonne verlässt den Hafen im goldenen Licht: von vorn, von hinten und schließlich mit Blick auf die ganze Bucht. Nordhavn Fjord · Goldene Stunde · 8 s · 3 Einstellungen Sonnenuntergang in der Oase Merkava-Panzer durchqueren die Oase, während die Sonne hinter den Palmen untergeht. Sunscar Oasis · Sonnenuntergang · 8 s · 3 Einstellungen Kolonne im Obstgarten Drei italienische Fahrzeuge schlängeln sich durch die Obstbaumreihen: von oben, auf Kettenhöhe und schließlich mit Blick über das Tal. Orchard Valley · Tag · 8 s · 3 Einstellungen Flussdorf Chinesische Panzer folgen der Straße durchs Delta und durchqueren ein erwachendes Flussdorf. Jade River Delta · Morgen · 8 s · 3 Einstellungen Tempelstraße Ein einzelner K2 erklimmt die vom Monsun gezeichnete Straße am Tempel vorbei: seine Ketten, eine bodennahe Vorbeifahrt, der Bergrücken von oben. Monsoon Ridge · Morgen · 8 s · 3 Einstellungen Stausee zur blauen Stunde Chieftain-Panzer fahren nach Sonnenuntergang am Stausee entlang, auf dessen Wasser noch das letzte Licht liegt. Highland Reservoir · Blaue Stunde · 8 s · 3 Einstellungen Feuerwalze Ein Nachtangriff hinter einer Feuerwalze, erhellt von einer Leuchtkugel: die Geschütze, die Kolonne, das Feuer voraus. Verdant Fields · Nacht · 8 s · 3 Einstellungen Alpendorf Ein Leopard und ein CV90 rollen durch das Bergdorf unterhalb der Gipfel. Glacier Pass · Tag · 8 s · 3 Einstellungen Sprint im Sonnenuntergang Ein KF51 rast bei Sonnenuntergang mit voller Geschwindigkeit durchs Grenzland: das Geschütz von vorn, die Ketten, die Staubspur von oben. Frontier Basin · Sonnenuntergang · 8 s · 3 Einstellungen"
+ },
+ {
+  "href": "/docs/studio#effects",
+  "title": "Effekte",
+  "chapter": "Scene Studio",
+  "text": "Alle Effekte stammen direkt aus dem Gefecht und werden über die Zeitleiste an einem Panzer, einem Punkt oder einer Markierung ausgelöst. Schuss der Hauptkanone Mündungsfeuer Leuchtspur Einschlag Funken Explosion Panzerabschuss Staubwolke Motorrauch Brennend Kettenbruch Schussmoment Eingefrorener Feuerball MG-Feuerstoß Sperrfeuer Trefferspuren an der Panzerung Abgasstoß Nebelwand Leuchtfackel Glut Trümmer Druckwelle Brandfläche"
+ },
+ {
+  "href": "/docs/studio#film",
+  "title": "Standbilder und Film",
+  "chapter": "Scene Studio",
+  "text": "Erstelle jederzeit ein Standbild oder rendere die Sequenz als Film. „PNG aufnehmen“ speichert das angezeigte Einzelbild. „Film exportieren“ rendert jedes Einzelbild offline mit Bewegungsunschärfe, lässt keines aus und mischt den Gefechtston dazu – als MP4 oder WebM, je nachdem, welches Format dein Browser kodieren kann. Die Live-Aufnahme zeichnet stattdessen den Bildschirm in Echtzeit auf. Größe 1080p 1440p 2160p Rate 24 FPS 30 FPS 60 FPS Unschärfe Aus · 1 Abtastung Entwurf · 4 Abtastungen Gut · 8 Abtastungen Beste Qualität · 16 Abtastungen Masterqualität · 32 Abtastungen Kameraerschütterung Wie vorgegeben Halb Viertel Aus"
+ },
+ {
+  "href": "/docs/studio#share",
+  "title": "Speichern und teilen",
+  "chapter": "Scene Studio",
+  "text": "Szenenlink kopieren: Die Szene steckt direkt im Link. „JSON speichern“ lädt die Szenendatei herunter; „JSON laden“ öffnet eine solche Datei. Speicherplätze sichern Szenen in diesem Browser: Klicken zum Laden, Umschalt-Klick zum Speichern."
+ },
+ {
+  "href": "/docs/build",
+  "title": "Ein Browserspiel aus überprüften Entwicklungszyklen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Claude of Tanks entwickelte sich in kurzen Implementierungszyklen von einem direkt mit Three.js erstellten Prototyp zu einem typisierten, getesteten Spiel: ein Problem eingrenzen, die kleinste zuständige Komponente ändern, die Funktion im Browser nachweisen, das Ergebnis festhalten und in main integrieren."
+ },
+ {
+  "href": "/docs/build#topic-section-1",
+  "title": "Mit festen Rahmenbedingungen beginnen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Das Projekt ist für den Browser konzipiert und baut direkt auf Three.js statt auf einer allgemeinen Spielengine auf. Die Simulation läuft mit festen 60 Hz, spielbare Panzer verwenden eigens entwickelte prozedurale Laufzeitgeometrie, und die Präsentationsseiten bleiben vom umfangreichen Abhängigkeitsgraphen des Spielstarts getrennt. Diese Vorgaben prägten die Architektur: Deterministische Regeln können in Node ausgeführt werden, der Renderer lässt sich unabhängig anpassen, und jede öffentliche Aussage lässt sich durch Code, einen Test, eine Aufnahme oder ein Messprotokoll belegen."
+ },
+ {
+  "href": "/docs/build#topic-section-2",
+  "title": "Regeln von der Darstellung trennen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Bewegung, Ballistik, Panzerung, Schaden, Aufklärung, Gefechtszustand und Bot-Entscheidungen sind hinter rendererunabhängigen Schnittstellenverträgen gekapselt. Three.js setzt den aktuellen Zustand in Kameras, Rigs, Beleuchtung, Effekte, Audio und Benutzeroberfläche um, ohne selbst über Treffer zu entscheiden. Dank dieser Trennung nutzen lokale Gefechte und im Browser gehostete Räume dieselben Kampfregeln. Außerdem können niedrigere Grafikeinstellungen den Ressourcenbedarf senken, ohne das Spielgeschehen zu verändern."
+ },
+ {
+  "href": "/docs/build#topic-section-3",
+  "title": "Arbeitsablauf mit Claude Code und Codex",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Claude Code und Codex wurden als Entwicklungswerkzeuge für klar abgegrenzte Aufgaben eingesetzt. Umfangreiche oder riskante Arbeiten erfolgten in isolierten Git-Worktrees; für jeden Arbeitsstrang wurden die zugehörigen Dateien benannt, nicht betroffene Änderungen beibehalten und vor der Integration genaue Commit-Hashes und Nachweise ausgetauscht. Die Arbeitsregel war einfach: main bleibt aktuell, unfertige Experimente bleiben isoliert, und ein Branch allein ist kein Nachweis. Nur die integrierten Bytes zählen. Menschen legten das Ziel und die Abnahmekriterien fest; daran orientierten sich die Agenten beim Implementieren, Messen, Prüfen und Dokumentieren."
+ },
+ {
+  "href": "/docs/build#topic-section-4",
+  "title": "Entwickeln, widerlegen und messen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Ein typischer Durchlauf beginnt mit einem reproduzierbaren Ausgangszustand, gefolgt von der Ursachenanalyse. Die kleinste plausible Korrektur wird mit gezielten Selbsttests, Browserinteraktionen, Konsolenprüfungen, Bildschirmaufnahmen und Leistungsmessungen geprüft. Ein Ergebnis muss einen zweiten Durchlauf oder einen bewusst erschwerten Testfall bestehen, bevor es akzeptiert wird. Grafikänderungen werden anhand der aktuell gerenderten Bilder beurteilt, nicht nur anhand numerischer Prüfungen. Bei Leistungsoptimierungen werden Kalt- und Warmstartbedingungen, Gerätebeschränkungen, lang laufende Aufgaben, Verzögerungen zwischen Frames, GPU-Ressourcen und Übergangszeiten erfasst, statt nur einen einzelnen FPS-Wert anzugeben."
+ },
+ {
+  "href": "/docs/build#topic-section-5",
+  "title": "Den Arbeitsablauf dauerhaft tragfähig machen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Eine AGENTS.md auf Repository-Ebene, indexierte SKILL.md-Dateien für Subsysteme und ein gepflegtes Architekturentscheidungsprotokoll halten Zuständigkeiten, Invarianten, erforderliche Befehle und wiederkehrende Fehlerbilder fest, ohne Mitwirkende mit Notizen zu längst abgeschlossenen Migrationen zu überfrachten. Wiederholt sich ein manueller Vorgang, wird daraus ein Skript oder eine verbindliche Prüfung. Deshalb lassen sich Modellaufnahmen, Gefechtsanatomie, Fahrzeugsymbole, Routenprüfungen, öffentliche Metadaten und Freigabeprüfungen aus dem Repository reproduzieren. Unbearbeitete Ausführungsprotokolle bleiben im Git-Verlauf oder in ignorierten QA-Artefakten."
+ },
+ {
+  "href": "/docs/build#topic-section-6",
+  "title": "Nur nach der Integration geprüfte Änderungen übernehmen",
+  "chapter": "So wurde das Spiel entwickelt",
+  "text": "Eine fertige Änderung wird als zusammenhängende Einheit eingecheckt, per Rebase auf den neuesten Stand von origin/main gebracht und nach der Integration erneut geprüft. Beim abschließenden Push wird geprüft, ob der übergeordnete Commit weiterhin die aktuelle Spitze des Remote-Branches ist, damit parallele Arbeiten keine neuere Integration unbemerkt überschreiben können. Der öffentliche Build weist anschließend die Routentrennung nach und erstellt einen Herkunftsnachweis mit Hashwerten aller Dateien seines Quellbaums. So beschreiben die spielbare Website, der Quellbaum, die Dokumentation und der main-Branch stets dasselbe Spiel."
+ },
+ {
+  "href": "/docs/simulation",
+  "title": "Hinter jedem Treffer steht eine Flugbahn",
+  "chapter": "Simulation und Autorität",
+  "text": "Die Gefechtssimulation läuft mit 60 Hz. Bewegung, Zielen, Ballistik, Panzerung, Schaden, Nachladen, Aufklärung und Gefechtsergebnisse werden anhand des maßgeblichen Spielzustands berechnet, nicht anhand des gerenderten Bildes."
+ },
+ {
+  "href": "/docs/simulation#topic-section-1",
+  "title": "Gefechtsschleife mit festem Zeitschritt",
+  "chapter": "Simulation und Autorität",
+  "text": "Der autoritative Zeitschritt verwendet Meter, Sekunden, Radiant und ein festes Intervall von 1/60 Sekunde. Eingaben werden in explizite Fahrzeugsteuerbefehle überführt, bevor Bewegung, Kampf, Aufklärung und Ergebnisauswertung in einer festen Reihenfolge ablaufen. Die Bildrate kann sich ändern, ohne die Anzahl oder Reihenfolge der Simulationsschritte zu verändern. Bei Spitzen in der Framezeit wird die verstrichene Zeit angesammelt und in einer begrenzten Anzahl fester Zeitschritte abgearbeitet. Autoritative Zufallswerte werden mit einem Startwert erzeugt oder eingespeist. Die tatsächliche Uhrzeit und Math.random() werden in Regeln, die einen Schuss, das Nachladen, einen Modulzustand oder das Gefechtsergebnis beeinflussen, nicht verwendet."
+ },
+ {
+  "href": "/docs/simulation#topic-section-2",
+  "title": "Das Gefecht läuft auf dem Host",
+  "chapter": "Simulation und Autorität",
+  "text": "Der Raum-Worker koordiniert die Suche nach Gegenstellen und die Signalisierung. Er führt nicht die Gefechtssimulation mit sechzig Schritten pro Sekunde aus. Der Browser des Hosts führt die autoritative Gefechtssimulation aus und tauscht WebRTC-Daten mit den Gegenstellen aus. Gäste senden Eingaben; der Host berechnet Bewegung, Schüsse, Nachladen, Kollisionen, Schaden, Bot-Verhalten und Ergebnisse. Für das lokale Fahrzeug werden Bewegungen vorhergesagt und mit dem bestätigten Host-Zustand abgeglichen; bei entfernten Fahrzeugen wird zwischen Zustandsaufnahmen interpoliert. Nahe Gegner und solche, die kürzlich in Kämpfe verwickelt waren, werden häufiger aktualisiert als weit entfernte sichtbare Akteure. Die Reihenfolge der Kampfereignisse bleibt unabhängig von diesen Relevanzstufen erhalten. Die Vorhersage verbessert das Reaktionsverhalten, kann aber weder einen Treffer bestätigen noch das autoritative Ergebnis ändern."
+ },
+ {
+  "href": "/docs/simulation#topic-section-3",
+  "title": "Sichtbarkeit und Vertrauen",
+  "chapter": "Simulation und Autorität",
+  "text": "Zustandsaufnahmen für Gäste enthalten nur Gegner, die der Betrachter sehen darf. Die Filterung erfolgt vor der Kodierung; verborgene Koordinaten werden also nicht einfach mitgesendet und erst vom Renderer ausgeblendet. Teamsicht und Zuschauerperspektive bestimmen auch Namensanzeigen, Minikarten und Darstellung. Ein Browser-Host ist nach wie vor der Rechner eines teilnehmenden Spielers und muss den autoritativen Weltzustand vorhalten. Peer-Hosting darf nicht so dargestellt werden, als hätte es dieselbe Vertrauensgrenze wie ein unabhängiger dedizierter Server. Das Protokoll prüft die Reihenfolge der Eingaben und die Nachrichtenstruktur; es kann einen nicht vertrauenswürdigen Host nicht in eine vertrauenswürdige Turnierinfrastruktur verwandeln."
+ },
+ {
+  "href": "/docs/simulation#topic-section-4",
+  "title": "Gelände und Bewegung",
+  "chapter": "Simulation und Autorität",
+  "text": "Höhenfelder bestimmen die Auflagepunkte der Fahrzeuge, Geschosskollisionen, den Bodenabstand der Kamera und die Platzierung von Umgebungsobjekten. Die Oberflächenklasse beeinflusst Bodenhaftung und Darstellung. Straßen, Hänge, Geländekämme, Ufer und teilgedeckte Stellungen werden auf die vorgesehenen Panzerrouten abgestimmt. Die Fahrzeugfederung tastet dieselbe Bodenoberfläche ab, die auch für Bewegung und ballistische Geländeabfragen verwendet wird."
+ },
+ {
+  "href": "/docs/simulation#topic-section-5",
+  "title": "Verifizierung",
+  "chapter": "Simulation und Autorität",
+  "text": "Mit Node ausführbare Selbsttests decken Bewegung, Kampf, Aufklärung, Lenkflugkörpersteuerung, Spezialaktionen, das Zielverhalten der KI und das vollständige autoritative Gefecht ab. Browser-Prüfungen ergänzen die Prüfung auf Übereinstimmung der Rohrachse, den Geschossflug, Einschlagseffekte im laufenden Spiel und die HUD-Ausrichtung. Führe nach Änderungen an den gemeinsam genutzten Kampfregeln node src/sim/combat.selftest.mjs, node src/sim/authoritativeMatch.selftest.mjs und npm test aus."
+ },
+ {
+  "href": "/docs/simulation#topic-section-6",
+  "title": "Fahren, Flugphasen und Landeschäden",
+  "chapter": "Simulation und Autorität",
+  "text": "Die Bewegung wird mit konstant sechzig Simulationsschritten pro Sekunde berechnet. Motorleistung, Gewicht, Höchstgeschwindigkeit vorwärts und rückwärts, Kettenzustand, Geländewiderstand und Wannendrehung bestimmen gemeinsam das Fahrverhalten. Der Renderer interpoliert diese Zustände, statt die Bewegung von der Bildrate abhängig zu machen. Die Handbremse wirkt bei Bodenkontakt; nach der Landung darf sie nicht unbemerkt eingerastet bleiben. Ein Sturz ist ein physikalischer Aufprall, nicht bloß das Überschreiten eines Höhengrenzwerts. Masse, Aufprallgeschwindigkeit, Fahrzeuglage und die Physik des Spielmodus beeinflussen das Ergebnis. Verringerte Schwerkraft verändert sowohl deine Flugbahn als auch die Geländebereiche, die du sicher erreichen kannst. Vermeide Sprünge ins Ungewisse an Brückenwiderlagern oder Klippenrändern; wähle eine Route mit sichtbarer Landestelle und genügend Platz zum Abfangen."
+ },
+ {
+  "href": "/docs/models",
+  "title": "Von der Vorlage zur spielbaren Maschine",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Kevin B. Liu erstellte jeden spielbaren Panzer als eigens entwickelte prozedurale Laufzeitgeometrie. Vorlagen dienen als Orientierung für Proportionen und Details, doch das ausgelieferte Fahrzeug wird aus Code neu aufgebaut, mit Gefechtsdaten verknüpft, als eigener Symbolsatz gerendert und erst nach messtechnischen und visuellen Prüfungen freigegeben."
+ },
+ {
+  "href": "/docs/models#topic-section-1",
+  "title": "Recherche und Referenzsammlung",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Ein Modellierungsdurchlauf beginnt mit Originalfotos, veröffentlichten Abmessungen sowie Drauf- und Seitenansichten des realen Fahrzeugs. Die Vorlagen dienen als Orientierung für die charakteristische Form; ist eine Vorlage selbst fehlerhaft, gilt sie nicht automatisch als verbindlich. Proportionen stehen an erster Stelle: Wannenlänge und -breite, Turmposition, Dachhöhe, Geschützlänge, Radanzahl, Kettenverlauf und die großen Panzerungsvolumen müssen stimmig wirken, bevor kleine Anbauteile hinzukommen."
+ },
+ {
+  "href": "/docs/models#topic-section-2",
+  "title": "Das sichtbare Fahrzeug aus Einzelteilen aufbauen",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Prozedurale Generatoren setzen Wannenplatten, Turmhüllen, Geschützblenden, Rohre, Laufwerk, Optiken, Luken, Nebelwurfbecher, Körbe, Antennen, Zusatzpanzerung und Staugut aus wiederverwendbaren Geometrie- und Materialbausteinen zusammen. Querschnittsmaße an festgelegten Längspositionen sorgen für vorbildgetreue Volumen an Front, Mitte und Heck, statt nur einen generischen Quader in die Länge zu ziehen. Strukturteile mit Tarnungsunterstützung und neutrale mechanische Teile haben explizit festgelegte Rollen."
+ },
+ {
+  "href": "/docs/models#topic-section-3",
+  "title": "Modellgelenke und Laufwerk",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Wanne, Turm, Geschützaufhängung, Rücklaufbaugruppe, Mündung, Laufrollen, Stützrollen, Antriebsräder, Leiträder und verbundene Kettenglieder sind eindeutig zugeordnet. Turmausrüstung muss sich mit dem Turm drehen und sichtbar fest verankert bleiben; Wannenausrüstung darf sich nicht mitdrehen. Die Mündungsbohrung muss offen sein und aus der tatsächlichen Rohrhierarchie abgeleitet werden. Die Federung tastet das Gelände an jeder Stützposition ab. Das fahrzeugeigene Laufwerk behält die korrekte Radanzahl und den Kettenverlauf bei, ohne doppelte Räder aus Spendermodellen, ineinanderragende Kettenglieder oder schwebende Anbauteile."
+ },
+ {
+  "href": "/docs/models#topic-section-4",
+  "title": "Federung und Ketten",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Jedes tragende Rad tastet das Gelände unter seiner eigenen Position ab. Die sichtbare Federung passt sich diesen Kontaktpunkten an, die Wanne leitet daraus ihre Längs- und Querneigung ab, und der Kettenverlauf wird um die verschobenen Räder neu aufgebaut. Die schwedische Federung für den Belagerungsmodus ermöglicht zusätzlich eine gezielte Wannenneigung, ohne die Geschütznachführung zu beeinträchtigen. Die Kettenanimation richtet sich nach der zurückgelegten Strecke und der Geschwindigkeit der jeweiligen Seite. Schäden können eine Kette lösen, ihren umlaufenden Abschnitt entfernen, einen dauerhaft sichtbaren Kettenstrang abwerfen und lose Laufwerksteile zurücklassen."
+ },
+ {
+  "href": "/docs/models#topic-section-5",
+  "title": "Gefechtsanatomie auf Basis derselben Form erstellen",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Panzerplatten, beabstandete Schichten, ERA, Module, Munition, Treibstoff, Besatzung und Gelenkanker werden auf den geprüften Fahrzeugrahmen abgestimmt. Das Spiel verwendet somit dieselbe modellierte Form für die Darstellung, die Trefferverfolgung, interne Schäden und technische Seitenansichten. Kommandantenkuppeln, die Teil der Fahrzeugstruktur sind, können zur Treffergeometrie gehören. Visiere, Maschinengewehre, Körbe, Antennen und lose Ausrüstung bleiben rein visuelle Anbauteile, sofern ihnen die Spielmechanik nicht ausdrücklich eine physische Rolle zuweist."
+ },
+ {
+  "href": "/docs/models#topic-section-6",
+  "title": "Symbole und technische Datenkarten erzeugen",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Die Asset-Pipeline rendert das aktuelle prozedurale Modell als Bilder für Garage und Galerie, transparente Silhouetten, Panzerungsdiagramme, separate Modul- und Besatzungsdiagramme, Stufendarstellungen und ergänzende Präsentationsansichten. Eine deterministische Aufnahme aus einem festgelegten Winkel erzeugt nun beide Porträtgrößen nach einheitlichen Regeln für den Bildausschnitt. So bleibt bei einem neuen Panzer keine manuell zugeschnittene oder veraltete Miniaturansicht zurück. Verwende für reine Porträtarbeiten npm run tank:portraits -- --ids=<changed ids> und npm run tank:portraits:check -- --ids=<changed ids>. Die vollständige Freigabesequenz bleibt unverändert: npm run tank:anatomy:update, npm run tank:anatomy:check, dann npm run tank:release:check -- --ids=<changed ids> --gate."
+ },
+ {
+  "href": "/docs/models#topic-section-7",
+  "title": "Vermessen, prüfen und freigeben",
+  "chapter": "Pipeline für prozedurale Modelle",
+  "text": "Automatisierte Freigabeprüfungen kontrollieren Geometrie-Fingerabdrücke, Abmessungen, Stützpositionen, schwebende Teile, Kettenüberschneidungen, Radqualität, Mündungsbohrungen, Materialien, Panzerungsanatomie, Markierungen, Herkunft und die deterministisch geprüfte Aktualität der Assets. Standardisierte Front-, Schräg-, Seiten-, Heck-, Drauf-, Nah- und Gieransichten decken anschließend Mängel auf, die eine numerische Bewertung übersehen kann. Ein Modell wird erst freigegeben, wenn jede erforderliche Ansicht die visuellen Mindestanforderungen erfüllt, Anbauteile physisch nachvollziehbare Lastpfade aufweisen, Eckpunktreihenfolge und Rückseiten korrekt sind und die integrierte Freigabeprüfung fehlerfrei durchläuft. Die Tank Gallery dient als Live-Prüfumgebung für dieses endgültige prozedurale Modell."
+ },
+ {
+  "href": "/docs/rendering",
+  "title": "Das Rendering kann sich anpassen, ohne die Regeln zu ändern",
+  "chapter": "Rendering und Leistung",
+  "text": "Three.js ist nur für die Darstellung zuständig. Adaptive Auflösung, Schatten, Vegetation, Nachbearbeitung, Partikel und Vorinitialisierung können je nach Gerät variieren; das Gefechtsmodell mit 60 Hz bleibt unverändert."
+ },
+ {
+  "href": "/docs/rendering#topic-section-1",
+  "title": "Bildkomposition",
+  "chapter": "Rendering und Leistung",
+  "text": "Der Renderpfad aktualisiert Kamera, sichtbare Fahrzeug-Rigs, Weltdetails, Darstellungseffekte, Beleuchtung, Schatten und Nachbearbeitung anhand des neuesten interpolierten Zustands. Bestehende, häufig durchlaufene Schleifen verwenden temporäre Objekte und Objektpools wieder, statt in jedem Frame neuen Speicher zu reservieren. Spät gerenderte transparente Effekte nutzen dieselben Tiefeninformationen wie die Hauptszene. Ob Mündungslicht, Leuchtspuren, Funken, Rauch, Staub, Feuer und Trümmer dargestellt werden, hängt von der Entfernung und den Qualitätsvorgaben ab."
+ },
+ {
+  "href": "/docs/rendering#topic-section-2",
+  "title": "Beleuchtung und Nachbearbeitung",
+  "chapter": "Rendering und Leistung",
+  "text": "Die Biombe­leuchtung legt Sonnenrichtung, Himmel, Nebel, Belichtung und Schattenkonfiguration fest. Stabile kaskadierte Schatten folgen dem relevanten Kamerabereich. Die Nachbearbeitungskette kombiniert Umgebungsverdeckung, Kantenglättung, bei Bedarf Bloom, Farbkorrektur für die Ausgabe und die abschließende dynamische Render-Skalierung. Für Aufnahmen bleiben Qualität und Render-Skalierung fest eingestellt, damit Vergleichsbilder konsistent bleiben. Im Spiel können aufwendige Rendering-Ebenen bei anhaltender Last reduziert werden."
+ },
+ {
+  "href": "/docs/rendering#topic-section-3",
+  "title": "Adaptive Qualität",
+  "chapter": "Rendering und Leistung",
+  "text": "Desktop- und Mobilgeräte erhalten unterschiedliche Ausgangsprofile. Interne Auflösung, Schattenberechnung, Vegetationsdichte, Effektbudgets und Nachbearbeitungsfunktionen lassen sich unabhängig voneinander reduzieren. Hysterese verhindert ein schnelles Hin und Her. Gerätediagnosen und gemessene Überlast bestimmen den sicheren Verarbeitungspfad, nicht allein die User-Agent-Kennung. Eine Qualitätsänderung verändert niemals Geschossflug, Aufklärung, Schaden oder autoritative Zeitabläufe."
+ },
+ {
+  "href": "/docs/rendering#topic-section-4",
+  "title": "Startvorgang und Routen getrennt halten",
+  "chapter": "Rendering und Leistung",
+  "text": "Die Garage erstellt erst dann ein Schlachtfeld, wenn der Gefechtsstart konkret angefordert wird. Öffentliche Seiten importieren nicht den Spiel-Renderer, und beim Start der Garage werden weder die vollständige Simulation noch der gesamte Abhängigkeitsgraph der Fahrzeugflotte vorab importiert. Daten und Ressourcen für die jeweilige Fahrzeugfamilie und Welt werden erst geladen und verarbeitet, wenn die gewählte Route sie benötigt. Kaltstart-Prüfungen deaktivieren Caches und erfassen sowohl Netzwerk- als auch Anwendungsaufwand, damit eine Navigation mit bereits geladenen Daten nicht als Leistung beim Erstbesuch ausgegeben wird."
+ },
+ {
+  "href": "/docs/rendering#topic-section-5",
+  "title": "Das Gefecht im Hintergrund stufenweise laden",
+  "chapter": "Rendering und Leistung",
+  "text": "Beim Gefechtseinstieg werden die konkrete Welt und Fahrzeugaufstellung geladen, benötigte Texturen hochgeladen, Effekte vorbereitet, Fahrzeugmaterialien an den Renderer übergeben, Shader und Nachbearbeitung vorinitialisiert und die erste gültige Kamera eingerichtet, bevor das Bild eingeblendet wird. Die erforderlichen Arbeiten sind vor dem Countdown abgeschlossen, statt sich als schwarzes oder eingefrorenes Anfangsbild bemerkbar zu machen. Die Fortschrittsanzeige bildet Phasen mit klarer Zuständigkeit ab. Ändert sich die angeforderte Aktion, werden überholte Arbeiten abgebrochen. Ein Lebenszyklus mit Wiederholungsmöglichkeit steuert die Wiederherstellung, statt dafür Timer über den gesamten Composition Root zu verteilen."
+ },
+ {
+  "href": "/docs/rendering#topic-section-6",
+  "title": "Leistungsnachweise",
+  "chapter": "Rendering und Leistung",
+  "text": "Leistungsaufzeichnungen erfassen Frame-Kategorien, Renderer-Zähler, dynamische Render-Skalierung und Übergangsbudgets. Browsertests decken Kaltstart, Gefechtseinstieg, Kartenwechsel, die Garage und das Mehrspieler-Rendering ab. Verwende für Arbeiten am Renderer npm run perf:dev, npm run perf:cold, npm run perf:transitions und einen Produktionsbuild."
+ },
+ {
+  "href": "/docs/rendering#topic-section-7",
+  "title": "Scheinwerfer, Schatten und Nebel",
+  "chapter": "Rendering und Leistung",
+  "text": "Fahrscheinwerfer nutzen die tatsächlichen Leuchtenöffnungen des Modells und folgen der Ausrichtung der Wanne. Ihre warmen Lichtkegel leuchten nun weiter voraus. Nur die nächstgelegenen geeigneten Lichtquellen belegen Plätze im Lichtquellen-Pool fester Größe; die übrigen sichtbaren Leuchtengläser können dennoch weiter leuchten. Wird die Beleuchtung ausgeschaltet oder ein Panzer zerstört, entfällt dessen Beitrag zur Beleuchtung. Periskope, Spiegel und andere Panzerungsteile dürfen nicht allein deshalb leuchten, weil sie dasselbe Material verwenden. Umgebungsverdeckung und Schlagschatten sind getrennte Effekte. Das Abschalten von AO darf die Sonnenschatten nicht entfernen. Für Schattenstabilität, Wolkenhistorie und die Zusammenführung der Effekte gibt es eigene Tests bei Kamerabewegungen, Schüssen und Änderungen der Qualitätsstufe. Nebel ist sowohl ein gerenderter Volumeneffekt als auch ein Sichthindernis in der Simulation. Für die Darstellung und die Aufklärungsentscheidung sind getrennte Systeme zuständig, deren Ergebnisse übereinstimmen müssen."
+ },
+ {
+  "href": "/docs/rendering#topic-section-8",
+  "title": "Grafikwiederherstellung und veraltete Sitzungen",
+  "chapter": "Rendering und Leistung",
+  "text": "Der Browser kann bei Speicherknappheit einen Grafikkontext freigeben. Das Spiel pausiert die Darstellung und stellt die Ressourcen hinter einer Bildschirmabdeckung wieder her, bevor es fortgesetzt wird. Die Wiederherstellung der Grafikqualität sollte mit begrenztem Aufwand erfolgen, den Gefechtszustand erhalten und wiederholte Speicherzuweisungen vermeiden. Ein Neuladen ist die Notlösung, wenn die Wiederherstellung nicht abgeschlossen werden kann; es ist nicht der reguläre Weg, Karten oder Fahrzeuge zu wechseln. Wenn sich ein bereits geöffneter Tab anders verhält als ein neuer, vergleiche die ausgelieferte Anwendungsversion und die gespeicherten Grafikeinstellungen, bevor du die Ursache einem einzelnen Rendereffekt zuschreibst. Mit Hashwerten versehene Ressourcen und Prüfungen der bereitgestellten Version verhindern, dass sich unterschiedliche Versionen vermischen. Gib in einem Fehlerbericht Karte, Fahrzeug, Qualitätsstufe, Größe des Anzeigebereichs und Schritte zum Reproduzieren des Fehlers an. Ein Screenshot allein lässt nicht erkennen, ob veraltete Ressourcen, Einstellungen oder der GPU-Zustand die Ursache sind."
+ },
+ {
+  "href": "/docs/ai",
+  "title": "Eine Bot-Steuerung für jedes Schlachtfeld",
+  "chapter": "Bots und taktische KI",
+  "text": "Bots im Einzelspielermodus und im autoritativen Mehrspielermodus verwenden dieselbe rendererunabhängige Entscheidungslogik. Sie navigieren durch einen anhand eines Startwerts erzeugten Schlachtfeldgraphen, beachten Team- und Sichtbarkeitsregeln, wählen erfolgversprechende Schüsse, nutzen die Fähigkeiten ihres Fahrzeugs und lassen sich ohne GPU testen."
+ },
+ {
+  "href": "/docs/ai#topic-section-1",
+  "title": "Wahrnehmung und Zielwahl",
+  "chapter": "Bots und taktische KI",
+  "text": "Bots nutzen dieselben Datenschnittstellen für Team, Sichtbarkeit, Reichweite, Trefferpunkte und Fahrzeugstatus wie die autoritative Instanz. Sie lesen weder gerenderte Objekte noch verborgene, rein clientseitige Koordinaten aus. Mögliche Ziele werden anhand der aktuellen taktischen Lage bewertet und nicht allein nach ihrer Nähe in der Szene ausgewählt. Der Schwierigkeitsgrad beeinflusst Reaktionsverhalten, Zielgenauigkeit, Gefechtsentfernung und Entscheidungsdruck, ohne dem Bot Informationen zugänglich zu machen, die er nicht haben dürfte."
+ },
+ {
+  "href": "/docs/ai#topic-section-2",
+  "title": "Startwertbasierte Routenplanung",
+  "chapter": "Bots und taktische KI",
+  "text": "Pro Gefecht wird ein typisiertes Befahrbarkeitsraster aus Geländebefahrbarkeit, Kollisionsdaten der Spielwelt, Durchfahrten, Einsatzzielen und Fahrzeugfähigkeiten erstellt. Der Planer liefert deterministische Wege um blockierte Zellen, während die lokale Steuerung die unmittelbare Ausrichtung und das Ausweichen übernimmt. Routenentscheidungen lassen sich in Node auf jeder Karte reproduzieren – auch für schwere Fahrzeuge, bei Kettenschäden, an steilen Hängen und in zielbasierten Modi."
+ },
+ {
+  "href": "/docs/ai#topic-section-3",
+  "title": "Geschützhandhabung und Feuerleitung",
+  "chapter": "Bots und taktische KI",
+  "text": "Die Steuerung berücksichtigt Turmdrehung, Höhen- und Tiefenrichtwinkel, Hindernisse vor der Rohrmündung, Nachladevorgänge, Magazine, Streuung, Geschossgeschwindigkeit, Durchschlag und Zielbewegung. Sie zielt auf treffbare Panzerungsflächen und innere Schwachstellen, wenn die aktuelle Waffe und der Winkel einen solchen Schuss erfolgversprechend machen. Maschinenkanonen, Einzelschussgeschütze, Ladeautomaten und Lenkwaffen nutzen denselben Entscheidungsrahmen, berücksichtigen dabei jedoch ihre jeweilige Kadenz und ihren Munitionsstand."
+ },
+ {
+  "href": "/docs/ai#topic-section-4",
+  "title": "Schutz des eigenen Teams und Druck auf den Gegner",
+  "chapter": "Bots und taktische KI",
+  "text": "Schussbahnen, in denen sich verbündete Fahrzeuge befinden, werden ausgeschlossen. Die Steuerung vermeidet es, durch Verbündete hindurch zu feuern. Bots verteilen ihre Aufmerksamkeit, beziehen taktisch sinnvolle Positionen, unterstützen Einsatzziele und halten genügend Abstand, damit eine Ansammlung verbündeter Fahrzeuge nicht zum Hindernis wird. Feindliche und verbündete Bots verwenden dieselbe Logik. Die Teamzuweisung verändert Angriffs- und Einsatzziele, nicht die Kompetenz."
+ },
+ {
+  "href": "/docs/ai#topic-section-5",
+  "title": "Überleben und Wiederherstellung der Einsatzfähigkeit",
+  "chapter": "Bots und taktische KI",
+  "text": "Bots berücksichtigen, wie ungeschützt sie stehen, welche Deckung verfügbar ist, ob Ketten beschädigt oder Module ausgefallen sind, welche Reparaturmöglichkeiten bestehen, wie viel Munition verbleibt und welche Bedrohungen sich in der Nähe befinden. Sie können sich aus einer ungünstigen Schussposition zurückziehen, ihre Bewegungsfähigkeit wiederherstellen, nach Zerstörungen neue Wege planen und weiter zum Gefecht beitragen, statt auf offenem Gelände zu warten. Modusspezifische Ziele ergänzen diese Überlebensentscheidungen, sodass Eroberung, Verteidigung, Eskorte und der Druck durch Horden keine separaten, künstlichen Bewegungssysteme erfordern."
+ },
+ {
+  "href": "/docs/ai#topic-section-6",
+  "title": "Verifizierung",
+  "chapter": "Bots und taktische KI",
+  "text": "Gezielte KI-Tests decken Zielverhalten, die Verhinderung von Eigenbeschuss, Routen, Schwierigkeitsgrade, deterministische Entscheidungen und die autoritative Bot-Integration ab. Kartenweite Servertests führen die Steuerung ohne Rendering aus, während Gefechte im Browser überprüfen, ob sichtbare Bewegungen, Schüsse und Effekte mit diesen Entscheidungen übereinstimmen. Bei Bot-Änderungen werden node src/game/ai.selftest.mjs, node src/sim/ai.aim.selftest.mjs, node src/sim/botRoutePlanner.selftest.mjs und node server/authoritativeBots.selftest.mjs ausgeführt."
+ },
+ {
+  "href": "/docs/ai#topic-section-7",
+  "title": "Classic, Jev und koordinierte Einsatzziele",
+  "chapter": "Bots und taktische KI",
+  "text": "Classic und Jev verwenden für verbündete und gegnerische Teams dieselbe lokale Logik für Fahren, Zielen, Sichtbarkeit und Fahrzeugsysteme. Jev ergänzt Befehle auf Teamebene mit begrenztem Umfang; es umgeht weder die Aufklärung noch ersetzt es die physikalische Fahrsteuerung. Wähle die KI und den Schwierigkeitsgrad vor dem nächsten Gefecht. Ein verbündetes Team sollte nicht allein deshalb an älteren Verhaltensmustern festhalten, weil es an der Seite des Spielers kämpft. Im Flaggenmodus verteilen die Teams Aufgaben wie Rückholung, Geleitschutz und Angriffe. In Turboball behält ein Stürmer seine Rolle lange genug bei, um hinter den Ball zu fahren und sich für einen gezielten Stoß auszurichten. Mitspieler schirmen ihn ab und sichern die Verteidigung. Im Zonenmodus verteilen die Teams ihren Eroberungsdruck. Mobile Einheiten können flankieren, während haltende Einheiten den Druck aufrechterhalten. Die Navigation berücksichtigt dabei Vorfahrt für den menschlichen Spieler, entschlossenes Vorbeifahren und sicheres Rückwärtsfahren, wenn Fahrzeuge einander blockieren."
+ },
+ {
+  "href": "/docs/ai#topic-section-8",
+  "title": "Nebel, fernbediente Geschütze und sichere Sprünge",
+  "chapter": "Bots und taktische KI",
+  "text": "Bots können ihre verbauten Nebelwerfer beim Rückzug, unter Druck oder beim Nachladen einsetzen und fernbediente automatische Geschütze gegen sichtbare Gegner bedienen, die als Ziele infrage kommen. Sie fordern einen Sprung nur an, wenn der Modus ihn erlaubt und die zu erwartenden Landeschäden vertretbar sind. Beim Anfahren von Klippen und Brücken ist eine gültige Route erforderlich; eine direkte Linie zum Einsatzziel reicht nicht aus. Die Verhaltenstests umfassen alle 33 Karten, Flaggen- und Ballszenarien, Verkehrsstaus, Entscheidungen bei Sturzgefahr und eine hohe Auslastung durch große Jev-Teams. Ihre Aussagekraft beschränkt sich auf die getesteten Szenarien: Sie decken Regressionen im Entscheidungsverhalten und bei der Begrenzung des Rechenaufwands auf, belegen aber nicht, dass ein Bot jede denkbare Gelände- oder Verkehrssituation bewältigt."
+ },
+ {
+  "href": "/docs/filming",
+  "title": "Fünfzig Takes, direkt im Spiel gefilmt",
+  "chapter": "So entstanden die Medien",
+  "text": "Die fünfzig Takes, die Porträts und die vier Filme der Website entstanden in Scene Studio mit den Karten, Panzern und Effekten des Spiels. Jeder Take ist Code: durch ein Suchverfahren inszeniert, als schematische Prävisualisierung beurteilt, in der Engine geprüft, im Quellcode korrigiert und per Supersampling als 4K-Endfassung mit eigenem Ton gerendert."
+ },
+ {
+  "href": "/docs/filming#topic-section-1",
+  "title": "Einstellungen als Code",
+  "chapter": "So entstanden die Medien",
+  "text": "Jeder Take auf der Website ist ein Szenendokument, keine Aufzeichnung. Es enthält die Karte, Tageszeit und Wetter, die Besetzung samt Lackierung, Route und Geschwindigkeit jedes Panzers, die Ausrichtung jeder Kanone, die Kamerabahn und den Zeitpunkt für das Standbild. tools/media-r5/site50.mjs erzeugt alle fünfzig aus einer einzigen Tabelle. So wirkt sich eine Planänderung auf jeden Take aus, der denselben Plan nutzt. Die Einstellungsbibliothek bewahrt die Szene jedes Takes genau so auf, wie das Studio sie speichert. Dadurch lässt sich ein Take über einen Link im Studio öffnen: Die Ansicht unten öffnet jeden vorgestellten Take auf diese Weise. Jeder Durchlauf folgt Regienotizen: Die Kamera bewegt sich auf einer dreidimensionalen Bahn zwischen Nähe und Ferne, Panzer fahren schnell in alle Richtungen, gezeigt werden Front- und Schrägansichten statt Heckansichten, und jeder Panzer auf einer Liste erhält einen eigenen Take als Hauptdarsteller. Jeder Durchlauf wird in eigene Ordner gerendert, sodass frühere Versionen neben dem Code erhalten bleiben, der sie erzeugt hat."
+ },
+ {
+  "href": "/docs/filming#topic-section-2",
+  "title": "Ein Take, alle Phasen",
+  "chapter": "So entstanden die Medien",
+  "text": "Durchlauf vier ist die erste Iteration, noch vor den Regienotizen zur Bewegung. Engine-Prüfung 1 zeigt den ersten Bewegungsplan, in niedriger Auflösung in der Engine gerendert, samt allen dabei entdeckten Problemen. Die Prävisualisierung zeigt den Plan aus Durchlauf sechs als schematische Kameraansicht; Engine-Prüfung 2 zeigt diesen Plan nach den Korrekturen in der Engine. Engine-Prüfung 3 ist Durchlauf sieben: der auf den 2.0-Karten neu inszenierte Plan mit den Szenen, aus denen die 4K-Endfassungen gerendert werden."
+ },
+ {
+  "href": "/docs/filming#topic-section-3",
+  "title": "Der Ablauf",
+  "chapter": "So entstanden die Medien",
+  "text": "In zehn Schritten wird aus einer Notiz eine Einstellung auf der Website. Die Prüfungen laufen, bevor GPU-Zeit aufgewendet wird. Jede Korrektur erfolgt in der Engine, den Werkzeugen oder dem Plan, niemals in einem einzelnen Bild."
+ },
+ {
+  "href": "/docs/filming#topic-section-4",
+  "title": "Bewegungssuche und Prävisualisierung",
+  "chapter": "So entstanden die Medien",
+  "text": "Die Bewegungssuche inszenierte alle 50 Website-Takes und alle 166 Flotten-Takes. Für jeden Take erprobt sie Routen auf Straßen und im offenen Gelände, Begleitfahrzeuge in Kolonnen und Fächerformationen, auf jeweils eigene Ziele ausgerichtete Kanonen und verschiedene Kamerabewegungen (Tiefflug, Enthüllung des Führungsfahrzeugs, aufsteigende Umkreisung, Seilkamerafahrt, Schlangenlinie, Überholfahrt). Jeden Kandidaten bewertet sie nach der Spanne zwischen Nah- und Fernansicht, Höhengewinn, frontalen Blickwinkeln, Geschwindigkeit und Schwenks um die Flanken. Die besten Varianten werden in eine versionsverwaltete Plandatei geschrieben. Die Prävisualisierung stellt jeden Plan als schematische Kameraansicht neben der Karte dar, ergänzt um Abstand und Höhe der Kamera im Verlauf des Takes. Hier wird die Choreografie in wenigen Sekunden pro Take beurteilt, bevor auch nur ein einziges Bild gerendert wird."
+ },
+ {
+  "href": "/docs/filming#topic-section-5",
+  "title": "Das Schlachtfeld aus Sicht der Engine",
+  "chapter": "So entstanden die Medien",
+  "text": "Eine Vermessung jeder Karte im laufenden Spiel exportiert jeden Kollisionseintrag (Grundfläche, Höhe, Überrollschwelle und Baumkrone) zusammen mit einem 4 m-Raster der Geländehöhen und Wasserflächen. Ein Offline-Modell rekonstruiert das Schlachtfeld aus diesem Export und beantwortet Abfragen mit dem Kollisionscode der Engine selbst. Routen werden anhand dieses Modells in Zeitschritten von 50 ms geprüft: Eine Panzerwanne darf zerstören, was sie auch im Gefecht überrollen könnte. Jedes andere Hindernis macht die Route ungültig, ebenso ein Start innerhalb eines Gebäudes oder ein zu steiler Anstieg. Die Kameraprüfung erfasst die Kameraposition alle 100 ms und verfolgt fünf Sichtlinien zum Hauptfahrzeug (Mitte, Bug, Heck und beide Flanken) durch sämtliche Einträge und Baumkronen. Niedrige Deckung blockiert die Sicht nie, und ein Umgebungsobjekt zählt nur, wenn es auf dem Bildschirm im Verhältnis zum Panzer groß erscheint."
+ },
+ {
+  "href": "/docs/filming#topic-section-6",
+  "title": "Was im Studio hinzugekommen ist",
+  "chapter": "So entstanden die Medien",
+  "text": "Ein Spline-Kamerapfad sorgt auch bei schnellen Bewegungen über alle Schlüsselbilder hinweg für flüssige Kamerafahrten. Jeder Panzer fährt zügig seine eigene Route ab, während seine Kanone auf ein Ziel stabilisiert bleibt. Ein mitbewegtes Bezugssystem lässt die Kamera einem ausweichenden Panzer folgen, ohne dessen Schwenks zu übernehmen. Die Planansicht zeigt den Take von oben (alle Routen, Kamerapfad und Blickfeld sowie Abstand und Höhe der Kamera) und folgt der Navigation auf der Zeitleiste. Panzer auf der Zeitleiste zerstören jetzt alles, was sie überrollen, nach derselben Regel wie im Gefecht: Eine Wanne reißt einen Zaun, eine Mauer oder einen Baum nieder, wenn sie schneller darüberfährt, als das Objekt nachgibt. Diese Zerstörungen werden vor der Wiedergabe anhand der Routen geplant, beim Abspielen der Zeitleiste live ausgelöst und nach einem Zeitsprung im abgeschlossenen Zustand wiederhergestellt. So zeigt jedes Einzelbild dieselben Trümmer. Nachts behält die Studio-Kamera eine auf Mondlicht abgestimmte Belichtung bei, 1.25 Blendenstufen unter der Kartenbelichtung, statt die Dunkelheit wieder auf Tageshelligkeit anzuheben."
+ },
+ {
+  "href": "/docs/filming#topic-section-7",
+  "title": "Die Prüfung in der Engine",
+  "chapter": "So entstanden die Medien",
+  "text": "Alle fünfzig Takes wurden vor den finalen Renderings in niedriger Auflösung in der Spiel-Engine gerendert. Bei der ersten Prüfung fielen drei Dinge auf, die die schematische Darstellung nicht zeigen konnte: In etwa der Hälfte der Takes fuhren Panzer durch intakte Umgebungsobjekte, in sechs standen Objekte vor der Kamera, und acht Nacht-Takes waren unter einem Sternenhimmel taghell beleuchtet. Jede Korrektur setzte an der Ursache an: an der Zerstörungslogik im Studio, am Schlachtfeldmodell und seiner Prüfung auf freie Kamerasicht sowie an der Nachtkamera. Für die zweite Prüfung wird jeder Take erneut mit 960 Pixeln und jeweils einer Lichtmessung gerendert. Als die Karten in 2.0 die Schlachtfelder veränderten, inszenierte die Bewegungssuche alle Takes neu, die mit den neuen Anordnungen nicht mehr funktionierten. Für eine dritte Prüfung wurden alle fünfzig auf diesen Karten gerendert, bevor die finalen Renderings beginnen."
+ },
+ {
+  "href": "/docs/filming#topic-section-8",
+  "title": "Finale 4K-Renderings und Standbilder",
+  "chapter": "So entstanden die Medien",
+  "text": "Die finalen Renderings entstehen mit 3840 × 2160 und 30 Bildern pro Sekunde bei durchgehender Schärfe: von der Kamera bis zum Horizont scharf, ohne Tiefenunschärfe vor den Panzern. Jedes Einzelbild ist der Mittelwert aus 8 bis 48 vollständigen Renderings mit Subpixel-Versatz über einen Verschlusswinkel von 60°. Bei schnellen Bewegungen kommen weitere Renderings hinzu, bis benachbarte höchstens 1.5 Pixel auseinanderliegen. Dieser Mittelwert aus versetzten Abtastungen ersetzt die temporale Kantenglättung des Spiels. Bloom und Farbkorrektur werden einmal auf den Mittelwert angewendet, ein Schärfungsdurchgang schließt die Bildverarbeitung ab. Jeder Take liefert außerdem zwei 4K-Standbilder mit 2 ms Belichtungszeit: seinen Schlüsselmoment und eine Nahaufnahme, in der der Panzer am größten im Bild erscheint. Beide werden so gewählt, dass der gesamte Panzer mittig im Bild steht, nichts davorliegt und unmittelbar zuvor keine Staubwolke aufgewirbelt wurde. Rund hundert Standbilder werden zu Postern, Key-Art-Motiven und Bildern für soziale Medien. Die ProRes-Master der Filme bleiben erhalten; daraus werden die Formate für die Website kodiert."
+ },
+ {
+  "href": "/docs/filming#topic-section-9",
+  "title": "Ton",
+  "chapter": "So entstanden die Medien",
+  "text": "Nichts am Ton der Filme ist synthetisiert. Die Gefechtsgeräusche stammen aus den Aufnahmen des Spiels und werden anhand der Schnittliste jeder Fassung mit den Auswahlmechanismen der Engine platziert: Geschützklasse, Motorfamilie, Kettengeräuschsatz, Nachhall und Umgebungsgeräusche der Karte. Die Besatzung des Hauptpanzers meldet ihre Schüsse in ihrer eigenen Sprache über Funk, verarbeitet durch die Signalkette der Engine für die Bordsprechanlage. Die Filmmusik wird mit Eleven Music anhand eines Kompositionsplans erzeugt, der auf dem musikalischen Ablaufplan der Schnittfassung beruht. Die Akzente – Braams in den dort angegebenen Akkorden, ein tiefer Bassschlag, ansteigende Klänge, ein rückwärts anschwellender Klang und Taiko – entstehen als generierte Klangeffekte mit jeweils mehreren Takes. Der nach Messwerten beste Take wird ausgewählt und auf die zugehörige Takteins gelegt. Jeder Film wird auf −14 LUFS gemastert."
+ },
+ {
+  "href": "/docs/filming#topic-section-10",
+  "title": "Die Filme und die Übersicht",
+  "chapter": "So entstanden die Medien",
+  "text": "Aus den Takes entstehen vier Filme als HyperFrames-Kompositionen: ein Trailer, eine 30-Sekunden-Fassung, eine 15-Sekunden-Hochformatfassung und die Fahrzeugparade. Ihre Schnittlisten werden aus den Takes erzeugt, und die HTML-Kompositionen werden bildgenau als Video gerendert. Der Projektinhaber prüft jede Runde in einer einzigen Übersicht: Einzelbilder, Prävisualisierung, Engine-Prüfungen und finale Renderings jedes Takes stehen nebeneinander, zusammen mit den Nachweisen aller Änderungen. Anmerkungen fließen zurück in den Plan, die Engine oder die Werkzeuge. Die nächste Runde wird neben der vorherigen gerendert."
+ },
+ {
+  "href": "/docs/filming#topic-section-11",
+  "title": "Die Bilder",
+  "chapter": "So entstanden die Medien",
+  "text": ""
+ }
+]

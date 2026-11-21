@@ -7,6 +7,7 @@ import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
   currentLocationHrefForLocale,
   hrefForLocale,
+  isSupportedLocale,
   localizeDocumentLinks,
   synchronizeLocaleRoute,
   type SupportedLocale,
@@ -33,15 +34,24 @@ const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
     node.removeAttribute('aria-busy');
   }));
 
-const isLocale = (value: string | null): value is SupportedLocale => value === 'en-US' || value === 'zh-CN';
-
 /** Language links: each names this page in its locale (a template page learns its own path here) and keeps the choice. */
 function mountLanguageLinks(): void {
   for (const link of document.querySelectorAll<HTMLAnchorElement>('a[hreflang]')) {
     const locale = link.getAttribute('hreflang');
-    if (!isLocale(locale)) continue;
+    if (!isSupportedLocale(locale)) continue;
     link.href = currentLocationHrefForLocale(window.location, locale);
     link.addEventListener('click', () => setLocale(locale));
+  }
+  // the bar's language menu (a <details>) closes on Escape and on a press outside it, like the kit's menus
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>('.public-nav__langmenu')) {
+    document.addEventListener('pointerdown', (event) => {
+      if (menu.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+    });
+    menu.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !menu.open) return;
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    });
   }
 }
 

@@ -17,7 +17,9 @@ const PAGE_ENTRIES = ['src/main.ts', 'src/ui/localeBootstrap.ts', 'src/presentat
   'src/presentation/publicNav.ts', 'src/presentation/publicPages.ts', 'src/docs/docs.ts', 'src/docs/topics.ts',
   'src/gallery/gallery.ts'];
 const CATALOG_MODULES = ['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalogEnUS.ts', 'src/ui/i18nCatalog.zh-CN.json',
-  'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nCatalog.ts'];
+  'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nCatalog.ts',
+  ...['es', 'ja', 'de', 'pt-BR', 'ru'].map((locale) => `src/ui/i18nCatalog.${locale}.json`),
+  ...['Es', 'Ja', 'De', 'PtBR', 'Ru'].map((name) => `src/ui/i18nCatalog${name}.ts`)];
 for (const entry of PAGE_ENTRIES) {
   const closure = staticImportClosure(entry, { root: ROOT });
   assert.ok(closure.has('src/ui/i18n.ts'), `${entry} reaches the i18n runtime`);
@@ -45,11 +47,13 @@ assert.deepEqual(importersOf('src/presentation/localizedHtml.ts'), [],
 // The lazy loaders import modules, never the JSON files: Rolldown leaves an attributed dynamic JSON import
 // unrewritten (the browser would request /assets/i18nCatalog.zh-CN.json), and the build plugin refuses it.
 const dictionariesSource = readFileSync(resolve(ROOT, 'src/ui/i18nDictionaries.ts'), 'utf8');
-assert.match(dictionariesSource, /import\('\.\/i18nCatalogZhCN\.ts'\)/);
-assert.match(dictionariesSource, /import\('\.\/i18nCatalogEnUS\.ts'\)/);
+for (const name of ['EnUS', 'ZhCN', 'Es', 'Ja', 'De', 'PtBR', 'Ru']) {
+  assert.match(dictionariesSource, new RegExp(`import\\('\\./i18nCatalog${name}\\.ts'\\)`), `the registry loads i18nCatalog${name}.ts lazily`);
+}
 assert.doesNotMatch(dictionariesSource, /import\(\s*['"][^'"]+\.json['"]/, 'no dynamic JSON import in browser code');
-assert.deepEqual(dictionariesSource.match(/^import\b.*$/gm), ["import { importCatalogChunk } from './i18nChunkImport.ts';"],
-  'the registry ships no catalog: its one static import is the chunk importer (src/ui/i18nChunkImport.selftest.mjs)');
+assert.deepEqual(dictionariesSource.match(/^import\b.*$/gm), ["import { importCatalogChunk } from './i18nChunkImport.ts';",
+  "import type { SupportedLocale } from './localeRouting.ts';"],
+  'the registry ships no catalog: its one runtime import is the chunk importer (src/ui/i18nChunkImport.selftest.mjs)');
 
 // 3. Runtime: an English boot leaves zh-CN unloaded; Chinese text appears only once its dictionary is resident.
 const stored = new Map();
@@ -99,6 +103,11 @@ window.location.pathname = '/cn/';
 const chinese = await import('./i18n.ts?boot=cn');
 assert.equal(chinese.getLocale(), 'zh-CN', 'a /cn/ route boots Chinese');
 assert.equal(chinese.t('garage.battle'), '出战');
+window.location.pathname = '/es/';
+const spanish = await import('./i18n.ts?boot=es');
+assert.equal(spanish.getLocale(), 'es', 'an /es/ route boots Spanish');
+assert.notEqual(spanish.t('garage.battle'), 'Deploy', 'and reads the Spanish catalog');
+window.location.pathname = '/cn/';
 
 // 4. Chinese documents preload the catalog chunk named by the build's meta; English ones never do.
 const { LOCALE_CATALOG_META, localizeHtmlDocument } = await import('../presentation/localizedHtml.ts');
@@ -129,7 +138,8 @@ assert.match(pluginSource, /transformIndexHtml: \{\s*order: 'post',/,
 // 5. The Scene Studio's strings (src/ui/i18nStudioKeys.ts) load with its chunk: the build serves the game's catalogs
 //    without them and each locale's slice as a module that main.ts loads beside the Studio's chunk.
 const { i18nStudioCatalog, splitStudioCatalog } = await import('../../tools/viteI18nStudioCatalog.ts');
-const fullCatalogs = Object.fromEntries(['en-US', 'zh-CN'].map((locale) =>
+const { SUPPORTED_LOCALES } = await import('./localeRouting.ts');
+const fullCatalogs = Object.fromEntries(SUPPORTED_LOCALES.map((locale) =>
   [locale, JSON.parse(readFileSync(resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`), 'utf8'))]));
 const studioKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).studio).sort();
 assert.ok(studioKeys.length > 100, 'the Studio owns its slice of the catalog');
@@ -152,7 +162,7 @@ const techTreeKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).techT
 const tutorialKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).tutorial).sort();
 const sliceModule = (plugin, slice, locale) => JSON.parse(plugin.load.call(pluginContext,
   plugin.resolveId.call(pluginContext, `virtual:cot-i18n-${slice}/${locale}`)).replace(/^export default /, '').replace(/;\s*$/, ''));
-for (const locale of ['en-US', 'zh-CN']) {
+for (const locale of SUPPORTED_LOCALES) {
   const game = JSON.parse(studioPlugin.load.call(pluginContext, resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`)));
   const slice = sliceModule(studioPlugin, 'studio', locale);
   const fleet = sliceModule(studioPlugin, 'fleet', locale);
@@ -178,7 +188,7 @@ const restricted = i18nStudioCatalog({ gameKeys: () => shownKeys });
 restricted.configResolved({ root: ROOT });
 const wholePlugin = i18nStudioCatalog({ gameKeys: () => null });
 wholePlugin.configResolved({ root: ROOT });
-for (const locale of ['en-US', 'zh-CN']) {
+for (const locale of SUPPORTED_LOCALES) {
   const file = resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`);
   const game = JSON.parse(restricted.load.call(pluginContext, file));
   const expected = Object.fromEntries(Object.entries(fullCatalogs[locale])
@@ -214,8 +224,8 @@ assert.match(readFileSync(resolve(ROOT, 'src/main.ts'), 'utf8'),
   // audit R6) held in one opener's lazy chunk, the Studio's loadModule
   /createLazyChunk\(\(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioPanel\.css'\),\s*import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)[^;]*\{ opener: true \}\);[\s\S]*?loadModule: \(\) => studioModule\.load\(\)/,
   'the Studio opens once its strings are resident');
-// Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 3's
-// switch, Chinese); a failed slice merges nothing.
+// Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 4's
+// localizer's import of the full catalogs, every other locale); a failed slice merges nothing.
 const { extendResidentDictionaries } = await import('./i18nSlices.ts');
 await assert.rejects(extendResidentDictionaries(() => Promise.reject(new Error('offline'))), /offline/, 'a failed slice rejects');
 assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'studio.film.probe', 'and merges nothing');
@@ -224,7 +234,7 @@ await extendResidentDictionaries((locale) => {
   sliceRequests.push(locale);
   return Promise.resolve({ default: { 'studio.film.probe': locale === 'zh-CN' ? '影片' : 'Film' } });
 });
-assert.deepEqual(sliceRequests, ['en-US', 'zh-CN'], 'each resident locale loads its slice');
+assert.deepEqual(sliceRequests, [...SUPPORTED_LOCALES], 'each resident locale loads its slice');
 assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'Film');
 assert.equal(dictionaries.catalogText('zh-CN', 'studio.film.probe'), '影片');
 assert.equal(dictionaries.catalogText('zh-CN', 'garage.battle'), '出战', 'the merge keeps the game\'s strings');

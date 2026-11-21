@@ -26,11 +26,20 @@ export const entryOf = (href: string, title: string, chapter: string, text: stri
 export const entriesOf = (records: readonly ManualRecord[]): ManualEntry[] =>
   records.map((record) => entryOf(record.href, record.title, record.chapter, record.text));
 
-/** The reader's locale's index (a chunk of its own, fetched once). */
-async function loadEntries(locale: string): Promise<ManualEntry[]> {
-  const module = locale === 'zh-CN'
-    ? await import('./searchIndex.zh-CN.json', { with: { type: 'json' } })
-    : await import('./searchIndex.en-US.json', { with: { type: 'json' } });
+/** Each locale's index, one literal import() apiece (tools/docs-prerender.mjs writes them). */
+const INDEXES: Readonly<Record<string, () => Promise<{ default: unknown }>>> = {
+  'en-US': () => import('./searchIndex.en-US.json', { with: { type: 'json' } }),
+  'zh-CN': () => import('./searchIndex.zh-CN.json', { with: { type: 'json' } }),
+  es: () => import('./searchIndex.es.json', { with: { type: 'json' } }),
+  ja: () => import('./searchIndex.ja.json', { with: { type: 'json' } }),
+  de: () => import('./searchIndex.de.json', { with: { type: 'json' } }),
+  'pt-BR': () => import('./searchIndex.pt-BR.json', { with: { type: 'json' } }),
+  ru: () => import('./searchIndex.ru.json', { with: { type: 'json' } }),
+};
+
+/** The reader's locale's index (a chunk of its own, fetched once); English for a locale without one. */
+export async function loadManualEntries(locale: string): Promise<ManualEntry[]> {
+  const module = await (INDEXES[locale] ?? INDEXES['en-US']!)();
   return entriesOf(module.default as readonly ManualRecord[]);
 }
 
@@ -98,7 +107,7 @@ export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement
   const list = root.querySelector<HTMLElement>('.dm-search__hits');
   if (!side || !status || !list) return;
   const locale = getLocale();
-  const entries = await loadEntries(locale);
+  const entries = await loadManualEntries(locale);
   const links = (): HTMLAnchorElement[] => [...list.querySelectorAll<HTMLAnchorElement>('a')];
   const update = (): void => {
     const query = input.value.trim();

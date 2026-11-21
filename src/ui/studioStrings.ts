@@ -14,4 +14,9 @@ import { residentSlice } from './i18nSlices.ts';
 export const ensureStudioStrings = residentSlice({
   'en-US': () => import('virtual:cot-i18n-studio/en-US'),
   'zh-CN': () => import('virtual:cot-i18n-studio/zh-CN'),
+  es: () => import('virtual:cot-i18n-studio/es'),
+  ja: () => import('virtual:cot-i18n-studio/ja'),
+  de: () => import('virtual:cot-i18n-studio/de'),
+  'pt-BR': () => import('virtual:cot-i18n-studio/pt-BR'),
+  ru: () => import('virtual:cot-i18n-studio/ru'),
 });

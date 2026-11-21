@@ -1,7 +1,6 @@
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
-import type { ManualRecord } from '../docs/searchIndex.ts';
 import { localeRouteChanged } from './publicNav.ts';
 import { revealStills } from './revealStills.ts';
 
@@ -15,7 +14,7 @@ revealStills(document.querySelectorAll<HTMLImageElement>('.not-found__still, .nf
 document.title = t('notFound.metaTitle');
 
 // The search (brand-ui SPEC 12.3.4): the fleet and the Field Manual, matched in the browser. Both indexes load with the
-// field's first focus (notFoundIndexes.ts: fleetWall.json and the manual's prebuilt index in the reader's locale), so
+// field's first focus (notFoundIndexes.ts: fleetWall.json; docsSearch.ts: the manual's prebuilt index in the reader's locale), so
 // the first paint carries neither. The vehicles lead, then the manual's sections; Enter opens the first hit.
 interface FleetRecord { readonly name: string; readonly href: string; readonly entry: { readonly searchText: string } }
 interface Hit { readonly kind: 'vehicle' | 'manual'; readonly href: string; readonly title: string; readonly detail: string }
@@ -26,8 +25,8 @@ const VEHICLE_HITS = 4;
 const MANUAL_HITS = 6;
 
 function loadSearch(): Promise<Search> {
-  return Promise.all([import('../docs/docsSearch.ts'), import('./notFoundIndexes.ts')]).then(([docs, indexes]) => {
-    const manual = docs.entriesOf((getLocale() === 'zh-CN' ? indexes.manualZh : indexes.manualEn) as readonly ManualRecord[]);
+  return Promise.all([import('../docs/docsSearch.ts'), import('./notFoundIndexes.ts')]).then(async ([docs, indexes]) => {
+    const manual = await docs.loadManualEntries(getLocale());
     const vehicles = (indexes.fleet as readonly FleetRecord[]).map((record) => ({ record, name: fold(record.name), text: record.entry.searchText }));
     return (query: string): Hit[] => {
       const terms = fold(query).split(/\s+/).filter(Boolean);
