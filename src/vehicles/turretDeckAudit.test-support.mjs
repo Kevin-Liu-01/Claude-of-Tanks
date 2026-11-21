@@ -344,7 +344,11 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
       const verdict = measureTurretDeck(root, receipt);
       if (!verdict) return;
       turreted++;
-      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, ...verdict };
+      // the builder's own seat knobs (turretSeatRace.ts), so a row names the setting that left a surface low
+      const own = root.getObjectByName('rig_turret').userData;
+      const knobs = Object.fromEntries(['turretSeatKeepR', 'turretSeatRiseM', 'turretSeatReadM', 'turretSeatMinY',
+        'turretSeatCollar'].filter((key) => own[key] !== undefined).map((key) => [key, own[key]]));
+      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, footR: receipt.footR, knobs, ...verdict };
       report?.push(row);
       if (exclude.includes(id)) return;
       const allowed = carry[id] ?? { deck: 0, props: 0 };
