@@ -339,9 +339,10 @@ for (const [id, count] of Object.entries(laterChannelCounts)) {
 }
 // 2026-09-22 cleanup: 535 -> 526 when the hidden ww2 study variants t34_85_cad, newc_tiger and
 // newc_pziii (three channels each) left the saved fleet. 2026-09-23: 526 -> 420 when the remaining
-// 36 hidden records retired (35 three-channel loadouts plus the two-channel Sturmtiger).
+// 36 hidden records retired (35 three-channel loadouts plus the two-channel Sturmtiger). 2026-11-20 (274): 420 -> 417
+// when the STC-1 (type90_kyumaru, three channels) retired into the STC-2.
 assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
-  .reduce((n, spec) => n + spec.gun.shells.length, 0), 420,
+  .reduce((n, spec) => n + spec.gun.shells.length, 0), 417,
   'the pre-existing ammunition-channel census remains intact');
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
@@ -370,6 +371,7 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
 // and the Type 90 (B)'s three (267), the M3A2's three (268), and the South African line's five and the Australian line's
 // seven (269), the second air-defence round's twelve and the M163 VADS's two (270), and the 152 mm line's three each (271).
+// 274: 560 -> 557 when the STC-1 (type90_kyumaru, a pre-C2 record) retired into the STC-2.
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
@@ -377,8 +379,8 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
   - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels - australia269Channels
   - airDefense269Channels - laterChannelCounts.m163_vads - laterChannelCounts.t95
-  - ['object292', 'object477_molot', 'object195', 't14_152'].reduce((n, id) => n + laterChannelCounts[id], 0), 560,
-  'all 560 pre-C2 authored channels remain covered separately from its three new channels');
+  - ['object292', 'object477_molot', 'object195', 't14_152'].reduce((n, id) => n + laterChannelCounts[id], 0), 557,
+  'all 557 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
 assert.ok(depletedChannelTransitions > 200,

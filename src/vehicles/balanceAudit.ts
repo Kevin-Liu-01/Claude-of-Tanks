@@ -127,7 +127,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   m1a1_abrams_aim: '2,450 HP: it topped VIII once its peers\' gun faces were levered',
   m1a1_abrams_hc: '2,450 HP: it topped VIII once its peers\' gun faces were levered',
   type90: 'a 9 s magazine cycle and 2,450 HP with its Kyū-maru donor: the clip was still reloading when it died',
-  type90a: 'an 8.5 s magazine cycle: the clip was still reloading when it died',
+  type90a: 'an 8.75 s magazine cycle: the clip was still reloading when it died; 274: 8.5 -> 8.75 s, under the VIII ceiling once the STC-1 left its peers',
   k1a1: 'a x1.6 turret front at VIII; its gun and hull stay its K1E1 donor\'s (sourceXSecondWave)',
   bm_oplot_m: 'the X round (880 mm) and a x2 mantlet: its 400 mm gun face sat under X gun faces of ~1,000 mm',
   bm_oplot_t: 'the X round (880 mm) and a x2 mantlet: its 400 mm gun face sat under X gun faces of ~1,000 mm',

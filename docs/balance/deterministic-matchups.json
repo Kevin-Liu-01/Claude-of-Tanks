@@ -4121,7 +4121,7 @@
     },
     {
       "id": "type90a",
-      "revision": "an 8.5 s magazine cycle: the clip was still reloading when it died",
+      "revision": "an 8.75 s magazine cycle: the clip was still reloading when it died; 274: 8.5 -> 8.75 s, under the VIII ceiling once the STC-1 left its peers",
       "tier": 8,
       "era": "cold-war",
       "role": "mbt",
@@ -4142,8 +4142,8 @@
           778,
           700
         ],
-        "reloadS": 8.5,
-        "sustainedDpm": 7344,
+        "reloadS": 8.75,
+        "sustainedDpm": 7200,
         "accuracy": 0.296,
         "aimTimeS": 1.65
       },

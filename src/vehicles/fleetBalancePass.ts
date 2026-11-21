@@ -667,7 +667,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
     autoloaderCycle(registry, id, 9);
     spec(registry, id).hp = 2450;
   }
-  autoloaderCycle(registry, 'type90a', 8.5);
+  // 274 (the owner 2026-11-20): with the STC-1 retired the cold-war/8/mbt DPM median fell to 4,657 and the STC-2's 7,344
+  // read 1.577x; 8.75 s is the smallest step under the 1.55 ceiling (7,200, 1.546x)
+  autoloaderCycle(registry, 'type90a', 8.75);
   // the K1A1 keeps its K1E1 donor's gun and hull (sourceXSecondWave): its turret front takes the VIII step instead
   turretFront(registry, 'k1a1', 1.6);
   // (263, Main 10-29: the Vickers READY's Challenger 1 builds) C1 and C2 of FAIRNESS-263 §3 replace commit B's 263-build
