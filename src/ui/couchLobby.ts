@@ -16,7 +16,7 @@ import { encodeQr, qrSvgPath } from '../pad/qr.ts';
 import type { PadLobbyView } from '../pad/padLobby.ts';
 import type { CouchRuntime } from '../app/couchRuntime.ts';
 import { COUCH_VIEWS, type CouchBattle, type CouchView } from '../game/couchSeats.ts';
-import { couchSplitCapacity } from '../game/couchPanes.ts';
+import { couchScreenPlan } from '../game/couchPanes.ts';
 import { COUCH_RULES } from '../sim/matchRuleset.ts';
 import type { CouchSides } from '../sim/matchRuleset.ts';
 
@@ -121,12 +121,15 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     options: (['together', 'teams'] as const).map((value) => ({ value, label: t(`couch.sides.${value}`), disabled: togetherOnly && value === 'teams' })) }));
   wireRoving(side.lastElementChild as HTMLElement, (value) => { sides = value as CouchSides; paint(lobby.view); });
   // the screen: a pane per player with its own camera and HUD (split), or one camera over every seat (shared)
-  // (shared by default: the split screen is experimental until it meets the frame-budget pass rule, docs/COUCH-MODE.md)
-  let screen: CouchView = 'shared';
+  // (split by default, Kevin 2026-11-19: "we really need couch mode to be split screen properly"; the screen's plan,
+  // game/couchPanes.ts couchScreenPlan, takes it to Shared only while more phones sit than its panes hold)
+  let screen: CouchView = 'split';
+  /** Shared was taken for the player because the seats outgrew the split (not their choice): Split comes back with room. */
+  let sharedForRoom = false;
   side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.view'), className: 'cot-couch-view', value: screen,
     options: COUCH_VIEWS.map((value) => ({ value, label: t(`couch.view.${value}`) })) }));
   const viewControl = side.lastElementChild as HTMLElement;
-  wireRoving(viewControl, (value) => { screen = value === 'split' ? 'split' : 'shared'; });
+  wireRoving(viewControl, (value) => { screen = value === 'split' ? 'split' : 'shared'; sharedForRoom = false; });
   // the split screen seats as many as the screen's panes hold the HUD at its solo size (game/couchPanes.ts): past that,
   // Shared, and the note says how many Split fits here
   const viewLimit = side.appendChild(document.createElement('p'));
@@ -175,13 +178,18 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
       cell.setAttribute('aria-label', t(entry ? (entry.presence === 'here' ? 'couch.seat.here' : 'couch.seat.away') : 'couch.seat.free', { n: seat }));
     }
     start.disabled = !inPlay.length || view.state === 'ended';
-    const capacity = couchSplitCapacity(innerWidth, innerHeight);
-    const over = inPlay.length > capacity;
+    const plan = couchScreenPlan('split', Math.max(1, inPlay.length), innerWidth, innerHeight);
+    const over = plan.view !== 'split';
     const splitButton = viewControl.querySelector<HTMLButtonElement>('[data-value="split"]');
     if (splitButton) splitButton.disabled = over;
-    if (over && screen === 'split') viewControl.querySelector<HTMLButtonElement>('[data-value="shared"]')?.click();
+    if (over && screen === 'split') {
+      viewControl.querySelector<HTMLButtonElement>('[data-value="shared"]')?.click();
+      sharedForRoom = true;
+    } else if (!over && sharedForRoom) {
+      splitButton?.click();
+    }
     viewLimit.hidden = !over;
-    if (over) viewLimit.textContent = t('couch.view.splitLimit', { n: capacity });
+    if (over) viewLimit.textContent = t('couch.view.splitLimit', { n: plan.capacity });
   }
   paint(lobby.view);
   detach = lobby.subscribe(paint);

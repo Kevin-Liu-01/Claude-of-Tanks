@@ -187,7 +187,8 @@ function slots() {
   PICKS.docs.archiveLoops.forEach((id, i) => add(`docs.archiveLoops[${i}]`, id, 'loop'));
   for (const [k, id] of Object.entries(PICKS.topics)) add(`topics.${k}`, id, 'loop');
   for (const [k, v] of Object.entries(PICKS.topicMedia)) if (v.id) add(`topicMedia.${k}`, v.id, v.still);
-  PICKS.featured.forEach((f, i) => { if (!f.versus) add(`featured[${i}]`, f.id, f.still ?? 'moment'); });
+  // (a featured still may be a versus still, versusSlots, or a boot still of boot-media.mjs's: neither is a take)
+  PICKS.featured.forEach((f, i) => { if (!f.versus && !f.bootStill) add(`featured[${i}]`, f.id, f.still ?? 'moment'); });
   for (const k of ['notFound', 'hudEditor', 'og']) add(k, PICKS[k].id, PICKS[k].still);
   for (const [k, v] of Object.entries(PICKS.ogCards ?? {})) add(`ogCards.${k}`, v.id, v.still);
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));

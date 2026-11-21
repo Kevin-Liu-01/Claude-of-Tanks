@@ -1110,6 +1110,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
     // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
     'src/engine/cameraViewRoundTrip.selftest.mjs',
+    // cursor-aim-pan-274: cursor aim (no pointer lock) pans the chase view and the sight at the screen edge; lock and touch never
+    'src/engine/cursorEdgePan.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
     // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
@@ -1560,6 +1562,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
     // 2026-11-02 audit U26 (round 2): an orphaned build is speculative again, a superseded warm hides its world at once
     'src/world/worldActivationOrphans.selftest.mjs',
+    // mp-one-map-274 (the owner, 2026-11-19: two battlefields merged in one multiplayer scene): one battlefield drawn per frame
+    'src/world/worldActivationOneWorld.selftest.mjs',
     'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
     'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
     'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset
@@ -3096,6 +3100,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudLifecycle.selftest.mjs', // 2026-11-02 audit F8: one HUD lifecycle; hidden cleanup; one display owner
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // couch-split-274: a couch split pane's HUD owns its seat's tank (its own row, side and enemy count), not seat 1's
+    'src/ui/hudOwnTank.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',

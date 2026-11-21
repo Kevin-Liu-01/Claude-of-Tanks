@@ -12,9 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { automationMode, harnessPath, resolveAutomationMode } from './automationPath.ts';
 import { createBootScreen } from '../ui/bootScreen.ts';
 import {
-  AUTOMATION_PATHS, HARNESS_DEFAULT_SCRIPT, assertAutomationPath, automationPathScript, prepareToolBrowser, requestAutomationPath,
-  sessionPathProblem,
+  AUTOMATION_PATHS, HARNESS_DEFAULT_SCRIPT, TUTORIAL_SKIP_SCRIPT, assertAutomationPath, automationPathScript, prepareToolBrowser,
+  requestAutomationPath, sessionPathProblem,
 } from '../../tools/game-readiness.mjs';
+import { TUTORIAL_CHAPTERS, TUTORIAL_STORAGE_KEY, readTutorialRecord } from '../ui/tutorial/tutorialRecord.ts';
 import { launchGuardedBrowser } from '../../tools/browser-launch.mjs';
 import { codeText, toolCensusFiles } from '../../tools/code-text.mjs';
 
@@ -102,13 +103,14 @@ function withGlobals(values, fn) {
   };
   const browser = await launchGuardedBrowser({ async launch() { return fakeBrowser; } }, { headless: true });
   assert.equal(browser, fakeBrowser, 'the browser the launcher made');
-  assert.deepEqual(initial.scripts, [[HARNESS_DEFAULT_SCRIPT]], 'the page already open is prepared before the tool sees it');
+  const LAUNCHER = [[HARNESS_DEFAULT_SCRIPT], [TUTORIAL_SKIP_SCRIPT]];
+  assert.deepEqual(initial.scripts, LAUNCHER, 'the page already open is prepared before the tool sees it');
   const page = await browser.newPage();
   await requestAutomationPath(page, 'player');
-  assert.equal(page.scripts.length, 2, 'prepared once');
+  assert.equal(page.scripts.length, 3, 'prepared once');
   assert.equal(page.scripts[0][0], HARNESS_DEFAULT_SCRIPT, "the launcher's request is the page's first script");
   for (const fresh of [await (await browser.createBrowserContext()).newPage(), await browser.defaultBrowserContext().newPage()]) {
-    assert.deepEqual(fresh.scripts, [[HARNESS_DEFAULT_SCRIPT]], `${fresh.name}: prepared`);
+    assert.deepEqual(fresh.scripts, LAUNCHER, `${fresh.name}: prepared`);
   }
 
   const playwrightScripts = [];
@@ -120,10 +122,35 @@ function withGlobals(values, fn) {
   await pw.newContext();
   await pw.newPage();
   await launchGuardedBrowser(chromium, { headless: true }, { method: 'launchPersistentContext', userDataDir: '/nowhere' });
-  assert.deepEqual(playwrightScripts, [HARNESS_DEFAULT_SCRIPT, `page:${HARNESS_DEFAULT_SCRIPT}`, HARNESS_DEFAULT_SCRIPT],
-    'every playwright context and page: one init script');
+  assert.deepEqual(playwrightScripts, [HARNESS_DEFAULT_SCRIPT, TUTORIAL_SKIP_SCRIPT, `page:${HARNESS_DEFAULT_SCRIPT}`, `page:${TUTORIAL_SKIP_SCRIPT}`,
+    HARNESS_DEFAULT_SCRIPT, TUTORIAL_SKIP_SCRIPT], 'every playwright context and page: the launcher\'s two init scripts');
   assert.equal(await prepareToolBrowser(fakeBrowser), fakeBrowser, 'idempotent');
-  assert.equal(initial.scripts.length, 1);
+  assert.equal(initial.scripts.length, 2);
+  // (mp-one-map-274) a tool that keeps the tutorial (its own tools) gets the harness request alone
+  const kept = context('kept');
+  const keptBrowser = { async newPage() { return kept.newPage(); }, defaultBrowserContext: () => kept, async close() {} };
+  await launchGuardedBrowser({ async launch() { return keptBrowser; } }, { headless: true }, { tutorial: 'keep' });
+  assert.deepEqual((await keptBrowser.newPage()).scripts, [[HARNESS_DEFAULT_SCRIPT]], "{ tutorial: 'keep' }: the tutorial left to the page");
+  assert.match(read('tools/tutorial.browser.mjs'), /label: 'tutorial-browser', tutorial: 'keep' \}/, 'the tutorial walk keeps it');
+}
+
+// (mp-one-map-274) The launcher's tutorial request: a fresh tool profile reads as a returning player's (every chapter
+// skipped, the tutorial's own record format), a profile with a record and a replay address are left alone.
+{
+  const run = (stored, search = '?nosplash=1') => {
+    const store = new Map(stored === undefined ? [] : [[TUTORIAL_STORAGE_KEY, stored]]);
+    const localStorage = { getItem: (key) => store.get(key) ?? null, setItem: (key, value) => store.set(key, String(value)) };
+    new Function('localStorage', 'location', TUTORIAL_SKIP_SCRIPT)(localStorage, { search });
+    return { raw: store.get(TUTORIAL_STORAGE_KEY) ?? null, storage: localStorage };
+  };
+  const fresh = run(undefined);
+  assert.deepEqual(readTutorialRecord(fresh.storage), Object.fromEntries(TUTORIAL_CHAPTERS.map((chapter) => [chapter, 'skipped'])),
+    'a fresh tool profile: every chapter skipped, in the record the game reads');
+  assert.equal(run('{"garage":"done"}').raw, '{"garage":"done"}', "a tool's own record stays (hud-guidance: the battle chapter due)");
+  assert.equal(run('{}').raw, '{}', 'a replayed (empty) record stays');
+  assert.equal(run(undefined, '?nosplash=1&tutorial=1').raw, null, 'a replay address is left to the game');
+  assert.doesNotThrow(() => new Function('localStorage', 'location', TUTORIAL_SKIP_SCRIPT)(
+    { getItem() { throw new Error('SecurityError'); } }, { search: '' }), 'a page with no storage');
 }
 
 // After the boot a player-path tool checks the path the page took. A build before the owner ignores the request and

@@ -93,6 +93,18 @@ function gallery(ctx) {
   return out;
 }
 
+/** The boot splash's own stills (11-20, frames of the owner's Studio clips): each joins its battlefield's battle scenes,
+ *  titled with the battlefield and the hour; its 1280 rung is the boot splash's copy. */
+function boot(ctx) {
+  const out = sink();
+  for (const it of ctx.manifest('boot-r1').items) {
+    out.pictures.push({ url: it.path, name: it.id, lead: true, collection: 'scenes', set: `scenes-${slug(it.map)}`,
+      setTitle: ctx.cat(`map.${it.map}`), setAt: scenesAt, caption: [ctx.place(it.map, it.hour), null, null] });
+    rungNotes(out, it.rungs ?? [], it.path);
+  }
+  return out;
+}
+
 /** The versus stills: each versus scene at its newest round (an older round of the same scene, view and variant is
  *  superseded, and so is its loop's frame), at ground level by hour or from above. */
 function versus(ctx) {
@@ -480,6 +492,7 @@ const RETIRED = 'which no page shows (tools/media-freshness.selftest.mjs RETIRIN
 export const FOLDERS = {
   'gallery-r1': { owns: true, read: gallery },
   'versus-r1': { owns: true, read: versus },
+  'boot-r1': { owns: true, read: boot },
   'home-r2': { owns: true, read: home },
   'maps-r1': { owns: true, read: maps },
   'deploy-r1': { owns: true, read: deploy },

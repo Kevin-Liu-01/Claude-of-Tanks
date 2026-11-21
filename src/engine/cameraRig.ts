@@ -25,6 +25,7 @@ import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
 import { createAerialCamera } from './aerialCamera.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { createIsometricCamera } from './isometricCamera.ts';
+import { cursorEdgePan } from './cursorEdgePan.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import {
@@ -200,6 +201,8 @@ interface CameraInputFrame {
   cursorAim?: boolean;
   cursorX?: number;
   cursorY?: number;
+  /** Cursor aim may pan the view at the screen edge (cursorEdgePan.ts): false while the cursor is off the page. */
+  cursorPan?: boolean;
   autoAimPoint?: { x: number; y: number; z: number } | null;
 }
 
@@ -735,6 +738,7 @@ export function createCameraRig(
   let cursorAimOn = false;
   let cursorNdcX = 0;
   let cursorNdcY = 0;
+  const _edgePan = { yaw: 0, pitch: 0 };
 
   /** Server-aim raycast from the camera through screen center — or through
    *  the real cursor position in cursor-aim mode (both camera modes). */
@@ -1137,7 +1141,18 @@ export function createCameraRig(
     aimPitch = THREE.MathUtils.clamp(
       aimPitch - camInput.mouseDY * sensitivity, PITCH_MIN, PITCH_MAX,
     );
+    if (cursorAimOn && camInput.cursorPan) panAtCursorEdge(dt);
     updateAutoAim(player, dt, camInput.autoAimPoint);
+  }
+
+  /** cursor-aim-pan-274: cursor aim has no movement deltas, so a cursor in an edge band turns the view toward that
+   *  side (chase and sight; the sight's rate divides by its zoom). Pointer lock and touch never get here. */
+  function panAtCursorEdge(dt: number): void {
+    cursorEdgePan(cursorNdcX, cursorNdcY, dt, rig.mode === 'SNIPER' ? rig.zoom : 1, _edgePan);
+    if (_edgePan.yaw === 0 && _edgePan.pitch === 0) return;
+    aimYaw += _edgePan.yaw;
+    aimPitch = THREE.MathUtils.clamp(aimPitch + _edgePan.pitch, PITCH_MIN, PITCH_MAX);
+    aimTouched = true;
   }
 
   // Every camera motion the player does not steer (sight sway, trauma shake, recoil kick, FOV punch) is scaled by the

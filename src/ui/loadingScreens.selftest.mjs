@@ -72,15 +72,20 @@ const siteStills = `/media/${sitePicks.collection}/stills/`;
 // (2026-11-03) a versus still, whose boot preview is the 1280 rung of its boot opener (bootVersus, else itself)
 const versusItems = new Map(JSON.parse(await readFile(new URL('../../public/media/versus-r1/manifest.json', import.meta.url), 'utf8')).items
   .map((item) => [item.id, item]));
-const pickImg = (pick) => (pick.versus ? versusItems.get(pick.versus).path
+// (2026-11-20) or a boot still, a frame of a Studio clip (tools/media-r5/boot-media.mjs: public/media/boot-r1), opening
+// on its 1280 rung
+const bootManifest = JSON.parse(await readFile(new URL(`../../public/media/${sitePicks.boot.collection}/manifest.json`, import.meta.url), 'utf8'));
+const bootItems = new Map(bootManifest.items.map((item) => [item.id, item]));
+const pickImg = (pick) => (pick.bootStill ? bootItems.get(pick.bootStill).path : pick.versus ? versusItems.get(pick.versus).path
   : `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`);
-const pickBoot = (pick) => (pick.versus ? versusItems.get(pick.bootVersus ?? pick.versus).rungs.find((rung) => rung.width === 1280).path
-  : `${siteStills}${pick.id}-boot.webp`);
+const pickBoot = (pick) => (pick.bootStill ? bootItems.get(pick.bootStill).rungs.find((rung) => rung.rung === 1280).path
+  : pick.versus ? versusItems.get(pick.bootVersus ?? pick.versus).rungs.find((rung) => rung.width === 1280).path
+    : `${siteStills}${pick.id}-boot.webp`);
 const bootPicks = sitePicks.featured.filter((pick) => pick.boot);
 assert.equal(bootPicks.length, 1, 'one featured pick opens the boot splash');
 assert.equal(sitePicks.featured[0], bootPicks[0], 'the boot pick leads the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
-assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
+assert.equal(FEATURED_SHOTS.length, 21, 'the Garage gallery shows the boot pick and twenty of the site fifty');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garage still carries the boot derivative');
 // the loading picks (owner 2026-11-13, on the sheet of the old loop and the gallery: "lets do S C D K L M 17 25 2 6 12 9
 // 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22", then "actualy lets make 4 the first one (K)": the Orchard Valley
@@ -88,13 +93,42 @@ assert.equal(FEATURED_SHOTS.filter((shot) => shot.bootImg).length, 1, 'one Garag
 // leaves picks.json and this count together, and site-media-wire.mjs --only=loading rewires the rotation. (11-18,
 // "the first one of the amx 30b, i want replace with modern tanks but otherwsie same exact scene setup": the boot pick
 // is that scene with Leclercs for the AMX-30Bs and the AMX-40, a versus still, its own 1280 rung on the boot splash)
-assert.equal(bootPicks[0].versus, 's49-orchard-sunset-modern-r14', 'the Orchard Valley still opens the boot splash');
-assert.deepEqual(versusItems.get(bootPicks[0].versus).tanks.map((tank) => tank.id),
-  ['leclerc_xlr', 'leclerc_s2', 'leclerc_sxxi', 't72b3', 't90m'], 'the boot opener shows modern tanks');
+// (11-20, of a one-second Studio clip of Verdant Fields: "use a frame from this as the first loading screen", then of its
+// re-take with a blast behind the tanks: "actually use this one i think the explosions are cooler") the boot pick is
+// frame 16 of the re-take, its fireball in dark smoke, which still reads as fire under the boot scrim; the Orchard Valley
+// still that opened the splash before it now leads the loading picks, on its own 1280 rung. (274, the owner on the 273.4
+// splash: "i think we should crop the left of the loading shot a little"; on a sheet of 5%, 10% and 15% cuts, 5%) the
+// still drops the left twentieth of the frame (fewer of the trees and the windmill): 1824x1080, its 1280 rung 1216x720;
+// the focal moves from 35% to 30% across so a 390x844 phone opens on the same picture
+assert.equal(bootPicks[0].bootStill, 'verdant-blast-f16', 'the Verdant Fields blast opens the boot splash');
+{
+  const item = bootItems.get(bootPicks[0].bootStill);
+  const pick = sitePicks.boot.stills.find((still) => still.id === item.id);
+  assert.deepEqual([item.map, item.clip.file, item.clip.frame], ['verdant', 'studio_verdant_1080p30 (2).mp4', 16], 'frame 16 of the owner\'s re-take');
+  assert.match(item.clip.sha256, /^[0-9a-f]{64}$/, 'the clip it was cut from, by its sha256');
+  assert.equal(bootManifest.count, bootManifest.items.length);
+  assert.equal(bootManifest.trial, undefined, 'the published cut is the picks\' own, not a trial (--crop-left)');
+  assert.equal(pick.cropLeft, 0.05, 'the left twentieth of the frame is cut');
+  assert.deepEqual(item.crop, { left: pick.cropLeft, x: 96, y: 0, width: 1824, height: 1080 }, 'the manifest records the pick\'s cut');
+  assert.deepEqual([item.width, item.height], [1824, 1080], 'the frame less its left 96 px');
+  assert.deepEqual(item.rungs.map((rung) => [rung.rung, rung.width, rung.height]), [[1280, 1216, 720]], 'its 1280 rung, cut the same way');
+  for (const file of [item, ...item.rungs]) {
+    const bytes = await readFile(new URL(`../../public${file.path}`, import.meta.url));
+    assert.deepEqual(webpDimensions(bytes), [file.width, file.height], `${file.path}: ${file.width}x${file.height}`);
+    assert.equal(file.width * 1080, file.height * 1824, `${file.path}: the cut's 1824:1080`);
+    assert.equal(bytes.length, file.bytes, `${file.path}: the manifest's bytes`);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256, `${file.path}: the manifest's sha256`);
+  }
+  assert.ok(item.bytes <= 600 * 1024, `${item.path}: ${item.bytes} B, at most 600 KB`);
+  const boot = FEATURED_SHOTS[0];
+  assert.deepEqual([boot.capKey, boot.maps], ['map.verdant', ['verdant']], 'captioned with its battlefield\'s name, in every locale');
+  assert.equal(boot.focal, '30% 60%', 'the phone crop opens on the Abrams whole, the fire beside and above the lockup');
+}
 const loadingPicks = sitePicks.loading.stills;
 const garagePicks = new Map(sitePicks.featured.filter((pick) => !pick.boot).map((pick) => [pick.versus ?? pick.id, pick]));
-assert.equal(loadingPicks.length, 29, 'twenty-nine stills follow the boot pick');
-assert.ok(loadingPicks.slice(0, 5).every((id) => garagePicks.has(id)), 'Steinburg and four stills of the old loop open the rotation');
+assert.equal(loadingPicks.length, 30, 'thirty stills follow the boot pick');
+assert.equal(loadingPicks[0], 's49-orchard-sunset-modern-r14', 'the Orchard Valley still follows the boot pick');
+assert.ok(loadingPicks.slice(0, 6).every((id) => garagePicks.has(id)), 'Orchard Valley, Steinburg and four stills of the old loop open the rotation');
 assert.equal(new Set(loadingPicks).size, loadingPicks.length, 'no loading still is picked twice');
 const loadingDir = new URL(`../../public/media/${sitePicks.gallery.collection}/`, import.meta.url);
 const loadingManifest = JSON.parse(await readFile(new URL('manifest.json', loadingDir), 'utf8'));

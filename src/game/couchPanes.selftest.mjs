@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   CORE_MIN_CELL, COUCH_HUD_CORE, COUCH_HUD_PRIORITY, PANE_GUTTER_PX, couchHudFitStep, couchPaneGrid, couchPaneLayout,
-  couchPaneAreaFraction, couchPaneDetail, couchSplitCapacity,
+  couchPaneAreaFraction, couchPaneDetail, couchScreenPlan, couchSplitCapacity,
 } from './couchPanes.ts';
 
 // --- grids ---------------------------------------------------------------------------------------------------------
@@ -116,6 +116,31 @@ const box = (part, x0, y0, x1, y1, squeezed = false) => ({ part, x0, y0, x1, y1,
   assert.ok(details[3].lodBias > 2.9 && details[3].renderScale === 0.67, 'a 3 x 3 ninth: a third the size');
   assert.ok(Math.abs(shares[2] - 0.25) < 0.01, 'a 2 x 2 quarter is a quarter of the screen');
   assert.equal(couchPaneDetail(0.001).lodBias, 5, 'never past the floor (a fifth of the screen\'s width)');
+}
+
+// --- the screen's plan: the one owner of split or shared (couch-split-274) -------------------------------------------
+{
+  // the lobby asks for Split by default; 2, 3 and 4 seats on a 1080p television each get a pane
+  for (const [n, shape] of [[2, '2x1'], [3, '2x2'], [4, '2x2']]) {
+    const plan = couchScreenPlan('split', n, 1920, 1080);
+    assert.equal(plan.view, 'split', `${n} seats split at 1080p`);
+    assert.equal(`${plan.layout.columns}x${plan.layout.rows}`, shape);
+    assert.equal(plan.layout.panes.length, n);
+    assert.deepEqual(plan.layout, couchPaneLayout(n, 1920, 1080), 'the plan\'s panes are the layout\'s');
+    assert.deepEqual(plan.detail, couchPaneDetail(couchPaneAreaFraction(n, 1920, 1080)), 'and its detail the pane area\'s');
+  }
+  assert.equal(couchScreenPlan('split', 3, 1920, 1080).layout.spares.length, 1, 'three seats leave one dark cell');
+  // past the screen's capacity the battle shows the shared camera, never a pane under the core
+  const small = couchScreenPlan('split', 5, 1366, 768);
+  assert.equal(small.view, 'shared');
+  assert.equal(small.capacity, couchSplitCapacity(1366, 768));
+  assert.equal(small.layout, null);
+  assert.equal(small.detail, null);
+  // Shared asked is Shared, whatever the screen holds
+  const shared = couchScreenPlan('shared', 2, 3840, 2160);
+  assert.equal(shared.view, 'shared');
+  assert.equal(shared.layout, null);
+  assert.equal(couchScreenPlan('split', 8, 1920, 1080).capacity, 8, 'eight at 1080p (3 x 3)');
 }
 
 console.log('couchPanes: PASS — grids by seat count and screen shape, equal panes inside the screen with gutters, the HUD at its solo size, parts given up by the stated priority, the core kept, the world\'s detail by the pane\'s area');

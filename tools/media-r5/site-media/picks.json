@@ -1756,14 +1756,42 @@
       "sheet": 2
     }
   },
+  "boot": {
+    "about": "The boot splash's own stills (owner 2026-11-20, of a one-second Scene Studio clip of Verdant Fields, three tanks on a grass hill: \"use a frame from this as the first loading screen\"; then of its re-take with a blast behind the tanks: \"actually use this one i think the explosions are cooler\"). tools/media-r5/boot-media.mjs --clips <dir> cuts each still's frame from its clip and builds public/media/boot-r1 (1920 and the 1280 rung the boot splash opens on); a featured pick names one as `bootStill`. Frame 16 of the re-take's 30 is the one whose blast still reads as fire under the boot scrim (an orange core in dark smoke, debris flying; the frames after it bloom pale and then settle to tan dust), above the lockup at 1440x900. (274, the owner on the 273.4 splash: \"i think we should crop the left of the loading shot a little\") A still's cropLeft drops that share of the frame's left edge (where the uncut 16:9 frame left the focal 160 px of play at 1440x900). On a sheet of 5%, 10% and 15% cuts beside the live splash he picked 5%: 0.05 cuts frame 16 to 1824x1080 and its 1280 rung to 1216x720, so 1440x900 starts at frame column 125 (67 before), with fewer of the trees and the windmill; the boot pick's focal moves from 35% to 30% across so a 390x844 phone still opens on the same picture (the Abrams whole, the fire beside and above the lockup).",
+    "collection": "boot-r1",
+    "rungs": [
+      {
+        "width": 1280,
+        "quality": 80
+      }
+    ],
+    "stills": [
+      {
+        "id": "verdant-blast-f16",
+        "clip": "studio_verdant_1080p30 (2).mp4",
+        "frame": 16,
+        "cropLeft": 0.05,
+        "map": "verdant",
+        "hour": "day"
+      }
+    ]
+  },
   "featured": [
     {
+      "bootStill": "verdant-blast-f16",
+      "maps": [
+        "verdant"
+      ],
+      "boot": true,
+      "focal": "30% 60%"
+    },
+    {
       "versus": "s49-orchard-sunset-modern-r14",
+      "bootVersus": "s49-orchard-sunset-modern-r14",
       "maps": [
         "orchard",
         "autumn"
       ],
-      "boot": true,
       "focal": "78% 62%"
     },
     {
@@ -1902,8 +1930,9 @@
     }
   ],
   "loading": {
-    "about": "The loading screens' rotation after the boot pick (featured[0]), in its order: the owner's pick (2026-11-13, from the sheet of the old loop and his loading-screen gallery: \"lets do S C D K L M 17 25 2 6 12 9 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22\", then \"actualy lets make 4 the first one (K)\": the Orchard Valley still is the boot pick and Steinburg follows it). Each id names a Garage still (a `featured` id or versus: its files, battlefields, focal and caption, and a versus still's boot lens on the boot splash) or a gallery still (`gallery`: public/media/gallery-r1, each still's focal and its caption from the gallery's manifest): Steinburg and four stills of the old loop, then twenty-four of the gallery. site-media-wire.mjs --only=loading wires src/ui/featuredShots.ts LOADING_SHOTS. The Garage gallery stays `featured`.",
+    "about": "The loading screens' rotation after the boot pick (featured[0]), in its order: the owner's pick (2026-11-13, from the sheet of the old loop and his loading-screen gallery: \"lets do S C D K L M 17 25 2 6 12 9 18 24 27 26 14 5 13 10 20 8 21 29 28 11 4 16 19 22\", then \"actualy lets make 4 the first one (K)\": the Orchard Valley still is the boot pick and Steinburg follows it). Each id names a Garage still (a `featured` id or versus: its files, battlefields, focal and caption, and a versus still's boot lens on the boot splash) or a gallery still (`gallery`: public/media/gallery-r1, each still's focal and its caption from the gallery's manifest): Steinburg and four stills of the old loop, then twenty-four of the gallery. (2026-11-20, owner: a frame of his Verdant Fields Studio clip is \"the first loading screen\": it is the boot pick, `boot`, and the Orchard Valley still that opened the splash before it leads this list with its own 1280 rung.) site-media-wire.mjs --only=loading wires src/ui/featuredShots.ts LOADING_SHOTS. The Garage gallery stays `featured`.",
     "stills": [
+      "s49-orchard-sunset-modern-r14",
       "f6-leo2a6-steinburg-r7",
       "s29-fjord-road-kill",
       "s13-farm-race",

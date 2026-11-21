@@ -380,8 +380,12 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // 2026-11-12 (integrator 272.1, at integ/272.1's build with gt-symbol-272 edf92d71fc): the entry +1,081 B (the GT
   //   symbol inline, currentColor, in the Garage credits and the language pop-up; general-translation.png retired); game
   //   -2,230 B and Gallery -3,625 B brotli overall, requests held. The other rows stay at 272's pins.
-  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 251137 },
-  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 251137 },
+  // 2026-11-19 (integrator 273.3, at the release build of main 5913f17a81, the six client-only heads Kevin shipped
+  //   without tests): the entry +450 B brotli (cursor-aim-pan's cursorEdgePan in the camera rig and input, couch-split's
+  //   one screen plan and per-pane HUD seat, hud-card-fit, mp-one-map's one-world settle, garage-deploy-row), re-pinned
+  //   at its measure. Requests and page totals held within their pins.
+  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 251587 },
+  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 251587 },
   gallery: { brotliBytes: 790344, requests: 83 },
   home: { brotliBytes: 28933, requests: 8 },
   docs: { brotliBytes: 37250, requests: 12 },

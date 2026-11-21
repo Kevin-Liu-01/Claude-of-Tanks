@@ -317,6 +317,8 @@ const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 const RACK_SNAP_INSET = 4;
 /** Up to this width the map's large step takes the kill ribbon's room and the right-hand kill feed's beside it. */
 const MAP_TAKES_LANES_W = 1024;
+/** The map plate's solo width before its zoom step (hud.ts .cot-minimap: 220 px x --mm-k). */
+const COUCH_MAP_SOLO_PX = 220;
 /** The map's large step as its plate names it (hud.ts MM_SCALES: data-zoom). */
 const MAP_LARGE_STEP = '2';
 /** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 8px))), the hints plate's 8 px in the
@@ -1314,8 +1316,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // log's left edge, gauntlet r8)
     const sightStop = touch ? Infinity
       : Math.max(176, width / 2 - Math.max(Math.min(width, height) * 0.15 + 8, 80) - (mapNow ? width - mapNow.right : 12));
-    const mapCap = Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity, sightStop,
-      mapRoom - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0));
+    // (couch-split-274: a split-screen pane keeps the solo HUD's sizes, so a pane under 1000 px wide keeps the TV's inline
+    // tray, which leaves the map no room beside it at its solo size: the map stands over the tray's systems row instead,
+    // on the pane's right edge, capped by the sight and the score, never by the right roster: the pane's fit gives up the
+    // rosters before the map, src/game/couchPanes.ts COUCH_HUD_PRIORITY. Every 2 and 4 seat pane lost its map before.)
+    const mapPlate = !touch && document.body.hasAttribute('data-couch-pane') ? root.querySelector<HTMLElement>('.cot-minimap') : null;
+    const mapSoloW = mapPlate ? COUCH_MAP_SOLO_PX * (parseFloat(window.getComputedStyle(mapPlate).getPropertyValue('--mm-k')) || 1) : 0;
+    const liftMap = !!mapPlate && rackRight > width / 2 && width - 16 - rackRight - 12 < mapSoloW;
+    setBodyVar('--hud-map-lift', liftMap ? `${Math.round(height - systemsTop + 8)}px` : '');
+    const mapCap = liftMap
+      ? Math.min(sightStop, systemsTop - 8 - scoreBottom - 8 - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0))
+      : Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity, sightStop,
+        mapRoom - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0));
     setBodyVar('--hud-map-max', mapCap < Infinity ? `${Math.floor(mapCap)}px` : '');
     // (as many tiles as the rack has slots: each tile stands over its slot, as wide, the separator's gap with it, so the
     // row's dividers are the rack's, gauntlet r4; otherwise the tiles share the rack's width evenly)
