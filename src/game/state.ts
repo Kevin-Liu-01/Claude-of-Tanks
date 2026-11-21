@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -427,6 +427,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _trainingCues?: Map<string, number>;
   /** A slow-turret shooter's laid gun (S13): each actor's scene name and the yaw its gun points along (rad). */
   _trainingGunYaw?: Map<string, number>;
+  /** S13: when the player stepped inside each arc shooter's arc (sim seconds; trainingArcDwellMet). */
+  _trainingArcSince?: Map<string, number>;
   /** The training battle's checkpoint (273): where the player comes back after a death, the last ring reached. */
   _trainingCheckpoint?: { x: number; z: number; yaw: number } | null;
   /** The training battle's parked hulls (273): their ids, off the field until their scene's cue. The mode controller's
@@ -1027,6 +1029,12 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
     const reach = Math.hypot(aim.x - from.x, aim.z - from.z);
     aim.set(from.x + Math.sin(gunYaw) * reach, aim.y, from.z + Math.cos(gunYaw) * reach);
     arcAllows = trainingArcAllows(actor.volley, entity.state.yaw, gunYaw, Math.atan2(pos.x - from.x, pos.z - from.z));
+    // (S13) the arc held a while before the trigger: a tank clipping its edge is not shot for it
+    if (actor.volley.arcDwellS != null) {
+      const since = game._trainingArcSince ??= new Map();
+      if (arcAllows) { if (!since.has(actor.key)) since.set(actor.key, game.timeS); } else since.delete(actor.key);
+      arcAllows = trainingArcDwellMet(actor.volley, since.get(actor.key) ?? null, game.timeS);
+    }
   }
   // one that fires only at what it sees reads the battle's ground (the earthworks raised in it) between them
   const ground = game._groundSampler;
@@ -1250,6 +1258,7 @@ export function setupBattle(
   // a training battle's scene state starts clean each battle (a replay's shooters uncued, the checkpoint the start)
   game._trainingCues = undefined;
   game._trainingGunYaw = undefined;
+  game._trainingArcSince = undefined;
   game._trainingCheckpoint = null;
   game._trainingParked = undefined;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);

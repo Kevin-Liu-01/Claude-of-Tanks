@@ -41,6 +41,10 @@ export interface TrainingVolley {
    *  stands inside this arc either side of its hull's nose (deg) and the gun is on the player. */
   readonly traverseDegPerS?: number;
   readonly frontArcDeg?: number;
+  /** S13: its trigger only once the player has stood inside that arc this long (s), counted afresh each time in: a tank
+   *  that clips the arc's edge on its way round is not shot for it (the end walk of 2026-11-20: one round on the way
+   *  from U to V took 800 hit points and a crewman, and the flank could not be finished with the gun frozen). */
+  readonly arcDwellS?: number;
 }
 
 /** One hull the scenes use: a target that never fires, or a scripted shooter. */
@@ -174,10 +178,12 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     Object.freeze({ key: 'sentry2', specId: 't62mv1', x: S10_SENTRY2.x, z: S10_SENTRY2.z, faces: 'ringG', presentDeg: 0, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 2.0, aim: Object.freeze({ alongM: 1.0, upM: 2.25 }) }) }),
     // S11's Sentry 3: an AMX-30B2 whose APFSDS goes through the loaner's upper hull about three times in five (1.06), a hit
-    // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires at the player's hull only while it sees
-    // it: out past the wall's end, never behind it. 127 m from the cover spot.
+    // a fifth of its health, on a 6 s reload. Parked until S11 cues it, it fires on every load whether it sees the player
+    // or not, its rounds into the wall while the player hides: the rhythm the card teaches (peek just after it fires, back
+    // before its ring fills). It fired only at what it saw before, so its gun stood loaded at every peek and shot first:
+    // the end walk of 2026-11-20 took 65 rounds through the hull in one scene. 127 m from the cover spot.
     Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true, staysDown: true,
-      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
     // S12's Sentry 4: a T-55A parked until the kit scene, firing HE at the running gear on the side the player shows it, each
     // time its gun loads, until a track is hit (the step stands it down). 76 m from ring Q, the peek spot the player stops
     // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2). Moved 3 m along its rise from
@@ -188,10 +194,11 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
       volley: Object.freeze({ shellType: 'HE', firstS: 2.5, aim: Object.freeze({ alongM: 0, upM: 0.45, acrossM: 1.55 }) }) }),
     // S13's Bulwark: an Object 477 whose front reads 75 % red to the loaner's APFSDS at 120 m and its side 80 % green
     // (evidence s13 fit). Parked until its scene on the open meadow, facing west; its turret turns 8 degrees a second and
-    // it fires only into a 30 degree arc either side of its nose, its gun on the player, after a 1.5 s telegraph. Ring U
-    // stands 45 degrees off its nose (outside the arc), ring V at its side.
+    // it fires only into a 30 degree arc either side of its nose, its gun on the player, after a 1.5 s telegraph and once
+    // the player has stood 2 s inside the arc. Ring U stands 45 degrees off its nose (outside the arc), ring V at its side;
+    // a tank that swings wide south of U on its way to V crosses into the arc (27 degrees 25 m on), where the dwell spares it.
     Object.freeze({ key: 'bulwark', specId: 'object477_molot', x: -270, z: -125, faces: 'ringU', presentDeg: -45, entersOnCue: true, staysDown: true,
-      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.5, whenSeen: true, traverseDegPerS: 8, frontArcDeg: 30,
+      volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.5, whenSeen: true, traverseDegPerS: 8, frontArcDeg: 30, arcDwellS: 2,
         aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
   ]),
   // S14's skirmish (storyboard: two allies against three enemies, normal AI and rules): the allies on the meadow beside
@@ -296,6 +303,12 @@ export function trainingArcAllows(volley: TrainingVolley, hullYaw: number, gunYa
  *  spaces the rounds), and, for one that fires only at what it sees, while `seen`. */
 export function trainingVolleyFires(volley: TrainingVolley, cuedAtS: number, timeS: number, seen = true): boolean {
   return timeS - cuedAtS >= volley.firstS && (!volley.whenSeen || seen);
+}
+
+/** Whether a shooter with an arc dwell may fire: the player inside its arc since `enteredS` (null: not inside), long
+ *  enough (S13). A shooter without one fires as soon as the arc allows. */
+export function trainingArcDwellMet(volley: TrainingVolley, enteredS: number | null, timeS: number): boolean {
+  return enteredS !== null && timeS - enteredS >= (volley.arcDwellS ?? 0);
 }
 
 /** The training roster after the player: each actor's tank, then the skirmish's allies and enemies, in order. */

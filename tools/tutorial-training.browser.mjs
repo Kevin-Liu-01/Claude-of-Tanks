@@ -109,7 +109,12 @@ try {
       const me = window.__DEBUG.game.player?.id;
       // the rounds that strike the player, and the player's own rounds' outcomes (a shooting step's stall reads them)
       if (hit?.targetId === me || hit?.attackerId === me) {
-        window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, on: hit.targetId, t: Math.round(performance.now()) });
+        const r1 = (v) => (typeof v === 'number' ? Math.round(v * 10) / 10 : v ?? null);
+        const r2 = (a) => (Array.isArray(a) ? a.map((v) => Math.round(v * 100) / 100) : null);
+        // a round into the player: where it struck and what it met (the S9 probe: the shading's verdict against the sim's)
+        window.__walkHits.push({ kind: hit.kind, by: hit.attackerId, on: hit.targetId, t: Math.round(performance.now()),
+          ...(hit.targetId === me ? { zone: hit.zone ?? null, plate: hit.plateKind ?? null, local: r2(hit.impactLocalPos ?? hit.localPos), angle: r1(hit.impactAngleDeg),
+            effMm: r1(hit.effectiveMm), nomMm: r1(hit.nominalMm), roll: r1(hit.penRollMm), hp: r1(hit.hpRemoved) } : {}) });
       }
     });
   });
