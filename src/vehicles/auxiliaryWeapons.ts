@@ -125,6 +125,8 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   vt4a1:type54,ztz100:type54,ztz20:type54,
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
+  // release 274: the Leopard 2 prototype (PT 10 / T 17) carries the T 11's Rh 202 on the KPz 70's mount
+  leopard2_proto:rh202,
   t62_1975:b32Nsvt,t62mv1:b32Nsvt,t64bv1:b32Nsvt,t64bv_donbas:b32Nsvt,t64bm1m:b32Nsvt,t64bv:b32Nsvt,t64b1v_2022:b32Nsvt,pt64_tur:b32Nsvt,t72bu_1989:b32Nsvt,t72bu:b32Nsvt,t72b3:b32Nsvt,
   t72b3m_2016:b32Nsvt,t72b3m_2022:b32Nsvt,t72b_1987:b32Nsvt,t72m1_jaguar:b32Nsvt,t72_rys:b32Nsvt,pt91a_twardy:b32Nsvt,pt91m:b32Nsvt,
   t80:b32Nsvt,t80b:b32Nsvt,t80bv:b32Nsvt,t80uk:b32Nsvt,t80u:b32Nsvt,ua_t80bv:b32Nsvt,

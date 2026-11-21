@@ -439,6 +439,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/leopard2A7VGunEra.selftest.mjs',
+    'src/vehicles/profiles/leopard2Prototype.selftest.mjs',
     'src/vehicles/profiles/leopardA5NL.selftest.mjs',
     'src/vehicles/profiles/leopardA5XDetails.selftest.mjs',
     'src/vehicles/profiles/leopardA6MTurretSeat.selftest.mjs',
