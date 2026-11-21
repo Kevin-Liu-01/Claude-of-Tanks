@@ -178,8 +178,16 @@ try {
     // screen-right (movementX > 0) lowers the yaw (input.ts SIGN CONTRACT); mouse-down lowers the pitch (cameraRig.ts)
     const dx = Math.max(-500, Math.min(500, -yaw / gain)), dy = Math.max(-250, Math.min(250, -pitch / gain));
     const before = await camAim();
-    vmx += dx; vmy += dy;
-    await page.mouse.move(vmx, vmy, { steps: Math.max(2, Math.ceil(Math.hypot(dx, dy) / 80)) });
+    if (touch) {
+      // a phone aims by a finger dragged on the aim pad (touchControls.ts), never the mouse
+      const sx = vp.width * 0.7, sy = vp.height * 0.45, steps = Math.max(2, Math.ceil(Math.hypot(dx, dy) / 40));
+      await page.touchscreen.touchStart(sx, sy);
+      for (let i = 1; i <= steps; i++) { await page.touchscreen.touchMove(sx + (dx * i) / steps, sy + (dy * i) / steps); await sleep(16); }
+      await page.touchscreen.touchEnd();
+    } else {
+      vmx += dx; vmy += dy;
+      await page.mouse.move(vmx, vmy, { steps: Math.max(2, Math.ceil(Math.hypot(dx, dy) / 80)) });
+    }
     await sleep(350);
     const after = await camAim();
     const moved = wrap(after.yaw - before.yaw);
@@ -306,8 +314,21 @@ try {
       }
     } finally { if (key) await page.keyboard.up(key); }
   }
+  /** A tap on a HUD control (a phone's way to every press): the index'th visible match of the selector. */
+  async function tapSel(selector, index = 0) {
+    const boxes = (await Promise.all((await page.$$(selector)).map((h) => h.boundingBox()))).filter((b) => b && b.width > 2);
+    const box = boxes[index];
+    if (!box) { (report.tapMisses ??= []).push(selector); return false; }
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await sleep(250);
+    return true;
+  }
+  /** The gunner's sight on or off: Shift, or a phone's scope button. */
+  const toggleSight = async () => { if (touch) await tapSel('.cot-touch .round.scope'); else await page.keyboard.press('ShiftLeft'); await sleep(400); };
+  /** A round loaded by its rack slot (0 APFSDS, 2 HE on the loaner): its digit, or a phone's tap on its tile. */
+  const loadRound = async (slot) => { if (touch) await tapSel('.cot-shells .cot-shell', slot); else await page.keyboard.press(`Digit${slot + 1}`); };
   /** Out of the gunner's sight before a drive, as a player drives (in the third-person view). */
-  const thirdPerson = async () => { if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(400); } };
+  const thirdPerson = async () => { if (await sightMode()) await toggleSight(); };
   /** The player's tracks: damaged or broken (module:state; S12 waits for Sentry 4 to hit one). */
   const trackHit = () => page.evaluate(() => {
     const modules = window.__DEBUG.game.player?.combat?.modules ?? {};
@@ -383,10 +404,7 @@ try {
   async function fireAtOnce(actorId, local, stepId, { tolPx = 3, settleMs = 1200, gunTol = 0.03 } = {}) {
     // through the gunner's sight, as a player lays on a plate (the third-person view's reticle stands off the screen's
     // centre: the lay never converged there, 372 tries at Target 2 in the end walk of 2026-11-20)
-    if (!(await sightMode())) {
-      if (touch) await (await page.$('.cot-touch .round.scope'))?.tap(); else await page.keyboard.press('ShiftLeft');
-      await sleep(600);
-    }
+    if (!(await sightMode())) await toggleSight();
     const until = Date.now() + 30_000;
     while (Date.now() < until && (await stepNow()) === stepId) {
       const target = await actorPose(actorId);
@@ -398,7 +416,7 @@ try {
       if (Math.abs(err) > gunTol) { await sleep(300); continue; } // the turret still traversing behind the view
       await sleep(settleMs); // the aim settles
       if (!(await layOn(actorPoint(await actorPose(actorId), local.along, local.up, local.across), tolPx))) continue;
-      await page.mouse.down(); await sleep(60); await page.mouse.up();
+      if (touch) await tapSel('.cot-touch .round.fire'); else { await page.mouse.down(); await sleep(60); await page.mouse.up(); }
       const me = await pose();
       const shotOf = (report.shots ??= []).filter((x) => x.step === stepId).length;
       report.shots.push({ step: stepId, actor: actorId, at: [Math.round(me.x), Math.round(me.z)],
@@ -442,18 +460,18 @@ try {
     }
     else if (id === 'training.spot') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringC, now); }
     else if (id === 'training.bush') { await thirdPerson(); how = 'drove in, stopped'; await driveInto(TRAINING_POINTS.bushD, now); }
-    else if (id === 'training.armourTouch') { how = 'next'; if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter'); }
     else if (id === 'training.armourSight') {
       // back into ring C and stopped (the spot can come before it), then the sight
-      how = 'into ring C, shift'; await thirdPerson(); await driveInto(TRAINING_POINTS.ringC, now, true);
-      if (!(await sightMode())) await page.keyboard.press('ShiftLeft');
+      how = 'into ring C, sight'; await thirdPerson(); await driveInto(TRAINING_POINTS.ringC, now, true);
+      if (!(await sightMode())) await toggleSight();
     }
+    else if (now === 'training.armourTouch') { how = 'next'; if (touch) await tapSel('.cot-tut-next'); else await page.keyboard.press('Enter'); }
     else if (id === 'training.armour') { how = 'H, H'; await page.keyboard.press('KeyH'); await sleep(700); await page.keyboard.press('KeyH'); }
     else if (id === 'training.firePen') { how = 'fired at the green plate'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.green, now)} shots)`; }
     else if (id === 'training.fireBounce') { how = 'fired at the turret front'; how += ` (${await fireAt(ACTOR.target1, TARGET_POINTS.red, now)} shots)`; }
     else if (id === 'training.fireHE') {
       how = '3, drove to ring E, fired HE at Target 2';
-      await page.keyboard.press('Digit3'); await thirdPerson();
+      await loadRound(2); await thirdPerson();
       await driveInto(TRAINING_POINTS.ringE, now, true);
       how += ` (${await fireAt(ACTOR.target2, TARGET_POINTS.hull, now)} shots)`;
     }
@@ -497,12 +515,16 @@ try {
       while (Date.now() < until && (await stepNow()) === now) {
         const them = await actorPose(shooter);
         if (them) await layOn({ x: them.x, y: them.y + 1.5, z: them.z }, 12);
-        if (id === 'training.repair' && (await trackHit())) { how += ', track hit, 4'; await page.keyboard.press('Digit4'); await sleep(1500); }
+        if (id === 'training.repair' && (await trackHit())) {
+          how += ', track hit, repair';
+          if (touch) await tapSel('.cot-cons .cot-con', 0); else await page.keyboard.press('Digit4');
+          await sleep(1500);
+        }
         await sleep(400);
       }
     }
     else if (id === 'training.fireBack') {
-      how = '1, fired at Sentry 2 over the berm'; await page.keyboard.press('Digit1');
+      how = '1, fired at Sentry 2 over the berm'; await loadRound(0);
       how += ` (${await fireAt(ACTOR.sentry2, { along: 0.6, up: 2.1, across: 0 }, now)} shots)`;
     }
     else if (id === 'training.peekShoot') {
@@ -533,7 +555,7 @@ try {
       }));
       if (touch) await (await page.$('.cot-tut-next')).tap(); else await page.keyboard.press('Enter');
     }
-    else if (id === 'training.smoke') { how = 'G'; await page.keyboard.press('KeyG'); }
+    else if (id === 'training.smoke') { how = touch ? 'smoke tile' : 'G'; if (touch) await tapSel('[data-control="smoke"]'); else await page.keyboard.press('KeyG'); }
     else if (id === 'training.toU') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringU, now); }
     else if (id === 'training.flank') {
       await thirdPerson(); how = 'drove to ring V, faced it, fired into its side'; await driveInto(TRAINING_POINTS.ringV, now, true);
