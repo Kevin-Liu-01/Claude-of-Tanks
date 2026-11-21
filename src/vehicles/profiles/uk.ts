@@ -1729,11 +1729,12 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   P.add('hull', box(1.76, 0.62, 6.65), 0, 0.79, -0.075);                      // belly tub z -3.40..3.25
   P.add('hull', box(1.84, D - 1.06, VICKERS_GLACIS.z0 - ZR), 0, (D + 1.06) / 2, (VICKERS_GLACIS.z0 + ZR) / 2);
   for (const s of [-1, 1]) {
-    // side strips over the track's inner half; aft of -2.75 they lift clear of the high sprocket wrap
-    vickersPrism(P, 'hull', 1.08, D, [[s * 0.92, 2.45], [s * 1.11, 2.45], [s * 1.11, -2.75], [s * 0.92, -2.75]],
-      [[s * 0.92, 2.45], [s * 1.11, 2.45], [s * 1.11, -2.75], [s * 0.92, -2.75]]);
-    vickersPrism(P, 'hull', 1.40, D, [[s * 0.92, -2.75], [s * 1.11, -2.75], [s * 1.11, ZR], [s * 0.92, ZR]],
-      [[s * 0.92, -2.75], [s * 1.11, -2.75], [s * 1.11, ZR], [s * 0.92, ZR]]);
+    // side strips over the track's inner half; aft of -2.10 they lift clear of the run climbing to the high sprocket
+    // at full wheel travel (tank-standard strict sweep)
+    vickersPrism(P, 'hull', 1.08, D, [[s * 0.92, 2.45], [s * 1.11, 2.45], [s * 1.11, -2.10], [s * 0.92, -2.10]],
+      [[s * 0.92, 2.45], [s * 1.11, 2.45], [s * 1.11, -2.10], [s * 0.92, -2.10]]);
+    vickersPrism(P, 'hull', 1.40, D, [[s * 0.92, -2.10], [s * 1.11, -2.10], [s * 1.11, ZR], [s * 0.92, ZR]],
+      [[s * 0.92, -2.10], [s * 1.11, -2.10], [s * 1.11, ZR], [s * 0.92, ZR]]);
   }
   // upper glacis: one long plate 1.58 -> 1.12 over z 2.45..3.70; the wings over the tracks are plate-thin so the
   // idler wrap (crown 1.19 at z 3.23) stays clear underneath
@@ -1760,18 +1761,19 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   // ---- track guards and the stowage-bin wall (photo P1/P5/P6: the sides read as one tall flat wall) ----
   for (const s of [-1, 1]) {
     const gx0 = s * 1.11, gx1 = s * 1.595;
-    vickersPrism(P, 'hull', G - 0.03, G, [[gx0, 2.40], [gx1, 2.40], [gx1, -2.75], [gx0, -2.75]],
-      [[gx0, 2.40], [gx1, 2.40], [gx1, -2.75], [gx0, -2.75]]);
-    // rear guards rise over the high sprocket, then run level to the stern
+    vickersPrism(P, 'hull', G - 0.03, G, [[gx0, 2.40], [gx1, 2.40], [gx1, -2.10], [gx0, -2.10]],
+      [[gx0, 2.40], [gx1, 2.40], [gx1, -2.10], [gx0, -2.10]]);
+    // rear guards rise from over the last road wheel to clear the high sprocket (photo P1's rising bin line), then run
+    // level to the stern
     P.add('hull', slab(
-      [gx0, G - 0.03, -2.75], [gx1, G - 0.03, -2.75], [gx1, 1.39, -3.12], [gx0, 1.39, -3.12],
-      [gx0, G, -2.75], [gx1, G, -2.75], [gx1, 1.42, -3.12], [gx0, 1.42, -3.12]));
-    vickersPrism(P, 'hull', 1.39, 1.42, [[gx0, -3.12], [gx1, -3.12], [gx1, -3.95], [gx0, -3.95]],
-      [[gx0, -3.12], [gx1, -3.12], [gx1, -3.95], [gx0, -3.95]]);
+      [gx0, G - 0.03, -2.10], [gx1, G - 0.03, -2.10], [gx1, 1.39, -2.80], [gx0, 1.39, -2.80],
+      [gx0, G, -2.10], [gx1, G, -2.10], [gx1, 1.42, -2.80], [gx0, 1.42, -2.80]));
+    vickersPrism(P, 'hull', 1.39, 1.42, [[gx0, -2.80], [gx1, -2.80], [gx1, -3.95], [gx0, -3.95]],
+      [[gx0, -2.80], [gx1, -2.80], [gx1, -3.95], [gx0, -3.95]]);
     // guard lip along the outer edge
-    P.add('hull', box(0.03, 0.10, 5.15), s * 1.58, G - 0.06, -0.175);
+    P.add('hull', box(0.03, 0.10, 4.50), s * 1.58, G - 0.06, 0.15);
     // four lidded bins a side standing on the guard; the rearmost runs on over the rising guard (photo P1)
-    for (const [za, zb] of [[2.40, 1.48], [1.42, 0.24], [0.18, -1.00], [-1.06, -2.72]] as const) {
+    for (const [za, zb] of [[2.40, 1.48], [1.42, 0.24], [0.18, -1.00], [-1.06, -2.08]] as const) {
       const len = za - zb, zc = (za + zb) / 2;
       P.add('hull', box(0.46, VICKERS_BIN_TOP - G, len), s * 1.345, (VICKERS_BIN_TOP + G) / 2, zc);
       P.add('hullDark', box(0.47, 0.012, len + 0.005), s * 1.345, VICKERS_BIN_TOP - 0.035, zc);   // lid seam
@@ -1783,13 +1785,13 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
       P.add('hullDetail', box(0.02, 0.02, len * 0.5), s * 1.584, VICKERS_BIN_TOP - 0.24, zc);     // stiffener
     }
     P.add('hull', slab(
-      [s * 1.115, G, -2.74], [s * 1.575, G, -2.74], [s * 1.575, 1.40, -3.10], [s * 1.115, 1.40, -3.10],
-      [s * 1.115, VICKERS_BIN_TOP, -2.74], [s * 1.575, VICKERS_BIN_TOP, -2.74],
-      [s * 1.575, VICKERS_BIN_TOP, -3.10], [s * 1.115, VICKERS_BIN_TOP, -3.10]));
-    P.add('hullDetail', box(0.47, 0.02, 0.34), s * 1.345, VICKERS_BIN_TOP + 0.01, -2.92);
+      [s * 1.115, G, -2.10], [s * 1.575, G, -2.10], [s * 1.575, 1.42, -2.80], [s * 1.115, 1.42, -2.80],
+      [s * 1.115, VICKERS_BIN_TOP, -2.10], [s * 1.575, VICKERS_BIN_TOP, -2.10],
+      [s * 1.575, VICKERS_BIN_TOP, -3.12], [s * 1.115, VICKERS_BIN_TOP, -3.12]));
+    P.add('hullDetail', box(0.47, 0.02, 0.98), s * 1.345, VICKERS_BIN_TOP + 0.01, -2.61);
     // rear corner boxes on the high guards: tail-light housing (and the exhaust stub on the left)
-    P.add('hull', box(0.46, 0.20, 0.80), s * 1.345, 1.52, -3.53);
-    P.add('hullDetail', box(0.47, 0.02, 0.74), s * 1.345, 1.63, -3.53);
+    P.add('hull', box(0.46, 0.20, 0.82), s * 1.345, 1.52, -3.54);
+    P.add('hullDetail', box(0.47, 0.02, 0.76), s * 1.345, 1.63, -3.54);
     P.add('hullDetail', box(0.16, 0.10, 0.04), s * 1.20, 1.50, -3.945);
     P.add('hullGlass', box(0.07, 0.05, 0.012), s * 1.17, 1.505, -3.967);
     P.add('hullGlass', box(0.05, 0.05, 0.012), s * 1.25, 1.505, -3.967);
