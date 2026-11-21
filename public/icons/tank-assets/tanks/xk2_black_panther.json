@@ -625,7 +625,7 @@
       }
     ]
   },
-  "geometryHash": "a783ec3a",
+  "geometryHash": "dfe52411",
   "metadataHash": "98676572",
   "presentationAnchor": {
     "xM": -0.0067,
@@ -652,14 +652,15 @@
       "trackPad": 1,
       "trackPadSimplified": 1,
       "hullRubber": 6,
-      "fittingPaint": 2,
+      "fittingPaint": 3,
       "opticGlass": 4,
       "gunmetal": 12,
       "armorPaint": 12,
       "canvas": 2,
       "wood": 1,
       "unclassified": 20,
-      "gearShadow": 1
+      "gearShadow": 1,
+      "canvasPale": 1
     }
   },
   "muzzleBore": {
@@ -686,15 +687,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26276,
-      "sha256": "cb7f98ab440eef70dd68df641f60dd81cf3f8a4c07ce1d811b99cac148d1dcc8",
+      "bytes": 26546,
+      "sha256": "6b4df6b125e0fbb26f076b6e27c34082595983329d84add4c9f8e5c64bccfcaa",
       "thumbnail": {
         "file": "thumbs/xk2_black_panther_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10860,
-        "sha256": "ba12ea89d7aee83dd731f2c5389c9cdd3a90aaec106f5e82b964d97d8f06cea9",
+        "bytes": 10824,
+        "sha256": "5e28508f9b66f6e0f366fddcedeb9f2292b914888a40eb976cf1bb9ab11fb742",
         "frame": [21,82,225,250]
       }
     },
@@ -703,16 +704,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12994,
-      "sha256": "d0e0ca03e562c046ee7516a8485416535f6ff67f754597da8afd3afb7fc90363"
+      "bytes": 13180,
+      "sha256": "460cc5002f2cb4be2dabe58ef1f8f06f8376c05af4149f9a414962aa51aa9c9d"
     },
     "side": {
       "file": "xk2_black_panther_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13730,
-      "sha256": "7c9cd32e9c1cc9768bfa5a51aa9e0f5d03b51a211aa8da4ab7c206ac5a6d0c91"
+      "bytes": 13806,
+      "sha256": "49582b2ffe2d5b3fbbb85b47b115f8ab30d433e378a72db3fcb065e40add9c80"
     },
     "topSilhouette": {
       "file": "xk2_black_panther_top_silhouette.png",
@@ -727,32 +728,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5281,
-      "sha256": "84320a5dfa418f68a3f0ccc11e3125190e222f994900fc7b4f6014e8ee0c9bca"
+      "bytes": 5260,
+      "sha256": "6250f3ab6e6227abeeb9a2b1b1a5b79d43592accb68c091eff11cb6f974ec02f"
     },
     "armorSide": {
       "file": "xk2_black_panther_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28236,
-      "sha256": "5626b97a5782684a3fc245e399295d3f764fb5d9ba9f4c164e271b3f0f758a78"
+      "bytes": 28476,
+      "sha256": "f5105524b8be2c078ab759741ed594dbb24a12f328009d71bc22edd606d3ec62"
     },
     "modulesSide": {
       "file": "xk2_black_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29556,
-      "sha256": "12a41a2806bf990cbd076f95b0dcf9333e17e2cca112d25e266d44d40c87a8a1"
+      "bytes": 29830,
+      "sha256": "b8314e8ecff55fef200d7f3efc5d0cfcd9710acc95d389296965cfb50917fbe5"
     },
     "crewSide": {
       "file": "xk2_black_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25680,
-      "sha256": "e3c097dc01a18ab6a4e3755feaaa5da7c35b458fd7959f33effca31aa408e1ca"
+      "bytes": 25836,
+      "sha256": "73f1d3d2523bb8eb26d5f2845e93ef302e11d7481b2c5ba9168ab7e536d917d1"
     },
     "markings": {
       "file": "xk2_black_panther_markings.png",
