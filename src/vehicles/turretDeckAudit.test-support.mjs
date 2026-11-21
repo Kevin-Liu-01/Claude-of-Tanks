@@ -269,21 +269,22 @@ function judgeDeck(grid, turret, collared) {
     if (clear < DECK_CLEAR_M) { (base ? failing : beyond).set(k, clear); by.set(k, turret.lowBy[k]); }
   }
   const describe = (map) => patches(n, map).map((cells) => {
-    let worst = cells[0], inRim = 0, foot = 0;
+    let worst = cells[0], inRim = 0, foot = 0, footClear = Infinity;
     for (const k of cells) {
       if (map.get(k) < map.get(worst)) worst = k;
       if (cellAt(grid, k).r <= rimR + RIM_PAD_M) inRim++;
-      if (atFoot(k)) foot++;
+      if (atFoot(k)) { foot++; footClear = Math.min(footClear, map.get(k)); }
     }
     const p = cellAt(grid, worst);
     return {
-      cells: cells.length, inRim, atFoot: foot, clearM: round3(map.get(worst)), r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
+      cells: cells.length, inRim, atFoot: foot, clearM: round3(map.get(worst)),
+      footClearM: Number.isFinite(footClear) ? round3(footClear) : null, r: round3(p.r), bearing: bearingDeg(p.dx, p.dz),
       turret: labels[by.get(worst)], hull: labels[hullBy[worst]],
     };
   }).sort((a, b) => a.clearM - b.clearM);
   const base = describe(failing);
   return {
-    patches: base.filter((patch) => patch.atFoot >= MIN_CELLS), hidden: base.filter((patch) => patch.atFoot < MIN_CELLS),
+    patches: base.filter((patch) => patch.atFoot >= MIN_CELLS).sort((a, b) => a.footClearM - b.footClearM), hidden: base.filter((patch) => patch.atFoot < MIN_CELLS),
     overhang: describe(beyond), minClear,
   };
 }
@@ -342,8 +343,8 @@ export function measureTurretDeck(root, receipt) {
         overhang = deck.overhang;
         overhangYaw = Math.round((step / YAWS) * 360);
       }
-      if (deck.patches.length && (!worst || deck.patches[0].clearM < worst[0].clearM
-        || (deck.patches[0].clearM === worst[0].clearM && deck.patches.length > worst.length))) {
+      if (deck.patches.length && (!worst || deck.patches[0].footClearM < worst[0].footClearM
+        || (deck.patches[0].footClearM === worst[0].footClearM && deck.patches.length > worst.length))) {
         worst = deck.patches;
         worstYaw = Math.round((step / YAWS) * 360);
       }
