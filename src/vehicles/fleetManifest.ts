@@ -85,7 +85,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   // no matching vehicle was visible. Keep their ownership in the same
   // import-free manifest as the larger authored families.
   misc: Object.freeze([
-    'type90_kyumaru', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 't80uk',
+    'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 't80uk',
     'type74', 'amx30', 'amx30b2',
   ]),
   uk: Object.freeze([

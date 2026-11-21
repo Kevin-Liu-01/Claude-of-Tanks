@@ -291,7 +291,6 @@
   "type87_aw": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"18ac9c73027d2ab6","turret":"31baef032edfb6d5","gun":"bcec7fa3b47e98a9"}},
   "type89": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"b3bd21af652d9f98","turret":"828ecfea4c058f33","gun":"c8e169b36147e0b9"}},
   "type90": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":388,"pockets":2,"geometry":{"hull":"036f5c228dd31120","turret":"2ff5fc9b1707345e","gun":"4fbf9023264c5ac4"}},
-  "type90_kyumaru": {"turretRaisedCm2":2844,"turretBaseCm2":2236,"hullCm2":1356,"pockets":11,"geometry":{"hull":"cdadc57e25e59f08","turret":"980123879145d272","gun":"71df81b598921509"}},
   "type90a": {"turretRaisedCm2":7820,"turretBaseCm2":2228,"hullCm2":1348,"pockets":19,"geometry":{"hull":"e8b8a4cc33761900","turret":"f2bb7e8aad725a6f","gun":"20e0417f294862af"}},
   "type90b": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":388,"pockets":2,"geometry":{"hull":"f3aa05df34ca7632","turret":"0356dadac982b34b","gun":"db942a41cb85730d"}},
   "type96_72_long": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"7a08a8a116f6ea2f","turret":"66519eb7e3a6da90","gun":"0ac1d891b4eb844a"}},

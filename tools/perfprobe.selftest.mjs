@@ -320,7 +320,7 @@ const snapshot = (ids = ['m1a1_abrams_hc', ...REFERENCE_MIXED_ROSTER]) => ({ pha
 assert.equal(request.label, 'reference-mixed-13-opponents');
 assert.equal(request.expectedCount, 14);
 assert.deepEqual(request.requestedOpponents, [
-  'fv510_milan', 'bwp1', 'amx40_proto', 'strv103a', 't80b', 't80bv', 'type90_kyumaru',
+  'fv510_milan', 'bwp1', 'amx40_proto', 'strv103a', 't80b', 't80bv', 'type90',
   'm60a2', 'type90a', 'm1a1ha', 'carro45t', 'ztz85_iii', 'm2a2_bradley',
 ]);
 {

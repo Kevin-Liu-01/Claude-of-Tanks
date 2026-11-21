@@ -246,7 +246,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
-// 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
+// 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90b, and the STC-1 until it left the fleet 2026-11-20), its tier 8.
 // 267 re-pin (lane bmpt-family-267, the owner's "make a BMPT Terminator"): the original Ob'yekt 199 Terminator at VI on
 // the support line (lane 13) off the BMPT-72, beside the BMPT T-90.
 // 268 (the twin-cannon air defence; tiers by capability on the coordinator's suggestion): Russia's Tunguska and Pantsir
@@ -282,5 +282,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // russia-152 (main 3f31c66abc): Russia's 152 mm line on from the T-80U along its row (Object 292 VII, Object 477
 // Molot IX, Object 195 X) with the T-14 152 beside the Object 195 at X (Main's tiers, 2026-11-04); its own pin was
 // 7c47bfa998d2369b. 271 (integration): merged after the twin-aa round; re-pinned at the merge (98286838a838e422).
-assert.equal(digest, '98286838a838e422', `tree content changed: re-pin to ${digest} if deliberate`);
+// 274 (the owner 2026-11-20: "remove the stc 1"): the STC-1 leaves the Japan tree; the Type 90's node builds the
+// Type 90 (B) alone, re-linked with nothing else moved (was 98286838a838e422).
+assert.equal(digest, 'f5cfc24ff636873c', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

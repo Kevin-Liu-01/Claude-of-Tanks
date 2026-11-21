@@ -5,7 +5,7 @@ import { isFleetBalanceFinalized } from './fleetBalanceState.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariantFrom, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { leopardA6WedgePlates } from './leopardXWedges.ts';
-import { donorSpec } from './donorSpecs.ts';
+import { TKX_PROTOTYPE_FRAME, donorSpec } from './donorSpecs.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
 import { createT72B1987XArmorZones } from './t72b1987XArmor.ts';
@@ -39,7 +39,8 @@ const entries = [
   ['t72b3', 't72b3', 'T-72B3'],
   ['jpz_e100', 'jpz_e100', 'Jagdpanzer E100'],
   ['type10', 'type10_tk_x', 'Type 10'],
-  ['type90', 'type90_kyumaru', 'Type 90'],
+  // the TK-X frame: the removed STC-1's row, an unregistered donor template since 2026-11-20 (donorSpecs.ts)
+  ['type90', TKX_PROTOTYPE_FRAME, 'Type 90'],
   ['amx40', 'amx40_proto', 'AMX-40'],
   ['c1_ariete', 'c1_ariete_proto_serie1', 'C1 Ariete'],
   ['strv122', 'strv121', 'Stridsvagn 122'],
@@ -214,8 +215,8 @@ function armorFitDimensions(id: string, dims: FleetDimensions): FleetDimensions 
     ? { ...dims, widthM: LECLERC_CLASSIC_X_DATUMS.dims.widthM } : dims;
 }
 
-// A donor that is itself a named prototype hands its clone that prototype's designation (owner 2026-10-25: the procedural
-// type90_kyumaru became the STC-1 and carries 'STC-1' as its number); the production study keeps its service number.
+// A donor that is itself a named prototype hands its clone that prototype's designation; the production study keeps its
+// service number (the Type 90's donor, the TK-X frame, was the STC-1's row until 2026-11-20).
 const PRODUCTION_NUMBERS: Readonly<Record<string, string>> = Object.freeze({ type90: '73' });
 
 const specs: Record<string, FleetTankSpec> = {};
@@ -252,6 +253,9 @@ for (const [id, donorId, name] of entries) {
   if (id === 'challenger1_mk3') Object.assign(spec.visual, { scheme: 'merdc', base: '#b59a70', weather: '#c7a97b',
     patches: ['#8a7050', '#d0b98f', '#4a3f30'], camoScale: 0.55, patchK: 1.3 });
   spec.balancePeerOf = donorId;
+  // the TK-X frame is no vehicle (donorSpecs.ts): the Type 90 has no balance peer, and a failed build falls back to the
+  // frame's own donor, the TK-X (rosterVisualFallback.ts)
+  if (donorId === TKX_PROTOTYPE_FRAME) { delete spec.balancePeerOf; spec.variantOf = 'type10_tk_x'; }
   stripSilhouetteDimensions(spec.dims);
   const previous = { ...spec.dims };
   Object.assign(spec.dims, dimensions[id]);

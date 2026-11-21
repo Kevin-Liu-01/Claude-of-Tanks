@@ -135,7 +135,7 @@ export const ORACLE_PINS = Object.freeze({
   '/models/tanks/community/recovered/t80bv.glb': pin('ef9e2b7f8b31160db9c47e467caa51a6d157991b1eb7fa6edcb3020ab1e77930'), // t80bv
   '/models/tanks/community/recovered/t84.glb': pin('ebecac128c409a3f2194cc61143f70e23650494e01261e9d168dcdc641181fe8',
     "the main checkout's version (the hash-named archive holds no other); small moves with the build since its pin"), // t84
-  '/models/tanks/community/recovered/type90.glb': pin('8ce5a2235d383e6f349026c96356a5931703ece7b04ae49f5f43f7c432e87e3f'), // type90_kyumaru
+  '/models/tanks/community/recovered/type90.glb': pin('8ce5a2235d383e6f349026c96356a5931703ece7b04ae49f5f43f7c432e87e3f'), // type90a (the STC-1's oracle until 2026-11-20; the same build)
   '/models/tanks/community/spz_puma.glb': pin('9714eacccee26d9c4d30b3f8e10e13a5c19aa139784df1f79a15c6c4e2dee4a4'), // spz_puma
   '/models/tanks/community/t-72b3m_obr._2022.glb': pin('6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350'), // t72b3m_2022
   '/models/tanks/community/t95_doomturtle_haphazard.glb': pin('42db8f17b16c65cecdfc7c40894327c2edd478b7ff29a815561bcb6f5d99b69a'), // t95

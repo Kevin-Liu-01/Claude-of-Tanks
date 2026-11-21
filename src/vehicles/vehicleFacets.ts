@@ -198,7 +198,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     't80u_husarz', 't80u_kursk', 't80u_yun', 't80u_zoria', 't80uk', 't84', 't84bm_oplot_m', 't90', 't90_1992',
     't90a', 't90a_2004', 't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m',
     't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tamoyo3', 'ttd', 'type10', 'type10_dozer',
-    'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type90b', 'type96_72_long', 'type96_72m_lei',
+    'type10_tk_x', 'type10b', 'type74', 'type90', 'type90a', 'type90b', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'type96b', 'ua_challenger2', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_t80bv', 'vickers_mk1', 'vt4a1',
     'vt4a1_baihu', 'xk2_black_panther', 'ztz100', 'ztz20', 'ztz20_prototype', 'ztz85_iii', 'ztz99_longwei',
     'ztz99a', 'ztz99a2', 'ztz99a2_qinglong',
@@ -273,7 +273,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'ee_t4_osorio', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi',
     'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leopard_as1', 'mbt70',
     'osorio_p1', 'osorio_p2', 'pt84_orzel', 'stb1', 't72_rys', 't80', 't80b', 't80bv', 't80u', 't80u_kursk',
-    't80uk', 't84', 't84bm_oplot_m', 'type10', 'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru',
+    't80uk', 't84', 't84bm_oplot_m', 'type10', 'type10_tk_x', 'type10b', 'type74', 'type90',
     'type90a', 'type90b', 'type96_80_feng', 'ua_t80bv', 'vickers_mk1', 'xk2_black_panther',
   ]),
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
@@ -331,7 +331,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'x1a2_carcara', 'ztz99a', 'ztz99a2',
   ]),
   // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form. (owner
-  // 2026-10-25: the procedural Type 90 pair are the TK-X first-series prototypes STC-1 and STC-2, tankLabels.ts; the K2B
+  // 2026-10-25: the procedural Type 90 is the TK-X first-series prototype STC-2, tankLabels.ts (the STC-1 left the fleet 2026-11-20); the K2B
   // is the K2's prototype version.)
   prototype: Object.freeze([
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
@@ -340,7 +340,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'leo2_revolution_proto', 'leopard2_proto', 'm48_super', 'marder2', 'mbt70', 'object148_proto', 'object195',
     'object292', 'object477_molot', 'osorio_p1', 'osorio_p2', 'pantsir_s1', 'pza_loara', 'stb1', 'strv105',
     't14_armata', 't84', 't90a_burlak', 't90a_burlak_proto', 'tamoyo1', 'tamoyo3', 'ttd', 'type10_tk_x',
-    'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100', 'ztz100_prototype', 'ztz20_prototype',
+    'type90a', 'udes03', 'xk2_black_panther', 'ztz100', 'ztz100_prototype', 'ztz20_prototype',
     'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals

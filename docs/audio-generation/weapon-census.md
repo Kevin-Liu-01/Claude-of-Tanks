@@ -12,8 +12,8 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | `100/unitary_brass` | 100 mm D-10T2S (T-55A) and the Type 59's 100 mm | rifled | long (L/53.5) | none | unitary_brass | manual | `gun_100_close` / `gun_100_own` / `gun_100_interior` / `gun_100_far` | 2 |
 | `100lp/unitary_brass` | 100 mm 2A70 low-pressure gun-launcher (BMP-3) | rifled | short, low pressure | none | unitary_brass | ifv_autoloader | `gun_100lp_close` / `gun_100lp_own` / `gun_100lp_interior` / `gun_100lp_far` | 2 |
 | `105/unitary_brass` | L7/M68 family, CN-105-F1, kan m/59 and the Strv 103's L/62, Type 74, the ZTZ-20/100 105 mm | rifled | long (L/51–L/62) | none | unitary_brass | manual | `gun_105_close` / `gun_105_own` / `gun_105_interior` / `gun_105_far` | 42 |
-| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 146 |
-| `120/combustible` | Rh-120 L/44 and L/55, M256, CN120-26, Type 90/10, K2 CN08, OTO 120/44, MG251/253, the Osório's 120 mm | smoothbore | long (L/44–L/55) | none | combustible | manual | `gun_120_close` / `gun_120_own` / `gun_120_interior` / `gun_120_far` | 86 |
+| `12.7/belt` | M2HB, NSVT, Kord, DShK, QJC-88, WKM-B, K6 (roof and remote stations); the Ares APC's L111A1 | rifled | long | flash_hider | belt | autocannon | `mg_heavy_close` / `mg_heavy_own` / `mg_heavy_interior` / `mg_heavy_far` | 145 |
+| `120/combustible` | Rh-120 L/44 and L/55, M256, CN120-26, Type 90/10, K2 CN08, OTO 120/44, MG251/253, the Osório's 120 mm | smoothbore | long (L/44–L/55) | none | combustible | manual | `gun_120_close` / `gun_120_own` / `gun_120_interior` / `gun_120_far` | 85 |
 | `120/separate_bag` | L11 and L30 rifled (Chieftain, Challenger 1 and 2) | rifled | long (L/55) | none | separate_bag | manual | `gun_120r_close` / `gun_120r_own` / `gun_120r_interior` / `gun_120r_far` | 13 |
 | `125/two_piece` | 2A46M family and 2A82 (T-64, T-72, T-80, T-84, T-90, T-14, PT-91, Type 96/99, VT4) | smoothbore | long (L/48–L/56) | none | two_piece | manual | `gun_125_close` / `gun_125_own` / `gun_125_interior` / `gun_125_far` | 73 |
 | `130/combustible` | Rh-130 L/51 (KF51 Panther family), the EE-T4's 130 mm | smoothbore | long (L/51) | none | combustible | manual | `gun_130_close` / `gun_130_own` / `gun_130_interior` / `gun_130_far` | 4 |
@@ -325,7 +325,6 @@ simulation; roof, loader and remote stations are. Loader makes come from `src/ve
 | Type 87 Self-Propelled Anti-Aircraft Gun (`type87_aw`) | 35 mm | `35/belt`: 35 mm APDS-T, 35 mm HEI-T | manual | no | — |
 | Type 89 (`type89`) | 35 mm | `guided/missile`: Type 79 Jyu-MAT<br>`35/belt`: KDE 35 mm APFSDS-T, KDE 35 mm HEI-T | manual | no | — |
 | Type 90 (`type90`) | 120 mm | `120/combustible`: JM33 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
-| STC-1 (`type90_kyumaru`) | 120 mm | `120/combustible`: JM33 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
 | STC-2 (`type90a`) | 120 mm | `120/combustible`: Type 10 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
 | Type 90 (B) (`type90b`) | 120 mm | `120/combustible`: JM33 APFSDS, JM12A1 HEAT-MP, Type 10 HE | bustle | no | 12.7 mm `12.7/belt` |
 | Type 96-72 Lóng (Concept) (`type96_72_long`) | 125 mm | `125/two_piece`: DTC10-125 APFSDS, DTP-125 HEAT, DTB-125 HE | carousel_az | no | — |

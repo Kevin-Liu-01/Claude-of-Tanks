@@ -12,7 +12,7 @@
 // functions are pure. Simulation, network and Node tools may import it.
 
 /** The tank id schema this build writes. Bump it only by appending a rename map. */
-export const TANK_ID_SCHEMA = 3;
+export const TANK_ID_SCHEMA = 4;
 
 /**
  * Append-only rename maps. `TANK_ID_RENAMES[k]` turns schema k+1 ids into
@@ -59,7 +59,16 @@ export const TANK_ID_RENAMES: readonly Readonly<Record<string, string>>[] = Obje
     cn_t80u_modern: 't80u_yun', cn_t72b3m_modern: 't72b3m_kunlun', cn_t72b3_modern: 't72b3_qilin', ru_t80u_modern: 't80u_bars_m',
     ru_t72b3m_modern: 't72b3m_bulat_m', ru_t72b3_modern: 't72b3_bastion_m',
   }),
+  // Schema 4 (2026-11-20, japan-274): the STC-1 leaves the fleet (the owner: "remove the stc 1"); what named it names the
+  // STC-2, the same TK-X build at the same tier and line slot. A retirement into a live vehicle (TANK_ID_MERGES).
+  Object.freeze({ type90_kyumaru: 'type90a' }),
 ]);
+
+/**
+ * Map entries whose target is a vehicle that already existed: a removed vehicle's records fold into it. The target keeps
+ * its own schema-1 spelling (its look is seeded from it), and a record keyed by both keeps the target's own.
+ */
+export const TANK_ID_MERGES: ReadonlySet<string> = Object.freeze(new Set(['type90_kyumaru']));
 
 /** The URL parameter that stamps a link's id schema (`/gallery?id=…&ids=2`). */
 export const TANK_ID_SCHEMA_PARAM = 'ids';
@@ -79,6 +88,8 @@ export interface TankIdResolver {
   resolveIncoming(id: string): string;
   /** True when no vehicle carries this id in the current schema any more. */
   isRetired(id: string): boolean;
+  /** True when this retired id folded into a vehicle that already existed (TANK_ID_MERGES). */
+  isMerged(id: string): boolean;
   /**
    * The schema-1 spelling of a current id (itself for a vehicle added later).
    * Everything that hashes a vehicle id into its look or its name (decor
@@ -93,8 +104,8 @@ export interface TankIdResolver {
 }
 
 export function createTankIdResolver({
-  schema, renames,
-}: { schema: number; renames: readonly Readonly<Record<string, string>>[] }): TankIdResolver {
+  schema, renames, merges = new Set(),
+}: { schema: number; renames: readonly Readonly<Record<string, string>>[]; merges?: ReadonlySet<string> }): TankIdResolver {
   if (!Number.isInteger(schema) || schema < 1) throw new RangeError(`tank id schema must be a positive integer: ${schema}`);
   if (renames.length !== schema - 1) {
     throw new RangeError(`tank id schema ${schema} needs ${schema - 1} rename maps, has ${renames.length}`);
@@ -120,7 +131,8 @@ export function createTankIdResolver({
     }
     return out;
   };
-  const inverses = renames.map((map) => new Map(Object.entries(map).map(([from, to]) => [to, from])));
+  // a merge's target keeps its own spelling: only renames invert
+  const inverses = renames.map((map) => new Map(Object.entries(map).filter(([from]) => !merges.has(from)).map(([from, to]) => [to, from])));
   const originalOf = (id: string): string => {
     let out = String(id);
     for (let k = inverses.length - 1; k >= 0; k -= 1) out = inverses[k]!.get(out) ?? out;
@@ -132,6 +144,7 @@ export function createTankIdResolver({
     resolve,
     resolveIncoming: (id: string) => (retiredAt.has(id) ? resolve(id, retiredAt.get(id)) : id),
     isRetired: (id: string) => retiredAt.has(id),
+    isMerged: (id: string) => merges.has(id),
     originalOf,
     stamp: () => (schema > 1 ? { tankIdSchema: schema } : {}),
     linkParam: () => (schema > 1 ? `${TANK_ID_SCHEMA_PARAM}=${schema}` : ''),
@@ -139,7 +152,7 @@ export function createTankIdResolver({
 }
 
 /** This build's resolver over the landed rename maps. */
-export const TANK_IDS = createTankIdResolver({ schema: TANK_ID_SCHEMA, renames: TANK_ID_RENAMES });
+export const TANK_IDS = createTankIdResolver({ schema: TANK_ID_SCHEMA, renames: TANK_ID_RENAMES, merges: TANK_ID_MERGES });
 
 /** An id written under `schema` (missing = 1) in this build's spelling. */
 export function resolveTankId(id: string, schema?: unknown): string {

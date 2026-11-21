@@ -93,7 +93,6 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   m60a2: 'normalize the Shillelagh burst cycle and ammunition reserve',
   t80: 'make the base T-80 a mobile sidegrade instead of a strict T-80U downgrade',
   t80b: 'make the T-80B the mobile alternative to the protected T-80BV; 259: a thicker mantlet, pen, hull, aim and cadence for same-tier fairness at IV',
-  type90_kyumaru: 'make the STC-1 the mobility alternative to the protected STC-2; 263: a 9 s magazine cycle and 2,450 HP with its STC-2 rebuild at VIII',
   t90a_2004: 'give the base T-90A handling value beside the faster Vladimir package',
   m1a1: 'make the base M1A1 the mobile alternative to the protected HA package; 263: a x1.5 mantlet, its upright gun face read under 470 mm at VIII',
   amx30: 'restore the AMX-30 mobility and fire-control sidegrade; 263: 1,800 HP and a 420-damage round with the AMX-30B: a hit more to kill at I',

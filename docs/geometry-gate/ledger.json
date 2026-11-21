@@ -2,7 +2,7 @@
  "generatedAt": "2026-11-09T20:58:52.474Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 45,
- "total": 155,
+ "total": 154,
  "rows": [
   {
    "id": "challenger2",
@@ -664,22 +664,6 @@
     "dims": 100,
     "floaters": 100
    }
-  },
-  {
-   "id": "type90_kyumaru",
-   "geoMin": 21.6,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 77.2,
-    "stations": 38.5,
-    "turretCurves": 21.6,
-    "wholeCurves": 27.8,
-    "dims": 67,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "type96b",

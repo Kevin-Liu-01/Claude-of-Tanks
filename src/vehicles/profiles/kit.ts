@@ -488,21 +488,6 @@ function addSovietHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuil
   if (p.era) addEra(P,width,halfL*0.48,roofY,p.eraRows || 2);
 }
 
-function addType90HullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
-  const { box,frustum }=KIT;
-  const {width,length,halfL,roofY,trackTop}=d;
-  // Type 90: low two-level engine deck, very shallow glacis and broad
-  // fender shoulders.  The old generic western hull was almost a metre too
-  // tall at the nose and read as a rectangular troop carrier in profile.
-  P.add('hull',box(width*0.82,roofY-trackTop,length*0.52),0,trackTop+(roofY-trackTop)/2,-halfL*0.23);
-  P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.02,width*0.38,halfL*0.48,halfL*0.02,
-    trackTop*0.78,roofY));
-  P.add('hull',frustum(width*0.40,halfL*0.81,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
-    0.31,trackTop*0.80));
-  P.add('hull',box(width*0.94,0.11,length*0.43),0,trackTop+0.17,-halfL*0.22);
-  P.add('hullDetail',box(width*0.32,0.035,length*0.26),-width*0.18,roofY+0.025,halfL*0.15);
-}
-
 function addWarriorHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): void {
   const { box,frustum }=KIT;
   const {width,length,halfL,roofY,trackTop}=d;
@@ -566,7 +551,6 @@ function addWesternHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): voi
 function addHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaHullShell(P,d);
   else if (d.style === 'soviet') addSovietHullShell(P,p,d);
-  else if (d.style === 'type90_kyumaru') addType90HullShell(P,d);
   else if (d.style === 'warrior') addWarriorHullShell(P,d);
   else if (d.style === 'ifv') addIfvHullShell(P,d);
   else if (d.style === 'classic') addClassicHullShell(P,d);
@@ -596,24 +580,6 @@ function addSovietDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): 
   for (let i=0;i<6;i++) P.add('hullDetail',box(width*0.42,0.028,0.045),0,roofY+0.05,-halfL*(0.40+i*0.07));
   P.add('hull',box(0.34,0.18,length*0.30),width*0.40,roofY-0.07,-halfL*0.20);
   P.add('hullDark',cylZ(0.075,length*0.23,10),-width*0.39,roofY+0.09,-halfL*0.28,Math.PI/2,0,0);
-}
-
-function addType90DeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
-  const { box,cylY }=KIT;
-  const {width,length,halfL,roofY,trackTop}=d;
-  // The Japanese tank's rear deck is dominated by two rectangular cooling
-  // banks and a transverse louvre row; the driver sits front-left beneath a
-  // flush, polygonal hatch.  These are important in top and rear views.
-  for (const side of [-1,1]) {
-    P.add('hullDark',box(width*0.29,0.024,length*0.21),side*width*0.19,roofY+0.035,-halfL*0.53);
-    for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.26,0.026,0.030),side*width*0.19,roofY+0.055,-halfL*(0.40+i*0.055));
-    P.add('hullDark',box(0.035,0.13,0.62),side*width*0.43,roofY-0.04,-halfL*0.54);
-  }
-  P.add('hull',cylY(0.28,0.28,0.045,8),-width*0.18,roofY+0.03,halfL*0.22,0,0.18,0);
-  for (const x of [-0.76,-0.57,-0.38]) P.add('hullDark',box(0.13,0.035,0.038),x,roofY+0.08,halfL*0.36);
-  P.add('hullDark',box(width*0.57,0.34,0.025),0,trackTop+0.31,-halfL*0.995);
-  for(let i=0;i<8;i++) P.add('hullDetail',box(width*0.52,0.026,0.028),0,trackTop+0.18+i*0.035,-halfL*1.002);
-  P.add('hullDetail',box(0.22,0.28,0.04),width*0.36,trackTop+0.27,-halfL*1.01);
 }
 
 function addWarriorDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
@@ -648,7 +614,6 @@ function addClassicDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions):
 function addHullDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaDeckFurniture(P,d);
   else if (d.style === 'soviet') addSovietDeckFurniture(P,d);
-  else if (d.style === 'type90_kyumaru') addType90DeckFurniture(P,d);
   else if (d.style === 'warrior') addWarriorDeckFurniture(P,d);
   else if (d.style === 'western' || d.style === 'ifv') addWesternDeckFurniture(P,d);
   else addClassicDeckFurniture(P,d);
@@ -822,45 +787,6 @@ function ifvTurret(P: ProfileBuilderPort, p: ProfileConfig): void {
   for(let i=0;i<5;i++) P.add('turretDetail',box(0.025,h*0.30,0.025),-tw*0.55+i*(tw*1.10/4),h*0.30,r-0.16);
 }
 
-function type90Turret(P: ProfileBuilderPort, p: ProfileConfig): void {
-  const { box,cylY,polyTurret,slab }=KIT;
-  const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
-  // Ten-sided welded shell derived from the Type 90 top view: narrow gun
-  // throat, swept cheeks, almost parallel autoloader bustle and clipped rear
-  // corners.  Keep the roof nearly full-width; a heavily inset generic
-  // polyTurret is what produced the old tiered-pyramid silhouette.
-  const plan=[
-    [-tw*0.18,f],[tw*0.18,f],[tw*0.73,f*0.62],[tw,f*0.16],
-    [tw*0.96,r*0.72],[tw*0.72,r],[-tw*0.72,r],[-tw*0.96,r*0.72],
-    [-tw,f*0.16],[-tw*0.73,f*0.62],
-  ];
-  P.add('turret',polyTurret(plan,h,1.02,0.91));
-
-  // Separate lower cheek wedges create the characteristic arrow nose without
-  // turning the whole turret into a Leopard 2A5 pyramid.
-  const throat=tw*0.16;
-  for (const side of [-1,1]) {
-    const inner=side*throat,outer=side*tw;
-    P.add('turret',slab(
-      [inner,0.03,f],[outer,0.03,f*0.20],[outer,0.03,-0.22],[inner,0.03,f*0.63],
-      [inner,h*0.74,f*0.62],[outer*0.90,h*0.60,f*0.05],[outer*0.91,h*0.68,-0.34],[inner,h*0.86,f*0.38]));
-    // Long, shallow bustle stowage box and side rail.
-    P.add('turretDetail',box(tw*0.16,h*0.31,Math.abs(r)*0.62),side*tw*0.91,h*0.38,r*0.61);
-    P.add('turretDetail',box(0.035,0.035,Math.abs(r)*0.78),side*tw*1.01,h*0.30,r*0.55);
-  }
-  // Autoloader bustle, roof access panels and rear rack.
-  P.add('turret',box(tw*1.52,h*0.72,Math.abs(r)*0.63),0,h*0.41,r*0.70);
-  for (let i=0;i<3;i++) P.add('turretDark',box(tw*0.42,0.032,Math.abs(r)*0.28),(i-1)*tw*0.48,h+0.02,r*0.62);
-  P.add('turretDetail',box(tw*1.72,0.035,0.035),0,h*0.58,r-0.27);
-  P.add('turretDetail',box(tw*1.72,0.035,0.035),0,0.16,r-0.27);
-  for(let i=0;i<9;i++) P.add('turretDetail',box(0.024,h*0.40,0.024),-tw*0.76+i*(tw*1.52/8),h*0.36,r-0.27);
-  // Low mantlet aperture and prominent right-side gunner's primary sight.
-  P.add('turretDark',box(tw*0.34,h*0.48,0.14),0,h*0.45,f*0.76);
-  P.add('turretDetail',box(0.34,0.31,0.28),tw*0.40,h*0.70,f*0.23);
-  P.add('turretGlass',box(0.22,0.12,0.025),tw*0.40,h*0.73,f*0.39);
-  P.add('turret',cylY(0.24,0.24,0.045,14),-tw*0.38,h+0.025,-0.24);
-}
-
 function addTurretShell(P: ProfileBuilderPort, p: ProfileConfig): void {
   if (p.turret === 'casemate') {
     // The armor/simulation rig still supplies a gun pitch group, but there is
@@ -870,14 +796,13 @@ function addTurretShell(P: ProfileBuilderPort, p: ProfileConfig): void {
   else if (p.turret === 'merkava') merkavaTurret(P,p);
   else if (p.turret === 'cast') castTurret(P,p);
   else if (p.turret === 'ifv') ifvTurret(P,p);
-  else if (p.turret === 'type90_kyumaru') type90Turret(P,p);
   else westernWedge(P,p);
 }
 
 function addTurretCrewStations(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { cylY,cupola,periscope }=KIT;
   const h=p.turretHeight;
-  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90_kyumaru') {
+  if (p.turret !== 'ifv' && p.turret !== 'casemate') {
     cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,p.commanderZ ?? -p.turretDepth*0.22,
       p.cupolaR ?? Math.min(0.24,p.turretWidth*0.09),p.cupolaH ?? 0.10,p.cupolaPeriscopes ?? 6);
     P.add('turret',cylY(0.19,0.19,0.035,14),p.loaderX ?? -p.turretWidth*0.20,h+0.02,-p.turretDepth*0.18);

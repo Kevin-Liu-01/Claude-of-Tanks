@@ -17,7 +17,7 @@ import './tankFactory.ts';
 import { TANK_SPECS, getSpec } from './specs.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import {
-  TANK_IDS, TANK_ID_RENAMES, TANK_ID_SCHEMA, createTankIdResolver, resolveTankId, tankSeedId,
+  TANK_IDS, TANK_ID_MERGES, TANK_ID_RENAMES, TANK_ID_SCHEMA, createTankIdResolver, resolveTankId, tankSeedId,
 } from './tankIdAliases.ts';
 import { PROTOCOL_VERSION } from '../mp/wire/constants.ts';
 import { decorEra } from './decorations.ts';
@@ -29,10 +29,11 @@ const shownName = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.
 const LANDED_MAP_SHA256 = [
   '9c6b9d486a0f2b82d519a5cbdffb5f3f775e3fb8f371b5d2a5cd4979ef129dec', // schema 2 (2026-10-13): fv510_milan_x -> warrior_tes_h
   'c28c92b974a74bedf6e088c36dd082ab6d6eaedb7d39cc277bee3f224950c9ed', // schema 3 (ID.04/05): the 130 renames of the 2026-10-13 table
+  '4e3fded993f8742d0d64e695eb9b463220206665365c196e2ecf3877463e691e', // schema 4 (2026-11-20, japan-274): type90_kyumaru -> type90a
 ];
 // The PROTOCOL_VERSION that first carried each tank id schema. A new schema needs a higher protocol, so builds of
 // two schemas never share a match.
-const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7, 3: 8 };
+const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7, 3: 8, 4: 14 };
 assert.equal(TANK_ID_SCHEMA, TANK_ID_RENAMES.length + 1, 'one rename map per schema step');
 assert.deepEqual(
   TANK_ID_RENAMES.map((map) => createHash('sha256').update(JSON.stringify(map)).digest('hex')),
@@ -46,7 +47,7 @@ for (let s = 2; s <= TANK_ID_SCHEMA; s += 1) {
 }
 assert.ok(PROTOCOL_VERSION >= PROTOCOL_FOR_SCHEMA[TANK_ID_SCHEMA], 'the protocol cannot be older than its id schema');
 
-// ---- every schema-1 id still names one live vehicle
+// ---- every schema-1 id still names one live vehicle; a merged (removed) vehicle's ids name the vehicle it folded into
 const SCHEMA_1_IDS = [
   'abramsx', 'aft10_x', 'ajax_x', 'amx10p', 'amx10p_25', 'amx30', 'amx30_x', 'amx30b2', 'amx40', 'amx40_x', 'amx56',
   'ares_apc_x', 'ariete', 'ariete_c1', 'ariete_c1_x', 'ariete_c2', 'ariete_c2_x', 'bmp2', 'bmp3', 'bmp3_rok',
@@ -77,11 +78,16 @@ const SCHEMA_1_IDS = [
   'ztz99a2_prototype',
 ];
 const landed = new Map();
+/** A schema-1 id that reached a TANK_ID_MERGES id just before the map that folds it into a live vehicle. */
+const viaMerge = (id) => TANK_ID_RENAMES.some((map, k) => [...TANK_ID_MERGES].some((from) => Object.hasOwn(map, from)
+  && createTankIdResolver({ schema: k + 1, renames: TANK_ID_RENAMES.slice(0, k) }).resolve(id, 1) === from));
 for (const id of SCHEMA_1_IDS) {
   const now = resolveTankId(id, 1);
   assert.ok(TANK_SPECS[now], `schema-1 id ${id} resolves to ${now}, which no spec carries`);
-  assert.ok(!landed.has(now), `schema-1 ids ${landed.get(now)} and ${id} both resolve to ${now}`);
-  landed.set(now, id);
+  // two schema-1 ids may share a vehicle only when one of them reached it through a merge (a removed vehicle)
+  assert.ok(!landed.has(now) || viaMerge(id) || viaMerge(landed.get(now)),
+    `schema-1 ids ${landed.get(now)} and ${id} both resolve to ${now}`);
+  if (!landed.has(now)) landed.set(now, id);
 }
 for (const map of TANK_ID_RENAMES) {
   for (const [from, to] of Object.entries(map)) {
@@ -145,6 +151,7 @@ assert.equal(fixture.originalOf('m1a3'), 'm1a3', 'a vehicle no map names keeps i
 assert.equal(chain.originalOf('c'), 'a');
 assert.equal(chain.originalOf('b'), 'd');
 for (const id of SCHEMA_1_IDS) {
+  if (viaMerge(id)) continue; // a removed vehicle's ids name the vehicle it folded into, which keeps its own seed
   assert.equal(tankSeedId(resolveTankId(id, 1)), id, `${id}: a renamed vehicle keeps its schema-1 seed`);
 }
 // Every place that hashes a vehicle id into its look or name hashes tankSeedId (decor kit, texture seeds and AUTO
@@ -203,6 +210,27 @@ assert.equal(shownName('warrior_tes_h'), 'Warrior TES(H)');
 assert.equal(TANK_SPECS.warrior_tes_h.era, 'modern', 'the Warrior TES(H) plays in the modern era (coordinator, 2026-10-13)');
 assert.equal(decorEra(TANK_SPECS.warrior_tes_h), 'cold-war', 'and keeps the Cold War stowage it shipped with');
 assert.equal(TANK_SPECS.fv510_milan_x, undefined, 'the retired id names no spec');
+
+// ---- schema 4 (2026-11-20, japan-274): the STC-1 (type90_kyumaru, schema-1 type90) folds into the STC-2 (type90a)
+assert.equal(TANK_SPECS.type90_kyumaru, undefined, 'the STC-1 names no spec');
+assert.equal(resolveTankId('type90_kyumaru', 3), 'type90a', 'a schema-3 save, link or scene naming the STC-1');
+assert.equal(resolveTankId('type90', 1), 'type90a', 'a schema-1 record naming the STC-1 by its first id');
+assert.equal(resolveTankId('type90_x', 1), 'type90', 'the production Type 90 stays itself');
+assert.equal(resolveTankId('type90', 3), 'type90', 'schema-3 type90 is the production Type 90');
+assert.equal(TANK_IDS.resolveIncoming('type90_kyumaru'), 'type90a', 'a room seat from a schema-3 build');
+assert.equal(TANK_IDS.resolveIncoming('type90a'), 'type90a');
+assert.ok(TANK_IDS.isRetired('type90_kyumaru') && TANK_IDS.isMerged('type90_kyumaru') && !TANK_IDS.isRetired('type90a'));
+assert.equal(tankSeedId('type90a'), 'type90a', 'the STC-2 keeps its own look: a merge is never inverted');
+assert.equal(tankSeedId('type90'), 'type90_x', 'the production Type 90 keeps its look');
+assert.equal(shownName(resolveTankId('type90_kyumaru', 3)), 'STC-2');
+{
+  // a merge in a fixture: the target keeps its spelling, the source resolves into it from every older schema
+  const merge = createTankIdResolver({ schema: 3, renames: [{ a: 'b' }, { b: 'c' }], merges: new Set(['b']) });
+  assert.equal(merge.resolve('a', 1), 'c');
+  assert.equal(merge.resolve('b', 2), 'c');
+  assert.equal(merge.originalOf('c'), 'c', 'the merge target is no rename: its seed is its own');
+  assert.ok(merge.isRetired('a') && merge.isRetired('b') && merge.isMerged('b') && !merge.isMerged('a'));
+}
 
 // ---- the live registry names the vehicles the owner sees
 const shown = shownName;

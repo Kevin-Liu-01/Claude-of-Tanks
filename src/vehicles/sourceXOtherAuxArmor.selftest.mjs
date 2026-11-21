@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
+import {DONOR_SPECS,TKX_PROTOTYPE_FRAME} from './donorSpecs.ts';
 import {applySourceXOtherAuxArmor} from './sourceXOtherAuxArmor.ts';
 import {AMX56_KIT_SURFACE_GROUP} from './leclercClassicXKitArmor.ts';
 import {assertConvexArmorOutline} from '../sim/armorOutline.test-support.mjs';
@@ -10,7 +11,7 @@ import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import { near } from '../../tools/receipt-kit.test-support.mjs';
 import { fieldKitCensus, fieldKitFilter } from './fieldKitSurface.test-support.mjs';
-const DONORS={k1a1:'k1e1',amx30b:'amx30',leclerc_xlr:'leclerc_s2',amx56:'leclerc_s2',type10:'type10_tk_x',type90:'type90_kyumaru',amx40:'amx40_proto'};
+const DONORS={k1a1:'k1e1',amx30b:'amx30',leclerc_xlr:'leclerc_s2',amx56:'leclerc_s2',type10:'type10_tk_x',type90:TKX_PROTOTYPE_FRAME,amx40:'amx40_proto'};
 // 2026-10-01 (owner: retire frozen pins): the fourteen pinned whole-model digests, the historical
 // finish/gear/tint inverses that reached them and their oracle-only negative controls are gone; the
 // fleet geometry ledger owns whole-tank change detection. Every check below runs on the actual model.
@@ -72,8 +73,10 @@ function plateHits(armor,point,side,reach=.05){
   const to=point.clone().add(new THREE.Vector3(-side*.01,0,0));
   return traceTank(from,to,pose,armor).filter(h=>h.kind==='plate'&&h.plate.kind==='spaced');
 }
+// a donor is a registered vehicle or an unregistered template (the Type 90's TK-X frame, donorSpecs.ts)
+const donorRow=id=>DONOR_SPECS[id]??getSpec(id);
 function preservation(id,donor){
-  const original=getSpec(donor),bytes=JSON.stringify(original),copy=structuredClone(original);
+  const original=structuredClone(donorRow(donor)),bytes=JSON.stringify(original),copy=structuredClone(original);
   const keep=copy.armor.hullPlates.filter(p=>p.kind!=='spaced'||!/^skirt_[RL]$/.test(p.name));
   const turret=copy.armor.turretPlates,originalPlateArray=original.armor.hullPlates;
   applySourceXOtherAuxArmor(copy,id);
@@ -126,7 +129,7 @@ function facets(id,spec,meshes){
     near(native.point.x,point.x,id==='type10'?.003:.00015,`${id}/${p.name} actual physical outer face`);
     const hits=plateHits(spec.armor,point,side);
     assert.equal(hits.length,1,`${id}/${p.name} one physical protection layer at facet center`);
-    const template=getSpec(DONORS[id]).armor.hullPlates.find(t=>t.name===`skirt_${side<0?'L':'R'}`);
+    const template=donorRow(DONORS[id]).armor.hullPlates.find(t=>t.name===`skirt_${side<0?'L':'R'}`);
     assert.deepEqual([p.physicalMm,p.keMm,p.ceMm],[template.physicalMm,template.keMm,template.ceMm],'unchanged donor protection family');
   }
   if(id==='amx56')assert.ok(kitCovered[-1]>0&&kitCovered[1]>0,

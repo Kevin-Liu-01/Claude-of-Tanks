@@ -12,9 +12,11 @@ import { reactivePlate, type ShellSpec } from './specHelpers.ts';
 import {
   bindFleetRegistries,
   cloneFleetVariant,
+  cloneFleetVariantFrom,
   registerFleetSpecs,
   scaleNonExternalArmor,
 } from './fleetSpecRegistry.ts';
+import { DONOR_SPECS, TKX_PROTOTYPE_FRAME } from './donorSpecs.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b'] as const);
@@ -65,10 +67,10 @@ function variant(
   donorId: string,
   options: JapaneseVariantOptions,
 ): FleetTankSpec {
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
-    name: options.name,
-    nation: 'Japan',
-  });
+  // the TK-X frame is an unregistered donor template (donorSpecs.ts); every other donor is a registered vehicle
+  const spec = donorId === TKX_PROTOTYPE_FRAME
+    ? cloneFleetVariantFrom(DONOR_SPECS[TKX_PROTOTYPE_FRAME]!, id, donorId, { name: options.name, nation: 'Japan' })
+    : cloneFleetVariant(registries.tankSpecs, id, donorId, { name: options.name, nation: 'Japan' });
   Object.assign(spec, options.stats || {});
   if (options.reloadS !== undefined && Number.isFinite(options.reloadS)) {
     spec.gun.reloadS = options.reloadS;
@@ -95,10 +97,10 @@ function variant(
 
 // Type 90 is the mobile Tier IX three-round autoloader. Type 10 is the Tier X
 // single-shot vehicle with stronger fire control, ammunition and protection.
-const type90_kyumaru = registries.tankSpecs.type90_kyumaru;
-// owner 2026-10-25: the first TK-X prototype (tankLabels.ts); its builder marks it from this number
-type90_kyumaru.visual.number = 'STC-1';
-Object.assign(type90_kyumaru, {
+// The TK-X frame (the removed STC-1's row, owner 2026-11-20; donorSpecs.ts) carries the STC-1's tuning, which the STC-2
+// below and the Type 90 (sourceXSecondWaveSpecs.ts) clone.
+const tkxFrame = DONOR_SPECS[TKX_PROTOTYPE_FRAME]!;
+Object.assign(tkxFrame, {
   hp: 2250,
   enginePowerHp: 1500,
   reverseSpeedKmh: 25,
@@ -106,13 +108,13 @@ Object.assign(type90_kyumaru, {
   turretTraverseDegS: 40,
   gunPitchDegS: 30,
 });
-Object.assign(type90_kyumaru.gun, {
+Object.assign(tkxFrame.gun, {
   reloadS: 18.5,
   baseAccuracy: 0.30,
   aimTimeS: 1.8,
   autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
 });
-Object.assign(type90_kyumaru.gun.shells[0], {
+Object.assign(tkxFrame.gun.shells[0]!, {
   name: 'JM33 APFSDS', dmg: 500,
   pen100Mm: 806, pen1000Mm: 733, pen2000Mm: 660,
 });
@@ -158,7 +160,7 @@ const JAPAN_SPECS = {
       reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27, gunPitchByYawDeg: STB1_GUN_PITCH_BY_YAW_DEG },
     reloadS: 7.2, shellName: 'Type 93 APFSDS', armorFactor: 1.03,
   }),
-  type90a: variant('type90a', 'type90_kyumaru', {
+  type90a: variant('type90a', TKX_PROTOTYPE_FRAME, {
     name: 'STC-2', number: 'STC-2', scheme: 'stripes',
     base: '#3f4c39', weather: '#5c624d', patches: ['#253127', '#6b5d3c', '#807458'],
     camoScale: 0.44,
@@ -193,6 +195,9 @@ const JAPAN_SPECS = {
     armorFactor: 1.08,
   }),
 } satisfies Record<string, FleetTankSpec>;
+
+// The STC-2 is the Type 90's second prototype: a build that fails falls back to the Type 90's (rosterVisualFallback.ts)
+JAPAN_SPECS.type90a.variantOf = 'type90';
 
 // Type 10B's layered side/turret modules are active reactive armor. The
 // anatomy pass fits these seed zones to the procedural cassette envelopes.

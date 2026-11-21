@@ -75,7 +75,9 @@ export const WIRE_VERSION = 12;
 // through its boot or its resume hold says how long, round 3 B1/X6).
 // 13 (improve-271 plan 020, release 273): wire 12, a snapshot's mode state and smoke text kept from its baseline: a 272 tab
 // and a 273 tab never share a match.
-export const PROTOCOL_VERSION = 13; // wire 12 (a mode state or smoke text kept from the baseline)
+// 14 (japan-274, 2026-11-20, SSOT 2.19): tank id schema 4, the STC-1 (type90_kyumaru) folded into the STC-2 (type90a):
+// a tab that still offers the STC-1 and one that resolves it never share a match.
+export const PROTOCOL_VERSION = 14; // wire 12 (a mode state or smoke text kept from the baseline)
 
 export const TICK_HZ = 60;
 /**

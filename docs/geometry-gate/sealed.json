@@ -4213,21 +4213,6 @@
     }
    ]
   },
-  "type90_kyumaru": {
-   "sealed": true,
-   "openPx": 0,
-   "openViews": 0,
-   "insideOutPx": 8,
-   "seeThroughPx": 71,
-   "netSeeThroughPx": 0,
-   "tris": 74242,
-   "frame": [
-    0,
-    1.2,
-    1.05,
-    5.5
-   ]
-  },
   "type90a": {
    "sealed": true,
    "openPx": 0,

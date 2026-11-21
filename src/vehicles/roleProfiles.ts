@@ -63,7 +63,6 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   k1e1: { doctrine: 'flanker', viewM: 395, still: 0.227, moving: 0.167 },
   stb1: { doctrine: 'flanker', viewM: 390, still: 0.242, moving: 0.182 },
   type74: { doctrine: 'flanker', viewM: 395, still: 0.242, moving: 0.182 },
-  type90_kyumaru: { doctrine: 'flanker', viewM: 400, still: 0.230, moving: 0.170 },
   type90a: { doctrine: 'flanker', viewM: 410, still: 0.228, moving: 0.168 },
   type10_tk_x: { doctrine: 'flanker', viewM: 420, still: 0.232, moving: 0.172 },
   type10b: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.172 },

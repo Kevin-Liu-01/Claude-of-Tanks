@@ -12,7 +12,7 @@
  "seed": 823,
  "actors": [
   {
-   "id": "type90_kyumaru",
+   "id": "type90a",
    "name": "hero",
    "pos": [
     97.46,
@@ -21,7 +21,7 @@
    "facingDeg": 79.31,
    "turretDeg": -2.32,
    "gunDeg": 1,
-   "camo": "sig_type90",
+   "camo": "sig_type90a",
    "camoSeed": 5761,
    "state": "intact"
   },
@@ -3142,7 +3142,7 @@
    6200
   ],
   "paint": {
-   "unit": "sig_type90",
+   "unit": "sig_type90a",
    "enemy": "service_t90m"
   },
   "turrets": {

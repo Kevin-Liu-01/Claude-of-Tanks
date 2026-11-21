@@ -1219,27 +1219,6 @@
       "suspension": true
     },
     {
-      "id": "type90_kyumaru",
-      "name": "STC-1",
-      "nation": "Japan",
-      "role": "mbt",
-      "tier": 8,
-      "hp": 2450,
-      "speed": 74,
-      "reverse": 34,
-      "hull": 52.8,
-      "turret": 46.6,
-      "dispersion": 0.306,
-      "reload": 9,
-      "aim": 1.8,
-      "view": 400,
-      "smoke": 16,
-      "lights": true,
-      "roofGun": true,
-      "missile": false,
-      "suspension": false
-    },
-    {
       "id": "type90a",
       "name": "STC-2",
       "nation": "Japan",

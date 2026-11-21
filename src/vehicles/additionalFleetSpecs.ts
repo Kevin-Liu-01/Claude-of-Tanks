@@ -10,7 +10,7 @@ import {
   LEOPARD_IMPROVED_HULL_WIDTH_SCALE,
   scaleLeopardImprovedHullArmor,
 } from './profiles/leopardImprovedHull.ts';
-import { DONOR_SPECS, donorSpec } from './donorSpecs.ts';
+import { DONOR_SPECS, TKX_PROTOTYPE_FRAME, donorSpec } from './donorSpecs.ts';
 import {
   apfsdsPenetration as apfsdsPens,
   LEOPARD1A5_262_GUN_PITCH_BY_YAW_DEG,
@@ -538,29 +538,34 @@ const SPECS: FleetTankSpec[] = [
       // field. It does not carry the donor Proryv skirt or turret-flank kit.
       armor: armorWithoutEra('t90am', (_owner, name) => /skirt|side/i.test(name)),
       dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 } }),
-  make('type10_tk_x', 'type90_kyumaru', 'STC-1', 'Japan',
-    // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
-    // object148_proto/type99a precedent): heightM = the P95 envelope including mandatory
-    // roof kit, NOT the bare 2.34 turret roof (Wikipedia infobox) and NOT the
-    // published 3.05 "over sights+MG" (weaponsystems.net) — 3.05 is a
-    // 1-2-column MAX over the swung M2, exactly the spike class the gate's
-    // antenna-robust p95 excludes. 2.55 = the corrected 49-v2 oracle's
-    // measured bodyHeightM (gate dims-replica: 12% body filter, p95 of column
-    // tops — docs/references/vertex/type90.json at fcfeb38a; §5.39 owner
-    // verdict re-compressed the print to the REAL lines: roof 2.34 / hatch+
-    // ridge band 2.44-2.53 / sight head 2.60 max). Bracket: 2.34 roof < 2.55
-    // p95-with-kit < 2.60 print max < 3.05 published max. Unlocks the §5.57
-    // crown-band dims-datum cap (turret_side 68.9). Receipts:
-    // docs/references/tanks/type90.md DATUM section.
-    { hp: 2200, weightTons: 50.2, topSpeedKmh: 70,
-      gun: {
-        reloadS: 18.5,
-        autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
-      },
-      dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
   make('t90a_2004', 't90a_2006', 'T-90A obr. 2006', 'Russia',
     { hp: 2300, topSpeedKmh: 65, gun: { reloadS: 6.6 } }),
 ];
+
+// The STC-1 (type90_kyumaru until 2026-11-20) left the fleet (owner 2026-11-20: "remove the stc 1"). Its make() row stays
+// the combat donor of the STC-2 (type90a, japan.ts) and the Type 90 (type90, sourceXSecondWaveSpecs.ts) as an unregistered
+// template (donorSpecs.ts: no id, card, builder, icon or receipt), so both keep the specs they had.
+const tkxPrototypeFrame = make('type10_tk_x', TKX_PROTOTYPE_FRAME, 'TK-X prototype frame', 'Japan',
+  // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
+  // object148_proto/type99a precedent): heightM = the P95 envelope including mandatory
+  // roof kit, NOT the bare 2.34 turret roof (Wikipedia infobox) and NOT the
+  // published 3.05 "over sights+MG" (weaponsystems.net) — 3.05 is a
+  // 1-2-column MAX over the swung M2, exactly the spike class the gate's
+  // antenna-robust p95 excludes. 2.55 = the corrected 49-v2 oracle's
+  // measured bodyHeightM (gate dims-replica: 12% body filter, p95 of column
+  // tops — docs/references/vertex/type90.json at fcfeb38a; §5.39 owner
+  // verdict re-compressed the print to the REAL lines: roof 2.34 / hatch+
+  // ridge band 2.44-2.53 / sight head 2.60 max). Bracket: 2.34 roof < 2.55
+  // p95-with-kit < 2.60 print max < 3.05 published max. Unlocks the §5.57
+  // crown-band dims-datum cap (turret_side 68.9). Receipts:
+  // docs/references/tanks/type90.md DATUM section.
+  { hp: 2200, weightTons: 50.2, topSpeedKmh: 70,
+    gun: {
+      reloadS: 18.5,
+      autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
+    },
+    dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } });
+DONOR_SPECS[TKX_PROTOTYPE_FRAME] = tkxPrototypeFrame;
 
 interface LeopardChevronStation {
   readonly x: number;
@@ -665,7 +670,7 @@ function leopard2A5ChevronSpacedArmor(): ArmorPlate[] {
   if (amp) amp.name = 'XM1147 AMP';
 }
 
-// §5.364 type90_kyumaru gun-trunnion true-up (owner order: "properly attached ...
+// §5.364 the TK-X frame's gun-trunnion true-up (then type90_kyumaru's) (owner order: "properly attached ...
 // arc up and down porperly"). The visual rig now pitches about the turret-
 // face trunnion (profiles/misc.ts buildType90 — world y 1.686, z 1.30). The
 // inherited type10-scaled armor row kept its donor pivot at world (1.722,
@@ -675,15 +680,13 @@ function leopard2A5ChevronSpacedArmor(): ArmorPlate[] {
 // hit-model arc diverged from the rendered gun. Re-anchor the armor
 // trunnion on the rendered line (armor frame: turretPivot [0, 1.4463,
 // 0.2287] + gunPivot = the world trunnion) and true the barrel run to the
-// rendered muzzle (5.9594 − 1.30 = 4.66 m). type90a structuredClones this
-// row in src/vehicles/japan.ts and stays in lockstep. §5.361 rig-anchor
+// rendered muzzle (5.9594 − 1.30 = 4.66 m). type90a and type90 structuredClone
+// this row (japan.ts, sourceXSecondWaveSpecs.ts) and stay in lockstep. §5.361 rig-anchor
 // law: pivots are authored data — this is the authored correction, never a
 // calibration remap.
 {
-  const t90_1992 = SPECS.find((s) => s.id === 'type90_kyumaru');
-  if (!t90_1992) throw new Error('Additional fleet spec missing: type90_kyumaru');
-  t90_1992.armor.gunPivot = [0, 0.2397, 1.0713];
-  t90_1992.armor.gunBarrel.lengthM = 4.66;
+  tkxPrototypeFrame.armor.gunPivot = [0, 0.2397, 1.0713];
+  tkxPrototypeFrame.armor.gunBarrel.lengthM = 4.66;
 }
 
 // These early/non-Trophy Merkava profiles render removable flank packages.

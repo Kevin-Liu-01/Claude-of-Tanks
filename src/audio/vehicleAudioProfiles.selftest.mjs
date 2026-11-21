@@ -12,7 +12,7 @@ const cases = [
   ['t72b3m_2022', 'mbt', 46.5, 'diesel_v12_soviet'], ['t90ms_2011', 'mbt', 48, 'diesel_v12_soviet'], ['type59', 'mbt', 36, 'diesel_v12_soviet'],
   ['kv2', 'heavy', 52, 'diesel_v12_soviet'], ['bmpt_t90', 'ifv', 48, 'diesel_v12_soviet'], ['tos1a_tagil', 'spg', 49, 'diesel_v12_soviet'],
   ['t64bv1', 'mbt', 42.4, 'diesel_two_stroke'], ['t84', 'mbt', 46, 'diesel_two_stroke'], ['chieftain3', 'mbt', 55, 'diesel_two_stroke'],
-  ['type90_kyumaru', 'mbt', 50.2, 'diesel_two_stroke'], ['strv103b', 'td', 39.7, 'diesel_two_stroke'], ['m551_sheridan', 'light', 18.6, 'diesel_two_stroke'],
+  ['strv103b', 'td', 39.7, 'diesel_two_stroke'], ['m551_sheridan', 'light', 18.6, 'diesel_two_stroke'],
   ['m60a1', 'mbt', 49.7, 'diesel_aircooled'], ['merkava2b', 'mbt', 63, 'diesel_aircooled'], ['mbt70', 'mbt', 50.4, 'diesel_aircooled'],
   ['leo2a4', 'mbt', 62.3, 'diesel_v12_modern'], ['merkava4b', 'mbt', 65, 'diesel_v12_modern'], ['leclerc_s2', 'mbt', 54.5, 'diesel_v12_modern'],
   ['xk2_black_panther', 'mbt', 55, 'diesel_v12_modern'], ['namer_ifv', 'ifv', 63.5, 'diesel_v12_modern'], ['abramsx', 'mbt', 49, 'diesel_v12_modern'],

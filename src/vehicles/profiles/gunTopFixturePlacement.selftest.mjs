@@ -13,10 +13,6 @@ const cases = Object.freeze([
     bodyZ: 3.38, faceZ: 3.525, supportRadiusM: 0.128,
   }),
   Object.freeze({
-    id: 'type90_kyumaru', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: null,
-    bodySize: [0.335, 0.05, 0.24], bodyZ: 4.3994, supportRadiusM: 0.065,  // the bare tube at the MRS station (2026-10-19)
-  }),
-  Object.freeze({
     id: 'type90a', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: null,
     bodySize: [0.335, 0.05, 0.24], bodyZ: 4.3994, supportRadiusM: 0.065,  // the bare tube at the MRS station (2026-10-19)
   }),

@@ -216,6 +216,32 @@ if (TANK_IDS.schema >= 3) {
   assert.equal(telemetryTankId('leo2a6m'), `leo2a6m.s${TANK_IDS.schema}`);
 }
 
+// ---- the live schema 4 (2026-11-20, japan-274): the removed STC-1 folds into the STC-2 at every boundary
+if (TANK_IDS.schema >= 4) {
+  const stcSave = memoryStorage({
+    [TANK_ID_STORAGE_SCHEMA_KEY]: '3', 'cot.lastTank.v1': 'type90_kyumaru',
+    'cot.equip.type90_kyumaru': '["smoke"]', 'cot.camo.type90_kyumaru': 'sig_type90', 'cot.camo.type90a': 'sig_type90a',
+    'cot.garage.nationTank.v1': JSON.stringify({ japan: 'type90_kyumaru' }),
+    'cot.gallery.v2': JSON.stringify({ favourites: ['type90a', 'type90_kyumaru', 'type10b'] }),
+    'cot.service.v1': JSON.stringify({ version: 1, vehicles: ['type90_kyumaru', 'type90a'], history: [{ vehicleId: 'type90_kyumaru' }] }),
+  });
+  migrateStoredTankIds(stcSave);
+  assert.equal(stcSave.getItem('cot.lastTank.v1'), 'type90a', 'a save on the STC-1 opens on the STC-2');
+  assert.equal(stcSave.getItem('cot.equip.type90a'), '["smoke"]', 'the STC-1 loadout moves to an STC-2 that had none');
+  assert.equal(stcSave.getItem('cot.camo.type90a'), 'sig_type90a', 'the STC-2 keeps its own paint over the STC-1\'s');
+  assert.equal(stcSave.getItem('cot.camo.type90_kyumaru'), null, 'the removed id\'s keys are gone');
+  assert.equal(stcSave.getItem('cot.equip.type90_kyumaru'), null);
+  assert.deepEqual(JSON.parse(stcSave.getItem('cot.garage.nationTank.v1')), { japan: 'type90a' });
+  assert.deepEqual(JSON.parse(stcSave.getItem('cot.gallery.v2')).favourites, ['type90a', 'type10b'], 'one favourite, not two');
+  const service = JSON.parse(stcSave.getItem('cot.service.v1'));
+  assert.deepEqual(service.vehicles, ['type90a']);
+  assert.equal(service.history[0].vehicleId, 'type90a');
+  assert.equal(planFromRoom({ ...room, players: [{ ...room.players[0], specId: 'type90_kyumaru' }] }).seats[0].specId, 'type90a',
+    'a room seat from a schema-3 build');
+  assert.equal(linkTankId(new URL('https://x/gallery?id=type90_kyumaru&ids=3').searchParams), 'type90a', 'a schema-3 gallery link');
+  assert.equal(replayInCurrentTankIds({ tankIdSchema: 3, attackerEnt: { specId: 'type90_kyumaru' } }).attackerEnt.specId, 'type90a');
+}
+
 // ---- (improve-271 plan 035) every browser store keyed by a tank id is migrated: a source scan for keys built from an id
 // (a `cot.<store>.${...}` template, a `cot.<store>.` prefix constant, a picker memory `<store>.${...}`, kept as
 // cot.picker.<store>.), each either moved by the migration or allowed here with its reason
