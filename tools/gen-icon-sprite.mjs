@@ -21,9 +21,10 @@ const LAZY_OUT = resolve(root, 'src/ui/icons/spriteLazy.svg');
 
 /** The second, lazily loaded sprite (Main 2026-11-20, mobile-hud-274's icon overhaul: keep the battle sprite lean): the
  *  glyphs only the Garage, the Gallery, the Field Manual and the camo studio draw (tank classes and roles, eras, record
- *  stats, gallery tools and layers, map regions, the camo and Studio tools). regionNight stays in the main sprite: the
+ *  stats, gallery tools and layers, map regions, the camo and Studio tools, the Garage and Gallery's firepower heading). regionNight stays in the main sprite: the
  *  aerial HUD draws it in battle. Equipment stays too: the battle's loadout readout draws it. */
-const LAZY_EXTRA = new Set(['brush', 'eraser', 'stamp', 'spray', 'pixels', 'camouflage', 'paste', 'cameraPath', 'film', 'media']);
+const LAZY_EXTRA = new Set(['brush', 'eraser', 'stamp', 'spray', 'pixels', 'camouflage', 'paste', 'cameraPath', 'film', 'media',
+  'firepower']);
 const LAZY_ICON = (id) => /^(class|role|era|stat|tool|layer)[A-Z]/.test(id)
   || (/^region[A-Z]/.test(id) && id !== 'regionNight') || LAZY_EXTRA.has(id);
 

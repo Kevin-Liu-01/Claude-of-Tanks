@@ -45,7 +45,7 @@ assert.doesNotMatch(garageSource, /cot-loadout-section/, 'the readout carries no
 assert.match(garageSource,
   /<section class="cot-lower-third"><div class="cot-lt-head"[^`]*`[\s\S]*?<div class="cot-lt-band"><div class="cot-lt-group"><span class="cot-lt-cap"[^>]*>\$\{t\('garage\.band\.equipment'\)\}<\/span>`[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<span class="cot-lt-cap"[^>]*>\$\{t\('garage\.band\.paint'\)\}<\/span>`[\s\S]*?<div class="cot-lt-paint"[\s\S]*?<div class="cot-lt-acts">/,
   'the band under the name holds the slots, then the paint, then the acts');
-assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'gun'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
+assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'firepower'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
   'the readout has five stations; the paint left them for the band');
 assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 to 5');
 // the stage's callouts wait for their act (owner 10-24): off by default, the module loads at the first press, and a frame

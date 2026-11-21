@@ -27,6 +27,7 @@
 <symbol id="i-eraColdWar"><path d="M12 3v9M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 1 1 17 0ZM16 12a4 4 0 1 1-8 0 4 4 0 1 1 8 0ZM12 12l6-6"/></symbol>
 <symbol id="i-eraModern"><path d="M2.5 14H7v6H2.5ZM17 14h4.5v6H17ZM7 15.5H17v3H7ZM5.5 14l2-4.5h9l2 4.5M10 9.5V7h4V9.5M13.25 12a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 1 1 2.5 0Z"/></symbol>
 <symbol id="i-eraNextGeneration"><path d="M12 2.5l8.25 4.75v9.5L12 21.5l-8.25-4.75v-9.5ZM12 7.5v4.5l4 2.5M12 12l-4 2.5"/></symbol>
+<symbol id="i-firepower"><path d="M8.25 11l6.5-5.5 5.75-.75-1.75 5.75-6.25 5.25Zm2-1.75 4 5M6 12.5 2.75 15.25m5 .25-4.5 3.75m7.25-1.5L8.25 19.5"/></symbol><symbol id="i-firepower-s"><path d="M5.5 7.25l4.25-3.5 4-.5L12.5 7 8.25 10.5Zm1.25-1L9.5 9.5M4 8.25l-2.25 2m3.5 0-3 2.75M7 11.75 5.5 13"/></symbol>
 <symbol id="i-classMbt"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12ZM12 8.5l3.5 3.5-3.5 3.5L8.5 12Z"/></symbol>
 <symbol id="i-classLight"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12Z"/></symbol>
 <symbol id="i-classMedium"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12ZM7.5 12h9"/></symbol>

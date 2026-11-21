@@ -632,7 +632,7 @@ const STATS: readonly StatDef[] = Object.freeze([
   { key: 'height', label: 'gallery.stat.height', icon: 'altitude', unit: 'gallery.unit.m', better: 0, digits: 2, group: 'size', value: (r) => r.dimensions.heightM },
 ] satisfies StatDef[]);
 const STAT_GROUPS = Object.freeze([
-  ['firepower', 'gallery.stat.firepower', 'gun'],
+  ['firepower', 'gallery.stat.firepower', 'firepower'],
   ['protection', 'gallery.stat.protection', 'shield'],
   ['mobility', 'gallery.stat.mobility', 'speed'],
   ['size', 'gallery.stat.size', 'statRange'],
