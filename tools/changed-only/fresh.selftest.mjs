@@ -81,11 +81,21 @@ assert.deepEqual([reformatted.mode, reformatted.reasons['*']], ['full', [`output
 // (6) 268: an id a step could not run here reads current through its stamp (fingerprint.mjs stampProblem), never by a
 // missing row: one gate id unrecorded is due, stamped with a reason it is current, and the same stamp without its reason,
 // or over an output edited since, is due.
-const gateStep = STEPS.find((entry) => entry.stamp).name, probe = state.ids.find((each) => manifest.keys[gateStep]?.[each]);
-const unrecorded = structuredClone(manifest);
-delete unrecorded.keys[gateStep][probe];
-delete unrecorded.stamps[gateStep]?.[probe];
+// (274.0) The control builds its own gate state: under the owner rule the committed gate rows stay as main left them (the
+// gate is optIn, judged above by its stamps alone), so after a re-key or a roster move the committed manifest reads the
+// whole gate due and "one row deleted" was vacuous. A scratch manifest records the gate current for this state (its
+// roster, every id's keys, its output files), then deletes the probe's row, so the control always exercises "no row".
+const gateStep = STEPS.find((entry) => entry.stamp).name, probe = state.ids[0];
 const gateOf = (m, at = state) => resolveChanged(at, m, { steps: [gateStep] })[gateStep];
+const gateCurrent = structuredClone(manifest);
+(gateCurrent.rosters ??= {})[gateStep] = state.roster;
+gateCurrent.keys[gateStep] = Object.fromEntries(state.ids.map((each) => [each, { in: state.inKey(gateStep, each), out: state.outKey(gateStep, each) }]));
+gateCurrent.files[gateStep] = Object.fromEntries([...new Set([...Object.keys(manifest.files[gateStep] ?? {}), ...state.steps[gateStep].outputFiles])]
+  .map((file) => [file, state.fileHash(file)]));
+(gateCurrent.stamps ??= {})[gateStep] = {};
+assert.equal(gateOf(gateCurrent).mode, 'none', `${gateStep}: the control's fixture records the gate current for this state`);
+const unrecorded = structuredClone(gateCurrent);
+delete unrecorded.keys[gateStep][probe];
 assert.deepEqual([gateOf(unrecorded).ids, gateOf(unrecorded).reasons[probe]], [[probe], ['no row']], `${gateStep}: an unrecorded ${probe} is due`);
 const stamped = (reason) => { const m = structuredClone(unrecorded);
   (m.stamps[gateStep] ??= {})[probe] = { key: state.stampKey(gateStep, probe, []), out: state.outKey(gateStep, probe), code: 'page-error', files: [], reason };
