@@ -14,8 +14,8 @@ const tool = (name) => new URL(`../../../tools/${name}`, import.meta.url).pathna
 const census = JSON.parse(execFileSync(process.execPath, [tool('icon-stroke-census.mjs'), '--json'], { encoding: 'utf8' }));
 assert.deepEqual(census.strokeValues, [1.5], 'one stroke literal across the icon files (the 16-unit 1.25 lives in the host)');
 assert.deepEqual(census.problems, [], 'the sprite keeps its drawing rules');
-// the lazy sprite's budget is the census's (tools/icon-stroke-census.mjs: 15 KB since the icon overhaul's battle batch)
-assert.ok(census.sizes.spriteGzip <= 15 * 1024, `full sprite ${census.sizes.spriteGzip} B gzip within 15 KB`);
+// the lazy sprite's budget is the census's (tools/icon-stroke-census.mjs: 16 KB since the icon overhaul's equipment batch)
+assert.ok(census.sizes.spriteGzip <= 16 * 1024, `full sprite ${census.sizes.spriteGzip} B gzip within 16 KB`);
 assert.ok(census.sizes.bootBrotli <= 3 * 1024, `boot slice ${census.sizes.bootBrotli} B brotli within 3 KB`);
 execFileSync(process.execPath, [tool('gen-icon-sprite.mjs'), '--check'], { stdio: 'pipe' });
 
