@@ -1,6 +1,6 @@
 /**
  * armorShadeColors.ts — the armour shading's three colours (game/armorAimOverlay.ts paints them on the plates in the
- * sight; ui/armourOverlayTip.ts draws its picture of them), in one leaf so the tip's lazy chunk never loads three.js.
+ * sight; ui/firstUseHintPictures.ts draws its picture of them), in one leaf so the hints' lazy chunk never loads three.js.
  * Copyright © 2026 Kevin B. Liu.
  */
 /** A plate the loaded round does not defeat. */

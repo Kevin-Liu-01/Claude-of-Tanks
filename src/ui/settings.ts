@@ -92,6 +92,7 @@ import {
 import { tokenValue } from './tokens/tokens.ts';
 import { TUTORIAL_ON } from './tutorial/tutorialRecord.ts';
 import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
+import { battleKeycap, promptFor } from './keyPrompt.ts';
 
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
 const CJK_CAP = /[\u3400-\u9fff]/;
@@ -166,6 +167,7 @@ type BooleanSettingKey =
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
+  | 'showHints'
   | 'alarmHeartbeat'
   | 'audioConcussion';
 type ActionDefinition = InputLayer['actionDefs'][number];
@@ -854,8 +856,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     0: t('settings.bind.primary'),
     1: t('settings.bind.secondary'),
   };
-  const bindLabel = (id: ActionId): string =>
-    input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
+  // (mobile-hud-274) the one resolver's keyboard cap (keyPrompt.ts promptFor, the battle's tiles' and the hints' too)
+  const bindLabel = (id: ActionId): string => {
+    const prompt = promptFor(input, id, 'keyboard');
+    return prompt.kind === 'key' ? prompt.label : '—';
+  };
 
   // (the battle's caps follow the bindings by themselves: game/battleKeyCaps.ts reads input.bindingsRevision)
   function bindingsMutated() {
@@ -1307,6 +1312,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       tutorialNote.textContent = t('settings.tutorial.replayNote');
     }
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
+    // (mobile-hud-274) the first-use hints: once each, the first time a battle meets their moment
+    onOffRow(iface, t('settings.interface.showHints'), 'showHints');
     const cleanViewNote = el('div', 'cot-set-note', iface);
     cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
     onOffRow(
@@ -2260,7 +2267,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const kbds = actionIds
       .map((action) => {
         const cap = bindLabel(action);
-        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}" data-key-cap="${action}">${cap}</kbd>`;
+        return battleKeycap(cap, { action, cjk: CJK_CAP.test(cap), spoken: true });
       })
       .join('');
     return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;

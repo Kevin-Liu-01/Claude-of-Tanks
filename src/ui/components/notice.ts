@@ -35,6 +35,9 @@ interface NoticeContent {
   readonly text: string;
   /** A second, quieter line (a reason, a count); keep it short: explanations belong in tips. */
   readonly detail?: string;
+  /** The second line as markup, in place of `detail`: only a line from keyPrompt.ts formatPrompt (its keys as the kit's
+   *  keycaps, every character of its text escaped there), never text from a player or the network. */
+  readonly detailHtml?: string;
   /** A glyph in place of the severity's own. */
   readonly icon?: IconId;
   /** A small picture after the words (first-party inline SVG markup only, never text from a player or the network), with
@@ -53,7 +56,8 @@ function content(options: NoticeContent): string {
   const severity = options.severity ?? 'info';
   return `<span class="cot-c-notice__glyph">${icon(options.icon ?? GLYPH[severity], { size: 20 })}</span>`
     + `<span class="cot-c-notice__body"><span class="cot-c-notice__text">${esc(options.text)}</span>`
-    + `${options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`
+    + `${options.detailHtml ? `<span class="cot-c-notice__detail">${options.detailHtml}</span>`
+      : options.detail ? `<span class="cot-c-notice__detail">${esc(options.detail)}</span>` : ''}</span>`
     + (options.media ? `<span class="cot-c-notice__media" role="img" aria-label="${esc(options.media.label)}" title="${esc(options.media.label)}">`
       + `${options.media.svg}</span>` : '');
 }

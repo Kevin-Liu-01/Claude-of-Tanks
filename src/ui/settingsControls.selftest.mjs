@@ -45,11 +45,12 @@ for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entr
 // sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab; the time of day
 // is a row of its own (gauntlet 250)
 // (battle-camera-264) the chase camera's five settings join the gameplay tab
+// (mobile-hud-274) the first-use hints' switch joins the interface rows
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes',
   'cameraDistance', 'cameraFov', 'cameraFraming', 'cameraHeight', 'cameraShoulder', 'crewVoice',
   'foliageSeeThrough', 'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
-  'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
+  'showDebugHud', 'showDirectionalHitValues', 'showHints', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
 ].sort(), 'every gameplay, sound, and graphics option has a settings icon');
 
