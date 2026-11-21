@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-11-21T02:19:47.052Z",
+ "generatedAt": "2026-11-21T05:10:58.754Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 46,
- "total": 155,
+ "total": 154,
  "rows": [
   {
    "id": "challenger2",
@@ -92,9 +92,9 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 51.9,
-    "stations": 12.4,
-    "turretCurves": 1.1,
+    "hullCurves": 57.4,
+    "stations": 20.3,
+    "turretCurves": 7.4,
     "wholeCurves": 0,
     "dims": 0,
     "floaters": 100
@@ -188,11 +188,11 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 60.7,
-    "stations": 30.3,
+    "hullCurves": 35.3,
+    "stations": 0,
     "turretCurves": 0,
-    "wholeCurves": 29.4,
-    "dims": 23.3,
+    "wholeCurves": 0,
+    "dims": 0,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -220,11 +220,11 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 73,
-    "stations": 45.2,
+    "hullCurves": 53.1,
+    "stations": 30.1,
     "turretCurves": 0,
-    "wholeCurves": 47.4,
-    "dims": 85.5,
+    "wholeCurves": 30.5,
+    "dims": 19.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -236,11 +236,11 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 78,
-    "stations": 56.6,
+    "hullCurves": 31.3,
+    "stations": 2.5,
     "turretCurves": 0,
-    "wholeCurves": 46.1,
-    "dims": 80.9,
+    "wholeCurves": 8.4,
+    "dims": 59.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -663,22 +663,6 @@
    }
   },
   {
-   "id": "type90_kyumaru",
-   "geoMin": 21.6,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 77.2,
-    "stations": 38.5,
-    "turretCurves": 21.6,
-    "wholeCurves": 27.8,
-    "dims": 67,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "type96b",
    "geoMin": 25.3,
    "requiredMinimum": 92,
@@ -815,13 +799,13 @@
   },
   {
    "id": "t80u_kursk",
-   "geoMin": 35.4,
+   "geoMin": 0,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "wholeCurves": 86.2,
-    "dims": 35.4,
+    "wholeCurves": 83.2,
+    "dims": 0,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1220,13 +1204,13 @@
   },
   {
    "id": "strv103b",
-   "geoMin": 80.9,
+   "geoMin": 79.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "wholeCurves": 80.9,
-    "dims": 96.4,
+    "wholeCurves": 79.9,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
