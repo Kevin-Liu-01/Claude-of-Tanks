@@ -194,7 +194,9 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'Sweden', filler: 'strv81',
-    expected: ['strv122', 'cv90_mk4', 'strv103b', 'strv121', 'cv90_mk4_concept', 'cv90', 'cv9040c'],
+    // 274.0 (strv103-x): the tier-X pair, the Strv 103E (from the 103B) and the Strv 152 (from the Strv 122), lead after
+    // the Strv 122 in the tree's lane order
+    expected: ['strv122', 'strv103e', 'strv152', 'cv90_mk4', 'strv103b', 'strv121', 'cv90_mk4_concept', 'cv90', 'cv9040c'],
   },
   {
     nation: 'Germany', filler: 'leo2a4',

@@ -292,6 +292,8 @@ const laterChannelCounts = {
   t95: 3,
   // 269: the M163 VADS's Vulcan, its M53 API and M56 HEI
   m163_vads: 2,
+  // 274 (strv103-x): the Strv 103E and Strv 152 concepts and the 103B's netted twin, three rounds each
+  strv103e: 3, strv152: 3, strv103b_net: 3,
 };
 const southAfrica269Channels = ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
@@ -371,7 +373,8 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
 // and the Type 90 (B)'s three (267), the M3A2's three (268), and the South African line's five and the Australian line's
 // seven (269), the second air-defence round's twelve and the M163 VADS's two (270), and the 152 mm line's three each (271).
-// 274: 560 -> 557 when the STC-1 (type90_kyumaru, a pre-C2 record) retired into the STC-2.
+// 274: 560 -> 557 when the STC-1 (type90_kyumaru, a pre-C2 record) retired into the STC-2; strv103-x's three new
+// records (the Strv 103E, Strv 152 and the 103B's netted twin) are later channels, counted beside the census.
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
@@ -379,7 +382,8 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
   - laterChannelCounts.bmpt_terminator - laterChannelCounts.m3a2_bradley - southAfrica269Channels - australia269Channels
   - airDefense269Channels - laterChannelCounts.m163_vads - laterChannelCounts.t95
-  - ['object292', 'object477_molot', 'object195', 't14_152'].reduce((n, id) => n + laterChannelCounts[id], 0), 557,
+  - ['object292', 'object477_molot', 'object195', 't14_152'].reduce((n, id) => n + laterChannelCounts[id], 0)
+  - ['strv103e', 'strv152', 'strv103b_net'].reduce((n, id) => n + laterChannelCounts[id], 0), 557,
   'all 557 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

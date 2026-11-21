@@ -13,7 +13,7 @@ import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-
 
 const ids = [
   't64bv_donbas', 'm1a1_abrams_fep',
-  'strv103a', 'strv103b', 'ua_m1a1',
+  'strv103a', 'strv103b_net', 'ua_m1a1', // 274.0: strv103-x moved the 103B's suit to its netted twin
 ];
 // 274: the T-84 left the list with its Oplot concept's suit (it draws the T-80U X hull and its own welded turret, no net)
 // 264: the Leopard 2A6 UA's suit is a fleet field net now (ghillieFleetSuits.ts), held to the fleet rules below
