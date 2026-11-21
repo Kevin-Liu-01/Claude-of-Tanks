@@ -167,10 +167,15 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     // reads 1.01 (amber, a coin toss through the ±25 % penetration roll) with the hull square, and 0.82 (red, about one
     // round in seventeen) turned 35 degrees (evidence s9-angling-fit-penverdict.txt, penVerdict by import). 170 m north of
     // ring F on a line 2.5 m over the ground; the ground and the woods hide it from the meadow, ring C, bush D and ring E
-    // (tools s9-search), so it is neither seen nor shot before its scene. It faces F nose on. It aims where the fit
-    // measured: the upper front plate's centre, 2.94 m ahead of the hull's centre and 1 m up.
+    // (tools s9-search), so it is neither seen nor shot before its scene. It faces F nose on. It aims at the face of the
+    // lower front plate, 1.04 m up (3.88 m ahead of the hull's centre): the middle of the plate's top band, the only part
+    // of the loaner's front where its HEAT reads amber nose on and red from 35 degrees (below it the plate is red at
+    // every angle, above it the 103 mm upper glacis green). The aim stood 0.9 m inside the hull before, 2.94 m ahead and
+    // 1 m up: its line entered the face 0.15 to 0.25 m higher from the Sentry's ridge, over the band onto the glacis, and
+    // seven of eight rounds went through in the end walk of 2026-11-20 with the hull held in the red. On the face, the
+    // entry is the aim whatever the shooter's height (trainingThreat.selftest.mjs holds the band against offsets).
     Object.freeze({ key: 'sentry', specId: 't72bu_1989', x: -420, z: 120, faces: 'fireF', presentDeg: 0,
-      volley: Object.freeze({ shellType: 'HEAT', firstS: 2.5, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
+      volley: Object.freeze({ shellType: 'HEAT', firstS: 2.5, aim: Object.freeze({ alongM: 3.88, upM: 1.04 }) }) }),
     // S10's Sentry 2: a T-62MV whose APFSDS reads red on the loaner's turret front (0.78) and green on its upper hull
     // (1.34) at 160 m (evidence s10 fit), so the berm is what keeps the player's hull whole. 153 m east of the berm, the
     // line from it over the crest clear of the ground by 2.4 m elsewhere; the ground and woods hide it from every earlier

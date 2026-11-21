@@ -79,6 +79,26 @@ assert.ok(((nose.x - F.x) * (sentry.x - F.x) + (nose.z - F.z) * (sentry.z - F.z)
 const turned = at(square + 35 * DEG);
 assert.ok(Math.abs(Math.atan2(turned.x - F.x, turned.z - F.z) - (square + 35 * DEG)) < 1e-9, 'the aim turns with the hull');
 assert.deepEqual(at(square + 0.3), at(square + 0.3), 'the same pose gives the same aim');
+// (the end walk of 2026-11-20) the aim on the lower front plate's face in its top band: amber nose on and red through the
+// window whatever the Sentry's height (0 to 30 m over F) and with the round off by 0.3 m across and 0.07 m up or down
+{
+  const { aimArmorAlong: along3, aimPenRatio: ratio3 } = await import('./aimPenetration.ts');
+  const { Euler, Matrix4, Quaternion, Vector3: V } = await import('three');
+  const loanerArmor = TANK_SPECS[TRAINING_RULES.loanerSpecId].armor;
+  for (const height of [0, 15, 30]) for (const [dx, dy] of [[0, 0], [0.3, 0.07], [-0.3, -0.07], [0.3, -0.07], [-0.3, 0.07]]) {
+    const shooter = new V(0, 2.2 + height, 170);
+    for (const [turn, want] of [[0, 'marginal'], [35, 'nopen'], [45, 'nopen'], [55, 'nopen']]) {
+      const yaw = turn * DEG;
+      const pose = { pos: new V(0, 0, 0), yaw, visualPitch: 0, visualRoll: 0, turretYaw: -yaw, gunPitch: 0 };
+      const m = new Matrix4().compose(new V(), new Quaternion().setFromEuler(new Euler(0, yaw, 0, 'YXZ')), new V(1, 1, 1));
+      const p = new V(dx, sentry.volley.aim.upM + dy, sentry.volley.aim.alongM - (dy > 0 ? 0 : 0.06)).applyMatrix4(m);
+      const dir = p.clone().sub(shooter); const len = dir.length(); dir.normalize();
+      const info = along3(shooter, dir, len + 20, pose, loanerArmor, undefined, {});
+      assert.equal(info?.plate?.name, 'lower_front', `the round meets the lower front plate (${turn} degrees, +${height} m, off ${dx}/${dy})`);
+      assert.equal(penVerdict(ratio3(shell, info)), want, `${want} at ${turn} degrees from ${height} m up, off ${dx}/${dy}`);
+    }
+  }
+}
 // (the S9 probe of 2026-11-20) a tilted hull: the aim stays on the plate in the hull's own frame, the armour model's
 // (sim/armor.ts buildFrames: Euler 'YXZ', x = -pitch, z = roll), not 1 m above the hull's origin in the world
 {
@@ -106,7 +126,9 @@ for (const sign of [1, -1]) {
   for (let deg = ANGLE_WINDOW.minDeg - 2; deg <= ANGLE_WINDOW.maxDeg + 2; deg += 1) {
     assert.equal(verdict(sign * deg), 'nopen', `red through the window and 2 degrees past it (${sign * deg} degrees)`);
   }
-  assert.equal(verdict(sign * 75), 'pen', `the side shows: green (${sign * 75} degrees)`);
+  // (the aim on the lower front plate's face since the end walk of 2026-11-20) red until the hull stands broadside
+  assert.equal(verdict(sign * 80), 'nopen', `still red at ${sign * 80} degrees: the round meets the front plate's face`);
+  assert.equal(verdict(sign * 90), 'pen', `broadside, the side: green (${sign * 90} degrees)`);
 }
 assert.ok(ANGLE_WINDOW.minDeg >= 30 && ANGLE_WINDOW.maxDeg <= 60 && ANGLE_WINDOW.maxDeg - ANGLE_WINDOW.minDeg >= 15, 'a window wide enough to hold');
 const pose = (offsetDeg) => ({ x: F.x, z: F.z, yaw: square + offsetDeg * DEG });
@@ -396,4 +418,4 @@ const access = readFileSync(new URL('../app/tutorialAccess.ts', import.meta.url)
 assert.match(access, /if \(chapter === 'training'\) \{\s*if \(outcome !== 'skipped' && training\) \{[\s\S]{0,160}deps\.trainingComplete\(\);/,
   'the last card ends the battle (a Skip ends the run only)');
 
-console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green at 75; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);
+console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green broadside; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);
