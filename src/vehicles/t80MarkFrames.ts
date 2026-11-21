@@ -3,15 +3,16 @@
 // dimensions, each mark's own armour fitted to them (its plates, protection values and balance stay its own), the twin's
 // yaw, trunnion and barrel, and the twin's measured gun depression over the same engine deck. Then each mark's gameplay
 // ERA is the ERA its build draws (eraSeating.selftest.mjs, "armour and visuals agree in both directions"): the T-80 and
-// T-80B carry none; the T-80BV's turret, glacis and skirt plates are Kontakt-1 (the fleet's KONTAKT1_ERA, as on the
-// Leopard 2A4 V), not the T-80UK's Kontakt-5 values its record was copied from. Runs with the T-90 marks' pass, after
+// T-80B carry none; the turret, glacis and skirt plates of the T-80BV and of the Ukrainian T-80BV (the same tank in its
+// 2015-24 service fit) are Kontakt-1 (the fleet's KONTAKT1_ERA, as on the Leopard 2A4 V), not the T-80UK's Kontakt-5
+// values their records were copied from. Runs with the T-90 marks' pass, after
 // every donor synchronisation and before the installed size policy (no size factor applies to these marks).
 // First-party combat metadata: Kevin B. Liu (NOTICE.md).
 import { fitArmorToDims } from './specs.ts';
 import { KONTAKT1_ERA } from './leopard2A4Kontakt1.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
-const T80_MARKS = Object.freeze(['t80', 't80b', 't80bv'] as const);
+const T80_MARKS = Object.freeze(['t80', 't80b', 't80bv', 'ua_t80bv'] as const);
 const T80_MARK_TWIN = 't80u';
 const STRUCTURAL_DIMS = ['hullLengthM', 'overallLengthM', 'widthM', 'heightM'] as const;
 /** The BV's drawn Kontakt-1 clusters (profiles/t80Marks.ts), one gameplay plate each. */
@@ -34,14 +35,14 @@ export function applyT80MarkSourceFrames(specs: Record<string, FleetTankSpec>): 
     spec.visual.trackWidthM = twin.visual.trackWidthM;
     if (twin.gunPitchByYawDeg) spec.gunPitchByYawDeg = twin.gunPitchByYawDeg;
     const plates = [...spec.armor.hullPlates, ...spec.armor.turretPlates];
-    if (id !== 't80bv') {
+    if (id !== 't80bv' && id !== 'ua_t80bv') {
       if (plates.some((plate) => plate.kind === 'era')) throw new Error(`${id}: the early marks draw no ERA, so carry none`);
       continue;
     }
     const era = plates.filter((plate) => plate.kind === 'era');
     const names = era.map((plate) => plate.name).sort();
     if (names.join() !== [...T80BV_KONTAKT1_PLATES].join())
-      throw new Error(`t80bv: ERA plates ${names.join()} do not match its drawn Kontakt-1 clusters`);
+      throw new Error(`${id}: ERA plates ${names.join()} do not match its drawn Kontakt-1 clusters`);
     for (const plate of era) plate.era = { ...KONTAKT1_ERA };
   }
 }

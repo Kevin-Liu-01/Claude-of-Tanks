@@ -34,7 +34,9 @@ import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION} from './t80
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
-export type T80Mark='t80'|'t80b'|'t80bv';
+export type T80Mark='t80'|'t80b'|'t80bv'|'ua_t80bv';
+/** The Kontakt-1 marks: the Soviet T-80BV and the same tank in Ukrainian service. */
+const isBV=(m:T80Mark)=>m==='t80bv'||m==='ua_t80bv';
 const YAW:Point3=T80U_X_YAW,GUN:Point3=T80U_X_TRUNNION;
 const {box,cylX,cylZ,torus}=KIT;
 const cylY=(r:number,h:number,n=24)=>KIT.cylY(r,r,h,n);
@@ -281,6 +283,7 @@ function frontSights(P:TankBuilderPort,m:T80Mark):void{
 /** The IR searchlight linked to the gun: the T-80's L-2 on its left with the TPN-1-49-23 night sight's head outboard of it on
  * the roof; the B marks' L-4 on its right. */
 function lunaSearchlight(P:TankBuilderPort,m:T80Mark):void{
+  if(m==='ua_t80bv')return;   // the 2019 Ukrainian upgrade's thermal sights retired the IR searchlight
   const s=m==='t80'?1:-1,r=m==='t80'?.17:.19,x=s*.50,y=.06,z=.16;
   P.addGunExtra(cylZ(r,.28,24),x,y,z);
   P.addGunExtraDark(torus(r-.005,.014,24,6),x,y,z+.14);
@@ -297,7 +300,7 @@ function lunaSearchlight(P:TankBuilderPort,m:T80Mark):void{
  * the BV's flanks behind its Kontakt-1 arrays, four a side. */
 function smokeBanks(P:TankBuilderPort,m:T80Mark):void{
   for(const s of [-1,1]){
-    const n=m==='t80bv'?4:s>0?5:4,a0=m==='t80bv'?1.42:.66,step=m==='t80bv'?.13:.13,y=m==='t80bv'?1.80:1.86;
+    const n=isBV(m)?4:s>0?5:4,a0=isBV(m)?1.42:.66,step=.13,y=isBV(m)?1.80:1.86;
     for(let i=0;i<n;i++){
       const phi=s*(a0+i*step),rho=exitAt(phi,y)+.04,x=rho*Math.sin(phi),z=PLAN_CZ+rho*Math.cos(phi);
       onTurret(P,'turretDetail',box(.10,.06,.14),x,y-.06,z,0,phi,0);
@@ -315,6 +318,7 @@ function turretRear(P:TankBuilderPort,m:T80Mark):void{
     onTurret(P,'turretDetail',beamBetween([s*.45,1.74,-1.12],[s*.45,1.79,-1.34],.018),0,0,0);
   }
   // the stowage boxes on the left flank: three on the T-80, two (numbered) on the B marks
+  if(m==='ua_t80bv'){meshBaskets(P);return;}
   const n=m==='t80'?3:2;
   for(let k=0;k<n;k++){
     const z=(m==='t80bv'?-.40:.28)-k*.36,y=1.70,x=halfWidth(z,y,1)+.11;
@@ -372,7 +376,7 @@ function turretK1(P:TankBuilderPort):void{
 /** The BV's glacis field: five chevron courses under the V splash board, tapering from eleven containers to four at the nose, each
  * container's long side down the slope, clear of the lamps and the tow hooks; and one row along the top of each skirt's
  * front two-thirds. Hull frame. */
-function hullK1(P:TankBuilderPort):void{
+function hullK1(P:TankBuilderPort,m:T80Mark):void{
   const counts=[11,10,8,6,4];
   counts.forEach((n,row)=>{
     for(let c=0;c<n;c++){
@@ -382,9 +386,71 @@ function hullK1(P:TankBuilderPort):void{
       k1(P,`glacis_era_${x>=0?'R':'L'}`,'hull',[x,y,z],0,Math.PI/2-tilt,Math.PI/2);
     }
   });
-  for(const s of [-1,1])for(let k=0;k<10;k++){
+  const skirtBricks=m==='ua_t80bv'?15:10;
+  for(const s of [-1,1])for(let k=0;k<skirtBricks;k++){
     const z=2.66-k*.37,{top}=apronAt(z),y=top-.10,x=s*(screenX(z,y)+.012),lean=Math.atan2(SCREEN_X1-SCREEN_X0,top-apronAt(z).foot);
     k1(P,`skirt_era_${s>0?'R':'L'}`,'hull',[x,y,z],s*Math.PI/2,-lean);
+  }
+}
+
+// -------------------------------------------------------------------------------------------------- Ukrainian fit --
+
+/** The Ukrainian T-80BV's welded mesh baskets (2018 front line, photographs t80bv-ukraine/03-04): an open steel-bar box on
+ * each flank behind the smoke banks and a long one across the casting's rear over the snorkel, each on two brackets from
+ * the casting, its sides a coarse mesh of round bars. Turret-owned (open lattice, so the camera and shots see through). */
+function basket(P:TankBuilderPort,c:readonly[number,number,number],w:number,h:number,d:number,yaw:number):void{
+  const R=.010,cy=Math.cos(yaw),sy=Math.sin(yaw);
+  const at=(u:number,v:number,t:number):[number,number,number]=>[c[0]+u*cy+t*sy-YAW[0],c[1]+v-YAW[1],c[2]-u*sy+t*cy-YAW[2]];
+  const bar=(a:[number,number,number],b:[number,number,number],r=R)=>{const g=beamBetween(a,b,r,6);g.userData.fieldRoofCage=true;P.addEquipment('turretOpenLattice',g);};
+  const hw=w/2,hd=d/2;
+  for(const v of [0,h])for(const [u0,t0,u1,t1] of [[-hw,-hd,hw,-hd],[hw,-hd,hw,hd],[hw,hd,-hw,hd],[-hw,hd,-hw,-hd]] as const)bar(at(u0,v,t0),at(u1,v,t1),.014);
+  for(const [u,t] of [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]] as const)bar(at(u,0,t),at(u,h,t),.014);
+  for(let u=-hw+.10;u<hw;u+=.10)for(const t of [-hd,hd])bar(at(u,0,t),at(u,h,t));
+  for(let t=-hd+.10;t<hd;t+=.10)for(const u of [-hw,hw])bar(at(u,0,t),at(u,h,t));
+  for(const v of [h/3,2*h/3])for(const [u0,t0,u1,t1] of [[-hw,-hd,hw,-hd],[hw,-hd,hw,hd],[hw,hd,-hw,hd],[-hw,hd,-hw,-hd]] as const)bar(at(u0,v,t0),at(u1,v,t1));
+  for(let u=-hw+.12;u<hw;u+=.12)bar(at(u,0,-hd),at(u,0,hd));   // the floor bars
+}
+function meshBaskets(P:TankBuilderPort):void{
+  // the rear basket across the casting's back, over the snorkel (its floor on the snorkel's brackets)
+  basket(P,[0,1.70,-1.78],1.70,.34,.42,0);
+  for(const s of [-1,1]){
+    const z=-.62,y=1.62,x=s*(halfWidth(z,y+.17,s)+.17);
+    basket(P,[x,y,z],.30,.32,.70,-s*.08);
+    // two brackets from the casting's flank to the basket's inner frame
+    for(const dz of [-.22,.22])onTurret(P,'turretDetail',box(.20,.03,.03),x-s*.16,y+.05,z+dz,0,-s*.08,0);
+  }
+  for(const s of [-1,1])onTurret(P,'turretDetail',beamBetween([s*.70,1.72,-1.20],[s*.70,1.72,-1.58],.016),0,0,0);
+}
+
+/** The extra Kontakt-1 box on the rear of the casting's +x flank (2022-24, photograph t80bv-ukraine/01): a welded steel box
+ * frame holding three columns of four containers, standing off the casting on two brackets. */
+function sideBrickBox(P:TankBuilderPort):void{
+  const phi=1.98,y=1.74,rho=exitAt(phi,y)+.16,cx=rho*Math.sin(phi),cz=PLAN_CZ+rho*Math.cos(phi);
+  onTurret(P,'turretDetail',box(.12,.58,.64),cx-.07*Math.sin(phi),y,cz-.07*Math.cos(phi),0,phi,0);
+  for(let c=0;c<3;c++)for(let r=0;r<4;r++){
+    const along=(c-1)*.20,u=[Math.cos(phi),-Math.sin(phi)];
+    k1(P,'turret_era_R','turret',[cx+u[0]*along,y-.21+r*.14,cz+u[1]*along],phi,0);
+  }
+  for(const dz of [-.18,.18])onTurret(P,'turretDetail',box(.30,.04,.04),cx-.18*Math.sin(phi),y-.18,cz-.18*Math.cos(phi)+dz,0,phi,0);
+}
+
+/** The 2022-24 overhead anti-drone screen: four pipe posts from the casting's roof to a flat frame 0.9 m over the crown,
+ * cross-braced, the frame carrying a camouflage net (photograph t80bv-ukraine/01). Turret-owned. */
+function overheadScreen(P:TankBuilderPort):void{
+  const top=CAST[5][3]+.90,feet:[number,number][]=[[.66,.58],[-.84,.50],[.62,-.92],[-.70,-.96]];
+  const bar=(a:[number,number,number],b:[number,number,number],r:number)=>{const g=beamBetween([a[0]-YAW[0],a[1]-YAW[1],a[2]-YAW[2]],[b[0]-YAW[0],b[1]-YAW[1],b[2]-YAW[2]],r,8);g.userData.fieldRoofCage=true;P.addEquipment('turretOpenLattice',g);};
+  const corner:[number,number][]=[[1.20,1.05],[-1.25,1.00],[1.15,-1.45],[-1.20,-1.45]];
+  feet.forEach(([x,z],i)=>{
+    const foot=roof(x,z)-.01;
+    onTurret(P,'turretDetail',box(.12,.03,.12),x,foot+.015,z);
+    bar([x,foot+.02,z],[corner[i][0],top,corner[i][1]],.025);
+  });
+  for(const [a,b] of [[0,1],[1,3],[3,2],[2,0]] as const)bar([corner[a][0],top,corner[a][1]],[corner[b][0],top,corner[b][1]],.022);
+  for(let z=-1.20;z<1.0;z+=.45)bar([1.18,top,z],[-1.22,top,z],.012);
+  // the net over the frame, sagging between the rails
+  for(let k=0;k<5;k++){
+    const z0=-1.45+k*.50,z1=z0+.50;
+    P.addEquipment('turretCloth',box(2.40,.012,.52),-.02-YAW[0],top+.02-.04*Math.sin(Math.PI*(k+.5)/5)-YAW[1],(z0+z1)/2-YAW[2]);
   }
 }
 
@@ -397,28 +463,31 @@ export function buildT80Mark(P:TankBuilderPort,m:T80Mark):void{
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   buildT80UXHullBase(P,{apron:false,skirts:false});
   glacisFit(P);dozerBlade(P);stern(P,m);sideScreens(P,m);
-  if(m==='t80bv')hullK1(P);
+  if(isBV(m))hullK1(P,m);
   casting(P);roofStations(P,m);frontSights(P,m);turretRear(P,m);
   if(m!=='t80')smokeBanks(P,m);
-  if(m==='t80bv')turretK1(P);
+  if(isBV(m))turretK1(P);
+  if(m==='ua_t80bv'){sideBrickBox(P);overheadScreen(P);}
   buildT80UXGun(P);lunaSearchlight(P,m);
   P.hullG.userData.familyRebuild={donor:'t80u',revision:1,mark:m};
   P.turretG.userData.t80MarkReceipt=Object.freeze({
     casting:'t80-early-cast-r1',mark:m,
     sights:m==='t80'?['tpd-2-49','rangefinder-housing','tpn-1-49-23']:['1g42','kobra-guidance'],
-    lunaSide:m==='t80'?'left':'right',
+    lunaSide:m==='t80'?'left':m==='ua_t80bv'?'none':'right',
     smokeTubes:m==='t80'?0:m==='t80b'?9:8,
-    flankBoxes:m==='t80'?3:2,
+    flankBoxes:m==='t80'?3:m==='ua_t80bv'?0:2,
+    meshBaskets:m==='ua_t80bv',overheadScreen:m==='ua_t80bv',
     sideScreens:m==='t80'?'steel-screen':'rubber-skirt',
     sternDrums:m==='t80bv',
     commanderShield:m==='t80bv',
     kontakt1:Object.freeze({...(K1_COUNT.get(P)??{})}),
   });
   for(const s of [-1,1])P.decal('turret','number',P.spec.visual.number||'',.24,[s*(halfWidth(-.48,1.73,s)+.006),.18,-.55],s*Math.PI/2);
-  P.topY=roof(-.60,-.20)+.30-YAW[1];
+  P.topY=(m==='ua_t80bv'?CAST[5][3]+.95:roof(-.60,-.20)+.30)-YAW[1];   // the UA screen's net stands over the cupola
 }
 
 export const T80_MARK_PROFILES={
+  ua_t80bv:{build:(P:TankBuilderPort)=>buildT80Mark(P,'ua_t80bv')},
   t80:{build:(P:TankBuilderPort)=>buildT80Mark(P,'t80')},
   t80b:{build:(P:TankBuilderPort)=>buildT80Mark(P,'t80b')},
   t80bv:{build:(P:TankBuilderPort)=>buildT80Mark(P,'t80bv')},

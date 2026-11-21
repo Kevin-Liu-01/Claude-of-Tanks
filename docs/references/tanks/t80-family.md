@@ -1,4 +1,4 @@
-# T-80 family (`t80`, `t80b`, `t80bv`; release 274)
+# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`; release 274)
 
 Lane `item/t80-family-274`. The owner, 2026-11-20: "lets redesign the t80, t80b, t80bv, and their ukrainian counterparts
 to be like our t90 fixes - we have old models with certain design styles that make them unique, modern versions of the
@@ -43,6 +43,22 @@ The real T-80B's hull is the T-80U's apart from its fittings, so each mark's hul
 | Stern | unditching log | log, rubber mud flaps | log, mud flaps, two 200 L drums on the X cradles |
 
 Turret-side naming follows the spec: `_L` plates and clusters stand at -x, `_R` at +x (the T-80U X's own plates).
+
+## The Ukrainian T-80BV (`ua_t80bv`)
+
+The owner approved its look on 2026-11-20 ("Look OK, carry on"). It is the same tank as the T-80BV in its 2015-24
+Ukrainian service fit, built by the same mark builder (`profiles/t80Marks.ts`, mark `ua_t80bv`), so its print-fitted
+loft and its share of the T-90-style turret suite in `profiles/ukraine.ts` are retired; it is no longer the Kursk's
+sibling. From the T-80BV it differs only where the photographs (lane evidence `photos/t80bv-ukraine/`) show it:
+
+- no L-4 Luna searchlight (dropped in the 2019 upgrade);
+- welded mesh baskets on the turret's rear and flanks (2018) in place of the flank boxes;
+- a tall pipe-frame, net-covered overhead screen (2022-24);
+- an extra 3 x 4 Kontakt-1 brick box on the turret's +x flank;
+- the skirt Kontakt-1 row the full length (15 a side, not 10);
+- no stern drums and no NSVT shield (both Russian late-service fittings).
+
+Its six ERA plates take the same Kontakt-1 values as the T-80BV's.
 
 ## Blind critic (2026-11-20)
 

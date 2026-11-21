@@ -37,7 +37,6 @@ for (const [id, twinId] of Object.entries(T90_TWINS)) {
 // 274: the T-80BV left the shared carrier for its photographed Kontakt-1 wedge arrays on the T-80U X build
 // (t80Marks.selftest.mjs pins its clusters and plates).
 const cases = Object.freeze({
-  ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
   t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
 });
 

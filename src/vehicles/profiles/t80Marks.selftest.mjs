@@ -10,7 +10,7 @@ import { KONTAKT1_ERA } from '../leopard2A4Kontakt1.ts';
 import { T80BV_KONTAKT1_PLATES } from '../t80MarkFrames.ts';
 import { eraPlateNames } from './eraAgreement.test-support.mjs';
 
-const MARKS = ['t80', 't80b', 't80bv'];
+const MARKS = ['t80', 't80b', 't80bv', 'ua_t80bv'];
 const receipts = {};
 for (const id of MARKS) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
@@ -33,7 +33,7 @@ for (const id of MARKS) {
     // drawn ERA against the spec, both directions
     const drawn = [...(tank.root.userData.eraClusterNames ?? [])].sort();
     assert.deepEqual(drawn, eraPlateNames(TANK_SPECS[id]), `${id}: drawn ERA equals its gameplay ERA plates`);
-    assert.equal(tank.root.userData.eraFinishReceipt !== undefined, id === 't80bv', `${id}: an ERA finish only where ERA is drawn`);
+    assert.equal(tank.root.userData.eraFinishReceipt !== undefined, id.endsWith('t80bv'), `${id}: an ERA finish only where ERA is drawn`);
   } finally { tank.dispose(); }
 }
 
@@ -42,11 +42,14 @@ assert.deepEqual(receipts.t80.sights, ['tpd-2-49', 'rangefinder-housing', 'tpn-1
 assert.deepEqual(receipts.t80b.sights, ['1g42', 'kobra-guidance']);
 assert.equal(receipts.t80.lunaSide, 'left');
 assert.equal(receipts.t80b.lunaSide, 'right');
-assert.deepEqual(MARKS.map((id) => receipts[id].smokeTubes), [0, 9, 8], 'no smoke on the 1976 tank; 5+4 on the B; 4+4 on the BV flanks');
-assert.deepEqual(MARKS.map((id) => receipts[id].flankBoxes), [3, 2, 2]);
-assert.deepEqual(MARKS.map((id) => receipts[id].sideScreens), ['steel-screen', 'rubber-skirt', 'rubber-skirt']);
-assert.deepEqual(MARKS.map((id) => receipts[id].sternDrums), [false, false, true]);
-assert.deepEqual(MARKS.map((id) => receipts[id].commanderShield), [false, false, true]);
+assert.equal(receipts.ua_t80bv.lunaSide, 'none', 'the Ukrainian 2019 upgrade retired the IR searchlight');
+assert.deepEqual(MARKS.map((id) => receipts[id].smokeTubes), [0, 9, 8, 8], 'no smoke on the 1976 tank; 5+4 on the B; 4+4 on the BV flanks');
+assert.deepEqual(MARKS.map((id) => receipts[id].flankBoxes), [3, 2, 2, 0]);
+assert.deepEqual(MARKS.map((id) => receipts[id].sideScreens), ['steel-screen', 'rubber-skirt', 'rubber-skirt', 'rubber-skirt']);
+assert.deepEqual(MARKS.map((id) => receipts[id].sternDrums), [false, false, true, false], 'drums on the Russian late service only');
+assert.deepEqual(MARKS.map((id) => receipts[id].commanderShield), [false, false, true, false], 'the NSVT shield is Russian');
+assert.deepEqual(MARKS.map((id) => receipts[id].meshBaskets), [false, false, false, true], 'the Ukrainian 2018 mesh baskets');
+assert.deepEqual(MARKS.map((id) => receipts[id].overheadScreen), [false, false, false, true], 'the Ukrainian 2022-24 overhead screen');
 for (const id of ['t80', 't80b']) assert.deepEqual(receipts[id].kontakt1, {}, `${id}: no Kontakt-1`);
 
 // the BV's Kontakt-1: every cluster populated (eight wedge columns left of the gun's line on the casting's +x cheek, five
@@ -59,8 +62,15 @@ assert.equal(k1.turret_era_L, 10 + 16, 'five double-stacked columns and the 4x4 
 assert.equal(k1.skirt_era_L, 10);
 assert.equal(k1.skirt_era_R, 10);
 assert.ok(k1.glacis_era_L + k1.glacis_era_R >= 30, 'the glacis field (11-10-8-6-4 less the lamp and hook clearances)');
-for (const plate of [...TANK_SPECS.t80bv.armor.hullPlates, ...TANK_SPECS.t80bv.armor.turretPlates].filter((p) => p.kind === 'era'))
-  assert.deepEqual(plate.era, { ...KONTAKT1_ERA }, `t80bv ${plate.name}: Kontakt-1, not the T-80UK's Kontakt-5`);
+// the Ukrainian BV: the same field, the skirt row the full length (15 a side) and the extra 3x4 box on the +x flank
+const ua = receipts.ua_t80bv.kontakt1;
+assert.deepEqual(Object.keys(ua).sort(), [...T80BV_KONTAKT1_PLATES]);
+assert.equal(ua.skirt_era_L, 15);
+assert.equal(ua.skirt_era_R, 15);
+assert.equal(ua.turret_era_R, k1.turret_era_R + 12, 'the flank box adds three columns of four');
+assert.equal(ua.glacis_era_L + ua.glacis_era_R, k1.glacis_era_L + k1.glacis_era_R);
+for (const id of ['t80bv', 'ua_t80bv']) for (const plate of [...TANK_SPECS[id].armor.hullPlates, ...TANK_SPECS[id].armor.turretPlates].filter((p) => p.kind === 'era'))
+  assert.deepEqual(plate.era, { ...KONTAKT1_ERA }, `${id} ${plate.name}: Kontakt-1, not the T-80UK's Kontakt-5`);
 
 // the T-80U X combat frame
 for (const id of MARKS) {
@@ -72,4 +82,4 @@ for (const id of MARKS) {
   assert.equal(spec.dims.hullLengthM, twin.dims.hullLengthM, `${id}: the twin's hull length`);
 }
 
-console.log('t80Marks.selftest: T-80, T-80B and T-80BV on the T-80U X hull, each with its own kit; BV Kontakt-1 drawn = spec');
+console.log('t80Marks.selftest: T-80, T-80B, T-80BV and the Ukrainian T-80BV on the T-80U X hull, each with its own kit; BV Kontakt-1 drawn = spec');

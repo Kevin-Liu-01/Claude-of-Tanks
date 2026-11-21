@@ -141,7 +141,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "type96b": {"turretPivot":[0,1.6,-0.15],"gunPivot":[0,0.2602,1.75],"lengthM":4.9221,"radiusM":0.1105},
   "ua_challenger2": {"turretPivot":[0,1.705,1.1],"gunPivot":[0,0.2002,0.77],"lengthM":6.292},
   "ua_m2a3_bradley": {"turretPivot":[-0.14,2.06,-0.4],"gunPivot":[-0.06,0.465,0.6],"lengthM":2.1705},
-  "ua_t80bv": {"turretPivot":[0,1.44,-0.05],"gunPivot":[0,0.25,1.02],"lengthM":5.3},
+  "ua_t80bv": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2135,1.3481],"lengthM":4.5828,"radiusM":0.1093},
   "vickers_mk1": {"turretPivot":[0,1.463,0.4399],"gunPivot":[0,0.4612,0.57],"lengthM":4.4555,"radiusM":0.1254},
   "vt4a1_baihu": {"turretPivot":[0,1.66,0.4],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
   "ztz85_iii": {"turretPivot":[0,1.45,0.05],"gunPivot":[0,0.32,0.96],"lengthM":6.195,"radiusM":0.0974},

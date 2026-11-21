@@ -17,7 +17,6 @@ for (const [id, donorId] of [['t80uk', 't80u'], ['t72m1_jaguar', 't72b3']]) {
 
 // 274: the T-80BV's Kontakt-1 is its own wedge arrays on carrier frames (t80Marks.selftest.mjs), not this solver's course.
 const cases = Object.freeze({
-  ua_t80bv: Object.freeze({ cassetteSeats: 33, minimumSurfaceGapM: -0.05 }),
   t80u_kursk: Object.freeze({ cassetteSeats: 36, minimumSurfaceGapM: -0.05 }),
 });
 

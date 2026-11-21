@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
+// 274: the Ukrainian T-80BV left this suite for the T-80BV mark's Ukrainian field fit (t80Marks.selftest.mjs).
 const variants = [
-  ['ua_t80bv', 't80bv-ua-t90-style', 'uaT80ModernKord_bv'],
   ['t80u_kursk', 't80u-kursk-t90-style', 'uaT80ModernKord_kursk'],
 ];
 
