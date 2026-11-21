@@ -241,7 +241,7 @@ function basket(P:TankBuilderPort):void {
   turret(P,'turretOpenLattice',g,0,0,0);
 }
 
-function optic(P:TankBuilderPort):void {
+function optic(P:TankBuilderPort,commanderSight=true):void {
   // Right front hood: closed 10mm top over a true frontal recess.
   // (round 5: the box stands its full height on the level roof on a 45 mm plinth, 169 mm over the source's sunk seat)
   const SIGHT_RISE=.169;
@@ -270,7 +270,7 @@ function optic(P:TankBuilderPort):void {
     const a=i*Math.PI*2/7;turret(P,'turretGlass',box(.09,.057,.030),-.641153+Math.sin(a)*.370,2.522,.123371+Math.cos(a)*.346,0,a);
   }
   turret(P,'turretHatch',box(.609575,.02108,.430976),.525553,2.47015,.152382);
-  turret(P,'turretDetail',cylinder(.131388,.225994,24),-.494031,2.593546,.55704);
+  if(commanderSight)turret(P,'turretDetail',cylinder(.131388,.225994,24),-.494031,2.593546,.55704);  // the commander's sight
   for(const x of [-.31533,.31533]) {
     const eye=new THREE.TorusGeometry(.047,.013,8,20);eye.rotateY(Math.PI/2);
     turret(P,'turretDetail',eye,x,2.29692,1.90156);
@@ -418,11 +418,15 @@ function mainGun(P:TankBuilderPort):void {
 }
 
 interface Type90XBuildOptions {
-  /** False where a variant seats its own roof station (the Type 90 (B)'s remote M2, type90B.ts). */
+  /** False where a variant seats its own roof station. */
   readonly roofM2?:boolean;
+  /** False where a variant carries its own bustle rack (the Type 90 (B)'s roller-crew rack, type90B.ts). */
+  readonly basket?:boolean;
+  /** False where a variant carries its own commander's sight head (the Type 90 (B)'s panoramic head, type90B.ts). */
+  readonly commanderSight?:boolean;
 }
 
-export function buildType90X(P:TankBuilderPort,{roofM2=true}:Type90XBuildOptions={}):void {
+export function buildType90X(P:TankBuilderPort,{roofM2=true,basket:withBasket=true,commanderSight=true}:Type90XBuildOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
   hull(P);
@@ -450,7 +454,7 @@ export function buildType90X(P:TankBuilderPort,{roofM2=true}:Type90XBuildOptions
     }),botY,.389),
     topY:1.242,botY,paintedEnds:true,coveredTop:true,arms:true,
   });
-  turretArmor(P);basket(P);optic(P);if(roofM2)roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
+  turretArmor(P);if(withBasket)basket(P);optic(P,commanderSight);if(roofM2)roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
   P.topY=3.153229-PIVOT[1];
   P.hullG.userData.xRebuild={candidate:'type90',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

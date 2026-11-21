@@ -301,7 +301,6 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // build's proven seat on its broad faceted hull-side armor.
   k2b: anchor('hull', 'left', 0.44, 0.61, 0.26, 1),
   type74: anchor('turret', 'right', 0.45, 0.47, 0.23, -1),
-  type90_kyumaru: anchor('turret', 'left', 0.40, 0.43, 0.23, 1),
   type10_tk_x: anchor('turret', 'right', 0.37, 0.44, 0.23, -1),
   // Japanese prototype and upgrade marks use different, physically seated
   // armor faces: STB-1 on its cast left flank, Type 90A on the right NERA

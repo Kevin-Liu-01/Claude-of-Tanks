@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "tool": "tools/spare-track-placement-check.mjs",
- "tankIdSchema": 3,
+ "tankIdSchema": 4,
  "rows": {
   "abramsx": {
    "inputHash": "7b4a8df90e2a570c",
@@ -3933,12 +3933,6 @@
    "uncovered": [],
    "hostSweep": []
   },
-  "type90_kyumaru": {
-   "inputHash": "30af88c74b1a3f36",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
   "type90a": {
    "inputHash": "4c3471c834abee23",
    "runs": [],
@@ -3946,8 +3940,273 @@
    "hostSweep": []
   },
   "type90b": {
-   "inputHash": "fd724234ffee4e31",
-   "runs": [],
+   "inputHash": "0d60ec5387b8c683",
+   "runs": [
+    {
+     "index": 0,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.005,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 1,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.005,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 2,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.005,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.933,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 3,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.933,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 4,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 5,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.933,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 6,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.006,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.944,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 7,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.006,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.944,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 8,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.005,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.944,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 9,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 10,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.944,
+      "host": "orphan:turret"
+     }
+    },
+    {
+     "index": 11,
+     "site": "adhoc:type90b-flank-shoe@tt@profiles/type90B.ts",
+     "source": "adhoc",
+     "frame": "turret",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.003,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "orphan:turret"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },

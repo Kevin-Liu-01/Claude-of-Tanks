@@ -32,7 +32,7 @@ type WheelDonorId =
   | 'strv121' | 'cv90_mk4'
   | 'xk2_black_panther' | 'k1e1'
   | 'pl01' | 'bwp1'
-  | 'type10_tk_x' | 'type90_kyumaru'
+  | 'type10_tk_x' | 'type90'
   | 'c1_ariete_proto_serie1'
   | 'leclerc_sxxi' | 'amx40_proto'
   | 'challenger3_proto' | 'challenger2e' | 'warrior_tes_h'
@@ -90,7 +90,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet armoured-hub six-fastener disc (afvFamily.ts draws the generic stock).' }),
   type10_tk_x: Object.freeze({ donor: 'type10_tk_x', self: ['type10', 'type10_dozer'], pattern: 'flanged-twelve', construction: 'type10-paired',
     note: 'Paired turned halves with a recessed hub and a real guide channel (pairedRunningGearStock.ts, the Type 10 X fitted course).' }),
-  type90_kyumaru: Object.freeze({ donor: 'type90_kyumaru', self: ['type90', 'type90b'], pattern: 'flanged-twelve', construction: 'type90-recessed-forging',
+  type90: Object.freeze({ donor: 'type90', self: ['type90', 'type90b'], pattern: 'flanged-twelve', construction: 'type90-recessed-forging',
     note: 'Lathed forging with the dish 120 mm behind the rubber face and a clipped hub over an open tire annulus (type90X.ts).' }),
   c1_ariete_proto_serie1: Object.freeze({ donor: 'c1_ariete_proto_serie1', self: ['c1_ariete', 'c2_ariete'], pattern: 'split-rim-ten', construction: 'ariete-recessed-dish',
     note: 'Recessed dish with a proud axle cap over paired tire bands (arieteXSuppliedGear.ts, the owner-approved Ariete frame).' }),
@@ -194,7 +194,7 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
   ],
   japan: [
     { donor: 'type10_tk_x', eras: LATE_ERAS, reason: 'Japan modern/next-generation hull → Type 10 wheel' },
-    { donor: 'type90_kyumaru', reason: 'Japan cold-war hull → Type 90 wheel' },
+    { donor: 'type90', reason: 'Japan cold-war hull → Type 90 wheel' },
   ],
   italy: [
     { donor: 'c1_ariete_proto_serie1', reason: 'Italy → C1 Ariete wheel (the only Italian donor)' },

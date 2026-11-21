@@ -2641,22 +2641,18 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
   // fully under the 1.39-1.45 deck line so no side column cost)
   const cable = FITTINGS.towCable({ mats: P.mats, pts: [[1.50, 1.20, 1.90], [1.55, 1.20, 0.40], [1.52, 1.20, -1.20]], r: 0.018, seed: 4 });
   P.hullG.add(cable);
-  // owner 2026-10-25: this build is the TK-X first-series prototypes STC-1 / STC-2 (tankLabels.ts), so the glacis carries
-  // the prototype's serial where a production hull carried its registration
-  P.decal('hull', 'number', type90PrototypeSerial(P), 0.19, [-0.85, 0.95, 3.32], 0, -0.15);
+  // owner 2026-10-25: this build is the TK-X first-series prototype STC-2 (tankLabels.ts; the STC-1 left the fleet
+  // 2026-11-20), so the glacis carries the prototype's serial where a production hull carried its registration
+  P.decal('hull', 'number', 'TK-X-0002', 0.19, [-0.85, 0.95, 3.32], 0, -0.15);
   P.decal('hull', 'soot', null, 0.5, [-0.9, 1.1, -3.7], Math.PI);
 }
 
-/** The TK-X prototype this Type 90 build is (spec.visual.number: STC-1 or STC-2, japan.ts). */
-const type90Prototype = (P: MiscBuilderPort): string => P.spec.visual?.number === 'STC-2' ? 'STC-2' : 'STC-1';
-const type90PrototypeSerial = (P: MiscBuilderPort): string => type90Prototype(P) === 'STC-2' ? 'TK-X-0002' : 'TK-X-0001';
 
 function buildType90SkirtsAndRunningGear(P: MiscBuilderPort): void {
   const { box, buildRunningGear, fenders } = KIT;
   const slab = orientedSlab;
-  // owner 2026-10-25: the first prototype (STC-1) ran a rubber skirt sheet over the mid run; the armoured front panels
-  // and the rear course stay steel. The second (STC-2) carries the steel sheet the series kept.
-  const sheet = type90Prototype(P) === 'STC-1' ? 'hullRubber' : 'hull';
+  // owner 2026-10-25: the STC-2 carries the steel skirt sheet the series kept
+  const sheet = 'hull';
   // skirts: the ref's 3-zone width profile. FRONT armored panels outer
   // 1.703 + the widthM strip at exactly +-1.715 (WIDTH GUARD, z 1.6..3.2);
   // MID rubber sheet inset to 1.585 (1.545 amidships); REAR course back out
@@ -2869,12 +2865,6 @@ function buildType90Turret(P: MiscBuilderPort): void {
   P.add('turretDark', torus(0.22, 0.011, 14), 0.56, 0.988, -0.17);
   P.add('turret', cylY(0.195, 0.21, 0.020, 14), 0.56, 1.005, -0.17);           // lid (crown 2.415)
   P.add('turretDark', box(0.36, 0.010, 0.03), 0.56, 1.017, -0.17);
-  if (type90Prototype(P) === 'STC-1') {
-    // owner 2026-10-25: the first prototype's commander's IR lamp, seated 5 mm into the outboard ring segment's top (1.00)
-    P.add('turretDetail', box(0.12, 0.10, 0.16), 0.855, 1.045, -0.13);
-    P.add('turretDark', box(0.105, 0.085, 0.012), 0.855, 1.045, -0.048);
-    P.add('turretGlass', box(0.085, 0.065, 0.008), 0.855, 1.045, -0.042);
-  }
   P.add('turret', box(0.13, 0.06, 0.22), 0.855, 0.97, -0.17);                  // cupola outboard ring segment (grab rail/wiper stowage, top 2.40): the v2 cupola band runs to x ~0.91 (front cols 0.83..0.91 want 2.40-2.41, run-2 worst block) — low box seated on the roof plane, side-invisible under the 2.462 blocks
   for (let vb = 0; vb < 4; vb++) {                                             // cupola VISION-BLOCK RING, inboard-forward arc (crowns 2.462): the v2
     const va = (130 + vb * 30) * Math.PI / 180;                                // front dome band [x 0.251..0.445, want ~2.48] + the side crown-band cols
@@ -3097,8 +3087,8 @@ function buildType90Turret(P: MiscBuilderPort): void {
   // regroup, so their seats are authored in the UNSCALED turret frame —
   // 0.272/−0.41 = the old 0.40/−0.5 through the (0.68, 0.82) shell scale,
   // same world flank seats as d4a9410.)
-  P.decal('turret', 'number', type90Prototype(P), 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', type90Prototype(P), 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
+  P.decal('turret', 'number', 'STC-2', 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', 'STC-2', 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
 }
 
 function buildType90Gun(P: MiscBuilderPort): void {
@@ -4062,7 +4052,6 @@ const buildAMX30B2 = steppedBuilder((P: MiscBuilderPort) => buildAMX30Steps(P, t
 // unchanged. Superseded unregistered rebuild experiments are not retained.
 // ---------------------------------------------------------------------------
 export const MISC_PROFILES = {
-  type90_kyumaru: { build: buildType90 },
   // Runtime Ariete is the stronger earlier repository-authored construction.
   // The unregistered Native2026 experiment was removed; neither a source mesh
   // nor converted vertex payload is used at runtime.

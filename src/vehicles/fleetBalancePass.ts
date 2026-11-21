@@ -2,6 +2,7 @@
 // has registered and before combat anatomy is finalized.
 
 import { scaleNonExternalArmor } from './fleetSpecRegistry.ts';
+import { DONOR_SPECS, TKX_PROTOTYPE_FRAME } from './donorSpecs.ts';
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 
 const appliedRegistries = new WeakSet<object>();
@@ -281,8 +282,10 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.34, aimTimeS: 2 });
     armor(registry, 't80b', 0.95);
   }
-  // 267: the Type 90 (B) keeps the Type 90's mobility (the Type 90 mirrors its Kyū-maru donor's, sourceXSecondWave)
-  for (const id of ['type90_kyumaru', 'type90b']) Object.assign(spec(registry, id), {
+  // 267: the Type 90 (B) keeps the Type 90's mobility (the Type 90 mirrors its donor's, the TK-X frame, sourceXSecondWave;
+  // the frame is the removed STC-1's row, an unregistered template since 2026-11-20, donorSpecs.ts)
+  const tkxFrame = { [TKX_PROTOTYPE_FRAME]: DONOR_SPECS[TKX_PROTOTYPE_FRAME]! };
+  for (const [table, id] of [[tkxFrame, TKX_PROTOTYPE_FRAME], [registry, 'type90b']] as const) Object.assign(spec(table, id), {
     enginePowerHp: 1550, topSpeedKmh: 74, reverseSpeedKmh: 34,
     hullTraverseDegS: 48, turretTraverseDegS: 44,
   });
@@ -659,13 +662,14 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the M1A2 and M1A2 SEPv2 studies keep their HC and AIM donors' combat (abramsSourceX: the study's hp is its donor's),
   // so the four change together
   for (const id of ['m1a1_abrams_aim', 'm1a1_abrams_hc', 'm1a2_abrams_sepv2', 'm1a2_abrams']) spec(registry, id).hp = 2450;
-  // the Type 90 family's 3-round clip (1,500 damage) was still reloading when it died; the STC-2 rebuild keeps its
-  // Kyū-maru donor's gun and hull (sourceXSecondWave), so the two change together
-  for (const id of ['type90', 'type90_kyumaru', 'type90b']) {
+  // the Type 90 family's 3-round clip (1,500 damage) was still reloading when it died
+  for (const id of ['type90', 'type90b']) {
     autoloaderCycle(registry, id, 9);
     spec(registry, id).hp = 2450;
   }
-  autoloaderCycle(registry, 'type90a', 8.5);
+  // 274 (the owner 2026-11-20): with the STC-1 retired the cold-war/8/mbt DPM median fell to 4,657 and the STC-2's 7,344
+  // read 1.577x; 8.75 s is the smallest step under the 1.55 ceiling (7,200, 1.546x)
+  autoloaderCycle(registry, 'type90a', 8.75);
   // the K1A1 keeps its K1E1 donor's gun and hull (sourceXSecondWave): its turret front takes the VIII step instead
   turretFront(registry, 'k1a1', 1.6);
   // (263, Main 10-29: the Vickers READY's Challenger 1 builds) C1 and C2 of FAIRNESS-263 §3 replace commit B's 263-build

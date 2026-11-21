@@ -3470,7 +3470,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   const base = baseDecorManifest(spec, rng);
   // (a twin's own rows where its turret differs, else its twin's: the M3A2 since 269's swap)
   const livedIn = LIVED_IN_ROWS[spec.id] ?? LIVED_IN_ROWS[DECOR_TWIN.get(spec.id) ?? spec.id];
-  return livedIn ? [...base, ...livedIn()] : base;
+  // 274 (owner 2026-11-20, "a more unique turret"): the Type 90 (B)'s flank carries its spare shoes and its rack its tarp
+  // roll (profiles/type90B.ts), so its twin's turret-side tarp roll, which ran through the shoes, is not drawn
+  const own = spec.id === 'type90b' ? base.filter((row) => !(row.kit === 'tarp' && row.slot[0] === 'turretSide')) : base;
+  return livedIn ? [...own, ...livedIn()] : own;
 }
 
 function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {

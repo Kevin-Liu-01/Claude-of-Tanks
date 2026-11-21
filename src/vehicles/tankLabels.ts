@@ -155,19 +155,16 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     noteKey: 'gallery.brief.note.warriorTesH',
   },
   // 2026-10-13: no two garage cards read "Type 90"; type90 keeps the plain name.
-  // owner 2026-10-25 ("change the type 90a and type 90 kyu maru into prototype-named vriants"): the two procedural Type 90s
-  // are the TK-X programme's first-series prototypes, named as the STB-1 names the Type 74's first: STC-1 (TK-X-0001,
-  // completed 1982) and STC-2 (TK-X-0002, June 1985), both on the Japan Steel Works 120 mm smoothbore before the
-  // Rheinmetall gun of the 1986-88 second series. The ids stay: saves, rooms, replays and the Gallery key on them.
-  type90_kyumaru: {
-    displayName: 'STC-1', shortName: 'STC-1',
-    searchAliases: ['TK-X-0001', 'Type 90 prototype', 'Type 90 first prototype', 'Type 90 Kyū-maru', 'Kyu-maru'],
-  },
   // 2026-10-13: no vehicle keeps an "X" suffix (the 2026-09-15 naming ruling).
   type96b: { displayName: 'Type 96B', searchAliases: ['Type 96B X', 'ZTZ-96B'] },
   aft10: { displayName: 'AFT-10', searchAliases: ['AFT-10 X'] },
   bmp3m_dragun125: { displayName: 'BMP-3M Dragun 125', searchAliases: ['BMP-3M Dragun 125 X', 'Dragun 125'] },
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
+  // owner 2026-10-25 ("change the type 90a and type 90 kyu maru into prototype-named vriants"): the procedural Type 90 is
+  // the TK-X programme's second first-series prototype, named as the STB-1 names the Type 74's first: STC-2 (TK-X-0002,
+  // June 1985) on the Japan Steel Works 120 mm smoothbore before the Rheinmetall gun of the 1986-88 second series. The
+  // STC-1 (TK-X-0001, type90_kyumaru) left the fleet 2026-11-20 (owner: "remove the stc 1"); its saves resolve here
+  // (tankIdAliases.ts schema 4).
   type90a: {
     displayName: 'STC-2', shortName: 'STC-2',
     searchAliases: ['TK-X-0002', 'Type 90 second prototype', 'Type 90A', 'Type 90 Kai'],

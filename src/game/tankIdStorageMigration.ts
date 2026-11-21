@@ -7,6 +7,8 @@
 // build's ids and stamps `cot.tankIds.schema`. The stamp is written even when a
 // write fails, so no value is ever renamed twice (a swap would turn it back).
 // Studio slots carry their own `tankIdSchema` and resolve when loaded.
+// A removed vehicle folds into a live one (tankIdAliases.ts TANK_ID_MERGES, schema 4: the STC-1 into the STC-2): a key
+// both name keeps the live vehicle's own value, and lists naming both name it once.
 
 import { TANK_IDS, type TankIdResolver } from '../vehicles/tankIdAliases.ts';
 
@@ -67,8 +69,15 @@ export function planTankIdStorageMigration(
     const value = storage.getItem(key);
     if (next !== key && value !== null) moves.push([key, next, value]);
   }
+  // a merge's target already in storage, and not itself moving away, keeps its own value: the source only goes
+  const leaving = new Set(moves.map(([source]) => source));
   for (const [source] of moves) writes.set(source, null);
-  for (const [, target, value] of moves) writes.set(target, value);
+  for (const [, target, value] of moves) {
+    if (storage.getItem(target) !== null && !leaving.has(target)) continue;
+    if (writes.get(target)) continue; // two sources folding into one target: the first (storage order) wins
+    writes.set(target, value);
+  }
+  const unique = (list: unknown[]): unknown[] => list.filter((value, i) => typeof value !== 'string' || list.indexOf(value) === i);
 
   const lastTank = storage.getItem(LAST_TANK_STORAGE_KEY);
   if (lastTank && id(lastTank) !== lastTank) writes.set(LAST_TANK_STORAGE_KEY, String(id(lastTank)));
@@ -92,14 +101,14 @@ export function planTankIdStorageMigration(
   const gallery = parse(storage.getItem(GALLERY_KEY));
   if (isRecord(gallery) && Array.isArray(gallery.favourites)) {
     const before = JSON.stringify(gallery);
-    gallery.favourites = gallery.favourites.map(id);
+    gallery.favourites = unique(gallery.favourites.map(id));
     if (JSON.stringify(gallery) !== before) writes.set(GALLERY_KEY, JSON.stringify(gallery));
   }
 
   const service = parse(storage.getItem(SERVICE_KEY));
   if (isRecord(service)) {
     const before = JSON.stringify(service);
-    if (Array.isArray(service.vehicles)) service.vehicles = service.vehicles.map(id);
+    if (Array.isArray(service.vehicles)) service.vehicles = unique(service.vehicles.map(id));
     if (Array.isArray(service.history)) {
       for (const battle of service.history) {
         if (!isRecord(battle)) continue;

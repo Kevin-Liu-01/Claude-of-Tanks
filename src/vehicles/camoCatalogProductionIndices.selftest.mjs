@@ -227,7 +227,12 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', m48a2ga2: 'service_leo2
   // release 272: the Molot in the Pantsir-S1's Russian three-colour blotch, its era's Soviet and Russian Army coat (owner
   // 2026-11-11: "give the molot and obj 292 actual camos"; no new paint)
   object477_molot: 'paint_pantsir_s1' };
-assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
+// Release 274 (the owner 2026-11-20: "remove the stc 1"): the STC-1 (schema-1 type90, type90_kyumaru since 253) is
+// retired into the STC-2 (tankIdAliases.ts schema 4, a merge), so its production row has no tank of its own; its id now
+// reads as the STC-2, which keeps its own row. Its Signature sig_type90 stays a production paint, worn by no tank.
+const RETIRED_SINCE_PRODUCTION = ['type90'];
+assert.equal(resolveTankId('type90'), 'type90a', 'the STC-1 resolves to the STC-2');
+assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length - RETIRED_SINCE_PRODUCTION.length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length
   + Object.keys(ADDED_IN_REPAINT).length,
@@ -245,9 +250,9 @@ for (const [id, donor] of Object.entries(ADDED_WEARING_PRODUCTION_PAINT)) {
     `${id} wears ${donor}'s production camouflage`);
 }
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
-const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
+const movedTanks = Object.keys(baseline.tanks).filter((id) => !RETIRED_SINCE_PRODUCTION.includes(id)).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');
 
 console.log(`camoCatalogProductionIndices.selftest: ${baseline.ids.length}/${baseline.ids.length} production ids at their `
-  + `indices with the same schemes; ${Object.keys(baseline.tanks).length}/${Object.keys(baseline.tanks).length} tanks' `
+  + `indices with the same schemes; ${Object.keys(baseline.tanks).length - RETIRED_SINCE_PRODUCTION.length}/${Object.keys(baseline.tanks).length - RETIRED_SINCE_PRODUCTION.length} tanks' `
   + 'selection, stock, Factory visual and AUTO equal production (afc5018e9)');

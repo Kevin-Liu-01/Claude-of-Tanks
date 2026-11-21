@@ -314,3 +314,10 @@ counts the strings it expects to send against the viewer's row budget (`interest
 `blobBytes`). Modes whose state changes every snapshot (Air Support's clock) gain nothing. Receipt: in `wire.selftest.mjs`
 the kept strings restored, changed strings sent, a keyframe carrying both, a delta against an older acknowledged
 baseline, a kept string without its baseline, and forged markers refused.
+
+### Tank id schema 4 (protocol 14, 2026-11-20, japan-274)
+
+`PROTOCOL_VERSION` 14, `WIRE_VERSION` stays 12: the frame layout is unchanged. The STC-1 (`type90_kyumaru`) left the fleet
+and its id folds into the STC-2 (`type90a`) under tank id schema 4 (`src/vehicles/tankIdAliases.ts`, a merge). A build that
+still offers the STC-1 and one that resolves it never share a match (`tankIdAliases.selftest.mjs` pins the protocol for each
+schema); a room seat naming it from an older build resolves to the STC-2 (`resolveIncoming`).

@@ -16,6 +16,10 @@
 //   t72b_1987 -> t72m1_jaguar (poland.ts) and t72b_1987; itself a make('t72b3', ...) clone,
 //               registered into this table by additionalFleetSpecs.ts so the derivation order
 //               is unchanged.
+//   tkx_prototype_frame -> type90a (japan.ts) and type90 (sourceXSecondWaveSpecs.ts): the STC-1's row
+//               (type90_kyumaru, removed 2026-11-20), a make('type10_tk_x', ...) clone registered here by
+//               additionalFleetSpecs.ts, its STC-1 tuning applied by japan.ts and its balance rows by
+//               fleetBalancePass.ts, so both clones read the values they always did.
 //
 // Every clone copies (JSON / structuredClone) its donor, so the live specs are
 // byte-identical to the rows the registered donors used to produce. The fleet
@@ -239,6 +243,9 @@ function armorMerkava4(): ArmorEnvelope {
 // ---------------------------------------------------------------------------
 // Donor rows (verbatim from the retired registered records)
 // ---------------------------------------------------------------------------
+/** The TK-X prototype frame the STC-2 and the Type 90 clone (the removed STC-1's row; additionalFleetSpecs.ts fills it). */
+export const TKX_PROTOTYPE_FRAME = 'tkx_prototype_frame';
+
 export const DONOR_SPECS: TankSpecRegistry = {
   leo2a7: {
     id: 'leo2a7', name: 'Leopard 2A7', nation: 'Germany', era: 'modern', role: 'mbt',

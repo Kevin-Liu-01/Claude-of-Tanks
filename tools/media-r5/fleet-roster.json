@@ -2286,42 +2286,6 @@
   }
  },
  {
-  "n": 123,
-  "id": "type90-cliffbridge",
-  "hero": "type90",
-  "nation": "Japan",
-  "era": "cold-war",
-  "map": "cliffbridge",
-  "time": "sunset",
-  "anchor": [
-   138,
-   -42
-  ],
-  "heading": 9,
-  "template": 26,
-  "action": "onTheMove",
-  "lineup": [
-   "type90",
-   "type74"
-  ],
-  "foes": [
-   "t72b_1987_x",
-   "t64bv1"
-  ],
-  "paint": [
-   "sig_type90",
-   "service_t90m"
-  ],
-  "title": {
-   "en": "A Type 90 (Kyū-maru) fires on the move at Aegis Crossing at sunset",
-   "zh": "日落时分，一辆 Type 90 (Kyū-maru) 在Aegis Crossing行进间射击"
-  },
-  "short": {
-   "en": "Type 90 (Kyū-maru), Aegis Crossing",
-   "zh": "Type 90 (Kyū-maru)，Aegis Crossing"
-  }
- },
- {
   "n": 124,
   "id": "type90a-cliffbridge",
   "hero": "type90a",

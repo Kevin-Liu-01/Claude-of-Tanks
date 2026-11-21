@@ -111,7 +111,7 @@ function charToe(template:ArmorPlate,side:number):ArmorPlate[] {
   return [[0,1,2],[0,2,4],[2,3,4]].map((indices,i)=>auxiliaryFace(template,
     `leclerc_x_${side}_toe`,i,indices.map(n=>points[n]),side));
 }
-function type90_kyumaru(template:ArmorPlate,side:number):ArmorPlate[] {
+function type90Frame(template:ArmorPlate,side:number):ArmorPlate[] {
   const x=side*1.786824,out:ArmorPlate[]=[];
   const rear=[[-3.5,1.103646],[-3,1.103646],[-2.54,.694]];
   for(let i=0;i<rear.length-1;i++)out.push(auxiliaryFace(template,`type90_x_${side}_rear`,i,
@@ -150,7 +150,7 @@ function replacements(id:string,template:ArmorPlate,side:number):ArmorPlate[] {
   if(id==='leclerc_xlr'||id==='amx56')return exposedAuxiliaryCourse(
     [...leclercRear(template,side,id==='amx56'),...leclercFront(template,side,id==='amx56'),
       ...(id==='leclerc_xlr'?charToe(template,side):[])],side,`${tankSeedId(id)}_${side}_installed_course`);
-  if(id==='type90')return type90_kyumaru(template,side);
+  if(id==='type90')return type90Frame(template,side);
   if(id==='amx40')return exposedAuxiliaryCourse(amx40_proto(template,side),side,`${tankSeedId(id)}_${side}_installed_course`);
   if(id==='type10')return exposedAuxiliaryCourse([...type10AuxiliarySkirts(template,side),
     auxiliaryRectangle(template,`type10_x_${side}_fascia`,side*1.574517,-2.4807,3.5897,.7593,1.222),

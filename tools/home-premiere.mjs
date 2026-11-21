@@ -391,7 +391,8 @@ function fleetBlock() {
 
 // ---- the fleet index (src/presentation/fleetWall.json): the 404 page's search over every vehicle with a fleet take --
 // twelve nations, one take each (the newest fleet round), around the featured vehicle's plate
-const FLEET = ['t14', 'leo2a7v', 'm1a2_x', 'challenger1', 'strv122', 'type99a', 'type90', 'merkava2d', 'ua_t80u_kursk', 'amx40_x',
+// (274: Japan's is the STC-2's own take, s124; the STC-1's s123 retired with it)
+const FLEET = ['t14', 'leo2a7v', 'm1a2_x', 'challenger1', 'strv122', 'type99a', 'type90a', 'merkava2d', 'ua_t80u_kursk', 'amx40_x',
   'dardo', 'pl_t72b3m_modern'];
 const v = (hash) => (hash ? `?v=${hash.slice(0, 8)}` : '');
 // the featured plate's tank: its hero card render over its waving flag (src/ui/heroCard.css), the direction's x-ray slot

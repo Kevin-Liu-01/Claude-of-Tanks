@@ -51,6 +51,15 @@ for (const quality of ['high', 'low']) {
       assert.ok(muzzle.y > 2.90 && muzzle.y < 3.06 && muzzle.z > 1.9 && muzzle.z < 2.3,
         `${quality}: ${id}'s M2 muzzle reaches over the turret front (${muzzle.toArray().map((n) => n.toFixed(3))})`);
     }
+    // 274 (owner 2026-11-20, "a more more unique turret compared to the type 90"): the B's turret carries its breaching fit
+    // and the Type 90's does not: its rack reaches behind the Type 90's basket and its boxed smoke banks and flank shoes
+    // widen the turret (the whips stay the turret's tallest point, so the marker poles move no bound)
+    const turretParts = (root) => ({ box: new THREE.Box3().setFromObject(root.getObjectByName('rig_turret')) });
+    const tb = turretParts(tank.root), t0 = turretParts(base.root);
+    const width = (b) => b.max.x - b.min.x;
+    assert.ok(width(tb.box) - width(t0.box) > 0.08, `${quality}: the B's flank kit widens the turret`);
+    assert.ok(t0.box.min.z - tb.box.min.z > 0.2, `${quality}: the B's rack reaches behind the Type 90's basket`);
+    assert.ok(Math.abs(tb.box.max.z - t0.box.max.z) < 0.002, `${quality}: the same gun reach`);
   } finally { tank.dispose(); base.dispose(); }
 }
-console.log('type90B.selftest: the Type 90 (B) is the Type 90 with the roller\'s mounting plate and seats, inside its envelope; every Type 90 carries its M2 on the pintle as a working station');
+console.log('type90B.selftest: the Type 90 (B) is the Type 90 with the roller\'s mounting plate and seats and its own breaching turret fit (rack, panoramic head, boxed smoke, flank shoes, lane markers), inside its envelope; every Type 90 carries its M2 on the pintle as a working station');

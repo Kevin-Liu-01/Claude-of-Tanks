@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 220,
+  "rosterCount": 219,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -1389,13 +1389,6 @@
       "assetGeometryHash": "3fccaafa",
       "meshes": 42,
       "vertices": 70299
-    },
-    "type90_kyumaru": {
-      "freezeHash": "78a85bb4",
-      "instanceFreezeHash": "e8896f3d",
-      "assetGeometryHash": "6194fe0e",
-      "meshes": 57,
-      "vertices": 77236
     },
     "type90a": {
       "freezeHash": "ace2604a",

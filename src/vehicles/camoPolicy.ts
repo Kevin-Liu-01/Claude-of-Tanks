@@ -318,7 +318,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_lrmv_lynx: 'LRMV Woodland',
   sig_borsuk: 'Borsuk Woodland',
   sig_type10b: 'Type 10B',
-  sig_type90: 'STC-1',
+  sig_type90: 'STC-1', // a production paint (deploy 206); its tank was retired in 274, so no tank wears it by default
   sig_type90a: 'STC-2',
   sig_type59: 'Type 59',
   sig_ztz85_iii: 'ZTZ-85-III',
@@ -601,7 +601,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
   // dark brown blotches, for the green Type 10 bands it shared
   preset('sig_type10b', 'type10b', signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'nato', base: '#8f7f5c', weather: '#9c8b67', patches: ['#5b5b40', '#3f3a2b'], camoScale: 0.5 }),
-  preset('sig_type90', 'type90_kyumaru', signatureTags('jp', 'woodland', 'stripes'),
+  // 274: the STC-1 (type90_kyumaru) is retired into the STC-2; its production paint stays wearable, with no source tank
+  preset('sig_type90', null, signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#46503d', weather: '#555d49', patches: ['#70563e', '#303a30'], camoScale: 0.48 }),
   preset('sig_type90a', 'type90a', signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#3f4c39', weather: '#5c624d', patches: ['#253127', '#6b5d3c', '#807458'], camoScale: 0.44 }),
@@ -853,7 +854,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Italy
   'c2_ariete_proto', 'dardo', 'lrmv_lynx',
   // Japan
-  'type10b', 'type90_kyumaru', 'type90a',
+  'type10b', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
   'type59', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'type100', 'ztz100',
   'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
