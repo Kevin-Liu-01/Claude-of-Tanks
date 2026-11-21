@@ -549,7 +549,7 @@ try {
         const me = await pose();
         const alive = await page.evaluate((ids) => ids.map((id) => {
           const t = window.__DEBUG.game.tankById.get(id);
-          return t && !t.combat.destroyed && t.modeActive !== false ? { id, x: t.state.pos.x, z: t.state.pos.z } : null;
+          return t?.state && !t.combat?.destroyed && t.modeActive !== false ? { id, x: t.state.pos.x, z: t.state.pos.z } : null;
         }).filter(Boolean), enemies);
         if (!alive.length) { await sleep(500); continue; }
         alive.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z));
@@ -567,7 +567,7 @@ try {
         // a moving tank at fighting range: a looser lay and a short settle (7 shots in 8 minutes at the 3 px lay)
         await fireAtOnce(target.id, TARGET_POINTS.hull, now, { tolPx: 12, settleMs: 300, gunTol: 0.05 });
       }
-      report.fightLeft = await page.evaluate((ids) => ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat.destroyed), enemies);
+      report.fightLeft = await page.evaluate((ids) => ids.filter((id) => !window.__DEBUG.game.tankById.get(id)?.combat?.destroyed), enemies);
     }
     else if (id === 'training.volley') {
       // hold the angle, the cursor on the Sentry, while its rounds land
@@ -614,7 +614,7 @@ try {
       at: await pose().then((p) => [Math.round(p.x), Math.round(p.z), Math.round((p.yaw * 180) / Math.PI)]).catch(() => null),
       hurt: await page.evaluate(() => Object.entries(window.__DEBUG.game.player?.combat?.modules ?? {})
         .filter(([, m]) => (typeof m === 'string' ? m : m?.state) && (typeof m === 'string' ? m : m?.state) !== 'ok').map(([name, m]) => `${name}:${typeof m === 'string' ? m : m.state}`)).catch(() => null),
-      onField: await page.evaluate(() => window.__DEBUG.game.tanks.filter((t) => t.modeActive !== false && !t.combat.destroyed).length).catch(() => null) };
+      onField: await page.evaluate(() => window.__DEBUG.game.tanks.filter((t) => t.modeActive !== false && !t.combat?.destroyed).length).catch(() => null) };
     report.steps.push(entry);
     console.log(`[training] ${now}: ${how} → ${next === undefined ? 'STUCK' : next === null ? 'chapter done' : 'moved on'} (${entry.seconds} s)`);
     if (next === undefined || next === null) break;
