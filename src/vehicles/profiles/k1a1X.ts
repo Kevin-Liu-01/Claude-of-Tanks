@@ -10,6 +10,8 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addK1A1XRoof } from './k1a1XRoof.ts';
 import { k1a1XWheelSolids } from './k1a1XWheels.ts';
 import { addK1A1XMachineGun } from './k1a1XMachineGun.ts';
+import { fieldChestParts, reserveDecorVolume } from './fieldChest.ts';
+import { fabricBody, fabricStrap, hash01, sweptTube, type FabricSpec } from '../accessoryPrimitives.ts';
 
 const { box, cylX, cylZ } = KIT;
 const cylY = (r: number, h: number, segments = 32): THREE.BufferGeometry =>
@@ -235,12 +237,66 @@ function turretBody(P: TankBuilderPort): void {
     [1.548,1.94,2.1089]].map(([z,low,top])=>({z,ring:[[-.3656,low],[.3325,low],
       [.3325,top],[-.3656,top]] as [number,number][]}))),0,0,0);
   for(const side of [-1,1])addForwardCheek(P,side);
-  // Separate rear stowage boxes retain the bustle's undercuts and cage air.
-  for(const [x,w,z,d]of[[-1.068,.775,-1.281,1.146],[1.064,.8276,-1.283,1.156],
-    [-.167,.958,-1.463,.751],[-1.30,.67,-.56,.90],[1.35,.63,-.37,.61]]) {
-    turretPart(P,'turretDetail',box(w,.365,d),x,1.961,z);
-    turretPart(P,'turretDetail',box(w+.012,.026,d+.012),x,2.1325,z);
+  bustleBins(P);
+}
+
+// Separate stowage bins retain the bustle's undercuts and cage air. Owner 2026-11-20 (korea-bustle-274): "make sure
+// the weird fake equipment is swapped with our actual equipment primitives". Each bin was a bare box with a slab lid;
+// it is now the fleet's welded field chest (fieldChest.ts: overhanging lid, pressed ribs, piano hinge, hasp latches,
+// end handles) in the same measured footprint, on the same 1.7785 floor, 0.367 m to the lid's crown. Rows: centre x,
+// width (X), centre z, depth (Z). The four flank bins open outboard, the centre bin aft. The real K1's bins are
+// welded on and painted with the turret, so they keep the turret's paint (no issue drab) and their old bucket.
+const BUSTLE_BINS=[[-1.068,.775,-1.281,1.146],[1.064,.8276,-1.283,1.156],
+  [-.167,.958,-1.463,.751],[-1.30,.67,-.56,.90],[1.35,.63,-.37,.61]] as const;
+// Hardware a bin can show (critic, korea-bustle-274: 27 of 80 parts stood inside the turret wall or a neighbouring
+// bin). The right rear bin's forward end and front latch stand in the right front bin; each flank bin's forward handle
+// stands in a neighbour or the wall, and the two rear bins' aft handles stand in the bags behind them; the two front
+// bins' backs (their hinges) stand in the turret wall. Per bin: the handle ends and latch stations it keeps (signs of
+// the chest's local X) and whether it keeps its hinge. A flank chest's local +X runs forward on the right (x < 0) and
+// aft on the left (x > 0).
+interface BinHardware {readonly handles:readonly number[];readonly latches:readonly number[];readonly hinge:boolean}
+const BIN_HARDWARE:readonly BinHardware[]=[
+  {handles:[],latches:[-1],hinge:true},{handles:[],latches:[-1,1],hinge:true},{handles:[-1,1],latches:[-1,1],hinge:true},
+  {handles:[],latches:[-1,1],hinge:false},{handles:[1],latches:[-1,1],hinge:false}];
+
+/** Whether a bin keeps one of the shared chest's hardware parts, told apart by where it sits on the chest (fieldChest.ts
+ *  lays the hinge on the back edge, the hasp latches on the front face and a carry handle past each X end). */
+function hardwareShown(g:THREE.BufferGeometry,length:number,front:number,keep:BinHardware):boolean {
+  g.computeBoundingBox();
+  const centre=g.boundingBox!.getCenter(new THREE.Vector3()),end=Math.sign(centre.x);
+  if(Math.abs(centre.x)>length/2)return keep.handles.includes(end);
+  if(centre.z*front<0)return keep.hinge;
+  return keep.latches.includes(end);
+}
+
+function bustleBins(P: TankBuilderPort): void {
+  const high=P.q!==false;
+  for(const [i,[x,w,z,d]]of BUSTLE_BINS.entries()) {
+    const flank=Math.abs(x)>.5,front=flank?1:-1,length=flank?d:w;
+    // A flank chest runs its length along Z and turns its latch face (local +Z) outboard.
+    const chest=fieldChestParts(length,.367,flank?w:d,{high,front});
+    const ry=flank?Math.sign(x)*Math.PI/2:0;
+    for(const g of chest.paint) {
+      delete g.userData.issueDrab;
+      turretPart(P,'turretDetail',g,x,1.7785,z,0,ry,0);
+    }
+    for(const g of chest.dark) {
+      if(hardwareShown(g,length,front,BIN_HARDWARE[i])) {turretPart(P,'turretDark',g,x,1.7785,z,0,ry,0);continue;}
+      // A part left off keeps its volume reserved, so the decoration's loads stand where they stood with it.
+      const bounds=g.clone().rotateY(ry).translate(x,1.7785-RING_Y,z-RING_Z);
+      bounds.computeBoundingBox();
+      reserveDecorVolume(P.turretG,bounds.boundingBox!.min.toArray(),bounds.boundingBox!.max.toArray());
+      bounds.dispose();g.dispose();
+    }
   }
+  // The chests' ribbed, overhanging lids are new seats the decoration probes. Before the swap the decor's loads stood
+  // on the right rear, centre and left front bins (both ids: water can, net bag, bedroll, ration case, long duffel, and
+  // the XK2's fire extinguisher across the left bins' meeting ends). On the XK2 the camo-net bag reseated onto the new
+  // left rear lid and cascaded its deck kit. The two bins no load stood on (left rear, right front) stay clear above
+  // their lids, the left rear stopping 5 cm short of its forward edge where that extinguisher stands, so every load
+  // stands where it stood (fieldChest.ts reserveDecorVolume).
+  for(const [x,w,z,d]of [BUSTLE_BINS[1],BUSTLE_BINS[3]])
+    reserveDecorVolume(P.turretG,[x-w/2,2.1455-RING_Y,z-d/2-RING_Z],[x+w/2,2.45-RING_Y,z+d/2-.05-RING_Z]);
 }
 
 function addForwardCheek(P: TankBuilderPort,side: number): void {
@@ -358,10 +414,12 @@ function cageTieCables(P:TankBuilderPort):void {
     [.93,1.8663,-2.4494],[1.04,1.8663,-2.4489],[1.317,1.8413,-2.4],
     [1.390,1.8489,-2.3],[1.460,1.8635,-2.2],[1.528,1.8663,-2.1],
     [1.650,1.8663,-1.9],[1.657,1.8663,-1.7],[1.674,1.881,-1.35]];
-  for(const upper of [false,true])for(let i=1;i<path.length;i++) {
-    const points=[path[i-1],path[i]].map(([x,y,z])=>[x,
-      y+(upper?.1228+Math.max(0,Math.min(1,(.1-x)/.33))*.015:0),z]);
-    cageCableSegment(P,points[0],points[1],i<8?.02145:.0176);
+  // Each cable is the fleet's swept rope tube (accessoryPrimitives sweptTube, korea-bustle-274) through the measured
+  // sag stations: the thicker rear run to the corner station, then the thinner run up the left flank.
+  for(const upper of [false,true]) {
+    const points=path.map(([x,y,z])=>[x,y+(upper?.1228+Math.max(0,Math.min(1,(.1-x)/.33))*.015:0),z]);
+    turretPart(P,'turretOpenLattice',sweptTube(points.slice(0,8),.02145,6,28),0,0,0);
+    turretPart(P,'turretOpenLattice',sweptTube(points.slice(7),.0176,6,24),0,0,0);
   }
   for(const y of [1.84326,1.95996]) {
     const shape=new THREE.Shape([[1.6299,y],[1.675,y],[1.6895,y+.0095],
@@ -370,18 +428,6 @@ function cageTieCables(P:TankBuilderPort):void {
     const g=new THREE.ExtrudeGeometry(shape,{depth:.0293,bevelEnabled:false,steps:1});
     turretPart(P,'turretOpenLattice',g,0,0,-1.85956);
   }
-}
-
-function cageCableSegment(P:TankBuilderPort,a:number[],b:number[],halfWidth:number):void {
-  const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b);
-  const axis=end.clone().sub(start),length=axis.length();axis.normalize();
-  const up=new THREE.Vector3(0,1,0).addScaledVector(axis,-axis.y).normalize();
-  const across=new THREE.Vector3().crossVectors(up,axis);
-  const g=cylY(.02145,length,12);
-  g.scale(1,1,halfWidth/.02145);
-  g.applyMatrix4(new THREE.Matrix4().makeBasis(up,axis,across));
-  const centre=start.add(end).multiplyScalar(.5);
-  turretPart(P,'turretOpenLattice',g,centre.x,centre.y,centre.z);
 }
 
 function forwardCageRails(P:TankBuilderPort):void {
@@ -415,41 +461,65 @@ function smokeBanks(P: TankBuilderPort): void {
   }
 }
 
-function stowageBag(width: number,height: number,depth: number): THREE.BufferGeometry {
-  // A deliberately authored folded pillow, not a copied triangulated source bag.
-  return sectionSolid([[-.5,.66,.30],[-.32,1,.88],[.18,1,1],[.50,.65,.47]]
-    .map(([z,w,h])=>({z:z*depth,ring:[[-width*w/2,0],[width*w/2,0],
-      [width*w/2,height*h*.68],[width*w*.22,height*h],[-width*w*.31,height*h*.97],
-      [-width*w/2,height*h*.63]] as [number,number][]})));
-}
+// The rear basket's load (korea-bustle-274; owner 2026-11-20: "make sure the weird fake equipment is swapped with our
+// actual equipment primitives", then "dont make stuff all the same thing tho. use a variety of gear and decoration and
+// equpiment"). The source's seven hand-lofted pillow bags become a mixed crew load from the fleet's kit, each at its
+// old station: a rolled tarp, a rucksack, a jerrycan pair on its cradle rails, a stack of M2A1 ammunition cans with a
+// pack behind it, a bedroll in the right flank channel and a slim pack in the left one (the source's bag that stood
+// three quarters inside its neighbour is left out). Soft goods alternate the olive and the pale canvas; the cans take
+// the issue drab. Hard loads stand on the basket's floor rails (crown 1.785) clear of the bins; a fixed hash stream
+// picks each soft bag's style and transit yaw (each pack keeps its own slot in it), so the vehicle's own random
+// stream is not drawn.
+const BASKET_FLOOR=1.785;
+/** Soft packs: x, z, width (X), height, depth (Z), floor y, canvas bucket, slot in the hash stream. */
+const REAR_PACKS:readonly (readonly [number,number,number,number,number,number,string,number])[]=[
+  // the rucksack at the centre of the rear rail
+  [-.192,-2.151,.556,.522,.518,1.761,'turretCloth',0],
+  // the small pack behind the ammunition cans, against the aft rail
+  [-1.18,-2.285,.300,.250,.190,BASKET_FLOOR,'turretCanvasPale',10],
+  // the slim pack in the left flank channel between the left rear bin and the cage side, where the old pouch's
+  // forward end lay (critic re-cert, 274)
+  [1.541,-1.52,.100,.30,.52,1.80,'turretCloth',14],
+];
 
 function rearStowage(P: TankBuilderPort): void {
-  for(const [x,z,w,h,d,base]of[
-    [-.192,-2.151,.556,.522,.518,1.761],[.468,-2.079,.836,.409,.439,1.770],
-    [-1.246,-1.923,.495,.409,.502,1.775],[-.726,-2.063,.459,.451,.430,1.747],
-    [-1.488,-1.616,.355,.282,.350,1.810],
-    [-1.228,-2.229,.320,.292,.293,1.855],[-1.39,-1.433,.542,.233,.713,1.801],
-  ])turretPart(P,'turretCloth',stowageBag(w,h,d),x,base,z);
-  diagonalRightBag(P);
+  for(const [x,z,w,h,d,base,bucket,slot]of REAR_PACKS) {
+    let draw=slot;
+    KIT.stowage(P,bucket,()=>hash01(0x274,draw++),[[x,base+h/2-RING_Y,z-RING_Z,w,h,d]]);
+  }
+  // the rolled tarp lying along the left rear rail, and the bedroll in the right flank channel (between the right rear
+  // bin, outer face x -1.462, and the cage side, inner face x -1.636)
+  KIT.tarpRoll(P,'turretCanvasPale',.468,1.770+.18-RING_Y,-2.079-RING_Z,.78,.18,true,18);
+  KIT.tarpRoll(P,'turretCloth',-1.552,1.80+.082-RING_Y,-1.44-RING_Z,.66,.082,false,16);
+  // the jerrycan pair upright on its cradle rails, broad faces across the basket, aft of the centre bin
+  KIT.jerryCan(P,'turretDetail',-.726,BASKET_FLOOR+.24-RING_Y,-2.063-RING_Z,0);
+  // aft of the right rear bin, three ammunition cans lying across the floor rails at x -1.21 and -1.06 (two side by side
+  // and one on them), turned so their latch levers face outboard and nothing of them faces the bin (critic, 274)
+  for(const z of [-2.105,-1.945])KIT.ammoCan(P,'turretDetail',-1.135,BASKET_FLOOR+.10-RING_Y,z-RING_Z,-Math.PI/2);
+  KIT.ammoCan(P,'turretDetail',-1.135,BASKET_FLOOR+.10+.228-RING_Y,-2.025-RING_Z,-Math.PI/2);
+  diagonalDuffel(P);
 }
 
-function diagonalRightBag(P:TankBuilderPort):void {
-  // Source pouch follows the diagonal aft cage, not the axes of its bbox.
-  const rows=[[-2.410,1.14,1.16,1.990,2.010],[-2.30,.946,1.243,1.821,2.175],
-    [-2.10,.974,1.328,1.838,2.168],[-1.90,1.026,1.445,1.805,2.189],
-    [-1.70,1.125,1.535,1.801,2.184],[-1.60,1.184,1.5455,1.798,2.180],
-    [-1.55,1.207,1.548,1.815,2.183],
-    [-1.53,1.215,1.554,1.824,2.179],
-    [-1.50,1.228,1.585,1.837,2.169],[-1.45,1.264,1.616,1.831,2.172],
-    [-1.40,1.303,1.628,1.830,2.174],[-1.30,1.329,1.573,1.838,2.160],
-    [-1.222,1.388,1.40,1.980,2.00]];
-  const g=sectionSolid(rows.map(([z,lo,hi,bottom,top])=>{
-    const w=hi-lo,h=top-bottom;
-    return{z,ring:[[lo+w*.16,bottom],[hi-w*.16,bottom],[hi,bottom+h*.52],
-      [hi-w*.08,bottom+h*.75],[lo+w*.56,top],[lo+w*.18,top-h*.08],
-      [lo,bottom+h*.56]] as [number,number][]};
-  }));
-  turretPart(P,'turretCloth',g,0,0,0);
+// The duffel lying along the left rear diagonal of the cage, from about (1.10, -2.38) forward into the left rear bin,
+// floor 1.80, crown 2.18: a sewn fabric loft cinched by two webbing straps with its carry handle (the kit's duffel),
+// yawed along the cage instead of the hand-lofted pouch prism it replaces. Its forward end runs into the bin no further
+// than the old pouch did (critic, 274: 0.92 m keeps it at the old 42 % of its volume), and both straps cinch it aft of
+// the bin's aft face (z -1.861), so no strap is cut by the bin.
+function diagonalDuffel(P:TankBuilderPort):void {
+  const len=.92,height=.38,shape={exponent:2.6,endScale:.6,endLength:.14,flatten:.3,wrinkle:.05};
+  const spec:FabricSpec={len,hw:.17/(1+shape.wrinkle),hh:height/(2+shape.wrinkle-.82*shape.flatten),
+    seg:P.q===false?10:14,stations:5,seed:274,cinch:[-len*.30,-len*.02],cinchDepth:.08,...shape};
+  const body=fabricBody(spec);
+  body.computeBoundingBox();
+  const lift=1.80-body.boundingBox!.min.y,top=lift+body.boundingBox!.max.y;
+  // the aft end stays at (1.10, -2.38); the centre lies half a length along the diagonal
+  const yaw=Math.atan2(.33,1.14),x=1.10+len/2*Math.sin(yaw),z=-2.38+len/2*Math.cos(yaw);
+  turretPart(P,'turretCloth',body,x,lift,z,0,yaw,0);
+  for(const station of spec.cinch??[])turretPart(P,'turretDark',fabricStrap(spec,station),x,lift,z,0,yaw,0);
+  // the carry handle on the full section between the two straps
+  const span=len*.22,foot=top-lift-.012,mid=-len*.16;
+  turretPart(P,'turretDark',sweptTube([[0,foot,mid-span/2],[0,foot+.022,mid-span*.3],[0,foot+.022,mid+span*.3],
+    [0,foot,mid+span/2]],.006,4,6),x,lift,z,0,yaw,0);
 }
 
 function gunnerSight(P: TankBuilderPort): void {

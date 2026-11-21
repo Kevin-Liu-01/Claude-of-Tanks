@@ -159,11 +159,30 @@ function forwardFacetAndPouchChecks(tank,label) {
     near(top(shell,x,z),y,.008,`${label}: actual source cheek facet ${x}/${z}`);
   assert.equal(top(shell,1.25,1.5),undefined,`${label}: right nose tapers before left`);
   assert.ok(top(shell,-1.50,1.5)>1.6,`${label}: broad left chine remains real armor`);
-  for(const [x,z]of[[1.5,-1.784124],[1.55,-1.532253],[1.6,-1.469375]])
+  // korea-bustle-274: the diagonal pouch is the kit's strapped duffel (fabricBody) laid along the same cage diagonal;
+  // its aft flank steps forward as the cage widens, and the former axis-aligned overfill stays absent.
+  for(const [x,z]of[[1.2,-2.3896],[1.3,-2.2181],[1.4,-1.8867]])
     near(hit(cloth,v(x,2,-2.6),v(0,0,1))?.point.z,z,.012,
-      `${label}: diagonal source200 pouch fold ${x}`);
+      `${label}: diagonal duffel flank ${x}`);
   assert.ok(!hit(cloth,v(1.60,2,-2.20),v(0,0,1),.50),
     `${label}: former axis-aligned pouch overfill is genuinely absent`);
+  near(hit(cloth,v(1.228,0,-1.938),v(0,1,0))?.point.y,1.80,.004,`${label}: duffel rests on the 1.80 basket floor`);
+  // it stops short in the left rear bin (critic, 274: no deeper than the old pouch), so nothing of it reaches x 1.45
+  assert.ok(!hit(cloth,v(1.45,2,-2.6),v(0,0,1),1.6),`${label}: duffel ends inside the old pouch's reach`);
+  // the left flank channel between the left rear bin and the cage side keeps the old pouch's cloth (critic re-cert)
+  for(const z of [-1.7,-1.6,-1.5,-1.4])for(const y of [1.9,2.05])
+    assert.ok(hit(cloth,v(1.62,y,z),v(-1,0,0),.2)?.point.x>=1.5,`${label}: flank-channel bag at z${z} y${y}`);
+  // The five stowage bins are field chests (fieldChest.ts) at the measured crown; at full quality their hasp latches
+  // stand proud of the face that opens (outboard on the flank bins, aft on the centre bin).
+  const detail=tank.root.getObjectByName('turretDetail'),dark=tank.root.getObjectByName('turretDark');
+  for(const [x,w,z,d]of[[-1.068,.775,-1.281,1.146],[1.064,.8276,-1.283,1.156],
+    [-.167,.958,-1.463,.751],[-1.30,.67,-.56,.90],[1.35,.63,-.37,.61]]) {
+    near(top(detail,x,z),2.1455,.001,`${label}: stowage bin crown ${x}`);
+    if(label!=='high')continue;
+    const flank=Math.abs(x)>.5,s=Math.sign(x);
+    const latch=flank?hit(dark,v(x+s,2.0445,z-.3*d),v(-s,0,0),1):hit(dark,v(x-.3*w,2.0445,z-1),v(0,0,1),1);
+    assert.ok(latch&&(flank?s*(latch.point.x-x)>w/2:latch.point.z<z-d/2),`${label}: bin ${x} hasp latch on its opening face`);
+  }
   const cage=tank.root.getObjectByName('turretOpenLattice');
   near(top(cage,1.685,-1.85),2.010760,.002,`${label}: source upturned outer cable clip`);
   assert.ok(hit(cage,v(1.63,1.848,-1.9),v(0,0,1),.07),

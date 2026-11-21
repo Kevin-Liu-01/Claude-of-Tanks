@@ -69,7 +69,8 @@ official browser release gate.
 
 The narrow closed lower tub, separate center beak, six changing skirt panels,
 folded side mudguards, asymmetric turret cheeks, rear boxes, open bent cage
-and eight independently folded stowage bags use original parametric solids.
+and the bustle's stowage use original parametric solids (the stowage itself is the fleet's kit since
+korea-bustle-274, below).
 The center hull really ends before the longer paired mudguards: the forward
 center air is retained instead of flooding the complete guard envelope.
 
@@ -303,3 +304,33 @@ full-armed-versus-unarmed source failure. Evidence:
 `.qa-dev/launch/k1-composite-standard-r1.log`. This closes these machine-checkable
 standard gates; it does not claim all-angle native material approval, a numeric
 photo survey score, or full fleet release/performance qualification.
+
+## Bustle kit on the fleet's equipment primitives — korea-bustle-274, 2026-11-20
+
+Owner (2026-11-20): "for the equipment in the k1a1 and xk2 turret bustles, make sure the weird fake equipment is
+swapped with our actual equipment primitives." `buildK1A1XTurret` builds both `k1a1` (alias `k1a1_x`) and
+`xk2_black_panther`, so the one change covers both; `k1e1` has its own turret and is untouched.
+
+- The five stowage bins (bare box plus slab lid) are `fieldChestParts` chests in the same footprints, crown 2.1455 on
+  the 1.7785 floor, latches outboard (aft on the centre bin), in the turret's paint. Hardware a bin cannot show (in
+  the turret wall, a neighbouring bin or the bag behind it) is left off; its volume stays reserved for the decor.
+- The seven folded pillow bags become a mixed crew load from the fleet's kit at their stations (owner, same day:
+  "dont make stuff all the same thing tho. use a variety of gear and decoration and equpiment"): a pale rolled tarp
+  (`KIT.tarpRoll`), an olive rucksack (`KIT.stowage`), a jerrycan pair on its cradle rails (`KIT.jerryCan`), three M2A1
+  ammunition cans across the floor rails, latches outboard (`KIT.ammoCan`), a small pale pack against the aft rail, an olive bedroll in
+  the right flank channel and a slim olive pack in the left one, where the old pouch's forward end lay. The source bag
+  that stood three quarters inside its neighbour is left out. Each soft pack keeps its own slot in a fixed hash
+  stream, so the vehicle's random stream is not drawn.
+- The diagonal pouch is a strapped `fabricBody` duffel (0.92 m) along the same left rear diagonal, its straps aft of
+  the left rear bin.
+- The two tie cables are `sweptTube` runs through the same measured sag stations.
+- The decor's loads stand where they stood: the left rear and right front lids are reserved (`reserveDecorVolume`), as
+  is the volume of each chest part left off; the decor piece list matches main at seeds 4207 and 4242.
+
+Checks: typecheck; k1a1X, xk2, k1a1XMachineGun, k1a1XWheels and k1a1Geometry selftests; changed-only regen; lane
+release check (standard-check stages PASS, sealed, probes); whip-rod and gun-junction censuses. The geometry gate
+cannot score `k1a1`: the photo-supplement receipt above is stale on main too (`repinError` in the ledger), so no row
+was recorded. The raw-source sidecar keeps rawGeoMin 71.77. High-tier cost +4,506 triangles per tank (chests and
+kit). Independent critic: docs in `~/cot-lanes/korea-bustle-274-evidence/critic/` (first verdict FAIL with three
+orders, all met; the re-cert added the flank-channel order, met by the eighth bag; RE-CERT PASS at this landing).
+
