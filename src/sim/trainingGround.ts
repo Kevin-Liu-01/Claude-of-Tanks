@@ -179,9 +179,12 @@ export const TRAINING_RULES: TrainingRules = Object.freeze({
     Object.freeze({ key: 'sentry3', specId: 'amx30b2', x: S11_SENTRY3.x, z: S11_SENTRY3.z, faces: 'ringP', presentDeg: 0, entersOnCue: true, staysDown: true,
       volley: Object.freeze({ shellType: 'APFSDS', firstS: 1.0, whenSeen: true, aim: Object.freeze({ alongM: 2.94, upM: 1.0 }) }) }),
     // S12's Sentry 4: a T-55A parked until the kit scene, firing HE at the running gear on the side the player shows it, each
-    // time its gun loads, until a track is hit (the step stands it down). 77 m from ring Q, the peek spot the player stops
-    // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2).
-    Object.freeze({ key: 'sentry4', specId: 't55a', x: -260, z: -10, faces: 'ringQ', presentDeg: 0, entersOnCue: true,
+    // time its gun loads, until a track is hit (the step stands it down). 76 m from ring Q, the peek spot the player stops
+    // in, on a line 2.4 m over the ground with no trunk or canopy on it (tools s5-t2). Moved 3 m along its rise from
+    // -260,-10, where its hull asked 5.8 degrees of depression for the tracks at ring Q, past the T-55A's 5: every round
+    // flew over (the end walk of 2026-11-20). Here the live ground puts the ask near 1.2 degrees, the line to the tracks
+    // 0.57 m clear (evidence ring-q-heights.json).
+    Object.freeze({ key: 'sentry4', specId: 't55a', x: -263, z: -12, faces: 'ringQ', presentDeg: 0, entersOnCue: true,
       volley: Object.freeze({ shellType: 'HE', firstS: 2.5, aim: Object.freeze({ alongM: 0, upM: 0.45, acrossM: 1.55 }) }) }),
     // S13's Bulwark: an Object 477 whose front reads 75 % red to the loaner's APFSDS at 120 m and its side 80 % green
     // (evidence s13 fit). Parked until its scene on the open meadow, facing west; its turret turns 8 degrees a second and
