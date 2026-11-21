@@ -67,9 +67,6 @@
 <symbol id="i-globe-s"><path d="M14 8a6 6 0 1 1-12 0 6 6 0 1 1 12 0ZM2 8h12M8 2c-2.5 3-2.5 9 0 12M8 2c2.5 3 2.5 9 0 12"/></symbol>
 <symbol id="i-shuffle-s"><path d="M1.5 11.5h2.25c2.75 0 4-7 6.75-7H14M12 2.5l2 2-2 2M1.5 4.5h2.25c1.1 0 2 1.25 2.75 2.6M9 8.9c.75 1.35 1.65 2.6 2.75 2.6H14M12 9.5l2 2-2 2"/></symbol>
 <symbol id="i-accessibility"><path d="M13.75 4.75a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0ZM4.5 8.5h15M12 8.5v5.5M12 14l-3.5 6.5M12 14l3.5 6.5"/></symbol>
-<symbol id="i-lampOk"><path fill="currentColor" d="M16 12a4 4 0 1 1-8 0 4 4 0 1 1 8 0Z"/></symbol>
-<symbol id="i-lampWarn"><path fill="currentColor" d="M12 6.5 17 16H7Z"/></symbol>
-<symbol id="i-lampDown"><path d="M7 7h10v10H7ZM9.5 9.5l5 5M14.5 9.5l-5 5"/></symbol>
 <symbol id="i-moveForward"><path d="M12 20.5V4M5.5 10.5 12 4l6.5 6.5"/></symbol><symbol id="i-moveForward-s"><path d="M8 13.5V3M3.5 7.5 8 3l4.5 4.5"/></symbol>
 <symbol id="i-moveBack"><path d="M12 3.5V20M5.5 13.5 12 20l6.5-6.5"/></symbol><symbol id="i-moveBack-s"><path d="M8 2.5V13M3.5 8.5 8 13l4.5-4.5"/></symbol>
 <symbol id="i-steerLeft"><path d="M20.5 12H4M10.5 5.5 4 12l6.5 6.5"/></symbol><symbol id="i-steerLeft-s"><path d="M13.5 8H3M7.5 3.5 3 8l4.5 4.5"/></symbol>
@@ -93,12 +90,9 @@
 <symbol id="i-battleBots-s"><path d="M3 5.5h10V13H3ZM8 5.5v-2M6.75 3h2.5M6 8.25V9M10 8.25V9M6 10.75h4M1.5 8v2M14.5 8v2"/></symbol>
 <symbol id="i-battlePrivate"><path d="M5.5 10.5h13v10h-13ZM8 10.5V7.5L10 5h4l2 2.5v3M12 14v3"/></symbol>
 <symbol id="i-battleLan"><path d="M9.5 3.5h5v4h-5ZM3 16.5h5v4H3ZM16 16.5h5v4h-5ZM12 7.5V12M5.5 16.5V12h13v4.5"/></symbol><symbol id="i-battleLan-s"><path d="M6 1.5h4v3H6ZM1.5 11.5h4v3h-4ZM10.5 11.5h4v3h-4ZM8 4.5V8M3.5 11.5V8h9v3.5"/></symbol>
-<symbol id="i-battleRanked"><path d="M5 14.5l7 4 7-4M5 18.5l7 4 7-4M12 2.5l1.5 3 3.3.5-2.4 2.3.6 3.2-3-1.6-3 1.6.6-3.2-2.4-2.3 3.3-.5Z"/></symbol>
 <symbol id="i-battleRecord"><path d="M5 3h9.5L19 7.5V21H5ZM14.5 3v4.5H19M8 11h8M8 14.5h8M8 18h5"/></symbol>
 <symbol id="i-battleRecord-s"><path d="M3 1.5h6.5L13 5v9.5H3ZM9.5 1.5V5H13M5.5 7.5h5M5.5 10h5M5.5 12.25h3"/></symbol>
-<symbol id="i-credits"><path d="M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 1 1 17 0ZM14.5 9h-4L9 10.5v3l1.5 1.5h4"/></symbol>
 <symbol id="i-gold"><path d="M3 20.5 4.5 16h6l1.5 4.5ZM12 20.5l1.5-4.5h6l1.5 4.5ZM7.5 15.5 9 11h6l1.5 4.5ZM12 3.5v4M8 5.5l1.5 2M16 5.5l-1.5 2"/></symbol>
-<symbol id="i-bonds"><path d="M3.5 4.5h17v11h-17ZM7 8.5h10M7 11.5h6M14.5 14v6.5l2-1.5 2 1.5V14"/></symbol>
 <symbol id="i-repair"><path d="M18.04 3.27L15.16 6.16L17.84 8.84L20.73 5.96A4.5 4.5 0 1 1 18.04 3.27M13.32 10.68L3.5 20.5M4 4L10.3 10.3M15.07 12.53L21.27 18.73L18.73 21.27L12.53 15.07Z"/></symbol>
 <symbol id="i-repair-s"><path d="M11.94 2.15L10.05 4.05L11.95 5.95L13.85 4.06A3 3 0 1 1 11.94 2.15M8.88 7.12L2.33 13.67M2.67 2.67L6.87 6.87M10.05 8.35L14.18 12.48L12.48 14.18L8.35 10.05Z"/></symbol>
 <symbol id="i-medkit"><path d="M3.5 7h17v13h-17ZM9 7V4.5h6V7M12 10.5v6M9 13.5h6"/></symbol>
@@ -211,9 +205,6 @@
 <symbol id="i-feedSystem"><path d="M3 8h18M3 16h18M6 8v8M10 8v8M14 8v8M18 8v8"/></symbol>
 <symbol id="i-missileRack"><path d="M5.5 3.5l2 2.5v11h-4V6ZM16.5 3.5l2 2.5v11h-4V6ZM3.5 14.5l-1 3h6l-1-3M14.5 14.5l-1 3h6l-1-3M2.5 20.5h19"/></symbol>
 <symbol id="i-missileRack-s"><path d="M3.75 2.25 5 3.75v7.5H2.5v-7.5ZM11.25 2.25l1.25 1.5v7.5H10v-7.5ZM2.5 10l-.75 2h4L5 10M10 10l-.75 2h4l-.75-2M1.5 14h13"/></symbol>
-<symbol id="i-breech"><path d="M4.5 4.5h15v15h-15ZM15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 1 1 7 0ZM4.5 8h15"/></symbol>
-<symbol id="i-apu"><path d="M3.5 6.5h17v13h-17ZM13 8.5l-3.5 5H14l-3.5 5M6.5 6.5v-3M17.5 6.5v-3"/></symbol>
-<symbol id="i-fcs"><path d="M6 6h12v12H6ZM9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3M12 9v6M9 12h6"/></symbol>
 <symbol id="i-track"><path d="M4 8.5h16l2 3.5-2 3.5H4L2 12ZM8 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 1 1 3 0ZM13.5 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 1 1 3 0ZM19 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 1 1 3 0ZM4 18.5h16"/></symbol>
 <symbol id="i-classMbt"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12ZM12 8.5l3.5 3.5-3.5 3.5L8.5 12Z"/></symbol>
 <symbol id="i-classLight"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12Z"/></symbol>
@@ -261,8 +252,6 @@
 <symbol id="i-eqFireBlankets"><path d="M3 7.5h11v13H3ZM3 11.5h11M3 15.5h11M18.5 5c1.75 2.25 2.5 4 2.5 5.75a2.5 2.5 0 0 1-5 0c0-1.75.75-3.5 2.5-5.75Z"/></symbol>
 <symbol id="i-eqExhaustBaffles"><path d="M2.5 10h6v4h-6ZM8.5 7h6v10h-6ZM10.5 7v10M12.5 7v10M17 9.5h1.5M20 9.5h1.5M17 14.5h1.5M20 14.5h1.5"/></symbol>
 <symbol id="i-eqThermalSight"><path d="M19 12a7 7 0 1 1-14 0 7 7 0 1 1 14 0ZM12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M10 14.5c1-1.5 1-3.5 0-5M14 14.5c1-1.5 1-3.5 0-5"/></symbol>
-<symbol id="i-toolSection"><path d="M4 4h16v16H4ZM4 20 20 4M4 14l10-10M4 8l4-4"/></symbol>
-<symbol id="i-toolExplode"><path d="M5 3.5h14v5H5ZM5 15.5h14v5H5ZM12 9.5V12M12 12v2.5M9.5 11 12 9l2.5 2M9.5 13l2.5 2 2.5-2"/></symbol>
 <symbol id="i-toolIsolate"><path d="M3.5 7V3.5H7M17 3.5h3.5V7M20.5 17v3.5H17M7 20.5H3.5V17M10.5 3.5h3M10.5 20.5h3M3.5 10.5v3M20.5 10.5v3M9 9h6v6H9Z"/></symbol>
 <symbol id="i-toolMeasure"><path d="M3 15.5 15.5 3 21 8.5 8.5 21ZM7 11.5l2 2M10 8.5l2 2M13 5.5l2 2"/></symbol>
 <symbol id="i-toolHitbox"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5ZM4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
