@@ -31,7 +31,8 @@ const frameOf = (group, out) => out.multiplyMatrices(group.matrixWorld,
 const shooter = {
   id: 'shooter', team: 'ally', isPlayer: true,
   state: { pos: new THREE.Vector3(), speed: 0, bloomF: 0, yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 },
-  combat: { destroyed: false, eraSpent: new Set(), shellSlot: 0, reload: { t: 0, totalS: 1 }, ammo: [] },
+  // (274.0) reload-readout's reticle reads the next shot's reload under the crew and modules (sim/damage nextShotReloadS)
+  combat: { destroyed: false, eraSpent: new Set(), shellSlot: 0, reload: { t: 0, totalS: 1 }, ammo: [], crew: { loader: true }, modules: {} },
   spec: null,
   muzzle: new THREE.Vector3(),
   dir: new THREE.Vector3(),
