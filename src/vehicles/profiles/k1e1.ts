@@ -16,6 +16,7 @@ import { KIT, FITTINGS } from './kit.ts';
 import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { fieldChestParts } from './fieldChest.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 
 type V3 = readonly [number, number, number];
@@ -196,7 +197,7 @@ function addSmokeBanks(P: Modern3BuilderPort): void {
 }
 
 function addBasket(P: Modern3BuilderPort): void {
-  const { box, cylY, cylZ, stowage, ammoCan } = KIT;
+  const { box, cylY, stowage, ammoCan } = KIT;
   const T = K1E1_TURRET;
   // the rear basket runs 0.35 m past the bustle wall (267 round 2: the K1's deep bustle rack; 0.26 m before)
   const railX = T.basketRailX, rearZ = -2.15, cornerX = 1.40, cornerZ = -1.94;
@@ -239,16 +240,24 @@ function addBasket(P: Modern3BuilderPort): void {
     P.add('turretDetail', box(0.035, 0.035, tieLength), x, y, rearZ + tieLength / 2 - 0.02);
   }
   P.add('turretOpenLattice', KIT.openRackGrid(1.36, T.bustleRearZ - rearZ + 0.04, 0.02, 3, 6), 0, 0.20, (rearZ + T.bustleRearZ) / 2 + 0.01);
-  // Stowage: rolled tarps and packs along the sides, cases and cans in the rear basket.
-  stowage(P, 'turretCloth', P.rng, [
-    [-1.55, 0.40, -0.95, 0.15, 0.24, 0.70], [1.55, 0.40, -1.05, 0.15, 0.22, 0.80],
-    [-1.55, 0.38, -0.30, 0.14, 0.20, 0.36],
-  ]);
-  if (P.q) P.add('turretCloth', cylZ(0.085, 0.62, 14), 1.55, 0.40, -0.36);
-  for (const [x, w] of [[-0.36, 0.46], [0.34, 0.40]] as const) {
-    P.add('turretDetail', box(w, 0.26, 0.20), x, 0.33, rearZ + 0.13);
-    P.add('turretDark', box(w + 0.01, 0.015, 0.21), x, 0.463, rearZ + 0.13);
-  }
+  // Stowage: packs and a rolled bedroll along the sides, a chest and cans in the rear basket. k1e1-bustle-274 (owner,
+  // 2026-11-20: "make sure the weird fake equipment is swapped with our actual equipment primitives", "dont make stuff
+  // all the same thing tho. use a variety of gear and decoration and equpiment"): the rear cases were bare boxes under
+  // slab lids and the side roll a plain cylinder; they are the fleet's kit now, the packs in two canvas tones (one
+  // stowage call per pack, so the random stream draws exactly as before).
+  stowage(P, 'turretCloth', P.rng, [[-1.55, 0.40, -0.95, 0.15, 0.24, 0.70]]);
+  stowage(P, 'turretCloth', P.rng, [[1.55, 0.40, -1.05, 0.15, 0.22, 0.80]]);
+  stowage(P, 'turretCanvasPale', P.rng, [[-1.55, 0.38, -0.30, 0.14, 0.20, 0.36]]);
+  KIT.tarpRoll(P, 'turretCanvasPale', 1.55, 0.40, -0.345, 0.59, 0.085, false, 16);  // its aft end clear of the pack behind it
+  // The rear basket (floor 0.21 on its grid): a welded field chest on the right, its latches aft and 2.5 cm forward of
+  // the old case so they clear the rear rail, a small rolled tarp strapped on its lid inside the tie bars, and two ammo
+  // cans on the left laid across the grid's stringers (x 0.134, 0.402), side by side between the rear rail and the
+  // bustle wall, their latch levers outboard (a can with its hardware is 35 cm long, more than the 33 cm gap fore-aft).
+  const floor = 0.21, chest = fieldChestParts(0.46, 0.27, 0.20, { high: P.q !== false, front: -1 });
+  for (const g of chest.paint) { delete g.userData.issueDrab; P.add('turretDetail', g, -0.36, floor, rearZ + 0.155); }
+  for (const g of chest.dark) P.add('turretDark', g, -0.36, floor, rearZ + 0.155);
+  KIT.tarpRoll(P, 'turretCanvasPale', -0.34, floor + 0.27 + 0.006 + 0.06, rearZ + 0.155, 0.36, 0.06, true, 14);
+  for (const z of [-2.047, -1.887]) ammoCan(P, 'turretDetail', 0.268, floor + 0.10, z, Math.PI / 2);
   ammoCan(P, 'turretDark', -1.555, 0.34, -1.55, Math.PI / 2);
   if (P.geometryReceipt) {
     P.turretG.userData.k1a1SideCageSeating = Object.freeze({
