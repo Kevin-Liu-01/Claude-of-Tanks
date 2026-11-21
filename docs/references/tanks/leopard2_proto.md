@@ -38,15 +38,15 @@ own production Leopard 2 gear (`profiles/leopard2Hull.ts`).
 
 | # | Photo read (PT 10 / T 17, PT 7 / T 05) | Was (`buildLeo2Proto`) | Now (`profiles/leopard2Prototype.ts`) |
 |---|---|---|---|
-| 1 | Welded spaced turret modelled on the Leopard 1A3, the bridge to the Leopard 2 | vertical-walled slab loft | Leopard 1 x Leopard 2 shell (see the look rounds below): vertical lower walls, crease, leaning upper walls, swept cheek blocks, stepped bustle |
-| 2 | External wedge mantlet ("plates welded atop the gun mantlet"), canvas boot | faceted rocking plate mantlet | Leopard 1A3-pattern wedge mantlet in the cheeks' slot, pitching with the gun, T 17's welded plates, canvas boot |
+| 1 | Welded spaced turret modelled on the Leopard 1A3, the bridge to the Leopard 2 | vertical-walled slab loft | Leopard 1 x Leopard 2A2 shell (see the look rounds below): vertical lower walls, crease, leaning upper walls, the 2A2's cheek blocks (vertical faces swept back 27°, bevelled to flat tops, corner chamfers, grab rails), stepped bustle |
+| 2 | External wedge mantlet ("plates welded atop the gun mantlet"), canvas boot | faceted rocking plate mantlet | the 2A2's block mantlet in the slot, 4 cm proud of the cheeks, its chamfered top under the brow and seal cover, pitching with the gun; T 17's welded plates on the chamfer, a cone root and bolted ring, coaxial and FERO Z18 ports, canvas boot |
 | 3 | 120 mm smoothbore, plain tube with bore evacuator (T 11–T 17) | slim 105 mm | 120 mm tube (r 0.07, 4.30 m past the trunnion) with evacuator |
 | 4 | EMES 12 ends behind flush armoured blocks on the front shoulders | domed blisters on boxes | 5 cm plates laid on the wall over the crease, leading edge, slide handle |
-| 5 | Base a little wider than the walls | ellipse bulge | 1.32 m ring under the walls |
+| 5 | Turret on its ring | ellipse bulge | the walls 0.12 m clear of the deck on the turret's ring, a dark bearing band, a raised race collar with a bolt circle on the deck; the forward fender bins 0.10 m tall so the ring shows over them |
 | 6 | Long bustle, undercut rear plate | short box bustle + basket | bustle to turret z −2.64, foot 0.22 m ahead of its top, light rear rack and tarp |
-| 7 | One rack of four smoke mortars a side on the upper wall | 2 × 4 low on the rear walls | one four-cup bank a side aft of the rangefinder block |
+| 7 | One rack of four smoke mortars a side on the upper wall | 2 × 4 low on the rear walls | the 2A2's two rows of four in one block at each rear corner of the bustle (Kevin's 2A2 fusion over the PT's racks) |
 | 8 | Five grab handles a side (later turrets), cross on the wall, "T 17" stencil | side bins, rails | five handles a side, cross, T 17 stencil |
-| 9 | PERI R12 ahead of the commander's cupola (right), loader's hatch (left), stand-offs for T 17's fault-detection box | cupola on the left, IR box, FLW 200 RCWS and optic tower | PERI R12 and cupola on the right (−X), loader's hatch on the left, four stand-offs; by Kevin's call the T 11's 20 mm Rh 202 on its left-roof collar (see below) |
+| 9 | PERI R12 ahead of the commander's cupola (right), loader's hatch (left), stand-offs for T 17's fault-detection box | cupola on the left, IR box, FLW 200 RCWS and optic tower | the 2A2's PERI R17 (over the PT's R12, Kevin's 2A2 fusion) and the cupola on the right (−X), loader's hatch on the left, four stand-offs; by Kevin's call the T 11's 20 mm Rh 202 on its left-roof collar (see below) |
 | 10 | Leopard-1-like wedge bow: long shallow upper glacis to a sharp nose over a raked lower glacis | production V3 hull with beak wings | own tub and sponson sections on the PT deck and belly lines |
 | 11 | PT 10's fender-integrated headlights in hoop guards; travel-lock brackets on the glacis; tow eyes on the belly plate | low glacis pods, Notek | front fenders with built-in lights and guards, two brackets, belly tow eyes |
 | 12 | Full-length panelled skirts, scalloped over the wheels; long bins on the fenders | unskirted, sponson rails | six bolted panels and a leader a side from a fender ledge, foot 0.70 over the hubs and 0.60 between; three bins a side |
@@ -66,6 +66,22 @@ own production Leopard 2 gear (`profiles/leopard2Hull.ts`).
   behind a step with its roof rising aft, and the 2A-style basket. The Leopard 1A3's upper walls lean in, its wedge
   mantlet runs in the slot and out ahead of the cheeks, and the EMES 12 ears and the wall-mounted smoke racks stay.
   The floor steps up ahead of the ring so the cheeks sweep clear of the fender bins.
+- Approved: "Looks good, go".
+
+### Kevin's look rounds (2026-11-21, in the lane session)
+- r6, "the leopard 2 you were supposed to fuse with was the leopard 2a2": the Leopard 2 half of the turret is now the
+  2A2 (profiles/leopard2a3B4.ts and leopard2CheekFrontDatums.ts read for the pattern; nothing shared but the 27° sweep).
+  It has the cheek blocks with vertical faces swept back 27°, bevelled to flat tops, with a short chamfer to the walls,
+  grab rails across them and a rubber pad on the right face. The outer walls follow the Leopard 1A3 shell's lean. The
+  block mantlet has a chamfered top under a brow and seal cover, set 4 cm proud of the cheeks so it still reads as a
+  mantlet. There is a cone root with a bolted ring, coaxial MG3 and FERO Z18 ports, the PERI R17, and two rows of four
+  smoke dischargers in one block at each rear corner of the bustle. The EMES 12 ends stay: T 17 used the EMES 12, so
+  the 2A2's EMES 15 window is left out.
+- r7, "turret looks like its glitching into hull. show turret ring": the turret's base drum had its bottom face on the
+  deck plane (world 1.66) and z-fought, and the 0.18 m forward fender bins stood over the turret's foot. Now the turret
+  floor over the ring is at 0.06 (world 1.78). Under it sit a dark bearing band and the turret's ring, on a raised race
+  collar with a bolt circle on the deck, and the two forward bins are 0.10 m tall. The geometry gate does not check
+  turret-to-deck clearance; Main is routing that fleet-wide.
 - Approved: "Looks good, go".
 
 ### Kevin's calls (2026-11-20, via Main)

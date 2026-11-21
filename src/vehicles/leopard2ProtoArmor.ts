@@ -41,6 +41,14 @@ export const LEOPARD2_PROTO = Object.freeze({
   /** The 120 mm smoothbore's tube past the trunnion and its radius. */
   barrelLengthM: 4.30,
   barrelRadiusM: 0.07,
+  /**
+   * The turret ring (the owner, 2026-11-21: "turret looks like its glitching into hull. show turret ring"): the hull's race
+   * collar on the deck to ringTopY (world), the turret's ring standing on it, the turret's floor over the ring at
+   * turretFloorY (turret metres), so the walls stand 0.12 m clear of the deck with the ring showing under them.
+   */
+  ringRadiusM: 1.08,
+  ringTopY: 1.71,
+  turretFloorY: 0.06,
   /** Turret roof over the ring (turret metres; world 2.46) and the shell's front face, the gun slot's back. */
   roofY: 0.74,
   frontZ: 0.80,
@@ -51,9 +59,14 @@ const P = LEOPARD2_PROTO;
 /** The turret's sections the plates are fitted to (turret metres; profiles/leopard2Prototype.ts draws them). */
 const T = Object.freeze({
   wallHalfW: 1.27, bustleHalfW: 1.05, rearHalfW: 1.03, roofHalfW: 1.08,
-  floorY: -0.03, bustleFloorY: 0.20, cheekFloorY: 0.14, roofY: 0.76,
-  stepZ: -1.46, rearZ: -2.66, cheekSideEndZ: 1.00, cheekNoseZ: 1.32, cheekNoseHalfW: 0.70, cheekNoseRoofY: 0.62,
-  mantletHalfW: 0.58, mantletBottom: -0.17, mantletTop: 0.30,
+  floorY: P.turretFloorY, bustleFloorY: 0.20, cheekFloorY: 0.14, roofY: 0.76,
+  stepZ: -1.46, rearZ: -2.66,
+  // the 2A2-pattern cheek front: the faces at the slot's edge, swept back 27 degrees to the chamfer at the walls, bevelled
+  // back to flat tops
+  cheekSlotHalfW: 0.52, cheekFaceZ: 1.32, cheekFaceOutW: 1.19, cheekOutZ: 0.98, cheekSideEndZ: 0.88, cheekTopY: 0.72,
+  cheekBevelM: 0.18,
+  // the block mantlet, its face 4 cm proud of the cheeks
+  mantletHalfW: 0.48, mantletBottom: -0.17, mantletTop: 0.22, mantletFaceZ: 1.36,
 });
 
 /** The hull's extents the plates are fitted to (hull metres). */
@@ -81,14 +94,14 @@ export const LEOPARD2_PROTO_ARMOR: Readonly<FleetTankSpec['armor']> = {
     rf('hull_roof', 40, P.sponsonHalfWidthM * 0.96, H.deckY, P.rearZ, H.glacisFootZ),
   ],
   turretPlates: [
-    // the cheek blocks' swept faces, from the slot's edge back to the walls
-    plate('turret_cheek_R', 600, [T.cheekNoseHalfW, T.cheekFloorY, T.cheekNoseZ], [T.wallHalfW, T.cheekFloorY, T.cheekSideEndZ],
-      [T.cheekNoseHalfW, T.cheekNoseRoofY, T.cheekNoseZ], { keMm: 420, ceMm: 700 }),
-    plate('turret_cheek_L', 600, [-T.wallHalfW, T.cheekFloorY, T.cheekSideEndZ], [-T.cheekNoseHalfW, T.cheekFloorY, T.cheekNoseZ],
-      [-T.wallHalfW, T.cheekNoseRoofY, T.cheekSideEndZ], { keMm: 420, ceMm: 700 }),
-    // the wedge mantlet's face at the slot's mouth, pitching with the gun
-    plate('mantlet', 350, [-T.mantletHalfW, P.gunLocal[1] + T.mantletBottom, T.cheekNoseZ],
-      [T.mantletHalfW, P.gunLocal[1] + T.mantletBottom, T.cheekNoseZ], [-T.mantletHalfW, P.gunLocal[1] + T.mantletTop, T.cheekNoseZ - 0.04],
+    // the cheek blocks' swept faces, from the slot's edge to the chamfer, leaning back by the bevel over their height
+    plate('turret_cheek_R', 600, [T.cheekSlotHalfW, T.cheekFloorY, T.cheekFaceZ], [T.cheekFaceOutW, T.cheekFloorY, T.cheekOutZ],
+      [T.cheekSlotHalfW, T.cheekTopY, T.cheekFaceZ - T.cheekBevelM], { keMm: 420, ceMm: 700 }),
+    plate('turret_cheek_L', 600, [-T.cheekFaceOutW, T.cheekFloorY, T.cheekOutZ], [-T.cheekSlotHalfW, T.cheekFloorY, T.cheekFaceZ],
+      [-T.cheekFaceOutW, T.cheekTopY, T.cheekOutZ - T.cheekBevelM], { keMm: 420, ceMm: 700 }),
+    // the block mantlet's face in the slot, pitching with the gun
+    plate('mantlet', 350, [-T.mantletHalfW, P.gunLocal[1] + T.mantletBottom, T.mantletFaceZ],
+      [T.mantletHalfW, P.gunLocal[1] + T.mantletBottom, T.mantletFaceZ], [-T.mantletHalfW, P.gunLocal[1] + T.mantletTop, T.mantletFaceZ],
       { keMm: 350, ceMm: 420, gunFollow: true }),
     sR('turret_side_R', 300, T.wallHalfW, T.floorY, T.roofHalfW, T.roofY, T.stepZ, T.cheekSideEndZ, { ceMm: 420 }),
     sL('turret_side_L', 300, T.wallHalfW, T.floorY, T.roofHalfW, T.roofY, T.stepZ, T.cheekSideEndZ, { ceMm: 420 }),
@@ -105,7 +118,7 @@ export const LEOPARD2_PROTO_ARMOR: Readonly<FleetTankSpec['armor']> = {
     mbox('radio', [-0.95, 0.85, -1.55], [-0.30, 1.35, -0.40]),
     // the EMES 12 runs across the turret's front between its armoured ends; the gunner's periscope sits right
     mbox('optics', [-1.20, 0.30, 0.45], [1.20, 0.56, 0.87], true),
-    mbox('gun', [-0.20, P.gunLocal[1] - 0.22, -0.95], [0.20, P.gunLocal[1] + 0.26, T.cheekNoseZ], true),
+    mbox('gun', [-0.20, P.gunLocal[1] - 0.22, -0.95], [0.20, P.gunLocal[1] + 0.26, T.mantletFaceZ], true),
     mbox('trackL', [-P.skirtOuterX, 0, -3.67], [-P.tubHalfWidthM, 1.30, 3.69]),
     mbox('trackR', [P.tubHalfWidthM, 0, -3.67], [P.skirtOuterX, 1.30, 3.69]),
   ],

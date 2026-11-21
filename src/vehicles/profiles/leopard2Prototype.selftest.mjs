@@ -7,7 +7,7 @@
 //  3. the width: nothing stands past the skirts' 3.70 m;
 //  4. the roof gun: the KPz 70's Rh 202 station on the T 11's left-roof collar, a working 20 mm roof gun firing the
 //     Rh 202's profile, no FLW 200 and no loader's MG3; the MBT-70 keeps its own station where it was;
-//  5. the wedge mantlet pitches with the gun (it is stock of the gun's rig, not the turret's).
+//  5. the 2A2-pattern block mantlet pitches with the gun (it is stock of the gun's rig, not the turret's).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../canvasFixture.test-support.mjs';
@@ -60,8 +60,8 @@ for (const quality of ['high', 'low']) {
     const gunBox = new THREE.Box3();
     gun.traverse((o) => { if (o.isMesh) gunBox.expandByObject(o); });
     const faceZ = turret.localToWorld(new THREE.Vector3(0, 0, LEOPARD2_PROTO.frontZ)).z;
-    assert.ok(gunBox.min.z < faceZ + 0.01 && gunBox.max.x - gunBox.min.x > 1.0,
-      `${quality}: the wedge mantlet (${(gunBox.max.x - gunBox.min.x).toFixed(2)} m wide) rides the gun from the turret's face`);
+    assert.ok(gunBox.min.z < faceZ + 0.01 && gunBox.max.x - gunBox.min.x > 0.9,
+      `${quality}: the block mantlet (${(gunBox.max.x - gunBox.min.x).toFixed(2)} m wide) rides the gun from the turret's face`);
   } finally { tank.dispose(); }
 }
 
@@ -78,4 +78,4 @@ try {
   assert.ok(Math.abs(local.x - 0.62) < 0.05 && Math.abs(local.z + 0.66) < 0.05, 'the MBT-70\'s station where it was');
 } finally { mbt70.dispose(); }
 
-console.log('Leopard 2 Prototype (PT 10 / T 17): spec, rig, width, the T 11 Rh 202 roof gun and the pitching mantlet pass');
+console.log('Leopard 2 Prototype (PT 10 / T 17): spec, rig, width, the T 11 Rh 202 roof gun and the 2A2-pattern mantlet pass');
