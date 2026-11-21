@@ -7,7 +7,7 @@ import { Vector3 } from 'three';
 import {
   BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS, GAME_MODE_IDS, PRACTICE_MODE_IDS, isPracticeMode, normalizeGameMode,
 } from './matchModes.ts';
-import { TUTORIAL_MODE_IDS } from './gameModeCatalog.ts';
+import { DEPLOY_MODE_ORDER, TUTORIAL_MODE_IDS } from './gameModeCatalog.ts';
 import {
   PROVING_GROUND_RULES, TEST_DRIVE, TEAM_ARRANGEMENT_LIMITS, matchRulesetFor, normalizeTeamArrangement, rulesetKeepsRecords,
   rulesetLines, acceptsTeamArrangement,
@@ -74,6 +74,8 @@ for (const mode of BATTLE_MODE_IDS) assert.equal(matchRulesetFor(mode).records, 
 assert.deepEqual([...PRACTICE_MODE_IDS], ['proving_ground']);
 // 274.0 (tutorial-journey): the tutorial's training battle follows (sim/gameModeCatalog.ts TUTORIAL_MODE_IDS)
 assert.deepEqual([...TUTORIAL_MODE_IDS], ['training']);
+assert.ok(!BATTLE_MODE_IDS.includes('training') && !PRACTICE_MODE_IDS.includes('training'), 'training is neither a battle nor a practice mode');
+assert.ok(!DEPLOY_MODE_ORDER.includes('training'), 'Deploy never offers the training battle (the tutorial launches it)');
 assert.deepEqual([...GAME_MODE_IDS], [...BATTLE_MODE_IDS, ...PRACTICE_MODE_IDS, ...TUTORIAL_MODE_IDS],
   'the simulation plays the battle modes, then the practice modes, then the tutorial mode');
 assert.ok(!BATTLE_MODE_IDS.includes('proving_ground'), 'the range is never listed as a battle');
