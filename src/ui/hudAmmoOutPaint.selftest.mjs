@@ -13,7 +13,8 @@ import * as THREE from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { consumeAmmunition, hasAmmunition } from '../sim/ammunition.ts';
-import { createCombatState, selectFirstAvailableShell, startPostShotReload, tickReload } from '../sim/damage.ts';
+import { createCombatState, nextShotReloadS, selectFirstAvailableShell, selectShell, startPostShotReload, tickReload }
+  from '../sim/damage.ts';
 import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.ts';
 import { createAimController } from '../game/aimController.ts';
@@ -284,6 +285,8 @@ function readReticle(ops) {
     sweep: strokes.some((op) => op.style === INK.reload && arcOf(op)),
     countdown: ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && !op.text.startsWith('+'))
       .map((op) => op.text).join('') || null,
+    // (owner 2026-11-20) the loaded gun's reload time in the slot the countdown runs in, in the muted ink
+    ready: ops.filter((op) => op.op === 'fillText' && op.style === INK.ready).map((op) => op.text).join('') || null,
     pulse: strokes.some((op) => op.style === '#ffffff'),
     readyShells: ops.filter((op) => op.op === 'fillRect' && op.style === INK.reload).length,
     spentShells: dryInk(1),
@@ -344,6 +347,122 @@ const DRY_RING = 16;
   assert.equal(frame(tank).pulse, true, 'the reload ending flashes ready');
 }
 
+// 1b. Owner 2026-11-20: "when we shoot we should [show] seconds left reloading but when done we can just have a number
+// there that shows the reload time of a shot in like gray". The slot under the marker holds a figure all battle: the
+// seconds left in the reload ink while reloading, the reload the next shot starts (sim nextShotReloadS, after crew,
+// module and equipment effects) in the muted ink while loaded; one place, one tabular face, one fixed decimal.
+{
+  const run = () => hud.sightText.placed().find((record) => /^\d+\.\d$/.test(record.text));
+  const countdownRun = hud.sightText.run(10); // SIGHT_TEXT_COUNTDOWN
+  // (a nudge of the ring's target forces a repaint: a settled sight that matches the last one is reused, not repainted)
+  const readout = (tank) => { dispersionM += 0.5; const view = frame(tank); dispersionM -= 0.5; return view; };
+  const reloadMult = (combat) => combat.equipMults?.reload ?? 1;
+  // (the readout's figure: one decimal under 10 s, whole seconds up from there, hud reloadHudFigure)
+  const figure = (seconds) => (seconds >= 9.95 ? String(Math.ceil(seconds)) : seconds.toFixed(1));
+  const left = (combat) => combat.reload.t; // (the selected round's channel: the one the aim frame carries)
+  assert.notEqual(INK.ready, INK.reload, 'the loaded figure has its own ink');
+
+  // a conventional gun: loaded, its 6 s reload grey; fired, the countdown in the same place, face and width
+  const tank = tankOf('m1a1_abrams_hc');
+  let view = readout(tank);
+  assert.equal(view.ready, `${(6 * reloadMult(tank.combat)).toFixed(1)} s`, 'loaded: the gun\'s reload time, grey');
+  assert.equal(view.countdown, null, 'loaded: no countdown');
+  // (read at the settled ring: the readout under a small ring sits under its stroke)
+  let loadedRun = { ...run() };
+  for (let guard = 0; frame(tank).painted && guard < 600; guard++) loadedRun = { ...run() };
+  // (Plex Sans SemiBold: one width for every figure, heavier than the .num face's mono, which read too thin)
+  assert.match(loadedRun.font, /^600 18px 'IBM Plex Sans'/, 'the figure in the one-width SemiBold, 18 px');
+  assert.ok(!countdownRun.classes.has('num'), 'not the .num face (its !important mono would replace it)');
+  // (a dark halo under it, so the grey reads over dry grass and muzzle smoke, as the countdown does; the unit too)
+  const halo = (element) => element.style.getPropertyValue('-webkit-text-stroke');
+  assert.match(halo(countdownRun), /^4px rgba\(5,8,11,0\.88\)$/, 'the loaded figure carries the dark halo');
+  assert.equal(halo(hud.sightText.run(11)), halo(countdownRun), 'and its unit');
+  assert.ok(fire(tank));
+  view = frame(tank, { advance: 6 * reloadMult(tank.combat) - 3.2 });
+  assert.match(view.countdown, /^3\.\d s$/, 'fired: the seconds left, in the reload ink');
+  assert.match(halo(countdownRun), /^4px /, 'the countdown keeps the same halo');
+  assert.equal(view.ready, null, 'fired: no grey figure beside the countdown');
+  const countingRun = run();
+  assert.deepEqual([countingRun.x, countingRun.y, countingRun.font], [loadedRun.x, loadedRun.y, loadedRun.font],
+    'the countdown runs where the loaded figure sat, in its face (no reflow between the two)');
+  settle(tank.combat);
+  assert.equal(frame(tank).ready, view.ready ?? `${(6 * reloadMult(tank.combat)).toFixed(1)} s`, 'reloaded: grey again');
+  // the loader killed: the figure follows the crew (×1.5, sim reloadMultiplier) and repaints a sight at rest
+  assert.ok('loader' in tank.combat.crew);
+  settledFrame(tank);
+  tank.combat.crew.loader = false;
+  view = frame(tank);
+  assert.equal(view.painted, true, 'a reload-time change alone repaints the reused reticle');
+  assert.equal(view.ready, `${(9 * reloadMult(tank.combat)).toFixed(1)} s`, 'a dead loader: 9.0 s');
+
+  // an autoloader (M1A3: 2.5 s intra-clip, 21 s magazine): the next shell's cycle loaded and through a clip's cycle,
+  // the magazine's load on the last round, and its countdown while the clip refills
+  const rack = tankOf('m1a3');
+  const m = reloadMult(rack.combat);
+  assert.equal(readout(rack).ready, '2.5 s', 'a full clip: the next shell\'s 2.5 s cycle');
+  assert.ok(fire(rack));
+  view = frame(rack, { advance: 0.5 });
+  assert.deepEqual([view.ready, view.countdown], ['2.5 s', null], 'mid-clip: the rack fills the chambered shell, the slot stays grey');
+  fire(rack); fire(rack);
+  assert.equal(rack.combat.magazine.rounds, 1);
+  settle(rack.combat);
+  assert.equal(readout(rack).ready, `${figure(21 * m)} s`, 'the last round: the magazine\'s 21 s load comes next');
+  assert.ok(fire(rack));
+  view = frame(rack, { advance: 1 });
+  assert.equal(view.countdown, `${figure(left(rack.combat))} s`, 'the clip refilling: its countdown in the reload ink');
+  assert.ok(left(rack.combat) > 19 && left(rack.combat) < 21 * m);
+  assert.equal(view.ready, null);
+  // ammo switching: the reload of the selected round (its guided round's 3 s launcher cycle)
+  settle(rack.combat);
+  assert.ok(selectShell(rack.combat, 1, rack.spec));
+  assert.equal(readout(rack).ready, `${figure(3 * m)} s`, 'the guided round selected: its own reload');
+
+  // a guided rack salvo (ZTZ-100: two missiles, 0.35 s apart, 12 s group reload): the group reload loaded and between
+  // the group's shots; its countdown once the group is spent
+  const salvo = tankOf('ztz100_prototype');
+  const s = reloadMult(salvo.combat);
+  assert.equal(readout(salvo).ready, `${figure(12 * s)} s`, 'a salvo rack: its group reload');
+  assert.ok(fire(salvo));
+  view = frame(salvo, { advance: 0.1 });
+  assert.deepEqual([view.ready, view.countdown], [`${figure(12 * s)} s`, null], 'between the group\'s shots: grey');
+  assert.ok(fire(salvo));
+  view = frame(salvo, { advance: 0.5 });
+  assert.equal(view.countdown, `${figure(left(salvo.combat))} s`, 'the group spent: the group reload counts down');
+  assert.ok(left(salvo.combat) > 11);
+  // ... and its cannon round selected: the belt's 0.3 s
+  settle(salvo.combat);
+  assert.ok(selectShell(salvo.combat, 2, salvo.spec));
+  assert.equal(readout(salvo).ready, `${figure(0.3 * s)} s`, 'the autocannon selected: its own reload');
+
+  // the figure is the sim's own: nextShotReloadS is the duration the next shot starts, across the fleet and its damage
+  for (const id of ['m1a1_abrams_hc', 'm1a3', 'type90', 'ztz100_prototype', 'bwp1', 'object695', 'mbt70']) {
+    for (const damage of ['none', 'loader', 'rack', 'feed']) {
+      const subject = tankOf(id);
+      const { combat, spec } = subject;
+      if (damage === 'loader') combat.crew.loader = false;
+      for (const name of damage === 'rack' ? ['ammoRack', 'missileRack'] : damage === 'feed' ? ['autoloader', 'feedSystem'] : []) {
+        if (combat.modules[name]) combat.modules[name].state = 'yellow';
+      }
+      for (let slot = 0; slot < spec.gun.shells.length; slot++) {
+        if (!selectShell(combat, slot, spec)) continue;
+        for (let shot = 0; shot < 5; shot++) {
+          settle(combat);
+          const salvoRounds = spec.gun.shells[slot].guided ? spec.gun.launcherSalvo?.rounds ?? 0 : 0;
+          // (between a salvo's shots the next shot starts the group's short interval; the figure is its group reload)
+          const midSalvo = salvoRounds > 1 && ((combat.launcherSalvoShots ?? 0) + 1) % salvoRounds !== 0;
+          const expected = nextShotReloadS(combat, spec);
+          if (!consumeAmmunition(combat, slot)) break;
+          startPostShotReload(combat, spec);
+          if (midSalvo) continue;
+          const started = [combat.reload, combat.gunReload].filter((channel) => channel && channel.t > 0 && channel.t === channel.totalS);
+          assert.ok(started.some((channel) => Math.abs(channel.totalS - expected) < 1e-9),
+            `${id}, ${damage}, slot ${slot}, shot ${shot}: the figure ${expected} is the cycle the shot started (${started.map((c) => c.totalS)})`);
+        }
+      }
+    }
+  }
+}
+
 // 2. The same gun fired to its last round: the simulation still reloads, the sight shows an empty gun.
 {
   const tank = tankOf('m1a1_abrams_hc');
@@ -352,6 +471,7 @@ const DRY_RING = 16;
   let view = frame(tank, { advance: 0.25 });
   assert.equal(view.sweep, false, 'no amber sweep');
   assert.equal(view.countdown, null, 'no countdown');
+  assert.equal(view.ready, null, 'and no loaded reload time: the struck round holds the slot');
   assert.equal(view.ringInk, INK.dryRing, 'the ring turns to the muted empty ink');
   assert.equal(view.ringDashes, DRY_RING, 'and thins to sparse dashes');
   assert.ok(view.dryRound >= 1 && view.struck >= 1, 'one hollow, struck round where the countdown would run');
@@ -725,7 +845,7 @@ for (const [ammo, reload] of [[[0, 0, 0], null], [[12, 4, 10], { t: 12, totalS: 
   tank.combat.magazine.rounds = 0;
   if (reload) Object.assign(tank.combat.reload, reload);
   const paint = scopePaint(tank, 568, 290);
-  const lines = paint.texts.filter((op) => !/^\d+ m$/.test(op.text) && !/^\d+$/.test(op.text) && op.text.trim() !== 's');
+  const lines = paint.texts.filter((op) => !/^\d+ m$/.test(op.text) && !/^\d+(\.\d)?$/.test(op.text) && op.text.trim() !== 's');
   assert.ok(lines.length >= 2 && paint.shells.length === 4, '568x290: the readout line, the zoom plate and the rack');
   assertApart([...paint.shells, ...paint.dry], lines, `568x290 ${reload ? 'reloading' : 'empty'} rack`);
 }
@@ -875,7 +995,9 @@ resize(WIDTH, HEIGHT);
   const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
   // the rack's shells by their dark contours (magazineShellPath: seven points, 3 px wide), where their ink ends
   const contours = (ops) => ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
-  const countdownOf = (ops) => ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
+  // (the readout in either ink: the countdown, or the loaded figure in its place, keeps the same clearances)
+  const countdownOf = (ops) => ops.filter((op) => op.op === 'fillText' && (op.style === INK.reload || op.style === INK.ready)
+    && op.text.trim() && !op.text.startsWith('+'));
   const live = {
     full: () => tankOf('m1a3'),
     'short of stowage': () => { const tank = tankOf('m1a3', [2, 4, 0]); tank.combat.magazine.rounds = 4; return tank; },
@@ -1082,7 +1204,8 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
     || (touch && windowStub.innerHeight >= windowStub.innerWidth && windowStub.innerWidth <= 340)
     || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
   assert.ok(!warningText, `${at}: the canvas paints no warning (the DOM chip is every layout's, gauntlet r3)`);
-  const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
+  const countdown = ops.filter((op) => op.op === 'fillText' && (op.style === INK.reload || op.style === INK.ready)
+    && op.text.trim() && !op.text.startsWith('+'));
   const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
   const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
   const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
@@ -1142,10 +1265,12 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  panel (the render keeps 3 px). r10g moved a small portrait phone's systems row out of the band over the sight (the
  *  top slot right of the map, compact): 360x640 (8.87 px before, the chip on the row's underlines) and 375x667 (7.34)
  *  keep 3 px now, and 320x568 kept 25.25 px before (its objective stage too). Round r9 left 568x290 25.5 px into its systems row in a standard
- *  battle. Every other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and in every
+ *  battle. Owner 2026-11-20 (the loaded figure all battle): a rack mid-cycle shows its next shell's cycle (2.5) beside the
+ *  rack, in the box a refill's 12 already took over 568x290's objective controls; three figures of ink reach 7 px further
+ *  than two (-27.4 at 28 m). Every other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and in every
  *  mode. */
 const TIGHT_FLOOR = { '568x290t': -3.5,
-  '568x290t:objective': -24, '320x568t:objective': -11,
+  '568x290t:objective': -28, '320x568t:objective': -11,
   '740x360t:objective': -0.5, '640x360t:objective': -0.5, '1024x400:objective': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less

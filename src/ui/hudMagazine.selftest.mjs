@@ -12,6 +12,8 @@ import {
   hitConfirmVisualState,
   reloadHudFraction,
   reloadHudCountdown,
+  reloadHudFigure,
+  reloadHudReadyFigure,
   reloadHudReadyPulse,
   ammunitionSelectionLabel,
   resolveReticleAnchor,
@@ -149,6 +151,13 @@ assert.equal(reloadHudCountdown({ t: 0, totalS: 3 }, true), 'SWITCHING',
   'pending confirmation must never paint a fabricated numeric countdown');
 assert.equal(reloadHudCountdown({ t: 2.8, totalS: 3 }), '2.8');
 assert.equal(reloadHudCountdown({ t: 10.2, totalS: 12 }), '11');
+// owner 2026-11-20: the loaded figure takes the countdown's rule, so the shot starts the countdown at the figure shown;
+// never four figures (9.96 s read 10.0)
+assert.equal(reloadHudFigure(7.4), '7.4');
+assert.equal(reloadHudFigure(12.4), '13');
+assert.equal(reloadHudFigure(9.96), '10');
+assert.equal(reloadHudReadyFigure({ t: 0, totalS: 6, readyS: 7.4 }), '7.4');
+assert.equal(reloadHudReadyFigure({ t: 0, totalS: 6 }), '', 'a view without the sim\'s figure shows none');
 assert.equal(reloadHudReadyPulse(true, false, true), false,
   'pending selection suppresses the old channel ready edge');
 assert.equal(reloadHudReadyPulse(false, false), false,

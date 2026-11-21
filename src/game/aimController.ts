@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { AIM_REACH_M, aimArmorAlong, aimPenRatio } from '../sim/aimPenetration.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
+import { nextShotReloadS, type CombatState, type ReloadGunSpec } from '../sim/damage.ts';
 import { provingPlateStrike, type ProvingPlateMark } from '../sim/provingGround.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 import type { ShellCard } from './playerBattleActions.ts';
@@ -27,11 +28,11 @@ interface AimState extends ArmorPoseState {
   gunLimitSpec?: boolean;
 }
 
-interface AimCombat {
+interface AimCombat extends Pick<CombatState, 'crew' | 'modules' | 'equipMults'> {
   destroyed: boolean;
   eraSpent: Set<string>;
   reload: { t: number; totalS: number; kind?: string };
-  magazine?: { rounds?: number; capacity?: number } | null;
+  magazine: { rounds: number; capacity: number } | null;
   shellSlot: number;
   launcherCursor?: number;
   launcherSalvoShots?: number;
@@ -43,7 +44,7 @@ interface AimSpec {
   hydropneumaticAim?: HydropneumaticAim;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: { fixedLaunchCanisters?: boolean; baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[]; launcherSalvo?: { rounds: number } | null };
+  gun: ReloadGunSpec & { baseAccuracy: number; shells: DamageShellSpec[]; launcherSalvo?: { rounds: number } | null };
 }
 
 interface ArmorTraceHit {
@@ -72,6 +73,12 @@ interface AimTank {
   visual: AimVisual | null;
 }
 
+/** What the gun-centre ray reads of a tank (a drive test's live tank passes this much). */
+interface AimRayTank extends Pick<AimTank, 'aerial' | 'visual'> {
+  spec: { gun: Pick<AimSpec['gun'], 'shells' | 'launcherMuzzles' | 'fixedLaunchCanisters'> };
+  combat: Pick<AimCombat, 'shellSlot' | 'launcherCursor'> | null;
+}
+
 interface AimGame {
   player: AimTank | null;
   tanks: AimTank[];
@@ -93,7 +100,8 @@ export interface AimFrame {
   dispersionRadM: number;
   atGunLimit?: boolean;
   gunLimitSpec: boolean;
-  reload: { t: number; totalS: number; kind?: string };
+  /** `readyS`: the reload the next shot starts (sim/damage nextShotReloadS), the figure the reticle shows loaded. */
+  reload: { t: number; totalS: number; kind?: string; readyS?: number };
   /** The reticle's multi-round indicator (sim/magazineIndicator): cannon magazine or guided rack salvo group.
    * `feed` is how many of its `capacity` rounds stowage can still load (owner 2026-10-17, out of ammo). */
   magazine: { rounds: number; capacity: number; launcher: boolean; feed?: number };
@@ -122,7 +130,7 @@ export interface AimControllerDependencies {
 export interface AimController {
   raycast(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): AimWorldHit | null;
   gunCenterRay(
-    player: AimTank,
+    player: AimRayTank,
     aimPoint: THREE.Vector3,
     outOrigin: THREE.Vector3,
     outDir: THREE.Vector3,
@@ -285,7 +293,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   }
 
   function gunCenterRay(
-    player: AimTank,
+    player: AimRayTank,
     aimPoint: THREE.Vector3,
     outOrigin: THREE.Vector3,
     outDir: THREE.Vector3,
@@ -336,6 +344,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.reload.t = combat.reload.t;
     frame.reload.totalS = combat.reload.totalS;
     frame.reload.kind = combat.reload.kind;
+    frame.reload.readyS = nextShotReloadS(combat, player.spec);
     // round 41: one derivation for cannon magazines AND guided rack salvos (owner 2026-09-22: "missile tanks that
     // fire twice ... need to show the autoloader ammo indicator even if they fire on their own").
     writeAmmoFrame(frame, player);
