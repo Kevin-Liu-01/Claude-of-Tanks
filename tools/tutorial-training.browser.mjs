@@ -288,6 +288,23 @@ try {
     await client.detach();
   }
 
+  /** Turn the hull on the spot to face an actor (a player told to fire into Bulwark's side faces it: a hull left facing
+   *  away swung the gun over its rear deck, where it cannot depress: GUN TRAVEL LIMIT, every round over). */
+  async function faceHull(actorId) {
+    let key = null;
+    const until = Date.now() + 15_000;
+    try {
+      while (Date.now() < until) {
+        const me = await pose(), them = await actorPose(actorId);
+        if (!them) return;
+        const err = wrap(Math.atan2(them.x - me.x, them.z - me.z) - me.yaw);
+        const want = err > 0.08 ? 'KeyA' : err < -0.08 ? 'KeyD' : null;
+        if (want !== key) { if (key) await page.keyboard.up(key); if (want) await page.keyboard.down(want); key = want; }
+        if (!want) return;
+        await sleep(100);
+      }
+    } finally { if (key) await page.keyboard.up(key); }
+  }
   /** Out of the gunner's sight before a drive, as a player drives (in the third-person view). */
   const thirdPerson = async () => { if (await sightMode()) { await page.keyboard.press('ShiftLeft'); await sleep(400); } };
   /** The player's tracks: damaged or broken (module:state; S12 waits for Sentry 4 to hit one). */
@@ -496,7 +513,8 @@ try {
       while ((await stepNow()) === now && rounds < 14) {
         await driveInto(TRAINING_POINTS.ringQ, now, true);
         if ((await stepNow()) !== now) break;
-        await fireAtOnce(ACTOR.sentry3, TARGET_POINTS.hull, now);
+        // a quick lay (Sentry 3 fires once it has seen the hull 4 s): the 3 px lay and 1.2 s settle kept it out for many
+        await fireAtOnce(ACTOR.sentry3, TARGET_POINTS.hull, now, { tolPx: 8, settleMs: 300, gunTol: 0.04 });
         await driveInto(TRAINING_POINTS.ringP, now, true);
         await sleep(1500);
         rounds += 1;
@@ -517,7 +535,8 @@ try {
     else if (id === 'training.smoke') { how = 'G'; await page.keyboard.press('KeyG'); }
     else if (id === 'training.toU') { await thirdPerson(); how = 'drove'; await driveTo(TRAINING_POINTS.ringU, now); }
     else if (id === 'training.flank') {
-      await thirdPerson(); how = 'drove to ring V, fired into its side'; await driveInto(TRAINING_POINTS.ringV, now, true);
+      await thirdPerson(); how = 'drove to ring V, faced it, fired into its side'; await driveInto(TRAINING_POINTS.ringV, now, true);
+      await faceHull(ACTOR.bulwark);
       how += ` (${await fireAt(ACTOR.bulwark, TARGET_POINTS.hull, now)} shots)`;
     }
     else if (id === 'training.fight') {
