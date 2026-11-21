@@ -46,8 +46,9 @@ const HINTS: Readonly<Record<HintId, HintDef>> = {
     label: (vars) => t('hud.tip.armorOverlayOn.detailSettings', vars) },
   moduleRepair: { urgency: 0, durationMs: 8_000, title: 'hud.hint.moduleRepair.title', line: 'hud.hint.moduleRepair.line',
     actions: { repair: 'consumable1' }, picture: moduleRepairPicture },
+  // (not skipped after the tutorial: its battle chapter no longer teaches the reload, tutorial-journey-273 07ca63cb44)
   reload: { urgency: 2, durationMs: 8_000, title: 'hud.hint.reload.title', line: 'hud.hint.reload.line', actions: {},
-    picture: reloadPicture, taught: true },
+    picture: reloadPicture },
   autoAim: { urgency: 3, durationMs: 8_000, title: 'hud.hint.autoAim.title', line: 'hud.hint.autoAim.line',
     actions: { autoAim: 'autoAim' }, picture: autoAimPicture },
   suspension: { urgency: 4, durationMs: 8_000, title: 'hud.hint.suspension.title', line: 'hud.hint.suspension.line',
