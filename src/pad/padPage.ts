@@ -13,8 +13,8 @@
  * The phone is felt as well as seen (owner 2026-11-03: "it should buzz and vibrate"): every press ticks, and the battle's
  * cues (padCues.ts: the gun firing, hits given and taken, modules, fire, crashes, kills, death, the sight's lock) each
  * play their own buzz the moment the desktop sends them. A thumb on the fire button drags to aim, so one thumb aims and
- * shoots, and the sight's gain follows the finger's speed. The first pairing on a phone shows the zones' names over the
- * live panel for ten seconds, or until Skip.
+ * shoots, and the sight's gain follows the finger's speed. A phone's first battle panel (its first pairing's) shows the
+ * zones' names over the live panel for ten seconds, or until Skip.
  *
  * The panel is always laid out landscape. A page the system shows portrait (an iPhone with rotation lock on, held
  * sideways) turns the panel a quarter, the top to the left (Options' Flip turns it the other way): a transform only.
@@ -675,7 +675,8 @@ $<HTMLButtonElement>('[data-disconnect]').addEventListener('click', () => {
 // The first pairing on a phone names its zones where they are (owner 2026-11-03: "a tutorial should show up on first
 // phone pairing mode that u can skip and also disappears after like 10 seconds"): a ring on each zone and its name
 // beside it, over the live panel, which the thumbs work through; Skip or ten seconds ends it, and Options shows it again.
-// The marks live in the frame, so they turn with it; their places are the zones' layout boxes in the frame. The game
+// It waits for a panel with thumbs (a pairing in Settings is idle, so it shows in the first battle). The marks live in
+// the frame, so they turn with it; their places are the zones' layout boxes in the frame. The game
 // screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and the
 // phone"): the phone sends its picture (every control's box, the stops and where their names sit) with the guide, and
 // Skip on either side, or the ten seconds, ends it on both.
@@ -749,7 +750,6 @@ function placeTour(): void {
   }
   const boxes = stops.map(({ target }) => frameBox(target));
   type Box = { x: number; y: number; w: number; h: number };
-  const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   // a surface a control sits on (the sight around the fire button) is no obstacle to that control's name
   const encloses = (outer: Box, inner: Box): boolean =>
     outer.x <= inner.x && outer.y <= inner.y && outer.x + outer.w >= inner.x + inner.w && outer.y + outer.h >= inner.y + inner.h;
@@ -779,12 +779,16 @@ function placeTour(): void {
         default: return { x: cx, y: box.y + 12, w, h };
       }
     };
-    const fits = (place: Box): boolean => place.x >= 0 && place.y >= 0 && place.x + w <= width && place.y + h <= height
-      && boxes.every((other, j) => j === i || encloses(other, box) || !overlaps(place, other))
-      && taken.every((other) => !overlaps(place, other));
-    const place = stop.sides.map(at).find(fits) ?? at(stop.sides[0]!);
-    const x = Math.max(0, Math.min(width - w, place.x));
-    const y = Math.max(0, Math.min(height - h, place.y));
+    // each side's place kept inside the frame; the first clear of every other zone and name, else the one covering the
+    // least of the names (then of the zones): a name wider than its column sits on it, never over another name
+    const inside = (place: Box): Box => ({ x: Math.max(0, Math.min(width - w, place.x)), y: Math.max(0, Math.min(height - h, place.y)), w, h });
+    const area = (a: Box, b: Box): number =>
+      Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    const cost = (place: Box): number => taken.reduce((sum, other) => sum + area(place, other), 0) * 1000
+      + boxes.reduce((sum, other, j) => sum + (j === i || encloses(other, box) ? 0 : area(place, other)), 0);
+    const places = stop.sides.map((side) => inside(at(side)));
+    const { x, y } = places.find((place) => cost(place) === 0)
+      ?? places.reduce((best, place) => (cost(place) < cost(best) ? place : best));
     taken.push({ x, y, w, h });
     tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
     layout.stops.push([stop.id, px(box.x), px(box.y), px(box.w), px(box.h), px(x + w / 2), px(y + h / 2),
@@ -1010,8 +1014,13 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     onCtl(message) {
       if (message.k === 'cue') feelCue(message.c, message.m);
       else if (message.k === 'tour') { if (!message.on) endTour('screen'); }
+      // the guide waits for a panel with thumbs to point at (a pairing in Settings is idle: it shows in the first battle);
       // a couch seat's phone (a lobby seat) leaves its guide to the room's briefing on the big screen
-      else if (message.k === 'status') { paintStatus(message.s); if (!toured() && !link?.seat) showTour(); }
+      else if (message.k === 'status') {
+        paintStatus(message.s);
+        const { thumbs } = drawn.layout;
+        if (!toured() && !link?.seat && (thumbs.stick || thumbs.aim || thumbs.fire)) showTour();
+      }
       else if (message.k === 'pong') {
         rttMs = Math.max(0, performance.now() - message.t);
         if (debug) { debug.rttMs = rttMs; debug.applyMs = message.apply; }

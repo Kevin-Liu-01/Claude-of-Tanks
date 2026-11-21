@@ -3,7 +3,7 @@
 // The phone controller end to end (docs/PHONE-CONTROLLER.md "Proof"), in headless Chrome on this checkout's dev server
 // and an in-process pairing service (server/rooms/localPadService.ts, the LAN helper's): a desktop page and a phone
 // page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic touch
-// events drive a tank in a solo battle — the drive stick, aim, scope, ammunition, fire, pause — and the stale fail-safe stops the tank when the phone vanishes; the first pairing's controls guide shows over
+// events drive a tank in a solo battle — the drive stick, aim, scope, ammunition, fire, pause — and the stale fail-safe stops the tank when the phone vanishes; the controls guide waits for the first battle's panel, shows over
 // the live panel and on the game screen together, and leaves both by itself or on either side's Skip; a thumb on fire
 // drags to aim, and the battle's cues reach the phone as buzzes (a shot felt once, the gun loaded). It records:
 //   - the network log: no request reaches the pad service, and no pad module loads, before Connect Phone is pressed;
@@ -187,50 +187,12 @@ try {
   await desktop.waitForFunction((live, path) => window.__COT_PAD?.state === live && window.__COT_PAD.path === path, { timeout: 30_000 },
     PAD_LINK_STATE.live, PAD_LINK_PATH.direct);
   check('the phone pairs from the QR link with one Start tap; the data channel is live on both sides', true, `button "${startLabel}"`);
-  report.step = 'guide';
-  // the first pairing names the controls over the live panel, and the thumbs work through it
-  await phone.waitForFunction((shown) => window.__COT_PAD_PHONE?.tour === shown, { timeout: 10_000 }, PAD_TOUR_STATE.shown).catch(() => {});
-  const guideShownAt = Date.now();
-  const guide = await phone.evaluate(() => {
-    const lever = document.querySelector('.pad-stick').getBoundingClientRect();
-    const under = document.elementFromPoint(lever.x + lever.width / 2, lever.y + lever.height / 2);
-    return { shown: !document.querySelector('.pad-tour').hidden, marks: document.querySelectorAll('.pad-tour-mark').length,
-      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-stick'),
-      // Skip stands where the status line is: the line gives way while the guide shows
-      lineAway: getComputedStyle(document.querySelector('.pad-msg')).visibility === 'hidden' };
-  });
-  await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
-  check('the first pairing shows the controls\' guide over the live panel, and a thumb works through it',
-    guide.shown && guide.marks >= 4 && guide.through && guide.lineAway, `${guide.marks} marks: ${guide.names.join(' · ')}`);
-  // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over Settings
-  const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
-  await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
-  // when it leaves, timed from here (the first sight of it), with the page's long tasks meanwhile: the battle below starts
-  // inside the guide's ten seconds, and a page busy loading it runs no timer and no message until it is free
-  await desktop.evaluate(() => {
-    const root = document.querySelector('.cot-pad-tour');
-    const seenAt = performance.now();
-    window.__padTourShutMs = null;
-    window.__padTourSeenAt = seenAt;
-    window.__padTourBusy = [];
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) if (window.__padTourBusy.length < 400) window.__padTourBusy.push([entry.startTime, entry.duration]);
-    }).observe({ type: 'longtask' });
-    if (root) new MutationObserver((_, observer) => {
-      if (root.classList.contains('is-open')) return;
-      window.__padTourShutMs = Math.round(performance.now() - seenAt);
-      observer.disconnect();
-    }).observe(root, { attributes: true, attributeFilter: ['class'] });
-  });
-  const screenGuide = await desktop.evaluate(() => {
-    const root = document.querySelector('.cot-pad-tour');
-    return { open: !!root?.classList.contains('is-open'), top: !!root?.matches(':popover-open'),
-      rings: root?.querySelectorAll('.cot-pad-tour-ring').length ?? 0, parts: root?.querySelectorAll('.cot-pad-tour-part').length ?? 0,
-      names: [...(root?.querySelectorAll('.cot-pad-tour-name') ?? [])].map((name) => name.textContent) };
-  });
-  await desktop.screenshot({ path: resolve(outDir, 'desktop-guide.png') });
-  check('the game screen shows the same guide at the same time, over Settings', screenGuide.open && screenGuide.top
-    && screenGuide.rings === guide.marks && screenGuide.parts >= 10, `${screenGuide.parts} controls, ${screenGuide.rings} rings: ${screenGuide.names.join(' · ')}`);
+  // the guide waits for a panel with controls: Settings' idle panel has none, so none shows here on either screen
+  await phone.waitForFunction((live) => window.__COT_PAD_PHONE?.state === live, { timeout: 5000 }, PAD_PHONE_STATE.live);
+  await sleep(1500);
+  check('the guide waits for the battle: none over the idle panel in Settings, on either screen',
+    await phone.evaluate((hidden) => window.__COT_PAD_PHONE.tour === hidden && document.querySelector('.pad-tour').hidden, PAD_TOUR_STATE.hidden)
+    && await desktop.evaluate(() => !document.querySelector('.cot-pad-tour')?.classList.contains('is-open')));
   report.network.phonePageRequests = phoneRequests.length;
   report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
   check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
@@ -254,6 +216,52 @@ try {
     await phone.$$eval('.pad-shell:not([hidden])', (buttons) => buttons.map((b) => `${b.getAttribute('aria-label')}${b.getAttribute('aria-pressed') === 'true' ? ' (current)' : ''}`).join('; ')));
   await phone.waitForFunction(() => !!document.querySelector('[data-id="autoAim"]'), { timeout: 5000 }).catch(() => {});
   check('the sight\'s lock key is on the phone in a solo battle', await phone.evaluate(() => !!document.querySelector('[data-id="autoAim"]')));
+  report.step = 'guide';
+  // the first battle names the controls over the live panel, and the thumbs work through it
+  await phone.bringToFront();
+  await phone.waitForFunction((shown) => window.__COT_PAD_PHONE?.tour === shown, { timeout: 10_000 }, PAD_TOUR_STATE.shown).catch(() => {});
+  const guideShownAt = Date.now();
+  const guide = await phone.evaluate(() => {
+    const lever = document.querySelector('.pad-stick').getBoundingClientRect();
+    const under = document.elementFromPoint(lever.x + lever.width / 2, lever.y + lever.height / 2);
+    return { shown: !document.querySelector('.pad-tour').hidden, marks: document.querySelectorAll('.pad-tour-mark').length,
+      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-stick'),
+      // Skip stands where the status line is: the line gives way while the guide shows
+      lineAway: getComputedStyle(document.querySelector('.pad-msg')).visibility === 'hidden' };
+  });
+  await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
+  check('the first battle shows the controls\' guide over the live panel, and a thumb works through it',
+    guide.shown && guide.marks >= 4 && guide.through && guide.lineAway, `${guide.marks} marks: ${guide.names.join(' · ')}`);
+  // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over the battle
+  await desktop.bringToFront();
+  const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
+  await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  // when it leaves, timed from here (the first sight of it), with the page's long tasks meanwhile: the battle's first
+  // seconds load inside the guide's ten, and a page busy loading runs no timer and no message until it is free
+  await desktop.evaluate(() => {
+    const root = document.querySelector('.cot-pad-tour');
+    const seenAt = performance.now();
+    window.__padTourShutMs = null;
+    window.__padTourSeenAt = seenAt;
+    window.__padTourBusy = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) if (window.__padTourBusy.length < 400) window.__padTourBusy.push([entry.startTime, entry.duration]);
+    }).observe({ type: 'longtask' });
+    if (root) new MutationObserver((_, observer) => {
+      if (root.classList.contains('is-open')) return;
+      window.__padTourShutMs = Math.round(performance.now() - seenAt);
+      observer.disconnect();
+    }).observe(root, { attributes: true, attributeFilter: ['class'] });
+  });
+  const screenGuide = await desktop.evaluate(() => {
+    const root = document.querySelector('.cot-pad-tour');
+    return { open: !!root?.classList.contains('is-open'), top: !!root?.matches(':popover-open'),
+      rings: root?.querySelectorAll('.cot-pad-tour-ring').length ?? 0, parts: root?.querySelectorAll('.cot-pad-tour-part').length ?? 0,
+      names: [...(root?.querySelectorAll('.cot-pad-tour-name') ?? [])].map((name) => name.textContent) };
+  });
+  await desktop.screenshot({ path: resolve(outDir, 'desktop-guide.png') });
+  check('the game screen shows the same guide at the same time, over the battle', screenGuide.open && screenGuide.top
+    && screenGuide.rings === guide.marks && screenGuide.parts >= 10, `${screenGuide.parts} controls, ${screenGuide.rings} rings: ${screenGuide.names.join(' · ')}`);
   // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
   await phone.waitForFunction((timeout) => window.__COT_PAD_PHONE?.tour === timeout, { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) },
     PAD_TOUR_STATE.timeout).catch(() => {});

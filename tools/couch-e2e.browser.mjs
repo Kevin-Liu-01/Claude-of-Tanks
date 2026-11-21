@@ -144,10 +144,13 @@ try {
   // deploys the seats
   await desktop.waitForSelector('.cot-couch-brief', { timeout: 15_000 });
   check('Start opens the room\'s briefing; no phone\'s guide is mirrored over it', await desktop.evaluate(() => !document.querySelector('.cot-pad-tour.is-open')));
+  // (a background tab runs no frames, so each phone comes to the front for its tap)
   for (const { page } of pages) {
+    await page.bringToFront();
     await page.waitForFunction(() => !document.querySelector('.pad-brief')?.hidden, { timeout: 10_000 });
     await page.tap('.pad-brief-ready');
   }
+  await desktop.bringToFront();
   // the countdown over in the couch battle (controlsReleased: the lifecycle's own state, not the phase and the countdown)
   await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG?.game?.couch`,
     { timeout: 300_000, polling: 250 });
@@ -222,12 +225,8 @@ try {
   // ---- a phone that vanishes with its throttle held stops its tank ----------------------------------------------------
   report.step = 'vanish';
   const leaving = pages[pages.length - 1];
-  const lever = await leaving.page.$('.pad-lever');
-  const box = lever ? await lever.boundingBox() : null;
-  if (box) {
-    await leaving.page.touchscreen.touchStart(box.x + box.width / 2, box.y + box.height / 2);
-    await leaving.page.touchscreen.touchMove(box.x + box.width / 2, box.y + box.height / 2 - 140);
-  }
+  // the drive stick pushed full ahead, and held
+  await leaving.page.evaluate(stickPush, 0, -80);
   const held = await desktop.waitForFunction((n) => (window.__DEBUG.game.couch.seats.find((s) => s.seat === n)?.entity.input.throttle ?? 0) > 0.3, { timeout: 5000 }, leaving.seat).then(() => true).catch(() => false);
   const closedAt = Date.now();
   await leaving.page.close();

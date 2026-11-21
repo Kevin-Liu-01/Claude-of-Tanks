@@ -223,8 +223,8 @@ hands the moment they happen:
 ### The controls guide
 
 Owner 2026-11-03: "a tutorial should show up on first phone pairing mode that u can skip and also disappears after like
-10 seconds". The first status after a phone's first pairing (`cot.pad.tour.v2` in its storage; the 274 layout shows it
-again once) shows a ring on each zone and its name beside it over the live panel: the stick, drag to aim and flick to
+10 seconds". The first status with thumbs after a phone's first pairing (`cot.pad.tour.v2` in its storage; the 274 layout
+shows it again once; an idle panel, as in Settings, has nothing to name, so it waits for the first battle) shows a ring on each zone and its name beside it over the live panel: the stick, drag to aim and flick to
 turn, tap to fire and drag to aim, the deck, and the two special columns. A ghost thumb strokes the stick and the
 sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
 running out under Skip, ends it; Options shows it again. Skip stands on the top strip, where the status line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
@@ -332,7 +332,7 @@ a battle, while paused and while its tab is hidden (the pause button still works
 - `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic stick and touch events drive a tank
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
   pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
-  shows on the first pairing on the phone and on the game screen together, a thumb works through it, it leaves both by
+  waits out the idle panel in Settings, then shows in the first battle on the phone and on the game screen together, a thumb works through it, it leaves both by
   itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
   on fire dragging to aim while the gun loads, and the loaded buzz.
 - `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
