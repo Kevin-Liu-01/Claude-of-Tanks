@@ -52,6 +52,8 @@ const TOUCH_TILES: Partial<Record<ActionId, TouchTile>> = {
   drone: { selector: ROW('drone'), icon: 'controller' },
   atgm: { selector: ROW('atgm'), icon: 'fireGun' },
   specialAction: { selector: ROW('specialAction'), icon: 'controller' },
+  // (Air Support's Support slot, airSupportHud.ts: its call-ins open from it)
+  strikeView: { selector: '.cot-strike-dock', icon: 'modeAirSupport' },
   autoAim: { selector: '.cot-touch.on .autoaim', icon: 'autoAim' },
   sniperToggle: { selector: '.cot-touch.on .scope', icon: 'scope' },
   fire: { selector: '.cot-touch.on .fire:not(.alt)', icon: 'fireGun' },
@@ -97,16 +99,43 @@ function promptHtml(prompt: Prompt, root: Pick<Document, 'querySelector'> | null
   return `<span class="cot-key-prompt">${battleKeycap(prompt.label)}<span class="cot-key-prompt__said">${esc(prompt.label)}</span></span>`;
 }
 
-/** A catalog line whose {placeholders} name actions: each filled with that action's prompt, every other character
- *  escaped (the tutorial's sentinel swap, tutorialRunner.ts, as one helper). Other vars pass through as text. */
+/** A catalog line whose {placeholders} name actions: each filled with that action's prompt in the run of words, every
+ *  other character escaped (the tutorial's sentinel swap, tutorialRunner.ts, as one helper): for prose, a tutorial card's
+ *  body. Other vars pass through as text. */
 export function formatPrompt(input: PromptInput, key: string, actions: Readonly<Record<string, ActionId>>,
   vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
   const device = inputDevice(input);
+  return fill(key, actions, vars, (action) => promptHtml(promptFor(input, action, device), root));
+}
+
+/** A hint's line, laid out "[KEY] text" (owner 2026-11-20: "lets avoid 2 lines and if so make it [KEY] text (can be up to 2
+ *  lines)"): its keys (it leads with them: keyPrompt.selftest holds every hint line to that) in a column of their own,
+ *  centred against the words beside them, which wrap under their own first word and stop at two lines (cot-key-line,
+ *  components.css); never a key inside the run of words. A line without keys is its words, two lines at most. */
+export function formatKeyLine(input: PromptInput, key: string, actions: Readonly<Record<string, ActionId>>,
+  vars: Readonly<Record<string, string | number>> = {}, root?: Pick<Document, 'querySelector'> | null): string {
+  const device = inputDevice(input);
+  const keys: string[] = [];
+  const words = fill(key, actions, vars, (action) => {
+    // (an action with nothing to press on this device, a pad button left unbound, keeps its tile's icon in the column: a
+    // line never loses the thing it names)
+    const tile = TOUCH_TILES[action];
+    const html = promptHtml(promptFor(input, action, device), root)
+      || (tile ? promptHtml({ kind: 'tile', selector: tile.selector, icon: tile.icon }, root) : '');
+    if (html) keys.push(html);
+    return ' ';
+  }).replace(/\s+/g, ' ').trim();
+  const text = `<span class="cot-key-line__text">${words}</span>`;
+  return keys.length ? `<span class="cot-key-line"><span class="cot-key-line__keys">${keys.join('')}</span>${text}</span>` : text;
+}
+
+/** The catalog line, escaped, each action's placeholder replaced by `draw(action)`. */
+function fill(key: string, actions: Readonly<Record<string, ActionId>>, vars: Readonly<Record<string, string | number>>,
+  draw: (action: ActionId) => string): string {
   const marks: Record<string, string> = {};
   const names = Object.keys(actions);
   names.forEach((name, i) => { marks[name] = `\u0000${i}\u0000`; });
-  const line = esc(t(key, { ...vars, ...marks }));
-  return line.replace(/\u0000(\d+)\u0000/g, (_, i) => promptHtml(promptFor(input, actions[names[Number(i)]], device), root));
+  return esc(t(key, { ...vars, ...marks })).replace(/\u0000(\d+)\u0000/g, (_, i) => draw(actions[names[Number(i)]]));
 }
 
 /** The HUD tiles a line's actions name, for lighting them on a touch layout while the line shows. */

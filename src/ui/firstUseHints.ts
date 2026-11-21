@@ -15,7 +15,7 @@
 import type { ActionId } from '../game/input.ts';
 import { battleNotices } from './battleNotices.ts';
 import { createHintPolicy, START_DELAY_MS, type HintPolicy } from './firstUseHintPolicy.ts';
-import { formatPrompt, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
+import { formatKeyLine, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
 import { t } from './i18n.ts';
 import {
   abilityPicture, ammoPicture, autoAimPicture, moduleRepairPicture, reloadPicture, shadedHullPicture, suspensionPicture,
@@ -118,7 +118,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     if (id === 'moduleRepair') actions.repair = repairAction() ?? 'consumable1';
     const device = inputDevice(host.input);
     const noPrompt = !!def.lineNoPrompt && device !== 'keyboard';
-    const detailHtml = noPrompt ? formatPrompt(host.input, def.lineNoPrompt!, {}) : formatPrompt(host.input, def.line, actions);
+    const detailHtml = noPrompt ? formatKeyLine(host.input, def.lineNoPrompt!, {}) : formatKeyLine(host.input, def.line, actions);
     const settingsPath = `${t('settings.title')} › ${t('settings.tab.gameplay')} › ${t('settings.interface.armorOverlay')}`;
     battleNotices.show({
       id: `cot-hint-${id}`,

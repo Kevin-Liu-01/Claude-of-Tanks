@@ -36,7 +36,8 @@ interface NoticeContent {
   /** A second, quieter line (a reason, a count); keep it short: explanations belong in tips. */
   readonly detail?: string;
   /** The second line as markup, in place of `detail`: only a line from keyPrompt.ts formatPrompt (its keys as the kit's
-   *  keycaps, every character of its text escaped there), never text from a player or the network. */
+   *  keycaps, every character of its text escaped there; formatKeyLine's "[KEY] text" row), never text from a player or the
+   *  network. */
   readonly detailHtml?: string;
   /** A glyph in place of the severity's own. */
   readonly icon?: IconId;

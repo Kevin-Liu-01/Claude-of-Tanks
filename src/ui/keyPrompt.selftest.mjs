@@ -4,7 +4,7 @@
 // battle's tiles read the same resolver.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { battleKeycap, formatPrompt, inputDevice, promptFor, promptRevision, promptTiles } from './keyPrompt.ts';
+import { battleKeycap, formatKeyLine, formatPrompt, inputDevice, promptFor, promptRevision, promptTiles } from './keyPrompt.ts';
 
 function makeInput({ touch = false, pad = false } = {}) {
   const bindings = { consumable1: 'Digit4', autoAim: 'KeyT', hitboxOverlay: 'KeyH', shell1: 'Digit1', shell2: 'Digit2', shell3: 'Digit3' };
@@ -84,6 +84,38 @@ function makeInput({ touch = false, pad = false } = {}) {
     if (!key.startsWith('hud.hint.') || !key.endsWith('.line')) continue;
     assert.doesNotMatch(value, /\b(press|Press)\s+[0-9A-Z]\b|\b[0-9]\s*\/\s*[0-9]\b/, `${key} names its keys by placeholder`);
   }
+}
+
+// 6. a hint's line is "[KEY] text" (owner 2026-11-20: "lets avoid 2 lines and if so make it [KEY] text (can be up to 2
+// lines)"): its keys in a column of their own, never inside the words, the words two lines at most; every hint line, in
+// both locales, leads with its keys
+{
+  const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const input = makeInput();
+  const line = formatKeyLine(input, 'hud.hint.suspension.line', { tilt: 'consumable1' }, {}, null);
+  assert.match(line, /^<span class="cot-key-line"><span class="cot-key-line__keys"><span class="cot-key-prompt"><kbd[^>]*>4<\/kbd>/, 'the key leads, in its column');
+  assert.match(line, /<span class="cot-key-line__text">tilts the hull to aim<\/span><\/span>$/, 'the words beside it, no key among them');
+  const ammo = formatKeyLine(input, 'hud.hint.ammoTypes.line', { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' }, {}, null);
+  assert.match(ammo, /cot-key-line__keys">(<span class="cot-key-prompt">.*?<\/span><\/span>){3}<\/span><span class="cot-key-line__text">switch rounds</, 'several keys share the column');
+  const touch = formatKeyLine(makeInput({ touch: true }), 'hud.hint.moduleRepair.line', { repair: 'consumable1' }, {}, null);
+  assert.match(touch, /cot-key-line__keys"><span class="cot-key-prompt cot-key-prompt--tile"/, 'on touch the tile\'s icon takes the key\'s column');
+  assert.equal(formatKeyLine(input, 'hud.hint.reload.line', {}, {}, null), '<span class="cot-key-line__text">Grey: your next reload</span>', 'a line without keys is its words');
+  const strike = formatKeyLine(makeInput({ touch: true }), 'hud.hint.airSupport.line', { strike: 'strikeView' }, {}, null);
+  assert.match(strike, /cot-key-line__keys"><span class="cot-key-prompt cot-key-prompt--tile"/, 'Air Support\'s slot on touch');
+  const pad = makeInput({ pad: true });
+  const unbound = formatKeyLine(pad, 'hud.hint.autoAim.line', { autoAim: 'autoAim' }, {}, null);
+  assert.match(unbound, /cot-key-line__keys"><span class="cot-key-prompt cot-key-prompt--tile"/, 'a pad with no button for it keeps the tile\'s icon');
+  const css = read('./components/components.css');
+  assert.match(css, /\.cot-key-line\{display:grid;grid-template-columns:auto minmax\(0,1fr\);align-items:center/, 'the keys centred against the words');
+  assert.match(css, /\.cot-key-line__text\{[^}]*-webkit-line-clamp:2/, 'two lines at most');
+  for (const locale of ['en-US', 'zh-CN']) {
+    const catalog = JSON.parse(read(`./i18nCatalog.${locale}.json`));
+    for (const [key, value] of Object.entries(catalog)) {
+      if (!/^hud\.hint\.[a-zA-Z]+\.line$|^hud\.tip\.armorOverlayOn\.detailKey$/.test(key) || !value.includes('{')) continue;
+      assert.match(value, /^(\{[a-zA-Z0-9]+\}\s*)+[^{}]*$/, `${locale} ${key} leads with its keys and names none after: "${value}"`);
+    }
+  }
+  assert.match(read('./firstUseHints.ts'), /formatKeyLine\(host\.input, def\.line, actions\)/, 'every hint draws its line as a key line');
 }
 
 console.log('keyPrompt.selftest: PASS (a rebound key shows in a hint, a pad shows its button, touch shows the tile and no key, the revision follows bindings and device, one resolver for the strip and the tiles)');

@@ -208,7 +208,7 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top
    first of them): its one line and its key's line beside its picture (firstUseHintPictures.ts), no glyph, 56 px tall and at most
    260 wide and never wider than the guidance's box (at 255 in a 246 px box it ran onto the ammunition at 390x844), about
    a third of the tip's old plate; where to turn it off is the picture's label */
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(260px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__glyph{display:none}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__body{gap:1px}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
