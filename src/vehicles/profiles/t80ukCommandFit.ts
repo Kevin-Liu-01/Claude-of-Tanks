@@ -12,6 +12,7 @@ import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {antennaPart} from './antennaPart.ts';
+import {addShtoraEyes} from './shtora.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type Point=readonly[number,number,number];
 const {box,cylX,cylZ}=KIT;
@@ -369,6 +370,39 @@ function auxiliaryPowerUnit(P:TankBuilderPort,meshes:THREE.Mesh[]):void{
   for(let i=1;i<=6;i++){const t=i/7;P.addEquipment('hullDark',along(cylY(.0195,.008,10),hose.getTangentAt(t),hose.getPointAt(t)));}
 }
 
+// ---- the Shtora-1 emitters ----------------------------------------------------------------------------------------------
+
+/** The Shtora-1's two TShU-1-7 infrared emitters (274; photos/t80uk 01 and 03 in the lane evidence): 0.80 m either side
+ * of the gun, standing out ahead of the Kontakt-5 horseshoe, each a squat box whose whole front is the round window in its
+ * bezel, pin-fin heat sinks (drawn as rib packs) down both flanks and under the belly, a flat sun hood over the top, held
+ * in a U-cradle at the head of an arm that runs back over the horseshoe into the casting's front. The round lens is the
+ * fleet's OTShU lens (shtora.ts), so the night pass lights it as it lights every Shtora. `x`, `y` and `zc` are the body's
+ * centre (turret frame); `seat` is the casting's face behind it at the arm's height. */
+const EMITTER={x:.80,y:1.86-1.55158,back:1.62-.0718698169,hw:.12,hh:.135,depth:.22} as const;
+/** Both emitters' bodies, windows and lenses (the fleet's OTShU vocabulary draws the pair about the gun). */
+function shtoraBodies(P:TankBuilderPort):void{
+  addShtoraEyes({mats:P.mats,turretG:P.turretG,disposables:P.disposables,add:(slot,g,x,y,z)=>P.addEquipment(slot,g,x,y,z)},
+    {x:EMITTER.x,y:EMITTER.y,z:EMITTER.back+EMITTER.depth/2,scale:1,round:true,kit:false});
+}
+/** The arm's height and its inboard station, where the casting is read behind the emitter. */
+const emitterArm=(side:number)=>({x:side*(EMITTER.x-(EMITTER.hw-.050)),y:EMITTER.y+EMITTER.hh-.020});
+function shtoraEmitter(P:TankBuilderPort,side:number,seat:number):void{
+  const {hw,hh,depth}=EMITTER,x=side*EMITTER.x,y=EMITTER.y,zc=EMITTER.back+depth/2,front=zc+depth/2;
+  // rib packs: four fins down each flank, three under the belly, each a little proud of the body it cools
+  for(const s of [-1,1])for(let k=0;k<4;k++)
+    P.addEquipment('turretDark',box(.030,hh*1.70,.022),x+s*(hw+.012),y,zc-depth/2+.035+k*.050);
+  for(let k=0;k<3;k++)P.addEquipment('turretDark',box(hw*1.70,.030,.022),x,y-hh-.012,zc-depth/2+.045+k*.065);
+  // the sun hood reaches ahead of the window
+  P.addEquipment('turretDetail',box(hw*2+.050,.014,depth+.080),x,y+hh+.040,zc+.040);
+  // the U-cradle: a belly bar and two flank straps, then the arm back over the horseshoe into the casting
+  P.addEquipment('turretDetail',box(hw*2+.100,.024,.060),x,y-hh-.040,zc-.020);
+  for(const s of [-1,1])P.addEquipment('turretDetail',box(.020,hh*2+.080,.060),x+s*(hw+.040),y,zc-.020);
+  const arm=emitterArm(side),armBack=seat-SEAT_M,armFront=front-depth+.020;
+  P.addEquipment('turretDetail',box(.070,.055,armFront-armBack).translate(arm.x,arm.y,(armBack+armFront)/2));
+  P.addEquipment('turretDetail',box(.130,.110,.020),arm.x,arm.y,armBack+.004);
+  for(const dx of [-.040,.040])P.addEquipment('turretDark',cylZ(.008,.012,6),arm.x+dx,arm.y,armBack+.016);
+}
+
 /** Lay the T-80UK command fit (after buildT80UX). */
 export function addT80UKCommandFit(P:TankBuilderPort):void{
   const turret=stock(P,TURRET_STOCK),hull=stock(P,HULL_STOCK);
@@ -381,11 +415,15 @@ export function addT80UKCommandFit(P:TankBuilderPort):void{
     // commander's NSVT muzzle's 1.25 m reach, the left boss clear of the loader's hatch ring
     const whips=[-1,1].map(s=>({s,x:s*.36,z:-.97,ring:BOSS_RING.map(([dx,dz])=>roof(s*.36+dx,-.97+dz,'an antenna mount')),
       fitting:roof(s*.36-s*.215,-.97,'an antenna cable fitting')}));
+    // the emitter arms' seats on the casting's front, read along the arm from ahead of the emitter (Kontakt-5 is not stock)
+    const emitterSeats=[-1,1].map(s=>{const a=emitterArm(s);return hit(turret.meshes,[a.x,a.y,EMITTER.back],[0,0,-1],'a Shtora emitter arm',P.spec.id).z;});
     rearBasket(P,turret.meshes);
     for(const h of lwr)laserWarningHead(P,h.x,h.z,h.corners);
     windSensorMast(P,wind.x,wind.z,wind.slope);
     for(const w of whips)antennaMount(P,w.x,w.z,w.s,w.ring,w.fitting);
     canvasRoll(P);
     auxiliaryPowerUnit(P,hull.meshes);
+    shtoraBodies(P);
+    [-1,1].forEach((s,i)=>shtoraEmitter(P,s,emitterSeats[i]));
   }finally{turret.dispose();hull.dispose();}
 }

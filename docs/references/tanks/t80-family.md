@@ -1,4 +1,4 @@
-# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`, `t80u_kursk`, `t84`; release 274)
+# T-80 family (`t80`, `t80b`, `t80bv`, `ua_t80bv`, `t80u_kursk`, `t84`, the `t80uk` Shtora; release 274)
 
 Lane `item/t80-family-274`. The owner, 2026-11-20: "lets redesign the t80, t80b, t80bv, and their ukrainian counterparts
 to be like our t90 fixes - we have old models with certain design styles that make them unique, modern versions of the
@@ -141,6 +141,16 @@ already could). Each now has its own curve, measured with its stowage on (`tools
 `t80MarkFrames.ts`): from 148 to 169 deg the gun rides up to 7.5 deg (7.7 on the Ukrainian tank's can side) to clear
 the drums, and the fender-tail boxes and cans hold it at -3.5 to -4.6 deg just ahead of that. The three Soviet marks share
 one curve.
+
+## The T-80UK's Shtora-1 emitters (`t80uk`, 2026-11-21)
+
+The command fit (`profiles/t80ukCommandFit.ts`) carried the Shtora-1's laser-warning heads but not its two TShU-1-7
+infrared emitters. Photographs t80uk/01 and 03 place them 0.80 m either side of the gun, standing out ahead of the
+Kontakt-5 horseshoe with their centres level with the top of the mantlet: a squat box whose front is the round window,
+pin-fin heat sinks down both flanks and under the belly (drawn as rib packs), a flat sun hood, held in a U-cradle at the
+head of an arm that runs back over the horseshoe into the casting. The body and lens are the fleet's OTShU vocabulary
+(`shtora.ts`), so the night pass lights them as every Shtora; each arm is seated by a ray on the casting, not on a
+reactive container. Drawn only: no gameplay reads Shtora.
 
 ## Blind critic (2026-11-20)
 
