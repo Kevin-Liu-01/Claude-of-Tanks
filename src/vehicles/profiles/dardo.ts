@@ -2,6 +2,8 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Dardo production IFV: HITFIST 25 turret and six-wheel Italian chassis.
 // Dimensions and photographed equipment: docs/references/batches/europe-ifvs-20260925.md.
 import { KIT } from './kit.ts';
+import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
+import { reserveDecorVolume } from './fieldChest.ts';
 import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, deckGrille, smokeBank } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -60,6 +62,39 @@ function buildHull(P: TankBuilderPort): void {
   }
 }
 
+/** The HITFIST mantlet's section (gun-local, viewed from +Z): a welded block, wider on the coaxial side (-x), every
+ * edge chamfered by `c`. */
+const mantletRing=(left:number,right:number,low:number,high:number,c:number):SectionPoint[]=>[
+  [left+c,low],[right-c,low],[right,low+c],[right,high-c],[right-c,high],[left+c,high],[left,high-c],[left,low+c],
+];
+
+/** The 25 mm KBA's external mantlet, gun-local (trunnion origin, +z along the bore), pitching with the gun from -10 to
+ * +60 degrees (owner 2026-11-20: "give the dardo a special actual turret with mantlet"). It replaces the plain
+ * 0.47 x 0.39 x 0.53 box and loose collar the gun carried since 2026-09-25:
+ * - the trunnion drum across the turret's nose (r 0.20, its axis the gun pivot), so the joint stays closed through the
+ *   whole elevation arc;
+ * - the welded shield block in front of it, 0.58 wide and 0.39 tall, its face chamfered back to a smaller front ring;
+ * - the coaxial 7.62 mm in the shield's face beside the cannon (it hung 31 mm clear of the old box on a clamp);
+ * - the barrel's armoured sleeve, flange and step-down collar to the tube, and four flush bolts on the face. */
+function addHitfistMantlet(P: TankBuilderPort): void {
+  const n=P.q?32:16;
+  P.addGunExtra(cylX(.20,.60,n),-.02,0,0);
+  P.addGunExtra(sectionSolid([
+    {z:-.02,ring:mantletRing(-.31,.27,-.19,.20,.05)},
+    {z:.21,ring:mantletRing(-.31,.27,-.19,.20,.05)},
+    {z:.30,ring:mantletRing(-.28,.24,-.16,.17,.07)},
+  ]));
+  for(const x of [-.335,.295]) P.addGunExtraDark(cylX(.085,.03,P.q?20:12),x,0,0);   // trunnion caps on the drum's ends
+  P.addGunExtra(cylZ(.088,.024,n),0,-.01,.312);                                     // sleeve flange on the face
+  P.addGunExtra(cylZ(.074,.15,n),0,0,.395);                                         // armoured sleeve
+  P.addGunExtra(cylZ(.058,.05,n),0,0,.495);                                         // step-down collar to the tube
+  // the coaxial MG's port: a raised collar in the face, its dark mouth and the muzzle standing just proud of it
+  P.addGunExtra(cylZ(.034,.03,P.q?16:10),-.20,-.07,.315);
+  P.addGunExtraDark(cylZ(.019,.006,P.q?16:10),-.20,-.07,.333);
+  P.addGunExtraDark(cylZ(.011,.09,P.q?12:8),-.20,-.07,.375);
+  for(const [x,y] of [[-.23,.12],[.17,.12],[.17,-.10],[-.08,-.11]] as const) P.addGunExtraDark(cylZ(.013,.01,8),x,y,.303);
+}
+
 function buildTurret(P: TankBuilderPort): void {
   const [, py, pz] = P.spec.armor.turretPivot;
   // Release 240 (the owner: "make sure all tank turrets have a proper turret ring/attachment area"): the ring collar is
@@ -69,11 +104,15 @@ function buildTurret(P: TankBuilderPort): void {
   // over the deck reads as the collar, not a slot under the turret.
   P.turretG.userData.turretSeatKeepR=.79;
   P.add('turret',cylY(.73,.77,.1125,32),0,.03375,0);
+  // The welded two-man shell: sloped sides over the knee, and (2026-11-20) a wedge nose instead of the flat 1.48 m front
+  // wall: the upper front plate falls 0.28 m from the roof edge to the nose at the trunnion, the lower plate rises to
+  // it, and the sides close in to the mantlet, as the HITFIST's front plates do.
   P.add('turret',armorLoft([
     [-1.45,.68,.91,.64,1.89,2.03,2.40],
     [-1.10,.79,1.01,.74,1.77,1.93,2.42],
     [.02,.82,1.04,.78,1.77,1.97,2.42],
-    [.48,.56,.74,.54,1.80,2.02,2.34],
+    [.28,.80,1.01,.76,1.77,1.98,2.42],
+    [.62,.50,.60,.46,1.97,2.06,2.14],
   ],py,pz));
   for (const side of [-1,1]) {
     P.addHatch('turret',cylY(.25,.27,.040,20),side*.41,.735,-.32);
@@ -82,20 +121,22 @@ function buildTurret(P: TankBuilderPort): void {
       const a=i*Math.PI/2;
       KIT.periscope(P,'turretDetail',side*.41+.27*Math.sin(a),.766,-.32+.27*Math.cos(a),a);
     }
-    smokeBank(P,side,.83,2.21,.09,4);
+    smokeBank(P,side,.83,2.21,.02,4);
+    // 2026-11-20: the bank's bracket and tubes (turret-local x 0.76-0.97, y 0.41-0.67, z 0.04-0.62) are the decor's to
+    // keep out of. The wedge front reseated the decor's cheek smoke banks forward, which freed this side station, and the
+    // turret-side tarp hung on it over these tubes (on main it found no station and dropped).
+    reserveDecorVolume(P.turretG,side<0?[-.99,.39,.02]:[.74,.39,.02],side<0?[-.74,.69,.64]:[.99,.69,.64]);
     // Rear bustle storage and tied-down lifting eyes follow the crew box.
     P.addEquipment('turretDetail',box(.20,.28,.78),side*.85,.45,-.73);
     KIT.liftEye(P,'turretDetail',side*.73,.70,-.61);
   }
-  optic(P,-.38,2.475,.27,.27,.25,.29);
-  optic(P,.38,2.47,.27,.20,.22,.23);
+  // The gunner's and commander's sight heads stand at the roof's front edge, behind the upper front plate.
+  optic(P,-.38,2.475,.20,.27,.25,.29);
+  optic(P,.38,2.47,.20,.20,.22,.23);
   antenna(P,.53,2.418,4.14,-1.02); // 2026-10-19 (owner float sweep): base stood 20 mm over the roof
-  P.addGunExtra(box(.47,.39,.53),0,0,.05);
-  P.addGunExtra(cylZ(.10,.28,20),0,0,.40);
+  addHitfistMantlet(P);
   P.add('gun',cylZ(.043,1.58,24),0,0,1.28);
   openTube(P,.052,2.04,2.45,.0125);
-  P.addGunExtraDark(cylZ(.019,.55,12),-.285,-.065,.28);
-  P.addGunExtraDark(box(.05,.03,.06),-.255,-.065,.20); // 2026-10-19 (owner float sweep): the coax ran 31 mm clear of the mantlet; a clamp holds it
 }
 
 export function buildDardo(P: TankBuilderPort): void {

@@ -96,8 +96,8 @@
       "concealers": 10808
     },
     "alpine": {
-      "bytes": 1433314,
-      "sha256": "77c19807683aeabc9f43f51a8f1fea4a2e47b12c8072e4d733e2ff0d915e11f7",
+      "bytes": 1433365,
+      "sha256": "238af5ecfdf6c1e71c1fcddb5056782fdecfda0a69d98a1a40513b13654a15b1",
       "obstacles": 2592,
       "colliders": 2703,
       "concealers": 1139
@@ -330,8 +330,8 @@
         "concealers": 11375
       },
       "alpine": {
-        "bytes": 1525088,
-        "sha256": "513ddb17aa88b8af6ac74264b907b3861cb500286efa8633d8c1ac1b10037755",
+        "bytes": 1525114,
+        "sha256": "ca08fdb462724fc8ef110d0e11f0a7445516c8f454e20db317ed47d74ddc2101",
         "obstacles": 2661,
         "colliders": 2725,
         "concealers": 1139
