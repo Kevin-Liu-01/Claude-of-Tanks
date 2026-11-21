@@ -79,6 +79,22 @@ assert.ok(((nose.x - F.x) * (sentry.x - F.x) + (nose.z - F.z) * (sentry.z - F.z)
 const turned = at(square + 35 * DEG);
 assert.ok(Math.abs(Math.atan2(turned.x - F.x, turned.z - F.z) - (square + 35 * DEG)) < 1e-9, 'the aim turns with the hull');
 assert.deepEqual(at(square + 0.3), at(square + 0.3), 'the same pose gives the same aim');
+// (the S9 probe of 2026-11-20) a tilted hull: the aim stays on the plate in the hull's own frame, the armour model's
+// (sim/armor.ts buildFrames: Euler 'YXZ', x = -pitch, z = roll), not 1 m above the hull's origin in the world
+{
+  const { Euler, Matrix4, Quaternion, Vector3: V } = await import('three');
+  for (const [pitch, roll] of [[8 * DEG, 0], [-6 * DEG, 4 * DEG], [3 * DEG, -7 * DEG]]) {
+    const hull = { x: F.x, y: 2, z: F.z, yaw: square + 40 * DEG, pitch, roll };
+    const aim = trainingVolleyAim(hull, sentry.volley, { x: 0, y: 0, z: 0 });
+    const m = new Matrix4().compose(new V(hull.x, hull.y, hull.z), new Quaternion().setFromEuler(new Euler(-pitch, hull.yaw, roll, 'YXZ')), new V(1, 1, 1));
+    const local = new V(aim.x, aim.y, aim.z).applyMatrix4(m.invert());
+    assert.ok(Math.abs(local.x) < 1e-9 && Math.abs(local.y - sentry.volley.aim.upM) < 1e-9 && Math.abs(local.z - sentry.volley.aim.alongM) < 1e-9,
+      `tilted ${(pitch / DEG).toFixed(0)}/${(roll / DEG).toFixed(0)} degrees, the aim is the plate's point in the hull's frame`);
+  }
+  assert.match(readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8'), /pitch: target\.state\.visualPitch \?\? 0, roll: target\.state\.visualRoll \?\? 0/, 'the shooter aims with the hull\'s tilt');
+  assert.match(readFileSync(new URL('./trainingThreat.ts', import.meta.url), 'utf8'), /pitch: turned\.visualPitch, roll: turned\.visualRoll/,
+    'and the angling arc reads the same tilted point');
+}
 
 // 3. The colours.
 const player = (offsetDeg) => ({ pos: new Vector3(F.x, 0, F.z), yaw: square + offsetDeg * DEG, visualPitch: 0, visualRoll: 0, turretYaw: -offsetDeg * DEG, gunPitch: 0 });

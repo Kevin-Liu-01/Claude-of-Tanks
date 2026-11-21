@@ -42,7 +42,7 @@ export function trainingThreatVerdicts(
   return offsetsDeg.map((offset) => {
     // the hull turned, the gun kept where it points (the scene asks the player to keep it on the shooter)
     const turned: ArmorPoseState = { ...player, yaw: player.yaw + offset * DEG, turretYaw: player.turretYaw - offset * DEG };
-    trainingVolleyAim({ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: turned.yaw }, volley, _aim);
+    trainingVolleyAim({ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: turned.yaw, pitch: turned.visualPitch, roll: turned.visualRoll }, volley, _aim);
     _to.set(_aim.x, _aim.y, _aim.z);
     const reach = _dir.copy(_to).sub(_from).length();
     _dir.normalize();

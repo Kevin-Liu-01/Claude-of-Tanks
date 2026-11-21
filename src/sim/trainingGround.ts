@@ -270,17 +270,23 @@ export function trainingActor(rules: TrainingRules, key: string): TrainingActorR
 
 /** The point a scripted shooter lays its gun on: the player's hull (its origin and heading) and the volley's aim. Pure;
  *  `out` is written and returned. */
-export function trainingVolleyAim(hull: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number },
+export function trainingVolleyAim(
+  hull: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number; readonly pitch?: number; readonly roll?: number },
   volley: TrainingVolley, out: { x: number; y: number; z: number },
   shooter: { readonly x: number; readonly z: number } | null = null): { x: number; y: number; z: number } {
-  const along = volley.aim.alongM;
   // across: toward the shooter's side of the hull (its left is +x at a yaw of 0)
   const lx = Math.cos(hull.yaw), lz = -Math.sin(hull.yaw);
   const side = shooter && (shooter.x - hull.x) * lx + (shooter.z - hull.z) * lz < 0 ? -1 : 1;
-  const across = (volley.aim.acrossM ?? 0) * side;
-  out.x = hull.x + Math.sin(hull.yaw) * along + lx * across;
-  out.y = hull.y + volley.aim.upM;
-  out.z = hull.z + Math.cos(hull.yaw) * along + lz * across;
+  // the point in the hull's own frame, tilted as the armour is (sim/armor.ts buildFrames: Euler 'YXZ', x = -pitch,
+  // z = roll): on a slope "1 m up the front plate" stays on that plate (the S9 probe of 2026-11-20: aimed level, the
+  // Sentry's rounds struck 0.45 m higher, on the green upper glacis, four of six through)
+  const x0 = (volley.aim.acrossM ?? 0) * side, y0 = volley.aim.upM, z0 = volley.aim.alongM;
+  const r = hull.roll ?? 0, p = -(hull.pitch ?? 0);
+  const x1 = x0 * Math.cos(r) - y0 * Math.sin(r), y1 = x0 * Math.sin(r) + y0 * Math.cos(r);
+  const y2 = y1 * Math.cos(p) - z0 * Math.sin(p), z2 = y1 * Math.sin(p) + z0 * Math.cos(p);
+  out.x = hull.x + x1 * lx + z2 * Math.sin(hull.yaw);
+  out.y = hull.y + y2;
+  out.z = hull.z + x1 * lz + z2 * Math.cos(hull.yaw);
   return out;
 }
 

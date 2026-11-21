@@ -1016,7 +1016,8 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   const slot = entity.spec.gun.shells.findIndex((shell) => shell.type === actor.volley!.shellType);
   if (slot >= 0) entity.input.shellSlot = slot;
   const pos = target.state.pos;
-  const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw };
+  // the hull's tilt with it: the aim stands on the plate the armour model has there (trainingVolleyAim)
+  const hull = { x: pos.x, y: pos.y, z: pos.z, yaw: target.state.yaw, pitch: target.state.visualPitch ?? 0, roll: target.state.visualRoll ?? 0 };
   trainingVolleyAim(hull, actor.volley, entity.input.aimPoint, entity.state.pos);
   // a slow turret (S13): its gun laid along a yaw that turns toward the plate at its own rate, the aim point on that line
   let arcAllows = true;
