@@ -75,6 +75,8 @@ export interface DebugSurfaceDependencies {
   bakeMinimapForMap(mapId: string): Promise<RuntimeValue>;
   beginBattleEntry: UnknownAction;
   beginSoloBattle: UnknownAction;
+  /** (mobile-hud-274) draws a first-use hint as it shows, past its policy, never marked seen: for the stills. */
+  previewHint(id: string): Promise<void>;
   beginNetworkBattle(request?: BrowserLaunchRequest): RuntimeValue;
   enterGarage: UnknownAction;
   leaveBattleToGarage: UnknownAction;
@@ -211,6 +213,7 @@ export function installDebugSurface(
     bakeMinimapForMap: deps.bakeMinimapForMap,
     beginBattleEntry: deps.beginBattleEntry,
     beginSoloBattle: deps.beginSoloBattle,
+    previewHint: deps.previewHint,
     beginNetworkBattle: deps.beginNetworkBattle,
     enterGarage: deps.enterGarage,
     leaveBattleToGarage: deps.leaveBattleToGarage,

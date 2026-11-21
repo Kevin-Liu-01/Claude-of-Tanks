@@ -53,19 +53,30 @@ const firstLaterSave = input.indexOf('saveJson(SETTINGS_KEY', input.indexOf('// 
 assert.ok(applied > 0 && flip > applied, 'the flip runs on the applied record');
 assert.ok(firstLaterSave < 0 || flip < firstLaterSave, 'and before any later save of it');
 const main = read('src/main.ts');
-const hook = main.slice(main.indexOf('armourTipDue('), main.indexOf("import('./ui/armourOverlayTip.ts')") + 200);
+// (mobile-hud-274) the tip is the first-use hints' armourShading (ui/firstUseHints.ts): offered at the rollout once marked
+// done, its line the player's own key through the one resolver (ui/keyPrompt.ts) or, on a pad or a phone, the colours'
+// meaning; its picture the overlay's own colours
+const hook = main.slice(main.indexOf('armourTipDue('), main.indexOf("hints.offer('armourShading')") + 40);
 assert.match(main, /if \(game\.watch \|\| game\.couch \|\| game\.phase !== 'battle'\) return;/, 'never a watched or couch battle');
 // (274) a battle the tutorial teaches leaves the tip to the tutorial's armour step, which marks it done
 assert.match(main, /if \(document\.body\.classList\.contains\('cot-tutorial'\)\) return;\s*const due = armourTipDue/, 'the tutorial teaches it instead');
 assert.match(main, /taught: \(subject\) => \{ if \(subject === 'armourColours'\) writeArmourDefaultMarker\('done'\); \}/, 'the tutorial\'s step marks the tip done');
-assert.ok(hook.indexOf("writeArmourDefaultMarker('done')") < hook.indexOf("import('./ui/armourOverlayTip.ts')"), 'marked done before it shows: once');
-assert.match(hook, /input\.getBinding\('hitboxOverlay'\)/, 'a keyboard reads its own key');
-assert.doesNotMatch(main.slice(0, main.indexOf('armourTipDue(')), /from '\.\/ui\/armourOverlayTip\.ts'/, 'the tip module is never on the boot path');
-const tip = read('src/ui/armourOverlayTip.ts');
-assert.match(tip, /t\('settings\.interface\.armorOverlay'\)/, 'the tip names the feature as Settings does');
+assert.ok(hook.indexOf("writeArmourDefaultMarker('done')") >= 0 && hook.indexOf("writeArmourDefaultMarker('done')") < hook.indexOf("hints.offer('armourShading')"),
+  'marked done before it is offered: once');
+assert.match(hook, /if \(due === 'show'\) hints\.offer\('armourShading'\)/, 'offered only when due');
+assert.doesNotMatch(main, /from '\.\/ui\/firstUseHints\.ts'/, 'the hints module is never on the boot path');
+const hints = read('src/ui/firstUseHints.ts');
+assert.match(hints, /armourShading: \{[^}]*actions: \{ key: 'hitboxOverlay' \}/, 'a keyboard reads its own key (the resolver\'s prompt)');
+assert.match(hints, /t\('settings\.interface\.armorOverlay'\)/, 'the tip names the feature as Settings does');
+const pictures = read('src/ui/firstUseHintPictures.ts');
+assert.match(pictures, /from '\.\.\/game\/armorShadeColors\.ts'/, 'the tip draws the overlay\'s own colours');
+assert.doesNotMatch(hints + pictures, /from 'three'/, 'the hints\' chunk never loads three.js');
 const en = JSON.parse(read('src/ui/i18nCatalog.en-US.json'));
 const zh = JSON.parse(read('src/ui/i18nCatalog.zh-CN.json'));
-for (const [key, holder] of [['hud.tip.armorOverlayOn.text', null], ['hud.tip.armorOverlayOn.detailKey', 'key'], ['hud.tip.armorOverlayOn.detailSettings', 'path']]) {
+// (mobile-hud-274) the short tip: its line, the colours' meaning (with the key where there is one), and where Settings turns
+// it off as its picture's label
+for (const [key, holder] of [['hud.tip.armorOverlayOn.text', null], ['hud.tip.armorOverlayOn.detailKey', 'key'], ['hud.tip.armorOverlayOn.detailSettings', 'path'],
+  ['hud.tip.armorOverlayOn.legend', null]]) {
   for (const catalog of [en, zh]) {
     assert.ok(catalog[key], `${key} in both locales`);
     if (holder) assert.ok(catalog[key].includes(`{${holder}}`), `${key} names {${holder}}`);

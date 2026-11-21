@@ -36,8 +36,15 @@ const MARK_DIRS = ['public/brand/nav', 'public/brand/features'];
  *  masters of the Settings rows' glyphs: 11054 to 12262 B, re-pinned at 13 KB. Merged with 260's consumables catalog (its
  *  ten cs* glyphs and, for the Settings slot rows that draw them at 16 px, their small masters): 13200 B, re-pinned at
  *  14 KB. The boot slice holds. Air Support (air-support-270), the fifteenth mode, and its strike-view key's glyph: 14382 B,
- *  re-pinned at 14.5 KB. */
+ *  re-pinned at 14.5 KB. The icon overhaul (mobile-hud-274, 2026-11-20) deleted eleven glyphs nothing drew (14300 B), then
+ *  redrew twelve battle glyphs and gave ten of them their first 16-unit masters: 15071 B, re-pinned at 15 KB. Its
+ *  consumables and equipment batch redrew nine glyphs and gave eight equipment glyphs the 16-unit masters the battle
+ *  loadout readout draws at 15 px: 15620 B, re-pinned at 16 KB. The garage, gallery and camo glyphs move to a lazy second
+ *  sprite at the overhaul's end. That split (Main 2026-11-20) measures the two chunks icon.ts loads, both generated from
+ *  sprite.svg: the main one (every glyph a battle can draw) 13957 B, pinned at 14.5 KB; the lazy one (garage, gallery,
+ *  Field Manual and camo glyphs) 2620 B, pinned at 3 KB. */
 const SPRITE_GZIP_MAX = 14.5 * 1024;
+const LAZY_SPRITE_GZIP_MAX = 3 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;
@@ -116,16 +123,22 @@ function spriteRules() {
     const text = existsSync(join(root, rel)) ? readFileSync(join(root, rel), 'utf8') : '';
     if (/rgba\(8,\s*12,\s*16|#101920/.test(text)) problems.push(`${rel}: a baked dark knock-out (use evenodd or a mask)`);
   }
-  const spriteBytes = Buffer.from(spriteText);
+  // (the budgets weigh what the browser fetches: the two generated chunks, not the authored source)
+  const chunk = (name) => (existsSync(join(root, `src/ui/icons/${name}`)) ? readFileSync(join(root, `src/ui/icons/${name}`)) : Buffer.alloc(0));
+  const spriteBytes = chunk('spriteMain.svg');
+  const lazyBytes = chunk('spriteLazy.svg');
   const index = readFileSync(join(root, 'src/ui/icons/spriteIndex.ts'), 'utf8');
   const boot = Buffer.from(index.match(/BOOT_SYMBOLS = '(.*)';/)?.[1] ?? '');
   const sizes = {
     spriteRaw: spriteBytes.length,
     spriteGzip: gzipSync(spriteBytes, { level: 6 }).length,
+    lazyRaw: lazyBytes.length,
+    lazyGzip: gzipSync(lazyBytes, { level: 6 }).length,
     bootRaw: boot.length,
     bootBrotli: brotliCompressSync(boot, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }).length,
   };
   if (sizes.spriteGzip > SPRITE_GZIP_MAX) problems.push(`sprite: ${sizes.spriteGzip} B gzip > ${SPRITE_GZIP_MAX}`);
+  if (sizes.lazyGzip > LAZY_SPRITE_GZIP_MAX) problems.push(`lazy sprite: ${sizes.lazyGzip} B gzip > ${LAZY_SPRITE_GZIP_MAX}`);
   if (sizes.bootBrotli > BOOT_BROTLI_MAX) problems.push(`boot slice: ${sizes.bootBrotli} B brotli > ${BOOT_BROTLI_MAX}`);
   return { problems, glyphs: large.size, smallMasters: small.size, modes: modes.length, sizes };
 }
@@ -147,7 +160,8 @@ else {
     + `[${result.values.join(', ')}]`);
   if (report.sizes) {
     console.log(`  ${report.glyphs} glyphs, ${report.smallMasters} 16-unit masters, ${report.modes} mode glyphs; sprite `
-      + `${report.sizes.spriteRaw} B raw / ${report.sizes.spriteGzip} B gzip; boot slice ${report.sizes.bootBrotli} B brotli`);
+      + `${report.sizes.spriteRaw} B raw / ${report.sizes.spriteGzip} B gzip, lazy ${report.sizes.lazyGzip} B gzip; boot slice `
+      + `${report.sizes.bootBrotli} B brotli`);
     for (const problem of report.problems) console.error(`  FAIL ${problem}`);
   }
 }

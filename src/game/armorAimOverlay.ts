@@ -35,6 +35,7 @@ import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armo
 import {
   ARMOR_PAINT_PANEL_SLOTS as PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS as SET_SLOTS, ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS,
 } from '../vehicles/materials.ts';
+import { ARMOR_SHADE_EDGE, ARMOR_SHADE_PASSES, ARMOR_SHADE_STOPS } from './armorShadeColors.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 /**
@@ -70,11 +71,11 @@ const TURRET_ENVELOPE_FLOOR_M = 0.05;
 const BARREL_RADIUS_M = 0.15;
 const BARREL_CLEAR_M = 0.05;
 
-/** The paint's tone of each of the reticle's verdicts (its ring's green, amber and red, deepened for the steel). */
+/** The paint's tone of each of the reticle's verdicts (its ring's green, amber and red; one source in armorShadeColors.ts). */
 const VERDICT_COLOR: Readonly<Record<PenVerdict, THREE.Color>> = {
-  pen: new THREE.Color(0x48d985),
-  marginal: new THREE.Color(0xf0aa35),
-  nopen: new THREE.Color(0xe53d35),
+  pen: new THREE.Color(ARMOR_SHADE_PASSES),
+  marginal: new THREE.Color(ARMOR_SHADE_EDGE),
+  nopen: new THREE.Color(ARMOR_SHADE_STOPS),
 };
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();

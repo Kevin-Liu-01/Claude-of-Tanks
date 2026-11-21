@@ -1655,10 +1655,12 @@ Every UI glyph lives once, as a `<symbol>` in `src/ui/icons/sprite.svg`: 24-unit
 (`i-<id>`) plus 16-unit optical masters (`i-<id>-s`) for the glyphs drawn at 18 px and
 below. `icon(id, options)` in `src/ui/icons/icon.ts` returns the host `<svg>` that carries
 the viewBox, the one stroke per optical size (1.5 / 1.25), square caps, mitre joins and
-`currentColor`; the boot slice mounts synchronously and the full sprite from its own lazy
-chunk. `uiIconSVG` (`src/ui/uiIcons.ts`) is the compatibility call for surfaces not yet
+`currentColor`; the boot slice mounts synchronously, then the sprite arrives as two lazy
+chunks generated from it: `spriteMain.svg` (every glyph a battle can draw) and, after it,
+`spriteLazy.svg` (the garage, gallery, Field Manual and camo glyphs; `LAZY_ICON` in
+`tools/gen-icon-sprite.mjs` picks them). The census budgets each chunk. `uiIconSVG` (`src/ui/uiIcons.ts`) is the compatibility call for surfaces not yet
 rebuilt. After editing the sprite run `node tools/gen-icon-sprite.mjs` (ids, small and
-active sets, boot slice, the Studio tab mark and the README pictograms) and
+active sets, boot slice, the two chunks, the Studio tab mark and the README pictograms) and
 `node tools/icon-stroke-census.mjs`; `node tools/icon-sheet.mjs` renders a CPU-only
 review sheet at 64, 24 and 16 px.
 

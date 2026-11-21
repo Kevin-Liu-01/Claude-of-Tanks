@@ -98,7 +98,9 @@
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
   --hollow-shadow:0 8px 28px rgba(0,0,0,.32);--stage-halo:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55);
   --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.66),rgba(5,6,8,.46) 62%,rgba(5,6,8,0));
-  --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-font:var(--font-ui);
+  --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-plate-touch:rgba(13,16,20,.82);
+  --hud-plate-touch-control:rgba(13,16,20,.56);--hud-plate-touch-well:rgba(13,16,20,.36);--hud-plate-touch-blur:blur(6px);
+  --hud-font:var(--font-ui);
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
   --focus-bracket-color:var(--focus-ink);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
   --focus-bracket-dur:var(--dur-fast);
@@ -140,7 +142,7 @@
   --team-own:#7ee87e;--team-enemy:#f05a5a;
 }
 :root[data-contrast=high]{
-  --surface-plate:rgba(13,16,20,.96);--hud-plate:var(--hud-plate-strong);--ink-3:var(--ink-2);--line-1:var(--line-3);--line-2:var(--line-3);--line-3:rgba(246,243,236,.38);--line-control:rgba(246,243,236,.56);--text-own:var(--ink-1);--text-enemy:var(--ink-1);--text-squad:var(--ink-1);--text-ok:var(--ink-1);--text-warn:var(--ink-1);--text-danger:var(--ink-1);--text-info:var(--ink-1);--text-accent:var(--ink-1);
+  --surface-plate:rgba(13,16,20,.96);--hud-plate:var(--hud-plate-strong);--hud-plate-touch:var(--hud-plate-strong);--hud-plate-touch-control:var(--hud-plate-strong);--hud-plate-touch-well:var(--hud-plate-strong);--ink-3:var(--ink-2);--line-1:var(--line-3);--line-2:var(--line-3);--line-3:rgba(246,243,236,.38);--line-control:rgba(246,243,236,.56);--text-own:var(--ink-1);--text-enemy:var(--ink-1);--text-squad:var(--ink-1);--text-ok:var(--ink-1);--text-warn:var(--ink-1);--text-danger:var(--ink-1);--text-info:var(--ink-1);--text-accent:var(--ink-1);
 }
 :root[data-motion=reduce]{
   --dur-instant:1ms;--dur-fast:1ms;--dur-base:1ms;--dur-screen:1ms;--dur-stage:1ms;

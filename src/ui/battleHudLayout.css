@@ -203,6 +203,18 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=war
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong))}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box-shadow:var(--focus-ring)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
+/* (mobile-hud-274, owner 2026-11-20: "make this notification a lot smaller and have an image or something in the
+   notification part maybe on right that shows what it is") every first-use hint (firstUseHints.ts, the armour tip the
+   first of them): its one line and its key's line beside its picture (firstUseHintPictures.ts), no glyph, 56 px tall and at most
+   260 wide and never wider than the guidance's box (at 255 in a 246 px box it ran onto the ammunition at 390x844), about
+   a third of the tip's old plate; where to turn it off is the picture's label */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(360px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__glyph{display:none}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__body{gap:1px}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__media{width:64px;height:48px}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -615,7 +627,9 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 .cot-battle-notices .cot-aim-notice .cot-c-notice__glyph,.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph svg{width:16px;height:16px}
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
+  /* (mobile-hud-274: only while the region holds the chip alone; a toast of its own (the armour colours' tip, 273) takes
+     the guidance's place, data-hud-guidance~=toasts: seated at the chip's, the tip covered the left edge's section) */
+  body[data-cot-battle-layout].cot-touch-layout:not([data-hud-guidance~=toasts]) .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
 }
 /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
    300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
@@ -776,6 +790,74 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside='1']{left:47px}
 
+/* THE PHONE HUD (mobile-hud-274, owner 2026-11-20: "mobile ui is way too cluttered and needs to be simplified and less
+   obtrusive to the actual game play a lot more (and should prob have slightly more transparent backgrounds more than
+   the solid black backgrounds"). The inventory: ~/cot-lanes/mobile-hud-274-evidence/inventory.md.
+   Every touch layout's plates take the touch plate tokens (tokens.json hud-plate-touch*): the text plates .82, the
+   icon-only controls .56, the stick's well .36, each holding its marks' contrast over bright sky and grass
+   (tokens.selftest.mjs); the high-contrast preset sets all three to the strong plate. A part reads the tokens it always
+   read (--hud-plate, --hud-plate-strong): the scope sets what they are, never a part's own colour. */
+body[data-cot-battle-layout].cot-touch-layout .cot-hud{--hud-plate:var(--hud-plate-touch);--hud-plate-strong:var(--hud-plate-touch)}
+body[data-cot-battle-layout].cot-touch-layout :is(.cot-vehicle-controls>button,.cot-con){--hud-plate:var(--hud-plate-touch-control);--hud-plate-strong:var(--hud-plate-touch-control)}
+body[data-cot-battle-layout].cot-touch-layout .cot-touch{--hud-plate:var(--hud-plate-touch-control);--hud-plate-strong:var(--hud-plate-touch-control)}
+body[data-cot-battle-layout].cot-touch-layout .cot-touch .joy{--hud-plate:var(--hud-plate-touch-well)}
+body[data-cot-battle-layout].cot-touch-layout .cot-touch .mobile-chrome{--hud-plate:var(--hud-plate-touch)}
+/* (a light blur on the few large text plates only, where it is cheap; never on the round controls) */
+body[data-cot-battle-layout].cot-touch-layout :is(.cot-top,.cot-mode-status,.cot-touch .mobile-chrome){
+  -webkit-backdrop-filter:var(--hud-plate-touch-blur);backdrop-filter:var(--hud-plate-touch-blur)}
+/* A phone (a portrait window under 520 px wide, a landscape one under 520 px tall) keeps one of each control:
+   the left FIRE, a second copy of FIRE, stands down; tablets keep it */
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.fire.alt{display:none}
+/* the round controls speak through their icons, their names kept for assistive technology (aria-label) */
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round:is(.fire,.scope,.autoaim) .lb{display:none}
+/* the objective is one line: where its parts would stack (or take the side seat's line each), its first part alone */
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-mode-status.stacked .mv .seg~:is(.seg,.sep),
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short'])[data-objective-seat='side'] .cot-mode-status .mv .seg~:is(.seg,.sep){display:none}
+/* the toolbar is its menu button: a tap opens sound, graphics and settings beside it on the corner plate, which grows
+   leftward (its foot, which the planner reads, stays where it is; dropped under the plate, the plate's clip cut them off) */
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome .quick.menu{display:flex;order:1}
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome:not(.open) .quick:not(.menu){display:none}
+body[data-cot-battle-layout].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .mobile-chrome.open .quick.menu{color:var(--accent-hi)}
+/* (Kevin 2026-11-20: "special sections from left and right for the special abilities", one grammar with the phone
+   controller) two edge sections (battleHudLayout.ts, the edge seat). The right edge's: the systems over the ammunition,
+   thumb tiles 52 px (44 in a short landscape), a column from the rack up or a small grid growing inward, column by
+   column. The left edge's: survival, the items in a column standing on the speedometer (beside the stick's top in a
+   short landscape, under the map), the smoke and the jump over them (beside them in a short landscape). The row's
+   jump tile stands down for the touch kit's own jump button: one of each. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='edge'] .cot-vehicle-controls{--edge-tile:52px;--edge-gap:8px;
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(var(--hud-systems-rows,1),var(--edge-tile));grid-auto-columns:var(--edge-tile);
+  gap:var(--edge-gap);width:var(--hud-systems-width);max-width:none;overflow:visible;padding:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']){--edge-tile:52px;--edge-gap:8px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short']{--edge-tile:44px;--edge-gap:5px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-systems-slot='edge'] .cot-vehicle-controls{--edge-tile:44px;--edge-gap:5px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='edge'] .cot-vehicle-controls>button{--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);
+  width:var(--edge-tile)!important;height:var(--edge-tile);min-width:0;min-height:0;flex:none;margin:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed!important;
+  left:var(--hud-smoke-left);top:var(--hud-smoke-top);--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);min-width:0;min-height:0;margin:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump{left:var(--hud-jump-left);top:var(--hud-jump-top);right:auto;bottom:auto;
+  width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump .lb{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{flex-direction:column!important;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 69px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column!important;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}
+/* (the map at the tight height's 92 px on a short landscape phone, as the tight rule meant: at the short rule's 106 its
+   foot ran 6 px onto the items' column at 844x390) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{
+  width:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
+/* (a short landscape's side lanes and hit rows stand beside the sections, inset by their widths: battleHudLayout.ts
+   --hud-left-inset, --hud-right-inset) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] :is(.cot-kill-lane.l,.cot-hud .cot-si-toasthost){left:var(--hud-left-inset,0px);
+  max-width:calc(50vw - var(--hud-left-inset,0px) - 74px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] .cot-kill-lane.r{right:var(--hud-right-inset,0px);max-width:calc(50vw - var(--hud-right-inset,0px) - 74px)}
+/* (mobile-hud-274, keyPrompt.ts) on a touch layout a phone has no key to name: the first-use hint's line shows the tile's
+   own icon, and the tile itself is lit with the accent's ring while the hint shows (firstUseHints.ts data-hint-pulse) */
+body[data-cot-battle-layout].cot-touch-layout [data-hint-pulse]{outline:2px solid var(--accent);outline-offset:2px}
+/* the speedometer, read rarely, a smaller dial over the stick in portrait */
+body[data-cot-battle-layout].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-drive{transform:scale(.72);transform-origin:left bottom}
 /* Every battle centre notice on the window's centre line, on both layouts (noticeCentreLine.ts; owner 2026-10-22 on live
    240: "for example spotting or broken equipment stuff, they are nnot actually centered in screen"): each is placed at
    50 % and translated back by half its own width (its rules above), and the planners move it only up or down. No other

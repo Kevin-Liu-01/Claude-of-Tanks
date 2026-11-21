@@ -167,9 +167,14 @@ assert.ok(standard.timeLimitS > 0, 'Standard runs on a clock');
   assert.equal(penVerdict(1), 'marginal', 'amber may (0.85 to 1.15)');
   assert.equal(penVerdict(PEN_RATIO.marginal - 0.01), 'nopen', 'red will not (under 0.85)');
   const overlay = read('src/game/armorAimOverlay.ts');
-  assert.match(overlay, /pen: new THREE\.Color\(0x48d985\)/, 'the paint\'s "goes through" is green');
-  assert.match(overlay, /marginal: new THREE\.Color\(0xf0aa35\)/, 'its "may" is amber');
-  assert.match(overlay, /nopen: new THREE\.Color\(0xe53d35\)/, 'its "will not" is red');
+  // the tones live in game/armorShadeColors.ts (one source for the paint and the first-use hint picture)
+  assert.match(overlay, /pen: new THREE\.Color\(ARMOR_SHADE_PASSES\)/, 'the paint\'s "goes through" is the passes tone');
+  assert.match(overlay, /marginal: new THREE\.Color\(ARMOR_SHADE_EDGE\)/, 'its "may" is the edge tone');
+  assert.match(overlay, /nopen: new THREE\.Color\(ARMOR_SHADE_STOPS\)/, 'its "will not" is the stops tone');
+  const shades = read('src/game/armorShadeColors.ts');
+  assert.match(shades, /ARMOR_SHADE_PASSES = 0x48d985;/, 'passes is green');
+  assert.match(shades, /ARMOR_SHADE_EDGE = 0xf0aa35;/, 'edge is amber');
+  assert.match(shades, /ARMOR_SHADE_STOPS = 0xe53d35;/, 'stops is red');
   assert.match(text('battle.fire.body'), /green goes through, amber might, red won't/);
   assert.match(text('training.armour.body'), /Green goes through, amber might, red won't/);
 }

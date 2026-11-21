@@ -91,7 +91,8 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
 const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 // (battle-camera-264) on the battle sight, the centre's unless the chase framing raises it (battleSight.ts); the scope's
 // band stays the centre's
-assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
+// (a phone's systems stand in the left edge's section instead, mobile-hud-274: the solver is the other portraits')
+assert.match(layoutSource, /if \(touch && !phoneHud\(touch\) && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
   'the solver applies it to touch portraits, on the battle sight');
 assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
@@ -508,16 +509,19 @@ try {
     'setTimeout','clearTimeout']
     .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
-  function solvePortrait(width, height, rects, rowWidth) {
+  function solvePortrait(width, height, rects, rowWidth, { dataset = {}, controls = 0 } = {}) {
     const props = new Map(); let frame = null;
     const element = (rect, extra={}) => ({ getClientRects: () => [rect], getBoundingClientRect: () => rect, children: [],
       childElementCount: 0, dataset: {}, getAttribute: () => null, hasAttribute: () => false, toggleAttribute() {}, ...extra });
     const lane = (rect) => { const children = Array.from({length:8}, () => ({hidden:false}));
       return element(rect, {children, childElementCount: children.length}); };
     const nodes = Object.fromEntries(Object.entries(rects).map(([selector, rect]) => [selector, element(rect)]));
-    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2});
+    const tiles = Array.from({ length: controls }, () => ({ classList: { contains: () => false }, checkVisibility: () => true,
+      hasAttribute: () => false, removeAttribute() {}, setAttribute() {}, dataset: {}, style: { getPropertyValue: () => '', setProperty() {} } }));
+    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2, children: tiles,
+      childElementCount: tiles.length});
     const kills = {'.cot-kill-lane.l': lane(box(0,84,0,171)), '.cot-kill-lane.r': lane(box(0,84,219,390))};
-    const body = { dataset: {}, classList: { contains: (name) => name === 'cot-touch-layout' },
+    const body = { dataset: { ...dataset }, classList: { contains: (name) => name === 'cot-touch-layout' },
       style: { getPropertyValue: (key) => props.get(key) ?? '', setProperty: (key, value) => props.set(key, value),
         removeProperty: (key) => props.delete(key) },
       hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
@@ -580,6 +584,35 @@ try {
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 0, 'tall: no left lane row through the reticle');
     assert.equal(tall.px('kill-right-height'), 0, 'tall: no right lane row through the reticle');
+    // (mobile-hud-274, Kevin 2026-11-20: "special sections from left and right for the special abilities", one grammar with
+    // the phone controller) a phone's controls stand in two edge sections: the systems the right edge's, over the rack
+    // (which keeps its place by FIRE), survival the left edge's (the items, standing on the speedometer). A 390x844
+    // phone's five systems one column of 52 px tiles 8 px apart, on the rack's right edge and 8 px over it, never in the
+    // band over the sight; the right lane ends over the column, the left over the items
+    const edge = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-mode-status.show': box(62,103,56,334), '.cot-minimap': box(111,203,8,100),
+      '.cot-touch.on .mobile-chrome': box(111,155,336,380), '.cot-shells': box(468,520,328,380),
+      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(593.76,678,14,98.24), '.cot-cons': box(437,609,8,60),
+      '.cot-touch.on .joy': box(702,820,14,132), '.cot-dp': box(797,836,136.5,253.5),
+    }, 366, { dataset: { cotWidth: 'phone', cotHeight: 'standard' }, controls: 5 });
+    assert.deepEqual([edge.px('systems-left'), edge.px('systems-width')], [380 - 52, 52], '390x844 phone: one column on the right edge');
+    assert.equal(edge.px('systems-top'), 468 - 8 - (5 * 52 + 4 * 8), '390x844 phone: the column stands on the rack');
+    // (a five-system column reaches the top band: the global feed's lane gives way to it, the personal lane keeps four rows)
+    assert.equal(edge.px('kill-right-height'), 0, '390x844 phone: no global feed row over the column');
+    assert.equal(edge.px('kill-left-height'), 4 * 29 - 3, '390x844 phone: the personal lane keeps four rows');
+    assert.ok(edge.px('kill-left-top') + edge.px('kill-left-height') <= 437 - 8, '390x844 phone: the left lane ends over the items');
+    assert.deepEqual([edge.px('smoke-left'), edge.px('smoke-top')], [8, 437 - 8 - 52], '390x844 phone: the smoke over the items');
+    // an 844x390 landscape phone: two 44 px rows between the menu and the rack hold the five in three columns, growing
+    // inward, never paged; the side lanes stand beside the sections, inset by their widths
+    const short = solvePortrait(844, 390, {
+      '.cot-top': box(0,48,275,569), '.cot-minimap': box(8,100,12,104), '.cot-touch.on .mobile-chrome': box(0,48,744,844),
+      '.cot-shells': box(166,214,778,830), '.cot-vehicle-controls': box(300,344,250,560), '.cot-drive': box(310,372,126,186),
+      '.cot-cons': box(108,250,12,56), '.cot-touch.on .joy': box(258,366,12,120), '.cot-dp': box(340,372,218,330),
+    }, 236, { dataset: { cotWidth: 'tablet', cotHeight: 'short' }, controls: 5 });
+    assert.deepEqual([short.px('systems-left'), short.px('systems-width')], [830 - 142, 3 * 44 + 2 * 5], '844x390 phone: three columns');
+    assert.equal(short.px('systems-top'), 166 - 8 - (2 * 44 + 5), '844x390 phone: two rows standing on the rack');
+    assert.deepEqual([short.px('left-inset'), short.px('right-inset')], [56 + 8, 844 - 688 + 8], '844x390 phone: the lanes inset');
+    assert.deepEqual([short.px('smoke-left'), short.px('smoke-top')], [56 + 5, 250 - 44], '844x390 phone: the smoke beside the items');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];

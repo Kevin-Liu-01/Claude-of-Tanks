@@ -3141,6 +3141,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     [droneKey, 'drone'], ...auxiliaryButtons.map(({ key, action: id }) => [key, id] as const)] as const) cap.dataset.keyCap = action;
   const vehicleControls={jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,
     smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
+  // (mobile-hud-274) each control names itself: a phone seats the survival ones (the smoke) in the left edge's section
+  for (const [id, button] of Object.entries(vehicleControls)) button.dataset.control = id;
   let controlsJumpMode:boolean|null=null;
   function setControlsJumpMode(on:boolean):void{
     jumpHint.classList.toggle('on',on);

@@ -55,6 +55,21 @@
 .cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
 @media (hover:none),(pointer:coarse){.cot-c-kbd{display:none}}
+/* the battle's cap (mobile-hud-274, keyPrompt.ts: one size for the hints, the controls strip, the armour tip and the
+   tutorial's cards): 20 px, the battle's figure type */
+.cot-c-kbd--battle{min-width:20px;height:20px;padding:0 4px;font:500 var(--battle-fs-fig-11)/1 var(--font-data)}
+/* a prompt in a line: the cap, its key also said to a screen reader (the cap itself is aria-hidden), or on touch the
+   tile's own icon; a line never wraps between a cap and its word */
+.cot-key-prompt{display:inline-flex;align-items:center;vertical-align:-5px;margin-inline:1px}
+.cot-key-prompt__said{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-key-prompt--tile{width:20px;height:20px;justify-content:center;border-radius:var(--control-radius);box-shadow:var(--ring-3);color:var(--ink-1)}
+.cot-key-prompt--tile svg{width:14px;height:14px}
+/* a line with keys, "[KEY] text" (keyPrompt.ts formatPrompt): the keys a column of their own, centred against the words,
+   which wrap under their own first word and stop at two lines */
+.cot-key-line{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:6px}
+.cot-key-line__keys{display:inline-flex;align-items:center;gap:2px}
+.cot-key-line__keys .cot-key-prompt{margin-inline:0;vertical-align:baseline}
+.cot-key-line__text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-width:0}
 /* ---- chips and tags (direction .chip, .chip.on, .tag, .tag.new) ---- */
 .cot-c-chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border:0;
   border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);

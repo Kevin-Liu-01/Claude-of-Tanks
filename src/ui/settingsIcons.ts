@@ -69,6 +69,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   showDebugHud: { id: 'telemetry', tone: 'violet' },
   showDirectionalHitValues: { id: 'blocked', tone: 'red' },
   armorAimOverlay: { id: 'armorFlashlight' },
+  showHints: { id: 'lightbulb', tone: 'amber' }, // mobile-hud-274: Interface › First-use hints
   volMaster: { id: 'sound', tone: 'cyan' },
   volEngine: { id: 'engine', tone: 'amber' },
   volCombat: { id: 'fireGun', tone: 'red' },

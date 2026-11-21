@@ -404,7 +404,7 @@ function fitWholeRows(grid: HTMLElement, peek = true, fill = false, shrink = FIT
 const EQ_TILE_MIN_PX = 84;
 const BAND_PAINT_PICKS: readonly string[] = Object.freeze(['factory', 'auto', 'summer', 'desert', 'winter', 'digital']);
 const GARAGE_STATIONS = Object.freeze([
-  ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
+  ['overview', 'performance'], ['firepower', 'firepower'], ['mobility', 'speed'],
   ['protection', 'shield'], ['crew', 'crew'],
 ] as const);
 type GarageStation = (typeof GARAGE_STATIONS)[number][0];
@@ -3691,7 +3691,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     statsEl.innerHTML =
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       overviewSection(spec, eqM, shells) +
-      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), '', 'Performance', true)}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('firepower', t('garage.station.firepower'), '', 'Performance', true)}` +
       magazineFigures(spec.gun, eqM.reload) +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),

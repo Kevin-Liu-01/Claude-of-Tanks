@@ -5,9 +5,11 @@
 // 18 px and below when the sprite has it), the one stroke per optical size (1.5 / 1.25), square caps, mitre joins and
 // currentColor, so a glyph inherits its colour from the text around it.
 //
-// The sprite mounts on first use: the boot slice (spriteIndex.ts, about a dozen game-bar glyphs) synchronously, the
-// full sprite from its own lazy chunk right after. A <use> rendered before its symbol arrives fills in when it does.
-// Node (receipts) never mounts anything and gets the same markup.
+// The sprite mounts on first use: the boot slice (spriteIndex.ts, about a dozen game-bar glyphs) synchronously, the main
+// sprite (spriteMain.svg, every glyph a battle can draw) from its own lazy chunk right after, and the garage, gallery,
+// Field Manual and camo glyphs (spriteLazy.svg) from a second chunk once the main one is in, into a host of their own.
+// Both chunks are generated from ./sprite.svg (tools/gen-icon-sprite.mjs). A <use> rendered before its symbol arrives
+// fills in when it does. Node (receipts) never mounts anything and gets the same markup.
 
 import { ACTIVE_MASTERS, BOOT_SYMBOLS, SMALL_MASTERS, type IconId } from './spriteIndex.ts';
 import { STYLE_LAYER_ORDER } from '../styleLayers.ts';
@@ -29,6 +31,7 @@ interface IconOptions {
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SMALL_MAX_PX = 18;
 const SPRITE_ID = 'cot-icon-sprite';
+const LAZY_SPRITE_ID = 'cot-icon-sprite-lazy';
 /** Selected states fill the glyphs drawn for it; CSS fill beats the host's fill="none" and inherits into <use>. */
 const ACTIVE_CSS = '[aria-pressed=true] .cot-i[data-af],[aria-selected=true] .cot-i[data-af],'
   + '[aria-current=page] .cot-i[data-af],[aria-current=true] .cot-i[data-af],.is-active .cot-i[data-af],'
@@ -36,39 +39,65 @@ const ACTIVE_CSS = '[aria-pressed=true] .cot-i[data-af],[aria-selected=true] .co
 
 let spriteHost: SVGSVGElement | null = null;
 let fullSprite: Promise<void> | null = null;
+let lazyHost: SVGSVGElement | null = null;
+let lazySprite: Promise<void> | null = null;
 
 /** A real DOM to mount into (receipts may stub `document` without SVG support). */
 const canMount = (): boolean => typeof document !== 'undefined' && typeof document.createElementNS === 'function';
 
 const escapeAttr = (value: string): string => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
-function attachHost(): void {
-  if (!spriteHost) return;
-  (document.body ?? document.documentElement).append(spriteHost);
+function attachHost(host: SVGSVGElement | null = spriteHost): void {
+  if (!host) return;
+  (document.body ?? document.documentElement).append(host);
+}
+
+/** A hidden <svg> that holds symbols for <use> to reference. */
+function hiddenHost(id: string): SVGSVGElement {
+  const host = document.createElementNS(SVG_NS, 'svg');
+  host.id = id;
+  host.setAttribute('aria-hidden', 'true');
+  host.setAttribute('focusable', 'false');
+  host.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+  return host;
+}
+
+/** The garage, gallery, Field Manual and camo glyphs (spriteLazy.svg), their own chunk in their own host, so the main
+ *  sprite's swap-in never drops them. */
+function mountLazySprite(): Promise<void> {
+  lazySprite ??= import('./spriteLazy.svg?raw').then(({ default: text }) => {
+    const start = text.indexOf('<symbol');
+    try {
+      lazyHost ??= hiddenHost(LAZY_SPRITE_ID);
+      if (start >= 0) lazyHost.innerHTML = text.slice(start, text.lastIndexOf('</svg>'));
+      if (!lazyHost.isConnected) attachHost(lazyHost);
+    } catch { /* a partial DOM: nothing to mount into */ }
+  }, (error: unknown) => {
+    lazySprite = null; // a failed chunk load retries on the next mount
+    console.warn('[icons] lazy sprite failed to load', error);
+  });
+  return lazySprite;
 }
 
 /**
- * Mount the sprite into the document (idempotent; a no-op outside a browser). Resolves when the full sprite is in,
- * which capture tools await before a screenshot.
+ * Mount the sprite into the document (idempotent; a no-op outside a browser). Resolves when both chunks are in (the
+ * main sprite, then the lazy one), which capture tools await before a screenshot.
  */
 export function mountIconSprite(): Promise<void> {
   if (!canMount()) return Promise.resolve();
   try {
     if (!spriteHost) {
-      spriteHost = document.createElementNS(SVG_NS, 'svg');
-      spriteHost.id = SPRITE_ID;
-      spriteHost.setAttribute('aria-hidden', 'true');
-      spriteHost.setAttribute('focusable', 'false');
-      spriteHost.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+      spriteHost = hiddenHost(SPRITE_ID);
       spriteHost.innerHTML = `<style>${STYLE_LAYER_ORDER}@layer components{${ACTIVE_CSS}}</style>${BOOT_SYMBOLS}`;
     }
     if (!spriteHost.isConnected) attachHost();
+    if (lazyHost && !lazyHost.isConnected) attachHost(lazyHost);
   } catch {
     return Promise.resolve(); // a partial DOM (receipt stubs): markup still renders, nothing to mount into
   }
-  // The full sprite is a Vite chunk; outside Vite (Node receipts with a stub DOM) the boot slice is all there is.
+  // The sprite is two Vite chunks; outside Vite (Node receipts with a stub DOM) the boot slice is all there is.
   if (!import.meta.env) return Promise.resolve();
-  fullSprite ??= import('./sprite.svg?raw').then(({ default: text }) => {
+  fullSprite ??= import('./spriteMain.svg?raw').then(({ default: text }) => {
     const start = text.indexOf('<symbol');
     if (spriteHost && start >= 0) {
       spriteHost.innerHTML = `<style>${STYLE_LAYER_ORDER}@layer components{${ACTIVE_CSS}}</style>${text.slice(start, text.lastIndexOf('</svg>'))}`;
@@ -77,7 +106,8 @@ export function mountIconSprite(): Promise<void> {
     fullSprite = null; // a failed chunk load retries on the next icon
     console.warn('[icons] sprite failed to load', error);
   });
-  return fullSprite;
+  // (the lazy glyphs follow the main ones, so a capture that awaits this has every glyph)
+  return fullSprite.then(() => mountLazySprite());
 }
 
 /** Markup for one icon: a host <svg> referencing the sprite symbol. Empty for an empty id. */

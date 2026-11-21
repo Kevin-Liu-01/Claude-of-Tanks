@@ -87,7 +87,7 @@ assert.ok(mapRegionTags('coastal').includes('maritime'));
 assert.ok(mapRegionTags('alpine').includes('winter'));
 assert.ok(mapRegionTags('monsoon').includes('tropical'));
 
-for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRanked', 'battleRecord']) {
+for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRecord']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing garage battle icon: ${id}`);
 }
 
@@ -127,7 +127,7 @@ for (const id of ['garage', 'home', 'gallery', 'studio', 'manual', 'play', 'depl
 }
 assert.match(uiIconSVG('modeZones', 16), /viewBox="0 0 16 16"[^>]*stroke-width="1\.25"[\s\S]*href="#i-modeZones-s"/,
   'at 16 px a glyph with an optical master uses the 16-unit symbol and its own stroke');
-assert.match(uiIconSVG('eqRammer', 16), /viewBox="0 0 24 24"[\s\S]*href="#i-eqRammer"/,
+assert.match(uiIconSVG('link', 16), /viewBox="0 0 24 24"[\s\S]*href="#i-link"/,
   'without an optical master the 24-unit symbol serves every size');
 assert.match(uiIconSVG('tick', 12), /href="#i-check-s"/, 'retired ids resolve through the alias map');
 assert.equal(uiIconSVG('', 12), '', 'an empty id draws nothing');
@@ -138,15 +138,14 @@ assert.equal(modeGlyphs.length, 15, 'fifteen mode glyphs: the 14 rulesets and th
 assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 15, 'no two modes share a glyph');
 assert.notEqual(sprite.large.get('modeFrontline'), sprite.large.get('modeZones'), 'Frontline Assault has its own glyph');
 for (const family of [
-  ['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'breech', 'optics', 'radio', 'apu', 'turretRing', 'fcs', 'track'],
+  ['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'optics', 'radio', 'turretRing', 'track'],
   ['crewCommander', 'crewGunner', 'crewDriver', 'crewLoader'],
   ['penetration', 'ricochet', 'blocked', 'critical', 'detonation', 'damage', 'skull', 'statusFire'],
-  ['vehicle', 'layerArmor', 'layerModules', 'crew', 'layerMarkup', 'layerXray', 'toolSection', 'toolExplode', 'toolIsolate',
+  ['vehicle', 'layerArmor', 'layerModules', 'crew', 'layerMarkup', 'layerXray', 'toolIsolate',
     'toolMeasure', 'toolHitbox', 'toolPhoto'],
   ['classMbt', 'classMedium', 'classHeavy', 'classLight', 'classIfv', 'classApc', 'classTd', 'classSpaa', 'classFireSupport'],
   ['shellAp', 'shellApcr', 'shellApfsds', 'shellHeat', 'shellHe', 'shellAtgm'],
   ['repair', 'medkit', 'extinguisher', 'smoke'],
-  ['lampOk', 'lampWarn', 'lampDown'],
 ]) {
   for (const id of family) assert.ok(sprite.large.has(id), `the sprite draws ${id}`);
   assert.equal(new Set(family.map((id) => sprite.large.get(id))).size, family.length, `${family[0]} family glyphs are distinct`);

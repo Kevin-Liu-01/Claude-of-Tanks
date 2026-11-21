@@ -841,7 +841,7 @@ body[data-cot-width] .cot-hints{
 body[data-cot-width] .cot-hints .hg{white-space:nowrap}
 body[data-cot-width='compact'] .cot-hints,
 body[data-cot-width='phone'] .cot-hints{
-  gap:var(--s2) var(--s3);padding:6px 9px;
+  gap:var(--s2) var(--s3);padding:6px calc(9px + var(--hints-point,0px));
   font-size:11px;letter-spacing:.01em;
 }
 body[data-cot-width='compact'] .cot-hints kbd,

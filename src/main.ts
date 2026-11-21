@@ -1161,10 +1161,18 @@ const battleEntryIntent = createBattleEntryIntent();
 // hold never re-opens a brief that had faded
 let briefShownForCountdown = false;
 bus.on('battle:rollout', () => { briefShownForCountdown = false; });
+// (mobile-hud-274) the first-use hints' one owner (ui/firstUseHints.ts: once each, combat first, through the battle's
+// notice region), loaded at the first rollout the player drives, never on the boot path
+const firstUseHintsChunk = createLazyChunk(() => import('./ui/firstUseHints.ts').then(({ createFirstUseHints }) => createFirstUseHints({
+  bus, input,
+  playerId: () => game.player?.id ?? null,
+  watched: () => !!game.watch || !!game.couch || document.body.classList.contains('cot-spectating'),
+  airSupportMode: () => game.ruleset?.mode === 'air_support',
+})));
 // 273: armour colours on for everyone, once (game/armourOverlayDefault.ts): the first rollout the player drives after the
-// flip shows its one-time tip (ui/armourOverlayTip.ts, loaded only then). A watched or couch battle leaves it for the
-// next; colours turned off again before it need no tip. A keyboard player reads their own key; a pad or a touch layout,
-// where the colours have no control yet, the Settings row.
+// flip offers its one-time tip, now the first-use hints' armourShading (its prompt the player's own key, or on a pad or a
+// touch layout the colours' meaning). A watched or couch battle leaves it for the next; colours turned off again before
+// it need no tip.
 bus.on('battle:rollout', () => setTimeout(() => {
   if (game.watch || game.couch || game.phase !== 'battle') return;
   // (274) a battle the tutorial teaches leaves the tip to the tutorial's own armour step (one surface, one lesson: the
@@ -1172,13 +1180,11 @@ bus.on('battle:rollout', () => setTimeout(() => {
   // waits one task for it. A tutorial skipped before that step leaves the tip for the next battle.
   if (document.body.classList.contains('cot-tutorial')) return;
   const due = armourTipDue(readArmourDefaultMarker(), !!input.getSettings().armorAimOverlay);
-  if (due === 'none') return;
-  writeArmourDefaultMarker('done');
-  if (due === 'skip') return;
-  const keyboard = !input.isTouchLayout() && !input.isPadConnected();
-  const code = keyboard ? input.getBinding('hitboxOverlay') : null;
-  import('./ui/armourOverlayTip.ts').then(({ showArmourOverlayTip }) => showArmourOverlayTip({ key: code ? labelForCode(code) : null }))
-    .catch(() => { /* a failed chunk loses the tip, never the battle */ });
+  if (due !== 'none') writeArmourDefaultMarker('done');
+  void firstUseHintsChunk.load().then((hints) => {
+    hints.battleStart();
+    if (due === 'show') hints.offer('armourShading');
+  }, () => { /* a failed chunk loses the hints, never the battle */ });
 }, 0));
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
@@ -4727,6 +4733,7 @@ if (diagnosticsRequested) {
       // (the probes' names) a local battle, the page's own simulation
       beginBattleEntry: beginLocalBattleEntry,
       beginSoloBattle: beginLocalBattle,
+      previewHint: async (id: string) => { (await firstUseHintsChunk.load()).preview(id as Parameters<Awaited<ReturnType<typeof firstUseHintsChunk.load>>['preview']>[0]); },
       beginNetworkBattle: beginMultiplayerV2Battle,
       enterGarage,
       leaveBattleToGarage,

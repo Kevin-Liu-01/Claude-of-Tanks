@@ -265,6 +265,15 @@ const TOUCH_COMPACT_ALERT_LINES_H = 28;
 const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
 /** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
 const PORTRAIT_SIGHT_ROOM_H = 720;
+/** A phone's touch HUD (battleHudLayout.css, the phone HUD: a portrait window under 520 px wide or a landscape one under
+ *  520 px tall): its systems take the right edge's section and its survival controls the left's (mobile-hud-274). */
+const phoneHud = (touch: boolean) => touch
+  && (document.body.dataset.cotWidth === 'phone' || document.body.dataset.cotHeight === 'short');
+/** The edge sections' tiles: a thumb's target in portrait, the 44 px floor in a short landscape's height. */
+const EDGE_TILE = 52, EDGE_TILE_SHORT = 44, EDGE_GAP = 8, EDGE_GAP_SHORT = 5;
+/** The edge section's most rows in portrait (it stands no higher up the edge), and its most columns: a short landscape's
+ *  room under the menu holds two rows, so a five-control kit takes three columns there rather than paging. */
+const EDGE_ROWS_MAX = 5, EDGE_COLUMNS_MAX = 3;
 /** Where a touch layout parks the gun travel chip under the map instead of seating it by the sight (hud.ts
  *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
  *  left FIRE button, the map or the speedometer at 320x568). */
@@ -1173,7 +1182,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (a portrait phone under PORTRAIT_SIGHT_ROOM_H tall whose systems row shows: the row takes the top slot right of the
     // map, and the map drops level with it (battleHudLayout.css data-map-slot), marked before the map is measured so this
     // pass places everything off its new edges)
-    const mapSlot = touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && !!read('.cot-vehicle-controls')?.height;
+    const mapSlot = touch && !phoneHud(touch) && width < height && height < PORTRAIT_SIGHT_ROOM_H && !!read('.cot-vehicle-controls')?.height;
     if ((document.body.dataset.mapSlot === '') !== mapSlot) {
       if (mapSlot) document.body.dataset.mapSlot = '';
       else delete document.body.dataset.mapSlot;
@@ -1416,7 +1425,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const laneSystemsTop = systemsTop;
     // (battle-camera-264) the most the chase framing may raise the sight before this layout's own sight-led places give
     let sightRiseCap = Infinity;
-    if (touch && width < height && systemsHeight) {
+    // (a phone's systems stand in the left edge's section, never in the band the sight rises into)
+    if (touch && !phoneHud(touch) && width < height && systemsHeight) {
       const floor = Math.min(read('.cot-drive')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
         read('.cot-touch.on .joy')?.top ?? height) - 8;
       const ceiling = Math.max(map?.bottom ?? 0, touchChrome?.bottom ?? 0, top) + 8;
@@ -1447,7 +1457,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // row stood 17.5 px off the map's top and foot, and 12.5 px over the map in a scope, gauntlet r12 at 320x568.
     let systemsSlot = '';
     let systemsPerRow = 0;
-    if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
+    if (touch && !phoneHud(touch) && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
       const slotTop = Math.max(touchChrome?.bottom ?? 0, top, map.top - SLOT_GAP) + SLOT_GAP;
       if (slotTop <= systemsTop) {
         systemsSlot = 'top';
@@ -1458,6 +1468,67 @@ export function installBattleHudLayout(root: HTMLElement): void {
         systemsWidth = dockWidth = Math.max(52, width - systemsLeft - 14);
       }
     }
+    // (mobile-hud-274, Kevin 2026-11-20: "special sections from left and right for the special abilities"; "big buttons and
+    // surface areas for all capabilities"; one grammar with the phone controller, src/pad) a phone's controls stand in two
+    // edge sections. The right edge's holds the systems (lights, the drone, the ATGM, the roof gun, the reload, the
+    // suspension, Air Support's slot heading it) over the ammunition, which keeps its place by FIRE: a column of thumb
+    // tiles from the rack up, or a small grid growing inward where one column cannot hold the kit, the More tile paging
+    // what the grid cannot. The left edge's holds survival: the items (battleHudLayout.css) and over them the smoke and the
+    // jump, placed here off the items' box (--hud-smoke-*, --hud-jump-*).
+    let edgeFits = 0;
+    let survivalTop = height;
+    // (a short landscape's sections fill each edge from the top band to the stick and the rack: the side lanes stand
+    // beside them, inset by their widths, rather than ending over them with no row; portrait's end over them)
+    let leftInset = 0, rightInset = 0;
+    if (phoneHud(touch) && systemsElement) {
+      const short = width > height;
+      const tile = short ? EDGE_TILE_SHORT : EDGE_TILE, gap = short ? EDGE_GAP_SHORT : EDGE_GAP;
+      const items = read('.cot-cons');
+      const smoke = [...systemsElement.children].find((node) => (node as HTMLElement).dataset?.control === 'smoke') as HTMLElement | undefined;
+      const smokeShown = !!smoke && smoke.checkVisibility();
+      // (the survival controls over the items: up the column in portrait; beside it in a short landscape, whose column
+      // fills the height between the map and the stick)
+      if (items) {
+        const besideItems = short;
+        const smokeLeft = besideItems ? items.right + gap : items.left;
+        const smokeTop = besideItems ? items.bottom - tile : items.top - gap - tile;
+        const jumpTop = smokeShown ? smokeTop - gap - tile : smokeTop;
+        setBodyVar('--hud-smoke-left', `${Math.round(smokeLeft)}px`);
+        setBodyVar('--hud-smoke-top', `${Math.round(smokeTop)}px`);
+        setBodyVar('--hud-jump-left', `${Math.round(smokeLeft)}px`);
+        setBodyVar('--hud-jump-top', `${Math.round(jumpTop)}px`);
+        const jump = read('.cot-touch.on .jump');
+        survivalTop = Math.min(items.top, smokeShown ? smokeTop : height, jump ? jumpTop : height);
+        if (short) { leftInset = Math.ceil((smokeShown || jump ? smokeLeft + tile : items.right) + 8); survivalTop = height; }
+      }
+      let shown = 0;
+      for (const node of systemsElement.children) {
+        const button = node as HTMLElement;
+        if (button.classList.contains('cot-systems-more') || button === smoke) continue;
+        const off = button.hasAttribute('data-off');
+        if (off) button.removeAttribute('data-off');
+        if (button.checkVisibility()) shown++;
+        if (off) button.setAttribute('data-off', '');
+      }
+      if (shown) {
+        const floor = (ammo ? ammo.top : (read('.cot-touch.on .fire')?.top ?? height)) - 8;
+        const dock = read('.cot-strike-dock');
+        const ceiling = Math.max(touchChrome?.bottom ?? 0, top) + 8 + (dock ? tile + gap : 0);
+        const fitsRows = Math.max(1, Math.min(short ? Infinity : EDGE_ROWS_MAX, Math.floor((floor - ceiling + gap) / (tile + gap))));
+        const columns = Math.max(1, Math.min(EDGE_COLUMNS_MAX, Math.ceil(shown / fitsRows)));
+        const rows = Math.max(1, Math.min(fitsRows, Math.ceil(shown / columns)));
+        edgeFits = rows * columns;
+        systemsSlot = 'edge';
+        systemsHeight = rows * tile + (rows - 1) * gap;
+        systemsTop = floor - systemsHeight;
+        systemsWidth = dockWidth = columns * tile + (columns - 1) * gap;
+        systemsLeft = (ammo ? ammo.right : width - 14) - systemsWidth;
+        setBodyVar('--hud-systems-rows', String(rows));
+        if (short) rightInset = Math.ceil(width - systemsLeft + 8);
+      }
+    }
+    setBodyVar('--hud-left-inset', leftInset ? `${leftInset}px` : '');
+    setBodyVar('--hud-right-inset', rightInset ? `${rightInset}px` : '');
     let systemsCount = 0;
     // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px
     // place: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells; else balanced rows)
@@ -1475,12 +1546,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     // (a row that pages no longer, its paging marks lifted before it is counted)
     const more = hudQuery<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
-    const paged = touch && !systemsSlot && !!systemsElement && !!more;
+    const paged = touch && systemsSlot !== 'top' && !!systemsElement && !!more;
     if (!paged && more && !more.hidden) {
       more.hidden = true;
       for (const button of systemsElement?.children ?? []) button.removeAttribute('data-off');
     }
-    if (systemsSlot) {
+    if (systemsSlot === 'top') {
       for (const button of systemsElement?.children ?? []) if (button.checkVisibility()) systemsCount++;
       slotRows();
     }
@@ -1488,12 +1559,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (systemsSlot) document.body.dataset.systemsSlot = systemsSlot;
       else delete document.body.dataset.systemsSlot;
     }
-    if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
+    if (touch && systemsSlot !== 'edge' && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
       systemsWidth = Math.max(52, ammoReachLeft - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
       // (the top slot's rows in the width the ammo column leaves it)
-      if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }
+      if (systemsSlot === 'top') { dockWidth = systemsWidth; slotRows(); }
     }
     // UI-06 (owner 2026-10-14: "a better way to show the stuff u can do row on mobile"): a touch row is whole 44 px tiles
     // and never scrolls; where its width holds fewer tiles than it has controls, its last place is the More tile, which
@@ -1505,9 +1576,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
         const button = node as HTMLElement;
         if (button === more) continue;
         button.removeAttribute('data-off');
+        if (systemsSlot === 'edge' && button.dataset.control === 'smoke') continue;
         if (button.checkVisibility()) controls.push(button);
       }
-      const fits = Math.max(1, Math.floor((systemsWidth - 4 + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
+      const fits = systemsSlot === 'edge' ? edgeFits : Math.max(1, Math.floor((systemsWidth - 4 + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
       const perPage = controls.length > fits ? Math.max(1, fits - 1) : Math.max(1, controls.length);
       const pages = Math.max(1, Math.ceil(controls.length / perPage));
       const page = Math.min(pages - 1, Number(systemsElement.dataset.page) || 0);
@@ -1516,7 +1588,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       more.classList.toggle('last', pages > 1 && page === pages - 1);
       if (systemsElement.dataset.pages !== String(pages)) systemsElement.dataset.pages = String(pages);
       if (systemsElement.dataset.page !== String(page)) systemsElement.dataset.page = String(page);
-      if (pages > 1) dockWidth = Math.min(systemsWidth, (perPage + 1) * (TOUCH_TARGET + SYSTEMS_GAP) - SYSTEMS_GAP + 4);
+      if (pages > 1 && systemsSlot !== 'edge') dockWidth = Math.min(systemsWidth, (perPage + 1) * (TOUCH_TARGET + SYSTEMS_GAP) - SYSTEMS_GAP + 4);
     }
     // (the buttons beside the chrome: the row's last ones, each 44 px, from the slot's left edge; the marks cleared once
     // none sits there)
@@ -1560,7 +1632,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       left: Math.min(lensBox.left, lensLabel?.left ?? Infinity), right: Math.max(lensBox.right, lensLabel?.right ?? -Infinity),
       top: Math.min(lensBox.top, lensLabel?.top ?? Infinity) };
     const leftBottom = Math.min(leftFloor(height, touch),
-      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      // (a row in the top slot stands above the lanes, their ceiling, never their floor: mobile-hud-274's phone row there
+      // left both lanes no row at 390x844)
+      systemsSlot !== 'top' && systemsSlot !== 'edge' && systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      // (a phone's survival section on the left edge is the left lane's floor)
+      survivalTop < height ? survivalTop - 8 : height,
       lensRow && lensRow.left < sideWidth && lensRow.top > leftAnchor ? lensRow.top - 8 : height,
       watchLow && watchLow.left < sideWidth ? watchLow.top - 8 : height);
     const earRight = read('.cot-ear.r');
@@ -1574,7 +1650,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // A phone-width mouse window has no roster above the right-hand feeds: they start below the strip's lane, which
     // follows the objective's bottom measured in this pass.
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
-    let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
+    let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom,
+      systemsSlot === 'top' && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop + systemsHeight : 0) + 8;
+    // (under a row in the top slot the global feed keeps its one wide row right of the map, the personal lane two pitches
+    // under it, so the two never stand side by side off one baseline: gauntlet r14 at 390x844)
+    if (systemsSlot === 'top' && systemsLeft < sideWidth + 12) leftAnchor = Math.max(leftAnchor, systemsTop + systemsHeight + 8, rightAnchor + 2 * 29);
     const lowerCorners = [read('.cot-dp'), read('.cot-drive'), map];
     const rackCentre = fillRack ? systemsLeft + systemsWidth / 2 : width / 2;
     // (the controls strip and the kill ribbon over a mouse layout's rack take the rack's edges, where the rack lies inside
@@ -1623,7 +1703,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const scopeVision = read('.cot-scope-vision');
     const reportShown = !!hudQuery('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
     const rightBottom = Math.min(rightFloor(height, width, map), ribbonFloor,
-      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      systemsSlot !== 'top' && !rightInset && systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12
+        ? (systemsSlot === 'edge' ? systemsTop : Math.min(laneSystemsTop, systemsTop)) - 8 : height,
       // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
       watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height,
       // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane
