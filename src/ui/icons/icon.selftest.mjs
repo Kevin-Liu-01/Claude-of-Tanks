@@ -7,15 +7,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { icon, iconInSvg } from './icon.ts';
-import { ACTIVE_MASTERS, BOOT_SYMBOLS, ICON_IDS, SMALL_MASTERS } from './spriteIndex.ts';
+import { ACTIVE_MASTERS, BOOT_SYMBOLS, ICON_IDS, LAZY_ICONS, SMALL_MASTERS } from './spriteIndex.ts';
 import { readIconSprite } from '../../../tools/icon-sprite-lib.mjs';
 
 const tool = (name) => new URL(`../../../tools/${name}`, import.meta.url).pathname;
 const census = JSON.parse(execFileSync(process.execPath, [tool('icon-stroke-census.mjs'), '--json'], { encoding: 'utf8' }));
 assert.deepEqual(census.strokeValues, [1.5], 'one stroke literal across the icon files (the 16-unit 1.25 lives in the host)');
 assert.deepEqual(census.problems, [], 'the sprite keeps its drawing rules');
-// the lazy sprite's budget is the census's (tools/icon-stroke-census.mjs: 16 KB since the icon overhaul's equipment batch)
-assert.ok(census.sizes.spriteGzip <= 16 * 1024, `full sprite ${census.sizes.spriteGzip} B gzip within 16 KB`);
+// the two chunks' budgets are the census's (tools/icon-stroke-census.mjs: main 14.5 KB, lazy 3 KB since the overhaul's split)
+assert.ok(census.sizes.spriteGzip <= 14.5 * 1024, `main sprite ${census.sizes.spriteGzip} B gzip within 14.5 KB`);
+assert.ok(census.sizes.lazyGzip <= 3 * 1024, `lazy sprite ${census.sizes.lazyGzip} B gzip within 3 KB`);
 assert.ok(census.sizes.bootBrotli <= 3 * 1024, `boot slice ${census.sizes.bootBrotli} B brotli within 3 KB`);
 execFileSync(process.execPath, [tool('gen-icon-sprite.mjs'), '--check'], { stdio: 'pipe' });
 
@@ -24,6 +25,21 @@ assert.deepEqual([...ICON_IDS], [...sprite.large.keys()], 'the generated id list
 for (const id of SMALL_MASTERS.trim().split(' ')) assert.ok(sprite.small.has(id), `${id} owns a 16-unit master`);
 for (const id of ACTIVE_MASTERS.trim().split(' ')) assert.ok(sprite.large.has(id), `${id} is drawn`);
 assert.equal((BOOT_SYMBOLS.match(/<symbol id="i-[A-Za-z]+"/g) || []).length, 13, 'about a dozen boot glyphs (the game bar\'s tech tree is the 13th)');
+
+// The two chunks icon.ts loads (Main 2026-11-20: keep the battle sprite lean) split the sprite exactly: every symbol in one
+// of them, none in both, the lazy one holding just LAZY_ICONS (garage, gallery, Field Manual and camo glyphs) and no
+// glyph a battle draws first; icon.ts imports both.
+const chunkIds = (name) => [...readFileSync(new URL(`./${name}`, import.meta.url), 'utf8').matchAll(/<symbol id="i-([A-Za-z0-9-]+)"/g)].map((m) => m[1]);
+const mainIds = chunkIds('spriteMain.svg'), lazyIds = chunkIds('spriteLazy.svg');
+const allIds = [...sprite.large.keys(), ...[...sprite.small.keys()].map((id) => `${id}-s`)];
+assert.deepEqual([...mainIds, ...lazyIds].sort(), [...allIds].sort(), 'the main and lazy chunks hold every symbol once');
+assert.deepEqual(lazyIds.filter((id) => !id.endsWith('-s')), LAZY_ICONS.trim().split(' '), 'the lazy chunk is LAZY_ICONS');
+for (const id of ['regionNight', 'roofGun', 'repair', 'smoke', 'eqToolbox', 'csRepair', 'shellAp', 'modeAirSupport', 'garage']) {
+  assert.ok(mainIds.includes(id), `${id} (a battle or boot glyph) stays in the main chunk`);
+}
+const host = readFileSync(new URL('./icon.ts', import.meta.url), 'utf8');
+assert.match(host, /import\('\.\/spriteMain\.svg\?raw'\)/, 'icon.ts loads the main chunk');
+assert.match(host, /import\('\.\/spriteLazy\.svg\?raw'\)/, 'icon.ts loads the lazy chunk');
 
 // Host markup: optical master by size, the house stroke, decorative by default, named when labelled.
 const large = icon('garage', { size: 24 });
@@ -65,4 +81,4 @@ for (const rel of ['src/ui/garage.ts', 'src/ui/studioPanel.ts', 'src/game/studio
 }
 
 console.log(`icon.selftest: ${sprite.large.size} glyphs + ${sprite.small.size} optical masters, one stroke per size, `
-  + `sprite ${census.sizes.spriteGzip} B gzip, boot ${census.sizes.bootBrotli} B brotli`);
+  + `main sprite ${census.sizes.spriteGzip} B gzip, lazy ${census.sizes.lazyGzip} B, boot ${census.sizes.bootBrotli} B brotli`);
