@@ -1142,7 +1142,7 @@
   "hud.tip.armorOverlayOn.detailKey": "Green goes through, red stops · {key} hides it",
   "hud.tip.armorOverlayOn.detailSettings": "Turn it off in {path}.",
   "hud.tip.armorOverlayOn.legend": "Green goes through, red stops",
-  "hud.hint.moduleRepair.title": "Module knocked out",
+  "hud.hint.moduleRepair.title": "Module out",
   "hud.hint.moduleRepair.line": "{repair} repairs it",
   "hud.hint.reload.title": "Reload readout",
   "hud.hint.reload.line": "Grey: your next reload",

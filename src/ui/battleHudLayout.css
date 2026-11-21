@@ -211,7 +211,8 @@ body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint{gap:8px;padding:4px 8px 4px 14px;width:max-content;max-width:min(260px,100%,calc(100vw - 32px));margin-inline:auto;min-height:56px}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__glyph{display:none}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__body{gap:1px}
-body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__text{font:700 var(--battle-fs-13)/16px var(--hud-font,system-ui);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__detail{font:500 var(--battle-fs-12)/14px var(--hud-font,system-ui)}
 body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice.cot-first-hint .cot-c-notice__media{width:64px;height:48px}
 
