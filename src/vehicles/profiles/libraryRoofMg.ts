@@ -8,7 +8,7 @@ type Point = readonly [number, number, number];
 export interface LibraryRoofMgOptions {
   /** The station group's name (the hierarchy records turret -> station -> cradle -> weapon). */
   station: string;
-  cls: 'nsvt' | 'kord';
+  cls: 'nsvt' | 'kord' | 'm2';
   /** The pintle foot in the turret frame: the top of the ring or roof it stands on. */
   seat: Point;
   /** Station yaw at rest (radians, +Y), 0 = the gun along the turret's +Z. */
@@ -25,7 +25,7 @@ export interface LibraryRoofMgOptions {
  * gun (FITTINGS.pintleMG, machineGunGeometry.ts: the NSVT's long low receiver, slender barrel with its conical flash
  * hider, gas tube, carrying handle and box, or the Kord's ribbed barrel) at its class's true scale, riding its cradle in
  * a working station, instead of an authored stand-in of boxes and rods. The T-80/T-80B/T-80BV commander's NSVT
- * (t80.ts) is the pattern: a named station at the seat, the fitting's foot `embedM` into it, the gun along local +Z.
+ * (t80Marks.ts) is the pattern: a named station at the seat, the fitting's foot `embedM` into it, the gun along local +Z.
  */
 export function libraryRoofMg(P: TankBuilderPort, o: LibraryRoofMgOptions): { station: THREE.Group; mg: THREE.Group } {
   const station = new THREE.Group();

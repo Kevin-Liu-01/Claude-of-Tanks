@@ -811,6 +811,17 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.10, 3.20, 1.34, 0.40, 2.25, 41),
     },
   },
+  // T-80U Kursk (release 274; the 93rd brigade's captured T-80UKs, 2022, lane t80-family-274 photos/t80u-ukraine): the
+  // T-80U X casting's rear roof under one net (turret frame from the yaw datum), behind the field Kontakt-1 that covers
+  // the roof's front half (profiles/t80uKursk.ts; hull z from .0); the cupolas, hatches, the M2 and the gunner's post
+  // opened by the builder. The glacis, skirts and deck carry the bricks and stay bare.
+  t80u_kursk: {
+    id: 't80u_kursk', seed: 8033, style: 'leafy', ...DENSE, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.86, hemFloorM: 0.95,
+    turret: {
+      top: [laid({ x0: -1.30, x1: 1.30, z0: -1.37, z1: -0.14, nx: 32, nz: 16, y: 0.60, garnishRiseM: 0.14, seed: 11 })],
+    },
+  },
   // T-90AM: the roof netted round the remote weapon station, the commander's panorama, the gunner's sight and the
   // hatches, drapes down the walls ahead of the bustle basket and a rear drape down the bustle box; the engine deck
   // netted (the stern drums bare) and the front deck, four drapes a side over the Relikt skirts.

@@ -3241,95 +3241,20 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "eff45f4368c2a53e",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildT80LineRunningGearStage1@profiles/t80.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.248,
-      "gap": 0.752,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.015,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:515>"
-     }
-    }
-   ],
+   "inputHash": "34b22adaa15b39e5",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "06f338593d839b25",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildT80LineRunningGearStage1@profiles/t80.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.195,
-      "gap": 0.805,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.018,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<loftHull@profiles/russia.ts:515>"
-     }
-    }
-   ],
+   "inputHash": "6609c4e5550e2a97",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t80bv": {
-   "inputHash": "aed1575b8c1e5bf5",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildT80LineRunningGearStage1@profiles/t80.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.205,
-      "gap": 0.795,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.018,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:515>"
-     }
-    }
-   ],
+   "inputHash": "716e24b6e803f792",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3352,7 +3277,7 @@
    "hostSweep": []
   },
   "t80u_kursk": {
-   "inputHash": "88c65dd5d006ee07",
+   "inputHash": "546599d574282496",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3370,13 +3295,13 @@
    "hostSweep": []
   },
   "t80uk": {
-   "inputHash": "604fcf6247a09ce6",
+   "inputHash": "3ce25dde2fb2b060",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t84": {
-   "inputHash": "3aaacaab88177c11",
+   "inputHash": "130db57d1ed7d5cc",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4380,7 +4305,7 @@
    "hostSweep": []
   },
   "ua_t80bv": {
-   "inputHash": "a5b9a1c2c5548d87",
+   "inputHash": "e96ff81a5cfe442d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -1007,6 +1007,32 @@ function drawUkraineTriangle({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   ctx.stroke();
 }
 
+// The Ukrainian flag on its pole (release 274, the T-80U Kursk: the captured T-80Us' 2022 photographs, the 1st and 17th
+// brigades): blue over yellow in equal bands, the same from both faces.
+function drawUkraineFlag({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2;
+  ctx.fillStyle = '#2f5d9e';
+  ctx.fillRect(x0, y0, w, h / 2);
+  ctx.fillStyle = '#e2c43a';
+  ctx.fillRect(x0, cy, w, h / 2);
+}
+
+// The 2022 identification paint on a captured T-80U's fender nose (the 1st brigade's photograph: the nose painted yellow,
+// a blue band across it): brush-painted, so the edges are not ruled.
+function drawUkraineFenderId({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.9, h = radius * 1.9, x0 = cx - w / 2, y0 = cy - h / 2;
+  ctx.fillStyle = '#d9b62e';
+  ctx.beginPath();
+  ctx.moveTo(x0 + w * 0.02, y0 + h * 0.03);
+  ctx.lineTo(x0 + w * 0.97, y0);
+  ctx.lineTo(x0 + w, y0 + h * 0.96);
+  ctx.lineTo(x0 + w * 0.04, y0 + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#2b5597';
+  ctx.fillRect(x0 + w * 0.18, y0 + h * 0.58, w * 0.62, h * 0.22);
+}
+
 // The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
 function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
   const width = size * 0.92, height = size * 0.62, band = height / 6;
@@ -1105,6 +1131,8 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'leo1-rangefinder-blank': drawLeo1RangefinderBlank,
   'ua-trident': drawUkraineTrident,
   'ua-triangle': drawUkraineTriangle,
+  'ua-flag': drawUkraineFlag,
+  'ua-fender-id': drawUkraineFenderId,
   'th-flag': drawThaiFlag,
   'za-castle': drawSouthAfricaCastle,
   'au-kangaroo': drawAustraliaKangaroo,

@@ -28,4 +28,9 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   // 265: the T49 carries the M551's turret and its two roof stations (profiles/m41.ts), so their arcs
   t49: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
+  // 274 (lane t80-family-274): the Kursk's gunner M240 stands on the T-80U's dock seat, its field Kontakt-1 fills the front
+  // roof and the open gunner's hatch the rear right, so its dock takes the rear left behind the commander's cupola
+  // (turret -0.45, 0.559, -0.95); the commander's M2 keeps all but the 74 degrees over it: the widest arc the seat
+  // generator's 20-degree sweep boxes clear (missionAttachmentMotionClear), 7 degrees inside roof-station-arcs.mjs --dock's
+  t80u_kursk: { fitting_browningDerived_m2: [-2.9496, 2.042] },
 });

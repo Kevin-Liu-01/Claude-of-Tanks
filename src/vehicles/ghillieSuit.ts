@@ -4,7 +4,6 @@ import { KIT } from './profiles/kit.ts';
 import { m1a1FenderTopAt } from './profiles/m1a1Skirts.ts';
 import { cloneVehicleMaterial, followVehicleScheme, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
 import type { MaterialVisual } from './materialPainter.ts';
-import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
   ghillieGarnishAtlasSteps, vehicleFoliageAtlas, volumeLitFoliage, type FoliageCard, type VehicleFoliageKind,
@@ -3921,15 +3920,6 @@ const strv103aHullY = (_x: number, z: number): number => profileY([
 ], z);
 // 274: the 103B shares the 103A's casemate (profiles/strv103Family.ts)
 const strv103bHullY = strv103aHullY;
-// The rebuilt Oplot keeps the donor fenders and a new welded turret. Cloth
-// follows those surfaces; hatches, MG, sights and the pitching gun stay open.
-const t84HullY = (_x: number, z: number): number => profileY([
-  [-2.80, 1.526], [1.65, 1.509], [2.70, 1.446],
-], z) + 0.027;
-const t84TurretCoverGapM = 0.026;
-const t84TurretCoverY = (_x: number, z: number): number => profileY([
-  [-2.15, 0.66], [-0.50, 0.74], [0.28, 0.73], [1.63, 0.56],
-], z) + t84TurretCoverGapM;
 const oplotHullY = (_x: number, z: number): number => (
   z < 1.45 ? 1.51 : 1.51 - (z - 1.45) * 0.15
 );
@@ -4147,40 +4137,6 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         topAt: (z) => strv103bHullY(0, z) - 0.02,
         bottomAt: (z) => 0.98 + Math.sin(z * 2.5) * 0.04,
         outAt: (_z, t) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
-    },
-  },
-  t84: {
-    id: 't84', seed: 840, style: 'leafy', density: 1.0, leafScale: 1.02,
-    light: 0x6e804b, dark: 0x35492e, netColor: 'rgba(42,56,34,0.84)',
-    hull: {
-      // Separate shoulder covers leave the driver, engine grilles, lights and
-      // turret sweep uncovered. Side nets hang outside the armored skirts.
-      top: [-1, 1].map(side => ({ x0: side < 0 ? -1.74 : 1.42,
-        x1: side < 0 ? -1.42 : 1.74, z0: 1.93, z1: 2.68, nx: 5, nz: 12,
-        yAt: t84HullY, seatGapM: 0.027, seat: 'donor-fender', seed: 141 + side })),
-      side: [-1, 1].map(side => ({ side, z0: -2.80, z1: 2.85, nz: 42, ny: 8,
-        topAt: () => 1.405, bottomAt: z => 0.92 + Math.sin(z * 3.7) * 0.025,
-        outAt: (_z, t) => 1.995 + (1 - t) * 0.012, seed: 149 + side })),
-    },
-    turret: {
-      top: [
-        { x0: -0.94, x1: 0.94, z0: -1.30, z1: 0.25, nx: 24, nz: 22,
-          yAt: t84TurretCoverY,
-          holes: [rect(0.10, 1.10, -1.20, 0.30), rect(-1.08, -0.13, -0.79, 0.30)],
-          seatGapM: t84TurretCoverGapM, seat: 'welded-roof', seed: 157 },
-        ...[-0.68, 0, 0.68].map(x => ({ x0: x - 0.26, x1: x + 0.26,
-          z0: -1.99, z1: -1.49, nx: 7, nz: 8, yAt: () => 0.959,
-          seatGapM: t84TurretCoverGapM, seat: 'strapped-bustle-pack', seed: 161 })),
-        ...[-1, 1].map(side => ({ x0: side < 0 ? -0.94 : 0.57,
-          x1: side < 0 ? -0.57 : 0.94, z0: 0.43, z1: 0.84, nx: 6, nz: 7,
-          yAt: t84TurretCoverY, seatGapM: t84TurretCoverGapM, seat: 'cheek-roof', seed: 169 + side })),
-      ],
-      // The flank drape hangs 44 mm outside the side cassettes and follows them onto the tapering bustle.
-      side: [-1, 1].map(side => ({ side, z0: -1.66, z1: -0.42, nz: 20, ny: 7,
-        topAt: () => 0.56, bottomAt: z => 0.15 + Math.sin(z * 3.6) * 0.016,
-        outAt: (z, t) => oplotFlankOuterX(z) + 0.044 + (1 - t) * 0.010, seed: 175 + side })),
-      face: [{ z: -2.456, x0: -1.17, x1: 1.17, y0: 0.13, y1: 0.56, nx: 26, ny: 7,
-        seatGapM: 0.026, seat: 'bustle-cage', seed: 183 }],
     },
   },
   t84bm_oplot_m: {

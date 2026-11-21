@@ -5,8 +5,7 @@ import {T80UK_X_GUN_PITCH_BY_YAW_DEG} from './t80uXArmor.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
 import {applyT64PhysicalFrame,T64_DATUMS} from './t64Armor.ts';
-import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
-import {OPLOT_FLANK_CASSETTE,oplotFlankCassetteSeat} from './oplotFlankLayout.ts';
+import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 
 /** Release 227: each Type 96 concept's mechanical gun clearance (absolute turret yaw, minimum pitch, degrees;
@@ -77,7 +76,7 @@ export function synchronizeFleetRenewalMetadata():void{
   // registrations originated from these older slots). (2026-10-26, the boot census) Only the donors read below: a clone
   // of the whole fleet was the boot screen's largest single cost in the fleet chunk's evaluation. A read outside the
   // list throws at import, so a donor added below is listed here with it.
-  const donorIds=new Set([...Object.values(FLEET_RENEWAL_DONORS),'t90sm','t72b_1987','t62_1975','t80u','t84','t72b3m_2016','t72b3','type96b']);
+  const donorIds=new Set([...Object.values(FLEET_RENEWAL_DONORS),'t90sm','t72b_1987','t62_1975','t80u','t72b3m_2016','t72b3','type96b']);
   const snapshot=Object.fromEntries([...donorIds].map(id=>[id,structuredClone(TANK_SPECS[id])])) as Record<string,FleetTankSpec>;
   const donors=new Proxy(snapshot,{get(target,id){
     if(typeof id==='string'&&!(id in target))throw new Error(`fleet renewal: donor '${id}' is not in the snapshot`);
@@ -150,40 +149,8 @@ export function synchronizeFleetRenewalMetadata():void{
   bmpt.armor.turretPivot=[0,hull.armor.turretPivot[1],hull.armor.turretPivot[2]];bmpt.armor.gunPivot=[0,.92,.10];
   bmpt.armor.gunBarrel={lengthM:3.22,radiusM:.033};
   bmpt.visual.trackWidthM=hull.visual.trackWidthM;
-  // Owner-authorized Oplot hybrid: retain the original weapon and protection
-  // ratings, replace the physical frame with the 2016 hull and welded turret.
-  const oplot=TANK_SPECS.t84, oldOplot=donors.t84, chassis=donors.t72b3m_2016;
-  const frame=modernArmor({hl:chassis.dims.hullLengthM/2,hw:1.86,inW:1.25,floor:.39,trkTop:1.22,roofY:1.529,
-    turretPivot:[.008,1.535,.114315],gunPivot:[0,.35,1.02],barrelLenM:4.26,barrelRadM:.104,
-    glacis:[80,300,450],lower:[80,180,230],side:[80,100,150],rear:45,roof:30,
-    tw:1.48,tFrontZ:1.63,tRearZ:-2.15,tH:.74,cheek:[200,400,500],tSide:[80,140,180],
-    tRear:60,tRoof:35,mantlet:[200,400,500]});
-  for(const plate of frame.turretPlates){
-    const previous=oldOplot.armor.turretPlates.find(p=>p.name===plate.name);
-    if(previous)Object.assign(plate,{physicalMm:previous.physicalMm,keMm:previous.keMm,ceMm:previous.ceMm});
-  }
-  // Seed the same protection family as the retained Oplot reactive arrays.
-  // Anatomy replaces these seeds with the marked cassette lid triangles.
-  const era=oldOplot.armor.turretPlates.find(p=>p.era)?.era;
-  if(!era)throw new Error('Oplot modernization requires its existing ERA family');
-  const eraOptions={kind:'era',era:{...era}};
-  // Each flank seed runs from the front cassette's outer front edge to the rear cassette's outer rear edge
-  // (oplotFlankLayout.ts), so it passes through all three seated bodies as they follow the tapering bustle.
-  const flankFront=oplotFlankCassetteSeat(0).outerFront,flankRear=oplotFlankCassetteSeat(OPLOT_FLANK_CASSETTE.stations.length-1).outerRear;
-  const flankLow=OPLOT_FLANK_CASSETTE.centerY-OPLOT_FLANK_CASSETTE.heightM/2,flankHigh=OPLOT_FLANK_CASSETTE.centerY+OPLOT_FLANK_CASSETTE.heightM/2;
-  frame.turretPlates.push(
-    plate('oplot_cheek_era_L',15,[-1.20,.50,1.39],[-.50,.50,1.57],[-1.20,.60,1.20],eraOptions),
-    plate('oplot_cheek_era_R',15,[.50,.50,1.57],[1.20,.50,1.39],[.50,.60,1.38],eraOptions),
-    plate('oplot_side_era_L',15,[-flankRear[0],flankLow,flankRear[1]],[-flankFront[0],flankLow,flankFront[1]],
-      [-flankRear[0],flankHigh,flankRear[1]],eraOptions),
-    plate('oplot_side_era_R',15,[flankFront[0],flankLow,flankFront[1]],[flankRear[0],flankLow,flankRear[1]],
-      [flankFront[0],flankHigh,flankFront[1]],eraOptions),
-  );
-  oplot.armor={...frame,hullPlates:structuredClone(chassis.armor.hullPlates)};
-  oplot.armor.modules=hybridModules(chassis,{...oplot,armor:frame});
-  oplot.armor.crew=[...structuredClone(chassis.armor.crew.filter(c=>!c.turretLocal)),...frame.crew.filter(c=>c.turretLocal)];
-  oplot.dims={...chassis.dims,overallLengthM:chassis.dims.hullLengthM/2+.114315+1.02+4.26,heightM:3.15};
-  stripSilhouetteDimensions(oplot.dims);oplot.visual.trackWidthM=chassis.visual.trackWidthM;
+  // 274 (lane t80-family-274): the T-84's Oplot-concept frame (the T-72B3M 2016 hull under a welded turret) is retired;
+  // the T-84 draws the T-80U X hull and takes its frame in t80MarkFrames.ts (profiles/t84.ts)
   const variants=[['type96_72_long','t72b3',1.475,.065591],['type96_80_feng','t80u',1.565,.07187],['type96_72m_lei','t72b3m_2016',1.545,.114315]] as const;
   for(const [id,donor,y,z] of variants){
     const s=TANK_SPECS[id],base=donors[donor],turret=donors.type96b;
