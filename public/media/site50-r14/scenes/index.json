@@ -1561,23 +1561,6 @@
    "thumb": "/media/site50-r14/fleet/type74.jpg"
   },
   {
-   "id": "s123-type90-cliffbridge",
-   "group": "fleet",
-   "vehicle": "type90",
-   "title": {
-    "en": "A Type 90 (Kyū-maru) fires on the move at Aegis Crossing at sunset",
-    "zh": "日落时分，一辆 Type 90 (Kyū-maru) 在Aegis Crossing行进间射击"
-   },
-   "short": {
-    "en": "Type 90 (Kyū-maru), Aegis Crossing",
-    "zh": "Type 90 (Kyū-maru)，Aegis Crossing"
-   },
-   "map": "cliffbridge",
-   "durationMs": 6600,
-   "scene": "/media/site50-r14/scenes/s123-type90-cliffbridge.scene.json",
-   "thumb": "/media/site50-r14/fleet/type90.jpg"
-  },
-  {
    "id": "s124-type90a-cliffbridge",
    "group": "fleet",
    "vehicle": "type90a",

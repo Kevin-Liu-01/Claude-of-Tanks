@@ -2685,10 +2685,10 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 97102,
-   "sha256": "678786c48d46757606ef5feef84189877d86cfcd446139213b2588b4157f2c67",
+   "bytes": 96539,
+   "sha256": "fdfdd95ffa67a1439708948d20b55600370710099dbd3b812b3869dc38dae480",
    "source": null,
-   "vehicles": 187
+   "vehicles": 186
   },
   {
    "path": "media/site50-r14/fleet/k1a1_x.jpg",
@@ -5288,29 +5288,6 @@
    "take": "s35-farm-village",
    "round": "shots/media-r5/site50/deliver-r14",
    "vehicle": "type90_x"
-  },
-  {
-   "path": "media/site50-r14/fleet/type90.jpg",
-   "bytes": 64569,
-   "sha256": "d85d02172635f387d6efeab05f63ae6f3add3be2461859245fa6a1d9dc7cfb2b",
-   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge-close-4k.png",
-   "take": "s123-type90-cliffbridge",
-   "round": "shots/media-r5/site50/deliver-fleet226",
-   "vehicle": "type90"
-  },
-  {
-   "path": "media/site50-r14/fleet/type90.webm",
-   "bytes": 431819,
-   "sha256": "5ea115be593dbae862bea42c5f8075db5437adbb81497e939776853801882c7a",
-   "width": 640,
-   "height": 360,
-   "fps": 30,
-   "seconds": 6,
-   "audio": null,
-   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge.mp4",
-   "take": "s123-type90-cliffbridge",
-   "round": "shots/media-r5/site50/deliver-fleet226",
-   "vehicle": "type90"
   },
   {
    "path": "media/site50-r14/fleet/type90a.jpg",
@@ -8523,10 +8500,10 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 99620,
-   "sha256": "fc9510c758197bc6e0bdcac3c78381601c53a4f2c350c1dadd2de40cbbf677de",
+   "bytes": 99052,
+   "sha256": "dde56c8faa92f623cb02a94df7824c5bb8b25b55ecc707542826444da8c2e23c",
    "source": null,
-   "takes": 195
+   "takes": 194
   },
   {
    "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",

@@ -20,8 +20,13 @@ import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
 assert.ok(FLEET.length > 0, 'a fleet roster (fleet-plan.mjs writes fleet-roster.json)');
 // the roster's plan (s60-s224) numbered on from 60 in order; a vehicle added since (fleet-plan.mjs --append) numbered on
 // after it, never on a number another take holds (s225-s252 are the combat round's and the duels')
-const numbers = FLEET.map((s) => s[0]), PLANNED = 165, later = numbers.slice(PLANNED);
-assert.deepEqual(numbers.slice(0, PLANNED), Array.from({ length: Math.min(PLANNED, FLEET.length) }, (_, i) => i + 60), 'numbered on from 60 in order');
+// A take whose hero retired into another vehicle's leaves the roster with its number, which no take reuses: 274's s123
+// (the STC-1, type90_kyumaru, merged into the STC-2, whose own take is s124; its scene and stills stay in the library).
+const RETIRED_TAKES = Object.freeze([123]);
+const numbers = FLEET.map((s) => s[0]), PLANNED = 165, KEPT = PLANNED - RETIRED_TAKES.length, later = numbers.slice(KEPT);
+assert.deepEqual(numbers.slice(0, KEPT), Array.from({ length: PLANNED }, (_, i) => i + 60)
+  .filter((n) => !RETIRED_TAKES.includes(n)).slice(0, Math.min(KEPT, FLEET.length)), 'numbered on from 60 in order');
+assert.deepEqual(numbers.filter((n) => RETIRED_TAKES.includes(n)), [], 'a retired take number is never reused');
 assert.ok(later.every((n, i) => n > (i ? later[i - 1] : 60 + PLANNED - 1)), 'a later take numbered on in order');
 const held = new Set([...SHOTS, ...OWNER_NINE, ...COMBAT, ...DUELS].map((s) => s[0]));
 assert.deepEqual(later.filter((n) => held.has(n)), [], 'no later take on a number another take holds');
