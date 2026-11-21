@@ -1840,6 +1840,34 @@ const PLATE_FIT_MATCH_M = 0.002;
  * but not as one sheet (a skirt fused into the hull's solid block) is held where it stands. Main plates are never
  * listed (their frames' cells are hulled from the drawn shell).
  */
+/**
+ * A fitted piece's outline as one planar convex polygon (274.0): adjacent duplicate corners dropped, then every corner
+ * projected onto the plane through the corners' centroid along their Newell normal (the generator writes millimetres,
+ * which leaves a five- or six-corner piece up to 0.56 mm off its plane).
+ */
+function planarOutline(piece: readonly (readonly number[])[]): Vec3[] {
+  const corners = piece.map((point) => [point[0], point[1], point[2]] as Vec3)
+    .filter((point, index, all) => {
+      const prev = all[(index + all.length - 1) % all.length];
+      return Math.hypot(point[0] - prev[0], point[1] - prev[1], point[2] - prev[2]) > 1e-6;
+    });
+  const normal: Vec3 = [0, 0, 0], centre: Vec3 = [0, 0, 0];
+  corners.forEach((a, index) => {
+    const b = corners[(index + 1) % corners.length];
+    normal[0] += (a[1] - b[1]) * (a[2] + b[2]);
+    normal[1] += (a[2] - b[2]) * (a[0] + b[0]);
+    normal[2] += (a[0] - b[0]) * (a[1] + b[1]);
+    for (let axis = 0; axis < 3; axis++) centre[axis] += a[axis] / corners.length;
+  });
+  const length = Math.hypot(normal[0], normal[1], normal[2]);
+  if (!(length > 1e-12)) return corners;
+  const unit: Vec3 = [normal[0] / length, normal[1] / length, normal[2] / length];
+  return corners.map((point): Vec3 => {
+    const off = (point[0] - centre[0]) * unit[0] + (point[1] - centre[1]) * unit[1] + (point[2] - centre[2]) * unit[2];
+    return [point[0] - off * unit[0], point[1] - off * unit[1], point[2] - off * unit[2]];
+  });
+}
+
 export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPlateFitReceipt[] | undefined): void {
   if (!receipts?.length) return;
   const named = (plate: ArmorPlate, receipt: AnatomyPlateFitReceipt): boolean => {
@@ -1862,11 +1890,17 @@ export function applyPlateFits(armor: ArmorAnatomy, receipts: readonly AnatomyPl
       // one plate per piece (a folded part is fitted face by face), all under the layer's name: a round meets the piece it
       // strikes, and an ERA bank is still spent once by name (sim/damage.ts)
       return receipt.pieces.map((piece): ArmorPlate => {
-        const verts = piece.map((point) => [point[0], point[1], point[2]] as Vec3);
+        // (274.0) a piece the fit cut to other than four corners is a convex outline, not a quad: the quad trace reads
+        // four corners, so a pentagon lost its fifth corner's wedge and a triangle had no fourth. A piece traced as a
+        // polygon (that one, or any piece of a convex-outline plate) has its corners on one plane within the generator's
+        // millimetre rounding (<= 0.56 mm), so they are put back on it.
+        const polygon = plate.convexPolygon === true || piece.length !== 4;
+        const verts = polygon ? planarOutline(piece) : piece.map((point) => [point[0], point[1], point[2]] as Vec3);
         const next: ArmorPlate = { ...plate, verts };
+        if (polygon) next.convexPolygon = true;
         // a reshaped outline keeps no cut-edge indices of the old one; a convex face's trace box follows its new outline
         delete next.openEdges;
-        if (plate.convexPolygon) {
+        if (next.convexPolygon) {
           const bounds = convexArmorTraceBounds(verts as [number, number, number][]);
           if (bounds) next.traceBounds = { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 };
           else delete next.traceBounds;

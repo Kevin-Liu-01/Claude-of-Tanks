@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1804 | 414.5 |
+| KEEP | 1805 | 414.5 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 665 | 1177.6 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2470 | 1592.5 | 265.6 |
-| After: the default tier | 1804 | 414.5 | 68.3 |
+| Before: every receipt (npm test without the tiers) | 2471 | 1592.5 | 265.6 |
+| After: the default tier | 1805 | 414.5 | 68.3 |
 
 Default tier: 26.0 % of the whole registry's CPU; 45.3 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 49.5 min pool, 18.6 min browser receipts.
 
@@ -814,7 +814,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1804)
+## KEEP (1805)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -2617,6 +2617,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/keyPrompt.selftest.mjs` | n/a | KEEP | interface contract, n/a s: keyPrompt.selftest.mjs — the one "what do I press" (mobile-hud-274, owner 2026-11-20: "a standardized system f | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tutorial/tutorialGuide.selftest.mjs` | n/a | KEEP | interface contract, n/a s: 273: the tutorial's guide (marker, path, bracket, edge pointer, HUD chevron, aim ghost): its geometry, and tha | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/tutorial/tutorialTour.selftest.mjs` | n/a | KEEP | interface contract, n/a s: 273 (storyboard §6): the debrief, the five-stop tour and the close, and the access that chains them | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/plateFitPolygons.selftest.mjs` | n/a | KEEP | vehicle rule, n/a s: 274.0 (coordinator ruling): a fitted piece of other than four corners is a planar convex outline the trace rea | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/workerCalls.selftest.mjs` | n/a | KEEP | contract, n/a s: workerCalls.selftest — improve-271 (plans 017, 031, the surface paint prefetch; on R6's count): the plumbing. | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/worldActivationOneWorld.selftest.mjs` | n/a | KEEP | world rule, n/a s: mp-one-map-274 (the owner, 2026-11-19: two battlefields merged in one multiplayer scene): one battlefield draw | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/approved-openings.selftest.mjs` | n/a | KEEP | tool contract, n/a s: owner 2026-11-12: the standard check's B2 openings verdict on the build alone (pinned cells, bounded bays) | default tier (npm test, the release gate; lane mode by its closure) |

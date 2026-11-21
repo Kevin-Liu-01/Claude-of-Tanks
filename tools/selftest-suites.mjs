@@ -382,6 +382,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hull-contact-census.selftest.mjs',
     // hitbox-fit-274 (the owner, 2026-11-18: floating hit boxes): crop, fit or drop, and the pinned ids' layers on their builds
     'tools/hitbox-fit-census.selftest.mjs',
+    // 274.0 (coordinator ruling): a fitted piece of other than four corners is a planar convex outline the trace reads whole
+    'src/vehicles/plateFitPolygons.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
     'src/vehicles/mudguardHangers.selftest.mjs',
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
