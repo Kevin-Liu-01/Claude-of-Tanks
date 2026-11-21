@@ -3045,6 +3045,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-23 (wreck-cracks 243): the dented live cut keeps the hull watertight (a split face's corners on an edge are
     // its neighbour's too: the synthetic pair in one mesh and in two, the vt4a1's wreck at seed 77)
     'src/vehicles/turretRingWatertight.selftest.mjs',
+    // release 274 (turret-deck-gate; the owner on the Leopard 2 prototype: "turret looks like its glitching into hull"):
+    // the turret-deck check passes a clean T-72B3 and catches its turret lowered onto the deck and a bin over its foot
+    'src/vehicles/turretDeckAudit.selftest.mjs',
     // 2026-10-22 (crew-fit 235): every crew station a seated P50 body inside the shell at every turret yaw
     'src/vehicles/crewSeats.selftest.mjs',
     // 2026-10-30 (crew-side 266): +X is the vehicle's left; every side-named station on its side, no ring crossings, no
