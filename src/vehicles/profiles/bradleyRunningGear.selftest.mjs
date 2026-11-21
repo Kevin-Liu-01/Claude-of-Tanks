@@ -8,7 +8,6 @@ const BRADLEY_DONOR_IDS = [
   'm2a2_bradley',
   'm3a3_bradley',
   'ua_m2a3_bradley',
-  'marder1a3',
 ];
 
 for (const id of BRADLEY_DONOR_IDS) {

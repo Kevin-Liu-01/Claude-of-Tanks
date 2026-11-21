@@ -246,13 +246,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   // -------------------------------------------------------------------------
 
   marder1a3: {
-    // Marder 1A3, the Bundeswehr's tall-hull IFV — 20 mm MK20 in the small
-    // two-man turret, MILAN on the mount, rear ramp. §5.302 OWNER ORDER:
-    // "now completely revert our marder hull while preserving its new
-    // turret" — the pre-§5.286 Bradley-donor hull returns (buildBradley +
-    // A3 rails); the §5.269 cast turret with the external MK20 carriage is
-    // preserved and re-seated. Print marder1a3_arrafi.glb stays fused/
-    // suspect (rip-poster account history) — PHOTOS GOVERN (§B7 class).
+    // Marder 1A3, the Bundeswehr's tall-hull IFV — 20 mm Rh 202 in the external mount of the two-man turret, MILAN on
+    // its firing post, rear ramp. 274 (owner 2026-11-20: "update the marder 1a3's turret and hull. redesign it too"):
+    // its own hull and turret (profiles/marder1a3.ts) replace the §5.302 Bradley-donor hull and the §5.269 cast turret;
+    // stations from the local reference print scaled to the published hull (docs/references/tanks/marder1a3.md).
     id: 'marder1a3', name: 'Marder 1A3', nation: 'Germany', era: 'modern', role: 'ifv',
     hp: 1250,
     enginePowerHp: 600, weightTons: 33.5, topSpeedKmh: 65, reverseSpeedKmh: 17,
@@ -273,25 +270,22 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
         shell('DM81 HEI-T', 'HE', 20, 6, 6, 30, 1045, { reloadS: 0.20, count: 750 }),
       ],
     },
-    // Published Marder 1A3 data: 6.88 hull (gun never passes the bow —
-    // overall = hull), 3.38 over the appliqué, 3.02 to the sight crown.
-    // §5.302 hull revert: the silhouette* rows return with the pre-§5.286
-    // Bradley-donor hull (hull-side honest-measured dims; heightM stays on
-    // the preserved turret's sight-crown publication).
+    // Published Marder 1A3 data: 6.88 hull (gun never passes the bow — overall = hull), 3.38 over the appliqué, 3.02
+    // to the sight crown. 274: the silhouette rows are the new build's (bow 3.43 to stern -3.42, the appliqué ribs at
+    // ±1.69, the MILAN tube's crown 2.93).
     dims: { hullLengthM: 6.88, overallLengthM: 6.88, widthM: 3.38, heightM: 3.02,
-      silhouetteHullLengthM: 6.39, silhouetteOverallLengthM: 6.41,
-      silhouetteWidthM: 3.38, silhouetteHeightM: 2.85 },
+      silhouetteHullLengthM: 6.85, silhouetteOverallLengthM: 6.85,
+      silhouetteWidthM: 3.38, silhouetteHeightM: 2.93 },
     armor: ifvArmor({
-      // §5.302 reverted-hull envelope (m2a2 family datum — the Bradley donor
-      // hull the order restores): roof 1.90, ring station (0.18, -0.05) at
-      // 1.895 carrying the PRESERVED §5.269 cast turret + external MK20
-      // carriage; turret-side values stay on the wave's print-measured band.
-      hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
-      turretPivot: [0.18, 1.895, -0.05], gunPivot: [0, 0.78, 0.26],
-      barrelLenM: 2.55, barrelRadM: 0.026,
+      // 274: the Marder's own hull (belly 0.43, roof 1.964, tub ±0.98 between the tracks, appliqué face ±1.66, track
+      // top run 1.08) and turret (ring on the centreline at z -0.05; the drum ±0.86 from z 0.78 to -0.98, the external
+      // housing to 0.92 over the ring; the Rh 202's trunnion 0.65 up, its muzzle 1.76 ahead of it).
+      hl: 3.43, hw: 1.66, inW: 0.98, floor: 0.43, trkTop: 1.08, roofY: 1.964,
+      turretPivot: [0, 1.964, -0.05], gunPivot: [-0.03, 0.65, -0.05],
+      barrelLenM: 1.76, barrelRadM: 0.024,
       glacis: [30, 45, 75], lower: [25, 32, 45], side: [20, 35, 60],
       skirt: [15, 25, 45], rear: 15, roof: 12,
-      tw: 0.75, tFrontZ: 0.80, tRearZ: -0.75, tH: 0.60,
+      tw: 0.86, tFrontZ: 0.78, tRearZ: -1.08, tH: 0.92,
       cheek: [35, 55, 80], tSide: [25, 40, 60], tRear: 15, tRoof: 10,
       mantlet: [35, 55, 80],
     }),
