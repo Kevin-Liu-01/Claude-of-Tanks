@@ -247,6 +247,8 @@ if (TANK_IDS.schema >= 4) {
 // cot.picker.<store>.), each either moved by the migration or allowed here with its reason
 const ALLOWED = new Map([
   ['cot.picker.', 'components/picker.ts builds every picker memory key; a spec-keyed memory is found at its `memory:` owner'],
+  // 274.0 (mobile-hud): the first-use hints' seen marks are keyed by the hint (HintId: armourShading, reload, ...), never a tank
+  ['cot.hint.', 'ui/firstUseHints.ts SEEN_KEY: cot.hint.<hint id>.v1, keyed by a first-use hint, not a tank id'],
 ]);
 const sourceFiles = [];
 const walk = (dir) => {

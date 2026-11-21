@@ -3137,6 +3137,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 274: the battle's guidance in one place (Kevin: "one unified thing"): the tutorial's card, the toasts and the centre
     // notices never on each other or on a control, at every recorded HUD size
     'src/ui/guidancePlan.selftest.mjs',
+    // mobile-hud-274 (registered at the 274.0 merge): the first-use hints' rules (a combat notice preempts a hint, one at a
+    // time, never twice) and the one "what do I press" resolver the hints, the controls strip and the battle's tiles read
+    'src/ui/firstUseHintPolicy.selftest.mjs',
+    'src/ui/keyPrompt.selftest.mjs',
     // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
     // a portrait phone's systems row follow it; the scope stays centred
     'src/ui/battleSight.selftest.mjs',
