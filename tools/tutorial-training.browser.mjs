@@ -49,7 +49,7 @@ const report = { view: VIEW, locale: LOCALE, steps: [], errors: [], startedAt: n
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 const { TRAINING_RULES } = await import('../src/sim/trainingGround.ts');
-const { chapterSteps } = await import('../src/ui/tutorial/tutorialSteps.ts');
+const { ANGLE_WINDOW, chapterSteps } = await import('../src/ui/tutorial/tutorialSteps.ts');
 // the training chapter, then (its last card ends the battle) the debrief and the tour on the Garage
 const allSteps = [...chapterSteps('training', touch ? 'touch' : 'keyboard'), ...chapterSteps('debrief', touch ? 'touch' : 'keyboard'),
   ...chapterSteps('tour', touch ? 'touch' : 'keyboard')];
@@ -439,17 +439,24 @@ try {
       await thirdPerson();
       await driveInto(TRAINING_POINTS.fireF, now, true);
       how = 'drove to ring F, turned the hull';
-      const until = Date.now() + 60_000;
-      let key = null;
+      report.angleFrom = await pose().then((p) => Math.round(Math.hypot(p.x - TRAINING_POINTS.fireF.x, p.z - TRAINING_POINTS.fireF.z) * 10) / 10);
+      // short taps sized to the turn left (a key held between reads swung the hull through the band: the end walks of
+      // 2026-11-20 left it at 21 and 36 degrees), aiming at the window's middle
+      const until = Date.now() + 90_000;
+      const mid = (ANGLE_WINDOW.minDeg + ANGLE_WINDOW.maxDeg) / 2;
       while (Date.now() < until && (await stepNow()) === now) {
         const me = await pose(), sentry = await actorPose(ACTOR.sentry);
         const head = headingFromLine(me, sentry);
-        await layOn({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z }, 12); // the gun kept on it
-        const want = Math.abs(head) < 42 ? (head >= 0 ? 'KeyA' : 'KeyD') : Math.abs(head) > 50 ? (head >= 0 ? 'KeyD' : 'KeyA') : null;
-        if (want !== key) { if (key) await page.keyboard.up(key); if (want) await page.keyboard.down(want); key = want; }
-        await sleep(100);
+        const left = mid - Math.abs(head);
+        if (Math.abs(left) > 4) {
+          const key = (left > 0) === (head >= 0) ? 'KeyA' : 'KeyD';
+          await page.keyboard.down(key); await sleep(Math.min(400, Math.max(60, Math.abs(left) * 9))); await page.keyboard.up(key);
+          await sleep(250);
+        } else {
+          await layOn({ x: sentry.x, y: sentry.y + 1.5, z: sentry.z }, 12); // the gun kept on it, the hull still
+          await sleep(200);
+        }
       }
-      if (key) await page.keyboard.up(key);
       report.angleAt = Math.round(Math.abs(headingFromLine(await pose(), await actorPose(ACTOR.sentry))));
     }
     // S10 to S14
@@ -577,6 +584,7 @@ try {
       // what the game stood at as the step ended: the armour colours, the player's health, the hulls on the field
       armour: await page.evaluate(() => window.__DEBUG.input?.getSettings?.().armorAimOverlay ?? null).catch(() => null),
       hp: await page.evaluate(() => Math.round(window.__DEBUG.game.player?.combat?.hp ?? -1)).catch(() => null),
+      at: await pose().then((p) => [Math.round(p.x), Math.round(p.z), Math.round((p.yaw * 180) / Math.PI)]).catch(() => null),
       hurt: await page.evaluate(() => Object.entries(window.__DEBUG.game.player?.combat?.modules ?? {})
         .filter(([, m]) => (typeof m === 'string' ? m : m?.state) && (typeof m === 'string' ? m : m?.state) !== 'ok').map(([name, m]) => `${name}:${typeof m === 'string' ? m : m.state}`)).catch(() => null),
       onField: await page.evaluate(() => window.__DEBUG.game.tanks.filter((t) => t.modeActive !== false && !t.combat.destroyed).length).catch(() => null) };
