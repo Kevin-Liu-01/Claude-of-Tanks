@@ -171,3 +171,87 @@ export function fitLoadedTrackContact(
     positions[i*72+k*3+1]-=drop[TRACK_BAND_ENDPOINT_ONE[k]?(i+1)%n:i];
   }
 }
+
+/** How steeply the lifted top run may rise to a risen tire and fall back to its rest line (rise per metre of run, ~22°). */
+const UPPER_LIFT_SLOPE=0.4;
+/** Air kept between a risen tire and the band's inner face where the top run rides over it. */
+const UPPER_LIFT_GAP_M=0.008;
+
+/** One band side's top-run scratch: its stations' lifts, and which stations form the top run (found once from the rest
+ * carrier on the first call, which never changes). */
+export function upperRunScratch(pointCount:number):UpperRunScratch {
+  return {lift:new Float64Array(pointCount),upper:new Uint8Array(pointCount),stations:new Int32Array(pointCount),count:-1};
+}
+interface UpperRunScratch {lift:Float64Array;upper:Uint8Array;stations:Int32Array;count:number;}
+
+/** Top-run clearance (hydro-arms-274, 2026-11-21; the owner: "THERES TRACKS GLITCHING THROUGH WHEELS"). The influence
+ * field and the loaded-run fit move only the run below the axles, so a road wheel that rose more than its gap to the top
+ * run (a hydropneumatic hull kneeling, any hull over a bump) passed through it. Every station of the top run (its rest
+ * height clear of every axle by half the smallest tire) now clears each live tire by its half stock plus a small gap,
+ * measured on the band as the passes before left it, and each lift eases out along the run at UPPER_LIFT_SLOPE, so the
+ * run drapes over the risen wheel as a tensioned track does. `positions` must hold this call's band from `rest` (the
+ * caller resets it), so a settled wheel leaves the rest run byte for byte; `rest` is the unlined carrier, and a lined
+ * band reads its course off the outer face as fitLoadedTrackContact does. The scratch belongs to one band side. When no
+ * tire reaches the lowest top-run station the call returns at once. No allocation. Returns whether any station moved. */
+export function liftUpperRunOverWheels(
+  positions:Positions,rest:Positions,wheels:readonly RoadContact[],halfThickness:number,
+  scratch:UpperRunScratch,fromOuterFace=false,
+):boolean {
+  const {lift,upper,stations}=scratch,n=lift.length,nw=wheels.length;
+  if(!nw)return false;
+  if(scratch.count<0) {
+    let axleY=-Infinity,minR=Infinity;
+    for(let k=0;k<nw;k++){axleY=Math.max(axleY,wheels[k].y);minR=Math.min(minR,wheels[k].r);}
+    let count=0;
+    for(let i=0;i<n;i++) {
+      upper[i]=(rest[i*72+7]+rest[i*72+19])/2>=axleY+minR*.5?1:0;
+      if(upper[i])stations[count++]=i;
+    }
+    scratch.count=count;
+  }
+  const count=scratch.count;
+  // the highest live tire top against the lowest top-run station: nothing to lift when no tire reaches the run
+  let reach=-Infinity,low=Infinity;
+  for(let k=0;k<nw;k++) {
+    const w=wheels[k];
+    reach=Math.max(reach,w.y+(w.voff??0)+w.r+halfThickness+UPPER_LIFT_GAP_M);
+  }
+  for(let c=0;c<count;c++) {
+    const base=stations[c]*72;
+    low=Math.min(low,fromOuterFace?positions[base+7]+(rest[base+19]-rest[base+7])/2:(positions[base+7]+positions[base+19])/2);
+  }
+  if(reach<=low)return false;
+  let any=false;
+  for(let c=0;c<count;c++) {
+    const i=stations[c],base=i*72;
+    lift[i]=0;
+    const y=fromOuterFace?positions[base+7]+(rest[base+19]-rest[base+7])/2:(positions[base+7]+positions[base+19])/2;
+    const z=fromOuterFace?positions[base+8]+(rest[base+20]-rest[base+8])/2:(positions[base+8]+positions[base+20])/2;
+    for(let k=0;k<nw;k++) {
+      const w=wheels[k],dz=z-w.z,R=w.r+halfThickness+UPPER_LIFT_GAP_M;
+      if(dz>=R||dz<=-R)continue;
+      const need=w.y+(w.voff??0)+Math.sqrt(R*R-dz*dz)-y;
+      if(need>lift[i])lift[i]=need;
+    }
+    if(lift[i]>1e-4)any=true;else lift[i]=0;
+  }
+  if(!any)return false;
+  // ease each lift out along the top run (two alternating passes bound the slope both ways)
+  for(let pass=0;pass<2;pass++)for(let step=0;step<n;step++) {
+    const i=pass?n-1-step:step,j=(i+1)%n;
+    if(!upper[i]||!upper[j])continue;
+    const limit=UPPER_LIFT_SLOPE*Math.abs((rest[j*72+8]+rest[j*72+20])/2-(rest[i*72+8]+rest[i*72+20])/2);
+    if(lift[j]-limit>lift[i])lift[i]=lift[j]-limit;
+    if(lift[i]-limit>lift[j])lift[j]=lift[i]-limit;
+  }
+  for(let c=0;c<count;c++) {
+    const s=stations[c],l=lift[s];
+    if(!l)continue;
+    // the two cells that share station s: cell s's f0 vertices and cell s-1's f1 vertices
+    const prev=(s-1+n)%n;
+    for(let k=0;k<24;k++) {
+      if(TRACK_BAND_ENDPOINT_ONE[k])positions[prev*72+k*3+1]+=l;else positions[s*72+k*3+1]+=l;
+    }
+  }
+  return true;
+}

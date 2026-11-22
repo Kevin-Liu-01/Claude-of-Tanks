@@ -66,8 +66,11 @@ for (const slot of [1, 2]) {
 }
 assert.equal(typeof spec.hydropneumaticAim, 'object',
   'MBT-70 suspension aim owns an explicit physical travel envelope');
-assert.ok(spec.hydropneumaticAim.compressionM >= 0.60 && spec.hydropneumaticAim.droopM >= 0.60,
-  'MBT-70 carries enough wheel travel to reshape its long seven-wheel course');
+// 2026-11-20 (hydro-arms-274): compression is capped at 0.45 m, where the arms and hydraulic struts stay clear of the
+// band and return rollers; the 10 degree kneel over the 2.35 m contact half-length needs sin(10) x 2.35 = 0.41 m.
+assert.ok(spec.hydropneumaticAim.compressionM >= Math.sin(spec.hydropneumaticAim.noseDownDeg * Math.PI / 180) * 2.35
+  && spec.hydropneumaticAim.compressionM <= 0.45 && spec.hydropneumaticAim.droopM >= 0.60,
+  'MBT-70 carries enough wheel travel for its full kneel, and no more compression than its arms clear');
 assert.equal(spec.armor.turretPivot[2], 0.57,
   'extended bustle is balanced by moving the complete turret rig forward');
 assert.equal(spec.armor.turretPivot[1], 1.49,

@@ -35,7 +35,7 @@ import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import { installZoomAwareLods } from '../engine/lodDistanceScale.ts';
 import { RUBBER_UV_REPEATS_PER_M } from './rubberSurface.ts';
-import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
+import {fitLoadedTrackContact,liftUpperRunOverWheels,loadedContactScratch,upperRunScratch} from './loadedTrackContact.ts';
 import { seatStaggeredTrackGround } from './staggeredTrackGround.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
 import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
@@ -68,7 +68,12 @@ import {
 } from './vehicleNightLighting.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
-import { suspensionPatternFor } from './suspensionPatterns.ts';
+import { suspensionPatternFor, hydraulicUnitStyleFor, hydraulicStationCarriesUnit } from './suspensionPatterns.ts';
+import {
+  buildHydraulicUnits, updateHydraulicUnits, hydraulicArmGeometry, bossBoltCircle, turnForSide,
+  type HydraulicUnitRig,
+} from './hydraulicSuspension.ts';
+import { RUNNING_GEAR_PALETTE } from './runningGearFinish.ts';
 import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAxleOutset, sourceToothTip, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
@@ -4289,6 +4294,9 @@ interface SuspensionLinkRig {
   suspensionIM: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   suspensionJointIndices: { anchor: number; axle: number }[];
   suspensionJointIM: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  /** Hydropneumatic pattern (hydro lane 274): the arm and bosses carry outboard detail, so the left side turns. */
+  sideTurned?: boolean;
+  hydraulic?: HydraulicUnitRig | null;
 }
 
 function placeSuspensionBoss(
@@ -4306,11 +4314,14 @@ function placeSuspensionBoss(
     _v.x = link.side * center;
   }
   if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
+  if (rig.sideTurned) turnForSide(link.side, _q);
   _m.compose(_v, _q, _s);
   suspensionJointIM.setMatrixAt(index, _m);
 }
 
 const sourceArmMirror=new THREE.Quaternion(0,0,1,0);
+/** Polished hydraulic rod steel (runningGearFinish.ts polished-steel). */
+const HYDRAULIC_ROD_HEX = RUNNING_GEAR_PALETTE.polishedRod;
 function updateSuspensionLinks(rig: SuspensionLinkRig): void {
   const { suspensionEntries, wheelR, suspensionDimensions, suspensionIM, suspensionJointIndices, suspensionJointIM } = rig;
   for (let i = 0; i < suspensionEntries.length; i++) {
@@ -4323,6 +4334,7 @@ function updateSuspensionLinks(rig: SuspensionLinkRig): void {
     _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + axleZ) * 0.5);
     _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
     if(suspensionDimensions?.armAxialShearM!==undefined&&link.side<0)_q.multiply(sourceArmMirror);
+    if (rig.sideTurned) turnForSide(link.side, _q);
     _s.set(1, 1, length);
     _m.compose(_v, _q, _s);
     suspensionIM.setMatrixAt(i, _m);
@@ -4332,6 +4344,7 @@ function updateSuspensionLinks(rig: SuspensionLinkRig): void {
   }
   suspensionIM.instanceMatrix.needsUpdate = true;
   suspensionJointIM.instanceMatrix.needsUpdate = true;
+  if (rig.hydraulic) updateHydraulicUnits(rig.hydraulic);
 }
 
 function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
@@ -4926,7 +4939,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Local +Z points from the hull pivot to the wheel axle. A slightly wider
   // pivot end and an octagonal/dodecagonal cross-section read as a forged arm
   // instead of a prism, while remaining cheap enough for the full fleet.
-  const suspensionGeo = runningGearArmGeometry(suspensionDimensions,armWidth,armHeight,suspensionPattern);
+  // Hydro lane 274: a hydropneumatic hull on the fleet arm (no source-measured arm) draws the cast arm, bolted bosses
+  // and its family's hydraulic units (hydraulicSuspension.ts).
+  const hydraulicStyle = suspensionDimensions ? null : hydraulicUnitStyleFor(builderSpec, suspensionPattern);
+  const suspensionGeo = hydraulicStyle
+    ? hydraulicArmGeometry(armWidth, armHeight, suspensionPattern.wheelEndTaper, suspensionPattern.armSegments)
+    : runningGearArmGeometry(suspensionDimensions,armWidth,armHeight,suspensionPattern);
   const suspensionIM = new THREE.InstancedMesh(
     suspensionGeo,
     mats.wheelsRecessed || mats.dark || mats.spareTrack,
@@ -4974,6 +4992,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     cylX(bossRadius, bossWidth * 0.72, Math.max(8, suspensionPattern.armSegments)),
     cylX(bossRadius * 0.67, bossWidth, Math.max(8, suspensionPattern.armSegments)),
     cylX(bossRadius * 0.30, bossWidth * 1.12, 8),
+    // the hydropneumatic hub and pivot housings show their bolt circle on the outboard face (HIGH only)
+    ...(hydraulicStyle && q
+      ? bossBoltCircle(bossWidth * 0.36, bossRadius * 0.84, bossRadius * 0.085, bossWidth * 0.06, 8) : []),
   ]);
   // Paired arms may share one fixed hull bearing. Emit that physical boss
   // once; each moving axle still owns its independent instance.
@@ -5022,8 +5043,86 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage16();
 
+  // Hydro lane 274: each eligible station's unit, seated under the track's top run and the return rollers.
+  let hydraulicRig: HydraulicUnitRig | null = null;
+  if (hydraulicStyle) {
+    const upperRunY = (z: number): number => {
+      let best = -Infinity;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if ((a[0] - z) * (b[0] - z) > 0) continue;
+        const dz = b[0] - a[0];
+        const y = Math.abs(dz) < 1e-6 ? Math.max(a[1], b[1]) : a[1] + (b[1] - a[1]) * ((z - a[0]) / dz);
+        if (y > best) best = y;
+      }
+      return best;
+    };
+    const slotOutboardAbsX = (side: Side): number =>
+      xcForSide(side) + wheelOutsetForSide(side) - sourceWheelBack[side] - suspensionWheelClearance;
+    // the band (and its shoes) only bound the slot where its inner edge reaches inboard of the slot's outboard limit
+    const bandOverSlot = (side: Side): boolean =>
+      xcForSide(side) - trackW * 0.5 * Math.max(1, shoeWidthScale) - 0.01 < slotOutboardAbsX(side);
+    const rollerHalfWidth = Math.max(cfg.returnRollerWidthM ?? 0, trackW * 0.69) * 0.5;
+    const ceilingY = (side: Side, z0: number, z1: number): number => {
+      let ceiling = Infinity;
+      if (bandOverSlot(side)) {
+        for (let k = 0; k <= 4; k++) ceiling = Math.min(ceiling, upperRunY(z0 + (z1 - z0) * k / 4) - trackTh * 0.5);
+      }
+      for (const roller of rollerEntries) {
+        if (Math.sign(roller.x) !== side || roller.z + roller.r < z0 || roller.z - roller.r > z1) continue;
+        // a roller body over the slot bounds it from its underside; one outboard of it only by its spindle
+        const overSlot = Math.abs(roller.x) - rollerHalfWidth < slotOutboardAbsX(side);
+        ceiling = Math.min(ceiling, overSlot ? roller.y - roller.r : roller.y - 0.035);
+      }
+      return ceiling;
+    };
+    const floorY = (side: Side, z0: number, z1: number): number => {
+      if (!bandOverSlot(side)) return -Infinity;
+      let floor = -Infinity;
+      for (let k = 0; k <= 4; k++) floor = Math.max(floor, trackBandLowestY(pts, z0 + (z1 - z0) * k / 4) + trackTh * 0.5);
+      // the ground run rises with the wheels (deformBand): a part fixed to the hull must clear it at full compression
+      return floor + suspensionCompressionM;
+    };
+    const ranked = [...wheelZs.keys()].sort((a, b) => wheelZs[b] - wheelZs[a]);
+    const links = suspensionEntries.filter((_, k) => hydraulicStationCarriesUnit(
+      hydraulicStyle, ranked.indexOf(Math.floor(k / 2)), wheelZs.length));
+    const bodyMaterial = mats.wheelsRecessed || mats.dark || mats.spareTrack;
+    // only an external strut shows a rod; its polished steel joins the vehicle set's registration
+    const rodMaterial = hydraulicStyle.kind === 'external-strut'
+      ? tagVehicleMaterial(cloneVehicleMaterial(mats.dark as THREE.MeshStandardMaterial, (m) => {
+        m.color.setHex(HYDRAULIC_ROD_HEX);
+        m.roughness = 0.3;
+        m.metalness = 0.85;
+      }), 'polishedSteel', 'hydraulic-rod')
+      : null;
+    const built = buildHydraulicUnits({
+      kind: hydraulicStyle.kind, links, wheelR, armWidth, armHeight, bossHalfWidth: bossWidth * 0.5,
+      compressionM: suspensionCompressionM, high: !!q,
+      slot: {
+        outboardAbsX: slotOutboardAbsX, ceilingY, floorY,
+        clearOfEnds: (y, z, r) => [sprocket, idler].every((end) => !end || Math.hypot(y - end.y, z - end.z)
+          > Math.max(end.r, end.trackR ?? 0, end.rimR ?? 0, end.toothTipRadiusM ?? 0) + r + 0.015),
+      },
+      bodyMaterial,
+      rodMaterial: rodMaterial ?? bodyMaterial,
+    });
+    hydraulicRig = built.rig;
+    if (runningGearReceipt) runningGearReceipt.hydraulicUnits = built.receipt;
+    if (hydraulicRig) {
+      for (const im of [hydraulicRig.bodyIM, hydraulicRig.rodIM]) {
+        if (!im) continue;
+        im.userData.runningGear = true;
+        im.userData.runningGearUnitId = runningGearUnitId;
+        im.userData.suspensionPattern = suspensionPattern.id;
+        lodWrap(hullG, im);
+        disposables.push(im.geometry);
+      }
+    }
+    if (rodMaterial) disposables.push(rodMaterial);
+  }
   const suspensionLinks: SuspensionLinkRig = {
     suspensionEntries, wheelR, suspensionDimensions, suspensionIM, suspensionJointIndices, suspensionJointIM,
+    sideTurned: !!hydraulicStyle, hydraulic: hydraulicRig,
   };
   const buildRunningGearAssemblyStage8 = (): void => {
     updateSuspensionLinks(suspensionLinks);
@@ -5701,6 +5800,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // 2026-09-17: the loaded-run fit is the fleet default (owner: wheels glitching into the band on rough ground) —
   // the influence-weighted deformation alone lets a drooping end wheel's tire pass through its own ramp/wrap.
   const loadedContact = cfg.fitLoadedRun !== false ? loadedContactScratch(nP) : null;
+  // the top run's lift over risen tires (liftUpperRunOverWheels), one scratch per band side
+  const upperLift = { [-1]: upperRunScratch(nP), [1]: upperRunScratch(nP) } as Record<Side, ReturnType<typeof upperRunScratch>>;
   function buildBandInfluence(ws: WheelEntry[]) {
     const vertices: number[] = [];
     const wheelA: number[] = [];
@@ -6255,7 +6356,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact, upperLift,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   });
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
@@ -6346,6 +6447,7 @@ interface RunningGearRuntimeEnv {
   bandBase: Record<Side, ArrayLike<number>>;
   bandInfluence: Record<Side, BandInfluence>;
   loadedContact: ReturnType<typeof loadedContactScratch> | null;
+  upperLift: Record<Side, ReturnType<typeof upperRunScratch>>;
   endRelays: EndRelay[];
   relayPinned: Uint8Array | null;
   gearContactGeom: GearContactGeometry;
@@ -6365,7 +6467,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact, upperLift,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   } = env;
   // A covered return run is still a complete physical chain. Older builds
@@ -6630,7 +6732,8 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     }
     const arr = attr.array;
     const restPos = bandRestPos[side] ?? (bandRestPos[side] = Float32Array.from(arr as ArrayLike<number>));
-    if (loadedContact) arr.set(restPos);
+    // every pass below starts from the rest band (the top-run lift adds to what the others leave)
+    arr.set(restPos);
     const inf = bandInfluence[side];
     for (let k = 0; k < inf.vertices.length; k++) {
       const vi = inf.vertices[k];
@@ -6645,13 +6748,16 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     // the fit reads its authored tire gaps off this side's baked rest (a course wrapped about the wrong station read as a
     // 16 mm cut it then "corrected" by lifting the parked band into the tire)
     if (loadedContact) fitLoadedTrackContact(arr,bandBase[side],ws,trackTh/2,loadedContact,cfg.trackCarrierFromOuterFace===true,relaid?relayPinned:null);
+    // the top run rides up over any tire that rose into it (hydro-arms-274, 2026-11-21)
+    const lifted = liftUpperRunOverWheels(arr, bandBase[side], ws, trackTh / 2, upperLift[side],
+      cfg.trackCarrierFromOuterFace === true);
     attr.needsUpdate = true;
     // Terrain flex changes the lower run's face direction. Keeping the rest-
     // pose normals made the bent belt shade like a flat plank even though its
     // silhouette moved. These bands are tiny (tens of vertices), so updating
     // their normals on the existing gear cadence is inexpensive and makes
     // each tensioned span read as actual articulated steel.
-    recomputeTrackNormals(geo, loadedContact || relaid ? undefined : inf.triangles);
+    recomputeTrackNormals(geo, loadedContact || relaid || lifted ? undefined : inf.triangles);
   }
 
   // Cheap phase lane used on frames where distant terrain conformance is

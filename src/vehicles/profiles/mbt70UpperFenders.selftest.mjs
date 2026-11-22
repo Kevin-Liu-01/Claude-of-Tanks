@@ -192,7 +192,7 @@ function motion(c){
  const roads=c.port.hullG.getObjectByName('gearRoadWheelTires');c.gear.resetPose();c.tank.root.updateMatrixWorld(true);
  const rest=Array.from({length:roads.count},(_,i)=>new T.Vector3().setFromMatrixPosition(matrix(roads,i,c.port.hullG)).y);
  const state=createTankState(getSpec('mbt70'),new T.Vector3(),0),strokes=[];let minimum=Infinity;
- const fixtures=rollerSuspensionFixtures(c);assert.equal(fixtures[1].targetM,.65);assert.equal(fixtures[2].targetM,-.65);
+ const fixtures=rollerSuspensionFixtures(c);assert.equal(fixtures[1].targetM,.45);assert.equal(fixtures[2].targetM,-.65);
  for(const f of [...fixtures,...[-10,10].map(deg=>({name:`pitch${deg}`,targetM:null,sample:fixtures[0].sample,pitch:deg*Math.PI/180}))]){
   c.gear.resetPose();for(let tick=0;tick<180;tick++)c.gear.conform(state,f.sample,f.pitch??0,0,1/60);
   c.gear.update(0,0);c.tank.root.updateMatrixWorld(true);

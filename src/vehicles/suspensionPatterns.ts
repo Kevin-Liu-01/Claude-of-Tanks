@@ -67,9 +67,49 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, SuspensionPatternId]> = Obje
   [/^(?:t64bv1|ua_t64bv|t64bm1m|t64bv|t64b1v_2022|pt64_tur)$/, 't64-torsion-arm'],
   [/(?:^|_)(?:centurion3|centurion5|strv81|strv105|chieftain5|chieftain_mk10)(?:$|_)/,
     'paired-bogie'],
-  [/(?:^|_)(?:mbt70|strv103|strv103a|udes03|stb1|type74|type90|type90a|type10|type10b|pl01|k1a1|k2|k2b|challenger1|challenger2|challenger_3|challenger_3x)(?:$|_)/,
+  // Hydro lane 274 (owner 2026-11-20, "all pneumatic suspension tanks"): the Challenger 2/3 marks, Leclercs, Type 90B,
+  // Osorios and the Redback run hydropneumatic or hydrogas gear and took the torsion arm until then.
+  [/(?:^|_)(?:mbt70|strv103[a-z]?|strv152|udes03|stb1|type74|type90|type90a|type90b|type10|type10b|pl01|k1a1|k2|k2b|challenger1|challenger2|challenger2e|fv4034|challenger_3|challenger_3x|challenger3_td|challenger_x|challenger_x_sleek|leclerc|amx56|osorio_p1|osorio_p2|ee_t3_osorio|ee_t4_osorio|redback)(?:$|_)/,
     'hydropneumatic-link'],
 ]);
+
+/**
+ * How a hydropneumatic station carries its spring (hydro lane 274): an external strut between the arm and a hull
+ * bracket (MBT-70, STB-1/Type 74, Strv 103/UDES, Leclerc, Osorio), an in-arm unit housed along the arm (K1/K2, Type 90,
+ * Type 10, Redback, PL-01), or a hydrogas unit fixed to the hull at the arm pivot (every Challenger).
+ */
+export type HydraulicUnitKind = 'external-strut' | 'in-arm' | 'hydrogas';
+export type HydraulicUnitStyle = Readonly<{
+  kind: HydraulicUnitKind;
+  /** Front-to-rear station ranks that carry a hydraulic unit; negative counts from the rear. Null: every station. */
+  ranks: readonly number[] | null;
+}>;
+
+const HYDRAULIC_UNIT_RULES: ReadonlyArray<readonly [RegExp, HydraulicUnitStyle]> = Object.freeze([
+  [/^(?:challenger|ua_challenger|fv4034)/, Object.freeze({ kind: 'hydrogas', ranks: null })],
+  // K1 hybrid: hydropneumatic first, second and last stations, torsion bars between
+  [/^k1/, Object.freeze({ kind: 'in-arm', ranks: Object.freeze([0, 1, -1]) })],
+  // Type 90 hybrid: the two front and two rear stations are hydropneumatic
+  [/^type90/, Object.freeze({ kind: 'in-arm', ranks: Object.freeze([0, 1, -2, -1]) })],
+  [/^(?:k2|type10|redback|pl01)/, Object.freeze({ kind: 'in-arm', ranks: null })],
+] as const);
+const EXTERNAL_STRUT: HydraulicUnitStyle = Object.freeze({ kind: 'external-strut', ranks: null });
+
+/** The hydraulic unit style of a hull on the hydropneumatic pattern; null for every other pattern. */
+export function hydraulicUnitStyleFor(
+  spec: SuspensionPatternSpec | null | undefined, pattern: Pick<SuspensionPattern, 'id'>,
+): HydraulicUnitStyle | null {
+  if (pattern.id !== 'hydropneumatic-link') return null;
+  const id = tankSeedId(String(spec?.id || '')).toLowerCase();
+  for (const [matcher, style] of HYDRAULIC_UNIT_RULES) if (matcher.test(id)) return style;
+  return EXTERNAL_STRUT;
+}
+
+/** Whether a station (front-to-rear rank of `count`) carries a hydraulic unit under a style. */
+export function hydraulicStationCarriesUnit(style: HydraulicUnitStyle, rank: number, count: number): boolean {
+  if (!style.ranks) return true;
+  return style.ranks.some((r) => (r < 0 ? count + r : r) === rank);
+}
 
 /** Resolve one stable hull-to-wheel suspension layout for a complete gear unit. */
 export function suspensionPatternFor(
