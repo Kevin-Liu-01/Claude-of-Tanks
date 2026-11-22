@@ -107,7 +107,7 @@ function fakeRow(ids) {
 
 // --- the HUD wiring: one row, every item mapped, one arrangement call, the jump flag in one place ---
 const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
-const rowChildren = [...hud.matchAll(/el\(\s*'button'\s*,\s*'([^']+)'\s*,\s*controlsRow\s*\)/g)].map((m) => m[1]);
+const rowChildren = [...hud.matchAll(/el\(\s*'button'\s*,\s*'([^']+)'\s*,\s*controlsRow\s*\)/g)].map((m) => m[1].split(' ').filter((name) => !name.startsWith('cot-m-')).join(' ')); // ui-motion-275: motion classes (cot-m-*) ride the buttons; the row is read by identity
 assert.deepEqual(rowChildren, ['cot-special', 'cot-jump', 'cot-auxiliary cot-drone-control', 'cot-auxiliary', 'cot-auxiliary cot-reload-control', 'cot-auxiliary', 'cot-systems-more'],
   'the row holds the suspension, the jump, the drone, the ATGM, the reload, the three auxiliary buttons (smoke, lights, '
   + 'roof gun) and, created after them all and never arranged, the touch row\'s More tile (UI-06), so it stays last');

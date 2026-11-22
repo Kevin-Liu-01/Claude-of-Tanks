@@ -168,6 +168,7 @@ function roomStatusOn(picker) {
     equipmentCloses: 0,
     garageConsumables: picker,
     closeEqPicker: () => { context.equipmentCloses += 1; },
+    renderReadyControl: () => ({}), // room-owner-274: setRoomStatus draws its Ready through the shared readyControl
     requiredElement: (parent, selector) => parent.querySelector(selector),
     t: (key) => key,
     battleWord: () => 'Battle',

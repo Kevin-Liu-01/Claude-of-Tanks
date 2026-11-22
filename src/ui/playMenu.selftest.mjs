@@ -221,7 +221,7 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
 // bottom, so whatever sits low in the panel scrolls under it. The seats sit directly under the room code, above the
 // battlefield card, so the card and not a seat goes under the foot; the seat's own row leads and wears its tag.
 {
-  const lobby = source.slice(source.indexOf('<div class="lobby">'), source.indexOf('<div class="note"></div>'));
+  const lobby = source.slice(source.search(/<div class="lobby[ "]/), source.indexOf('<div class="note"></div>'));
   const at = (needle) => { const index = lobby.indexOf(needle); assert.ok(index >= 0, `lobby markup has ${needle}`); return index; };
   assert.ok(at('class="roomhead"') < at('<div class="players"></div>') && at('<div class="players"></div>') < at('class="battlefield-card"'),
     'the roster sits between the room code and the battlefield card');
