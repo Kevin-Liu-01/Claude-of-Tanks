@@ -82,7 +82,7 @@ import type { BattleOutcome } from '../game/battleOutcome.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
 import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.ts';
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
-import type { PhotoStill } from './photoMode.ts';
+import type { PhotoStill, PhotoView } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import type { GarageHotspots, HotspotFacts, HotspotRoom } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
@@ -119,7 +119,8 @@ import { modePreviewVehicle, previewAircraft } from '../vehicles/previewVehicles
 /** What the Garage's photo mode needs from the composition root (main.ts): the stage, its orbit and its capture. */
 interface GaragePhotoControl {
   readonly stage: HTMLElement;
-  readonly showroom: { hold(on: boolean): void; aim(yawRad: number, pitchRad: number, zoomTo?: number): void; reset(): boolean };
+  /** The showroom orbit: the held framing, an aimed view, and the hero pose. */
+  readonly view: PhotoView;
   readonly still: PhotoStill;
 }
 
@@ -792,7 +793,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-menu cot-m-swap" id="cot-battle-menu" role="dialog" aria-modal="true" aria-labelledby="cot-deploy-title">` +
     `<header class="cot-deploy-head">` +
     `<button type="button" class="cot-deploy-back" data-battle-close data-ui-sound="back" aria-label="${t('garage.battle.closeSetup')}">` +
-    `${uiIconSVG('chevronLeft', 18)}<span>${t('garage.nav.garage')}</span>${keycap('Esc')}</button>` +
+    `${uiIconSVG('chevronLeft', 18)}<span>${t('garage.nav.garage')}</span>${keycap('ESC')}</button>` +
     `<h2 class="cot-deploy-title" id="cot-deploy-title">${t('garage.battle')}</h2>` +
     `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
     `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
@@ -924,7 +925,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" class="cot-c-btn cot-lt-act" data-lt-test-drive ` +
     `data-tip="${t('garage.act.testDriveTip')}">${uiIconSVG('modeProving', 18)}<span>${t('garage.act.drive')}</span></button>` +
     `<button type="button" class="cot-c-btn cot-lt-act" data-lt-photo hidden aria-keyshortcuts="P" ` +
-    `data-tip="${t('garage.act.photoTip')} (P)">${uiIconSVG('toolPhoto', 18)}<span>${t('garage.photo.open')}</span></button></div></div></section>` +
+    `data-tip="${t('garage.act.photoTip')} (P)">${uiIconSVG('toolPhoto', 18)}<span>${t('photo.open')}</span></button></div></div></section>` +
     // the readout's station tabs (the 245 redesign): one row of glyphs over the readout, each named under its glyph
     `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="horizontal" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
@@ -5047,7 +5048,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // (2026-11-02 audit F5) the Garage that asked must still show, and Deploy not have opened over it meanwhile
       if (!ticket.current() || battleMenu.classList.contains('open')) return;
       closePhoto = openPhotoMode({
-        stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
+        scope: 'garage', stage: control.stage, view: control.view, openOnHero: true, still: control.still,
+        kit: { keycap, segmented, wireRoving, openSurface, closeSurface },
         fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
         click: () => emit('ui:click', {}), onClose: () => { closePhoto = null; if (garageScreen.isOpen) photoButton.focus(); },
       });

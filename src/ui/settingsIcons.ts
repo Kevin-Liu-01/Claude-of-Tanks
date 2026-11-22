@@ -48,6 +48,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   hitboxOverlay: { id: 'armorFlashlight' },
   shotLog: { id: 'battleRecord', tone: 'cyan' },
   perfHud: { id: 'performance', tone: 'green' },
+  photoMode: { id: 'toolPhoto' },
   networkPanel: { id: 'signal', tone: 'cyan' },
   leaveBattle: { id: 'garage', tone: 'red' },
   scuttle: { id: 'skull', tone: 'red' }, // death-flow-275 R7: hold to scuttle the tank

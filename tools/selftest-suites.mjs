@@ -1186,6 +1186,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // photo-mode-271: the battle's photo camera (open in place, radius and ground clamp, framings, lens, roll)
+    'src/engine/photoCamera.selftest.mjs',
     'src/engine/cameraRigOwner.selftest.mjs', // 2026-11-02 audit F7: one camera owner; entering one tears the last down
     // drone-aim-camera-274: every held view -> a flight or a foreign camera writer -> back is the view that never left
     'src/engine/cameraViewRoundTrip.selftest.mjs',
@@ -2511,6 +2513,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/mainFlowPorts.selftest.mjs', // 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
+    // photo-mode-271: solo photo mode freezes the sim and FX, stays out of rooms, one shared module, the HUD steps away
+    'src/game/battlePhotoMode.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
     'src/game/matchModeWorldPresentation.selftest.mjs',
     // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)

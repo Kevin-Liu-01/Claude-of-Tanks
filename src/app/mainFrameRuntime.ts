@@ -81,6 +81,9 @@ interface MainFrameRuntimeOptions {
   rig: CameraRig;
   /** Watch mode (watch-mode-243): true when the watch camera solved this frame's camera (the rig stays out). */
   watchFrame?(dtSeconds: number): boolean;
+  /** A solo battle's photo mode (photo-mode-271): true when its camera solved this frame's camera over the frozen
+   *  battle (the rig and Watch stay out). */
+  photoFrame?(dtSeconds: number): boolean;
   /** A battle frame drawn as several views (couch mode's split screen): true when it drew the frame. */
   renderViews?(dtSeconds: number, wallDtSeconds: number): boolean;
   /** The panes' HUDs show the battle (couch mode's split screen): the page's HUD frame is not assembled. */
@@ -144,6 +147,7 @@ export function createMainFrameRuntime({
   getMobileAutoAim,
   rig,
   watchFrame,
+  photoFrame,
   renderViews,
   splitHud,
   killcam,
@@ -255,6 +259,8 @@ export function createMainFrameRuntime({
     frameStages?.stage(FRAME_STAGE.camera);
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
+    // photo mode holds the battle paused and frames it with its own camera (no chase lens shift under it)
+    if (frame.inBattle && frame.paused && photoFrame?.(dtSeconds)) { rig.suspendFraming(); return; }
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
       // (battle-camera-264) Watch's cameras own the frame: the chase's lens shift comes off
       watchOwnsCamera = !!watchFrame?.(dtSeconds);
