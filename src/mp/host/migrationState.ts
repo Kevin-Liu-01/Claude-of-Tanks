@@ -483,11 +483,12 @@ export function checkpointAtNewestFrame(checkpoint: NewModeCheckpoint, modeState
   const zones = new Map((Array.isArray(view.zones) ? view.zones : []).map(recordOf).filter((zone): zone is Record<string, unknown> => !!zone && typeof zone.id === 'string')
     .map((zone) => [zone.id as string, zone]));
   const next: ModeCheckpoint = { ...mode, score, teams };
-  // the caches the frame lists active: one the keyframe holds active and the frame does not was taken in the window
+  // the caches the frame lists active: one the checkpoint holds active and the frame does not was taken in the window; one
+  // it lists that the checkpoint holds taken was taken by a replay's play alone (276: a seat's held hull drove onto it)
   const shownCaches = Array.isArray(view.pickups)
     ? new Set(view.pickups.map(recordOf).filter((cache): cache is Record<string, unknown> => !!cache && typeof cache.id === 'string').map((cache) => cache.id as string)) : null;
   const caches = <T extends { id: string; active: boolean }>(list: T[]): T[] =>
-    (shownCaches && Array.isArray(list) ? list.map((cache) => (cache.active && !shownCaches.has(cache.id) ? { ...cache, active: false } : cache)) : list);
+    (shownCaches && Array.isArray(list) ? list.map((cache) => (cache.active !== shownCaches.has(cache.id) ? { ...cache, active: !cache.active } : cache)) : list);
   if (mode.support) next.support = { ...mode.support, pickups: caches(mode.support.pickups) };
   if (mode.waves?.horde) next.waves = { ...mode.waves, horde: { ...mode.waves.horde, pickups: caches(mode.waves.horde.pickups) } };
   const objectives = mode.objectives;
@@ -1123,10 +1124,11 @@ interface WindowReplayed {
  * row the seat holds of that step (a far tier's held row is older than the frame) corrects the play where the play parts
  * from it (rowOverReplay): a human's pose and fight, a bot a human's shot turned. The mode's death watch takes a life the
  * rows changed on the next step, as it took a row's on the old host's resume (matchModes.ts observeEntityDeath). Last, the
- * mode as the seat's frame shows it where the play shows it otherwise (takeView: a flag a human carried, a score, a zone,
- * the ball, a cache taken; never a life or a loadout), the props and destruction the seat was told of that the play did
- * not make (matched by deed and place), and the smoke it did not raise. A bot whose window held nothing a seat could not
- * know plays on as the old host's, to the bit.
+ * mode as the seat's frame shows it (takeView: the lives the rows changed on this last step, then a score, the Infected
+ * factions, a cache both ways, a flag a human carried, a zone, the ball, and a director move the play did not make taken
+ * up as made; never a life the rows did not change, nor a loadout), the props and destruction the seat was told of that
+ * the play did not make (matched deed for deed, laid down under this host's own numbers), and the smoke it did not raise.
+ * A bot whose window held nothing a seat could not know plays on as the old host's, to the bit.
  */
 function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostResumeReplay): WindowReplayed {
   const sim = actor.authority;
@@ -1166,33 +1168,48 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
       newest.set(row.entityId, row.tick);
     }
   }
-  // the mode as the seat's frame shows it, where the play parted from it (compared as served to the seat): the score,
-  // the flags, the zones, the ball and the caches taken (checkpointAtNewestFrame's reading of the view, onto the live
-  // controller by takeView). Lives stay the rows' (the death watch takes them on the first step) and loadouts the play's
+  // the mode as the seat's frame shows it (checkpointAtNewestFrame's reading of the view over the play's own checkpoint,
+  // onto the live controller by takeView): the lives the rows changed first (the death watch, on this last step), then the
+  // score, the Infected factions, the caches, the flags, the zones, the ball, and a director move the frame shows that the
+  // play did not make (a Horde wave cleared or begun, a Frontline advance: taken up as made, never made twice). Lives the
+  // rows did not change stay the play's, and loadouts the play's
   let modeFromFrame = false;
   const viewerId = replay.viewerEntityId !== null ? actor.entityForWireId(replay.viewerEntityId)?.id ?? '' : '';
   const shown = state.frame.modeStateJson;
-  if (shown && sim.modeController) {
+  const checkpoint = shown && sim.modeController ? sim.captureModeCheckpoint() : null;
+  if (shown && checkpoint?.mode && sim.modeController) {
     const played = sim.snapshotMeta(viewerId).modeState;
-    const checkpoint = played && JSON.stringify(played) !== shown ? sim.captureModeCheckpoint() : null;
-    if (checkpoint?.mode) {
-      const atFrame = checkpointAtNewestFrame(checkpoint, shown, { told: new Map(), frameAtS: checkpoint.mode.elapsedS }).mode!;
-      // the play's score is exact but for the points it missed (a seat's kill, a capture): those whole points added
-      let view: Record<string, unknown> | null = null;
-      try { view = recordOf(JSON.parse(shown)); } catch { view = null; }
-      const shownScore = recordOf(view?.score);
-      const score = { alpha: playScoreAtFrame(checkpoint.mode.score.alpha, shownScore?.alpha), bravo: playScoreAtFrame(checkpoint.mode.score.bravo, shownScore?.bravo) };
-      sim.modeController.takeView({ ...atFrame, score });
-      modeFromFrame = true;
+    modeFromFrame = !played || JSON.stringify(played) !== shown;
+    // the revives the seat was told of in the window, on the play's mode clock at their steps (an advance's moment and
+    // the defenders it stood up: checkpointAtNewestFrame's line.begun)
+    const told = new Map<string, number>();
+    for (const [id, tick] of state.respawnTicks ?? []) {
+      if (typeof id === 'string' && Number.isInteger(tick)) told.set(id, checkpoint.mode.elapsedS - (replay.steps - Math.min(replay.steps, Math.max(0, tick - from))) * dt);
     }
+    const atFrame = checkpointAtNewestFrame(checkpoint, shown, { told, frameAtS: checkpoint.mode.elapsedS }).mode!;
+    // the play's score is exact but for the points it missed (a seat's kill, a capture): those whole points added
+    let view: Record<string, unknown> | null = null;
+    try { view = recordOf(JSON.parse(shown)); } catch { view = null; }
+    const shownScore = recordOf(view?.score);
+    const score = { alpha: playScoreAtFrame(checkpoint.mode.score.alpha, shownScore?.alpha), bravo: playScoreAtFrame(checkpoint.mode.score.bravo, shownScore?.bravo) };
+    sim.modeController.takeView({ ...atFrame, score });
   }
   // the props the seat was told fell, and the destruction it was told of, that the play did not make (its own stand). An
-  // entry is matched by what it did and where, not by its number: the play numbers its own craters and holes, and a seat's
-  // crater in the window shifts the old host's
+  // entry is matched by what it did and where, one deed of the play's for one of the frame's (two craters dug on one spot
+  // are two), not by its number: the play numbers its own craters and holes, and a seat's deed in the window shifts the
+  // old host's. What the play did not make is laid down under this host's own numbers (a crater the next id, a hole its
+  // section's next slot), which its log and its walls then agree on and which run on past every number a seat holds (the
+  // frame's numbers beside the play's gave two craters one id, the next crater an id the seats already held, and a hole
+  // whose slot the play had filled was refused)
   sim.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
-  const playedLog = (sim.snapshotMeta(viewerId).destructionLog as DestructionLogEntry[] | undefined ?? []).map(quantizeDestructionEntry);
-  const missing = (state.frame.destruction ?? []).map(quantizeDestructionEntry).filter((entry) => !playedLog.some((own) => sameDestructionDeed(own, entry)));
-  if (missing.length) sim.restoreDestruction(missing);
+  const unmatched = (sim.snapshotMeta(viewerId).destructionLog as DestructionLogEntry[] | undefined ?? []).map(quantizeDestructionEntry);
+  const missing = (state.frame.destruction ?? []).map(quantizeDestructionEntry).filter((entry) => {
+    const own = unmatched.findIndex((candidate) => sameDestructionDeed(candidate, entry));
+    if (own < 0) return true;
+    unmatched.splice(own, 1);
+    return false;
+  });
+  if (missing.length) sim.restoreDestruction(missing, true);
   // the smoke screens the frame shows that the play did not raise (a human's: the play never heard its seat), each on this
   // authority's clock
   const shiftS = -actor.resumedBattleTimeMs / 1000;
@@ -1238,9 +1255,10 @@ type ReplayEntity = ReturnType<MatchActor['entityForWireId']> & object;
 
 /**
  * A row the seat holds, over the replay's hull at the row's step (276): where the play reads as the row does (its pose
- * rounded as captureEntityRow rounds it, its body bits, life, hp, ammunition, shell, both reload channels, fire, auxiliary
- * kit, spent reactive plates and a wreck's thrown turret), nothing; else the row's, as the 275 reading took a newer row
- * (the pose through applyAuthorityRow, the fight through the restore's own writers). Returns whether it corrected anything.
+ * rounded as captureEntityRow rounds it, its body bits, life, hp, ammunition, shell, both reload channels, the magazine
+ * indicator, fire, the special action's toggle, auxiliary kit, spent reactive plates and a wreck's thrown turret),
+ * nothing; else the row's, as the 275 reading took a newer row (the pose through applyAuthorityRow, the fight through the
+ * restore's own writers, the toggle through the special action's binding). Returns whether it corrected anything.
  */
 function rowOverReplay(actor: MatchActor, entity: ReplayEntity, row: EntityRow, oldClockS: number | null, timeS: number): boolean {
   const state = entity.state, combat = entity.combat;
@@ -1427,9 +1445,12 @@ const HULL_NUMBERS = ['x', 'y', 'z', 'yaw', 'speed', 'verticalSpeed', 'visualPit
   'previousShellSlot', 'throttle', 'steer', 'shellSlot', 'actionBits', 'auxiliaryBits', 'fireIntentSeq', 'aimX', 'aimY', 'aimZ',
   'powerMult', 'accelMult', 'traverseMult', 'turretMult', 'aimTimeMult', 'bloomMult'] as const;
 /** The last step's reading of the hull's damage (TankState._debuff: a bot's brain reads it before its next step's movement
- *  reads it again): its multipliers, each packed less 1 (none, a healthy hull's, rides), and its flags (the second byte). */
+ *  reads it again): its multipliers, each packed less 1 (none, a healthy hull's, rides), and its flags (the second byte).
+ *  A multiplier below 0.5 (a red transmission's 0.3 and 0.45, a red turret ring's 0.2) does not come back from less 1
+ *  (Sterbenz: it came back an ulp off): the six then ride as they are (HULL_DEBUFF_RAW). */
 const HULL_DEBUFF_MULTS = ['powerMult', 'accelMult', 'traverseMult', 'turretMult', 'aimTimeMult', 'bloomMult'] as const;
 const HULL_DEBUFF_BITS = ['immobile', 'wreck', 'gunYellow'] as const;
+const HULL_DEBUFF_RAW = 1 << HULL_DEBUFF_BITS.length;
 type HullNumber = typeof HULL_NUMBERS[number];
 /** The flags (a byte): the input's brake, fire and aimLocked, an absent fire intent sequence and auxiliary bits, the last
  *  step's slope block (the special action's toggle rides every row: SPECIAL_ACTIVE). */
@@ -1457,12 +1478,13 @@ function packHull(entity: HullHolder): string | null {
   const state = entity.state, input = entity.input, checkpoint = captureMovementPredictionState(state);
   if (!checkpoint) return null;
   const aux = entity.combat.auxiliary, stations = aux?.stations ?? [], special = entity.specialAction;
+  const raw = HULL_DEBUFF_MULTS.some((key) => state._debuff[key] - 1 + 1 !== state._debuff[key]);
   const numbers = [state.pos.x, state.pos.y, state.pos.z, state.yaw, state.speed, state.verticalSpeed, state.visualPitch, state.visualRoll,
     state.turretYaw, state.gunPitch, state.rolloverCountdownS, state.impactMps, state.impactSource, state.impactNx, state.impactNz, state.fallImpactMps,
     state._ride.solverLift, state._ride.bounces, entity.combat.hp, aux?.gunYaw ?? 0, aux?.gunPitch ?? 0, special?.previousShellSlot ?? 0,
     input.throttle, input.steer, input.shellSlot, input.actionBits, typeof input.auxiliaryBits === 'number' ? input.auxiliaryBits : 0,
     typeof input.fireIntentSeq === 'number' ? input.fireIntentSeq : 0, input.aimPoint.x, input.aimPoint.y, input.aimPoint.z,
-    ...HULL_DEBUFF_MULTS.map((key) => state._debuff[key] - 1), ...checkpoint.values,
+    ...HULL_DEBUFF_MULTS.map((key) => (raw ? state._debuff[key] : state._debuff[key] - 1)), ...checkpoint.values,
     ...stations.flatMap((station) => [station.gunYaw, station.gunPitch])];
   if (stations.length > 255 || !numbers.every((value) => typeof value === 'number' && Number.isFinite(value))) return null;
   let flags = 0;
@@ -1473,6 +1495,7 @@ function packHull(entity: HullHolder): string | null {
   const head = new Array<number>(HULL_HEAD_BYTES + Math.ceil(numbers.length / 8)).fill(0);
   let debuff = 0;
   HULL_DEBUFF_BITS.forEach((key, bit) => { if (state._debuff[key]) debuff |= 1 << bit; });
+  if (raw) debuff |= HULL_DEBUFF_RAW;
   head[0] = HULL_LAYOUT; head[1] = checkpoint.version; head[2] = checkpoint.flags & 0xff; head[3] = checkpoint.flags >> 8; head[4] = flags; head[5] = debuff;
   head[6] = stations.length;
   const present: number[] = [];
@@ -1539,7 +1562,7 @@ function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading): 
     state.impactMps = n('impactMps'); state.impactSource = n('impactSource'); state.impactNx = n('impactNx'); state.impactNz = n('impactNz');
     state.fallImpactMps = n('fallImpactMps'); state._ride.solverLift = n('solverLift'); state._ride.bounces = n('bounces');
     state.slopeBlocked = (reading.flags & HULL_SLOPE_BLOCKED) !== 0;
-    for (const key of HULL_DEBUFF_MULTS) state._debuff[key] = n(key) + 1;
+    for (const key of HULL_DEBUFF_MULTS) state._debuff[key] = reading.debuff & HULL_DEBUFF_RAW ? n(key) : n(key) + 1;
     HULL_DEBUFF_BITS.forEach((key, bit) => { state._debuff[key] = (reading.debuff & (1 << bit)) !== 0; });
     if (Math.round(n('hp')) === row.hp) entity.combat.hp = n('hp');
   } else if (reading.checkpoint.values.length === MOVEMENT_PREDICTION_STATE_VALUES) {

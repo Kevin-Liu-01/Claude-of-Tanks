@@ -614,10 +614,13 @@ export interface MatchModeController<
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
   /**
-   * What a seat's frame shows of the mode, taken onto this live controller where a migrated host's replay of the window
-   * read otherwise (276; migrationState.ts replayWindow): the score, the flags (their carriers' pace with them), the zones,
-   * the ball and the caches taken. Nothing else: no life, loadout, wave or line (restoreCheckpoint, a fresh controller's,
-   * rewrote every life over the rows' and re-armed Gun Game's guns).
+   * What a seat's frame shows of the mode, taken onto this live controller after a migrated host's replay of the window
+   * (276; migrationState.ts replayWindow; `checkpoint` is the play's own, carried to the frame by checkpointAtNewestFrame).
+   * First the lives the rows changed, through the death watch on the play's last step. Then the score, the Infected
+   * factions, the caches (both ways), the flags (their carriers' pace with them), the zones (Frontline's with its line),
+   * the ball, and a director move the frame shows that the play did not make (a Horde wave cleared or begun, a Frontline
+   * advance), taken up as made through the writers a keyframe's restore uses. Never a life the rows did not change, nor a
+   * loadout (restoreCheckpoint, a fresh controller's, rewrote every life over the rows' and re-armed Gun Game's guns).
    */
   takeView(checkpoint: ModeCheckpoint): void;
   /** A bravo hunter's search record (round 8 Y2: receipts and probes read the phase), a copy; null before it has one. */
@@ -1936,6 +1939,18 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     setLife(entity, 'alive');
   };
 
+  /**
+   * A survivor joins the infected (Infected), its one writer: the death watch's conversion, and a migrated host's replay
+   * taking the faction the seat's frame shows (takeView, 276): its side, its spawn, its pace. Its life is left as it is.
+   */
+  const infect = (entity: Entity): void => {
+    teams.alpha.splice(teams.alpha.indexOf(entity), 1);
+    entity.team = entities.some(other => other.team === 'enemy') ? 'enemy' : 'bravo';
+    teams.bravo.push(entity);
+    spawns.set(entity.id, { ...centers.bravo });
+    stampPhysics(entity);
+  };
+
   const observeEntityDeath = (entity: Entity, timeS: number): void => {
     // a death is the move alive -> down, and only that move (ModeLife): a benched or rescued hull is never one. A wreck
     // whose combat state stands live again by any other hand than a revive (a migrated row) begins a new life.
@@ -1947,11 +1962,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     dropCarriedFlags(entity, timeS);
     if (entity === boss) return;
     if (ruleset.infection && teamOf(entity) === 'alpha') {
-      teams.alpha.splice(teams.alpha.indexOf(entity), 1);
-      entity.team = entities.some(other => other.team === 'enemy') ? 'enemy' : 'bravo';
-      teams.bravo.push(entity);
-      spawns.set(entity.id, { ...centers.bravo });
-      stampPhysics(entity);
+      infect(entity);
       emit('mode_infected', { id: entity.id, team: 'bravo' });
     }
     if (ruleset.respawnS != null) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
@@ -3172,34 +3183,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         replanForRisen();
         placementTimeS = clock;
       }
-      // a clear the old host made after the keyframe (fix-up r2): taken up as made at its moment, the frame's mode time
-      // less the lull it showed gone (the clear's own step shows none gone), so the new host's first step clears nothing
-      const cleared = saved.horde.cleared;
-      if (Array.isArray(cleared) && finite(cleared[0]) && finite(cleared[1]) && nextWaveAtS === null) {
-        clearHordeWave(cleared[1] > 0 ? cleared[0] + cleared[1] - hordeRules.intermissionS : cleared[0], true);
-      }
-      if (state.horde) {
-        state.horde.wave = wave; state.horde.total = hordeWaveTotal(hordeRules, wave, hordeHumans);
-        state.horde.healChance = cacheHealChance(ruleset, wave);
-      }
-      publishHorde();
-      // a wave the old host began after the keyframe (G2): taken up as begun, on the clock it began on (the lull's end),
-      // from the streams and the rested set the keyframe carries, so the draw is the old host's
-      const begunWave = saved.horde.begunWave;
-      if (Number.isInteger(begunWave) && begunWave! > wave) {
-        const clock = placementTimeS;
-        // on the step the old host began it on (275): the first of its steps from the keyframe's clock at or past the lull's
-        // end, summed a step's dt at a time as its battle clock was (it was the lull's end itself, a step early: the trickle's
-        // and the stall's clocks then fell a tick off)
-        // (a step is the authorities' fixed SIM_DT, 1 / STRIKE_TICK_HZ: airSupport.ts holds the rate for the mode)
-        const due = saved.horde.nextWaveAtS ?? clock;
-        let at = clock;
-        for (let k = 0; at < due && k < STRIKE_TICK_HZ * 600; k++) at += 1 / STRIKE_TICK_HZ;
-        placementTimeS = at;
-        wave = begunWave!;
-        startHordeWave(true);
-        placementTimeS = clock;
-      }
+      takeHordeMove(saved.horde);
     }
     if (saved.line) {
       lineIndex = saved.line.index; holdUntilS = saved.line.holdUntilS;
@@ -3222,10 +3206,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           lineArrivalDue.set(key, [slot, count, drawn ? [drawn[0], drawn[1]] : null]);
         }
       }
-      for (const zone of saved.line.zones) {
-        const live = zones.find((candidate) => candidate.id === zone.id);
-        if (live) { live.control = zone.control; live.owner = zone.owner; live.contested = zone.contested; }
-      }
+      takeZones(saved.line.zones);
       // the attack's plan as the old host had it (round 8 Y2 fix-up r3): who stands at the stage since when, who pushes
       attackPlan.clear();
       for (const [key, plan] of saved.line.attack ?? []) {
@@ -3239,16 +3220,66 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const risen = entityById.get(key);
         if (zone && risen && risen.modeLife === 'alive' && finite(atS)) stepReinforceTrickle(zone, atS, risen);
       }
-      // a line advance the old host made after the keyframe (fix-up r1): taken up as begun, on the advance's clock, its
-      // reinforcement drawn as the old host drew it (the defenders told risen at it are none of the draw's living)
-      const begun = saved.line.begun;
-      if (begun && Number.isInteger(begun.index) && finite(begun.atS)) {
-        const risen = new Set(Array.isArray(begun.risen) ? begun.risen : []);
-        while (lineIndex < Math.min(begun.index, zones.length - 1)) advanceLine(zones[lineIndex]!, begun.atS, risen);
-      }
-      if (state.line) state.line.index = lineIndex;
-      if (state.horde) { state.horde.wave = wave; state.horde.total = lineCount(); }
+      takeLineAdvance(saved.line.begun);
     }
+  }
+  /** A zone meter as a checkpoint or a frame has it, onto the live zone of its id (none of another id is touched). */
+  function takeZones(list: readonly { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[]): void {
+    for (const entry of list) {
+      const zone = zones.find((candidate) => candidate.id === entry.id);
+      if (zone) { zone.control = entry.control; zone.owner = entry.owner; zone.contested = entry.contested; }
+    }
+  }
+  /**
+   * The Horde director's move the old host made that this controller has not (horde.cleared, horde.begunWave: the seat's
+   * newest frame shows it; migrationState.ts checkpointAtNewestFrame), taken up as made: at a keyframe's restore
+   * (restoreWaves, gaps 274), and after a migrated host's replay of the window where the play did not make it (takeView,
+   * 276: a death the play never saw cleared the wave on the old host; the new host cleared it again on its first step, a
+   * second repair of every survivor, a second cache and mode_wave_cleared).
+   */
+  function takeHordeMove(saved: NonNullable<WaveCheckpoint['horde']>): void {
+    // a clear the old host made (fix-up r2): taken up as made at its moment, the frame's mode time less the lull it showed
+    // gone (the clear's own step shows none gone), so the next step clears nothing
+    const cleared = saved.cleared;
+    if (Array.isArray(cleared) && finite(cleared[0]) && finite(cleared[1]) && nextWaveAtS === null) {
+      clearHordeWave(cleared[1] > 0 ? cleared[0] + cleared[1] - hordeRules.intermissionS : cleared[0], true);
+    }
+    if (state.horde) {
+      state.horde.wave = wave; state.horde.total = hordeWaveTotal(hordeRules, wave, hordeHumans);
+      state.horde.healChance = cacheHealChance(ruleset, wave);
+    }
+    publishHorde();
+    // a wave the old host began (G2): taken up as begun, on the clock it began on (the lull's end), from the streams and
+    // the rested set this controller holds, so the draw is the old host's
+    const begunWave = saved.begunWave;
+    if (Number.isInteger(begunWave) && begunWave! > wave) {
+      const clock = placementTimeS;
+      // on the step the old host began it on (275): the first of its steps from this clock at or past the lull's end,
+      // summed a step's dt at a time as its battle clock was (it was the lull's end itself, a step early: the trickle's
+      // and the stall's clocks then fell a tick off)
+      // (a step is the authorities' fixed SIM_DT, 1 / STRIKE_TICK_HZ: airSupport.ts holds the rate for the mode)
+      const due = saved.nextWaveAtS ?? clock;
+      let at = clock;
+      for (let k = 0; at < due && k < STRIKE_TICK_HZ * 600; k++) at += 1 / STRIKE_TICK_HZ;
+      placementTimeS = at;
+      wave = begunWave!;
+      startHordeWave(true);
+      placementTimeS = clock;
+    }
+  }
+  /**
+   * A Frontline advance the old host made that this controller has not (line.begun: the seat's newest frame shows the line
+   * past this one's; checkpointAtNewestFrame), taken up as begun on the advance's clock, its reinforcement drawn as the
+   * old host drew it (the defenders told risen at it are none of the draw's living): at a keyframe's restore (restoreWaves,
+   * gaps 274 fix-up r1) and after a replay of the window that did not make it (takeView, 276).
+   */
+  function takeLineAdvance(begun: NonNullable<WaveCheckpoint['line']>['begun']): void {
+    if (begun && Number.isInteger(begun.index) && finite(begun.atS)) {
+      const risen = new Set(Array.isArray(begun.risen) ? begun.risen : []);
+      while (lineIndex < Math.min(begun.index, zones.length - 1)) advanceLine(zones[lineIndex]!, begun.atS, risen);
+    }
+    if (state.line) state.line.index = lineIndex;
+    if (state.horde) { state.horde.wave = wave; state.horde.total = lineCount(); }
   }
 
   return {
@@ -3478,10 +3509,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           const carrier = entry.status === 'carried' && entry.carrierId ? entityById.get(entry.carrierId) : null;
           if (carrier) stampPhysics(carrier, baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE));
         }
-        for (const entry of saved.zones) {
-          const zone = zones.find((candidate) => candidate.id === entry.id);
-          if (zone) { zone.control = entry.control; zone.owner = entry.owner; zone.contested = entry.contested; }
-        }
+        takeZones(saved.zones);
         if (ball && saved.ball) Object.assign(ball, saved.ball);
         ballActiveAtS = saved.ballActiveAtS;
         lastBallTouchS = saved.lastBallTouchS ?? -Infinity;
@@ -3496,30 +3524,56 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
     },
     takeView(checkpoint) {
+      // the lives the rows changed, first, as the death watch takes them, on the play's last step (the frame's): a hull a
+      // row stood up begins its life, one a row put down goes down (its respawn due, an Infected survivor converted; the
+      // announcement goes to no seat, which heard the old host's). The moves below read them: a begun wave or advance
+      // keeps a hull on the field that a row stood up (before, the first step took them, after the moves). A benched hull
+      // a row stood up (the old host drew it onto the field: an advance's reinforcement, a wave's arrival) begins its life
+      // too: a benched hull's combat stands destroyed on every host (setLife), so a live one is a row's revive (before, a
+      // begun advance took it for one still to rise, and stood it up again on the first step)
+      for (const entity of entities) {
+        if (entity.modeLife === 'benched' && !entity.combat.destroyed) { adoptLiveCombat(entity); continue; }
+        if (entity.modeActive === false && !respawnAt.has(entity.id)) continue;
+        observeEntityDeath(entity, placementTimeS);
+      }
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
-      // a cache the view no longer lists was taken (its hull's row carries its repair or rounds)
+      // the factions (Infected): a survivor the view shows infected whose death no row showed (a victim risen again in the
+      // window, or one whose death the frame alone shows) joins the infected, its life as the rows left it
+      if (ruleset.infection) {
+        const shown = new Map(checkpoint.teams);
+        for (const entity of [...teams.alpha]) if (shown.get(entity.id) === 'bravo') infect(entity);
+      }
+      // the caches as the view lists them, both ways: one the view no longer lists was taken (its hull's row carries the
+      // repair or rounds); one it lists that the play took was the play's alone (a seat's hull on its held command drove
+      // onto it; the row set the hull back)
       for (const cache of [...checkpoint.support?.pickups ?? [], ...checkpoint.waves?.horde?.pickups ?? [], ...checkpoint.objectives?.caches?.pickups ?? []]) {
-        const live = cache.active ? null : pickups.find((pickup) => pickup.id === cache.id);
-        if (live) live.active = false;
+        const live = pickups.find((pickup) => pickup.id === cache.id);
+        if (live) live.active = cache.active;
       }
       const saved = checkpoint.objectives;
-      if (!saved) return;
-      const carrierPace = baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE);
-      for (const entry of saved.flags) {
-        const flag = flagForTeam(entry.team);
-        if (!flag) continue;
-        const before = flag.status === 'carried' && flag.carrierId ? entityById.get(flag.carrierId) ?? null : null;
-        flag.x = entry.x; flag.y = entry.y; flag.z = entry.z; flag.status = entry.status; flag.carrierId = entry.carrierId; flag.returnAtS = entry.returnAtS;
-        const carrier = entry.status === 'carried' && entry.carrierId ? entityById.get(entry.carrierId) ?? null : null;
-        if (before && before !== carrier) stampPhysics(before);
-        if (carrier && carrier !== before) stampPhysics(carrier, carrierPace);
+      if (saved) {
+        const carrierPace = baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE);
+        for (const entry of saved.flags) {
+          const flag = flagForTeam(entry.team);
+          if (!flag) continue;
+          const before = flag.status === 'carried' && flag.carrierId ? entityById.get(flag.carrierId) ?? null : null;
+          flag.x = entry.x; flag.y = entry.y; flag.z = entry.z; flag.status = entry.status; flag.carrierId = entry.carrierId; flag.returnAtS = entry.returnAtS;
+          const carrier = entry.status === 'carried' && entry.carrierId ? entityById.get(entry.carrierId) ?? null : null;
+          if (before && before !== carrier) stampPhysics(before);
+          if (carrier && carrier !== before) stampPhysics(carrier, carrierPace);
+        }
+        takeZones(saved.zones);
+        if (ball && saved.ball) Object.assign(ball, saved.ball);
+        ballActiveAtS = saved.ballActiveAtS;
       }
-      for (const entry of saved.zones) {
-        const zone = zones.find((candidate) => candidate.id === entry.id);
-        if (zone) { zone.control = entry.control; zone.owner = entry.owner; zone.contested = entry.contested; }
+      // the director's moves the view shows that the play did not make, as a keyframe's restore takes them (made: nothing
+      // repaired, revived or announced again), and the line's zones (Frontline keeps them with its line)
+      const waves = checkpoint.waves;
+      if (waves?.horde && ruleset.horde) takeHordeMove(waves.horde);
+      if (waves?.line && ruleset.assault) {
+        takeZones(waves.line.zones);
+        if (waves.line.begun) takeLineAdvance(waves.line.begun);
       }
-      if (ball && saved.ball) Object.assign(ball, saved.ball);
-      ballActiveAtS = saved.ballActiveAtS;
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);

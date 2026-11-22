@@ -2672,8 +2672,10 @@ floors, both measured on the round 1 review's CTF fight (4v4 bots and the seat, 
   planned afresh, and a mission's record rode only with a destination's list (a bot searching between Zone Control's
   pushes held its last). The way now carries every owner's list, the mission's record with any, and a brain that held no
   list holds none (takeDrive). All 13 modes are then to the bit on that staging (seed 5, 4v4 and the seat, 10 s on)
-  from a keyframe alone, and 12 through a 30-tick window: Turbo Ball's bots part 0.002 m there, two shells in flight at
-  the keyframe hitting in the window (the play never flies them; the rows set the hp right, not the brains' reading).
+  from a keyframe alone, and 12 through a 30-tick window: Turbo Ball's bots part 0.002 m there. Two shells were in flight
+  at the keyframe and still at the frame; they hit nothing in the window and every hp is equal at the frame, yet a bot
+  stood 0.043 m off the old host's at the frame with the rows set aside, and the rows set its pose right, not what its
+  brain read of the shells (the play never flies them).
 - The window's: every bot's play between the keyframe and the frame (its brain ticks and stream draws, a hidden hull's
   moves, a wave's arrivals as they drove), which no keyframe records. Carrying the brains, ways, integrators and the
   authority's block from the frame itself did worse (50 m): per-bot state without the world's at the same moment. The
@@ -2686,21 +2688,34 @@ floors, both measured on the round 1 review's CTF fight (4v4 bots and the seat, 
   the life, hp, ammunition, shell, both reload channels, the magazine indicator and fire; the auxiliary kit; the special
   action's toggle; spent reactive plates; a wreck's thrown turret): a seat's own moves and shots, a hull a seat's shell
   turned. The mode's death watch takes a life a row changed on the next step (a hull the play killed that the row shows
-  alive is adopted, no respawn due). Last, the mode as the seat's frame shows it where the play's view differs, compared
-  as served to the seat: its score (the play's own, exact, with the whole points it missed), flags, zones, ball and the
-  caches taken, onto the live controller by its own writer (matchModes.ts takeView; restoreCheckpoint, a fresh
-  controller's, rewrote every life over the rows' and re-armed every Gun Game gun: the review round 1's two majors); the
-  props and destruction the seat was told of that the play did not make (matched by deed and place, not by the play's
-  own numbering), and the smoke it did not raise, each once. A verdict the play reaches is reported (WindowReplayed.verdict,
-  a warn log). A
+  alive is adopted, no respawn due). Last, the mode as the seat's frame shows it, onto the live controller by its own
+  writer (matchModes.ts takeView, from checkpointAtNewestFrame's reading of the frame over the play's own checkpoint;
+  restoreCheckpoint, a fresh controller's, rewrote every life over the rows' and re-armed every Gun Game gun: the review
+  round 1's two majors). First the lives the last step's rows changed, through the death watch on that step (the frame's),
+  and a benched hull a row stood up (a draw the old host made: a benched hull's combat stands destroyed on every host, so
+  a live one is a row's revive). Then the score (the play's own, exact, with the whole points it missed), the Infected
+  factions (a survivor the frame shows infected), the caches both ways (one the seat took; one the play's held hull took
+  that the seat never reached lies there again), the flags with their carriers' pace, the zones (Frontline's with its
+  line: before, its meter stayed the play's), the ball, and a director move the frame shows that the play did not make,
+  taken up as made through the writers a keyframe's restore uses (restoreWaves' takeHordeMove and takeLineAdvance: a Horde
+  wave cleared or begun, a Frontline advance, on the advance's moment from the revives the seat was told of). Before, a
+  wave cleared by a death the play never saw was cleared again on the first step: every survivor repaired a second time
+  (1960, 3430, then 4900 hp), a second cache, mode_wave_cleared and mode_pickup_spawned to every seat again, the lull
+  0.5 s late (the review round 2's major). Then the props and destruction the seat was told of that the play did not
+  make, matched deed for deed where each is (one of the play's answers one of the frame's: two craters on one spot are
+  two) and laid down under this host's own numbers, a crater the next id and a hole its section's next slot
+  (destructionMatch.ts restore's `renumber`): the frame's numbers beside the play's gave two craters one id and the next
+  crater an id the seats already held (a client that lived through the migration never stamped it), and a hole whose
+  slot the play had filled was refused. Last the smoke it did not raise, each once. A verdict the play reaches is reported
+  (WindowReplayed.verdict, a warn log). A
   shadow actor was ruled out: the authority crushes obstacles on the world object both would share. The replay runs in
   the boot, before any seat is welcomed against the still world; the host reports 'playing' through its resume hold and
   seals no keyframe before its world moves (one sealed in the hold reached no seat and put the released seats' first a
   2 s cadence late). A thrown turret is seeded on the battle clock's step (authoritativeMatch.ts), which a migrated host
   goes on from: on the authority's own, which restarts at 0, a turret thrown in the play, or after any migration, flew
   0.2-0.36 m from the one the seats saw. A replay is admitted only where the actor takes the keyframe's float clock.
-  `MAX_REPLAY_STEPS` 600 (10 s): a longer window, a keyframe that names no battle clock, a phase other than playing at
-  either end or a frame that shows a verdict take 275's reading, which stays as it was.
+  `MAX_REPLAY_STEPS` 600 (10 s): a longer window, a keyframe that names no battle clock or holds no mode checkpoint, a
+  phase other than playing at either end or a frame that shows a verdict take 275's reading, which stays as it was.
 
 Twins (`migrationTwins.selftest`: the old host run on beside the migrated one, the same inputs; the 275 head on the same
 staging in brackets, its files served through a load hook; the receipt prints the window read as 275 read it beside each
@@ -2714,29 +2729,37 @@ on hills (25.8, 14.0 and 1.8 m); with the seat driving and firing through it, ev
 standard, Zone Control and realistic matches, to the bit from a keyframe alone (184.4, 107.1 and 39.3 m) and through a
 window (189.3, 114.4 and 39.5 m).
 `windowReplay.selftest` holds the parts (which resumes replay and on what clocks, dropped ticks, rows at their own ticks,
-a held trigger, the fight and a life from the rows, the mode, props, destruction and smoke), `migrationHull.selftest` the
-hull's census (every number and flag of a hull's state, kit, special action and input rides exact, or is named: a mirror,
-a construction's constant, a step's own scratch), a newer row's drive and the packing. 275's two unpinned reads are
+a held trigger, the fight and a life from the rows, the mode view: a flag at a carrier's pace, a zone meter on Zone
+Control and on Frontline's line, a survivor infected, the ball; props, destruction matched deed for deed under this
+host's numbers, craters and holes, and smoke), `waveStartMigration.selftest` the director's moves on a replayed window (a
+Horde clear by a death the play never saw, an advance the play makes and one a hand it never saw made, a cache the seat
+took and one the play's held hull took), `migrationHull.selftest` the hull's census (every number and flag of a hull's
+state, kit, special action and input rides exact, or is named: a mirror or a construction's constant; the damage
+reading's multipliers below 0.5 too, which packed less 1 came back an ulp off), a newer row's drive and the packing. 275's two unpinned reads are
 pinned: a revived bot's last pushed target dropped (`botDriveMigration` [7b]) and the smoke kit on the hull's clock
 (`botAbilities`). `migrationTwins` [9] holds a turret thrown by a kill in the window, to the bit; `resumeHold` no keyframe
 in the hold. Forty-eight mutants, each one fix reverted and served through a load hook, each fail a receipt (the lane's
 record).
 
-Cost (the lane's size probe, the 275 head on the same staging in brackets): a hull packs to 224 characters at rest and up
-to 544 in motion, about 500 a moving hull. At 19 bots (20 tanks, seed 9, 5-60 s) the hulls are 3.9-9.8 KB of a keyframe's
-extras against 275's integrator and motion's 1.3-3.6 KB, and the way's search legs add up to 0.7 KB: the sealed keyframe
-grows 2.4-6.1 KB (CTF at 60 s 56.0 KB against 50.8, 24 of the 64 chunks), at the 2 s cadence 10-24 kbit/s more to each
-seat (its whole keyframe stream 205-224 kbit/s at CTF's), and each mode event's keyframe carries it too. A full field (42
-tanks, CTF) seals at 122.8 KB at 60 s (112.0 KB), 52 of the 64 chunks, and levels at 130 KB, 55 chunks, at 120-180 s;
-nothing sheds (`encodeMigrationKeyframeWithin` sheds the brains, then the hulls, then the spotting past the cap). The
-replay costs the boot its steps: at a full field in Node 106 ms for a 30-step window (its first steps warm the code), 168
-ms for 120 steps (a 2 s keyframe interval), 566 ms at `MAX_REPLAY_STEPS`; a resume read as 275 read it, 2-5 ms.
+Cost (the lane's size probe at the final head, the 275 head on the same staging in brackets): a hull packs to 251
+characters at rest (its damage reading rides with it) and about 500 in motion (CTF at 30 s: 10.1 KB for 20 hulls); a
+hull with a multiplier below 0.5 packs its six raw, about 60 characters more. At 19 bots (20 tanks, seed 9, 5-60 s) the hulls are 4.0-10.1 KB of a
+keyframe's extras against 275's integrator and motion's 1.3-3.6 KB, and the way's search legs add up to 0.7 KB: the
+sealed keyframe grows 2.5-6.4 KB (CTF at 60 s 56.3 KB against 50.8, 24 of the 64 chunks), at the 2 s cadence 10-26
+kbit/s more to each seat (its whole keyframe stream 206-225 kbit/s at CTF's), and each mode event's keyframe carries it
+too. A full field (42 tanks, CTF) seals at 123.3 KB at 60 s (112.0 KB), 52 of the 64 chunks, and levels at 130.6 KB, 55
+chunks, at 120-180 s; nothing sheds (`encodeMigrationKeyframeWithin` sheds the brains, then the hulls, then the spotting
+past the cap). The replay costs the boot its steps: at a full field in Node, on a quiet machine, 70-106 ms for a 30-step
+window (its first steps warm the code), 139-168 ms for 120 steps (a 2 s keyframe interval) and 566-766 ms at
+`MAX_REPLAY_STEPS`; under a load average of 45 (other lanes' receipts and a VM), 177-224, 368-444 and 1349-2139 ms, the
+round 1 head's sources alike beside it (round 2 adds nothing per step); a resume read as 275 read it, 2-5 ms.
 
 Not taken up by 276 (275's and 274's lists above hold where a resume cannot replay; where it replays, the play makes
 every move they list as the old host made it):
 - A shell in flight: neither the keyframe nor the restore carries one (0 to 3 in flight at a keyframe in the CTF fight;
   none hit anything over 10 s in 12 sampled keyframes), and a seat's shot fired in the window and still in flight at the
-  frame is lost (the CTF probe, seed 6: the bots 32 m apart in 10 s; with the shot off the window, none).
+  frame is lost (the CTF probe, seed 6: the bots 32 m apart in 10 s; with the shot off the window, none). One can part a
+  bot without hitting anything: Turbo Ball's 0.002 m above, the rows setting its pose right, not its brain's reading.
 - A seat's moves in the window beyond what its rows show: the play holds each seat's keyframe command, its rows correct
   it at their own ticks; a seat hidden from the elected seat drives its held command to the frame. What no row carries
   of a seat's window stays the keyframe's on the new host, as at 275: a consumable it used (the charge comes back), a
@@ -2745,15 +2768,21 @@ every move they list as the old host made it):
   reported and logged, not refused, and no receipt stages one.
 - A seat's actions in the window, which the play holds off (its held command carries no action bits) and no row shows: an
   Air Support strike call or supply request, a drone launch, and a drone's flight (it flies the held aim). A seat's kill
-  there: the rows put the victim down and the death watch takes it on the first step, its respawn clock a window late,
-  and the kill credits nobody (the tallies, the Gun Game ladder, Air Support's points stay the play's). A director move a
-  seat's kill made (a wave cleared, a line advanced) follows on the first step too, a window late: the view's score and
-  objectives are taken, its waves and lines not.
-- The destruction log's numbers: a deed the seat saw that the play did not make is restored under the old host's number,
-  beside the play's own numbering, so a seat's crater in the window leaves two numberings in one log.
+  there: the rows put the victim down at their tick (the frame's, where no earlier row shows it) and the death watch takes
+  it then, its respawn clock from that step (Infected: 0.42 s after the old host's for a death 5 ticks into a 30-tick
+  window), and the kill credits nobody (the tallies, the Gun Game ladder, Air Support's points stay the play's). A
+  director move it made is taken up as made (above); one the play made later than the old host, its rows telling it late,
+  keeps the play's moment (a lull that ends a few ticks late). A survivor risen again among the infected inside the window
+  takes its faction from the frame and its hp from the row, its life's reload stamp staying the survivor's.
+- What the play's held hull does to the world that the seat's did not: a prop it crushes or a structure it rams stays
+  down on the new host and is served to every seat (the world's crush is not undone, and the frame's fallen list and the
+  destruction it shows only add), and a director move the play makes that the old host did not (its held hull's ram
+  killing a hostile) stands. A cache it takes is set back (above).
 - Unpinned by a receipt (by reading): the body bits in the row compare, a drone pilot's held aim decoded from its drone,
   each hull's restored reading for the resume hints after the play, and the gate that keeps a hull revived in the window,
   on the 275 reading, from the hull of the life it left (its newer row would take the drive alone, so no staging parts).
+  A stage deed's stage term (sameDestructionDeed) parts nothing under the one-for-one match: a structure's stages are
+  logged once each, in order, so its play's stages pair with the frame's alike without it.
 - A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
 - A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
   client's shell rows not checked.

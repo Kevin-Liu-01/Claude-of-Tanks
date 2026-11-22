@@ -34,10 +34,17 @@
 // supply drop taken in the window (the objectives' and the escort's cache lists, not the Horde's), and [10b] a
 // counter-attack due after the resume, still launched and announced once (checkpointAtNewestFrame names a launch only
 // when the frame is past the counter's moment).
+// 276 (the window replayed: every host since 275 seals its battle clock, and a resume plays the window again): the same
+// moves on the replay's path, where a move the frame shows that the play did not make is taken up as made after it
+// (matchModes.ts takeView, through these writers): [7r] and [7br] a Horde wave cleared by a death the play never saw (it
+// was cleared again on the first step, a second repair, cache and mode_wave_cleared); [4r] and [5r] an advance the play
+// makes itself (its arrivals and the ally's revive the old host's); [4h] and [5h] the sector taken by a hand the play
+// never saw (sealed halfway through it), arrivals the rows stood up kept on the field; [8r] a cache the seat took in the
+// window; [8h] one the play's held hull drove onto that the seat never reached, on the ground at the resume.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
-import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, resumeStateFromRetained } from './migrationState.ts';
+import { applyResumeState, captureEntityExtras, decodeMigrationKeyframe, encodeMigrationKeyframe, resumeClocksOf, resumeStateFromRetained } from './migrationState.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
@@ -69,6 +76,11 @@ const fielded = (actor) => actor.authority.entities.filter((e) => e.team === 'br
 const paceApart = (old, fresh) => fielded(old).map((id) => [id, old.authority.entityById.get(id).modeSpeedMultiplier, fresh.authority.entityById.get(id).modeSpeedMultiplier])
   .filter(([, a, b]) => !(Math.abs(a - b) < 1e-12)).map(([id, a, b]) => `${id} ${a}/${b}`);
 const hordeOf = (actor) => actor.authority.captureModeCheckpoint().mode.waves.horde;
+/** A migration keyframe of `actor` at `tick`; `replayed` (276) names its battle clock, as every host since 275 seals it, so
+ *  a resume replays the window from it; without, the resume takes the 275 reading of the window. */
+const sealKeyframe = (actor, tick, era, frame, replayed = false) => decodeMigrationKeyframe(encodeMigrationKeyframe({ tick,
+  battleTimeMs: Math.round(actor.authority.timeS * 1000), timeS: actor.authority.timeS, ...(replayed ? { battleS: actor.authority.battleS } : {}),
+  phase: 'playing', modeCheckpoint: actor.authority.captureModeCheckpoint(), entities: captureEntityExtras(actor), frame }));
 
 /**
  * The old host plays wave 1 out (every hostile falls as it stands), seals a keyframe 0.3 s before the lull's end, begins
@@ -225,7 +237,7 @@ console.log('[3] an ally down when the lull ends, its row in the seat\'s newest 
  * sight) and the respawns it was told. `holdAttack` (fix-up r2): the attack stands still where it took sector 2, through
  * the window and on both hosts after it, so the line guard reads it where it stood at the advance.
  */
-function frontlineWindow(hidden, holdAttack = false) {
+function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = false) {
   const lineSeats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
   const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -268,16 +280,20 @@ function frontlineWindow(hidden, holdAttack = false) {
       actor.authority.afterEventBroadcast();
     }
   };
-  for (let guard = 0; guard < 30000 && !(lineOf(old) === 1 && zoneOf(old).control > 0.95); guard++) step(old, 1, null, takeSector);
+  // (`hand`: sealed halfway through the sector, which a hand the play never sees takes 5 ticks into the window)
+  for (let guard = 0; guard < 30000 && !(lineOf(old) === 1 && zoneOf(old).control > (hand ? 0.4 : 0.95)); guard++) step(old, 1, null, takeSector);
   const ally = sim.entityById.get('a-2');
   ally.combat.hp = 0; ally.combat.destroyed = true;
-  for (let guard = 0; guard < 600 && !(zoneOf(old).control > 0.97); guard++) step(old, 1, null, takeSector);
+  for (let guard = 0; guard < 600 && !(zoneOf(old).control > (hand ? 0.5 : 0.97)); guard++) step(old, 1, null, takeSector);
   const era = createEraIndexer();
-  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
-    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), replayed);
   const allyLives = ally.modeLives;
   const told = new Map(), heard = [], rose = new Map();
-  const fight = (actor) => (lineOf(actor) < 2 ? takeSector(actor) : hold(actor));
+  let windowStep = 0;
+  const fight = (actor) => {
+    if (hand && ++windowStep === 5) Object.assign(zones[1], { control: 1, owner: 'alpha', contested: false });
+    return lineOf(actor) < 2 ? takeSector(actor) : hold(actor);
+  };
   const listen = (ev) => {
     heard.push(ev.type);
     if (ev.type === 'mode_respawn') { told.set(ev.id, tick); const p = sim.entityById.get(ev.id).state.pos; rose.set(ev.id, { x: p.x, z: p.z }); }
@@ -289,10 +305,12 @@ function frontlineWindow(hidden, holdAttack = false) {
   const latest = hostFrame(old, tick, era, hidden);
   const frame = { ...latest, entities: latest.entities.map((row) => (row.entityId === heldAlly.entityId ? heldAlly : row)) };
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
-  const fresh = makeLine({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  const fresh = makeLine({ tick: state.tick, ...resumeClocksOf(state) });
   const serial = fresh.authority.modeEventSerial;
-  applyResumeState(fresh, state);
-  return { old, fresh, sim, step, tick, keyframe, frame, told, rose, heard, pinSurvivor, hold, SURVIVOR, lineOf, announced: fresh.authority.modeEventSerial - serial,
+  const applied = applyResumeState(fresh, state);
+  // (replayed, the play's own mode events count on the serial and go to no seat: none is left pending)
+  return { old, fresh, sim, step, tick, keyframe, frame, told, rose, heard, pinSurvivor, hold, SURVIVOR, lineOf, replayedSteps: applied.replayed?.steps ?? 0,
+    announced: replayed ? fresh.authority.pendingEventCount : fresh.authority.modeEventSerial - serial,
     pendingAfter: fresh.authority.pendingEventCount, ally: { lives: allyLives, held: heldAlly, oldLives: ally.modeLives, freshLives: fresh.authority.entityById.get('a-2').modeLives } };
 }
 const lineDirector = (actor) => {
@@ -302,10 +320,20 @@ const lineDirector = (actor) => {
     counter: line.counter, regroup: line.regroup, reinforceAt: line.nextReinforceAtS, rng: mode.rng };
 };
 const count = (list, type) => list.filter((t) => t === type).length;
-for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyframe, every arrival in the seat\'s newest frame', false],
-  ['[5] Frontline: the line advanced after the keyframe, the arrivals hidden from the seat', true]]) {
+for (const [label, hidden, replayed, hand] of [['[4] Frontline: the line advanced after the keyframe, every arrival in the seat\'s newest frame', false, false, false],
+  ['[5] Frontline: the line advanced after the keyframe, the arrivals hidden from the seat', true, false, false],
+  // (276) the keyframe naming its battle clock: the window replayed. As built, the play takes the sector itself (the attack
+  // stood in it at the keyframe): the advance, its arrivals and the ally's revive are the play's, the old host's
+  ['[4r] [4] replayed: the play makes the advance', false, true, false],
+  ['[5r] [5] replayed: the play makes the advance', true, true, false],
+  // and the sector taken by a hand the play never sees (sealed halfway through it): the new host takes the advance up as made
+  ['[4h] [4] replayed, the sector taken by a hand the play never saw', false, true, true],
+  ['[5h] [5] replayed, the sector taken by a hand the play never saw', true, true, true]]) {
+  // the play made the advance itself (its revives the old host's, nothing left to rise on the first step)
+  const played = replayed && !hand;
   console.log(label);
-  const run = frontlineWindow(hidden);
+  const run = frontlineWindow(hidden, false, replayed, hand);
+  ok(replayed === (run.replayedSteps === 30), replayed ? `the window is replayed (${run.replayedSteps} steps)` : 'the 275 reading (no battle clock)');
   const { old, fresh, step } = run;
   const sealed = run.keyframe.modeCheckpoint.mode;
   const arrivals = [...run.told.keys()].filter((id) => id.startsWith('d-')).sort();
@@ -321,8 +349,9 @@ for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyf
   const zonesOf = (actor) => actor.authority.modeController.state.zones.map((z) => `${z.id} ${z.owner ?? '-'} ${z.control.toFixed(3)}`).join('; ');
   ok(zonesOf(fresh) === zonesOf(old), `the sectors stand as the frame shows them, the one taken in the window held (${zonesOf(fresh)} against ${zonesOf(old)})`);
   ok(run.told.has('a-2') && run.ally.held.hp <= 0 && run.ally.held.tick < run.told.get('a-2') && run.ally.oldLives === run.ally.lives + 1
-    && run.ally.freshLives === run.ally.lives, `no ally stands up twice: the old host stood a-2 up at the advance (told at tick ${run.told.get('a-2')}; the `
-      + `seat's row of it from tick ${run.ally.held.tick}), and the restore stands it up no second time (its lives ${run.ally.freshLives}, the keyframe's ${run.ally.lives})`);
+    && run.ally.freshLives === (played ? run.ally.oldLives : run.ally.lives), `no ally stands up twice: the old host stood a-2 up at the advance (told at tick `
+      + `${run.told.get('a-2')}; the seat's row of it from tick ${run.ally.held.tick}), and the restore stands it up no second time (its lives `
+      + `${run.ally.freshLives}, the keyframe's ${run.ally.lives}${played ? `, the old host's ${run.ally.oldLives}: the play's advance stood it up` : ''})`);
   const a = lineDirector(old), b = lineDirector(fresh);
   ok(a.wave === b.wave && a.fresh === b.fresh && a.lastWave === b.lastWave && a.rng[0] === b.rng[0] && a.reinforceAt === b.reinforceAt,
     `the reinforcement is the old host's: wave ${b.wave}, its arrivals (${b.fresh}), the line's hulls and the draws' stream past the same shuffle`
@@ -348,7 +377,7 @@ for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyf
     + `${fielded(old).join(', ')})`);
   ok(paceApart(old, fresh).length === 0, `every defender drives at its life's pace on both hosts: the survivor at sector 1's `
     + `(x${old.authority.entityById.get(run.SURVIVOR).modeSpeedMultiplier}), the arrivals at the last sector's; apart: ${paceApart(old, fresh).join(', ') || 'none'}`);
-  if (!hidden) {
+  if (!hidden || played) {
     ok(respawned.length === 0, `no defender the old host brought on rises again on the new host (${respawned.join(', ') || 'none'})`);
     const moved = [];
     for (const id of arrivals) {
@@ -356,7 +385,10 @@ for (const [label, hidden] of [['[4] Frontline: the line advanced after the keyf
       const d = Math.hypot(e.x - o.x, e.z - o.z);
       if (!(d < 15)) moved.push(`${id} ${d.toFixed(0)} m`);
     }
-    ok(moved.length === 0, `every arrival holds the line from where the old host put it (within 15 m 20 ticks on; apart: ${moved.join(', ') || 'none'})`);
+    // (hidden and played, each arrival stands where the play's line guard put it, round the play's attack, which the
+    // staging's hand moved on the old host alone: no row sets it right)
+    if (hidden) console.log(`      (hidden arrivals the play placed round its own attack, 20 ticks on: apart ${moved.join(', ') || 'none past 15 m'})`);
+    else ok(moved.length === 0, `every arrival holds the line from where the old host put it (within 15 m 20 ticks on; apart: ${moved.join(', ') || 'none'})`);
   } else {
     ok(JSON.stringify(respawned.sort()) === JSON.stringify(arrivals), `the hidden arrivals rise on the new host's first steps, those alone (${respawned.join(', ')} `
       + `against the old host's ${arrivals.join(', ')})`);
@@ -449,8 +481,10 @@ console.log('[6] a Horde trickle arrival after the keyframe: taken up as made, n
 // Fix-up r2 (the completeness review's census of the wave directors: three more moves the window can hold, each made a
 // second time by the new host). Each keyframe is sealed 0.3 s before the move, the old host runs 30 ticks on, and the
 // elected seat resumes from that keyframe, its newest frame and the respawns it was told.
-for (const [label, windowTicks] of [['[7] a Horde wave cleared after the keyframe: taken up as made, never cleared twice', 30],
-  ['[7b] the seat\'s newest frame is the clear\'s own step (its lull not yet counted down)', 1]]) {
+for (const [label, windowTicks, replayed] of [['[7] a Horde wave cleared after the keyframe: taken up as made, never cleared twice', 30, false],
+  ['[7b] the seat\'s newest frame is the clear\'s own step (its lull not yet counted down)', 1, false],
+  ['[7r] [7] with the keyframe naming its battle clock (every host\'s since 275): the window replayed, the death the play never saw', 30, true],
+  ['[7br] [7b] replayed', 1, true]]) {
   console.log(label);
   const old = make(null), sim = old.authority;
   sim.onMatchReady();
@@ -473,8 +507,7 @@ for (const [label, windowTicks] of [['[7] a Horde wave cleared after the keyfram
   h0.combat.hp = Math.round(h0.combat.maxHp * 0.4);
   step(old, 2);
   const era = createEraIndexer();
-  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
-    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), replayed);
   const sealed = keyframe.modeCheckpoint.mode.waves.horde, hpAtKeyframe = h0.combat.hp;
   const last = living(old)[0];
   last.combat.hp = 0; last.combat.destroyed = true;
@@ -487,11 +520,14 @@ for (const [label, windowTicks] of [['[7] a Horde wave cleared after the keyfram
   `the case is built: the keyframe holds wave 1's last hostile standing and no lull, the old host clears the wave after it (${heardOld.join(', ')}) `
       + `and patches h0 up (${hpAtKeyframe} -> ${h0.combat.hp} hp); the frame shows ${shownLull.toFixed(3)} s of the lull left`);
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
-  const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
   const serial = fresh.authority.modeEventSerial;
-  applyResumeState(fresh, state);
+  const applied = applyResumeState(fresh, state);
+  // (replayed, the play's own mode events count on the serial and go to no seat: none is left pending)
+  const announced = replayed ? fresh.authority.pendingEventCount : fresh.authority.modeEventSerial - serial;
+  ok(replayed === (applied.replayed?.steps === windowTicks), replayed ? `the window is replayed (${applied.replayed?.steps} steps)` : 'the 275 reading (no battle clock)');
   const a = hordeOf(old), b = hordeOf(fresh), ma = old.authority.captureModeCheckpoint().mode, mb = fresh.authority.captureModeCheckpoint().mode;
-  ok(b.nextWaveAtS !== null && Math.abs(a.nextWaveAtS - b.nextWaveAtS) <= 1 / 60 + 1e-9 && fresh.authority.modeEventSerial - serial === 0,
+  ok(b.nextWaveAtS !== null && Math.abs(a.nextWaveAtS - b.nextWaveAtS) <= 1 / 60 + 1e-9 && announced === 0,
     `the restore takes the clear up, announcing nothing: the lull ends when the old host's does (${b.nextWaveAtS?.toFixed(3)} against ${a.nextWaveAtS.toFixed(3)})`);
   const caches = (m) => JSON.stringify(m.waves.horde.pickups.map((p) => [p.id, p.kind, p.active, p.x.toFixed(3), p.z.toFixed(3)]));
   ok(caches(mb) === caches(ma) && mb.waves.horde.sequence === ma.waves.horde.sequence && mb.rng[0] === ma.rng[0] && mb.rng[1] === ma.rng[1],
@@ -507,8 +543,9 @@ for (const [label, windowTicks] of [['[7] a Horde wave cleared after the keyfram
   old.stop(); fresh.stop();
 }
 
-console.log('[8] a cache taken after the keyframe: taken once');
-{
+for (const [label, replayed] of [['[8] a cache taken after the keyframe: taken once', false],
+  ['[8r] [8] replayed (the play\'s h0 never reached it: the frame shows it taken)', true]]) {
+  console.log(label);
   // wave 1 played out (every hostile falls as it stands): its clear drops a cache; h0, worn, drives onto it after the
   // keyframe and the old host hands it over
   const old = make(null), sim = old.authority;
@@ -530,8 +567,7 @@ console.log('[8] a cache taken after the keyframe: taken once');
   h0.combat.hp = 1000;
   step(old, 2);
   const era = createEraIndexer();
-  const keyframe = decodeMigrationKeyframe(encodeMigrationKeyframe({ tick, battleTimeMs: Math.round(sim.timeS * 1000), timeS: sim.timeS, phase: 'playing',
-    modeCheckpoint: sim.captureModeCheckpoint(), entities: captureEntityExtras(old), frame: hostFrame(old, tick, era, false) }));
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), replayed);
   h0.state.pos.x = cache.x; h0.state.pos.z = cache.z; h0.state.speed = 0;
   const heardOld = [];
   step(old, 30, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
@@ -540,8 +576,9 @@ console.log('[8] a cache taken after the keyframe: taken once');
     && h0.combat.hp > 1000, `the case is built: the keyframe holds ${cache?.id} (${cache?.kind}) on the ground, and h0 takes it after (${heardOld.join(', ')}; `
       + `1000 -> ${h0.combat.hp} hp)`);
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
-  const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs });
-  applyResumeState(fresh, state);
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  const applied = applyResumeState(fresh, state);
+  ok(replayed === (applied.replayed?.steps === 30), replayed ? `the window is replayed (${applied.replayed?.steps} steps)` : 'the 275 reading (no battle clock)');
   ok(!hordeOf(fresh).pickups.some((p) => p.id === cache.id && p.active), `the restore holds the cache taken (${JSON.stringify(hordeOf(fresh).pickups.map((p) => [p.id, p.active]))})`);
   fresh.authority.onMatchReady();
   const heardNew = [];
@@ -549,6 +586,62 @@ console.log('[8] a cache taken after the keyframe: taken once');
   const fh0 = fresh.authority.entityById.get('h0');
   ok(count(heardNew, 'mode_pickup_collected') === 0 && fh0.combat.hp === h0.combat.hp, `h0, still on the spot, does not take it again (${heardNew.join(', ') || 'no mode events'} `
     + `in 1 s; ${fh0.combat.hp} hp on the new host against ${h0.combat.hp} on the old)`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[8h] a cache the play\'s held hull drives onto that the seat never reached: on the ground at the resume');
+{
+  // (276) the seat's h0 runs at the cache with its throttle open and stops short of it in the window (its real command, a
+  // hard brake, which the play never hears); the play's h0 drives on, on its keyframe command, and takes it. The frame lists
+  // it; at the resume it lies there on both hosts, and h0 takes it once when it drives on
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0, stopOld = false;
+  const told = new Map();
+  const step = (actor, n, heard) => {
+    for (let k = 0; k < n; k++) {
+      if (actor === old && stopOld) old.authority.entityById.get('h0').state.speed = 0;
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  const killAll = () => { for (const e of sim.entities) if (e.team === 'bravo' && !e.combat.destroyed) { e.combat.hp = 0; e.combat.destroyed = true; } };
+  for (let guard = 0; guard < 400 && !(sim.modeController.state.horde.nextWaveInS > 0.4); guard++) { killAll(); step(old, 15); }
+  const cache = hordeOf(old).pickups.find((p) => p.active);
+  const h0 = sim.entityById.get('h0');
+  h0.combat.hp = 1000;
+  // h0 40 m short of the cache, facing it, driving at it (its seat's command) until it runs; then 9 m short on its heading
+  const yaw = 0.3;
+  h0.state.pos.set(cache.x - Math.sin(yaw) * 40, 0, cache.z - Math.cos(yaw) * 40); h0.state.yaw = yaw; h0.state.turretYaw = 0;
+  const drive = { throttle: 1, steer: 0, brake: false, fire: false, fireIntentSeq: null, aimLocked: false, shellSlot: 0, actionBits: 0, aimYaw: yaw, aimPitch: 0, aimDistance: 200 };
+  inputs.set('h0', drive);
+  step(old, 150);
+  h0.state.pos.x = cache.x - Math.sin(h0.state.yaw) * 9; h0.state.pos.z = cache.z - Math.cos(h0.state.yaw) * 9;
+  step(old, 2);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), true);
+  inputs.set('h0', { ...drive, throttle: 0, brake: true });
+  stopOld = true;
+  step(old, 30, (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  stopOld = false;
+  const frame = hostFrame(old, tick, era, false);
+  const active = (actor) => hordeOf(actor).pickups.find((p) => p.id === cache.id)?.active;
+  ok(active(old) === true && h0.combat.hp === 1000 && keyframe.entities.length > 0, `the case is built: h0 runs at ${cache.id} at the keyframe and stops short in the window (1000 hp)`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  applyResumeState(fresh, state);
+  fresh.authority.onMatchReady();
+  const fh0 = fresh.authority.entityById.get('h0');
+  ok(active(fresh) === true && fh0.combat.hp === h0.combat.hp, `the cache the play's h0 took lies on the ground at the resume, as the frame shows it (active: `
+    + `${active(fresh)}; h0 ${fh0.combat.hp} hp against ${h0.combat.hp})`);
+  inputs.set('h0', drive);
+  const heardNew = [], heardOld = [];
+  for (let k = 0; k < 90; k++) { step(fresh, 1, (ev) => { if (ev.type.startsWith('mode_')) heardNew.push(ev.type); }); step(old, 1, (ev) => { if (ev.type.startsWith('mode_')) heardOld.push(ev.type); }); }
+  inputs.delete('h0');
+  ok(count(heardNew, 'mode_pickup_collected') === 1 && count(heardOld, 'mode_pickup_collected') === 1 && fh0.combat.hp === h0.combat.hp,
+    `and h0 takes it once when it drives on, on both hosts (${fh0.combat.hp} hp against ${h0.combat.hp})`);
   old.stop(); fresh.stop();
 }
 

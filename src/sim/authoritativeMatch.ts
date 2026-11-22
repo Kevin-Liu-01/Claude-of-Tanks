@@ -483,9 +483,11 @@ export interface AuthoritativeMatch {
   /**
    * A resumed match (destruction, docs/DESTRUCTION.md §8.3): the previous authority's destruction log laid down without
    * events — stages and collapses (records, heaps, the route grid), later breaches and craters — and kept as this
-   * match's log, so every peer's settled reading converges. Returns the entries this world applied.
+   * match's log, so every peer's settled reading converges. Returns the entries this world applied. `renumber` (276): deeds
+   * a migrated host's replay of the window did not make, laid beside its own under its own numbers
+   * (destructionMatch.ts restore).
    */
-  restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
+  restoreDestruction(entries: readonly DestructionLogEntry[], renumber?: boolean): { applied: number };
   /**
    * A resumed match the previous authority had already decided (audit M1, 2026-11-02): its verdict stands, without an
    * event (every seat was told), and its ending hold counts as spent, so the field stays still and the match ended. A
@@ -2970,8 +2972,8 @@ export function createAuthoritativeMatch({
       if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
     },
     restoreDestroyedObstacles,
-    restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
-      return { applied: destruction.restore(entries) };
+    restoreDestruction(entries: readonly DestructionLogEntry[], renumber = false): { applied: number } {
+      return { applied: destruction.restore(entries, renumber) };
     },
     restoreVerdict(nextResult, reason) {
       if (result || (nextResult !== TEAM_ALPHA && nextResult !== TEAM_BRAVO && nextResult !== 'draw')) return;
