@@ -4,7 +4,7 @@
 // battle's tiles read the same resolver.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { battleKeycap, formatKeyLine, formatPrompt, inputDevice, promptFor, promptRevision, promptTiles } from './keyPrompt.ts';
+import { battleKeycap, formatKeyLine, formatKeyLineWith, formatPrompt, inputDevice, promptFor, promptRevision, promptTiles, tilePrompt } from './keyPrompt.ts';
 
 function makeInput({ touch = false, pad = false } = {}) {
   const bindings = { consumable1: 'Digit4', autoAim: 'KeyT', hitboxOverlay: 'KeyH', shell1: 'Digit1', shell2: 'Digit2', shell3: 'Digit3' };
@@ -116,6 +116,17 @@ function makeInput({ touch = false, pad = false } = {}) {
     }
   }
   assert.match(read('./firstUseHints.ts'), /formatKeyLine\(host\.input, def\.line, actions\)/, 'every hint draws its line as a key line');
+}
+
+// (notices-audit-275) a phone's one shell tile stands for the three slots: one prompt in the column, drawn with the shell
+// glyph, never the tile's first svg (its cycle chevron); and the HUD's resolver on its caps keys a keyboard line
+{
+  const tileRoot = { querySelector: () => ({ querySelector: () => ({ outerHTML: '<svg data-chevron/>' }) }) };
+  const line = formatKeyLineWith((action) => tilePrompt(action), 'hud.hint.ammoTypes.line', { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' }, {}, tileRoot);
+  assert.equal(line.match(/cot-key-prompt--tile/g)?.length, 1, 'three slots on one tile are one prompt');
+  assert.doesNotMatch(line, /data-chevron/, 'the shell tile is drawn with its glyph, not its first svg');
+  const caps = formatKeyLineWith(() => ({ kind: 'key', label: 'F' }), 'hud.hint.droneFlight.line', { forward: 'forward', left: 'left' }, {}, null);
+  assert.equal(caps.match(/cot-key-prompt"/g)?.length, 1, 'one key once, however many actions it does');
 }
 
 console.log('keyPrompt.selftest: PASS (a rebound key shows in a hint, a pad shows its button, touch shows the tile and no key, the revision follows bindings and device, one resolver for the strip and the tiles)');
