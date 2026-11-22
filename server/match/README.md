@@ -131,7 +131,7 @@ parts (monsoon):
 
 Budget: p95 ≤ 6 ms. Wire sizes (`src/mp/wire/wire.selftest`, wire 11): full row 43 B,
 moving delta row 16 B, 28-entity keyframe with the viewer section 1458 B,
-input frame 60 B. A spectator sees all 28 rows; a seated player sees its team
+input frame 66 B (wire 13's u32 action bits; 60 B before). A spectator sees all 28 rows; a seated player sees its team
 plus spotted enemies, so its egress is lower.
 
 `tools/mp-soak.mjs` (28 clients, server in a child process, winter, 60 ± 20 ms,
