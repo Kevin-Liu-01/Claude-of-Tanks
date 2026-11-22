@@ -57,10 +57,23 @@ assert.deepEqual(crowded, [], 'no two fleet takes within 60 m on one battlefield
 // paint: the hero's side in the hero's own scheme (its signature, else its nation's stock coat), the foes in another,
 // one scheme a model (the Studio paints per model), catalog paint only
 const cast = new Set([...Object.values(CAST).map((id) => resolveTankId(id)), ...PRODUCTION_TANK_IDS]); // CAST is schema 1
+// 274.0 (Main's ruling, 2026-11-22): the two Oplot takes were filmed in their 262 coats before oplot-275 (5cf4ed21ee)
+// made sig_bm_oplot_m / sig_bm_oplot_t stock. Each is held to exactly the coat it was filmed in, and only while its stock
+// is that signature; the refilm is owed (TESTS-OWED, media lane, 275), and a refilmed take fails here until its row goes.
+const FILMED_BEFORE_STOCK = Object.freeze({
+  's263-bm-oplot-m-caldera': { filmed: 'paint_bm_oplot_m', stock: 'sig_bm_oplot_m' },
+  's264-bm-oplot-t-titan-gorge': { filmed: 'paint_bm_oplot_t', stock: 'sig_bm_oplot_t' },
+});
+const filmedBeforeStockSeen = new Set();
 for (const shot of FLEET) {
   const sc = scenes.get(shot[0]), hero = sc.actors[0].id, spec = TANK_SPECS[hero];
   const own = signatureCamoPatternId(hero) ?? stockCamoPatternIdFor(hero, spec.nation, spec.era);
-  assert.equal(sc.meta.paint.unit, own, `${sc.meta.id}: the hero's own scheme (${own})`);
+  const owed = FILMED_BEFORE_STOCK[sc.meta.id];
+  if (owed) {
+    filmedBeforeStockSeen.add(sc.meta.id);
+    assert.equal(own, owed.stock, `${sc.meta.id}: its stock is still ${owed.stock} (else drop its FILMED_BEFORE_STOCK row)`);
+    assert.equal(sc.meta.paint.unit, owed.filmed, `${sc.meta.id}: filmed before oplot-275 made sig_bm_oplot_* stock; refilm owed`);
+  } else assert.equal(sc.meta.paint.unit, own, `${sc.meta.id}: the hero's own scheme (${own})`);
   assert.ok(isBuiltInCamoId(sc.meta.paint.unit), `${sc.meta.id}: catalog paint`);
   if (sc.meta.paint.enemy) assert.ok(isBuiltInCamoId(sc.meta.paint.enemy) && sc.meta.paint.enemy !== sc.meta.paint.unit, `${sc.meta.id}: the enemy in another scheme`);
   const bySpec = new Map();
@@ -69,6 +82,7 @@ for (const shot of FLEET) {
     bySpec.set(a.id, a.camo);
   }
 }
+assert.deepEqual([...filmedBeforeStockSeen].sort(), Object.keys(FILMED_BEFORE_STOCK).sort(), 'every FILMED_BEFORE_STOCK row names a fleet take');
 
 // every per-take bar a take holds without a battlefield survey
 const problems = FLEET.flatMap((shot) => takeBars(shot, { cast, scene: scenes.get(shot[0]) }));
