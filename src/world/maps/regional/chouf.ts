@@ -18,6 +18,7 @@ import { recordShed } from './shedFall.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
+import { finialOn, glassBosses, smoothDome } from './domes.ts';
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
 const SHUTTERS: readonly Rgb[] = [0x3f6a4a, 0x4f7a5a, 0x5a7488, 0x4a8a8a, 0x6a5040].map(rgb);
@@ -326,34 +327,78 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
   return sink.finish();
 }
 
-/** A dome of `r` on a drum at height y over (x, z): stacked frustums, plastered (domes are rendered and limewashed). */
-function dome(sink: PartSink, x: number, y: number, z: number, r: number, bucket: RegionalBucket, oculi: number, look: () => number): void {
-  const n = 6;
-  for (let k = 0; k < n; k++) {
-    const a0 = (Math.PI / 2) * k / n, a1 = (Math.PI / 2) * (k + 1) / n;
-    const y0 = y + Math.sin(a0) * r, y1 = y + Math.sin(a1) * r;
-    sink.cylinder(bucket, [x, y0, z], 'y', y1 - y0, Math.cos(a0) * r, 14, {}, Math.max(0.04, Math.cos(a1) * r), k === 0 || k === n - 1);
+/** The gilt brass of a dome's finial (an alem). */
+const BRASS = rgb(0xa8843c);
+
+/**
+ * A plastered dome of radius `r` springing at height y over (x, z), as the Levant built them over a bath's rooms and a
+ * sabil (dome-detail-275; it was six stacked frustums of fourteen flat facets): the shell stilted a little over two
+ * stepped haunch rings, turned smooth (domes.ts); limewashed, the rain's grey washed down its lower haunch in streaks;
+ * the qamariyyat — glass bell-lights set through the shell in rings, each a glass boss standing proud with its lit face —
+ * and the crown: the hot room's lantern (a little open drum and its cupola, the steam's vent) or the brass alem.
+ */
+function dome(sink: PartSink, x: number, y: number, z: number, r: number, bucket: RegionalBucket, oculi: number, look: () => number,
+  crown: 'lantern' | 'finial' = 'finial'): void {
+  const lanternR = Math.max(0.42, r * 0.17);
+  // the weather: the rain's grey down the lower haunch, darker in streaks
+  const phase = look() * 6.28, streak = 3 + Math.floor(look() * 3);
+  const tintAt = (p: Vec3): Rgb => {
+    const h = Math.min(1, Math.max(0, (p[1] - y) / (r * 1.1)));
+    const wash = (0.5 + 0.5 * Math.sin(Math.atan2(p[2] - z, p[0] - x) * streak * 2 + phase)) * (1 - h) * 0.07;
+    const k = 0.88 + 0.12 * Math.sqrt(h) - wash;
+    return [k, k * 0.99, k * 0.97];
+  };
+  const shell = smoothDome(sink, bucket, x, y, z, r, { haunch: true, stilt: 0.06, ...(crown === 'lantern' ? { openTop: lanternR * 0.92 } : {}), emit: { tintAt } });
+  // the qamariyyat in rings (the hot room's three, a warm room's two; none on a sabil)
+  if (oculi > 0) {
+    const rings: Array<[number, number]> = [[0.36, oculi], [0.7, Math.max(4, Math.round(oculi * 0.7))]];
+    if (crown === 'lantern') rings.push([1.0, Math.max(4, Math.round(oculi * 0.45))]);
+    glassBosses(sink, shell, rings, Math.min(0.1, r * 0.035), look);
   }
-  // the qamariyyat: small glass lights set in rings in the dome, each a little quad laid on the facet it pierces (the
-  // connectivity sweep, 217: laid on the true sphere they stood up to 6 cm off the faceted dome)
-  const seg = (Math.PI * 2) / 14, ring = Math.PI / 2 / n;
-  for (const [theta, count] of [[0.55, oculi], [0.95, Math.max(3, Math.round(oculi * 0.6))]] as const) {
-    const kk = Math.min(n - 1, Math.floor(theta / ring)), a0 = ring * kk, a1 = ring * (kk + 1);
-    const rho0 = Math.cos(a0) * r * Math.cos(seg / 2), rho1 = Math.max(0.04, Math.cos(a1) * r) * Math.cos(seg / 2);
-    const y0r = Math.sin(a0) * r, dy = (Math.sin(a1) - Math.sin(a0)) * r, drho = rho1 - rho0, len = Math.hypot(dy, drho);
-    for (let k = 0; k < count; k++) {
-      const phi = (k + look() * 0.3) * Math.PI * 2 / count, s = Math.min(0.14, r * 0.08);
-      const tc = (Math.floor((((phi % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / seg) + 0.5) * seg;
-      const nrm: Vec3 = [Math.cos(theta) * Math.cos(phi), Math.sin(theta), Math.cos(theta) * Math.sin(phi)];
-      // the facet's plane (its normal out and up the dome) and where the light's ray from the centre meets it
-      const N: Vec3 = [dy * Math.cos(tc) / len, -drho / len, dy * Math.sin(tc) / len];
-      const lam = (dy * rho0 - drho * y0r) / (dy * Math.cos(theta) * Math.cos(phi - tc) - drho * Math.sin(theta));
-      const c: Vec3 = [x + nrm[0] * lam + N[0] * 0.012, y + nrm[1] * lam + N[1] * 0.012, z + nrm[2] * lam + N[2] * 0.012];
-      const t1: Vec3 = [-Math.sin(tc), 0, Math.cos(tc)], t2: Vec3 = [drho * Math.cos(tc) / len, dy / len, drho * Math.sin(tc) / len];
-      const p = (a: number, b: number): Vec3 => [c[0] + t1[0] * a + t2[0] * b, c[1] + t1[1] * a + t2[1] * b, c[2] + t1[2] * a + t2[2] * b];
-      sink.quad('curtain', p(-s, -s), p(-s, s), p(s, s), p(s, -s), { decor: true, window: N });
+  if (crown === 'lantern') {
+    // the lantern: an octagonal drum of piers open between them, a cornice, its own little dome and the brass alem
+    const lh = Math.max(0.6, r * 0.2), lr = lanternR, ly = shell.top - 0.04;
+    sink.cylinder(bucket, [x, ly, z], 'y', lh, lr, 8, {}, lr, true, Math.PI / 8);
+    for (let k = 0; k < 8; k++) {
+      const th = k * Math.PI / 4, f: Face = { origin: [x + Math.cos(th) * lr * Math.cos(Math.PI / 8), 0, z + Math.sin(th) * lr * Math.cos(Math.PI / 8)], u: [Math.sin(th), 0, -Math.cos(th)], out: [Math.cos(th), 0, Math.sin(th)], width: 1 };
+      const w = lr * 0.42, y0 = ly + lh * 0.18, y1 = ly + lh * 0.8;
+      const slot: Vec3[] = [facePoint(f, -w / 2, y0, 0.01), facePoint(f, w / 2, y0, 0.01)];
+      for (let i = 0; i <= 4; i++) { const t = i / 4 * Math.PI; slot.push(facePoint(f, Math.cos(t) * w / 2, y1 - w / 2 + Math.sin(t) * w / 2, 0.01)); }
+      sink.polygon('dark', slot, { decor: true });
+    }
+    sink.cylinder('stone', [x, ly + lh, z], 'y', 0.1, lr + 0.08, 8, { decor: true }, lr + 0.08, true, Math.PI / 8);
+    const cupola = smoothDome(sink, bucket, x, ly + lh + 0.1, z, lr * 0.9, { form: 'saucer', segments: 16, emit: { tintAt } });
+    finialOn(sink, x, cupola.top, z, Math.min(1, Math.max(0.5, r * 0.25)), BRASS);
+  } else finialOn(sink, x, shell.top, z, Math.min(1, Math.max(0.5, r * 0.25)), BRASS);
+}
+
+/**
+ * The octagonal drum (the transition zone) a dome stands on, from y to y + h, its corners at radius `rc`: the plastered
+ * octagon on a stone base course, a dressed pilaster up each corner, a blind arch on each face, and the two-stepped stone
+ * cornice under the dome's haunch (structural: the octagon; dressing: the rest). Returns the cornice's top.
+ */
+function drum8(sink: PartSink, x: number, y: number, z: number, rc: number, h: number, bucket: RegionalBucket, look: () => number): number {
+  const ph = Math.PI / 8, ap = rc * Math.cos(ph), side = 2 * rc * Math.sin(ph);
+  sink.cylinder(bucket, [x, y, z], 'y', h, rc, 8, {}, rc, true, ph);
+  sink.cylinder('stone', [x, y, z], 'y', 0.28, rc + 0.07, 8, { decor: true, shade: 0.94 }, rc + 0.07, true, ph);
+  for (let k = 0; k < 8; k++) {
+    const th = k * Math.PI / 4, out: Vec3 = [Math.cos(th), 0, Math.sin(th)];
+    const f: Face = { origin: [x + out[0] * ap, 0, z + out[2] * ap], u: [out[2], 0, -out[0]], out, width: side };
+    // the pilasters at the face's two ends (each corner takes one from each face: a dressed arris)
+    for (const e of [-1, 1]) faceBox(sink, 'stone', f, e * (side / 2 - 0.11), y + h / 2, 0.03, 0.2, h - 0.04, 0.06, { decor: true, shade: 1.04 }, { back: true });
+    // the blind arch: a shaded panel under a ring of voussoirs
+    const bw = Math.min(side * 0.3, 0.8), spring = y + h * 0.45, sill = y + 0.34;
+    if (spring + bw / 2 + 0.16 < y + h - 0.05 && spring > sill + 0.1) {
+      const panel: Vec3[] = [facePoint(f, -bw / 2, sill, 0.008), facePoint(f, bw / 2, sill, 0.008)];
+      for (let i = 0; i <= 6; i++) { const t = i / 6 * Math.PI; panel.push(facePoint(f, Math.cos(t) * bw / 2, spring + Math.sin(t) * bw / 2, 0.008)); }
+      sink.polygon(bucket, panel, { decor: true, shade: 0.68 + look() * 0.06 });
+      archHead(sink, f, 0, spring, bw / 2, 'stone', 0.12, 6);
     }
   }
+  // the cornice: a stepped stone ring, the upper course the wider
+  sink.cylinder('stone', [x, y + h, z], 'y', 0.12, rc + 0.1, 8, {}, rc + 0.1, true, ph);
+  sink.cylinder('stone', [x, y + h + 0.12, z], 'y', 0.14, rc + 0.2, 8, { decor: true }, rc + 0.2, true, ph);
+  return y + h + 0.26;
 }
 
 /**
@@ -405,20 +450,68 @@ const hammam: RegionalBuilder = (ctx) => {
     }
     spouts(sink, frame, ['left', 'right'], look);
     const top = frame.eaveY + 0.3;
-    // the hot room's dome over the back half on its octagonal drum, two smaller domes forward
+    // the hot room's great dome over the back half on its octagonal drum, the warm rooms' two smaller domes forward
+    // (round 2, wave 123: "perched domes": each on a drum of its own height under a stone cornice; dome-detail-275: the
+    // drums dressed — pilasters, blind arches, the stepped cornice — and the domes turned smooth, the hot room's crowned by
+    // its lantern)
     const R = Math.min(W, D) * 0.27, dz = -D * 0.18;
-    // (round 2, wave 123: "perched domes"): each dome seated on a drum of its own height with a stone cornice ring
-    sink.cylinder('plaster', [0, top - 0.1, dz], 'y', 1.4, R + 0.3, 8, {}, R + 0.22, true, Math.PI / 8);
-    sink.cylinder('stone', [0, top + 1.18, dz], 'y', 0.14, R + 0.34, 8, { decor: true }, R + 0.34, true, Math.PI / 8);
-    dome(sink, 0, top + 1.3, dz, R, 'plaster', 10, look);
+    dome(sink, 0, drum8(sink, 0, top - 0.1, dz, R + 0.25, 1.25, 'plaster', look), dz, R, 'plaster', 12, look, 'lantern');
     for (const sx of [-1, 1]) {
       const r = R * 0.55, x = sx * W * 0.26, z = D * 0.24;
-      sink.cylinder('plaster', [x, top - 0.1, z], 'y', 0.85, r + 0.2, 8, {}, r + 0.14, true, Math.PI / 8);
-      sink.cylinder('stone', [x, top + 0.64, z], 'y', 0.11, r + 0.24, 8, { decor: true }, r + 0.24, true, Math.PI / 8);
-      dome(sink, x, top + 0.75, z, r, 'plaster', 6, look);
+      dome(sink, x, drum8(sink, x, top - 0.1, z, r + 0.2, 0.8, 'plaster', look), z, r, 'plaster', 7, look);
     }
-    // the furnace stack at the back corner
-    sink.span('stone', W / 2 - 1.3, 0, -D / 2 + 0.3, W / 2 - 0.4, top + 3.2, -D / 2 + 1.2);
+    const front = frame.faces.front, y0 = frame.floors[0];
+    // the entrance portal (dome-detail-275): its piers and head standing proud of the front to over the parapet, laid in
+    // the Levant's ablaq — courses of the dark stone between the cream — the founder's inscription panel over the arch, a
+    // drip cornice on top, the stone benches (mastaba) either side, the worn paving before it
+    const pTop = frame.eaveY + 1.0, pw = 3.0, pier = 0.5, po = 0.25, headY = y0 + spring + 0.75 + 0.3;
+    const course = (u: number, w: number, yA: number, yB: number) => {
+      for (let y = yA, k = 0; y < yB - 0.02; y += 0.34, k++) {
+        const h = Math.min(0.34, yB - y);
+        faceBox(sink, 'stone', front, u, y + h / 2, po / 2, w, h, po, { decor: true, ...(k % 2 ? { tint: [0.62, 0.58, 0.54] as Rgb, shade: 0.92 } : {}) }, { back: true });
+      }
+    };
+    for (const e of [-1, 1]) course(doorU + e * (pw / 2 - pier / 2), pier, 0, pTop);
+    course(doorU, pw - 2 * pier, headY, pTop);
+    faceBox(sink, 'stone', front, doorU, headY + 0.42, po + 0.03, 1.3, 0.48, 0.06, { decor: true, tint: [1.1, 1.08, 1.02] });
+    faceBox(sink, 'stone', front, doorU, pTop + 0.09, (po + 0.12) / 2, pw + 0.24, 0.18, po + 0.12, { decor: true }, { back: true });
+    for (const e of [-1, 1]) faceBox(sink, 'stone', front, doorU + e * (pw / 2 + 0.65), 0.22, 0.25, 1.1, 0.44, 0.5, { decor: true, shade: 0.95 }, { back: true });
+    faceBox(sink, 'stone', front, doorU, -0.08, 0.55, pw + 0.6, 0.2, 1.1, { decor: true, shade: 0.86, tint: [0.95, 0.93, 0.9] }, { back: true });
+    // the cornice under the parapet; the dressed quoins up the four corners
+    sink.band('stone', -W / 2 - 0.07, frame.eaveY - 0.34, -D / 2 - 0.07, W / 2 + 0.07, frame.eaveY - 0.1, D / 2 + 0.07, { decor: true });
+    for (const fn of ['front', 'back'] as const) for (const s2 of [-1, 1]) for (let y = y0, k = 0; y < frame.eaveY - 0.5; y += 0.4, k++) {
+      const long = k % 2 === 0;
+      faceBox(sink, 'stone', frame.faces[fn], s2 * (W / 2 - (long ? 0.27 : 0.17)), y + 0.19, 0.025, long ? 0.54 : 0.34, 0.36, 0.05, { decor: true, fineSides: true, shade: 1.06 });
+    }
+    // the flanks' relieving arcade: a shallow pilaster either side of each high light and the round arch over it
+    for (const o of openings) {
+      if ((o.face !== 'left' && o.face !== 'right') || o.kind !== 'window') continue;
+      const f = frame.faces[o.face], aw = 0.62, sp = y0 + o.y0 + o.h + 0.05;
+      for (const e of [-1, 1]) faceBox(sink, 'stone', f, o.u + e * (aw + 0.09), (y0 + 0.2 + sp) / 2, 0.03, 0.18, sp - y0 - 0.2, 0.06, { decor: true, shade: 1.03 }, { back: true });
+      archHead(sink, f, o.u, sp, aw, 'stone', 0.18, 7);
+      faceBox(sink, 'stone', f, o.u, y0 + 0.22, 0.04, 2 * aw + 0.4, 0.12, 0.08, { decor: true }, { back: true });
+    }
+    // the hot room's thrust: two stepped buttresses down the back wall
+    for (const u of [-W * 0.15, W * 0.15]) {
+      faceBox(sink, 'stone', back, u, frame.eaveY * 0.32, 0.36, 0.7, frame.eaveY * 0.64, 0.72, {}, { back: true });
+      faceBox(sink, 'stone', back, u, frame.eaveY * 0.78, 0.2, 0.6, frame.eaveY * 0.28, 0.4, {}, { back: true });
+      faceBox(sink, 'stone', back, u, frame.eaveY * 0.64 + 0.05, 0.4, 0.8, 0.1, 0.8, { decor: true }, { back: true });
+    }
+    // the furnace's ash raked out under the stoke hole
+    const ash = facePoint(back, -(W / 2 - 0.85), 0, 0.55);
+    sink.revolve('stone', [ash[0], -0.1, ash[2]], 'y', [[0, 0.62], [0.14, 0.48], [0.26, 0.2], [0.3, 0]], 10, { decor: true, shade: 0.42, tint: [0.66, 0.64, 0.62] });
+    // the furnace stack at the back corner: the shaft, a string course at the roof, the cap on four stubs over the smoke's
+    // gaps, the soot darkening it upward; the boiler's cistern (khizana) beside it on the roof with its copper feed
+    const k0 = W / 2 - 1.3, k1 = W / 2 - 0.4, z0 = -D / 2 + 0.3, z1 = -D / 2 + 1.2, kh = top + 3.2;
+    sink.span('stone', k0, 0, z0, k1, kh - 0.45, z1, { shadeAt: (p: Vec3) => (p[1] > top ? 0.72 : 1) });
+    sink.span('stone', k0 - 0.08, top + 0.2, z0 - 0.08, k1 + 0.08, top + 0.42, z1 + 0.08, { decor: true });
+    for (const [a, b] of [[k0, z0], [k1 - 0.2, z0], [k0, z1 - 0.2], [k1 - 0.2, z1 - 0.2]] as const) sink.span('stone', a, kh - 0.45, b, a + 0.2, kh - 0.1, b + 0.2, { shade: 0.6 });
+    sink.span('stone', k0 - 0.12, kh - 0.1, z0 - 0.12, k1 + 0.12, kh + 0.08, z1 + 0.12, { shade: 0.7 });
+    const c0 = k0 - 1.7, c1 = k0 - 0.3;
+    sink.span('stone', c0, top - 0.1, z0 + 0.05, c1, top + 0.95, z1 + 0.25);
+    sink.span('stone', c0 - 0.05, top + 0.95, z0, c1 + 0.05, top + 1.05, z1 + 0.3, { decor: true });
+    sink.pipe('structureMetal', [c0 + 0.4, top + 0.6, z1 + 0.25], [c0 + 0.4, top + 0.6, z1 + 0.6], 0.05, 6, { colour: rgb(0x5f8a6a), decor: true });
+    sink.pipe('structureMetal', [c0 + 0.4, top + 0.6, z1 + 0.6], [c0 + 0.4, top - 0.05, z1 + 0.6], 0.05, 6, { colour: rgb(0x5f8a6a), decor: true });
   });
   return sink.finish();
 };
@@ -458,8 +551,8 @@ const sabil: RegionalBuilder = (ctx) => {
     }
     const S = Math.min(Sx, Sz);
     // (round 2, wave 123: "perched domes"): the dome on a short drum over the lintel ring
-    sink.cylinder('plaster', [0, H + 0.55, 0], 'y', 0.55, S * 0.42 + 0.12, 8, {}, S * 0.42 + 0.08, true, Math.PI / 8);
-    dome(sink, 0, H + 1.1, 0, S * 0.42, 'plaster', 0, look);
+    // (dome-detail-275) the drum dressed, the dome turned smooth under its finial
+    dome(sink, 0, drum8(sink, 0, H + 0.55, 0, S * 0.42 + 0.12, 0.55, 'plaster', look), 0, S * 0.42, 'plaster', 0, look);
     // the basin under the dome and the spout's water
     sink.cylinder('stone', [0, 0.25, 0], 'y', 0.6, S * 0.28, 12, {}, S * 0.3);
     sink.cylinder('glass', [0, 0.84, 0], 'y', 0.02, S * 0.25, 12, { decor: true });
