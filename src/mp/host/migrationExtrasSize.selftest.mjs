@@ -46,7 +46,7 @@ if (extra.length) {
   console.error(`migrationExtrasSize: ${extra.length} fields at their fresh value ride the keyframe (${bytes} bytes for ${atRest.length} entities at rest):\n  ${extra.join('\n  ')}`);
   assert.fail('an entity at rest carries only what a fresh host does not already have');
 }
-// (the hull exact of a hull at rest: 224 characters, its pose and the few integrator numbers a hull standing still holds)
+// (the hull exact of a hull at rest: 251 characters, its pose, its damage reading and the few integrator numbers a hull standing still holds)
 const hullBytes = atRest.reduce((sum, entry) => sum + (entry.hull ? entry.hull.length + 9 : 0), 0);
 assert.ok(atRest.every((entry) => typeof entry.hull === 'string') && (bytes - hullBytes) / atRest.length < 130 && hullBytes / atRest.length < 275,
   `an entity at rest costs ${Math.round((bytes - hullBytes) / atRest.length)} bytes of extras and ${Math.round(hullBytes / atRest.length)} of hull`);
