@@ -44,10 +44,9 @@
   :dir(rtl).cot-m-slide-end{translate:calc(-1 * var(--motion-slide)) 0}
 }
 /* the exit: softer than the entry (half the distance, the exit curve, the next band down) and takes no presses. A
-   surface hides by the hidden attribute, a native dialog's close, data-leaving (surfaceMotion.ts leaveThen) or cot-m-out; one
-   its owner shows by
-   a state class names it with cot-m-by-open, cot-m-by-show or cot-m-by-on (shown while it carries .open, .show or .on),
-   so the owner's own toggle plays the exit. A part inside a leaving surface (a dialog's panel in its veil) leaves with
+   surface hides by the hidden attribute, a native dialog's close, data-leaving (surfaceMotion.ts leaveThen) or cot-m-out;
+   one its owner shows by a state class names it with cot-m-by-open, cot-m-by-show or cot-m-by-on (shown while it carries
+   .open, .show or .on), so the owner's own toggle plays the exit. A part inside a leaving surface (a dialog's panel in its veil) leaves with
    it, while the surface's display transition keeps it on screen. */
 :is(.cot-m-fade,.cot-m-rise,.cot-m-drop,.cot-m-pop,.cot-m-slide-start,.cot-m-slide-end):is(:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)),:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)) *){
   opacity:0;pointer-events:none;transition-timing-function:var(--ease-exit);transition-duration:var(--dur-fast)}
@@ -59,8 +58,8 @@
 .cot-m-slide-start:is(:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)),:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)) *):dir(rtl){translate:calc(var(--motion-slide) / 2) 0}
 .cot-m-slide-end:is(:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)),:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)) *):dir(rtl){translate:calc(var(--motion-slide) / -2) 0}
 .cot-m-fade:is(:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)),:is([hidden],[data-leaving],.cot-m-out,dialog:not([open]),.cot-m-by-open:not(.open),.cot-m-by-show:not(.show),.cot-m-by-on:not(.on)) *){transition-duration:var(--dur-instant)}
-/* a success or failure mark: one emphasis as it appears, from a little small to its size; a re-trigger replays it
-   (surfaceMotion.ts beat) */
+/* a success or failure mark: one emphasis as it appears, from a little small to its size (a fresh mark replays it: the
+   ready check is drawn anew as the seat turns ready, readyControl.ts) */
 .cot-m-beat{animation:cot-m-beat var(--dur-base) var(--motion-ease-emphasis) 1 both}
 @keyframes cot-m-beat{from{opacity:0;scale:.8;translate:0 var(--motion-nudge)}to{opacity:1;scale:1;translate:none}}
 }
