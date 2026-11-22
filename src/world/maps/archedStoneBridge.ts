@@ -10,7 +10,7 @@ import { bevelBox } from './bevelBox.ts';
 import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } from '../collision.ts';
 import type { DressingBuckets, DressingHeightField, DressingSlice, FocusedDressingContext, LayoutDisc, Rng } from './mapKits.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
-import { Footings, type SupportFooting } from '../footings.ts';
+import { FOOTING_EMBED_M, Footings, lowestGroundUnder, type SupportFooting } from '../footings.ts';
 
 /** Round 61: the deck plane the river kit builds its arched bridge on (terrain.ts BridgeDeckPlane). */
 export interface DressingBridgeDeck {
@@ -461,7 +461,7 @@ function normanMasonry(b: {
 function rondaMasonry(b: {
   halfWidth: number; bodyHalf: number; parapetHalf: number; deckY: number; top: number; springY: number;
   centreY: number; radius: number; halfAngle: number; arcs: readonly number[]; piers: readonly number[]; seed: number;
-  mobile: boolean; pierBottoms: readonly number[];
+  mobile: boolean; pierBottoms: readonly number[]; pier: number; cutwaterOut: number;
 }): { body: THREE.BufferGeometry; trim: THREE.BufferGeometry; iron: THREE.BufferGeometry } {
   const r = localRng(b.seed), shade = localRng(b.seed + 1);
   const body: THREE.BufferGeometry[] = [], parts: THREE.BufferGeometry[] = [], iron: THREE.BufferGeometry[] = [];
@@ -495,11 +495,11 @@ function rondaMasonry(b: {
     }
     // the piers: a pointed cutwater with its sloped cap, the pilaster over it up to the cornice
     for (const [i, px] of b.piers.entries()) {
-      const w = BRIDGE_PIER_M * 0.55, out = BRIDGE_PIER_M * 0.95;
+      const w = b.pier * 0.36, out = b.cutwaterOut;
       const poly: [number, number][] = face > 0 ? [[px - w, zf], [px + w, zf], [px, zf + out]] : [[px + w, zf], [px - w, zf], [px, zf - out]];
       add(prism(poly, b.pierBottoms[i], capTop), null);
       add(prism(poly, capTop, [capTop + 1.1, capTop + 1.1, capTop]));
-      const pil = block(BRIDGE_PIER_M * 0.75, b.top - 0.8 - capTop - 0.9, 0.2, 0.7);
+      const pil = block(b.pier * 0.5, b.top - 0.8 - capTop - 0.9, 0.2, 0.7);
       pil.translate(px, (capTop + 0.9 + b.top - 0.8) / 2, zf + face * 0.1);
       add(pil, null);
     }
@@ -633,19 +633,52 @@ const BRIDGE_SPRING_OVER_WATER_M = 0.3;
  * 6.9 cm (13 cm before). The deck part, the abutments, the piers and the parapets are the parts they were.
  */
 const BRIDGE_VAULT_BAND_M = 0.15;
-/** A pier's cutwaters reach this far out of each face (the Ronda's, the longest of the three masonries). */
-const BRIDGE_CUTWATER_REACH_M = BRIDGE_PIER_M * 0.95;
+/**
+ * (bridge-footings-275, the owner on Aegis Crossing's Puente Nuevo: "cliff bridges pillars are wayy too thin") a gorge
+ * viaduct's pier at the springing and the batter its faces lean out by on the way down. Its 2 m piers stood 40 m tall
+ * (1:20) under 30.7 m arches; Ronda's stand about a third of their 35 m arch thick and widen into the gorge. 9 m here
+ * (a third of the narrowed 24.8 m arches) and 1:10 a face reach 13-14 m at the gorge floor. A river bridge keeps its
+ * 2 m piers, plumb.
+ */
+const VIADUCT_PIER_M = 9.0;
+const VIADUCT_BATTER = 0.1;
+/** A battered support's collision below the springing, in this many steps. */
+const BATTER_STEPS = 4;
 /** A wing wall's half-length (it splays from the abutment's corner down the bank). */
 const BRIDGE_WING_HALF_M = 2.6;
 
+/** The arched bridge's layout along the road (local x). */
+interface ArchedSpans {
+  bodyHalf: number; wetSpan: number; arches: number; chord: number;
+  /** a pier's thickness at the springing; the horizontal lean of a support's face per metre below it */
+  pier: number; batter: number;
+  /** how far a pier's cutwaters reach out of each face */
+  cutwaterOut: number;
+  pierAt: (i: number) => number; archAt: (i: number) => number;
+}
+
 /** The arched bridge's layout along the road (local x): the body, the wet span, its arches and each pier's centre. */
-function archedSpans(halfLength: number): { bodyHalf: number; wetSpan: number; arches: number; chord: number; pierAt: (i: number) => number } {
+function archedSpans(halfLength: number): ArchedSpans {
   const bodyHalf = halfLength + 1.0; // a metre into each approach embankment
   // the arches share the wet span between the abutments: N ≈ one per 11 m, piers between them
   const wetSpan = Math.max(4, (halfLength - 3) * 2);
-  const arches = Math.max(1, Math.round(wetSpan / (halfLength > 60 ? 32 : 11)));
-  const chord = (wetSpan - (arches - 1) * BRIDGE_PIER_M) / arches;
-  return { bodyHalf, wetSpan, arches, chord, pierAt: (i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2 };
+  const viaduct = halfLength > 60;
+  const arches = Math.max(1, Math.round(wetSpan / (viaduct ? 32 : 11)));
+  const pier = viaduct ? VIADUCT_PIER_M : BRIDGE_PIER_M, batter = viaduct ? VIADUCT_BATTER : 0;
+  const chord = (wetSpan - (arches - 1) * pier) / arches;
+  return { bodyHalf, wetSpan, arches, chord, pier, batter, cutwaterOut: viaduct ? pier * 0.42 : BRIDGE_PIER_M * 0.95,
+    pierAt: (i) => -wetSpan / 2 + (i + 1) * chord + i * pier + pier / 2,
+    archAt: (i) => -wetSpan / 2 + chord / 2 + i * (chord + pier) };
+}
+
+/** How far a battered face stands out past its springing line at height y (zero above the springing). */
+function batterAt(spans: ArchedSpans, springY: number, y: number): number {
+  return spans.batter * Math.max(0, springY - y);
+}
+
+/** The gorge viaduct's spring line (a river bridge springs just over its water). */
+function archedSpringY(deck: DressingBridgeDeck): number {
+  return deck.halfLength > 60 ? deck.deckY - 14 : deck.waterY + BRIDGE_SPRING_OVER_WATER_M;
 }
 
 /**
@@ -659,14 +692,30 @@ export function archedBridgeFootings(deck: DressingBridgeDeck, heightField: Dres
   abutments: readonly [number, number]; piers: readonly number[]; wings: readonly number[]; list: readonly SupportFooting[];
 } {
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, bedY } = deck, vx = -uz, vz = ux;
-  const { bodyHalf, wetSpan, arches, pierAt } = archedSpans(halfLength);
+  const spans = archedSpans(halfLength);
+  const { bodyHalf, wetSpan, arches, pier, pierAt } = spans;
+  const springY = archedSpringY(deck);
   const authored = bedY - BRIDGE_BODY_BELOW_BED_M;
-  const feet = new Footings((u, v) => heightField.getHeightAt(cx + ux * u + vx * v, cz + uz * u + vz * v));
-  const abutments = [feet.under('abutment -', -bodyHalf, -wetSpan / 2, -halfWidth, halfWidth, authored),
-    feet.under('abutment +', wetSpan / 2, bodyHalf, -halfWidth, halfWidth, authored)] as const;
-  const reach = halfWidth + BRIDGE_CUTWATER_REACH_M;
+  const ground = (u: number, v: number) => heightField.getHeightAt(cx + ux * u + vx * v, cz + uz * u + vz * v);
+  const feet = new Footings(ground);
+  // a battered support's foot reaches further out the deeper it goes: widen its rectangle until the batter at the
+  // footing it reads is the widening it was read over (the ground only falls as the rectangle grows, so this settles)
+  const battered = (label: string, x0: number, x1: number, out0: number, out1: number, z: number): number => {
+    let spread = 0;
+    for (let k = 0; k < 12; k++) {
+      const foot = Math.min(authored, lowestGroundUnder(ground, x0 - out0 * spread, x1 + out1 * spread, -z, z) - FOOTING_EMBED_M);
+      const next = batterAt(spans, springY, foot);
+      if (next <= spread + 1e-4) break;
+      spread = next;
+    }
+    return feet.under(label, x0 - out0 * spread, x1 + out1 * spread, -z, z, authored);
+  };
+  // an abutment's face leans into the first (last) arch; a pier's two faces lean into the arches either side of it
+  const abutments = [battered('abutment -', -bodyHalf, -wetSpan / 2, 0, 1, halfWidth),
+    battered('abutment +', wetSpan / 2, bodyHalf, 1, 0, halfWidth)] as const;
+  const reach = halfWidth + spans.cutwaterOut;
   const piers = Array.from({ length: arches - 1 }, (_, i) =>
-    feet.under(`pier ${i}`, pierAt(i) - BRIDGE_PIER_M / 2, pierAt(i) + BRIDGE_PIER_M / 2, -reach, reach, authored));
+    battered(`pier ${i}`, pierAt(i) - pier / 2, pierAt(i) + pier / 2, 1, 1, reach));
   // the wing walls: a box splayed 0.6 rad off the road, its square of reach round its centre (its authored foot half a
   // metre under the ground at that centre)
   const wings: number[] = [];
@@ -710,34 +759,37 @@ export function* addArchedStoneBridgeSteps(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext, style: BridgeMasonry = 'plain',
 ): Generator<DressingSlice, void, void> {
-  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
+  const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
   const width = halfWidth * 2;
-  const { bodyHalf, wetSpan, arches, chord } = archedSpans(halfLength);
+  const spans = archedSpans(halfLength);
+  const { bodyHalf, wetSpan, arches, chord, pier, archAt, pierAt } = spans;
   // the masonry's weathering and lifts keep the body's authored foot; every support reaches its own (footings.ts)
   const bottom = bedY - BRIDGE_BODY_BELOW_BED_M;
   const feet = archedBridgeFootings(deck, heightField);
   const [footA, footB] = feet.abutments;
   const top = deckY - BRIDGE_BODY_TOP_UNDER_DECK_M;
-  const springY = halfLength > 60 ? deckY - 14 : waterY + BRIDGE_SPRING_OVER_WATER_M;
+  const springY = archedSpringY(deck);
   const crownY = top - BRIDGE_SPANDREL_FILL_M;
   const rise = Math.max(0.4, Math.min(chord * 0.32, crownY - springY));
   const radius = (chord * chord / 4 + rise * rise) / (2 * rise);
   const centreY = springY + rise - radius;
   const halfAngle = Math.asin(Math.min(1, chord / 2 / radius));
   // the elevation profile (local x along the road, y up), traced clockwise with the arch openings cut from the bottom
-  // (each support's underside at its own footing: an arch's two jambs foot on the supports either side of it)
+  // (each support's underside at its own footing: an arch's two jambs foot on the supports either side of it, and a
+  // gorge viaduct's jambs lean out into the opening below the springing, so every support is wider at its foot)
   const profile = new THREE.Shape();
   profile.moveTo(-bodyHalf, footA);
   profile.lineTo(-bodyHalf, top);
   profile.lineTo(bodyHalf, top);
   profile.lineTo(bodyHalf, footB);
   for (let i = arches - 1; i >= 0; i--) {
-    const archX = -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M);
-    profile.lineTo(archX + chord / 2, i === arches - 1 ? footB : feet.piers[i]);
+    const archX = archAt(i);
+    const right = i === arches - 1 ? footB : feet.piers[i], left = i === 0 ? footA : feet.piers[i - 1];
+    profile.lineTo(archX + chord / 2 - batterAt(spans, springY, right), right);
     profile.lineTo(archX + chord / 2, springY);
     profile.absarc(archX, centreY, radius, Math.PI / 2 - halfAngle, Math.PI / 2 + halfAngle, false);
-    profile.lineTo(archX - chord / 2, i === 0 ? footA : feet.piers[i - 1]);
+    profile.lineTo(archX - chord / 2 + batterAt(spans, springY, left), left);
   }
   profile.lineTo(-bodyHalf, footA);
   const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 10,
@@ -786,7 +838,7 @@ export function* addArchedStoneBridgeSteps(
   // cutwaters on both faces of every pier, their noses turned into the stream (the Ronda masonry carries its own)
   const cutwaterTop = springY + 0.5;
   for (let i = 0; i < (style === 'ronda' ? 0 : arches - 1); i++) {
-    const pierX = -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2, foot = feet.piers[i];
+    const pierX = pierAt(i), foot = feet.piers[i];
     for (const side of [-1, 1]) {
       const nose = box(BRIDGE_PIER_M * 0.8, cutwaterTop - foot, BRIDGE_PIER_M * 0.8, 0.7);
       nose.rotateY(Math.PI / 4);
@@ -813,11 +865,11 @@ export function* addArchedStoneBridgeSteps(
   // (#27) a Norman river bridge's masonry over the body: the arch rings, the string course, the coped parapets, the
   // pointed cutwaters with their starlings and the pilasters over them (visual only: the record below is unchanged)
   if (style === 'ronda') {
-    const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
-    const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);
+    const arcs = Array.from({ length: arches }, (_, i) => archAt(i));
+    const piers = Array.from({ length: arches - 1 }, (_, i) => pierAt(i));
     const seed = Math.round(cx * 13 + cz * 7);
     const g = rondaMasonry({ halfWidth, bodyHalf, parapetHalf, deckY, top, springY, centreY, radius, halfAngle,
-      arcs, piers, seed, mobile: getDeviceTier() === 'mobile', pierBottoms: feet.piers });
+      arcs, piers, seed, mobile: getDeviceTier() === 'mobile', pierBottoms: feet.piers, pier, cutwaterOut: spans.cutwaterOut });
     rondaBody.push(alignWidth(g.body, ux, uz).translate(cx, 0, cz));
     rondaTrim.push(alignWidth(g.trim, ux, uz).translate(cx, 0, cz));
     buckets.dark.push(alignWidth(g.iron, ux, uz).translate(cx, 0, cz));
@@ -830,8 +882,8 @@ export function* addArchedStoneBridgeSteps(
     else { toned.deleteAttribute('color'); buckets.stone.push(toned); }
   }
   if (style === 'norman') {
-    const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
-    const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);
+    const arcs = Array.from({ length: arches }, (_, i) => archAt(i));
+    const piers = Array.from({ length: arches - 1 }, (_, i) => pierAt(i));
     const g = normanMasonry({ halfWidth, bodyHalf, parapetHalf, deckY, top, springY, centreY, radius, halfAngle,
       arcs, piers, seed: Math.round(cx * 13 + cz * 7), copings: !parapetRuns, pierBottoms: feet.piers });
     buckets.stone.push(alignWidth(g, ux, uz).translate(cx, 0, cz));
@@ -851,15 +903,22 @@ export function* addArchedStoneBridgeSteps(
     const at = (from + to) / 2;
     parts.push({ kind: 'obb', cx: cx + ux * at, cz: cz + uz * at, hw: halfWidth, hl: (to - from) / 2, yaw, y0, y1 });
   };
-  solid(-bodyHalf, -wetSpan / 2, footA, crownY); // the abutments, each from its own footing
-  solid(wetSpan / 2, bodyHalf, footB, crownY);
-  for (let i = 0; i < arches - 1; i++) { // the piers
-    const pierX = -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M;
-    solid(pierX, pierX + BRIDGE_PIER_M, feet.piers[i], crownY);
-  }
+  // the abutments and the piers, each from its own footing; a battered support's lower part in steps, each as wide as
+  // its faces stand at the step's middle height (within half a step's lean of the drawn stone)
+  const support = (from: number, to: number, out0: number, out1: number, foot: number): void => {
+    const drop = Math.max(0, springY - foot), steps = spans.batter > 0 && drop > 0 ? BATTER_STEPS : 0;
+    solid(from, to, steps ? springY : foot, crownY);
+    for (let k = 0; k < steps; k++) {
+      const y1 = springY - drop * k / steps, y0 = springY - drop * (k + 1) / steps, lean = batterAt(spans, springY, (y0 + y1) / 2);
+      solid(from - out0 * lean, to + out1 * lean, y0, y1);
+    }
+  };
+  support(-bodyHalf, -wetSpan / 2, 0, 1, footA);
+  support(wetSpan / 2, bodyHalf, 1, 0, footB);
+  for (let i = 0; i < arches - 1; i++) support(pierAt(i) - pier / 2, pierAt(i) + pier / 2, 1, 1, feet.piers[i]);
   const bands = Math.max(1, Math.ceil((crownY - springY) / BRIDGE_VAULT_BAND_M));
   for (let i = 0; i < arches; i++) { // the vaults' haunches, band by band
-    const archX = -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M);
+    const archX = archAt(i);
     for (let band = 0; band < bands; band++) {
       const y0 = springY + (crownY - springY) * band / bands, y1 = springY + (crownY - springY) * (band + 1) / bands;
       const dy = (y0 + y1) / 2 - centreY;
