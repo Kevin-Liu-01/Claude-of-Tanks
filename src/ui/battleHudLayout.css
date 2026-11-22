@@ -225,7 +225,9 @@ body[data-cot-battle-layout][data-systems-fill]:not(.cot-touch-layout) .cot-vehi
 body[data-cot-battle-layout][data-systems-fill]:not(.cot-touch-layout) .cot-vehicle-controls>button{--hud-tile-w:auto;flex:1 1 0}
 body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .cot-vehicle-controls{gap:0}
 body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .cot-vehicle-controls>button{flex:0 0 auto;margin-left:var(--hud-tile-dx,0px)}
-.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
+/* (static by specificity, not importance: no other rule places a tile but the touch slots' own (the top slot's buttons
+   beside the chrome, the phone HUD's smoke on the left edge), and they win by theirs; mobile-hud-274c) */
+.cot-vehicle-controls>button{pointer-events:auto;position:static;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 /* (the jump's tile in the rack is a tile like its neighbours, its glyph in their ink: its hint's amber glyph without the
    selected frame read as a half-selected third state, gauntlet r9) */
@@ -831,26 +833,22 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:i
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short']{--edge-tile:44px;--edge-gap:5px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-systems-slot='edge'] .cot-vehicle-controls{--edge-tile:44px;--edge-gap:5px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='edge'] .cot-vehicle-controls>button{--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);
-  width:var(--edge-tile)!important;height:var(--edge-tile);min-width:0;min-height:0;flex:none;margin:0}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed!important;
+  height:var(--edge-tile);min-width:0;min-height:0;flex:none;margin:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>button[data-control='smoke']{position:fixed;
   left:var(--hud-smoke-left);top:var(--hud-smoke-top);--hud-tile-w:var(--edge-tile);--hud-tile-h:var(--edge-tile);min-width:0;min-height:0;margin:0}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-vehicle-controls>.cot-jump{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump{left:var(--hud-jump-left);top:var(--hud-jump-top);right:auto;bottom:auto;
   width:var(--edge-tile,52px);height:var(--edge-tile,52px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump svg{width:26px;height:26px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-height='short']) .cot-touch .round.jump .lb{display:none}
 /* (a portrait phone's items two abreast, standing 8 px on the speedometer's scaled dial (its foot 166 px up, 78 px tall):
    one column of them and the smoke reached the screen's middle and took a hull bar's last seat, markers 274b) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{display:grid!important;
-  grid-template-columns:repeat(2,52px);grid-auto-rows:52px;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;
-  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 86px)!important}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column!important;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-cons{display:grid;
+  grid-template-columns:repeat(2,52px);grid-auto-rows:52px;gap:8px;left:max(8px,env(safe-area-inset-left));right:auto;top:auto;
+  bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px + 86px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{flex-direction:column;gap:5px;left:max(12px,env(safe-area-inset-left));right:auto;
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 116px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:44px;height:44px}
-/* (the map at the tight height's 92 px on a short landscape phone, as the tight rule meant: at the short rule's 106 its
-   foot ran 6 px onto the items' column at 844x390) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{
-  width:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
 /* (a short landscape's side lanes and hit rows stand beside the sections, inset by their widths: battleHudLayout.ts
    --hud-left-inset, --hud-right-inset) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'] :is(.cot-kill-lane.l,.cot-hud .cot-si-toasthost){left:var(--hud-left-inset,0px);
