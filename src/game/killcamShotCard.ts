@@ -8,8 +8,8 @@
  *   Leopard 2A6 · Tier X                   its vehicle, or the call-in and who called it
  *   120 mm DM53 APFSDS                     hitEventFormat.ts weaponDisplayName (the end screen's), never a bare designation
  *   PENETRATED · Turret front L            the outcome chip and the hit's location
- *   Distance · Armor · Pen · Damage        the shot's figures (one damage figure: hullPointsRemoved)
- *   [the victim's side silhouette, a dot where the shot struck]
+ *   Distance · Damage · Armor · Pen        the shot's figures (one damage figure: hullPointsRemoved)
+ *                                          the killer's tank render beside the first lines
  *
  * `shotCardModel` is pure (the selftest builds every outcome in Node); the lookups a spec needs are injected, so this
  * module never imports the fleet. `renderShotCard` writes a model into the card's markup. Copyright © 2026 Kevin B. Liu.
@@ -36,8 +36,6 @@ export interface ShotCardEvent extends HitEventPresentation {
   readonly physicalMm?: number;
   readonly penRollMm?: number;
   readonly closingMps?: number;
-  /** The hit point in the victim's hull frame (x across, y up, z forward), metres. */
-  readonly localPos?: readonly number[] | null;
 }
 
 /** What the card needs from the fleet and the roster, injected by the killcam (and stubbed by the selftest). */
@@ -48,8 +46,6 @@ export interface ShotCardLookups {
   specNation(specId: string): string | null;
   /** A vehicle's tier numeral, or ''. */
   tier(specId: string): string;
-  /** A vehicle's hull length and height (m), for the hit dot on its silhouette, or null. */
-  hullSize(specId: string): { lengthM: number; heightM: number } | null;
 }
 
 export type ShotCardView = 'death' | 'kill' | 'final';
@@ -80,8 +76,6 @@ export interface ShotCardModel {
   /** The victim, outside the death view ("Leopard 1A5"). */
   readonly target: string | null;
   readonly stats: readonly ShotCardStat[];
-  /** The victim whose side silhouette carries the dot, and the dot's place on it (0..1 from the left / top). */
-  readonly silhouette: { readonly specId: string; readonly u: number; readonly v: number } | null;
 }
 
 export interface ShotCardInput {
@@ -117,21 +111,6 @@ function outcomeOf(input: ShotCardInput): ShotCardModel['outcome'] {
   const outcome = hitOutcomeFor(ev);
   return { tone: outcome.id === 'penetration' || outcome.id === 'splash' || outcome.id === 'module_hit' ? 'pen' : 'glance', label: outcome.label };
 }
-
-/** The hit's place on the victim's side silhouette: forward to the left (the icon's bow), up to the top. */
-function silhouetteDot(ev: ShotCardEvent, lookups: ShotCardLookups): ShotCardModel['silhouette'] {
-  const specId = ev.targetSpecId;
-  const local = ev.localPos;
-  if (!specId || !local || local.length < 3) return null;
-  const size = lookups.hullSize(specId);
-  if (!size || !(size.lengthM > 0) || !(size.heightM > 0)) return null;
-  const clamp = (value: number) => Math.min(0.96, Math.max(0.04, value));
-  const forward = Number(local[2]), up = Number(local[1]);
-  if (!Number.isFinite(forward) || !Number.isFinite(up)) return null;
-  return { specId, u: clamp(0.5 - (forward / size.lengthM) * SILHOUETTE_BOW), v: clamp(1 - up / size.heightM) };
-}
-/** The side silhouettes (icons.ts side_silhouette) face their bow to the left: forward reads leftward. */
-const SILHOUETTE_BOW = 1;
 
 /** The card for one replayed kill. */
 export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): ShotCardModel {
@@ -177,7 +156,6 @@ export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): S
     location: collision || fire ? '' : (ev.zone ? zoneLabel(ev.zone) : ''),
     target: view === 'death' ? null : (input.victimCallsign || ev.targetName || null),
     stats,
-    silhouette: view === 'death' && !collision && !fire ? silhouetteDot(ev, lookups) : null,
   };
 }
 
@@ -196,8 +174,6 @@ export interface ShotCardDom {
   readonly location: HTMLElement;
   readonly target: HTMLElement;
   readonly stats: HTMLElement;
-  readonly sil: HTMLElement;
-  readonly dot: HTMLElement;
   readonly art: HTMLElement;
 }
 
@@ -216,17 +192,14 @@ export function buildShotCard(parent: HTMLElement, make: (tag: string, className
   const location = make('span', 'loc', result);
   const target = make('div', 'tg', root);
   const stats = make('dl', 'st', root);
-  const sil = make('div', 'sil', root);
-  const dot = make('span', 'dot', sil);
   const art = make('div', 'art', root);
   art.setAttribute('aria-hidden', 'true');
-  return { root, heading, flag, who, vehicle, weapon, outcome, location, target, stats, sil, dot, art };
+  return { root, heading, flag, who, vehicle, weapon, outcome, location, target, stats, art };
 }
 
 export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
   flagHtml(nation: string): string;
   iconHtml(icon: string): string;
-  silhouetteUrl(specId: string): string;
   vehicleUrl(specId: string): string;
 }): void {
   card.root.dataset.view = model.view;
@@ -258,12 +231,6 @@ export function renderShotCard(card: ShotCardDom, model: ShotCardModel, art: {
   card.art.hidden = !model.vehicleSpecId;
   card.root.toggleAttribute('data-art', !!model.vehicleSpecId);
   if (model.vehicleSpecId) card.art.style.backgroundImage = `url(${art.vehicleUrl(model.vehicleSpecId)})`;
-  card.sil.hidden = !model.silhouette;
-  if (model.silhouette) {
-    card.sil.style.backgroundImage = `url(${art.silhouetteUrl(model.silhouette.specId)})`;
-    card.dot.style.left = `${(model.silhouette.u * 100).toFixed(1)}%`;
-    card.dot.style.top = `${(model.silhouette.v * 100).toFixed(1)}%`;
-  }
 }
 
 /**
@@ -278,9 +245,9 @@ export const SHOT_CARD_CSS = `
   box-shadow:var(--battle-plate-shadow);color:var(--ink-1);pointer-events:none;}
 .cot-kc-card[hidden]{display:none;}
 /* (the text in the first column; the killer's tank render in the second, beside its name, vehicle, weapon and outcome:
-   the room the figures leave there; the figures, the target line and the silhouette span both) */
+   the room the figures leave there; the figures and the target line span both) */
 .cot-kc-card>*{grid-column:1;}
-.cot-kc-card>:is(.st,.tg,.sil){grid-column:1/-1;}
+.cot-kc-card>:is(.st,.tg){grid-column:1/-1;}
 .cot-kc-card .art{grid-column:2;grid-row:1/span 5;align-self:center;width:112px;height:76px;
   background-position:center;background-size:contain;background-repeat:no-repeat;}
 .cot-kc-card .art[hidden]{display:none;}
@@ -309,9 +276,4 @@ export const SHOT_CARD_CSS = `
 .cot-kc-card .st dt{font:600 var(--battle-fs-11)/1.2 var(--font-ui);color:var(--ink-3);}
 .cot-kc-card .st dd{margin:0;font:600 var(--battle-fs-12)/1.2 var(--font-data);color:var(--ink-1);white-space:nowrap;}
 .cot-kc-card .st [data-stat=damage] dd{color:var(--accent-hi);}
-.cot-kc-card .sil{position:relative;height:30px;margin-top:var(--s2);background-position:center;background-size:contain;
-  background-repeat:no-repeat;opacity:.86;}
-.cot-kc-card .sil[hidden]{display:none;}
-.cot-kc-card .dot{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%) rotate(45deg);background:var(--kc-tone,var(--accent));
-  outline:2px solid var(--hud-plate-strong);}
 `;

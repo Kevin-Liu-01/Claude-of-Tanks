@@ -1,6 +1,7 @@
 /**
  * respawnDial.ts — the respawn countdown (death-flow-275; Kevin 2026-11-21: "where to put that line of respawning"). One
- * line at the bottom centre, in the kill cam's lower band: "RESPAWN IN 5" beside a ring that drains once a second.
+ * line at the bottom centre, in the kill cam's lower band: the seconds inside a hexagon whose outline drains once a second,
+ * "RESPAWN IN" beside it.
  *
  * - The clock is the simulation's: the mode controller's armed revive for the viewer (MatchModePresentationState
  *   .respawn, whole seconds, a refused placement's re-arm included), never a guess from the death's time. The ring drains
@@ -35,8 +36,9 @@ export function respawnViewOf(wait: RespawnWait | null | undefined,
   return { inS, nextWave: inS === null && !!wait.nextWave, infected: modeState?.id === 'infected' && modeState.perspectiveTeam === 'bravo' };
 }
 
-const RING_R = 15;
-const RING_LEN = 2 * Math.PI * RING_R;
+/** The hexagon (pointy-top) the count stands in, and its outline that drains each second (path length 100). */
+const HEX = 'M20 2 L36 11 L36 33 L20 42 L4 33 L4 11 Z';
+const HEX_LEN = 100;
 
 export interface RespawnDial {
   readonly root: HTMLElement;
@@ -54,10 +56,11 @@ export function createRespawnDial(mount: HTMLElement): RespawnDial {
   root.hidden = true;
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
-  root.innerHTML = `<svg class="ring" viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">`
-    + `<circle class="track" cx="18" cy="18" r="${RING_R}"/><circle class="arc" cx="18" cy="18" r="${RING_R}"`
-    + ` stroke-dasharray="${RING_LEN.toFixed(2)}" transform="rotate(-90 18 18)"/></svg>`
-    + '<span class="k"></span><span class="n num"></span>';
+  // (Kevin 2026-11-22: "respawn indicatro should be in a hexagon") the seconds inside a hexagon whose outline drains
+  root.innerHTML = '<span class="hex"><svg viewBox="0 0 40 44" width="40" height="44" aria-hidden="true">'
+    + `<path class="fill" d="${HEX}"/><path class="track" d="${HEX}"/>`
+    + `<path class="arc" d="${HEX}" pathLength="${HEX_LEN}" stroke-dasharray="${HEX_LEN}"/></svg>`
+    + '<span class="n num"></span></span><span class="k"></span>';
   mount.appendChild(root);
   const arc = root.querySelector<SVGCircleElement>('.arc')!;
   const kicker = root.querySelector<HTMLElement>('.k')!;
@@ -91,7 +94,7 @@ export function createRespawnDial(mount: HTMLElement): RespawnDial {
       if (root.hidden) root.hidden = false;
       // the ring empties over the current second on the battle clock (a wave's wait keeps it full)
       const drained = view.inS === null ? 0 : Math.min(1, Math.max(0, timeS - secondStartS));
-      const offset = Math.round(drained * RING_LEN * 10) / 10;
+      const offset = Math.round(drained * HEX_LEN * 10) / 10;
       if (offset !== lastOffset) { lastOffset = offset; arc.setAttribute('stroke-dashoffset', String(offset)); }
     },
   };
@@ -102,16 +105,18 @@ export function createRespawnDial(mount: HTMLElement): RespawnDial {
  * a room's Horde wait follows an ally. Above the kill cam's layer (the shell's, over its 60) so its veil never hides it; under the menus.
  */
 const RESPAWN_DIAL_CSS = `
-.cot-respawn{position:fixed;z-index:var(--z-shell);left:50%;bottom:max(var(--s2),calc((var(--kc-band,8vh) - 40px) / 2));transform:translateX(-50%);
-  display:flex;align-items:center;gap:var(--s2);height:40px;padding:0 var(--s3) 0 var(--s1);pointer-events:none;
-  background:var(--hud-plate-strong);box-shadow:var(--ring-1);color:var(--ink-1);font-family:var(--font-ui);}
+.cot-respawn{position:fixed;z-index:var(--z-shell);left:50%;bottom:max(var(--s2),calc((var(--kc-band,8vh) - 44px) / 2));transform:translateX(-50%);
+  display:flex;align-items:center;gap:var(--s2);pointer-events:none;color:var(--ink-1);font-family:var(--font-ui);}
 .cot-respawn[hidden]{display:none;}
 body:has(.cot-spec.show) .cot-respawn{bottom:calc(16px + 64px + var(--s2));}
-.cot-respawn .ring{flex:none;}
-.cot-respawn .track{fill:none;stroke:var(--line-2);stroke-width:3;}
-.cot-respawn .arc{fill:none;stroke:var(--accent);stroke-width:3;}
+.cot-respawn .hex{position:relative;display:grid;place-items:center;width:40px;height:44px;flex:none;}
+.cot-respawn .hex svg{position:absolute;inset:0;overflow:visible;}
+.cot-respawn .fill{fill:var(--hud-plate-strong);}
+.cot-respawn .track{fill:none;stroke:var(--line-2);stroke-width:2;stroke-linejoin:round;}
+.cot-respawn .arc{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;}
 .cot-respawn[data-wait=wave] .arc{stroke:var(--ink-3);}
-.cot-respawn .k{font:700 var(--battle-fs-12)/1 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-2);}
-.cot-respawn .n{min-width:1.2ch;font:700 var(--battle-fs-18)/1 var(--font-data);color:var(--accent-hi);text-align:right;}
+.cot-respawn .n{position:relative;font:700 var(--battle-fs-18)/1 var(--font-data);color:var(--accent-hi);}
 .cot-respawn .n[hidden]{display:none;}
+.cot-respawn .k{padding:var(--s1) var(--s2);background:var(--hud-plate-strong);font:700 var(--battle-fs-12)/1 var(--font-ui);
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-2);}
 `;
