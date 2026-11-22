@@ -384,12 +384,20 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   without tests): the entry +450 B brotli (cursor-aim-pan's cursorEdgePan in the camera rig and input, couch-split's
   //   one screen plan and per-pane HUD seat, hud-card-fit, mp-one-map's one-world settle, garage-deploy-row), re-pinned
   //   at its measure. Requests and page totals held within their pins.
-  game: { brotliBytes: 1250707, requests: 146, entryBrotliBytes: 251587 },
-  cn: { brotliBytes: 1296776, requests: 147, entryBrotliBytes: 251587 },
-  gallery: { brotliBytes: 790344, requests: 83 },
-  home: { brotliBytes: 28933, requests: 8 },
-  docs: { brotliBytes: 37250, requests: 12 },
-  notFound: { brotliBytes: 18734, requests: 7 },
+  // 2026-11-21 (integrator 274.0, coordinator ruling, at the release build of integ/274.0 f06930c4bf): ten pins re-set at
+  //   their measure for four features. game +5,498 B brotli (+0.4 %), cn +6,152, entry +872 (both), requests +5 (game,
+  //   cn): three new statically reached modules, src/sim/trainingGround.ts and src/sim/hullField.ts (tutorial-journey's
+  //   training battle) and src/ui/components/readyControl.ts (room-owner's ready control), and two chunk-split shifts;
+  //   the bytes are the tutorial journey, mobile-hud's first-use hints and key prompts, reload-readout and hitbox-fit's
+  //   plate fits in the anatomy data. home +457, docs +681, notFound +485: the shared tokens and components CSS (the
+  //   ready control, the training mode tone). gallery +1 request. Follow-up owed to the tutorial lane: trainingGround and
+  //   hullField behind the tutorial's dynamic import (target: the +2 requests and most of the +872 B entry back).
+  game: { brotliBytes: 1256205, requests: 151, entryBrotliBytes: 252459 },
+  cn: { brotliBytes: 1302928, requests: 152, entryBrotliBytes: 252459 },
+  gallery: { brotliBytes: 790344, requests: 84 },
+  home: { brotliBytes: 29390, requests: 8 },
+  docs: { brotliBytes: 37931, requests: 12 },
+  notFound: { brotliBytes: 19219, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. The entry's
  *  256 B covers its commit-hash noise, up to 201 B over five builds in round seven (owner approved 2026-11-13, V11). A
