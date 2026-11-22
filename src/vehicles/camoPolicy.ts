@@ -220,7 +220,7 @@ const RELEASE_265_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_265_SIGNATURE_
 });
 /** Release 275 (Kevin 2026-11-21: "we should save the current oplot t and oplot m camos but they need to have proper
  * ukranian colorways by default"): the T-84BM Oplot-M and Oplot-T stock in the Ukrainian Armed Forces' field colours,
- * green under brown, sand and near-black, each on its old pattern (the Oplot-M's MM-14 digital, the Oplot-T's three-tone)
+ * green under brown and sand, each on its old pattern (the Oplot-M's MM-14 digital, the Oplot-T's three-tone)
  * at its old scale. Their 262 coats (paint_bm_oplot_m, paint_bm_oplot_t, the specs' own visuals) stay in the catalog at
  * their indices. Appended after every earlier id, so no serialized index moves. */
 const RELEASE_275_SIGNATURE_IDS = Object.freeze(['sig_bm_oplot_m', 'sig_bm_oplot_t'] as const);
@@ -715,12 +715,13 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#55594b', weather: '#69695a', patches: ['#393c34', '#77705b', '#82755c'], camoScale: 0.55 }),
   preset('sig_leo2a6_ua', 'leo2a6_ua', signatureTags('ua', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'], camoScale: 0.46 }),
-  // release 275: the Oplot-M and Oplot-T in the Ukrainian Armed Forces' field green under brown, sand and near-black, on
-  // their 262 patterns and scales (paint_bm_oplot_m: MM-14 digital at 0.5; paint_bm_oplot_t: three-tone at 0.58)
+  // release 275: the Oplot-M and Oplot-T in the Ukrainian Armed Forces' field green under brown and sand, on their 262
+  // patterns and scales (paint_bm_oplot_m: MM-14 digital at 0.5, with a near-black; paint_bm_oplot_t: the three-tone at
+  // 0.58, whose painter lays patches[0] as the dark bars and patches[1] as the bands: dark brown bars, sand bands)
   preset('sig_bm_oplot_m', 'bm_oplot_m', signatureTags('ua', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#56603a', weather: '#67704a', patches: ['#2a3020', '#6b5236', '#ae9d6c'], camoScale: 0.5 }),
+    { scheme: 'digital', base: '#56603a', weather: '#67704a', patches: ['#2f3626', '#6b5236', '#9a8c61'], camoScale: 0.5 }),
   preset('sig_bm_oplot_t', 'bm_oplot_t', signatureTags('ua', 'woodland', 'organic'),
-    { scheme: 'nato', base: '#4f5b35', weather: '#606b44', patches: ['#b19b66', '#5e4430', '#262720'], camoScale: 0.58 }),
+    { scheme: 'nato', base: '#4f5b35', weather: '#606b44', patches: ['#3b2e22', '#9e8c5d'], camoScale: 0.58 }),
   // Round 31: the national colour schemes — plain single-colour service coats, one per nation.
   ...NATIONAL_CAMO_PRESETS,
   // Round 31: every distinct authored paint in the fleet, named after its lead vehicle (generated table).
