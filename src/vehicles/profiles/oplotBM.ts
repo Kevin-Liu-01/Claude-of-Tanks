@@ -52,6 +52,9 @@ import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { DRUM_ISSUE_PAINTS, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+// 271 (Main 2026-11-09): the drawn 902B and Tellur tubes carry launch marks, so the salvo is their mouths and the decor
+// pair stays off (decorations.ts drawsOwnSmoke)
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { OPLOT_BM_AUTHORING, OPLOT_BM_ERA, OPLOT_BM_SCALE } from '../oplotFlankLayout.ts';
 import { resizeAuthoredVehicle } from './vehicleSize.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
@@ -536,13 +539,13 @@ function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
         [side(s, housingX(-0.47) + 0.03), 0.42, -0.47], [side(s, housingX(-1.00) + 0.03), 0.42, -1.00]));
       for (const y of [0.22, 0.34]) for (let i = 0; i < 6; i++) {
         const z = -0.94 + i * 0.084, x = housingX(z) + 0.03;
-        P.add('turretDark', cylX(0.042, 0.11, 14), side(s, x + 0.045), y, z, 0, side(s, -0.30 - yaw), side(s, 0.20));
+        P.add('turretDark', markSmokeTube(cylX(0.042, 0.11, 14), [s, 0, 0]), side(s, x + 0.045), y, z, 0, side(s, -0.30 - yaw), side(s, 0.20));
         P.add('turretDetail', cylX(0.031, 0.012, 12), side(s, x + 0.10), y + 0.012, z + 0.03, 0, side(s, -0.30 - yaw), side(s, 0.20));
       }
     } else {
       for (const [y, z] of [[0.27, -0.62], [0.27, -0.48], [0.44, -0.62], [0.44, -0.48]] as const) {
         const xFace = housingX(z);
-        P.add('turretDark', cylX(0.048, 0.06, 16), side(s, xFace + 0.02), y, z, 0, side(s, -0.35), 0);
+        P.add('turretDark', markSmokeTube(cylX(0.048, 0.06, 16), [s, 0, 0]), side(s, xFace + 0.02), y, z, 0, side(s, -0.35), 0);
         P.add('turretDetail', cylX(0.034, 0.012, 14), side(s, xFace + 0.051), y, z, 0, side(s, -0.35), 0);
       }
     }
@@ -693,7 +696,7 @@ function buildT84UTurretSide(P: TankBuilderPort, s: number): void {
   P.add('turretDark', box(0.10, 0.04, 0.58), side(s, 1.39), 0.47, 0.20);
   for (let i = 0; i < 4; i++) {
     const z = -0.02 + i * 0.145;
-    P.add('turretDark', cylZ(0.046, 0.26, 16), side(s, 1.45), 0.56, z + 0.05, -0.55, side(s, 0.35), 0);
+    P.add('turretDark', markSmokeTube(cylZ(0.046, 0.26, 16)), side(s, 1.45), 0.56, z + 0.05, -0.55, side(s, 0.35), 0);
     P.add('turretDetail', cylZ(0.033, 0.012, 14), side(s, 1.50), 0.63, z + 0.15, -0.55, side(s, 0.35), 0);
   }
   // side stowage box forward of the right bin (the left one runs longer), its lid and hasps

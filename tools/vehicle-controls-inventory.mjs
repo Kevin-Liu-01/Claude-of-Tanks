@@ -20,11 +20,8 @@ const check=process.argv.includes('--check');
 const idsArg=process.argv.find(a=>a.startsWith('--ids='))?.slice(6)??'';
 const scoped=idsArg&&idsArg!=='all'?new Set(uniqueIds(idsArg.split(',').filter(Boolean),'vehicle-controls-inventory --ids')):null;
 if(scoped)for(const id of scoped)if(!ALL_TANK_IDS.includes(id))throw new Error(`[controls] unknown id ${id}`);
-// Functional smoke pins (2026-10-07, coordinator ruling on the tank-accessories lane): a decor rebuild must not change
-// a vehicle's gameplay counts. Round 2 moved the decor smoke banks into the functional decor group, so the M2A2
-// Bradley's second visual bank began registering launch sockets (14 -> 20). The bank stays as decor. The salvo keeps
-// its pre-round-2 count: the authored fittings' sockets first, then the decor sockets in build order, cut at the pin.
-const FUNCTIONAL_SMOKE_PIN={m2a2_bradley:14};
+// (271, Main 2026-11-09: the M2A2's functional pin of 14 is retired; the decor pair dresses only a build with no drawn
+// smoke banks, so every vehicle's salvo is its drawn launcher mouths, decorations.ts drawsOwnSmoke.)
 const rows={}; const bad=[];const missing=[];
 const OUTPUTS={
  inventory:['src/vehicles/auxiliaryInventory.generated.ts',p=>`// Generated from authored fittings by tools/vehicle-controls-inventory.mjs.\nimport type { AuxiliaryInventory } from './auxiliaryInventory.ts';\nexport const AUXILIARY_INVENTORY: Readonly<Record<string, AuxiliaryInventory>> = ${p};\n`],
@@ -106,10 +103,6 @@ for(const id of ALL_TANK_IDS){
  // machine gun in front of the cupola". The sort is stable, so equal calibres keep build order and every one-station
  // vehicle is unchanged.
  guns.sort((a,b)=>b.caliberMm-a.caliberMm);
- if(FUNCTIONAL_SMOKE_PIN[id]!==undefined){
-  if(smoke.length<FUNCTIONAL_SMOKE_PIN[id])throw new Error(`${id}: ${smoke.length} smoke sockets, below its functional pin ${FUNCTIONAL_SMOKE_PIN[id]}`);
-  smoke.length=FUNCTIONAL_SMOKE_PIN[id];
- }
  rows[id]={turretPivot:round(turret.position.toArray()),smoke:fanSmokeMounts(id,smoke),guns,lights:!!tank.root.userData.nightLightCoverage?.headlights};
  if(!rows[id].lights)missing.push({id,name:'driving lights'});
  if(drawn.length)inert[id]=drawn;
