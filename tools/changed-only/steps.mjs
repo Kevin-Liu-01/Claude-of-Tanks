@@ -50,6 +50,7 @@ export const TABLES = Object.freeze({
   auxiliaryInventory: { kind: 'module', files: ['src/vehicles/auxiliaryInventory.generated.ts'], exportName: 'AUXILIARY_INVENTORY' },
   auxiliaryRoofGuns: { kind: 'module', files: ['src/vehicles/auxiliaryRoofGuns.generated.ts'], exportName: 'AUXILIARY_ROOF_GUNS' },
   inertDrawnWeapons: { kind: 'module', files: ['src/vehicles/inertDrawnWeapons.generated.ts'], exportName: 'INERT_DRAWN_WEAPONS' },
+  decorInStationArcs: { kind: 'module', files: ['src/vehicles/decorInStationArcs.generated.ts'], exportName: 'DECOR_IN_STATION_ARCS' },
   garageAuxiliarySummary: { kind: 'module', files: ['src/ui/garageAuxiliarySummary.generated.ts'], exportName: 'GARAGE_AUXILIARY_SUMMARY' },
   interiorFills: { kind: 'module', files: ['src/vehicles/interiorFillGroups/*.generated.ts'], exportName: 'INTERIOR_FILLS' },
   movingClearanceAir: { kind: 'json', files: ['docs/geometry-gate/moving-clearance-air.json'], path: ['tanks'] },
@@ -98,9 +99,9 @@ export const AGGREGATES = Object.freeze([
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
-    pin: 'aa9097b373101a7b',
+    pin: 'f1b771183dc3b318',
     reads: [],
-    note: 'reads its own four generated files (the --ids merge and --check)',
+    note: 'reads its own five generated files (the --ids merge and --check; 275: whether the decor table exists before a scoped run)',
   },
   'tools/barak-rear-bay-fill-policy.mjs': {
     pin: '4fd2707a1d932bbd',
@@ -515,7 +516,7 @@ export const STEPS = Object.freeze([
     name: 'controls', device: 'cpu', tool: 'tools/vehicle-controls-inventory.mjs',
     flags: [], full: [], scoped: (list) => [ids(list)],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
-    outputs: ['auxiliaryInventory', 'auxiliaryRoofGuns', 'inertDrawnWeapons', 'garageAuxiliarySummary'],
+    outputs: ['auxiliaryInventory', 'auxiliaryRoofGuns', 'inertDrawnWeapons', 'decorInStationArcs', 'garageAuxiliarySummary'],
     files: [], gb: 6, timeoutS: 3600, perIdS: 6,
   },
   {

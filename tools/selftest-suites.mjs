@@ -1415,6 +1415,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
     'src/vehicles/launcherDecorKeepOut.selftest.mjs',
+    // 275 (lane roof-station-keepout-275, the owner's Oplot ask): no decor inside a roof station's traverse, on every tank
+    // (the controls inventory's measure) and on the keep-out's own geometry; the live builds of the worst stations
+    'src/vehicles/roofStationKeepOut.selftest.mjs',
+    'src/vehicles/roofStationKeepOutLive.selftest.mjs',
     // 2026-10-30 (266): the hull's turret-sweep guard knows the launchers riding the gun, swept over its pitch range
     'src/vehicles/launcherSweepGuard.selftest.mjs',
     // 266 (the net-hoop class): no decor stows under a field suit's roof or deck cloth, on every field-suited hull
