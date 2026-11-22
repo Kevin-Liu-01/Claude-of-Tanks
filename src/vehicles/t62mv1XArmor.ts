@@ -16,8 +16,8 @@ export function createT62MV1XArmorZones():{hullPlates:ArmorPlate[];turretPlates:
   const hullPlates=[
     plate('glacis_era_L',15,[-1.10,1.00,3.00],[-.02,1.00,3.00],[-1.10,1.42,2.24],options),
     plate('glacis_era_R',15,[.02,1.00,3.00],[1.10,1.00,3.00],[.02,1.42,2.24],options),
-    plate('skirt_era_L',15,[-1.73,.93,.50],[-1.73,.93,2.56],[-1.73,1.13,.50],options),
-    plate('skirt_era_R',15,[1.73,.93,2.56],[1.73,.93,.50],[1.73,1.13,2.56],options),
+    plate('skirt_era_L',15,[-1.73,.48,1.00],[-1.73,.48,2.72],[-1.73,1.10,1.00],options),
+    plate('skirt_era_R',15,[1.73,.48,2.72],[1.73,.48,1.00],[1.73,1.10,2.72],options),
   ];
   const [, y, z]=RING;
   const turretPlates=[
