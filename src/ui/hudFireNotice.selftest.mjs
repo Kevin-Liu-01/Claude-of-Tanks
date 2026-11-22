@@ -67,5 +67,18 @@ await frames();
 await new Promise((resolve) => setTimeout(resolve, 600));
 assert.equal(fireNotices().length, 0, 'a death takes it down');
 
-console.log('hudFireNotice.selftest: our tank on fire raises one "On fire" threat notice, kept while scoped, gone with the fire and at a death');
+// a couch pane's HUD (its own view, its frame's seat): its seat's fire is its own edge and chip, never the shared
+// screen's notice region
+{
+  const seat = tank('seat2', 'enemy');
+  const paneHud = initHud(bus, { mount: globalThis.document.body, own: 'frame' });
+  paneHud.setMode('battle');
+  seat.combat.fire.burning = true;
+  for (let i = 0; i < 3; i++) { timeS += 1 / 60; paneHud.update({ timeS, mode: 'battle', player: seat, tanks: [...tanks, seat], spotting, aim, camera: null }); }
+  await settle();
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(fireNotices().length, 0, "a couch pane's seat burning raises no notice on the shared screen");
+}
+
+console.log('hudFireNotice.selftest: our tank on fire raises one "On fire" threat notice, kept while scoped, gone with the fire and at a death; a couch pane raises none');
 process.exit(0);
