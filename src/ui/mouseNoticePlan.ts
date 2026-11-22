@@ -3,7 +3,7 @@
  * crosshair's ink (owner 2026-10-16: "Keep desktop centre notices off the crosshair"). Main placed the detection under
  * the kill feeds whenever a 248 px notice crossed the 400 px lanes (every window under 1076 px wide), so each kill row
  * slid it 29 px further down until it sat on the aim point; the alert sat at bottom 23 %, over the scope's lower arm,
- * ammunition and zoom readouts; the countdown, the revive count and the medal card were never measured against the
+ * ammunition and zoom readouts; the countdown and the medal card were never measured against the
  * reticle at all.
  *
  * The reticle (mouseReticleFootprint) is everything hud.ts draws around the screen-centre aim point in the battle sight
@@ -31,14 +31,12 @@
  * Cheapest is highest (from main's own top), then widest (fewest alert lines), with the rows a lane yields while the
  * notice shows priced in. The alert keeps main's type size everywhere (9 px only where main's own small-window rule sets
  * it). The countdown sits just over the crosshair, its rules panel under it (countdownPlace.ts, owner 2026-10-21:
- * "regardless it needs to be in center of screen"). The revive
- * count and the medal card then take one place each, off both notices' places (the revive count scaled down to 60 % where
- * it must, and never on a notice's place: an alert, or a detection lit before the death, can show with it). The medal
- * card is the full card wherever a place for it clears the keep-out (the compact card only where none does), and it
- * waits, keeping its time, while anything shown meets its place: a notice whose place it shares, the revive count
+ * "regardless it needs to be in center of screen"). The medal card then takes one place, off both notices' places
+ * where it can. It is the full card wherever a place for it clears the keep-out (the compact card only where none does),
+ * and it waits, keeping its time, while anything shown meets its place: a notice whose place it shares
  * (mouseMedalWaits). Where no place clears everything (very small windows) a reduced keep-out is tried (the battle sight
- * at full bloom, then the resting sight, where the revive count may shrink to 40 %), so nothing ever sits on the aim
- * point or shows on another notice.
+ * at full bloom, then the resting sight), so nothing ever sits on the aim point or shows on another notice. (The respawn
+ * count left the centre line for the respawn dial at the bottom centre, death-flow-275: respawnDial.ts.)
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs and caches the plan by them.
  * mouseNoticePlan.selftest.mjs checks every viewport of the census, and tools/battle-hud-layout.browser.mjs measures
@@ -70,10 +68,9 @@ export interface MouseNoticeInput {
   readonly lanes: readonly [PlanLane | null, PlanLane | null];
   /** main sets the alert in 9 px type here (h <= 550 or w <= 480). */
   readonly smallAlert: boolean;
-  /** The countdown's and revive count's unscaled boxes (null: not measured), and the countdown's rules panel. */
+  /** The countdown's unscaled box (null: not measured), and its rules panel's. */
   readonly countdown: PlanSize | null;
   readonly countdownRules?: PlanSize | null;
-  readonly revive: PlanSize | null;
   /** The medal card's widest box at this width (full card) and in its compact form. */
   readonly medal: PlanSize;
   readonly medalCompact: PlanSize;
@@ -99,7 +96,7 @@ interface PlannedMedal extends PlannedNotice {
 }
 /** What shows with the medal card, as the layout owner reads it (`feeds`: whether each side lane shows a kill row). */
 export interface MouseMedalCompany {
-  readonly detection: boolean; readonly alert: boolean; readonly revive: boolean; readonly scoped: boolean;
+  readonly detection: boolean; readonly alert: boolean; readonly scoped: boolean;
   readonly feeds?: readonly [boolean, boolean];
 }
 
@@ -121,7 +118,6 @@ export interface MouseNoticePlan {
   readonly countdownAlert: PlannedAlert;
   readonly countdownAlertClearance: 2 | 1 | 0 | -1;
   readonly countdownUnderAlert: PlannedCountdown | null;
-  readonly revive: PlannedScaled | null;
 }
 
 /** Between a notice and an instrument, a lane or another notice. */
@@ -568,15 +564,6 @@ const MEDAL_LANES: LanePrice = { row: 2e6, px: .25, fixed: 40, empty: 6e6 };
 const laneRowPx = (side: number, lane: PlanLane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
 /** The search's vertical step; the cheapest place is then refined to the px within a step of it. */
 const Y_STEP = 8;
-/** The countdown and revive count shrink in these steps, each 10 % costing as much as moving 80 px down; 60 % keeps the
- *  countdown's 17 px kicker at 10 px, and half size (8.5 px) is the last resort before sharing a notice's place. Clear
- *  of the resting sight only (tier 0, a short window whose notices take the one band beside the bloomed sight: 844 x
- *  390), they may go on down to 40 % (the count's numeral still 34 px) rather than cover a notice; so may the countdown on
- *  the detection's place, before it leaves the bloomed sight (768 x 600 since the HUD's out-of-ammo chip over the sight). */
-const SCALES = [1, .9, .8, .7, .6, .5] as const;
-const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
-const LAST_SCALES = [...SCALES, .45, .4] as const;
-const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
 /** The medal card waits (keeping its time) while anything shown meets its place (mouseMedalWaits), so sharing a notice's
  *  place costs only the wait: the alert's (2.4 s) a little; the detection's (its 8 s lamp; main showed the card at once
  *  just below it) more than any move down the centre line to a place clear of the reticle, so the card waits on the
@@ -1186,7 +1173,7 @@ const TIERS = [2, 1, 0] as const;
  *  1024x600 only the dial's least step leaves the alert a slot between it and the detection). */
 const COUNTDOWN_YIELD_SCALES = [.9, .8, .7, .6, .5, .45, .4] as const;
 
-/** Where the countdown, the revive count and the medal card look for a place, in order: [tier, may share a notice's
+/** Where the countdown and the medal card look for a place, in order: [tier, may share a notice's
  *  place]. A place off the notices at a reduced keep-out beats sharing their place at the full one, and sharing beats
  *  touching the resting sight. */
 const STEPS = [[2, false], [1, false], [2, true], [1, true], [0, false], [0, true]] as const;
@@ -1242,31 +1229,6 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     }
     return -1;
   };
-  /** The revive count: never on a notice's place (modes' events and keys raise alerts while the player waits to revive,
-   *  and a detection lit just before the death burns on). */
-  const scaled = (size: PlanSize | null, yFrac: number, price: LanePrice): PlannedScaled | null => {
-    if (!size || size.w <= 0 || size.h <= 0) return null;
-    const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * yFrac));
-    const ladder = (tier: number) => tier ? SCALES : LAST_SCALES;
-    let tier = place((_share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], notices] as const),
-      yPref, price, false);
-    // The last resorts (a window too small for any of those: on the centre line, 540 x 720 and 481 x 700): a place clear
-    // of the resting sight off both notices reaching least far into the instruments (the player waits to revive), then on
-    // either notice's place, then over an instrument or a lane, never main's own place on the aim point.
-    if (tier < 0) {
-      const envs = envsAt(TIERS.indexOf(0)), open = { ...input, obstacles: NONE };
-      chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], notices] as const);
-      const offNotices = placeOne(makeEnv(TIERS.length * 2 + 2, open, keeps[TIERS.indexOf(0)], hasLanes ? 'yield' : 'block',
-        [...keeps[0], ...input.obstacles]), chosen, yPref, price, hasLanes ? both : null, found);
-      if (!offNotices) chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], NONE] as const);
-      if (!offNotices && !placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)
-        && !placeOne(makeEnv(TIERS.length * 2, { ...input, obstacles: NONE, lanes: [null, null] }, keeps[TIERS.indexOf(0)], 'block'),
-          chosen, yPref, price, null, found)) return null;
-      tier = 0;
-    }
-    const s = chosen[found.option][0] / size.w, w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
-    return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
-  };
   // The medal card: the full card wherever a place clears the keep-out, off both notices or (waiting while it is up) on
   // the alert's place, the detection's or both; the compact card only where the full one has no place at that keep-out.
   const { medal: full, medalCompact: compact } = input;
@@ -1310,8 +1272,8 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     const kept = medalAt(1);
     return kept.cutsLanes[0] || kept.cutsLanes[1] ? medal : kept;
   };
-  // The countdown, the revive count and the medal card are placed when first asked for (a battle shows one or two of
-  // them; the layout owner asks for one only while it is up), then kept.
+  // The countdown and the medal card are placed when first asked for (a battle shows one or both of them; the layout
+  // owner asks for one only while it is up), then kept.
   const later = <T>(make: () => T): (() => T) => {
     let made = false, value: T;
     return () => { if (!made) { own(); value = make(); made = true; } return value; };
@@ -1359,7 +1321,6 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     }
     return first;
   });
-  const revive = later(() => scaled(input.revive, .30, BATTLE_LANES));
   return {
     arrangement: pair.arrangement, clearance, detection: det, alert: pair.alert,
     // The card is optional: where it shares a notice's place it waits while that notice is up (keeping its time).
@@ -1368,7 +1329,6 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     get countdownAlert() { return countdownWithAlert().alert; },
     get countdownAlertClearance() { return countdownWithAlert().clearance; },
     get countdownUnderAlert() { return countdownWithAlert().dial; },
-    get revive() { return revive(); },
   };
 }
 
@@ -1382,9 +1342,7 @@ const meets = (a: PlanRect, b: PlanRect) => a.x < b.x + b.w + MOUSE_NOTICE_GAP_P
 /**
  * Whether the medal card waits (keeping its time; medalToast.ts) rather than show with what is up: it has no place, the
  * scope is up where its place clears the battle sight only, a shown element's place meets its own (a notice whose place
- * it shares, or the revive count: a medal can arrive after the death, a shell still in flight, a mutual kill), or its
- * place would cut a side lane that shows a kill row.
- * The revive count's place is read (made) only while it shows.
+ * it shares), or its place would cut a side lane that shows a kill row.
  */
 export function mouseMedalWaits(plan: MouseNoticePlan, up: MouseMedalCompany): boolean {
   const slot = plan.medal;
@@ -1394,6 +1352,5 @@ export function mouseMedalWaits(plan: MouseNoticePlan, up: MouseMedalCompany): b
   if (up.alert && meets(slot, mouseAlertBox(plan.alert))) return true;
   // never a kill row hidden for it: where its place cuts a lane, it waits while that lane shows a row
   if (up.feeds && ((slot.cutsLanes[0] && up.feeds[0]) || (slot.cutsLanes[1] && up.feeds[1]))) return true;
-  const revive = up.revive ? plan.revive : null;
-  return !!revive && meets(slot, revive);
+  return false;
 }

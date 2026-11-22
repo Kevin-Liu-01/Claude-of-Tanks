@@ -152,27 +152,23 @@ const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/aler
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
-  const sets=['det',...LONG_ALERTS.map(k=>`det+alert:${k}`),'countdown','medal','det+medal','revive'];
+  const sets=['det',...LONG_ALERTS.map(k=>`det+alert:${k}`),'countdown','medal','det+medal'];
   for(const [ctx,state,kills,rosters] of [['k0','idle',0,null],['k3','idle',null,null],['burst','feed-burst',null,null],
     ['r14','idle',null,14],['std','mode-standard',null,null],['ctf','mode-capture_the_flag',null,null]])
     for(const set of sets)out.push([`${ctx}|${set}|battle`,state,kills,rosters,set,'battle',false]);
-  for(const set of ['det+alert:wave123','countdown','medal','revive'])for(const ctx of ['k0','k3','burst'])
+  for(const set of ['det+alert:wave123','countdown','medal'])for(const ctx of ['k0','k3','burst'])
     out.push([`${ctx}|${set}|scope`,ctx==='burst'?'feed-burst':'idle',ctx==='k0'?0:null,null,set,'scope',false]);
   for(const [k] of NOTICE_ALERTS)if(!LONG_ALERTS.includes(k))out.push([`k3|alert:${k}|battle`,'idle',null,null,`alert:${k}`,'battle',false]);
-  // together: an alert during the countdown (H, R and E work before the roll-out), the medal and the revive count
-  // beside both notices
+  // together: an alert during the countdown (H, R and E work before the roll-out), the medal beside both notices
+  // (death-flow-275: the respawn count left the centre line for the respawn dial at the bottom centre, respawnDial.ts)
   for(const set of ['det+countdown','alert:wave123+countdown','alert:armorOn+countdown','det+alert:atgmSelected+countdown',
-    'det+alert:wave123+medal','det+alert:wave123+revive'])out.push([`k3|${set}|battle`,'idle',null,null,set,'battle',false]);
-  // a medal arriving after the death (a shell still in flight, a mutual kill) while the revive count shows: the card
-  // waits wherever their places meet (with and without an objective, where the count rises under the score)
-  for(const [ctx,state] of [['k3','idle'],['std','mode-standard']])out.push([`${ctx}|medal+revive|battle`,state,null,null,'medal+revive','battle',false]);
+    'det+alert:wave123+medal'])out.push([`k3|${set}|battle`,'idle',null,null,set,'battle',false]);
   // Tab held (wider, taller rosters): the same boxes as without it, clear of the rosters
-  for(const set of ['det+alert:wave123','det+medal','countdown','det+alert:wave123+revive'])out.push([`tab|${set}|battle`,'idle',null,null,set,'battle',true]);
+  for(const set of ['det+alert:wave123','det+medal','countdown'])out.push([`tab|${set}|battle`,'idle',null,null,set,'battle',true]);
   out.push(['tab14|det+alert:wave123|battle','idle',null,14,'det+alert:wave123','battle',true]);
   // nothing up: the lanes hold every row main holds
   out.push(['burst||battle','feed-burst',null,null,'','battle',false]);
-  // the revive count needs a reviving mode's rules, which also reshape the systems strip: stage those last
-  return [...out.filter(s=>!s[4].includes('revive')),...out.filter(s=>s[4].includes('revive'))];
+  return out;
 }
 async function noticePrep(alerts){
   const f=window.__HUD_LAYOUT;
@@ -190,7 +186,7 @@ async function noticePrep(alerts){
   // the tallest card: the longest name, then the longest description
   const medals=MEDALS.map(m=>[m.id,t(`service.medal.${m.id}.name`),t(`service.medal.${m.id}.desc`)])
     .sort((a,b)=>(b[1].length*3+b[2].length)-(a[1].length*3+a[2].length));
-  window.__NOTICE={alerts,longSpec:names[0],longModule:labels[0][0],medal:medals[0][0],reviveRules:rules.matchRulesetFor('capture_the_flag'),
+  window.__NOTICE={alerts,longSpec:names[0],longModule:labels[0][0],medal:medals[0][0],
     restingAim:{...f.frame.aim},restingTime:f.frame.timeS};
   window.__stretchTimers=true;
   return true;
@@ -276,8 +272,6 @@ function noticeStage([state,kills,rosters,set,sight,tab]){
     }
     else if(part==='countdown')f.hud.preBattleCountdown(5);
     else if(part==='medal')f.bus.emit('service:medal',{id:N.medal});
-    else if(part==='revive'){f.hud.setPreBattleRules(N.reviveRules);f.frame.player.combat.destroyed=true;
-      f.bus.emit('tank:destroyed',{id:f.frame.player.id,killerId:f.tanks[8].id,cause:'fire'});f.hud.update(f.frame);}
   }
   if(sight==='scope'){f.frame.mode='sniper';f.hud.setMode('sniper');f.hud.update(f.frame);}
   // Tab (hud.ts): the rosters widen and take 30 px rows while it is held

@@ -242,7 +242,7 @@ const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
  *  keeps clear where the screen has room. guidancePlan.selftest.mjs classes the recorded HUD the same way. */
 export const GUIDANCE_HARD = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-drive,.cot-dp,.cot-vehicle-status,.cot-net,'
   + '.cot-mp-status.battle,.cot-spec.show,.cot-si-cardhost:not(:empty),.cot-si-log.open,.cot-medal-toasts:not(:empty),'
-  + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat])';
+  + '.cot-prebattle.on,.cot-hints,.cot-aim-warning:not([hidden]):not([data-seat]),.cot-respawn:not([hidden])';
 export const GUIDANCE_CONTROLS = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-touch.on .round,'
   + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,.cot-touch.on .scope,'
   + '.cot-touch.on .fire,.cot-scope-vision,.flight-identity,.cot-room-chat:not([hidden])';
@@ -364,7 +364,7 @@ function translationY(node: Element): number {
   return transform && transform !== 'none' && typeof DOMMatrixReadOnly === 'function' ? new DOMMatrixReadOnly(transform).m42 : 0;
 }
 /** The notices the kill ribbon steps aside for (yieldKillRibbon). */
-const RIBBON_YIELDS = '.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on,.cot-hints.show,'
+const RIBBON_YIELDS = '.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-hints.show,'
   + '.cot-medal-toasts[data-placement="ready"] .cot-medal-toast';
 /** The left lane's feeds, which the scope's vision switch keeps clear of in its mirror seat (seatScopeVision). */
 const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot-si-toast:not([hidden]),.cot-room-chat:not([hidden])';
@@ -704,7 +704,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
   }
   /** The kill ribbon (hudKillRibbon.ts) holds one place centre low; it steps aside while a notice this pass placed meets
-   *  that place (one notice slot, SPEC 12.2.2): the detection, an alert, the countdown, the revive count, a medal card. */
+   *  that place (one notice slot, SPEC 12.2.2): the detection, an alert, the countdown, a medal card. */
   function yieldKillRibbon(): void {
     const ribbon = root.querySelector<HTMLElement>('.cot-ribbon');
     if (!ribbon) return;
@@ -853,7 +853,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // holding it moves nothing (the held rosters stop short of what is shown instead).
   let restingEars: { size: number; left: DOMRect | null; right: DOMRect | null; counts: number } | null = null;
   /** Whether anything the plan places (or the Tab rosters it bounds) is on screen. */
-  const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on')
+  const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on')
     || !!hudQuery('.cot-medal-toasts')?.childElementCount;
   function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null, map: DOMRect | null,
     rosters: readonly [PlanBox | null, number, PlanBox | null, number],
@@ -870,13 +870,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       settleTimer = setTimeout(() => { settleTimer = 0; settled = true; planInputs = true; schedule(); }, RESIZE_SETTLE_MS);
     }
     const resizing = inRun && now - lastSizeAt < RESIZE_SETTLE_MS;
-    // The key: the size, the countdown's and revive count's boxes, then each fixed box (x, y, w, h), then the lanes. A
+    // The key: the size, the countdown's boxes, then each fixed box (x, y, w, h), then the lanes. A
     // relayout whose key matches the last plan's builds nothing more.
     nextKey.length = 0;
     const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
-    const revive = root.querySelector<HTMLElement>('.cot-revive');
     const rules = root.querySelector<HTMLElement>('.cot-prebattle-rules');
-    nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0,
+    nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0,
       rules?.offsetWidth ?? 0, rules?.offsetHeight ?? 0);
     // each box [x, y, w, h, role]: 0 an instrument the notices keep off, 2 a panel or control the reticle's marks keep clear
     // of (SIGHT_FURNITURE, as publishSightFurniture measures it), 1 both
@@ -951,7 +950,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
       const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
       let plainObstacles = 0;
-      for (let i = 9; i < boxesEnd; i += 5) {
+      for (let i = 7; i < boxesEnd; i += 5) {
         const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] }, role = nextKey[i + 4];
         if (role !== 2) { obstacles.push(r); if (i < plain) plainObstacles++; }
         if (role) furniture.push(r);
@@ -962,8 +961,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         width, height, top: nextKey[2], obstacles, furniture, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
         smallAlert: height <= 550 || width <= 480,
         countdown: countdown ? { w: nextKey[3], h: nextKey[4] } : null,
-        countdownRules: countdown && nextKey[7] > 0 ? { w: nextKey[7], h: nextKey[8] } : null,
-        revive: revive ? { w: nextKey[5], h: nextKey[6] } : null,
+        countdownRules: countdown && nextKey[5] > 0 ? { w: nextKey[5], h: nextKey[6] } : null,
         // medalToast.ts: the full card up to 380 px wide (84 px tall with its description; 74 without it at <= 640),
         // the compact card 250
         medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
@@ -1066,10 +1064,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
   function setBodyVar(name: string, value: string) {
     if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
   }
-  /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
+  /** Writes the plan; the countdown and the medal card only while they are up (`up`), as the plan
    *  places those when first read. Tops, widths and scales only: every element keeps to the window's centre line
    *  (noticeCentreLine.ts; battleHudLayout.css centres them all). */
-  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean; alert: boolean },
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; medal: boolean; alert: boolean },
     medalWaits: boolean, medalFeedWait: boolean) {
     // (the dial a step smaller while an alert shows beside it, where that leaves the alert a clear place)
     const dial = up.countdown && up.alert ? plan.countdownUnderAlert : plan.countdown;
@@ -1081,13 +1079,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const tier = (shown: boolean, place: { clearance: number; sharesNotices: boolean } | null) =>
       !shown ? '?' : place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
     const alertTier = up.countdown ? plan.countdownAlertClearance : plan.clearance;
-    const tiers = `d${plan.clearance} a${alertTier < 0 ? '-' : alertTier} c${tier(up.countdown, up.countdown ? dial : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}${medal && medalWaits ? `w${medalFeedWait ? 'f' : ''}` : ''}`;
+    const tiers = `d${plan.clearance} a${alertTier < 0 ? '-' : alertTier} c${tier(up.countdown, up.countdown ? dial : null)} m${tier(up.medal, medal)}${medal && medalWaits ? `w${medalFeedWait ? 'f' : ''}` : ''}`;
     if (document.body.dataset.hudNoticeTiers !== tiers) document.body.dataset.hudNoticeTiers = tiers;
-    for (const name of ['countdown', 'revive'] as const) {
-      if (!up[name]) continue;
-      const place = name === 'countdown' ? dial : plan[name];
-      setBodyVar(`--hud-${name}-top`, place ? `${Math.round(place.y)}px` : name === 'countdown' ? '22%' : '30%');
-      setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
+    if (up.countdown) {
+      setBodyVar('--hud-countdown-top', dial ? `${Math.round(dial.y)}px` : '22%');
+      setBodyVar('--hud-countdown-scale', dial ? String(dial.scale) : '1');
     }
     // the countdown's rules panel on the centre line under the sight (its scale from its top centre)
     const rules = up.countdown ? dial?.rules ?? null : null;
@@ -1136,8 +1132,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (scanParts) {
       scanParts = false;
       observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-pips,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
-      // the revive count is placed (mouse) as it shows
-      if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
       observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
       // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
       // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
@@ -1797,13 +1791,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
         systemsLeft, systemsTop, dockWidth, systemsHeight, sideWidth, planLeftAnchor, planLeftBottom, planRightAnchor, Math.min(rightBottom, rightKillFloor), report);
     }
     // The medal card waits (keeping its time) where it has no place, while anything shown meets its place (a notice
-    // whose place it shares, the revive count) and while the scope is up where its place clears the battle sight only
+    // whose place it shares) and while the scope is up where its place clears the battle sight only
     // (a short window: hud.ts flags the scope on the document element, which relayouts only while such a card waits).
     let medalReady = false, medalWaiting = false, medalFeedWait = false;
     medalScopeSensitive = false;
     if (plan && banner?.childElementCount) {
       medalWaiting = mouseMedalWaits(plan, { detection: !!root.querySelector('.cot-sixth.on'), alert: !!root.querySelector('.cot-alert.show'),
-        revive: !!root.querySelector('.cot-revive.on'), scoped: document.documentElement.hasAttribute(SCOPED_ATTRIBUTE),
+        scoped: document.documentElement.hasAttribute(SCOPED_ATTRIBUTE),
         feeds: [!!killLeft?.childElementCount, !!killRight?.childElementCount] });
       medalReady = !medalWaiting;
       medalScopeSensitive = !!plan.medal && plan.medal.clearance < 2;
@@ -1818,7 +1812,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const alertSlot = countdown ? plan.countdownAlert : plan.alert;
       const shown = [root.querySelector('.cot-sixth.on') && plan.detection, root.querySelector('.cot-alert.show') && alertSlot,
         countdown && (root.querySelector('.cot-alert.show') ? plan.countdownUnderAlert : plan.countdown),
-        root.querySelector('.cot-revive.on') && plan.revive, medalReady && plan.medal];
+        medalReady && plan.medal];
       for (const place of shown) {
         if (!place) continue;
         const [lt, lb, rt, rb] = place.giveWay;
@@ -2240,7 +2234,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
-    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount,
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, medal: !!banner?.childElementCount,
       alert: !!root.querySelector('.cot-alert.show') }, medalWaiting, medalFeedWait);
     // (the touch countdown's and its rules panel's scales and the top slot's buttons a row, unitless)
     const countdownScale = touchCountdownShown ? String(touchPlan?.countdownScale ?? 1)
