@@ -43,8 +43,14 @@ export const FAR_HULL_MAX_PARTS = 24;
 const FAR_HULL_KEY = '|far-hull-v1';
 /** The vehicle switches a carrier's program would have compiled as defines; the far program branches on them. */
 const SWITCHES = ['COT_VEHICLE_FLOORLESS', 'COT_WHEEL_PAINT_READABILITY', 'COT_NO_FIELD_DUST', 'COT_GEAR_CAVITY'] as const;
+/**
+ * The vehicle switches that only change how a map is sampled, which the far draw drops: it reads every map but its
+ * carrier's as the map's linear mean, and a carrier's tile is below a pixel past the far LOD's 165 m. (274) The rubber's
+ * broken-up tile (materials.ts RUBBER_TILES_GLSL) is one.
+ */
+const SAMPLING_SWITCHES = ['COT_RUBBER_TILES'] as const;
 /** The defines a vehicle material may carry beyond its registration's (three's own and the switches). */
-const LOOSE_DEFINES = new Set<string>(['STANDARD', 'PHYSICAL', ...SWITCHES]);
+const LOOSE_DEFINES = new Set<string>(['STANDARD', 'PHYSICAL', ...SWITCHES, ...SAMPLING_SWITCHES]);
 const BURN_KEY_RE = /\|burn-r\d+$/;
 const WEAR_KEY = '|weapon-wear-v3';
 const NIGHT_KEY = '|night-emission-mask-v2:';
@@ -208,7 +214,8 @@ export function pickFarHullCarrier(pieces: readonly FarHullPiece[]): THREE.Mater
     const material = programVariantOrigin(piece.material) as SurfaceMaterial;
     if (!material.isMeshStandardMaterial || material.transparent || material.alphaTest > 0) continue;
     const program = programOf(material);
-    if (program.wear || program.night || !VEHICLE_FAMILY_RE.test(program.key)) continue;
+    // (274) a night lens may carry: its copy skips the mask and takes an emission slot like any lens
+    if (program.wear || !VEHICLE_FAMILY_RE.test(program.key)) continue;
     const triangles = trianglesOf(piece);
     // a physical carrier expresses a standard part (clearcoat 0, specular 1); a standard one cannot express a physical part
     weight.set(material, (weight.get(material) ?? 0) + triangles * (material.isMeshPhysicalMaterial ? 4 : 1) * (material.map ? 2 : 1));
@@ -664,7 +671,7 @@ export function buildFarHullDraw(root: THREE.Object3D, pieces: readonly FarHullP
   material.polygonOffset = false;
   material.emissive?.setRGB(0, 0, 0);
   const defines = { ...(material.defines ?? {}) };
-  for (const name of SWITCHES) delete defines[name];
+  for (const name of [...SWITCHES, ...SAMPLING_SWITCHES]) delete defines[name];
   material.defines = defines;
   material.needsUpdate = true;
   let geometry = mergedGeometry(slots);
