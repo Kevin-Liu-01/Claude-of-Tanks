@@ -274,12 +274,14 @@ export const SHOT_CARD_CSS = `
 .cot-kc-card .res{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);margin-top:var(--s1);}
 .cot-kc-card .oc{padding:2px var(--s2);font:700 var(--battle-fs-11)/1.3 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;
   color:var(--surface-scene);background:var(--kc-tone,var(--accent));}
-.cot-kc-card .loc{font:600 var(--battle-fs-12)/1.3 var(--font-ui);color:var(--ink-2);}
+.cot-kc-card .loc{display:inline-block;font:600 var(--battle-fs-12)/1.3 var(--font-ui);color:var(--ink-2);}
+.cot-kc-card .loc::first-letter{text-transform:uppercase;}
 .cot-kc-card .tg{font:600 var(--battle-fs-12)/1.3 var(--font-ui);color:var(--ink-2);}
 .cot-kc-card :is(.veh,.wpn,.loc,.tg)[hidden]{display:none;}
-.cot-kc-card .st{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:var(--s1) var(--s3);margin-top:var(--s2);
+.cot-kc-card .st{display:grid;grid-template-columns:1fr 1fr;gap:var(--s1) var(--s3);margin:var(--s2) 0 0;
   padding-top:var(--s2);border-top:1px solid var(--line-2);}
-.cot-kc-card .st div{display:grid;gap:1px;min-width:0;}
+.cot-kc-card .st div{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);min-width:0;}
+.cot-kc-card .st :is([data-stat=armor],[data-stat=pen]){grid-column:1/-1;}
 .cot-kc-card .st dt{font:600 var(--battle-fs-11)/1.2 var(--font-ui);color:var(--ink-3);}
 .cot-kc-card .st dd{margin:0;font:600 var(--battle-fs-12)/1.2 var(--font-data);color:var(--ink-1);white-space:nowrap;}
 .cot-kc-card .st [data-stat=damage] dd{color:var(--accent-hi);}

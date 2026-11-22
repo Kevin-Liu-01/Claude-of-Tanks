@@ -756,6 +756,7 @@ const FINALE_XRAY_FLOOR_S = 3.6; // x-ray floor while a finale still has to play
 const QUICK_FLIGHT_MIN_S = 1.2;
 const QUICK_FLIGHT_MAX_S = 2.0;
 const QUICK_IMPACT_S = 1.1;
+const QUICK_AIM_S = 0.45;      // the quick cam's look at the killer on its firing pose before the shot leaves
 const PAD_POLL_MS = 50;        // (death-flow-275) a pad's spectate steps, read while spectating
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
@@ -2591,7 +2592,7 @@ export function createKillCam(deps: KillcamDeps) {
     if (pb.quick) {
       if (pb.replayKind === 'collision') { beginCollision(); return; }
       const trajectory = pb.snap.trajPts;
-      if (trajectory && trajectory.length >= 6 && prepareProjectileFlight(trajectory)) { beginFiring(); return; }
+      if (trajectory && trajectory.length >= 6 && prepareProjectileFlight(trajectory)) { beginFiring(true); return; }
     }
     if (pb.replayKind === 'collision') {
       if (wreckHold && beginWreck('collision')) return;
@@ -3178,14 +3179,18 @@ export function createKillCam(deps: KillcamDeps) {
     const pos = new THREE.Vector3();
     const look = new THREE.Vector3();
     firingCameraPose(pos, look);
-    pb.shot = { t: 0, fired: true, pos, look, side: _s.clone() };
+    // (death-flow-275) the quick cam cuts to the killer on its firing pose and holds QUICK_AIM_S before the shot leaves,
+    // so the killer reads before the tracer takes the frame
+    const aimFirst = pb.quick;
+    pb.shot = { t: 0, fired: !aimFirst, pos, look, side: _s.clone() };
     pb.phase = 'firing';
     pb.shotFxT = 0;
     pb.shotFxLive = true;
     prepareFiringPresentation();
     const attacker = pb.snap.attackerEnt;
     const shotDir = new THREE.Vector3().fromArray(pb.snap.shotDir || [0, 0, 1]).normalize();
-    triggerReplayShot(attacker, shotDir);
+    if (!aimFirst) triggerReplayShot(attacker, shotDir);
+    if (aimFirst) poseCamera(pos, look, 46);
     if (stagedHold) updateFiring(0);
     else beginShotFlight();
   }
@@ -3209,7 +3214,7 @@ export function createKillCam(deps: KillcamDeps) {
     if (!shot) return;
     shot.t += Math.max(0, dt);
     pinAttackerAtFiringPose(dt);
-    const u = Math.min(1, shot.t / FIRING_CAPTURE_S);
+    const u = Math.min(1, shot.t / (pb.quick ? QUICK_AIM_S : FIRING_CAPTURE_S));
     _a.copy(shot.pos).addScaledVector(shot.side, Math.sin(u * Math.PI) * 0.25);
     setReplayCamera(_a, shot.look, 46, dt);
     if (pb.muzzleLight) {
@@ -3217,8 +3222,14 @@ export function createKillCam(deps: KillcamDeps) {
       if (pb.replayMuzzle) pb.muzzleLight.position.copy(pb.replayMuzzle);
     }
     if (u >= 1) {
-      hideFx();
-      pb.shotFxLive = false;
+      // the quick cam's shot leaves at the end of its look at the killer
+      if (!shot.fired) {
+        shot.fired = true;
+        if (pb.snap.attackerEnt) triggerReplayShot(pb.snap.attackerEnt, new THREE.Vector3().fromArray(pb.snap.shotDir || [0, 0, 1]).normalize());
+      } else {
+        hideFx();
+        pb.shotFxLive = false;
+      }
       beginShotFlight();
     }
   }

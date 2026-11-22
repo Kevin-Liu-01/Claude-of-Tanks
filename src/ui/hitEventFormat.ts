@@ -284,7 +284,9 @@ export function weaponDisplayName(ev: HitEventPresentation): string {
   const name = (ev.shellName || '').trim();
   let label = name || type;
   if (!label) return '';
-  if (type && name && !new RegExp(`(^|\\s)${type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`, 'i').test(name)) label = `${name} ${type}`;
+  // (death-flow-275) a designation that already names its type, whole or as a family ("HEAT-MP" a HEAT), keeps it once
+  const named = name.toUpperCase().split(/[\s/]+/).some((word) => word === type.toUpperCase() || word.startsWith(`${type.toUpperCase()}-`));
+  if (type && name && !named) label = `${name} ${type}`;
   let calibre = Number(ev.caliberMm);
   if (!(calibre > 0)) {
     try {
