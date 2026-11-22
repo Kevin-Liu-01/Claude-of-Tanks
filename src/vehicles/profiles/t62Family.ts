@@ -49,6 +49,8 @@ const REAR_Z = -3.30;
 /** Where the engine deck starts falling to the rear plate. */
 const DECK_BREAK_Z = -2.80;
 /** Upper glacis height at z. */
+/** The headlights' station on the upper plate (addHullFront); the MV's Kontakt field leaves it clear. */
+const LAMP_Z = 2.42;
 const glacisY = (z: number): number => ROOF_Y - (z - GLACIS_TOP_Z) * UPPER_GLACIS_TAN;
 
 /** Running gear: five 0.81 m wheels on a 2.64 m gauge, the gaps opening toward the rear (photos t62_1975/02: 0.92,
@@ -273,7 +275,7 @@ function addHullFront(P: TankBuilderPort, v: T62Variant): void {
   }
   // headlights on brackets at both front corners of the upper plate (white lamp right, the IR lamp beside it)
   for (const [x, ir] of [[-0.86, false], [-0.70, true], [0.86, false]] as const) {
-    const z = 2.42, y = glacisY(z) + 0.09;
+    const z = LAMP_Z, y = glacisY(z) + 0.09;
     P.add('hullDetail', box(0.10, 0.10, 0.06), x, y - 0.065, z - 0.03, tilt, 0, 0);
     KIT.headlight(P, x, y, z, 0, ir ? 0.062 : 0.055, !ir);
     if (ir) P.add('hullDark', cylZ(0.052, 0.012, 14), x, y, z + 0.085);
@@ -281,8 +283,11 @@ function addHullFront(P: TankBuilderPort, v: T62Variant): void {
   // tow hooks low on the upper plate and the lower plate's recovery eyes
   for (const x of [-0.66, 0.66]) {
     const z = 3.06, y = glacisY(z);
-    P.add('hullDetail', box(0.16, 0.06, 0.12), x, y + 0.02, z, tilt, 0, 0);
-    P.add('hullDark', torus(0.06, 0.017, 12), x, y + 0.075, z + 0.02, Math.PI / 2 + tilt, 0, 0);
+    // on the MV the Kontakt-1 field covers the upper plate's hooks
+    if (!v.mv) {
+      P.add('hullDetail', box(0.16, 0.06, 0.12), x, y + 0.02, z, tilt, 0, 0);
+      P.add('hullDark', torus(0.06, 0.017, 12), x, y + 0.075, z + 0.02, Math.PI / 2 + tilt, 0, 0);
+    }
     P.add('hullDetail', box(0.14, 0.12, 0.08), x * 1.25, 0.66, BELLY_FRONT_Z + (0.66 - BELLY_Y) / LOWER_GLACIS_TAN + 0.02);
   }
   // driver's hatch at the front left of the roof, opening to the left, two periscopes ahead of it
@@ -398,29 +403,37 @@ function kontaktBlock(P: TankBuilderPort, owner: 'hull' | 'turret', zone: string
   });
 }
 
-/** The glacis Kontakt-1 field (photos t62mv/01, /06): five rows of blocks laid on the upper plate, each block tipped up at
- * its front edge so the field reads as a saw-tooth, four a side of the centreline, and a row of twelve upright blocks
- * along the nose. Each side is one removable field. */
+/** The glacis Kontakt-1 field (photos t62mv/01, /06): six straight rows across the upper plate, four blocks a side of
+ * the centreline in aligned columns, each block lying on the plate with its front edge tipped up so the rows overlap as
+ * shingles; the top rows leave the headlights clear. Below the nose edge a rail carries a row of twelve blocks hanging
+ * down in front of the lower plate. Each side is one removable field. */
 function addGlacisKontakt(P: TankBuilderPort): void {
-  const tilt = -Math.atan(UPPER_GLACIS_TAN);
-  const rows = [2.24, 2.41, 2.58, 2.75, 2.92];
-  const cols = [0.15, 0.42, 0.69, 0.96];
+  const tilt = -Math.atan(UPPER_GLACIS_TAN), tip = 0.22;
+  const [w, h, d] = [0.25, 0.075, 0.18];
+  // the rear edge rests on the plate, the front edge stands d * sin(tip) proud of it
+  const lift = (h / 2) / Math.cos(tip) + (d / 2) * Math.sin(tip);
+  // six rows from the headlights down to the nose rail
+  const rows = [2.32, 2.49, 2.66, 2.83, 3.00, 3.17];
+  const cols = [0.14, 0.41, 0.68, 0.95];
   for (const side of [-1, 1]) {
     const zone = `glacis_era_${side < 0 ? 'L' : 'R'}`;
-    rows.forEach((z0, r) => {
-      // the rows fall toward the sides in a V, alternate rows staggered half a block (photo t62mv/01)
-      for (const c0 of cols) {
-        const c = c0 + (r % 2 ? 0.07 : 0), z = z0 + c * 0.16;
-        if (c > 1.06) continue;
-        kontaktBlock(P, 'hull', zone, [side * c, glacisY(z) + 0.06, z], [tilt + 0.22, 0, 0], [0.25, 0.075, 0.18]);
+    // the headlights at the plate's top corners (addHullFront): the right side carries two lamps, the left one
+    const lampXs = side < 0 ? [0.86, 0.70] : [0.86];
+    for (const z of rows) {
+      for (const c of cols) {
+        if (Math.abs(z - LAMP_Z) < d / 2 + 0.05 && lampXs.some((lx) => Math.abs(lx - c) < w / 2 + 0.06)) continue;
+        // lifted along the plate's normal; an x rotation of +30 degrees lays a block on the plate (its front edge down),
+        // less the tip lifts that edge
+        kontaktBlock(P, 'hull', zone, [side * c, glacisY(z) + lift * Math.cos(-tilt), z + lift * Math.sin(-tilt)],
+          [-tilt - tip, 0, 0], [w, h, d]);
       }
-    });
-    // the upright row along the nose: six a side standing on the nose's edge strip
-    for (let k = 0; k < 6; k++) {
-      const x = side * (0.09 + k * 0.17), z = NOSE_Z - 0.06;
-      kontaktBlock(P, 'hull', zone, [x, NOSE_Y + 0.12, z], [-0.35, 0, 0], [0.155, 0.075, 0.25], [0, 1, 0]);
     }
-    P.add('hullDark', KIT.box(1.04, 0.03, 0.05), side * 0.52, NOSE_Y + 0.005, NOSE_Z - 0.03);
+    // the nose row: six a side hanging from the rail below the nose edge, their feet tucked back toward the lower plate
+    for (let k = 0; k < 6; k++) {
+      const x = side * (0.09 + k * 0.17);
+      kontaktBlock(P, 'hull', zone, [x, NOSE_Y - 0.115, NOSE_Z + 0.03], [0.26, 0, 0], [0.155, 0.25, 0.075], [0, 0, 1]);
+    }
+    P.add('hullDark', KIT.box(1.04, 0.04, 0.06), side * 0.52, NOSE_Y - 0.005, NOSE_Z + 0.035);
   }
 }
 
