@@ -211,5 +211,41 @@
   },
   "tutorial.next": {
     "context": "A small text button on a tutorial card in Claude of Tanks, a browser tank game; it shares one row with the card's other button on a narrow phone screen, so keep it as short as the language allows: hard limit at most 15 characters (Russian: 14; Japanese: 8; Chinese: 6). Never use an em dash."
+  },
+  "hud.alert.line.pickRound": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: press one of these keys to choose another ammunition type."
+  },
+  "hud.alert.line.fireMissile": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key fires the guided missile now selected."
+  },
+  "hud.alert.line.armorOff": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay off."
+  },
+  "hud.alert.line.armorOn": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key turns the armour colour overlay on."
+  },
+  "hud.alert.line.autoAimRelease": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key releases the auto-aim lock."
+  },
+  "hud.aimWarning.flipTitle": {
+    "context": "A battle notice title: the player's tank has rolled over. Two or three words."
+  },
+  "hud.aimWarning.flipLine": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key flips the overturned tank back onto its tracks."
+  },
+  "hud.hint.droneFlight.title": {
+    "context": "A first-use hint title for flying the drone. Two words at most."
+  },
+  "hud.hint.droneFlight.line": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The four keys move the drone; keep the three short phrases separated by ' · '."
+  },
+  "hud.hint.gunshipFlight.title": {
+    "context": "A first-use hint title for flying the gunship aircraft (AC-130). One or two words."
+  },
+  "hud.hint.gunshipFlight.line": {
+    "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). The three keys pick the gunship's weapons; keep the three short phrases separated by ' · '."
+  },
+  "settings.crew.captions": {
+    "context": "A settings row label: on-screen subtitles for the crew's radio voice lines. One word if possible."
   }
 }

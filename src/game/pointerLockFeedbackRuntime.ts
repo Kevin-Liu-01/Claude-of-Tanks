@@ -84,6 +84,7 @@ export function createPointerLockFeedbackRuntime({
     if (disposed || !toastShown) return;
     notices.condition({
       id: TOAST_ID, className: 'cot-lock-notice', severity: 'warning', text: t('pointerLock.toast.unavailable'),
+      // (the ladder's `ambient`, the kit's default 0: this runtime loads the notices lazily, so it imports no rung)
       durationMs: 5900, dismissible: false,
     });
   };

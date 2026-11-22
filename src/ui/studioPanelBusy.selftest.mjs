@@ -124,7 +124,7 @@ function makePanel({ display = 'block', soundPreview = async () => null, restore
     api: { notice: (text, tone) => calls.push(['notice', text, tone]), refreshAll: () => {}, refreshMap: () => {}, refreshHistory: () => calls.push('refresh-history') },
     renderFilm: () => { calls.push('render-film'); return new Promise(() => {}); },
     filmSize: { seg: { value: '1080' } }, filmFps: { seg: { value: '30' } }, filmBlur: { seg: { value: '1' } },
-    filmShake: { seg: { value: '1' } }, flashBusy: (text) => calls.push(['flash', text]),
+    filmShake: { seg: { value: '1' } }, say: (text) => calls.push(['flash', text]),
     root: { style: { display } }, setTimeout: (callback, ms) => { timers.push({ callback, ms }); return timers.length; },
     SOUND_BUCKETS: 400, soundPath: { setAttribute: () => {} }, soundWave: { classList: { remove: () => {} } },
     // (round 3 B10) runJob's helpers, Load JSON's file input and the first slot (its loop's `i`)

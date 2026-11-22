@@ -53,7 +53,7 @@ function makePanel(sheet, work = { busy: false }) {
   const ports = {
     createLazyChunk, loadFailed, markLoadFailed, pressFailed, document, archiveBtn, panelBusy: () => work.busy,
     loadSheet: () => sheet(), t: (key) => key, uiIconSVG: () => '<svg/>', errorMessage: (error) => String(error?.message ?? error),
-    flashBusy: (message) => said.push(message), console,
+    say: (message) => said.push(message), console,
     mountMediaArchive: async (root, options) => { mounted.push(options); root.dataset.mediaMounted = 'true'; return {}; },
   };
   const code = stripTypeScriptTypes(`

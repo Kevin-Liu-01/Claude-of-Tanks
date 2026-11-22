@@ -3898,6 +3898,18 @@ const battleAgainAction = createBattleAgainAction({
 bus.on('ui:battleAgain', () => { void battleAgainAction.run(); });
 bus.on('ui:battleStart', battleAgainAction.invalidate);
 bus.on('phase:change', battleAgainAction.invalidate);
+// (notices-audit-275) the menus say when the browser goes offline (every Garage opener is a chunk that cannot arrive
+// offline): the kit's connectivity notice, loaded with the first offline moment, never over a battle (its network has its
+// own banner) and back on the menus while still offline
+let connectivity: { refresh(): void } | null = null;
+const watchOffline = (): void => {
+  if (connectivity) return;
+  void import('./ui/components/notice.ts').then(({ watchConnectivity }) => {
+    connectivity ??= watchConnectivity({ offline: t('notice.offline'), online: t('notice.online') }, { active: () => game.phase !== 'battle' });
+  }, () => { /* the kit did not arrive (offline): the openers' own failure marks stand */ });
+};
+if (navigator.onLine === false) watchOffline(); else window.addEventListener('offline', watchOffline, { once: true });
+bus.on('phase:change', () => { connectivity?.refresh(); });
 bus.on('ui:roomOpen', battleAgainAction.invalidate);
 bus.on('network:roomState', battleAgainAction.onRoomState);
 
