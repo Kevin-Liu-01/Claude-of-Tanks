@@ -282,11 +282,15 @@ for (const module of panelModulesShowingFleet) {
   // no page imports them, and their words come from both catalogs whole
   const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/') && !file.startsWith('src/docs/chapters/'));
   // (the stand-alone hero tiles read a vehicle's class for its glyph alone, aria-hidden: no word of the slice; checked below)
-  assert.deepEqual(importers, module === PANEL_ENTRY ? ['src/ui/garage.ts'] : module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/garage.ts', 'src/ui/heroCard.ts'] : [],
+  // (endscreen-modes-275: the end screen's rows name each tank's class, loading the slice with the tables: checked below)
+  assert.deepEqual(importers, module === PANEL_ENTRY ? ['src/ui/garage.ts'] : module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/endScreen.ts', 'src/ui/garage.ts', 'src/ui/heroCard.ts'] : [],
     `${module} shows the fleet slice; its importers outside the panel load it without the slice: ${importers.join(', ')}`);
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.ok(!gameClosure.has('src/ui/fleetStrings.ts'), 'the game loads the fleet slice only with the panel');
+assert.match(readFileSync(resolve(ROOT, 'src/ui/endScreen.ts'), 'utf8'),
+  /Promise\.all\(\[import\('\.\.\/vehicles\/vehicleFacets\.ts'\), import\('\.\/vehicleFacetIcons\.ts'\),\s*import\('\.\/fleetStrings\.ts'\)\.then\(\(strings\) => strings\.ensureFleetStrings\(\)\)\]\)/,
+  "the end screen's class names wait for the fleet slice");
 {
   const heroCard = readFileSync(resolve(ROOT, 'src/ui/heroCard.ts'), 'utf8');
   const reads = [...heroCard.matchAll(/\bfacets\.(\w+)/g)].map((match) => match[1]);
