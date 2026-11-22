@@ -7,13 +7,14 @@ import { dirname, resolve } from 'node:path';
 import { runFleetPass } from '../src/vehicles/fleetPass.test-support.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
+import { uniqueIds } from './id-list.mjs';
 import { createTurretDeckAudit } from '../src/vehicles/turretDeckAudit.test-support.mjs';
 
 const option = (name, fallback = '') => {
   const arg = process.argv.slice(2).find((value) => value.startsWith(`--${name}=`));
   return arg ? arg.slice(name.length + 3) : fallback;
 };
-const ids = option('ids') ? option('ids').split(',').map((id) => id.trim()).filter(Boolean) : ALL_TANK_IDS;
+const ids = option('ids') ? uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'turret-deck-audit --ids') : ALL_TANK_IDS;
 const out = resolve(option('out', '.qa-dev/turret-deck-audit.json'));
 const report = [];
 await runFleetPass({
