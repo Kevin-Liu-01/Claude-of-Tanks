@@ -21,7 +21,7 @@ import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { rubberSkirtRun } from './rubberSkirt.ts';
 import { skirtSections } from './rubberSkirtSheets.ts';
-import { buildT80UXCasting, buildT80UXHullBase, commanderSightHead, machineGun, T80U_X_TRUNNION, T80U_X_YAW } from './t80uX.ts';
+import { buildT80UXCasting, buildT80UXHullBase, commanderSightHead, machineGun, T80U_X_CAST_ROWS, T80U_X_TRUNNION, T80U_X_YAW } from './t80uX.ts';
 import { GUN_LP83, build152Gun } from './gun152.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { machinedRing } from '../machineGunGeometry.ts';
@@ -227,6 +227,106 @@ function addStern(P: TankBuilderPort): void {
 
 // ------------------------------------------------------------------------------------------------------ turret fit --
 
+/** The cast cheek noses (object292-cheeks-275, Kevin 2026-11-22: "make these also properly fitted and looked attached and
+ * meld to the turrets rounding"): in place of the T-80U X's flat-backed nose prisms (under its ERA there; bare here, their
+ * backs stood as flat faces over the shell's rounded end), each nose is lofted from the casting's own section (the
+ * T-80U X castSections profile: a lower wall to the shoulder, then the dome), so the shell runs on into it. It starts
+ * 18 cm inside the shell at its section 4 mm in, leaves the shell's end at z 1.108 and narrows and drops to a rounded
+ * nose ahead of it, its inner face a straight wall 2 cm clear of the mantlet's shield, its foot rising off the deck the
+ * turret sweeps. Turret frame (the casting's yaw datum: y 0 its base). */
+const NOSE_XI = .44, NOSE_EDGE = .012, YAW_Z = T80U_X_YAW[2], SHELL_END_Z = T80U_X_CAST_ROWS[T80U_X_CAST_ROWS.length - 1][0] - YAW_Z;
+/** The shell's section at turret-frame z: [left half-width (x < 0), right (x > 0), top, shoulder] over its base. */
+function shellAt(z: number): [number, number, number, number] {
+  const rows = T80U_X_CAST_ROWS.map(([wz, l, r, t, b, sh]) => [wz - YAW_Z, l, r, t - b, sh - b] as const);
+  return [lerpRows(rows, z, 1), lerpRows(rows, z, 2), lerpRows(rows, z, 3), lerpRows(rows, z, 4)];
+}
+/** The nose's stations: z, its half-width as a share of the shell's at its end, top, shoulder and foot (null: the
+ * shell's own section there, 4 mm in). */
+const NOSE_ROWS: readonly (readonly [number, number, number, number, number] | readonly [number, null])[] = [
+  [.93, null], [SHELL_END_Z, null],
+  [1.20, .97, .437, .195, 0], [1.29, .89, .414, .182, 0], [1.37, .77, .380, .160, .006],
+  [1.43, .63, .340, .135, .014], [1.465, .53, .305, .115, .022],
+];
+/** One side's nose section (x > 0 for s = 1), counter-clockwise from +z: the foot from the inner wall out, the lower wall
+ * to the shoulder (its foot drawn in as the shell's, never inside the inner wall), then the dome (the shell's own sin^.56 rise) sampled evenly in angle back to the inner wall. */
+function noseRing(s: number, w: number, t: number, sh: number, b: number): V2[] {
+  const phiMax = Math.acos(Math.min(.999, NOSE_XI / w)), ring: V2[] = [[NOSE_XI, b], [Math.max(w * .88, (NOSE_XI + w) / 2), b], [w, b + (sh - b) * .52], [w, sh]];
+  for (let k = 1; k <= 6; k++) {
+    const phi = k / 6 * phiMax;
+    ring.push([k === 6 ? NOSE_XI : w * Math.cos(phi), sh + (t - sh) * Math.sin(phi) ** .56]);
+  }
+  return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+}
+/** The nose's half-width, top and foot at a station for side s. */
+function noseStation(s: number, row: (typeof NOSE_ROWS)[number]): { z: number; w: number; t: number; sh: number; b: number } {
+  const z = row[0];
+  if (row[1] === null) { const [l, r, t, sh] = shellAt(z); return { z, w: (s > 0 ? r : l) - .004, t: t - .004, sh, b: .004 }; }
+  const [l, r] = shellAt(SHELL_END_Z), [, f, t, sh, b] = row as readonly [number, number, number, number, number];
+  return { z, w: Math.max(NOSE_XI + .05, f * (s > 0 ? r : l)), t, sh, b };
+}
+/** The nose's top (the dome's height) at plan point (|x|, z) for side s, for kit seated on it. */
+function noseTopAt(s: number, x: number, z: number): number {
+  const st = NOSE_ROWS.map((row) => noseStation(s, row));
+  const i = Math.max(1, st.findIndex((p) => p.z >= z)), a = st[i - 1], c = st[i], u = Math.max(0, Math.min(1, (z - a.z) / (c.z - a.z)));
+  const w = a.w + (c.w - a.w) * u, t = a.t + (c.t - a.t) * u, sh = a.sh + (c.sh - a.sh) * u;
+  const phi = Math.acos(Math.max(-1, Math.min(1, Math.abs(x) / w)));
+  return sh + (t - sh) * Math.sin(phi) ** .56;
+}
+function addCastCheeks(P: TankBuilderPort): void {
+  for (const s of [-1, 1]) {
+    const st = NOSE_ROWS.map((row) => noseStation(s, row)), last = st[st.length - 1];
+    const sections = st.map(({ z, w, t, sh, b }) => ({ z, ring: noseRing(s, w, t, sh, b) }));
+    // the nose's soft front edge
+    sections.push({ z: last.z + NOSE_EDGE, ring: noseRing(s, last.w - NOSE_EDGE, last.t - NOSE_EDGE, last.sh - NOSE_EDGE * .5, last.b + NOSE_EDGE * .5) });
+    // the outer wall and dome are one casting (smoothed); the foot, inner wall and front keep their faces
+    P.add('turret', sectionSolid(sections, { smoothSideEdges: s > 0 ? [2, 3, 4, 5, 6, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8] }));
+  }
+  // the embrasure's back wall between the noses, in shadow behind the mantlet
+  P.add('turretDark', box(2 * NOSE_XI - .01, .40, .01), 0, .20, SHELL_END_Z + .006);
+}
+
+/** Shtora-style electro-optical jammers ahead of the weight-imitator boxes (object292-cheeks-275, Kevin 2026-11-22: "put
+ * tech like shtora or some other sensors in front of them"; his look pick: a jammer each side with a laser-warning head
+ * on it). Each is the TShU-1-7 pattern: an armoured box with the IR lamp's big round window in a framed face, cooling fins
+ * behind, a lid lip, on a bolted bracket of two legs and a foot plate seated on the cast nose's top ahead of the box; on
+ * its outboard rear corner a laser-warning head (a squat drum with its dark sensor band) on a short post. Turret frame. */
+const JAMMER: { x: number; z: number; w: number; h: number; d: number; yaw: number; lift: number } = { x: .74, z: 1.31, w: .30, h: .22, d: .20, yaw: .10, lift: .025 };
+function addJammers(P: TankBuilderPort): void {
+  const seg = P.q ? 24 : 14, { w, h, d, lift } = JAMMER;
+  for (const s of [-1, 1]) {
+    const x = s * JAMMER.x, z = JAMMER.z, yaw = s * JAMMER.yaw;
+    const at = (dx: number, dz: number): [number, number] => [x + dx * Math.cos(yaw) + dz * Math.sin(yaw), z - dx * Math.sin(yaw) + dz * Math.cos(yaw)];
+    // the seat: the nose's top under the bracket's two legs (inboard and outboard), the box clear over the higher one
+    const legs = [-.10, .10].map((dx) => { const [lx, lz] = at(dx, 0); return { lx, lz, y: noseTopAt(s, lx, lz) }; });
+    const y0 = Math.max(...legs.map((l) => l.y)) + lift, yc = y0 + h / 2;
+    for (const { lx, lz, y } of legs) {
+      P.addEquipment('turretDetail', box(.05, .012, .16), lx, y + .004, lz, 0, yaw, 0);                    // the foot plate
+      P.addEquipment('turretDetail', box(.032, y0 - y + .01, .10), lx, (y + y0) / 2, lz, 0, yaw, 0);        // the leg
+      for (const dz of [-.055, .055]) { const [bx, bz] = [lx + dz * Math.sin(yaw), lz + dz * Math.cos(yaw)]; P.addEquipment('turretDark', cylY(.011, .012, .012, 6), bx, y + .014, bz); }
+    }
+    P.addEquipment('turretDetail', box(w - .02, .018, d * .8), x, y0 + .004, z, 0, yaw, 0);                   // the cross plate
+    // the box, its lid lip and the fins behind
+    P.addEquipment('turretDetail', box(w, h, d), x, yc, z, 0, yaw, 0);
+    P.addEquipment('turretDetail', box(w + .02, .016, d + .02), x, y0 + h + .008, z, 0, yaw, 0);
+    for (let k = 0; k < 5; k++) { const [fx, fz] = at(-w / 2 + .04 + k * (w - .08) / 4, -d / 2 - .02); P.addEquipment('turretDark', box(.008, h - .05, .04), fx, yc, fz, 0, yaw, 0); }
+    // the face: a raised frame round the lamp's round window, the lens dark behind its rim
+    const [fx, fz] = at(0, d / 2);
+    P.addEquipment('turretDetail', box(w - .03, h - .03, .016), fx, yc, fz + .004 * Math.cos(yaw), 0, yaw, 0);
+    P.addEquipment('turretDark', cylZ(.098, .022, seg), fx, yc, fz + .010, 0, yaw, 0);
+    P.addEquipment('turretGlass', cylZ(.082, .012, seg), fx, yc, fz + .020, 0, yaw, 0);
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      const [bx, bz] = at(dx * (w / 2 - .035), d / 2 + .014);
+      P.addEquipment('turretDark', cylZ(.010, .008, 6), bx, yc + dy * (h / 2 - .035), bz, 0, yaw, 0);
+    }
+    // the laser-warning head on the outboard rear corner
+    const [hx, hz] = at(s * (w / 2 - .05), -d / 2 + .05), top = y0 + h + .016;
+    P.addEquipment('turretDetail', cylY(.016, .018, .022, 8), hx, top + .011, hz);
+    P.addEquipment('turretDetail', cylY(.038, .042, .04, seg), hx, top + .042, hz);
+    P.addEquipment('turretDark', cylY(.043, .043, .014, seg), hx, top + .042, hz);
+    P.addEquipment('turretDetail', KIT.sph(.038, seg, Math.PI / 2).scale(1, .35, 1), hx, top + .062, hz);
+  }
+}
+
 /** The weight imitators as Kubinka has them (object292-275, Kevin 2026-11-21: "fix the turret cheeks and mantlet fully";
  * Kuzmin's head-on and Wilson's close photographs): not a wall round the casting but the T-80BV's turret Kontakt-1 rack
  * replaced by plain welded steel boxes. A wedge box on each front cheek, its big face sloped back about 45 degrees over a
@@ -397,28 +497,57 @@ function addRoof(P: TankBuilderPort): void {
  * datum), where its sight head and NSVT station are authored. */
 const T80U_X_CUPOLA = [-.6265, -.225 - T80U_X_YAW[2]] as const;
 
-/** The LP-83 on its cradle: the mantlet, the cradle's fat root drum out of it with its lipped front, a step and a cone down
- * to the tube's thermal sleeve, then the sleeved tube. The mantlet (object292-275, Kevin 2026-11-21: "fix the turret
- * cheeks and mantlet fully"; Wilson's close and Kuzmin's head-on photographs) is the reworked casting's tall housing round
- * the trunnions, standing proud of the nose between the front cheek boxes: a drum across the embrasure, taller than it is
- * deep, its axis 7 cm over the trunnions, so it turns about them inside a radius whose underside stays at the old
- * trunnion block's height over the engine deck at every pitch; bolted face plates either side of the root drum and the
- * trunnion caps on its ends. The root drum and its fittings stand proud above the bore, their undersides no lower than
- * the slimmer sleeve's they replace, so the gun keeps its measured depression stops over the deck. Gun frame. */
-const MANTLET_HALF = .40, MANTLET_RY = .28, MANTLET_RZ = .22, MANTLET_UP = .07;
+/** The LP-83 on its cradle (object292-cheeks-275, Kevin 2026-11-22: "make the mantlet a lot better and add a gun assembly
+ * to turret"; his look pick, the curved cast shield). The mantlet is a cast shield whose face is a cylinder about the
+ * trunnion axis (radius .31), so it turns in the embrasure between the cast noses with an even gap at every pitch: its
+ * chamfered side edges 3 cm inside the noses' inner walls, the trunnion caps on its ends, the welded centre insert's seams
+ * across its face, the coaxial machine gun's port to the gun's right and the gunner's auxiliary sight aperture under its
+ * hood to the left. Ahead of it the gun assembly: the bolted cradle flange where the barrel enters, the armoured recoil
+ * housing (the cradle's sleeve) with its clamp bands and guide key, a step and a cone down to the tube's thermal sleeve.
+ * The shield's underside stays .21 under the axis from -5 to +15 degrees of pitch (as the drum's it replaces); the
+ * housing keeps the old root drum's underside, .175 under the bore, so the gun keeps its measured depression stops.
+ * Gun frame (the trunnion axis; +z forward). */
+const SHIELD_R = .31, SHIELD_HALF = .41, SHIELD_LOW = -36 * Math.PI / 180, SHIELD_HIGH = 62 * Math.PI / 180, SHIELD_BACK = -.06;
+/** The shield's section (z, y) at radius r: the face arc from its foot to its brow, then back to the embrasure. */
+function shieldRing(r: number): V2[] {
+  const ring: V2[] = [];
+  for (let k = 0; k <= 8; k++) { const a = SHIELD_LOW + (SHIELD_HIGH - SHIELD_LOW) * k / 8; ring.push([r * Math.cos(a), r * Math.sin(a)]); }
+  ring.push([SHIELD_BACK, r * Math.sin(SHIELD_HIGH)], [SHIELD_BACK, r * Math.sin(SHIELD_LOW)]);
+  return ring;
+}
+/** A band on the shield's face between x0 and x1 (a seam or a lip), its arc from a0 to a1, t proud. */
+function shieldBand(x0: number, x1: number, a0: number, a1: number, t: number): THREE.BufferGeometry {
+  const arc = (r: number): V2[] => Array.from({ length: 7 }, (_, k) => { const a = a0 + (a1 - a0) * k / 6; return [r * Math.cos(a), r * Math.sin(a)] as const; });
+  const ring = [...arc(SHIELD_R + t), ...arc(SHIELD_R - .004).reverse()];
+  return loftX([{ x: x0, ring }, { x: x1, ring }]);
+}
 function addGun(P: TankBuilderPort): void {
-  const seg = P.q ? 28 : 14;
-  // the mantlet: an elliptic drum across the embrasure (its section .28 high and .22 deep, centred .07 over the pitch axis),
-  // its underside .21 under the axis at every pitch from -5 to +15 degrees (1 cm under the T-80U X trunnion block's; 2.5 cm
-  // over the highest deck point it sweeps as the turret turns)
-  P.addGunExtra(cylX(1, 2 * MANTLET_HALF, seg).scale(1, MANTLET_RY, MANTLET_RZ), 0, MANTLET_UP, 0);
+  const seg = P.q ? 28 : 14, R = SHIELD_R, H = SHIELD_HALF, C = .025;
+  // the shield: chamfered at both ends (its face and brow drawn in by C over the last C of its width)
+  P.addGunExtra(loftX([{ x: -H, ring: shieldRing(R - C) }, { x: C - H, ring: shieldRing(R) }, { x: H - C, ring: shieldRing(R) }, { x: H, ring: shieldRing(R - C) }]));
+  // the centre insert's two welded seams across the face, and the lip along the brow
+  for (const x of [-.20, .20]) P.addGunExtraDark(shieldBand(x - .006, x + .006, SHIELD_LOW + .05, SHIELD_HIGH - .04, .004));
+  P.addGunExtra(shieldBand(C - H, H - C, SHIELD_HIGH - .07, SHIELD_HIGH, .010));
   for (const s of [-1, 1]) {
-    P.addGunExtraDark(cylX(.12, .03, seg), s * (MANTLET_HALF + .012), MANTLET_UP * .4, 0);          // the trunnion cap
-    // the bolted face plate either side of the root drum, on the mantlet's front
-    P.addGunExtra(box(.15, .30, .03), s * .30, MANTLET_UP, MANTLET_RZ - .005);
-    for (const y of [-.06, .20]) P.addGunExtraDark(cylZ(.016, .016, 6), s * .30, MANTLET_UP + y, MANTLET_RZ + .015);
+    // the trunnion cap on the shield's end, its bolt ring
+    P.addGunExtra(cylX(.11, .012, seg), s * (H + .004), 0, 0);
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; P.addGunExtraDark(cylX(.012, .008, 6), s * (H + .013), .075 * Math.sin(a), .075 * Math.cos(a)); }
   }
-  P.addGunExtra(cylZ(.212, .58, seg, .218), 0, .043, .36);          // underside .175 under the bore
+  // the coaxial machine gun's port to the gun's right (x < 0): a boss on the face and its dark bore
+  { const a = .08, x = -.27; P.addGunExtra(cylZ(.048, .05, seg), x, R * Math.sin(a), R * Math.cos(a) + .012); P.addGunExtraDark(cylZ(.020, .052, 10), x, R * Math.sin(a), R * Math.cos(a) + .014); }
+  // the auxiliary sight's aperture to the left under its armoured hood
+  { const a = .55, x = .27, y = R * Math.sin(a), z = R * Math.cos(a);
+    P.addGunExtra(box(.13, .10, .06), x, y, z);
+    P.addGunExtraDark(box(.10, .06, .012), x, y - .005, z + .031);
+    P.addGunExtra(box(.15, .016, .09), x, y + .055, z + .01); }
+  // the cradle flange where the barrel enters the shield, its bolt ring
+  // (radius .222: its underside .179 under the axis, .207 at 5 degrees' depression, as the root drum it rings)
+  P.addGunExtra(cylZ(.222, .045, seg), 0, .043, R + .005);
+  for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; P.addGunExtraDark(cylZ(.006, .012, 6), .216 * Math.sin(a), .043 + .216 * Math.cos(a), R + .031); }
+  // the recoil housing: the old root drum's envelope (underside .175 under the bore), its clamp bands and the guide key
+  P.addGunExtra(cylZ(.212, .58, seg, .218), 0, .043, .36);
+  for (const z of [.43, .58]) P.addGunExtraDark(cylZ(.222, .03, seg), 0, .045, z);
+  P.addGunExtra(box(.05, .03, .30), 0, .043 + .214, .48);
   P.addGunExtraDark(cylZ(.224, .045, seg), 0, .052, .63);
   P.addGunExtra(cylZ(.184, .06, seg), 0, .012, .675);
   P.addGunExtra(cylZ(.150, .26, seg, .184), 0, .012, .835);
@@ -438,8 +567,10 @@ function buildObject292X(P: TankBuilderPort): void {
   addRubberSkirts(P);
   addFrontFenders(P);
   addStern(P);
-  buildT80UXCasting(P);
+  buildT80UXCasting(P, { cheekNoses: false });
+  addCastCheeks(P);
   addCheekBlocks(P);
+  addJammers(P);
   addBox(P);
   addRoof(P);
   for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .26, [s * (BOX_W + .006), .45, -1.32], s * Math.PI / 2);

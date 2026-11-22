@@ -144,16 +144,21 @@ function glacisEra(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',box(.79994,.022,.089),0,1.199,2.7015,.42);
 }
 
-function casting(P:TankBuilderPort):void {
-  P.add('turret',castSections([
-    [-1.35564,.016,.016,1.744,1.55158,1.65],[-1.20,.631,.634,1.871,1.55158,1.74],
-    [-.90,.942,.975,2.052,1.55158,1.75],[-.60,1.149,1.161,2.121,1.55158,1.75],
-    [-.30,1.311,1.301,2.155,1.55158,1.75],[0,1.380,1.371,2.169,1.55158,1.75],
-    [.15,1.401,1.366,2.172451,1.55158,1.75],[.45,1.367,1.314,2.147,1.55158,1.75],
-    [.75,1.294,1.205,2.093,1.55158,1.75],[1.05,1.136,1.016,2.027,1.55158,1.75],
-    [1.18,.990,.916,1.999,1.55158,1.75],
-  ],YAW));
-  for(const side of [-1,1])P.add('turret',sectionSolid([[1.17,1.001,2.001],[1.35,.695,1.911],[1.47,.227,1.825]].map(([z,w,y])=>{
+/** The cast turret's stations (world z, left and right half-widths, top, base, shoulder; measuredPrimitives castSections),
+ * shared with the Object 292's cast cheek noses (profiles/object292X.ts), which loft from this shell's own section. */
+export const T80U_X_CAST_ROWS=[
+  [-1.35564,.016,.016,1.744,1.55158,1.65],[-1.20,.631,.634,1.871,1.55158,1.74],
+  [-.90,.942,.975,2.052,1.55158,1.75],[-.60,1.149,1.161,2.121,1.55158,1.75],
+  [-.30,1.311,1.301,2.155,1.55158,1.75],[0,1.380,1.371,2.169,1.55158,1.75],
+  [.15,1.401,1.366,2.172451,1.55158,1.75],[.45,1.367,1.314,2.147,1.55158,1.75],
+  [.75,1.294,1.205,2.093,1.55158,1.75],[1.05,1.136,1.016,2.027,1.55158,1.75],
+  [1.18,.990,.916,1.999,1.55158,1.75],
+] as const;
+function casting(P:TankBuilderPort,cheekNoses=true):void {
+  P.add('turret',castSections(T80U_X_CAST_ROWS,YAW));
+  // the cheek noses ahead of the shell's end, under the T-80U X's ERA (object292-cheeks-275: the Object 292 builds its own
+  // cast noses from the shell's section instead, cheekNoses false)
+  if(cheekNoses)for(const side of [-1,1])P.add('turret',sectionSolid([[1.17,1.001,2.001],[1.35,.695,1.911],[1.47,.227,1.825]].map(([z,w,y])=>{
     const a=side<0?-w:.222,b=side<0?-.222:w;
     return{z:z-YAW[2],ring:[[a,1.55158-YAW[1]],[b,1.55158-YAW[1]],[b,y-YAW[1]],[a,y-YAW[1]]]};
   })));
@@ -308,8 +313,9 @@ export function buildT80UXHull(P:TankBuilderPort):void {
   buildT80UXHullBase(P);glacisEra(P);
 }
 
-/** The cast turret alone, authored against the yaw datum (release 269: under the Object 292's welded box). */
-export function buildT80UXCasting(P:TankBuilderPort):void { casting(P); }
+/** The cast turret alone, authored against the yaw datum (release 269: under the Object 292's welded box); cheekNoses false
+ * leaves off the flat-backed noses ahead of the shell (object292-cheeks-275). */
+export function buildT80UXCasting(P:TankBuilderPort,{cheekNoses=true}:{cheekNoses?:boolean}={}):void { casting(P,cheekNoses); }
 /** The source's yaw datum and trunnion (hull frame, before the ring raise). */
 export const T80U_X_YAW=YAW,T80U_X_TRUNNION=GUN;
 
