@@ -77,13 +77,15 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
         [H.sponsonDeckX, top - 0.03], [H.sponsonDeckX - 0.03, top], [tw - 0.01, top]]);
     };
     P.add('hull', sectionSolid(sponsonZs.map((z) => ({ z, ring: ring(z) }))));
-    // the armoured corner box over the front fender: from the skirt's top line to 7 cm over the glacis, its face the nose
-    // plate's slope down to the lip (the parade and head-on photographs; the elevation's nose)
+    // the armoured corner box over the front fender: from the skirt's top line to 7 cm over the glacis at the nose, its
+    // top rising out of the deck from its rear edge (no step in profile), its face the nose plate's slope down to the lip
+    // (the parade and head-on photographs; the elevation's nose); its inner face 1 cm into the tub's side
     const boxZs = [H.boxRearZ, 3.25, H.noseTopZ, 3.75, H.noseZ];
     const boxRing = (z: number): SectionPoint[] => {
-      const b = skirtTopY(z), t = Math.max(b + 0.04, deckY(z) + H.boxRiseM);
-      return sided(s, [[H.boxInnerX + 0.01, b], [H.skirtOutX, b], [H.skirtOutX, t - 0.02], [H.skirtOutX - 0.02, t],
-        [H.boxInnerX + 0.01, t]]);
+      const rise = H.boxRiseM * Math.min(1, (z - H.boxRearZ) / (H.noseTopZ - H.boxRearZ));
+      const b = skirtTopY(z), t = Math.max(b + 0.04, deckY(z) + rise);
+      return sided(s, [[H.boxInnerX - 0.01, b], [H.skirtOutX, b], [H.skirtOutX, t - 0.02], [H.skirtOutX - 0.02, t],
+        [H.boxInnerX - 0.01, t]]);
     };
     P.add('hull', sectionSolid(boxZs.map((z) => ({ z, ring: boxRing(z) }))));
     // the fender ledge the skirts hang from, the sponson's length behind the corner box
@@ -248,9 +250,10 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
     for (const [bx, by] of [[0.66, 0.12], [0.66, 0.52], [1.18, 0.12], [1.18, 0.52]] as const) {
       P.add('turretDark', cylZ(0.020, 0.014, 8), s * bx, by, fz + 0.006);
     }
-    // the side's panel seam over the ring's rear and the bustle's stowage box (the elevation's "T0" box): flush on the
+    // the front block's joint down the side (the elevation), the side's panel seam over the ring's rear and the bustle's stowage box (the elevation's "T0" box): flush on the
     // side, its lid seam and latches, the tank's number on it
     P.add('turretDark', box(0.010, T.roofY - turretFloorY(-0.97) - 0.06, 0.012), s * (hw + 0.004), (T.roofY + turretFloorY(-0.97)) / 2, -0.97);
+    P.add('turretDark', box(0.010, T.roofY - T.floorY - 0.06, 0.012), s * (hw + 0.004), (T.roofY + T.floorY) / 2, T.slotBackZ);
     const binZ = -2.00, binL = 0.99, binY0 = 0.21, binY1 = 0.72;
     P.addEquipment('turret', box(0.10, binY1 - binY0, binL), s * (hw + 0.05), (binY0 + binY1) / 2, binZ);
     P.add('turretDark', box(0.012, 0.012, binL - 0.04), s * (hw + 0.104), binY1 - 0.07, binZ);
