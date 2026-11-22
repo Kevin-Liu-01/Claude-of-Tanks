@@ -6,7 +6,8 @@
 //    stage builders ran twice: a building stood up and fell again);
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes; the scan
-//    reads only hulls this viewer sees (a hidden one's frozen record re-lit a column for ever) and never evicts a column;
+//    reads only hulls this viewer sees (a hidden one's frozen record re-lit a column for ever); (fire-visible-275) the
+//    live fires have their own budget apart from the wrecks, the nearest kept;
 //  - a hull's event point (round 4 merge review r2): a beat no hit names (a ram's or a crash's thrown track, a fire
 //    raised later) lands on the hull where it stands now, at its last hit's point on the hull (the hit's own spot when
 //    it came with the hit), never where the hull was first placed in this life, where it last died or where an older
@@ -131,7 +132,7 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-// ---- the burn scan: only a hull this viewer sees, only into a free slot ----
+// ---- the burn scan: only a hull this viewer sees; the live fires' own budget ----
 {
   const hull = (id, x, extra = {}) => ({ id, visual: { root: new THREE.Group() }, state: { pos: new THREE.Vector3(x, 0, 12) },
     combat: { destroyed: false, fire: { burning: true } }, ...extra });
@@ -146,18 +147,19 @@ function fakeVisual() {
   frames(200, 0.5);
   assert.deepEqual(live(), [], 'a column whose hull went out of sight ends on its own time');
   fx.resetAll();
-  // the cap (four): four fires' columns from their events, and a fifth burning hull the scan finds
+  // (fire-visible-275) the live fires' own budget (six), apart from the wrecks' four: six fires from their events, and a
+  // seventh, farther burning hull the scan finds stays dark until one goes out (fireVisible.selftest: every state)
   entities.clear();
-  for (const [i, id] of ['a', 'b', 'c', 'd'].entries()) {
+  for (const [i, id] of ['a', 'b', 'c', 'd', 'e', 'f'].entries()) {
     entities.set(id, hull(id, i * 6));
     bus.emit('tank:fire', { id, burning: true });
   }
-  entities.set('e', hull('e', 30));
+  entities.set('g', hull('g', 60));
   frames(40);
-  assert.deepEqual(live(), ['a', 'b', 'c', 'd'], 'the scan never evicts a column for a hull it found');
+  assert.deepEqual(live(), ['a', 'b', 'c', 'd', 'e', 'f'], 'over the fires\' budget the nearest burn');
   entities.get('a').combat.fire.burning = false;
   frames(40);
-  assert.deepEqual(live(), ['b', 'c', 'd', 'e'], 'and lights one when a slot frees');
+  assert.deepEqual(live(), ['b', 'c', 'd', 'e', 'f', 'g'], 'and the next lights when one goes out');
   fx.resetAll();
 }
 
