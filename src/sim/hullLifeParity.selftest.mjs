@@ -43,7 +43,7 @@ const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.ur
   assert.equal(hull._impactAccumMps, 0, 'the authority: the revived hull carries no crash of its last life');
   assert.equal(hull._impactAccumT, -1e9);
   // the solo step: its revive and its battle seat clear the same memory through the same function
-  const reviveBody = solo.slice(solo.indexOf('revive(ent: SoloEntity, spawn: MatchModeSpawn'), solo.indexOf('ent.visual?.syncFromState?.(ent.state);'));
+  const reviveBody = solo.slice(solo.search(/revive\(ent: SoloEntity, \w+: MatchModeSpawn/) /* tutorial-journey-273 renamed its spawn rawSpawn */, solo.indexOf('ent.visual?.syncFromState?.(ent.state);'));
   assert.ok(reviveBody.length > 0 && reviveBody.includes('resetHullCrashMemory(ent);'), 'the solo step: its mode revive clears the crash memory');
   assert.match(solo, /function initializeBattleEntity[\s\S]*?resetHullCrashMemory\(entity\);/, 'and its battle seat');
   assert.match(authority, /function reviveForMode[\s\S]*?resetHullCrashMemory\(tank\);/, 'the authority\'s revive through the same function');
