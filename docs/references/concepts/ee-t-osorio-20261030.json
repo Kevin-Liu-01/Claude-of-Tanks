@@ -18,6 +18,11 @@
       "date": "2026-11-20",
       "request": "for the eet3 osorio, osorio t4, make the front turret attachment things in front of cheeks chevrons like the leopard 2a4 instead of those weird add ons because they look kind of goofy. also add more add ons attachments and tank decorations on all brazilian tanks.",
       "scope": "The cheek modules become chevron wedges on the Leopard 2A4M pattern (our plain 2A4 keeps the square block; the arrowhead is the 2A4M's 2A6-look front, profiles/leopard2A4Wedge.ts), built in profiles/osorioChevron.ts; the side armour's front pack ends square at their roots. The crew's kit is added through the decoration layer on all eight Brazilian ids."
+    },
+    "mantlets": {
+      "date": "2026-11-21",
+      "request": "for the eet3 and ee4 make their mantelts different but also make both actually match up and align with the cheeks",
+      "scope": "Each mark's mantlet becomes one block riding the gun that fills the slot between its chevron wedges wall to wall, its face's top edge on the chevrons' face-top line, its face's foot beside the chin on their face foot at the tips, and its nose out to their tips: the EE-T3's a pointed wedge, its faces parallel to the chevrons' faces (the Leopard 2A6's mantlet wedge between its turret wedges); the EE-T4's a flat bolted module square to the gun. Under the gun each traces the old mount's round underside, so the published gun-depression curves hold (tools/gun-depression-sweep.mjs)."
     }
   },
   "comparisonPurpose": "owner-authored-concept",
@@ -58,7 +63,7 @@
         "widthM": 3.4,
         "heightM": 2.95
       },
-      "silhouette": "Fictional Brazilian modernization of the surviving Osório P.2 (tier IX): the P.2's low welded hull and wedge turret under a bolted composite nose module and five composite skirt modules a side, chevron wedges over the turret cheeks (the Leopard 2A4M's arrowhead, carrying the side armour's face forward to a blunt tip beside the mantlet), three bolted side packs a side, a PERI-pattern commander's panoramic sight, a deeper rear basket with stowage, set-in nose lamps, the 120 mm L/47 in a canvas boot, the roof 7.62 mm, two 200 L fuel drums across the stern in a cradle off the rear plate, standing over the deck line and a three-tone blotch coat."
+      "silhouette": "Fictional Brazilian modernization of the surviving Osório P.2 (tier IX): the P.2's low welded hull and wedge turret under a bolted composite nose module and five composite skirt modules a side, chevron wedges over the turret cheeks (the Leopard 2A4M's arrowhead, carrying the side armour's face forward to a blunt tip beside the mantlet), three bolted side packs a side, a PERI-pattern commander's panoramic sight, a deeper rear basket with stowage, set-in nose lamps, the 120 mm L/47 in a pointed mantlet wedge filling the slot between the chevrons to their tips, the roof 7.62 mm, two 200 L fuel drums across the stern in a cradle off the rear plate, standing over the deck line and a three-tone blotch coat."
     },
     "ee_t4_osorio": {
       "id": "ee_t4_osorio",
@@ -93,7 +98,7 @@
         "widthM": 3.43,
         "heightM": 2.98
       },
-      "silhouette": "Fictional Brazilian modernization of the Osório P.2 (tier X), the EE-T3's kit heavier and full length: a nose module carried down a bolted lower-glacis slab with the lamps set in its face, thicker skirt modules, longer, broader chevron wedges with a taller blunt face beside the mantlet, a bolted block mantlet, thicker side packs, a hard-kill active protection system (four radar panels on the turret corners, two drum launchers on pedestals), laser-warning heads, a slat cage over the rear plate with two 200 L fuel drums in a cradle behind it, standing over the deck line, the 130 mm L/51 and a three-tone digital coat."
+      "silhouette": "Fictional Brazilian modernization of the Osório P.2 (tier X), the EE-T3's kit heavier and full length: a nose module carried down a bolted lower-glacis slab with the lamps set in its face, thicker skirt modules, longer, broader chevron wedges with a taller blunt face beside the mantlet, a flat bolted mantlet module filling the slot between the chevrons, flush with their tips, thicker side packs, a hard-kill active protection system (four radar panels on the turret corners, two drum launchers on pedestals), laser-warning heads, a slat cage over the rear plate with two 200 L fuel drums in a cradle behind it, standing over the deck line, the 130 mm L/51 and a three-tone digital coat."
     }
   }
 }

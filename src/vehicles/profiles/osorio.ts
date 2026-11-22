@@ -646,10 +646,11 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
       }
     }
     P.turretG.userData.osorioTurretReceipt = {
-      revision: 'osorio-274-r12', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
+      revision: 'osorio-274-r13', mark, roofY: T.roofY, turretHalfWidth: T.hw, bustleRearZ: T.rearZ, cheekNoseZ: T.cheekNoseZ,
       dischargers: cols * 4, rightGrid: p2 ? 'basket' : 'flat', leftBasket: false, bustleRack: true, panoramicPedestal: p2,
-      sightHeads: modern ? 2 : 3, gunBoot: p2 ? 'canvas' : 'black', armourKit: modern ? (t4 ? 'full' : 'front') : 'none',
-      activeProtection: t4, remoteStation: modern, cheekWedges: modern ? 'chevron' : 'none',
+      sightHeads: modern ? 2 : 3, gunBoot: modern ? 'none' : p2 ? 'canvas' : 'black',
+      armourKit: modern ? (t4 ? 'full' : 'front') : 'none', activeProtection: t4, remoteStation: modern,
+      cheekWedges: modern ? 'chevron' : 'none', mantlet: modern ? (t4 ? 'module' : 'wedge') : 'plate',
     };
   };
   buildOsorioTurretFittings();
@@ -677,49 +678,126 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
   yield 'buildOsorioMarkings';
 
   // ---------------------------------------------------------------- mantlet and gun --
+  /**
+   * The EE-T3's and EE-T4's mantlet armour (owner 2026-11-21: "for the eet3 and ee4 make their mantelts different but also
+   * make both actually match up and align with the cheeks"): one block riding the gun that fills the slot between the
+   * chevron wedges wall to wall (13 mm running clearance a side), its face's top edge on the chevrons' face-top line and its
+   * nose out to their tips. The EE-T3's is a pointed wedge, its two faces parallel to the chevrons' faces so the three read
+   * as one arrowhead line (the Leopard 2A6's mantlet wedge between its turret wedges); the EE-T4's a heavier flat-faced
+   * module square to the gun, its face a bolted plate flush with the tips. Gun metres (the trunnion at the origin). Held to
+   * the old mount's swept envelope: its top no higher than the old plate's (0.12) under the brow until it has passed the
+   * brow's front edge at +20 degrees, its foot no lower than the old cover's and rising toward the nose to the tube's own
+   * underside (the -10 degree depression over the deck).
+   */
+  const buildEeMantlet = (): void => {
+    const c = CHEVRONS[t4 ? 't4' : 't3'];
+    const hw = c.innerX - 0.013, nose = c.tip[1] - TRUNNION.z, top = c.faceTopY - TRUNNION.y, back = 0.24;
+    // the face's foot beside the chin: the chevrons' own face foot at their tips (their floor risen to the tip)
+    const yOut = c.floorY + (c.tip[1] - c.turnZ) * c.floorRise - TRUNNION.y;
+    // the chin under the gun traced on the old mount's underside, depth for depth (gun-depression-sweep: the published
+    // curve holds): the old plate's foot, the root collar, the canvas cover and its rings, the tube's own collar, then
+    // close round the tube; beside the chin the old plate's foot, then the chevrons' face foot
+    const r0 = t4 ? 0.150 : 0.118, tubeLo = -(r0 + 0.002);
+    const CHIN: ReadonlyArray<readonly [number, number]> = t4
+      ? [[0, -0.15], [0.46, -0.15], [0.461, -0.155], [0.66, -0.155], [0.661, -0.165], [0.87, -0.165], [0.871, -0.17], [0.99, -0.17], [1.00, tubeLo]]
+      : [[0, -0.15], [0.46, -0.15], [0.461, -0.155], [0.54, -0.155], [0.541, -0.15], [0.82, -0.15], [0.88, -0.138], [0.99, -0.138], [1.00, tubeLo]];
+    const loAt = (z: number): number => {
+      if (z >= CHIN.at(-1)![0]) return CHIN.at(-1)![1];
+      const k = CHIN.findIndex(([cz]) => cz > z), [za, ya] = CHIN[k - 1], [zb, yb] = CHIN[k];
+      return ya + (yb - ya) * (z - za) / (zb - za);
+    };
+    const coverLo = -0.15;
+    /** A section at z: under the gun the old part's own round underside (an arc of its radius, no lower than `out` beside
+     * it and no wider than the body), the underside beside it at `out`, the top at `hi`. */
+    const ARC = 9;
+    const station = (z: number, h: number, out: number, hi: number) => {
+      const r = Math.min(-loAt(z), h - 0.004), arc: SectionPoint[] = [];
+      for (let k = 0; k < ARC; k++) {
+        const a = Math.PI + Math.PI * k / (ARC - 1);
+        arc.push([r * Math.cos(a), Math.min(r * Math.sin(a), out)]);
+      }
+      const ring: SectionPoint[] = [[-h, out], ...arc, [h, out], [h, hi], [-h, hi]];
+      return { z, ring };
+    };
+    if (!t4) {
+      // the faces' sweep: the chevrons' own, from the shoulder to the tip
+      const sweep = (c.shoulder[1] - c.tip[1]) / (c.shoulder[0] - c.tip[0]);
+      const point = 0.02, knee = nose - (hw - point) * -sweep;
+      const hwAt = (z: number): number => z <= knee ? hw : hw - (z - knee) / -sweep;
+      const zs = [knee, 0.82, 0.88, 0.99, 1.00, nose].filter((z) => z >= knee).sort((p, q) => p - q);
+      P.addGunExtra(sectionSolid([
+        station(back, hw, coverLo, 0.12), station(0.46, hw, coverLo, 0.12), station(0.461, hw, coverLo, 0.12),
+        station(0.54, hw, yOut, Math.min(top, 0.12)), station(0.541, hw, yOut, Math.min(top, 0.12)),
+        station(0.60, hw, yOut, top), ...zs.map((z) => station(z, hwAt(z), yOut, top))]));
+      // the faces' top edges in dark trim, as the chevrons' are, and the knee's upright edge
+      for (const sx of [-1, 1] as const) {
+        P.addGunExtraDark(beamBetween([sx * (hw - 0.01), top + 0.002, knee + 0.006], [sx * (point + 0.004), top + 0.002, nose - 0.004], 0.010, 8));
+        P.addGunExtraDark(beamBetween([sx * (hw - 0.01), yOut + 0.01, knee + 0.004], [sx * (hw - 0.01), top - 0.01, knee + 0.004], 0.008, 6));
+      }
+      // the coaxial MG's port (left) and the auxiliary sight's (right), each square to its face, in the band beside the chin
+      const yaw = Math.atan(-sweep), nx = Math.sin(yaw), nz = Math.cos(yaw);
+      const faceZ = (x: number): number => nose - (Math.abs(x) - point) * -sweep;
+      /** A port on the face at x, its centre `d` out along the face's normal. */
+      const onFace = (x: number, d: number): [number, number] => [x + Math.sign(x) * nx * d, faceZ(x) + nz * d];
+      const py = (yOut + top) / 2;
+      const [cx, cz] = onFace(-0.30, 0.005), [gx, gz] = onFace(-0.30, 0.03), [ax, az] = onFace(0.30, 0.008);
+      P.addGunExtraDark(xform(cylZ(0.045, 0.05, 14), 0, 0, 0, 0, -yaw, 0), cx, py, cz);
+      P.add('gunMountGlass', xform(cylZ(0.032, 0.008, 12), 0, 0, 0, 0, -yaw, 0), gx, py, gz);
+      P.addGunExtraDark(xform(box(0.08, 0.07, 0.05), 0, 0, 0, 0, yaw, 0), ax, py, az);
+    } else {
+      // the EE-T4's: full width to its face, the face's sides and top chamfered 6 cm, a bolted face plate either side of
+      // the chin and its seams
+      P.addGunExtra(sectionSolid([
+        station(back, hw, coverLo, 0.12), station(0.46, hw, coverLo, 0.12), station(0.461, hw, -0.10, 0.12),
+        station(0.60, hw, yOut, 0.12), station(0.62, hw, yOut, top), station(0.66, hw, yOut, top), station(0.661, hw, yOut, top),
+        station(0.87, hw, yOut, top), station(0.871, hw, yOut, top), station(0.99, hw, yOut, top), station(1.00, hw, yOut, top),
+        station(nose - 0.06, hw, yOut, top),
+        station(nose, hw - 0.06, yOut + 0.03, top - 0.05)]));
+      const fz = nose + 0.006, fw = hw - 0.08, y0 = yOut + 0.035, y1 = top - 0.055, cw = -tubeLo;
+      for (const sx of [-1, 1] as const) {
+        const px = sx * (cw + 0.02 + fw) / 2, pw = fw - cw - 0.02;
+        P.addGunExtra(box(pw, y1 - y0, 0.012), px, (y0 + y1) / 2, nose + 0.002);
+        P.addGunExtraDark(box(pw + 0.02, 0.012, 0.012), px, y1 + 0.005, fz);
+        P.addGunExtraDark(box(pw + 0.02, 0.012, 0.012), px, y0 - 0.005, fz);
+        for (const x of [cw + 0.06, fw - 0.03]) for (const y of [y0 + 0.02, y1 - 0.02]) P.addGunExtraDark(cylZ(0.016, 0.014, 8), sx * x, y, fz);
+      }
+      // the coaxial's port under its hood (left), the auxiliary sight's (right), on the plates
+      const py = (y0 + y1) / 2;
+      P.addGunExtraDark(cylZ(0.045, 0.04, 14), -0.30, py, nose + 0.012);
+      P.add('gunMountGlass', cylZ(0.032, 0.008, 12), -0.30, py, nose + 0.034);
+      P.addGunExtra(box(0.14, 0.025, 0.07), -0.30, py + 0.065, nose + 0.035);
+      P.addGunExtraDark(box(0.08, 0.06, 0.04), 0.30, py, nose + 0.014);
+    }
+  };
   const buildOsorioGun = (): void => {
     P.gunG.position.set(0, TRUNNION.y, TRUNNION.z);
     // the flat mantlet plate recessed between the cheeks, its bolted collar where the gun enters, the canvas dust cover;
     // the coaxial MG's port on the left of the gun, the auxiliary sight's on the right
     // (every part below the bore is held inside the -10 degree depression over the flat deck ahead of the turret: the
     // collar, the cover and its rings narrow forward to the deck's edge at z 0.70)
-    P.addGunExtra(box(0.86, 0.27, 0.22), 0, -0.015, 0.35);
-    P.addGunExtra(cylZ(0.155, 0.08, P.q ? 24 : 14), 0, 0, 0.50);
-    // (the EE-T4's bolted mantlet module over the plate's face, the ports carried out to its face; its top no higher than
-    // the plate's, under the brow at +20 degrees, and its foot over the deck at -10)
-    // (a block 0.20 m deep standing out from the plate, its foot raised 4 cm, its front half rising over the gun's root:
-    // its top under the brow at +20 degrees; blind critics, rounds c2 and c4)
-    const mz = t4 ? 0.20 : 0;
-    if (t4) {
-      P.addGunExtra(box(0.88, 0.21, 0.10), 0, 0.005, 0.51);
-      P.addGunExtra(slab([-0.44, -0.10, 0.56], [0.44, -0.10, 0.56], [0.44, -0.10, 0.66], [-0.44, -0.10, 0.66],
-        [-0.44, 0.11, 0.56], [0.44, 0.11, 0.56], [0.44, 0.20, 0.66], [-0.44, 0.20, 0.66]));
-      P.addGunExtraDark(box(0.90, 0.02, 0.012), 0, 0.195, 0.665);
-      for (const x of [-0.39, -0.13, 0.13, 0.39]) for (const y of [-0.07, 0.13]) P.addGunExtraDark(cylZ(0.018, 0.012, 8), x, y, 0.666);
-      // (a hood over the coaxial's port)
-      P.addGunExtra(box(0.16, 0.03, 0.08), -0.27, 0.12, 0.70);
-    }
-    P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.25, -0.01, 0.475 + mz);
-    P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475 + mz);
-    P.add('gunMountGlass', cylZ(0.035, 0.008, 12), -0.27, 0.06, 0.498 + mz);
-    if (p2) {
-      // (the EE-T3/T4's canvas a size up over the heavier guns' roots)
-      // (the EE-T4's from its mantlet block's face)
-      const k = modern ? (t4 ? 1.22 : 1.12) : 1;
-      if (t4) P.add('gunMountCloth', cylZ(0.12 * k, 0.22, P.q ? 20 : 12, 0.135 * k), 0, 0, 0.77);
-      else P.add('gunMountCloth', cylZ(0.12 * k, 0.34, P.q ? 20 : 12, 0.145 * k), 0, 0, 0.71);
-      for (const z of t4 ? [0.74, 0.82] : [0.58, 0.74, 0.82]) {
-        P.add('gunMountCloth', torus((0.145 - ((z - 0.54) / 0.34) * 0.025) * k, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
-      }
+    if (modern) {
+      buildEeMantlet();
     } else {
-      // the P.1's large black boot over the gun's root (the 2015 museum photograph; blind critic, round 3), its folds; an
-      // oval 0.40 m wide, flattened below and lifted 2 cm so its underside stays inside the old cover's (the -10 degree
-      // depression over the deck)
-      const oval = [1, 0.78, 1] as const;
-      P.addGunExtraDark(xform(cylZ(0.15, 0.46, P.q ? 20 : 12, 0.20), 0, 0, 0, 0, 0, 0, oval), 0, 0.02, 0.66);
-      for (const z of [0.52, 0.66, 0.80]) {
-        const ring = xform(torus(0.20 - ((z - 0.43) / 0.46) * 0.05 + 0.006, 0.014, P.q ? 20 : 12, 5), 0, 0, 0, Math.PI / 2, 0, 0);
-        P.addGunExtraDark(xform(ring, 0, 0, 0, 0, 0, 0, oval), 0, 0.02, z);
+      P.addGunExtra(box(0.86, 0.27, 0.22), 0, -0.015, 0.35);
+      P.addGunExtra(cylZ(0.155, 0.08, P.q ? 24 : 14), 0, 0, 0.50);
+      P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.25, -0.01, 0.475);
+      P.addGunExtraDark(cylZ(0.05, 0.04, 14), -0.27, 0.06, 0.475);
+      P.add('gunMountGlass', cylZ(0.035, 0.008, 12), -0.27, 0.06, 0.498);
+      if (p2) {
+        P.add('gunMountCloth', cylZ(0.12, 0.34, P.q ? 20 : 12, 0.145), 0, 0, 0.71);
+        for (const z of [0.58, 0.74, 0.82]) {
+          P.add('gunMountCloth', torus(0.145 - ((z - 0.54) / 0.34) * 0.025, 0.012, P.q ? 20 : 12, 5), 0, 0, z, Math.PI / 2, 0, 0);
+        }
+      } else {
+        // the P.1's large black boot over the gun's root (the 2015 museum photograph; blind critic, round 3), its folds; an
+        // oval 0.40 m wide, flattened below and lifted 2 cm so its underside stays inside the old cover's (the -10 degree
+        // depression over the deck)
+        const oval = [1, 0.78, 1] as const;
+        P.addGunExtraDark(xform(cylZ(0.15, 0.46, P.q ? 20 : 12, 0.20), 0, 0, 0, 0, 0, 0, oval), 0, 0.02, 0.66);
+        for (const z of [0.52, 0.66, 0.80]) {
+          const ring = xform(torus(0.20 - ((z - 0.43) / 0.46) * 0.05 + 0.006, 0.014, P.q ? 20 : 12, 5), 0, 0, 0, Math.PI / 2, 0, 0);
+          P.addGunExtraDark(xform(ring, 0, 0, 0, 0, 0, 0, oval), 0, 0.02, z);
+        }
       }
     }
     const seg = P.q ? 24 : 12;

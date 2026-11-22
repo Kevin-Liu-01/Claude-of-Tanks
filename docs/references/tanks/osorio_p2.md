@@ -105,3 +105,11 @@ byte-identical to their approved build.
 
 Fender mirrors stay off the P.1: the photo review behind this build found none on either prototype (osorio.ts), though
 the research table lists them.
+
+### EE-T3/T4 mantlets (owner 2026-11-21: "make their mantelts different but also make both actually match up and align with the cheeks")
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 10 | EE-T3 mantlet | the P.2's flat 0.86 m plate and canvas cover, 0.67 m behind the chevron tips | a pointed wedge riding the gun (osorio.ts buildEeMantlet): it fills the slot between the chevrons (13 mm running clearance a side) and its nose reaches their tips, with its two faces parallel to the chevrons' faces, so the three read as one arrowhead line (the Leopard 2A6's mantlet wedge between its turret wedges). Its face band runs from the chevrons' face foot at the tips (0.28 m) to their face top (0.40 m). The coaxial's port and the auxiliary sight's are square to the faces |
+| 11 | EE-T4 mantlet | the plate with a 0.20 m bolted block on its face | a flat module square to the gun, flush with the chevron tips, the slot's full width; bolted face plates either side of the chin, its band from 0.29 to 0.46 m on the chevrons' face lines, the coaxial's port under a hood |
+| 12 | Under both | the old plate, collar and canvas cover | the chin under the gun traces the old mount's round underside depth for depth, then closes round the tube. gun-depression-sweep holds both published curves: the EE-T3's exactly as before, the EE-T4's within 0.21 degrees (the 0.35 tolerance) at yaw 103 |
