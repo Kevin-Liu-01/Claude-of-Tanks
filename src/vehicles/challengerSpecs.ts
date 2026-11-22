@@ -185,8 +185,6 @@ function armorChallenger3X(): ArmorEnvelope {
     sL('c3x_skirt_era_L', 22, 1.96, 0.68, 1.96, 1.46, -3.62, 3.38, era),
   );
   armor.turretPlates.push(
-    chR('c3x_turret_cheek_era_R', 22, 0.30, 1.62, 1.42, 0.92, 0.05, 0.80, 0.18, 0, era),
-    chL('c3x_turret_cheek_era_L', 22, 0.30, 1.62, 1.42, 0.92, 0.05, 0.80, 0.18, 0, era),
     sR('c3x_turret_side_era_R', 22, 1.76, 0.16, 1.76, 0.78, -3.12, -0.30, era),
     sL('c3x_turret_side_era_L', 22, 1.76, 0.16, 1.76, 0.78, -3.12, -0.30, era),
   );
