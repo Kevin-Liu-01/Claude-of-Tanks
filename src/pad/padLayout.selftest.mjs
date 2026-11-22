@@ -71,6 +71,7 @@ assert.equal(PAD_LAYOUTS.drone.thumbs.fire, null);
 const OPTIONS_SCREEN = ['minimapZoom', 'shotLog', 'networkPanel'];
 const KEPT_OFF = {
   leaveBattle: 'leaving a battle stays the computer\'s choice (phone-controller-266)',
+  scuttle: 'destroying your own tank stays the computer\'s choice, as leaving does (death-flow-275)',
   settingsMenu: 'the top strip\'s pause sends the pause message, Escape\'s toggle',
   perfHud: 'a developer readout',
   freeCamera: 'its job (hold or toggle aim, free look) is the scope and Look keys',
