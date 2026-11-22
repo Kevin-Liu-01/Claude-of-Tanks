@@ -34,7 +34,8 @@
 //     respawn at most the window late; and one risen again among the infected inside a longer window, its faction the
 //     frame's; each at the infected's pace); a survivor the play alone infected (a hand on the play's own steps), a
 //     survivor again where a row stands it up, and the play's (rising as one of the infected) where none does; a ring
-//     arrival the play did not make by the frame, taken as made; the ball struck, to the bit and 1 s on.
+//     arrival the play did not make by the frame, taken as made, and one killed again before the frame, taken then down;
+//     the ball struck, to the bit and 1 s on.
 // Also: a far tier's row is another seat's ([2]); a row that parts on the fire or the magazine alone ([3]); the play's own
 // events of the window go to no seat ([5]); a keyframe sealed in the countdown, with no mode checkpoint, or with its clocks
 // 2.5 ms apart is not replayed ([1]).
@@ -554,6 +555,36 @@ console.log('[8] the frame\'s view where the play parts from it: a zone meter, a
   ok(staged.told.some(([id]) => id === victimId) && oldVictim.modeLife === 'alive' && newVictim.modeLife === 'alive' && huntOf(fresh) === huntOf(staged.old),
     `infected: a ring arrival the play did not make by the frame is taken as made (${victimId} ${newVictim.modeLife}; the hunt's arrivals ${huntOf(fresh)} `
       + `against ${huntOf(staged.old)})`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // and that ring arrival killed again by the seat 5 ticks after the old host stood it up, before the frame: its arrival
+  // taken, then its death (its respawn from the frame)
+  const victimId = 'b-1';
+  let riseK = null, againK = null;
+  const staged = stage({ mode: 'infected', window: 320, during: (old, k) => {
+    const victim = old.authority.entityById.get(victimId);
+    if (k === 5) { victim.combat.hp = 0; victim.combat.destroyed = true; return; }
+    if (k > 5 && riseK === null && victim.modeLife === 'alive' && !victim.combat.destroyed) riseK = k;
+    if (riseK !== null && againK === null && k === riseK + 5) { victim.combat.hp = 0; victim.combat.destroyed = true; againK = k; }
+  } });
+  const { state } = resumeStateFromRetained(staged.keyframe, 0, staged.latest, 500, [], [], staged.told);
+  const fresh = makeFor(staged.mode, staged.ruleset)({ tick: state.tick, ...resumeClocksOf(state) });
+  const play = fresh.authority.step.bind(fresh.authority);
+  let played = 0;
+  fresh.authority.step = (input) => {
+    if (++played === 30) { const victim = fresh.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; }
+    return play(input);
+  };
+  applyResumeState(fresh, state);
+  fresh.authority.step = play;
+  const huntOf = (actor) => actor.authority.captureModeCheckpoint().mode.hunt?.arrivals;
+  const dueOf = (actor) => actor.authority.captureModeCheckpoint().mode.respawns.find(([id]) => id === victimId)?.[1].atS;
+  const oldVictim = staged.old.authority.entityById.get(victimId), newVictim = fresh.authority.entityById.get(victimId);
+  const late = dueOf(fresh) - dueOf(staged.old);
+  ok(riseK !== null && againK !== null && newVictim.modeLife === 'down' && oldVictim.modeLife === 'down' && huntOf(fresh) === huntOf(staged.old)
+    && late >= 0 && late <= 320 / 60, `infected: that arrival killed again before the frame is taken, then down (the hunt's arrivals ${huntOf(fresh)} against `
+      + `${huntOf(staged.old)}; its respawn ${late.toFixed(3)} s after the old host's, from the frame)`);
   staged.old.stop(); fresh.stop();
 }
 {
