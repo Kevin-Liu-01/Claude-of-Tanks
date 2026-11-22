@@ -312,8 +312,11 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
   const ownKeepR = (turretG.userData as TurretSeatLimits).turretSeatKeepR;
   const keepIn = typeof ownKeepR === 'number' ? ownKeepR : 0;
   const inFoot = footBandTest(footline, receipt, keepIn);
-  // no corner inside the race's rim (the basket and collar) or the builder's keep radius comes up for a face reaching out
-  const holdR = Math.max(receipt.rimR + FOOT_RIM_PAD_M, keepIn);
+  // under a builder's keep radius no corner inside it (or inside the race's rim) comes up for a face reaching out. Without
+  // one, a face comes up whole: holding its inner corners tilts it, and two caps built back to back with different
+  // triangulations (the BMP-3's foot slab, its top ringed at the rim, its bottom fanned from the axis) tilt apart, the
+  // lower cap's back drawn over the upper beside the gun (the gun-junction census's nine openings; 274 fix3)
+  const holdR = keepIn > 0 ? Math.max(receipt.rimR + FOOT_RIM_PAD_M, keepIn) : 0;
   const { cx, cz } = seat;
   const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
   let liveTop = -Infinity;
