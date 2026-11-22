@@ -44,7 +44,7 @@ interface AimSpec {
   hydropneumaticAim?: HydropneumaticAim;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: ReloadGunSpec & { baseAccuracy: number; shells: DamageShellSpec[]; launcherSalvo?: { rounds: number } | null };
+  gun: ReloadGunSpec & { baseAccuracy: number; shells: DamageShellSpec[] };
 }
 
 interface ArmorTraceHit {

@@ -2376,7 +2376,8 @@ export function selectFirstAvailableShell(
 /** What a load cycle's duration reads from the combat state: the crew, the modules and the equipment. */
 type ReloadEffects = Pick<CombatState, 'crew' | 'modules' | 'equipMults'>;
 /** The gun fields a load cycle's duration reads. */
-export type ReloadGunSpec = Pick<DamageGunSpec, 'reloadS' | 'shells' | 'autoloader' | 'launcherMuzzles' | 'fixedLaunchCanisters'>;
+export type ReloadGunSpec = Pick<DamageGunSpec, 'reloadS' | 'shells' | 'autoloader' | 'launcherMuzzles' | 'fixedLaunchCanisters'
+  | 'launcherSalvo'>;
 
 /** Shared crew, module, and equipment multiplier for a new load cycle. */
 function reloadMultiplier(
@@ -2417,18 +2418,24 @@ function magazineCycleS(combatState: ReloadEffects, gun: ReloadGunSpec, slot: nu
  * would give the cycle (the same helpers), read without starting it. The reticle shows it while the gun is loaded
  * (owner 2026-11-20: the reload time a player plans the next shot by).
  * - A conventional gun, a named secondary weapon (reloadGroup): the selected round's cycle.
- * - A guided round: its launcher's full cycle. On a rack salvo that is the group reload; the short intervals between
- *   the group's shots are the rack indicator's.
+ * - A guided round: its launcher's full cycle. On a rack salvo (launcherSalvo) the short interval while a missile of the
+ *   group stays after the shot, the group reload on its last.
  * - A cannon magazine: the intra-clip cycle while a round stays after the shot, the whole magazine's load on the last.
+ * The branches are startPostShotReload's, in its order (aimController/hudAmmoOutPaint selftests hold the two equal on
+ * every hull's every weapon, mid-clip and mid-salvo).
  */
 export function nextShotReloadS(
-  combatState: ReloadEffects & Pick<CombatState, 'shellSlot' | 'magazine'>,
+  combatState: ReloadEffects & Pick<CombatState, 'shellSlot' | 'magazine' | 'launcherSalvoShots'>,
   spec: { gun: ReloadGunSpec },
 ): number {
   const gun = spec.gun;
   const loaded = gun.shells?.[combatState.shellSlot];
   const magazine = combatState.magazine;
   const autoloader = gun.autoloader;
+  const salvo = gun.launcherSalvo;
+  if (loaded?.guided === true && salvo && ((combatState.launcherSalvoShots ?? 0) + 1) % salvo.rounds !== 0) {
+    return salvo.intervalS * reloadMultiplier(combatState, true);
+  }
   if (loaded?.guided === true || loaded?.reloadGroup || !magazine || !autoloader) {
     return shellCycleS(combatState, gun, loaded);
   }
