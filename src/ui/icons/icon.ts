@@ -40,7 +40,6 @@ const ACTIVE_CSS = '[aria-pressed=true] .cot-i[data-af],[aria-selected=true] .co
 let spriteHost: SVGSVGElement | null = null;
 let fullSprite: Promise<void> | null = null;
 let lazyHost: SVGSVGElement | null = null;
-let lazySprite: Promise<void> | null = null;
 
 /** A real DOM to mount into (receipts may stub `document` without SVG support). */
 const canMount = (): boolean => typeof document !== 'undefined' && typeof document.createElementNS === 'function';
@@ -64,19 +63,13 @@ function hiddenHost(id: string): SVGSVGElement {
 
 /** The garage, gallery, Field Manual and camo glyphs (spriteLazy.svg), their own chunk in their own host, so the main
  *  sprite's swap-in never drops them. */
-function mountLazySprite(): Promise<void> {
-  lazySprite ??= import('./spriteLazy.svg?raw').then(({ default: text }) => {
-    const start = text.indexOf('<symbol');
-    try {
-      lazyHost ??= hiddenHost(LAZY_SPRITE_ID);
-      if (start >= 0) lazyHost.innerHTML = text.slice(start, text.lastIndexOf('</svg>'));
-      if (!lazyHost.isConnected) attachHost(lazyHost);
-    } catch { /* a partial DOM: nothing to mount into */ }
-  }, (error: unknown) => {
-    lazySprite = null; // a failed chunk load retries on the next mount
-    console.warn('[icons] lazy sprite failed to load', error);
-  });
-  return lazySprite;
+function mountLazySymbols(text: string): void {
+  const start = text.indexOf('<symbol');
+  try {
+    lazyHost ??= hiddenHost(LAZY_SPRITE_ID);
+    if (start >= 0) lazyHost.innerHTML = text.slice(start, text.lastIndexOf('</svg>'));
+    if (!lazyHost.isConnected) attachHost(lazyHost);
+  } catch { /* a partial DOM: nothing to mount into */ }
 }
 
 /**
@@ -97,17 +90,21 @@ export function mountIconSprite(): Promise<void> {
   }
   // The sprite is two Vite chunks; outside Vite (Node receipts with a stub DOM) the boot slice is all there is.
   if (!import.meta.env) return Promise.resolve();
+  // (one memo for both chunks, the main sprite's: it is the known site app/lazyChunkSites.selftest.mjs lists, since a
+  // sprite every page's boot holds must not pull app/lazyChunk.ts onto the docs, pad and landing pages; mobile-hud-274d.
+  // The lazy glyphs follow the main ones, so a capture that awaits this has every glyph; either failing clears it and the
+  // next icon asks both again, the main one from the cache)
   fullSprite ??= import('./spriteMain.svg?raw').then(({ default: text }) => {
     const start = text.indexOf('<symbol');
     if (spriteHost && start >= 0) {
       spriteHost.innerHTML = `<style>${STYLE_LAYER_ORDER}@layer components{${ACTIVE_CSS}}</style>${text.slice(start, text.lastIndexOf('</svg>'))}`;
     }
-  }, (error: unknown) => {
+    return import('./spriteLazy.svg?raw');
+  }).then(({ default: text }) => mountLazySymbols(text), (error: unknown) => {
     fullSprite = null; // a failed chunk load retries on the next icon
     console.warn('[icons] sprite failed to load', error);
   });
-  // (the lazy glyphs follow the main ones, so a capture that awaits this has every glyph)
-  return fullSprite.then(() => mountLazySprite());
+  return fullSprite;
 }
 
 /** Markup for one icon: a host <svg> referencing the sprite symbol. Empty for an empty id. */
