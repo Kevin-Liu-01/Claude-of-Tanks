@@ -12,7 +12,8 @@
 // keyframe alone, the raider going in at speed: the two hulls drive one track to the flag and lift it on one tick. [2]
 // the seat's newest frame 0.5 s newer: the new brain takes the way on from the newer row, and the raider keeps the old
 // host's track. [3] that frame with the hull thrown 40 m off its way: the stale list is refused and the brain plans
-// afresh, and still goes in. [4] the record is JSON-safe and a corrupt one changes nothing. [5] mulberry32, its state
+// afresh, and still goes in. [4] the record is JSON-safe and a corrupt one changes nothing (276: a way of no list leaves the
+// brain none). [5] mulberry32, its state
 // now readable, draws the verbatim copy's sequence.
 // Fix-up r1 (the correctness review of gaps 274: two parts of the take were in no receipt): [1] also holds the brain's
 // streams, the controller's (its LOS and probe timers draw from it every interval, the reaction and unstick sides on
@@ -197,6 +198,12 @@ console.log('[4] the record is JSON-safe; a corrupt one changes nothing');
     ok(record.owner === 'destination' && !!record.mission && Math.abs(aged.mission?.[2] - record.mission[2] - 0.5) < 1e-9
       && Math.abs(aged.nav[3] - record.nav[3] - 0.5) < 1e-9, `taken 0.5 s on, the route's age and the watchdog run on by 0.5 s (age `
       + `${record.mission?.[2]?.toFixed(3)} -> ${aged.mission?.[2]?.toFixed(3)}, watchdog ${record.nav[3].toFixed(3)} -> ${aged.nav[3].toFixed(3)})`);
+    // 276: a brain that held no list (its way 'none') holds none on the new host, its mission's record still taken; a new
+    // brain kept the list it held (its construction's opening route) and drove it
+    brain.takeDrive({ ...record, way: [], at: 0, owner: 'none', planned: false }, 0);
+    const none = brain.captureDrive();
+    ok(none.owner === 'none' && none.way.length === 0 && JSON.stringify(none.mission) === JSON.stringify(record.mission), `a way of no list leaves the brain none `
+      + `(${none.owner}, ${none.way.length} waypoints; its mission ${JSON.stringify(none.mission)})`);
   }
   actor.stop();
 }
@@ -340,6 +347,8 @@ function downAtKeyframe(revivedInWindow, replay = false) {
   const constructed = built.authority.entityById.get('a-0').aiCtl.captureDrive().streams;
   built.stop();
   const downAtResume = hull.combat.destroyed && twin.combat.destroyed;
+  // the down raider's brain as each host holds it before any revive (276: 275's restore handed it back at once)
+  const brainsAtResume = [JSON.stringify(hull.aiCtl.captureBrain()), JSON.stringify(twin.aiCtl.captureBrain())];
   fresh.authority.onMatchReady();
   // the first step: what each brain measures from its hull (a brain handed the dead life's record and no hand-back read the
   // move from its death to its spawn as one tick's progress)
@@ -357,7 +366,7 @@ function downAtKeyframe(revivedInWindow, replay = false) {
   }
   old.stop(); fresh.stop();
   return { sealed, atKeyframe, taken, constructed, downAtResume, apart, apartAt, together, told: told.get('a-0') ?? null, keyTick: keyframe.tick, brainsOnRise,
-    sealedBrain: !!sealed?.brain, firstTick, replayed: applied.replayed ?? null, atResume, keyTarget, takenTarget };
+    sealedBrain: !!sealed?.brain, firstTick, replayed: applied.replayed ?? null, atResume, keyTarget, takenTarget, brainsAtResume };
 }
 /** The fields two brain records hold apart, as `part[index] old/new` (game/ai.ts BotBrain's lists). */
 function brainApart(a, b) {
@@ -403,6 +412,9 @@ for (const [label, revivedInWindow, replay] of [['[7a] a raider down when the ke
       + `no spike on its first tick (progressRate ${b.progressRate} m/s against the old host's ${a.progressRate}, burstDamage ${b.burstDamage}/${a.burstDamage})`);
   }
   if (!revivedInWindow) {
+    // a down bot's hand-back is its revive's: the restore takes its brain as the old host holds it, field for field
+    ok(run.brainsAtResume[0] !== 'null' && run.brainsAtResume[0] === run.brainsAtResume[1], `the down raider's brain on the new host is the old host's before `
+      + `its revive, field for field (276: no hand-back at the restore; ${run.brainsAtResume[0] === run.brainsAtResume[1] ? 'alike' : `apart: ${brainApart(run.brainsAtResume[0], run.brainsAtResume[1])}`})`);
     ok(run.sealedBrain && !!run.brainsOnRise && run.brainsOnRise[0] !== 'null' && run.brainsOnRise[0] === run.brainsOnRise[1], `the keyframe carries the down `
       + `raider's brain, and once both hosts revive it the new brain is the old host's, field for field (${run.brainsOnRise ? `${run.brainsOnRise[0].length} `
       + `bytes of record${run.brainsOnRise[0] === run.brainsOnRise[1] ? ', alike' : `; apart: ${brainApart(run.brainsOnRise[0], run.brainsOnRise[1])}`}` : 'never both up'})`);

@@ -571,6 +571,7 @@ export function createMatchHostCore({
       // timeline, the ticks spent loading the world and holding for the seats skipped (267)
       // and in the phase the old host was in (audit M1: a countdown with its time left, an ended match with its verdict)
       // the battle it plays (round 3 A3): the resumed battle's, or a fallback restart's own; its WELCOMEs and keyframes carry it
+      // on the keyframe's clocks when the resume replays its window (276; applyResumeState steps them on to the frame's)
       resume: resume ? { tick: resume.resumeTick, ...resumeClocksOf(resume),
         dueAtMs: bootStarted, ...resumePhaseOf(resume),
         ...(resume.battleId ? { battleId: resume.battleId } : {}) } : null,

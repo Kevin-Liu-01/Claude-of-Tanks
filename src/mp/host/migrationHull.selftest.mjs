@@ -65,13 +65,14 @@ function migrate(latest = null) {
 
 console.log('[1] the census: every number and flag of a hull rides, or is named');
 {
-  // the paths: the state's numbers and flags, those of its objects one deep; the kit's slew; the special action; the input
+  // the paths: the state's numbers and flags, those of its objects one deep; the hp (its row's is whole: a brain read the
+  // rounding as damage); the kit's slew; the special action; the input
   const paths = [];
   for (const [key, value] of Object.entries(hull.state)) {
     if (typeof value === 'number' || typeof value === 'boolean') paths.push(['state', key]);
     else if (value && typeof value === 'object') for (const [inner, v] of Object.entries(value)) if (typeof v === 'number' || typeof v === 'boolean') paths.push(['state', key, inner]);
   }
-  paths.push(['combat', 'auxiliary', 'gunYaw'], ['combat', 'auxiliary', 'gunPitch'], ['combat', 'auxiliary', 'stations', 0, 'gunYaw'], ['combat', 'auxiliary', 'stations', 0, 'gunPitch'],
+  paths.push(['combat', 'hp'], ['combat', 'auxiliary', 'gunYaw'], ['combat', 'auxiliary', 'gunPitch'], ['combat', 'auxiliary', 'stations', 0, 'gunYaw'], ['combat', 'auxiliary', 'stations', 0, 'gunPitch'],
     ['specialAction', 'active'], ['specialAction', 'previousShellSlot']);
   for (const [key, value] of Object.entries(hull.input)) {
     if (typeof value === 'number' || typeof value === 'boolean' || value === null) paths.push(['input', key]);
@@ -80,6 +81,7 @@ console.log('[1] the census: every number and flag of a hull rides, or is named'
   const at = (root, path) => path.reduce((o, k) => o?.[k], root);
   const put = (root, path, value) => { path.slice(0, -1).reduce((o, k) => o[k], root)[path.at(-1)] = value; };
   const INTEGERS = new Set(['bodyRest', 'bounces', 'impactSource', 'shellSlot', 'actionBits', 'auxiliaryBits', 'previousShellSlot', 'fireIntentSeq']);
+  // (the hp moved by a fraction: its row rounds back to the old host's, so the hull's own reading stands)
   const carried = [], left = [], stale = [];
   for (const path of paths) {
     const before = at(hull, path);

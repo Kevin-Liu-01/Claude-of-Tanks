@@ -32,6 +32,10 @@
 //     outside the window here; a shot still in flight at the frame is no keyframe's or replay's (docs/MULTIPLAYER-V2.md).
 // [7] Turbo Ball, a 30-tick window: the ball and every bot to the bit (the rows' millimetres the ball carried on through
 //     each contact parted 275's hulls 0.6-0.8 m in 8 s from a keyframe alone: modeWindowMigration [5] holds that now).
+// [8] matches whose bots have no mission to drive (standard; Zone Control between pushes; realistic): to the bit from a
+//     keyframe alone and through a window. Their bots drive search, sector and level legs, which 274's way left to be
+//     planned afresh; a brain with no list kept its construction's opening route; a mission's record rode only with a
+//     destination's list; the hand-back's test refused a search leg just given (game/ai.ts takeDrive). 40-185 m at 275.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -291,7 +295,8 @@ function fightTwin({ seed, window = 30, t0 = 45, hilly = false, human = false, m
   for (let k = 0; k < window; k++) step();
   const latest = hostFrame(old, tick, era);
   inputs.delete('h0');
-  const replayed = resume(make, keyframe, latest, told), read = resume(make, keyframe, latest, told, false);
+  // (no window: the keyframe alone, and its 275 reading is the same resume)
+  const replayed = resume(make, keyframe, window ? latest : null, told), read = resume(make, keyframe, window ? latest : null, told, false);
   // on together, the inputs read off the old host before its step and ridden to every host's (they stand in `inputs`)
   const from = tick;
   // (Turbo Ball: the ball beside the hulls, the widest gap over the run, read after each step)
@@ -331,6 +336,16 @@ console.log('[7] Turbo Ball, a 30-tick window: the ball and the bots to the bit'
   const { run, run275, replayed, balls } = fightTwin({ seed: 9, t0: 20, mode: 'turbo_ball' });
   ok(replayed?.steps === 30 && both(run) === 0 && balls[0] === 0, `every bot and the ball keep the old host's for 10 s, to the bit (bots ${both(run).toFixed(3)} m, `
     + `the ball ${balls[0].toFixed(3)} m; the 275 reading: bots ${wider(run275)}, the ball ${balls[1].toFixed(3)} m)`);
+}
+
+console.log('[8] matches with no mission to send the bots on (standard, Zone Control between pushes, realistic): to the bit');
+// (the bots drive search, sector and level legs there, which a new brain planned afresh, a brain with no list kept its
+// construction's opening route, a mission's record rode only with a destination's list, and a search leg a hull had just
+// been given failed the hand-back's test; parted 40-185 m from a keyframe alone at 275)
+for (const mode of ['standard', 'zone_control', 'realistic']) {
+  const alone = fightTwin({ seed: 5, t0: 30, window: 0, mode }), played = fightTwin({ seed: 5, t0: 30, mode });
+  ok(!alone.replayed && both(alone.run) === 0 && played.replayed?.steps === 30 && both(played.run) === 0, `${mode}: every bot keeps the old host's track for 10 s, `
+    + `to the bit from the keyframe alone (${both(alone.run).toFixed(3)} m) and through a 30-tick window (${both(played.run).toFixed(3)} m; the 275 reading: ${wider(played.run275)})`);
 }
 
 if (failures) { console.error(`migrationTwins.selftest: ${failures} failure(s)`); process.exit(1); }
