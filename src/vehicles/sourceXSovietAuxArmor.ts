@@ -3,7 +3,7 @@
 // topology or new visual geometry. Nominal protection remains donor balance.
 import type {FleetTankSpec} from './specContracts.ts';
 import type {ArmorPlate, Vec3Tuple} from './specHelpers.ts';
-import {rubberSkirtSheets} from './profiles/rubberSkirtSheets.ts';
+import {rubberSkirtSheets,type RubberSkirtStation} from './profiles/rubberSkirtSheets.ts';
 import {t80uXSkirtRuns} from './profiles/t80uXApron.ts';
 
 type Point = Vec3Tuple;
@@ -213,6 +213,28 @@ const authors: Readonly<Record<string,(emit: Emit,side: number)=>void>>={
   t72b_1987:t72b1987,t80u:t80,t72b3:t72b3,t72b3m_2016:t72b3m_2022,
   t72bu:t72bu_1989,t90:t90aw,t90a_burlak:burlak,t90ms_tagil:msCurtains,
 };
+
+/** The national concepts on the T-80U hull (nationalModernizationSpecs.ts) build no donor skirt: each country's kit
+ * hangs its own skirt modules there (profiles/nationalModernization.ts). Their hulls take each donor skirt run's coarse
+ * outline (its outer face, foot to bead top, at the run's two ends), which the anatomy generator fits onto those modules,
+ * never the donor's per-sheet facets, which pin to rubber sheets those hulls do not draw and are held off the build
+ * (t80-274-fix3; hitbox-fit-274). Other donors' plates are returned as they are. */
+export function sourceXSovietSkirtOutline(donor: string,plates: readonly ArmorPlate[]): ArmorPlate[] {
+  if (donor!=='t80u') return [...plates];
+  const facet=(p: ArmorPlate): boolean=>/^skirt_[LR]$/.test(p.name) && !!p.surfaceGroup?.startsWith('t80-skirt-');
+  const outline: ArmorPlate[]=[];
+  for (const side of [-1,1]) {
+    const seed=plates.find(p=>facet(p)&&p.name.endsWith(side<0?'_L':'_R'));
+    if (!seed) throw new Error(`${donor}: segmented skirt facets missing`);
+    const emit=emitter(outline,seed);
+    for (const run of t80uXSkirtRuns(side)) {
+      const sheets=rubberSkirtSheets(run,run.label),first=sheets[0].stations[0],last=sheets.at(-1)!.stations.at(-1)!;
+      const at=({z,ring}: RubberSkirtStation,k: number): Point=>[side*ring[k][0],ring[k][1],z];
+      sideQuad(emit,side,at(first,1),at(first,4),at(last,1),at(last,4),`t80-skirt-outline-${side}-${run.label}`);
+    }
+  }
+  return [...plates.filter(p=>!facet(p)),...outline];
+}
 
 /** Called after source dimensions/pivots and authored ERA setup, before the
  * anatomy pass. Unknown/original IDs are untouched. Non-target plates retain
