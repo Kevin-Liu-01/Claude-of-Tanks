@@ -74,7 +74,7 @@ assert.match(access, /answerOffer\(outcome === 'done' \? 'start' : 'later'\);\s*
   'the offer: Start launches the training battle, either answer recorded');
 assert.match(access, /\} else if \(tutorialChapterDue\('offer'\)\) \{\s*start\('offer', deps\.onGarage\);/, 'the offer on the Garage when it is due');
 assert.ok(!/isTutorialBattle|start\('(battle|tips)'|chapter === '(battle|tips)'|'tips'/.test(access), 'the access runs no 272 battle or tips chapter');
-assert.match(read('src/main.ts'), /launchTraining: \(\) => \{\s*const rules = matchRulesetFor\('training'\)\.training;\s*if \(rules\) beginLocalBattle\(\{ specId: rules\.loanerSpecId, mapId: rules\.mapId, gameMode: 'training' \}\);/,
+assert.match(read('src/main.ts'), /launchTraining: \(\) => \{\s*const rules = trainingRulesFor\(matchRulesetFor\('training'\)\);\s*if \(rules\) beginLocalBattle\(\{ specId: rules\.loanerSpecId, mapId: rules\.mapId, gameMode: 'training' \}\);/,
   'main launches the training battle: the loaner on its battlefield, the training mode');
 const runnerSource = read('src/ui/tutorial/tutorialRunner.ts');
 assert.match(runnerSource, /if \(advance\.own\) \{ event\.preventDefault\(\); event\.stopImmediatePropagation\(\); \}/, 'an owned press never reaches the control');

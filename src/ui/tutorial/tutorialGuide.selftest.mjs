@@ -21,7 +21,7 @@ import {
 } from './tutorialGuideMath.ts';
 import { TRAINING_STEPS, TUTORIAL_STEPS, chapterSteps } from './tutorialSteps.ts';
 import { DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS } from '../../game/input.ts';
-import { TRAINING_POINTS, TRAINING_RULES, planTrainingRange, trainingRoster } from '../../sim/trainingGround.ts';
+import { TRAINING_POINTS, TRAINING_RULES, planTrainingRange, trainingRoster, trainingRulesFor } from '../../sim/trainingGround.ts';
 import { GAME_MODE_DEFINITIONS, DEPLOY_MODE_ORDER, isPracticeMode, isTutorialMode } from '../../sim/gameModeCatalog.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 
@@ -150,7 +150,9 @@ for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS]) {
   const enemies = TRAINING_RULES.actors.length + TRAINING_RULES.skirmish.enemies.length;
   assert.equal(ruleset.enemies, enemies, 'the field is the scenes\' hulls and the skirmish\'s enemies');
   assert.equal(ruleset.allies, TRAINING_RULES.skirmish.allies.length, 'the allies the skirmish\'s');
-  assert.equal(ruleset.training, TRAINING_RULES);
+  assert.equal(ruleset.training, true, 'the ruleset marks the training battle and carries none of its data (274: the rooms Worker reads the table)');
+  assert.equal(trainingRulesFor(ruleset), TRAINING_RULES, 'the solo battle reads the rules through the mark');
+  assert.equal(trainingRulesFor(matchRulesetFor('standard')), null, 'and no other mode has them');
   const arranged = matchRulesetFor('training', null, { allies: 5, enemies: 9, teamNations: 'random' });
   assert.ok(arranged.enemies === enemies && arranged.allies === TRAINING_RULES.skirmish.allies.length, 'no arrangement changes it');
 }

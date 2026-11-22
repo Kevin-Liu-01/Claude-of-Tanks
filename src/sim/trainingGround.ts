@@ -8,7 +8,7 @@
  * Proving Ground's kind: seated on marks, no brain; a scene's script drives the ones that move or fire, and the
  * simulation resolves every shell they fire.
  *
- * This leaf holds the rules (the matchRuleset table imports and re-exports them) and turns them into the range layout
+ * This leaf holds the rules (the matchRuleset table marks the mode and holds its roster counts; trainingRulesFor) and turns them into the range layout
  * the solo battle already seats a Proving Ground from (sim/provingGround.ts ProvingRangeLayout): the player on the
  * origin, each actor on its own mark in roster order, the earthworks as course stamps. Pure: the rules and the ground's
  * heights decide it.
@@ -276,6 +276,13 @@ export const TRAINING_POINTS = Object.freeze({
   // (the side the search cleared: its line to Sentry 3 1.9 m over the ground)
   ringQ: Object.freeze({ x: S11_COVER.x + S11_LINE.z * S11_PEEK_SIDE_M, z: S11_COVER.z - S11_LINE.x * S11_PEEK_SIDE_M, radiusM: 3 }),
 });
+
+/** The training battle's rules for a ruleset that marks one (sim/matchRuleset.ts `training`), else null. The ruleset
+ *  carries only the mark and the roster counts: it is in the rooms Worker's program, which never seats a training
+ *  battle, so the rules and this module stay on the solo side that runs them (274: roomWorkerProgram.selftest). */
+export function trainingRulesFor(ruleset: { readonly training?: true }): TrainingRules | null {
+  return ruleset.training ? TRAINING_RULES : null;
+}
 
 /** An actor's rule by its scenes' name. */
 export function trainingActor(rules: TrainingRules, key: string): TrainingActorRule | null {
