@@ -33,6 +33,7 @@ import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.t
 import { LANDMARK_BUILDERS } from './index.ts';
 import type { LandmarkKind, LandmarkPlacement } from './types.ts';
 import { landmarkModulesOf, landmarkPiecesOf, markLandmarkParts, samplePieceGround } from './pieces.ts';
+import { placeSurroundings } from './surround.ts';
 // the set pieces' damage kit registers itself (props lane A, E12)
 import './damage.ts';
 
@@ -48,7 +49,7 @@ const MAX_FALL_M = 3.2;
 
 const SOFT_KINDS = new Set(['rock', 'small-rock', 'rubble', 'hedgehog']);
 
-type LandmarkHeightField = Pick<HeightField, 'getHeightAt' | 'getWaterMaskAt' | '_roadDist'>;
+type LandmarkHeightField = Pick<HeightField, 'getHeightAt' | 'getWaterMaskAt' | '_roadDist' | '_noVeg' | 'getNormalAt'>;
 
 interface LandmarkComposeContext {
   mapId: string;
@@ -110,6 +111,8 @@ interface LandmarkReceiptEntry {
   overlaps?: string[];
   /** Its ground vetoed rather than reserved (types.ts `ground`). */
   ground?: 'veto';
+  /** The props set round it (surround.ts). */
+  surround?: number;
 }
 
 interface LandmarkReceipt {
@@ -531,6 +534,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const [x, z] = toWorld(module.x, module.z);
       ctx.addDestructible(module.kind, x, ctx.heightField.getHeightAt(x, z) + (module.lift ?? 0), z, yaw + module.yawDeg * Math.PI / 180, module.scale ?? 1);
     }
+    // (landmarks-realism-273) its surroundings: its region's and its trade's props round its footprint (surround.ts)
+    const surround = placeSurroundings({ mapId: ctx.mapId, heightField: ctx.heightField, obstacles: ctx.obstacles, spawns: ctx.spawns,
+      square: SQUARE, spawnClear: SPAWN_CLEAR, roadClear: ROAD_CORE_M, reserve: (rx, rz, rr) => ctx.reserve(rx, rz, rr),
+      addDestructible: (k, dx, dy, dz, dyaw, sc) => ctx.addDestructible(k, dx, dy, dz, dyaw, sc) }, placement.kind, placement.x, placement.z, hw, hl, yaw, discs, identity);
+    if (surround) entry.surround = surround;
     queue.unshift(...(built.children ?? []).map((child, k): LandmarkPlacement => {
       const [x, z] = toWorld(child.x, child.z);
       return { ...child, x, z, yawDeg: (placement.yawDeg ?? 0) + (child.yawDeg ?? 0), seed: (placement.seed ?? 0) * 31 + k + 1,
