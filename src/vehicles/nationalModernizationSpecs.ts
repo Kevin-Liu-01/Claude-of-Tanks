@@ -2,6 +2,7 @@ import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
 import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
+import {sourceXSovietSkirtOutline} from './sourceXSovietAuxArmor.ts';
 import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH,NATIONAL_BARREL_RADIUS} from './nationalModernizationDesign.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
@@ -31,7 +32,7 @@ export function synchronizeNationalModernizationMetadata():void {
     const donorTurret=NATIONAL_DONOR_TURRETS[c.id];
     if(donorTurret){synchronizeDonorTurretConcept(c,design);continue;}
     s.armor=structuredClone(upper.armor);
-    s.armor.hullPlates=structuredClone(hull.armor.hullPlates);
+    s.armor.hullPlates=structuredClone(sourceXSovietSkirtOutline(c.donor,hull.armor.hullPlates));
     // All three chassis receive new side banks, including T-80 donors whose
     // original gameplay envelope only had glacis ERA. Replace, do not duplicate.
     s.armor.hullPlates=s.armor.hullPlates.filter(p=>!['skirt_era_L','skirt_era_R'].includes(p.name));
@@ -85,7 +86,7 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   const d=NATIONAL_DONOR_TURRETS[c.id]!,turret=TANK_SPECS[d.donor];
   if(!turret)throw new Error(`${c.id}: donor turret ${d.donor} is not registered`);
   s.armor=structuredClone(turret.armor);
-  s.armor.hullPlates=structuredClone(hull.armor.hullPlates).filter(p=>!['skirt_era_L','skirt_era_R'].includes(p.name));
+  s.armor.hullPlates=structuredClone(sourceXSovietSkirtOutline(c.donor,hull.armor.hullPlates)).filter(p=>!['skirt_era_L','skirt_era_R'].includes(p.name));
   const inheritedEra=upper.armor.turretPlates.find(p=>p.era)?.era;
   if(!inheritedEra)throw new Error('SM turret donor requires ERA definition');
   const x=design.width/2,sideEra={kind:'era',era:structuredClone(inheritedEra)};

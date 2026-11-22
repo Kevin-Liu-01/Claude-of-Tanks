@@ -4,7 +4,7 @@ import {createTank} from './tankFactory.ts';
 import {getSpec,TANK_SPECS} from './specs.ts';
 import {donorSpec} from './donorSpecs.ts'; // 2026-09-24: the t72b_1987 donor record retired with the hidden fleet (owner: no hidden tanks)
 import {SECOND_WAVE_X_DONORS} from './sourceXSecondWaveSpecs.ts';
-import {applySourceXSovietAuxArmor,SOVIET_AUX_IDS} from './sourceXSovietAuxArmor.ts';
+import {applySourceXSovietAuxArmor,sourceXSovietSkirtOutline,SOVIET_AUX_IDS} from './sourceXSovietAuxArmor.ts';
 import {traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
@@ -191,5 +191,17 @@ for(const id of ids){
     }finally{t.dispose();}
   }
   assert.equal(JSON.stringify(donor),original,'original donor armor never mutated');
+}
+// t80-274-fix3: the national hulls on the T-80U (they hang their own skirt modules) take one coarse facet pair per skirt
+// run in place of the per-sheet facets, at the donor's skirt values; every other plate, and every other donor, untouched
+if(ids.includes('t80u')){
+  const plates=getSpec('t80u').armor.hullPlates,outline=sourceXSovietSkirtOutline('t80u',plates);
+  for(const side of ['L','R']){
+    const skirt=outline.filter(p=>owned(p)&&p.name===`skirt_${side}`);
+    assert.equal(skirt.length,4,`t80u skirt_${side}: two runs, two planar facets each`);
+    for(const p of skirt){assertOutline(p);assert.deepEqual(stats(p),EXPECTED_STATS.t80u);}
+  }
+  assert.deepEqual(outline.filter(p=>!owned(p)),plates.filter(p=>!owned(p)),'non-skirt plates kept');
+  const other=getSpec('t72b3').armor.hullPlates;assert.deepEqual(sourceXSovietSkirtOutline('t72b3',other),other);
 }
 console.log(`sourceXSovietAuxArmor: ${ids.length} native models high/low, ${facets} physical facets, recipe/ERA preservation PASS`);
