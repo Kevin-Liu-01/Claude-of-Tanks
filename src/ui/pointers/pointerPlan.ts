@@ -20,12 +20,14 @@
  *   close): a bubble on the screen's rim pointing at it, never on the ground (planBubbles). One the camera already shows
  *   gets none; the rest are ranked, merged where they meet on the rim, capped (4, or 3 on a phone), and moved along the
  *   rim off the HUD's controls and instruments.
- * The ladder is the battle notices' (Kevin's P4 can't play .. P-1 hints): while the sight is up only P >= 3 shows, so a
- * follow pointer (a hint, P-1) stands down in the sight and a warning (a threat, P3) does not.
+ * The ladder is the battle notices' own (battleNotices.ts NOTICE_PRIORITY; Kevin's P4 can't play .. P-1 hints): while
+ * the sight is up only P >= 3 shows, so a follow pointer (a hint, P-1) stands down in the sight and a warning (a threat,
+ * P3) does not.
  *
  * Deterministic: the same inputs plan the same pointers (ties fall to the id). pointerPlan.selftest.mjs holds it.
  * World axes are the simulation's: y up, a yaw of 0 faces +z, and a yaw turns toward +x (forward = (sin yaw, cos yaw)).
  */
+import { NOTICE_PRIORITY } from '../battleNotices.ts';
 
 export interface GroundPoint { readonly x: number; readonly z: number }
 export interface WorldPoint { readonly x: number; readonly y: number; readonly z: number }
@@ -33,12 +35,6 @@ export interface WorldPoint { readonly x: number; readonly y: number; readonly z
 export interface ScreenPoint { readonly x: number; readonly y: number; readonly behind: boolean }
 export interface Viewport { readonly width: number; readonly height: number }
 export interface ScreenBox { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }
-
-/**
- * The battle notices' ladder (ui/battleNotices.ts NOTICE_PRIORITY, notices-audit-275). WORKING-BRANCH MIRROR: the lane
- * imports the notices' own table once notices-audit-275 is on integ, and this copy goes (coordinator, 2026-11-22).
- */
-export const POINTER_PRIORITY = Object.freeze({ lost: 4, threat: 3, turned: 2, answered: 1, ambient: 0, teaching: -1 });
 
 // ── follow: on the ground ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -173,7 +169,7 @@ export interface WarnPointer {
   readonly x: number;
   readonly y: number;
   readonly z: number;
-  /** On the ladder (POINTER_PRIORITY): every warning today is a threat. */
+  /** On the ladder (NOTICE_PRIORITY): every warning today is a threat. */
   readonly priority: number;
   /** Within its rung, the more urgent first: a missile 3, an air run 2, a gun on the tank 1, a hull close by 0. */
   readonly rank: number;
@@ -314,7 +310,7 @@ export function planBubbles(input: BubbleInput): Bubble[] {
   const insets = edgeInsets(view, BUBBLE_EDGE_PX);
   const radius = bubbleRadius(view);
   const ranked = input.warns
-    .filter((warn) => !input.scoped || warn.priority >= POINTER_PRIORITY.threat)
+    .filter((warn) => !input.scoped || warn.priority >= NOTICE_PRIORITY.threat)
     .map((warn) => ({ warn, point: input.project(warn) }))
     .filter((entry): entry is { warn: WarnPointer; point: ScreenPoint } => !!entry.point && !insideInsets(entry.point, view, insets))
     .sort((a, b) => b.warn.priority - a.warn.priority || b.warn.rank - a.warn.rank || a.warn.distanceM - b.warn.distanceM
@@ -402,7 +398,7 @@ export function tankWarnings(player: WorldPoint, tanks: readonly WarnTank[]): Wa
     const gunOn = along > 0 && along <= GUN_REACH_M && across <= GUN_ON_M;
     if (!gunOn && distanceM > CLOSE_M) continue;
     out.push({
-      id: `tank:${tank.id}`, kind: 'tank', x: tank.x, y: tank.y + HULL_MID_M, z: tank.z, priority: POINTER_PRIORITY.threat,
+      id: `tank:${tank.id}`, kind: 'tank', x: tank.x, y: tank.y + HULL_MID_M, z: tank.z, priority: NOTICE_PRIORITY.threat,
       rank: gunOn ? WARN_RANK.gunOn : WARN_RANK.close, distanceM,
     });
   }
@@ -450,7 +446,7 @@ export function strikeWarnings(player: WorldPoint, strikes: readonly WarnStrike[
       ? { x: strike.x - Math.sin(heading) * APPROACH_BACK_M, y: player.y + APPROACH_UP_M, z: strike.z - Math.cos(heading) * APPROACH_BACK_M }
       : { x: strike.x, y: player.y, z: strike.z };
     out.push({
-      id: `air:${index}:${strike.status ?? ''}`, kind: 'air', ...from, priority: POINTER_PRIORITY.threat, rank: WARN_RANK.air,
+      id: `air:${index}:${strike.status ?? ''}`, kind: 'air', ...from, priority: NOTICE_PRIORITY.threat, rank: WARN_RANK.air,
       distanceM, countdownS: strike.countdownS, countdownLeft: Math.max(0, Math.min(1, strike.countdownS! / STRIKE_RING_S)),
     });
   });
@@ -487,7 +483,7 @@ export function missileWarnings(player: WorldPoint, missiles: readonly WarnMissi
       const across = Math.abs(dx * missile.vz - dz * missile.vx) / speed;
       if (along <= 0 || across > MISSILE_ON_M + along * 0.05) continue;
     }
-    out.push({ id: `missile:${missile.id}`, kind: 'missile', x: missile.x, y: missile.y, z: missile.z, priority: POINTER_PRIORITY.threat,
+    out.push({ id: `missile:${missile.id}`, kind: 'missile', x: missile.x, y: missile.y, z: missile.z, priority: NOTICE_PRIORITY.threat,
       rank: WARN_RANK.missile, distanceM });
   }
   return out;

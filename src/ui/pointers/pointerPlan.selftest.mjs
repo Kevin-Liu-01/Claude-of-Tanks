@@ -20,10 +20,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CLOSE_M, GUN_ON_M, OBJECTIVE_ZONE_RADIUS_M, POINTER_PRIORITY, STRIKE_RING_S, TRAIL_COUNT, TRAIL_FIRST_M, TRAIL_HIDE_WITHIN_M,
+  CLOSE_M, GUN_ON_M, OBJECTIVE_ZONE_RADIUS_M, STRIKE_RING_S, TRAIL_COUNT, TRAIL_FIRST_M, TRAIL_HIDE_WITHIN_M,
   TRAIL_STEP_M, TURN_FROM_DEG, TURN_RADII_M, bearing, bubbleCap, edgeInsets, edgePointer, insideInsets, missileWarnings,
   objectiveFollow, pickFollow, planBubbles, strikeWarnings, tankWarnings, trailChevrons, turnArrow,
 } from './pointerPlan.ts';
+import { NOTICE_PRIORITY } from '../battleNotices.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -143,7 +144,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const view = { width: 1280, height: 720 };
   // a projection that puts each warning where the test says: its x and y are the screen point, z < 0 means behind
   const project = (p) => ({ x: p.x, y: p.y, behind: p.z < 0 });
-  const warn = (id, x, y, z, rank, distanceM, extra = {}) => ({ id, kind: 'tank', x, y, z, priority: POINTER_PRIORITY.threat, rank, distanceM, ...extra });
+  const warn = (id, x, y, z, rank, distanceM, extra = {}) => ({ id, kind: 'tank', x, y, z, priority: NOTICE_PRIORITY.threat, rank, distanceM, ...extra });
   const shown = planBubbles({ warns: [warn('seen', 640, 360, 1, 1, 100)], project, view, scoped: false, noCover: [] });
   assert.equal(shown.length, 0, 'a warning the camera shows gets no bubble');
   const left = planBubbles({ warns: [warn('flank', -500, 360, 1, 1, 100)], project, view, scoped: false, noCover: [] });
@@ -174,7 +175,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   assert.ok(box.y1 < hud.y0 || box.y0 > hud.y1 || box.x0 > hud.x1, 'a bubble never lies on the HUD where the rim has room');
   assert.ok(Math.cos(slid[0].angle) < -0.9, 'it still points left, at the tank');
   // the sight: only threats
-  const hint = { ...warn('hint', -500, 360, 1, 0, 100), priority: POINTER_PRIORITY.teaching };
+  const hint = { ...warn('hint', -500, 360, 1, 0, 100), priority: NOTICE_PRIORITY.teaching };
   assert.equal(planBubbles({ warns: [hint], project, view, scoped: true, noCover: [] }).length, 0, 'scoped: a hint stands down');
   assert.equal(planBubbles({ warns: [hint], project, view, scoped: false, noCover: [] }).length, 1);
   assert.equal(planBubbles({ warns: [warn('t', -500, 360, 1, 1, 100)], project, view, scoped: true, noCover: [] }).length, 1, 'scoped: a threat shows');
