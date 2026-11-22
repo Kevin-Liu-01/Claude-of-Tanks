@@ -33,8 +33,10 @@ import {machinedRing} from '../machineGunGeometry.ts';
 import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {stowagePart} from './stowagePart.ts';
 import {jerrycanParts} from '../accessoryKits.ts';
-import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION,T80U_X_APRON,T80U_X_APRON_X0,T80U_X_APRON_X1,t80uXApronAt,t80uXApronX} from './t80uX.ts';
-import {rubberSkirtRun,skirtSections} from './rubberSkirt.ts';
+import {buildT80UXHullBase,buildT80UXGun,T80U_X_YAW,T80U_X_TRUNNION} from './t80uX.ts';
+import {T80U_X_APRON,T80U_X_APRON_X0,T80U_X_APRON_X1,t80uXApronAt,t80uXApronX} from './t80uXApron.ts';
+import {rubberSkirtRun} from './rubberSkirt.ts';
+import {skirtSections} from './rubberSkirtSheets.ts';
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
