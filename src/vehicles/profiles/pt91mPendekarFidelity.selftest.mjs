@@ -45,8 +45,32 @@ for(const quality of['high','low']){
  const donor=createTank('t72bu',null,options),tank=createTank('pt91m',null,options);
  try{
   donor.root.updateMatrixWorld(true);tank.root.updateMatrixWorld(true);
-  const core=['hull','turret','gun','gunMount'];
-  assert.equal(geometryBytes(tank.root,core),geometryBytes(donor.root,core),'exact donor core buffers; no second hull or turret');
+  const core=['hull','gun','gunMount'];
+  assert.equal(geometryBytes(tank.root,core),geometryBytes(donor.root,core),'exact donor core buffers; no second hull');
+  // 274: the turret-deck seat fits each build to its own deck (turret-deck-gate-274b 0a971bb934), so pt91m's turret is the
+  // donor's turret except where the seat moved it: same topology, x and z exact, y within 1 cm; normals and uvs follow the
+  // moved vertices only; every other attribute byte-equal.
+  {
+   const a=donor.root.getObjectByName('turret').geometry,b=tank.root.getObjectByName('turret').geometry;
+   assert.equal(b.attributes.position.count,a.attributes.position.count,'turret: donor vertex count');
+   assert.deepEqual(Object.keys(b.attributes).sort(),Object.keys(a.attributes).sort(),'turret: donor attributes');
+   const indexBytes=g=>g.index?Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength):null;
+   assert.ok(indexBytes(a)===null?indexBytes(b)===null:indexBytes(b)?.equals(indexBytes(a)),'turret: donor index buffer (or both unindexed)');
+   const pa=a.attributes.position.array,pb=b.attributes.position.array,moved=new Set();let maxDy=0;
+   for(let v=0;v<a.attributes.position.count;v++){
+    assert.ok(pb[v*3]===pa[v*3]&&pb[v*3+2]===pa[v*3+2],`turret vertex ${v}: x/z exact (seat moves y only)`);
+    const dy=Math.abs(pb[v*3+1]-pa[v*3+1]);if(dy>0){moved.add(v);maxDy=Math.max(maxDy,dy);}
+    assert.ok(dy<=.01,`turret vertex ${v}: seat y move ${dy.toFixed(4)} m within 1 cm`);
+   }
+   // A seated vertex re-shades its whole triangle, so normals and uvs may follow on every corner of a triangle that holds one.
+   const corner=(t,k)=>a.index?a.index.getX(t*3+k):t*3+k,follows=new Set();
+   for(let t=0;t<(a.index?.count??a.attributes.position.count)/3;t++)if([0,1,2].some(k=>moved.has(corner(t,k))))for(const k of[0,1,2])follows.add(corner(t,k));
+   for(const key of Object.keys(a.attributes))if(key!=='position'){
+    const x=a.attributes[key],y=b.attributes[key];
+    for(let v=0;v<x.count;v++)if(!follows.has(v))for(let k=0;k<x.itemSize;k++)assert.equal(y.array[v*x.itemSize+k],x.array[v*x.itemSize+k],`turret ${key} ${v}: donor value off the seated triangles`);
+   }
+   console.log(`pt91m ${quality}: turret seated ${moved.size} vertices (${follows.size} re-shaded), max y ${(maxDy*1000).toFixed(2)} mm: turret-deck seat fits pt91m's own deck (turret-deck-gate-274b 0a971bb934)`);
+  }
   const gear=[];donor.root.traverse(o=>{if(o.geometry&&/^gear/.test(o.name)&&!gear.includes(o.name))gear.push(o.name);});
   assert.ok(gear.length>8);assert.equal(geometryBytes(tank.root,gear),geometryBytes(donor.root,gear),'complete native donor wheels/rollers/links retain buffers and instances');
   for(const name of['rig_hull','rig_turret','rig_gun','rig_recoil'])assert.deepEqual(tank.root.getObjectByName(name).matrixWorld.elements,donor.root.getObjectByName(name).matrixWorld.elements,name+' stays in donor frame');
@@ -138,4 +162,4 @@ for(const quality of['high','low']){
   assert.equal(spec.visual.scheme,'stripes');assert.equal(spec.visual.number,'312');
  }finally{tank.dispose();donor.dispose();}
 }
-restore();console.log(`pt91mPendekarFidelity: HIGH/LOW exact T-72BU core/gear, ${checks} native ERA support/moving-gun checks, live/spent/reset kit and PT91 roof pass; photo/source qualification remains separate`);
+restore();console.log(`pt91mPendekarFidelity: HIGH/LOW exact T-72BU hull/gun/gear, donor turret seated on its own deck, ${checks} native ERA support/moving-gun checks, live/spent/reset kit and PT91 roof pass; photo/source qualification remains separate`);
