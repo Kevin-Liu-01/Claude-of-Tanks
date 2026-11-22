@@ -16,7 +16,7 @@
     "src/game/killcam.ts": {"colour":95,"fontSize":25,"letterSpacing":22,"zIndex":12,"shadow":14,"duration":3,"important":13},
     "src/game/pointerLockFeedbackRuntime.ts": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
     "src/pad/pad.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
-    "src/presentation/brand.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":2,"shadow":0,"duration":0,"important":0},
+    "src/presentation/brand.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":2,"shadow":1,"duration":0,"important":0},
     "src/presentation/home.css": {"colour":5,"fontSize":0,"letterSpacing":0,"zIndex":4,"shadow":0,"duration":0,"important":0},
     "src/presentation/mediaArchive.css": {"colour":3,"fontSize":10,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":0},
     "src/presentation/mediaLibrary.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
