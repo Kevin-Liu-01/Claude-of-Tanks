@@ -275,16 +275,27 @@ async function shootRuns(page, signal, tag, checkpoint) {
   await page.evaluate(stage);
   const battleState = () => page.evaluate(() => {
     const D = window.__DEBUG, g = D.game;
+    // (air-support-275) why a clock stands: the shot mode, the pause veil, the page's visibility and focus, and the
+    // full-screen layers shown
+    const layers = [...document.querySelectorAll('body > *')].filter((el) => {
+      const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+      return r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9 && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0;
+    }).map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`).slice(0, 12);
     return { timeS: +g.timeS.toFixed(2), phase: g.phase, result: g.result ?? null, rig: D.rig.mode ?? null,
-      camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)) };
+      camera: [D.camera.position.x, D.camera.position.y, D.camera.position.z].map((v) => +v.toFixed(0)),
+      shotMode: D.shotMode, veil: !!document.querySelector('.cot-resume.show'), visibility: document.visibilityState,
+      focus: document.hasFocus(), layers };
   });
   receipt.runStart = await battleState();
+  await sleep(1500);
+  receipt.runStart1500 = await battleState();
+  console.log(`[air-support-shots] the battle at the start: ${JSON.stringify(receipt.runStart)}; 1.5 s later: ${JSON.stringify(receipt.runStart1500)}`);
   await page.evaluate(async () => {
     const D = window.__DEBUG, V = D.camera.position.constructor;
     window.__runs = await import('/src/sim/strikeRuns.ts');
     const style = document.createElement('style');
     style.textContent = 'html.as-hud-hidden :is(.cot-hud,.cot-dp,.cot-si-stats,.cot-hints,.cot-medal-toasts,.cot-touch,'
-      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning,.cot-strike-dock){display:none!important}';
+      + '.cot-mode-status,.cot-mp-strip,.cot-strike-rack,.cot-binoculars,.cot-strike-warning,.cot-strike-dock,.cot-battle-notices){display:none!important}';
     document.head.append(style);
     document.documentElement.classList.add('as-hud-hidden');
     const eye = new V(), at = new V(), dir = new V();
