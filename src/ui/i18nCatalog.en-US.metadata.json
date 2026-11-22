@@ -233,6 +233,9 @@
   "hud.aimWarning.flipLine": {
     "context": "A battle key line: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key flips the overturned tank back onto its tracks."
   },
+  "hud.status.fireLine": {
+    "context": "A battle key line under the 'On fire' notice: the {placeholders} are key caps drawn before the words, so keep every placeholder first and the words after them; as short as the English (one line on a phone). Means: this key uses the fire extinguisher and puts out the fire on your own tank."
+  },
   "hud.hint.droneFlight.title": {
     "context": "A first-use hint title for flying the drone. Two words at most."
   },
