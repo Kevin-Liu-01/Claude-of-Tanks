@@ -24,6 +24,25 @@ const CSS = `
 .cot-status-box:hover{background:var(--hud-plate-strong)}
 .cot-status-summary{white-space:pre-line}
 .cot-touch-layout .cot-status-box{flex-basis:44px;height:44px;padding:9px}
+/* fire-visible-275 (Kevin 2026-11-22: "if a tank is on fire or our tank we have to see the fire effects"; his pick, an
+   edge flicker with the notice): in the sight our own hull's flames are out of frame, so the sight's bottom edge burns
+   while we do. Shown only scoped (html[data-cot-scoped]); the compositor alone (opacity, scale); still under reduced
+   motion, where it keeps its glow. */
+.cot-scope-fire{position:absolute;left:0;right:0;bottom:0;height:26%;pointer-events:none;opacity:0;visibility:hidden;
+ transition:opacity var(--dur-base) ease-out,visibility 0s linear var(--dur-base);
+ background:linear-gradient(to top,rgba(255,96,16,.42),rgba(255,96,16,.14) 38%,rgba(255,96,16,0) 72%);}
+.cot-scope-fire::before,.cot-scope-fire::after{content:"";position:absolute;inset:0;transform-origin:50% 100%;will-change:transform,opacity;
+ background:radial-gradient(14% 62% at 9% 100%,rgba(255,176,64,.75),rgba(255,96,16,0)),radial-gradient(11% 48% at 27% 100%,rgba(255,150,40,.7),rgba(255,96,16,0)),
+ radial-gradient(15% 70% at 46% 100%,rgba(255,170,56,.62),rgba(255,96,16,0)),radial-gradient(12% 52% at 66% 100%,rgba(255,150,40,.7),rgba(255,96,16,0)),
+ radial-gradient(14% 64% at 87% 100%,rgba(255,176,64,.75),rgba(255,96,16,0));}
+.cot-scope-fire::after{transform:scaleX(-1);opacity:.7}
+html[data-cot-scoped] .cot-scope-fire[data-burning]{opacity:1;visibility:visible;transition:opacity var(--dur-fast) ease-out}
+html[data-cot-scoped] .cot-scope-fire[data-burning]::before{animation:cot-scope-lick .62s ease-in-out infinite alternate}
+html[data-cot-scoped] .cot-scope-fire[data-burning]::after{animation:cot-scope-lick-b .47s ease-in-out infinite alternate}
+@keyframes cot-scope-lick{0%{transform:scaleY(.78);opacity:.7}45%{transform:scaleY(1.08);opacity:1}100%{transform:scaleY(.9);opacity:.82}}
+@keyframes cot-scope-lick-b{0%{transform:scale(-1,1.06);opacity:.5}60%{transform:scale(-1,.8);opacity:.8}100%{transform:scale(-1,1);opacity:.62}}
+:root[data-motion=reduce] .cot-scope-fire::before,:root[data-motion=reduce] .cot-scope-fire::after{animation:none!important}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion]) .cot-scope-fire::before,:root:not([data-motion]) .cot-scope-fire::after{animation:none!important}}
 `;
 function label(status: VehicleStatus): string {
   const name=t(status.labelKey);
@@ -42,6 +61,11 @@ export function createVehicleStatusStrip() {
   // fire's, the modules' and the crew's one place, with their severity and the repair's fill (UI-LOCKDOWN B2)
   markDatum(root,'vehicle-status');
   root.setAttribute('role','group');root.setAttribute('aria-label',t('hud.status.title'));
+  // fire-visible-275: the sight's burning edge, the fire chip's own state in the sight (mounted on the HUD's layer, not the
+  // panel: a scaled or moved panel must not carry it), decoration only
+  const edge=document.createElement('div');edge.className='cot-scope-fire';edge.setAttribute('aria-hidden','true');
+  let edgeBurning=false;
+  function paintEdge(burning:boolean){if(burning===edgeBurning)return;edgeBurning=burning;edge.toggleAttribute('data-burning',burning);}
   const read=createVehicleStatusReader();let active:readonly VehicleStatus[]=[];
   let capacity=MAX_VEHICLE_STATUS_BOXES;
   const cells=Array.from({length:MAX_VEHICLE_STATUS_BOXES},()=>{
@@ -110,6 +134,7 @@ export function createVehicleStatusStrip() {
   const previous=Array.from({length:18},()=>({id:'',tone:'',progress:null as number|null,count:0}));
   let previousCount=-1;
   function update(combat:CombatState|null|undefined,spotting?:ConcealmentStatus|null){
+    paintEdge(!!combat&&!combat.destroyed&&combat.fire.burning===true);
     active=read(combat,spotting);let changed=previousCount!==active.length;previousCount=active.length;
     for(let i=0;i<active.length;i++){
       const value=active[i]!,last=previous[i]!;
@@ -122,5 +147,7 @@ export function createVehicleStatusStrip() {
   return {root,update,
     /** Mount on the damage panel, whose width is the strip's room. */
     mount(panel:HTMLElement){panel.appendChild(root);room=panel;resize.observe(panel);},
-    clear(){previousCount=-1;active=read(null);paint();},dispose(){resize.disconnect();tooltip.dispose();root.remove();}};
+    /** fire-visible-275: the sight's burning edge, on the HUD's own layer (full width, under the panels). */
+    mountEdge(layer:HTMLElement){if(edge.parentNode!==layer)layer.prepend(edge);},
+    clear(){previousCount=-1;active=read(null);paint();paintEdge(false);},dispose(){resize.disconnect();tooltip.dispose();root.remove();edge.remove();}};
 }
