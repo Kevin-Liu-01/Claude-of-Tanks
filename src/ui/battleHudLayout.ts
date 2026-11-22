@@ -1486,16 +1486,31 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const items = read('.cot-cons');
       const smoke = [...systemsElement.children].find((node) => (node as HTMLElement).dataset?.control === 'smoke') as HTMLElement | undefined;
       const smokeShown = !!smoke && smoke.checkVisibility();
-      // (the survival controls over the items: up the column in portrait; beside it in a short landscape, whose column
-      // fills the height between the map and the stick)
+      // (the survival controls by the items. A short landscape's column fills the height between the map and the stick,
+      // the smoke and the jump beside it. A portrait phone's items stand two abreast on the speedometer, the smoke in the
+      // cell the last item leaves (over them where the items fill their rows), the jump in the next: one column four tall
+      // reached the middle of the screen and took the one seat a hull bar had beside the target plate, markers at
+      // 390x844 (hud-self-measure, 274b))
       if (items) {
-        const besideItems = short;
-        const smokeLeft = besideItems ? items.right + gap : items.left;
-        const smokeTop = besideItems ? items.bottom - tile : items.top - gap - tile;
-        const jumpTop = smokeShown ? smokeTop - gap - tile : smokeTop;
+        let smokeLeft: number, smokeTop: number, jumpLeft: number, jumpTop: number;
+        if (short) {
+          smokeLeft = jumpLeft = items.right + gap;
+          smokeTop = items.bottom - tile;
+          jumpTop = smokeShown ? smokeTop - gap - tile : smokeTop;
+        } else {
+          const itemsNode = hudQuery<HTMLElement>('.cot-cons');
+          let itemCount = 0;
+          for (const node of itemsNode?.children ?? []) if ((node as HTMLElement).checkVisibility?.()) itemCount++;
+          const over = items.top - gap - tile, second = items.left + tile + gap;
+          // (the free cells in order: beside the last item where its row has room, then over the items, left to right)
+          const cells: [number, number][] = itemCount % 2 ? [[second, items.bottom - tile], [items.left, over]]
+            : [[items.left, over], [second, over]];
+          [smokeLeft, smokeTop] = cells[0];
+          [jumpLeft, jumpTop] = cells[smokeShown ? 1 : 0];
+        }
         setBodyVar('--hud-smoke-left', `${Math.round(smokeLeft)}px`);
         setBodyVar('--hud-smoke-top', `${Math.round(smokeTop)}px`);
-        setBodyVar('--hud-jump-left', `${Math.round(smokeLeft)}px`);
+        setBodyVar('--hud-jump-left', `${Math.round(jumpLeft)}px`);
         setBodyVar('--hud-jump-top', `${Math.round(jumpTop)}px`);
         const jump = read('.cot-touch.on .jump');
         survivalTop = Math.min(items.top, smokeShown ? smokeTop : height, jump ? jumpTop : height);
