@@ -506,8 +506,8 @@ export default defineConfig({
             // imports) that the solo step, the camera feedback, the audio, the effects and the phone's buzz all read; alone it
             // would be one more request.
             // 2026-11-21 (endscreen-modes-275): the preview vehicles by kind (vehicles/previewVehicles.ts, 0.5 KB, a DOM-free
-            // table with no imports) that the Garage and the battle load read at boot on the game and cn and the lazy HUD,
-            // end screen and Garage mode preview read; alone it was one more boot request on both.
+            // table with no imports) that the Garage's Deploy card and the battle load read at boot on the game and cn and the
+            // lazy HUD's end screen reads; alone it was one more boot request on both.
             { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout|strikeViewState|couchSeats|shotCadence)|sim[\\/](?:spottingStats|equipmentRules|consumableRules|camoPaint|playerActions)|ui[\\/](?:minimapAssetUrl|battleSight|bodyFlags)|engine[\\/](?:chaseFraming|cameraLens|strikeMarks)|vehicles[\\/]previewVehicles)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The

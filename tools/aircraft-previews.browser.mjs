@@ -2,7 +2,8 @@
 // presented like the tanks"): stills of every surface that previews the player's vehicle with the AC-130 mode chosen.
 //   deploy  Deploy's vehicle card (tools/fixtures/mobile-surfaces.html, the Garage UI without the scene)
 //   load    the battle load's rosters with the pilot's aircraft row (tools/fixtures/battle-load-layout.html)
-//   garage  the Garage pedestal in the real game (WebGL), the mode stored as the player's choice
+//   garage  the Garage in the real game (WebGL) with the mode stored as the player's choice: its pedestal keeps the garage
+//           tank (owner 2026-11-21: the AC-130 stands in only for the tank's preview cards, never in the Garage)
 // Run under the capture lock:
 //   node tools/with-capture-lock.mjs --lock-class=render -- node tools/aircraft-previews.browser.mjs --out=<dir> [--only=deploy,load,garage]
 import puppeteer from 'puppeteer';
@@ -72,7 +73,7 @@ try {
     });
   }
   if (only.includes('garage')) {
-    await shot('garage-ac130', async (page) => {
+    await shot('garage-ac130-mode', async (page) => {
       await page.setViewport({ width: 1440, height: 900 });
       await page.evaluateOnNewDocument(() => {
         // (the launcher skips the first-game tutorial on every page, browser-launch.mjs)

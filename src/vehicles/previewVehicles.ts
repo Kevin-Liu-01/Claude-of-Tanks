@@ -5,9 +5,11 @@
  * Every tank is previewed from its spec id (specs.ts). An aircraft a mode puts the player in has no spec: it is a
  * first-party airframe (src/game/gunshipAirframe.ts) the battle swaps in for the garage tank. This table names those
  * aircraft once, so every preview surface asks one question, "which vehicle, of which kind", and the pipelines build
- * either kind from it: the icon and hero-card renders (tools/icons-page.html, tools/hero-cards-page.html), the Garage
- * pedestal, Deploy's vehicle card, the battle load's rows and the end screen. The renders keep the tanks' file names, so
- * iconUrl / maskIcon / the hero manifest read an aircraft id as they read a spec id.
+ * either kind from it: the icon and hero-card renders (tools/aircraft-assets-page.html, tools/hero-cards-page.html),
+ * Deploy's vehicle card, the battle load's rows and the end screen. The renders keep the tanks' file names, so
+ * iconUrl / maskIcon / the hero manifest read an aircraft id as they read a spec id. The Garage keeps the garage tank on
+ * its pedestal whatever the mode (owner 2026-11-21: the AC-130 stands in for the tank's preview cards in Deploy, the end
+ * cards and the battle reports, never in the Garage).
  *
  * Pure data, no three, no DOM: Node-runnable (previewVehicles.selftest.mjs ties MODE_AIRCRAFT to the rulesets).
  */
