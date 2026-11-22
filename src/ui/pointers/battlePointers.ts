@@ -31,6 +31,7 @@ interface PointerTank {
   readonly state?: { readonly pos: { readonly x: number; readonly y: number; readonly z: number }; readonly yaw: number;
     readonly turretYaw?: number } | null;
   readonly combat?: { readonly destroyed?: boolean } | null;
+  readonly spec?: { readonly dims?: { readonly hullLengthM: number; readonly widthM: number; readonly heightM: number } } | null;
 }
 
 /** A round in flight as the frame carries it (sim/ballistics.ts ShellEntity). */
@@ -66,6 +67,8 @@ interface BattlePointers {
  *  NO_COVER_MS, or at once on the HUD's relayout. */
 const NO_COVER = `${GUIDANCE_HARD},${GUIDANCE_CONTROLS},${GUIDANCE_CARD},.cot-minimap,.cot-battle-notices`;
 const NO_COVER_MS = 500;
+/** The hull box when a spec gives no measures (m): about a main battle tank's. */
+const HULL_FALLBACK = Object.freeze({ hullLengthM: 7, widthM: 3.6, heightM: 2.6 });
 
 export function createBattlePointers(groundAt: () => ((x: number, z: number) => number) | null): BattlePointers {
   let layer: PointerLayer | null = null;
@@ -95,6 +98,25 @@ export function createBattlePointers(groundAt: () => ((x: number, z: number) => 
       if (r.width >= 2 && r.height >= 2) noCover.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom });
     }
     return noCover;
+  }
+
+  /** The player's hull box on the screen (its eight corners projected), or null when a corner is behind the camera. */
+  function hullBox(me: PointerTank): ScreenBox | null {
+    const state = me.state!;
+    const dims = me.spec?.dims ?? HULL_FALLBACK;
+    const halfL = dims.hullLengthM / 2, halfW = dims.widthM / 2;
+    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const along of [-halfL, halfL]) {
+      for (const across of [-halfW, halfW]) {
+        for (const up of [0, dims.heightM]) {
+          const at = project({ x: state.pos.x + fx * along + fz * across, y: state.pos.y + up, z: state.pos.z + fz * along - fx * across });
+          if (!at || at.behind) return null;
+          x0 = Math.min(x0, at.x); y0 = Math.min(y0, at.y); x1 = Math.max(x1, at.x); y1 = Math.max(y1, at.y);
+        }
+      }
+    }
+    return { x0, y0, x1, y1 };
   }
 
   function clear(): void {
@@ -148,7 +170,7 @@ export function createBattlePointers(groundAt: () => ((x: number, z: number) => 
       layer ??= createPointerLayer();
       layer.draw({
         follow, warns, player, viewYaw: Math.atan2(look.x, look.z), scoped: frame.mode === 'sniper',
-        project, groundY: groundAt() ?? flatGround, noCover: warns.length ? measure() : noCover,
+        project, groundY: groundAt() ?? flatGround, noCover: measure(), hull: follow ? hullBox(me) : null,
         metres: (m) => t('battle.pointer.distance', { m }), seconds: (s) => t('battle.pointer.seconds', { s }),
       });
     },

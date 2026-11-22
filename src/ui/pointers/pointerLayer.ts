@@ -7,7 +7,9 @@
  * Two layers, neither of which takes the pointer, so a pointer can never swallow a press:
  * - the ground (under the HUD, --z-hud-world): the follow pointer's chevron trail and its turn arrow round the tank, each
  *   outline laid on the terrain in metres and projected corner by corner, so a chevron foreshortens and climbs with the
- *   ground as paint on it would;
+ *   ground as paint on it would; masked off the player's own hull on the screen, so the paint runs under the tank and
+ *   never over it; the trail starts past the turn arrow while that shows, and the arrow's sweep shortens until its head
+ *   stands on the screen clear of the HUD;
  * - the rim (over the HUD, --z-hud-score): one bubble per warning the camera does not show, its arrow at the warning, its
  *   glyph (a tank, a missile, an aircraft), its distance, an air run's countdown ring, and the count of a merged bubble.
  * Everything is drawn in screen space from points the caller projects, so the layer adds nothing to the 3D scene. The
@@ -15,7 +17,7 @@
  * frame allocation past the path strings) and goes with the HUD (destroy).
  */
 import {
-  bubbleRadius, planBubbles, trailChevrons, turnArrow, type Bubble, type FollowPointer, type GroundPoint, type ScreenBox,
+  CHEVRON_HALF_M, TURN_RADII_M, TURN_SWEEP_MAX_DEG, bubbleRadius, planBubbles, trailChevrons, turnArrow, type Bubble, type FollowPointer, type GroundPoint, type ScreenBox,
   type ScreenPoint, type WarnKind, type WarnPointer, type WorldPoint,
 } from './pointerPlan.ts';
 
@@ -32,8 +34,10 @@ interface PointerFrame {
   readonly scoped: boolean;
   readonly project: (point: WorldPoint) => ScreenPoint | null;
   readonly groundY: (x: number, z: number) => number;
-  /** The HUD a bubble never covers. */
+  /** The HUD a bubble or the turn arrow's head never covers. */
   readonly noCover: readonly ScreenBox[];
+  /** The player's own tank on the screen (its hull box projected), which the ground paint runs under; null when unknown. */
+  readonly hull: ScreenBox | null;
   /** "{m} m" and "{s} s" in the player's language. */
   readonly metres: (m: number) => string;
   readonly seconds: (s: number) => string;
@@ -58,6 +62,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const PAINT_LIFT_M = 0.12;
 const MAX_CHEVRONS = 7;
 const MAX_BUBBLES = 4;
+/** The turn arrow's sweeps tried in turn (deg), longest first, until its head fits (TURN_SWEEP_MAX_DEG first). */
+const TURN_SWEEPS_DEG = [TURN_SWEEP_MAX_DEG, 115, 85, 55] as const;
+/** How far inside the screen's edge the turn arrow's head stays (px). */
+const TURN_HEAD_EDGE_PX = 12;
+/** The trail's first chevron clears the turn arrow's band by this much (m). */
+const TRAIL_CLEAR_OF_TURN_M = 1.5;
+/** The corner rounding of the hull's cut-out (px). */
+const HULL_ROUND_PX = 14;
+const HULL_MASK_ID = 'cot-ptr-hull-mask';
 
 /** Each warning's glyph, drawn for a 24-unit box round the bubble's centre. */
 const GLYPHS: Readonly<Record<WarnKind, string>> = Object.freeze({
@@ -107,9 +120,20 @@ export function createPointerLayer(): PointerLayer {
   const ground = layer('cot-ptr--ground');
   const rimLayer = layer('cot-ptr--rim');
 
-  const turnBand = svgEl('path', 'cot-ptr-turn', ground.svg);
-  const turnHead = svgEl('path', 'cot-ptr-turn cot-ptr-turn-head', ground.svg);
-  const chevrons = Array.from({ length: MAX_CHEVRONS }, () => svgEl('path', 'cot-ptr-chevron', ground.svg));
+  // the paint's mask: all of the screen but the player's hull
+  const mask = svgEl('mask', '', svgEl('defs', '', ground.svg));
+  mask.id = HULL_MASK_ID;
+  mask.setAttribute('maskUnits', 'userSpaceOnUse');
+  const maskAll = svgEl('rect', '', mask);
+  maskAll.setAttribute('fill', '#fff');
+  const maskHull = svgEl('rect', '', mask);
+  maskHull.setAttribute('fill', '#000');
+  maskHull.setAttribute('rx', String(HULL_ROUND_PX));
+  const paint = svgEl('g', '', ground.svg);
+  paint.setAttribute('mask', `url(#${HULL_MASK_ID})`);
+  const turnBand = svgEl('path', 'cot-ptr-turn', paint);
+  const turnHead = svgEl('path', 'cot-ptr-turn cot-ptr-turn-head', paint);
+  const chevrons = Array.from({ length: MAX_CHEVRONS }, () => svgEl('path', 'cot-ptr-chevron', paint));
 
   const bubbles: BubbleNodes[] = Array.from({ length: MAX_BUBBLES }, () => {
     const group = svgEl('g', 'cot-ptr-bubble', rimLayer.svg);
@@ -137,23 +161,60 @@ export function createPointerLayer(): PointerLayer {
     rimLayer.root.classList.toggle('is-on', on);
   };
 
-  /** A ground outline on the screen as a closed path, or null when any corner is off the camera. */
-  function groundPath(outline: readonly GroundPoint[], frame: PointerFrame): string | null {
-    let d = '';
-    for (let i = 0; i < outline.length; i++) {
-      const p = outline[i]!;
+  /** The screen points of a ground outline, or null when any is off the camera. */
+  function groundPoints(outline: readonly GroundPoint[], frame: PointerFrame): ScreenPoint[] | null {
+    const out: ScreenPoint[] = [];
+    for (const p of outline) {
       const at = frame.project({ x: p.x, y: frame.groundY(p.x, p.z) + PAINT_LIFT_M, z: p.z });
       if (!at || at.behind) return null;
-      d += `${i ? 'L' : 'M'}${at.x.toFixed(1)},${at.y.toFixed(1)}`;
+      out.push(at);
     }
-    return `${d}Z`;
+    return out;
+  }
+
+  /** A ground outline on the screen as a closed path, or null when any corner is off the camera. */
+  function groundPath(outline: readonly GroundPoint[], frame: PointerFrame): string | null {
+    const points = groundPoints(outline, frame);
+    return points ? `${points.map((at, i) => `${i ? 'L' : 'M'}${at.x.toFixed(1)},${at.y.toFixed(1)}`).join('')}Z` : null;
+  }
+
+  /** The head stands on the screen, clear of the HUD and of the player's own hull. */
+  function headFits(head: readonly ScreenPoint[], frame: PointerFrame): boolean {
+    const w = window.innerWidth, h = window.innerHeight, m = TURN_HEAD_EDGE_PX;
+    const boxes = frame.hull ? [...frame.noCover, frame.hull] : frame.noCover;
+    return head.every((p) => p.x >= m && p.x <= w - m && p.y >= m && p.y <= h - m
+      && !boxes.some((b) => p.x >= b.x0 && p.x <= b.x1 && p.y >= b.y0 && p.y <= b.y1));
+  }
+
+  /** The longest turn arrow whose head fits, else the shortest tried. */
+  function fitTurn(frame: PointerFrame, follow: FollowPointer): ReturnType<typeof turnArrow> {
+    let last: ReturnType<typeof turnArrow> = null;
+    for (const sweep of TURN_SWEEPS_DEG) {
+      const arrow = turnArrow(frame.player, frame.viewYaw, follow, sweep);
+      if (!arrow) return null;
+      last = arrow;
+      const head = groundPoints(arrow.head, frame);
+      if (head && headFits(head, frame)) return arrow;
+    }
+    return last;
   }
 
   function drawFollow(frame: PointerFrame): { chevrons: number; turn: 1 | -1 | null } {
     const follow = frame.scoped ? null : frame.follow;
     let count = 0;
     let turn: 1 | -1 | null = null;
-    const trail = follow?.trail ? trailChevrons(frame.player, follow, follow.radiusM) : [];
+    const w = window.innerWidth, h = window.innerHeight;
+    maskAll.setAttribute('width', String(w));
+    maskAll.setAttribute('height', String(h));
+    const hull = frame.hull;
+    maskHull.setAttribute('x', String(hull ? hull.x0 : -1));
+    maskHull.setAttribute('y', String(hull ? hull.y0 : -1));
+    maskHull.setAttribute('width', String(hull ? Math.max(0, hull.x1 - hull.x0) : 0));
+    maskHull.setAttribute('height', String(hull ? Math.max(0, hull.y1 - hull.y0) : 0));
+    const arrow = follow ? fitTurn(frame, follow) : null;
+    // while the turn arrow shows, the trail starts past its band
+    const clearM = arrow ? TURN_RADII_M.outer + TRAIL_CLEAR_OF_TURN_M + CHEVRON_HALF_M : 0;
+    const trail = follow?.trail ? trailChevrons(frame.player, follow, follow.radiusM).filter((c) => c.alongM >= clearM) : [];
     chevrons.forEach((node, i) => {
       const chevron = trail[i];
       const d = chevron ? groundPath(chevron.outline, frame) : null;
@@ -164,7 +225,6 @@ export function createPointerLayer(): PointerLayer {
       }
       show(node, !!d);
     });
-    const arrow = follow ? turnArrow(frame.player, frame.viewYaw, follow) : null;
     const band = arrow ? groundPath(arrow.band, frame) : null;
     const head = arrow ? groundPath(arrow.head, frame) : null;
     if (band && head) {

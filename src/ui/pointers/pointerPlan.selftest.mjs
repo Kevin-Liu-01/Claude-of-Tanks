@@ -53,6 +53,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   trail.forEach((chevron, i) => {
     const c = centroid(chevron.outline);
     assert.equal(chevron.index, i);
+    assert.equal(chevron.alongM, TRAIL_FIRST_M + i * TRAIL_STEP_M, 'it says how far along the way it lies');
     assert.ok(near(c.x, 0, 1e-9), `chevron ${i} lies on the way`);
     assert.ok(Math.abs(c.z - (TRAIL_FIRST_M + i * TRAIL_STEP_M)) < 0.5, `chevron ${i} steps evenly`);
     assert.equal(chevron.outline.length, 6, 'a chevron is a six-point outline laid flat');
@@ -88,6 +89,11 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   }
   const behind = turnArrow(tank, Math.PI / 2, { x: -100, z: 0 });
   assert.ok(behind, 'the view\'s heading, not the hull\'s, decides');
+  const back = { x: 0, z: -100 };
+  const full = turnArrow(tank, 0, back), short = turnArrow(tank, 0, back, 55);
+  const swept = (arrow) => Math.abs(wrap(bearing(tank, arrow.head[1]) - bearing(tank, arrow.band[0])));
+  assert.ok(swept(short) < swept(full) - 0.5, 'a shorter sweep cap ends the head nearer the view (the drawer fits it on screen)');
+  assert.equal(short.turn, full.turn, 'a shortened arrow still turns the same way');
 }
 
 // 2. The objective that matters now.
@@ -225,6 +231,8 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 {
   const layer = read('src/ui/pointers/pointerLayer.ts');
   assert.doesNotMatch(layer, /from 'three'/, 'the layer adds nothing to the 3D scene');
+  assert.match(layer, /paint\.setAttribute\('mask', `url\(#\$\{HULL_MASK_ID\}\)`\)/, 'the ground paint runs under the player\'s hull, never over it');
+  assert.match(layer, /headFits\(head, frame\)/, 'the turn arrow\'s head is fitted on the screen and off the HUD');
   const css = read('src/ui/pointers/pointers.css');
   assert.match(css, /\.cot-ptr\{[^}]*pointer-events:none/, 'neither layer takes the pointer');
   assert.match(css, /prefers-reduced-motion/, 'reduced motion stills the pulse and the trail\'s flow');
