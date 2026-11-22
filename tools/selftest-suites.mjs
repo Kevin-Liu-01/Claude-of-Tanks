@@ -3098,6 +3098,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
+    // (endscreen-modes-275) the end screen per mode: the descriptor, and battles through the real bookkeeper and report
+    'src/ui/endScreenModes.selftest.mjs',
     'src/ui/battleBeats.selftest.mjs',
     // (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highlighted
     'src/ui/watchBattleReport.selftest.mjs',

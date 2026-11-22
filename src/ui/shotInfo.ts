@@ -26,7 +26,7 @@ import { battleInputOwnerFor } from './battleInputOwner.ts';
 import { createBattleReportGate } from './battleReportGate.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
-  damageFigureMarkup, hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
+  damageFigureMarkup, hitOutcomeFor, nominalPenFor, shellDisplayName, weaponDisplayName, zoneLabel,
   type HitEventPresentation,
   type HitOutcomePresentation,
 } from './hitEventFormat.ts';
@@ -65,6 +65,9 @@ import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { attackerLabel, killSourceIdentity } from './killSourceIdentity.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { rosterCallsigns, PLAYER_CALLSIGN } from './botCallsigns.ts';
+import { NO_PLAYER_FACTS, type EndPlayerFacts } from './endScreenModes.ts';
+import type { ModeEndReport } from '../sim/modeEndReport.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
 type EntityId = string;
@@ -132,6 +135,8 @@ interface EndRosterRow {
   readonly id: EntityId;
   readonly vehicle?: string | null;
   readonly name?: string | null;
+  /** (endscreen-modes-275) a named hull's own name (a room player's, a couch seat's): its callsign on the report */
+  readonly displayName?: string | null;
   readonly specId?: string | null;
   /** (ac130-fx-228) the combatant flew the AC-130: its vehicle reads as the aircraft (its icon, no tank silhouette) */
   readonly aircraft?: boolean;
@@ -162,6 +167,8 @@ interface BattleEndedEvent {
   readonly watch?: boolean;
   /** A watched battle's mode score by side (absent where the score is the kills). */
   readonly score?: { readonly alpha: number; readonly bravo: number } | null;
+  /** (endscreen-modes-275) the mode's figures as the battle ended (sim/modeEndReport.ts) */
+  readonly modeReport?: ModeEndReport | null;
 }
 
 interface Combatant {
@@ -279,6 +286,7 @@ interface EndInfo {
   readonly score: { readonly alpha: number; readonly bravo: number } | null;
   /** The battle's mode id (the report's mode chip). */
   readonly gameMode: string | null;
+  readonly modeReport: ModeEndReport | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -1041,12 +1049,14 @@ export function mergeEndRosterRow(
     };
     rows.set(rosterRow.id, row);
   }
-  if (!row.name && (rosterRow.vehicle || rosterRow.name)) {
+  if (rosterRow.displayName) row.name = rosterRow.displayName;
+  else if (!row.name && (rosterRow.vehicle || rosterRow.name)) {
     row.name = rosterRow.vehicle || rosterRow.name || null;
   }
   if (!row.specId && rosterRow.specId) row.specId = rosterRow.specId;
-  // (ac130-fx-228) a gunship pilot's row names the AC-130, whatever tank the pilot's garage held
-  if (rosterRow.aircraft) { row.aircraft = true; row.name = killSourceIdentity('ac130')?.label ?? row.name; }
+  // (ac130-fx-228) a gunship pilot's row draws the AC-130, whatever tank the pilot's garage held; (endscreen-modes-275) its
+  // name stays the pilot's callsign, never the aircraft's (the row read "AC-130  AC-130")
+  if (rosterRow.aircraft) row.aircraft = true;
   if (rosterRow.team) row.side = rosterRow.team === 'enemy' ? 'enemy' : 'ally';
   if (rosterRow.alive === false) row.dead = true;
   else if (revives && rosterRow.alive === true) row.dead = false;
@@ -1154,6 +1164,22 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
   const spotWindow = new Map<EntityId, number>(); // enemyId -> timeS of last player-spot edge
   const spottedSet = new Set<EntityId>(); // distinct enemies the player lit
   let spotAttributed = false;   // saw a spotterId-carrying event this battle
+
+  // --- the player's moments of the mode (endscreen-modes-275) ----------------
+  // The report's mode tiles (endScreenModes.ts EndPlayerFacts): the flags and goals the player scored, the zones the
+  // player's side took, the call-ins the player made and the aircraft the player brought down, the kills a platform made
+  // (a call-in, the drone), and whether the outbreak took the player. Each row's own flags or goals feed its objective
+  // column. All from the mode's own events (sim/matchModes.ts and sim/airSupport.ts via either driver).
+  type MutableFacts = { -readonly [K in keyof EndPlayerFacts]: EndPlayerFacts[K] } & { callIns: string[]; sourceKills: Record<string, number> };
+  const newFacts = (): MutableFacts => ({ ...NO_PLAYER_FACTS, callIns: [], sourceKills: {} });
+  let facts = newFacts();
+  const objectivesBy = new Map<string, number>();
+  let perspectiveTeam = 'alpha';
+  const isPlayerId = (id: RuntimeValue): boolean => playerId != null && id != null && String(id) === String(playerId);
+  const countObjective = (id: RuntimeValue): void => {
+    if (id == null) return;
+    objectivesBy.set(String(id), (objectivesBy.get(String(id)) ?? 0) + 1);
+  };
 
   // --- team-wide roster bookkeeping (battle report) -------------------------
   // Every combatant seen in ANY bus event (shell:hit fires for AI-vs-AI hits
@@ -1671,7 +1697,31 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     for (const rosterRow of endRoster || []) {
       mergeEndRosterRow(rows, rosterRow, revives);
     }
+    nameRows(rows);
+    for (const row of rows.values()) {
+      const objectives = objectivesBy.get(String(row.id));
+      if (objectives) row.objectives = objectives;
+    }
     return rows;
+  }
+
+  /**
+   * (endscreen-modes-275) Each row by its callsign, as the HUD's rosters, feed and plates name it (botCallsigns.ts, the
+   * same walk over the battle's tanks in their order): a named hull keeps its name (a room player, a couch seat), the
+   * player is the player's callsign, a bot its callsign. The vehicle is the row's second line, so it never repeats the
+   * name (the rows read "Leopard 2A4 V  Leopard 2A4 V" when a bot had no name but its tank's).
+   */
+  function nameRows(rows: Map<EntityId, SummaryTeamRow>): void {
+    if (!endRoster?.length) return;
+    const callsigns = rosterCallsigns(endRoster.map((row) => ({
+      id: String(row.id), specId: row.specId ?? null, displayName: row.displayName ?? null, isPlayer: !!row.isPlayer,
+    })));
+    for (const rosterRow of endRoster) {
+      const row = rows.get(rosterRow.id);
+      if (!row || rosterRow.displayName) continue;
+      const callsign = rosterRow.isPlayer ? PLAYER_CALLSIGN : callsigns.get(String(rosterRow.id));
+      if (callsign) row.name = callsign;
+    }
   }
 
   function summaryTeams(rows: Map<EntityId, SummaryTeamRow>): Readonly<{
@@ -1757,10 +1807,13 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     const kills = summaryKills();
     const best = bestShot();
     const me = playerId === null ? undefined : rows.get(playerId);
+    // the player's vehicle as the record's card names it: the AC-130 a pilot flew, else the tank (never the callsign)
+    let playerVehicle = me?.aircraft ? killSourceIdentity('ac130')?.label ?? '' : '';
+    if (!playerVehicle && me?.specId) { try { playerVehicle = presentationSpec(me.specId).name; } catch (_) { playerVehicle = me.specId; } }
     return {
       result,
       reason: endInfo?.reason || null,
-      playerVehicle: me?.name || '',
+      playerVehicle,
       playerSpecId: me?.specId || null,
       // (ac130-fx-228) the pilot flew the AC-130: the debrief shows the aircraft, not the garage tank
       ...(me?.aircraft ? { playerAircraft: true } : {}),
@@ -1789,6 +1842,7 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
         damage: hullPointsRemoved(best.ev),
         shellType: best.ev.shellType || '',
         shellName: shellDisplayName(best.ev),
+        weapon: weaponDisplayName(best.ev),
         targetName: best.ev.targetName || '',
         zone: zoneLabel(best.ev.zone),
         distM: best.ev.flightDistM || 0,
@@ -1799,6 +1853,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
       campaign: endInfo?.campaign ?? null,
       finalBlow: summaryFinalBlow(watched),
       hordeWave: endInfo?.hordeWave ?? null,
+      modeReport: endInfo?.modeReport ?? null,
+      facts: { ...facts, callIns: facts.callIns.slice(), sourceKills: { ...facts.sourceKills } },
       brains: endInfo?.brains ?? null,
       awards: getLastBattleAwards(),
       beats: watched ? beatLog.battleList() : beatLog.list(),
@@ -1826,10 +1882,10 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
 
   function recordHitCombatants(ev: ShotHitEvent): void {
     if (ev.attackerId == null || ev.targetId == null || ev.attackerId === ev.targetId) return;
-    // (ac130-fx-228) a gunship's hits are the AC-130's: its name and icon, never the pilot's garage tank
-    const aircraft = killSourceIdentity(ev.attackerSource)?.source === 'ac130';
-    const attacker = combatant(ev.attackerId, attackerLabel(ev), aircraft ? null : ev.attackerSpecId);
-    if (aircraft) { attacker.aircraft = true; attacker.name = attackerLabel(ev) ?? attacker.name; }
+    // (endscreen-modes-275) a hit from a platform (the AC-130, a call-in, a drone) names the platform, never the crew: the
+    // crew keeps its own name and vehicle. Before, any gunship-sourced hit made its crew "the AC-130" for the whole
+    // report, so an Air Support crew that called the orbit read as its pilot; the ended roster alone marks a pilot.
+    const attacker = combatant(ev.attackerId, ev.attackerSource ? null : attackerLabel(ev), ev.attackerSpecId);
     attacker.dmg += hullPointsRemoved(ev);
     const target = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
     if (ev.destroyed) target.dead = true;
@@ -1946,7 +2002,9 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
         attackerName: attackerLabel(ev) || null,
         targetId: String(ev.targetId),
         targetName: ev.targetName || null,
-        shellName: shellDisplayName(ev) || null,
+        // (endscreen-modes-275) the weapon by its calibre, designation and type ("120 mm CL3143 APFSDS"), never the bare
+        // designation the cards' type column leaves
+        shellName: weaponDisplayName(ev) || null,
         shellType: ev.shellType || null,
       };
     }
@@ -1964,7 +2022,11 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
     // the timeline's beats: the player's death, and each tank the player destroyed (fire and rams included)
     if (playerId != null && p.id === playerId) beatLog.death();
-    else if (playerId != null && p.killerId === playerId) beatLog.kill(String(p.id), p.specId);
+    else if (playerId != null && p.killerId === playerId) {
+      beatLog.kill(String(p.id), p.specId, undefined, p.source ?? null);
+      // (endscreen-modes-275) a kill a platform made for the player (a call-in, the drone): the mode's tiles count them
+      if (p.source) facts.sourceKills[p.source] = (facts.sourceKills[p.source] ?? 0) + 1;
+    }
     // and the battle's own line: every kill, to the killer's side (a fire or a fall: the victim's enemy)
     const killerSide = p.killerId != null && p.killerId !== p.id ? battleSide(teamOf(p.killerId)) : null;
     const victimSide = battleSide(teamOf(p.id));
@@ -2053,6 +2115,7 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
       score: p.score && Number.isFinite(p.score.alpha) && Number.isFinite(p.score.bravo)
         ? { alpha: p.score.alpha, bravo: p.score.bravo } : null,
       gameMode: typeof p.gameMode === 'string' && p.gameMode ? p.gameMode : null,
+      modeReport: p.modeReport && typeof p.modeReport === 'object' && typeof p.modeReport.id === 'string' ? p.modeReport : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     reportGate.ended(p ? (p.result || '') : ''); // ('' is valid)
@@ -2061,9 +2124,38 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
   bus.on('mode:zone_captured', (payload) => {
     const p = eventPayload<{ team?: string; zoneId?: string } | null>(payload);
     beatLog.objective('zone', p?.team, p?.zoneId);
+    if (p?.team === perspectiveTeam) facts.teamZones++;
   });
-  bus.on('mode:flag_captured', (payload) => beatLog.objective('flag', eventPayload<{ team?: string } | null>(payload)?.team));
-  bus.on('mode:goal_scored', (payload) => beatLog.objective('goal', eventPayload<{ team?: string } | null>(payload)?.team));
+  bus.on('mode:flag_captured', (payload) => {
+    const p = eventPayload<{ team?: string; by?: RuntimeValue } | null>(payload);
+    beatLog.objective('flag', p?.team);
+    countObjective(p?.by);
+    if (isPlayerId(p?.by)) facts.flagsCaptured++;
+  });
+  bus.on('mode:flag_returned', (payload) => {
+    const p = eventPayload<{ by?: RuntimeValue; automatic?: boolean } | null>(payload);
+    if (!p?.automatic && isPlayerId(p?.by)) facts.flagsReturned++;
+  });
+  bus.on('mode:goal_scored', (payload) => {
+    const p = eventPayload<{ team?: string; by?: RuntimeValue } | null>(payload);
+    beatLog.objective('goal', p?.team);
+    countObjective(p?.by);
+    if (isPlayerId(p?.by)) facts.goals++;
+  });
+  // (endscreen-modes-275) Air Support: the player's call-ins and the aircraft the player brought down (sim/airSupport.ts)
+  bus.on('mode:strike_called', (payload) => {
+    const p = eventPayload<{ callerId?: RuntimeValue; kind?: RuntimeValue; timeS?: number } | null>(payload);
+    if (!isPlayerId(p?.callerId) || typeof p?.kind !== 'string') return;
+    facts.callIns.push(p.kind);
+    beatLog.strike(p.kind, p.timeS);
+  });
+  bus.on('mode:aircraft_down', (payload) => {
+    const p = eventPayload<{ by?: RuntimeValue; kind?: RuntimeValue; timeS?: number } | null>(payload);
+    if (!isPlayerId(p?.by)) return;
+    facts.aircraftDown++;
+    beatLog.downed(typeof p?.kind === 'string' ? p.kind : '', p?.timeS);
+  });
+  bus.on('mode:infected', (payload) => { if (isPlayerId(eventPayload<{ id?: RuntimeValue } | null>(payload)?.id)) facts.infected = true; });
   bus.on('ui:shotLog', () => toggleLog());
   bus.on('ui:battleStart', () => api.reset());
 
@@ -2098,7 +2190,7 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
     setPlayer(id: EntityId | null, timeS?: number, perspective?: string): void {
       playerId = id;
       beatLog.clock(timeS);
-      if (perspective) beatLog.setPerspective(perspective);
+      if (perspective) { beatLog.setPerspective(perspective); perspectiveTeam = perspective === 'bravo' ? 'bravo' : 'alpha'; }
     },
     setTeamResolver(resolve: (id: EntityId) => string | undefined): void { teamOf = resolve; },
 
@@ -2123,6 +2215,8 @@ export function createShotInfo(bus: EventBus, mount: HTMLElement = document.body
       receivedLog.length = 0;
       combatants.clear();
       tg.clear();
+      facts = newFacts();
+      objectivesBy.clear();
       endRoster = null;
       endInfo = null;
       lastLethalHit = null;

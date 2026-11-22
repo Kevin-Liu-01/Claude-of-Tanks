@@ -50,8 +50,10 @@ const nameOf = (id) => names.get(id) ?? null;
   const rows = new Map();
   mergeEndRosterRow(rows, { id: 'me', team: 'player', alive: true, isPlayer: true, specId: 't90am', vehicle: 'T-90M', aircraft: true }, false);
   mergeEndRosterRow(rows, { id: 'e1', team: 'enemy', alive: false, specId: 'm1a2', vehicle: 'M1A2' }, false);
-  assert.equal(rows.get('me').name, 'AC-130', "the pilot's row names the AC-130");
-  assert.equal(rows.get('me').aircraft, true, 'and draws its icon');
+  // (endscreen-modes-275) the row's name is the pilot's (the report's callsign pass names it), its vehicle the AC-130: the
+  // aircraft flag draws the AC-130 on the vehicle line, never in the name's place ("AC-130  AC-130")
+  assert.notEqual(rows.get('me').name, 'AC-130', "the pilot's row keeps the pilot's name");
+  assert.equal(rows.get('me').aircraft, true, 'and flies the AC-130');
   assert.equal(rows.get('e1').name, 'M1A2');
   assert.equal(rows.get('e1').aircraft, undefined);
 }
