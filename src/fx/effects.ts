@@ -992,6 +992,12 @@ const MAX_LIVE_FIRES = 6;
 const LIVE_FIRE_MIN_VIEW = 0.007;
 /** a lick's mean width at scale 1 and no boost (emitColumnTongue's and the night lick's base) */
 const LIVE_FIRE_LICK_W = 0.85;
+/** (fire-visible-275, the look clip: our own tank burning showed smoke and no flame) a column's licks are born ~0.95 m
+ *  over its point, made for a wreck's point on the ground; a live fire with no hit point stood at its hull's origin, on
+ *  the ground, so its licks were born inside the hull. A live fire never burns below its hull's deck (this share of the
+ *  hull's height over its origin), and one with no hit point burns on the rear deck (the engine's, this share of the
+ *  hull's length behind its middle). */
+const LIVE_FIRE_DECK_K = 0.62, LIVE_FIRE_REAR_K = 0.3, LIVE_FIRE_LICK_BASE_M = 0.8;
 
 
 // ---------------------------------------------------------------------------
@@ -2369,6 +2375,7 @@ function* createFxSteps(
    */
   const lastKnownPos = new Map<string, KnownHullPoint>();
   const _knownAt: MutableVec3 = [0, 0, 0]; // knownPosOf's answer for a hull that resolves
+  const _livePoint: MutableVec3 = [0, 0, 0]; // liveFirePoint's answer (fire-visible-275)
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
   // it was HE (radius-breaks destructible props) — fed by shell:fired,
   // cleared on shell:expired (+ a hard size guard against leaks).
@@ -5167,8 +5174,25 @@ function* createFxSteps(
   }
 
   /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
-  function startLiveColumn(id: string, p: MutableVec3): void {
+  /** (fire-visible-275) where a live fire burns on its hull: its point, never below the deck; with no hit point (the
+   *  burn scan's, a fire no hit lit) the rear deck. A hull with no dimensions keeps its point. */
+  function liveFirePoint(id: string, p: MutableVec3): MutableVec3 {
+    const ent = decalEntityFor(id) as (FxEntity & { spec?: { dims?: { heightM?: number; hullLengthM?: number } } }) | null;
+    const dims = ent?.spec?.dims, at = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
+    if (!ent || !at || !(dims?.heightM && dims.heightM > 0)) return p;
+    _livePoint[0] = p[0]; _livePoint[1] = p[1]; _livePoint[2] = p[2];
+    if (!lastKnownPos.get(id)?.onHull) {
+      const yaw = hullYawOf(ent), back = -LIVE_FIRE_REAR_K * (dims.hullLengthM ?? 6);
+      _livePoint[0] = at.x + Math.sin(yaw) * back;
+      _livePoint[2] = at.z + Math.cos(yaw) * back;
+    }
+    _livePoint[1] = Math.max(_livePoint[1], at.y + LIVE_FIRE_DECK_K * dims.heightM - LIVE_FIRE_LICK_BASE_M);
+    return _livePoint;
+  }
+
+  function startLiveColumn(id: string, pIn: MutableVec3): void {
     for (const col of columns) if (col.key === id) { col.ttl = SMOKE_COLUMN_S; return; }
+    const p = liveFirePoint(id, pIn);
     const col: SmokeColumn = { key: id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
     columns.push(col);
     // (fire-visible-275) the live fires' own budget: one past it, the farthest goes (this one, if it is)
