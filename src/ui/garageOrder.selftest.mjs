@@ -221,8 +221,8 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'UK', filler: 'challenger3_proto',
-    // 2026-10-13 (VEH-11): the tier-X Warrior TES(H) follows the Challenger 3.
-    expected: ['challenger3', 'warrior_tes_h', 'challenger1_mk3', 'chieftain_mk10', 'chieftain5'],
+    // 2026-10-13 (VEH-11): the tier-X Warrior TES(H) follows the Challenger 3; 275: the Challenger 3 TDs lead it.
+    expected: ['challenger3_td', 'challenger3_td_rws', 'challenger3', 'warrior_tes_h', 'challenger1_mk3', 'chieftain_mk10', 'chieftain5'],
   },
   {
     nation: 'France', filler: 'leclerc_s2',

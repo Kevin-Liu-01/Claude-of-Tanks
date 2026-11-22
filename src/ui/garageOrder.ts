@@ -106,8 +106,11 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     't62mv1',
   ]),
   UK: Object.freeze([
+    // 275 (Kevin, 2026-11-22: "make the challenger 3 tds ahead of challegner 3"): the tier-X demonstrator and its
+    // field fit lead the Challenger 3; VEH-11 (2026-10-13): the tier-X Warrior type follows the Challenger 3
+    'challenger3_td', 'challenger3_td_rws',
     'challenger3',
-    'warrior_tes_h', // VEH-11 (2026-10-13): the tier-X Warrior type follows the Challenger 3
+    'warrior_tes_h',
     'challenger1_mk3',
     'chieftain_mk10',
     'chieftain5',
