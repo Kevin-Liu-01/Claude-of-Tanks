@@ -67,3 +67,4 @@ angled cheek facets.
 | 7 | Tamoyo 3 gunner's sight | a tall sight box on the roof | the Kollmorgen M220 head low in a roof well at the front right, a small plate welded either side |
 | 8 | Tamoyo 3 roof | ventilator mid-left, no other covers | the met sensor's cover front left with the loader's periscope behind it, the NBC cover at the middle rear, the magazine's blow-out panel on the rear left |
 | 9 | Tamoyo 3 dischargers | two by three on brackets at mid-bustle | two by two at each rear corner (the record's "2x2 dischargers at the rear corners"; the article's four a side) |
+| 10 | Tamoyo 3 bustle rack floor | 1 cm over the bustle's floor | 7 cm over it: the r9 rack's mesh floor came 2.7 cm into the engine deck's fittings as the turret turned (the turret-deck audit, integ 274.0) |

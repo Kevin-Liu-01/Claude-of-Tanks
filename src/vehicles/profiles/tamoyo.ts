@@ -482,7 +482,8 @@ function* buildTamoyoSteps(P: TankBuilderPort, mark: TamoyoMark): TankProfileBui
     if (t3) {
       // (brazil-kit-274) the Tamoyo 3's bustle rack across the rear plate (Vesp's profile, the record's "bustle rack"): rails
       // and uprights on a mesh floor, the cans' bracket inside it
-      const rx = hwBase - 0.08, rz = rear - 0.36, lo = bustleFloor + 0.01, hi = 0.50;
+      // (its floor 7 cm over the bustle's, clear of the engine deck's fittings as the turret turns: turret-deck audit)
+      const rx = hwBase - 0.08, rz = rear - 0.36, lo = bustleFloor + 0.07, hi = 0.50;
       const rail = (a: readonly number[], b: readonly number[]): void => bar('turretOpenLattice', a, b, 0.013);
       for (const y of [lo, (lo + hi) / 2, hi]) rail([-rx, y, rz], [rx, y, rz]);
       for (const sx of [-1, 1] as const) for (const y of [lo, hi]) rail([sx * rx, y, rear - 0.004], [sx * rx, y, rz]);
