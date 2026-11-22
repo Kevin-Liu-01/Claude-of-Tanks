@@ -165,6 +165,9 @@ async function migrationCase({ label, hold, carlBackAfterMs, holdFor = null }) {
   // ---- carl comes back late
   const tickBeforeCarl = core.actor.tick;
   await advance(carlBackAfterMs);
+  // (276) the keyframes the core sealed before the world moved: a replayed window has the authority in play at boot, and
+  // a keyframe sealed in the hold reached no seat and put the released seats' first one a cadence late
+  const keyframesInHold = core.stats().migrationKeyframes;
   const whileAway = { tick: core.actor.tick, movedM: Math.hypot(hullOnBob().pos.x - restored.x, hullOnBob().pos.z - restored.z) };
   const carlBefore = carlClient.snapshotsAcceptedCount;
   carlTransport.replace(rtcFor('carl'), 'host migration');
@@ -179,7 +182,7 @@ async function migrationCase({ label, hold, carlBackAfterMs, holdFor = null }) {
   for (const client of clients) client.dispose();
   bob.stop();
   await settle(4);
-  return { label, speed: bobOwn.speed, resumeTick, tickBeforeCarl, whileAway, backTick, jumpM, afterM, holdStats };
+  return { label, speed: bobOwn.speed, resumeTick, tickBeforeCarl, whileAway, backTick, jumpM, afterM, holdStats, keyframesInHold, replayed: !!state.replay };
 }
 
 // ---- the hold list: connected seats with a battle seat, the elected one among them, the host that went never
@@ -198,6 +201,7 @@ assert.ok(plain.jumpM > 2, `no hold: carl's first row of bob is ${plain.jumpM.to
 // ---- the hold: the world stands still until bob and carl are back, then the hull coasts on every screen
 const held = await migrationCase({ label: 'hold', hold: true, carlBackAfterMs: 2000 });
 assert.equal(held.tickBeforeCarl, held.resumeTick, 'hold: the new actor sits at the resume tick');
+assert.ok(held.replayed && held.keyframesInHold === 0, `hold: the window replayed (${held.replayed}) and no keyframe sealed before the world moved (${held.keyframesInHold})`);
 assert.equal(held.whileAway.tick, held.resumeTick, 'hold: the world does not tick while carl is away');
 assert.ok(held.whileAway.movedM < 0.01, `hold: bob's hull stands still while carl is away (${held.whileAway.movedM.toFixed(3)} m)`);
 // carl's last row trails bob's own newest (the overlay the hull was restored from) by at most one snapshot interval of driving

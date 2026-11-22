@@ -634,6 +634,13 @@ export interface MatchModeController<
   reviveAll(): void;
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
+  /**
+   * What a seat's frame shows of the mode, taken onto this live controller where a migrated host's replay of the window
+   * read otherwise (276; migrationState.ts replayWindow): the score, the flags (their carriers' pace with them), the zones,
+   * the ball and the caches taken. Nothing else: no life, loadout, wave or line (restoreCheckpoint, a fresh controller's,
+   * rewrote every life over the rows' and re-armed Gun Game's guns).
+   */
+  takeView(checkpoint: ModeCheckpoint): void;
   /** A bravo hunter's search record (round 8 Y2: receipts and probes read the phase), a copy; null before it has one. */
   huntSearchOf(entity: Pick<MatchModeEntity, 'id'>): HuntSearch | null;
   /** The mode's named reveal of a hull to every viewer, or null (Main's ruling on audit finding 53: a flag carrier,
@@ -3531,6 +3538,32 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         }
         restoreDeals(saved.deals);
       }
+    },
+    takeView(checkpoint) {
+      score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
+      // a cache the view no longer lists was taken (its hull's row carries its repair or rounds)
+      for (const cache of [...checkpoint.support?.pickups ?? [], ...checkpoint.waves?.horde?.pickups ?? [], ...checkpoint.objectives?.caches?.pickups ?? []]) {
+        const live = cache.active ? null : pickups.find((pickup) => pickup.id === cache.id);
+        if (live) live.active = false;
+      }
+      const saved = checkpoint.objectives;
+      if (!saved) return;
+      const carrierPace = baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE);
+      for (const entry of saved.flags) {
+        const flag = flagForTeam(entry.team);
+        if (!flag) continue;
+        const before = flag.status === 'carried' && flag.carrierId ? entityById.get(flag.carrierId) ?? null : null;
+        flag.x = entry.x; flag.y = entry.y; flag.z = entry.z; flag.status = entry.status; flag.carrierId = entry.carrierId; flag.returnAtS = entry.returnAtS;
+        const carrier = entry.status === 'carried' && entry.carrierId ? entityById.get(entry.carrierId) ?? null : null;
+        if (before && before !== carrier) stampPhysics(before);
+        if (carrier && carrier !== before) stampPhysics(carrier, carrierPace);
+      }
+      for (const entry of saved.zones) {
+        const zone = zones.find((candidate) => candidate.id === entry.id);
+        if (zone) { zone.control = entry.control; zone.owner = entry.owner; zone.contested = entry.contested; }
+      }
+      if (ball && saved.ball) Object.assign(ball, saved.ball);
+      ballActiveAtS = saved.ballActiveAtS;
     },
     huntSearchOf(entity) {
       const search = huntSearch.get(entity.id);

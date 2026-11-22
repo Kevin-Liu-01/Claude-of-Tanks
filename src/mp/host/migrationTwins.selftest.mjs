@@ -34,8 +34,8 @@
 //     each contact parted 275's hulls 0.6-0.8 m in 8 s from a keyframe alone: modeWindowMigration [5] holds that now).
 // [8] matches whose bots have no mission to drive (standard; Zone Control between pushes; realistic): to the bit from a
 //     keyframe alone and through a window. Their bots drive search, sector and level legs, which 274's way left to be
-//     planned afresh; a brain with no list kept its construction's opening route; a mission's record rode only with a
-//     destination's list; the hand-back's test refused a search leg just given (game/ai.ts takeDrive). 40-185 m at 275.
+//     planned afresh (captureDrive read them as no list), and a mission's record rode only with a destination's list
+//     (game/ai.ts captureDrive, takeDrive). 39-189 m on the 275 head.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -339,13 +339,51 @@ console.log('[7] Turbo Ball, a 30-tick window: the ball and the bots to the bit'
 }
 
 console.log('[8] matches with no mission to send the bots on (standard, Zone Control between pushes, realistic): to the bit');
-// (the bots drive search, sector and level legs there, which a new brain planned afresh, a brain with no list kept its
-// construction's opening route, a mission's record rode only with a destination's list, and a search leg a hull had just
-// been given failed the hand-back's test; parted 40-185 m from a keyframe alone at 275)
+// (the bots drive search, sector and level legs there, which a new brain planned afresh, and a mission's record rode only
+// with a destination's list; parted 39-189 m on the 275 head)
 for (const mode of ['standard', 'zone_control', 'realistic']) {
   const alone = fightTwin({ seed: 5, t0: 30, window: 0, mode }), played = fightTwin({ seed: 5, t0: 30, mode });
   ok(!alone.replayed && both(alone.run) === 0 && played.replayed?.steps === 30 && both(played.run) === 0, `${mode}: every bot keeps the old host's track for 10 s, `
     + `to the bit from the keyframe alone (${both(alone.run).toFixed(3)} m) and through a 30-tick window (${both(played.run).toFixed(3)} m; the 275 reading: ${wider(played.run275)})`);
+}
+
+console.log('[9] a hull a bot kills in the window: its turret thrown as the old host threw it');
+{
+  // the correctness review's staging (round 1): the CTF fight, seed 9; the first kill after 30 s found on a scout run, the
+  // keyframe 10 ticks before it and the seat's frame 30 after the keyframe. A kill seeded its turret's throw on the
+  // authority's own clock, which a migrated host restarts at 0: the play threw it 0.2 m from the one every seat saw
+  const bots = [...[0, 1, 2, 3].map((i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
+    ...[0, 1, 2, 3].map((i) => ({ playerId: `b-${i}`, name: `B${i}`, team: 'bravo', specId: spec }))];
+  const make = (resumed) => createMatchActor({ roomId: 'twin-kill', mapId: 'verdant', mode: 'capture_the_flag', seed: 9, seats, bots, ruleset: matchRulesetFor('capture_the_flag'),
+    world, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: resumed });
+  let killTick = -1, victim = null;
+  const scout = make(null);
+  scout.authority.onMatchReady();
+  for (let tick = 1; tick <= 90 * 60 && killTick < 0; tick++) {
+    scout.authority.step({ dt: 1 / 60, inputs });
+    for (const ev of scout.authority.eventsForViewer('h0')) if (ev.type === 'tank_destroyed' && tick > 30 * 60) { killTick = tick; victim = ev.id; }
+    scout.authority.afterEventBroadcast();
+  }
+  scout.stop();
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = () => { sim.step({ dt: 1 / 60, inputs }); tick++; for (const ev of sim.eventsForViewer('h0')) if (ev.type === 'mode_respawn') told.set(ev.id, tick); sim.afterEventBroadcast(); };
+  while (tick < killTick - 10) step();
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era);
+  told.clear();
+  for (let k = 0; k < 30; k++) step();
+  const { fresh, replayed } = resume(make, keyframe, hostFrame(old, tick, era), told);
+  const turretApart = () => { const a = sim.entityById.get(victim)?._wreckTurret, b = fresh.authority.entityById.get(victim)?._wreckTurret;
+    return a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) : a || b ? Infinity : 0; };
+  const thrownAtFrame = !!sim.entityById.get(victim)?._wreckTurret;
+  let widest = turretApart();
+  const [run] = together(old, [fresh], 10, (actor) => { if (actor === old) widest = Math.max(widest, turretApart()); });
+  ok(killTick > 0 && thrownAtFrame && replayed?.steps === 30 && widest === 0 && both(run) === 0, `${victim} killed in the window `
+    + `(tick ${killTick}): its turret flies as the old host's, to the bit over 10 s (${widest.toFixed(3)} m), every live bot too (${both(run).toFixed(3)} m)`);
+  old.stop(); fresh.stop();
 }
 
 if (failures) { console.error(`migrationTwins.selftest: ${failures} failure(s)`); process.exit(1); }
