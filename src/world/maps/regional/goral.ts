@@ -11,6 +11,7 @@ import {
   PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, UV_MEMBER,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
+import { bulb } from './domes.ts';
 import {
   buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, windowRhythm,
   type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
@@ -554,10 +555,8 @@ const kosciol: RegionalBuilder = (ctx) => {
   const cap: RoofSpec = { kind: 'hip', pitchDeg: 30, eave: 0.4, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: null };
   sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * cw, 2 * cw, cy1, cap), cap));
   let y = cy1 + cw * Math.tan(30 * Math.PI / 180) * 0.6;
-  for (const [h, r0, r1] of [[0.4, 0.55, 0.85], [0.45, 0.85, 0.95], [0.45, 0.95, 0.7], [0.4, 0.7, 0.3], [0.5, 0.3, 0.08]] as const) {
-    sink.cylinder('roof', [0, y, tz], 'y', h, r0, 10, {}, r1);
-    y += h;
-  }
+  // (dome-detail-275: five frustums of ten flat facets) the same bulb turned smooth (domes.ts)
+  y = bulb(sink, 'roof', 0, y, tz, [[0.4, 0.55, 0.85], [0.45, 0.85, 0.95], [0.45, 0.95, 0.7], [0.4, 0.7, 0.3], [0.5, 0.3, 0.08]]);
   sink.span('structureMetal', -0.03, y - 0.05, tz - 0.03, 0.03, y + 1.0, tz + 0.03, { colour: IRON, decor: true });
   sink.span('structureMetal', -0.24, y + 0.65, tz - 0.03, 0.24, y + 0.71, tz + 0.03, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [0, cy0 + 0.6, tz], 'y', 0.7, 0.38, 8, { colour: BELL, decor: true }, 0.2);

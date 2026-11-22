@@ -3,6 +3,7 @@
 // equipment shed, the trailer home and the hay shed, with the kit's shared palette and helpers they stand on (navajo.ts
 // imports those back). See navajo.ts for the kit's sources and the place.
 import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { bulb } from './domes.ts';
 import { emitRoof, holedFace, leanTo, placeShed, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -156,13 +157,8 @@ export function hoganBody(sink: PartSink, rng: () => number, look: () => number,
   // the roof hanging 8 cm clear of the walls that carry it
   sink.cylinder('plaster2', [0, wallTop - 0.14, 0], 'y', 0.22, A * 0.97 / Math.cos(OCT / 2), 8, { decor: true, shade: 0.9 }, A * 0.83 / Math.cos(OCT / 2), false, OCT / 2);
   const prof: Array<[number, number]> = [[0.78, 0], [0.6, 0.3], [0.38, 0.6], [0.2, 0.8]];
-  let mound = deckTop;
-  for (let i = 0; i + 1 < prof.length; i++) {
-    const h = (prof[i + 1][1] - prof[i][1]) * (1.0 + R * 0.06);
-    // the mound's rings share one phase, so each frustum meets the next edge to edge
-    sink.cylinder('plaster2', [0, mound, 0], 'y', h, A * prof[i][0], 12, {}, A * prof[i + 1][0], i === prof.length - 2, 0.13);
-    mound += h;
-  }
+  // (dome-detail-275: three frustums of twelve flat facets) the mound turned smooth through the same rings (domes.ts)
+  const mound = bulb(sink, 'plaster2', 0, deckTop, 0, prof.slice(1).map(([r1, t1], i) => [(t1 - prof[i][1]) * (1.0 + R * 0.06), A * prof[i][0], A * r1] as const));
   // a patch of tarpaper and a few stones holding it, the sheet-iron plate at the smoke hole and the stovepipe
   if (look() < 0.55) {
     const pa = look() * Math.PI * 2, pr = A * 0.5;

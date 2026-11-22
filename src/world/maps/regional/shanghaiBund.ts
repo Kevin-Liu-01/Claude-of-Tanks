@@ -15,6 +15,7 @@
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
 // Collision: every landmark's structure is a few prisms (its podium, its tiers, its tower); the facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { bulb } from './domes.ts';
 import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, type HoleRect } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -311,10 +312,9 @@ const bundBank: RegionalBuilder = (ctx) => {
         for (const s2 of [-1, 1]) faceBox(sink, 'plaster3', df, 0, y0 + 1.6 + s2 * 0.99, 0.09, 0.8, 0.18, 0.18, { decor: true }, 'ends');
       }
       const copper = { colour: COPPER_GREEN, ...SHADOWED };
-      sink.cylinder('structureMetal', [0, y0 + 3.2, 0], 'y', r * 0.38, r * 1.04, 16, copper, r * 0.9);
-      sink.cylinder('structureMetal', [0, y0 + 3.2 + r * 0.38, 0], 'y', r * 0.34, r * 0.9, 16, copper, r * 0.62);
-      sink.cylinder('structureMetal', [0, y0 + 3.2 + r * 0.72, 0], 'y', r * 0.28, r * 0.62, 16, copper, r * 0.2);
-      sink.cylinder('plaster3', [0, y0 + 3.2 + r, 0], 'y', 1.6, Math.max(0.35, r * 0.16), 8, SHADOWED);
+      // (dome-detail-275: three courses of sixteen flat facets) the copper dome turned smooth through the same courses
+      bulb(sink, 'structureMetal', 0, y0 + 3.2, 0, [[r * 0.38, r * 1.04, r * 0.9], [r * 0.34, r * 0.9, r * 0.62], [r * 0.28, r * 0.62, r * 0.2]], copper);
+      sink.cylinder('plaster3', [0, y0 + 3.2 + r, 0], 'y', 1.6, Math.max(0.35, r * 0.16), 16, SHADOWED);
       sink.cylinder('structureMetal', [0, y0 + 4.8 + r, 0], 'y', 0.9, Math.max(0.4, r * 0.18), 8, copper, 0.05);
     } else {
       // the corner turrets on the front, their windows cut through their walls, their copper caps

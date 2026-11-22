@@ -16,6 +16,7 @@ import {
   PartSink, faceBox, facePoint, normalize3, shade, UV_MEMBER,
   type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
+import { DOME_MIN_RINGS, domeSegments } from './domes.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
 import { woodpile } from './dressing.ts';
 import { ladder } from './vernacular.ts';
@@ -671,9 +672,10 @@ export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number
   if (spec.cone) {
     const c = spec.cone;
     if (c.dome) {
-      for (let j = 0; j < c.rings; j++) {
-        sink.cylinder(bucket, [cx, wallH - 0.01 + c.rise * j / c.rings, cz], 'y', c.rise / c.rings + 0.01, ringR(j / c.rings) - 0.06, 14, {}, ringR((j + 1) / c.rings) - 0.06, j === c.rings - 1);
-      }
+      // (dome-detail-275: c.rings frustums of fourteen flat facets) one smooth revolve through the same quarter ellipse
+      const rows = Math.max(DOME_MIN_RINGS, c.rings * 3);
+      sink.revolve(bucket, [cx, wallH - 0.01, cz], 'y', [...Array.from({ length: rows + 1 }, (_, j) => [c.rise * j / rows + (j === rows ? 0.01 : 0), ringR(j / rows) - 0.06] as [number, number]),
+        [c.rise + 0.01, 0]], domeSegments(R));
     } else sink.cylinder(bucket, [cx, wallH - 0.01, cz], 'y', c.rise, R - 0.06, 16, {}, c.cap - 0.02, false);
     top = wallH + c.rise;
     sink.cylinder(bucket, [cx, top - 0.02, cz], 'y', 0.16, c.cap + 0.1, 10, {});

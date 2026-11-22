@@ -3,6 +3,7 @@
 // bucket's night windows: the light burns at night), the astragals between them and the glazing bar across them, the
 // cupola with its eaves ring, the ventilator ball and the lightning rod. The caller lays the gallery floor it stands on.
 import { LocalFrame, PartSink, type EmitOptions, type Rgb, type Vec3 } from './geometry.ts';
+import { bulb } from './domes.ts';
 
 interface LanternSpec {
   /** the lantern's axis */
@@ -79,12 +80,8 @@ export function lightLantern(sink: PartSink, L: LanternSpec): number {
   }
   // the cupola: its eaves ring over the panes, the dome in three courses, the ventilator ball and the rod
   sink.cylinder('structureMetal', [x, y2, z], 'y', 0.1, r + 0.14, n, { colour: L.cupola }, r + 0.14, true, phase);
-  const dome: Array<[number, number, number]> = [[r + 0.08, r * 0.8, 0.3], [r * 0.8, r * 0.48, 0.26], [r * 0.48, 0.1, 0.22]];
-  let yy = y2 + 0.1;
-  for (const [a, b, h] of dome) {
-    sink.cylinder('structureMetal', [x, yy, z], 'y', h, a, n, { colour: L.cupola }, b, b === 0.1, phase);
-    yy += h;
-  }
+  // (dome-detail-275: three frustums of the lantern's facets) the copper dome turned smooth through the same courses
+  const yy = bulb(sink, 'structureMetal', x, y2 + 0.1, z, [[0.3, r + 0.08, r * 0.8], [0.26, r * 0.8, r * 0.48], [0.22, r * 0.48, 0.1]], { colour: L.cupola });
   sink.cylinder('structureMetal', [x, yy, z], 'y', 0.1, 0.07, 8, { colour: L.cupola, decor: true }, 0.19, false);
   sink.cylinder('structureMetal', [x, yy + 0.1, z], 'y', 0.12, 0.19, 8, { colour: L.cupola, decor: true }, 0.19, false);
   sink.cylinder('structureMetal', [x, yy + 0.22, z], 'y', 0.1, 0.19, 8, { colour: L.cupola, decor: true }, 0.05, true);

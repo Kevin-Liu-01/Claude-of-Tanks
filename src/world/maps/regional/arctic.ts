@@ -10,6 +10,7 @@ import {
   PartSink, faceBox, facePoint, rgb, shade,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
+import { DOME_MIN_RINGS, domeSegments } from './domes.ts';
 import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { doorCanopy, facadeOn, pilaster } from './facade.ts';
@@ -276,17 +277,18 @@ export function boxFace(x0: number, z0: number, x1: number, z1: number, side: 'n
   return { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: z1 - z0 };
 }
 
-/** A white sphere of stacked frustums (the radome) on its ring beam, `y` the ring beam's top. */
+/** A white sphere (the radome) on its ring beam, `y` the ring beam's top. */
 export function radome(sink: PartSink, cx: number, y: number, cz: number, r: number, segments: number): void {
   sink.cylinder('structureMetal', [cx, y - 0.4, cz], 'y', 0.4, r * 0.82, segments, { colour: STEEL });
-  const rings = 7;
-  // from the ring beam (a little under the equator: the dome is three-quarters of a sphere) to the top
-  const a0 = -0.55;
-  for (let k = 0; k < rings; k++) {
-    const t0 = a0 + (Math.PI / 2 - a0) * k / rings, t1 = a0 + (Math.PI / 2 - a0) * (k + 1) / rings;
-    const y0 = y + r * (Math.sin(t0) - Math.sin(a0)), y1 = y + r * (Math.sin(t1) - Math.sin(a0));
-    sink.cylinder('plaster', [cx, y0, cz], 'y', y1 - y0, r * Math.cos(t0), segments, { colour: RADOME }, Math.max(0.02, r * Math.cos(t1)), k === 0);
+  const rings = Math.max(DOME_MIN_RINGS + 3, Math.round(r * 4));
+  // from the ring beam (a little under the equator: the dome is three-quarters of a sphere) to the top (dome-detail-275:
+  // seven frustums of fourteen flat facets) turned smooth, closed underneath
+  const a0 = -0.55, profile: Array<[number, number]> = [[0, 0]];
+  for (let k = 0; k <= rings; k++) {
+    const t = a0 + (Math.PI / 2 - a0) * k / rings;
+    profile.push([r * (Math.sin(t) - Math.sin(a0)), Math.max(0, r * Math.cos(t))]);
   }
+  sink.revolve('plaster', [cx, y, cz], 'y', profile, Math.max(segments, domeSegments(r)), { colour: RADOME });
 }
 
 // ------------------------------------------------------------------------------------------------ the station

@@ -7,6 +7,7 @@
 // gate); the works office in brick with yellow-brick bands under slate. The workers' terraces, the station, the water
 // towers, the stacks and the shelled brick shells are the Ruhr kit's (ruhr.ts): the same coalfield brick.
 import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { DOME_MIN_RINGS, DOME_MIN_SEGMENTS } from './domes.ts';
 import { buildHouse, emitRoof, recordBody, recordShaft, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { facadeOn, roofDormers, shopDisplay } from './facade.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -14,6 +15,14 @@ import { recordLattice } from './lattice.ts';
 import { RUHR_BUILDERS } from './ruhr.ts';
 import { factoryStack } from './shared.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+
+/** A smooth quarter-ellipse crown from radius r at height y rising h to the axis: the rows of a vessel's head (dome-detail-275). */
+function ellipseCrown(y: number, h: number, r: number): Array<[number, number]> {
+  return Array.from({ length: DOME_MIN_RINGS + 1 }, (_, k) => {
+    const a = (k / DOME_MIN_RINGS) * (Math.PI / 2);
+    return [y + Math.sin(a) * h, Math.max(0, Math.cos(a) * r)] as [number, number];
+  });
+}
 
 const YELLOW_BRICK = 'plaster2' as const;
 /** The works' steel: furnace plate rusted brown-grey, the stoves' darker shells, the trusses' oxide red, the sheet's grey. */
@@ -247,7 +256,8 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       sink.pipe('structureMetal', [bx, top + 0.3, bz], knee, 0.46, PSEG, { ...plate, colour: PLATE, decor: true, caps: true });
       sink.pipe('structureMetal', knee, header, 0.44, PSEG, { ...plate, colour: PLATE, decor: true, caps: true });
     }
-    sink.revolve('structureMetal', [header[0], header[1] - 0.9, header[2]], 'y', [[0, 0.9], [1.6, 0.9], [1.9, 0.5], [2.0, 0]], SEG / 2, { ...plate, colour: PLATE, decor: true });
+    // (dome-detail-275: its crown three rows of fourteen facets) the crown a smooth quarter ellipse
+    sink.revolve('structureMetal', [header[0], header[1] - 0.9, header[2]], 'y', [[0, 0.9], ...ellipseCrown(1.6, 0.4, 0.9)], SEG, { ...plate, colour: PLATE, decor: true });
     for (const [bx, bz] of [[-0.45, -0.35], [0.45, 0.35]] as const) {
       sink.pipe('structureMetal', [header[0] + bx, header[1] + 0.9, header[2] + bz], [header[0] + bx, header[1] + 3.6, header[2] + bz], 0.24, 10, { ...plate, colour: PLATE, decor: true });
       sink.revolve('structureMetal', [header[0] + bx, header[1] + 3.6, header[2] + bz], 'y', [[0, 0.24], [0, 0.44], [0.32, 0.44], [0.36, 0]], 12, { ...plate, colour: shade(PLATE, 0.8), decor: true });
@@ -255,7 +265,7 @@ const blastFurnace: RegionalBuilder = (ctx) => {
     // the dust catcher beside the casting house on its four legs: a hopper cone, the drum, a round crown (its centre and
     // top are maps/saarWorks.ts CATCHER_U / CATCHER_V / CATCHER_TOP, where the gas main's branch meets it)
     const dcx = -W / 2 + 1.6, dcz = cz0 + 1.4, dr = 1.2, dc0 = ch + 1.6;
-    sink.revolve('structureMetal', [dcx, 0, dcz], 'y', [[dc0 - 2.1, 0], [dc0 - 2.0, 0.3], [dc0, dr], [dc0 + 4.2, dr], [dc0 + 4.7, dr * 0.6], [dc0 + 4.9, 0]], SEG / 2,
+    sink.revolve('structureMetal', [dcx, 0, dcz], 'y', [[dc0 - 2.1, 0], [dc0 - 2.0, 0.3], [dc0, dr], ...ellipseCrown(dc0 + 4.2, 0.7, dr)], SEG,
       { ...plate, colour: STOVE, decor: true });
     for (const [lx, lz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
       sink.member('structureMetal', [dcx + lx * dr * 0.62, -0.2, dcz + lz * dr * 0.62], [dcx + lx * dr * 0.62, dc0 + 0.2, dcz + lz * dr * 0.62], 0.2, 0.2, [0, 0, 1],
@@ -268,9 +278,10 @@ const blastFurnace: RegionalBuilder = (ctx) => {
       const sx = s * (sr + 0.3);
       recordShaft(sink, sx, stz, 2 * sr, sh + sr * 0.88, 'structureMetal');
       const dome: Array<[number, number]> = [[-0.4, sr], [sh, sr]];
-      for (let k = 1; k <= 5; k++) { const a = (k / 6) * (Math.PI / 2); dome.push([sh + Math.sin(a) * sr * 0.86, Math.cos(a) * sr]); }
+      for (let k = 1; k < DOME_MIN_RINGS; k++) { const a = (k / DOME_MIN_RINGS) * (Math.PI / 2); dome.push([sh + Math.sin(a) * sr * 0.86, Math.cos(a) * sr]); }
       dome.push([sh + sr * 0.88, 0.25], [sh + sr * 0.88, 0]);
-      sink.revolve('structureMetal', [sx, 0, stz], 'y', [[-0.4, sr * 0.97], [sh, sr * 0.97], [sh + sr * 0.6, sr * 0.75], [sh + sr * 0.85, 0.2], [sh + sr * 0.85, 0]], 12,
+      // (dome-detail-275) the shell under the plate courses turned as round as they are (it showed through as twelve facets)
+      sink.revolve('structureMetal', [sx, 0, stz], 'y', [[-0.4, sr * 0.97], ...ellipseCrown(sh, sr * 0.85, sr * 0.97), [sh + sr * 0.85, 0]], DOME_MIN_SEGMENTS,
         { ...plate, colour: STOVE });
       const st = plateProfile(dome, 2.4, false);
       sink.revolve('structureMetal', [sx, 0, stz], 'y', st.profile, SEG,

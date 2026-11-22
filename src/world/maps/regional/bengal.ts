@@ -9,6 +9,7 @@
 // their pilasters, louvred shutters and a signboard; a whitewashed mosque with small domes and a slender minaret; round
 // clay-and-bamboo rice granaries (gola) under conical thatch; the river ghat's boat sheds.
 import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { finialOn, roundDrum, smoothDome } from './domes.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { corrugatedCladding } from './villageCraft.ts';
@@ -420,21 +421,24 @@ const mosque: RegionalBuilder = (ctx) => {
     openings, chimneys: [], gutters: null, verge: null,
   }, dialect);
   const top = frame.eaveY + 0.22;
+  // (dome-detail-275: each was five frustums of twelve flat facets on a plain ring) the Bengal dome: a little pointed, on
+  // its drum under a stepped cornice, turned smooth (domes.ts), the gilt alem on its crown
   for (const [x, r] of [[-W * 0.3, 0.9], [0, 1.3], [W * 0.3, 0.9]] as const) {
-    sink.cylinder('plaster', [x, top, 0], 'y', 0.4, r, 12, {});
-    const prof = [1.0, 0.98, 0.9, 0.74, 0.5, 0.2];
-    let y = top + 0.4;
-    for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, 0], 'y', r * 0.26, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.26; }
-    sink.cylinder('structureMetal', [x, y, 0], 'y', 0.5, 0.05, 6, { colour: rgb(0xb8933e), decor: true }, 0.02);
+    const shell = smoothDome(sink, 'plaster', x, roundDrum(sink, 'plaster', x, top, 0, r, 0.4, 'plaster') - 0.02, 0, r, { form: 'pointed', stilt: 0.14 });
+    finialOn(sink, x, shell.top, 0, r > 1 ? 0.6 : 0.45, rgb(0xb8933e));
   }
   // the minaret at a rear corner, engaged in the walls (the 225 gate, 2026-10-15: standing clear of the front corner it
   // reached 1.1 m past the chapel's 5.7 m plot, and the front's doors leave it no room there): its shaft reaches at most
   // 0.3 m past the plot's side and back
   const mr = 0.75;
   const mx = Math.min(W / 2 + 0.2, ctx.info.w / 2 + 0.3 - mr), mz = -Math.min(D / 2 + 0.2, ctx.info.d / 2 + 0.3 - mr);
-  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, mr, 10, {}, 0.55);
-  sink.cylinder('plaster', [mx, 8.6, mz], 'y', 0.3, 1.05, 10, { decor: true });
-  sink.cylinder('plaster', [mx, 11.5, mz], 'y', 1.3, 0.55, 10, {}, 0.05);
+  // (dome-detail-275: a ten-sided tapered prism, a flat disc and a cone) the shaft turned round on its moulded base, its
+  // string courses, the balcony on its corbelled ring under a parapet, the lantern stage and its small dome
+  sink.revolve('plaster', [mx, 0, mz], 'y', [[-0.3, mr + 0.1], [0.5, mr + 0.1], [0.5, mr], [11.5, 0.55], [11.5, 0]], 24);
+  for (const y of [3.2, 6.0]) sink.revolve('plaster', [mx, y, mz], 'y', [[0, mr - (0.2 * y) / 11.5 + 0.02], [0, mr - (0.2 * y) / 11.5 + 0.08], [0.16, mr - (0.2 * y) / 11.5 + 0.08], [0.16, 0]], 24, { decor: true, shade: 0.94 });
+  sink.revolve('plaster', [mx, 8.1, mz], 'y', [[0, 0.62], [0.5, 1.05], [0.5, 1.12], [0.62, 1.12], [0.62, 1.05], [1.15, 1.05], [1.15, 0.98], [0.62, 0.98], [0.62, 0]], 24, { decor: true });
+  sink.revolve('plaster', [mx, 11.5, mz], 'y', [[0, 0.62], [0.12, 0.62], [0.12, 0.5], [0.9, 0.5], [0.9, 0.6], [1.0, 0.6], [1.0, 0]], 24);
+  finialOn(sink, mx, smoothDome(sink, 'plaster', mx, 12.5, mz, 0.48, { form: 'pointed' }).top, mz, 0.4, rgb(0xb8933e));
   return sink.finish();
 };
 

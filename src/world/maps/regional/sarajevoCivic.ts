@@ -17,6 +17,7 @@
 //   - depot → a čaršija row: single-storey timber shops under one deep-eaved tile roof, their ćepenci (shutters)
 //     closed for the siege, a whitewashed han storey over one end.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { domeSegments, smoothDome } from './domes.ts';
 import { buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -36,15 +37,29 @@ const STONE_WINDOW: WindowStyle = {
   surround: { bucket: 'stone', width: 0.18, out: 0.07, lintel: 0.26 }, sill: { bucket: 'stone', out: 0.12 }, shutters: null,
 };
 
-/** A dome of sheet metal over (x, y0, z): a hemisphere of radius r as stacked rings, its finial on top. */
+/**
+ * A dome of sheet metal over (x, y0, z): a hemisphere of radius r, a little stilted, its foot dressed by a drip ring and
+ * — on a dome of two metres or more — the standing seams down it, turned smooth (domes.ts; dome-detail-275: it was four
+ * stacked rings of twelve flat facets, the largest dome in the game the coarsest). `segments` is a floor (the shell takes
+ * at least domes.ts's). Returns the crown's height.
+ */
 function dome(sink: PartSink, x: number, y0: number, z: number, r: number, colour: Rgb, segments = 12, decor = false): number {
-  const rings = [[1, 0.92, 0.36], [0.92, 0.72, 0.32], [0.72, 0.4, 0.26], [0.4, 0.04, 0.14]] as const;
-  let y = y0;
-  for (const [a, b, h] of rings) {
-    sink.cylinder('structureMetal', [x, y, z], 'y', r * h, r * a, segments, { colour, ...(decor ? { decor: true } : {}) }, r * b, true);
-    y += r * h;
+  const emit = { colour, ...(decor ? { decor: true } : {}) };
+  const shell = smoothDome(sink, 'structureMetal', x, y0, z, r, { stilt: 0.08, segments, emit });
+  sink.revolve('structureMetal', [x, y0, z], 'y', [[-0.03, r + 0.08], [0.09, r + 0.08], [0.09, r]], domeSegments(r), { colour: shade(colour, 0.85), decor: true });
+  if (r >= 2) {
+    // the standing seams: a rib from the drip ring to the crown's ring on every second gore
+    const ribs = Math.round(r * 4) * 2, rows = 6;
+    for (let k = 0; k < ribs; k++) {
+      const phi = (k + 0.5) * Math.PI * 2 / ribs;
+      for (let i = 0; i < rows; i++) {
+        const e0 = (Math.PI / 2) * 0.92 * i / rows, e1 = (Math.PI / 2) * 0.92 * (i + 1) / rows;
+        sink.member('structureMetal', shell.surface(e0, phi, 0.015), shell.surface(e1, phi, 0.015), 0.05, 0.05, shell.normal((e0 + e1) / 2, phi),
+          { colour: shade(colour, 1.12), decor: true, fine: true }, 0.02);
+      }
+    }
   }
-  return y;
+  return shell.top;
 }
 
 /** A finial: a slim mast with a cross (church) or the alem's balls and crescent (mosque). */
@@ -447,8 +462,9 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
       finial(sink, 0, t, 0, 'cross', 0.9);
     });
     // the apse: a half drum at the east end under its half cone
-    sink.cylinder(wall, [0, -0.3, az], 'y', nh * 0.82 + 0.3, ar, 8, {}, ar, true, 0, Math.PI);
-    sink.cylinder('structureMetal', [0, nh * 0.82, az], 'y', ar * 0.75, ar + 0.3, 8, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
+    // (dome-detail-275: eight flat panels) sixteen
+    sink.cylinder(wall, [0, -0.3, az], 'y', nh * 0.82 + 0.3, ar, 16, {}, ar, true, 0, Math.PI);
+    sink.cylinder('structureMetal', [0, nh * 0.82, az], 'y', ar * 0.75, ar + 0.3, 16, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
     // the bell tower over the west door
     const th = clampTo(nh * 2.5, 12, 22);
     // (props census #13, lane B 2026-10-14) the shaft to the belfry's sills (towerShaft), the belfry open through its

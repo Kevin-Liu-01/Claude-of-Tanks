@@ -114,8 +114,8 @@
    "silhouette": 1,
    "mid": 4,
    "fine": 1,
-   "trisPerWallM2": 12.61,
-   "fineShare": 0.172,
+   "trisPerWallM2": 15.96,
+   "fineShare": 0.144,
    "facePass": 0.5
   },
   "arctic": {
@@ -258,8 +258,8 @@
    "silhouette": 3,
    "mid": 5,
    "fine": 3,
-   "trisPerWallM2": 11.66,
-   "fineShare": 0.413,
+   "trisPerWallM2": 14.91,
+   "fineShare": 0.335,
    "facePass": 1
   },
   "lorrain": {

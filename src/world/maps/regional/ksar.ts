@@ -6,6 +6,7 @@
 // watch tower; a domed hammam.
 import * as THREE from 'three';
 import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { finialOn, glassBosses, roundDrum, smoothDome } from './domes.ts';
 import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, withHousePlans, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
 import { paintBand } from './facade.ts';
 import { bench, pottedPlant } from './dressing.ts';
@@ -17,7 +18,7 @@ import { ringSolid } from './millWorks.ts';
 import { ksarGhorfaSouk, souqStall } from './souqs.ts'; // props #23: the ghorfa souk and the souk stall
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
-const TIMBER = rgb(0x7a6048);
+const TIMBER = rgb(0x7a6048), BRASS = rgb(0xa8843c);
 // mud plaster over rubble: the map's own render (the sourced plaster set under the desert palette), the colour of the
 // ground it was dug from (w2 captures: the kit's own saturated plaster3 tone read as orange against the sand)
 const MUD: RegionalBucket = 'plaster';
@@ -371,22 +372,17 @@ const hammam: RegionalBuilder = (ctx) => {
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'adobe',
     }, quiet);
     top = frame.eaveY + 0.2;
-    // the domes, each pierced by its glass bosses; the lantern on the great one
+    // the domes, each pierced by its glass bosses; the lantern on the great one (dome-detail-275: they were five frustums
+    // of twelve flat facets, conical, with no drum): each on a low round drum under its stepped cornice, the shell a little
+    // pointed and stilted as the Jerid's are, turned smooth (domes.ts), its bosses seated on the true shell
     for (const [x, z, r, great] of [[-W * 0.22, -Dm * 0.15, 1.5, false], [W * 0.22, -Dm * 0.15, 1.5, false], [0, Dm * 0.18, 1.9, true]] as const) {
-      const prof = [1.0, 0.97, 0.88, 0.7, 0.42, 0.12];
-      let y = top;
-      for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, z], 'y', r * 0.24, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.24; }
-      // (kitConnectivity: the bosses stood 2 cm off the dome) each seated into the dome's surface where it stands (the
-      // frustum between its 0.7 r and 0.42 r rings at 0.62 r), sunk past the slope under its foot
-      const surface = top + r * 0.24 * (3 + (0.7 - 0.62) / (0.7 - 0.42));
-      for (let k = 0; k < (great ? 10 : 7); k++) {
-        const a = (k / (great ? 10 : 7)) * Math.PI * 2 + look() * 0.3, rr = r * 0.62;
-        sink.cylinder('glass', [x + Math.cos(a) * rr, surface - 0.07, z + Math.sin(a) * rr], 'y', 0.16, 0.075, 6, { decor: true, fine: true }, 0.05);
-      }
+      const spring = roundDrum(sink, 'plaster', x, top - 0.05, z, r + 0.06, 0.3, 'plaster');
+      const shell = smoothDome(sink, 'plaster', x, spring - 0.04, z, r, { form: 'pointed', stilt: 0.08, ...(great ? { openTop: 0.3 } : {}) });
+      glassBosses(sink, shell, [[0.5, great ? 10 : 7], [0.9, great ? 6 : 4]], 0.075, look, { fine: true });
       if (great) {
-        sink.cylinder('plaster', [x, y - 0.05, z], 'y', 0.42, 0.32, 8, {}, 0.3);
-        sink.cylinder('plaster', [x, y + 0.37, z], 'y', 0.2, 0.42, 8, { decor: true }, 0.06);
-      }
+        sink.cylinder('plaster', [x, shell.top - 0.05, z], 'y', 0.42, 0.32, 8, {}, 0.3);
+        sink.cylinder('plaster', [x, shell.top + 0.37, z], 'y', 0.2, 0.42, 8, { decor: true }, 0.06);
+      } else finialOn(sink, x, shell.top, z, 0.55, BRASS);
     }
     // the spouts out of the parapet over the long walls
     const sy = frame.eaveY + 0.1;

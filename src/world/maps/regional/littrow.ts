@@ -23,6 +23,7 @@
 // dressing, every member meeting its neighbours at both ends (kitConnectivity), every roof a hull may land on in the
 // Moon's low gravity flat or convex.
 import { PartSink, faceBox, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { domeSegments, smoothProfile } from './domes.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { EARTH_SKY } from '../earthriseStation.ts';
 
@@ -362,7 +363,8 @@ const node: RegionalBuilder = (ctx) => {
   // the sintered ring footing and the drum, its dome and its cupola
   sink.cylinder('stone', [cx, -0.15, cz], 'y', y0 + 0.15, r + 0.45, 16);
   sink.cylinder(M, [cx, y0, cz], 'y', h, r, 20, { colourAt: (p) => (p[1] < y0 + 0.9 ? DUSTED : MLI), colour: MLI }, r, false);
-  sink.revolve(M, [cx, y0 + h, cz], 'y', [[0, r], [0.42, r * 0.86], [0.78, r * 0.55], [0.95, 0.72]], 20, { colour: MLI });
+  // (dome-detail-275: three rows of twenty facets) the same dome smooth
+  sink.revolve(M, [cx, y0 + h, cz], 'y', smoothProfile([[0, r], [0.42, r * 0.86], [0.78, r * 0.55], [0.95, 0.72]], 4), domeSegments(r), { colour: MLI });
   sink.cylinder(M, [cx, y0 + h + 0.9, cz], 'y', 0.42, 0.72, 12, { colour: PANEL });
   sink.cylinder('glass', [cx, y0 + h + 1.0, cz], 'y', 0.2, 0.735, 12, { decor: true });
   sink.cylinder(M, [cx, y0 + h + 0.9, cz], 'y', 0.05, 0.78, 12, { colour: GOLD, decor: true, fine: true });

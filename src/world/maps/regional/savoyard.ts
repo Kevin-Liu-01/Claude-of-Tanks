@@ -14,6 +14,7 @@ import {
   LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
+import { bulb } from './domes.ts';
 import {
   buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofCrown, roofGeometry, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec,
@@ -457,11 +458,11 @@ const eglise: RegionalBuilder = (ctx) => {
   // the bulb: a neck, the swelling bulb, the lantern, the small bulb, the spike and the cross (tin, frustum rings)
   // (round 2, wave 109b: the tin read as "a salmon-pink onion dome" under the low April sun) clad in larch shingles
   // (tavaillons), dark with age, as many of the Maurienne's bulbs are
-  const ring = (y: number, h: number, r0: number, r1: number, colour: Rgb) => sink.cylinder('structureWood', [0, y, tz], 'y', h, r0, 12, { colour }, r1);
   let y = shaft + 0.3;
   const profile: Array<[number, number, number]> = [[0.4, 1.45, 1.2], [0.45, 1.2, 1.55], [0.5, 1.55, 1.62], [0.5, 1.62, 1.42], [0.45, 1.42, 0.95],
     [0.4, 0.95, 0.42], [0.5, 0.42, 0.42]];
-  for (const [h, r0, r1] of profile) { ring(y, h, r0, r1, SHINGLE); y += h; }
+  // (dome-detail-275: seven frustums of twelve flat facets) the same bulb turned smooth (domes.ts)
+  y = bulb(sink, 'structureWood', 0, y, tz, profile, { colour: SHINGLE });
   // the lantern: four little openings round a drum (props census #5: they were dark plates on it): its sill and head
   // rings, the dark drum set back between them, four posts between the openings
   sink.cylinder('structureWood', [0, y, tz], 'y', 0.12, 0.5, 8, { colour: shade(SHINGLE, 0.9) }, 0.5);
@@ -472,7 +473,7 @@ const eglise: RegionalBuilder = (ctx) => {
     sink.span('structureWood', px - 0.09, y + 0.12, pz - 0.09, px + 0.09, y + 0.6, pz + 0.09, { colour: shade(SHINGLE, 0.86) });
   }
   y += 0.75;
-  for (const [h, r0, r1] of [[0.3, 0.62, 0.72], [0.35, 0.72, 0.52], [0.35, 0.52, 0.12]] as const) { ring(y, h, r0, r1, SHINGLE); y += h; }
+  y = bulb(sink, 'structureWood', 0, y, tz, [[0.3, 0.62, 0.72], [0.35, 0.72, 0.52], [0.35, 0.52, 0.12]], { colour: SHINGLE });
   sink.span('structureMetal', -0.03, y - 0.05, tz - 0.03, 0.03, y + 0.95, tz + 0.03, { colour: IRON, decor: true });
   sink.span('structureMetal', -0.24, y + 0.62, tz - 0.03, 0.24, y + 0.68, tz + 0.03, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [0, y + 0.2, tz], 'y', 0.16, 0.09, 8, { colour: rgb(0xb8933e), decor: true }, 0.09);

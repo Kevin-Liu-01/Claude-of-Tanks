@@ -9,6 +9,7 @@ import {
   PartSink, faceBox, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
+import { bulb } from './domes.ts';
 import { buildHouse, emitRoof, holedBox, leanTo, recordShaft, roofCrown, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { openBelfry } from './sarajevoParts.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -330,15 +331,11 @@ const ambar: RegionalBuilder = (ctx) => {
 /** The wooden post mill (props census #22, Lane C 2026-10-16: windmills.ts buildPostMill, at the standard). */
 const postMill: RegionalBuilder = (ctx) => buildPostMill(ctx, { timber: rgb(0x6a5440), dark: rgb(0x4a3b2e) });
 
-/** An onion dome on a drum: stacked frustums swelling and narrowing to a gilt cross. */
+/** An onion dome on a drum: swelling and narrowing to a gilt cross. */
 function onion(sink: PartSink, x: number, y: number, z: number, r: number, colour: Rgb): void {
   const profile = [1.0, 1.18, 1.22, 1.12, 0.9, 0.6, 0.32, 0.14];
-  let yy = y;
-  for (let k = 0; k + 1 < profile.length; k++) {
-    const h = r * 0.34;
-    sink.cylinder('structureMetal', [x, yy, z], 'y', h, r * profile[k], 12, { colour }, r * profile[k + 1], k === 0 || k === profile.length - 2);
-    yy += h;
-  }
+  // (dome-detail-275: seven frustums of twelve flat facets) the same swell turned smooth (domes.ts)
+  const yy = bulb(sink, 'structureMetal', x, y, z, profile.slice(1).map((b, k) => [r * 0.34, r * profile[k], r * b] as const), { colour });
   sink.cylinder('structureMetal', [x, yy, z], 'y', r * 0.5, r * 0.08, 6, { colour: GILT, decor: true }, r * 0.04);
   sink.span('structureMetal', x - 0.03, yy + r * 0.5, z - 0.03, x + 0.03, yy + r * 0.5 + 1.0, z + 0.03, { colour: GILT, decor: true });
   sink.span('structureMetal', x - 0.28, yy + r * 0.5 + 0.62, z - 0.03, x + 0.28, yy + r * 0.5 + 0.7, z + 0.03, { colour: GILT, decor: true });
