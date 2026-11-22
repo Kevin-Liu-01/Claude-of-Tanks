@@ -63,7 +63,9 @@ const stageFoe = () => {
     t.aiCtl = null; t.input.fire = false; t.input.throttle = 0; t.input.steer = 0; t.state.speed = 0;
   }
   const yaw = p.state.yaw + (window.__dfRear ? Math.PI : 0);
-  const x = p.state.pos.x + Math.sin(yaw) * 120, z = p.state.pos.z + Math.cos(yaw) * 120;
+  // (the card case closes to 50 m: the autocannon's stream from 120 m went into the ground)
+  const range = window.__dfRear ? 50 : 120;
+  const x = p.state.pos.x + Math.sin(yaw) * range, z = p.state.pos.z + Math.cos(yaw) * range;
   foe.state.pos.set(x, hf.getHeightAt(x, z), z);
   foe.state.yaw = Math.atan2(p.state.pos.x - x, p.state.pos.z - z);
   foe.state.turretYaw = 0;
@@ -75,9 +77,12 @@ const stageFoe = () => {
   // the other enemies far off, so only the staged shot can land
   for (const other of g.tanks) if (other !== foe && other.team !== p.team && !other.combat.destroyed) other.state.pos.x += 900;
   p.input.throttle = 0; p.state.speed = 0;
-  window.__dfLog = { fired: 0, hitsOnPlayer: [] };
+  window.__dfLog = { fired: 0, hitsOnPlayer: [], hitsElsewhere: 0 };
   D.bus.on('shell:fired', (e) => { if (e.shooterId === foe.id) window.__dfLog.fired++; });
-  D.bus.on('shell:hit', (e) => { if (e.targetId === p.id) window.__dfLog.hitsOnPlayer.push([e.kind, e.hpRemoved ?? e.damage, e.attackerId]); });
+  D.bus.on('shell:hit', (e) => {
+    if (e.targetId === p.id) window.__dfLog.hitsOnPlayer.push([e.kind, e.hpRemoved ?? e.damage, e.attackerId]);
+    else if (e.attackerId === foe.id) window.__dfLog.hitsElsewhere++;
+  });
   return foe.id;
 };
 /** Fire the staged foe's gun at the player until the player is destroyed (the shot's own flight and resolve). */
@@ -140,7 +145,7 @@ async function runCase(page, tag, which) {
       s.points = s.points.filter(([id]) => id !== foeId).concat([[foeId, air.rules.points.cap]]);
       s.cooldowns = s.cooldowns.filter(([k]) => !k.startsWith(`${foeId}:`));
       air.restore(s);
-      p.combat.hp = 1;
+      p.combat.hp = Math.max(1, p.combat.maxHp * 0.12); // (a real damage figure on the card)
       return air.requestStrike(foeId, 'bomb', p.state.pos.x, p.state.pos.z, g.timeS);
     }, foeId);
     const until = Date.now() + 25_000;

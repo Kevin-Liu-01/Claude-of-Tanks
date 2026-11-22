@@ -635,7 +635,12 @@ mode gives back (`game/battleResultPresentationRuntime.ts deathShapeFor`):
 
 - **The shot card** (`game/killcamShotCard.ts`): the killer's callsign (a room player's name) and flag, its tank and tier
   or the call-in, the round as a weapon (`ui/hitEventFormat.ts weaponDisplayName`), the outcome and where it struck,
-  distance / armour / pen / damage (one damage figure, `hullPointsRemoved`), and the victim's silhouette with the hit.
+  distance / armour / pen / damage (one damage figure, `hullPointsRemoved`; a splash or fire kill shows distance and
+  damage only), and the killer's tank render on its right. After a quick cam it stays over the live wreck until the
+  revive, the HUD veiled.
+- **Solo pauses under a replay**: a local battle does not step while a kill cam plays (`game/battleFrameRuntime.ts`), so
+  in solo the quick cam holds the world for its few seconds and the respawn wait counts from where it stopped; a room's
+  authority keeps running, which is why the quick cam leaves before the revive.
 - **The respawn dial** (`ui/respawnDial.ts`): bottom centre, in the kill cam's lower band, reading the mode controller's
   armed revive (`matchModes.ts respawnFor`, the viewer's mode state's `respawn` in a room) in whole seconds; "Back next
   wave" for a room's Horde; "Infected · respawn in" once the outbreak took the player. Its own surface, not a notice.

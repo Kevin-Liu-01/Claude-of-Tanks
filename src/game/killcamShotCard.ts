@@ -133,16 +133,21 @@ export function shotCardModel(input: ShotCardInput, lookups: ShotCardLookups): S
   const damage: ShotCardStat = { id: 'damage', label: t('killcam.stat.damage'), value: `−${round(hullPointsRemoved(ev))}` };
   // a blast's splash tests no plate (armour against pen means nothing there): distance and damage only
   const splash = ev.kind === 'he_splash';
-  if (!collision && !fire) {
+  // an Air Support call-in's flight is measured from its caller, not from what released it: no distance (the gunship's
+  // and a drone's are their own)
+  const calledIn = !!source && source.source !== 'ac130' && source.source !== 'drone';
+  if (collision || fire) stats.push(damage);
+  else {
     // the short figures share the first row (distance, damage); armour and pen take a row each
-    stats.push({ id: 'distance', label: t('killcam.stat.distance'), value: `${round(ev.flightDistM).toLocaleString()} m` }, damage);
+    if (!calledIn) stats.push({ id: 'distance', label: t('killcam.stat.distance'), value: `${round(ev.flightDistM).toLocaleString()} m` });
+    stats.push(damage);
+    if (!splash) {
+      stats.push({ id: 'armor', label: t('killcam.stat.armor'), value: armorText(ev) });
+      const nominal = nominalPenFor(ev);
+      const roll = round(ev.penRollMm);
+      stats.push({ id: 'pen', label: t('killcam.stat.pen'), value: roll > 0 ? `${roll}${nominal > 0 ? ` / ${nominal}` : ''} mm` : '—' });
+    }
   }
-  if (!collision && !fire && !splash) {
-    stats.push({ id: 'armor', label: t('killcam.stat.armor'), value: armorText(ev) });
-    const nominal = nominalPenFor(ev);
-    const roll = round(ev.penRollMm);
-    stats.push({ id: 'pen', label: t('killcam.stat.pen'), value: roll > 0 ? `${roll}${nominal > 0 ? ` / ${nominal}` : ''} mm` : '—' });
-  } else stats.push(damage);
   return {
     view,
     heading: view === 'death' ? t('killcam.destroyedByHeading') : view === 'kill' ? t('killcam.card.yourKill') : t('killcam.card.finalBlow'),

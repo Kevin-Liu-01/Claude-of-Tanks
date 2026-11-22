@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { shotCardModel } from './killcamShotCard.ts';
 
 const source = readFileSync(new URL('./killcam.ts', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -180,6 +181,22 @@ assert.match(effects, /vehicleCollision\([\s\S]{0,180}closingMps(?:\s*:\s*number
   // fallback through the pure selection policy — the same two fields the revive clears
   assert.match(source, /selectResultReplay<ReplaySnapshot>\(\{[\s\S]*?pendingDeath,\n\s*pendingVictory,\n\s*lastHitOnPlayer,/,
     'the defeat replay still reads the (now last-life-only) death chain with the burn-out fallback');
+}
+
+// (death-flow-275) the shot card's figures: one damage row whatever the hit; a splash tests no plate; a call-in's flight is
+// its caller's (no distance), a direct hit carries armour and pen
+{
+  const lookups = { specName: () => 'Tank', specNation: () => 'fr', tier: () => 'VIII' };
+  const rows = (ev, extra = {}) => shotCardModel({ ev, view: 'death', replayKind: 'projectile', cause: null, ...extra }, lookups)
+    .stats.map((stat) => stat.id);
+  const hit = { kind: 'penetration', attackerSpecId: 'x', flightDistM: 112, hpRemoved: 294, damage: 294, zone: 'hull_front', penRollMm: 824 };
+  assert.deepEqual(rows(hit), ['distance', 'damage', 'armor', 'pen'], 'a direct hit: distance, damage, armour, pen');
+  assert.deepEqual(rows({ ...hit, kind: 'he_splash' }), ['distance', 'damage'], 'a splash: distance and damage, once');
+  assert.deepEqual(rows({ ...hit, kind: 'he_splash', attackerSpecId: null, attackerSource: 'bomb' }), ['damage'],
+    'a bomb: damage only (its distance is the caller\'s)');
+  assert.deepEqual(rows({ ...hit, attackerSpecId: null, attackerSource: 'drone' }), ['distance', 'damage', 'armor', 'pen'],
+    'a drone\'s round keeps its own distance');
+  assert.deepEqual(rows(hit, { cause: 'fire' }), ['damage'], 'a fire: damage only');
 }
 
 console.log('killcam presentation selftest passed (revive clears the death chain)');
