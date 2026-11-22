@@ -43,13 +43,15 @@ try {
     'bow closure spans vertically from the belly into the sovereign glacis plane');
   assert.equal(closure.removedInnerTrackPanelCount, 2,
     'both full-length dark panels behind the tracks are removed');
+  // 274 (§B4): the closure rises straight from the belly roof to the sponson floor; the former flare out to ±1.42
+  // cut through the top run (track-clip rear 11, strict sweep 105/25)
   assert.deepEqual(closure.lowerHullClosure, {
     lowerHalfWidth: 0.98, lowerY: 1.0,
-    upperHalfWidth: 1.42, upperY: 1.22,
-    rearZ: -3.70, frontZ: 1.80,
-  }, 'structural lower hull fills the complete gap between belly and sponson');
-  assert.ok(closure.lowerHullClosure.lowerHalfWidth < closure.trackLaneInnerX,
-    'lower hull closure begins inboard of the animated track lane');
+    upperHalfWidth: 0.98, upperY: 1.22,
+    rearZ: -3.66, frontZ: 1.80,
+  }, 'structural lower hull fills the complete gap between belly and sponson floor');
+  assert.ok(Math.max(closure.lowerHullClosure.lowerHalfWidth, closure.lowerHullClosure.upperHalfWidth) <
+    closure.trackLaneInnerX, 'lower hull closure stays inboard of the animated track lane at every height');
 
   let fullLengthDarkPanels = 0;
   hull.traverse((object) => {

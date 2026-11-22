@@ -1256,12 +1256,13 @@ function buildK1A1Hull(P: Modern3BuilderPort) {
   P.add('hull', box(1.96, 0.60, 7.02), 0, 0.70, -0.11);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps; runs to -3.62, 10 mm into the rear lower plate (owner 2026-10-19 sweep: the 0.11 m between them stood open from below)
   // Structural lower-side closure. The former pair of full-length dark
   // wheel-well liners sat directly behind the shoes and read as artificial
-  // panels. Remove those liners entirely and close the real hull instead:
-  // this shallow flare overlaps the belly roof at ±0.98/y 1.00, meets the
-  // sponson floor at ±1.42/y 1.22, and rises outside the animated top run.
-  P.add('hull', slab(
-    [-0.98, 1.00, 1.80], [0.98, 1.00, 1.80], [0.98, 1.00, -3.66], [-0.98, 1.00, -3.66],
-    [-1.42, 1.22, 1.75], [1.42, 1.22, 1.75], [1.42, 1.22, -3.70], [-1.42, 1.22, -3.70]));
+  // panels; the real hull closes instead. 274 (§B4): the shallow flare that
+  // ran from ±0.98/y 1.00 out to ±1.42/y 1.22 cut through the top run over its
+  // whole length (track-clip rear 11, strict sweep 105/25, on main since 255).
+  // The hull now rises straight from the belly roof at ±0.98, 45 mm inside each
+  // track lane, to the sponson floor at y 1.22 (the shoulder slab's underside),
+  // so the wheel well stands open over the top run as on the K1.
+  P.add('hull', box(1.96, 0.23, 5.46), 0, 1.105, -0.93);
   P.add('hull', slab(                                                          // outward-canted sponson shoulders replace the former vertical body box
     [-1.42, 1.22, 1.75], [1.42, 1.22, 1.75], [1.42, 1.22, -3.70], [-1.42, 1.22, -3.70],
     [-1.685, 1.475, 1.75], [1.685, 1.475, 1.75], [1.685, 1.475, -3.70], [-1.685, 1.475, -3.70]));
@@ -1294,8 +1295,8 @@ function buildK1A1Hull(P: Modern3BuilderPort) {
       removedInnerTrackPanelCount: 2,
       lowerHullClosure: Object.freeze({
         lowerHalfWidth: 0.98, lowerY: 1.00,
-        upperHalfWidth: 1.42, upperY: 1.22,
-        rearZ: -3.70, frontZ: 1.80,
+        upperHalfWidth: 0.98, upperY: 1.22,
+        rearZ: -3.66, frontZ: 1.80,
       }),
       trackLaneInnerX: 1.31 - 0.57 / 2,
       closureHalfWidth: 0.98,
