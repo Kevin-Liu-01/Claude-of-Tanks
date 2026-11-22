@@ -59,7 +59,9 @@ import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
  *  import them, and on their own they were one more boot request on each of those pages. (264) So does the kit's load
  *  failure (components/loadFailure.ts, about 0.5 KB): an opener whose chunk did not arrive says so on its trigger with no
  *  chunk of its own, on every page. */
-export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|i18nChunkImport\.browser|localeRouting|responsiveLayout|components[\\/]surfaceStack|components[\\/]reveal|components[\\/]loadFailure)\.ts|[\\/]src[\\/]presentation[\\/](?:staticI18n|revealStills)\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
+// (274.0) localePrefix.ts: the locale codes and the /cn prefix, a leaf i18n.ts and localeRouting.ts import since
+// regen-keys-274 moved them out of i18n.ts
+export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|i18nChunkImport\.browser|localePrefix|localeRouting|responsiveLayout|components[\\/]surfaceStack|components[\\/]reveal|components[\\/]loadFailure)\.ts|[\\/]src[\\/]presentation[\\/](?:staticI18n|revealStills)\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
 /**
  * The registry's import of its chunk importer (src/ui/i18nDictionaries.ts), aliased for a document to the module that
  * imports the URL; Node resolves it to src/ui/i18nChunkImport.ts.
