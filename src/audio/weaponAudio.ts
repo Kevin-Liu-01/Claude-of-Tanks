@@ -644,7 +644,11 @@ export type ReloadCueType =
   | 'carouselTurn' | 'basketTurn' | 'cassetteLift' | 'chainRam' | 'chargeChainRam'
   | 'bustleIndex' | 'bustleRam' | 'magazineDrop' | 'caseOutside' | 'ifvLoad'
   | 'missileRound' | 'hatchOpen' | 'canisterLift' | 'tubeLoad' | 'launcherRaise'
-  | 'rocketLoad' | 'gunshipLoad';
+  | 'rocketLoad' | 'gunshipLoad'
+  /** the round sliding along the tray into the chamber (reload-sfx-275): pitched, darkened and timed by the round */
+  | 'slide' | 'chargeSlide'
+  /** an autocannon's ammunition box latched in and the first round charged (a magazine refill) */
+  | 'beltBox' | 'beltCharge';
 
 export interface ReloadCue {
   /** Fraction of the authoritative reload at which the cue plays. */
@@ -653,6 +657,13 @@ export interface ReloadCue {
   readonly asset: string;
   readonly gainDb: number;
   readonly rate: number;
+  /** Seconds after `at` (a stroke's layers share their anchor: the slide, the shove, the breech slamming on the seat). */
+  readonly delayS?: number;
+  /** The round's body: a bigger round, or a combustible case, slides darker. */
+  readonly lowpassHz?: number;
+  /** The slide lasts as long as the round takes to travel into the chamber. */
+  readonly maxDurS?: number;
+  readonly offsetS?: number;
 }
 
 export interface ReloadCuePlan {
@@ -711,16 +722,111 @@ function cueAsset(type: ReloadCueType, row: WeaponRow): string {
     case 'launcherRaise': return 'launcher_raise';
     case 'rocketLoad': return 'rocket_crane_load';
     case 'gunshipLoad': return 'gunship_round_load';
+    case 'slide': case 'chargeSlide': return SLIDE_ASSET;
+    case 'beltBox': return 'magazine_swap';
+    case 'beltCharge': return 'ac_feed';
   }
 }
 
 /** Where a cue falls: `from` seconds after the cycle starts, `by` seconds before it ends (no later than the fraction
  *  `max` of a long cycle), or a fraction of it. */
-type At = { readonly from: number } | { readonly by: number; readonly max?: number } | number;
-type Step = readonly [ReloadCueType, At, number?];
+type At = { readonly from: number } | { readonly by: number; readonly max?: number; readonly raw?: true } | number;
+/** A stroke: the step's cue is the push that drives a piece home, laid with the piece sliding in under it and, when the
+ *  piece closes the breech, the block slamming up on its seat. */
+interface StrokeSpec {
+  readonly piece: 'round' | 'charge';
+  /** How fast the piece travels into the chamber (m/s): a loader's arm by the round's mass, or a rammer's own speed. */
+  readonly speedMps: number | 'hand';
+  /** The piece trips the extractors and the semi-automatic block rises behind it: the slam follows the seat. */
+  readonly closes: boolean;
+}
+type Step = readonly [ReloadCueType, At, number?, StrokeSpec?];
 
 /** How long the loader's hands take with each weight of round (the seconds in a choreography stretch by it). */
 const HEFT: Readonly<Record<RoundWeight, number>> = Object.freeze({ light: 0.8, medium: 1, heavy: 1.1, superheavy: 1.45 });
+
+// ------------------------------------------------------------ the round ---
+// reload-sfx-275 (owner 2026-11-22: "a sound effect to our reloading sequences, that sounds different for all calibers,
+// of a shell being slid in"): the slide is derived from the round, never looked up per tank. A round's length and mass
+// follow from its bore and its construction (a 105 mm unitary round about 0.95 m and 18 kg, a 125 mm projectile 0.68 m
+// and its charge apart, a 152 mm projectile 44 kg); the slide's pitch, darkness, length and weight, and the breech's
+// slam after it, follow from those.
+
+/** What slides along the tray: a case's skin, or the bare projectile on its driving band. */
+export type RoundSkin = 'brass' | 'steel' | 'combustible' | 'projectile' | 'canister';
+
+export interface RoundHandling {
+  readonly lengthM: number;
+  readonly massKg: number;
+  readonly skin: RoundSkin;
+  /** A separate charge (0: the round is one piece, or its charge is bagged and handled by its own cue). */
+  readonly chargeLengthM: number;
+  readonly chargeKg: number;
+  readonly chargeSkin: RoundSkin;
+}
+
+/** Per construction: length per mm of bore (m), mass per mm³ of bore (kg), the skin, and the charge's. */
+const ROUND_SHAPE: Readonly<Record<AmmoBuild, readonly [number, number, RoundSkin, number, number, RoundSkin]>> = Object.freeze({
+  belt: [7e-3, 1.6e-5, 'brass', 0, 0, 'brass'],
+  unitary_brass: [9e-3, 1.6e-5, 'brass', 0, 0, 'brass'],
+  combustible: [8.2e-3, 1.2e-5, 'combustible', 0, 0, 'combustible'],
+  two_piece: [5.4e-3, 0.8e-5, 'projectile', 3.8e-3, 0.5e-5, 'combustible'],
+  separate_case: [4.6e-3, 1.25e-5, 'projectile', 5e-3, 0.7e-5, 'brass'],
+  separate_bag: [4.6e-3, 1.1e-5, 'projectile', 0, 0, 'combustible'],
+  caseless: [5e-3, 0.85e-5, 'combustible', 0, 0, 'combustible'],
+  missile: [0, 0, 'canister', 0, 0, 'canister'],
+  rocket: [0, 0, 'canister', 0, 0, 'canister'],
+});
+
+/** The round a row's loader handles, from its bore and construction. */
+export function roundHandling(row: WeaponRow): RoundHandling {
+  const [len, k, skin, chargeLen, chargeK, chargeSkin] = ROUND_SHAPE[row.build];
+  const bore = row.boreMm;
+  if (row.build === 'missile') return Object.freeze({ lengthM: 1.1, massKg: 25, skin, chargeLengthM: 0, chargeKg: 0, chargeSkin });
+  if (row.build === 'rocket') return Object.freeze({ lengthM: 3.3, massKg: 175, skin, chargeLengthM: 0, chargeKg: 0, chargeSkin });
+  // the T-55's 100 mm and its peers fire lacquered steel cases: a harder, greyer scrape than brass
+  const cased = skin === 'brass' && row.spent === 'case_eject_steel' ? 'steel' : skin;
+  return Object.freeze({
+    lengthM: len * bore, massKg: k * bore ** 3, skin: cased,
+    chargeLengthM: chargeLen * bore, chargeKg: chargeK * bore ** 3, chargeSkin,
+  });
+}
+
+/** The recording every slide is cut from: a long, even brass-on-steel scrape along a tray, seated at its end. */
+const SLIDE_ASSET = 'charge_case_load';
+/** How bright each skin scrapes (a share of the bore's cutoff): a combustible case is felt and card, a canister hollow. */
+const SKIN_TONE: Readonly<Record<RoundSkin, number>> = Object.freeze({ brass: 1, steel: 0.88, projectile: 0.8, combustible: 0.55, canister: 0.7 });
+const SKIN_GAIN: Readonly<Record<RoundSkin, number>> = Object.freeze({ brass: 0, steel: 0, projectile: -1, combustible: -2, canister: -1 });
+
+const clampTo = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+/** A bore's cutoff: a 30 mm round rings, a 152 mm one rumbles. */
+const boreCutoffHz = (boreMm: number): number => clampTo(13000 * (60 / boreMm) ** 0.8, 2200, 14000);
+
+/** One piece sliding home: its seconds of travel, and the layer that plays it. */
+export function slideOf(boreMm: number, lengthM: number, massKg: number, skin: RoundSkin, speedMps: number | 'hand'): {
+  slideS: number; rate: number; lowpassHz: number; gainDb: number;
+} {
+  // a loader's arm slows with the round's mass (a 7 kg 76 mm round flies in, a 44 kg 152 mm projectile is leaned on)
+  const speed = speedMps === 'hand' ? 2.6 / (1 + massKg / 25) : speedMps;
+  return {
+    slideS: +clampTo(lengthM / speed, 0.14, 0.95).toFixed(3),
+    // the scrape's pitch by the bore (the tray's ring and the case's diameter), the bare projectile's band a little higher
+    rate: +clampTo((105 / boreMm) ** 0.5 * (skin === 'projectile' ? 1.06 : 1), 0.74, 1.6).toFixed(3),
+    lowpassHz: Math.round(clampTo(boreCutoffHz(boreMm) * SKIN_TONE[skin], 1500, 14000)),
+    gainDb: +(clampTo(-2 + 5 * Math.log10(Math.max(0.5, massKg) / 18), -8, 1.5) + SKIN_GAIN[skin]).toFixed(2),
+  };
+}
+
+/** The semi-automatic block rising behind a seated round: its pause after the seat, pitch and weight by the gun. */
+function slamOf(row: WeaponRow, massKg: number): { gapS: number; rate: number; lowpassHz: number; gainDb: number } {
+  return {
+    gapS: +clampTo(0.05 + massKg * 0.0012, 0.05, 0.12).toFixed(3),
+    rate: +clampTo((105 / row.boreMm) ** 0.3, 0.84, 1.2).toFixed(3),
+    lowpassHz: Math.round(clampTo(boreCutoffHz(row.boreMm) * 1.35, 3500, 16000)),
+    gainDb: +clampTo(1 + 3 * Math.log10(Math.max(1, massKg) / 18), -2, 3).toFixed(2),
+  };
+}
 
 /** The cues of the post-shot cycle that come before the new round, by what the breech gives up. */
 function spentSteps(row: WeaponRow, loader: LoaderMake): Step[] {
@@ -742,6 +848,8 @@ function spentSteps(row: WeaponRow, loader: LoaderMake): Step[] {
 /** The new round going in, by the loader's make (a manual loader's work by the round's construction). */
 function loadSteps(row: WeaponRow, loader: LoaderMake, missileRound: boolean, rackDoor: boolean): Step[] {
   const grab: ReloadCueType = missileRound ? 'missileRound' : 'shellGrab';
+  const hand = (piece: StrokeSpec['piece'], closes: boolean): StrokeSpec => ({ piece, speedMps: 'hand', closes });
+  const rammer = (piece: StrokeSpec['piece'], speedMps: number, closes: boolean): StrokeSpec => ({ piece, speedMps, closes });
   switch (loader) {
     case 'manual': {
       const steps: Step[] = [['breechOpen', 0.015]];
@@ -750,27 +858,35 @@ function loadSteps(row: WeaponRow, loader: LoaderMake, missileRound: boolean, ra
       else steps.push([grab, 0.34]);
       // a separate-loading round's projectile goes in well before the end: its charge follows it
       const separate = row.build === 'separate_bag' || row.build === 'separate_case' || row.build === 'two_piece';
-      if (!missileRound) steps.push(['ram', separate ? { by: 1.8, max: 0.6 } : { by: 0.85 }]);
+      // A one-piece round (and the 125 mm's charge behind its projectile) trips the extractors as it seats and the
+      // semi-automatic block slams up behind it: shhk, clank. A screw breech (the bagged and cased heavy guns) is swung
+      // shut by hand after the charge.
+      if (missileRound) {
+        steps.push(['breechClose', { by: 0.22 }]);
+        return steps;
+      }
+      if (!separate) return [...steps, ['ram', { by: 0.22 }, 0, hand('round', true)]];
+      steps.push(['ram', { by: 1.8, max: 0.6 }, 0, hand('round', false)]);
+      if (row.build === 'two_piece') return [...steps, ['caseCharge', { by: 0.22 }, 0, hand('charge', true)]];
       if (row.build === 'separate_bag' && !row.chargeInBase) steps.push(['bagCharge', { by: 0.9, max: 0.8 }]);
-      if (row.build === 'separate_case' || row.build === 'two_piece') steps.push(['caseCharge', { by: 0.9, max: 0.8 }]);
-      steps.push(['breechClose', { by: separate ? 0.32 : 0.22 }]);
+      if (row.build === 'separate_case') steps.push(['caseCharge', { by: 0.9, max: 0.8 }, 0, hand('charge', false)]);
+      steps.push(['breechClose', { by: 0.32 }]);
       if (row.build === 'separate_bag') steps.push(['ventLoad', { by: 0.12 }]);
       return steps;
     }
-    case 'carousel_az': case 'carousel_unmanned': {
-      const steps: Step[] = [['carouselTurn', { from: 0.5 }], ['cassetteLift', { by: 2.2 }], ['chainRam', { by: 1.3 }]];
-      if (row.build === 'two_piece') steps.push(['chargeChainRam', { by: 0.75 }, -3]);
-      steps.push(['breechClose', { by: 0.22 }]);
+    // An autoloader's chain rammer drives the projectile, then (a two-piece round) its charge, at its own speed; the
+    // block rises on the last piece home.
+    case 'carousel_az': case 'carousel_unmanned': case 'basket_mz': {
+      const turn: Step = loader === 'basket_mz' ? ['basketTurn', { from: 0.45 }] : ['carouselTurn', { from: 0.5 }];
+      const twoPiece = row.build === 'two_piece';
+      const steps: Step[] = [turn, ['cassetteLift', { by: 2.2 }], ['chainRam', twoPiece ? { by: 0.75 } : { by: 0.22 }, 0, rammer('round', CHAIN_RAM_MPS, !twoPiece)]];
+      if (twoPiece) steps.push(['chargeChainRam', { by: 0.22 }, -3, rammer('charge', CHAIN_RAM_MPS, true)]);
       return steps;
     }
-    case 'basket_mz': {
-      const steps: Step[] = [['basketTurn', { from: 0.45 }], ['cassetteLift', { by: 2.2 }], ['chainRam', { by: 1.3 }]];
-      if (row.build === 'two_piece') steps.push(['chargeChainRam', { by: 0.75 }, -3]);
-      steps.push(['breechClose', { by: 0.22 }]);
-      return steps;
-    }
-    case 'bustle': return [['bustleIndex', { from: 0.6 }], [missileRound ? 'missileRound' : 'bustleRam', { by: 0.9 }], ['breechClose', { by: 0.22 }]];
-    case 'fixed_ram': return [['magazineDrop', 0.4], ['bustleRam', { by: 0.8 }], ['breechClose', { by: 0.22 }]];
+    case 'bustle': return missileRound
+      ? [['bustleIndex', { from: 0.6 }], ['missileRound', { by: 0.9 }], ['breechClose', { by: 0.22 }]]
+      : [['bustleIndex', { from: 0.6 }], ['bustleRam', { by: 0.22 }, 0, rammer('round', BUSTLE_RAM_MPS, true)]];
+    case 'fixed_ram': return [['magazineDrop', 0.4], ['bustleRam', { by: 0.22 }, 0, rammer('round', FIXED_RAM_MPS, true)]];
     // The 2A70's autoloader feeds its rounds; a 9M117 missile is loaded by hand.
     case 'ifv_autoloader': return missileRound ? [['breechOpen', 0.02], ['missileRound', 0.4], ['breechClose', { by: 0.22 }]]
       : [['ifvLoad', { from: 0.4 }], ['breechClose', { by: 0.22 }]];
@@ -796,36 +912,82 @@ function magazineSteps(row: WeaponRow, loader: LoaderMake, rounds: number): Step
     const at = 0.1 + (0.62 * i) / n;
     steps.push(['shellGrab', at], ['bustleRam', at + 0.3 / n, -2]);
   }
-  steps.push(['bustleIndex', { by: 0.9 }], ['bustleRam', { by: 0.55 }], ['breechClose', { by: 0.2 }]);
+  steps.push(['bustleIndex', { by: 0.9 }], ['bustleRam', { by: 0.2 }, 0, { piece: 'round', speedMps: BUSTLE_RAM_MPS, closes: true }]);
   return steps;
 }
 
-/** Lay a choreography on the cycle: anchors to fractions (seconds stretched by the round's heft), in order, none crowded. */
+/** A rammer's own speed (m/s): a chain rammer snaps the round home, a bustle's electric rammer pushes it. */
+const CHAIN_RAM_MPS = 3;
+const BUSTLE_RAM_MPS = 2.5;
+const FIXED_RAM_MPS = 2.2;
+
+/** A stroke's layers: the piece sliding home, and how long after the anchor its block slams (0: it does not close). */
+function strokeOf(stroke: StrokeSpec, row: WeaponRow, total: number): { slide: ReturnType<typeof slideOf>; slamS: number; slam: ReturnType<typeof slamOf> | null } {
+  const round = roundHandling(row);
+  const charge = stroke.piece === 'charge';
+  const slide = slideOf(row.boreMm, charge ? round.chargeLengthM : round.lengthM, charge ? round.chargeKg : round.massKg,
+    charge ? round.chargeSkin : round.skin, stroke.speedMps);
+  // a short cycle (a clip's next round) squeezes the stroke into its first half
+  slide.slideS = Math.min(slide.slideS, Math.max(0.1, 0.45 * total));
+  const slam = stroke.closes ? slamOf(row, round.massKg + (charge ? 0 : round.chargeKg)) : null;
+  return { slide, slamS: slam ? slide.slideS + slam.gapS : slide.slideS, slam };
+}
+
+/** Lay a choreography on the cycle: anchors to fractions (seconds stretched by the round's heft), in order, none crowded.
+ *  A stroke's anchor is its start: `by` counts from its end (the slam, or the seat), so the block lands where a lone
+ *  breech close would, and its layers follow the anchor by their own seconds. */
 function layOut(steps: readonly Step[], total: number, row: WeaponRow): ReloadCue[] {
   const heft = HEFT[row.weight];
   // the last cue lands at least 80 ms before the gun is ready (the ready latch follows it)
   const end = Math.min(0.985, 1 - 0.08 / total);
-  const placed = steps.map(([type, at, gainDb = 0]) => {
+  const placed = steps.map(([type, at, gainDb = 0, strokeSpec]) => {
+    const stroke = strokeSpec ? strokeOf(strokeSpec, row, total) : null;
+    const span = stroke ? stroke.slamS / total : 0;
     let f: number;
     if (typeof at === 'number') f = at;
     else if ('from' in at) f = Math.min(0.45, (at.from * heft) / total);
-    else f = Math.min(at.max ?? 1, Math.max(0.5, 1 - (at.by * heft) / total));
-    return { type, f: Math.max(0, Math.min(end, f)), gainDb };
+    else f = Math.min(at.max ?? 1, Math.max(0.5 - span, 1 - ((at.raw ? at.by : at.by * heft)) / total - span));
+    return { type, f: Math.max(0, Math.min(end - span, f)), gainDb, stroke, span };
   }).sort((a, b) => a.f - b.f);
-  // no two cues crowd each other, and none runs past the cycle: forward, then back from the end
+  // no two cues crowd each other, and none runs past the cycle: forward, then back from the end (a stroke keeps its span)
   const gap = Math.min(0.03, 0.9 / Math.max(1, placed.length), Math.max(0.008, 0.15 / total));
-  for (let i = 1; i < placed.length; i++) placed[i].f = Math.max(placed[i].f, placed[i - 1].f + gap);
-  for (let i = placed.length - 1; i >= 0; i--) placed[i].f = Math.min(placed[i].f, i === placed.length - 1 ? end : placed[i + 1].f - gap);
+  for (let i = 1; i < placed.length; i++) placed[i].f = Math.max(placed[i].f, placed[i - 1].f + placed[i - 1].span + gap);
+  for (let i = placed.length - 1; i >= 0; i--) {
+    const limit = i === placed.length - 1 ? end : placed[i + 1].f - gap;
+    placed[i].f = Math.min(placed[i].f, limit - placed[i].span);
+  }
   const cues: ReloadCue[] = [];
   for (const p of placed) {
     const at = Math.max(0, p.f);
     const asset = cueAsset(p.type, row);
     // the doors are machinery the crew hears but does not lean on (a little under the rounds); a bigger bore sits lower
     const door = p.type === 'ammoDoorOpen' || p.type === 'ammoDoorClose';
-    cues.push(Object.freeze({ at, type: p.type, asset, gainDb: p.gainDb + (door ? -3 : 0), rate: door ? 1 : rateFor(row) }));
+    const s = p.stroke;
+    if (!s) {
+      cues.push(Object.freeze({ at, type: p.type, asset, gainDb: p.gainDb + (door ? -3 : 0), rate: door ? 1 : rateFor(row) }));
+      continue;
+    }
+    const slideType: ReloadCueType = p.type === 'caseCharge' || p.type === 'chargeChainRam' ? 'chargeSlide' : 'slide';
+    const slideLayer = { asset: cueAsset(slideType, row), gainDb: s.slide.gainDb, rate: s.slide.rate, lowpassHz: s.slide.lowpassHz, maxDurS: s.slide.slideS, offsetS: SLIDE_OFFSET_S };
+    // A cased charge's push is itself the scrape (its recording is the slide's): one layer, played whole to its seat.
+    if (asset === slideLayer.asset) cues.push(Object.freeze({ at, type: p.type, ...slideLayer, maxDurS: undefined }));
+    else {
+      cues.push(Object.freeze({ at, type: slideType, ...slideLayer }));
+      // the push under it: the loader's fist (or the rammer's chain) with the scrape, darkened with the round
+      cues.push(Object.freeze({ at, type: p.type, asset, gainDb: p.gainDb - 3, rate: rateFor(row), lowpassHz: Math.round(s.slide.lowpassHz * 1.4) }));
+    }
+    if (s.slam) {
+      cues.push(Object.freeze({
+        at, type: 'breechClose', asset: cueAsset('breechClose', row), gainDb: s.slam.gainDb, rate: s.slam.rate,
+        lowpassHz: s.slam.lowpassHz, delayS: +s.slamS.toFixed(3),
+      }));
+    }
   }
   return cues;
 }
+
+/** Where the scrape starts in its recording: past the loader's first touch, on the even run of the slide. */
+const SLIDE_OFFSET_S = 0.04;
 
 /** Within a weight class the bigger bore sits a little lower. */
 function rateFor(row: WeaponRow): number {
@@ -848,7 +1010,17 @@ export function resolveReloadCuePlan(
 ): ReloadCuePlan {
   const total = Math.max(0.05, Number(totalS) || 0.05);
   const row = m?.row;
-  if (!row || total < 0.55 || loader === 'autocannon') return RAPID;
+  if (!row || total < 0.55) return RAPID;
+  // An autocannon's or machine gun's per-shot cycle is its own action; a box run dry is a new box latched into the feed
+  // and the first round charged, pitched by the bore (a 20 mm box rattles light, a 50 mm one clanks).
+  if (loader === 'autocannon') {
+    if (kind !== 'magazine' || total < 1.2) return RAPID;
+    const rate = +clampTo((35 / row.boreMm) ** 0.35, 0.86, 1.35).toFixed(3);
+    const lowpassHz = Math.round(clampTo(boreCutoffHz(row.boreMm) * 1.2, 4000, 16000));
+    const cues = layOut([['beltBox', 0.12], ['beltCharge', { by: 0.4, raw: true }]], total, row)
+      .map((cue) => Object.freeze({ ...cue, rate, lowpassHz }));
+    return Object.freeze({ profile: 'magazine', loader, ready: true, cues: Object.freeze(cues) });
+  }
   const missileRound = row.build === 'missile' && !!m?.throughGun;
   // A gun-launched missile goes in through the gun's own loader, handled as that gun's rounds are.
   const gunRow = missileRound ? m?.loadRow ?? row : row;
@@ -861,7 +1033,7 @@ export function resolveReloadCuePlan(
     profile = 'intraClip';
     // between rounds of a magazine: the stub out, the next round indexed and rammed; a launcher's next tube is loaded
     if (loader === 'launcher' || loader === 'rocket_rack' || loader === 'pylon') return RAPID;
-    steps = [...spentSteps(gunRow, loader), ['bustleIndex', 0.1], ['bustleRam', { by: 0.35 }], ['breechClose', { by: 0.12 }]];
+    steps = [...spentSteps(gunRow, loader), ['bustleIndex', 0.1], ['bustleRam', { by: 0.12 }, 0, { piece: 'round', speedMps: BUSTLE_RAM_MPS, closes: true }]];
   } else {
     steps = [...(missileRound ? [] : spentSteps(gunRow, loader)), ...loadSteps(gunRow, loader, missileRound, rackDoor)];
   }
