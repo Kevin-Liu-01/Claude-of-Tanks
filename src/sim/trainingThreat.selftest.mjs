@@ -373,7 +373,7 @@ const modes = readFileSync(new URL('./matchModes.ts', import.meta.url), 'utf8');
 assert.match(modes, /respawns = \(\) => true,/, 'the controller keeps every hull\'s respawn unless its host says otherwise');
 assert.match(modes, /if \(ruleset\.respawnS != null && respawns\(entity\)\) respawnAt\.set/, 'and asks the host per hull');
 assert.equal((modes.match(/respawns\(entity\)/g) ?? []).length, 1, 'in one place');
-assert.match(state, /\.\.\.\(game\.ruleset\.training \? \{ respawns: \(ent: SoloEntity\) => trainingRespawns\(game\.ruleset\.training!, ent\.specId\) \} : \{\}\),/,
+assert.match(state, /\.\.\.\(game\.ruleset\.training \? \{ respawns: \(ent: SoloEntity\) => trainingRespawns\(TRAINING_RULES, ent\.specId\) \} : \{\}\),/,
   'only the solo training host passes it');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
 assert.ok(!/respawns:/.test(authority), 'the authority keeps the shared rule');
@@ -381,7 +381,7 @@ assert.match(state, /const checkpoint = game\.ruleset\.training && ent\.isPlayer
 assert.match(state, /game\._trainingCues = undefined;\s*game\._trainingGunYaw = undefined;\s*game\._trainingArcSince = undefined;\s*game\._trainingSeenSince = undefined;\s*game\._trainingFightOn = false;\s*game\._trainingCheckpoint = null;/, 'each battle starts its scenes clean');
 const { finishTrainingBattle, setTrainingCheckpoint } = await import('../game/state.ts');
 const ended = [];
-const fakeGame = { ruleset: { training: TRAINING_RULES }, result: null, resultReason: null, player: { state: { yaw: 1.25 } },
+const fakeGame = { ruleset: { training: true }, result: null, resultReason: null, player: { state: { yaw: 1.25 } },
   matchModeController: { matchEnded: (winner, reason) => ended.push([winner, reason]) } };
 assert.equal(setTrainingCheckpoint(fakeGame, 10, 20), true);
 assert.deepEqual(fakeGame._trainingCheckpoint, { x: 10, z: 20, yaw: 1.25 }, 'a ring reached, with the hull\'s heading then');

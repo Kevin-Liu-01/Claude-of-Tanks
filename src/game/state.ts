@@ -168,7 +168,7 @@ import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type 
 import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
-import { TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSightFraction, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
+import { TRAINING_RULES, TRAINING_SKIRMISH_CUE, planTrainingRange, trainingRulesFor, trainingRespawns, trainingActor, trainingArcAllows, trainingArcDwellMet, trainingSightFraction, trainingSkirmishSide, trainingTraverse, trainingVolleyAim, trainingVolleyFires } from '../sim/trainingGround.ts';
 import { trainingThreatVerdicts } from '../sim/trainingThreat.ts';
 import { trainingExposure } from '../sim/trainingSight.ts';
 import type { PenVerdict } from '../sim/penVerdict.ts';
@@ -793,7 +793,7 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
   // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal. The training
   // battle pins its own (273: the same inputs give the same battle), so it is read once the ruleset is known.
-  game.matchSeed = options.seed ?? game.ruleset.training?.seed ?? soloMatchSeed(game.battleCount, !!options.random);
+  game.matchSeed = options.seed ?? trainingRulesFor(game.ruleset)?.seed ?? soloMatchSeed(game.battleCount, !!options.random);
   game.combatRng = mulberry32(game.matchSeed);
   game.watch = null;
   // the last battle's couch session ends here if nothing ended it before (game/couchSeats.ts, its one owner)
@@ -1012,7 +1012,7 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
   entity.input.steer = 0;
   entity.input.brake = true;
   entity.input.fire = false;
-  const rules = game.ruleset.training;
+  const rules = trainingRulesFor(game.ruleset);
   const actor = rules?.actors.find((rule) => rule.specId === entity.specId) ?? null;
   const cuedAtS = actor ? game._trainingCues?.get(actor.key) : undefined;
   const target = game.player;
@@ -1060,7 +1060,7 @@ function driveTrainingActor(game: SoloGameState, entity: SoloEntity): void {
 /** A training battle's hull floor (273): until the skirmish comes in, the player's hull points stand at least at the rules'
  *  share of its full hull, raised back to it at the next step after a hit took them under. */
 function holdTrainingHullFloor(game: SoloGameState): void {
-  const rules = game.ruleset.training;
+  const rules = trainingRulesFor(game.ruleset);
   const combat = game.player?.combat;
   if (!rules || !combat || combat.destroyed || game._trainingFightOn || !(combat.maxHp > 0)) return;
   const floor = combat.maxHp * rules.hullFloorShare;
@@ -1070,7 +1070,7 @@ function holdTrainingHullFloor(game: SoloGameState): void {
 /** A training hull that enters on its scene's cue stands parked out of the battle until then (273, S11 on): no body, no
  *  shots, unseen, its visual hidden. */
 function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
-  const rules = game.ruleset.training;
+  const rules = trainingRulesFor(game.ruleset);
   const actor = rules?.actors.find((rule) => rule.specId === entity.specId);
   // (S14's skirmish bots too: parked, brains and all, until the fight's cue)
   if (!actor?.entersOnCue && !(rules && trainingSkirmishSide(rules, entity.specId))) return;
@@ -1085,7 +1085,7 @@ function parkTrainingActor(game: SoloGameState, entity: SoloEntity): void {
  */
 export function trainingSightFor(game: SoloGameState, actorId: string): number | null {
   const shooter = game.tankById.get(actorId);
-  const actor = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId) : undefined;
+  const actor = shooter ? trainingRulesFor(game.ruleset)?.actors.find((rule) => rule.specId === shooter.specId) : undefined;
   if (!actor?.volley || actor.volley.seenS == null) return null;
   return trainingSightFraction(actor.volley, game._trainingSeenSince?.get(actor.key) ?? null, game.timeS);
 }
@@ -1098,7 +1098,7 @@ export function trainingSightFor(game: SoloGameState, actorId: string): number |
 export function trainingThreatFor(game: SoloGameState, actorId: string, offsetsDeg: readonly number[]): Array<PenVerdict | null> {
   const shooter = game.tankById.get(actorId);
   const player = game.player;
-  const volley = shooter ? game.ruleset.training?.actors.find((rule) => rule.specId === shooter.specId)?.volley : undefined;
+  const volley = shooter ? trainingRulesFor(game.ruleset)?.actors.find((rule) => rule.specId === shooter.specId)?.volley : undefined;
   const shell = volley ? shooter!.spec.gun.shells.find((round) => round.type === volley.shellType) : undefined;
   if (!shooter?.state || !player?.state || !volley || !shell) return [];
   return trainingThreatVerdicts(shooter.state.pos, player.state, player.spec.armor, player.combat.eraSpent, shell, volley, offsetsDeg);
@@ -1149,7 +1149,7 @@ export function setTrainingCheckpoint(game: SoloGameState, x: number, z: number)
  * shows (ui/tutorial/tutorialSteps.ts `cue`). Returns whether the battle has that shooter.
  */
 export function cueTrainingActor(game: SoloGameState, key: string, on: boolean): boolean {
-  const rules = game.ruleset.training;
+  const rules = trainingRulesFor(game.ruleset);
   // S14: the skirmish's cue brings every one of its bots in, for good
   if (rules && key === TRAINING_SKIRMISH_CUE) {
     if (on) game._trainingFightOn = true;
@@ -1200,7 +1200,7 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     // a training battle's skirmish bots (S14) stand on their marks with brains of their own, not as the scenes' hulls
-    const skirmishBot = !isPlayer && !!game.ruleset.training && trainingSkirmishSide(game.ruleset.training, entity.specId) !== null;
+    const skirmishBot = !isPlayer && !!game.ruleset.training && trainingSkirmishSide(TRAINING_RULES, entity.specId) !== null;
     if (!isPlayer && context.provingLayout && !skirmishBot) seatProvingTarget(context, entity, spawn);
     // a couch seat (docs/COUCH-MODE.md): a phone drives this tank through the player input stage, no bot. The session's
     // own read, not couchSeatsActive: this setup began it a moment ago, and the phase is still the Garage's
@@ -1287,7 +1287,7 @@ export function setupBattle(
   // the map's craters (sim/provingGround.ts; fails closed); the bound ground reads every stamp as it lands
   // the training battle (273) seats from the same kind of layout: the player on its start, each scene's hull on its mark
   const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world)
-    : game.ruleset.training ? planTrainingRange(game.ruleset.training) : null;
+    : game.ruleset.training ? planTrainingRange(TRAINING_RULES) : null;
   game._provingRange = provingLayout;
   // a training battle's scene state starts clean each battle (a replay's shooters uncued, the checkpoint the start)
   game._trainingCues = undefined;
@@ -1518,7 +1518,7 @@ export function setupBattle(
     spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
     setActive(modeEntity, active) { trainingHostSetActive(game, modeEntity, active); },
     // the training battle (273): a scene's finished goal and the skirmish stay down (sim/trainingGround.ts trainingRespawns)
-    ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(game.ruleset.training!, ent.specId) } : {}),
+    ...(game.ruleset.training ? { respawns: (ent: SoloEntity) => trainingRespawns(TRAINING_RULES, ent.specId) } : {}),
     revive(ent: SoloEntity, rawSpawn: MatchModeSpawn, healthScale: number) {
       // the training player comes back at the checkpoint (the last ring reached), not the start
       const checkpoint = game.ruleset.training && ent.isPlayer ? game._trainingCheckpoint : null;
