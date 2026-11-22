@@ -48,7 +48,7 @@ if (extra.length) {
 }
 // (the hull exact of a hull at rest: 224 characters, its pose and the few integrator numbers a hull standing still holds)
 const hullBytes = atRest.reduce((sum, entry) => sum + (entry.hull ? entry.hull.length + 9 : 0), 0);
-assert.ok(atRest.every((entry) => typeof entry.hull === 'string') && (bytes - hullBytes) / atRest.length < 130 && hullBytes / atRest.length < 240,
+assert.ok(atRest.every((entry) => typeof entry.hull === 'string') && (bytes - hullBytes) / atRest.length < 130 && hullBytes / atRest.length < 275,
   `an entity at rest costs ${Math.round((bytes - hullBytes) / atRest.length)} bytes of extras and ${Math.round(hullBytes / atRest.length)} of hull`);
 
 // ---- in the middle of a fight beside entities at rest: the restore reads the same

@@ -1196,9 +1196,11 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
-      // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
+      // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill's step on the battle clock
+      // (276: the authority's own restarts at 0 on a migrated host, so a turret a replayed window threw, or any thrown
+      // after a migration, flew otherwise than the old host's; a fresh match's battle clock is its own)
       const dead = entityById.get(String(payload.id));
-      if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
+      if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(battleS / SIM_DT));
     }
     if (type === 'tank_destroyed' && destruction.enabled) {
       // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)

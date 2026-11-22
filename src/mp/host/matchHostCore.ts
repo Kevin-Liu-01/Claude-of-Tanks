@@ -494,7 +494,9 @@ export function createMatchHostCore({
     const nowMs = now();
     const phase = currentPhase(live);
     if (phase !== lastReportPhase || nowMs - lastReportMs >= reportIntervalMs || (live.authority.result && !verdictReported)) report(live, nowMs);
-    if (!live.stopped && live.authority.phase !== 'loading') {
+    // (not in a resume hold: a replayed window has the authority in play at boot, and a keyframe sealed then reached no seat
+    // and put the released seats' first one a cadence late; 276)
+    if (!live.stopped && live.authority.phase !== 'loading' && !hold) {
       // the cadence, and a mode event since the newest keyframe (round 2 U2: a mode's goal, wave, capture or revive in the
       // gap was replayed or lost by a resume from a keyframe dated before it); a keyframe still sealing defers it a beat
       const modeEventsSince = live.authority.modeEventSerial !== keyframedModeEvents && nowMs - lastKeyframeMs >= MODE_KEYFRAME_SPACING_MS;
@@ -581,10 +583,17 @@ export function createMatchHostCore({
     });
     let restored = 0;
     let destroyedRestored = 0;
+    let replayed: { steps: number; corrected: number; ms: number } | null = null;
     if (resume) {
+      const replayStarted = now();
       const applied = applyResumeState(created, resume);
       restored = applied.restored;
       destroyedRestored = applied.destroyedRestored;
+      if (applied.replayed) {
+        replayed = { steps: applied.replayed.steps, corrected: applied.replayed.corrected, ms: Math.round(now() - replayStarted) };
+        // (276) a verdict the play reached that the seat's frame did not show: the match ends on the first tick
+        if (applied.replayed.verdict) log('warn', 'resume window replay reached a verdict the frame did not show', { steps: applied.replayed.steps });
+      }
       if (applied.skipped) log('warn', 'resume rows without an entity', { skipped: applied.skipped });
       if (applied.destroyedUnknown) log('warn', 'resume destroyed props this world does not have', { unknown: applied.destroyedUnknown });
     }
@@ -612,7 +621,7 @@ export function createMatchHostCore({
     const bootMs = Math.round(now() - bootStarted);
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume, kernels: kernelsStatusOf(world, next),
       timings: { worldMs, fleetMs, actorMs: Math.round(now() - actorStarted), bootMs, prepared: bootedPrepared === true } });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length,
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, replayed, holdFor: awaited.length,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const playerId of pendingRevokes) created.revokeSeat(playerId);
     pendingRevokes.clear();
