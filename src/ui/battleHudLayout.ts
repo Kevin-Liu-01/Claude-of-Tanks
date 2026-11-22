@@ -1487,11 +1487,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
         // portrait grid's next free cells over the items)
         let turboLeft: number, turboTop: number, spinLeft: number, spinTop: number;
         if (short) {
-          smokeLeft = jumpLeft = turboLeft = spinLeft = items.right + gap;
+          // (Turbo and the air spin in a second column beside the jump's: stacked up the one column, the air spin stood
+          // under the map at 844x390, the turbo-spin-275 clip)
+          smokeLeft = jumpLeft = items.right + gap;
+          turboLeft = spinLeft = jumpLeft + tile + gap;
           smokeTop = items.bottom - tile;
           jumpTop = smokeShown ? smokeTop - gap - tile : smokeTop;
-          turboTop = jumpTop - gap - tile;
-          spinTop = turboTop - gap - tile;
+          turboTop = jumpTop;
+          spinTop = smokeShown ? smokeTop : jumpTop - gap - tile;
         } else {
           const itemsNode = hudQuery<HTMLElement>('.cot-cons');
           let itemCount = 0;
@@ -1520,7 +1523,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
         const turbo = read('.cot-touch.on .turbo'), spin = read('.cot-touch.on .air-spin');
         survivalTop = Math.min(items.top, smokeShown ? smokeTop : height, jump ? jumpTop : height, turbo ? turboTop : height,
           spin ? spinTop : height);
-        if (short) { leftInset = Math.ceil((smokeShown || jump ? smokeLeft + tile : items.right) + 8); survivalTop = height; }
+        if (short) {
+          leftInset = Math.ceil((turbo || spin ? turboLeft + tile : smokeShown || jump ? smokeLeft + tile : items.right) + 8);
+          survivalTop = height;
+        }
       }
       let shown = 0;
       for (const node of systemsElement.children) {
