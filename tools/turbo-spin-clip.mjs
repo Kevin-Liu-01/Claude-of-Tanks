@@ -5,9 +5,10 @@
 // starts a dev server and a guarded browser and brings a desktop page (and a phone-tier page at a phone's landscape
 // viewport) into a Turbo Ball battle; the hold only films.
 //
-//   node tools/turbo-spin-clip.mjs --out=DIR [--map=verdant] [--mode=turbo_ball|mars] [--only=desktop|phone]
+//   node tools/turbo-spin-clip.mjs --out=DIR [--map=airfield] [--mode=turbo_ball|mars] [--only=desktop|phone]
 //
-// DIR/turbo-spin.mp4: the desktop page in real time, through the real keys: on the ground (the air spin's tile greyed),
+// DIR/turbo-spin.webm: the desktop page in real time on a camera that follows the hull from behind its right quarter (the
+// trees of a forest map hid it behind the battle camera), through the real keys: on the ground (the air spin's tile greyed),
 // F then Z (the jump, then Turbo's air dash), F then F (a front flip), F, A held and F (a roll to the left), Z on the
 // ground (the leap) and its cooldown counting down. DIR/*.png: the controls row on the ground and in the air, and the
 // phone's survival edge on the ground. DIR/turbo-spin-clip.json: each press, the hull's state around it and the errors.
@@ -23,7 +24,7 @@ import { mapProbeLaunchOptions, mapProbeServerOptions, beginSoloBattle, sleep } 
 const argv = process.argv.slice(2);
 const arg = (name, fallback = null) => { const hit = argv.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const out = path.resolve(arg('out', '.qa-dev/turbo-spin'));
-const mapId = arg('map', 'verdant');
+const mapId = arg('map', 'airfield');
 const gameMode = arg('mode', 'turbo_ball');
 const only = arg('only');
 mkdirSync(out, { recursive: true });
@@ -84,15 +85,34 @@ const untilGrounded = (page, timeout = 9000) => page.waitForFunction(() => {
   return s.grounded && !(s._ride?.rebound > 0);
 }, { timeout, polling: 100 }).catch(() => {});
 
+/** A camera behind the hull's right quarter, re-aimed every frame (window.__follow false stops it). */
+const follow = () => {
+  const D = window.__DEBUG, V = D.camera.position.constructor, eye = new V(), at = new V();
+  window.__follow = true;
+  const loop = () => {
+    if (!window.__follow) { D.rig.release(); return; }
+    const s = D.game.player.state, p = s.pos, fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+    eye.set(p.x - fx * 15 + fz * 17, p.y + 6, p.z - fz * 15 - fx * 17);
+    at.set(p.x + fx * 6, p.y + 1.5, p.z + fz * 6);
+    D.rig.setExternalPose(eye, at, 52);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+};
+
 async function filmDesktop(page, signal) {
+  // (no click to focus the page: a headless page never holds the pointer lock, and the click's lost lock paused the battle
+  // over every frame of the first clip; the keys reach the page without it)
   if (await resume(page)) await sleep(300);
   await page.evaluate(stage);
-  await page.mouse.click(800, 450).catch(() => {});
   await sleep(800);
+  if (await resume(page)) await sleep(300);
   const row = await rowBox(page);
   if (row) { await page.screenshot({ path: path.join(out, 'desktop-row-ground.png'), clip: row }); receipt.shots.push('desktop-row-ground'); }
   await page.screenshot({ path: path.join(out, 'desktop-ground.png') });
   receipt.shots.push('desktop-ground');
+  await page.evaluate(follow);
+  await sleep(400);
   const webm = path.join(out, 'turbo-spin.webm');
   const recorder = await page.screencast({ path: webm, fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' });
   try {
@@ -102,6 +122,7 @@ async function filmDesktop(page, signal) {
     await sleep(1800);
     await press(page, 'KeyF', 'jump');
     await sleep(380);
+    if (await resume(page)) await sleep(100);
     if (row) { await page.screenshot({ path: path.join(out, 'desktop-row-air.png'), clip: row }); receipt.shots.push('desktop-row-air'); }
     await press(page, 'KeyZ', 'turbo in the air');
     await untilGrounded(page);
@@ -135,6 +156,7 @@ async function filmDesktop(page, signal) {
     await sleep(2800);
   } finally {
     await recorder.stop();
+    await page.evaluate(() => { window.__follow = false; }).catch(() => {});
   }
 }
 
