@@ -7,7 +7,7 @@
 import type { EventBus } from './stateCore.ts';
 import { canTankAirSpin, type HullFlightState } from '../sim/hullFlight.ts';
 
-export interface TurboCooldown {
+interface TurboCooldown {
   /** Seconds left at `nowS` (0: ready). */
   readyIn(nowS: number): number;
   /** The cooldown's share run at `nowS` (1: ready). */
