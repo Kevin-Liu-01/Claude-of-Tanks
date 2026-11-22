@@ -59,7 +59,15 @@ assert.match(hud, /function setControlsJumpMode\(on:boolean\):void\{\n\s*jumpHin
 assert.match(hud, /bindControl\(jumpHint, \(\) => bus\.emit\('ui:selfRight', \{\}\)\)/, 'the shared control fires the real jump edge');
 assert.match(hud, /const bindControl = \(button: HTMLButtonElement, act: \(\) => void\): void => \{[\s\S]*?button\.addEventListener\('pointerdown', \(event\) => \{[\s\S]*?if \(event\.pointerType === 'mouse'\) \{ act\(\); return; \}/,
   'a mouse press on the control acts on its pointerdown, the same edge as the F key');
-assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy touch button stays hidden to avoid duplicate controls');
+// (phone-jump-274) one of each: a phone's row stands its jump tile down for the touch kit's round button (mobile-hud-274),
+// which the HUD kept hidden in every ruleset, so a phone had no jump; the round button now shows in jump rulesets and stands
+// down wherever the row shows its tile
+assert.match(hud, /bus\.emit\('ui:jumpAvailable', \{ on: isJumpMode\(ruleset\) \}\)/, 'the touch kit\'s jump shows in jump rulesets');
+assert.doesNotMatch(hud, /bus\.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'never hidden in every ruleset (a phone had no jump)');
+const layoutCss = read('../ui/battleHudLayout.css');
+assert.match(layoutCss, /\.cot-touch-layout:is\(\[data-cot-width='phone'\],\[data-cot-height='short'\]\) \.cot-vehicle-controls>\.cot-jump\{display:none\}/, 'a phone\'s row stands its jump tile down');
+assert.match(layoutCss, /\.cot-touch-layout:is\(\[data-cot-width='phone'\],\[data-cot-height='short'\]\) \.cot-touch \.round\.jump\{left:var\(--hud-jump-left\)/, 'and seats the round jump on its survival edge');
+assert.match(layoutCss, /\.cot-touch-layout:not\(\[data-cot-width='phone'\]\):not\(\[data-cot-height='short'\]\) \.cot-touch \.round\.jump\{display:none\}/, 'elsewhere the round jump stands down for the row\'s tile');
 const touch = read('../ui/touchControls.ts');
 assert.match(touch, /<button class="round jump" type="button" aria-label="\$\{t\('touch\.jumpAria'\)\}" hidden>\$\{ROCKET\}/, 'a hidden rocket button waits in the touch layer');
 assert.match(touch, /bus\.on\('ui:jumpAvailable', \(payload\) => \{\n\s*const \{ on \} = payload as \{ on\?: boolean \};\n\s*jumpButton\.hidden = !on;/, 'it appears in rulesets with a jump');
