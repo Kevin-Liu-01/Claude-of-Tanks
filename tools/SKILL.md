@@ -355,8 +355,8 @@ fleet regen's `icons` step keys on `tools/icons-page.html`. The hero-card plan r
 follows from the same `genHeroCards --ids` and `ship` steps; `src/vehicles/previewVehicles.selftest.mjs` checks both.
 Stills: `tools/end-screen-modes.browser.mjs` (the end screen for every mode, the couch battle and a room's round, from
 one scripted battle each through the real bookkeeper, `tools/fixtures/end-screen-modes.html`) and
-`tools/aircraft-previews.browser.mjs` (Deploy's vehicle card, the battle load's aircraft row and the Garage pedestal with
-the AC-130 mode chosen); both take `--out=<dir>`, run under `with-capture-lock --lock-class=render`, and run from a
+`tools/aircraft-previews.browser.mjs` (Deploy's vehicle card and the battle load's aircraft row with the AC-130 mode
+chosen, and the Garage, which keeps its tank in that mode: owner 2026-11-21); both take `--out=<dir>`, run under `with-capture-lock --lock-class=render`, and run from a
 second checkout for the before side of a pair.
 The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
 and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of

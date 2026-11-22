@@ -4,8 +4,9 @@
  *
  * The preview surfaces ask vehicles/previewVehicles.ts which kind an id is; a tank comes from its fleet facade, an aircraft
  * from here: its real first-party airframe (gunshipAirframe.ts, the model the battle flies), in level flight with its props
- * at rest, centred on its own footprint like a tank's presentation anchor. The asset page (tools/aircraft-assets-page.html),
- * the hero-card page (tools/hero-cards-page.html) and the Garage pedestal build from this one function.
+ * at rest, centred on its own footprint like a tank's presentation anchor. The asset page (tools/aircraft-assets-page.html)
+ * and the hero-card page (tools/hero-cards-page.html) build from this one function (the Garage keeps its tank, owner
+ * 2026-11-21).
  */
 import * as THREE from 'three';
 import { buildGunshipAirframe } from './gunshipAirframe.ts';
