@@ -43,7 +43,7 @@ import { buildChallenger1SuppliedMk1, buildChallenger1SuppliedMk2 } from './chal
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildChallenger3Td } from './challenger3Td.ts';
-import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -194,7 +194,6 @@ interface Challenger3XReceipt {
   skirtHangers: number;
   glacisEraCassettes: number;
   skirtEraCassettes: number;
-  cheekEraCassettes: number;
   turretSideEraCassettes: number;
   autocannonStations: number;
   radarArrays: number;
@@ -219,6 +218,11 @@ interface Challenger3ShellSection {
   readonly roofXR: number;
   readonly roofYF: number;
   readonly roofYR: number;
+}
+
+interface Challenger3BuildOptions {
+  /** The two faceted lower-cheek wedges ahead of the turret face (x .40..1.40, z 1.22..1.70). */
+  readonly lowerCheekSlabs?: boolean;
 }
 
 
@@ -1449,27 +1453,10 @@ function buildChallenger3XTurretEra(
   receipt: Challenger3XReceipt,
 ): void {
   const { box } = KIT;
-  const [turretPivotX, turretPivotY, turretPivotZ] = P.spec.armor.turretPivot;
+  const turretPivotY = P.spec.armor.turretPivot[1], turretPivotZ = P.spec.armor.turretPivot[2];
+  // 2026-11-22 (Kevin's surface markup): the cheek ERA courses were laid into the lower-cheek wedges ahead of the
+  // turret face and went with them; the production Challenger 3 has no wedges (lowerCheekSlabs: false).
   for (const side of [-1, 1]) {
-    const frame = cr2SurfaceFrame([side * 0.42, 0.66, 0.62], [side, 0, -0.56]);
-    const sector = `c3x_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(sector, (place) => {
-      const origin = new THREE.Vector3(side * 0.91, 0.22, 1.13);
-      for (let row = 0; row < 4; row++) {
-        for (let station = 0; station < 4; station++) {
-          const point = origin.clone()
-            .addScaledVector(frame.horizontal, (station - 1.5) * 0.285)
-            .addScaledVector(frame.vertical, (row - 1.5) * 0.145)
-            .addScaledVector(frame.normal, 0.018);
-          place(
-            point.x + turretPivotX, point.y + turretPivotY, point.z + turretPivotZ,
-            ...frame.rotation, 0.98, 1.06, 0.82,
-          );
-          receipt.cheekEraCassettes++;
-        }
-      }
-    }, true);
-
     const sideSector = `c3x_turret_side_era_${side > 0 ? 'R' : 'L'}`;
     P.add('turret', box(0.13, 0.67, 3.12), side * 1.49, 0.40, -1.62);
     P.eraCluster(sideSector, (place) => {
@@ -1551,7 +1538,6 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
     skirtHangers: 0,
     glacisEraCassettes: 0,
     skirtEraCassettes: 0,
-    cheekEraCassettes: 0,
     turretSideEraCassettes: 0,
     autocannonStations: 0,
     radarArrays: 0,
@@ -1567,8 +1553,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   // left/right sector names keep the damage and depletion state honest.
   buildChallenger3XGlacisEra(P, receipt);
 
-  // The cheek courses are individual cassettes laid in the ruled cheek
-  // plane, rather than a pair of rectangular applique slabs.
+  // Side courses on the falling turret walls; no cheek courses (they sat in the removed lower-cheek wedges).
   buildChallenger3XTurretEra(P, receipt);
 
   // The owner removed the two nonfunctional shoulder cannons. The live
@@ -1582,7 +1567,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   buildChallenger3XBustle(P, receipt);
 
   receipt.totalEraCassettes = receipt.glacisEraCassettes + receipt.skirtEraCassettes
-    + receipt.cheekEraCassettes + receipt.turretSideEraCassettes;
+    + receipt.turretSideEraCassettes;
   const frozen = Object.freeze(receipt);
   P.hullG.userData.challenger3XReceipt = frozen;
   P.turretG.userData.challenger3XReceipt = frozen;
@@ -3242,7 +3227,10 @@ withBuildSteps(buildChallenger2, buildChallenger2Steps);
 // 120 mm L55A1 SMOOTHBORE (evacuator + thermal sleeve + MRS collar +
 // §B3.1 muzzle bore) replacing the rifled L30.
 // ---------------------------------------------------------------------------
-function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
+function* buildChallenger3Steps(
+  P: ChallengerBuilderPort,
+  { lowerCheekSlabs = true }: Challenger3BuildOptions = {},
+): TankProfileBuild {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
     periscope, smokeCluster, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
 
@@ -3664,7 +3652,9 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
     for (const s of [-1, 1]) {
       // A-C folded the low cheek roof inward by 91 degrees. B-D gives the
       // authored convex ridge and preserves all silhouette datums.
-      P.add('turret', facetedSlab([
+      // 2026-11-22 (Kevin's surface markup, faces 215/220/200: "for the challenger 3 get rid of these thing in front of
+      // cheek"): the production Challenger 3 builds without these wedges, so its 1.22 turret face is the front armour.
+      if (lowerCheekSlabs) P.add('turret', facetedSlab([
         [0.40, 0.02, 1.70], [0.98, 0.02, 1.52], [1.40, 0.02, 1.22], [0.78, 0.02, 1.22],
       ],[
         [0.40, 0.17, 1.60], [0.92, 0.42, 1.43], [1.20, 0.30, 1.22], [0.50, 0.34, 1.22],
@@ -4038,6 +4028,9 @@ function buildChallenger3(...args: Parameters<typeof buildChallenger3Steps>): vo
   drainTankBuild(buildChallenger3Steps(...args));
 }
 withBuildSteps(buildChallenger3, buildChallenger3Steps);
+/** The production Challenger 3: the prototype's shell without the lower-cheek wedges (Kevin, 2026-11-22). */
+const buildChallenger3Production = steppedBuilder(
+  (P: ChallengerBuilderPort) => buildChallenger3Steps(P, { lowerCheekSlabs: false }));
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const CHALLENGER_BUILDERS = {
   fv4034: buildChallenger2,
@@ -4045,7 +4038,7 @@ export const CHALLENGER_BUILDERS = {
   challenger2e: buildChallenger2,
   ua_challenger2: buildChallenger2,
   challenger3_proto: buildChallenger3,
-  challenger3: buildChallenger3,
+  challenger3: buildChallenger3Production,
   // release 262: the 2021 Advanced Technology Demonstrator, its own measured build on the full port
   challenger3_td: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
   challenger3_td_rws: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
