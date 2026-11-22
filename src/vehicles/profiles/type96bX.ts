@@ -259,15 +259,42 @@ function addType96Cupola(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', box(.418, .105, .304), -.592, 2.350, -.539);
     equipment(P, 'turret', 'Detail', cylX(.036, .34, P.q ? 20 : 12), -.592, 2.432, -.493);
 }
-// The turret shell's stations (source frame).
+// The turret shell's stations (source frame). The shell stops at z 0.64; the front is the two add-on modules and the
+// centre block between them (TYPE96_FRONT_MODULE).
 const TYPE96_TURRET_STATIONS: readonly Type96Station[] = [
     [-2.04, .79, 1.17, .97, 1.75, 1.95, 2.20],
     [-1.57, 1.16, 1.46, 1.15, 1.67, 1.96, 2.28],
     [-.40, 1.27, 1.51, 1.14, 1.60, 1.95, 2.30],
     [.64, 1.18, 1.44, .93, 1.62, 1.84, 2.25],
-    [1.33, .70, 1.00, .50, 1.66, 1.83, 2.05],
-    [1.93, .29, .40, .26, 1.72, 1.84, 1.98],
 ];
+/** china-turrets-275 (Kevin: "make the type 96 72m, type 96 80, type 96b ... have proper turrets and mantlets"): the
+ * Type 96A/96B front is two bolt-on armour modules, one each side of the gun, and the mantlet sits in a vertical slot
+ * between them under a canvas dust cover (photographs: Commons "Type 96B 02/03", Tank Biathlon 2022). The old shell ran
+ * on to a 0.26 m point at the gun with the gun leaving through its tip. Each module is one loft of these stations
+ * (source frame, the right-hand module; the left mirrors it): [z, floor half-width, shoulder half-width, roof-edge
+ * half-width, floor y, shoulder y, roof y], every ring closed on the slot wall at x `slotHalf`. Its outer face rakes
+ * back about 45 degrees from the shoulder to the inner front face (stations `rakeFrom` to `rakeTo`), which stands nearly square to the
+ * bore; the top runs level with the roof front behind a narrow bevel. The first station sits inside the shell's last
+ * one; the third turns the side vertical (`sideFrom`), so the side ahead of it stands square for the concepts' tiles. The centre block between the modules carries the roof from the shell to the slot's back wall at `slotBackZ`.
+ * The concepts' kits (chinaDonorTurretKit.ts) seat on these faces. */
+export const TYPE96_FRONT_MODULE = {
+    slotHalf: .30,
+    slotBackZ: 1.30,
+    /** The station where the module's side turns vertical, and the raked outer face's two ends. */
+    sideFrom: 2, rakeFrom: 3, rakeTo: 4,
+    stations: [
+        [.60, 1.165, 1.425, .915, 1.63, 1.84, 2.24],
+        [.64, 1.18, 1.44, .93, 1.62, 1.84, 2.25],
+        [.90, 1.235, 1.245, .965, 1.64, 1.89, 2.185],
+        [1.24, 1.092, 1.10, 1.00, 1.655, 1.95, 2.10],
+        [1.72, .632, .64, .58, 1.68, 1.98, 2.065],
+        [1.82, .315, .325, .315, 1.69, 1.985, 2.06],
+    ] as readonly Type96Station[],
+} as const;
+/** The roof between the modules (source frame): [z, top y]; its floor is the shell's front floor. Its last 0.14 m is a
+ * chamfer down to the slot's back wall (top 1.96), where the gun-mounted box sight's rear lower edge swings at full
+ * elevation (type96MantletClearance.selftest.mjs). */
+const TYPE96_CENTRE_ROOF: readonly (readonly [number, number])[] = [[.60, 2.245], [1.16, 2.10], [1.30, 1.96]];
 // The gunner's sight housing on the right front roof: centre and width, height, depth (source frame).
 const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28 } as const;
 /** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
@@ -291,7 +318,7 @@ const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28
  * `floodlight: true` (release 240) carries a gun floodlight right of the gun (TYPE96_GUN_FLOODLIGHT). */
 export interface Type96TurretOptions {
     mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
-    bootFloor?: readonly (number | null)[]; boxSightSourceTop?: boolean; floodlight?: boolean;
+    bootFloor?: number; boxSightSourceTop?: boolean; floodlight?: boolean;
 }
 
 // 2026-10-24 (the owner: "make the ... type 96b, type 96-80, have floodlights at front by guns"): the gun floodlight
@@ -299,8 +326,10 @@ export interface Type96TurretOptions {
 // the bore line, under the cheek's 0.33 lip at y 0.10, into the boot's 0.35 face 19 cm off the bore (the barrel's
 // collars are 16 cm)
 // (main-reds-259, Main's ruling: its own draw, gunMountLamp, so the boot, the measured source Object_6, keeps its envelope)
+// (china-turrets-275: the bracket's root now runs into the steel collar round the sleeve, r .160 over z .24-.36: the
+// square mantlet has no nose 19 cm off the bore)
 const TYPE96_GUN_FLOODLIGHT: GunFloodlightSeat = {
-  side: 'right', x: .40, y: .02, backZ: .40, anchorX: .19, anchorY: 0, anchorZ: .31, bucket: 'gunMountLamp',
+  side: 'right', x: .40, y: .02, backZ: .40, anchorX: .15, anchorY: 0, anchorZ: .31, bucket: 'gunMountLamp',
 };
 
 // The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
@@ -353,10 +382,80 @@ function bootHeelY(z: number): number {
     }
     return -Infinity;
 }
+/** One front module's ring at a station (turret frame), counter-clockwise seen from ahead, closed on the slot wall. */
+function frontModuleRing(P: TankBuilderPort, side: number, row: Type96Station): { z: number; ring: (readonly [number, number])[] } {
+    const [z, low, sh, roof, floor, shY, roofY] = row, xi = TYPE96_FRONT_MODULE.slotHalf, py = P.turretG.position.y;
+    const ring: (readonly [number, number])[] = [[xi, floor - py], [low, floor - py], [sh, shY - py], [roof, roofY - py], [xi, roofY - py]];
+    return { z: z - P.turretG.position.z, ring: side > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse() };
+}
+/** The two front modules and the roof block between them (TYPE96_FRONT_MODULE). The block's sides stand 10 mm inside
+ * the modules' slot walls; its front face is the slot's back wall, which the mantlet passes through. */
+function addType96FrontModules(P: TankBuilderPort): void {
+    for (const side of [-1, 1])
+        P.add('turret', sectionSolid(TYPE96_FRONT_MODULE.stations.map((row) => frontModuleRing(P, side, row)), { sideQuadDiagonal: 'convex' }));
+    const w = TYPE96_FRONT_MODULE.slotHalf + .01, py = P.turretG.position.y, pz = P.turretG.position.z;
+    const floor = (z: number) => 1.63 + (1.66 - 1.63) * (z - .60) / (TYPE96_FRONT_MODULE.slotBackZ - .60);
+    P.add('turret', sectionSolid(TYPE96_CENTRE_ROOF.map(([z, top]) => ({ z: z - pz,
+        ring: [[-w, floor(z) - py], [w, floor(z) - py], [w, top - py], [-w, top - py]] as const }))));
+}
+/** A chamfered rectangle's ring (gun frame), counter-clockwise seen from ahead. */
+function chamferedRing(half: number, bottom: number, top: number, c: number): (readonly [number, number])[] {
+    return [[-half + c, bottom], [half - c, bottom], [half, bottom + c], [half, top - c], [half - c, top], [-half + c, top],
+        [-half, top - c], [-half, bottom + c]];
+}
+interface MantletStation { z: number; half: number; bottom: number; top: number }
+/** The mantlet block's stations (gun frame about the trunnion, source y 1.8602, z 1.60). The rear station stands inside
+ * the centre roof block; the next is the slot's back wall (z -0.30); the front chamfers to the collar's face. The top
+ * runs on the modules' roof line (2.06-2.07), the bottom on their floor line (1.69 at the front). At and behind the
+ * trunnion the underside rises to `bootFloor` (source y) and, with `bootHeel`, to the heel line, so the block clears each
+ * host's deck through the traverse and pitch range (type96MantletClearance.selftest.mjs). */
+function type96MantletStations(options: Type96TurretOptions): MantletStation[] {
+    return ([[-.40, .25, -.08, .19], [-.30, .265, -.13, .20], [-.26, .265, -.135, .20], [.12, .265, -.152, .195],
+        [.18, .235, -.135, .17], [.21, .20, -.11, .135]] as const).map(([z, half, bottom, top]) => {
+        let b: number = bottom;
+        if (z <= 1e-9) {
+            if (options.bootHeel) b = Math.max(b, bootHeelY(z));
+            if (options.bootFloor != null) b = Math.max(b, options.bootFloor - 1.8602);
+        }
+        return { z, half, bottom: Math.min(b, top - .08), top };
+    });
+}
+function mantletAt(block: readonly MantletStation[], z: number): MantletStation {
+    const i = Math.max(1, block.findIndex((s) => s.z >= z));
+    const a = block[i - 1], b = block[i], t = Math.min(1, Math.max(0, (z - a.z) / (b.z - a.z)));
+    return { z, half: a.half + (b.half - a.half) * t, bottom: a.bottom + (b.bottom - a.bottom) * t, top: a.top + (b.top - a.top) * t };
+}
+/** A rounded box ring (gun frame): a superellipse of exponent p over [bottom, top], counter-clockwise from below. */
+function clothRing(half: number, bottom: number, top: number, p: number, n: number): (readonly [number, number])[] {
+    const cy = (top + bottom) / 2, hy = (top - bottom) / 2;
+    return Array.from({ length: n }, (_, k) => {
+        const a = -Math.PI / 2 + k * Math.PI * 2 / n, c = Math.cos(a), s = Math.sin(a);
+        return [Math.sign(c) * Math.pow(Math.abs(c), p) * half, cy + Math.sign(s) * Math.pow(Math.abs(s), p) * hy] as const;
+    });
+}
+/** The canvas dust cover over the mantlet (gun frame): from the slot's back wall to the front, 15-25 mm proud of the block
+ * and bunched in three rolls across its crown, then gathered onto the steel collar round the thermal sleeve and strapped
+ * there. The collar is the sleeve's real exit: 6 mm round the sleeve, 0.12 m long, its underside on the old boot nose's
+ * (-0.164), so the gun keeps its measured clearance over the rear deck with the turret reversed. */
+function addType96MantletCover(P: TankBuilderPort, block: readonly MantletStation[]): void {
+    // [z, crown lift]: the bunched folds rise and sag along the crown (the photographs' slack cloth), never under 12 mm
+    // (its rear edge, on the slot's back wall, is tucked 30 mm up into the wall so it does not swing under the block at
+    // full elevation)
+    const n = P.q ? 24 : 12, rows: { z: number; ring: (readonly [number, number])[] }[] = ([[-.30, .022, .03], [-.26, .03, 0], [-.18, .036, 0], [-.10, .016, 0], [-.02, .034, 0], [.06, .014, 0], [.14, .026, 0]] as const).map(([z, lift, tuck]) => {
+        const s = mantletAt(block, z);
+        return { z, ring: clothRing(Math.min(s.half + .022, TYPE96_FRONT_MODULE.slotHalf - .008), s.bottom - .008 + tuck, s.top + lift, .35, n) };
+    });
+    // the gather: the boxy cover rounds into the collar over three rings (one ring left the block's corners as facets)
+    rows.push({ z: .175, ring: clothRing(.235, -.150, .175, .5, n) }, { z: .205, ring: clothRing(.20, -.150, .160, .7, n) },
+        { z: .245, ring: clothRing(.168, -.153, .168, 1, n) });
+    P.add('gunMountCloth', sectionSolid(rows, { centeredSideQuads: true, smoothSideEdges: [...Array(n).keys()] }));
+    P.add('gunMount', cylZ(.160, .12, P.q ? 28 : 16), 0, 0, .30);
+}
 export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid(TYPE96_TURRET_STATIONS.map(row => turretStation(P, ...row)),
         { sideQuadDiagonal: 'convex' }));
+    addType96FrontModules(P);
     if (options.bins !== false) addTurretBins(P);
     if (options.smoke !== false) addType96SmokeLaunchers(P);
     addType96Cupola(P);
@@ -389,30 +488,18 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     if (options.mastTopY === undefined) antenna(P, .95, 2.20, -1.78, 5.26855, -2.057);
     else antenna(P, .95, 2.20, -1.78, options.mastTopY, -1.78 - .277 * (options.mastTopY - 2.31) / (5.26855 - 2.31));
     // No roof weapon is present in this particular source configuration.
-    // Rounded mantlet boot measured independently from Object_6. The rear
-    // cover meets the turret; its front contracts into Object_11's barrel collar.
-    const boot = [
-        [1.20, .250, 1.595, 2.171], [1.32, .260, 1.582, 2.212],
-        [1.60, .246, 1.616, 2.173], [1.75, .216, 1.641, 2.082],
-        [1.85, .190, 1.704, 2.044], [1.951, .157, 1.696, 2.017],
-    ].map(([z, half, bottom, top], station) => ({
-        z: z - 1.6, ring: Array.from({ length: P.q ? 20 : 12 }, (_, i) => {
-            const a = i * Math.PI * 2 / (P.q ? 20 : 12);
-            const y = (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2, floor = options.bootFloor?.[station];
-            const heeled = options.bootHeel && z - 1.6 <= 1e-9 ? Math.max(y, bootHeelY(z - 1.6)) : y;
-            return [Math.cos(a) * half, floor == null ? heeled : Math.max(heeled, floor - 1.8602)] as const;
-        }),
-    }));
-    // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
-    // collar remain in recoil. This changes ownership only, not neutral stock.
-    // (with the box sight riding it, the boot and the sight go through add(): the same mantlet bucket, and the part census
-    // sees the seat; a clipped underside is a flat run of contour points: its caps keep every one)
-    const bootGeometry = options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot);
+    // china-turrets-275: the mantlet is a square block in the slot between the front modules (TYPE96_FRONT_MODULE), its
+    // top and bottom on the modules' top and floor lines, under a canvas dust cover gathered onto a steel collar round
+    // the thermal sleeve (the old rounded Object_6 boot stood on the shell's nose tip, 0.12 m proud of its roof).
+    const block = type96MantletStations(options);
+    const bootGeometry = sectionSolid(block.map(({ z, half, bottom, top }) => ({ z, ring: chamferedRing(half, bottom, top, .035) })),
+        { preserveCapBoundary: true });
     if (options.boxSightOnGun) {
         P.add('gunMount', bootGeometry);
-        addBoxSightOnBoot(P, bootGeometry, boot.map((r) => r.z), options.boxSightSourceTop);
+        addBoxSightOnBoot(P, bootGeometry, block.map((r) => r.z), options.boxSightSourceTop);
     }
     else P.addGunExtra(bootGeometry);
+    addType96MantletCover(P, block);
     // Source Object_13 is the outer tapered shroud. Object_14's 68 mm
     // radius belongs to its inner bore and must not become the outer barrel.
     const stations: readonly (readonly [
@@ -456,7 +543,7 @@ export function addType96GunnerSightPlinth(P: TankBuilderPort): void {
  * handle (y 1.651); ahead of it the floor clears the rear-deck panels (y 1.6535) with the turret reversed. The two front
  * stations, which wrap the barrel collar, keep their measured undersides. type96MantletClearance.selftest.mjs sweeps
  * every traverse and pitch for crossings. */
-const TYPE96B_BOOT_FLOOR = [1.75, 1.73, 1.66, 1.67, null, null] as const;
+const TYPE96B_BOOT_FLOOR = 1.73;
 export function buildType96bX(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);

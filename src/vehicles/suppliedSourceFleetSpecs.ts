@@ -63,7 +63,7 @@ const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
  * leaves from 133, up to +0.6 at 147-152 (nationalGunClearance.selftest.mjs). */
 const TYPE96B_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0,-7],[21,-7],[25,-6.7],[28,-6.5],[31,-6.5],[33,-7],[133,-7],[134,-6],[135,-5.4],
   [140,-4.9],[141,-4.1],[142,-2.7],[143,-1.4],[145,-0.5],[147,0.1],[148,0.6],[151,0.6],[152,0.5],[155,-1],[156,-0.6],[157,-0.5],
-  [163,-0.4],[169,-0.4],[175,-0.8],[176,-0.6],[178,-0.6],[179,-0.7],[180,-1]] as const);
+  [163,-0.4],[169,-0.4],[175,-0.6],[176,-0.6],[178,-0.6],[179,-0.7],[180,-1]] as const);
 
 function applySourceFrame(spec: FleetTankSpec, id: string): void {
   if (['type96b', 'aft10', 'sabra_mk2'].includes(id)) {

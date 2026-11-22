@@ -741,8 +741,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     turret: {
       // open round the rounded secondary hatch on the right of the roof (its stepped lid is turret detail, not a hatch
       // bucket the builder opens; profiles/easternSourceContact "rounded secondary hatch must expose its measured lid")
+      // (china-turrets-275: the front add-on modules' raked outer faces stand vertical; the net stops short of their
+      // front corners, where its cells hung off the module as a flap)
       top: [laid({ x0: -1.75, x1: 1.75, z0: -1.95, z1: 1.91, nx: 44, nz: 48, y: 0.70, garnishRiseM: 0.16, seed: 11,
-        holes: [rect(0.14, 0.74, -0.25, 0.13)] })],
+        holes: [rect(0.14, 0.74, -0.25, 0.13), rect(0.62, 1.75, 1.36, 1.91), rect(-1.75, -0.62, 1.36, 1.91)] })],
       side: flanks(-1.80, 0.39, 0.74, 0.46, 1.72, 17),
       face: [face({ z: -1.96, x0: -1.30, x1: 1.30, y0: 0.30, y1: 0.68, nx: 26, ny: 6, seed: 23 })],
     },
