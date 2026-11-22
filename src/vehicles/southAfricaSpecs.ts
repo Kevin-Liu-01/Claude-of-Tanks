@@ -11,8 +11,7 @@ import './olifantMk2Specs.ts';
 import './additionalFleetSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { leopard2A4FamilyArmor } from './leopard2A4FamilyArmor.ts';
-import { EARLY_LEOPARD2_FORE_SKIRT_DROP_M } from './leopard2a3B4Armor.ts';
+import { ttdArmor } from './ttdArmor.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -110,28 +109,26 @@ olifant_mk1b.visual = {
 };
 
 // ------------------------------------------------------------------------------------------------- Olifant TTD --
-// Project Loggim's Tank Technology Demonstrator (one prototype, 1992; TE; the SA Armour Museum), built on the fleet's
-// Leopard 2 (the owner, 2026-11-02: "the ttd needs to properly be based on an actual leopard 2"; profiles/ttd.ts): the
-// Leopard 2A4's record carried onto the drawn construction (leopard2A4FamilyArmor), then the TTD's own: 58.3 t, a
-// twin-turbo V-8 diesel of 1,234 hp (920 kW), 71 km/h, 360 degrees of traverse in under ten seconds, -10/+20 degrees; the
-// 105 mm GT3 of its trials with the Mk 2's rounds (the 120 mm GT6 never fitted); spaced multi-layer armour, 750 mm
-// effective over the glacis, at the tier IV footing; the CS60N and GS60 stabilised sights with thermal and hunter-killer
-// control.
-const ttd = southAfrican('ttd', 'leo2a4', 'Olifant TTD', 'modern');
-ttd.armor = leopard2A4FamilyArmor('ttd', ttd.armor, { gun: 'L44', front: 'block', foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M });
-const TTD_PLATES: readonly (readonly [RegExp, number, number])[] = [
-  [/glacis/, 450, 650], [/lower_front/, 140, 180], [/cheek|turret_front/, 520, 740], [/mantlet/, 400, 560],
-  [/turret_side|bustle_side/, 210, 300], [/hull_side/, 70, 90], [/skirt_fore/, 60, 200], [/roof/, 40, 40], [/rear/, 45, 45],
-];
-for (const plate of [...ttd.armor.hullPlates, ...ttd.armor.turretPlates]) {
-  const row = TTD_PLATES.find(([re]) => re.test(plate.name));
-  if (row) Object.assign(plate, { keMm: row[1], ceMm: row[2] });
-}
+// Project Loggim's Tank Technology Demonstrator (one prototype, 1992; TE; the SA Armour Museum), on its own construction
+// (ttd-275; Kevin, 2026-11-21: "make the ttd its own tank instead of being based off of the leopard 2"; profiles/ttd.ts
+// on ttdArmor.ts): 58.3 t, a twin-turbo V-8 diesel of 1,234 hp (920 kW), 71 km/h, 360 degrees of traverse in under ten
+// seconds, -10/+20 degrees; the 105 mm GT3 of its trials with the Mk 2's rounds (the 120 mm GT6 never fitted); spaced
+// multi-layer armour, 750 mm effective over the glacis, at the tier IV footing; the CS60N and GS60 stabilised sights with
+// thermal and hunter-killer control. Its record is the 269 build's, unchanged: the Mk 2's (the South African 105 mm
+// donor) with the TTD's figures, the gun's 32 deg/s elevation and the ground resistances it carried from the 2A4 kept,
+// each plate's protection carried by name onto the surface that now carries it.
+const ttd = southAfrican('ttd', 'olifant_mk2', 'Olifant TTD', 'modern');
+ttd.armor = ttdArmor({
+  upper_glacis: [45, 450, 650], lower_front: [600, 140, 180], hull_side: [40, 70, 90], skirt_heavy: [110, 160, 450],
+  skirt_rear: [10, 45, 45], track: [25, 25, 25], hull_rear: [40, 45, 45], hull_roof: [40, 40, 40],
+  turret_cheek: [700, 520, 740], mantlet: [350, 400, 560], turret_side: [320, 210, 300], turret_rear: [80, 45, 45],
+  turret_roof: [45, 40, 40], turret_sight_recess: [250, 300, 350], turret_wedge: [90, 220, 750],
+});
 Object.assign(ttd, { hp: 2200, weightTons: 58.3, enginePowerHp: 1234, topSpeedKmh: 71, reverseSpeedKmh: 30,
-  hullTraverseDegS: 32, turretTraverseDegS: 36, gunElevationDeg: 20, gunDepressionDeg: 10 });
-// as built on the Leopard 2 (docs/references/tanks/ttd.md): its 7.72 m hull and 2.64 m roof, 10.06 m over the gun and
-// 3.67 m over the skirts (the clone carried the 2A4's registration-time 10.97 m, before the family settled it)
-Object.assign(ttd.dims, { hullLengthM: 7.72, overallLengthM: 10.06, widthM: 3.67, heightM: 2.64 });
+  hullTraverseDegS: 32, turretTraverseDegS: 36, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 10,
+  terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 } });
+// its own envelope (the elevation on TE's 7.78 x 3.62 m hull): 9.41 m over the gun, 2.80 m to the CS60N head
+Object.assign(ttd.dims, { hullLengthM: 7.78, overallLengthM: 9.41, widthM: 3.62, heightM: 2.80 });
 // the GT3's 105 mm and the Mk 2's rounds (olifantMk2Specs.ts)
 ttd.gun = { ...ttd.gun, caliberMm: 105, reloadS: 6.4, baseAccuracy: 0.24, aimTimeS: 1.65,
   shells: registries.tankSpecs.olifant_mk2.gun.shells.map((shell) => ({ ...shell })) };
@@ -164,10 +161,12 @@ olifant_mk1a.gunPitchByYawDeg = [[0, -10], [1, -9.2], [2, -8.5], [3, -8.3], [11,
   [163, -0.1], [177, -0.2], [180, -0.3]];
 olifant_mk1b.gunPitchByYawDeg = [[0, -10], [24, -10], [28, -8.7], [30, -8.4], [32, -8.4], [38, -9.9], [39, -10],
   [135, -10], [137, -9.5], [140, -9.1], [141, -8.3], [149, -8.1], [156, -6], [179, -6], [180, -6.1]];
-// the TTD on the Leopard 2 hull: the forward lift eyes over the bow quarters, the louvre deck astern
-ttd.gunPitchByYawDeg = [[0, -10], [16, -10], [17, -9.5], [18, -9.1], [22, -8.5], [24, -8.3], [26, -8.3], [27, -8.8],
-  [28, -9.9], [29, -10], [136, -10], [143, -6.3], [147, -4.3], [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7],
-  [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1], [178, 0.9], [180, 0.4]];
+// the TTD on its own hull (tools/gun-depression-sweep.mjs, ttd-275): the full -10 degrees over the front arc, a degree
+// less over the corner boxes and the side louvres, held near level over the raised engine deck astern
+ttd.gunPitchByYawDeg = [[0, -10], [27, -10], [30, -9.2], [32, -9.1], [33, -9.1], [34, -9.4], [35, -10], [48, -10],
+  [49, -9.4], [63, -9.4], [65, -10], [99, -10], [108, -9.7], [109, -9.7], [110, -8.6], [120, -8.5], [124, -8.5],
+  [125, -9.3], [141, -8.8], [142, -8.1], [143, -6], [144, -4.5], [145, -3.8], [148, -3.3], [152, -3.3], [153, -2],
+  [154, -1.7], [158, -1.2], [159, -0.8], [165, -0.8], [169, -1.5], [180, -1.5]];
 
 registerFleetSpecs(registries, ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'],
   { semel, olifant_mk1, olifant_mk1a, olifant_mk1b, ttd });

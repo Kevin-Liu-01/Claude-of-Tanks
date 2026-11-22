@@ -7,19 +7,22 @@
   "targets": {
     "ttd": {
       "name": "Olifant TTD",
-      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day: the TTD (Project Loggim's one Tank Technology Demonstrator, 1992) as the South African special at tier III (IV ruled, III by its same-tier duels); the owner, the same day: \"the ttd needs to properly be based on an actual leopard 2\". A first-party build on the fleet's Leopard 2 (the release's Leopard 2 hull and the 2A4 turret's square block) with the TTD's own fit; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the South Africa line on 2026-11-02 (DECISIONS) on the owner's request the same day: the TTD (Project Loggim's one Tank Technology Demonstrator, 1992) as the South African special at tier III (IV ruled, III by its same-tier duels). Kevin, 2026-11-21: \"make the ttd its own tank instead of being based off of the leopard 2\" (lane ttd-275, superseding the 11-02 \"based on an actual leopard 2\"): a first-party build on its own construction from the photographs and D. Bocquelet's side elevation; no registered 3D comparison exists. Numerical 3D comparison remains unverified.",
       "sources": [
         "https://tanks-encyclopedia.com/modern/south-africa/tank-technology-demonstrator/",
         "https://www.saarmourmuseum.com/tanktechnologydemonstrator",
         "https://en.wikipedia.org/wiki/Loggim_program",
         "https://tanks-encyclopedia.com/wp-content/uploads/2019/04/STT.jpg",
         "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/DSCF3794-640x480.jpg",
-        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/SA-ARMOUR-MUSEUM-3-640x427.jpg"
+        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/SA-ARMOUR-MUSEUM-3-640x427.jpg",
+        "https://commons.wikimedia.org/wiki/File:SADF_Tank_Technology_Demonstrator.png",
+        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/Photo01_31-640x430.jpg",
+        "https://www.tanks-encyclopedia.com/wp-content/uploads/2019/03/spalsh-640x480.jpg"
       ],
-      "widthM": 3.672,
-      "overallLengthM": 10.056,
-      "tallestM": 4.241,
-      "envelopeBasis": "The as-built envelope of the fleet's Leopard 2 (the release hull, 3.67 m over its skirts, and the 2A4 turret with its sleeved L/44 tube 4.10 m ahead of the trunnion standing for the GT3's 51 calibres) under the TTD's own fit, as the owner asked; TE's 7.78 x 3.62 x 2.99 m TTD hull is 1 % narrower than the Leopard 2's and its 9.41 m over the gun 6 % shorter. The envelope holds the loader's FN MAG and the whips.",
+      "widthM": 3.664,
+      "overallLengthM": 9.453,
+      "tallestM": 4.59,
+      "envelopeBasis": "The as-built envelope of the TTD's own construction (ttd-275): TE's 7.78 x 3.62 m hull as the elevation draws it (scaled at 77.8 px/m: 9.40 m over the gun, 0.70 m road wheels at 0.83 m), 3.66 m over the skirts' joint bosses, 9.45 m from the rear hooks to the muzzle reference unit (TE 9.41 m), the turret roof at 2.52 m and the CS60N head at 2.80 m (TE's 2.99 m is reached by no photographed part); the tallest point is the whips' tips. The envelope holds the loader's FN MAG and the whips.",
       "caliberMm": 105,
       "launcherTubes": 0,
       "roofMachineGuns": 1,
