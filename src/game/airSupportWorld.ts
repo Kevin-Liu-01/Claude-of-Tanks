@@ -252,8 +252,10 @@ export function createAirSupportWorld(root: THREE.Object3D, options: AirSupportW
         // the jet's attitude from its run: its heading, its climb or dive (nose up positive; three.js pitches nose down
         // for a positive x) and its bank in the turns
         craft.root.rotation.set(-pose.pitch, pose.yaw, pose.bank, 'YXZ');
-        if (strike.kind === 'bomb' && craft.fighter) dropBomb(strike, craft, t);
-        if (strike.kind === 'missile' && craft.fighter) launchMissiles(strike, craft, t);
+        // a jet downed before its release keeps what it had not let go (the authority released nothing after it fell)
+        const storeT = strike.downedS != null ? Math.min(t, strike.downedS) : t;
+        if (strike.kind === 'bomb' && craft.fighter && (strike.downedS == null || strike.downedS > strike.landsS + bombReleaseOffsetS(R))) dropBomb(strike, craft, t);
+        if (strike.kind === 'missile' && craft.fighter) launchMissiles(strike, craft, storeT);
       }
     }
     // (a crashed aircraft is not seen the frame it bursts: its airframe goes at the ground, and no later frame finds it)
