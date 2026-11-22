@@ -3399,6 +3399,9 @@ export function farHullVehicleMaterial<T extends THREE.Material>(
   const burnU = source.userData.__burnU;
   const clone = source.clone() as T;
   delete clone.userData.__burnU;
+  // (274) a paint whose searchlight lens is in its own mesh carries the night mask; the far draw lights that lens in
+  // its own emission slot, so the copy skips the mask (engine/nightEmissionMaterial.ts) and the lamps never drive it
+  if (clone.userData.nightEmissionMask === true) clone.userData.nightEmissionMask = false;
   const defines = (source as { defines?: Record<string, unknown> }).defines;
   if (defines) (clone as { defines?: Record<string, unknown> }).defines = { ...defines };
   const chain = source.onBeforeCompile, key = `${source.customProgramCacheKey()}${keySuffix}`;
