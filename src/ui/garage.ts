@@ -4649,8 +4649,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function renderDeployAircraft(id: string): void {
     const aircraft = previewAircraft(id);
     if (!aircraft) { deployTank.replaceChildren(); return; }
+    // a roster card's own shape (initializeTankCards: a .cot-card the hero layers decorate), so the thumb's sheet places the
+    // aircraft's layer exactly as it places a tank's copy
     const thumb = document.createElement('div');
-    thumb.className = 'cot-deploy-thumb cot-deploy-aircraft';
+    thumb.className = 'cot-card cot-deploy-thumb cot-deploy-aircraft';
     thumb.setAttribute('aria-hidden', 'true');
     const portrait = document.createElement('img');
     portrait.className = 'ti';
@@ -4660,7 +4662,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     thumb.append(portrait);
     deployTank.replaceChildren(thumb);
     void heroCardChunk.load()
-      .then((hero) => hero.decorateHeroTile(thumb, id, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+      .then(async (hero) => {
+        const manifest = await hero.loadHeroManifest();
+        return !!manifest && thumb.isConnected
+          && hero.decorateHeroCard(thumb, id, manifest, { tankSizes: '220px', flagSizes: '260px', priority: true });
+      })
       .then((decorated) => {
         if (!decorated || !thumb.isConnected) return;
         // the thumb is the vehicle (owner 2026-11-19): the nation is the chip beside its name, never the card's cloth

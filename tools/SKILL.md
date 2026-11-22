@@ -343,6 +343,17 @@ change needs an explicit `--all --part=i/n`), then
 `node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and
 `npm run hero-cards:check` (bow and gun sides by projection, budgets, files). Never
 hand-edit `public/icons/hero/hero-cards.json`.
+Preview aircraft (endscreen-modes-275): the vehicles a mode flies the player in (`src/vehicles/previewVehicles.ts`,
+the AC-130) are previewed like tanks under the tanks' own file names. `node tools/genAircraftAssets.mjs [--ids=ac130]`
+(capture lock, render class) renders their portrait, thumbnail, side and top views and silhouettes from the real
+airframe into `public/icons` and `public/icons/aircraft-assets.json`. It is a sibling of the tank icon page, because the
+fleet regen's `icons` step keys on `tools/icons-page.html`. The hero-card plan reads that manifest, so an aircraft's card
+follows from the same `genHeroCards --ids` and `ship` steps; `src/vehicles/previewVehicles.selftest.mjs` checks both.
+Stills: `tools/end-screen-modes.browser.mjs` (the end screen for every mode, the couch battle and a room's round, from
+one scripted battle each through the real bookkeeper, `tools/fixtures/end-screen-modes.html`) and
+`tools/aircraft-previews.browser.mjs` (Deploy's vehicle card, the battle load's aircraft row and the Garage pedestal with
+the AC-130 mode chosen); both take `--out=<dir>`, run under `with-capture-lock --lock-class=render`, and run from a
+second checkout for the before side of a pair.
 The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
 and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of
 the tank's pixels in the scene target's alpha and the ground occlusion's step across the belly line (the same frame
