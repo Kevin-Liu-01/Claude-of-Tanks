@@ -397,6 +397,7 @@ const ES_CSS = `
 .cot-es .es-tal .k svg{flex:0 0 auto;color:${COL.amberHi}}
 .cot-es .es-tal.hot{background:linear-gradient(135deg,oklch(from var(--accent-hi) l c h / .13),oklch(from var(--accent-hi) l c h / .025));}
 .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:34px}.cot-es .es-tal.hot .v{color:${COL.gold};}
+.cot-es .es-tal.word .v,.cot-es .es-tal.word.hot .v{font-size:var(--battle-fs-20);overflow-wrap:anywhere;line-height:1.1}
 /* the damage dealt's figures in its one colour, as the shot card, the float and the log carry it (Main 2026-10-31) */
 .cot-es .es-tal[data-stat=dealt] .v{color:var(--battle-damage-dealt);}
 .cot-es .es-stat-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
@@ -884,7 +885,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // stays in the hover tip and for assistive technology
     t.dataset.tip = label;
     if (opts.short) k.setAttribute('aria-label', label);
-    if (opts.text != null) v.textContent = opts.text;
+    if (opts.text != null) {
+      v.textContent = opts.text;
+      // (endscreen-modes-275) a word, not a figure (a role: "Juggernaut", "Superviviente"): its own smaller step
+      if (!/\d/.test(opts.text)) t.classList.add('word');
+    }
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
     if (key) host.dataset[key] = String(opts.datasetV != null ? opts.datasetV : Math.round(opts.value || 0));
     return t;
