@@ -30,6 +30,8 @@
 //     command it had at the keyframe, its trigger held; its row sets its hull right at the frame): every bot within 0.05 m
 //     over 10 s, and the human's own hull within 0.5 m (it braked through the play at first: 3.5 m). Its shots fall
 //     outside the window here; a shot still in flight at the frame is no keyframe's or replay's (docs/MULTIPLAYER-V2.md).
+// [7] Turbo Ball, a 30-tick window: the ball and every bot to the bit (the rows' millimetres the ball carried on through
+//     each contact parted 275's hulls 0.6-0.8 m in 8 s from a keyframe alone: modeWindowMigration [5] holds that now).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -258,10 +260,10 @@ console.log('[4] Frontline, the line advanced in the window');
  * `human`: the seat drives a weave and fires at the nearest hostile every 2.5 s (75 ticks off the keyframe's beat), the
  * same inputs on every host after the frame; in the window only the old host has them.
  */
-function fightTwin({ seed, window = 30, t0 = 45, hilly = false, human = false }) {
+function fightTwin({ seed, window = 30, t0 = 45, hilly = false, human = false, mode = 'capture_the_flag' }) {
   const bots = [...[0, 1, 2, 3].map((i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...[0, 1, 2, 3].map((i) => ({ playerId: `b-${i}`, name: `B${i}`, team: 'bravo', specId: spec }))];
-  const make = (resumed) => createMatchActor({ roomId: 'twin-fight', mapId: 'verdant', mode: 'capture_the_flag', seed, seats, bots, ruleset: matchRulesetFor('capture_the_flag'),
+  const make = (resumed) => createMatchActor({ roomId: 'twin-fight', mapId: 'verdant', mode, seed, seats, bots, ruleset: matchRulesetFor(mode),
     world: hilly ? hillyWorld : flatWorld, countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: resumed });
   const drive = (sim, k) => {
     if (!human) return;
@@ -292,10 +294,19 @@ function fightTwin({ seed, window = 30, t0 = 45, hilly = false, human = false })
   const replayed = resume(make, keyframe, latest, told), read = resume(make, keyframe, latest, told, false);
   // on together, the inputs read off the old host before its step and ridden to every host's (they stand in `inputs`)
   const from = tick;
-  const [run, run275] = together(old, [replayed.fresh, read.fresh], 10, (actor, k) => { if (actor === old) drive(sim, from + k - 1); });
+  // (Turbo Ball: the ball beside the hulls, the widest gap over the run, read after each step)
+  const ballOf = (actor) => actor.authority.modeController.state.ball;
+  const balls = [0, 0];
+  const [run, run275] = together(old, [replayed.fresh, read.fresh], 10, (actor, k) => {
+    if (actor !== old) return;
+    // before the old host's step every host stands on the same step
+    const b = ballOf(old);
+    if (b) [replayed.fresh, read.fresh].forEach((twin, i) => { const t = ballOf(twin); balls[i] = Math.max(balls[i], Math.hypot(b.x - t.x, b.y - t.y, b.z - t.z)); });
+    drive(sim, from + k - 1);
+  });
   for (const actor of [old, replayed.fresh, read.fresh]) actor.stop();
   inputs.delete('h0');
-  return { run, run275, replayed: replayed.replayed };
+  return { run, run275, replayed: replayed.replayed, balls };
 }
 
 console.log('[5] a 4v4 CTF fight, a 30-tick window: to the bit');
@@ -312,6 +323,14 @@ for (const seed of [1, 2, 3]) {
     + `every bot keeps within 0.05 m of the old host's for 10 s (${wider(run)}; the 275 reading: ${wider(run275)})`);
   // the seat's hull drove the window on its last command (it braked through the play before: 3.5 m behind)
   ok(run.seat < 0.5, `and the human's own hull within 0.5 m of the old host's (${run.seat.toFixed(3)} m; the 275 reading: ${run275.seat.toFixed(3)} m)`);
+}
+
+console.log('[7] Turbo Ball, a 30-tick window: the ball and the bots to the bit');
+{
+  // (the ball carried the rows' millimetres on through each contact: 0.6-0.8 m in 8 s from a keyframe alone at 275)
+  const { run, run275, replayed, balls } = fightTwin({ seed: 9, t0: 20, mode: 'turbo_ball' });
+  ok(replayed?.steps === 30 && both(run) === 0 && balls[0] === 0, `every bot and the ball keep the old host's for 10 s, to the bit (bots ${both(run).toFixed(3)} m, `
+    + `the ball ${balls[0].toFixed(3)} m; the 275 reading: bots ${wider(run275)}, the ball ${balls[1].toFixed(3)} m)`);
 }
 
 if (failures) { console.error(`migrationTwins.selftest: ${failures} failure(s)`); process.exit(1); }
