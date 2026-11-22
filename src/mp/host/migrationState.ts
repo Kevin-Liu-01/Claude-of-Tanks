@@ -1186,7 +1186,12 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
     for (const [id, tick] of state.respawnTicks ?? []) {
       if (typeof id === 'string' && Number.isInteger(tick)) told.set(id, checkpoint.mode.elapsedS - (replay.steps - Math.min(replay.steps, Math.max(0, tick - from))) * dt);
     }
-    const atFrame = checkpointAtNewestFrame(checkpoint, shown, { told, frameAtS: checkpoint.mode.elapsedS }).mode!;
+    const known = { told, frameAtS: checkpoint.mode.elapsedS };
+    // the hulls the old host revived in the window that the play did not (a seat's kill let its trickle or ring bring one
+    // on; the rows stood it up): named as the 275 reading names the keyframe's (checkpointAfterRevives), so takeView takes
+    // each arrival up as made
+    const missed = new Set([...revivedSinceKeyframe(actor, state, from)].filter((id) => (sim.entityById.get(id)?.modeLife ?? 'alive') !== 'alive'));
+    const atFrame = checkpointAtNewestFrame(checkpointAfterRevives(checkpoint, missed, known), shown, known).mode!;
     // the play's score is exact but for the points it missed (a seat's kill, a capture): those whole points added
     let view: Record<string, unknown> | null = null;
     try { view = recordOf(JSON.parse(shown)); } catch { view = null; }

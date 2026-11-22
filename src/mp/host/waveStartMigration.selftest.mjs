@@ -40,7 +40,8 @@
 // was cleared again on the first step, a second repair, cache and mode_wave_cleared); [4r] and [5r] an advance the play
 // makes itself (its arrivals and the ally's revive the old host's); [4h] and [5h] the sector taken by a hand the play
 // never saw (sealed halfway through it), arrivals the rows stood up kept on the field; [8r] a cache the seat took in the
-// window; [8h] one the play's held hull drove onto that the seat never reached, on the ground at the resume.
+// window; [8h] one the play's held hull drove onto that the seat never reached, on the ground at the resume; [6r] a seat's
+// kill that let the old host's trickle bring one on that the play's full field held back (its queue held it twice).
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -357,10 +358,12 @@ for (const [label, hidden, replayed, hand] of [['[4] Frontline: the line advance
     `the reinforcement is the old host's: wave ${b.wave}, its arrivals (${b.fresh}), the line's hulls and the draws' stream past the same shuffle`
       + `${a.wave === b.wave && a.fresh === b.fresh && a.lastWave === b.lastWave && a.rng[0] === b.rng[0] && a.reinforceAt === b.reinforceAt ? ''
         : ` (old: wave ${a.wave}, ${a.fresh}; ${a.lastWave}; ${a.rng[0]}; ${a.reinforceAt}; new: wave ${b.wave}, ${b.fresh}; ${b.lastWave}; ${b.rng[0]}; ${b.reinforceAt})`}`);
+  // (replayed, the advance's moment is the old host's to the bit: the revives the seat was told of, on the play's clock)
+  const tol = replayed ? 1e-9 : 1 / 60 + 1e-9;
   ok(!!a.counter && !!b.counter && a.counter.line === b.counter.line && a.counter.x === b.counter.x && a.counter.z === b.counter.z
-    && Math.abs(a.counter.atS - b.counter.atS) <= 1 / 60 + 1e-9 && Math.abs(a.counter.untilS - b.counter.untilS) <= 1 / 60 + 1e-9,
+    && Math.abs(a.counter.atS - b.counter.atS) <= tol && Math.abs(a.counter.untilS - b.counter.untilS) <= tol,
   `the counter-attack on sector 2 falls when the old host's does (old ${a.counter?.atS.toFixed(3)}, new ${b.counter?.atS.toFixed(3)})`);
-  ok(!!a.regroup && !!b.regroup && Math.abs(a.regroup.untilS - b.regroup.untilS) <= 1 / 60 + 1e-9,
+  ok(!!a.regroup && !!b.regroup && Math.abs(a.regroup.untilS - b.regroup.untilS) <= tol,
     `the regroup before the last sector runs on the old host's clock (until old ${a.regroup?.untilS.toFixed(3)}, new ${b.regroup?.untilS.toFixed(3)})`);
   if (!hidden) ok(a.rng[1] === b.rng[1], `the arrival points' stream stands where the old host's placing left it (${a.rng[1]} against ${b.rng[1]})`);
   fresh.authority.onMatchReady();
@@ -475,6 +478,55 @@ console.log('[6] a Horde trickle arrival after the keyframe: taken up as made, n
     + `(queued ${hordeOf(fresh).queued} against ${hordeOf(old).queued}; ${fielded(fresh).length} against ${fielded(old).length} on the field)`);
   ok(oldAt.length > 0 && JSON.stringify(newAt) === JSON.stringify(oldAt), `each later arrival lands where the old host's does (${newAt.join(' ') || 'none'} `
     + `against ${oldAt.join(' ') || 'none'})`);
+  old.stop(); fresh.stop();
+}
+
+console.log('[6r] (276) a seat\'s kill in a replayed window lets the old host\'s trickle bring one on that the play\'s full field held back: taken up as made');
+{
+  // wave 1 opens with the field full and the rest queued, its trickle due and held back by the full field; the seat's
+  // kill (the play never fires it) falls in the window's first tick, and the old host's trickle brings one on at once
+  const old = make(null), sim = old.authority;
+  sim.onMatchReady();
+  let tick = 0;
+  const told = new Map();
+  const step = (actor, n, heard) => {
+    for (let k = 0; k < n; k++) {
+      actor.authority.step({ dt: 1 / 60, inputs });
+      if (actor === old) tick++;
+      for (const ev of actor.authority.eventsForViewer('h0')) heard?.(ev);
+      actor.authority.afterEventBroadcast();
+    }
+  };
+  step(old, 150);
+  const era = createEraIndexer();
+  const keyframe = sealKeyframe(old, tick, era, hostFrame(old, tick, era, false), true);
+  const sealed = keyframe.modeCheckpoint.mode.waves.horde;
+  const victim = sim.entityById.get(fielded(old)[0]);
+  victim.combat.hp = 0; victim.combat.destroyed = true;
+  step(old, 30, (ev) => { if (ev.type === 'mode_respawn') told.set(ev.id, tick); });
+  const frame = hostFrame(old, tick, era, false);
+  ok(sealed.queued > 1 && sealed.nextTrickleAtS < keyframe.modeCheckpoint.mode.elapsedS && told.size === 1 && hordeOf(old).queued === sealed.queued - 1
+    && fielded(old).length === 6, `the case is built: the keyframe holds the field full, ${sealed.queued} queued and the trickle due; the seat kills `
+      + `${victim.id} and the old host's trickle brings ${[...told.keys()].join(', ')} on (${hordeOf(old).queued} queued)`);
+  const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
+  const fresh = make({ tick: state.tick, ...resumeClocksOf(state) });
+  const applied = applyResumeState(fresh, state);
+  const a = hordeOf(old), b = hordeOf(fresh);
+  const shown = (actor) => { const h = actor.authority.snapshotMeta('h0').modeState.horde; return `alive ${h.alive} queued ${h.queued} remaining ${h.remaining}`; };
+  ok(applied.replayed?.steps === 30 && a.queued === b.queued && Math.abs(a.nextTrickleAtS - b.nextTrickleAtS) <= 1e-9 && shown(fresh) === shown(old)
+    && JSON.stringify(fielded(fresh)) === JSON.stringify(fielded(old)), `the queue, the trickle's clock and the field are the old host's (queued ${b.queued} `
+      + `against ${a.queued}; next at ${b.nextTrickleAtS.toFixed(3)} against ${a.nextTrickleAtS.toFixed(3)}; ${shown(fresh)}; before, the queue held the `
+      + `arrival twice and the trickle stood due)`);
+  fresh.authority.onMatchReady();
+  // the same hand on both: every fielded hostile falls each second; each host's arrivals, tick by tick
+  const oldArrivals = [], newArrivals = [];
+  for (let k = 0; k < 240; k++) {
+    if (k % 60 === 0) for (const actor of [old, fresh]) for (const id of fielded(actor)) { const e = actor.authority.entityById.get(id); e.combat.hp = 0; e.combat.destroyed = true; }
+    step(fresh, 1, (ev) => { if (ev.type === 'mode_respawn') newArrivals.push(k); });
+    step(old, 1, (ev) => { if (ev.type === 'mode_respawn') oldArrivals.push(k); });
+  }
+  ok(oldArrivals.length > 0 && JSON.stringify(newArrivals) === JSON.stringify(oldArrivals), `over the next 4 s, every hostile felled each second, the new `
+    + `host brings hostiles on when the old host does (ticks ${newArrivals.join(', ')} against ${oldArrivals.join(', ')})`);
   old.stop(); fresh.stop();
 }
 
