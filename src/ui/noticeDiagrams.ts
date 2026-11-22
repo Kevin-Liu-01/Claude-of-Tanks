@@ -1,7 +1,11 @@
 /**
- * firstUseHintPictures.ts — each first-use hint's picture, 64 x 48, drawn from the game's own parts (mobile-hud-274):
- * the armour overlay's colours (game/armorShadeColors.ts), the HUD's tile glyphs (the sprite, uiIcons.ts), the reload
- * readout's figure in its ink. First-party SVG only; the notice kit sets it after a hint's words (notice.ts media).
+ * noticeDiagrams.ts — the pictures a key-hint notice shows beside its words and its "[KEY] text" line, 64 x 48, drawn from
+ * the game's own parts (mobile-hud-274; notices-audit-275, Kevin 2026-11-21: "flip alert should be part of the new
+ * notification system (with icon diagrams)"): the armour overlay's colours (game/armorShadeColors.ts), the HUD's tile
+ * glyphs (the sprite, uiIcons.ts), the reload readout's figure in its ink, and one diagram for an action that moves the
+ * tank (poseDiagram: its start pose faint, its end pose solid, the move an amber arc). First-party SVG only; the notice kit
+ * sets it after the words (notice.ts media), in the key-hint layout (battleHudLayout.css .cot-key-hint): the first-use
+ * hints (firstUseHints.ts) and the overturned tank's notice (hud.ts) alike.
  * Copyright © 2026 Kevin B. Liu.
  */
 import { ARMOR_SHADE_EDGE, ARMOR_SHADE_PASSES, ARMOR_SHADE_STOPS } from '../game/armorShadeColors.ts';
@@ -57,15 +61,36 @@ export function autoAimPicture(): string {
     + uiIconInSvg('autoAim', 22, 14, 20, '#f6f3ec'));
 }
 
-/** Hydropneumatic aim: the hull from the side, level (faint) and tilted to lay its gun (solid). */
+/** The tank from the side (hull, turret, gun, road wheels) in a pose, at an opacity. */
+const sideHull = (opacity: string, transform: string) => `<g transform="${transform}" opacity="${opacity}">`
+  + '<path d="M10 30H46L50 26H14Z" fill="#c9c5bb"/><rect x="20" y="20" width="16" height="6" rx="1" fill="#c9c5bb"/>'
+  + '<path d="M36 22H56" stroke="#c9c5bb" stroke-width="2"/>'
+  + '<path d="M12 31H44" stroke="#c9c5bb" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.1 6"/></g>';
+
+/**
+ * The one diagram for an action that moves the tank: the tank from the side at its start pose (faint) and its end pose
+ * (solid) over the ground line, the move between them an amber arc ending in its head. A key-hint notice for such an
+ * action draws it with this, its key on the notice's key line beside it (the suspension's tilt, the flip back onto its
+ * tracks).
+ */
+export function poseDiagram(pose: { readonly from: string; readonly to: string; readonly arc: string; readonly head?: string }): string {
+  return frame('<path d="M4 40H60" stroke="#f6f3ec" stroke-opacity=".3"/>' + sideHull('.28', pose.from) + sideHull('1', pose.to)
+    + `<path d="${pose.arc}" fill="none" stroke="#f0a030" stroke-width="1.4" stroke-linecap="round"/>`
+    + (pose.head ? `<path d="${pose.head}" fill="none" stroke="#f0a030" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>` : ''));
+}
+
+/** Hydropneumatic aim: the hull level (faint) and tilted to lay its gun (solid). */
 export function suspensionPicture(): string {
-  const hull = (opacity: string, transform: string) => `<g transform="${transform}" opacity="${opacity}">`
-    + '<path d="M10 30H46L50 26H14Z" fill="#c9c5bb"/><rect x="20" y="20" width="16" height="6" rx="1" fill="#c9c5bb"/>'
-    + '<path d="M36 22H56" stroke="#c9c5bb" stroke-width="2"/>'
-    + '<path d="M12 31H44" stroke="#c9c5bb" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.1 6"/></g>';
-  return frame('<path d="M4 40H60" stroke="#f6f3ec" stroke-opacity=".3"/>' + hull('.28', 'translate(0 4)')
-    + hull('1', 'translate(0 4) rotate(-9 28 30)')
-    + '<path d="M54 34A10 10 0 0 0 52 26" fill="none" stroke="#f0a030" stroke-width="1.4"/>');
+  return poseDiagram({ from: 'translate(0 4)', to: 'translate(0 4) rotate(-9 28 30)', arc: 'M54 34A10 10 0 0 0 52 26' });
+}
+
+/** The overturned tank (notices-audit-275): on its back (faint, left), rolled over the arc, on its tracks again (solid,
+ *  right). */
+export function flipPicture(): string {
+  return poseDiagram({
+    from: 'translate(1 22) scale(.55) rotate(180 33 26)', to: 'translate(29 22) scale(.55)',
+    arc: 'M16 27A14 13 0 0 1 45 27', head: 'M41.5 24.5L45 28L47.5 23.5',
+  });
 }
 
 /** An ability's own tile: the roof gun's, the drone's, Air Support's. */

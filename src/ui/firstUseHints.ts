@@ -20,7 +20,7 @@ import { t } from './i18n.ts';
 import { readTutorialRecord } from './tutorial/tutorialRecord.ts';
 import {
   abilityPicture, ammoPicture, autoAimPicture, moduleRepairPicture, reloadPicture, shadedHullPicture, suspensionPicture,
-} from './firstUseHintPictures.ts';
+} from './noticeDiagrams.ts';
 
 type HintId = 'armourShading' | 'moduleRepair' | 'reload' | 'autoAim' | 'suspension' | 'airSupport' | 'drone' | 'roofGun' | 'ammoTypes'
   | 'droneFlight' | 'gunshipFlight';
@@ -132,7 +132,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
     battleNotices.condition({
       id: `cot-hint-${id}`,
       severity: 'info',
-      className: `cot-first-hint cot-first-hint--${id}`,
+      className: `cot-key-hint cot-first-hint cot-first-hint--${id}`,
       text: t(def.title),
       detailHtml,
       media: { svg: def.picture(), label: def.label ? def.label({ path: settingsPath }) : t(def.title) },
