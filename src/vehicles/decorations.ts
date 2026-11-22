@@ -2818,10 +2818,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // exhaust smoke system (the T-55's TDA) to take it over.
   type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
   t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
-  // 275: the T-84BM Oplot-M and Oplot-T carry their own two whips (profiles/oplotBM.ts); the decor whip on the roof's
-  // left rear stood in the raised commander's 12.7's sweep (tools/roof-station-arcs.mjs)
-  bm_oplot_m: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'antenna'),
-  bm_oplot_t: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'antenna'),
   // Release 262: the rebuilt Centurion family carries its own dischargers, whips and roof guns (profiles/centurionFamily.ts);
   // its decor is soft stowage only. The British marks a tarpaulin and packs, the Strv 81B the bundled camouflage nets of
   // its 1950s photographs, the Sho't Kal the IDF's bedrolls and water cans round its own basket and jerrycan cage.
@@ -3918,6 +3914,13 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // and on the HA a can cradle laid on the bustle top stood across a panel's edge. Those routes are off; the hull's rear
   // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
   // frames now, which a hung load crossed.)
+  // Release 275: the T-84BM Oplot-M's and Oplot-T's roofs belong to their two working stations and their own whips
+  // (profiles/oplotBM.ts): no decor whip (it stood in the raised commander's 12.7's sweep) or roof gun, and the fleet cargo keeps
+  // its other routes, off the roof (an insulated chest on the roof's left rear stood 0.5 m from the Oplot-T's M240 at its
+  // bore height and blocked it from -138 to -68 degrees; tools/roof-station-arcs.mjs)
+  if (spec.id === 'bm_oplot_m' || spec.id === 'bm_oplot_t') {
+    return manifest.filter((row) => row.kit !== 'antenna' && row.kit !== 'aamg').map((row) => m1a1CargoRoutes(row, ['turretRoof']));
+  }
   if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
     return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
   }

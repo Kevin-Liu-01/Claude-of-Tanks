@@ -1158,15 +1158,13 @@ function stationLimits(root: THREE.Group, yawArc: [number, number] | null, depre
 }
 
 function buildOplotMKit(P: TankBuilderPort): void {
-  // 275: on its riser the KT-12.7 clears the full circle (the sunk PNK-6 under its bore, the tall whip on the bustle,
-  // no decor whip), laid level over the PNK-6 ahead of it (3-31 degrees); the KT-7.62, no longer blocked by the KT-12.7's
-  // box, clears the full circle too, its depression held up over the riser (-125..-116)
+  // 275: on its riser the KT-12.7 clears the full circle (the sunk PNK-6 under its bore, the tall whip on the bustle, no
+  // decor whip or roof cargo; decorations.ts), laid level over the PNK-6 ahead of it (3-31 degrees); the KT-7.62, no
+  // longer blocked by the KT-12.7's box, clears the full circle at full depression
   stationLimits(cradleStation(P, M_STATIONS.kt127), null,
     [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.043], [0.0698, 0.029], [0.0873, 0.004], [0.4538, 0.004], [0.4712, 0.006],
       [0.4887, 0.006], [0.5061, 0.018], [0.5236, 0.035], [0.5411, 0.085], [0.5585, 0.18], [3.1416, 0.18]]);
-  stationLimits(enclosedStation(P, M_STATIONS.kt762, false, true), null,
-    [[-3.1416, 0.18], [-2.1817, 0.18], [-2.1642, 0.158], [-2.1468, 0.153], [-2.0769, 0.153], [-2.0595, 0.161],
-      [-2.042, 0.167], [-2.0246, 0.18], [3.1416, 0.18]]);
+  stationLimits(enclosedStation(P, M_STATIONS.kt762, false, true), null);
   // (275: the lower Duplet course on the rubber is gone; the deep skirt modules of oplotMSkirt are the side armour)
   // lights: LED bars on the stacks' tops at the front corners, a work lamp astern on the bustle
   ownerKitGroup(P, 'turret', 'oplotMKitLights', () => {
@@ -1180,15 +1178,14 @@ function buildOplotMKit(P: TankBuilderPort): void {
  *  a searchlight and desert drums. */
 function buildOplotTKit(P: TankBuilderPort): void {
   // the M2's mini-turret on its tower carries a boresighted searchlight on its mantlet's left. 275: on its taller tower it
-  // clears the full circle, laid level over the sunk PNK-6 ahead of it (3-31 degrees); the 7.62 clears -67..221 (blocked
-  // toward the M2's tower), its depression held up toward it at the arc's far end
+  // clears the full circle, laid level over the sunk PNK-6 ahead of it (3-31 degrees); the 7.62 clears the full circle at
+  // full depression (its -105..-71 limit was decor cargo on the roof's left rear, now kept off the roof)
   stationLimits(enclosedStation(P, T_STATIONS.m2, true), null,
     [[-3.1416, 0.18], [0.0349, 0.18], [0.0524, 0.063], [0.0698, 0.046], [0.0873, 0.018], [0.192, 0.018], [0.2094, 0.015],
       [0.4189, 0.015], [0.4363, 0.018], [0.4538, 0.018], [0.4712, 0.02], [0.4887, 0.023], [0.5061, 0.035], [0.5236, 0.057],
       [0.5411, 0.122], [0.5585, 0.18], [3.1416, 0.18]]);
   stationLens(P, T_STATIONS.m2);
-  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.1345, 3.8223],
-    [[-1.1345, 0.18], [3.735, 0.18], [3.7525, 0.063], [3.7699, 0.057], [3.7874, 0.023], [3.8048, 0.001], [3.8223, 0]]);
+  stationLimits(cradleStation(P, T_STATIONS.m240), null);
   // bolted steel appliqué where the Thai tank carries no Duplet: two courses of 9 cm blocks on each of the six rear skirt
   // panels, flush on the flared face, four bolt heads on each block's outer face
   const face = new THREE.Vector2(SKIRT_FACE.innerX + 0.06 - SKIRT_FACE.outerX, DECK_Y - (SKIRT_FACE.bottomY + 0.05));
