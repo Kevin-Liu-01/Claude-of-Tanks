@@ -9454,7 +9454,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       jumpLabel.textContent = t('hud.jump');
       setControlsJumpMode(isJumpMode(ruleset));
       // round 30: the touch layer shows its rocket button in the same rulesets
-      bus.emit('ui:jumpAvailable', { on: false });
+      // (phone-jump-274) on a phone's survival edge only: its row's jump tile stands down there (battleHudLayout.css) for
+      // this button. Sent { on: false } in every ruleset since the row took the jump (8843847297), it left a phone no jump
+      // after mobile-hud-274 seated the round button there; wider touch layouts keep the row's tile (one of each)
+      bus.emit('ui:jumpAvailable', { on: isJumpMode(ruleset) });
       const noConsumables = ruleset?.consumables === false;
       // inline display: the wrapper's own display rule (contents / mobile column) would outrank [hidden]
       conSep.style.display = noConsumables ? 'none' : '';
