@@ -38,6 +38,9 @@ assert.deepEqual(marks('a.ts', '`<div class="cot-c-seg tt-builds" role="radiogro
 assert.deepEqual(marks('a.ts', "`${segmented({ label, options, value, className: 'room-team', attrs })}`"), ['segmented:.room-team'], "the kit's builder, by its own class");
 assert.deepEqual(marks('a.ts', '`<ul id="map-list" role="listbox">`'), ['listbox:#map-list']);
 assert.deepEqual(marks('a.ts', "const list = host.querySelector('[role=\"listbox\"]');"), [], 'a selector that finds a listbox is not one');
+assert.deepEqual(marks('a.ts', "if (pick && arriveHostile(pick, risen !== null)) queued--;"), [],
+  'a call whose name only ends in a builder\'s letters (Hos-tile) is no markup builder');
+assert.deepEqual(marks('a.ts', "html += tile(attrs, id === current);"), ['bespoke:id===current'], 'the bare word still is');
 assert.deepEqual(marks('a.ts', "for (const b of all) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));\n"
   + "for (const b of all) b.classList.toggle('on', b.dataset.mode === mode);"), ['bespoke:dataset.mode'], 'one site, however many writes');
 assert.deepEqual(marks('a.ts', "const on = b.dataset.tone === tone;\nb.classList.toggle('on', on);"), ['bespoke:dataset.tone'], 'through a name');
