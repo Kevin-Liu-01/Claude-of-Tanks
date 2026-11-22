@@ -90,17 +90,21 @@ export function crewRoof(P: TankBuilderPort, mark: Strv103Mark): void {
     mount(P, 'hull', rearMg, 0.72, 1.92, -1.30, [0, Math.PI, 0]);
   }
   if (mark === 'e' || mark === 'x') {
+    // the two heads are the marks' optics stations (the 152 has no roof periscopes), so they publish the canonical
+    // optics receipt (combatAnatomyAudit "one owner-canonical optics receipt")
+    const sight = (geo: THREE.BufferGeometry, bucket: string, x: number, y: number, z: number): void =>
+      P.addModuleVisual('optics', bucket, geo, x, y, z);
     // the raised gunner's day/thermal head with its laser window (the 103C rangefinder carried into a modern head)
     P.addEquipment('hull', box(0.46, 0.04, 0.50), -0.66, 1.90, -0.98);
-    P.addEquipment('hull', box(0.40, 0.30, 0.44), -0.66, 2.07, -0.98);
-    P.add('hullGlass', box(0.26, 0.12, 0.008), -0.72, 2.09, -0.756);
-    P.add('hullGlass', box(0.07, 0.07, 0.008), -0.50, 2.09, -0.756);
+    sight(box(0.40, 0.30, 0.44), 'hull', -0.66, 2.07, -0.98);
+    sight(box(0.26, 0.12, 0.008), 'hullGlass', -0.72, 2.09, -0.756);
+    sight(box(0.07, 0.07, 0.008), 'hullGlass', -0.50, 2.09, -0.756);
     P.add('hullDark', box(0.43, 0.025, 0.10), -0.66, 2.232, -0.80);                  // sun hood
     // the commander's stabilised panoramic head on its mast over the plinth
     P.addEquipment('hull', cylY(0.16, 0.17, 0.04, P.q ? 20 : 12), 0.66, 1.97, -0.98);
     P.addEquipment('hull', cylY(0.065, 0.075, 0.26, P.q ? 14 : 10), 0.66, 2.12, -0.98);
-    P.addEquipment('hull', cylY(0.15, 0.15, 0.22, P.q ? 20 : 14), 0.66, 2.36, -0.98);
-    for (const dx of [-0.055, 0.055]) P.add('hullGlass', box(0.09, 0.09, 0.008), 0.66 + dx, 2.37, -0.98 + 0.147);
+    sight(cylY(0.15, 0.15, 0.22, P.q ? 20 : 14), 'hull', 0.66, 2.36, -0.98);
+    for (const dx of [-0.055, 0.055]) sight(box(0.09, 0.09, 0.008), 'hullGlass', 0.66 + dx, 2.37, -0.98 + 0.147);
     P.addEquipment('hull', cylY(0.165, 0.16, 0.03, P.q ? 20 : 14), 0.66, 2.485, -0.98);
   } else {
     P.addEquipment('hull', box(0.36, 0.26, 0.40), 0.62, 2.02, -0.94);                // commander's sight head
