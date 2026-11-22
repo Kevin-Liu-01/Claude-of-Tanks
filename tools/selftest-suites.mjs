@@ -2545,6 +2545,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/battleStaticDrawMerge.selftest.mjs', // perf-250/251: the source-X Abrams' battle builds take the dual merge
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
+    'src/vehicles/farHullDraw.selftest.mjs', // far-hull-273: one draw per far hull, the switch, live edits, the far program
     'src/vehicles/recoilRig.selftest.mjs',
     // 269: a rotary cannon's rotor spinning while it fires (gunRotorSpin.ts, the M163 VADS's Vulcan)
     'src/vehicles/gunRotorSpin.selftest.mjs',

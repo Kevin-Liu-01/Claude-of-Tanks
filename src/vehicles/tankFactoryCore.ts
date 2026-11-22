@@ -24,9 +24,10 @@ import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
+import { buildFarHullDraw, farHullDrawEnabled, farHullRefusal, registerFarHullVehicle, type FarHullDraw, type FarHullPiece } from './farHullDraw.ts';
 import {
-  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry,
-  noteFarLodBuild, parkDraws,
+  FAR_LOD_ENTER_M, FAR_LOD_PARKED_LAYER, FAR_LOD_RETURN_M, GEAR_LOD_ENTER_M, GEAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild,
+  drawnUnder, farWheelsGeometry, noteFarLodBuild, parkDraws,
   type FarHull, type FarWheel,
 } from './farLod.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
@@ -1861,6 +1862,13 @@ export function installVehicleGroundReference(root: THREE.Object3D): void {
   root.traverse((object) => {
     if ((object as THREE.Mesh).isMesh) wrapVehicleGround(object, root);
   });
+}
+
+/** Whether a local matrix is the identity (to within float noise). */
+function isIdentityMatrix(matrix: THREE.Matrix4): boolean {
+  const e = matrix.elements;
+  for (let i = 0; i < 16; i++) if (Math.abs(e[i] - (i % 5 === 0 ? 1 : 0)) > 1e-6) return false;
+  return true;
 }
 
 /** (perf-255) A fixed coplanar depth offset on one draw (installCoplanarDepthLayers' hook, for the far LOD's stand-ins). */
@@ -10985,7 +10993,8 @@ export function* createTankRuntimeSteps(
   // (perf-255) the far LOD (farLod.ts): a battle build's stand-ins past FAR_LOD_ENTER_M, built from its own tree the
   // first time it goes that far; the detail they stand in for is parked while they draw, and the gear's runtime rests
   const farLodEnabled = batchStatic && staticDrawMerge === 'dual' && !geometryOnly;
-  let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[] } | null = null;
+  let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[];
+    draw: FarHullDraw | null; drawTried: boolean; drawn: THREE.Mesh[]; extra: THREE.Mesh[] } | null = null;
   let farLodActive = false;
   let unparkFarLod: (() => void) | null = null;
   // (local-fps-265) the far LOD's running gear alone, nearer in (GEAR_LOD_ENTER_M): its wheel stations stand in for the
@@ -11110,8 +11119,122 @@ export function* createTankRuntimeSteps(
     }
     for (const mesh of meshes) wrapVehicleGround(mesh, root);
     root.userData.farLod = { hullTrianglesBefore: hull.trianglesBefore, hullTrianglesAfter: hull.trianglesAfter,
-      hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.length };
-    return { hull, gear, gearParked, meshes };
+      hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.length,
+      hullDraw: null };
+    return { hull, gear, gearParked, meshes, draw: null, drawTried: false, drawn: meshes, extra: [] };
+  };
+  /**
+   * (far-hull-273) The far LOD's draws as one (farHullDraw.ts), built in a frame of its own after the stand-ins (the far
+   * LOD's first frame shows them; this waits for the next claimFarLodBuild, so no frame carries both builds), while the
+   * vehicle shows its far LOD (its detail in the far state, its sources parked): the stand-ins, the far gear and every
+   * other plain draw still showing. What it carries hides or parks while it shows; what it cannot carry keeps its draw,
+   * counted.
+   */
+  const buildFarHullDrawFor = (lod: NonNullable<typeof farLod>): void => {
+    lod.drawTried = true;
+    const { hull, gear, gearParked, meshes } = lod;
+    root.updateMatrixWorld(true);
+    const pieces: FarHullPiece[] = hull.meshes.map((stand) => ({ object: stand, material: stand.material as THREE.Material,
+      geometry: stand.geometry, owner: stand.parent!, depth: stand.userData.coplanarDepthOffset as number,
+      ties: stand.userData.coplanarDepthTies as number }));
+    const gearPieces: FarHullPiece[] = [];
+    if (gear) {
+      for (const group of gear.geometry.groups) {
+        const range = gear.geometry.clone();
+        range.clearGroups();
+        const position = range.getAttribute('position') as THREE.BufferAttribute;
+        const start = group.start, end = Math.min(group.start + group.count, position.count);
+        for (const name of Object.keys(range.attributes)) {
+          const attribute = range.getAttribute(name) as THREE.BufferAttribute;
+          range.setAttribute(name, new THREE.BufferAttribute(attribute.array.slice(start * attribute.itemSize, end * attribute.itemSize),
+            attribute.itemSize, attribute.normalized));
+        }
+        gearPieces.push({ object: gear, material: (gear.material as THREE.Material[])[group.materialIndex ?? 0], geometry: range,
+          owner: hullG, depth: 0, ties: 0 });
+      }
+    }
+    // every other draw the far LOD leaves showing: the live pieces (followed for visibility and edits). Instanced, batched
+    // and skinned draws, the proxies and the stand-ins' own sources stay out; what else stays out is counted by kind
+    const sources = new Set<THREE.Object3D>([...hull.sources, ...gearParked]);
+    const outside: Record<string, number> = {};
+    const livePieces: FarHullPiece[] = [];
+    root.traverse((object) => {
+      const draw = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; isSkinnedMesh?: boolean };
+      if (!draw.isMesh || draw.userData.farLod || sources.has(draw) || !draw.parent) return;
+      if (draw.userData.authoredShadowProxy || draw.userData.shadowOnly || !draw.layers.isEnabled(0)) return;
+      if (!drawnUnder(draw, root)) return;
+      const materials = Array.isArray(draw.material) ? draw.material : [draw.material];
+      if (!materials.some((material) => material && material.visible && material.colorWrite !== false)) return;
+      if (draw.isInstancedMesh || draw.isBatchedMesh || draw.isSkinnedMesh) {
+        const kind = draw.isInstancedMesh ? 'instanced' : draw.isBatchedMesh ? 'batched' : 'skinned';
+        outside[kind] = (outside[kind] ?? 0) + 1;
+        return;
+      }
+      const geometry = draw.geometry;
+      if (!geometry.getAttribute('position') || Object.keys(geometry.morphAttributes).length
+        || Object.values(geometry.attributes).some((attribute) => (attribute as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute)) {
+        outside.layout = (outside.layout ?? 0) + 1;
+        return;
+      }
+      // every part rides its parent; a transform of its own is baked into the parent's frame (and followed like an edit)
+      draw.updateMatrix();
+      const owner = draw.parent;
+      const baked = !isIdentityMatrix(draw.matrix);
+      const depth = (draw.userData.coplanarFarDepthOffset ?? draw.userData.coplanarDepthOffset ?? 0) as number;
+      const ties = (draw.userData.coplanarFarDepthTies ?? draw.userData.coplanarDepthTies ?? 0) as number;
+      if (Array.isArray(draw.material)) {
+        for (const group of geometry.groups) {
+          const material = draw.material[group.materialIndex ?? 0];
+          if (!material) continue;
+          livePieces.push({ object: draw, material, geometry, owner, depth, ties, live: true, baked,
+            range: { start: group.start, count: group.count } });
+        }
+      } else {
+        livePieces.push({ object: draw, material: draw.material, geometry, owner, depth, ties, live: true, baked });
+      }
+    });
+    let draw: FarHullDraw | null = null;
+    let refusal = '';
+    try {
+      draw = buildFarHullDraw(root, [...pieces, ...gearPieces, ...livePieces], FAR_LOD_PARKED_LAYER);
+      if (!draw) refusal = farHullRefusal();
+    } catch (error) {
+      refusal = String((error as Error)?.message ?? error).slice(0, 300);
+      draw = null;
+    }
+    if (draw) for (const [kind, n] of Object.entries(outside)) draw.fallbacks[`kind:${kind}`] = n;
+    // a gear group the draw cannot carry draws alone (its range of the gear's geometry, its own material), and the gear
+    // itself hides with the stand-ins the draw carries
+    const leftovers: THREE.Mesh[] = [];
+    if (draw && gear) {
+      for (const piece of gearPieces) {
+        if (draw.pieces.includes(piece)) continue;
+        const alone = new THREE.Mesh(piece.geometry, piece.material);
+        alone.name = 'farLodRunningGearPart';
+        alone.visible = false;
+        alone.castShadow = false;
+        alone.receiveShadow = gear.receiveShadow;
+        alone.userData.farLod = true;
+        hullG.add(alone);
+        wrapVehicleGround(alone, root);
+        disposables.push(piece.geometry);
+        leftovers.push(alone);
+      }
+    }
+    for (const piece of gearPieces) if (!leftovers.some((alone) => alone.geometry === piece.geometry)) piece.geometry.dispose();
+    const carried = new Set<THREE.Object3D>(draw ? draw.pieces.map((piece) => piece.object) : []);
+    if (draw && gear) carried.add(gear);
+    const drawn = draw ? [...meshes.filter((mesh) => !carried.has(mesh)), ...leftovers, draw.mesh] : meshes;
+    if (draw) {
+      wrapVehicleGround(draw.mesh, root);
+      disposables.push(draw.mesh.geometry, draw.material, ...draw.textures);
+    }
+    (root.userData.farLod as Record<string, unknown>).hullDraw = draw ? { carried: draw.pieces.length,
+      of: pieces.length + gearPieces.length + livePieces.length, live: draw.pieces.filter((piece) => piece.live).length,
+      fallbacks: draw.fallbacks, left: draw.leftNames, vertices: draw.mesh.geometry.getAttribute('position').count } : { refusal };
+    lod.draw = draw;
+    lod.drawn = drawn;
+    lod.extra = draw ? [...leftovers, draw.mesh] : [];
   };
   /** The far LOD built under the far detail state (the distance hand-offs' and the far copies'), whatever the vehicle
    * shows now: a battle visual streamer prepares it before the vehicle has synced at range. */
@@ -11134,6 +11257,17 @@ export function* createTankRuntimeSteps(
       setBattleDetailsAttached(attachedWas);
     }
   };
+  /** (far-hull-273) Show the far LOD's draws: the one far hull draw and what it does not carry, or (`?farHullDraw=0`,
+   * the debug switch) the stand-ins as they were. */
+  const showFarLodDraws = (): void => {
+    if (!farLod) return;
+    const merged = farLod.draw !== null && farHullDrawEnabled();
+    const shown = new Set<THREE.Object3D>(merged ? farLod.drawn : farLod.meshes);
+    for (const mesh of farLod.meshes) mesh.visible = shown.has(mesh);
+    for (const mesh of farLod.extra) mesh.visible = shown.has(mesh);
+    farLod.draw?.parkLive(merged);
+  };
+  registerFarHullVehicle(root, () => { if (farLodActive) showFarLodDraws(); });
   /** Show the far stand-ins (building them the first time, one vehicle at a time) or the detail again. */
   const setFarLod = (on: boolean): void => {
     if (on) {
@@ -11146,11 +11280,15 @@ export function* createTankRuntimeSteps(
         (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((endedAt - startedAt) * 10) / 10;
       }
       unparkFarLod = parkDraws([...farLod.hull.sources, ...farLod.gearParked]);
-      for (const mesh of farLod.meshes) mesh.visible = true;
+      showFarLodDraws();
     } else {
       unparkFarLod?.();
       unparkFarLod = null;
-      if (farLod) for (const mesh of farLod.meshes) mesh.visible = false;
+      if (farLod) {
+        for (const mesh of farLod.meshes) mesh.visible = false;
+        for (const mesh of farLod.extra) mesh.visible = false;
+        farLod.draw?.parkLive(false);
+      }
       // (the gear stage keeps its wheel stations; the wheel layers go back under its own park, whichever stage parked
       // them first: a vehicle that went far in one step had them parked by the far LOD, whose undo just restored them)
       if (farLod?.gear && gearLodActive) {
@@ -11176,7 +11314,9 @@ export function* createTankRuntimeSteps(
       }
       if (!farLod.gear) return;
       unparkGearLod = parkDraws(farLod.gearParked);
+      // (far-hull-273) under the full far LOD the one far hull draw may carry the gear
       farLod.gear.visible = true;
+      if (farLodActive) showFarLodDraws();
     } else {
       unparkGearLod?.();
       unparkGearLod = null;
@@ -11779,6 +11919,20 @@ export function* createTankRuntimeSteps(
           const far = viewDistM !== undefined && !destroyed
             && (farLodActive ? viewDistM >= FAR_LOD_RETURN_M : viewDistM >= FAR_LOD_ENTER_M);
           if (far !== farLodActive) setFarLod(far);
+          // (far-hull-273) the one far hull draw: built in a later frame than the stand-ins (one build at a time), then
+          // taking its live pieces' edits in, outside the render
+          if (farLodActive && farLod && farHullDrawEnabled()) {
+            if (!farLod.drawTried) {
+              const startedAt = performance.now();
+              if (claimFarLodBuild(startedAt)) {
+                buildFarHullDrawFor(farLod);
+                const endedAt = performance.now();
+                noteFarLodBuild(startedAt, endedAt);
+                (root.userData.farLod as { drawBuildMs?: number }).drawBuildMs = Math.round((endedAt - startedAt) * 10) / 10;
+                showFarLodDraws();
+              }
+            } else farLod.draw?.update();
+          }
           // (local-fps-265) the wheel stations alone from GEAR_LOD_ENTER_M (back under GEAR_LOD_RETURN_M), under the same
           // terms: never in an inspection view or on a wreck
           const gearFar = viewDistM !== undefined && !destroyed

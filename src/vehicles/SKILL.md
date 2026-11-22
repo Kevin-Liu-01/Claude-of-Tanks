@@ -272,6 +272,24 @@ Damage-edited buffers, ERA, markings, proxies and transparent draws never join t
 far hull. The switch evidence (perf-256) is CPU render pairs on either side of it
 at 165/180/200 m, side and 3/4 views, with silhouette XOR; a narrower probe lens
 must pin the vehicle's LODs to the true range (they pick by screen size).
+(far-hull-273) What the far LOD shows then draws as ONE mesh (`farHullDraw.ts`,
+`farLodHullDraw` on the root): the stand-ins, the far gear and every other plain
+draw still showing (the plates damage edits, the bands, the bores, the lenses),
+each a piece with a record row (a float texture: map, roughness, metalness and
+normal weights, sky-light share, clearcoat, specular, armour-paint mode, the four
+vehicle switches, the weapon finish's dust and grime, the lens's emission slot,
+its owner and far coplanar depth) in a copy of the vehicle's own armour paint
+under its whole compile chain (`farHullVehicleMaterial`) plus one patch: the
+owner's matrix per vertex for the model matrices, the depth offset in clip space,
+the switches as branches. A part's own texture set (weapon steel, rubber, track
+links, a kit's paint) draws as its mean. The live pieces are vertex-clustered as
+the stand-ins are, parked (exact objects, never their children) while the draw
+shows, and followed: a hidden one is flagged in its record, an edited or swapped
+geometry is clustered again and the draw rebuilt (`update()` from `syncFromState`).
+A draw one program cannot carry (another program, transparency, alpha, an
+instanced or batched draw) keeps its own, counted in `root.userData.farLod.hullDraw`.
+`?farHullDraw=0` or `window.__FAR_HULL_DEBUG.set(false)` shows the far LOD's draws
+as they were; `farLod.selftest` holds those, `farHullDraw.selftest` the one draw.
 Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
