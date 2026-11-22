@@ -37,8 +37,9 @@ const TURRET_DECK_CARRY = Object.freeze({
   amx40_proto: { deck: 0, props: 1 },
   // a 0.22 m ring: hull kit 4.7 cm over the small turret's foot ahead-right
   ares_apc: { deck: 0, props: 1 },
-  // deck kit on the right 2 cm over the foot
-  bmpt_terminator2: { deck: 0, props: 1 },
+  // deck kit on the right 2 cm over the foot; its foot inside the builder's own keep radius (1.02 m), which the foot band
+  // honours again since 274 fix2 (the Abrams' relieved floor)
+  bmpt_terminator2: { deck: 1, props: 1 },
   // the classic turret opts out of the foot band (modern3.ts buildM2A2Bradley): its foot 2.1 cm into the hull kit ahead-left
   m2a2_bradley: { deck: 1, props: 0 },
 });
