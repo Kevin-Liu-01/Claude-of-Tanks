@@ -640,9 +640,8 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
 /* (its large step stops 8 px short of the score, left of it: the Horde's wider plate met its grid at 568x320, the layout
-   receipt; battleHudLayout.ts --hud-score-left. 92 px, the tight height's, since mobile-hud-274: at 106 its foot ran 6 px
-   onto the phone HUD's items column at 844x390) */
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(92px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
+   receipt; battleHudLayout.ts --hud-score-left) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
 /* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
    the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never
    shifts off the line. On a short landscape phone the toolbar's corner plate (158 px, hung from the corner) is that corner:
@@ -706,9 +705,8 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-tou
 /* (every touch dial drops its unit and end marks: touchControls.ts) */
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:calc(92px * var(--mm-k,1))!important;height:calc(92px * var(--mm-k,1))!important}
 /* touchControls is battle-lazy and injects its base placement after this
-   stylesheet. These tight-height positions are deliberate cascade endpoints. (The items' one stands down where the phone
-   HUD seats them in its left edge section, battleHudLayout.css: a portrait phone, a short landscape.) */
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone'],[data-cot-height='short']) .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
+   stylesheet. These tight-height positions are deliberate cascade endpoints. */
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-shells{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px)!important}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-special{right:160px;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
 

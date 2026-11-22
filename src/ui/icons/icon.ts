@@ -13,7 +13,6 @@
 
 import { ACTIVE_MASTERS, BOOT_SYMBOLS, SMALL_MASTERS, type IconId } from './spriteIndex.ts';
 import { STYLE_LAYER_ORDER } from '../styleLayers.ts';
-import { createLazyChunk } from '../../app/lazyChunk.ts';
 
 export type { IconId };
 
@@ -41,6 +40,7 @@ const ACTIVE_CSS = '[aria-pressed=true] .cot-i[data-af],[aria-selected=true] .co
 let spriteHost: SVGSVGElement | null = null;
 let fullSprite: Promise<void> | null = null;
 let lazyHost: SVGSVGElement | null = null;
+let lazySprite: Promise<void> | null = null;
 
 /** A real DOM to mount into (receipts may stub `document` without SVG support). */
 const canMount = (): boolean => typeof document !== 'undefined' && typeof document.createElementNS === 'function';
@@ -63,20 +63,20 @@ function hiddenHost(id: string): SVGSVGElement {
 }
 
 /** The garage, gallery, Field Manual and camo glyphs (spriteLazy.svg), their own chunk in their own host, so the main
- *  sprite's swap-in never drops them; held in app/lazyChunk.ts like every lazy site (its retry and backoff after a failed
- *  load, lazyChunkSites.selftest). */
-const lazySprite = createLazyChunk(() => import('./spriteLazy.svg?raw').then(({ default: text }) => {
-  const start = text.indexOf('<symbol');
-  try {
-    lazyHost ??= hiddenHost(LAZY_SPRITE_ID);
-    if (start >= 0) lazyHost.innerHTML = text.slice(start, text.lastIndexOf('</svg>'));
-    if (!lazyHost.isConnected) attachHost(lazyHost);
-  } catch { /* a partial DOM: nothing to mount into */ }
-}));
+ *  sprite's swap-in never drops them. */
 function mountLazySprite(): Promise<void> {
-  return lazySprite.load().catch((error: unknown) => {
+  lazySprite ??= import('./spriteLazy.svg?raw').then(({ default: text }) => {
+    const start = text.indexOf('<symbol');
+    try {
+      lazyHost ??= hiddenHost(LAZY_SPRITE_ID);
+      if (start >= 0) lazyHost.innerHTML = text.slice(start, text.lastIndexOf('</svg>'));
+      if (!lazyHost.isConnected) attachHost(lazyHost);
+    } catch { /* a partial DOM: nothing to mount into */ }
+  }, (error: unknown) => {
+    lazySprite = null; // a failed chunk load retries on the next mount
     console.warn('[icons] lazy sprite failed to load', error);
   });
+  return lazySprite;
 }
 
 /**
