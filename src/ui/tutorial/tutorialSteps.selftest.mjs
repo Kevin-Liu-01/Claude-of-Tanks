@@ -80,6 +80,15 @@ const runnerSource = read('src/ui/tutorial/tutorialRunner.ts');
 assert.match(runnerSource, /if \(advance\.own\) \{ event\.preventDefault\(\); event\.stopImmediatePropagation\(\); \}/, 'an owned press never reaches the control');
 assert.match(runnerSource, /if \(press\?\.on === 'press' && press\.own\) moveOn/, 'and Enter on it is the press too, never the control\'s own');
 
+// (274, Kevin: "the tutorial cards could have the corresponding icon in them") every step wears one of the shared icons
+{
+  const ICONS = new Set(JSON.parse(read('src/ui/icons/spriteIndex.ts').match(/export const ICON_IDS: readonly IconId\[\] = (\[[^\]]*\]);/)[1]));
+  for (const step of [...TUTORIAL_STEPS, ...TRAINING_STEPS, ...AFTER_TRAINING_STEPS]) assert.ok(ICONS.has(step.icon), `${step.id}: a shared icon (${step.icon})`);
+  for (const id of ['training.drive', 'training.driveTouch', 'training.drivePad']) assert.equal([...TRAINING_STEPS].find((s) => s.id === id).icon, 'moveForward', `${id}: a hand's variant wears its step's icon`);
+  assert.match(read('src/main.ts'), /iconSvg: \(id\) => uiIconSVG\(id, 18\),/, 'main hands the tutorial the shared icon renderer (no import of it in the chunk)');
+  assert.ok(!/from '\.\.\/uiIcons\.ts'|from '\.\.\/icons\/icon\.ts'/.test(read('src/ui/tutorial/tutorialRunner.ts') + read('src/ui/tutorial/tutorialOverlay.ts')), 'the chunk imports no icon module');
+}
+
 // 2. The strings.
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
 for (const step of TUTORIAL_STEPS) {
@@ -130,6 +139,7 @@ const TARGET_OWNERS = {
   '.cot-carousel': ['src/ui/garage.ts', 'cot-carousel'],
   '[data-tabbar="garage"]': ['src/ui/garage.ts', 'data-tabbar'],
   '.cot-ammo-tiles': ['src/ui/garage.ts', 'cot-ammo-tiles'],
+  '.cot-station[data-station="firepower"]': ['src/ui/garage.ts', 'data-station="${id}"'],
   '.cot-overview-section': ['src/ui/garage.ts', 'cot-overview-section'],
   '.cot-battle': ['src/ui/garage.ts', 'cot-battle'],
   '[data-tabbar="deploy"]': ['src/ui/garage.ts', 'data-tabbar'],

@@ -4,8 +4,8 @@
 //
 // One view (desktop 1440x900 or phone 390x844) and one locale (en or /cn) per run, under the capture lock (render class)
 // and one guarded browser. Each case is a fresh browser context:
-//  fresh      a new player (no storage) gets the Garage chapter by itself: each card is shot, the tank and Deploy lit on
-//             screen and the card clear of whatever it lights; Next walks to Deploy, whose press (the lit control) is the tutorial's: the record
+//  fresh      a new player (no storage) gets the Garage chapter by itself: each card is shot, its control lit on screen
+//             and the card clear of it; Next walks to Deploy, whose press (the lit control) is the tutorial's: the record
 //             says the Garage chapter is done, the training battle rolls out (mode training, the loaner on its
 //             battlefield, not the battle the Garage had picked) and its first card shows;
 //  enter      the same, with Enter on the Deploy card (desktop): Enter is the tutorial's press too;
@@ -124,9 +124,8 @@ async function walkGarage(page, label) {
     });
     const file = await shot(page, `${label}-${String(i).padStart(2, '0')}-${now.step}`);
     steps.push({ ...now, ...facts, file });
-    // the tank and Deploy are always on screen; the rounds' tiles only where the dossier shows them (at 1440x900 they are
-    // on its Firepower tab): a control off screen leaves the card alone, by design (tutorialOverlay.ts)
-    if (now.step === 'garage.tank' || now.step === 'garage.deploy') assert.ok(facts.lit, `${label} ${now.step}: its control lit on screen`);
+    // every Garage card lights its control (the rounds' card the dossier's Firepower tab where the tiles are off screen)
+    assert.ok(facts.lit, `${label} ${now.step}: its control lit on screen`);
     assert.ok(!facts.overlap, `${label} ${now.step}: the card clear of its lit control`);
     if (now.step === 'garage.deploy') break;
     await press(page, '.cot-tut-next');

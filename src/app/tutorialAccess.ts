@@ -41,6 +41,8 @@ export interface TutorialAccessDeps {
   readonly inputKind: () => 'keyboard' | 'touch' | 'pad';
   readonly keyLabel: (action: ActionId) => string;
   readonly codeLabel: (code: string) => string;
+  /** 274: a step's icon as markup (ui/uiIcons.ts uiIconSVG; passed in, as the key labels are). */
+  readonly iconSvg: (id: string) => string;
   readonly playerPosition: () => { readonly x: number; readonly z: number } | null;
   /** The Garage is the screen showing (no battle, Studio or loading veil). */
   readonly onGarage: () => boolean;
@@ -139,7 +141,7 @@ export function createTutorialAccess(deps: TutorialAccessDeps): TutorialAccess {
       run = runner.runTutorialChapter({
         chapter,
         startAt: resumeAt[chapter] ?? 0,
-        port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, playerPosition: deps.playerPosition,
+        port: { on: deps.on, inputKind: deps.inputKind, keyLabel: deps.keyLabel, codeLabel: deps.codeLabel, iconSvg: deps.iconSvg, playerPosition: deps.playerPosition,
           screen: deps.screen, guide: deps.guide, view: deps.view, playerId: deps.playerId, armourOn: deps.armourOn, taught: deps.taught, cue: deps.cue,
           checkpoint: deps.checkpoint, trainingRun, hold: deps.hold },
         onStep: (stepId) => { if (chapter === 'training') training?.shown.push(stepId); },

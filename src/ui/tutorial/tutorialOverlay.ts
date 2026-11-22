@@ -52,6 +52,8 @@ export interface OverlayView {
   /** 0..1, the share of the chapter done once this step is. */
   readonly fraction: number;
   readonly title: string;
+  /** The step's icon (shared icon markup, trusted: ui/uiIcons.ts), beside the title; empty for none. */
+  readonly iconHtml: string;
   /** Escaped text with key caps (<kbd>) already in it. */
   readonly bodyHtml: string;
   readonly media: { readonly src: string; readonly kind: 'image' | 'video'; readonly poster?: string; readonly alt: string } | null;
@@ -174,6 +176,10 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
   const words = el('div', 'cot-tut-words', content);
   const title = el('h2', 'cot-tut-title', words);
   title.id = 'cot-tut-title';
+  // the title row: the step's icon, then its words
+  const titleIcon = el('span', 'cot-tut-icon', title);
+  titleIcon.setAttribute('aria-hidden', 'true');
+  const titleText = el('span', 'cot-tut-title-text', title);
   root.setAttribute('aria-labelledby', title.id);
   const body = el('p', 'cot-tut-body', words);
   const hint = el('p', 'cot-tut-hint', words);
@@ -371,7 +377,8 @@ export function createTutorialOverlay(handlers: OverlayHandlers): TutorialOverla
     progress.hidden = !next.progress;
     bar.hidden = !next.progress;
     barFill.style.transform = `scaleX(${Math.max(0, Math.min(1, next.fraction)).toFixed(3)})`;
-    title.textContent = next.title;
+    titleText.textContent = next.title;
+    if (titleIcon.innerHTML !== next.iconHtml) titleIcon.innerHTML = next.iconHtml;
     body.innerHTML = next.bodyHtml;
     hint.textContent = next.actionHint ?? '';
     hint.hidden = !next.actionHint;

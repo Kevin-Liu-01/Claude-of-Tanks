@@ -13,6 +13,7 @@
  */
 import type { ActionId } from '../../game/input.ts';
 import type { TutorialChapter } from './tutorialRecord.ts';
+import type { IconId } from '../icons/spriteIndex.ts';
 import { TRAINING_POINTS, TRAINING_RULES, TRAINING_SKIRMISH_CUE, trainingActor } from '../../sim/trainingGround.ts';
 
 /** Who the step is written for: a keyboard-and-mouse player, a touch layout, a connected gamepad. Absent: everyone. */
@@ -97,6 +98,9 @@ export interface TutorialMedia {
 
 export interface TutorialStep {
   readonly id: string;
+  /** (274, Kevin: "the tutorial cards could have the corresponding icon in them") the shared icon of what the step teaches
+   *  or shows (ui/icons/spriteIndex.ts), beside its title. */
+  readonly icon: IconId;
   readonly chapter: TutorialChapter;
   /** CSS selectors, in order; the first that matches a visible element is lit. Empty: the card alone. */
   readonly target: readonly string[];
@@ -143,21 +147,22 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   // ── The Garage, on the first visit (Kevin, 2026-11-20: "shorter and fewer"): the tank and its nation on one card, the
   // rounds, Deploy; the kit and the camouflage are met where they are used. Deploy's press is the tutorial's: it launches
   // the training battle (274, Kevin: "Deploy launches the training battle"), which replaces 272's first-battle chapter ──
-  { id: 'garage.tank', chapter: 'garage', target: ['.cot-carousel', '[data-tabbar="garage"]'],
+  { id: 'garage.tank', icon: 'garage', chapter: 'garage', target: ['.cot-carousel', '[data-tabbar="garage"]'],
     title: 'tutorial.garage.tank.title', body: 'tutorial.garage.tank.body', advance: NEXT },
-  { id: 'garage.ammo', chapter: 'garage', when: ['keyboard', 'pad'], target: ['.cot-ammo-tiles'],
+  // (where the dossier keeps the shells on its Firepower tab, as at 1440x900, the tab is lit: the card never stands alone)
+  { id: 'garage.ammo', icon: 'shell', chapter: 'garage', when: ['keyboard', 'pad'], target: ['.cot-ammo-tiles', '.cot-station[data-station="firepower"]'],
     title: 'tutorial.garage.ammo.title', body: 'tutorial.garage.ammo.body', advance: NEXT,
     keys: { shell1: 'shell1', shell2: 'shell2', shell3: 'shell3' } },
   // a phone's dossier opens on its headline strip: the shells are a swipe along it
-  { id: 'garage.ammoTouch', chapter: 'garage', when: 'touch', target: ['.cot-ammo-tiles', '.cot-overview-section'],
+  { id: 'garage.ammoTouch', icon: 'shell', chapter: 'garage', when: 'touch', target: ['.cot-ammo-tiles', '.cot-overview-section'],
     title: 'tutorial.garage.ammo.title', body: 'tutorial.garage.ammo.bodyTouch', advance: NEXT },
-  { id: 'garage.deploy', chapter: 'garage', target: ['.cot-battle', '[data-tabbar="deploy"]'],
+  { id: 'garage.deploy', icon: 'deploy', chapter: 'garage', target: ['.cot-battle', '[data-tabbar="deploy"]'],
     title: 'tutorial.garage.deploy.title', body: 'tutorial.garage.deploy.body', advance: { on: 'press', own: true } },
 
   // ── The offer (274): a returning player's Garage, once (ui/tutorial/tutorialRecord.ts): the tutorial, offered (Kevin:
   // "the guided training battle IS the tutorial. there is only ONE tutorial"); Start goes straight to its training battle,
   // Not now puts it away ────────────────────────────────────────────────────────────────────────────────────────────────
-  { id: 'offer.training', chapter: 'offer', target: [], media: loop('angle'), title: 'tutorial.offer.title', body: 'tutorial.offer.body',
+  { id: 'offer.training', icon: 'manual', chapter: 'offer', target: [], media: loop('angle'), title: 'tutorial.offer.title', body: 'tutorial.offer.body',
     nextLabel: 'tutorial.offer.start', skipLabel: 'tutorial.offer.later', advance: NEXT },
 ];
 
@@ -191,84 +196,84 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   // card before it, a drive to a ring and what the player does there are one card (`arrive`), and a card whose lesson the
   // ring, arrow or bracket already shows is gone: 45 cards became 22.
   // S2: drive to ring B (ring A on the way)
-  { id: 'training.drive', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+  { id: 'training.drive', icon: 'moveForward', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
     title: 'tutorial.training.drive.title', body: 'tutorial.training.drive.body', advance: { on: 'reach' }, behindS: 50,
     keys: { forward: 'forward', left: 'left', right: 'right' },
     guide: { marker: marker(TRAINING_POINTS.driveB, 'tutorial.training.marker.b'), path: true } },
-  { id: 'training.driveTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+  { id: 'training.driveTouch', icon: 'moveForward', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.drive.title', body: 'tutorial.training.drive.bodyTouch', advance: { on: 'reach' }, behindS: 50,
     guide: { marker: marker(TRAINING_POINTS.driveB, 'tutorial.training.marker.b'), path: true, hud: ['.cot-touch .joy'] } },
-  { id: 'training.drivePad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+  { id: 'training.drivePad', icon: 'moveForward', chapter: 'training', when: 'pad', target: [], ...PLAY,
     title: 'tutorial.training.drive.title', body: 'tutorial.training.drive.bodyPad', advance: { on: 'reach' }, behindS: 50,
     guide: { marker: marker(TRAINING_POINTS.driveB, 'tutorial.training.marker.b'), path: true } },
   // S3: the turret turns apart from the hull
-  { id: 'training.turret', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+  { id: 'training.turret', icon: 'turretRing', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
     title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.body', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
     keys: { left: 'left', right: 'right' }, guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
-  { id: 'training.turretTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+  { id: 'training.turretTouch', icon: 'turretRing', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.bodyTouch', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
     guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
-  { id: 'training.turretPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+  { id: 'training.turretPad', icon: 'turretRing', chapter: 'training', when: 'pad', target: [], ...PLAY,
     title: 'tutorial.training.turret.title', body: 'tutorial.training.turret.bodyPad', advance: { on: 'turret', toleranceDeg: 8, holdS: 1 },
     guide: { marker: marker(TRAINING_POINTS.board, 'tutorial.training.marker.board') } },
   // S4: the gunner's sight and its zoom on one card (a pad has no zoom binding until the controller-parity slice: the sight)
-  { id: 'training.zoom', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+  { id: 'training.zoom', icon: 'scope', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
     title: 'tutorial.training.zoom.title', body: 'tutorial.training.zoom.body', advance: { on: 'camera', mode: 'sight', zoomAtLeast: 8 },
     keys: { sight: 'sniperToggle' } },
-  { id: 'training.zoomTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+  { id: 'training.zoomTouch', icon: 'scope', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.zoom.title', body: 'tutorial.training.zoom.bodyTouch', advance: { on: 'camera', mode: 'sight', zoomAtLeast: 8 },
     guide: { hud: ['.cot-touch .round.scope'] } },
-  { id: 'training.zoomPad', chapter: 'training', when: 'pad', target: [], ...PLAY,
+  { id: 'training.zoomPad', icon: 'scope', chapter: 'training', when: 'pad', target: [], ...PLAY,
     title: 'tutorial.training.zoom.title', body: 'tutorial.training.zoom.bodyPad', advance: { on: 'camera', mode: 'sight' },
     keys: { sight: 'sniperToggle' } },
 
   // S5: spotting. Target 1 waits beyond the loaner's sight; ring C brings it inside
-  { id: 'training.spot', chapter: 'training', target: [], ...PLAY, behindS: 60,
+  { id: 'training.spot', icon: 'optics', chapter: 'training', target: [], ...PLAY, behindS: 60,
     title: 'tutorial.training.spot.title', body: 'tutorial.training.spot.body', advance: { on: 'spot', actor: TARGET1 },
     guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true } },
   // S6: the armour colours (on by default since 273), read through the sight from ring C (the spot can come before the
   // ring, and a tank that rolls on past it drops where the ground hides Target 1: the end walk of 2026-11-20); a keyboard
   // turns them off and on with its own key, a touch layout and a pad (no toggle of their own until the controller-parity
   // item) read the Settings row
-  { id: 'training.armourSight', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, arrive: true,
+  { id: 'training.armourSight', icon: 'scope', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, arrive: true,
     title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.body', advance: { on: 'camera', mode: 'sight' },
     keys: { sight: 'sniperToggle' }, guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true,
       actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
-  { id: 'training.armourSightTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, arrive: true,
+  { id: 'training.armourSightTouch', icon: 'scope', chapter: 'training', when: 'touch', target: [], ...PLAY, arrive: true,
     title: 'tutorial.training.armourSight.title', body: 'tutorial.training.armourSight.bodyTouch', advance: { on: 'camera', mode: 'sight' },
     guide: { marker: marker(TRAINING_POINTS.ringC, 'tutorial.training.marker.c'), path: true,
       actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, hud: ['.cot-touch .round.scope'] } },
-  { id: 'training.armour', chapter: 'training', when: 'keyboard', target: [], ...PLAY, teaches: 'armourColours',
+  { id: 'training.armour', icon: 'layerArmor', chapter: 'training', when: 'keyboard', target: [], ...PLAY, teaches: 'armourColours',
     title: 'tutorial.training.armour.title', body: 'tutorial.training.armour.body', advance: { on: 'armourCycle' },
     keys: { toggle: 'hitboxOverlay' }, guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
-  { id: 'training.armourTouch', chapter: 'training', when: ['touch', 'pad'], target: [], ...PLAY, teaches: 'armourColours',
+  { id: 'training.armourTouch', icon: 'layerArmor', chapter: 'training', when: ['touch', 'pad'], target: [], ...PLAY, teaches: 'armourColours',
     title: 'tutorial.training.armour.title', body: 'tutorial.training.armour.bodySettings', advance: NEXT,
     guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' } } },
   // S7: aim and fire: a penetration on green, then a bounce off red (the shot card names each; the reload ring shows itself)
-  { id: 'training.firePen', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, behindS: 45,
+  { id: 'training.firePen', icon: 'penetration', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.firePen.title', body: 'tutorial.training.firePen.body',
     advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['pen', 'he_pen'] }, keys: { fire: 'fire' },
     guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_GREEN } } },
-  { id: 'training.firePenTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, behindS: 45,
+  { id: 'training.firePenTouch', icon: 'penetration', chapter: 'training', when: 'touch', target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.firePen.title', body: 'tutorial.training.firePen.bodyTouch',
     advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['pen', 'he_pen'] },
     guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_GREEN }, hud: ['.cot-touch .round.fire'] } },
-  { id: 'training.fireBounce', chapter: 'training', target: [], ...PLAY, behindS: 45,
+  { id: 'training.fireBounce', icon: 'ricochet', chapter: 'training', target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.fireBounce.title', body: 'tutorial.training.fireBounce.body',
     advance: { on: 'hit', by: 'player', actor: TARGET1, kinds: ['ricochet', 'nonpen'] },
     guide: { actor: { id: TARGET1, label: 'tutorial.training.actor.target1' }, aimAt: { id: TARGET1, ...TARGET1_RED } } },
   // the shots gave the player away (Target 1 sees it from ring C, so the lamp is lit): out of its sight into bush D, on the
   // way to ring E (the trees between)
-  { id: 'training.bush', chapter: 'training', target: [], ...PLAY, behindS: 45,
+  { id: 'training.bush', icon: 'statusConcealed', chapter: 'training', target: [], ...PLAY, behindS: 45,
     title: 'tutorial.training.bush.title', body: 'tutorial.training.bush.body', advance: { on: 'hidden', stillS: 3 },
     guide: { marker: marker(TRAINING_POINTS.bushD, 'tutorial.training.marker.d'), path: true, hud: ['.cot-sixth'] } },
   // S8: the right round: HE through the BWP-1's thin skin, seen only from ring E past the trees
-  { id: 'training.fireHE', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, behindS: 60,
+  { id: 'training.fireHE', icon: 'shellHe', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, behindS: 60,
     title: 'tutorial.training.fireHE.title', body: 'tutorial.training.fireHE.body',
     advance: { on: 'hit', by: 'player', actor: TARGET2, kinds: ['he_pen', 'pen', 'he_splash'] }, keys: { he: 'shell3' },
     guide: { marker: marker(TRAINING_POINTS.ringE, 'tutorial.training.marker.e'), path: true, hud: ['.cot-shells'],
       actor: { id: TARGET2, label: 'tutorial.training.actor.target2' } } },
-  { id: 'training.fireHETouch', chapter: 'training', when: 'touch', target: [], ...PLAY, behindS: 60,
+  { id: 'training.fireHETouch', icon: 'shellHe', chapter: 'training', when: 'touch', target: [], ...PLAY, behindS: 60,
     title: 'tutorial.training.fireHE.title', body: 'tutorial.training.fireHE.bodyTouch',
     advance: { on: 'hit', by: 'player', actor: TARGET2, kinds: ['he_pen', 'pen', 'he_splash'] },
     guide: { marker: marker(TRAINING_POINTS.ringE, 'tutorial.training.marker.e'), path: true, hud: ['.cot-shells'],
@@ -276,70 +281,70 @@ export const TRAINING_STEPS: readonly TutorialStep[] = [
   // S9: angling under fire (Kevin, 2026-11-18, option (a)). The Sentry, a T-72BU, waits 170 m past ring F out of sight of
   // every earlier scene; the arc round the player shows its HEAT on the player's front plate at each heading, in its
   // reticle's colours: amber square on, red from 32 degrees. At ring F, turned and held, the player takes its real rounds.
-  { id: 'training.angle', chapter: 'training', target: [], ...PLAY, behindS: 60, arrive: true,
+  { id: 'training.angle', icon: 'shield', chapter: 'training', target: [], ...PLAY, behindS: 60, arrive: true,
     title: 'tutorial.training.angle.title', body: 'tutorial.training.angle.body',
     advance: { on: 'angle', actor: SENTRY, ...ANGLE_WINDOW, holdS: 2 },
     guide: { marker: marker(TRAINING_POINTS.fireF, 'tutorial.training.marker.f'), path: true,
       actor: { id: SENTRY, label: 'tutorial.training.actor.sentry' }, angle: { id: SENTRY } } },
-  { id: 'training.volley', chapter: 'training', target: [], ...PLAY, cue: 'sentry', penBody: 'tutorial.training.volley.square',
+  { id: 'training.volley', icon: 'blocked', chapter: 'training', target: [], ...PLAY, cue: 'sentry', penBody: 'tutorial.training.volley.square',
     title: 'tutorial.training.volley.title', body: 'tutorial.training.volley.body',
     advance: { on: 'hit', by: 'actor', actor: SENTRY, kinds: HELD, count: 2 },
     guide: { actor: { id: SENTRY, label: 'tutorial.training.actor.sentry' }, angle: { id: SENTRY } } },
   // S10: hull down. A 1.9 m berm stands across the line to Sentry 2, a T-62MV whose APFSDS goes through the loaner's hull
   // and not its turret; behind it the hull is hidden and the turret clears the top. The shape over the player's tank lights
   // what Sentry 2 sees; it fires at the turret, then the player loads APFSDS again and fires back.
-  { id: 'training.hullDown', chapter: 'training', target: [], ...PLAY, behindS: 60, arrive: true,
+  { id: 'training.hullDown', icon: 'altitude', chapter: 'training', target: [], ...PLAY, behindS: 60, arrive: true,
     title: 'tutorial.training.hullDown.title', body: 'tutorial.training.hullDown.body', advance: { on: 'hullDown', actor: SENTRY2, holdS: 2 },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 },
       marker: marker(TRAINING_POINTS.ringG, 'tutorial.training.marker.g'), path: true } },
-  { id: 'training.hullDownFire', chapter: 'training', target: [], ...PLAY, cue: 'sentry2', penBody: 'tutorial.training.hullDownFire.exposed',
+  { id: 'training.hullDownFire', icon: 'blocked', chapter: 'training', target: [], ...PLAY, cue: 'sentry2', penBody: 'tutorial.training.hullDownFire.exposed',
     title: 'tutorial.training.hullDownFire.title', body: 'tutorial.training.hullDownFire.body',
     advance: { on: 'hit', by: 'actor', actor: SENTRY2, kinds: HELD, count: 2 },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 } } },
-  { id: 'training.fireBack', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, cue: 'sentry2', behindS: 60,
+  { id: 'training.fireBack', icon: 'fireGun', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, cue: 'sentry2', behindS: 60,
     title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.body', advance: { on: 'destroy', actor: SENTRY2 },
     keys: { ap: 'shell1', fire: 'fire' },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 }, hud: ['.cot-shells'] } },
-  { id: 'training.fireBackTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry2', behindS: 60,
+  { id: 'training.fireBackTouch', icon: 'fireGun', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry2', behindS: 60,
     title: 'tutorial.training.fireBack.title', body: 'tutorial.training.fireBack.bodyTouch', advance: { on: 'destroy', actor: SENTRY2 },
     guide: { actor: { id: SENTRY2, label: 'tutorial.training.actor.sentry2' }, exposure: { id: SENTRY2 }, hud: ['.cot-shells', '.cot-touch .round.fire'] } },
   // S11: peek, shoot, hide. A 2.8 m wall is stamped in front of ring P; Sentry 3 (parked until now) waits past it and
   // fires only at what it sees, each time its gun is loaded (the ring over it). The player pulls out to ring Q, fires,
   // and backs into cover before that ring fills, until it is destroyed.
-  { id: 'training.toP', chapter: 'training', target: [], ...PLAY, behindS: 40,
+  { id: 'training.toP', icon: 'map', chapter: 'training', target: [], ...PLAY, behindS: 40,
     title: 'tutorial.training.toP.title', body: 'tutorial.training.toP.body', advance: { on: 'reach' },
     guide: { marker: marker(TRAINING_POINTS.ringP, 'tutorial.training.marker.p'), path: true } },
-  { id: 'training.peekShoot', chapter: 'training', target: [], ...PLAY, cue: 'sentry3', penBody: 'tutorial.training.peekShoot.caught', behindS: 90,
+  { id: 'training.peekShoot', icon: 'reload', chapter: 'training', target: [], ...PLAY, cue: 'sentry3', penBody: 'tutorial.training.peekShoot.caught', behindS: 90,
     title: 'tutorial.training.peekShoot.title', body: 'tutorial.training.peekShoot.body', advance: { on: 'destroy', actor: SENTRY3 },
     guide: { marker: marker(TRAINING_POINTS.ringQ, 'tutorial.training.marker.q'), actor: { id: SENTRY3, label: 'tutorial.training.actor.sentry3' },
       reload: { id: SENTRY3 } } },
   // S12: the kit. Out at ring Q, Sentry 4 (parked until now) fires HE at the running gear until a track is hit; the repair
   // kit mends it (the card names the other two kits beside it), and smoke is popped once
-  { id: 'training.repair', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, cue: 'sentry4', behindS: 60, arrive: true,
+  { id: 'training.repair', icon: 'repair', chapter: 'training', when: ['keyboard', 'pad'], target: [], ...PLAY, cue: 'sentry4', behindS: 60, arrive: true,
     title: 'tutorial.training.repair.title', body: 'tutorial.training.repair.body', advance: { on: 'consumable', item: 'repair' },
     keys: { repair: 'consumable1' }, guide: { marker: marker(TRAINING_POINTS.ringQ, 'tutorial.training.marker.q'), path: true,
       actor: { id: SENTRY4, label: 'tutorial.training.actor.sentry4' }, hud: ['.cot-cons'] } },
-  { id: 'training.repairTouch', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry4', behindS: 60, arrive: true,
+  { id: 'training.repairTouch', icon: 'repair', chapter: 'training', when: 'touch', target: [], ...PLAY, cue: 'sentry4', behindS: 60, arrive: true,
     title: 'tutorial.training.repair.title', body: 'tutorial.training.repair.bodyTouch', advance: { on: 'consumable', item: 'repair' },
     guide: { marker: marker(TRAINING_POINTS.ringQ, 'tutorial.training.marker.q'), path: true,
       actor: { id: SENTRY4, label: 'tutorial.training.actor.sentry4' }, hud: ['.cot-cons'] } },
   // (a pad has no smoke button until the controller-parity item binds one: its players meet smoke there)
-  { id: 'training.smoke', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
+  { id: 'training.smoke', icon: 'smoke', chapter: 'training', when: 'keyboard', target: [], ...PLAY,
     title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.body', advance: { on: 'smoke' }, keys: { smoke: 'smoke' } },
-  { id: 'training.smokeTouch', chapter: 'training', when: 'touch', target: [], ...PLAY,
+  { id: 'training.smokeTouch', icon: 'smoke', chapter: 'training', when: 'touch', target: [], ...PLAY,
     title: 'tutorial.training.smoke.title', body: 'tutorial.training.smoke.bodyTouch', advance: { on: 'smoke' } },
   // S13: flank the heavy. Bulwark (parked until now) stands on the meadow; its front is red to the loaner's rounds, its turret
   // turns slowly and it fires only into the arc before its nose. Ring U shows its front from outside that arc; ring V is its
   // side, where a round goes through.
-  { id: 'training.toU', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 60,
+  { id: 'training.toU', icon: 'map', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 60,
     title: 'tutorial.training.toU.title', body: 'tutorial.training.toU.body', advance: { on: 'reach' },
     guide: { marker: marker(TRAINING_POINTS.ringU, 'tutorial.training.marker.u'), path: true, actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
-  { id: 'training.flank', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 90, arrive: true,
+  { id: 'training.flank', icon: 'roleFlanker', chapter: 'training', target: [], ...PLAY, cue: 'bulwark', behindS: 90, arrive: true,
     title: 'tutorial.training.flank.title', body: 'tutorial.training.flank.body', advance: { on: 'destroy', actor: BULWARK },
     guide: { marker: marker(TRAINING_POINTS.ringV, 'tutorial.training.marker.v'), path: true, actor: { id: BULWARK, label: 'tutorial.training.actor.bulwark' } } },
   // S14: the real fight. Two allied bots beside the player and three enemy bots 260 m east, normal brains and rules, come in
   // on the cue; the guidance falls away, and the chapter (and the battle) ends once every enemy bot is destroyed
-  { id: 'training.fight', chapter: 'training', target: [], ...PLAY, cue: TRAINING_SKIRMISH_CUE,
+  { id: 'training.fight', icon: 'team', chapter: 'training', target: [], ...PLAY, cue: TRAINING_SKIRMISH_CUE,
     title: 'tutorial.training.fight.title', body: 'tutorial.training.fight.body',
     advance: { on: 'destroyAll', actors: TRAINING_RULES.skirmish.enemies.map((bot) => bot.specId) } },
 ];
@@ -365,18 +370,18 @@ export const TRAINING_LESSONS: ReadonlyArray<{ readonly id: string; readonly lab
 ].map((lesson) => Object.freeze(lesson)));
 
 /** A tour stop: its nav control lit on every layout (the desktop bar, the phone's menu, the tab bar). */
-const STOP = (id: string, target: readonly string[]): TutorialStep =>
-  ({ id: `tour.${id}`, chapter: 'tour', target, title: `tutorial.tour.${id}.title`, body: `tutorial.tour.${id}.body`, advance: NEXT });
+const STOP = (id: string, icon: IconId, target: readonly string[]): TutorialStep =>
+  ({ id: `tour.${id}`, icon, chapter: 'tour', target, title: `tutorial.tour.${id}.title`, body: `tutorial.tour.${id}.body`, advance: NEXT });
 
 export const AFTER_TRAINING_STEPS: readonly TutorialStep[] = [
-  { id: 'debrief.summary', chapter: 'debrief', target: [], title: 'tutorial.debrief.title', body: 'tutorial.debrief.body',
+  { id: 'debrief.summary', icon: 'check', chapter: 'debrief', target: [], title: 'tutorial.debrief.title', body: 'tutorial.debrief.body',
     params: 'trainingSummary', checklist: 'trainingLessons', nextLabel: 'tutorial.debrief.next', advance: NEXT },
-  STOP('gallery', ['[data-nav="gallery"]', '[data-mobile-nav="gallery"]', '[data-tabbar="gallery"]']),
-  STOP('techTree', ['[data-nav="techTree"]', '[data-mobile-nav="techTree"]', '[data-tabbar="more"]']),
-  STOP('studio', ['[data-nav="studio"]', '[data-mobile-nav="studio"]', '[data-tabbar="more"]']),
-  STOP('record', ['.cot-record-trigger', '[data-tabbar="record"]']),
-  STOP('docs', ['[data-nav="docs"]', '[data-mobile-nav="docs"]', '[data-tabbar="more"]']),
-  { id: 'tour.complete', chapter: 'tour', target: ['.cot-battle', '[data-tabbar="deploy"]'], title: 'tutorial.tour.complete.title',
+  STOP('gallery', 'gallery', ['[data-nav="gallery"]', '[data-mobile-nav="gallery"]', '[data-tabbar="gallery"]']),
+  STOP('techTree', 'techTree', ['[data-nav="techTree"]', '[data-mobile-nav="techTree"]', '[data-tabbar="more"]']),
+  STOP('studio', 'studio', ['[data-nav="studio"]', '[data-mobile-nav="studio"]', '[data-tabbar="more"]']),
+  STOP('record', 'record', ['.cot-record-trigger', '[data-tabbar="record"]']),
+  STOP('docs', 'manual', ['[data-nav="docs"]', '[data-mobile-nav="docs"]', '[data-tabbar="more"]']),
+  { id: 'tour.complete', icon: 'deploy', chapter: 'tour', target: ['.cot-battle', '[data-tabbar="deploy"]'], title: 'tutorial.tour.complete.title',
     body: 'tutorial.tour.complete.body', advance: NEXT },
 ];
 

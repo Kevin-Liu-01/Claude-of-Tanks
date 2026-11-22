@@ -11,8 +11,7 @@
 //  - a clipped child: any shown element inside the card whose box leaves the card's, the card's parts (head, bar, words,
 //    buttons) lying on each other, or the words running past their own block;
 //  - a card off the screen.
-// It records each card's fit step, natural height and box, and its body's lines (an act card's copy runs at most two;
-// past that it is listed, not failed). The desktop 1440x900 and phone 390x844 views shoot every card; the longest card of
+// It records each card's fit step, natural height and box, and its body's lines; an act card's copy past two lines fails. The desktop 1440x900 and phone 390x844 views shoot every card; the longest card of
 // each view is shot too (<view>-longest.png).
 //
 // --beat (on the desktop view): a step completing, recorded (Kevin: "after successful completion step we have to show that
@@ -160,8 +159,9 @@ try {
         ...facts.clipped.map((what) => `clips ${what}`),
         ...(facts.offScreen ? ['off the screen'] : []),
       ];
+      // an act card's copy runs at most two lines (the battle goes on under it)
+      if (facts.mode === 'act' && facts.bodyLines > 2) { report.longCopy.push(`${view} ${stepId}: ${facts.bodyLines} lines`); problems.push(`copy runs ${facts.bodyLines} lines`); }
       if (problems.length) report.misses.push(`${view} ${stepId}: ${problems.join('; ')}`);
-      if (facts.mode === 'act' && facts.bodyLines > 2) report.longCopy.push(`${view} ${stepId}: ${facts.bodyLines} lines`);
       if (viewport.shoot) { entry.file = `${view}-${stepId}.png`; await page.screenshot({ path: resolve(OUT, entry.file) }); }
       if (!longest || (facts.naturalH ?? 0) > (longest.naturalH ?? 0)) longest = { chapter, index, stepId, naturalH: facts.naturalH };
       report.cards.push(entry);
