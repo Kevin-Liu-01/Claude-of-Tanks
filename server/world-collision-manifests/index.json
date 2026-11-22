@@ -26,8 +26,8 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 3530983,
-      "sha256": "e0e516c290b39cb1f481d3a24ef215823bf6059d8f740ddb7531087ecc9dcc42",
+      "bytes": 3531009,
+      "sha256": "1a065b8f38bb7f57bf98f7e978220f27359b558e7c57acb58553ff1ea4aec7cd",
       "obstacles": 2992,
       "colliders": 8128,
       "concealers": 2491
@@ -62,7 +62,7 @@
     },
     "frontier": {
       "bytes": 2244701,
-      "sha256": "e9a85a1b79344568d466ec90a4460b380293025a95d897f4879e5f79cf5ed7fc",
+      "sha256": "b408bc5dd3d01177966a77e05b460bcf9c1539b2715377f2e49374b9da2a0eed",
       "obstacles": 8363,
       "colliders": 9053,
       "concealers": 8325
@@ -132,7 +132,7 @@
     },
     "titan_gorge": {
       "bytes": 1799701,
-      "sha256": "21430fd8669980ce5a52c3e852c1adea06451f49133e3a0bf4092efe2935a350",
+      "sha256": "358273fba04840a8d45f7bf9acb99fdcabda7f98ae22706834e0d831db132e9e",
       "obstacles": 3124,
       "colliders": 3227,
       "concealers": 1226
@@ -159,15 +159,15 @@
       "concealers": 958
     },
     "airfield": {
-      "bytes": 1238311,
-      "sha256": "2dadb20dff54889f3ff7f60f74889f29bdf741d836f9f902762309fe4f6a2e9a",
+      "bytes": 1238310,
+      "sha256": "53fa85f9d297ccbc519c703ece58575b2bf8989558a668587ca5a93d02783ddd",
       "obstacles": 4725,
       "colliders": 5405,
       "concealers": 3872
     },
     "oasis": {
-      "bytes": 1280982,
-      "sha256": "5ce168eeb060a3ca2ccd102cd66d25e1d31a2b0eb7b3427edf2fc4cce511c95d",
+      "bytes": 1280994,
+      "sha256": "eafcc0c2d84205e8df9d44667d56e0d994f90ca88b5a7d4d273935263fb06d89",
       "obstacles": 1682,
       "colliders": 1943,
       "concealers": 874
@@ -260,8 +260,8 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 3678454,
-        "sha256": "5674c45a8e256b382f3b9a05ebcc87f65ec4ebb348eedb95cf3795855626c7a0",
+        "bytes": 3678479,
+        "sha256": "e671655911f07699f3e14ad54829be9b583bfa7cfc79900049110a0f4376914b",
         "obstacles": 3118,
         "colliders": 8170,
         "concealers": 2491
@@ -295,8 +295,8 @@
         "concealers": 1904
       },
       "frontier": {
-        "bytes": 2295618,
-        "sha256": "7eae89d65e180444717cc0ec620e9db7c467acb6e998377cb848477a7caacbd6",
+        "bytes": 2295615,
+        "sha256": "0b853ad2bee14271dbeb7770df164ea0de61fd8b8285091fce2900cf0171f4a8",
         "obstacles": 8244,
         "colliders": 8836,
         "concealers": 7990
@@ -366,14 +366,14 @@
       },
       "titan_gorge": {
         "bytes": 2025703,
-        "sha256": "88a50eb8b1429417dc82e60d9c09c833ca830b045839737ba2a663db47e89e98",
+        "sha256": "72a376f6e3f9dcbf2ed41a2df5fbd2ba69fcbff369e8cb0f3c5341bb9860600d",
         "obstacles": 3238,
         "colliders": 3262,
         "concealers": 1226
       },
       "skybridge": {
-        "bytes": 1594279,
-        "sha256": "03f2b8da8ac5a496ead6095f03573b6b102efe29cc3886004f816df73df201d9",
+        "bytes": 1594281,
+        "sha256": "63b4e8290238c1d54e1e5977ff0dfacc803e87052a704c28c43f56b1ebdc8512",
         "obstacles": 2698,
         "colliders": 2894,
         "concealers": 1003
@@ -393,8 +393,8 @@
         "concealers": 932
       },
       "airfield": {
-        "bytes": 1352159,
-        "sha256": "57c7e000a80b39c06233ec1a7c8ff9938787528cd2e958728724509e9412bd63",
+        "bytes": 1352174,
+        "sha256": "f1b0760089b92c463c5ca95d09eb28e345add6174581be9ce5b9f39e7c25b286",
         "obstacles": 4768,
         "colliders": 5420,
         "concealers": 3872
