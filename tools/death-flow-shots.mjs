@@ -10,7 +10,7 @@
 //
 // Cases: full (Standard: the death beat, the replay, the x-ray under the shot card, the finale, then the spectate list on
 // the own wreck and a step on to an ally), quick (Zone Control: the beat, the cut to the shot, the impact, the dial),
-// card (Turbo Ball: the card alone over the wreck and the dial), strike (Air Support: an enemy's bomb on the player, the
+// card (Gun Game: the card alone over the wreck and the dial), strike (Air Support: an enemy's bomb on the player, the
 // quick cam framed on the call-in). --burst: the quick and full cams as a frame every 0.1 s (a clip at 10 fps).
 // Receipt (DIR/death-flow-shots.json): each case's death (cause, killer), the shots and the page's errors.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -39,8 +39,9 @@ const VIEWPORTS = {
   landscape: { width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 };
 const TIERS = { desktop: 'desktop', phone: 'phone', landscape: 'phone' };
-// (the card case: Turbo Ball's 3 s respawn and HE rounds, which any hit lands; Gun Game's autocannon only glanced)
-const MODES = { full: 'standard', quick: 'zone_control', card: 'turbo_ball', strike: 'air_support' };
+// (the card case: Gun Game's 4 s respawn; its autocannon fires into the rear, the one face it goes through. Turbo Ball's
+// low gravity carried the rounds over the hull)
+const MODES = { full: 'standard', quick: 'zone_control', card: 'gun_game', strike: 'air_support' };
 
 const shot = async (page, name) => {
   await page.evaluate(() => { const go = document.querySelector('.cot-resume.show .rz-go'); go?.click(); });
@@ -61,7 +62,7 @@ const stageFoe = () => {
     if (t === p) continue;
     t.aiCtl = null; t.input.fire = false; t.input.throttle = 0; t.input.steer = 0; t.state.speed = 0;
   }
-  const yaw = p.state.yaw;
+  const yaw = p.state.yaw + (window.__dfRear ? Math.PI : 0);
   const x = p.state.pos.x + Math.sin(yaw) * 120, z = p.state.pos.z + Math.cos(yaw) * 120;
   foe.state.pos.set(x, hf.getHeightAt(x, z), z);
   foe.state.yaw = Math.atan2(p.state.pos.x - x, p.state.pos.z - z);
@@ -126,6 +127,7 @@ async function beats(page, key, marks, burstSpan = null) {
 
 async function runCase(page, tag, which) {
   const key = `${tag}-${which}`;
+  await page.evaluate((rear) => { window.__dfRear = rear; }, which === 'card');
   const foeId = await page.evaluate(stageFoe);
   if (!foeId) { receipt.deaths[key] = [{ error: 'no foe' }]; return; }
   await sleep(1500);

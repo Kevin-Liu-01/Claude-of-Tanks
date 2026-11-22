@@ -397,10 +397,13 @@ export function createBattleResultPresentationRuntime({
     if (!result && destroyed && !deathCamShown && revives && !couch) {
       deathCamShown = true;
       const respawnS = game.ruleset?.respawnS ?? 0;
+      // after the quick cam the card stays over the live view of the wreck until the revive, the HUD still veiled: the
+      // respawn dial keeps its clear seat (with the HUD back it stood on the ammunition tray) and both shapes end alike
       const afterQuick = (): void => {
+        rig.release();
+        if (killcam.showDeathCard?.(game.timeS)) return;
         deathReplayShown = false;
         veilHud(false);
-        rig.release();
       };
       // the card is on this owner's books as a replay is (deathReplayShown): a revive's hand-back unveils the HUD
       const showCard = (): void => {
