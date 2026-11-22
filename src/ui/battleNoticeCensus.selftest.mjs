@@ -132,6 +132,8 @@ assert.match(hud, /className: rollover \? 'cot-aim-notice cot-key-hint'/, 'the o
 assert.match(hud, /media: rollover \? \{ svg: flipPicture\(\)/, 'with its diagram');
 assert.match(hud, /keyLine\('hud\.aimWarning\.flipLine', \{ key: 'selfRight' \}\)/, 'and its key the self-right command\'s live binding');
 assert.match(read('src/ui/firstUseHints.ts'), /className: `cot-key-hint cot-first-hint/, 'the first-use hints wear the same layout');
+// the condition lane is the page's: a couch pane's HUD never raises one (it would speak for every seat)
+assert.match(hud, /const parked = !ownsFramePlayer && touchWarning && !touchWarningSeated\(\);/, 'a pane HUD never parks its chip into the page\'s conditions');
 
 const counts = { notices: 0, battle: 0, menu: 0 };
 for (const key of found.keys()) counts[SURFACES[key].kind]++;

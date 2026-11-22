@@ -5980,7 +5980,10 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     const seated = touchWarning && draw.warningY > 0 && touchWarningSeated();
     // (UI-LOCKDOWN B14) where a layout parks the chip off the sight it is the kit's notice in the battle's region, which
     // the planner seats where the chip parked (battleHudLayout.css); the DOM chip is then the reticle's mark alone
-    const parked = touchWarning && !touchWarningSeated();
+    // (notices-audit-275 ruling on couch panes) the battle notices' conditions are the page's: only the page's own HUD raises
+    // them; a pane's HUD (view.own 'frame', an iframe of its own) never parks its chip into the page's region, where it would
+    // speak for every seat, and keeps it as its reticle's mark in its own document
+    const parked = !ownsFramePlayer && touchWarning && !touchWarningSeated();
     syncAimNotice(parked ? warning : null);
     // A seated chip yields to the sixth-sense notice (sightFurniture.ts sightNotice, published on a touch layout only):
     // where its place runs into the notice it waits hidden until the notice goes. The notice never moves it: it comes and
