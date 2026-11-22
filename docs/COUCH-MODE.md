@@ -47,12 +47,15 @@ Rule 2 in numbers. The projection is the frame budget's (`docs/PERFORMANCE.md` "
   baseline (Verdant, Teams, 1920 x 1080, bots frozen, governor pinned at full scale, the couch tier by pane area):
 
   ```
-  npm run build:private
-  node tools/couch-panes.browser.mjs --layouts=1,2,4 --measure --preview=. --max-load=10 --load-wait-min=60 --out=.qa-dev/couch-perf/<label>
+  node tools/with-capture-lock.mjs --lock-class=timing --label=couch-perf -- zsh -c 'npm run build:private &&
+    node tools/couch-panes.browser.mjs --layouts=1,2,4 --measure --preview=. --max-load=10 --load-wait-min=60 --out=.qa-dev/couch-perf/<label>'
   ```
 
-  The harness takes the capture lock itself (`tools/capture-hold.mjs`) and launches through `tools/browser-launch.mjs`.
-  It runs only in the heavy slot, which the Claude of Tanks coordinator hands out one at a time.
+  The build and the run share one capture hold. The harness's own hold (`tools/capture-hold.mjs`) nests in it, and it
+  launches through `tools/browser-launch.mjs`. It runs only in the heavy slot, which the Claude of Tanks coordinator
+  hands out one at a time. `--ab=<lever>` adds the in-page A/B of a lever (off, on, on, off at every split layout), and
+  `--profile` adds the main thread's self time per function. That profile names functions only on an unminified build
+  (`npx vite build --minify false`).
 - A row counts toward the pass only if it is quiet: the 1-minute load is 10 or less both before and after the row. A
   loaded row measures the machine. It still counts as evidence for a lever, but never for the pass.
 - Every harness check passes in the same run: a round object draws round in every pane, each pane's HUD reads its own
