@@ -297,8 +297,11 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   P.add('turretDark', box(0.32, 0.025, 0.08), cx, roof + 0.295, cz + 0.30 + 0.14);
   // the loader's hatch on the left, his two periscopes ahead of it, his FN MAG on its pintle at the hatch's front
   const lx = 0.56, lz = -0.52;
-  P.addCupola('turret', cylY(0.31, 0.32, 0.05, P.q ? 22 : 14), lx, roof + 0.025, lz);
-  P.add('turretDark', torus(0.29, 0.010, 24, 4), lx, roof + 0.052, lz);
+  P.addCupola('turret', cylY(0.33, 0.35, 0.08, P.q ? 22 : 14), lx, roof + 0.04, lz);
+  P.add('turret', cylY(0.27, 0.30, 0.05, P.q ? 22 : 14), lx, roof + 0.105, lz);
+  P.add('turretDark', torus(0.30, 0.010, 24, 4), lx, roof + 0.082, lz);
+  P.add('turretDetail', box(0.30, 0.06, 0.08), lx, roof + 0.10, lz - 0.30);
+  P.add('turretDetail', box(0.16, 0.025, 0.03), lx + 0.06, roof + 0.142, lz + 0.10);
   for (const px of [0.36, 0.90]) periscope(P, 'turretDetail', px, roof + 0.03, 0.0, 0);
   P.add('turretDark', cylY(0.035, 0.045, 0.14, 10), lx + 0.12, roof + 0.07, lz + 0.36);
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.86, elev: 0.06, shield: false, ammo: true,
@@ -308,8 +311,10 @@ function* buildTtdSteps(P: TankBuilderPort): TankProfileBuild {
   mg.rotation.y = -0.10;
   P.turretG.add(mg);
   // the sensor mast behind the left inner block (the parade and mobility photographs), the ventilator astern
-  P.add('turretDetail', cylY(0.032, 0.042, 0.50, 10), 0.34, roof + 0.25, 0.62);
-  P.add('turretDetail', cylY(0.055, 0.055, 0.05, 12), 0.34, roof + 0.52, 0.62);
+  // its sensor head on top (the head reaches TE's 2.99 m)
+  P.add('turretDetail', cylY(0.032, 0.042, 0.34, 10), 0.34, roof + 0.17, 0.62);
+  P.add('turretDetail', cylY(0.075, 0.075, 0.09, 14), 0.34, roof + 0.385, 0.62);
+  P.add('turretDark', cylY(0.040, 0.075, 0.03, 14), 0.34, roof + 0.445, 0.62);
   P.add('turret', cylY(0.10, 0.13, 0.05, 16), 0.12, roof + 0.02, -1.25);
   // the two banks of four 81 mm dischargers on the roof's side edges a third back from the face, mouths forward and
   // raised, splayed out, behind the armour sheet standing over each wall's top edge (TE: "two banks of four ... behind an
