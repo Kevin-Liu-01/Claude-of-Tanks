@@ -58,6 +58,7 @@ import { DOCK_KEEP_OUT_CLEAR, LIVED_IN_RACKS, M1A1_BUSTLE_RACK, missionDockKeepO
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DecorReservedBox } from './profiles/fieldChest.ts';
+import { stationSweepBlocks, stationSweepKeepOut, stationSweepMet, type StationSweep } from './stationSweepKeepOut.ts';
 import {
   vehicleAmbientFloorHook, registerVehicleMaterial, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
@@ -3914,12 +3915,13 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // and on the HA a can cradle laid on the bustle top stood across a panel's edge. Those routes are off; the hull's rear
   // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
   // frames now, which a hung load crossed.)
-  // Release 275: the T-84BM Oplot-M's and Oplot-T's roofs belong to their two working stations and their own whips
-  // (profiles/oplotBM.ts): no decor whip (it stood in the raised commander's 12.7's sweep) or roof gun, and the fleet cargo keeps
-  // its other routes, off the roof (an insulated chest on the roof's left rear stood 0.5 m from the Oplot-T's M240 at its
-  // bore height and blocked it from -138 to -68 degrees; tools/roof-station-arcs.mjs)
+  // Release 275: the T-84BM Oplot-M and Oplot-T carry their own two whips (profiles/oplotBM.ts); a decor whip would double
+  // them. Their roofs stay bare between the stations, as the owner approved them (oplot-275): the fleet cargo keeps its other
+  // routes. (A load in a station's way, as the chest 0.5 m from the Oplot-T's M240 at its bore height was, is the fleet's
+  // station keep-out's since roof-station-keepout-275, stationSweepKeepOut.ts; under their raised guns the keep-out would
+  // still seat a bag between the stations, clear of every sweep.)
   if (spec.id === 'bm_oplot_m' || spec.id === 'bm_oplot_t') {
-    return manifest.filter((row) => row.kit !== 'antenna' && row.kit !== 'aamg').map((row) => m1a1CargoRoutes(row, ['turretRoof']));
+    return manifest.filter((row) => row.kit !== 'antenna').map((row) => m1a1CargoRoutes(row, ['turretRoof']));
   }
   if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
     return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
@@ -6048,6 +6050,14 @@ function* decorationSteps(
     // out of every decor piece's placed box but the smoke banks', so a load turned away takes its next route or drops
     // (the Viper's pods carried a soft bag and two cases)
     const launcherVolumes = launcherKeepOutVolumes(hullG, turretG, spec);
+    // Release 275 (lane roof-station-keepout-275, the owner's Oplot ask; "only real blockers"): every roof station's barrel
+    // sweep, its barrel lines turned over its authored arc from level to full elevation (stationSweepKeepOut.ts), out of
+    // every decor piece's placed geometry, so a load, whip or lamp in a barrel's way takes its next station or route, or
+    // drops (the Oplot-T's turretRoof chest stood 0.5 m from its M240 at bore height; 50 stations on 48 tanks had decor
+    // inside their traverse)
+    const stationSweeps: Record<DecorFrame, StationSweep[]> = {
+      hull: stationSweepKeepOut(hullG, [hullG, turretG], spec.id), turret: stationSweepKeepOut(turretG, [hullG, turretG], spec.id),
+    };
     // VEH-13: every spare-link run the factory built (spareTrackSeatPass.ts), with a 10 cm lid: no rigid piece goes into
     // or onto a run (a load on the links read as "on softload", a rack through them as clipping); drapes still lie over
     const spareRuns: Record<DecorFrame, THREE.Box3[]> = { hull: spareRunVolumes(root, 'hull'), turret: spareRunVolumes(root, 'turret') };
@@ -6426,6 +6436,14 @@ function* decorationSteps(
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
       if (!allowOverlap && overlaps(bb, ledger)) {
         return rejectCommit(name, parts, 'overlap');
+      }
+      // 275 (the owner: only real blockers move): last, so a placement turned away for anything else keeps that reason (and a
+      // load turned away by a keep-out disc keeps its step-away retry); only one that would stand is tested here
+      if (stationSweeps[frame].length && stationSweepMet(stationSweeps[frame], bb)
+        && placedPartBoxes(parts, pos, rot).some((box) => stationSweepMet(stationSweeps[frame], box))
+        && stationSweepBlocks(stationSweeps[frame], parts.map((part) => part.geo),
+          new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1)))) {
+        return rejectCommit(name, parts, 'station-sweep');
       }
       pruneTies(parts, !!secure, rings, resources.releaseGeometry);
       pruneTies(parts.coarse, !!secure, rings, resources.releaseGeometry);
