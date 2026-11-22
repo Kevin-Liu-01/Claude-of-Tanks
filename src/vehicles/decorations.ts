@@ -2732,18 +2732,86 @@ const RETIRED_STAND_IN: Readonly<Partial<Record<FleetEquipmentVariant, FleetEqui
 // this table is decorations-owned.
 // Release 266: the Brazilian prototypes author their own stowage (profiles/osorio.ts, tamoyo.ts, bernardiniX1.ts: the
 // Osório's side and rear grid baskets, the Tamoyos' side bins and rear cans, the X1A2's hull tools) and the photographs
-// show clean turret roofs (blind critics, round 1: the fleet cargo and roof overlay read as clutter on all six; a side
-// cable read as a hull rail no photograph shows). decorManifestFor returns these before the fleet cargo: the crew's
-// small kit off the roof only.
-const brazilSmallKit = (): DecorManifestRow[] => [
-  { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+// show clean turret roofs (blind critics, round 1: the fleet cargo and roof overlay read as clutter on all six). The
+// tow shackles stay first, so every hull keeps the draws it had.
+// brazil-kit-274 (the owner 2026-11-20: "also add more add ons attachments and tank decorations on all brazilian
+// tanks"): each id's crew and field kit for its era, off the turret roofs. The X1 and X1A2 (the 1970s Stuart
+// rebuilds): the old Army's kit, a tow cable on the hull side, spare links on the glacis, the bedroll and cans on the
+// engine deck, packs on the bustle. The Tamoyos and the Osório prototypes (the 1980s trials): cable, cans and the
+// tarpaulin on the deck, the crew's packs behind the turret, the trial crews' tool chest and ammunition boxes. The
+// fictional EE-T3 and EE-T4: the modern crew's load on the engine deck (rucksacks, water, ammunition cans, the net in
+// its bag); their stern is the drum cradle (and the EE-T4's slat cage), their nose module's hatch keeps the links off,
+// so they carry no cable or links.
+const brazilShackles: DecorManifestRow = { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] };
+// (each load tries its seats in order, never the turret roof or the bustle top (the Tamoyos and X1s have no bustle: their
+// turretRear seat is the roof) and never the deck's stern corners, which the decoration board's full-depression bore sweep
+// crosses: the rear rack, the turret's flank and the aft fender come before the deck beside the turret; brazil-kit-274's
+// Node census)
+const brazilAft = (side: 1 | -1, x = 0.12, deck = true): Array<[string, DecorSlotArgs]> => [
+  ['hullRearRack', { x: side * x }],
+  ['turretSide', { side, rear: true }],
+  ['fender', { side, zFrac: -0.30, small: true }],
+  ...(deck ? [['rearDeck', { corner: side }] as [string, DecorSlotArgs]] : []),
 ];
-const brazilBowKit = (): DecorManifestRow[] => [{ kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] }];
+const brazilLoad = (kit: string, v: Omit<DecorKitArgs, 'rng'>, side: 1 | -1, x = 0.12): DecorManifestRow =>
+  ({ kit, p: 1, v, slot: ['fleetCargo', { routes: brazilAft(side, x) }] });
+/** The EE pair's loads: off the engine deck's corners, where the raised guns' full depression passes over the drums. */
+const eeLoad = (kit: string, v: Omit<DecorKitArgs, 'rng'>, side: 1 | -1, x = 0.12): DecorManifestRow =>
+  ({ kit, p: 1, v, slot: ['fleetCargo', { routes: brazilAft(side, x, false) }] });
+const brazilCable = (len: number, side: 1 | -1): DecorManifestRow =>
+  ({ kit: 'cable', p: 1, v: { len }, slot: ['fleetCargo', { routes: [['hullSideCable', { side }], ['hullSideTop', { side }],
+    ['hullSideCable', { side: -side }], ['hullSideTop', { side: -side }]] }] });
+const brazilTools = (set: string[], side: 1 | -1): DecorManifestRow =>
+  ({ kit: 'tools', p: 1, v: { set }, slot: ['fleetCargo', { routes: [['fender', { side, zFrac: 0.10, along: true }],
+    ['fender', { side, zFrac: -0.25, along: true }], ['fender', { side: -side, zFrac: -0.25, along: true }], ['hullRear', {}]] }] });
+const brazilLinks = (n: number, linkW: number): DecorManifestRow =>
+  ({ kit: 'tracks', p: 1, v: { n, linkW }, slot: ['fleetCargo', { routes: [['glacis', {}]] }] });
 const BRAZIL_MANIFESTS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
-  osorio_p2: brazilSmallKit, osorio_p1: brazilSmallKit, tamoyo1: brazilSmallKit, tamoyo3: brazilSmallKit,
-  ee_t3_osorio: brazilSmallKit, ee_t4_osorio: brazilSmallKit,
-  x1_pioneiro: brazilBowKit, x1a2_carcara: brazilBowKit,
+  x1_pioneiro: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.0, 1), brazilLinks(4, 0.30),
+    brazilLoad('tarp', { v: 'fat', len: 0.8 }, -1), brazilLoad('jerry', { n: 2, water: false }, 1),
+    brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.3), brazilTools(['shovel', 'axe'], -1),
+  ],
+  x1a2_carcara: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.4, -1), brazilLinks(4, 0.32),
+    brazilLoad('cargo', { v: 'bedroll-pair' }, 1), brazilLoad('jerry', { n: 2, water: true }, -1),
+    brazilLoad('cargo', { v: 'fifty-cal-ammo-can' }, 1, 0.35), brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.35),
+  ],
+  tamoyo1: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.6, 1),
+    brazilLoad('tarp', { v: 'fat', len: 1.0 }, -1), brazilLoad('cargo', { v: 'mechanics-tool-chest' }, 1),
+    brazilLoad('packs', { n: 3 }, 1, 0.35), brazilTools(['shovel', 'axe'], 1),
+    brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.6),
+  ],
+  tamoyo3: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.6, -1), brazilLoad('cargo', { v: 'crew-backpack' }, 1, 0.5),
+    brazilLoad('camonet', { v: 'roll', len: 1.0 }, 1), brazilLoad('jerry', { n: 2, water: false }, -1),
+    brazilLoad('cargo', { v: 'wood-ammo-crate' }, 1, 0.35), brazilLoad('packs', { n: 2 }, -1, 0.35),
+  ],
+  osorio_p1: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.6, 1),
+    brazilLoad('tarp', { v: 'fat', len: 1.1 }, -1), brazilLoad('cargo', { v: 'mechanics-tool-chest' }, 1),
+    brazilLoad('jerry', { n: 2, water: true }, 1, 0.4), brazilLoad('cargo', { v: 'crew-backpack' }, -1, 0.4),
+    brazilTools(['shovel', 'crowbar'], -1),
+  ],
+  osorio_p2: (): DecorManifestRow[] => [
+    brazilShackles, brazilCable(2.6, -1),
+    brazilLoad('camonet', { v: 'roll', len: 1.1 }, 1), brazilLoad('cargo', { v: 'wood-ammo-crate' }, -1),
+    brazilLoad('jerry', { n: 2, water: false }, -1, 0.4), brazilLoad('cargo', { v: 'long-duffel' }, 1, 0.4),
+    brazilTools(['shovel', 'axe'], 1),
+  ],
+  ee_t3_osorio: (): DecorManifestRow[] => [
+    brazilShackles,
+    eeLoad('cargo', { v: 'large-rucksack' }, -1), eeLoad('cargo', { v: 'camo-net-bag' }, 1),
+    eeLoad('cargo', { v: 'blue-water-can' }, 1, 0.4), eeLoad('cargo', { v: 'fifty-cal-ammo-can' }, -1, 0.4),
+    eeLoad('cargo', { v: 'ration-case' }, 1, 0.6),
+  ],
+  ee_t4_osorio: (): DecorManifestRow[] => [
+    brazilShackles,
+    eeLoad('cargo', { v: 'large-rucksack' }, 1), eeLoad('cargo', { v: 'bedroll-pair' }, -1),
+    eeLoad('cargo', { v: 'spare-optics-case' }, 1, 0.4), eeLoad('cargo', { v: 'medical-case' }, -1, 0.4),
+    eeLoad('cargo', { v: 'blue-water-can' }, 1, 0.6),
+  ],
 });
 // Release 269 (the owner 2026-11-05: "make the m113s have a lot more personal equipment annd decorations and tank
 // gear"; Main: the crew kit through the decor layer): the four M113s' crew and field kit where the Australian service

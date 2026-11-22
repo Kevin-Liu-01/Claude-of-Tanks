@@ -71,3 +71,48 @@ Published: 43.7 t / 41.0 t, 1,040 hp MWM TBD 234, 70 km/h, 45 km/h reverse (Nita
 traverse, +20/-10. The P.2 fires the French 120 mm rounds of its trials at the AMX-40's footing; the P.1 the L7's rounds at
 the fleet's 105 mm footing. Fire control: the P.2's stabilised VS580 sights (accuracy 0.29, aim 1.75 s); the P.1's sights
 mechanically linked (Forças Terrestres: poorer on the move: bloom x1.15).
+
+## Round brazil-kit-274 (2026-11-20): EE-T3/T4 chevrons and the Brazilian crew kit
+
+Owner, 2026-11-20: "for the eet3 osorio, osorio t4, make the front turret attachment things in front of cheeks chevrons
+like the leopard 2a4 instead of those weird add ons because they look kind of goofy. also add more add ons attachments
+and tank decorations on all brazilian tanks."
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 1 | EE-T3/T4 cheek kit | thin wedge plates riding the cheeks' upper facets to a spike past the mantlet (T3 tip z 1.94, T4 2.24) | two chevron wedges (profiles/osorioChevron.ts) on the Leopard 2A4M's arrowhead: our plain leo2a4 keeps the square block (LEOPARD2A4_FAMILY_FRONT 'block'), the arrowhead is the 2A4M's 2A6-look front (leopard2A4Wedge.ts) |
+| 2 | Wedge plan | wall's corner to an apex at the gun | the side armour's outer face carried forward from z 0.88, a 2 cm turn in, the swept face from the shoulder (T3 x 1.10 z 1.56, T4 1.16/1.68) to a blunt tip beside the mantlet (T3 0.515/1.98, T4 0.555/2.18) |
+| 3 | Wedge top | one sloped plate | the lowest of the flat roof, a 32-degree front slope rising from the face's top edge (T3 0.40, T4 0.46) and a 58-degree outer bevel; floor rising 0.30 (T4 0.26) a metre past the turn; strips cut on the planes' meeting lines, every face planar |
+| 4 | Side armour's front pack | face swept back to z 0.95 | square at z 0.87, 1 cm behind the wedge's root |
+| 5 | Crew kit (all eight) | the tow shackles only (the tools row never seated) | 6-8 seated pieces per id through the decoration layer (decorations.ts BRAZIL_MANIFESTS): cables, spare links, tarps, nets, cans, crates, packs and tools on routed seats off the turret roofs |
+
+Clearances: the wedges' inner faces stay at the recess's 0.475 m (the mantlet 0.86-0.90 m wide, the gun's sweep inside
+it); the roots 2 cm ahead of the gunner's sight head and its visor. Hit zones follow the drawn wedges through the
+combat-anatomy regeneration (the turret bucket's envelope and collision cells).
+
+### P.1 and P.2 turrets (owner 2026-11-20 via Main: "unique turrets"; ruled "Keep record, bolder kit")
+
+The record keeps one turret: Vickers designed and supplied both and they were interchangeable (Bastos, ARMOR, Forças
+Terrestres 2015). The owner chose to keep the shared shell and make each mark's own kit read bolder; the EE-T3/T4 are
+byte-identical to their approved build.
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 6 | P.2 Philips thermal head | 0.12 m drum and dome | 0.15 m drum and dome with a hood over its window |
+| 7 | P.2 laser-warning detector (Nita) | a 12 cm stub on the rear roof | a squat head with four quadrant windows on a 0.22 m post |
+| 8 | P.2 right-wall basket | top rail 0.56 m, three loads | top rail 0.64 m, four loads heaped to the top rail |
+| 9 | P.1 right-wall grid | 13 mm bars, 16 mm slats | 20 mm bars, 26 mm slats: a heavier flat grid against the P.2's deep basket |
+
+Fender mirrors stay off the P.1: the photo review behind this build found none on either prototype (osorio.ts), though
+the research table lists them.
+
+### EE-T3/T4 mantlets (owner 2026-11-21: "make their mantelts different but also make both actually match up and align with the cheeks"; then "the eet3 mantlet is just flat and horizontal. fix both so theyre more like the leopard 2 mantlets in how they also match the top and bottom angle o the turrets/cheeks" and "it looks like the mantlets guns dont look properly attached")
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 10 | Both mantlets' shape | the P.2's flat 0.86 m plate and canvas cover, 0.67 m behind the chevron tips | one block riding the gun that fills the slot between the chevrons wall to wall (13 mm running clearance a side), as the Leopard 2A5/2A6's mantlet wedge does between its turret wedges (osorio.ts buildEeMantlet). Its top is the chevrons' own top (osorioChevron.ts osorioChevronSurfaces) carried across the slot: their front slope rises from the face to the roof, each half on its side's plane, meeting in a low ridge over the gun. Its underside beside the gun is their floor, rising toward the tips. Its nose reaches their tips |
+| 11 | EE-T3 mantlet | (as above) | a pointed wedge in plan, its faces parallel to the chevrons' faces (one arrowhead line nose to tips); the coaxial's port and the auxiliary sight's square to the faces; the gun leaves through an oval collar and seal ring past the point |
+| 12 | EE-T4 mantlet | the plate with a 0.20 m bolted block on its face | a flat face square to the gun, flush with the tips, its top edge gabled on the two planes; bolted face plates either side of the gun, the coaxial's port under a hood; the gun leaves through a hooded collar and seal ring |
+| 13 | Brow and cradle | the Vickers brow over the recess | the brow dropped on the EE pair (the mantlets' tops run up to the roof). The gun cradle's round housing about the trunnion axis (r 0.2395 m) stands out of the recess's front block just inside the mantlet's back face. It covers the gun line at every elevation and the mantlet, turning on the same axis, never meets it (gun-junction census CLOSED, 5 poses) |
+| 14 | Under both | the old plate, collar and canvas cover | under the gun, a chin traces the old mount's round underside depth for depth, then closes round the tube. The gun-depression sweep holds both published curves: the EE-T3's within 0.07 degrees (yaw 38), the EE-T4's within 0.18 (yaw 103), inside the 0.35 tolerance. Nothing is blocked at full elevation |
+| 15 | Gun height (owner 2026-11-21: "for both, just move the guns up a lil so the guns are centered in the mantelts") | the trunnion at 0.28 m, the gun along the mantlets' foot | the EE-T3's raised 12.5 cm and the EE-T4's 15.5 cm (osorio.ts EE_GUN_RISE), each to the middle of its mantlet's face. The mantlets stay on the chevrons, and the cradle follows the trunnion. brazilSpecs.ts gunPivot and the concept record's gunLocal follow. Re-measured depression is published: the full -10 to 140 degrees (EE-T3) and 120 (EE-T4), the drums astern cleared at +0.9 (nationalGunClearance PASS) |

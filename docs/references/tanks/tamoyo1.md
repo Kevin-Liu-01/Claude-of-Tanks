@@ -38,3 +38,33 @@ Encyclopedia OSXAwcQ.png): spare links on the glacis, guarded twin lamps, mirror
 
 Welded steel (the Tamoyo 1: hull front 40 mm, sides 19 mm, turret front 40, shield 50, sides 25 mm); the Tamoyo 3's
 composite and spaced turret front and front-hull cavity armour at a light MBT's footing (no published figure).
+
+## Round brazil-kit-274 (2026-11-20): a turret of its own each
+
+Owner, 2026-11-20 (via Main): "update the osorio 120, tamoyo 3, osorio 105 and tamoyo 3 now with unique turrets too"
+(the second "tamoyo 3" read as the Tamoyo 1). Both turrets stood on one loft and read alike; they are pushed apart on
+their own records, guns, trunnions and armour unchanged.
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 1 | Tamoyo 1 turret plan | one width from the bustle to the wedge | narrowing 22 % to the wedge's tip and 18 % to the bustle's rear plate: low and rounded, its roof at the published 2.2 m |
+| 2 | Tamoyo 1 roof edge | a sharp slab edge | a 6 cm by 8 cm bevel all round; the cupola sunk 3 cm so its base covers the bevel |
+| 3 | Tamoyo 3 front | chamfered 0.26 m a side, its top 0.12 m under the roof | chamfered 0.17 m, its top 0.05 m under the roof: a fuller, squarer spaced front |
+| 4 | Tamoyo 3 bustle | the rear plate and the cans' bracket | the bustle rack Vesp draws across the rear plate (rails, uprights, a mesh floor), the bracket inside it |
+| 5 | Tamoyo 3 roof | 2.315 m | the published 2.35 m (+3.5 cm): the taller of the two |
+
+### r10 (2026-11-21): the Tamoyo 3's own front
+
+Owner, 2026-11-21, on the r9 before/after still: "we gotta update this turret too". r9's Tamoyo 3 still read as a plain
+box: its "chamfered corners" were 0.17 m. The Tamoyo 3 article (Tanks Encyclopedia) describes the turret as "Leopard 2
+style", of straight plates. Its cheeks are 55+50+55 mm "angled at 45" and tapered upward about 10 degrees (about 235 mm
+line of sight), and its sides are 27+50+27 mm at about 10 degrees. The collector's photograph shows a central block between
+angled cheek facets.
+
+| # | Read | Was | Now |
+|---|---|---|---|
+| 6 | Tamoyo 3 cheeks | a flat front 1.86 m wide, 0.17 m chamfers | each cheek a facet swept back 45 degrees in plan from the gun shield's 1.2 m face to the side wall, leaning back as the side walls do (one straight knee line); the shield's face plate and louvres narrowed to stay inside it |
+| 7 | Tamoyo 3 gunner's sight | a tall sight box on the roof | the Kollmorgen M220 head low in a roof well at the front right, a small plate welded either side |
+| 8 | Tamoyo 3 roof | ventilator mid-left, no other covers | the met sensor's cover front left with the loader's periscope behind it, the NBC cover at the middle rear, the magazine's blow-out panel on the rear left |
+| 9 | Tamoyo 3 dischargers | two by three on brackets at mid-bustle | two by two at each rear corner (the record's "2x2 dischargers at the rear corners"; the article's four a side) |
+| 10 | Tamoyo 3 bustle rack floor | 1 cm over the bustle's floor | 7 cm over it: the r9 rack's mesh floor came 2.7 cm into the engine deck's fittings as the turret turned (the turret-deck audit, integ 274.0) |
