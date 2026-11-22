@@ -284,7 +284,7 @@ function state(name) {
   // options on a durable denial; a touch layout never takes the pointer)
   if(name==='notices'){
     multiplayer('offline');
-    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.show({id:'cot-pointer-lock',className:'cot-lock-notice',
+    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.condition({id:'cot-pointer-lock',className:'cot-lock-notice',
       severity:'warning',text:t('pointerLock.toast.unavailable'),durationMs:null,dismissible:false});
     for(let i=0;i<3;i++)hud.update(frame);
   }

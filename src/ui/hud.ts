@@ -71,7 +71,7 @@ import type { DriveTelemetry } from './driveTelemetry.ts';
 import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
 import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
-import { createBattleEventLane } from './battleNoticeEvents.ts';
+import { BATTLE_EVENT, createBattleEventLane, type BattleEvent } from './battleNoticeEvents.ts';
 import { formatKeyLineWith, tilePrompt } from './keyPrompt.ts';
 import type { ActionId } from '../game/input.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
@@ -2980,6 +2980,11 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
       return label && label !== '—' ? { kind: 'key', label } : { kind: 'none' };
     }, line, actions, vars, document);
   const events = createBattleEventLane({ root, doc: document, keyLine });
+  // (an event from a module outside the HUD: air support's refusals and shoot-downs, battleNoticeEvents.ts BATTLE_EVENT)
+  bus.on(BATTLE_EVENT, (payload) => {
+    const event = payload as BattleEvent | null | undefined;
+    if (event && typeof event.text === 'string' && typeof event.priority === 'number') events.raise(event);
+  });
 
   // ========================= SPOTTING SECTION ===============================
   // Sixth-sense lamp: 'player:spotted' (src/game/state.ts spotting wiring)

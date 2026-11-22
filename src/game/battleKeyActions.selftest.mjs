@@ -33,7 +33,8 @@ const actions = read('./playerBattleActions.ts');
 assert.match(actions, /onAction\('autoAim', \(\) => \{\n\s*if \(!battleInputAllowed\(\)\) return;\n\s*bus\.emit\('ui:autoAimToggle', \{\}\);/, 'T emits the same toggle the touch button does');
 assert.match(actions, /onAction\('hitboxOverlay', \(\) => \{[\s\S]*?const on = !input\.getSettings\(\)\.armorAimOverlay;\n\s*input\.setSetting\('armorAimOverlay', on\);\n\s*bus\.emit\('ui:armorOverlayState', \{ on \}\);/, 'H flips the live armour overlay setting and announces it');
 const hud = read('../ui/hud.ts');
-assert.match(hud, /on\('ui:armorOverlayState', \(\{ on \}\) => \{\n\s*showAlert\(t\(on \? 'hud\.alert\.armorOverlayOn' : 'hud\.alert\.armorOverlayOff'\)/, 'the HUD confirms the overlay state');
+// (notices-audit-275) the confirmation is the battle notices' event lane's, its key line the overlay's own key
+assert.match(hud, /on\('ui:armorOverlayState', \(\{ on \}\) => \{\n\s*events\.raise\(\{ text: t\(on \? 'hud\.alert\.armorOverlayOn' : 'hud\.alert\.armorOverlayOff'\)/, 'the HUD confirms the overlay state');
 
 // --- the auto-aim runtime no longer needs a touch layout (the runtime receipt covers acquisition)
 const runtimeSource = read('./mobileAutoAimRuntime.ts');
@@ -88,6 +89,7 @@ assert.doesNotMatch(read('./battleHudFrameRuntime.ts'), /keys\.missile =/, 'the 
   assert.equal(on, off, 'one alert for the setting');
   assert.equal(on.options.text, 'ARMOR OVERLAY ON', 'showing the newer state');
   assert.equal(on.count, 1, 'not counted as a repeat');
-  assert.match(read('../ui/hud.ts'), /tone: on \? 'success' : 'info' \}, 'armorOverlay'\);/, 'the HUD raises the overlay alert in its slot');
+  // (notices-audit-275: the event lane keeps one event per slot, battleNoticeEvents.selftest)
+  assert.match(read('../ui/hud.ts'), /icon: 'armorFlashlight', slot: 'armorOverlay',/, 'the HUD raises the overlay alert in its slot');
 }
 console.log('battleKeyActions.selftest: T auto-aim and H armour overlay bindings, desktop auto-aim runtime, rocket jump keycap and touch button, and the row tiles\' table keys (Q ATGM, C reload, E suspension)');

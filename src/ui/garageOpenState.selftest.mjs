@@ -351,7 +351,7 @@ const { createGarageScreen, createLazyPanelToggle, createLazyOpener } = garageSc
     'the filter button is the lazy toggle (case 6 drives it)');
   // (integration IR3) loaders-workers' opener chunk sits under the toggle: a press after a failed load reloads the page
   // (components/loadFailure.ts) before it reaches the toggle
-  assert.match(source, /facetToggle\.addEventListener\('click', \(\) => \{\n\s+emit\('ui:click', \{\}\);\n(?:\s+\/\/[^\n]*\n)?\s+if \(reloadsForFailure\(facetToggle, 'cot-facets-load', t\('loadFailed\.generic'\)\)\) return;\n\s+facetPanelToggle\.press\(\);\n\s+\}\);/,
+  assert.match(source, /facetToggle\.addEventListener\('click', \(\) => \{\n\s+emit\('ui:click', \{\}\);\n(?:\s+\/\/[^\n]*\n)?\s+if \(reloadsForFailure\(facetToggle, 'cot-facets-load', t\('garage\.loadFailed\.filters'\)\)\) return;\n\s+facetPanelToggle\.press\(\);\n\s+\}\);/,
     'and every press goes through it');
   assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{\n\s+const loading = facetPanel\.load\(\);/,
     'the toggle loads the opener chunk');
