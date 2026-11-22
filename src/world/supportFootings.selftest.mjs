@@ -21,6 +21,7 @@ import { LANDMARK_BUILDERS } from './landmarks/index.ts';
 import { LANDMARK_KINDS, resolveLandmarkParams } from './landmarks/plan.ts';
 import { REGIONAL_BUCKETS, streamFrom } from './maps/regional/geometry.ts';
 import { sampleObbGround } from './propPlacement.ts';
+import { bridgeSupportFootprints } from './maps/mapKits.ts';
 
 /** The ground under a support is read this far apart here (the builders read it every 0.5 m). */
 const DENSE_M = 0.2;
@@ -104,7 +105,7 @@ for (const mapId of MAP_IDS) {
   if (mapId === 'polders') continue;
   assert.ok(builder, `${mapId}: its ${decks.length} bridge deck(s) are built by a builder this receipt knows (report its footings here)`);
   const bund = decks.reduce((best, d) => (!best || d.x > best.x ? d : best), null);
-  let worst = Infinity, count = 0;
+  let worst = Infinity, count = 0, piers = 0;
   for (const deck of decks) {
     decksSeen++;
     const buckets = new Proxy({}, { get: (t, k) => (t[k] ??= []) }), obstacles = [], colliders = [];
@@ -128,8 +129,17 @@ for (const mapId of MAP_IDS) {
     });
     failures.push(...result.failures);
     worst = Math.min(worst, result.worst); count += supports.length;
+    piers += supports.filter((f) => f.label.startsWith('pier')).length;
+    // (the owner: "cliff bridges pillars are wayy too thin") the gorge viaduct's piers stand 9 m at the springing and
+    // batter out to 13-14 m at the gorge floor
+    if (mapId === 'cliffbridge') for (const f of supports.filter((s) => s.label.startsWith('pier'))) {
+      assert.ok(f.x1 - f.x0 > 13, `cliffbridge ${f.label}: its foot ${(f.x1 - f.x0).toFixed(1)} m along the road, the viaduct's battered pier`);
+    }
     for (const g of geometries) g.dispose();
   }
+  // the props' scatter keeps out of every pier the kits build (mapKits.ts bridgeSupportFootprints, props.ts's veto)
+  const footprints = bridgeSupportFootprints(mapId, cfg.props?.extraKits ?? null, cfg.props?.riverLandings, field);
+  assert.equal(footprints.length, piers, `${mapId}: the props keep out of each of its ${piers} piers`);
   report.push(`${mapId} ${builder}: ${decks.length} deck(s), ${count} supports, the shallowest ${worst.toFixed(2)} m under its ground`);
 }
 assert.ok(decksSeen >= 6, 'the decks this receipt reads (Cliffbridge, Amberford, Blackglass four)');
