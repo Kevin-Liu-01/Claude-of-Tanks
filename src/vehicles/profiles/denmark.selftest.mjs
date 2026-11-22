@@ -1,7 +1,8 @@
 // The Danish Army line (release 265; docs/history/research/denmark-line-265.md): the native fixture each id's photo packet
 // names (docs/references/photos/leopard-*-dk*-20261029.json). At both qualities: the as-built envelope against its packet
-// (widthM the X extent, overallLengthM the Z extent, tallestM the highest point, within 3%); the Leopard 1 DKs' welded
-// 1A3 turret with each mark's kit; the 2A5 DK's Elop sight and bar armour, without the German builds' remote 30 mm
+// (widthM the X extent, overallLengthM the Z extent, tallestM the highest point, within 3%); the Leopard 1 DKs' family
+// turrets (275: the 1A3 DK the 1A2A1's casting, the 1A5 DKs the 1A5's B&V turret) with each mark's kit; the 2A5 DK's Elop
+// sight and bar armour, without the German builds' remote 30 mm
 // station; the 2A7 DK's ribbed modules and Barracuda cover, without it too; the Centurion Mk 5/2 DK's 1985 fire control
 // (the rangefinder box on the mantlet's right, the thermal sight box on the roof's right front); the CV9035 DK on the CV90 Mk IV (the owner 2026-10-30) with the 35 mm and no
 // missile launcher (the M41 DK-1 is m41.selftest.mjs's). Then the tree and the team country: one Denmark tree rooted on the 1A3 DK, the Christian II in
@@ -54,11 +55,11 @@ for (const [id, file] of Object.entries(PACKETS)) {
       tank.root.traverse((o) => { if (/remote 30 mm cannon/i.test(o.name ?? '')) remote30 = true; });
       if (id.startsWith('leo1')) {
         const r = turret.userData.leopard1DkTurretReceipt;
-        assert.ok(r?.weldedTurret, `${id} ${quality}: the welded 1A3 turret`);
+        assert.equal(r?.familyTurret, id === 'leo1a3dk' ? 'cast-one-piece' : 'cast-bv',
+          `${id} ${quality}: the family turret (the 1A3 DK the 1A2A1's casting, the 1A5 DKs the 1A5's B&V turret)`);
         assert.equal(r.emes18, id !== 'leo1a3dk', `${id} ${quality}: EMES 18 on the 1A5 DKs only`);
         assert.equal(r.rangefinderPortsOpen, id === 'leo1a3dk', `${id} ${quality}: the TEM 2A ports open on the 1A3 DK only`);
         assert.equal(r.airConditioningHousing, id === 'leo1a5dk1', `${id} ${quality}: the DK-1's air conditioning housing`);
-        assert.ok(r.cheekRoot[0] < r.halfWidth, `${id}: the pointed plan front`);
       } else if (id === 'cv9035dk') {
         assert.equal(spec.role, 'ifv', `${id}: an IFV`);
         const gun = tank.root.getObjectByName('rig_gun').userData.cv9035DkReceipt;

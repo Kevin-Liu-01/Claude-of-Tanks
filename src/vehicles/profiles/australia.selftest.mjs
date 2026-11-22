@@ -24,7 +24,9 @@ const IDS = {
   'm113a1_fsv': { tier: 1, role: 'light', caliber: 76, packet: M113, muzzle: null },
   'm113a1_mrv': { tier: 1, role: 'light', caliber: 76, packet: M113, muzzle: null },
   'm113as4': { tier: 3, role: 'ifv', caliber: 12.7, packet: M113, muzzle: null },
-  'leopard_as1': { tier: 1, role: 'mbt', caliber: 105, packet: 'aus-leopard-as1-20261102.json', muzzle: 6.078 },
+  // 275 (owner: the export Leopards on the 1A2 and 1A5 turret designs and mantlets): the family's one-piece mask puts the
+  // trunnion at the German 1A5's 1.15 m station, so the muzzle stands where the 1A5's does (6.078 m on the welded turret)
+  'leopard_as1': { tier: 1, role: 'mbt', caliber: 105, packet: 'aus-leopard-as1-20261102.json', muzzle: 6.008 },
   // 269 integration (Main's ruling): 6.030 m is measured on 268's owner-approved M1A1 shell with the measured M256 (5.80 was
   // pinned on the pre-268 shell); its rebuild lane aus-m1a1-268-269 rides 270
   'm1a1_aim_sa_aus': { tier: 8, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 6.030 },

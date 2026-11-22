@@ -92,7 +92,7 @@ m113as4.visual = { ...m113as4.visual, ...ausDisruptive('22A') };
 // 90 gun tanks, 1976-2007 (103 with the bridgelayers and recovery vehicles): a Leopard 1A3 with the welded spaced turret
 // and the Belgian SABCA fire control with its laser rangefinder; the 105 mm L7A3, the MTU MB 838 of 830 PS, 42.4 t,
 // 65 km/h; 7.090 m of hull, 9.543 m over the gun, 3.370 m wide, 2.764 m to the top (armedconflicts.com; Wikipedia). On the
-// Danish line's welded-turret build ('as1' mark); its fire control quicker to lay than the 1A3 DK's optical rangefinder.
+// Danish line's build ('as1' mark), on the family's one-piece cast turret (owner 2026-11-21); its fire control quicker to lay than the 1A3 DK's optical rangefinder.
 const leopard_as1 = australian('leopard_as1', 'leo1a3dk', 'Leopard AS1', 'cold-war', 'mbt');
 Object.assign(leopard_as1.dims, { hullLengthM: 7.09, overallLengthM: 9.543, widthM: 3.37, heightM: 2.764 });
 Object.assign(leopard_as1, { weightTons: 42.4, enginePowerHp: 830, topSpeedKmh: 65 });
@@ -189,9 +189,8 @@ m113a1_mrv.gunPitchByYawDeg = [[0, -9.7], [23, -9.7], [27, -9], [28, -6.1], [29,
 m113as4.gunPitchByYawDeg = [[0, -10], [5, -10], [6, -8.6], [7, -8], [8, -7.9], [30, -7.9], [31, -8.4], [32, -9.9],
   [34, -9.6], [35, -9.5], [40, -9.5], [42, -9.6], [43, -9.5], [47, -9.5], [48, -10], [121, -10], [125, -9.2],
   [127, -9.2], [128, -9.3], [129, -10], [180, -10]];
-leopard_as1.gunPitchByYawDeg = [[0, -9], [147, -9], [148, -7.5], [149, -5.4], [150, -4.9], [155, -3], [156, -2.5],
-  [159, -2], [161, -2], [162, -2.4], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2], [173, -0.1],
-  [175, -1.5], [176, -1.9], [177, -2.7], [180, -2.7]];
+leopard_as1.gunPitchByYawDeg = [[0, -9], [148, -9], [149, -7.9], [150, -7.3], [154, -5.4], [155, -4.6], [158, -3.8],
+  [161, -3.8], [162, -4.2], [166, -2], [167, -1.8], [172, -1.6], [173, -2], [176, -3.6], [177, -4.4], [180, -4.4]];
 m1a1_aim_sa_aus.gunPitchByYawDeg = [[0, -10], [18, -10], [21, -9.9], [33, -9.7], [35, -10], [137, -10], [138, -9.5],
   [139, -7.7], [141, -4.7], [142, -3.4], [143, -2.2], [144, -1.5], [147, -1.2], [160, -0.9], [161, -0.6], [179, -0.5],
   [180, -0.8]];

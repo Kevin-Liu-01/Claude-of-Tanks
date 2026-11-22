@@ -582,6 +582,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 268: the Flakpanzer Gepard 1A2 on the shared Leopard 1 hull: frame, bores, crew, height, gun and hull clearance
     'src/vehicles/profiles/gepard.selftest.mjs',
     'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
+    // 275 (owner: "make all leopard 1a... tanks' turrets be same height"): every Leopard 1 on the family's one ring with
+    // its roof at the published 2.39 m, whichever turret it carries, and none missing from the family
+    'src/vehicles/profiles/leopard1Turret.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
     'src/vehicles/profiles/abramsTuskCheek.selftest.mjs',
