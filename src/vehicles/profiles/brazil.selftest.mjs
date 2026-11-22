@@ -89,11 +89,13 @@ assert.deepEqual([p1.rightGrid, p2.rightGrid, p1.leftBasket, p2.leftBasket, p1.g
 assert.deepEqual([receipt('tamoyo1', 'tamoyoTurretReceipt').sideSkirts, receipt('tamoyo3', 'tamoyoTurretReceipt').sideSkirts], [true, false],
   'the Tamoyo 1 on its side plates, the Tamoyo 3 on open gear');
 // (brazil-kit-274, owner 2026-11-20: a turret of its own each) the Tamoyo 1's low, bevelled, tapering turret, the
-// Tamoyo 3's taller, square slab turret with its bustle rack
+// Tamoyo 3's taller turret with its bustle rack and (r10) its 45-degree cheek facets and two by two dischargers aft
 {
   const t1r = receipt('tamoyo1', 'tamoyoTurretReceipt'), t3r = receipt('tamoyo3', 'tamoyoTurretReceipt');
   assert.deepEqual([t1r.roofBevel, t3r.roofBevel, t1r.bustleRack, t3r.bustleRack], [true, false, false, true],
     'the Tamoyo 1\'s bevelled roof, the Tamoyo 3\'s bustle rack');
+  assert.deepEqual([t1r.cheekFacets, t3r.cheekFacets, t1r.dischargers, t3r.dischargers], [0, 45, 8, 8],
+    'the Tamoyo 3\'s cheek facets swept 45 degrees, four dischargers a side on both marks');
 }
 const t3 = receipt('ee_t3_osorio', 'osorioTurretReceipt'), t4 = receipt('ee_t4_osorio', 'osorioTurretReceipt');
 assert.deepEqual([p2.armourKit, t3.armourKit, t4.armourKit, t3.activeProtection, t4.activeProtection, t3.remoteStation],
