@@ -147,16 +147,18 @@
     leaning sheets or 3 cm outside them.
 
 - object292-cheeks-275 (Kevin 2026-11-22, his two surface markups on the flat rear faces at turret-local z 1.098; his
-  look picks from the lane's mockup: cast noses, jammer and laser warner, curved cast shield):
+  look picks from the lane's mockup: cast noses, jammer and laser warner, curved cast shield; on the stills, custom
+  sensors in place of the Shtora):
   - Cheeks: the marked faces were the backs of the T-80U X casting's two nose prisms (profiles/t80uX.ts casting(),
     covered by its ERA there, bare here). The 292 now builds without them (buildT80UXCasting cheekNoses false) and lofts
     its own cast noses from the shell's own section (T80U_X_CAST_ROWS): from 18 cm inside the shell at 4 mm in, out of
     its end at z 1.108, narrowing and dropping to a rounded nose at z 1.48, the inner walls at x 0.44 either side of the
     mantlet, the foot rising 3 cm off the deck the turret sweeps. A CPU ray probe sees 0.112 m2 of the old flat backs
     and none after. The welded wedge boxes stay on the noses.
-  - Sensors: the fleet's shared Shtora-1 OTShU jammer pair (profiles/shtora.ts, the T-84's: armoured box, red lens
-    in its rim, lid), each on a two-leg bolted bracket on its nose ahead of the wedge box, with a laser-warning head on
-    its outboard rear corner. The Kubinka tank carried no Shtora: this is Kevin's ask, not the photographs.
+  - Sensors: custom sensor pods (Kevin on the first stills: "the shtora looks ugly make them custom sensors instead"):
+    a low armoured housing each side in the turret's paint, its front raked over a short lip, a tinted wide-angle
+    window in a dark frame and a small round lens on the raked face, a laser-warning dome on its outboard rear corner,
+    on a solid plinth seated into the nose ahead of the wedge box. The Kubinka tank carried no such kit: Kevin's ask.
   - Smoke: the T-80BV's eight 902B Tucha tubes, four a side on the casting's upper flank behind the wedge boxes
     (z 0.40-0.64), raked up and out on brackets over a rail and marked as smoke sockets, so the salvo is the eight
     drawn (it was the decor's generic pair of eight; the fleet's drawn-smoke rule, decorations.ts drawsOwnSmoke, keeps
