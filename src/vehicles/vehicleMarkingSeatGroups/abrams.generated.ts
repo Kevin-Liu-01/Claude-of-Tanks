@@ -14,44 +14,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.4419112,
-          0.2911516,
+          -1.4476779,
+          0.2938636,
           -0.6154999
         ],
         "quaternion": [
-          -0.1596191,
-          -0.6888554,
-          -0.1596191,
-          0.6888554
+          -0.164301,
+          -0.6877537,
+          -0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000538
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.4419112,
-          0.2911516,
+          -1.4476779,
+          0.2938636,
           -0.0467999
         ],
         "quaternion": [
-          -0.1596191,
-          -0.6888554,
-          -0.1596191,
-          0.6888554
+          -0.164301,
+          -0.6877537,
+          -0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000538
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -63,44 +63,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.4479798,
-          0.2731843,
+          -1.4496757,
+          0.2758258,
           -1.2253641
         ],
         "quaternion": [
-          -0.1578843,
-          -0.6892551,
-          -0.1578843,
-          0.6892551
+          -0.1597842,
+          -0.6888171,
+          -0.1597842,
+          0.6888171
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1ha",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0002223
+        "maximumSurfaceErrorM": 0.0019767
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.4506969,
-          0.2732115,
+          -1.4567683,
+          0.2759235,
           -0.1244897
         ],
         "quaternion": [
-          -0.1596191,
-          -0.6888554,
-          -0.1596191,
-          0.6888554
+          -0.164301,
+          -0.6877537,
+          -0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1ha",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000557
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -112,44 +112,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.428806,
-          0.3179116,
+          -1.4341184,
+          0.3206236,
           -0.0112999
         ],
         "quaternion": [
-          -0.1596191,
-          -0.6888554,
-          -0.1596191,
-          0.6888554
+          -0.164301,
+          -0.6877537,
+          -0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1_abrams_hc",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000507
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.4288061,
-          0.3179115,
+          1.4341185,
+          0.3206235,
           -0.1146999
         ],
         "quaternion": [
-          -0.1596191,
-          0.6888554,
-          0.1596191,
-          0.6888554
+          -0.164301,
+          0.6877537,
+          0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1_abrams_hc",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000508
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -161,44 +161,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.4182089,
-          0.3394108,
+          1.4232969,
+          0.3421236,
           -0.0629999
         ],
         "quaternion": [
-          -0.1595681,
-          0.6888672,
-          0.1595681,
-          0.6888672
+          -0.1643549,
+          0.6877409,
+          0.1643549,
+          0.6877409
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1_abrams_sa",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000968
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.4168969,
-          0.3374717,
+          1.4200949,
+          0.3401359,
           -1.1774
         ],
         "quaternion": [
-          -0.1578843,
-          0.6892551,
-          0.1578843,
-          0.6892551
+          -0.1612396,
+          0.6884779,
+          0.1612396,
+          0.6884779
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1_abrams_sa",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000483
+        "maximumSurfaceErrorM": 0.0022425
       }
     ]
   },
@@ -210,22 +210,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.2703106,
-          0.6415516,
+          1.2701273,
+          0.6442636,
           0.2576501
         ],
         "quaternion": [
-          -0.1596191,
-          0.6888554,
-          0.1596191,
-          0.6888554
+          -0.164301,
+          0.6877537,
+          0.164301,
+          0.6877537
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m1a1_abrams_aim",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000151
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
@@ -259,44 +259,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.475051,
-          0.3098442,
-          -0.414995
+          1.4493544,
+          0.3759978,
+          -0.4148961
         ],
         "quaternion": [
-          -0.1569283,
-          0.678221,
-          0.1618352,
-          0.6994277
+          -0.1619877,
+          0.6822899,
+          0.1646798,
+          0.6936288
         ],
         "surfaceMesh": "m1a2_sepv3_ghillie_turret_net",
         "anchorProfile": "m1a1_abrams_fep",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0017246
+        "maximumSurfaceErrorM": 0.0019485
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          -1.4734763,
-          0.3071923,
-          -0.2486508
+          -1.4790269,
+          0.3099028,
+          -0.2486481
         ],
         "quaternion": [
-          -0.1595138,
-          -0.6775252,
-          -0.1645428,
-          0.6988853
+          -0.1641713,
+          -0.6876217,
+          -0.1642449,
+          0.6879301
         ],
         "surfaceMesh": "m1a2_sepv3_ghillie_turret_net",
         "anchorProfile": "m1a1_abrams_fep",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.003348
+        "maximumSurfaceErrorM": 0.0010481
       }
     ]
   },

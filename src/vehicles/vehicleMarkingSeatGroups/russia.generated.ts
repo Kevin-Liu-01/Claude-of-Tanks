@@ -83,68 +83,46 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.22,
+        "size": 0.24,
         "pos": [
-          1.4561296,
-          0.2903465,
-          -0.2987863
+          1.0069755,
+          0.3490828,
+          -0.5742865
         ],
         "quaternion": [
-          -0.0186289,
-          0.6312795,
-          0.0228698,
-          0.7749942
+          -0.316676,
+          0.7538009,
+          0.223001,
+          0.5308212
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0038482
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.22,
-        "pos": [
-          -1.4561296,
-          0.2903465,
-          -0.2987863
-        ],
-        "quaternion": [
-          -0.0186289,
-          -0.6312796,
-          -0.0228698,
-          0.7749942
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0038482
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0686798
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          -1.4121064,
-          0.5192377,
-          -0.5605697
+          -0.9831718,
+          0.4306251,
+          -0.4328968
         ],
         "quaternion": [
-          -0.2117147,
-          -0.674668,
-          -0.2117147,
-          0.674668
+          -0.3288254,
+          -0.7088475,
+          -0.2625991,
+          0.5660838
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "t62_1975",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0051674
       }
     ]
   },
