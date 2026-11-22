@@ -10,6 +10,8 @@ import { airSpinPitches, airSpinSense } from './hullThrusters.ts';
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
   'landingImpactMps', '_autoTraverse'] as const;
+/** The checkpoint's leading scalars by name, in their order (a migration keyframe reads a few of them alone: 276). */
+export const MOVEMENT_PREDICTION_SCALARS: readonly (typeof SCALARS[number])[] = SCALARS;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
 /** Where the hit/recoil rock rode until audit M9 (2026-11-02; presentation only since): kept so the layout stands. */

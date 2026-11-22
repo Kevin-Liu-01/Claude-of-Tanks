@@ -24,9 +24,13 @@
 //     spawns, their slot draws spent).
 // [7] the authority's own state rides the checkpoint (NewModeCheckpoint.host): the combat stream, the fire tick, the route
 //     push's clocks and targets, the wreck grid's phase and the spotting, restored as captured.
-// [8] the integrator a row does not carry (MigrationEntityExtras.integrator): from the keyframe alone every part as the old
-//     hull's (the bloom, the slew, the last speed, the rollover's clock, the held posture, the rock and the spring); from a
-//     newer row only the bloom and the slew (round 1 review: the rest belongs with the pose the newer row seats).
+// [8] the hull a row rounds or does not carry (276: MigrationEntityExtras.hull, which took over 275's integrator parts):
+//     from the keyframe alone every part as the old hull's (the bloom, the slew, the last speed, the rollover's clock, the
+//     held posture, the rock and the spring among the movement checkpoint's, and the pose exact); from a newer row only its
+//     drive (the bloom, the slew, the spool and the turn rate: round 1 review, the rest belongs with the pose the row seats).
+// 276: a resume replays its window where it can (migrationState.ts replayWindow; migrationTwins holds it). Every case here
+// with a newer frame is the reading a resume takes where it cannot (a window past MAX_REPLAY_STEPS, a keyframe from before
+// the battle clock): the resume below drops the replay, as resumeStateFromRetained leaves it out then.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -55,6 +59,8 @@ const sealKeyframe = (actor, tick, era) => decodeMigrationKeyframe(encodeMigrati
   entities: captureEntityExtras(actor), frame: hostFrame(actor, tick, era) }));
 function resume(make, keyframe, latest, told) {
   const { state } = resumeStateFromRetained(keyframe, 0, latest, latest ? 500 : null, [], [], [...told]);
+  // the 275 reading of the window (276 replays it where it can: header)
+  delete state.replay;
   const fresh = make({ tick: state.tick, battleTimeMs: state.battleTimeMs, ...(state.battleS !== undefined ? { battleS: state.battleS } : {}) });
   applyResumeState(fresh, state);
   return fresh;
@@ -480,7 +486,7 @@ console.log('[7] the authority\'s own state rides the checkpoint and is restored
   old.stop(); fresh.stop();
 }
 
-console.log('[8] the integrator a row does not carry: every part from the keyframe alone; from a newer row its bloom and slew');
+console.log('[8] the hull a row rounds or does not carry: every part from the keyframe alone; from a newer row its drive');
 {
   const make = makeHorde(hordeRules());
   const old = make(null), sim = old.authority;
@@ -504,12 +510,15 @@ console.log('[8] the integrator a row does not carry: every part from the keyfra
   const keyframe = sealKeyframe(old, clock.tick, era);
   const fresh = resume(make, keyframe, null, []);
   ok(read(fresh.authority.entityById.get('h0').state) === sealedRead, `from the keyframe alone the new hull holds every part as the old one's (${sealedRead.length} bytes alike)`);
+  const oldHull = sim.entityById.get('h0').state, newHull = fresh.authority.entityById.get('h0').state;
+  ok(['x', 'y', 'z'].every((k) => newHull.pos[k] === oldHull.pos[k]) && ['yaw', 'speed', 'visualPitch', 'visualRoll', 'turretYaw', 'gunPitch', 'atGunLimit', '_spool', 'yawRate']
+    .every((k) => newHull[k] === oldHull[k]), 'and its pose exact (not the row\'s millimetres), its gun limit flag, its spool and its turn rate (276)');
   // the seat's newest frame 0.5 s on: the attitude's parts and the last speed are the newer row's (as a resume without
-  // them seats it), the bloom and the slew the keyframe's
+  // them seats it), the drive the keyframe's
   step(old, 30);
   const latest = hostFrame(old, clock.tick, era);
   const withNewer = resume(make, keyframe, latest, []);
-  const bare = { ...keyframe, entities: keyframe.entities.map(({ integrator: _dropped, ...rest }) => rest) };
+  const bare = { ...keyframe, entities: keyframe.entities.map(({ hull: _dropped, ...rest }) => rest) };
   const seated = resume(make, bare, latest, []);
   const a = JSON.parse(read(withNewer.authority.entityById.get('h0').state)), b = JSON.parse(read(seated.authority.entityById.get('h0').state));
   const parts = ['_prevSpeed', 'rolloverCountdownS', '_rollover', '_hold', '_holdSeat', '_susp', '_spring'];
@@ -519,4 +528,4 @@ console.log('[8] the integrator a row does not carry: every part from the keyfra
 }
 
 if (failures) { console.error(`modeWindowMigration.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('modeWindowMigration.selftest: the battle clock (from the keyframe or a newer frame), the lead seed, a window\'s ring arrivals (Infected and a refused Horde arrival), a begun wave\'s refused arrivals, the stranded tracker, the role deals, the hold ranks, a resume hold\'s due arrivals, the authority\'s own state and the integrator carry over as the old host had them');
+console.log('modeWindowMigration.selftest: the battle clock (from the keyframe or a newer frame), the lead seed, a window\'s ring arrivals (Infected and a refused Horde arrival), a begun wave\'s refused arrivals, the stranded tracker, the role deals, the hold ranks, a resume hold\'s due arrivals, the authority\'s own state and the hull exact carry over as the old host had them');

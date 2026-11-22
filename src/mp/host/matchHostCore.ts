@@ -25,7 +25,7 @@ import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
-  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframeWithin, resumePhaseOf, sealMigrationBlob,
+  applyResumeState, captureEntityExtras, resumeClocksOf, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframeWithin, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
@@ -571,7 +571,7 @@ export function createMatchHostCore({
       // timeline, the ticks spent loading the world and holding for the seats skipped (267)
       // and in the phase the old host was in (audit M1: a countdown with its time left, an ended match with its verdict)
       // the battle it plays (round 3 A3): the resumed battle's, or a fallback restart's own; its WELCOMEs and keyframes carry it
-      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, ...(resume.battleS !== undefined ? { battleS: resume.battleS } : {}),
+      resume: resume ? { tick: resume.resumeTick, ...resumeClocksOf(resume),
         dueAtMs: bootStarted, ...resumePhaseOf(resume),
         ...(resume.battleId ? { battleId: resume.battleId } : {}) } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
