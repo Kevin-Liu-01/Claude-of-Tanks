@@ -344,6 +344,9 @@ export interface AuthoritativeWorldCollision {
 export interface ShellRewindHook {
   begin(shell: DamageShell): void;
   end(shell: DamageShell): void;
+  /** How far behind the authority the shell's shooter saw the world (s; 0 for a bot or a roof station): Air Support tests
+   *  a round against the aircraft where its shooter saw it (air-support-275), as the sweep rewinds the tanks. */
+  rewindS?(shell: DamageShell): number;
 }
 
 /** Roster limit: 14v14 plus bots and headroom, bounded by the wire's 64 entity ids. */
@@ -2145,7 +2148,9 @@ export function createAuthoritativeMatch({
       stepShell(shell, dt);
       if (modeController.tryHitBall(shell)) continue;
       // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
-      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS)) continue;
+      // (air-support-275) at the time its shooter saw the aircraft: the aircraft's run is a function of the clock, so this
+      // rewind is the tanks' lag compensation for an aircraft, with no history to keep
+      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS - (shellRewind?.rewindS?.(shell) ?? 0))) continue;
       // mp v2 lag compensation: the sweep and its resolution read the poses the shooter saw
       shellRewind?.begin(shell);
       try {

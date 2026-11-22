@@ -86,7 +86,12 @@ for (const [kind, sound] of Object.entries(AIR_STRIKE_SOUND)) {
   if (sound.aircraft) ships(STRIKE_AIRCRAFT_LOOP[sound.aircraft], `${kind}'s aircraft`);
 }
 // a round the strike voices itself (the burst, the whistles) never plays as a fired report too
-for (const spec of Object.values(AIR_STRIKE_WEAPONS)) assert.ok(STRIKE_OWNED_REPORTS.has(spec.soundProfile), `${spec.name}: its report is the strike's`);
+// (air-support-275) but the Maverick's: each missile's motor is a fired report from its own rail (the gunship's missile row,
+// game/airSupportBridge.ts), four launches a run, so it is never the strike's to voice once
+for (const [kind, spec] of Object.entries(AIR_STRIKE_WEAPONS)) {
+  if (kind === 'missile') assert.ok(!STRIKE_OWNED_REPORTS.has(spec.soundProfile) && spec.soundProfile === 'gunship-missile', 'the Maverick is heard as fired, on the gunship missile\'s report');
+  else assert.ok(STRIKE_OWNED_REPORTS.has(spec.soundProfile), `${spec.name}: its report is the strike's`);
+}
 assert.match(engineSource, /for \(const type of AIR_EVENT_TYPES\) on</, 'the engine listens to every Air Support event');
 
 // ---- the running gear: by ground, gearbox, turret drive and hull class; water under any hull.

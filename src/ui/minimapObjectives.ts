@@ -10,8 +10,8 @@
  */
 
 import type { ObjectiveSide } from './objectiveGlyphs.ts';
-import { AIR_SUPPORT_RULES, type AirStrikeKind } from '../sim/matchRuleset.ts';
-import { runFootprint } from '../sim/strikeRuns.ts';
+import { AIR_SUPPORT_RULES, airStrikeFlies, type AirStrikeKind } from '../sim/matchRuleset.ts';
+import { runExitS, runFootprint, runPose, type RunPose } from '../sim/strikeRuns.ts';
 import { isTutorialMode } from '../sim/gameModeCatalog.ts';
 
 type ObjectiveTeamId = 'alpha' | 'bravo';
@@ -34,13 +34,13 @@ export interface ObjectiveStateView {
   pickups?: ReadonlyArray<{ kind: string; x: number; z: number; active?: boolean }> | null;
   line?: { index?: number; total?: number; holdS?: number } | null;
   /** Air Support: every call-in's public record (sim/airSupport.ts AirSupportView). */
-  air?: { nowS: number; strikes: ReadonlyArray<{ kind: AirStrikeKind; team: ObjectiveTeamId; x: number; z: number; heading: number;
-    landsS: number; endS: number; downedS: number | null; mine?: boolean }> } | null;
+  air?: { nowS: number; strikes: ReadonlyArray<{ id: number; kind: AirStrikeKind; team: ObjectiveTeamId; x: number; y: number; z: number;
+    heading: number; calledS: number; landsS: number; endS: number; downedS: number | null; mine?: boolean }> } | null;
   /** The proving ground's range (v2 progression, 2026-10-17): a marker on every lane's mark. */
   range?: { lanes: ReadonlyArray<{ index: number; x: number; z: number; rangeM: number }> } | null;
 }
 
-type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane' | 'strike';
+type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane' | 'strike' | 'aircraft';
 
 export interface ObjectiveMarker {
   kind: ObjectiveKind;
@@ -54,7 +54,7 @@ export interface ObjectiveMarker {
   /**
    * spawn: 'respawn' when the mode revives players there;
    * flag: 'home' | 'carried' | 'dropped'; flagBase: 'home' | 'away';
-   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike: the call-in's kind.
+   * sector: 'taken' | 'active' | 'holding' | 'locked'; pickup: 'heal' | 'ammo'; strike, aircraft: the call-in's kind.
    */
   status?: string;
   /** strike: its footprint (sim/strikeRuns.ts runFootprint: a circle's radius, an ellipse's semi-axis along `heading` with
@@ -67,6 +67,10 @@ export interface ObjectiveMarker {
   heading?: number;
   countdownS?: number;
   mine?: boolean;
+  /** aircraft (air-support-275): its nose's heading is `heading`; while it is inbound on the viewer's side (the warning
+   *  running), the mark it is coming for, so the map draws its approach from where it is to there */
+  toX?: number;
+  toZ?: number;
   /** capture / hold progress 0..1 toward `progressSide` */
   progress?: number;
   progressSide?: 'own' | 'enemy';
@@ -221,6 +225,31 @@ function strikeMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, 
   }
 }
 
+/**
+ * Air Support's aircraft (air-support-275; owner: "warnings about where the planes are coming from on minimap"): every
+ * aircraft in the air from its call, where its run has it now (sim/strikeRuns.ts runPose: the one flight the world draws
+ * and the rounds strike), its nose along its heading. Off the map's plate it rides the edge (the minimap's clamp), so
+ * before it arrives its icon on the rim is the bearing it comes from; an enemy aircraft inbound (its warning running)
+ * also carries the mark it is coming for, the line of its approach. A downed one leaves the map.
+ */
+const _aircraftPose: RunPose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, bank: 0 };
+function aircraftMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, out: ObjectiveMarker[]): void {
+  const air = state.air;
+  if (!air) return;
+  for (const strike of air.strikes) {
+    if (!airStrikeFlies(strike.kind) || strike.downedS != null || air.nowS < strike.calledS) continue;
+    if (air.nowS >= runExitS(AIR_SUPPORT_RULES, strike)) continue;
+    runPose(AIR_SUPPORT_RULES, strike, air.nowS, _aircraftPose);
+    const side = objectiveSide(strike.team, perspective);
+    const inbound = side === 'enemy' && air.nowS < strike.landsS;
+    out.push({
+      kind: 'aircraft', x: _aircraftPose.x, z: _aircraftPose.z, side, status: strike.kind, heading: _aircraftPose.yaw,
+      mine: !!strike.mine, pulse: inbound, priority: 4,
+      ...(inbound ? { toX: strike.x, toZ: strike.z, countdownS: Math.max(0, strike.landsS - air.nowS) } : {}),
+    });
+  }
+}
+
 /** Markers for the current mode state, sorted by draw priority (area markers first). */
 export function objectiveMarkers(state: ObjectiveStateView | null | undefined): ObjectiveMarker[] {
   if (!state || !state.id || state.id === 'standard') return [];
@@ -234,6 +263,7 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   laneMarkers(state, out);
   pickupMarkers(state, out);
   strikeMarkers(state, perspective, out);
+  aircraftMarkers(state, perspective, out);
   out.sort((a, b) => a.priority - b.priority);
   return out;
 }

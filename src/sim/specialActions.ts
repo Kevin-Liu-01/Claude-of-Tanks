@@ -47,6 +47,8 @@ interface SpecialActionEntity {
 
 interface GuidedShellLike {
   spec?: { guided?: boolean };
+  /** An Air Support round (sim/airSupportFire.ts): its aircraft laid it, never its caller's sight. */
+  strikeId?: number;
 }
 
 const RESULT_NONE: Readonly<SpecialActionResult> = Object.freeze({
@@ -176,5 +178,7 @@ export function specialActionGuidesShell(
   entity: SpecialActionEntity | null | undefined,
   shell: GuidedShellLike | null | undefined,
 ): boolean {
-  return !!(entity?.combat && !entity.combat.destroyed && shell?.spec?.guided === true);
+  // (air-support-275) a Maverick is credited to its caller but flies the line its jet launched it on: the caller's sight
+  // never steers it
+  return !!(entity?.combat && !entity.combat.destroyed && shell?.spec?.guided === true && typeof shell.strikeId !== 'number');
 }

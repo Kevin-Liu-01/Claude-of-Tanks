@@ -522,6 +522,8 @@ const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
 // (2026-10-16, the perf lane: 226's bundle budget) the presentation's module is its own chunk, fetched when the boot is
 // idle (matchModeWorldLazy.ts): the Garage draws no objective
+/** The point an aircraft's smoke or burst is drawn at (airSupportWorld.ts aircraftFx), reused. */
+const _aircraftFxAt = new THREE.Vector3();
 const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   groundHeight: (x, z) => groundSampler(x, z),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
@@ -530,6 +532,11 @@ const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   releaseMaterial: (material) => engineCtx.releaseShadowMaterial(material),
   // (props lane A #28) a capture zone's post takes the battlefield's form
   mapId: () => game.mapId,
+  // (air-support-275) a struck aircraft trails the exhaust bank's soot, a downed one bursts as a hull's ammunition does
+  aircraftFx: {
+    smoke(x, y, z, intensity) { fxRuntimeAccess.current?.exhaust(_aircraftFxAt.set(x, y, z), intensity, true); },
+    crash(x, y, z) { fxRuntimeAccess.current?.destruction(_aircraftFxAt.set(x, y, z), null, 'ammorack'); },
+  },
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world

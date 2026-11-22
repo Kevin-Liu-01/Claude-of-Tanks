@@ -16,7 +16,8 @@ interface StrikeRoundEvent {
   weaponSound?: string | null; blastRadiusM?: number | null; x?: number; y?: number; z?: number; dx?: number; dy?: number; dz?: number;
 }
 
-const FIRED_KINDS = new Set(['strafe', 'gunship']);
+// (air-support-275: the Maverick run's missiles leave their rails as fired rounds: their motor, their smoke, their report)
+const FIRED_KINDS = new Set(['strafe', 'missile', 'gunship']);
 
 /** Each released bomb's launch, by strike id: where it left the jet's pylon and its velocity (m/s), as the authority
  *  launched it, so the world draws it falling on its own arc (game/airSupportWorld.ts; at most RELEASED_MAX kept). */

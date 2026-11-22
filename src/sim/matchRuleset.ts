@@ -86,24 +86,33 @@ export const DRONE_WARHEAD = shell('FPV shaped charge', 'HEAT', 90, 350, 350, 14
  * Air Support (air-support-270; owner 2026-11-05: "a new game mode where you can call in airstrikes and jet strikes and so
  * on and we already have that model of the ac 130", and in the lane: "a giant aiming reticle on the ground … 3 differennt
  * kinnds of airstrikes with their own special effects annd sounnt", then "keep and add artillery annd recon with the 3
- * airstrikes"). Every number the mode plays by: the points a crew earns, what each call-in costs, its cooldown, the warning
+ * airstrikes"; air-support-275, 2026-11-21: "i need one where theres a jet firing missiles. and bombs need a jet fighter
+ * too"). Every number the mode plays by: the points a crew earns, what each call-in costs, its cooldown, the warning
  * the targeted side gets before anything of it arrives, its footprint, its rounds and its aircraft's hit points.
  * sim/airSupport.ts runs the ledger and the strikes; sim/airSupportFire.ts fires their rounds in both authorities.
  */
-export type AirStrikeKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'gunship';
-/** The call-ins in the strip's order (the strike view's keys 1-5): the cheapest first. */
-export const AIR_STRIKE_KINDS: readonly AirStrikeKind[] = Object.freeze(['recon', 'artillery', 'strafe', 'bomb', 'gunship'] as const);
+export type AirStrikeKind = 'recon' | 'artillery' | 'strafe' | 'bomb' | 'missile' | 'gunship';
+/** The call-ins in the strip's order (the strike view's keys 1-6): the cheapest first. */
+export const AIR_STRIKE_KINDS: readonly AirStrikeKind[] = Object.freeze(['recon', 'artillery', 'strafe', 'bomb', 'missile', 'gunship'] as const);
 /** The call-ins an aircraft flies (artillery is a battery off the map: nothing to shoot down). */
 export function airStrikeFlies(kind: AirStrikeKind): boolean { return kind !== 'artillery'; }
 /** The strike rounds: real references, in the shared shell builder (fictional numbers only where a game needs one). */
 export const AIR_STRIKE_WEAPONS = Object.freeze({
   // M795 155 mm HE from a battery firing for effect: a plunging round with an 18 m blast.
   artillery: shell('M795 155 mm HE', 'HE', 155, 110, 110, 1200, 820, { reloadGroup: 'strike-artillery', soundProfile: 'strike-artillery', blastRadiusM: 18 }),
-  // A-10 GAU-8/A Avenger, PGU-14/B API: a depleted-uranium core good for ~69 mm at 500 m, through any tank's roof.
-  strafe: shell('GAU-8 30 mm API', 'AP', 30, 75, 55, 110, 1010, { reloadGroup: 'strike-strafe', soundProfile: 'strike-strafe' }),
+  // A-10 GAU-8/A Avenger, PGU-14/B API: a depleted-uranium core good for ~69 mm at 500 m, through any light vehicle's
+  // roof. air-support-275 (owner: "make strafing a lot more effective"): 110 -> 150 hp a round that bites, and module
+  // damage 30 -> 70 (the default is the calibre), so the rounds that strike a deck wreck what lies on it (tracks, optics,
+  // the engine, the roof guns) even where they cannot go through an MBT's roof.
+  strafe: shell('GAU-8 30 mm API', 'AP', 30, 75, 55, 150, 1010, { reloadGroup: 'strike-strafe', soundProfile: 'strike-strafe', moduleDmg: 70 }),
   // GBU-12 Paveway II: a laser-guided Mk 82 (500 lb, 87 kg of Tritonal, 273 mm body), falling free onto the spot.
   bomb: shell('GBU-12 Paveway II', 'HE', 273, 140, 140, 1700, 260, { reloadGroup: 'strike-bomb', soundProfile: 'strike-bomb', blastRadiusM: 22,
     flight: 'free_fall' }),
+  // AGM-65D Maverick (air-support-275): a 305 mm rocket with a 57 kg shaped charge, ~320 m/s; a powered round (no fall), so
+  // `guided` (shellGravityMps2: no gravity) on the straight line it is launched along (sim/airSupportFire.ts: from its
+  // rail onto its target's intercept). The penetration is a game figure: any hull it strikes is through.
+  missile: shell('AGM-65 Maverick', 'HEAT', 305, 900, 900, 1300, 320, { guided: true, reloadGroup: 'strike-missile',
+    soundProfile: 'gunship-missile', blastRadiusM: 7, maxLifetimeS: 9 }),
 });
 export interface AirStrikeRules {
   /** Support points the call costs, the caller's own wait before calling this kind again, and the warning (s): the
@@ -159,11 +168,20 @@ export interface AirSupportRules {
    *  jet dives at `diveDeg` on a line that meets the lane's start, and opens fire `altitudeM` over the mark
    *  (sim/strikeRuns.ts). */
   readonly strafe: AirStrikeRules & { readonly lengthM: number; readonly halfWidthM: number; readonly rounds: number; readonly fireS: number;
-    readonly spreadM: number; readonly diveDeg: number };
+    readonly spreadM: number; readonly diveDeg: number;
+    /** The gunsight walks onto hulls (air-support-275): a round whose station along the lane has an enemy hull within
+     *  `snapAlongM` of it along the lane (and inside the lane) is laid on that hull instead of the lane's line. */
+    readonly snapAlongM: number };
   /** The precision bomb: a jet's dive at `diveDeg`, released `altitudeM` over the mark at the point from which the free fall
    *  at the jet's velocity lands fallMarginS after the warning (sim/strikeRuns.ts bombFall: a steep arrival a ridge on the
    *  way cannot meet first); it lands within `missAlongM` of the mark along the run and `missAcrossM` across it. */
   readonly bomb: AirStrikeRules & { readonly radiusM: number; readonly diveDeg: number; readonly missAlongM: number; readonly missAcrossM: number };
+  /** The Maverick run (air-support-275): a fighter in a shallow `diveDeg` dive whose line runs through the mark, `missiles`
+   *  launched `everyS` apart from alternate wing rails, the first `altitudeM` over the mark (its slant range
+   *  altitudeM / sin(dive)), each timed to arrive no sooner than fallMarginS after the warning; each flies at its round's
+   *  speed onto the next of its side's spotted enemies within `radiusM` of the mark (nearest the mark first), else onto
+   *  the mark. Then the pull-out and the egress. */
+  readonly missile: AirStrikeRules & { readonly radiusM: number; readonly diveDeg: number; readonly missiles: number; readonly everyS: number };
   /** The AC-130 orbit: its ring (a left-hand pylon turn round the mark, which is also the reach its guns engage spotted
    *  enemies in), its time on station, the speed it comes in at, and its guns' cadence. */
   readonly gunship: AirStrikeRules & { readonly radiusM: number; readonly orbitS: number; readonly inboundMps: number;
@@ -180,8 +198,13 @@ export interface AirSupportRules {
     readonly reconGapS: number };
 }
 export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
-  points: Object.freeze({ perDamageHp: 0.1, kill: 60, supportKill: 30, capture: 50, spot: 10, spotRepeatS: 30, downed: 80,
-    trickleS: 4, cap: 1000, start: 0 }),
+  // air-support-275 (owner: "get points faster"): about 2.2x the old rate. A typical crew's twelve minutes (two kills,
+  // ~2000 hp dealt, two captures, six spots) earned ~660 points, one strafing run a match; now ~1450, three or four
+  // call-ins. Every source scales by the same hand: the trickle 4 -> 2 s, 0.1 -> 0.2 a hit point, kill 60 -> 100,
+  // capture 50 -> 80, spot 10 -> 15, and 120 to open with (a recon pass at the start), so a crew that does little still
+  // calls something. Support kills stay at half a kill (no snowball); the cap is unchanged.
+  points: Object.freeze({ perDamageHp: 0.2, kill: 100, supportKill: 50, capture: 80, spot: 15, spotRepeatS: 30, downed: 120,
+    trickleS: 2, cap: 1000, start: 120 }),
   teamAirCap: 2,
   teamGunshipCap: 1,
   callRangeM: 700,
@@ -193,16 +216,27 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   // the battery: a 6 s warning, then ten 155 mm rounds over 5 s inside a 35 m circle, each seen falling its last 2.5 s
   artillery: Object.freeze({ cost: 300, cooldownS: 60, warningS: 6, hp: 0, hitRadiusM: 0, altitudeM: 420, speedMps: 0,
     radiusM: 35, rounds: 10, fireS: 5, flightS: 2.5 }),
-  // the A-10's run: 5 s of warning while it comes in from behind the caller and pushes over into a 15-degree dive, then
-  // 28 rounds walked down a 140 m lane in 1.6 s at 150 m/s from 120 m over the mark (about 460 m slant), the pull-out and
-  // a banked climb away; the rounds spread 5 m either side of the lane's line
-  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 120, speedMps: 150,
-    lengthM: 140, halfWidthM: 12, rounds: 28, fireS: 1.6, spreadM: 5, diveDeg: 15 }),
+  // the A-10's run: 5 s of warning while it comes in from behind the caller and pushes over into a 22-degree dive, then
+  // 60 rounds walked down a 120 m lane in 2 s at 150 m/s, opening fire 200 m over the mark (about 530 m slant to the
+  // lane's start, ~340 m at its end; it is still ~90 m up when the gun stops), the pull-out and a banked climb away. air-support-275 (owner: "make strafing a lot more effective"): 28 -> 60 rounds (30 a second,
+  // still half the GAU-8's 65) on a lane 140 -> 120 m, so a round lands every 2 m of it, not every 5; the dive 15 -> 22
+  // degrees, so a round meets a deck less glancingly; the random spread 5 -> 1.5 m (a round lands where it is laid), and
+  // each round whose station has an enemy hull within 6 m along the lane is laid on that hull's deck behind its turret
+  // (snapAlongM; sim/airSupportFire.ts). Measured (strafeEffect.selftest): a BMP-2 in the lane 0 -> 84 % of its hull lost,
+  // an M1A1 0 -> 17 % with its engine struck
+  strafe: Object.freeze({ cost: 400, cooldownS: 75, warningS: 5, hp: 600, hitRadiusM: 8, altitudeM: 200, speedMps: 150,
+    lengthM: 120, halfWidthM: 12, rounds: 60, fireS: 2, spreadM: 1.5, diveDeg: 22, snapAlongM: 6 }),
   // the GBU-12 from a fast jet: a 7 s laser warning while it comes in high and pushes over into a 40-degree dive at
   // 180 m/s; released 350 m over the mark (about 375 m short of it: the bomb's forward throw), it falls 2.7 s and arrives
   // at about 46 degrees; it lands within 8 m of the spot along the run and 2 m across it
   bomb: Object.freeze({ cost: 450, cooldownS: 90, warningS: 7, hp: 600, hitRadiusM: 8, altitudeM: 350, speedMps: 180,
     radiusM: 22, diveDeg: 40, missAlongM: 8, missAcrossM: 2 }),
+  // the Maverick run (air-support-275: "i need one where theres a jet firing missiles"): an F-16-class fighter, 6 s of
+  // warning while it comes in and pushes over into a 12-degree dive at 220 m/s whose line runs through the mark; four
+  // AGM-65s off alternate rails 0.6 s apart, the first from 270 m up (1.3 km slant, a 4 s flight), each onto one of the
+  // side's spotted enemies within 45 m of the mark; the last leaves 0.9 km out, then the pull-out and the egress
+  missile: Object.freeze({ cost: 550, cooldownS: 100, warningS: 6, hp: 500, hitRadiusM: 7, altitudeM: 270, speedMps: 220,
+    radiusM: 45, diveDeg: 12, missiles: 4, everyS: 0.6 }),
   // the AC-130: 8 s inbound along a line tangent to its ring, slowing from 110 to 42 m/s, then 30 s on a 140 m left-hand
   // pylon turn 180 m over the mark (the pivotal altitude of 42 m/s: v^2/g = 180 m, so its 52-degree bank lays the guns'
   // line on the mark), engaging only the enemies its side has spotted inside the ring with the gunship's 30 mm and 152 mm
@@ -212,7 +246,7 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   // 8 s egress turn, then 6 s out accelerating at 8 m/s^2
   flight: Object.freeze({ pushG: 2.5, pullG: 5, climbDeg: 20, settleS: 1, egressBankDeg: 60, egressS: 8, exitS: 6, exitAccelMps2: 8 }),
   bots: Object.freeze({ decideEveryS: 2, friendlyClearM: 45,
-    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, gunship: 2 }), evadeMarginM: 15, leaveSlots: 1,
+    minTargets: Object.freeze({ recon: 0, artillery: 2, strafe: 2, bomb: 1, missile: 2, gunship: 2 }), evadeMarginM: 15, leaveSlots: 1,
     reconGapS: 30 }),
 });
 

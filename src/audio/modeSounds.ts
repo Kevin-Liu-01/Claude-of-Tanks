@@ -160,6 +160,9 @@ export const AIR_STRIKE_SOUND: Readonly<Record<AirStrikeKind, AirStrikeSound>> =
     incoming: 'air_incoming', readback: 'air_call_strafe' }),
   // the GBU-12: the jet's pass, the bomb's whistle from its release and the 500 lb blast, far past any shell's
   bomb: Object.freeze({ aircraft: 'strike_fast', burst: null, fall: 'air_bomb_fall', blast: 'air_bomb_blast', incoming: 'air_incoming', readback: 'air_call_bomb' }),
+  // the Maverick run (air-support-275): the fighter's pass; each missile is a fired report from its rail (the gunship's
+  // missile motor, through the bridge's shell:fired) and lands as the HEAT bank's; the crew lases the mark as for the bomb
+  missile: Object.freeze({ aircraft: 'strike_fast', burst: null, fall: null, blast: null, incoming: 'air_incoming', readback: 'air_call_bomb' }),
   // the AC-130's orbit: its own turboprops (gunship_orbit_loop) and its own guns' reports from the sky
   gunship: Object.freeze({ aircraft: 'gunship', burst: null, fall: null, blast: null, incoming: 'air_incoming', readback: 'gunship_cleared_hot' }),
 });
