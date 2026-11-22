@@ -304,8 +304,9 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
       }
       if (id === 'strv103b') {
         // the nose links: one clamped course a side on the vertical nose face, kept where authored (blind critics m1:
-        // re-seated bare rows on the shelf top read as loose bricks)
-        const nose = runs.filter((r) => r.source === 'fitting' && /@hull\(-?0\.30,1\.26,3\.34\)/.test(r.site));
+        // re-seated bare rows on the shelf top read as loose bricks); 274: the section-solid casemate's nose face stands at
+        // z 3.52 (was 3.30), so the courses' centre is 3.56
+        const nose = runs.filter((r) => r.source === 'fitting' && /@hull\(-?0\.30,1\.26,3\.56\)/.test(r.site));
         assert.equal(nose.length, 2, `both nose courses are built (${JSON.stringify(runs.map((r) => r.site))})`);
         for (const run of nose) assert.equal(run.seat, 'authored', `${run.site} is kept where authored`);
       }
