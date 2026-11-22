@@ -429,7 +429,11 @@ assert.ok(state.indexOf('game._trainingParked = undefined;') < state.indexOf('sp
 const runner2 = readFileSync(new URL('../ui/tutorial/tutorialRunner.ts', import.meta.url), 'utf8');
 assert.match(runner2, /port\.checkpoint\?\.\(marker\.x, marker\.z\);\s*reached\(\);/, 'each ring reached (a drive, or a step that asks for its ring first) is the checkpoint');
 const access = readFileSync(new URL('../app/tutorialAccess.ts', import.meta.url), 'utf8');
-assert.match(access, /if \(chapter === 'training'\) \{\s*if \(outcome !== 'skipped' && training\) \{[\s\S]{0,160}deps\.trainingComplete\(\);/,
-  'the last card ends the battle (a Skip ends the run only)');
+// tutorial-fit-274 (1b91100f5d): a Skip returns early (the whole journey skipped), before the training branch, which
+// alone ends the battle
+const skipReturn = access.search(/if \(outcome === 'skipped'\) \{ markTutorialChapter\('all', 'skipped'\);[^}]*return; \}/);
+const trainingEnd = access.search(/else if \(chapter === 'training' && training\) \{[\s\S]{0,160}deps\.trainingComplete\(\);/);
+assert.ok(skipReturn >= 0 && trainingEnd > skipReturn, 'the last card ends the battle (a Skip ends the run only)');
+assert.equal((access.match(/deps\.trainingComplete\(\);/g) ?? []).length, 1, 'and nothing else ends it');
 
 console.log(`trainingThreat.selftest: PASS (the Sentry ${range.toFixed(0)} m from F; its HEAT on the loaner's plate amber nose on, red ${ANGLE_WINDOW.minDeg - 2} to ${ANGLE_WINDOW.maxDeg + 2} degrees either way, green broadside; S9's steps and wiring; S10: Sentry 2 red on the turret, green on the hull, hull down at ring G behind the 1.9 m berm; S11: hidden at P behind the 2.8 m wall, seen at Q, Sentry 3 parked until cued; S12: Sentry 4's HE on the running gear; S13: Bulwark ${Math.round(front.red * 100)} % red in front, ${Math.round(side.green * 100)} % green at its side; S14: ${skirmish.allies.length} allied and ${skirmish.enemies.length} enemy bots, parked until the fight; goals stay down, the player back at the last ring, the last card ends the battle)`);
