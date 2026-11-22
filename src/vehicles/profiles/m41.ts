@@ -17,6 +17,7 @@
 // (profiles/pattonCast.ts castRing), here with squarer shoulders for the M41's welded flanks. A +Z hull's right is -X.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -454,7 +455,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     // on the roof)
     P.addEquipment('turret', box(0.36, 0.34, 0.30), 0.74, 0.66, 1.41);
     P.add('turretDark', cylZ(0.145, 0.03, P.q ? 24 : 14), 0.74, 0.66, 1.571);
-    P.addModuleVisual('optics', 'turretGlass', cylZ(0.12, 0.022, P.q ? 24 : 14), 0.74, 0.66, 1.591);
+    P.addModuleVisual('optics', 'turretGlass', markVehicleNightLens(cylZ(0.12, 0.022, P.q ? 24 : 14), 'headlight', { searchlight: true }), 0.74, 0.66, 1.591);
     P.add('turretDark', box(0.38, 0.02, 0.10), 0.74, 0.838, 1.55);
     P.add('turretDetail', box(0.19, 0.04, 0.12), 0.685, 0.47, 1.30);
     // its ring closed by the cast boss: no generated seat collar (stepped bin by bin up under the high rear bustle it read

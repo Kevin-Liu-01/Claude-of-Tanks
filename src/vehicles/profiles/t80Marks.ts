@@ -338,7 +338,7 @@ function lunaSearchlight(P:TankBuilderPort,m:T80Mark):void{
   const s=m==='t80'?1:-1,r=m==='t80'?.17:.19,x=s*.50,y=.06,z=.16;
   P.addGunExtra(cylZ(r,.28,24),x,y,z);
   P.addGunExtraDark(torus(r-.005,.014,24,6),x,y,z+.14);
-  P.addGunExtra(markVehicleNightLens(cylZ(r-.02,.01,24),'headlight',{tint:'red'}),x,y,z+.142);
+  P.addGunExtra(markVehicleNightLens(cylZ(r-.02,.01,24),'headlight',{tint:'red',searchlight:true}),x,y,z+.142);
   P.addGunExtra(box(.30,.06,.12),x-s*.20,y-.04,z-.02);
   P.addGunExtraDark(box(.06,.20,.06),x-s*.06,y-.16,z-.02);
   if(m!=='t80')return;

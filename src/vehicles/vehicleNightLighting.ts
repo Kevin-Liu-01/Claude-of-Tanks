@@ -21,6 +21,9 @@ interface LensDefinition {
    * keeps its aim instead of a driving lamp's .08 drop, and it lights the runtime's narrow searchlight cone
    * (nightLightingRuntime.ts searchlight, SEARCHLIGHT_CONE_RAD) at 6,000 cd to 150 m (round 7). */
   readonly searchlight?: true;
+  /** (release 274) A searchlight's own cone half-angle (radians) when it is not SEARCHLIGHT_CONE_RAD: a broad floodlight
+   * drum throws a wider beam than a weapon searchlight's pencil, no wider than a driving lamp's. */
+  readonly coneRad?: number;
 }
 
 /** The searchlight's cone half-angle (radians): 6.3 degrees, a third of a driving lamp's low beam. */
@@ -43,7 +46,10 @@ function vertexAt(geometry: THREE.BufferGeometry, offset: number): number {
  */
 export function markVehicleNightLens<T extends THREE.BufferGeometry>(
   geometry: T, kind: VehicleLampKind,
-  options: { readonly curvedAperture?: boolean; readonly apertureAxis?: 'z' | 'y'; readonly tint?: 'red' | 'warm' | 'cool'; readonly searchlight?: true } = {},
+  options: {
+    readonly curvedAperture?: boolean; readonly apertureAxis?: 'z' | 'y'; readonly tint?: 'red' | 'warm' | 'cool';
+    readonly searchlight?: true; readonly coneRad?: number;
+  } = {},
 ): T {
   const normal = geometry.getAttribute('normal');
   const count = geometry.index?.count ?? geometry.getAttribute('position').count;
@@ -59,8 +65,10 @@ export function markVehicleNightLens<T extends THREE.BufferGeometry>(
   }
   if (!faces.length) throw new Error('Authored night lens has no forward aperture');
   if (options.searchlight && kind !== 'headlight') throw new Error('A searchlight lens casts a beam: it is a headlight');
+  if (options.coneRad !== undefined && !options.searchlight) throw new Error('Only a searchlight lens sets its own cone');
   geometry.userData.vehicleNightLens = { kind, faces, ...(options.tint ? { tint: options.tint } : {}),
-    ...(options.searchlight ? { searchlight: true as const } : {}) } satisfies LensDefinition;
+    ...(options.searchlight ? { searchlight: true as const } : {}),
+    ...(options.coneRad !== undefined ? { coneRad: options.coneRad } : {}) } satisfies LensDefinition;
   return geometry;
 }
 
@@ -115,36 +123,64 @@ function registerSources(mesh: THREE.Object3D, emitters: readonly NightLightEmit
   registerNightLightEmitters(mesh, emitters);
 }
 
-/** The merged mesh (not a guessed hull datum) is the emitter owner. `frame` carries the parts' authoring frame into
- * the mesh's own (a remote station's stage, whose merged stock the factory moves under the station). */
-export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THREE.BufferGeometry[], frame?: THREE.Matrix4): void {
-  registerSmokeSockets(mesh, parts);
-  const lamps = parts.filter(part => lensDefinition(part));
-  if (!lamps.length) return;
+/** A lens's emitter seat as plain data, in its parts' frame: what a plan carries across a realm (decorPlanWire.ts) for the
+ * page to register on the mesh it builds (registerVehicleNightLensFrames). */
+export interface VehicleNightLensFrame {
+  readonly kind: VehicleLampKind;
+  readonly position: [number, number, number];
+  readonly direction: [number, number, number];
+  readonly tint?: 'red' | 'warm' | 'cool';
+  readonly searchlight?: true;
+  readonly coneRad?: number;
+}
+
+/** The marked lenses among `parts` (the parts of one merged draw, in its frame), or null when none is marked. */
+export function vehicleNightLensFrames(parts: readonly THREE.BufferGeometry[]): VehicleNightLensFrame[] | null {
+  const frames = parts.flatMap(part => {
+    const definition = lensDefinition(part);
+    if (!definition) return [];
+    const { tint, searchlight, coneRad } = definition;
+    return [{ kind: definition.kind, ...apertureFrame(part, definition), ...(tint ? { tint } : {}),
+      ...(searchlight ? { searchlight } : {}), ...(coneRad !== undefined ? { coneRad } : {}) }];
+  });
+  return frames.length ? frames : null;
+}
+
+/** The lamps of `frames` on the draw that merged their parts. `frame` carries the parts' authoring frame into the mesh's
+ * own (a remote station's stage, whose merged stock the factory moves under the station). */
+export function registerVehicleNightLensFrames(mesh: LensMesh, frames: readonly VehicleNightLensFrame[], frame?: THREE.Matrix4): void {
+  if (!frames.length) return;
   const material = mesh.material;
   if (!(material instanceof THREE.MeshStandardMaterial)) throw new TypeError('Night lens requires one standard material');
   installNightEmissionMask(material);
-  const place = (aperture: ReturnType<typeof apertureFrame>): ReturnType<typeof apertureFrame> => {
-    if (!frame) return aperture;
-    const p = new THREE.Vector3(...aperture.position).applyMatrix4(frame);
-    const d = new THREE.Vector3(...aperture.direction).transformDirection(frame);
+  const place = (lens: VehicleNightLensFrame): Pick<VehicleNightLensFrame, 'position' | 'direction'> => {
+    if (!frame) return lens;
+    const p = new THREE.Vector3(...lens.position).applyMatrix4(frame);
+    const d = new THREE.Vector3(...lens.direction).transformDirection(frame);
     return {position: [p.x, p.y, p.z], direction: [d.x, d.y, d.z]};
   };
-  registerSources(mesh, lamps.map(part => {
-    const definition = lensDefinition(part)!;
-    const searchlight = definition.searchlight === true;
+  registerSources(mesh, frames.map(lens => {
+    const searchlight = lens.searchlight === true;
+    const { position, direction } = place(lens);
     return {
-      kind: definition.kind, ...place(apertureFrame(part, definition)),
-      color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : definition.tint === 'cool' ? NIGHT_LED_COLOR : NIGHT_HEADLIGHT_COLOR,
+      kind: lens.kind, position, direction,
+      color: lens.kind === 'shtora' || lens.tint === 'red' ? NIGHT_SHTORA_COLOR : lens.tint === 'cool' ? NIGHT_LED_COLOR : NIGHT_HEADLIGHT_COLOR,
       // (round 7, the critic's UAPL-9: at 2,000 cd the Zubr II's station searchlight was "much weaker than the turret
       // searchlight's pool ... at y0 it disappears into that pool": a weapon searchlight throws 6,000 cd to 150 m, its
       // narrow pool standing out of the driving lamps' wide one wherever the station aims)
-      intensity: definition.kind === 'headlight' ? searchlight ? 6000 : 1200 : 0,
-      range: definition.kind === 'headlight' ? searchlight ? 150 : 75 : 0,
-      ...(searchlight ? { searchlight, coneRad: SEARCHLIGHT_CONE_RAD } : {}),
+      intensity: lens.kind === 'headlight' ? searchlight ? 6000 : 1200 : 0,
+      range: lens.kind === 'headlight' ? searchlight ? 150 : 75 : 0,
+      ...(searchlight ? { searchlight, coneRad: lens.coneRad ?? SEARCHLIGHT_CONE_RAD } : {}),
       emission: { material, color: 0xffffff, intensity: 3 },
     };
   }));
+}
+
+/** The merged mesh (not a guessed hull datum) is the emitter owner. `frame`: registerVehicleNightLensFrames'. */
+export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THREE.BufferGeometry[], frame?: THREE.Matrix4): void {
+  registerSmokeSockets(mesh, parts);
+  const frames = vehicleNightLensFrames(parts);
+  if (frames) registerVehicleNightLensFrames(mesh, frames, frame);
 }
 
 /** Direct authored Shtora lenses can be statically batched on mobile. Preserve
@@ -169,15 +205,27 @@ export function transferVehicleNightLenses(sources: readonly LensMesh[], batch: 
  * main-gun barrel within its reach, the lamp is dark: no spot and no lens glow, so the beam never lights its own barrel.
  * The barrel is measured once here (its rig's gun mesh in the gun frame: a line of stations along its bore and its
  * largest radius); the per-frame test reads the last rendered world matrices and allocates nothing.
+ * Release 274 (the owner, 2026-11-21: "for those lights they have to turn on when you press N!"): only a remote
+ * station's lamp (under an `auxiliaryWeaponPitch`) is masked. A lamp on the gun mount or the turret (a Luna drum beside
+ * the gun, a xenon light over it) holds one relation to the barrel, which its 6.3-degree cone took in at every pose, so
+ * the mask held it dark for good; CN-7's own-gun exclusion (registerNightBeamClearance) keeps its beam off its own gun.
  */
 export const SEARCHLIGHT_MASK_STATIONS = 12;
 /** Each searchlight maskSearchlightsOffOwnGun wrapped, to the lamp it wrapped (a cloned visual masks its own). */
 const UNMASKED_LAMPS = new WeakMap<NightLightEmitter, NightLightEmitter>();
+function onRemoteStation(anchor: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = anchor; node && node !== root; node = node.parent) {
+    if (node.name === 'auxiliaryWeaponPitch') return true;
+  }
+  return false;
+}
 function maskSearchlightsOffOwnGun(root: THREE.Object3D): void {
   const gun = root.getObjectByName('rig_gun');
   if (!gun) return;
   const anchors: THREE.Object3D[] = [];
-  root.traverse(object => { if ((SOURCES.get(object) ?? []).some(lamp => lamp.searchlight)) anchors.push(object); });
+  root.traverse(object => {
+    if ((SOURCES.get(object) ?? []).some(lamp => lamp.searchlight) && onRemoteStation(object, root)) anchors.push(object);
+  });
   if (!anchors.length) return;
   root.updateMatrixWorld(true);
   const toGun = new THREE.Matrix4().copy(gun.matrixWorld).invert(), box = new THREE.Box3(), part = new THREE.Box3();
@@ -322,6 +370,17 @@ function gunBeamCapsule(gun: THREE.Object3D): {
     radius = Math.max(radius, cx - boxes[o], boxes[o + 1] - cx, cy - boxes[o + 2], boxes[o + 3] - cy);
   }
   return { start: [cx, cy, minZ], end: [cx, cy, maxZ], radius: radius + CLEARANCE_MARGIN_M };
+}
+
+/** (274) The draws under `root` whose material carries the night mask but whose geometry has none (a decor lamp's lens
+ * material also draws the decor's lamp-less glass) take an explicit zero mask, as finalizeVehicleNightLighting gives a
+ * vehicle's own. */
+export function maskUnlitNightOptics(root: THREE.Object3D): void {
+  root.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || object.geometry.hasAttribute(NIGHT_EMISSION_ATTRIBUTE)) return;
+    const materials: THREE.Material[] = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some(material => material.userData.nightEmissionMask === true)) maskLens(object.geometry);
+  });
 }
 
 /** A shared material also renders unmarked optics buckets/direct fittings.

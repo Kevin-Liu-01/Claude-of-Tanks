@@ -1008,7 +1008,7 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
     const lx = 0.89, ly = 0.75, lz = 1.20;
     P.add('turretDark', box(0.12, 0.10, 0.24), lx, ly - 0.16, lz - 0.18);
     P.addEquipment('turretDetail', box(0.34, 0.44, 0.30), lx, ly, lz);
-    P.add('turretGlass', box(0.26, 0.32, 0.012), lx, ly, lz + 0.152);
+    P.add('turretGlass', markVehicleNightLens(box(0.26, 0.32, 0.012), 'headlight', { searchlight: true }), lx, ly, lz + 0.152);
     for (let k = 0; k < 6; k++) P.add('turretDark', box(0.28, 0.010, 0.012), lx, ly - 0.14 + k * 0.056, lz + 0.162);
     P.add('turretDark', box(0.36, 0.03, 0.03), lx, ly + 0.225, lz);
   }
@@ -1667,7 +1667,7 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
     // be next to the gun ... on left side"), its front glass, guard bars and finned back
     const sx = 0.60, sy = 0.42, sz = 0.83, r = 0.28;
     P.add('gunMount', cylZ(r, 0.34, 32, r * 0.92), sx, sy, sz);
-    P.add('gunMountGlass', cylZ(r * 0.86, 0.02, 32), sx, sy, sz + 0.175);
+    P.add('gunMountGlass', markVehicleNightLens(cylZ(r * 0.86, 0.02, 32), 'headlight', { searchlight: true }), sx, sy, sz + 0.175);
     P.add('gunMountDark', torus(r * 0.93, 0.022, 32, 6), sx, sy, sz + 0.18);
     for (let k = 0; k < 6; k++) P.add('gunMountDark', box(0.012, r * 1.7, 0.012), sx + (k - 2.5) * 0.08, sy, sz + 0.192);
     for (let k = 0; k < 3; k++) P.add('gunMount', cylZ(r * (0.78 - k * 0.1), 0.025, 24), sx, sy, sz - 0.19 - k * 0.035);

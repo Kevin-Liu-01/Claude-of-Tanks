@@ -15,6 +15,7 @@
 // - lifting eyes on the glacis corners and the turret's shoulders.
 // Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain3/. First-party: Kevin B. Liu.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { antennaPart } from './antennaPart.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { KIT, FITTINGS } from './kit.ts';
@@ -217,7 +218,7 @@ function searchlightLens(add: Add): void {
     .map(([r, h]) => new THREE.Vector2(r, h)), 28).rotateX(Math.PI / 2);
   add('turretDetail', bezel, x, y, face - .010);
   add('turretDark', cylZ(.151, .012, 28), x, y, face + .012);
-  add('turretGlass', cylZ(.149, .004, 28), x, y, face + .024);
+  add('turretGlass', markVehicleNightLens(cylZ(.149, .004, 28), 'headlight', { searchlight: true }), x, y, face + .024);
   add('turretDetail', KIT.torus(.166, .012, 28, 6), x, y, face + .055, Math.PI / 2);
   add('turretDetail', box(.42, .016, .09), x, y + .205, face + .040, -.25);
 }

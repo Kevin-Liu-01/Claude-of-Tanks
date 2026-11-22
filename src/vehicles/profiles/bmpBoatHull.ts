@@ -15,6 +15,7 @@
 // Running gear, tub, prow planes and stern underside are the certified lines of the earlier build (clip 0/0, gate
 // registration); everything above the track run is rebuilt here.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from '../tankFactoryCore.ts';
 import { FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
@@ -371,7 +372,7 @@ function addDeck(P: Modern3BuilderPort, variant: BmpHullVariant): void {
     P.add('hullDark', torus(0.215, 0.010, 18), 0.66, DECK_Y + 0.12, 0.98);
     P.add('hullDetail', box(0.10, 0.08, 0.10), 0.66, DECK_Y + 0.15, 1.18);
     P.add('hullDetail', KIT.cylZ(0.075, 0.12, 14), 0.90, DECK_Y + 0.17, 1.14);
-    P.add('hullGlass', KIT.cylZ(0.060, 0.012, 14), 0.90, DECK_Y + 0.17, 1.205);
+    P.add('hullGlass', markVehicleNightLens(KIT.cylZ(0.060, 0.012, 14), 'headlight', { searchlight: true }), 0.90, DECK_Y + 0.17, 1.205);
     P.add('hullDetail', box(0.06, 0.13, 0.06), 0.90, DECK_Y + 0.065, 1.14);
   }
   // engine deck (front RIGHT, -x): louvred intake panel ahead of the turret sweep
@@ -635,7 +636,7 @@ export function buildBmp2Turret(P: Modern3BuilderPort): void {
   P.add('turretGlass', box(0.10, 0.03, 0.02), 0.66, 0.598, 0.27);
   P.add('turret', box(0.16, 0.13, 0.22), 0.58, 0.36, 0.78);
   P.add('turretDark', cylZ(0.065, 0.10, 14), 0.58, 0.40, 0.86);
-  P.add('turretGlass', cylZ(0.055, 0.012, 14), 0.58, 0.40, 0.912);
+  P.add('turretGlass', markVehicleNightLens(cylZ(0.055, 0.012, 14), 'headlight', { searchlight: true }), 0.58, 0.40, 0.912);
   // shoulder lugs and grab rails
   for (const s of [-1, 1]) {
     P.add('turret', box(0.23, 0.10, 0.30), s * 0.775, 0.32, 0.32);

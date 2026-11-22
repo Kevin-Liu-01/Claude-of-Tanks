@@ -15,6 +15,7 @@
 // thermal shutter is held open by hinge arms; the bases are AB-15 sized; the bin has a lid lip, ribs, straps and hasps.
 // Frame: bmp3Family.ts's turret frame (+x the vehicle's left, +z forward, y up from the ring plane).
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT, FITTINGS, convexSlab } from './kit.ts';
 import { mount } from './fittingMount.ts';
@@ -336,7 +337,7 @@ function addGunnerSightHousing(P: TankBuilderPort, d: Bmp3RokTurretDatums): void
   P.add('turretDetail', cylZ(0.026, 0.02, 10), lx, ly, lz - ll / 2 - 0.022);
   P.add('turretDark', xform(torus(lr - 0.002, 0.010, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + ll / 2);
   P.add('turretDark', cylZ(lr - 0.008, 0.010, 18), lx, ly, lz + ll / 2);
-  P.add('turretGlass', cylZ(0.056, 0.008, 14), lx, ly, lz + ll / 2 + 0.005);
+  P.add('turretGlass', markVehicleNightLens(cylZ(0.056, 0.008, 14), 'headlight', { searchlight: true }), lx, ly, lz + ll / 2 + 0.005);
 }
 
 /** A round bar between two points (turret frame). */
@@ -377,7 +378,7 @@ function addCommanderSearchlight(P: TankBuilderPort, roofY: number): void {
   P.add('turretDetail', cylZ(0.04, 0.03, 12), lx, ly, lz - 0.132);
   P.add('turretDark', xform(torus(r - 0.004, 0.013, 20, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
   P.add('turretDark', cylZ(r - 0.012, 0.012, 20), lx, ly, lz + 0.100);
-  P.add('turretGlass', cylZ(r - 0.035, 0.010, 18), lx, ly, lz + 0.106);
+  P.add('turretGlass', markVehicleNightLens(cylZ(r - 0.035, 0.010, 18), 'headlight', { searchlight: true }), lx, ly, lz + 0.106);
 }
 
 /** The ROK Army fit on the shared welded BMP-3 turret (bmp3_rok only). */

@@ -2,6 +2,7 @@
 // Small warped latches and cloth relief are simplified; open basket cells and
 // recessed optical faces are geometric space, not dark-painted closed boxes.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -120,7 +121,7 @@ function projector(add: Add): void {
     [.1098, .081117], [.096, .081117], [.096, -.067]]
     .map(([r, q]) => new THREE.Vector2(r, q)), 32).rotateX(Math.PI / 2);
   add('turretDetail', annulus, x, y, z);
-  add('turretGlass', cylZ(.0954, .003, 32), x, y, -.160149);
+  add('turretGlass', markVehicleNightLens(cylZ(.0954, .003, 32), 'headlight', { searchlight: true }), x, y, -.160149);
   for (const dx of [-.096, .096]) add('turretDetail', box(.016, .130, .036),
     x + dx, 2.509, -.243);
   add('turretDetail', box(.222, .022, .062), x, 2.455, -.243);

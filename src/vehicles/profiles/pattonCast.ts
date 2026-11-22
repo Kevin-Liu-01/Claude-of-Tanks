@@ -30,6 +30,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { moldedBox } from '../accessoryPrimitives.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { buildNationWheel } from '../nationWheelConstructions.ts';
 import { STANDARD_WHEEL_AXIAL_ENVELOPE, TRACK_WIDTH_WHEEL_CAP } from '../roadWheelGeometry.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
@@ -1884,14 +1885,17 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
       P.add('gunMountCloth', moldedBox(0.64, 0.50, 0.36, 0.09, P.q ? 3 : 2, 0.03), 0, 0.39, GUN_Z0 + 0.79);
       P.add('gunMountCloth', moldedBox(0.66, 0.52, 0.05, 0.04, 1, 0.01), 0, 0.39, GUN_Z0 + 0.63);
     } else {
-      P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
-      P.addGunExtra(xform(ball(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
+      // (274, the owner: "there should actually be lights there") the A5's light open, as the M60A1's: its bezel ring on
+      // the housing's face and the xenon lens set 1.7 cm back in it, a searchlight at night (the closed face plate and the
+      // bulb cap buried behind it are gone)
+      searchlightFace(P, 0.39, GUN_Z0 + 0.936);
     }
     P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
   } else if (V.mark === 'm48a2ga2') {
     // the GA2's larger cast gun shield (Tank Encyclopedia; the Munster and Dresden tanks): a squared block ahead of the
     // turret's nose, the gun through its collar high in its face; the square IR/white-light searchlight on its bracket
-    // over the block's top left, its cover closed
+    // over the block's top left (274, the owner: "there should actually be lights there": its cover off, the lens in its
+    // dark frame a searchlight at night)
     P.addGunExtra(ga2Mantlet(P.q), 0, 0, 0);
     // the gun's collar on the block's face and its rubber boot, the coax's and the sight's ports
     P.addGunExtra(cylZ(0.20, 0.10, P.q ? 24 : 12), 0, 0, 0.67);
@@ -1900,7 +1904,7 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
     P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.51, 0.40);
     P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.81, 0.40);
     P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.81, 0.665);
-    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.81, 0.675);
+    P.add('gunMountGlass', markVehicleNightLens(box(0.44, 0.38, 0.012), 'headlight', { searchlight: true }), 0.32, 0.81, 0.677);
     for (const side of [-1, 1]) {
       for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.81 + dy, 0.40);
     }
@@ -2531,6 +2535,13 @@ function ga2Mantlet(q: boolean | undefined): Geo {
   return sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: sections[0].ring.map((_, i) => i) });
 }
 
+/** The AN/VSS-1's open face on its housing's front (gun frame, `z` the housing's face, the light's axis `y` over the bore):
+ * the bezel ring 3 cm deep and the round xenon lens 1.7 cm back in it, its aperture a weapon searchlight's (274). */
+function searchlightFace(P: CastPort, y: number, z: number): void {
+  P.addGunExtra(KIT.lathe([[0.19, 0], [0.215, 0], [0.215, 0.03], [0.19, 0.03], [0.19, 0]], P.q ? 24 : 14).rotateX(Math.PI / 2), 0, y, z);
+  P.add('gunMountGlass', markVehicleNightLens(KIT.cylZ(0.19, 0.012, P.q ? 24 : 14), 'headlight', { searchlight: true }), 0, y, z + 0.007);
+}
+
 /** The A5's gun shield (gun frame): a cast plate 6.5 cm thick lofted up its height, its face leaning back from 0.415 m
  * ahead of the trunnion at its foot (0.23 m under the bore) to 0.07 m at its crown (the model's 25 deg), bowed 3 cm
  * forward across its width, the front outline the model's rounded rectangle (1.03 m wide through the middle, its lower
@@ -3045,10 +3056,9 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     bar(P, 'gunMountDark', [-0.18, 0.21, 0.66], [0.18, 0.21, 0.66], 0.02);
     P.addGunExtra(moldedBox(0.58, 0.49, 0.48, 0.07, P.q ? 3 : 2, 0.02), 0, 0.435, 0.83);
     P.addGunExtra(moldedBox(0.53, 0.44, 0.12, 0.06, P.q ? 3 : 2, 0.02), 0, 0.435, 0.53);
-    P.addGunExtra(KIT.lathe([[0.001, 0], [0.215, 0], [0.215, 0.03], [0.19, 0.03], [0.19, 0.005], [0.001, 0.005]], P.q ? 24 : 14)
-      .rotateX(Math.PI / 2), 0, 0.435, 1.07);
-    P.add('gunMountGlass', cylZ(0.18, 0.01, P.q ? 20 : 12), 0, 0.435, 1.06);
-    P.addGunExtra(moldedBox(0.50, 0.42, 0.025, 0.08, P.q ? 2 : 1, 0.01), 0, 0.435, 1.105);
+    // (274, the owner: "there should actually be lights there") its cover off: the lens (behind the bezel's closed disc and
+    // the cover plate it lit nothing) in the open bezel ring, a searchlight at night
+    searchlightFace(P, 0.435, 1.07);
     // the U-shaped handle on its left side at mid-height (round 17: one handle 0.25 m long close on the housing, the
     // stray rods gone)
     bar(P, 'gunMountDark', [0.29, 0.435, 0.71], [0.35, 0.435, 0.73], 0.012);
@@ -4017,7 +4027,7 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   yield 'm60a2TurretRoof';
   // the AN/VSS-3 searchlight standing on the dome's left front flank (the owner's model, the photographs): its rounded
   // housing 0.62 x 0.47 m at the front tapering 15 % to its back, its top level with the mantlet's, the lip round its
-  // covered face (the plain cover recessed 3 cm), the handles; on its arm from the turret's front cheek beside the
+  // face and the lens on it, the handles; on its arm from the turret's front cheek beside the
   // mantlet; the cable sagging back over the roof to the cupola
   {
     const [lx, lz] = [1.15, 1.345];
@@ -4030,8 +4040,9 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
     const lip = sectionSolid([0.25, 0.30].map((z) => ({ z, ring: roundedRectRing(0.33, 0.255, -0.255, 0.08, n, 0) })),
       { centeredSideQuads: true, smoothSideEdges: Array.from({ length: 4 * (n + 1) }, (_, i) => i) });
     P.add('turretDetail', lip, lx, L.y(ly), L.z(lz));
-    P.add('turret', moldedBox(0.50, 0.34, 0.02, 0.05, P.q ? 2 : 1, 0.01), lx, L.y(ly), L.z(lz + 0.28));
-    P.add('turretDark', box(0.10, 0.02, 0.02), lx, L.y(ly + 0.14), L.z(lz + 0.295));
+    // (274, the owner: "there should actually be lights there") the lens on the lip's face (the plain cover stood inside
+    // the solid lip, unseen), a searchlight at night
+    P.add('turretGlass', markVehicleNightLens(box(0.48, 0.32, 0.012), 'headlight', { searchlight: true }), lx, L.y(ly), L.z(lz + 0.306));
     for (const y of [ly + 0.21, ly - 0.21]) P.add('turretDark', box(0.32, 0.03, 0.03), lx, L.y(y), L.z(lz - 0.05));
     // its arm: a 0.11 m tube at its mid-height from the turret's front cheek beside the mantlet, its brace under it
     bar(P, 'turretDark', [0.62, L.y(ly), L.z(1.62)], [lx - 0.27, L.y(ly), L.z(lz)], 0.055);

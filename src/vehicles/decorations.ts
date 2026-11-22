@@ -1,4 +1,8 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import {
+  maskUnlitNightOptics, prepareVehicleNightLensParts, registerVehicleNightLensFrames, vehicleNightLensFrames,
+  type VehicleNightLensFrame,
+} from './vehicleNightLighting.ts';
 import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 import { resolveTankId, tankSeedId } from './tankIdAliases.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
@@ -8191,6 +8195,11 @@ function* decorationSteps(
       for (const matKey of keys) {
         const geos = map.get(matKey) || [];
         const coarseGeos = coarseMap.get(matKey) || [];
+        // (274) a decor searchlight's lens: its family's parts masked before they merge, its seat as plain data for the
+        // page to register on the draw it builds (attachDecorPlanSteps)
+        prepareVehicleNightLensParts(geos); prepareVehicleNightLensParts(coarseGeos);
+        const lampsNear = vehicleNightLensFrames(geos), lampsCoarse = vehicleNightLensFrames(coarseGeos);
+        const nightLamps = lampsNear || lampsCoarse ? { near: lampsNear, coarse: lampsCoarse } : null;
         const near = mergeFamily(geos);
         const socketOwner = new THREE.Object3D();
         registerSmokeSockets(socketOwner, geos);
@@ -8198,7 +8207,7 @@ function* decorationSteps(
         const coarse = mergeFamily(coarseGeos);
         for (const geometry of coarseGeos) resources.releaseGeometry(geometry);
         if (!near && !coarse) continue;
-        families.push({ matKey, near, coarse, smokeSockets: (socketOwner.userData.smokeSockets as DecorSmokeSocket[] | undefined) ?? null });
+        families.push({ matKey, near, coarse, smokeSockets: (socketOwner.userData.smokeSockets as DecorSmokeSocket[] | undefined) ?? null, nightLamps });
         done++;
         yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
@@ -8229,6 +8238,8 @@ interface DecorFamilyPlan {
   readonly near: THREE.BufferGeometry | null;
   readonly coarse: THREE.BufferGeometry | null;
   readonly smokeSockets: DecorSmokeSocket[] | null;
+  /** (274) its lamps' seats in its frame, per level (vehicleNightLighting.ts vehicleNightLensFrames), or null */
+  readonly nightLamps: { readonly near: VehicleNightLensFrame[] | null; readonly coarse: VehicleNightLensFrame[] | null } | null;
 }
 /** One frame's cosmetic or functional bucket: a group of one LOD per family (a bucket of rows that all merged empty
  *  still makes its group, as the in-line pass always has). */
@@ -8281,18 +8292,23 @@ function* attachDecorPlanSteps(
     const g = new THREE.Group();
     g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
     let done = 0;
-    for (const { matKey, near, coarse, smokeSockets } of families) {
+    for (const { matKey, near, coarse, smokeSockets, nightLamps } of families) {
       const lod = new THREE.LOD();
       if (near) {
         const mesh = decorMesh(near, frame, matKey, 'near', functional);
         if (smokeSockets) mesh.userData.smokeSockets = smokeSockets;
+        if (nightLamps?.near) registerVehicleNightLensFrames(mesh, nightLamps.near);
         lod.addLevel(mesh, 0);
         drawCalls++;
       } else {
         lod.addLevel(new THREE.Object3D(), 0);
       }
       // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
-      if (coarse) lod.addLevel(decorMesh(coarse, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
+      if (coarse) {
+        const mesh = decorMesh(coarse, frame, matKey, 'coarse', functional);
+        if (nightLamps?.coarse) registerVehicleNightLensFrames(mesh, nightLamps.coarse);
+        lod.addLevel(mesh, DECOR_COARSE_DIST, 0.1);
+      }
       lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
       g.add(lod);
       done++;
@@ -8303,6 +8319,8 @@ function* attachDecorPlanSteps(
     g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
     g.userData.decorFunctional = functional;
   }
+  // (274) the decor lamps' lens material draws the lamp-less glass too: those draws carry a zero mask
+  for (const group of [...decorGroups.hull, ...decorGroups.turret]) maskUnlitNightOptics(group);
   // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
   // them, never laid through them (ghillieDrape.ts)
   // (UI-LOCKDOWN E) each of the four suit passes in a slice of its own

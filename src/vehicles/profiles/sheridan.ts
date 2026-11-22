@@ -1,4 +1,5 @@
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { antennaPart } from './antennaPart.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -786,7 +787,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   // lens, and the lens stays proud of the housing.
   P.addEquipment('turret', box(0.36, 0.36, 0.30), 0.74, 0.67, 1.41);
   P.add('turretDark', box(0.32, 0.32, 0.03), 0.74, 0.67, 1.571);
-  P.addModuleVisual('optics', 'turretGlass', box(0.26, 0.26, 0.022), 0.74, 0.67, 1.591);
+  P.addModuleVisual('optics', 'turretGlass', markVehicleNightLens(box(0.26, 0.26, 0.022), 'headlight', { searchlight: true }), 0.74, 0.67, 1.591);
   P.add('turretDark', box(0.38, 0.02, 0.10), 0.74, 0.858, 1.55);
   P.add('turretDetail', box(0.19, 0.04, 0.12), 0.685, 0.47, 1.30);
 

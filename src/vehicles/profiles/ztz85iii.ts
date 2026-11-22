@@ -13,6 +13,7 @@
 // Every triangle is first-party procedural geometry. Authorship: Kevin B. Liu (NOTICE.md).
 
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -442,7 +443,7 @@ function addTurretRoof(P: TankBuilderPort): void {
     P.add('turretDetail', box(0.06, 0.10, 0.10), lx, ly - r - 0.02, lz);
     P.add('turretDetail', cylZ(r, 0.24, P.q ? 20 : 12), lx, ly, lz);
     P.add('turretDark', cylZ(r + 0.008, 0.024, P.q ? 20 : 12), lx, ly, lz + 0.125);
-    P.add('turretGlass', cylZ(r - 0.02, 0.008, P.q ? 20 : 12), lx, ly, lz + 0.14);
+    P.add('turretGlass', markVehicleNightLens(cylZ(r - 0.02, 0.008, P.q ? 20 : 12), 'headlight', { searchlight: true }), lx, ly, lz + 0.14);
   }
   // the 12.7 mm gun on its post on the cupola's rear ring (the photographs' tall cradle)
   const post = 0.24, ringTop = y + 0.095;

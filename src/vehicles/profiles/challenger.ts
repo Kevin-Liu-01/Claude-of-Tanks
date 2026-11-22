@@ -1,4 +1,5 @@
 import { lathedWheelSection } from './lathedWheelStock.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { antennaPart } from './antennaPart.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { beginAuxiliaryStation, captureAuxiliaryStock } from './auxiliaryStation.ts';
@@ -1496,7 +1497,7 @@ function buildChallenger3XSensors(
   P.addEquipment('turret', box(0.58, 0.42, 0.42), -0.67, 0.36, 1.28);
   P.add('turretDetail', box(0.68, 0.10, 0.52), -0.67, 0.18, 1.14);
   P.add('turretDark', cylZ(0.205, 0.15, 18), -0.67, 0.36, 1.52);
-  P.add('turretGlass', cylZ(0.165, 0.018, 18), -0.67, 0.36, 1.605);
+  P.add('turretGlass', markVehicleNightLens(cylZ(0.165, 0.018, 18), 'headlight', { searchlight: true }), -0.67, 0.36, 1.605);
   P.add('turretDetail', torus(0.205, 0.018, 18), -0.67, 0.36, 1.605);
   receipt.searchlights = 1;
 
