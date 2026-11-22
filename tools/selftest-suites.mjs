@@ -1416,6 +1416,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
     'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
+    'src/sim/missionAttachmentAuthoritySignatures.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',

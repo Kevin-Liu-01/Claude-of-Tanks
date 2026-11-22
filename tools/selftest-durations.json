@@ -550,6 +550,7 @@
     "src/sim/matchPlacement.selftest.mjs": 240000,
     "src/sim/matchRuleset.selftest.mjs": 1000,
     "src/sim/missileRoles.selftest.mjs": 67000,
+    "src/sim/missionAttachmentAuthoritySignatures.selftest.mjs": 5000,
     "src/sim/missionDockSeats.selftest.mjs": 1000,
     "src/sim/modeAdditions.selftest.mjs": 4000,
     "src/sim/modeConfiguration.selftest.mjs": 1000,
