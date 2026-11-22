@@ -56,6 +56,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { buildLeo1HullSteps } from './leopard1Hull.ts';
+import { LEO1_TURRET } from './leopard1Turret.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
@@ -10080,7 +10081,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   // 1.08 m ahead of the ring, bustle to 2.20 m behind) hold; the cast core is now a flat-roofed casting 2.3 m across at
   // the base and 1.8 m at the roof, 0.79 m tall, instead of a 2.5 m ellipsoid dome.
   const turretY = deckTopY(0.50) + 0.02;
-  P.turretG.position.set(0, turretY, 0.50);
+  P.turretG.position.set(0, turretY, LEO1_TURRET.ringZ);
   const castRing = (wb: number, wm: number, ym: number, wr: number, yr: number, yb = 0): readonly (readonly [number, number])[] => [
     [-wb, yb], [wb, yb], [wm, ym], [wr, yr], [-wr, yr], [-wm, ym],
   ];
@@ -10097,7 +10098,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     { z: 0.95, ring: castRing(0.74, 0.84, 0.30, 0.58, 0.70) },
     { z: 1.08, ring: castRing(0.62, 0.70, 0.30, 0.50, 0.64) },
   ];
-  const castRoofY = 0.79;
+  const castRoofY = LEO1_TURRET.roofOverRingM;
   const mirror = (s: Side, p: Vec3Tuple): Vec3Tuple => [s * p[0], p[1], p[2]];
   const sideSlab = (s: Side, ...points: readonly Vec3Tuple[]): THREE.BufferGeometry => {
     const [a, b, c, d, e, f, g, h] = points;

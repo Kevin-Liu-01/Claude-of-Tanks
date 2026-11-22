@@ -14,6 +14,7 @@ import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSol
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { LEO1_TURRET } from './leopard1Turret.ts';
 
 /** A corner rounded by two short segments: the points `bevel` along each neighbouring edge and their midpoint pulled
  * halfway back toward the corner, so the smoothed normals read as a small radius between two flat faces. */
@@ -426,7 +427,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
   // sits on the old hull's deck at the source station (0.50 m ahead of the hull origin); the deck rises from 1.69 m at the
   // ring to 1.77 m 1.75 m behind it, so every foot stands over the deck within its reach at any bearing.
   const turretY = centerDeckTopY(0.50) + 0.016;
-  P.turretG.position.set(0, turretY, 0.50);
+  P.turretG.position.set(0, turretY, LEO1_TURRET.ringZ);
   // The ring race (Main 265): a level collar on the deck under the casting, its top 15 mm under the casting's 0.05 m foot,
   // so the turret stands on the hull at every bearing instead of 5-12 cm over the deck's fall across the ring; the turret
   // crew's basket passes up through it into the turret. 0.96 m across the axis keeps it under the casting's foot at every
@@ -434,7 +435,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
   const ringRace = { radius: 0.96, topY: turretY + 0.035, bottomY: centerDeckTopY(0.50 + 0.96) - 0.02 };
   P.add('hull', cylY(ringRace.radius, ringRace.radius, ringRace.topY - ringRace.bottomY, P.q ? 40 : 24),
     0, (ringRace.topY + ringRace.bottomY) / 2, 0.50);
-  const castRoofY = 0.79;
+  const castRoofY = LEO1_TURRET.roofOverRingM;
   const ridgeY = 0.30;
   // [z, base half-width, ridge half-width, roof half-width, roof, foot]: the 1A5's stations, their feet lifted for the
   // old deck
