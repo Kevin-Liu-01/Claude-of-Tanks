@@ -8,7 +8,7 @@
 // the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof, a corbelled cornice over
 // their pilasters, louvred shutters and a signboard; a whitewashed mosque with small domes and a slender minaret; round
 // clay-and-bamboo rice granaries (gola) under conical thatch; the river ghat's boat sheds.
-import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePanel, facePoint, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { finialOn, roundDrum, smoothDome } from './domes.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
@@ -404,67 +404,414 @@ const brickShop: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The village mosque: a whitewashed hall, three small domes, a slender minaret at one corner. */
+/** (dome-detail-275) the mosque's paint, as tints on its limewash: the green of its bands, its arch rings and its board */
+const MOSQUE_GREEN: Rgb = [0.56, 0.82, 0.64];
+/** (dome-detail-275) the monsoon on whitewash: the black mould's grey-green, the moss at the foot */
+const MOULD: Rgb = [0.62, 0.68, 0.62];
+const MOSS: Rgb = [0.52, 0.72, 0.42];
+/** the alem's gilt */
+const GILT = rgb(0xb8933e);
+
+/**
+ * (dome-detail-275) A pointed (two-centred) arch's line, its centres a fifth of the span in from the springings, as the
+ * Bengal mosques turn them: the arch of span w springing at ys, offset e outward, as (u, y) from the right springing over
+ * the apex to the left, n rows a side; `lobes` (odd) cusps cut `cusp` deep into it make the multifoil.
+ */
+function pointedLine(w: number, ys: number, e: number, n: number, lobes = 0, cusp = 0): Array<[number, number]> {
+  const rho = 0.7 * w, cu = w / 2 - rho, R = rho + e, ta = Math.acos(Math.min(1, -cu / R));
+  const half: Array<[number, number]> = [];
+  for (let i = 0; i <= n; i++) {
+    const s = i / n, r = lobes > 0 ? R - cusp * (1 - Math.sin(Math.PI * ((lobes * s / 2) % 1))) : R;
+    half.push([cu + r * Math.cos(ta * s), ys + r * Math.sin(ta * s)]);
+  }
+  return [...half, ...half.slice(0, -1).reverse().map(([u, y]): [number, number] => [-u, y])];
+}
+
+/**
+ * (dome-detail-275) A Bengal arch over a cut of span w on a face, springing at ys: its tympanum (the lime in shade, a
+ * multifoil of five lobes cut in its edge), the moulded ring standing proud round it (painted, or the limewash's white),
+ * its soffit and the imposts it springs from; a minor arch (`fine` false) turns its lobes in fewer rows and has no soffit.
+ * Dressing. Returns the ring's apex.
+ */
+function mosqueArch(sink: PartSink, face: Face, u: number, ys: number, w: number, ring: number, paint: Rgb | null, look: () => number, fine = true): number {
+  const n = fine ? 10 : 5, inner = pointedLine(w, ys, 0, n, 5, Math.min(0.09, w * 0.075)), outer = pointedLine(w, ys, ring, n);
+  const P = (p: readonly [number, number], o: number): Vec3 => facePoint(face, u + p[0], p[1], o);
+  sink.polygon('plaster', [facePoint(face, u, ys, 0.006), ...inner.map((p) => P(p, 0.006))], { decor: true, shade: 0.66 + look() * 0.08 });
+  const O = 0.04, rp: EmitOptions = { decor: true, ...(paint ? { tint: paint } : {}) };
+  for (let i = 0; i + 1 < inner.length; i++) {
+    sink.quad('plaster', P(inner[i], O), P(outer[i], O), P(outer[i + 1], O), P(inner[i + 1], O), rp);
+    if (fine) sink.quad('plaster', P(inner[i], 0.006), P(inner[i], O), P(inner[i + 1], O), P(inner[i + 1], 0.006), { ...rp, shade: 0.8, fine: 'near' });
+  }
+  for (const e of [-1, 1]) faceBox(sink, 'plaster', face, u + e * (w / 2 + ring / 2), ys - 0.045, O / 2 + 0.01, ring + 0.12, 0.09, O + 0.02, { decor: true, shade: 1.04 });
+  return outer[n][1];
+}
+
+/** (dome-detail-275) A merlon (kangura) of the parapet's crest: a pointed little leaf of lime on the parapet at (u, y). */
+function merlon(sink: PartSink, face: Face, u: number, y: number, o0: number, depth: number, opts: EmitOptions = { decor: true }): void {
+  const w = 0.16, h = 0.16, tip = 0.09;
+  // its two faces and its sides and slopes (never its foot, which sits on the parapet)
+  const ring = ([[u + w / 2, y], [u + w / 2, y + h], [u, y + h + tip], [u - w / 2, y + h], [u - w / 2, y]] as const);
+  const at = (k: number, o: number): Vec3 => facePoint(face, ring[k][0], ring[k][1], o);
+  const o1 = o0 - depth;
+  sink.polygon('plaster', [at(4, o0), at(0, o0), at(1, o0), at(2, o0), at(3, o0)], opts);
+  sink.polygon('plaster', [at(0, o1), at(4, o1), at(3, o1), at(2, o1), at(1, o1)], opts);
+  for (let k = 0; k < 4; k++) sink.quad('plaster', at(k, o0), at(k, o1), at(k + 1, o1), at(k + 1, o0), opts);
+}
+
+/** (dome-detail-275) A jali vent in its cut: the lime lattice set back in the reveal, the dressed surround and sill. */
+function jaliVent(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+  const lat = { decor: true, shade: 0.93 };
+  for (const k of [-1, 1]) {
+    faceBox(sink, 'plaster', face, u + k * w / 6, y + h / 2, -0.1, 0.04, h, 0.05, lat);
+    faceBox(sink, 'plaster', face, u, y + h / 2 + k * h / 6, -0.1, w, 0.04, 0.05, lat);
+  }
+  const sc = { decor: true, fineSides: true, shade: 1.03 };
+  for (const k of [-1, 1]) faceBox(sink, 'plaster', face, u + k * (w / 2 + 0.05), y + h / 2, 0.02, 0.1, h + 0.2, 0.04, sc);
+  faceBox(sink, 'plaster', face, u, y + h + 0.06, 0.025, w + 0.2, 0.12, 0.05, sc);
+  faceBox(sink, 'plaster', face, u, y - 0.04, 0.035, w + 0.24, 0.08, 0.07, sc);
+}
+
+/**
+ * (dome-detail-275) A cupola under the dome law's 0.8 m (a turret's, the minaret's lantern's): pointed and a little
+ * stilted as smoothDome turns them, in sixteen segments and six rows (the facade budget's 12,000 triangles). Returns its
+ * crown.
+ */
+function smallCupola(sink: PartSink, x: number, y: number, z: number, r: number, emit: EmitOptions = {}): number {
+  const rho = r * 1.3, cx = r - rho, ta = Math.acos(-cx / rho), st = r * 0.12;
+  const profile: Array<[number, number]> = [[0, r], [st, r]];
+  for (let i = 1; i <= 6; i++) { const t = ta * i / 6; profile.push([st + rho * Math.sin(t), Math.max(0, cx + rho * Math.cos(t))]); }
+  sink.revolve('plaster', [x, y, z], 'y', profile, 16, emit);
+  return y + profile[profile.length - 1][0];
+}
+
+/**
+ * (dome-detail-275) A guldasta: the engaged corner turret of a Bengal mosque, an octagon from the plinth to over the
+ * parapet on its moulded base, banded at the cornice and the parapet, capped by a ring and its little pointed
+ * cupola (domes.ts) under the gilt alem; the monsoon's damp darkening its foot.
+ */
+function guldasta(sink: PartSink, x: number, z: number, r: number, floor: number, eave: number, top: number, tintAt: (p: Vec3) => Rgb): void {
+  const ph = Math.PI / 8, damp = (p: Vec3): number => Math.min(1, 0.6 + 0.4 * Math.max(0, p[1] + 0.1) / (floor + 0.9));
+  sink.cylinder('stone', [x, -0.1, z], 'y', floor + 0.1, r + 0.09, 8, { decor: true, shadeAt: damp }, r + 0.07, true, ph);
+  sink.cylinder('plaster', [x, -0.1, z], 'y', floor + 1.0, r, 8, { shadeAt: damp, tintAt }, r * 0.97, false, ph);
+  const head = top + 0.72;
+  sink.cylinder('plaster', [x, floor + 0.9, z], 'y', head - floor - 0.9, r * 0.97, 8, { tintAt }, r * 0.86, true, ph);
+  const at = (y: number): number => r * (0.97 - 0.11 * Math.max(0, y - floor - 0.9) / (head - floor - 0.9));
+  for (const y of [eave - 0.2, top - 0.04]) sink.cylinder('plaster', [x, y, z], 'y', 0.12, at(y) + 0.06, 8, { decor: true, shade: 0.95 }, at(y) + 0.06, false, ph);
+  sink.cylinder('plaster', [x, head, z], 'y', 0.09, r * 0.86 + 0.08, 8, { decor: true }, r * 0.86 + 0.08, true, ph);
+  const crown = smallCupola(sink, x, head + 0.09, z, r * 0.9, { decor: true, tintAt });
+  sink.revolve('structureMetal', [x, crown - 0.03, z], 'y', [[0, 0.03], [0.1, 0.045], [0.18, 0.02], [0.34, 0]], 6, { decor: true, colour: GILT });
+}
+
+/**
+ * The village mosque (dome-detail-275, rebuilt: a whitewashed box with three domes and a flat parapet): the prayer hall
+ * at the back of its plot, its three bays under the three domes, raised on a brick plinth; before it the raised court
+ * (sahn) on its own plinth inside a low wall, its steps up through the gate between two piers, the tube well for the
+ * ablutions in its corner. The front's three doorways under pointed multifoil arches, the middle one in its frame
+ * (pishtaq) standing proud to over the parapet with the green board on its head and pinnacles at its corners; engaged
+ * corner turrets (guldasta) with their cupolas; a stepped cornice under the parapet, a green painted frieze, the parapet
+ * bowed up over the front and back and crested with merlons; pilasters between the bays of the flanks, the windows under
+ * their arches and the jali vents; the mihrab's bay standing out of the qibla wall behind; the domes and the minaret as
+ * before (smooth, domes.ts). The monsoon on it all: the black mould streaking the domes and down the walls under the
+ * spouts, the damp darkening the plinths, moss at their foot.
+ */
 const mosque: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const W = Math.max(6, Math.min(8.5, ctx.info.w - 0.4)), D = Math.max(7.5, Math.min(10, ctx.info.d - 0.4));
-  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.4, y0: 0, h: 2.6 }];
-  for (const u of [-W * 0.3, W * 0.3]) openings.push({ face: 'front', storey: 0, kind: 'door', u, w: 1.0, y0: 0, h: 2.3 });
-  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.9, h: 1.6, sill: 0.9, spacing: 2.4, margin: 1.0 })) openings.push(o);
+  const look = ctx.variant, pw = ctx.info.w, pd = ctx.info.d;
+  // the hall at the back of the plot (its mihrab's bay inside it), the court before it
+  const W = Math.max(5.2, Math.min(8.5, pw - 0.5)), mihD = 0.42, mihW = 1.5;
+  const Dh = Math.max(4.6, Math.min(7.5, (pd - 0.6) * 0.64));
+  const zh = -pd / 2 + 0.15 + mihD + Dh / 2, court = pd / 2 - 0.3 - (zh + Dh / 2), sahn = court >= 1.4;
+  const plinth = 0.6, storey = 4.0, tR = 0.26, tc = 0.04;
+  // the front's three doorways: the middle in its frame, the side ones between it and the corner turrets
+  const fw = 0.12, ring = 0.11, cw = W >= 6.5 ? 1.2 : 1.0, ch = 2.1, pier = 0.18, po = 0.26;
+  const ph = cw / 2 + fw + ring + 0.07 + pier, tIn = W / 2 - tc - tR;
+  const sideU = (ph + tIn) / 2, sw = Math.max(0.7, Math.min(0.95, 2 * ((tIn - ph) / 2 - 0.08 - 0.1 - ring))), sh = 1.85;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: cw, y0: 0, h: ch }];
+  for (const s of [-1, 1]) openings.push({ face: 'front', storey: 0, kind: 'door', u: s * sideU, w: sw, y0: 0, h: sh });
+  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, Dh, { w: 0.8, h: 1.4, sill: 0.9, spacing: 2.4, margin: 1.0 })) openings.push(o);
+  // the jali vents high in the qibla wall either side of the mihrab
+  for (const s of [-1, 1]) openings.push({ face: 'back', storey: 0, kind: 'loft', u: s * Math.min(W / 2 - 0.9, 1.5), w: 0.5, y0: 2.5, h: 0.5 });
+  const leaf = rgb(0x3e6a5a);
   const dialect: HouseDialect = {
-    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: rgb(0x3e6a5a), frameWidth: 0.06, frameOut: 0.04, bars: 'two', surround: { bucket: 'plaster', width: 0.14, out: 0.06, lintel: 0.24 }, sill: null, shutters: null }, ctx.rng, 0.4),
-    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: rgb(0x3e6a5a), frame: { bucket: 'plaster', width: 0.18, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
+    window: (s, face, o, y0) => {
+      if (o.kind === 'loft') { jaliVent(s, face, o.u, y0 + o.y0, o.w, o.h); return; }
+      windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: leaf, frameWidth: 0.06, frameOut: 0.04, bars: 'grille', surround: { bucket: 'plaster', width: 0.12, out: 0.06, lintel: 0.1 }, sill: { bucket: 'plaster', out: 0.07 }, shutters: null }, ctx.rng, 0.4);
+    },
+    // (no steps: the doors open on the court, a hand under the hall's floor; without a court, steps down to the ground)
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'plaster', width: o.u === 0 ? fw : 0.1, out: 0.08 }, steps: sahn ? null : { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
   };
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: [{ h: 4.0, wall: 'plaster' }],
-    roof: { kind: 'flat', pitchDeg: 0, eave: 0.15, verge: 0.15, thickness: 0.22, bucket: 'plaster', parapet: 0.6 }, gableBucket: 'plaster',
-    openings, chimneys: [], gutters: null, verge: null,
-  }, dialect);
-  const top = frame.eaveY + 0.22;
-  // (dome-detail-275: each was five frustums of twelve flat facets on a plain ring) the Bengal dome: a little pointed, on
-  // its drum under a stepped cornice, turned smooth (domes.ts), the gilt alem on its crown
-  for (const [x, r] of [[-W * 0.3, 0.9], [0, 1.3], [W * 0.3, 0.9]] as const) {
-    const shell = smoothDome(sink, 'plaster', x, roundDrum(sink, 'plaster', x, top, 0, r, 0.4, 'plaster') - 0.02, 0, r, { form: 'pointed', stilt: 0.14 });
-    finialOn(sink, x, shell.top, 0, r > 1 ? 0.6 : 0.45, rgb(0xb8933e));
-  }
-  // the minaret at a rear corner, engaged in the walls (the 225 gate, 2026-10-15: standing clear of the front corner it
-  // reached 1.1 m past the chapel's 5.7 m plot, and the front's doors leave it no room there): its shaft reaches at most
-  // 0.3 m past the plot's side and back
+  // the black mould of the monsoons: streaks of grey-green down a round form from its head, thickest at its foot
+  const mould = (x: number, z: number, y0: number, h: number): ((p: Vec3) => Rgb) => {
+    const phase = look() * 6.28, n = 5 + Math.floor(look() * 4);
+    return (p: Vec3): Rgb => {
+      const t = Math.min(1, Math.max(0, (p[1] - y0) / h)), streak = (0.5 + 0.5 * Math.sin(Math.atan2(p[2] - z, p[0] - x) * n + phase)) ** 3;
+      const k = 1 - (streak * 0.75 + 0.25) * (1 - t) * 0.9;
+      return [MOULD[0] + (1 - MOULD[0]) * k, MOULD[1] + (1 - MOULD[1]) * k, MOULD[2] + (1 - MOULD[2]) * k];
+    };
+  };
+  // the minaret at the hall's rear right corner, engaged in it (the 225 gate, 2026-10-15: its shaft reaches at most 0.3 m
+  // past the plot's side and back), in the hall's frame
   const mr = 0.75;
-  const mx = Math.min(W / 2 + 0.2, ctx.info.w / 2 + 0.3 - mr), mz = -Math.min(D / 2 + 0.2, ctx.info.d / 2 + 0.3 - mr);
-  // (dome-detail-275: a ten-sided tapered prism, a flat disc and a cone) the shaft turned round on its moulded base, its
-  // string courses, the balcony on its corbelled ring under a parapet, the lantern stage and its small dome
-  sink.revolve('plaster', [mx, 0, mz], 'y', [[-0.3, mr + 0.1], [0.5, mr + 0.1], [0.5, mr], [11.5, 0.55], [11.5, 0]], 24);
-  for (const y of [3.2, 6.0]) sink.revolve('plaster', [mx, y, mz], 'y', [[0, mr - (0.2 * y) / 11.5 + 0.02], [0, mr - (0.2 * y) / 11.5 + 0.08], [0.16, mr - (0.2 * y) / 11.5 + 0.08], [0.16, 0]], 24, { decor: true, shade: 0.94 });
-  sink.revolve('plaster', [mx, 8.1, mz], 'y', [[0, 0.62], [0.5, 1.05], [0.5, 1.12], [0.62, 1.12], [0.62, 1.05], [1.15, 1.05], [1.15, 0.98], [0.62, 0.98], [0.62, 0]], 24, { decor: true });
-  sink.revolve('plaster', [mx, 11.5, mz], 'y', [[0, 0.62], [0.12, 0.62], [0.12, 0.5], [0.9, 0.5], [0.9, 0.6], [1.0, 0.6], [1.0, 0]], 24);
-  finialOn(sink, mx, smoothDome(sink, 'plaster', mx, 12.5, mz, 0.48, { form: 'pointed' }).top, mz, 0.4, rgb(0xb8933e));
+  const mx = Math.min(W / 2 + 0.15, pw / 2 + 0.3 - mr), mz = -Math.min(Dh / 2 - zh + 0.15, pd / 2 + 0.3 - mr) - zh;
+  sink.placed(0, 0, 0, zh, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: Dh, plinth: { h: plinth, out: 0.1, bucket: 'stone' }, storeys: [{ h: storey, wall: 'plaster' }],
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.15, verge: 0.15, thickness: 0.22, bucket: 'plaster', parapet: 0.3 }, gableBucket: 'plaster',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.26,
+    }, dialect);
+    const y0 = frame.floors[0], eaveY = frame.eaveY, roofY = eaveY + 0.22, pTop = roofY + 0.3, faces = frame.faces;
+    const turrets = ([[-1, 1], [1, 1], [-1, -1]] as const).map(([sx, sz]): [number, number] => [sx * (W / 2 - tc), sz * (Dh / 2 - tc)]);
+    // (dome-detail-275: each was five frustums of twelve flat facets on a plain ring) the Bengal dome: a little pointed, on
+    // its drum under a stepped cornice, turned smooth (domes.ts), the gilt alem on its crown; the middle one over the
+    // wider middle bay. (This pass) the black mould streaking each down from its crown
+    const rc = Math.max(0.95, Math.min(1.4, W * 0.19)), rs = rc * 0.68, xs = rc + rs - 0.05;
+    for (const [x, r] of [[-xs, rs], [0, rc], [xs, rs]] as const) {
+      const tintAt = mould(x, 0, roofY, r * 2.2);
+      const shell = smoothDome(sink, 'plaster', x, roundDrum(sink, 'plaster', x, roofY, 0, r, 0.4, 'plaster', { tintAt }) - 0.02, 0, r, { form: 'pointed', stilt: 0.14, emit: { tintAt } });
+      finialOn(sink, x, shell.top, 0, r > 0.9 ? 0.6 : 0.45, GILT);
+    }
+    // the corner turrets (the minaret stands at the fourth corner)
+    for (const [x, z] of turrets) guldasta(sink, x, z, tR, y0, eaveY, pTop, mould(x, z, 0, pTop));
+    // (dome-detail-275: a ten-sided tapered prism, a flat disc and a cone) the shaft turned round on its moulded base, its
+    // string courses, the balcony on its corbelled ring under a parapet, the lantern stage and its small dome
+    const mt = mould(mx, mz, 0, 12);
+    sink.revolve('plaster', [mx, 0, mz], 'y', [[-0.3, mr + 0.1], [0.5, mr + 0.1], [0.5, mr], [11.5, 0.55], [11.5, 0]], 24, { tintAt: mt });
+    for (const y of [3.2, 6.0]) sink.revolve('plaster', [mx, y, mz], 'y', [[0, mr - (0.2 * y) / 11.5 + 0.02], [0, mr - (0.2 * y) / 11.5 + 0.08], [0.16, mr - (0.2 * y) / 11.5 + 0.08], [0.16, 0]], 24, { decor: true, shade: 0.94 });
+    sink.revolve('plaster', [mx, 8.1, mz], 'y', [[0, 0.62], [0.5, 1.05], [0.5, 1.12], [0.62, 1.12], [0.62, 1.05], [1.15, 1.05], [1.15, 0.98], [0.62, 0.98], [0.62, 0]], 24, { decor: true });
+    sink.revolve('plaster', [mx, 11.5, mz], 'y', [[0, 0.62], [0.12, 0.62], [0.12, 0.5], [0.9, 0.5], [0.9, 0.6], [1.0, 0.6], [1.0, 0]], 24);
+    finialOn(sink, mx, smallCupola(sink, mx, 12.5, mz, 0.48), mz, 0.4, GILT);
+
+    // (dome-detail-275) the front: the middle doorway's frame (pishtaq) standing proud of the wall to over the parapet, its
+    // piers on bases with capitals at the springing, the head over the arch with the green board, a coping, merlons and a
+    // pinnacle at each corner; the three doorways' multifoil arches in green rings, rosettes in the frame's spandrels
+    const fr = faces.front;
+    const apex = mosqueArch(sink, fr, 0, y0 + ch + fw, cw + 2 * fw, ring, MOSQUE_GREEN, look);
+    for (const s of [-1, 1]) mosqueArch(sink, fr, s * sideU, y0 + sh + 0.1, sw + 0.2, ring * 0.9, MOSQUE_GREEN, look);
+    const headY = apex + 0.07, crown = pTop + 0.32;
+    for (const e of [-1, 1]) {
+      const pu = e * (ph - pier / 2);
+      faceBox(sink, 'plaster', fr, pu, (y0 - 0.04 + crown) / 2, po / 2, pier, crown - y0 + 0.04, po, {}, { back: true });
+      faceBox(sink, 'plaster', fr, pu, y0 + 0.13, po / 2 + 0.02, pier + 0.08, 0.34, po + 0.04, { decor: true, shade: 0.96 }, { back: true });
+      faceBox(sink, 'plaster', fr, pu, y0 + ch + fw + 0.02, po / 2 + 0.02, pier + 0.08, 0.12, po + 0.04, { decor: true, tint: MOSQUE_GREEN }, { back: true });
+      // the pinnacle: a little octagonal shaft on the coping under a pointed cap
+      const pp = facePoint(fr, pu, 0, po / 2);
+      sink.cylinder('plaster', [pp[0], crown + 0.1, pp[2]], 'y', 0.36, 0.075, 8, { decor: true }, 0.065, false, Math.PI / 8);
+      sink.cylinder('plaster', [pp[0], crown + 0.46, pp[2]], 'y', 0.26, 0.095, 8, { decor: true }, 0.01, true, Math.PI / 8);
+      sink.pipe('plaster', facePoint(fr, e * (cw / 2 + fw + ring + 0.02), apex - 0.2, 0.006), facePoint(fr, e * (cw / 2 + fw + ring + 0.02), apex - 0.2, 0.035), 0.065, 10,
+        { decor: true, caps: true, fine: 'near', tint: MOSQUE_GREEN });
+    }
+    faceBox(sink, 'plaster', fr, 0, (headY + crown) / 2, po / 2, 2 * ph, crown - headY, po, {}, { back: true });
+    faceBox(sink, 'plaster', fr, 0, crown + 0.05, po / 2 + 0.02, 2 * ph + 0.12, 0.1, po + 0.08, { decor: true, shade: 0.94 }, { back: true });
+    faceBox(sink, 'plaster', fr, 0, (headY + crown) / 2 + 0.02, po + 0.012, 2 * ph - 0.56, Math.min(0.46, crown - headY - 0.3), 0.024, { decor: true, tint: MOSQUE_GREEN });
+    for (let k = -2; k <= 2; k++) merlon(sink, fr, k * (ph - 0.3) / 2, crown + 0.1, po + 0.03, 0.18);
+    // the cornice: two corbelled courses under the eave, round the hall and its turrets
+    const ex = W / 2, ez = Dh / 2;
+    sink.band('plaster', -ex - 0.07, eaveY - 0.1, -ez - 0.07, ex + 0.07, eaveY, ez + 0.07, { decor: true, shade: 0.97 });
+    sink.band('plaster', -ex - 0.035, eaveY - 0.2, -ez - 0.035, ex + 0.035, eaveY - 0.1, ez + 0.035, { decor: true, shade: 0.92 });
+    // the parapet bowed up over the front and the back between the turrets (the Bengal cornice's curve), its crest of
+    // merlons round the four sides clear of the turrets, the minaret, the pishtaq and the mihrab
+    const L = W / 2 + 0.15, bow = 0.22, crest = (u: number): number => pTop + bow * (1 - (u / L) ** 2);
+    const clearOf = (p: Vec3): boolean => turrets.every(([x, z]) => Math.hypot(p[0] - x, p[2] - z) > tR + 0.2) && Math.hypot(p[0] - mx, p[2] - mz) > mr + 0.12;
+    for (const name of ['front', 'back', 'right', 'left'] as const) {
+      const face = faces[name], bowed = name === 'front' || name === 'back', half = face.width / 2 + 0.15;
+      if (bowed) {
+        const pts: Vec3[] = [facePoint(face, -L, pTop, 0.15), facePoint(face, L, pTop, 0.15)];
+        for (let i = 1; i < 12; i++) { const u = L - 2 * L * i / 12; pts.push(facePoint(face, u, crest(u), 0.15)); }
+        orientedPrism(sink, 'plaster', pts, [-face.out[0], 0, -face.out[2]], 0.22, { shadeAt: (p) => (p[1] > pTop + 0.01 ? 0.9 : 1) });
+      }
+      const n = Math.floor((2 * half - 0.2) / 0.5);
+      for (let k = 0; k <= n; k++) {
+        const u = -half + 0.1 + k * (2 * half - 0.2) / n;
+        if ((name === 'front' && Math.abs(u) < ph + 0.1) || (name === 'back' && Math.abs(u) < mihW / 2 + 0.1)) continue;
+        if (!clearOf(facePoint(face, u, 0, 0.05))) continue;
+        merlon(sink, face, u, bowed ? crest(u) : pTop, 0.14, 0.18);
+      }
+    }
+    // the green frieze under the cornice, round the walls (behind the pishtaq's piers on the front)
+    for (const name of ['front', 'back', 'right', 'left'] as const) {
+      const face = faces[name], hw = face.width / 2;
+      const spans: Array<[number, number]> = name === 'front' ? [[-hw, -ph], [ph, hw]] : [[-hw, hw]];
+      for (const [a, b] of spans) facePanel(sink, 'plaster', face, (a + b) / 2, eaveY - 0.38, 0.006, b - a, 0.28, { decor: true, tint: MOSQUE_GREEN });
+    }
+    // the flanks: a pilaster at each bay's division (midway between the windows and the corner turrets), each window under
+    // its arch in a white ring over a shaded multifoil tympanum
+    for (const name of ['left', 'right'] as const) {
+      const face = faces[name], edge = face.width / 2 - tc - tR;
+      const us = [-edge, ...openings.filter((o) => o.face === name && o.kind === 'window').map((o) => o.u).sort((a, b) => a - b), edge];
+      for (const o of openings) if (o.face === name && o.kind === 'window') mosqueArch(sink, face, o.u, y0 + o.y0 + o.h + 0.1, o.w + 0.24, 0.09, null, look, false);
+      for (let k = 0; k + 1 < us.length; k++) {
+        const u = (us[k] + us[k + 1]) / 2;
+        faceBox(sink, 'plaster', face, u, (y0 + eaveY - 0.2) / 2, 0.04, 0.2, eaveY - 0.2 - y0, 0.08, { decor: true, shade: 1.03 });
+        faceBox(sink, 'plaster', face, u, y0 + 0.15, 0.06, 0.28, 0.3, 0.12, { decor: true });
+        faceBox(sink, 'plaster', face, u, eaveY - 0.62, 0.06, 0.28, 0.14, 0.12, { decor: true, tint: MOSQUE_GREEN });
+      }
+    }
+    // the mihrab's bay out of the qibla wall: on its plinth, to the parapet, its cornice and merlons, the frieze round it, a
+    // blind multifoil niche on its back
+    const bk = faces.back;
+    faceBox(sink, 'stone', bk, 0, (plinth - 0.1) / 2, (mihD + 0.05) / 2, mihW + 0.2, plinth + 0.1, mihD + 0.05, { shadeAt: (p) => Math.min(1, 0.62 + 0.6 * Math.max(0, p[1] + 0.1)) }, { back: true });
+    faceBox(sink, 'plaster', bk, 0, (plinth + pTop) / 2, mihD / 2, mihW, pTop - plinth, mihD, {}, { back: true });
+    faceBox(sink, 'plaster', bk, 0, eaveY - 0.07, (mihD + 0.06) / 2, mihW + 0.12, 0.14, mihD + 0.06, { decor: true, shade: 0.96 }, { back: true });
+    const mf: Face = { origin: facePoint(bk, 0, 0, mihD), u: bk.u, out: bk.out, width: mihW };
+    facePanel(sink, 'plaster', mf, 0, eaveY - 0.38, 0.006, mihW, 0.28, { decor: true, tint: MOSQUE_GREEN });
+    facePanel(sink, 'plaster', mf, 0, plinth + 1.1, 0.006, 0.76, 1.5, { decor: true, shade: 0.7 });
+    mosqueArch(sink, mf, 0, plinth + 1.85, 0.9, 0.1, MOSQUE_GREEN, look, false);
+    for (let k = -1; k <= 1; k++) merlon(sink, mf, k * 0.5, pTop, 0.0, 0.2);
+
+    // (dome-detail-275) the monsoon: the damp darkening the plinth and the wall's foot up to the sills, moss on the brick,
+    // the black mould run down the walls under the spouts through the parapet
+    const footFaces = (['left', 'right', 'back'] as const).map((n) => faces[n]);
+    for (const face of footFaces) {
+      const hw = face.width / 2 + 0.1;
+      facePanel(sink, 'stone', face, 0, plinth / 2, 0.106, 2 * hw, plinth, { decor: true, shadeAt: (p) => 0.6 + 0.35 * Math.min(1, p[1] / plinth), tint: [0.9, 0.95, 0.86] });
+      facePanel(sink, 'plaster', face, 0, plinth + 0.4, 0.008, face.width, 0.8, { decor: true, shadeAt: (p) => (p[1] < plinth + 0.1 ? 0.8 : 1), tintAt: (p) => (p[1] < plinth + 0.1 ? MOULD : [1, 1, 1]) });
+      for (let k = 0, n = 2 + Math.floor(look() * 2); k < n; k++) {
+        const w = 0.3 + look() * 0.6, h = 0.12 + look() * 0.3, u = -hw + w / 2 + look() * (2 * hw - w);
+        facePanel(sink, 'stone', face, u, h / 2, 0.112, w, h, { decor: true, tint: MOSS, shadeAt: (p) => (p[1] < 0.02 ? 0.55 : 0.8) });
+      }
+    }
+    for (const name of ['left', 'right', 'back'] as const) {
+      const face = faces[name], hw = face.width / 2;
+      for (const s of [-1, 1]) {
+        const u = s * (hw - tR - 0.32);
+        if (openings.some((o) => o.face === name && Math.abs(o.u - u) < o.w / 2 + 0.3) || !clearOf(facePoint(face, u, 0, 0.3))) continue;
+        sink.pipe('structureMetal', facePoint(face, u, roofY + 0.06, 0.05), facePoint(face, u, roofY + 0.02, 0.48), 0.045, 6, { decor: true, caps: true, colour: rgb(0x4a4c4a) });
+        const top = eaveY - 0.56, len = 1.6 + look() * 1.2, wid = 0.24 + look() * 0.14;
+        facePanel(sink, 'plaster', face, u, top - len / 2, 0.008, wid, len,
+          { decor: true, shadeAt: (p) => (p[1] > top - 0.01 ? 0.78 : 1), tintAt: (p) => (p[1] > top - 0.01 ? MOULD : [1, 1, 1]) });
+      }
+    }
+
+    // (dome-detail-275) the court (sahn): its brick plinth a hand under the hall's floor, the lime floor on it, the low
+    // wall round it with its coping, the gate's two piers with their caps and the steps down through it; damp and moss at
+    // its foot; the tube well's hand pump for the ablutions in a front corner
+    if (sahn) {
+      const z0 = Dh / 2, z1 = Dh / 2 + court, hx = W / 2 + 0.08, top = plinth - 0.03, wt = 0.2, wh = 0.55, gap = 0.8;
+      const damp = (p: Vec3): number => Math.min(1, 0.58 + 0.42 * Math.max(0, p[1] + 0.1) / 0.75);
+      sink.span('stone', -hx, -0.3, z0 - 0.05, hx, top - 0.05, z1, { shadeAt: damp });
+      sink.span('plaster', -hx + 0.03, top - 0.05, z0 - 0.05, hx - 0.03, top, z1 - 0.03, { shade: 0.88, tint: [0.97, 0.95, 0.9] });
+      const wall = (xa: number, za: number, xb: number, zb: number) => {
+        sink.span('plaster', xa, top - 0.05, za, xb, top + wh, zb, { shadeAt: (p) => (p[1] < top + 0.1 ? 0.82 : 1) });
+        sink.span('plaster', xa - 0.03, top + wh, za - 0.03, xb + 0.03, top + wh + 0.07, zb + 0.03, { decor: true, shade: 0.93 });
+      };
+      for (const s of [-1, 1]) wall(s < 0 ? -hx : hx - wt, z0 + 0.12, s < 0 ? -hx + wt : hx, z1 - wt);
+      wall(-hx, z1 - wt, -gap - 0.15, z1);
+      wall(gap + 0.15, z1 - wt, hx, z1);
+      for (const s of [-1, 1]) {
+        const x = s * (gap + 0.15);
+        sink.span('plaster', x - 0.17, top - 0.05, z1 - 0.32, x + 0.17, top + 1.0, z1 + 0.02);
+        sink.span('plaster', x - 0.21, top + 1.0, z1 - 0.36, x + 0.21, top + 1.08, z1 + 0.06, { decor: true, tint: MOSQUE_GREEN });
+        sink.revolve('plaster', [x, top + 1.08, z1 - 0.15], 'y', [[0, 0.1], [0.08, 0.14], [0.16, 0.1], [0.24, 0.03], [0.3, 0]], 12, { decor: true });
+      }
+      for (let k = 1; k <= 2; k++) {
+        const t = top * (3 - k) / 3, wide = gap + 0.02 * k;
+        sink.span('stone', -wide, -0.2, z1 - 0.02, wide, t, z1 + k * 0.3, { decor: true, shadeAt: damp });
+      }
+      const sides: Face[] = [
+        { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: 2 * hx },
+        { origin: [hx, 0, (z0 + z1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: court },
+        { origin: [-hx, 0, (z0 + z1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: court },
+      ];
+      for (const face of sides) for (let k = 0, n = 1 + Math.floor(look() * 2); k < n; k++) {
+        const hw = face.width / 2, w = 0.3 + look() * 0.5, h = 0.1 + look() * 0.22, u = -hw + w / 2 + look() * (2 * hw - w);
+        if (face === sides[0] && Math.abs(u) < gap + w / 2 + 0.1) continue;
+        facePanel(sink, 'stone', face, u, h / 2, 0.008, w, h, { decor: true, tint: MOSS, shadeAt: (p) => (p[1] < 0.02 ? 0.55 : 0.8) });
+      }
+      const px = -hx + wt + 0.62, pz = z1 - wt - 0.62;
+      // (the facade budget) the pump drawn plain: its cement apron, the barrel and its head, the handle and the spout
+      const iron = pick(look, PUMP_IRON), pm = { decor: true, colour: iron };
+      sink.span('structureWood', px - 0.45, top - 0.02, pz - 0.45, px + 0.45, top + 0.1, pz + 0.45, { decor: true, colour: rgb(0x87857f) });
+      sink.cylinder('structureMetal', [px, top + 0.1, pz], 'y', 0.75, 0.07, 8, pm, 0.06, false);
+      sink.cylinder('structureMetal', [px, top + 0.85, pz], 'y', 0.12, 0.085, 8, pm);
+      sink.pipe('structureMetal', [px, top + 0.93, pz], [px + 0.6, top + 1.08, pz], 0.02, 5, pm);
+      sink.pipe('structureMetal', [px, top + 0.62, pz], [px, top + 0.56, pz + 0.24], 0.025, 6, pm);
+    }
+  });
   return sink.finish();
 };
 
 /**
- * The gola: a round rice granary of clay-plastered bamboo on a plinth, under a conical thatch. (The lift: a gola stands in
- * every bari's yard now) the bamboo hoops binding its body, the thatch's thick cut eave and its topknot, the plank hatch
- * high under the eave and the bamboo ladder leaned up to it; dressing all (its collision as before), a phone builds none.
+ * The gola (dome-detail-275, rebuilt: a plain twelve-sided drum under a twelve-facet cone): a round rice granary of
+ * bamboo plastered with clay and dung, its body turned round and swelling a little to the eave, on a raised earth plinth
+ * with a slumped skirt; three bamboo hoops binding it in relief; the
+ * conical thatch laid in three courses, each one's butt lapping the course above, under a thick cut eave ragged with
+ * straw, the topknot bound at the apex (or a clay pot turned over it); the plank hatch high under the eave, the bamboo
+ * ladder leaned up to it, a winnowing tray against the plinth. Built the same on every tier (its fine joinery a phone
+ * drops); the collision as before: the plinth, the body and a cone inside the thatch.
  */
 const gola: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant, N = 24;
   const R = Math.max(1.4, Math.min(2.1, Math.min(ctx.info.w, ctx.info.d) / 2 - 0.4));
-  sink.cylinder('plaster3', [0, -0.3, 0], 'y', 0.9, R + 0.4, 12, {});
-  sink.cylinder('plaster3', [0, 0.6, 0], 'y', 2.0, R, 12, {}, R * 1.08);
-  sink.cylinder('straw', [0, 2.55, 0], 'y', 2.2, R * 1.35, 12, {}, 0.12);
-  sink.dressing(ctx.tier === 'mobile', () => {
-    const at = (y: number): number => R * (1 + 0.08 * (y - 0.6) / 2.0);
-    for (const y of [0.85, 1.55, 2.25]) sink.cylinder('structureWood', [0, y, 0], 'y', 0.06, at(y) + 0.022, 12, { decor: true, colour: shade(BAMBOO, 0.86) }, at(y + 0.06) + 0.022);
-    // the thatch's cut eave, thicker than its slope, and the straw bound into a topknot at the apex
-    sink.cylinder('straw', [0, 2.4, 0], 'y', 0.16, R * 1.37, 12, { decor: true }, R * 1.3);
-    sink.cylinder('straw', [0, 4.6, 0], 'y', 0.42, 0.17, 8, { decor: true }, 0.04);
-    // the hatch: a plank board in its frame high on the body's front, under the eave; the ladder up to it
-    const face: Face = { origin: [0, 0, at(2.05) + 0.015], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
-    faceBox(sink, 'structureWood', face, 0, 2.05, 0.02, 0.56, 0.5, 0.04, { decor: true, colour: shade(WEATHERED_PLANK[1], 0.9) });
-    for (const y of [1.88, 2.22]) faceBox(sink, 'structureWood', face, 0, y, 0.05, 0.5, 0.06, 0.025, { decor: true, colour: shade(WEATHERED_PLANK[1], 0.75) }, 'ends');
-    if (ctx.variant() < 0.7) ladder(sink, { ...face, origin: [0, 0, at(1.75) + 0.02] }, 0, 0.06, 1.75, shade(BAMBOO, 0.8));
+  const flare = 0.08 + look() * 0.05, eaveY = 2.5, apexY = 4.6 + look() * 0.3;
+  const at = (y: number): number => R * (1 + flare * Math.sqrt(Math.min(1, Math.max(0, (y - 0.6) / (eaveY - 0.6)))));
+  // the plinth: rammed earth, its sides battered, its top a ledge round the body; a skirt of slumped mud round its foot
+  // (each closed underneath: regionalArchitecture's rays from under the ground saw into them)
+  sink.revolve('plaster3', [0, 0, 0], 'y', [[-0.3, 0], [-0.3, R + 0.4], [0.35, R + 0.37], [0.6, R + 0.22], [0.6, 0]], N,
+    { shadeAt: (p) => (p[1] < 0 ? 0.72 : 0.94) });
+  sink.revolve('plaster3', [0, 0, 0], 'y', [[-0.04, R + 0.38], [-0.04, R + 0.68], [0.3, R + 0.385]], N, { decor: true, shade: 0.86 });
+  // the body: clay on bamboo, damp at its foot where the rain splashes off the ledge
+  sink.revolve('plaster2', [0, 0, 0], 'y', [0.55, 0.95, 1.5, 2.05, eaveY].map((y): [number, number] => [y, at(y)]), N,
+    { shadeAt: (p) => Math.min(1, 0.68 + 0.32 * Math.max(0, p[1] - 0.55) / 0.5), tintAt: (p) => (p[1] < 0.7 ? [0.86, 0.9, 0.82] : [1, 1, 1]) });
+  // the bamboo hoops binding it, each a split cane standing proud
+  const cane = shade(BAMBOO, 0.86);
+  for (const y of [0.95, 1.5, 2.05]) sink.revolve('structureWood', [0, 0, 0], 'y', [[y - 0.04, at(y - 0.04) - 0.005], [y, at(y) + 0.04], [y + 0.04, at(y + 0.04) - 0.005]], N, { decor: true, colour: cane });
+  // the thatch: the eave's soffit and its thick cut edge, then three courses up the cone, each one's butt lapping out over
+  // the course above it, a little full across its middle; greyer and darker where it weathers at the eave, a stain of
+  // algae down one side (decor: its eave reaches past the plot; the collision is the cone inside it)
+  const Re = R * 1.36, slope = (y: number): number => Re * (apexY - 0.15 - y) / (apexY - 0.15 - 2.68);
+  const yb = [2.68, 2.68 + (apexY - 2.83) * 0.31, 2.68 + (apexY - 2.83) * 0.62, apexY - 0.28];
+  const roof: Array<[number, number]> = [[eaveY - 0.04, at(eaveY) - 0.02], [2.4, Re], [2.68, Re + 0.04]];
+  for (let k = 0; k < 3; k++) {
+    if (k > 0) roof.push([yb[k], slope(yb[k]) + 0.12]);
+    const m = (yb[k] + yb[k + 1]) / 2;
+    roof.push([m, slope(m) + 0.03], [yb[k + 1], slope(yb[k + 1])]);
+  }
+  roof.push([apexY - 0.2, 0.08]);
+  const algae = look() * 6.28;
+  sink.revolve('straw', [0, 0, 0], 'y', roof, N, {
+    decor: true,
+    shadeAt: (p) => 0.78 + 0.22 * Math.min(1, Math.max(0, (p[1] - 2.4) / 1.2)),
+    tintAt: (p) => {
+      const g = Math.max(0, Math.cos(Math.atan2(p[2], p[0]) - algae)) ** 2 * (1 - Math.min(1, (p[1] - 2.4) / 1.6));
+      return [0.92 - 0.2 * g, 0.92 - 0.08 * g, 0.9 - 0.22 * g];
+    },
   });
+  sink.cylinder('straw', [0, eaveY - 0.05, 0], 'y', apexY - eaveY - 0.2, at(eaveY) - 0.05, 8, {}, 0.08, false);
+  // the eave's ragged straw: a fringe of tufts hanging from its cut edge, longer and shorter by turns, closed along its
+  // ragged foot (a ray under it saw its inner face)
+  const drop = (i: number): number => 0.05 + (i % 2) * 0.07 + hash01(i, R, 3.1) * 0.08;
+  for (let i = 0; i < N; i++) {
+    const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2;
+    const P = (a: number, r: number, y: number): Vec3 => [Math.cos(a) * r, y, Math.sin(a) * r];
+    const ro = Re + 0.006, ri = Re - 0.03, d0 = drop(i), d1 = drop((i + 1) % N);
+    sink.quad('straw', P(a1, ro, 2.41 - d1), P(a0, ro, 2.41 - d0), P(a0, ro, 2.44), P(a1, ro, 2.44), { decor: true, shade: 0.8 });
+    sink.quad('straw', P(a0, ri, 2.41 - d0), P(a1, ri, 2.41 - d1), P(a1, ri, 2.44), P(a0, ri, 2.44), { decor: true, shade: 0.62 });
+    sink.quad('straw', P(a0, ro, 2.41 - d0), P(a1, ro, 2.41 - d1), P(a1, ri, 2.41 - d1), P(a0, ri, 2.41 - d0), { decor: true, shade: 0.55 });
+  }
+  // the topknot: the straw bound at the apex with a twist of jute, or a clay pot turned over it
+  if (look() < 0.6) {
+    sink.revolve('straw', [0, apexY - 0.3, 0], 'y', [[0, 0.24], [0.12, 0.13], [0.22, 0.1], [0.3, 0.13], [0.48, 0.06], [0.58, 0]], 12, { decor: true, shade: 0.9 });
+    sink.revolve('structureWood', [0, apexY - 0.3, 0], 'y', [[0.15, 0.115], [0.19, 0.135], [0.24, 0.115]], 12, { decor: true, colour: rgb(0x7a6444) });
+  } else {
+    sink.revolve('structureWood', [0, apexY - 0.3, 0], 'y', [[0, 0.17], [0.12, 0.21], [0.26, 0.25], [0.4, 0.21], [0.5, 0.11], [0.53, 0]], 12, { decor: true, colour: pick(look, TERRACOTTA) });
+  }
+  // the hatch: a plank board in its frame high on the body's front, under the eave, its battens and the peg that bars it;
+  // the bamboo ladder leaned up to its sill
+  const hy = 2.02, face: Face = { origin: [0, 0, at(hy)], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
+  const plank = shade(WEATHERED_PLANK[1], 0.9);
+  faceBox(sink, 'structureWood', face, 0, hy, 0.004, 0.56, 0.48, 0.056, { decor: true, colour: plank });
+  for (const s of [-1, 1]) faceBox(sink, 'structureWood', face, s * 0.32, hy, 0.01, 0.07, 0.62, 0.08, { decor: true, colour: shade(plank, 0.8) });
+  for (const s of [-1, 1]) faceBox(sink, 'structureWood', face, 0, hy + s * 0.29, 0.01, 0.72, 0.07, 0.08, { decor: true, colour: shade(plank, 0.8) });
+  for (const y of [hy - 0.14, hy + 0.14]) faceBox(sink, 'structureWood', face, 0, y, 0.04, 0.48, 0.05, 0.025, { decor: true, colour: shade(plank, 0.72), fine: 'near' }, 'ends');
+  sink.pipe('structureWood', facePoint(face, 0.2, hy, 0.02), facePoint(face, 0.2, hy, 0.12), 0.018, 5, { decor: true, caps: true, fine: 'near', colour: cane });
+  if (look() < 0.75) ladder(sink, { ...face, origin: [0, 0, at(hy - 0.26) + 0.02] }, 0, 0.06, hy - 0.26, shade(BAMBOO, 0.8));
+  // the winnowing tray (kula) of split bamboo leaned against the plinth round the side
+  const ka = Math.PI * (0.15 + look() * 0.3) * (look() < 0.5 ? 1 : -1) - Math.PI / 2, kt = 0.5;
+  const kc: Vec3 = [Math.cos(ka) * (R + 0.46), 0.3, Math.sin(ka) * (R + 0.46)];
+  const kn: Vec3 = [Math.cos(ka) * Math.cos(kt), Math.sin(kt), Math.sin(ka) * Math.cos(kt)];
+  sink.pipe('structureWood', [kc[0] - kn[0] * 0.02, kc[1] - kn[1] * 0.02, kc[2] - kn[2] * 0.02], [kc[0] + kn[0] * 0.02, kc[1] + kn[1] * 0.02, kc[2] + kn[2] * 0.02], 0.32, 14,
+    { decor: true, caps: true, colour: shade(BAMBOO_MAT, 1.05) });
   return sink.finish();
 };
 

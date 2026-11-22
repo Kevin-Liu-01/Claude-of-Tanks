@@ -5,7 +5,7 @@
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
 import * as THREE from 'three';
-import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { finialOn, glassBosses, roundDrum, smoothDome } from './domes.ts';
 import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, withHousePlans, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
 import { paintBand } from './facade.ts';
@@ -256,26 +256,226 @@ function batterParts(parts: RegionalParts, cx: number, cz: number, hx: number, h
   }
 }
 
-/** The square Tunisian minaret: whitewashed shaft, a gallery parapet, a lantern of arches and a little dome. */
+// ---------------------------------------------------------------------------------------------------------------------
+// Face-frame parts for the hammam and the minaret (dome-detail-275): relief laid on a body's faces in the face's own
+// (u, y, out) frame, which bodyFaces keeps right-handed (u x up = out) on every side.
+
+/** A box between two corners given in a face's frame (u, y, out): an axis-aligned face's span (dome-detail-275). */
+function faceSpan(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y0: number, y1: number, o0: number, o1: number,
+  opts: EmitOptions = {}): void {
+  // relief seated on the face (from its plane out) leaves out the back it lays against
+  if (Math.abs(o0) < 0.002) { faceBox(sink, bucket, face, (u0 + u1) / 2, (y0 + y1) / 2, o1 / 2, Math.abs(u1 - u0), y1 - y0, o1, opts); return; }
+  const a = facePoint(face, u0, y0, o0), b = facePoint(face, u1, y1, o1);
+  sink.span(bucket, a[0], a[1], a[2], b[0], b[1], b[2], opts);
+}
+
+/**
+ * A section drawn in a face's (out, y) plane, counter-clockwise in (out, y), run along the face from u0 to u1: a sloped
+ * buttress, a splash skirt, a corbel (dome-detail-275). The section must be convex.
+ */
+function runSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, section: ReadonlyArray<readonly [number, number]>,
+  opts: EmitOptions = {}): void {
+  // (seen from +u the (out, y) plane turns the other way: the prism wants its points counter-clockwise from +u)
+  sink.prism(bucket, [...section].reverse().map(([o, y]) => facePoint(face, u0, y, o)), face.u, u1 - u0, opts);
+}
+
+/** The two spandrels of a round arch of radius r springing at y over u: the wall between the arch and its square head. */
+function spandrels(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, r: number, o0: number, depth: number,
+  opts: EmitOptions = {}, n = 4): void {
+  const at = (t: number): Vec3 => facePoint(face, u + Math.cos(t) * r, y + Math.sin(t) * r, o0);
+  // each fanned from its square corner (the region is star-shaped from it): left from the springing up to the crown,
+  // right from the crown down to the springing
+  const left: Vec3[] = [facePoint(face, u - r, y + r, o0)], right: Vec3[] = [facePoint(face, u + r, y + r, o0)];
+  for (let i = 0; i <= n; i++) { left.push(at(Math.PI - i / n * Math.PI / 2)); right.push(at(Math.PI / 2 - i / n * Math.PI / 2)); }
+  sink.prism(bucket, left, face.out, depth, opts);
+  sink.prism(bucket, right, face.out, depth, opts);
+}
+
+/** A ring of voussoirs over a round head (the face only, `o` proud), each its own bucket and paint by its index. */
+function voussoirs(sink: PartSink, face: Face, u: number, y: number, r: number, ringW: number, n: number, o: number,
+  paint: (j: number) => readonly [RegionalBucket, EmitOptions]): void {
+  const at = (t: number, rr: number) => facePoint(face, u + Math.cos(t) * rr, y + Math.sin(t) * rr, o);
+  for (let j = 0; j < n; j++) {
+    const a = Math.PI * j / n, b = Math.PI * (j + 1) / n, [bucket, opts] = paint(j);
+    sink.quad(bucket, at(a, r), at(a, r + ringW), at(b, r + ringW), at(b, r), { decor: true, ...opts });
+  }
+}
+
+/** A block with a round head on a face (a Jerid parapet's merlon): w wide, its head springing h over its foot y. */
+function roundMerlon(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, w: number, h: number, o0: number, depth: number,
+  opts: EmitOptions = {}): void {
+  const r = w / 2, pts: Vec3[] = [facePoint(face, u - r, y, o0), facePoint(face, u + r, y, o0)];
+  for (let i = 0; i <= 4; i++) { const t = i / 4 * Math.PI; pts.push(facePoint(face, u + Math.cos(t) * r, y + h + Math.sin(t) * r, o0)); }
+  sink.prism(bucket, pts, face.out, depth, opts);
+}
+
+/**
+ * A run of glazed tiles on a face (Nabeul's, round a Tunisian door and up a minaret): the bedding strip in `ground`
+ * (it reads as the band at any range) and the tiles over it in a chequer of `colours` (near the camera only).
+ */
+function tileRun(sink: PartSink, face: Face, u0: number, u1: number, y0: number, y1: number, o: number, size: number, ground: Rgb,
+  colours: readonly Rgb[], start = 0): void {
+  const P = (u: number, y: number, oo: number) => facePoint(face, u, y, oo);
+  sink.quad('structureWood', P(u0, y0, o), P(u1, y0, o), P(u1, y1, o), P(u0, y1, o), { colour: ground, decor: true });
+  const nu = Math.max(1, Math.round((u1 - u0) / size)), ny = Math.max(1, Math.round((y1 - y0) / size));
+  const su = (u1 - u0) / nu, sy = (y1 - y0) / ny, g = 0.012, oo = o + 0.006;
+  for (let i = 0; i < nu; i++) for (let j = 0; j < ny; j++) {
+    const a = u0 + i * su + g, b = u0 + (i + 1) * su - g, c = y0 + j * sy + g, d = y0 + (j + 1) * sy - g;
+    sink.quad('structureWood', P(a, c, oo), P(b, c, oo), P(b, d, oo), P(a, d, oo), { colour: colours[(i + j + start) % colours.length], decor: true, fine: 'near' });
+  }
+}
+
+/** The rain's stain under a spout or a ledge: bands narrowing and fading down the wall from yTop to yBot. */
+function rainStreak(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, yTop: number, yBot: number, w: number, k0: number): void {
+  const n = 6;
+  for (let b = 0; b < n; b++) {
+    const t0 = b / n, t1 = (b + 1) / n, ya = yTop - (yTop - yBot) * t1 - 0.001, yb = yTop - (yTop - yBot) * t0 + 0.001;
+    const h0 = w * (1 - 0.6 * t1) / 2, h1 = w * (1 - 0.6 * t0) / 2, o = b % 2 ? 0.0065 : 0.004, k = k0 + (0.76 - k0) * Math.pow((t0 + t1) / 2, 1.4);
+    sink.polygon(bucket, [facePoint(face, u - h0, ya, o), facePoint(face, u + h0, ya, o), facePoint(face, u + h1, yb, o), facePoint(face, u - h1, yb, o)],
+      { decor: true, tint: [k, k * 0.95, k * 0.86] });
+  }
+}
+
+/**
+ * A Tunisian door's leaf as the hammam's (dome-detail-275): the leaf carried up into the round head of its opening, and
+ * its black nail heads hammered in the old pattern — a border round the leaf and up its arch, an inner arch, a rosette,
+ * the split between its two leaves and the brass knockers. Over doorUnit's leaf at the back of its reveal (sink.recess).
+ */
+function studdedLeaf(sink: PartSink, face: Face, u: number, y: number, w: number, spring: number, leaf: Rgb): void {
+  const lo = sink.recess > 0 ? -sink.recess + 0.022 : 0.012, r = w / 2;
+  const head: Vec3[] = [];
+  for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI; head.push(facePoint(face, u + Math.cos(t) * (r - 0.01), y + spring + Math.sin(t) * (r - 0.01), lo + 0.02)); }
+  sink.polygon('structureWood', head, { colour: shade(leaf, 0.9), decor: true });
+  const pts: Array<[number, number]> = [], e = r - 0.08, ia = Math.min(0.2, r * 0.36), iy = spring * 0.7;
+  for (let yy = 0.16; yy < spring; yy += 0.16) pts.push([-e, yy], [e, yy]);
+  for (let k = 0; k <= 8; k++) { const t = k / 8 * Math.PI; pts.push([Math.cos(t) * e, spring + Math.sin(t) * e]); }
+  for (let uu = -e + 0.16; uu < e - 0.08; uu += 0.16) pts.push([uu, 0.16]);
+  for (let yy = 0.45; yy < iy; yy += 0.17) pts.push([-ia, yy], [ia, yy]);
+  for (let k = 0; k <= 4; k++) { const t = k / 4 * Math.PI; pts.push([Math.cos(t) * ia, iy + Math.sin(t) * ia]); }
+  const ry = Math.min(spring + e * 0.45, iy + ia + 0.25);
+  for (const [du, dy] of [[0, 0.1], [0.1, 0], [0, -0.1], [-0.1, 0], [0, 0]] as const) pts.push([du, ry + dy]);
+  const s = 0.018, o = lo + 0.047, stud = { colour: rgb(0x1c1a18), decor: true, fine: 'near' } as const;
+  for (const [pu, py] of pts) {
+    sink.quad('structureMetal', facePoint(face, u + pu - s, y + py - s, o), facePoint(face, u + pu + s, y + py - s, o), facePoint(face, u + pu + s, y + py + s, o),
+      facePoint(face, u + pu - s, y + py + s, o), stud);
+  }
+  sink.quad('structureMetal', facePoint(face, u - 0.008, y, o - 0.004), facePoint(face, u + 0.008, y, o - 0.004), facePoint(face, u + 0.008, y + spring + r - 0.02, o - 0.004),
+    facePoint(face, u - 0.008, y + spring + r - 0.02, o - 0.004), stud);
+  for (const sx of [-1, 1]) faceBox(sink, 'structureMetal', face, u + sx * 0.13, y + spring * 0.58, o + 0.012, 0.07, 0.1, 0.025, { colour: BRASS, decor: true, fine: 'near' });
+}
+
+/** The Nabeul tiles' glazes: copper green, cobalt, the yellow of antimony, the tin-white ground. */
+const TILE_GREEN = rgb(0x2f7a4c), TILE_BLUE = rgb(0x2c5c9a), TILE_YELLOW = rgb(0xd2a23a), TILE_WHITE = rgb(0xe6ddc6);
+/** Fired Jerid brick (the Ouled el-Hadef quarter of Tozeur): the brick tone over the mud render, and its paint. */
+const BRICK: readonly [RegionalBucket, EmitOptions] = [MUD, { tint: [1.04, 0.74, 0.52] }];
+
+/**
+ * The square Maghrebi minaret of the Jerid and the Sahel (dome-detail-275: a plain tapered box of 260 triangles). On a
+ * stepped base of mud render, the lime-washed shaft in two stages over its door, string courses between them; on each
+ * face the lower stage's tall blind arch and the upper's twin arches on a colonnette, each framed in its alfiz, a small
+ * window cut through the wall under each arch, the rain's stains down the pilasters; the frieze of green-glazed tiles
+ * under the gallery, the gallery corbelled out on stepped courses and brackets, its parapet's stepped merlons and its
+ * spouts; the lantern open on an arch each side round its dark stair head, the arches ringed in green tile and lime,
+ * its stepped cornice, a small pointed dome on its haunch and the brass alem. The minaret recorded as a shaft body.
+ */
 const minaret: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const S = 2.8, H = 11.5;
-  sink.span(MUD, -S / 2 - 0.25, -0.3, -S / 2 - 0.25, S / 2 + 0.25, 0.6, S / 2 + 0.25);
-  sink.span('plaster', -S / 2, 0.6, -S / 2, S / 2, H, S / 2);
-  sink.span('plaster', -S / 2 - 0.2, H, -S / 2 - 0.2, S / 2 + 0.2, H + 0.25, S / 2 + 0.2);
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) sink.span('plaster', sx * (S / 2 + 0.1) - 0.15, H + 0.25, sz * (S / 2 + 0.1) - 0.15, sx * (S / 2 + 0.1) + 0.15, H + 1.0, sz * (S / 2 + 0.1) + 0.15);
-  // (props census #5, lane B 2026-10-15) the lantern open on its four corner piers under its head (its arches were dark
-  // plates on a solid block); the minaret recorded as a shaft body
-  const L = S * 0.62, pw = (L - 0.7) / 2;
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span('plaster', sx < 0 ? -L / 2 : L / 2 - pw, H + 0.25, sz < 0 ? -L / 2 : L / 2 - pw, sx < 0 ? -L / 2 + pw : L / 2, H + 1.9, sz < 0 ? -L / 2 + pw : L / 2);
+  const look = ctx.variant, LIME: RegionalBucket = 'plaster2', decor = { decor: true } as const;
+  // the shaft's half girth; its door's sill, the string courses, the frieze, the corbels, the gallery's soffit and floor
+  const S = 2.8, h = S / 2, yb = 0.75, s1 = 2.5, s2 = 6.5, s3 = 8.85, fy = 9.0, cy = 9.55, gy = 10.05, gf = 10.25;
+  // the stepped base: a sunk course of mud render, the lime step over it, the dust darker at their feet
+  sink.span(MUD, -1.85, -0.3, -1.85, 1.85, 0.35, 1.85, { shadeAt: (p: Vec3) => (p[1] < 0.2 ? 0.84 : 0.95) });
+  sink.span(LIME, -1.62, 0.35, -1.62, 1.62, yb, 1.62, { shadeAt: (p: Vec3) => (p[1] < 0.5 ? 0.9 : 1) });
+  // the shaft to the gallery's corbels, its door, the lower stage's windows and the upper stage's twin lights cut through
+  const low: HoleRect = { u0: -0.12, u1: 0.12, y0: 4.2, y1: 5.0 };
+  const twin = [-0.47, 0.47].map((u): HoleRect => ({ u0: u - 0.08, u1: u + 0.08, y0: 7.45, y1: 8.05 }));
+  const door: HoleRect = { u0: -0.42, u1: 0.42, y0: yb, y1: yb + 1.6 };
+  const F = holedBox(sink, LIME, -h, -h, h, h, yb, cy, { front: [door, low, ...twin], right: [low, ...twin], back: [low, ...twin], left: [low, ...twin] }, 0.32, 0.24);
+  const blue = pick(ctx.rng, BLUES), leaf = look() < 0.65 ? blue : shade(TIMBER, 1.1);
+  // the door at the back of its reveal; the slits left open on the stair's dark, as a minaret's are
+  sink.recess = 0.24;
+  try {
+    doorUnit(sink, F.front, 0, yb, door.u1 - door.u0, door.y1 - door.y0, { leaf, frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(TIMBER, 0.8) },
+      steps: null, leafKind: 'plank' }, yb);
+  } finally { sink.recess = 0; }
+  faceBox(sink, 'structureWood', F.front, 0, door.y1 + 0.06, 0.03, 1.1, 0.12, 0.06, { colour: shade(TIMBER, 0.75), decor: true });
+  // the string courses round the shaft between its stages
+  for (const y of [s1, s2]) sink.band(LIME, -h - 0.06, y, -h - 0.06, h + 0.06, y + 0.16, h + 0.06, decor);
+  sink.band(LIME, -h - 0.06, s3, -h - 0.06, h + 0.06, fy, h + 0.06, decor);
+  // each face's relief, 8 cm proud: the pilasters up its arrises (meeting their neighbours round the corner), the lower
+  // stage's tall blind arch under its band, ringed in brick and lime; the upper stage's twin arches on their colonnette
+  // and its capital, the strips beside them and the band over them (the alfiz); the rain's stains down the pilasters
+  const pl = h - 0.26, ra = 0.75, sa = s2 - 0.12 - ra, r2 = 0.42, sb = s3 - 0.1 - r2, P = 0.08;
+  for (const fn of ['front', 'right', 'back', 'left'] as const) {
+    const f = F[fn];
+    for (const e of [-1, 1]) {
+      faceSpan(sink, LIME, f, e * pl, e * (h + P), s1 + 0.16, s3, 0, P, decor);
+      faceSpan(sink, LIME, f, e * ra, e * pl, s1 + 0.16, s2, 0, P, decor);
+    }
+    spandrels(sink, LIME, f, 0, sa, ra, 0, P, decor, 5);
+    faceSpan(sink, LIME, f, -ra, ra, sa + ra, s2, 0, P, decor);
+    voussoirs(sink, f, 0, sa, ra, 0.14, 9, P + 0.005, (j) => j % 2 ? BRICK : [LIME, { shade: 1.04 }]);
+    for (const e of [-1, 1]) {
+      faceSpan(sink, LIME, f, e * (2 * r2 + 0.05), e * pl, s2 + 0.16, s3, 0, P, decor);
+      spandrels(sink, LIME, f, e * (r2 + 0.05), sb, r2, 0, P, decor, 3);
+    }
+    faceSpan(sink, LIME, f, -0.05, 0.05, s2 + 0.16, sb + r2, 0, P, decor);
+    faceSpan(sink, LIME, f, -0.1, 0.1, sb - 0.1, sb, 0, P + 0.03, decor);
+    faceSpan(sink, LIME, f, -(2 * r2 + 0.05), 2 * r2 + 0.05, sb + r2, s3, 0, P, decor);
+    const pf: Face = { ...f, origin: facePoint(f, 0, 0, P) };
+    for (const e of [-1, 1]) if (look() < 0.7) rainStreak(sink, LIME, pf, e * (h - 0.09), s3 - 0.01, s2 + 0.4 + look() * 1.2, 0.2, 0.55);
   }
-  sink.span('plaster', -L / 2, H + 1.9, -L / 2, L / 2, H + 2.4, L / 2);
-  recordShaft(sink, 0, 0, S, H + 3.6, 'plaster');
-  sink.cylinder('plaster', [0, H + 2.4, 0], 'y', 0.6, L * 0.5, 10, {}, L * 0.42, false);
-  sink.cylinder('plaster', [0, H + 3.0, 0], 'y', 0.6, L * 0.42, 10, {}, 0.05);
-  // the green-tiled band under the gallery
-  sink.span('structureWood', -S / 2 - 0.02, H - 0.6, -S / 2 - 0.02, S / 2 + 0.02, H - 0.3, S / 2 + 0.02, { colour: rgb(0x3f7a5a), decor: true });
+  // the frieze under the gallery: a run of glazed tiles round the shaft in a chequer, its bedding wrapped round the corners
+  const second = look() < 0.5 ? TILE_WHITE : TILE_YELLOW;
+  for (const fn of ['front', 'right', 'back', 'left'] as const) {
+    faceBox(sink, 'structureWood', F[fn], 0, (fy + cy) / 2, 0.015, S + 0.06, cy - fy, 0.03, { colour: shade(TILE_GREEN, 0.75), decor: true });
+    tileRun(sink, F[fn], -h - 0.02, h + 0.02, fy + 0.05, cy - 0.05, 0.032, 0.2, shade(TILE_GREEN, 0.75), [TILE_GREEN, second], fn === 'front' || fn === 'back' ? 0 : 1);
+  }
+  // the gallery corbelled out: two stepped courses and a core course over them, the brackets on its faces carrying the
+  // gallery's floor
+  sink.span(LIME, -h - 0.1, cy, -h - 0.1, h + 0.1, cy + 0.14, h + 0.1);
+  sink.span(LIME, -h - 0.2, cy + 0.14, -h - 0.2, h + 0.2, gy, h + 0.2);
+  for (const fn of ['front', 'right', 'back', 'left'] as const) for (let k = 0; k < 5; k++) {
+    const u = -h + (k + 0.5) * S / 5;
+    runSection(sink, LIME, F[fn], u - 0.07, u + 0.07, [[0.18, cy + 0.3], [0.41, gy - 0.07], [0.41, gy + 0.005], [0.18, gy + 0.005]], { decor: true, shade: 0.97 });
+  }
+  const G = h + 0.42, gw = 0.14, ph = 0.55;
+  sink.span(LIME, -G, gy, -G, G, gf, G);
+  // the gallery's parapet, its stepped merlons (each face starting the next round the corner) and a spout each side
+  sink.span(LIME, -G, gf, G - gw, G, gf + ph, G);
+  sink.span(LIME, -G, gf, -G, G, gf + ph, -G + gw);
+  sink.span(LIME, G - gw, gf, -G + gw, G, gf + ph, G - gw);
+  sink.span(LIME, -G, gf, -G + gw, -G + gw, gf + ph, G - gw);
+  const GF = bodyFaces(2 * G, 2 * G), mt = gf + ph;
+  for (const fn of ['front', 'right', 'back', 'left'] as const) {
+    const f = GF[fn];
+    for (let k = 0; k < 4; k++) {
+      const u = -G + 0.2 + k * (2 * G - 0.4) / 4;
+      faceSpan(sink, LIME, f, u - 0.16, u + 0.16, mt - 0.01, mt + 0.22, -gw, 0, decor);
+      faceSpan(sink, LIME, f, u - 0.08, u + 0.08, mt + 0.22, mt + 0.4, -gw + 0.02, -0.02, decor);
+    }
+    const u = (look() - 0.5) * 0.6;
+    faceSpan(sink, 'structureWood', f, u - 0.06, u + 0.06, gf - 0.01, gf + 0.05, -0.12, 0.35, { colour: TIMBER, decor: true, uv: UV_MEMBER });
+  }
+  // the lantern: its four corner piers, the arch each side between them (its spandrels through the wall), the head over
+  // them; the dark of the stair head inside; each arch ringed in green tile and lime
+  const Lh = 0.85, pp = 0.4, rr = Lh - pp, ls = gf + 1.15, crown = ls + rr, lt = crown + 0.4;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    sink.span(LIME, sx < 0 ? -Lh : Lh - pp, gf, sz < 0 ? -Lh : Lh - pp, sx < 0 ? -Lh + pp : Lh, crown, sz < 0 ? -Lh + pp : Lh);
+  }
+  sink.span(LIME, -Lh, crown, -Lh, Lh, lt, Lh);
+  sink.span('dark', -0.32, gf, -0.32, 0.32, crown, 0.32, decor);
+  const LF = bodyFaces(2 * Lh, 2 * Lh);
+  for (const fn of ['front', 'right', 'back', 'left'] as const) {
+    spandrels(sink, LIME, LF[fn], 0, ls, rr, -0.3, 0.3, {}, 4);
+    voussoirs(sink, LF[fn], 0, ls, rr, 0.13, 7, 0.02, (j) => j % 2 ? ['structureWood', { colour: TILE_GREEN }] : [LIME, {}]);
+  }
+  // its stepped cornice, the little dome on its haunch and the alem
+  sink.band(LIME, -Lh - 0.08, lt, -Lh - 0.08, Lh + 0.08, lt + 0.1, Lh + 0.08);
+  sink.span(LIME, -Lh - 0.16, lt + 0.1, -Lh - 0.16, Lh + 0.16, lt + 0.2, Lh + 0.16);
+  const cap = smoothDome(sink, LIME, 0, lt + 0.2, 0, 0.74, { form: 'pointed', stilt: 0.1, haunch: true });
+  finialOn(sink, 0, cap.top, 0, 0.8, BRASS);
+  recordShaft(sink, 0, 0, S, cap.top, LIME);
   return sink.finish();
 };
 
@@ -338,85 +538,262 @@ const borj: RegionalBuilder = (ctx) => {
 };
 
 /**
- * A domed hammam: a whitewashed block with three domes and a tiny lantern. (Props census #15, Lane C 2026-10-16: "no
- * lantern, no vent, no furnace and no spout"; a blank box.) The bath block carries its domes pierced by glass bosses
- * (the qamariyat) and the lantern on the great dome, high lights in its long walls and vents under the parapet, all cut
- * through the walls, the parapet's spouts; behind it the furnace room, a body of its own against the back wall, its
- * stoke hole cut low with the soot over it, the fuel stacked by it and the flue stack rising past the domes.
+ * A domed hammam of the Jerid (Tozeur, Nefta): a whitewashed block under three domes, the hot room's great one against
+ * the furnace. (Props census #15, Lane C 2026-10-16: "no lantern, no vent, no furnace and no spout"; a blank box.) The
+ * bath block carries its domes pierced by glass bosses (the qamariyat) and the lantern on the great dome, high lights in
+ * its long walls and vents under the parapet, all cut through the walls, the parapet's spouts; behind it the furnace
+ * room, a body of its own against the back wall, its stoke hole cut low with the soot over it, the fuel stacked by it
+ * and the flue stack rising past the domes. (dome-detail-275: the body was a plain whitewashed box) The bath block's
+ * mud walls battered and their arrises rounded, angle buttresses down its flanks, a sloped splash skirt round its foot;
+ * the entrance portal standing proud with its round-headed niche ringed in brick and lime, its tile frame and name
+ * board, the studded door in it, the masonry benches either side and the paving before it; the parapet's rounded
+ * merlons and corner horns, a brick dentil course and cornice under it; the spouts palm channels, the rain's stains
+ * under them; the drain from the hot room in its open channel to a soak pit; the furnace room battered too, its stoke
+ * hole ringed in brick, the ash raked out, the palm wood and date stones by it, its tapering stack under a cap and its
+ * cistern on the roof.
  */
 const hammam: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const W = Math.max(7, Math.min(12, ctx.info.w - 0.6)), D = Math.max(7, Math.min(12, ctx.info.d - 0.6));
-  // the bath block in front, the furnace room in the plot's back 2.2 m
-  const fd = 2.2, Dm = D - fd, zm = fd / 2, H = 3.6;
-  const roof = { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: 'plaster', parapet: 0.35 } as const;
-  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.3 }];
-  for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, Dm, { w: 0.45, h: 0.45, sill: 2.55, spacing: 2.6, margin: 1.2, max: 3 }));
-  for (const u of [-W * 0.3, W * 0.3]) openings.push({ face: 'back', storey: 0, kind: 'loft', u, w: 0.22, h: 0.3, y0: 3.0 });
-  const lights: WindowStyle = { frame: shade(TIMBER, 0.8), frameWidth: 0.04, frameOut: 0.02, bars: 'cross', surround: { bucket: 'plaster', width: 0.1, out: 0.03 },
+  // (dome-detail-275) the walls and domes the warm lime wash (plaster2) over the mud render of the plinth, the skirt, the
+  // furnace room and its stack (MUD)
+  const LIME: RegionalBucket = 'plaster2';
+  const W = Math.max(7, Math.min(11.2, ctx.info.w - 1.4)), hd = Math.max(4.5, ctx.info.d / 2);
+  // the bath block from a metre inside the plot's front (the portal, the benches and the paving before it) back to the
+  // furnace room, which fills the plot's back 2.1 m
+  const fd = 2.1, zF = hd - 1.0, zB = -hd + 0.15, zb = zB + fd, Dm = zF - zb, zc = (zF + zb) / 2, H = 3.6;
+  const roof = { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: LIME, parapet: 0.35 } as const;
+  const doorW = 1.15, doorS = 1.95;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: doorW, y0: 0, h: doorS, arch: { spring: doorS } }];
+  for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, Dm, { w: 0.45, h: 0.45, sill: 2.55, spacing: 2.4, margin: 1.3, max: 2 }));
+  for (const u of [-W * 0.33, W * 0.33]) openings.push({ face: 'front', storey: 0, kind: 'window', u, w: 0.4, h: 0.4, y0: 2.6 });
+  for (const u of [-W * 0.33, W * 0.33]) openings.push({ face: 'back', storey: 0, kind: 'loft', u, w: 0.22, h: 0.3, y0: 3.0 });
+  const lights: WindowStyle = { frame: shade(TIMBER, 0.8), frameWidth: 0.04, frameOut: 0.02, bars: 'cross', surround: { bucket: LIME, width: 0.1, out: 0.03 },
     sill: { bucket: MUD, out: 0.05 }, shutters: null };
-  const leaf = pick(ctx.rng, BLUES);
+  const blue = pick(ctx.rng, BLUES), leaf = look() < 0.3 ? rgb(0xb8862e) : blue;
   const quiet: HouseDialect = {
     // a vent or a stoke hole is left empty: its reveal and the dark behind it
     window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, lights, ctx.rng, 0.15); },
     door: (s, face, o, y0) => {
       if (o.w < 1) return;
-      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'plaster', width: 0.2, out: 0.06, arch: true }, steps: { bucket: MUD }, leafKind: 'panel' }, y0 + o.y0);
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: LIME, width: 0.14, out: 0.05 }, steps: { bucket: MUD }, leafKind: 'plank' }, y0 + o.y0);
+      studdedLeaf(s, face, o.u, y0 + o.y0, o.w, o.h, leaf);
     },
   };
-  let top = 0;
-  sink.placed(0, 0, 0, zm, () => {
+  // the bath block in a sink of its own, battered as a whole as the ksar's houses are (batterParts)
+  const hs = new PartSink(sink.uvOffset), batter = 0.1 + look() * 0.05;
+  let top = 0, eaveY = 0, parTop = 0;
+  hs.placed(0, 0, 0, zc, () => {
+    const sink = hs;
     const frame = buildHouse(sink, {
-      w: W, d: Dm, plinth: { h: 0.25, out: 0.06, bucket: MUD }, storeys: [{ h: H, wall: 'plaster' }], roof, gableBucket: 'plaster',
+      w: W, d: Dm, plinth: { h: 0.25, out: 0.06, bucket: MUD }, storeys: [{ h: H, wall: LIME }], roof, gableBucket: LIME,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'adobe',
     }, quiet);
-    top = frame.eaveY + 0.2;
-    // the domes, each pierced by its glass bosses; the lantern on the great one (dome-detail-275: they were five frustums
-    // of twelve flat facets, conical, with no drum): each on a low round drum under its stepped cornice, the shell a little
-    // pointed and stilted as the Jerid's are, turned smooth (domes.ts), its bosses seated on the true shell
-    for (const [x, z, r, great] of [[-W * 0.22, -Dm * 0.15, 1.5, false], [W * 0.22, -Dm * 0.15, 1.5, false], [0, Dm * 0.18, 1.9, true]] as const) {
-      const spring = roundDrum(sink, 'plaster', x, top - 0.05, z, r + 0.06, 0.3, 'plaster');
-      const shell = smoothDome(sink, 'plaster', x, spring - 0.04, z, r, { form: 'pointed', stilt: 0.08, ...(great ? { openTop: 0.3 } : {}) });
-      glassBosses(sink, shell, [[0.5, great ? 10 : 7], [0.9, great ? 6 : 4]], 0.075, look, { fine: true });
-      if (great) {
-        sink.cylinder('plaster', [x, shell.top - 0.05, z], 'y', 0.42, 0.32, 8, {}, 0.3);
-        sink.cylinder('plaster', [x, shell.top + 0.37, z], 'y', 0.2, 0.42, 8, { decor: true }, 0.06);
-      } else finialOn(sink, x, shell.top, z, 0.55, BRASS);
+    eaveY = frame.eaveY; top = eaveY + 0.2; parTop = top + 0.35;
+    const y0 = frame.floors[0], F = frame.faces;
+    // (dome-detail-275) the arrises rounded: a quarter round of lime worked round each corner from the plinth to the
+    // parapet's top
+    const R = 0.24, a = R * Math.SQRT1_2;
+    for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+      const th = Math.atan2(sz, sx);
+      sink.cylinder(LIME, [sx * (W / 2 - a), y0 - 0.02, sz * (Dm / 2 - a)], 'y', parTop - y0 + 0.02, R, 8, {}, R, true, -(th + Math.PI / 2), Math.PI);
     }
-    // the spouts out of the parapet over the long walls
-    const sy = frame.eaveY + 0.1;
-    for (const sx of [-1, 1]) for (const z of [-Dm * 0.25, Dm * 0.25]) sink.span('plaster', sx * W / 2 - (sx > 0 ? 0 : 0.42), sy - 0.07, z - 0.07, sx * W / 2 + (sx > 0 ? 0.42 : 0), sy + 0.07, z + 0.07, { decor: true, tint: [0.75, 0.66, 0.55] });
+    // (dome-detail-275) the angle buttresses: a sloped mud spur at each end of both flanks against the domes' thrust
+    for (const fn of ['left', 'right'] as const) for (const e of [-1, 1]) {
+      const u = e * (Dm / 2 - 0.55), bh = eaveY * 0.74;
+      runSection(sink, LIME, F[fn], u - 0.36, u + 0.36, [[-0.05, -0.25], [0.58, -0.25], [0.22, bh * 0.82], [0.1, bh], [-0.05, bh]]);
+    }
+    // (dome-detail-275) the splash skirt: the foot's sloped apron of mud rendered over the plinth, darker with the damp
+    // and the dust, round the flanks and the back and either side of the benches
+    const skirt = { decor: true, tint: [0.9, 0.84, 0.76] as Rgb };
+    const sec: Array<[number, number]> = [[-0.02, -0.25], [0.32, -0.25], [0.32, 0.05], [-0.02, 0.52]];
+    for (const fn of ['left', 'right'] as const) runSection(sink, MUD, F[fn], -Dm / 2, Dm / 2, sec, skirt);
+    const fwb = Math.min(3.6, W - 1.6) / 2;
+    for (const e of [-1, 1]) runSection(sink, MUD, F.back, e < 0 ? -W / 2 : fwb, e < 0 ? -fwb : W / 2, sec, skirt);
+    // the entrance portal: its piers and head standing proud of the front to over the parapet, the round-headed niche
+    // between them (the door at its back), its ring of voussoirs alternately fired brick and lime, the frame of tiles
+    // round it (the alfiz), the name board over it, the brick dentils and cornice on top and three merlons over them
+    const f = F.front, po = 0.42, g = 0.86, pier = 0.6, pw = 2 * (g + pier), pTop = parTop + 0.55;
+    const ys = y0 + doorS + doorW / 2 + 0.1, crown = ys + g;
+    for (const e of [-1, 1]) faceSpan(sink, LIME, f, e * g, e * (g + pier), -0.25, pTop, 0, po);
+    faceSpan(sink, LIME, f, -g, g, crown, pTop, 0, po);
+    spandrels(sink, LIME, f, 0, ys, g, 0, po, { tint: [1.0, 0.97, 0.9] }, 5);
+    voussoirs(sink, f, 0, ys, g, 0.2, 11, po + 0.025, (j) => j % 2 ? BRICK : [LIME, { shade: 1.04 }]);
+    for (const e of [-1, 1]) tileRun(sink, f, e > 0 ? g + 0.26 : -(g + 0.44), e > 0 ? g + 0.44 : -(g + 0.26), y0 + 0.55, crown + 0.42, po + 0.012, 0.16, TILE_GREEN,
+      [TILE_WHITE, TILE_GREEN, TILE_YELLOW, TILE_BLUE], e > 0 ? 1 : 0);
+    tileRun(sink, f, -(g + 0.44), g + 0.44, crown + 0.26, crown + 0.42, po + 0.013, 0.16, TILE_GREEN, [TILE_WHITE, TILE_BLUE, TILE_YELLOW, TILE_GREEN]);
+    faceBox(sink, LIME, f, 0, crown + 0.76, po + 0.025, 1.15, 0.38, 0.05, { decor: true, tint: [1.03, 1.02, 0.98] });
+    for (const [du, dw] of [[-0.3, 0.32], [0.05, 0.22], [0.33, 0.18]] as const) {
+      faceBox(sink, 'structureWood', f, du, crown + 0.76, po + 0.052, dw, 0.045, 0.006, { colour: TILE_GREEN, decor: true, fine: 'near' });
+    }
+    for (let k = 0, n = Math.round(pw / 0.22); k < n; k++) {
+      faceBox(sink, BRICK[0], f, -pw / 2 + (k + 0.5) * pw / n, pTop - 0.1, po + 0.04, 0.11, 0.08, 0.08, { decor: true, fineSides: true, ...BRICK[1] });
+    }
+    faceSpan(sink, LIME, f, -pw / 2 - 0.1, pw / 2 + 0.1, pTop, pTop + 0.14, -0.1, po + 0.1, { decor: true });
+    for (const u of [-pw * 0.3, 0, pw * 0.3]) roundMerlon(sink, LIME, f, u, pTop + 0.14, 0.36, 0.18, 0.02, 0.32, { decor: true });
+    // the benches (dokkana) either side of the portal: whitewashed masonry, a tiled riser, a lime slab on top
+    for (const e of [-1, 1]) {
+      const u0 = e * (pw / 2 + 0.06), u1 = e * (pw / 2 + 1.3), lo = Math.min(u0, u1), hi = Math.max(u0, u1);
+      faceSpan(sink, LIME, f, lo, hi, -0.2, 0.44, 0, 0.5, { decor: true });
+      faceSpan(sink, LIME, f, lo - 0.04, hi + 0.04, 0.44, 0.52, 0, 0.55, { decor: true, shade: 0.96 });
+      tileRun(sink, f, lo + 0.06, hi - 0.06, 0.06, 0.38, 0.5, 0.16, TILE_BLUE, [TILE_WHITE, TILE_BLUE], e > 0 ? 1 : 0);
+    }
+    // the cornice under the parapet round the block, the fired brick dentils under it along the front
+    sink.band(LIME, -W / 2 - 0.05, eaveY - 0.3, -Dm / 2 - 0.05, W / 2 + 0.05, eaveY - 0.12, Dm / 2 + 0.05, { decor: true });
+    for (let u = -W / 2 + 0.35; u < W / 2 - 0.3; u += 0.24) {
+      if (Math.abs(u) < pw / 2 + 0.1) continue;
+      faceBox(sink, BRICK[0], f, u, eaveY - 0.37, 0.04, 0.12, 0.08, 0.08, { decor: true, fineSides: true, ...BRICK[1] });
+    }
+    // the parapet's rounded merlons along each side (clear of the portal) and the horns at its corners
+    for (const fn of ['front', 'back', 'left', 'right'] as const) {
+      const span = F[fn].width + 0.12 - 1.1, n = Math.max(2, Math.round(span / 0.8) + 1);
+      for (let k = 0; k < n; k++) {
+        const u = -span / 2 + span * k / (n - 1);
+        if (fn === 'front' && Math.abs(u) < pw / 2 + 0.3) continue;
+        roundMerlon(sink, LIME, F[fn], u, parTop - 0.01, 0.34, 0.14, -0.16, 0.22, { decor: true });
+      }
+    }
+    for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as const) {
+      sink.revolve(LIME, [sx * (W / 2 - 0.05), parTop - 0.01, sz * (Dm / 2 - 0.05)], 'y', [[0, 0.19], [0.2, 0.18], [0.42, 0.12], [0.58, 0.05], [0.64, 0]], 10, { decor: true });
+    }
+    // the spouts: palm channels through the parapet over the flanks, open along their tops, clear of the lights, and the
+    // rain's stain down the lime under each
+    for (const fn of ['left', 'right'] as const) for (const u0 of [-0.55, 0.55]) {
+      const u = u0 + (look() - 0.5) * 0.3, F0 = F[fn], sp = { colour: TIMBER, decor: true, uv: UV_MEMBER } as const;
+      faceSpan(sink, 'structureWood', F0, u - 0.08, u + 0.08, top - 0.03, top, -0.2, 0.6, sp);
+      for (const s of [-1, 1]) faceSpan(sink, 'structureWood', F0, u + s * 0.08 - 0.015, u + s * 0.08 + 0.015, top, top + 0.09, -0.2, 0.6, { ...sp, colour: shade(TIMBER, 0.85) });
+      rainStreak(sink, LIME, F0, u, eaveY - 0.3, 1.7 + look() * 0.5, 0.42, 0.5);
+    }
   });
-  // the furnace room: a low mud body against the bath's back wall, its stoke hole cut low in its back, its flue stack
-  const fw = Math.min(3.6, W - 1.6), fz = -D / 2 + fd / 2;
-  sink.placed(0, 0, 0, fz, () => {
-    buildHouse(sink, {
-      w: fw, d: fd, plinth: null, storeys: [{ h: 2.3, wall: MUD }], roof: { ...roof, parapet: 0.2 }, gableBucket: MUD,
-      openings: [{ face: 'back', storey: 0, kind: 'door', u: -fw * 0.18, w: 0.75, y0: 0.15, h: 0.8, arch: { spring: 0.55 } }],
+  const body = hs.finish();
+  batterParts(body, 0, zc, W / 2, Dm / 2, eaveY, batter);
+  // the domes on the roof (unbattered: their drums stand on the roof's middle): the hot room's great dome at the back
+  // over the furnace, the warm rooms' two smaller domes forward (dome-detail-275: they were five frustums of twelve flat
+  // facets, conical, with no drum): each on a low round drum under its stepped cornice, the shell a little pointed and
+  // stilted as the Jerid's are, on the Maghreb's stepped haunch, turned smooth (domes.ts), the rain's grey down its lower
+  // haunch, its bosses seated on the true shell
+  const gR = Math.min(1.9, Dm * 0.28, W * 0.2), sr = gR * 0.66;
+  const domes: Array<[number, number, number, boolean]> = [
+    [0, zc - Dm / 2 + 0.4 + gR + 0.25, gR, true],
+    ...[-1, 1].map((s): [number, number, number, boolean] => [s * (W / 2 - 0.4 - sr - 0.25), zc + Dm / 2 - 0.4 - sr - 0.25, sr, false]),
+  ];
+  for (const [x, z, r, great] of domes) {
+    const phase = look() * 6.28;
+    const tintAt = (p: Vec3): Rgb => {
+      const h = Math.min(1, Math.max(0, (p[1] - top) / (r * 1.3)));
+      const k = 0.9 + 0.1 * Math.sqrt(h) - (0.5 + 0.5 * Math.sin(Math.atan2(p[2] - z, p[0] - x) * 8 + phase)) * (1 - h) * 0.06;
+      return [k, k * 0.98, k * 0.95];
+    };
+    const spring = roundDrum(sink, LIME, x, top - 0.05, z, r + 0.06, 0.3, LIME);
+    const shell = smoothDome(sink, LIME, x, spring - 0.04, z, r, { form: 'pointed', stilt: 0.08, haunch: true, ...(great ? { openTop: 0.3 } : {}), emit: { tintAt } });
+    glassBosses(sink, shell, [[0.5, great ? 10 : 7], [0.9, great ? 6 : 4]], 0.075, look, { fine: true });
+    if (great) {
+      // the lantern over the hot room: a little drum, its cornice and its own cap under the alem
+      sink.revolve(LIME, [x, shell.top - 0.05, z], 'y', [[0, 0.34], [0.42, 0.33], [0.42, 0]], 24);
+      sink.revolve(LIME, [x, shell.top + 0.37, z], 'y', [[0, 0.33], [0, 0.4], [0.08, 0.4], [0.08, 0]], 24, { decor: true });
+      const cap = smoothDome(sink, LIME, x, shell.top + 0.45, z, 0.36, { form: 'pointed' });
+      finialOn(sink, x, cap.top, z, 0.5, BRASS);
+    } else finialOn(sink, x, shell.top, z, 0.55, BRASS);
+  }
+  // the paving before the portal: its slabs a little uneven, worn darker in the door's path
+  const pw = 2 * (0.86 + 0.6), pz0 = zF + 0.02, pz1 = hd - 0.05;
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) {
+    const x0 = -pw / 2 - 1.3 + i * (pw + 2.6) / 6, x1 = x0 + (pw + 2.6) / 6 - 0.03, z0 = pz0 + j * (pz1 - pz0) / 2, z1 = z0 + (pz1 - pz0) / 2 - 0.03;
+    const worn = Math.abs((x0 + x1) / 2) < 0.8 ? 0.84 : 0.95;
+    sink.span(MUD, x0, -0.12, z0, x1, 0.05 + look() * 0.02, z1, { decor: true, shade: worn - look() * 0.06, tint: [0.96, 0.92, 0.86] });
+  }
+  // the drain: the hot room's waste out through the right flank's foot in a clay pipe, its open channel along the wall
+  // to the soak pit by the front, the ground wet in it
+  const dx = W / 2 + 0.38, dz0 = zc - Dm / 2 + 1.3, dz1 = zc + Dm * 0.12;
+  sink.pipe('structureWood', [W / 2 - 0.1, 0.3, dz0], [dx + 0.05, 0.22, dz0], 0.07, 8, { colour: rgb(0xa0583a), decor: true, caps: true });
+  for (const x of [dx - 0.06, dx + 0.32]) sink.span(MUD, x, -0.1, dz0 - 0.15, x + 0.08, 0.09, dz1, { decor: true, shade: 0.82 });
+  sink.span(MUD, dx + 0.02, -0.1, dz0 - 0.15, dx + 0.32, 0.015, dz1, { decor: true, shade: 0.55, tint: [0.8, 0.76, 0.7] });
+  sink.revolve(MUD, [dx + 0.15, -0.1, dz1 + 0.32], 'y', [[0, 0.36], [0.2, 0.36], [0.2, 0.26], [0.12, 0.26]], 12, { decor: true, shade: 0.8 });
+  sink.cylinder(MUD, [dx + 0.15, -0.1, dz1 + 0.32], 'y', 0.14, 0.27, 12, { decor: true, shade: 0.4, tint: [0.7, 0.68, 0.64] });
+  // the furnace room: a low mud body against the bath's back wall, battered, its stoke hole cut low in its back under a
+  // ring of brick, its flue stack
+  const fw = Math.min(3.6, W - 1.6), fz = zB + fd / 2, fh = 2.3;
+  const fs = new PartSink(sink.uvOffset);
+  fs.placed(0, 0, 0, fz, () => {
+    buildHouse(fs, {
+      w: fw, d: fd, plinth: null, storeys: [{ h: fh, wall: MUD }], roof: { ...roof, bucket: MUD, parapet: 0.2 }, gableBucket: MUD,
+      openings: [{ face: 'back', storey: 0, kind: 'door', u: -fw * 0.18, w: 0.75, y0: 0.15, h: 0.8, arch: { spring: 0.55 } },
+        { face: 'right', storey: 0, kind: 'door', u: 0, w: 0.8, y0: 0, h: 1.65 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.35, core: 'adobe',
-    }, quiet);
+    }, {
+      // the stoke hole left open on its dark; (dome-detail-275) the stoker's plank door in the room's side
+      window: () => undefined,
+      door: (s, face, o, y0) => {
+        if (o.face !== 'right') return;
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(TIMBER, 0.85), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(TIMBER, 0.7) },
+          steps: null, leafKind: 'plank' }, y0 + o.y0);
+      },
+    });
     const back: Face = { origin: [0, 0, -fd / 2], u: [-1, 0, 0], out: [0, 0, -1], width: fw };
+    voussoirs(fs, back, -fw * 0.18, 0.7, 0.375, 0.16, 7, 0.02, (j) => j % 2 ? [MUD, { tint: [0.9, 0.62, 0.44] }] : BRICK);
     // the soot up the wall over the stoke hole (the looks lane, 227; the r2 sweep: a dark plate 0.9 x 1.1 m on the wall):
     // a plume from the hole's head narrowing as it climbs, black over the head and fading into the lime as it rises, laid
-    // in bands a hand's breadth apart in tone; the fuel (palm wood and brush) stacked beside it
-    const su = -fw * 0.18, sy0 = 0.94, sy1 = 2.12, bands = 24, half = (t: number) => 0.44 - 0.3 * t;
+    // in bands a hand's breadth apart in tone
+    const su = -fw * 0.18, sy0 = 1.12, sy1 = 2.12, bands = 24, half = (t: number) => 0.44 - 0.3 * t;
     for (let b = 0; b < bands; b++) {
       // (the 227 blind pair: a hairline of lime showed between the bands) each band overlapping the next by 2 mm, the bands
       // standing alternately 4 and 6.5 mm off the wall so none shares an edge with the next; the black held longer
       const t0 = b / bands, t1 = (b + 1) / bands, ya = sy0 + (sy1 - sy0) * t0 - 0.001, yb = sy0 + (sy1 - sy0) * t1 + 0.001, o = b % 2 ? 0.0065 : 0.004;
       const k = 0.26 + 0.64 * Math.pow((t0 + t1) / 2, 1.3);
-      sink.polygon('plaster', [facePoint(back, su - half(t0), ya, o), facePoint(back, su + half(t0), ya, o), facePoint(back, su + half(t1), yb, o),
+      fs.polygon(MUD, [facePoint(back, su - half(t0), ya, o), facePoint(back, su + half(t0), ya, o), facePoint(back, su + half(t1), yb, o),
         facePoint(back, su - half(t1), yb, o)], { decor: true, tint: [k, k * 0.96, k * 0.92] });
     }
-    for (let k = 0; k < 5; k++) {
-      sink.cylinder('structureWood', [fw * 0.12 + k * 0.05, 0.08 + (k % 3) * 0.14, -fd / 2 - 0.25], 'x', 1.0, 0.07, 6, { colour: shade(TIMBER, 0.7 + look() * 0.3), decor: true });
-    }
-    // the flue: a square stack from the furnace room's roof to a hand past the great dome's lantern
-    sink.span(MUD, fw * 0.22 - 0.3, 2.3, -0.3, fw * 0.22 + 0.3, top + 3.0, 0.3);
-    sink.span(MUD, fw * 0.22 - 0.38, top + 3.0, -0.38, fw * 0.22 + 0.38, top + 3.12, 0.38, { decor: true });
+    // the cistern on the furnace room's roof against the bath's back wall, its copper feed into the hot room over it
+    const cx0 = -fw / 2 + 0.25, cx1 = -fw * 0.05;
+    fs.span(MUD, cx0, fh, fd / 2 - 1.0, cx1, fh + 0.85, fd / 2 + 0.05);
+    fs.span(MUD, cx0 - 0.05, fh + 0.85, fd / 2 - 1.05, cx1 + 0.05, fh + 0.95, fd / 2 + 0.05, { decor: true });
+    const px = (cx0 + cx1) / 2, copper = { colour: rgb(0x5f8a6a), decor: true } as const;
+    fs.pipe('structureMetal', [px, fh + 0.9, fd / 2 - 0.35], [px, fh + 1.15, fd / 2 - 0.35], 0.05, 6, copper);
+    fs.pipe('structureMetal', [px, fh + 1.15, fd / 2 - 0.35], [px, fh + 1.15, fd / 2 + 0.05], 0.05, 6, copper);
   });
-  return sink.finish();
+  const furnace = fs.finish();
+  batterParts(furnace, 0, fz, fw / 2, fd / 2, fh, 0.08);
+  // the fuel and the ash behind the furnace room (unbattered, on the ground): the palm wood stacked in two layers by the
+  // stoke hole, a heap of date stones (the Jerid's fuel), the ash raked out under the hole, palm fronds leaning on the
+  // room's side
+  sink.placed(0, 0, 0, fz, () => {
+    const by = -fd / 2;
+    for (let k = 0; k < 6; k++) {
+      sink.cylinder('structureWood', [-fw / 2 + 0.15, 0.08 + Math.floor(k / 3) * 0.15, by - 0.12 - (k % 3) * 0.14], 'x', 1.0 + look() * 0.15, 0.07, 6,
+        { colour: shade(TIMBER, 0.7 + look() * 0.3), decor: true });
+    }
+    for (let k = 0; k < 3; k++) sink.cylinder('structureWood', [-fw / 2 + 0.3 + k * 0.32, 0.36, by - 0.5], 'z', 0.44, 0.06, 6, { colour: shade(TIMBER, 0.65 + look() * 0.3), decor: true });
+    sink.revolve('structureWood', [-fw / 2 - 0.15, -0.1, by - 0.34], 'y', [[0, 0.36], [0.14, 0.29], [0.28, 0.12], [0.32, 0]], 10, { colour: rgb(0x4a3020), decor: true });
+    sink.revolve(MUD, [fw * 0.18, -0.1, by - 0.3], 'y', [[0, 0.42], [0.12, 0.32], [0.22, 0.14], [0.25, 0]], 10, { decor: true, shade: 0.42, tint: [0.7, 0.68, 0.66] });
+    // (dome-detail-275) each frond splayed from its neighbours, its bare stem from the ground and its dry blade of leaflets
+    // flat against the wall above
+    const side: Face = { origin: [-fw / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: fd };
+    for (let k = 0; k < 5; k++) {
+      const u = -fd / 2 + 0.45 + k * 0.3 + look() * 0.1, tip = 2.0 + look() * 0.45, splay = (look() - 0.5) * 0.6, foot = 0.55 + look() * 0.3;
+      const a = facePoint(side, u, 0, foot), m = facePoint(side, u + splay * 0.35, tip * 0.38, foot * 0.62 + 0.02), b = facePoint(side, u + splay, tip, 0.06);
+      const ay = [b[0] - m[0], b[1] - m[1], b[2] - m[2]], l = Math.hypot(ay[0], ay[1], ay[2]);
+      const ax: Vec3 = [0, -ay[2] / l, ay[1] / l], n = Math.hypot(ax[1], ax[2]) || 1;
+      const flat: Vec3 = [(ax[1] / n) * ay[2] / l - (ax[2] / n) * ay[1] / l, (ax[2] / n) * ay[0] / l, -(ax[1] / n) * ay[0] / l];
+      const tone = shade(rgb(0xa89062), 0.78 + look() * 0.25);
+      sink.member('structureWood', a, b, 0.06, 0.045, flat, { colour: shade(tone, 0.85), decor: true, exposed: true });
+      // the blade tapering from the stem's knee to its tip, both its faces
+      const sx = ax[1] / n, sz = ax[2] / n, at = (p: Vec3, w: number, o: number): Vec3 => [p[0] + flat[0] * o, p[1] + sx * w, p[2] + sz * w];
+      const blade: Vec3[] = [at(m, -0.19, 0.03), at(m, 0.19, 0.03), at(b, 0.03, 0.03), at(b, -0.03, 0.03)];
+      sink.polygon('structureWood', blade, { colour: tone, decor: true });
+      sink.polygon('structureWood', [...blade].reverse(), { colour: shade(tone, 0.8), decor: true });
+    }
+  });
+  // the flue: a tapering mud stack from the furnace room's roof to over the great dome's haunch, its band at the bath's
+  // roof, the soot darkening it upward, its cap on four stubs over the smoke's gaps
+  const kx = fw * 0.22, kh = top + 2.7, sootY = top + 0.6;
+  const soot = { shadeAt: (p: Vec3) => (p[1] > sootY ? Math.max(0.5, 1 - (p[1] - sootY) * 0.22) : 1) };
+  sink.cylinder(MUD, [kx, fh, fz], 'y', kh - fh, 0.46 * Math.SQRT2, 4, soot, 0.33 * Math.SQRT2, true, Math.PI / 4);
+  sink.cylinder(MUD, [kx, top + 0.1, fz], 'y', 0.16, 0.44 * Math.SQRT2, 4, { decor: true }, 0.44 * Math.SQRT2, true, Math.PI / 4);
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) sink.span(MUD, kx + a * 0.33 - (a > 0 ? 0.14 : 0), kh, fz + b * 0.33 - (b > 0 ? 0.14 : 0), kx + a * 0.33 + (a < 0 ? 0.14 : 0), kh + 0.3, fz + b * 0.33 + (b < 0 ? 0.14 : 0), { shade: 0.5 });
+  sink.span(MUD, kx - 0.45, kh + 0.3, fz - 0.45, kx + 0.45, kh + 0.44, fz + 0.45, { shade: 0.55 });
+  const parts = sink.finish();
+  for (const piece of [body, furnace]) for (const name of Object.keys(piece) as Array<keyof RegionalParts>) parts[name].push(...piece[name]);
+  return parts;
 };
 
 /** A collapsed ghorfa range: broken vault stubs and a slump of mud rubble. */

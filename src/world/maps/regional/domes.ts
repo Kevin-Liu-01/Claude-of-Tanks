@@ -174,7 +174,37 @@ export function bulb(sink: PartSink, bucket: RegionalBucket, x: number, y: numbe
   let h = 0;
   for (const [dh, , r1] of rows) { h += dh; pts.push([h, r1]); }
   const rMax = Math.max(...rows.map(([, a, b]) => Math.max(a, b)));
-  const profile: DomeProfile = [[0, 0], ...smoothProfile(pts, Math.max(3, Math.ceil(DOME_MIN_RINGS * 1.5 / rows.length))), [h, 0]];
+  const profile: DomeProfile = [[0, 0], ...smoothProfile(pts, Math.max(2, Math.ceil(DOME_MIN_RINGS / rows.length))), [h, 0]];
   sink.revolve(bucket, [x, y, z], 'y', profile, domeSegments(rMax), emit);
   return y + h;
+}
+
+/**
+ * The one sanctioned polygonal dome: a cloister vault over a polygonal body (an octagonal turret's cupola, as the
+ * Vijecnica's corner turrets carry), its `sides` gores flat with crisp arrises on the body's corners and its profile
+ * curved in `rows` (dome-detail-275). Use it only where the body under it is itself polygonal; a round body takes
+ * smoothDome. Drawn as faces (no revolve), so domeDetail.selftest's round-dome laws do not apply to it. `phase` turns
+ * the corners as PartSink.cylinder's phase does. Returns the apex's height.
+ */
+export function polygonalDome(sink: PartSink, bucket: RegionalBucket, x: number, y: number, z: number, r: number, sides: number,
+  emit: EmitOptions = {}, phase = 0, rows = 8): number {
+  const ring = (k: number): Vec3[] => {
+    const th = (Math.PI / 2) * k / rows, rr = Math.cos(th) * r, yy = y + Math.sin(th) * r;
+    return Array.from({ length: sides }, (_, i) => {
+      const a = -(i / sides * Math.PI * 2 + phase);
+      return [x + Math.cos(a) * rr, yy, z + Math.sin(a) * rr] as Vec3;
+    });
+  };
+  const apex: Vec3 = [x, y + r, z];
+  let lo = ring(0);
+  for (let k = 1; k <= rows; k++) {
+    const hi = k < rows ? ring(k) : null;
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      if (hi) sink.quad(bucket, lo[i], lo[j], hi[j], hi[i], emit);
+      else sink.polygon(bucket, [lo[i], lo[j], apex], emit);
+    }
+    if (hi) lo = hi;
+  }
+  return y + r;
 }

@@ -8,12 +8,12 @@
 // the sawmill's open shed and its board store; the shepherds' huts (bacówki) on the meadows; the houses burnt in the
 // January fighting, their stacks standing in the snow.
 import {
-  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, UV_MEMBER,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import { bulb } from './domes.ts';
 import {
-  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, windowRhythm,
+  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
   type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -479,25 +479,79 @@ const szkola: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/** A prism of `pts` (one plane) extruded `depth` along `dir`, wound whichever way the points run (dome-detail-275). */
+function prismAuto(sink: PartSink, bucket: 'roof' | 'plaster' | 'wood' | 'stone', pts: readonly Vec3[], dir: Vec3, depth: number, opts: { decor?: boolean } = {}): void {
+  const [a, b, c] = pts;
+  const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+    (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+  sink.prism(bucket, n[0] * dir[0] + n[1] * dir[1] + n[2] * dir[2] < 0 ? [...pts].reverse() : pts, dir, depth, opts);
+}
+
+/** A sloping slab: the quad `pts` extruded `thick` along its upward normal (dome-detail-275). */
+function slab(sink: PartSink, bucket: 'roof' | 'plaster', pts: readonly Vec3[], thick: number, decor: boolean): void {
+  const [a, b, c] = pts;
+  let n: Vec3 = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+    (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+  if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
+  const l = Math.hypot(n[0], n[1], n[2]);
+  prismAuto(sink, bucket, pts, [n[0] / l, n[1] / l, n[2] / l], thick, decor ? { decor: true } : {});
+}
+
+/**
+ * A pent roof run round a rectangle (dome-detail-275): the soboty round the church's foot, the skirt round the belfry
+ * chamber's; four slabs of shingle from the wall's line out to the eave, each a trapezoid, meeting on the hips. The
+ * eave's height comes back.
+ */
+function pentRing(sink: PartSink, cx: number, cz: number, hw: number, hd: number, yTop: number, out: number, pitchDeg: number,
+  bucket: 'roof' | 'plaster', thick: number, decor: boolean): number {
+  const yE = yTop - out * Math.tan(pitchDeg * Math.PI / 180), p = (x: number, y: number, z: number): Vec3 => [cx + x, y, cz + z];
+  const W = hw + out, D = hd + out;
+  slab(sink, bucket, [p(hw, yTop, -hd), p(hw, yTop, hd), p(W, yE, D), p(W, yE, -D)], thick, decor);
+  slab(sink, bucket, [p(-hw, yTop, hd), p(-hw, yTop, -hd), p(-W, yE, -D), p(-W, yE, D)], thick, decor);
+  slab(sink, bucket, [p(hw, yTop, hd), p(-hw, yTop, hd), p(-W, yE, D), p(W, yE, D)], thick, decor);
+  slab(sink, bucket, [p(-hw, yTop, -hd), p(hw, yTop, -hd), p(W, yE, -D), p(-W, yE, -D)], thick, decor);
+  return yE;
+}
+
+/** A row of carved teeth hanging under a board (the Zakopane ząbki; dome-detail-275): pale triangles on the face. */
+function teeth(sink: PartSink, face: Face, u0: number, u1: number, y: number, o: number, size: number): void {
+  const n = Math.max(2, Math.round((u1 - u0) / size)), w = (u1 - u0) / n;
+  for (let k = 0; k < n; k++) {
+    const a = u0 + k * w;
+    sink.prism('structureWood', [facePoint(face, a, y, o), facePoint(face, a + w / 2, y - size * 0.85, o), facePoint(face, a + w, y, o)], face.out, 0.03,
+      { colour: PALE, decor: true, fine: true });
+  }
+}
+
 /**
  * The wooden church (Dębno, Zakopane's old church): a log nave on a stone footing under a steep shingle roof, the walls
  * clad in shingle below the eaves, a turret on the ridge, the tower at the front with its battered shingled walls, the
- * boarded belfry chamber oversailing it and the bulb, the cross.
+ * boarded belfry chamber oversailing it and the bulb, the cross. (dome-detail-275: "its details and presentation") The
+ * Podhale timber church: the soboty — the low shingled skirt roof run round the nave's foot on its brackets and eave
+ * plate — the nave's back gable boarded, carved and sunburst in the Zakopane manner under its bargeboards, the ridge
+ * turret an open lantern under its little bulb; the belfry chamber in openwork, its carved frieze, the shingled skirt at
+ * its foot; the porch on two carved posts before the tower's door, its gable boarded round a sunburst; the granite
+ * footing down into the ground and the snow banked under the soboty's drip.
  */
 const kosciol: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
+  const look = ctx.variant;
   const bb = ctx.bounds;
-  const W = clamp(bb.maxX - bb.minX - 1.1, 5.6, 7.6), tower = 3.2;
-  const zFront = bb.maxZ - 0.1, tz = zFront - tower / 2;
-  const nz1 = zFront - tower + 0.4, D = clamp(nz1 - (bb.minZ + 0.4), 6.0, 9.0);
+  // (dome-detail-275) the nave narrower and the tower set back, so the soboty and the porch stand inside the plot
+  const W = clamp(bb.maxX - bb.minX - 2.0, 5.0, 7.0);
+  const h0 = 1.75, h1 = 1.35, shaft = 8.5, sob = 0.7;
+  const zFront = bb.maxZ - 1.0, tz = zFront - h0;
+  const nz1 = tz - h0 + 0.5, D = clamp(nz1 - (bb.minZ + sob + 0.1), 5.0, 9.0), nzc = nz1 - D / 2;
   const openings: Opening[] = [];
-  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 1.4, sill: 1.6, spacing: 2.4, margin: 1.2, max: 3 })) openings.push(o);
+  for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 1.3, sill: 1.65, spacing: 2.4, margin: 1.2, max: 3 })) openings.push(o);
   const naveWindow: WindowStyle = {
     frame: WHITE, frameWidth: 0.05, frameOut: 0.03, bars: 'six', surround: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: PALE },
     sill: { bucket: 'structureWood', out: 0.08, colour: PALE }, shutters: null,
   };
-  sink.placed(0, 0, 0, nz1 - D / 2, () => {
+  // the granite footing under the nave and the tower, down into the ground (dome-detail-275)
+  sink.span('stone', -W / 2 - 0.08, -0.6, nzc - D / 2 - 0.08, W / 2 + 0.08, 0.06, nz1);
+  sink.placed(0, 0, 0, nzc, () => {
     const frame = buildHouse(sink, {
       // (round 2, wave 110b: the shingle-clad walls read as "a brick-textured church") the nave's hewn logs
       w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
@@ -509,16 +563,69 @@ const kosciol: RegionalBuilder = (ctx) => {
     // (round 4, wave 190: the church's walls "a staggered brown block texture that reads as brickwork"): the nave's hewn
     // logs laid as the houses' are, a little heavier, their ends crossing out at the corners
     logWork(sink, frame, [0], ctx.variant, naveWindow, st.mobile, 0.3);
-    // the turret on the ridge: a little boarded lantern and its bulb
+    const y0 = frame.floors[0], F = frame.faces;
+    // the soboty (dome-detail-275): the skirt roof of shingle round the nave under its windows, on its eave plate and the
+    // struts from the logs, the snow lying on it and banked under its drip
+    const yS = y0 + 1.42, yE = pentRing(sink, 0, 0, W / 2, D / 2, yS, sob, 30, 'roof', 0.1, false);
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = F[name], half = f.width / 2, reach = half + sob - 0.14;
+      faceBox(sink, 'structureWood', f, 0, yE - 0.07, sob - 0.14, 2 * reach, 0.13, 0.13, { colour: LOG_DARK, decor: true, shadow: true });
+      const n = Math.max(2, Math.round(f.width / 1.05));
+      for (let k = 0; k <= n; k++) {
+        const u = -half + 0.25 + (f.width - 0.5) * k / n;
+        sink.member('structureWood', facePoint(f, u, yS - 0.8, 0), facePoint(f, u, yE - 0.12, sob - 0.18), 0.1, 0.1, f.u,
+          { colour: shade(LOG, 0.9 + look() * 0.2), decor: true, exposed: true }, 0);
+      }
+      if (ctx.snowCap) {
+        // the bank under the drip: a wedge of snow from the footing out past the eave's line
+        const bank = 0.45 + look() * 0.25;
+        prismAuto(sink, 'plaster', [facePoint(f, -half - 0.6, -0.3, 0.02), facePoint(f, -half - 0.6, -0.3, sob + 0.45), facePoint(f, -half - 0.6, bank, 0.02)],
+          f.u, f.width + 1.2, { decor: true });
+      }
+    }
+    if (ctx.snowCap) pentRing(sink, 0, 0, W / 2, D / 2, yS + 0.13, sob + 0.08, 30, 'plaster', 0.12, true);
+    // the back gable in the Zakopane manner (dome-detail-275): boarded upright, its sunburst, the pale bargeboards along its
+    // rakes and their carved teeth, the pazdur finial and the iron cross at the half hip's peak
+    const g = frame.roof.gable, back = F.back;
+    const sr = Math.min(1.5, W * 0.26);
+    gableBoards(sink, back, frame, [[-sr - 0.05, sr + 0.05]]);
+    sunburst(sink, back, frame.eaveY + 0.1, sr, false);
+    if (g) {
+      // (the bargeboards, wiatrownice, at the verge's edge over the slab's end, run down past the wall to the eave's)
+      const rv = frame.spec.roof.verge, re = frame.spec.roof.eave, tp = frame.roof.tanP;
+      for (let i = 0; i < g.length; i++) {
+        let [ua, ya] = g[i], [ub, yb] = g[(i + 1) % g.length];
+        if (Math.abs(yb - ya) < 0.05) continue;
+        if (ya < yb) { [ua, ya, ub, yb] = [ub, yb, ua, ya]; }
+        const ue = ub + Math.sign(ub) * re, ye = yb - re * tp;
+        sink.member('structureWood', facePoint(back, ua, ya - 0.06, rv), facePoint(back, ue, ye - 0.06, rv), 0.26, 0.04, back.out, { colour: PALE, decor: true }, 0.02);
+      }
+      // the teeth under the half hip's eave, across the gable's top
+      const gTop = Math.max(...g.map(([, yy]) => yy)), topHalf = Math.max(...g.filter(([, yy]) => yy > gTop - 1e-3).map(([uu]) => Math.abs(uu)));
+      teeth(sink, back, -topHalf - 0.1, topHalf + 0.1, gTop - 0.12, 0.045, 0.2);
+    }
+    const peakZ = -frame.roof.ridgeHalf;
+    sink.cylinder('structureWood', [0, frame.roof.ridgeTopY - 0.05, peakZ], 'y', 0.7, 0.07, 6, { colour: PALE, decor: true }, 0.02);
+    sink.span('structureMetal', -0.02, frame.roof.ridgeTopY + 0.3, peakZ - 0.02, 0.02, frame.roof.ridgeTopY + 1.0, peakZ + 0.02, { colour: IRON, decor: true });
+    sink.span('structureMetal', -0.16, frame.roof.ridgeTopY + 0.75, peakZ - 0.02, 0.16, frame.roof.ridgeTopY + 0.79, peakZ + 0.02, { colour: IRON, decor: true });
+    // the turret on the ridge (the sygnaturka; dome-detail-275: a boarded box under two cones): its boarded foot astride
+    // the ridge, the open lantern on four posts with its bell, the little hip of shingle, the bulb and the cross
     const ry = frame.roof.ridgeY, tzz = -D * 0.15;
-    sink.span('wood', -0.4, ry - 0.4, tzz - 0.4, 0.4, ry + 1.0, tzz + 0.4);
-    sink.cylinder('roof', [0, ry + 1.0, tzz], 'y', 0.5, 0.55, 8, {}, 0.3);
-    sink.cylinder('roof', [0, ry + 1.5, tzz], 'y', 0.5, 0.3, 8, {}, 0.05);
-    sink.span('structureMetal', -0.025, ry + 1.95, tzz - 0.025, 0.025, ry + 2.6, tzz + 0.025, { colour: IRON, decor: true });
+    sink.span('wood', -0.42, ry - 0.6, tzz - 0.42, 0.42, ry + 0.55, tzz + 0.42);
+    sink.span('structureWood', -0.48, ry + 0.55, tzz - 0.48, 0.48, ry + 0.65, tzz + 0.48, { colour: LOG_DARK });
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      sink.span('structureWood', sx * 0.38 - 0.06, ry + 0.65, tzz + sz * 0.38 - 0.06, sx * 0.38 + 0.06, ry + 1.35, tzz + sz * 0.38 + 0.06, { colour: LOG });
+    }
+    sink.cylinder('structureMetal', [0, ry + 0.75, tzz], 'y', 0.35, 0.17, 8, { colour: BELL, decor: true }, 0.08);
+    sink.span('structureWood', -0.05, ry + 1.1, tzz - 0.38, 0.05, ry + 1.18, tzz + 0.38, { colour: LOG_DARK, decor: true });
+    const tcap: RoofSpec = { kind: 'hip', pitchDeg: 35, eave: 0.18, verge: 0.18, thickness: 0.08, bucket: 'roof', ridge: null };
+    sink.placed(0, 0, 0, tzz, () => emitRoof(sink, roofGeometry(0.9, 0.9, ry + 1.35, tcap), tcap));
+    const ty = bulb(sink, 'roof', 0, ry + 1.35 + 0.45 * Math.tan(35 * Math.PI / 180) - 0.05, tzz, [[0.18, 0.16, 0.34], [0.22, 0.34, 0.26], [0.2, 0.26, 0.04]]);
+    sink.span('structureMetal', -0.02, ty - 0.05, tzz - 0.02, 0.02, ty + 0.6, tzz + 0.02, { colour: IRON, decor: true });
+    sink.span('structureMetal', -0.14, ty + 0.4, tzz - 0.02, 0.14, ty + 0.44, tzz + 0.02, { colour: IRON, decor: true });
   });
   // the tower: battered shingled walls (a square frustum, closed), the boarded chamber, the bulb, the cross
-  const h0 = 1.75, h1 = 1.35, shaft = 8.5;
-  sink.span('stone', -h0 - 0.1, -0.4, tz - h0 - 0.1, h0 + 0.1, 0.45, tz + h0 + 0.1);
+  sink.span('stone', -h0 - 0.1, -0.6, tz - h0 - 0.1, h0 + 0.1, 0.45, tz + h0 + 0.1);
   sink.cylinder('wood', [0, 0.45, tz], 'y', shaft - 0.45, h0 * Math.SQRT2, 4, {}, h1 * Math.SQRT2, true, Math.PI / 4);
   // (round 4, wave 190: the tower's walls read as brick or as "a fish-scale shingle texture that belongs on a roof"): the
   // shaft boarded upright as Debno's is, its battens following the batter up each face
@@ -534,23 +641,46 @@ const kosciol: RegionalBuilder = (ctx) => {
   // the door into the tower and the boarded chamber oversailing the shaft
   const tf: Face = { origin: [0, 0, tz + h0 - 0.06], u: [1, 0, 0], out: [0, 0, 1], width: 2 * h0 };
   // (the r2 sweep: the leaf lay on the shaft's boards, a dark plate) the door hung deep in a heavy timber case standing
-  // out of the shaft, under a little shingle hood on two brackets
+  // out of the shaft
   doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.18, out: 0.17, colour: PALE }, steps: null, leafKind: 'plank' });
+  // the porch before it (dome-detail-275; it was a little hood on two brackets): its granite floor and step, two posts
+  // with pale capitals and their braces, the tie beam, a steep shingle gable boarded round its sunburst
   {
-    const hy = 0.45 + 2.3 + 0.22, hood: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.08, verge: 0.04, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
-    sink.placed(0, 0, 0, tz + h0 + 0.24, () => emitRoof(sink, roofGeometry(1.7, 0.6, hy, hood), hood));
-    for (const sx of [-1, 1]) sink.member('structureWood', [sx * 0.72, hy - 0.55, tz + h0 - 0.04], [sx * 0.72, hy - 0.02, tz + h0 + 0.5], 0.09, 0.09, [sx, 0, 0],
-      { colour: LOG_DARK, decor: true, exposed: true }, 0);
-    sink.span('structureWood', -0.85, hy - 0.1, tz + h0 - 0.06, 0.85, hy, tz + h0 + 0.54, { colour: LOG_DARK, decor: true, uv: UV_MEMBER });
+    const pe = 2.95, pw = 1.9, px = 0.82, pz = zFront + 0.82, c = { colour: LOG } as const;
+    sink.span('stone', -1.05, -0.5, zFront, 1.05, 0.45, zFront + 0.97);
+    sink.span('stone', -0.9 + look() * 0.06, -0.4, zFront + 0.97, 0.9 - look() * 0.06, 0.22, zFront + 1.27, { decor: true });
+    for (const s of [-1, 1]) {
+      sink.span('structureWood', s * px - 0.08, 0.45, pz - 0.08, s * px + 0.08, pe - 0.14, pz + 0.08, c);
+      sink.span('structureWood', s * px - 0.12, pe - 0.34, pz - 0.12, s * px + 0.12, pe - 0.14, pz + 0.12, { colour: PALE, decor: true });
+      sink.span('structureWood', s * px - 0.07, pe - 0.14, zFront - 0.2, s * px + 0.07, pe, pz + 0.1, { colour: LOG_DARK });
+      sink.member('structureWood', [s * px, pe - 0.75, pz], [s * 0.35, pe - 0.14, pz], 0.08, 0.08, [0, 0, 1], { colour: LOG_DARK, decor: true, exposed: true }, 0);
+    }
+    sink.span('structureWood', -pw / 2, pe - 0.14, pz - 0.08, pw / 2, pe, pz + 0.08, { colour: LOG_DARK });
+    const porch: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.2, verge: 0.22, thickness: 0.1, bucket: 'roof', ridge: 'saddle', decor: true };
+    const pdz = pz + 0.12 - (zFront - 0.25), pcz = (pz + 0.12 + zFront - 0.25) / 2;
+    sink.placed(0, 0, 0, pcz, () => {
+      emitRoof(sink, roofGeometry(pw, pdz, pe, porch), porch);
+      if (ctx.snowCap) roofSnowOn(sink, pw, pdz, pe, porch);
+    });
+    const pf: Face = { origin: [0, 0, pz + 0.1], u: [1, 0, 0], out: [0, 0, 1], width: pw };
+    wallPolygon(sink, 'wood', pf, [[-pw / 2 + 0.05, pe], [pw / 2 - 0.05, pe], [0, pe + (pw / 2 - 0.05) * Math.tan(48 * Math.PI / 180)]], 0.05, { decor: true });
+    sunburst(sink, pf, pe + 0.02, 0.5, false);
+    teeth(sink, pf, -pw / 2 + 0.1, pw / 2 - 0.1, pe - 0.14, -0.02, 0.16);
   }
   const cw = h1 + 0.35, cy0 = shaft, cy1 = shaft + 2.4;
   // (props census #15, Lane C 2026-10-16: the sound holes were dark plates on the boards) cut through the chamber's
-  // boarded walls with their reveals, the louvre boards across each
-  const sound = (): HoleRect[] => [-0.55, 0.55].map((u) => ({ u0: u - 0.225, u1: u + 0.225, y0: cy0 + 0.8, y1: cy0 + 1.9 }));
-  const chamber = holedBox(sink, 'wood', -cw, tz - cw, cw, tz + cw, cy0, cy1, { front: sound(), back: sound(), left: sound(), right: sound() }, 0.15, 0.12);
-  for (const fc of Object.values(chamber)) for (const u of [-0.55, 0.55]) for (let k = 0; k < 5; k++) {
-    faceBox(sink, 'structureWood', fc, u, cy0 + 0.92 + k * 0.21, -0.07, 0.44, 0.04, 0.1, { colour: LOG_DARK, decor: true, fine: true });
+  // boarded walls with their reveals
+  // (dome-detail-275) the chamber in openwork: five tall lights a face between the boards' posts, the carved frieze
+  // over them with its teeth, a rail across their feet; the shingled skirt flaring out at the chamber's foot
+  const lights = (): HoleRect[] => [-2, -1, 0, 1, 2].map((k) => ({ u0: k * 0.6 - 0.17, u1: k * 0.6 + 0.17, y0: cy0 + 0.55, y1: cy1 - 0.5 }));
+  const chamber = holedBox(sink, 'wood', -cw, tz - cw, cw, tz + cw, cy0, cy1, { front: lights(), back: lights(), left: lights(), right: lights() }, 0.15, 0.12);
+  for (const fc of Object.values(chamber)) {
+    faceBox(sink, 'structureWood', fc, 0, cy1 - 0.34, 0.02, 2 * cw, 0.22, 0.04, { colour: PALE, decor: true });
+    teeth(sink, fc, -cw + 0.05, cw - 0.05, cy1 - 0.45, 0.03, 0.15);
+    faceBox(sink, 'structureWood', fc, 0, cy0 + 0.62, 0.03, 2 * cw - 0.2, 0.07, 0.06, { colour: LOG_DARK, decor: true });
   }
+  pentRing(sink, 0, tz, cw, cw, cy0 + 0.2, 0.42, 32, 'roof', 0.08, false);
+  if (ctx.snowCap) pentRing(sink, 0, tz, cw, cw, cy0 + 0.31, 0.48, 32, 'plaster', 0.1, true);
   // the chamber's eaves and the bulb (frustum rings of shingle), its spike and cross
   const cap: RoofSpec = { kind: 'hip', pitchDeg: 30, eave: 0.4, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: null };
   sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * cw, 2 * cw, cy1, cap), cap));
@@ -617,7 +747,14 @@ const drewutnia: RegionalBuilder = (ctx) => {
 
 /**
  * The sawmill's shed (the depot's plot, its loading side to +x): the saw frame under a long shingle roof on posts,
- * the boarded back wall, the log deck and the sawn boards stacked along the open side.
+ * the boarded back wall, the log deck and the sawn boards stacked along the open side. (dome-detail-275: "its details
+ * and presentation") The Podhale tartak: the shed built member by member (outbuildings.ts openShed) — posts on granite
+ * pads, sills, plates and knee braces, the rafters, the shingle laid in its courses, the barge boards — its back boarded
+ * with a finger's gap, both gables boarded upright under the ridge and the back half of each end boarded down to the
+ * sill (the carriage runs out through the ends); the upright saw frame (trak) on its sleepers — its two posts and head
+ * beam, the sash with its blades, the flywheel and its crank rod — the carriage on its rails through it, a log on it
+ * half sawn; the log deck at the far end, its skids and the logs waiting on them, chocked; the boards stickered in piles
+ * under the open side, the sawdust heaped under the saw.
  */
 const tartak: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -625,37 +762,86 @@ const tartak: RegionalBuilder = (ctx) => {
   const bb = ctx.bounds;
   const W = clamp(bb.maxX - bb.minX - 1.2, 7, 10), D = clamp(bb.maxZ - bb.minZ - 1.0, 13, 21);
   const cx = bb.minX + 0.6 + W / 2;
-  const H = 3.4;
+  const H = 3.4, pitch = 32, tanP = Math.tan(pitch * Math.PI / 180);
+  const mobile = ctx.tier === 'mobile';
   sink.placed(0, cx, 0, 0, () => {
-    // the boarded back wall (-x) and two gable ends half boarded
-    sink.span('wood', -W / 2, -0.2, -D / 2, -W / 2 + 0.12, H, D / 2);
-    for (const sz of [-1, 1]) sink.span('wood', -W / 2, -0.2, sz * D / 2 - (sz > 0 ? 0.12 : 0), -W / 2 + W * 0.45, H, sz * D / 2 + (sz < 0 ? 0.12 : 0));
-    // the posts along the open side and the middle
-    for (let k = 0, n = Math.max(3, Math.round(D / 3.2)); k <= n; k++) {
-      const z = -D / 2 + 0.15 + (D - 0.3) * k / n;
-      sink.span('structureWood', W / 2 - 0.22, -0.2, z - 0.11, W / 2, H, z + 0.11, { colour: LOG });
+    // (dome-detail-275: the shed was a slab roof on bare posts over two plank walls) the shed in its members
+    openShed(sink, { W, D, hLo: H, pitchDeg: pitch, back: true, ends: false, gable: true, pile: 0, block: false, mobile,
+      snow: ctx.snowCap ? { t: 0.26, bucket: 'plaster' } : null }, {
+      timber: LOG, post: 0.22, pad: { bucket: 'stone', size: 0.42, top: 0.2 },
+      cladding: 'gapped', boards: [LOG_AGED, shade(LOG_AGED, 1.12), shade(LOG, 1.05)], boardW: 0.24, gap: 0.025, trim: LOG_DARK,
+      covering: 'shingle', roofBucket: 'roof', eave: 0.55, verge: 0.45,
+    }, look);
+    // the gables boarded upright above the end frames' plates, their battens; the back half of each end boarded to the sill
+    const under = (x: number): number => H + (W / 2 - 0.11 - Math.abs(x)) * tanP;
+    for (const sz of [-1, 1]) {
+      const ef: Face = { origin: [0, 0, sz * (D / 2 - 0.02)], u: [sz, 0, 0], out: [0, 0, sz], width: W };
+      const xw = W / 2 - 0.11;
+      wallPolygon(sink, 'wood', ef, [[-xw, H - 0.02], [xw, H - 0.02], [0, under(0) - 0.04]], 0.05);
+      for (let u = -xw + 0.25; u < xw - 0.15; u += 0.3) {
+        const top = under(u) - 0.08;
+        if (top - H < 0.2) continue;
+        faceBox(sink, 'structureWood', ef, u, (H + top) / 2, 0.015, 0.05, top - H, 0.03, { colour: LOG_DARK, decor: true, fine: true }, 'caps');
+      }
+      sink.span('wood', -W / 2, 0.2, sz * D / 2 - (sz > 0 ? 0.08 : 0), -W / 2 + W * 0.42, H - 0.02, sz * D / 2 + (sz < 0 ? 0.08 : 0));
     }
-    const roof = gont(32, 0.6, 0.5, 'gable');
-    emitRoof(sink, roofGeometry(W, D, H, roof), roof);
-    if (ctx.snowCap) roofSnowOn(sink, W, D, H, roof);
-    // the saw frame (a heavy timber gate frame) on its bed, a log on the carriage
-    sink.span('structureWood', -0.9, -0.2, -0.3, 0.9, 0.6, 0.3, { colour: LOG_DARK });
-    for (const s of [-1, 1]) sink.span('structureWood', s * 0.75 - 0.12, 0.6, -0.15, s * 0.75 + 0.12, 2.8, 0.15, { colour: LOG_DARK, decor: true });
-    sink.span('structureWood', -0.9, 2.7, -0.18, 0.9, 2.95, 0.18, { colour: LOG_DARK, decor: true });
+    // the saw frame (trak) on its sleepers: two posts and their head beam, the sash between them with its blades, the
+    // flywheel beside it on its axle and the crank rod up to the sash's foot
+    const fz = 0;
+    for (const dx of [-0.9, 0.9]) sink.span('structureWood', dx - 0.14, -0.2, fz - 0.6, dx + 0.14, 0.18, fz + 0.6, { colour: LOG_DARK });
+    sink.span('structureWood', -1.1, 0.18, fz - 0.3, 1.1, 0.5, fz + 0.3, { colour: LOG_DARK });
+    for (const s of [-1, 1]) sink.span('structureWood', s * 0.78 - 0.14, 0.5, fz - 0.16, s * 0.78 + 0.14, 3.0, fz + 0.16, { colour: LOG_DARK });
+    sink.span('structureWood', -1.0, 2.9, fz - 0.2, 1.0, 3.16, fz + 0.2, { colour: LOG_DARK, decor: true });
+    sink.span('structureWood', -0.64, 1.55, fz - 0.11, 0.64, 1.7, fz + 0.11, { colour: shade(LOG, 0.9), decor: true });
+    for (const s of [-1, 1]) sink.span('structureWood', s * 0.56 - 0.05, 1.7, fz - 0.07, s * 0.56 + 0.05, 2.78, fz + 0.07, { colour: shade(LOG, 0.9), decor: true });
+    sink.span('structureWood', -0.64, 2.78, fz - 0.11, 0.64, 2.9, fz + 0.11, { colour: shade(LOG, 0.9), decor: true });
+    for (let k = 0; k < 5; k++) {
+      const x = -0.4 + k * 0.2;
+      sink.span('structureMetal', x - 0.008, 1.7, fz - 0.05, x + 0.008, 2.78, fz + 0.05, { colour: rgb(0x6c6e70), decor: true, fine: true });
+    }
+    sink.cylinder('structureWood', [1.25, 0.95, fz], 'x', 0.14, 0.72, 16, { colour: shade(LOG_DARK, 1.1), decor: true, shadow: true });
+    sink.cylinder('structureMetal', [0.92, 0.95, fz], 'x', 0.62, 0.05, 8, { colour: IRON, decor: true });
+    sink.span('structureWood', 1.47, -0.2, fz - 0.12, 1.6, 1.0, fz + 0.12, { colour: LOG_DARK, decor: true });
+    sink.member('structureWood', [1.18, 1.35, fz], [0.66, 1.62, fz], 0.08, 0.08, [1, 0, 0], { colour: LOG_DARK, decor: true, exposed: true }, 0);
     // (kitConnectivity: the log lay 3 cm over the saw's bed) the carriage's two rails under the log its whole length, the
-    // log resting on them
+    // log resting on them; past the frame its sawn half, the squared cant on the rails and the boards cut from it on top
     for (const x of [-0.3, 0.3]) sink.span('structureWood', x - 0.07, -0.1, -D * 0.35, x + 0.07, 0.62, D * 0.25, { colour: LOG_DARK, decor: true });
-    sink.cylinder('structureWood', [0, 0.93, -D * 0.35], 'z', D * 0.6, 0.32, 8, { colour: shade(LOG, 1.15), decor: true, shadow: true });
-    sink.dressing(ctx.tier === 'mobile', () => {
-      // the boards stacked in stickered piles along the open side: the bearers on the ground, then each layer of boards on
+    sink.cylinder('structureWood', [0, 0.93, -D * 0.35 + 0.2], 'z', D * 0.33, 0.32, 10, { colour: shade(LOG, 1.15), decor: true, shadow: true });
+    sink.span('structureWood', -0.27, 0.62, 0.35, 0.27, 1.0, D * 0.22, { colour: shade(PALE, 0.82), decor: true });
+    for (let k = 0; k < 2; k++) {
+      sink.span('structureWood', -0.25 + k * 0.03, 1.0 + k * 0.05, 0.5 + k * 0.2, 0.25 - k * 0.02, 1.05 + k * 0.05, D * 0.2 - k * 0.3,
+        { colour: shade(PALE, 0.9 + look() * 0.1), decor: true });
+    }
+    // the sawdust heaped under the saw (a low cone of it)
+    sink.cylinder('structureWood', [-0.2, 0, fz + 0.9], 'y', 0.32, 0.85, 10, { colour: shade(PALE, 1.05), decor: true }, 0.12);
+    // the log deck at the far end: three skids across, laid falling to the carriage, the logs lying on them, the
+    // outer ones chocked; a cant hook leaning on the pile
+    const zd = -D / 2 + 1.35, skidTop = (z: number): number => 0.4 - (z - (zd - 1.0)) * 0.09;
+    sink.span('structureWood', -2.7, -0.15, zd - 1.0, 2.7, 0.2, zd - 0.78, { colour: LOG_DARK });
+    for (const x of [-2.4, 0, 2.4]) sink.member('structureWood', [x, 0.3, zd - 1.0], [x, 0.12, zd + 1.0], 0.2, 0.2, [1, 0, 0], { colour: LOG_DARK, exposed: true }, 0.1);
+    const lower = [-0.6, 0, 0.6].map((dz) => { const r = 0.25 + look() * 0.06; return { z: zd + dz, r, y: skidTop(zd + dz) + r }; });
+    const upper = [0, 1].map((k) => ({ z: (lower[k].z + lower[k + 1].z) / 2, r: 0.24 + look() * 0.05, y: Math.max(lower[k].y, lower[k + 1].y) + 0.44 }));
+    for (const lg of [...lower, ...upper]) {
+      const len = 4.6 + look() * 0.8;
+      sink.cylinder('structureWood', [-len / 2, lg.y, lg.z], 'x', len, lg.r, 10, { colour: shade(LOG, 1.0 + look() * 0.2), decor: true, shadow: true });
+    }
+    // the chocks on the skids before the lowest log
+    const low = lower[2], cz = low.z + low.r + 0.07;
+    for (const s of [-1, 1]) sink.span('structureWood', s * 2.4 - 0.08, skidTop(cz) - 0.04, cz - 0.07, s * 2.4 + 0.08, skidTop(cz) + 0.16, cz + 0.07, { colour: LOG_DARK, decor: true, fine: true });
+    sink.member('structureWood', [2.9, 0.0, zd + 0.4], [2.75, 1.4, zd + 0.1], 0.05, 0.05, [0, 0, 1], { colour: LOG_DARK, decor: true, exposed: true, fine: true }, 0);
+    sink.dressing(mobile, () => {
+      // the boards stacked in stickered piles under the open side: the bearers on the ground, then each layer of boards on
       // its stickers (kitConnectivity: the layers floated 6 cm apart on nothing); a phone draws their tones and leaves them
-      for (const z of [-D * 0.3, D * 0.05, D * 0.32]) {
-        for (let k = 0; k < 6; k++) {
+      // (dome-detail-275: moved in under the eave, the plot's own; they stood 0.9 m past it)
+      const x0 = W / 2 - 1.75, x1 = W / 2 - 0.45;
+      for (const z of [D * 0.3, -D * 0.12]) {
+        const layers = 5 + Math.floor(look() * 2);
+        for (let k = 0; k < layers; k++) {
           const y = 0.15 + k * 0.16;
-          sink.span('structureWood', W / 2 + 0.4, y, z - 1.6, W / 2 + 1.5, y + 0.1, z + 1.6, { colour: shade(PALE, 0.85 + look() * 0.15), decor: true, shadow: true });
-          for (const dz of [-1.35, 0, 1.35]) {
+          sink.span('structureWood', x0, y, z - 1.5, x1, y + 0.1, z + 1.5, { colour: shade(PALE, 0.85 + look() * 0.15), decor: true, shadow: true });
+          for (const dz of [-1.25, 0, 1.25]) {
             const y0 = k === 0 ? 0 : y - 0.06;
-            sink.span('structureWood', W / 2 + 0.38, y0, z + dz - 0.04, W / 2 + 1.52, y, z + dz + 0.04, { colour: LOG_DARK, decor: true });
+            sink.span('structureWood', x0 - 0.02, y0, z + dz - 0.04, x1 + 0.02, y, z + dz + 0.04, { colour: LOG_DARK, decor: true });
           }
         }
       }

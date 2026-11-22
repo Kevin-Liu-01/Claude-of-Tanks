@@ -9,6 +9,7 @@
 //   2. every upright revolve that closes over its axis like a dome (from 0.9 of its widest radius to under 0.35 of it
 //      over a rise of at least 0.3 of it, never through a flat lid), 0.8 m or wider, turns at least DOME_MIN_SEGMENTS round and five rows up that
 //      closing (domes.ts draws DOME_MIN_RINGS up the whole curve);
+//      (domes.ts polygonalDome, the cloister vault over a polygonal body, is drawn as faces and is not a round dome);
 //   3. the watch sees what it guards (synthetic): the old Chouf dome fails law 1, a 14-segment revolve fails law 2, and
 //      smoothDome and bulb pass both.
 import assert from 'node:assert/strict';

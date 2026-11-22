@@ -16,8 +16,8 @@
 //     arched entrance in the gable under a clock, a clerestory lantern along the ridge;
 //   - depot → a čaršija row: single-storey timber shops under one deep-eaved tile roof, their ćepenci (shutters)
 //     closed for the siege, a whitewashed han storey over one end.
-import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { domeSegments, smoothDome } from './domes.ts';
+import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { domeSegments, polygonalDome, smoothDome } from './domes.ts';
 import { buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -43,13 +43,15 @@ const STONE_WINDOW: WindowStyle = {
  * stacked rings of twelve flat facets, the largest dome in the game the coarsest). `segments` is a floor (the shell takes
  * at least domes.ts's). Returns the crown's height.
  */
-function dome(sink: PartSink, x: number, y0: number, z: number, r: number, colour: Rgb, segments = 12, decor = false): number {
+function dome(sink: PartSink, x: number, y0: number, z: number, r: number, colour: Rgb, segments = 12, decor = false, octagonal = false): number {
   const emit = { colour, ...(decor ? { decor: true } : {}) };
+  // an octagonal turret's cupola: the polygonal cloister vault over its eight faces (domes.ts polygonalDome)
+  if (octagonal) return polygonalDome(sink, 'structureMetal', x, y0, z, r, 8, emit, Math.PI / 8);
   const shell = smoothDome(sink, 'structureMetal', x, y0, z, r, { stilt: 0.08, segments, emit });
   sink.revolve('structureMetal', [x, y0, z], 'y', [[-0.03, r + 0.08], [0.09, r + 0.08], [0.09, r]], domeSegments(r), { colour: shade(colour, 0.85), decor: true });
   if (r >= 2) {
     // the standing seams: a rib from the drip ring to the crown's ring on every second gore
-    const ribs = Math.round(r * 4) * 2, rows = 6;
+    const ribs = Math.round(r * 2) * 2, rows = 4;
     for (let k = 0; k < ribs; k++) {
       const phi = (k + 0.5) * Math.PI * 2 / ribs;
       for (let i = 0; i < rows; i++) {
@@ -236,7 +238,7 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
         // (259, the phone census: a square band round the octagon stood off its faces, on them only by its fine top and
         // underside) an octagonal collar on the turret
         sink.cylinder('structureMetal', [x, ph - 0.3, z], 'y', 0.3, tr + 0.06, 8, { decor: true, colour: RED_BAND }, tr + 0.06, true, Math.PI / 8);
-        const t = dome(sink, x, ph + 2.1, z, tr, LEAD, 8, true);
+        const t = dome(sink, x, ph + 2.1, z, tr, LEAD, 8, true, true);
         finial(sink, x, t, z, 'alem', 0.5);
       }
       // the central hall: its octagonal drum over the roof, the burnt dome's bare ribs, a few panes left
@@ -311,34 +313,85 @@ const mosque: RegionalBuilder = (ctx) => {
           : { kind: 'hip', pitchDeg: 26, eave: 0.7, verge: 0.7, thickness: 0.16, bucket: 'roof', ridge: 'round' },
         gableBucket: wall, openings, chimneys: [], gutters: null, verge: null, reveal: 0.36, rafters: null, spall: 'stone',
       }, dialect);
+      // (dome-detail-275) the hall's stone cornice under its roof
+      const hb = frame.bodies[0];
+      sink.band('stone', hb.x0 - 0.12, frame.eaveY - 0.34, hb.z0 - 0.12, hb.x1 + 0.12, frame.eaveY - 0.06, hb.z1 + 0.12, { decor: true });
       if (domed) {
         const top = frame.eaveY + 0.3;
-        sink.cylinder(wall, [0, top - 0.05, 0], 'y', 0.9, hs * 0.44, 8, {}, hs * 0.42, true, Math.PI / 8);
-        const t = dome(sink, 0, top + 0.85, 0, hs * 0.42, LEAD, 12);
+        // (dome-detail-275) the octagonal drum (it was a plain eight-sided band): its sides slabs round a core, a light cut
+        // through each under a round head (the cut's corners filled to the arch) on its sill, a pilaster up each corner,
+        // the base course and a stepped cornice, its upper course round under the dome's foot
+        const rc = hs * 0.44, p8 = Math.PI / 8, ap = rc * Math.cos(p8), side = 2 * rc * Math.sin(p8), cut = 0.2, dh = 1.5;
+        const wr = 0.22, wy = top + 0.35, ws = top + 0.95;
+        sink.cylinder(wall, [0, top - 0.05, 0], 'y', dh + 0.05, rc - cut / Math.cos(p8), 8, {}, rc - cut / Math.cos(p8), true, p8);
+        for (let k = 0; k < 8; k++) {
+          const t = (k / 8) * Math.PI * 2;
+          const f: Face = { origin: [Math.cos(t) * ap, 0, Math.sin(t) * ap], u: [Math.sin(t), 0, -Math.cos(t)], out: [Math.cos(t), 0, Math.sin(t)], width: side };
+          holedPolygon(sink, wall, f, [[-side / 2, top - 0.05], [side / 2, top - 0.05], [side / 2, top + dh], [-side / 2, top + dh]],
+            [{ u0: -wr, u1: wr, y0: wy, y1: ws + wr }], cut, 0.16);
+          facePanel(sink, 'glass', f, 0, (wy + ws) / 2, -0.148, 2 * wr, ws - wy, { decor: true, window: f.out });
+          lunette(sink, 'glass', f, 0, ws, wr, -0.148, 4, { decor: true });
+          spandrels(sink, wall, f, 0, ws, wr, 0.002, { decor: true }, 0, 4);
+          archHead(sink, f, 0, ws, wr, 'stone', 0.1, 5);
+          faceBox(sink, 'stone', f, 0, wy - 0.05, 0.05, 2 * wr + 0.3, 0.1, 0.1, { decor: true });
+          for (const e of [-1, 1]) faceBox(sink, 'stone', f, e * (side / 2 - 0.11), top + dh / 2, 0.035, 0.22, dh - 0.1, 0.07, { decor: true, shade: 1.04 }, { back: true });
+        }
+        sink.cylinder('stone', [0, top - 0.05, 0], 'y', 0.22, rc + 0.06, 8, { decor: true }, rc + 0.06, true, p8);
+        sink.cylinder('stone', [0, top + dh - 0.12, 0], 'y', 0.16, rc + 0.08, 8, { decor: true }, rc + 0.08, true, p8);
+        sink.revolve('stone', [0, top + dh + 0.04, 0], 'y', [[0, 0], [0, rc + 0.08], [0.05, rc + 0.2], [0.16, rc + 0.2], [0.16, 0]], domeSegments(rc), { decor: true, shade: 0.95 });
+        const t = dome(sink, 0, top + dh + 0.2, 0, hs * 0.42, LEAD, 12);
         finial(sink, 0, t, 0, 'alem', 0.9);
       } else finial(sink, 0, frame.roof.ridgeTopY + 0.05, 0, 'alem', 0.7);
     });
     // the portico before the door: a stone platform, slender columns, arches, a lead-sheeted lean-to roof
+    // (dome-detail-275: plain shafts to the roof under a flat ring of quads) the stone sofa with its steps; the columns on
+    // square bases under their capitals and abaci; pointed arches of voussoirs, every second stone the red (the ablaq),
+    // their spandrels filled to the entablature and its cornice; the iron tie rods between the capitals and back to the hall
     const pz0 = hz1, pz1 = Math.min(D / 2 - 2.2, hz1 + 3.2);
     if (pz1 - pz0 > 1.6) {
-      const px = hs / 2 - 0.1, ph = Math.min(hh - 0.4, 4.0);
+      const px = hs / 2 - 0.1, ph = Math.min(hh - 0.4, 4.0), cz = pz1 - 0.3;
       sink.span('stone', -px, -0.3, pz0, px, 0.35, pz1);
-      const cols = Math.max(3, Math.round(hs / 2.4) + 1);
+      for (let k = 1; k <= 2; k++) sink.span('stone', -1.2, -0.3, pz1 + 0.32 * (k - 1), 1.2, 0.35 - 0.12 * k, pz1 + 0.32 * k, { decor: true, shade: 0.92 });
+      const cols = Math.max(3, Math.round(hs / 2.4) + 1), bay = (2 * px - 0.5) / (cols - 1), colX = (k: number) => -px + 0.25 + bay * k;
+      const r = bay / 2 - 0.2, c = r * 0.22, rw = 0.2, eb = ph - 0.3;
+      const spring = eb - 0.08 - Math.sqrt((r + c + rw) ** 2 - c * c);
       for (let k = 0; k < cols; k++) {
-        const x = -px + 0.25 + (2 * px - 0.5) * k / (cols - 1);
-        sink.cylinder('stone', [x, 0.35, pz1 - 0.3], 'y', ph - 0.35, 0.2, 8, {}, 0.18);
+        const x = colX(k);
+        sink.span('stone', x - 0.24, 0.35, cz - 0.24, x + 0.24, 0.62, cz + 0.24, { decor: true, shade: 0.94 });
+        sink.cylinder('stone', [x, 0.35, cz], 'y', spring - 0.73, 0.17, 10, {}, 0.15);
+        sink.cylinder('stone', [x, spring - 0.38, cz], 'y', 0.26, 0.16, 8, { decor: true }, 0.27, true, Math.PI / 8);
+        sink.span('stone', x - 0.28, spring - 0.12, cz - 0.28, x + 0.28, spring, cz + 0.28, { decor: true });
       }
-      const pf: Face = { origin: [0, 0, pz1 - 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2 * px };
+      const pf: Face = { origin: [0, 0, cz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * px };
+      // a pointed arch's line at radius `rr` from its centres: half `e` (-1 the left), `t` 0 at the springing to 1 at the crown
+      const arcAt = (cu: number, e: number, rr: number, t: number): [number, number] => {
+        const th = Math.PI - t * (Math.PI - Math.acos(-c / rr));
+        return [cu - e * (c + rr * Math.cos(th)), spring + rr * Math.sin(th)];
+      };
+      const n = 4;
       for (let k = 0; k + 1 < cols; k++) {
-        const x0 = -px + 0.25 + (2 * px - 0.5) * k / (cols - 1), x1 = -px + 0.25 + (2 * px - 0.5) * (k + 1) / (cols - 1);
-        const r = (x1 - x0) / 2 - 0.2;
-        for (let j = 0; j < 6; j++) {
-          const a = Math.PI * j / 6, b = Math.PI * (j + 1) / 6, cu = (x0 + x1) / 2, cy = ph - r - 0.15;
-          sink.quad('stone', facePoint(pf, cu + Math.cos(a) * r, cy + Math.sin(a) * r, 0.2), facePoint(pf, cu + Math.cos(a) * (r + 0.22), cy + Math.sin(a) * (r + 0.22), 0.2),
-            facePoint(pf, cu + Math.cos(b) * (r + 0.22), cy + Math.sin(b) * (r + 0.22), 0.2), facePoint(pf, cu + Math.cos(b) * r, cy + Math.sin(b) * r, 0.2), { decor: true });
+        const cu = colX(k) + bay / 2;
+        for (const e of [-1, 1]) {
+          for (let j = 0; j < n; j++) {
+            const [u0, y0] = arcAt(cu, e, r + c + rw / 2, Math.max(0, j / n - 0.04)), [u1, y1] = arcAt(cu, e, r + c + rw / 2, Math.min(1, (j + 1) / n + 0.04));
+            sink.member('stone', facePoint(pf, u0, y0, 0), facePoint(pf, u1, y1, 0), rw, 0.46 + (j % 2) * 0.02, pf.out,
+              { decor: true, exposed: true, ...((j + (e > 0 ? 1 : 0)) % 2 ? { tint: [1.0, 0.7, 0.6] as Rgb, shade: 0.82 } : { shade: 1.06 }) }, 0.23 + (j % 2) * 0.01);
+          }
+          // the spandrel over this half, front and back, from the column's axis to the crown
+          const ext = Array.from({ length: n + 1 }, (_, j) => arcAt(cu, e, r + c + rw, j / n));
+          const corner: [number, number] = [cu + e * bay / 2, eb];
+          const ring: Array<[number, number]> = e < 0 ? [corner, ...ext, [cu, eb]] : [corner, [cu, eb], ...[...ext].reverse()];
+          sink.polygon(wall, ring.map(([u, y]) => facePoint(pf, u, y, 0.2)), { decor: true, shade: 0.93 });
+          sink.polygon(wall, [...ring].reverse().map(([u, y]) => facePoint(pf, u, y, -0.2)), { decor: true, shade: 0.8 });
         }
+        sink.member('structureMetal', [colX(k) + 0.28, spring - 0.06, cz], [colX(k + 1) - 0.28, spring - 0.06, cz], 0.035, 0.035, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0.0175);
       }
-      faceBox(sink, wall, pf, 0, ph - 0.12, 0.05, 2 * px, 0.3, 0.3, { decor: true });
+      for (const e of [-1, 1]) {
+        sink.span(wall, e * colX(cols - 1), spring, cz - 0.2, e * (px + 0.02), eb, cz + 0.2, { decor: true });
+        sink.member('structureMetal', [e * colX(cols - 1), spring - 0.06, cz - 0.28], [e * colX(cols - 1), spring - 0.06, pz0], 0.035, 0.035, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0.0175);
+      }
+      sink.span(wall, -px - 0.02, eb, cz - 0.22, px + 0.02, ph, cz + 0.22, { decor: true });
+      sink.span('stone', -px - 0.08, ph - 0.12, cz - 0.24, px + 0.08, ph + 0.02, cz + 0.34, { decor: true, shade: 0.95 });
       const lean: RoofSpec = { kind: 'shed', pitchDeg: 12, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'structureMetal' };
       const rd = pz1 - pz0;
       sink.placed(-Math.PI / 2, 0, 0, (pz0 + pz1) / 2, () => emitRoof(sink, roofGeometry(rd, 2 * px, ph + 0.15, lean), { ...lean, decor: true }, LEAD));
@@ -349,11 +402,34 @@ const mosque: RegionalBuilder = (ctx) => {
     sink.span('stone', mx - 1.05, -0.4, mz - 1.05, mx + 1.05, hh * 0.7, mz + 1.05);
     sink.cylinder('stone', [mx, hh * 0.7, mz], 'y', 0.9, 1.05, 8, {}, 0.9, true, Math.PI / 8);
     sink.cylinder('stone', [mx, hh * 0.7 + 0.9, mz], 'y', shaftTop - hh * 0.7 - 0.9, 0.86, 12, {}, 0.78, true);
+    // (dome-detail-275) the base's cornice, the moulded ring at the shaft's foot
+    sink.span('stone', mx - 1.15, hh * 0.7 - 0.2, mz - 1.15, mx + 1.15, hh * 0.7, mz + 1.15, { decor: true, shade: 0.95 });
+    sink.cylinder('stone', [mx, hh * 0.7 + 0.9, mz], 'y', 0.18, 0.94, 12, { decor: true }, 0.9, true);
     // the šerefe: the corbelled balcony and its parapet, the upper shaft, the lead cone and its alem
-    const sy = shaftTop - 3.4;
-    sink.cylinder('stone', [mx, sy - 0.55, mz], 'y', 0.55, 0.8, 12, { decor: true }, 1.25);
-    sink.cylinder('stone', [mx, sy, mz], 'y', 0.95, 1.28, 12, { decor: true }, 1.28);
-    sink.cylinder('structureMetal', [mx, shaftTop, mz], 'y', clampTo(shaftTop * 0.22, 2.5, 4.6), 0.86, 12, { colour: LEAD, decor: true }, 0.03);
+    // (dome-detail-275: a solid drum on a plain cone) the corbelling stepped out in two courses, a ring of stalactite
+    // corbels under the balcony's slab, the parapet of carved stone panels between posts under its rail; the upper
+    // shaft's cornice under the lead cone
+    const sy = shaftTop - 3.4, shaftR = (y: number) => 0.86 - 0.08 * (y - hh * 0.7 - 0.9) / (shaftTop - hh * 0.7 - 0.9);
+    sink.cylinder('stone', [mx, sy - 1.05, mz], 'y', 0.3, shaftR(sy - 1.05) + 0.02, 12, { decor: true }, 0.92);
+    sink.cylinder('stone', [mx, sy - 0.75, mz], 'y', 0.3, 0.95, 12, { decor: true, shade: 0.93 }, 1.04);
+    sink.cylinder('stone', [mx, sy - 0.45, mz], 'y', 0.3, 1.0, 16, { decor: true, shade: 0.7 }, 1.0, false);
+    for (let k = 0; k < 16; k++) {
+      const a = (k + 0.5) * Math.PI / 8, f: Face = { origin: [mx + Math.cos(a) * 1.0, 0, mz + Math.sin(a) * 1.0], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 0.4 };
+      faceBox(sink, 'stone', f, 0, sy - 0.3, 0.1, 0.2, 0.3, 0.2, { decor: true, shade: 0.92 }, { back: true });
+    }
+    sink.cylinder('stone', [mx, sy - 0.15, mz], 'y', 0.17, 1.32, 16, { decor: true }, 1.32, true);
+    const pr = 1.22, pn = 12, pw = 2 * pr * Math.sin(Math.PI / pn);
+    for (let k = 0; k < pn; k++) {
+      // (the face on the panels' inner line: they stand free, their backs seen from over the gallery)
+      const ri = pr * Math.cos(Math.PI / pn) - 0.08;
+      const a = (k + 0.5) * Math.PI * 2 / pn, f: Face = { origin: [mx + Math.cos(a) * ri, 0, mz + Math.sin(a) * ri], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: pw };
+      faceBox(sink, 'stone', f, 0, sy + 0.42, 0.04, pw - 0.1, 0.8, 0.07, { decor: true });
+      facePanel(sink, 'stone', f, 0, sy + 0.44, 0.078, pw * 0.5, 0.46, { decor: true, fine: true, shade: 0.6 });
+      faceBox(sink, 'stone', f, pw / 2, sy + 0.45, 0.07, 0.11, 0.9, 0.12, { decor: true, shade: 1.04 });
+      faceBox(sink, 'stone', f, 0, sy + 0.88, 0.075, pw + 0.02, 0.07, 0.14, { decor: true });
+    }
+    sink.cylinder('stone', [mx, shaftTop - 0.28, mz], 'y', 0.3, shaftR(shaftTop) + 0.03, 12, { decor: true }, 0.96, true);
+    sink.cylinder('structureMetal', [mx, shaftTop, mz], 'y', clampTo(shaftTop * 0.22, 2.5, 4.6), 0.9, 12, { colour: LEAD, decor: true }, 0.03);
     finial(sink, mx, shaftTop + clampTo(shaftTop * 0.22, 2.5, 4.6) - 0.1, mz, 'alem', 0.7);
     // (props census #13, lane B 2026-10-15) the minaret recorded as a tower body of its base's girth: it topples in its
     // courses beside the hall (it went down with the hall)
@@ -395,26 +471,97 @@ const mosque: RegionalBuilder = (ctx) => {
 
 // ------------------------------------------------------------------------------------------------ the churches
 
-/** The Serbian Orthodox church: nave under copper, the drum and dome, the apse, the bell tower over the west door. */
+/**
+ * (dome-detail-275) The stone filling a rectangular cut's head to a round arch: the two spandrels between the rectangle's
+ * top corners and the semicircle of radius r springing at (u, spring), `o` out of the face, so the cut reads round-headed;
+ * with `depth` each stands that far out of `o` (a portal's head, a belfry light's): its face, the arch's soffit and its
+ * outer jamb (its top and back abut the work over and behind it), else a face.
+ */
+function spandrels(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, spring: number, r: number, o: number, opts: EmitOptions,
+  depth = 0, n = 5): void {
+  for (const e of [-1, 1]) {
+    const arc: Vec3[] = [];
+    for (let j = 0; j <= n; j++) { const t = (Math.PI / 2) * j / n; arc.push(facePoint(face, u + e * Math.cos(t) * r, spring + Math.sin(t) * r, o)); }
+    if (e > 0) arc.reverse();
+    const corner = facePoint(face, u + e * r, spring + r, o);
+    if (depth <= 0) { sink.polygon(bucket, [corner, ...arc], opts); continue; }
+    const fwd = (p: Vec3): Vec3 => [p[0] + face.out[0] * depth, p[1], p[2] + face.out[2] * depth];
+    sink.polygon(bucket, [corner, ...arc].map(fwd), opts);
+    for (let j = 0; j < n; j++) sink.quad(bucket, arc[j], arc[j + 1], fwd(arc[j + 1]), fwd(arc[j]), opts);
+    const jamb = e < 0 ? [arc[0], corner] : [corner, arc[n]];
+    sink.quad(bucket, jamb[0], fwd(jamb[0]), fwd(jamb[1]), jamb[1], opts);
+  }
+}
+
+/** (dome-detail-275) An archivolt of voussoirs standing `depth` proud of a face, the stones' faces a shade apart. */
+function voussoirs(sink: PartSink, face: Face, u: number, spring: number, r: number, ringW: number, depth: number, n: number): void {
+  const rm = r + ringW / 2, lap = (Math.PI / n) * 0.1;
+  const at = (t: number) => facePoint(face, u + Math.cos(t) * rm, spring + Math.sin(t) * rm, 0);
+  for (let j = 0; j < n; j++) {
+    const a = Math.max(0, Math.PI * j / n - lap), b = Math.min(Math.PI, Math.PI * (j + 1) / n + lap);
+    // (every second stone 2 cm prouder: the laps never share a plane)
+    sink.member('stone', at(a), at(b), ringW, depth + (j % 2) * 0.02, face.out, { decor: true, exposed: true, shade: j % 2 ? 0.9 : 1 }, 0);
+  }
+}
+
+/**
+ * (dome-detail-275) An arch's ring of `n` voussoir faces 3 cm proud of a face (archHead's faces without its end caps: a
+ * frieze's run of small arches, a window's head), springing at (u, y), inner radius r.
+ */
+function arcRing(sink: PartSink, face: Face, u: number, y: number, r: number, w: number, n: number): void {
+  const at = (t: number, rr: number) => facePoint(face, u + Math.cos(t) * rr, y + Math.sin(t) * rr, 0.03);
+  for (let j = 0; j < n; j++) {
+    const a = Math.PI * j / n, b = Math.PI * (j + 1) / n;
+    sink.quad('stone', at(a, r), at(a, r + w), at(b, r + w), at(b, r), { decor: true, shade: j % 2 ? 0.88 : 0.97 });
+  }
+}
+
+/** (dome-detail-275) A half disc on a face: (u, y) its springing line's centre, `n` segments round. */
+function lunette(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, r: number, o: number, n: number, opts: EmitOptions): void {
+  const pts: Vec3[] = [facePoint(face, u, y, o)];
+  for (let j = 0; j <= n; j++) { const t = Math.PI * j / n; pts.push(facePoint(face, u + Math.cos(t) * r, y + Math.sin(t) * r, o)); }
+  sink.polygon(bucket, pts, opts);
+}
+
+/** (dome-detail-275) A disc on a face, `n` sides. */
+function disc(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, r: number, o: number, n: number, opts: EmitOptions): void {
+  sink.polygon(bucket, Array.from({ length: n }, (_, j) => facePoint(face, u + Math.cos(j * Math.PI * 2 / n) * r, y + Math.sin(j * Math.PI * 2 / n) * r, o)), opts);
+}
+
+/** The icon's paints: the saint's lapis ground, the robe's cinnabar, the face's ochre. */
+const ICON_BLUE = rgb(0x2a3f6e), ICON_RED = rgb(0x7a2a22), ICON_FLESH = rgb(0xb88a64);
+
 /**
  * A church's bell tower shaft up to its belfry's sills (`top`), a body of its own (it topples in its courses when the
  * church falls: damage.ts towerBody) on its plinth, its west door cut through its front with the leaf hung at the back
  * of the cut; the belfry stands on its flat top. (Props census #13, lane B 2026-10-15: the shaft was a solid span, the
- * door laid on it, and it fell with the nave.)
+ * door laid on it, and it fell with the nave.) (dome-detail-275) `lights`: its stages' windows, cut too, `light` their
+ * unit.
  */
-function towerShaft(sink: PartSink, wall: RegionalBucket, cz: number, tw: number, top: number, door: DoorStyle, dw: number, dh: number, reveal: number): void {
+function towerShaft(sink: PartSink, wall: RegionalBucket, cz: number, tw: number, top: number, door: DoorStyle, dw: number, dh: number, reveal: number,
+  lights: readonly Opening[] = [], light: HouseDialect['window'] = () => undefined): void {
   const dialect: HouseDialect = {
-    window: () => undefined,
+    window: light,
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, door, y0 + o.y0),
   };
   sink.placed(0, 0, 0, cz, () => buildHouse(sink, {
     w: tw, d: tw, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: top - 0.4, wall }],
     roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: 'stone' },
-    openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: dh }], chimneys: [], gutters: null, verge: null,
+    openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: dh }, ...lights], chimneys: [], gutters: null, verge: null,
     reveal, rafters: null, spall: null,
   }, dialect));
 }
 
+/**
+ * The Serbian Orthodox church, in the Serbo-Byzantine manner of Sarajevo's Old and New churches (dome-detail-275: it read
+ * plain): the nave's walls banded in pairs of red brick courses between the stone, lesenes parting its bays under an
+ * arcaded corbel frieze and the eaves' stepped cornice, round-headed bifora on colonnettes; the drum on its square
+ * pedestal through the roof, its arched lights between pilasters under a cornice, the copper dome; the apse with its own
+ * lights, lesenes, frieze and cornice; the bell tower over the west portal (its archivolt on piers, the icon in the
+ * tympanum, a gabled hood), its string courses, lights and bifora belfry under a cupola; the church on its stepped socle,
+ * the paved forecourt behind the churchyard's broken wall, graves by the apse; the shells' pocks and a burnt strike on
+ * the copper.
+ */
 const orthodoxChurch: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const f = fillOf(ctx.bounds, 0.1);
@@ -428,63 +575,287 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     const wall: RegionalBucket = rng() < 0.6 ? 'plaster' : 'stone';
     const door = choose(rng(), DOOR_LEAVES);
     const nl = nz1 - nz0;
+    const BAND = { decor: true, colour: RED_BAND } as const;
+    // (dome-detail-275) the walls' zones: the courses of red brick under the sills, between the lights
+    // and over their heads, the sill and head string courses, the frieze and cornice under the eaves
+    // (heights from the ground: the walls stand on the 0.45 m plinth, the openings' sills over its top)
+    const fl = 0.45, eave = fl + nh, sill = 2.0, wh = 2.2, ww = 1.2, sillA = fl + sill, headA = sillA + wh + ww / 2 + 0.3;
+    const lowBands = [0.9, 1.6], winBands = [sillA + 0.75, sillA + 1.45, sillA + 2.15], upBands: number[] = [];
+    for (let y = headA + 0.4; y + 0.23 < eave - 0.95; y += 0.62) upBands.push(y);
     const openings: Opening[] = [];
-    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, nl, { w: 0.85, h: 2.4, sill: 2.0, spacing: 2.6, margin: 1.4 })) openings.push({ ...o, arch: {} });
+    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, nl, { w: ww, h: wh, sill, spacing: 2.6, margin: 1.4 })) openings.push({ ...o, arch: {} });
+    // (dome-detail-275) a bifora in the west wall either side of the tower, over the forecourt
+    if (nw / 2 - tw / 2 > 2.4) for (const s of [-1, 1]) openings.push({ face: 'front', storey: 0, kind: 'window', u: s * (tw + nw) / 4, w: ww, y0: sill, h: wh, arch: {} });
+    // (dome-detail-275) the bifora: two lights parted by a colonnette, the tympanum over them, the archivolt over that
+    // (it was one light under a ring); a burnt window keeps its stone
+    const ci = -0.14;
+    const frameOf = (s: PartSink, face: Face, o: Opening, y: number) => {
+      arcRing(s, face, o.u, y + o.h, o.w / 2, 0.16, 5);
+    };
     const dialect: HouseDialect = {
       window: (s, face, o, y0) => {
-        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'two' }, look, 0.08);
-        if (!o.state) archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, STONE_WINDOW.frame);
-        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.16, 7);
+        const y = y0 + o.y0, R = o.w / 2, spring = y + o.h, rl = (R - 0.07) / 2;
+        windowUnit(s, face, o.u, y, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'none' }, look, 0.08);
+        s.cylinder('stone', facePoint(face, o.u, y, ci), 'y', o.h, 0.065, 6, { decor: true, fine: true }, 0.065, false);
+        lunette(s, 'stone', face, o.u, spring, R - 0.01, ci, 5, { decor: true, shade: 0.9 });
+        for (const e of [-1, 1]) lunette(s, 'glass', face, o.u + e * (0.07 + rl), spring, rl, ci + 0.006, 3, { decor: true });
+        frameOf(s, face, o, y);
       },
+      damaged: (s, face, o, y0) => frameOf(s, face, o, y0 + o.y0),
       door: () => {},
     };
+    let ridgeTop = nh;
     sink.placed(0, 0, 0, (nz0 + nz1) / 2, () => {
       const frame = buildHouse(sink, {
         w: nw, d: nl, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: nh, wall }],
         roof: { kind: 'gable', pitchDeg: 32, eave: 0.4, verge: 0.3, thickness: 0.12, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: COPPER,
         gableBucket: wall, openings, chimneys: [], gutters: null, verge: null, reveal: 0.4, rafters: null, spall: 'stone',
       }, dialect);
-      const b = frame.bodies[0];
-      for (const y of [1.25, nh - 0.9]) sink.band('structureMetal', b.x0 - 0.03, y, b.z0 - 0.03, b.x1 + 0.03, y + 0.28, b.z1 + 0.03, { decor: true, colour: RED_BAND });
+      const b = frame.bodies[0], fc = frame.faces, rg = frame.roof;
+      ridgeTop = rg.ridgeTopY;
+      // (dome-detail-275) the banded walls: the brick courses round the body under the sills and over the heads; between
+      // the lights they run on in lengths, broken by the windows (on the end walls by the tower and the apse)
+      const course = (y: number) => sink.band('structureMetal', b.x0 - 0.03, y + 0.05, b.z0 - 0.03, b.x1 + 0.03, y + 0.18, b.z1 + 0.03, BAND);
+      [...lowBands, ...upBands].forEach(course);
+      for (const name of ['left', 'right', 'front', 'back'] as const) {
+        const face = fc[name], half = face.width / 2;
+        const cuts: Array<[number, number]> = openings.filter((o) => o.face === name).map((o): [number, number] => [o.u - o.w / 2 - 0.26, o.u + o.w / 2 + 0.26]);
+        if (name === 'front') cuts.push([-tw / 2 - 0.02, tw / 2 + 0.02]);
+        if (name === 'back') cuts.push([-ar - 0.02, ar + 0.02]);
+        cuts.sort((p, q) => p[0] - q[0]);
+        const runs: Array<[number, number]> = [];
+        let u = -half - 0.03;
+        for (const [a, c] of cuts) { if (a - u > 0.2) runs.push([u, a]); u = Math.max(u, c); }
+        if (half + 0.03 - u > 0.2) runs.push([u, half + 0.03]);
+        for (const [a, c] of runs) for (const y of winBands) facePanel(sink, 'structureMetal', face, (a + c) / 2, y + 0.115, 0.02, c - a, 0.13, BAND);
+      }
+      // the sill and head string courses
+      sink.band('stone', b.x0 - 0.08, sillA - 0.08, b.z0 - 0.08, b.x1 + 0.08, sillA + 0.02, b.z1 + 0.08, { decor: true });
+      if (headA + 0.14 < eave - 0.9) sink.band('stone', b.x0 - 0.06, headA, b.z0 - 0.06, b.x1 + 0.06, headA + 0.12, b.z1 + 0.06, { decor: true });
+      // the lesenes parting the bays (and doubled at the corners) up to the frieze, the arcaded corbel frieze between them
+      // (each arch on the wall, the joints its feet) and the eaves' cornice of two stepped courses over it
+      const fTop = eave - 0.36, lH = fTop - fl;
+      const lesene = (face: Face, u: number, w: number) => faceBox(sink, wall, face, u, fl + lH / 2, 0.035, w, lH, 0.07, { decor: true, shade: 1.05, fineSides: true }, { back: true, top: true, bottom: true });
+      for (const name of ['left', 'right', 'front', 'back'] as const) {
+        const face = fc[name], half = face.width / 2;
+        for (const e of [-1, 1]) lesene(face, e * (half - 0.25), 0.5);
+        if (name !== 'left' && name !== 'right') continue;
+        const us = openings.filter((o) => o.face === name).map((o) => o.u).sort((p, q) => p - q);
+        const mids = us.slice(1).map((v, i) => (v + us[i]) / 2);
+        for (const m of mids) lesene(face, m, 0.42);
+        const edges: Array<[number, number]> = [];
+        const stops = [-half + 0.5, ...mids.flatMap((m) => [m - 0.21, m + 0.21]), half - 0.5];
+        for (let i = 0; i + 1 < stops.length; i += 2) edges.push([stops[i], stops[i + 1]]);
+        for (const [a, c] of edges) {
+          const n = Math.max(1, Math.round((c - a) / 1.0)), pitch = (c - a) / n, r = pitch / 2 - 0.05, spring = fTop - r - 0.08;
+          for (let i = 0; i < n; i++) arcRing(sink, face, a + pitch * (i + 0.5), spring, r, 0.08, 3);
+        }
+      }
+      sink.band('stone', b.x0 - 0.1, eave - 0.36, b.z0 - 0.1, b.x1 + 0.1, eave - 0.2, b.z1 + 0.1, { decor: true });
+      sink.band('stone', b.x0 - 0.2, eave - 0.2, b.z0 - 0.2, b.x1 + 0.2, eave - 0.02, b.z1 + 0.2, { decor: true, shade: 0.94 });
+      // the raking cornice up each gable under the verge; the oculus in the east gable over the apse, its glass in a ring
+      if (rg.gable) for (const name of ['front', 'back'] as const) for (const e of [-1, 1]) {
+        const face = fc[name], yAt = (x: number) => rg.ridgeY - x * rg.tanP - 0.13;
+        sink.member('stone', facePoint(face, e * (rg.s + 0.05), yAt(rg.s + 0.05), 0), facePoint(face, 0, yAt(0), 0), 0.24, 0.14, face.out, { decor: true }, 0.02);
+      }
+      const gy = eave + (rg.ridgeY - eave) * 0.5, orr = Math.min(0.5, (rg.ridgeY - eave) * 0.12);
+      if (rg.gable && gy - orr - 0.3 > nh * 0.82 + ar * 0.75) {
+        const back = fc.back, at = (r: number, j: number) => facePoint(back, Math.cos(j * Math.PI / 6) * r, gy + Math.sin(j * Math.PI / 6) * r, 0.04);
+        disc(sink, 'glass', back, 0, gy, orr, 0.01, 12, { decor: true, window: back.out });
+        for (let j = 0; j < 12; j++) sink.quad('stone', at(orr, j), at(orr + 0.18, j), at(orr + 0.18, j + 1), at(orr, j + 1), { decor: true, shade: j % 2 ? 0.9 : 1 });
+      }
       // the drum and the dome over the nave's middle
       // the drum: its eight lights cut through its sides into the dark under the dome, the glass at the back of each
       // reveal (were dark plates laid on a solid drum); the sides holed slabs round a core
-      const dr = nw * 0.3, dy = frame.roof.ridgeTopY - 0.6, ap = dr * Math.cos(Math.PI / 8), side = 2 * dr * Math.sin(Math.PI / 8), cut = 0.22;
-      sink.cylinder(wall, [0, dy - 1.2, 0], 'y', 3.6, dr - cut / Math.cos(Math.PI / 8), 8, {}, dr - cut / Math.cos(Math.PI / 8), true, Math.PI / 8);
+      const dr = nw * 0.3, dy = rg.ridgeTopY - 0.6, ap = dr * Math.cos(Math.PI / 8), side = 2 * dr * Math.sin(Math.PI / 8), cut = 0.22;
+      // (dome-detail-275) the drum's square pedestal standing through the roof's slopes (the drum's sides hung in the air
+      // over them), the copper flashed up its sides from the roof to the drum's foot
+      const pb = ap + 0.12, py = dy - 1.2;
+      sink.span(wall, -pb, eave - 0.4, -pb, pb, py - 0.4, pb);
+      sink.cylinder('structureMetal', [0, py - 0.4, 0], 'y', 0.42, pb * Math.SQRT2, 4, { colour: shade(COPPER, 0.92), decor: true }, (ap + 0.02) * Math.SQRT2, true, Math.PI / 4);
+      sink.cylinder(wall, [0, py, 0], 'y', 3.6, dr - cut / Math.cos(Math.PI / 8), 8, {}, dr - cut / Math.cos(Math.PI / 8), true, Math.PI / 8);
+      // (dome-detail-275) each light round-headed (its cut's corners filled to the arch) under its archivolt, on a sill; a
+      // pilaster up each corner; the base course, a brick course, the cornice
+      const wr = clampTo(side * 0.1, 0.22, 0.34), wy = dy + 0.2, ws = dy + 1.35;
       for (let k = 0; k < 8; k++) {
         const t = (k / 8) * Math.PI * 2;
         const f: Face = { origin: [Math.cos(t) * ap, 0, Math.sin(t) * ap], u: [Math.sin(t), 0, -Math.cos(t)], out: [Math.cos(t), 0, Math.sin(t)], width: side };
-        holedPolygon(sink, wall, f, [[-side / 2, dy - 1.2], [side / 2, dy - 1.2], [side / 2, dy + 2.4], [-side / 2, dy + 2.4]],
-          [{ u0: -0.22, u1: 0.22, y0: dy + 0.55, y1: dy + 1.65 }], cut, 0.18);
-        facePanel(sink, 'glass', f, 0, dy + 1.1, -0.168, 0.44, 1.1, { decor: true, window: f.out });
+        holedPolygon(sink, wall, f, [[-side / 2, py], [side / 2, py], [side / 2, dy + 2.4], [-side / 2, dy + 2.4]],
+          [{ u0: -wr, u1: wr, y0: wy, y1: ws + wr }], cut, 0.18);
+        facePanel(sink, 'glass', f, 0, (wy + ws) / 2, -0.168, 2 * wr, ws - wy, { decor: true, window: f.out });
+        lunette(sink, 'glass', f, 0, ws, wr, -0.168, 5, { decor: true });
+        spandrels(sink, wall, f, 0, ws, wr, 0.002, { decor: true });
+        arcRing(sink, f, 0, ws, wr, 0.12, 5);
+        faceBox(sink, 'stone', f, 0, wy - 0.05, 0.06, 2 * wr + 0.36, 0.1, 0.12, { decor: true });
+        for (const e of [-1, 1]) {
+          facePanel(sink, 'stone', f, e * (side / 2 - 0.1), (py + 0.25 + dy + 2.0) / 2, 0.03, 0.2, dy + 2.0 - py - 0.25, { decor: true, shade: 1.04 });
+        }
       }
+      sink.cylinder('stone', [0, py, 0], 'y', 0.25, dr + 0.06, 8, { decor: true }, dr + 0.06, true, Math.PI / 8);
+      sink.cylinder('structureMetal', [0, dy - 0.55, 0], 'y', 0.2, dr + 0.03, 8, BAND, dr + 0.03, false, Math.PI / 8);
+      sink.cylinder('stone', [0, dy + 2.0, 0], 'y', 0.2, dr + 0.1, 8, { decor: true }, dr + 0.1, true, Math.PI / 8);
+      sink.revolve('stone', [0, dy + 2.2, 0], 'y', [[0, 0], [0, dr + 0.24], [0.2, dr + 0.24], [0.2, 0]], 24, { decor: true, shade: 0.96 });
       const t = dome(sink, 0, dy + 2.4, 0, dr * 1.02, COPPER, 12);
       finial(sink, 0, t, 0, 'cross', 0.9);
+      // (dome-detail-275) a shell's strike on the copper: the sheets burnt black round the torn hole, four peeled back
+      if (rg.s > 3.4) {
+        const sx = look() < 0.5 ? -1 : 1, sz = look() < 0.5 ? -1 : 1;
+        const hx = sx * Math.min(rg.s - 1.6, 2.4 + look() * 1.6), hz = sz * (pb + 1.3 + look() * Math.max(0.1, nl / 2 - pb - 2.8));
+        const rough = Array.from({ length: 9 }, () => 0.7 + look() * 0.3);
+        const onRoof = (x: number, z: number, lift: number): Vec3 => [x, (rg.topAt(x, z) ?? rg.eaveY) + lift, z];
+        const blot = (r: number, lift: number, bucket: RegionalBucket, opts: EmitOptions) => sink.polygon(bucket, [onRoof(hx, hz, lift),
+          ...Array.from({ length: 10 }, (_, j) => { const a = -(j % 9) / 9 * Math.PI * 2, rr = r * rough[j % 9]; return onRoof(hx + Math.cos(a) * rr, hz + Math.sin(a) * rr, lift); })], opts);
+        blot(1.25, 0.03, 'structureMetal', { colour: rgb(0x2b2622), decor: true });
+        blot(0.5, 0.05, 'dark', { decor: true });
+        const nrm = normalize3([sx * rg.tanP, 1, 0]);
+        for (let j = 0; j < 4; j++) {
+          const a = (j / 4) * Math.PI * 2 + look() * 0.8, p = onRoof(hx + Math.cos(a) * 0.5, hz + Math.sin(a) * 0.5, 0.05), lift = 0.25 + look() * 0.3;
+          const q: Vec3 = [p[0] + Math.cos(a) * 0.55 + nrm[0] * lift, p[1] + nrm[1] * lift, p[2] + Math.sin(a) * 0.55];
+          sink.member('structureMetal', p, q, 0.42, 0.02, nrm, { colour: shade(COPPER, 0.62), decor: true, exposed: true }, 0);
+        }
+      }
+      // (dome-detail-275) the splinters' pocks down both flanks, clear of the windows
+      sink.dressing(mobile, () => {
+        for (const name of ['left', 'right'] as const) shellPocks(sink, fc[name], { u0: -nl / 2 + 0.6, u1: nl / 2 - 0.6, y0: 0.6, y1: eave - 1.0 }, 5 + Math.floor(look() * 6),
+          openings.filter((o) => o.face === name).map((o) => ({ u0: o.u - o.w / 2 - 0.3, u1: o.u + o.w / 2 + 0.3, y0: fl + o.y0 - 0.1, y1: fl + o.y0 + o.h + o.w / 2 + 0.25 })), look, 'stone');
+      });
     });
     // the apse: a half drum at the east end under its half cone
-    // (dome-detail-275: eight flat panels) sixteen
-    sink.cylinder(wall, [0, -0.3, az], 'y', nh * 0.82 + 0.3, ar, 16, {}, ar, true, 0, Math.PI);
-    sink.cylinder('structureMetal', [0, nh * 0.82, az], 'y', ar * 0.75, ar + 0.3, 16, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
+    // (dome-detail-275: eight flat panels, then sixteen) seventeen sides, slabs round a core, three lights cut through
+    // them under round heads, lesenes, the brick courses, an arch of the frieze on each side and the cornice
+    const AS = 17, ah = nh * 0.82, acut = 0.2, aside = 2 * ar * Math.sin(Math.PI / (2 * AS)), aap = ar * Math.cos(Math.PI / (2 * AS));
+    sink.cylinder(wall, [0, -0.3, az], 'y', ah + 0.3, ar - acut / Math.cos(Math.PI / (2 * AS)), AS, {}, ar - acut / Math.cos(Math.PI / (2 * AS)), true, 0, Math.PI);
+    const aFace = (i: number): Face => {
+      const a = -(i + 0.5) * Math.PI / AS, out: Vec3 = [Math.cos(a), 0, Math.sin(a)];
+      return { origin: [out[0] * aap, 0, az + out[2] * aap], u: [out[2], 0, -out[0]], out, width: aside };
+    };
+    const aRing = (bucket: RegionalBucket, y: number, h: number, r: number, opts: EmitOptions, caps: boolean, i0 = 0, n = AS) =>
+      sink.cylinder(bucket, [0, y, az], 'y', h, r, n, opts, r, caps, i0 * Math.PI / AS, n * Math.PI / AS);
+    const lights = new Set([4, 8, 12]), strips = new Set([2, 6, 10, 14]);
+    const awr = Math.min(0.22, aside / 2 - 0.09), aws = sillA + 1.85, fr = aside / 2 - 0.06, fs = ah - 0.4 - fr - 0.06;
+    for (let i = 0; i < AS; i++) {
+      const af = aFace(i), lit = lights.has(i);
+      holedPolygon(sink, wall, af, [[-aside / 2, -0.3], [aside / 2, -0.3], [aside / 2, ah], [-aside / 2, ah]], lit ? [{ u0: -awr, u1: awr, y0: sillA + 0.05, y1: aws + awr }] : [], acut, 0.16);
+      if (lit) {
+        facePanel(sink, 'glass', af, 0, (sillA + 0.05 + aws) / 2, -0.148, 2 * awr, aws - sillA - 0.05, { decor: true, window: af.out });
+        lunette(sink, 'glass', af, 0, aws, awr, -0.148, 4, { decor: true });
+        spandrels(sink, wall, af, 0, aws, awr, 0.002, { decor: true }, 0, 4);
+        arcRing(sink, af, 0, aws, awr, 0.1, 4);
+      }
+      if (strips.has(i)) faceBox(sink, wall, af, 0, (fl + fs) / 2, 0.03, 0.3, fs - fl, 0.06, { decor: true, shade: 1.05, fineSides: true }, { back: true });
+      arcRing(sink, af, 0, fs, fr, 0.06, 3);
+    }
+    aRing('stone', -0.3, 0.75, ar + 0.07, { decor: true }, true);
+    aRing('stone', sillA - 0.08, 0.1, ar + 0.08, { decor: true }, false);
+    for (const y of [...lowBands, ...upBands]) if (y + 0.23 < fs - 0.1) aRing('structureMetal', y + 0.05, 0.13, ar + 0.03, BAND, false);
+    aRing('stone', ah - 0.3, 0.3, ar + 0.16, { decor: true, shade: 0.94 }, true);
+    sink.cylinder('structureMetal', [0, ah, az], 'y', ar * 0.75, ar + 0.3, 16, { colour: COPPER, decor: true }, 0.05, true, 0, Math.PI);
     // the bell tower over the west door
-    const th = clampTo(nh * 2.5, 12, 22);
+    const th = clampTo(nh * 2.5, 12, 22), tzc = (tz0 + tz1) / 2, bsill = th - 3.3, tmid = (eave + bsill) / 2;
+    // (dome-detail-275) its stages' round-headed lights (it was blind to the belfry)
+    const tLights: Opening[] = [];
+    for (const face of ['left', 'right'] as const) {
+      tLights.push({ face, storey: 0, kind: 'window', u: 0, w: 0.5, y0: eave + 0.05, h: 1.2, arch: {} });
+      tLights.push({ face, storey: 0, kind: 'window', u: 0, w: 0.55, y0: tmid + 0.05, h: 1.4, arch: {} });
+    }
+    const lightUnit: HouseDialect['window'] = (s, face, o, y0) => {
+      windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'none' }, look, 0.05);
+      archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, STONE_WINDOW.frame);
+      archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.12, 5);
+    };
     // (props census #13, lane B 2026-10-14) the shaft to the belfry's sills (towerShaft), the belfry open through its
     // arches over it
     const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    towerShaft(sink, wall, (tz0 + tz1) / 2, tw, th - 3.3, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 1.3, 2.6, 0.4);
-    openBelfry(sink, wall, 0, (tz0 + tz1) / 2, tw, th - 3.3, th - 1.5, th, tw * 0.36, COPPER, rgb(0x3a2e24));
+    towerShaft(sink, wall, tzc, tw, bsill, { leaf: door, frame: { bucket: 'stone', width: 0.24, out: 0.08 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, 1.3, 2.6, 0.4, tLights, lightUnit);
+    const bow = tw * 0.36;
+    openBelfry(sink, wall, 0, tzc, tw, bsill, th - 1.5, th, bow, COPPER, rgb(0x3a2e24));
     archHead(sink, tf, 0, 2.94, 0.9, 'stone', 0.22, 6);
     for (const [ox, oz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
-      const f: Face = { origin: [ox * tw / 2, 0, (tz0 + tz1) / 2 + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
+      const f: Face = { origin: [ox * tw / 2, 0, tzc + oz * tw / 2], u: [ux, 0, uz], out: [ox, 0, oz], width: tw };
       // the red band round the shaft, broken at the west door's frame (it ran across the cut)
       const band = { decor: true, colour: RED_BAND } as const, reach = tw / 2 + 0.03, gap = 0.65 + 0.24;
       if (oz === 1) for (const sd of [-1, 1]) faceBox(sink, 'structureMetal', f, sd * (reach + gap) / 2, 1.39, 0, reach - gap, 0.28, 0.06, band);
       else faceBox(sink, 'structureMetal', f, 0, 1.39, 0, 2 * reach, 0.28, 0.06, band);
       archHead(sink, f, 0, th - 1.5, tw * 0.18, 'stone', 0.14, 6);
       faceBox(sink, 'stone', f, 0, th - 0.2, 0.08, tw + 0.2, 0.4, 0.16, { decor: true });
+      // (dome-detail-275) the corner lesenes up the shaft (on its east face over the nave's ridge), the string courses at
+      // the nave's eaves and between the stages, the belfry's sill cornice; in each belfry opening a colonnette parting
+      // two round-headed lights, their heads solid under the relieving arch
+      const l0 = oz === -1 ? ridgeTop : 0.3;
+      for (const e of [-1, 1]) faceBox(sink, wall, f, e * (tw / 2 - 0.2), (l0 + bsill - 0.24) / 2, 0.03, 0.4, bsill - 0.24 - l0, 0.06, { decor: true, shade: 1.05, fineSides: true }, { back: true });
+      for (const y of oz === -1 ? [tmid] : [eave, tmid]) faceBox(sink, 'stone', f, 0, y - 0.1, 0.05, tw + 0.12, 0.2, 0.1, { decor: true });
+      faceBox(sink, 'stone', f, 0, bsill - 0.12, 0.09, tw + 0.24, 0.24, 0.18, { decor: true, shade: 0.95 });
+      const hb = th - 1.5, lr = (bow - 0.14) / 4, ls = hb - lr;
+      sink.cylinder('stone', facePoint(f, 0, bsill + 0.12, -0.06), 'y', ls - bsill - 0.24, 0.07, 6, { decor: true }, 0.07, false);
+      faceBox(sink, 'stone', f, 0, bsill + 0.06, -0.06, 0.22, 0.12, 0.2, { decor: true });
+      faceBox(sink, 'stone', f, 0, ls - 0.06, -0.06, 0.26, 0.12, 0.22, { decor: true });
+      faceBox(sink, wall, f, 0, (ls + hb) / 2, -0.06, 0.14, hb - ls, 0.12, { decor: true });
+      for (const e of [-1, 1]) spandrels(sink, wall, f, e * (0.07 + lr), ls, lr, -0.12, { decor: true }, 0.12, 3);
     }
-    const top = dome(sink, 0, th, (tz0 + tz1) / 2, tw * 0.48, COPPER, 8);
-    finial(sink, 0, top, (tz0 + tz1) / 2, 'cross', 0.8);
-    sink.dressing(mobile, () => shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, 10 + Math.floor(look() * 12), [], look, 'stone'));
+    // (dome-detail-275) the cupola on a low round drum and its cornice (it sat straight on the belfry's head)
+    const cr = tw * 0.4;
+    sink.revolve(wall, [0, th, tzc], 'y', [[0, cr], [0.8, cr], [0.96, cr + 0.14], [0.96, 0]], 24, {});
+    const top = dome(sink, 0, th + 0.96, tzc, cr, COPPER, 8);
+    finial(sink, 0, top, tzc, 'cross', 0.8);
+    // (dome-detail-275) the west portal: piers standing proud either side of the door on their bases under imposts, the
+    // archivolt of voussoirs on them, the solid spandrels to a cornice under a gabled hood; the lintel, and in the
+    // tympanum the icon of the patron saint on its lapis ground in a gilt frame
+    const po = 0.3, pr = 1.45, pwid = 0.5, ps = 2.94, pTop = ps + pr + pwid / 2;
+    for (const e of [-1, 1]) {
+      faceBox(sink, 'stone', tf, e * pr, (ps - 0.16) / 2, po / 2, pwid, ps - 0.16, po, { decor: true }, { back: true });
+      faceBox(sink, 'stone', tf, e * pr, 0.12, (po + 0.08) / 2, pwid + 0.12, 0.24, po + 0.08, { decor: true, shade: 0.92 }, { back: true });
+      faceBox(sink, 'stone', tf, e * pr, ps - 0.08, (po + 0.08) / 2, pwid + 0.14, 0.16, po + 0.08, { decor: true, shade: 0.95 }, { back: true });
+    }
+    voussoirs(sink, tf, 0, ps, pr - pwid / 2, pwid, po, 7);
+    spandrels(sink, 'stone', tf, 0, ps, pr + pwid / 2, 0, { decor: true, shade: 0.97 }, po, 5);
+    faceBox(sink, 'stone', tf, 0, pTop + 0.1, (po + 0.12) / 2, 2 * (pr + pwid / 2) + 0.3, 0.2, po + 0.12, { decor: true }, { back: true });
+    const gb = pr + pwid / 2 + 0.1;
+    sink.prism('stone', ([[-gb, pTop + 0.2], [gb, pTop + 0.2], [0, pTop + 0.2 + gb * 0.42]] as const).map(([u, y]) => facePoint(tf, u, y, 0)), tf.out, po + 0.06, { decor: true });
+    faceBox(sink, 'stone', tf, 0, 2.77, 0.04, 1.9, 0.34, 0.08, { decor: true });
+    lunette(sink, 'stone', tf, 0, ps, 0.9, 0.012, 10, { decor: true, shade: 0.9 });
+    lunette(sink, 'structureMetal', tf, 0, ps, 0.8, 0.018, 10, { decor: true, colour: GILT });
+    lunette(sink, 'structureWood', tf, 0, ps, 0.7, 0.024, 10, { decor: true, colour: ICON_BLUE });
+    sink.polygon('structureWood', ([[-0.32, 0.03], [0.32, 0.03], [0.2, 0.4], [-0.2, 0.4]] as const).map(([u, y]) => facePoint(tf, u, ps + y, 0.03)), { decor: true, fine: true, colour: ICON_RED });
+    disc(sink, 'structureMetal', tf, 0, ps + 0.52, 0.14, 0.03, 10, { decor: true, fine: true, colour: GILT });
+    disc(sink, 'structureWood', tf, 0, ps + 0.5, 0.075, 0.036, 8, { decor: true, fine: true, colour: ICON_FLESH });
+    // (dome-detail-275) the church set into its ground: a stone step round its socle; the forecourt either side of the
+    // tower paved, behind the churchyard's low wall on the street, broken by a shell at its inner end
+    // and its stones fallen; a grave under its cross either side of the apse
+    const step = { decor: true, shade: 0.9 } as const;
+    for (const s of [-1, 1]) {
+      sink.span('stone', s * nw / 2, -0.3, nz0, s * (nw / 2 + 0.34), 0.16, nz1 + 0.3, step);
+      sink.span('stone', s * (tw / 2 - 0.02), -0.3, nz1 + 0.3, s * nw / 2, 0.16, nz1, step);
+      sink.span('stone', s * ar, -0.3, nz0 - 0.3, s * (nw / 2 + 0.34), 0.16, nz0, step);
+      sink.span('stone', s * tw / 2, -0.3, tz0, s * (tw / 2 + 0.28), 0.16, tz1, step);
+    }
+    aRing('stone', -0.3, 0.46, ar + 0.34, step, true);
+    const yard0 = tw / 2 + 0.28, yard1 = W / 2 - 0.02, wz0 = D / 2 - 0.42;
+    for (const s of [-1, 1]) {
+      sink.span('stone', s * yard0, -0.2, nz1 + 0.3, s * yard1, 0.03, wz0, { decor: true, shade: 0.8 });
+      const xe = Math.max(yard0 + 0.6, W / 2 - (2.0 + look() * 1.4));
+      if (W / 2 - xe > 1.4) {
+        const xw = s * (xe + 0.85);
+        sink.span('stone', xw, -0.3, wz0, s * W / 2, 1.0, D / 2 - 0.02);
+        sink.span('stone', xw - s * 0.05, 1.0, wz0 - 0.05, s * (W / 2 + 0.03), 1.1, D / 2 + 0.03, { decor: true, shade: 0.92 });
+        sink.span('stone', s * (xe + 0.35), -0.3, wz0, xw, 0.65, D / 2 - 0.02);
+        sink.span('stone', s * xe, -0.3, wz0 + 0.04, s * (xe + 0.35), 0.3, D / 2 - 0.06);
+        for (let k = 0; k < 2; k++) {
+          const x = s * (xe - 0.2 - look() * 0.9), z = wz0 - 0.2 - look() * 0.6, a = look() * 0.4, hb = 0.12 + look() * 0.1;
+          sink.placed(look() * Math.PI, x, 0, z, () => sink.span('stone', -0.22 - a * 0.3, -0.05, -0.14, 0.22 + a * 0.3, hb, 0.14, { decor: true, shade: 0.85 }));
+        }
+      }
+      const gx0 = ar + 0.7, gx1 = W / 2 - 0.5, gz0 = -D / 2 + 0.5, gz1 = az - 0.6;
+      if (gx1 - gx0 > 1.2 && gz1 - gz0 > 1.4) for (let k = 0; k < 1; k++) {
+        const x = s * (gx0 + (gx1 - gx0) * (k + 0.3 + look() * 0.4) / 2), z = gz0 + 0.9 + look() * (gz1 - gz0 - 1.4), yaw = (look() - 0.5) * 0.08;
+        sink.span('stone', x - 0.35, -0.2, z - 0.9, x + 0.35, 0.18, z + 0.4, { decor: true, shade: 0.88 });
+        sink.placed(yaw, x, 0, z + 0.4, () => {
+          sink.span('stone', -0.07, 0.1, -0.06, 0.07, 1.25, 0.06, { decor: true });
+          sink.span('stone', -0.32, 0.85, -0.055, 0.32, 0.98, 0.055, { decor: true });
+        });
+      }
+    }
+    sink.dressing(mobile, () => shellPocks(sink, tf, { u0: -tw / 2 + 0.2, u1: tw / 2 - 0.2, y0: 3.6, y1: th - 3 }, 7 + Math.floor(look() * 8),
+      [{ u0: -gb - 0.1, u1: gb + 0.1, y0: 0, y1: pTop + 0.3 + gb * 0.42 }, ...tLights.filter((o) => o.face === 'front').map((o) => ({ u0: o.u - o.w / 2 - 0.25, u1: o.u + o.w / 2 + 0.25, y0: o.y0, y1: o.y0 + 0.3 + o.h + o.w / 2 + 0.2 }))], look, 'stone'));
   });
   return sink.finish();
 };
