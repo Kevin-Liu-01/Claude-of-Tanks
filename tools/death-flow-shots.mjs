@@ -81,18 +81,19 @@ const stageFoe = () => {
   return foe.id;
 };
 /** Fire the staged foe's gun at the player until the player is destroyed (the shot's own flight and resolve). */
-const fireUntilDead = async (page, foeId, { timeoutMs = 20_000 } = {}) => {
+const fireUntilDead = async (page, foeId, { timeoutMs = 20_000, hpCap = null } = {}) => {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
-    const dead = await page.evaluate((foeId) => {
+    const dead = await page.evaluate((foeId, hpCap) => {
       const D = window.__DEBUG, g = D.game, p = g.player, foe = g.tankById.get(foeId);
       if (p.combat.destroyed) return true;
-      p.combat.hp = Math.min(p.combat.hp, Math.max(1, p.combat.maxHp * 0.12)); // (a real damage figure on the card)
+      // (a real damage figure on the card; the autocannon's lighter hits take a lower cap)
+      p.combat.hp = Math.min(p.combat.hp, hpCap ?? Math.max(1, p.combat.maxHp * 0.12));
       if (!foe.combat.destroyed) foe.combat.hp = foe.combat.maxHp;
       foe.input.aimPoint.set(p.state.pos.x, p.state.pos.y + 1.3, p.state.pos.z);
       foe.input.fire = true;
       return false;
-    }, foeId);
+    }, foeId, hpCap);
     if (dead) return true;
     await sleep(250);
   }
@@ -144,7 +145,7 @@ async function runCase(page, tag, which) {
     }, foeId);
     const until = Date.now() + 25_000;
     while (Date.now() < until && !(await page.evaluate(() => window.__DEBUG.game.player.combat.destroyed))) await sleep(150);
-  } else if (!(await fireUntilDead(page, foeId))) {
+  } else if (!(await fireUntilDead(page, foeId, { hpCap: which === 'card' ? 60 : null }))) {
     receipt.deaths[key] = [{ error: 'no death', log: await page.evaluate((foeId) => {
       const g = window.__DEBUG.game, foe = g.tankById.get(foeId);
       return { ...window.__dfLog, foeDestroyed: foe.combat.destroyed, reload: foe.combat.reload, slot: foe.combat.shellSlot,
@@ -164,9 +165,10 @@ async function runCase(page, tag, which) {
       await shot(page, `${key}-i-back-on-wreck`);
     }
   } else if (which === 'quick' || which === 'strike') {
-    await beats(page, key, [[0.5, 'a-beat'], [1.4, 'b-cut'], [2.2, 'c-flight'], [3.2, 'd-impact'], [4.6, 'e-wreck-dial']], [0, 6]);
+    // (e: after the replay's fade, the card over the live wreck until the revive)
+    await beats(page, key, [[0.5, 'a-beat'], [1.4, 'b-cut'], [2.2, 'c-flight'], [3.2, 'd-impact'], [5.3, 'e-card-dial']], [0, 6]);
   } else {
-    await beats(page, key, [[0.6, 'a-card'], [2.2, 'b-card-dial']]);
+    await beats(page, key, [[0.6, 'a-card'], [2.6, 'b-card-dial']]);
   }
 }
 
