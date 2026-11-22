@@ -22,7 +22,7 @@ import { createTank } from './tankFactory.ts';
     assert.ok(rule.materialRoles.length >= 1 && rule.note.length > 20, `${rule.finish}: documented`);
     if (rule.hex !== undefined) assert.ok(withinRunningGearFinish(hexToLinearRgb(rule.hex), rule), `${rule.finish}: palette hex sits inside its own window`);
   }
-  for (const role of ['wheelTire', 'wheelInset', 'wheelDish', 'suspensionLink', 'trackHardware', 'gearShadow']) {
+  for (const role of ['wheelTire', 'wheelInset', 'wheelDish', 'suspensionLink', 'suspensionRod', 'trackHardware', 'gearShadow']) {
     assert.ok(runningGearFinishRuleFor(role), `${role} has a finish rule`);
   }
   assert.equal(runningGearFinishRuleFor('armorPaint'), null, 'armor paint is outside the running-gear table');

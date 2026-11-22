@@ -492,9 +492,12 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     // not merely a flag that tilts the hull. The explicit envelope lets all
     // seven road-wheel stations and the loaded track run follow that attitude
     // instead of saturating at the fleet's shallow conventional defaults.
+    // 2026-11-20 (hydro-arms-274): compression capped at 0.45 m, the most at which the arms and their hydraulic struts
+    // stay clear of the track band and return rollers. The 10 degree kneel over the 2.35 m contact half-length asks
+    // 0.41 m of it (sin 10 x 2.35), so the attitude is unchanged; only extreme bumps stop 0.2 m sooner.
     hydropneumaticAim: {
       noseDownDeg: 10, noseUpDeg: 10, rateDegS: 8,
-      compressionM: 0.65, droopM: 0.65,
+      compressionM: 0.45, droopM: 0.65,
     },
     turretTraverseDegS: 40, gunPitchDegS: 28, gunElevationDeg: 20, gunDepressionDeg: 10,
     gunPitchByYawDeg: MBT70_GUN_PITCH_BY_YAW_DEG,

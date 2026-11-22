@@ -32,12 +32,14 @@ export const RUNNING_GEAR_PALETTE = Object.freeze({
   gunmetal: 0x36342f,
   /** Wheel-bay ambient-occlusion walls. */
   gearShadow: 0x0b0c0a,
+  /** The polished piston rod of a hydropneumatic strut (hydro lane 274). */
+  polishedRod: 0x8e918b,
 });
 
 /** Linear-luminance slack under the wheel-paint floor left by its 8-bit sRGB application. */
 export const WHEEL_PAINT_FLOOR_SRGB_TOLERANCE = 0.004;
 
-export type RunningGearFinish = 'rubber' | 'scheme-paint' | 'scheme-paint-shade' | 'dark-steel' | 'shadow';
+export type RunningGearFinish = 'rubber' | 'scheme-paint' | 'scheme-paint-shade' | 'dark-steel' | 'polished-steel' | 'shadow';
 
 export interface RunningGearFinishRule {
   readonly finish: RunningGearFinish;
@@ -82,6 +84,12 @@ export const RUNNING_GEAR_FINISH_RULES: readonly RunningGearFinishRule[] = Objec
     hex: RUNNING_GEAR_PALETTE.trackSteel, minLuminance: 0, maxLuminance: 0.06, maxSaturation: 0.12,
     note: 'teeth, recess rings, end-wheel hardware and spare links are worn dark steel (hull-bucket fittings '
       + 'around the gear keep their own gunmetal role and are outside this table)',
+  }),
+  Object.freeze({
+    finish: 'polished-steel', roles: ['suspensionRod'], materialRoles: ['polishedSteel'],
+    hex: RUNNING_GEAR_PALETTE.polishedRod, minLuminance: 0.2, maxLuminance: 0.32, maxSaturation: 0.06,
+    note: 'the piston rods of hydropneumatic struts are bare polished steel, the one bright metal on the gear '
+      + '(hydro lane 274)',
   }),
   Object.freeze({
     finish: 'shadow', roles: ['gearShadow'], materialRoles: ['gearShadow'],
