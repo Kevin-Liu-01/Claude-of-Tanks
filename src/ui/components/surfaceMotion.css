@@ -1,0 +1,57 @@
+/* The game's motion vocabulary (ui-motion-275; Kevin 2026-11-21: "need ui transitions and animations in general").
+   Copyright © 2026 Kevin B. Liu.
+
+   One class per way a surface comes and goes. It enters from @starting-style as it shows (inserted, or out of
+   display:none) on --ease-enter, and leaves on --ease-exit in about two thirds of the time over half the distance, while
+   it hides (the hidden attribute, data-leaving from components/surfaceMotion.ts leaveThen, or its owner's closed state)
+   and display flips at the end of the exit. Transform and opacity only (translate, scale), so it runs on the compositor
+   and never moves the layout. Durations read the --dur-* tokens, which the reduce-motion preset (data-motion=reduce, or
+   the OS while the player follows it) sets to 1 ms: under reduced motion every surface shows and hides at once.
+   Distances read --motion-* (src/ui/motion.css). Never on a per-frame HUD number; never on something the player
+   presses tens of times a minute.
+
+     cot-m-fade        scrims, veils, whole screens that cover the page (end screen, battle load)
+     cot-m-rise        cards, dialogs' bodies, notices at the foot: up into place
+     cot-m-drop        banners and chips at the top, menus under a trigger: down into place
+     cot-m-pop         dialogs and centred plates: a short scale up into place
+     cot-m-slide-start a drawer from the inline start edge
+     cot-m-slide-end   a drawer or side panel from the inline end edge
+     cot-m-swap        content that replaces content in place (a tab's body, a panel's page): a fade and a nudge
+     cot-m-beat        a success or failure mark: a short emphasis once as it appears
+
+   In the utilities layer, so a surface's own transitions (a hover colour) on the same element must be restated with
+   these if it has any; a surface class here is for the box that appears, not its controls. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer utilities{
+.cot-m-fade,.cot-m-rise,.cot-m-drop,.cot-m-pop,.cot-m-slide-start,.cot-m-slide-end,.cot-m-swap{
+  transition:opacity var(--dur-base) var(--ease-enter),translate var(--dur-base) var(--ease-enter),scale var(--dur-base) var(--ease-enter),
+    display var(--dur-base) allow-discrete,overlay var(--dur-base) allow-discrete}
+.cot-m-fade,.cot-m-swap{transition-duration:var(--dur-fast)}
+.cot-m-slide-start,.cot-m-slide-end{transition-duration:var(--dur-screen)}
+@starting-style{
+  .cot-m-fade,.cot-m-rise,.cot-m-drop,.cot-m-pop,.cot-m-slide-start,.cot-m-slide-end,.cot-m-swap{opacity:0}
+  .cot-m-rise{translate:0 var(--motion-rise)}
+  .cot-m-drop{translate:0 calc(-1 * var(--motion-rise))}
+  .cot-m-pop{scale:var(--motion-scale-in)}
+  .cot-m-slide-start{translate:calc(-1 * var(--motion-slide)) 0}
+  .cot-m-slide-end{translate:var(--motion-slide) 0}
+  .cot-m-swap{translate:0 var(--motion-nudge)}
+  :dir(rtl).cot-m-slide-start{translate:var(--motion-slide) 0}
+  :dir(rtl).cot-m-slide-end{translate:calc(-1 * var(--motion-slide)) 0}
+}
+/* the exit: softer than the entry (half the distance, the exit curve, the next band down) and takes no presses */
+:is(.cot-m-fade,.cot-m-rise,.cot-m-drop,.cot-m-pop,.cot-m-slide-start,.cot-m-slide-end,.cot-m-swap):is([hidden],[data-leaving],.cot-m-out){
+  opacity:0;pointer-events:none;transition-timing-function:var(--ease-exit);transition-duration:var(--dur-fast)}
+.cot-m-rise:is([hidden],[data-leaving],.cot-m-out){translate:0 calc(var(--motion-rise) / 2)}
+.cot-m-drop:is([hidden],[data-leaving],.cot-m-out){translate:0 calc(var(--motion-rise) / -2)}
+.cot-m-pop:is([hidden],[data-leaving],.cot-m-out){scale:calc((1 + var(--motion-scale-in)) / 2)}
+.cot-m-slide-start:is([hidden],[data-leaving],.cot-m-out){translate:calc(var(--motion-slide) / -2) 0}
+.cot-m-slide-end:is([hidden],[data-leaving],.cot-m-out){translate:calc(var(--motion-slide) / 2) 0}
+.cot-m-slide-start:is([hidden],[data-leaving],.cot-m-out):dir(rtl){translate:calc(var(--motion-slide) / 2) 0}
+.cot-m-slide-end:is([hidden],[data-leaving],.cot-m-out):dir(rtl){translate:calc(var(--motion-slide) / -2) 0}
+.cot-m-fade:is([hidden],[data-leaving],.cot-m-out),.cot-m-swap:is([hidden],[data-leaving],.cot-m-out){transition-duration:var(--dur-instant)}
+/* a success or failure mark: one emphasis as it appears, from a little small to its size; a re-trigger replays it
+   (surfaceMotion.ts beat) */
+.cot-m-beat{animation:cot-m-beat var(--dur-base) var(--motion-ease-emphasis) 1 both}
+@keyframes cot-m-beat{from{opacity:0;scale:.8;translate:0 var(--motion-nudge)}to{opacity:1;scale:1;translate:none}}
+}
