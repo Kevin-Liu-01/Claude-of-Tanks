@@ -1362,6 +1362,8 @@ const _reticleAnchor: ReticleAnchorState = { x: 0, y: 0, single: false };
 const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' };
 /** The parked chip's id in the battle's notice region (battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
 const AIM_NOTICE_ID = 'cot-aim-warning';
+/** fire-visible-275: our own tank on fire, a threat condition (Kevin's pick: shown in the sight too, beside its edge). */
+const FIRE_NOTICE_ID = 'cot-fire';
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
@@ -1451,6 +1453,8 @@ const TRAY_INK = 'rgba(238,244,250,0.86)';
 // announces the player's loadout (BATTLE_CONSUMABLES_EVENT) and the tiles swap their glyph and names; the item ids and
 // their names stay apart, so the sim/network layer never depends on i18n.
 const CONSUMABLE_KEYS = ['4', '5', '6'] as const;
+/** The slots' own actions, in CONSUMABLE_KEYS' order (game/input.ts consumable1..3; fire-visible-275's key line). */
+const CONSUMABLE_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const;
 const consumableLabel = (id: string): string => t(consumableNameKey(id));
 // (the item's badge, framed in its category's colour: one icon source per item, the Garage's and the tray's, Main 261)
 const consumableSvg = (id: ConsumableId): string => consumableIconSVG(id, 20, TRAY_INK);
@@ -3479,6 +3483,33 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
         : id === 'first_aid' ? crewDown
           : id === 'extinguisher' || id === 'fire_suppression' ? burning : false);
     }
+    syncFireNotice(burning);
+  }
+
+  /**
+   * fire-visible-275 (Kevin 2026-11-22: "if a tank is on fire or our tank we have to see the fire effects"; his pick, an
+   * edge flicker with the notice): while our own tank burns, a threat condition says so, scoped or not (the sight's edge
+   * burns beside it, vehicleStatus.ts), with the key of the fire kit that puts it out while one has a use left. Raised on
+   * the fire and on a change of kit, taken down with the fire, at a death and when the battle's presentation resets.
+   */
+  let fireNoticeKey = '';
+  function syncFireNotice(burning: boolean): void {
+    let slot = -1;
+    if (burning) {
+      for (let i = 0; i < conItems.length; i++) {
+        const id = conItems[i];
+        if ((id === 'extinguisher' || id === 'fire_suppression') && conCharges[i] !== 0) { slot = i; break; }
+      }
+    }
+    const key = burning ? `fire:${slot}` : '';
+    if (key === fireNoticeKey) return;
+    fireNoticeKey = key;
+    if (!burning) { battleNotices.dismiss(FIRE_NOTICE_ID); return; }
+    battleNotices.condition({
+      id: FIRE_NOTICE_ID, severity: 'error', icon: 'statusFire', text: t('hud.status.fire'),
+      detailHtml: slot >= 0 ? keyLine('hud.status.fireLine', { key: CONSUMABLE_ACTIONS[slot]! }) : undefined,
+      durationMs: null, dismissible: false, priority: NOTICE_PRIORITY.threat,
+    });
   }
 
   // --- minimap ---
@@ -9037,6 +9068,7 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     reviveCountdown.hide();
     revivedAwaitingAlive = false;
     syncAimNotice(null);
+    syncFireNotice(false);
     document.body.classList.remove('cot-hud-aerial');
     wasReloading = false;
     readyPulseT = -1;

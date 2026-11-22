@@ -4699,6 +4699,7 @@
   "endScreen.awardedThisBattle": "本场战斗获得",
   "hud.status.title": "车辆状态",
   "hud.status.fire": "起火",
+  "hud.status.fireLine": "{key} 灭火",
   "hud.status.tracks": "履带",
   "hud.status.crew": "乘员受伤",
   "hud.status.crewCount": "{count} 名乘员受伤",
