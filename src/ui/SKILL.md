@@ -187,6 +187,18 @@ CSS or WAAPI, never a rAF loop writing styles. `tools/motion-lint.mjs` counts
 the rest per file against `tools/motion-lint-baseline.json`, which may only
 fall; a measured exception (a small isolated layer) is a row in
 `tools/motion-allowlist.json`.
+A surface that comes and goes takes one class from the motion vocabulary
+(`components/surfaceMotion.css`): `cot-m-fade` (veils, whole screens),
+`cot-m-rise`, `cot-m-drop`, `cot-m-pop`, `cot-m-slide-start`/`-end`, or
+`cot-m-swap` (enters, leaves at once: tab bodies, in-flow pickers, screens whose
+closed state also moves them). It enters from `@starting-style` and leaves while
+`[hidden]`, a closed `<dialog>`, `data-leaving` or `cot-m-out`; an owner that
+shows it by a class adds `cot-m-by-open`, `-by-show` or `-by-on`. An owner that
+removes it calls `leaveThen(el, remove)` (`components/surfaceMotion.ts`). A
+success mark takes `cot-m-beat` once. Distances are `--motion-nudge/rise/slide`
+in `motion.css`. Never on a per-frame HUD number or a control pressed tens of
+times a minute. A new transient-surface row needs its motion row in
+`components/surfaceMotion.selftest.mjs`.
 The player's accessibility choices (BUI-F9) live on `:root`: the game
 document's head seed (`index.html`) writes them before first paint and
 `accessibilitySettings.ts` `applyAccessibility()` after a change, identically
