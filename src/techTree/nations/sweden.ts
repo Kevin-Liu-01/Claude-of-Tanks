@@ -25,11 +25,12 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
     node({ id: 'strv103a', tier: 2, line: 'strv', lane: 1, parents: ['strv81'], slot: 'line' }),
     // 274: the 103B's netted twin on its node
     node({ id: 'strv103b', tier: 2, line: 'strv', lane: 0, parents: ['strv103a'], slot: 'line', builds: ['strv103b_net'] }),
-    node({ id: 'strv122', tier: 9, line: 'strv', lane: 2, parents: ['strv103b'], slot: 'line', builds: ['strv121'] }),
+    // 274 (owner 2026-11-21: "strv 122 should be tier x"): the Strv 122 at X beside the S-tank concepts, its 121 twin with it
+    node({ id: 'strv122', tier: 10, line: 'strv', lane: 2, parents: ['strv103b'], slot: 'line', builds: ['strv121'] }),
     // 274: the Strv 103E (concept), the S-tank carried on to tier X after the 103 line, researched straight on from the 103B
     node({ id: 'strv103e', tier: 10, line: 'strv', lane: 0, parents: ['strv103b'], slot: 'line' }),
-    // 274: the Strv 152 (concept) beside it at X, straight on from the Strv 122 (its fire control and the 152 mm step)
-    node({ id: 'strv152', tier: 10, line: 'strv', lane: 2, parents: ['strv122'], slot: 'line' }),
+    // 274: the Strv 152 (concept) beside it at X, off the Strv 122 (its fire control and the 152 mm step), one lane up
+    node({ id: 'strv152', tier: 10, line: 'strv', lane: 1, parents: ['strv122'], slot: 'line' }),
     // UDES 03
     node({ id: 'udes03', tier: 1, line: 'strv_side', lane: 2, parents: [], slot: 'line' }),
     // CV90

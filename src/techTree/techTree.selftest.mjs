@@ -287,5 +287,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 274: the Swedish strv line's X pair, the Strv 103E (concept) from the 103B and the Strv 152 (concept) from the Strv 122,
 // and the 103B's netted twin on its node (0a0cda6e8bb31929).
 // 274.0 (integration): japan-274 and strv103-x-274 merged together; re-pinned once at the merge (9fcd0265ad820a43).
-assert.equal(digest, '9fcd0265ad820a43', `tree content changed: re-pin to ${digest} if deliberate`);
+// 274 (owner 2026-11-21: "strv 122 should be tier x"): the Strv 122 node (its Strv 121 twin with it) at X, the Strv 152
+// one lane up beside it off the same node (was 9fcd0265ad820a43).
+assert.equal(digest, 'd23b6882ac9663e4', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
