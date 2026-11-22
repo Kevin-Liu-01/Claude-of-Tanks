@@ -1,5 +1,6 @@
 import { loadHudPreview, type HudPreviewScene } from './hudEditorScene.ts';
 import { createModal } from './modal.ts';
+import { notice } from './components/notice.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import type { IconId } from './icons/icon.ts';
@@ -84,10 +85,12 @@ export function openHudEditor(trigger:HTMLElement):void {
       else if(!scene?.parts.has(id)&&['aircraft','medals','alerts','damage','killsRight'].includes(id))void load();
     }});
   const status=element('p','hud-edit-status',modal.footer);status.setAttribute('role','status');
-  // the status speaks only of a failed load or save
+  // the status speaks only of a failed load or save, as the kit's inline error notice (notices-audit-275: its words alone
+  // before, without the kit's glyph)
+  const refuse=(text:string)=>{status.innerHTML=notice({severity:'error',text,className:'cot-c-notice--inline',live:false});};
   const cancel=element('button',`hud-edit-cancel ${SECONDARY}`,modal.footer);cancel.type='button';cancel.textContent=label('cancel');cancel.onclick=()=>modal.close();
   const save=element('button','hud-edit-save cot-c-btn cot-c-btn--36 cot-c-btn--primary',modal.footer);save.type='button';save.textContent=label('save');save.onclick=()=>{
-    if(saveHudPreferences(draft))modal.close();else status.textContent=label('saveError');
+    if(saveHudPreferences(draft))modal.close();else refuse(label('saveError'));
   };
   function currentPart(){return HUD_PARTS.find(part=>part.id===selected)!;}
   function select(id:HudPartId){
@@ -199,7 +202,7 @@ export function openHudEditor(trigger:HTMLElement):void {
       scene=result;loading.hidden=true;save.disabled=false;inspector.inert=false;
       result.frame.dataset.ready='true';modal.root.dataset.previewReady='true';render();
     }catch(error){
-      if(!closed&&!pending.signal.aborted){loading.textContent=label('loadError');status.textContent=label('loadError');}
+      if(!closed&&!pending.signal.aborted){loading.textContent=label('loadError');refuse(label('loadError'));}
     }
   }
   const observer=new ResizeObserver(fit);observer.observe(preview);

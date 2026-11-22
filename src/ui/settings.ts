@@ -60,7 +60,7 @@ import {
   battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner, type VeilTrigger,
 } from './battleInputOwner.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
-import { notice } from './components/notice.ts';
+import { notice, notify } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { crewLanguageLabel, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
@@ -1296,8 +1296,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
         if (open) openHudEditor(editHud);
       } catch {
-        editHud.textContent = t('hudEditor.loadError');
+        // (notices-audit-275) the Garage openers' failure (garage.ts reportLoadFailure): the trigger keeps its label and
+        // the kit's error state, and the kit's toast says so with Reload page (offline, the press waits and it stands)
         markLoadFailed([editHud], t('hudEditor.loadError'));
+        notify({ id: 'cot-hud-editor-load', severity: 'error', text: t('hudEditor.loadError'),
+          actions: [{ label: t('loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
       } finally { editHud.disabled = false; }
     });
     // (272) the first-game tutorial again: the Garage tour now (or on the Garage's next showing), then the first-battle

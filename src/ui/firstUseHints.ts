@@ -13,7 +13,7 @@
  * Event-driven: the bus's moments, and a 400 ms step only while a hint shows or waits.
  */
 import type { ActionId } from '../game/input.ts';
-import { battleNotices } from './battleNotices.ts';
+import { battleNotices, NOTICE_PRIORITY } from './battleNotices.ts';
 import { createHintPolicy, START_DELAY_MS, type HintPolicy } from './firstUseHintPolicy.ts';
 import { formatKeyLine, inputDevice, promptRevision, promptTiles, type PromptInput } from './keyPrompt.ts';
 import { t } from './i18n.ts';
@@ -139,7 +139,7 @@ export function createFirstUseHints(host: FirstUseHintsHost) {
       // (the hint goes by its time; a keyboard needs no close, its key is the hint's own word; a phone and a pad keep one)
       durationMs: def.durationMs,
       dismissible: device !== 'keyboard',
-      priority: -1,
+      priority: NOTICE_PRIORITY.teaching,
     });
     return actions;
   }

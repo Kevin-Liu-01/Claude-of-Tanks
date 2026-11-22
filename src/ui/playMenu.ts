@@ -2285,8 +2285,13 @@ export function createPlayMenu({
     });
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      setStatus(t('playMenu.invite.copied'));
+      // (notices-audit-275) a passing confirmation is the kit's toast: the room's status line keeps what it said ("Room
+      // ready. Copy the invite link." stood replaced by "copied"); the kit loads with the press, off the menu's boot
+      void import('./components/notice.ts').then(({ notify }) => {
+        notify({ id: 'cot-invite-copied', severity: 'success', text: t('playMenu.invite.copied') });
+      }, () => { setStatus(t('playMenu.invite.copied')); });
     } catch {
+      // (a refused clipboard: the link itself stays in the status line, to copy by hand)
       setStatus(t('playMenu.invite.link', { url: inviteUrl }));
     }
   });

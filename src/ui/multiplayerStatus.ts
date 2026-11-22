@@ -20,7 +20,7 @@ import { createElement, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { t } from './i18n.ts';
-import { battleNotices, type BattleNoticePort } from './battleNotices.ts';
+import { battleNotices, NOTICE_PRIORITY, type BattleNoticePort } from './battleNotices.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
 const STYLE_ID = 'cot-mp-status-style';
@@ -433,7 +433,10 @@ export function createMultiplayerStatusSurface({
     if (key === noticeKey) return;
     noticeKey = key;
     notices.condition({
-      id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false, priority: 1,
+      // (the ladder, battleNotices.ts: a link the match let go is `lost`; the leave's confirmation answers a press; a link
+      // reconnecting or a new host is ambient)
+      id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false,
+      priority: severity === 'error' ? NOTICE_PRIORITY.lost : leaving ? NOTICE_PRIORITY.answered : NOTICE_PRIORITY.ambient,
       actions: leaving ? [{ label: t('mpStatus.leave'), keep: true, run: leaveNow }] : [],
     });
   }

@@ -461,13 +461,28 @@ export function pauseNotices(paused: boolean): void {
   applyPause();
 }
 
-/** One offline notice while the browser is offline, replaced by a short "back online" when it returns. */
-export function watchConnectivity(text: { readonly offline: string; readonly online: string }, region = 'menu'): () => void {
-  if (typeof window === 'undefined') return () => {};
-  const offline = (): void => { notify({ id: 'cot-connectivity', severity: 'warning', text: text.offline, durationMs: null, dismissible: false, priority: 10, region }); };
-  const online = (): void => { notify({ id: 'cot-connectivity', severity: 'success', text: text.online, durationMs: undefined, dismissible: true, region }); };
+/** One offline notice while the browser is offline, replaced by a short "back online" when it returns. `active` gates it
+ *  (the game's menus, never over a battle, whose network has its own banner); `refresh` re-reads the gate (a phase
+ *  change): the notice leaves where it may not show and comes back where it may, while the browser is still offline. */
+export function watchConnectivity(text: { readonly offline: string; readonly online: string },
+  options: { readonly region?: string; readonly active?: () => boolean } = {}): { stop(): void; refresh(): void } {
+  if (typeof window === 'undefined') return { stop: () => {}, refresh: () => {} };
+  const region = options.region ?? 'menu';
+  const active = options.active ?? (() => true);
+  const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.onLine === false;
+  const offline = (): void => {
+    if (!active()) return;
+    notify({ id: 'cot-connectivity', severity: 'warning', text: text.offline, durationMs: null, dismissible: false, priority: 10, region });
+  };
+  const online = (): void => {
+    if (!active()) { dismissNotice('cot-connectivity'); return; }
+    notify({ id: 'cot-connectivity', severity: 'success', text: text.online, durationMs: undefined, dismissible: true, region });
+  };
   window.addEventListener('offline', offline);
   window.addEventListener('online', online);
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) offline();
-  return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
+  if (isOffline()) offline();
+  return {
+    stop: () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); },
+    refresh: () => { if (!active()) dismissNotice('cot-connectivity'); else if (isOffline()) offline(); },
+  };
 }

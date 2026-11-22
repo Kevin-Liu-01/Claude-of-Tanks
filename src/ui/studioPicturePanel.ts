@@ -48,7 +48,7 @@ interface SliderLike {
 interface PicturePanelKit {
   sliderRow(label: string, min: number, max: number, step: number, onInput: (value: number) => void): SliderLike;
   selectedActor(): { readonly uid: string; readonly name?: string | null } | null;
-  flash(text: string): void;
+  flash(text: string, tone?: 'info' | 'success' | 'warning' | 'error'): void;
 }
 
 const SENSORS = Object.keys(PICTURE_SENSOR_MM);
@@ -97,7 +97,7 @@ export function mountStudioPicturePanel(
   kit: PicturePanelKit,
 ): { refresh(): void } {
   const set = (patch: Readonly<Record<string, RuntimeValue>> | null): void => {
-    try { S.setPicture(patch); } catch (error) { kit.flash(error instanceof Error ? error.message : String(error)); }
+    try { S.setPicture(patch); } catch (error) { kit.flash(error instanceof Error ? error.message : String(error), 'error'); }
   };
 
   const look = labelledMenu(t('studioPanel.picture.look'),
@@ -147,7 +147,7 @@ export function mountStudioPicturePanel(
   const focusTank = chip(t('studioPanel.picture.focusSelected'));
   focusTank.addEventListener('click', () => {
     const actor = kit.selectedActor();
-    if (!actor) { kit.flash(t('studioPanel.picture.focusNeedsTank')); return; }
+    if (!actor) { kit.flash(t('studioPanel.picture.focusNeedsTank'), 'info'); return; }
     set({ dof: { enabled: true, focusActor: actor.name || actor.uid } });
   });
   const focusDistanceBtn = chip(t('studioPanel.picture.focusDistance'));

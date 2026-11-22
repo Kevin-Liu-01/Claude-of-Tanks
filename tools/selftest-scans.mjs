@@ -115,6 +115,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
   // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
+  'src/ui/battleNoticeCensus.selftest.mjs': lists('src/ui/**/*.ts', 'src/game/**/*.ts', 'src/app/**/*.ts'),
   // (261) every surface the source opens and every dialog it shows: the TypeScript under src
   'src/ui/transientSurfaceRegistry.selftest.mjs': lists('src/**/*.ts'),
   // 255 (triangle 253 item A): every shipped diagram label sidecar's colours name a tone
