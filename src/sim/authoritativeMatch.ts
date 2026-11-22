@@ -124,10 +124,10 @@ import {
 } from './specialActions.ts';
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
-import { createFireCredit } from './fireCredit.ts';
+import { createFireCredit, createRecentDamage } from './fireCredit.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetClockLimitS, SEAT_BOT_GRACE_S, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  consumableTiming, rulesetClockLimitS, SCUTTLE_CREDIT_S, SEAT_BOT_GRACE_S, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
   terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
@@ -951,6 +951,8 @@ export function createAuthoritativeMatch({
   const fortified = createFortifiedCoverLedger();
   // who set each fire (death-flow-275 R8, sim/fireCredit.ts): a hull that burns out is its starter's kill
   const fireCredit = createFireCredit();
+  // who hurt each hull last (death-flow-275 R7): a scuttled hull's kill is that enemy's, within SCUTTLE_CREDIT_S
+  const recentDamage = createRecentDamage();
   // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
   const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
@@ -1199,6 +1201,7 @@ export function createAuthoritativeMatch({
       typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
       fireCredit.clear(String(payload.id)); // a wreck's fire credits no later death (death-flow-275 R8)
+      recentDamage.clear(String(payload.id));
       // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
       const dead = entityById.get(String(payload.id));
       if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
@@ -1771,6 +1774,17 @@ export function createAuthoritativeMatch({
       });
     },
     selfRighted: (entity) => { emit('tank_self_right', { id: entity.id }); },
+    // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
+    scuttle: (entity) => {
+      if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
+      const credited = entityById.get(recentDamage.creditFor(entity.id, timeS, SCUTTLE_CREDIT_S) ?? '');
+      const killer = credited && credited.team !== entity.team ? credited : null;
+      entity.combat.hp = 0;
+      entity.combat.destroyed = true;
+      entity.combat.fire.burning = false;
+      if (killer) killer.kills += 1;
+      emit('tank_destroyed', { id: entity.id, killerId: killer?.id ?? entity.id, cause: 'scuttle' });
+    },
     consumable: (entity, slot, use) => {
       if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
       if (!use.ok) {
@@ -1947,6 +1961,7 @@ export function createAuthoritativeMatch({
       state: module.newState,
       source: 'hit',
     });
+    if ((hit.hpRemoved || 0) > 0 || (hit.modulesHit?.length ?? 0) > 0) recentDamage.record(target.id, hit.attackerId, timeS);
     if (hit.fireStarted) {
       fireCredit.ignite(target.id, hit.attackerId);
       emit('tank_fire', { id: target.id, burning: true });

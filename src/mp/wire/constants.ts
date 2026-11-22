@@ -250,9 +250,10 @@ export const ACTION_BITS = PLAYER_ACTION_BITS;
  * supply drops, and Air Support's call-ins. Air Support reads the two supply-drop bits as its artillery and recon
  * (sim/playerActions.ts AIR_STRIKE_BITS): only the AC-130's escort drops supplies and only Air Support calls strikes. A
  * mode that wants either meaning beside the other fails sim/airSupport.selftest.mjs's exclusivity check first. The wire
- * carries a u32 (wire 13): fifteen bits are spare for the next actions without another layout change.
+ * carries a u32 (wire 13): fourteen bits are spare for the next actions without another layout change (death-flow-275's
+ * scuttle took the eighteenth in the same wire, no bump).
  */
-export const ACTION_BIT_MASK = 0x1ffff;
+export const ACTION_BIT_MASK = 0x3ffff;
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);

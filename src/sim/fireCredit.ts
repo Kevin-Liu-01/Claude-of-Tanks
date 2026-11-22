@@ -33,3 +33,32 @@ export function createFireCredit(): FireCredit {
 export function fireDeathCause(ammoRacked: boolean): 'ammorack' | 'fire' {
   return ammoRacked ? 'ammorack' : 'fire';
 }
+
+/**
+ * (death-flow-275 R7) Who damaged each hull last, and when: a scuttled hull's kill is the enemy's that hurt it last within
+ * the window (sim/matchRuleset.ts SCUTTLE_CREDIT_S), so a crew cannot scuttle a kill away. Both drivers keep one.
+ */
+export interface RecentDamage {
+  record(targetId: string, attackerId: string | null | undefined, timeS: number): void;
+  /** The last damaging attacker within `windowS` of `timeS`, else null. */
+  creditFor(targetId: string, timeS: number, windowS: number): string | null;
+  clear(targetId: string): void;
+  reset(): void;
+}
+
+export function createRecentDamage(): RecentDamage {
+  const last = new Map<string, { by: string; atS: number }>();
+  return {
+    record(targetId, attackerId, timeS) {
+      if (!attackerId || attackerId === targetId) return;
+      const entry = last.get(targetId);
+      if (entry) { entry.by = attackerId; entry.atS = timeS; } else last.set(targetId, { by: attackerId, atS: timeS });
+    },
+    creditFor(targetId, timeS, windowS) {
+      const entry = last.get(targetId);
+      return entry && timeS - entry.atS <= windowS ? entry.by : null;
+    },
+    clear(targetId) { last.delete(targetId); },
+    reset() { last.clear(); },
+  };
+}

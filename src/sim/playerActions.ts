@@ -26,6 +26,8 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   STRIKE_GUNSHIP: 1 << 15,
   // air-support-275: the Maverick run, the first bit past the u16 (wire 13 carries the bits as a u32)
   STRIKE_MISSILE: 1 << 16,
+  // death-flow-275 R7: the crew scuttles its tank (held SCUTTLE_HOLD_S on the client; sim/hullActions.ts host.scuttle)
+  SCUTTLE: 1 << 17,
 } as const);
 
 /**

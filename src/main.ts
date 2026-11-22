@@ -277,9 +277,9 @@ import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, deathsAreFinal, matchRulesetFor, SCUTTLE_HOLD_S, terrainVariantFor } from './sim/matchRuleset.ts';
 import { trainingRulesFor } from './sim/trainingGround.ts';
-import { AIR_STRIKE_BITS } from './sim/playerActions.ts';
+import { AIR_STRIKE_BITS, PLAYER_ACTION_BITS } from './sim/playerActions.ts';
 import { strikeCallBlocker } from './sim/strikeCall.ts';
 import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
@@ -2535,6 +2535,8 @@ playerBattleActions = createPlayerBattleActions({
     queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
     queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
+  // (death-flow-275 R7) hold the scuttle key to destroy the tank
+  scuttle: { bit: PLAYER_ACTION_BITS.SCUTTLE, holdS: SCUTTLE_HOLD_S },
   strikes: { kinds: AIR_STRIKE_KINDS, bit: (kind) => AIR_STRIKE_BITS[kind],
     blocker: (air, kind, rangeM) => strikeCallBlocker(AIR_SUPPORT_RULES, air, kind, rangeM) },
   rules: {

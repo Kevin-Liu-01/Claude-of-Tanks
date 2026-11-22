@@ -49,7 +49,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
   rulesetObjectiveAxisM, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, SCUTTLE_CREDIT_S, rulesetUnlimitedFor, watchRulesetFor, couchRulesetFor, couchSeatSides, AIR_STRIKE_KINDS, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -146,7 +146,7 @@ import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.
 import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
-import { createFireCredit, fireDeathCause, type FireCredit } from '../sim/fireCredit.ts';
+import { createFireCredit, createRecentDamage, fireDeathCause, type FireCredit, type RecentDamage } from '../sim/fireCredit.ts';
 import {
   createWreckEnvironment, createWreckTurrets, wreckGroundSampler, type WreckTurrets,
 } from '../sim/wreckTurrets.ts';
@@ -449,6 +449,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _fortified?: FortifiedCoverLedger | null;
   /** Who set each fire (death-flow-275 R8, sim/fireCredit.ts), as the room authority keeps it. */
   _fireCredit?: FireCredit | null;
+  /** Who hurt each hull last (death-flow-275 R7): a scuttled hull's kill, as the authority keeps it. */
+  _recentDamage?: RecentDamage | null;
   /** Watch mode (watch-mode-243; game/watchSeat.ts): the seat ledger of a watched battle, null otherwise. */
   watch?: WatchSession<SoloAiController> | null;
   /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
@@ -1327,6 +1329,7 @@ export function setupBattle(
   });
   game._fortified = createFortifiedCoverLedger();
   game._fireCredit = createFireCredit();
+  game._recentDamage = createRecentDamage();
   game._destructionEvents = [];
   game._destructionBreaches = [];
   game._destructionCraters = [];
@@ -1898,6 +1901,7 @@ function enrichHitEvent(
   if (!target) return;
   // (death-flow-275 R8) a round that sets the hull alight makes its shooter the fire's starter (sim/fireCredit.ts)
   if (event.fireStarted) game._fireCredit?.ignite(target.id, event.attackerId);
+  if ((event.hpRemoved || 0) > 0 || (event.modulesHit?.length ?? 0) > 0) game._recentDamage?.record(target.id, event.attackerId, game.timeS);
   // Air Support: a crew's own guns earn support points for the damage they deal (an airstrike's earn none)
   game.matchModeController?.airSupport?.recordDamage(event.attackerId, target.id, event.hpRemoved || 0, !!source);
   event.targetName = target.spec.name;
@@ -1948,13 +1952,14 @@ function announceDestroyed(
   bus: EventBus,
   ent: SoloEntity,
   killerId: string | null,
-  cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
+  cause: 'ammorack' | 'shot' | 'ram' | 'fire' | 'scuttle' | HullImpactKind,
   source: 'ac130' | 'drone' | 'strafe' | 'bomb' | 'missile' | 'artillery' | null = null,
 ): void {
   // a held player is never announced destroyed: the step's losses are undone before the verdict (devBattleHold.ts)
   if (ent === game.player && battleHeld(game)) return;
   ent._destroyedAnnounced = true;
   game._fireCredit?.clear(ent.id); // a wreck's fire credits no later death (death-flow-275 R8)
+  game._recentDamage?.clear(ent.id);
   game.matchModeController?.recordDestruction(ent.id, killerId, source != null && source !== 'drone');
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
   game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
@@ -2595,6 +2600,16 @@ function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): 
       get world() { return ref.world; },
       // (FX lane 2026-10-17) on its map's wind (smokeScreen.ts smokeWindForMap)
       get wind() { return smokeWindForMap(game.mapId); },
+      // (death-flow-275 R7) the crew scuttles its tank: the enemy that hurt it last within SCUTTLE_CREDIT_S has the kill
+      scuttle: (entity) => {
+        if (entity.combat.destroyed || entity.aerial?.kind === 'gunship') return;
+        const credited = game.tankById.get(game._recentDamage?.creditFor(entity.id, game.timeS, SCUTTLE_CREDIT_S) ?? '');
+        const killer = credited && credited.team !== entity.team ? credited : null;
+        entity.combat.hp = 0;
+        entity.combat.destroyed = true;
+        entity.combat.fire.burning = false;
+        announceDestroyed(game, ref.bus, entity, killer?.id ?? entity.id, 'scuttle');
+      },
       supply: (entity, kind) => game.matchModeController?.requestSupply(entity.id, kind, game.timeS),
       // Air Support: a seat's call-in at its aim point, as the authority takes it (the player's own presses go through its UI)
       strike: (entity, kind) => game.matchModeController?.airSupport?.requestStrike(entity.id, kind, entity.input.aimPoint.x, entity.input.aimPoint.z, game.timeS),

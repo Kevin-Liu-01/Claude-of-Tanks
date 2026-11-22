@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { matchRulesetFor, rulesetClockLimitS, rulesetTimesItself, SEAT_BOT_GRACE_S } from './matchRuleset.ts';
-import { createFireCredit, fireDeathCause } from './fireCredit.ts';
+import { createFireCredit, createRecentDamage, fireDeathCause } from './fireCredit.ts';
+import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { SCUTTLE_CREDIT_S } from './matchRuleset.ts';
 import { createCombatState, tickFire } from './damage.ts';
 import { getSpec } from '../vehicles/specs.ts';
 
@@ -126,6 +128,33 @@ const far = (id, team, x, z) => ({ id, specId: SPEC, team, spawn: { x, z, yaw: t
   for (let i = 0; i < 50 && !combat.destroyed; i++) fire = tickFire({ combat }, () => 1);
   assert.equal(combat.destroyed, true, 'the fire cooked the rack off');
   assert.equal(fire.ammoRacked, true, 'R8: tickFire reports the rack it cooked off');
+}
+
+// ---- R7: a crew scuttles its tank; the kill is the enemy's that hurt it last within the window, else nobody's ----
+{
+  const recent = createRecentDamage();
+  recent.record('v', 'v', 10);
+  assert.equal(recent.creditFor('v', 10, SCUTTLE_CREDIT_S), null, 'R7: its own damage credits nobody');
+  recent.record('v', 'enemy', 10);
+  assert.equal(recent.creditFor('v', 10 + SCUTTLE_CREDIT_S, SCUTTLE_CREDIT_S), 'enemy', 'R7: inside the window, the enemy');
+  assert.equal(recent.creditFor('v', 10.1 + SCUTTLE_CREDIT_S, SCUTTLE_CREDIT_S), null, 'R7: past it, nobody');
+  const match = createAuthoritativeMatch({
+    countdownS: 0, gameMode: 'zone_control',
+    players: [far('r7-a', 'alpha', -300, -300), far('r7-b', 'bravo', 300, 300)],
+  });
+  match.onMatchReady();
+  step(match, 0.2);
+  const seat = match.entities.find((entity) => entity.id === 'r7-a');
+  seat.input.actionBits = PLAYER_ACTION_BITS.SCUTTLE;
+  match.step({ dt: 1 / 60, inputs: new Map([['r7-a', { actionBits: PLAYER_ACTION_BITS.SCUTTLE }]]) });
+  if (!seat.combat.destroyed) step(match, 1 / 60);
+  assert.equal(seat.combat.destroyed, true, 'R7: the scuttle bit destroys the hull');
+  const events = match.snapshot({ tick: 1, serverTimeMs: 0, viewerId: 'r7-a', ackInputSeq: null }).events ?? [];
+  const death = events.find((event) => event.type === 'tank_destroyed' && event.id === 'r7-a');
+  assert.ok(death, 'R7: told as a destruction');
+  assert.equal(death.cause, 'scuttle');
+  assert.equal(death.killerId, 'r7-a', 'R7: no enemy hurt it: its own, so nobody scores');
+  assert.ok(match.modeController.respawnFor('r7-a'), 'R7: a scuttled hull revives as any other in a reviving mode');
 }
 
 // ---- R10: the front's clock is its own rule (assault_time), not a 0-0 score ----

@@ -48,6 +48,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   perfHud: { id: 'performance', tone: 'green' },
   networkPanel: { id: 'signal', tone: 'cyan' },
   leaveBattle: { id: 'garage', tone: 'red' },
+  scuttle: { id: 'skull', tone: 'red' }, // death-flow-275 R7: hold to scuttle the tank
   rangeReset: { id: 'reload', tone: 'green' },
   rangeMoving: { id: 'modeProving', tone: 'amber' },
   settingsMenu: { id: 'settings' },

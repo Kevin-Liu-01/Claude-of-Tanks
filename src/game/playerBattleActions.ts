@@ -56,7 +56,7 @@ interface BattleActionEntity extends Omit<
   spec: BattleActionSpec;
   combat: ActionCombat | null;
   state: ActionState | null;
-  input: { shellSlot: number; auxiliaryBits?: number };
+  input: { shellSlot: number; auxiliaryBits?: number; actionBits?: number };
   /** Ruleset jump launch stamped by the mode controller (Turbo Ball); null elsewhere. */
   modeJumpMps?: number | null;
   /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
@@ -81,6 +81,8 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
 interface ActionInput {
   /** The listener hears the code that pressed it (a key, a mouse button, Pad<n>). */
   onAction(actionId: ActionId, listener: (code?: string) => void): () => void;
+  /** Whether an action's key is held now (the scuttle's hold, death-flow-275). */
+  isDown?(actionId: ActionId): boolean;
   /** Round 30: the armour-overlay key flips the live setting; optional so fixtures without settings still work. */
   getSettings?(): { armorAimOverlay: boolean };
   setSetting?(key: 'armorAimOverlay', value: boolean): void;
@@ -89,7 +91,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal' | 'strikeRecon' | 'strikeArtillery' | 'strikeStrafe' | 'strikeBomb' | 'strikeMissile' | 'strikeGunship' | 'scuttle'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -105,6 +107,9 @@ interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
      *  would be taken). */
     blocker(air: AirSupportView | null, kind: AirStrikeKind, rangeM: number): StrikeRefusal | null };
   isSettingsOpen(): boolean;
+  /** (death-flow-275 R7) The scuttle: its action bit (sim/playerActions.ts SCUTTLE) and how long its key is held
+   *  (sim/matchRuleset.ts SCUTTLE_HOLD_S): a port, so the policy stays free of the sim. Absent: no scuttle. */
+  scuttle?: { readonly bit: number; readonly holdS: number };
 }
 
 export interface PlayerBattleActions {
@@ -143,6 +148,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   network,
   strikes,
   isSettingsOpen,
+  scuttle = undefined,
 }: PlayerBattleActionsOptions<TEntity>): PlayerBattleActions {
   if (!game || !bus || !input || !rules || !network || !strikes
       || typeof isSettingsOpen !== 'function') {
@@ -525,6 +531,26 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
     bus.emit('tank:selfRight', { id: player.id });
     bus.emit('ui:click', {});
+  });
+
+  // (death-flow-275 R7; Kevin approved 2026-11-21) hold the scuttle key SCUTTLE_HOLD_S to destroy the tank: the one way out
+  // of a hull wedged or overturned past self-righting, or out of rounds. A press starts the hold (the HUD says to keep
+  // holding); a key still down when it runs out scuttles; a release, the menu or a death before then cancels it.
+  let scuttleTimer: ReturnType<typeof setTimeout> | null = null;
+  const cancelScuttle = (): void => { if (scuttleTimer) { clearTimeout(scuttleTimer); scuttleTimer = null; } };
+  disposeCallbacks.push(cancelScuttle);
+  if (scuttle) onAction('scuttle', () => {
+    const player = battleInputAllowed() ? livePlayer() : null;
+    if (!player || scuttleTimer || player.aerial?.kind === 'gunship') return;
+    bus.emit('ui:scuttleHold', { holdS: scuttle.holdS });
+    scuttleTimer = setTimeout(() => {
+      scuttleTimer = null;
+      const live = battleInputAllowed() ? livePlayer() : null;
+      if (!live || live !== player || !(input.isDown?.('scuttle') ?? false)) return;
+      if (network.isActive()) network.queueAction('scuttle');
+      else live.input.actionBits = (live.input.actionBits ?? 0) | scuttle.bit;
+      bus.emit('ui:click', {});
+    }, scuttle.holdS * 1000);
   });
 
   listen('shell:fired', (payload) => {

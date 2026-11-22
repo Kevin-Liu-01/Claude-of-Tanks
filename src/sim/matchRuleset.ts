@@ -1932,6 +1932,14 @@ export function rulesetVerdictSide(ruleset: Pick<MatchRuleset, 'infection'>, cur
 export const SEAT_BOT_GRACE_S = 30;
 
 /**
+ * (death-flow-275 R7; Kevin approved 2026-11-21) A crew scuttles its own tank by holding the scuttle key this long: the
+ * one way out of a hull wedged or overturned past self-righting, out of rounds where none come back, or crippled in
+ * Realistic. The kill is the enemy's that damaged the hull last within SCUTTLE_CREDIT_S, else nobody's.
+ */
+export const SCUTTLE_HOLD_S = 3;
+export const SCUTTLE_CREDIT_S = 15;
+
+/**
  * The modes whose controller reaches its own verdict at its clock (death-flow-275 R3): the Juggernaut (the boss survived),
  * Infected (the survivors held), the AC-130 (the escort's time ran out) and Frontline Assault (the sortie ran out of time,
  * R10) resolve their clock by their own rule, never by a score. A room's battle limit never pre-empts them, and never puts a clock on a mode without one.

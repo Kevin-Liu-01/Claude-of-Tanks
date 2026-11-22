@@ -8808,6 +8808,8 @@ export function initHud(bus: EventBus, view: HudView | null = null): HudRuntime 
     // (the next wave's countdown is the clock's, never the alert's as well: UI-LOCKDOWN B19)
     events.raise({ text: t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1) }), priority: NOTICE_PRIORITY.turned, severity: 'success', icon: 'repair' });
   });
+  // (death-flow-275 R7) the scuttle's hold started: keep holding (a release cancels it, game/playerBattleActions.ts)
+  on('ui:scuttleHold', () => { showAlert(t('hud.alert.scuttleHold'), { icon: 'warning', tone: 'warning' }); });
   // (death-flow-275) the outbreak took the player: said once, as the battle turned (the dial then reads "Infected")
   on('mode:infected', (payload) => {
     if (playerId == null || (payload as { id?: string } | null)?.id !== playerId) return;

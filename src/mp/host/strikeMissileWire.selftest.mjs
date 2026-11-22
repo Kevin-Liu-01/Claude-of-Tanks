@@ -19,7 +19,8 @@ import { createSeatInputBuffer } from '../../../server/match/inputBuffer.ts';
 assert.equal(WIRE_VERSION, 13, 'wire 13: the u32 action bits');
 assert.equal(PROTOCOL_VERSION, 15, 'protocol 15: a 274 tab and a 275 tab never share a match');
 assert.equal(AIR_STRIKE_BITS.missile, 1 << 16, 'the Maverick run is the seventeenth bit');
-assert.equal(ACTION_BIT_MASK, 0x1ffff, 'the mask covers seventeen bits');
+// (death-flow-275) the scuttle is the eighteenth bit in the same wire
+assert.equal(ACTION_BIT_MASK, 0x3ffff, 'the mask covers eighteen bits');
 // the sixteen bits of a u16 keep their values (a 274 build and a 275 build differ only by the new one)
 assert.deepEqual(Object.entries(PLAYER_ACTION_BITS).filter(([, bit]) => bit < 1 << 16).map(([, bit]) => bit).sort((a, b) => a - b),
   Array.from({ length: 16 }, (_, i) => 1 << i), 'bits 0-15 are the sixteen they were');
@@ -36,7 +37,8 @@ for (const value of [AIR_STRIKE_BITS.missile, ACTION_BIT_MASK, AIR_STRIKE_BITS.m
   assert.ok(decoded.ok && decoded.message.controls[0].actionBits === value, `action bits ${value.toString(16)} cross intact`);
 }
 // a bit past the mask is refused on both sides of the wire
-assert.throws(() => encodeMessage(input([control(1 << 17)])), (error) => error.code === 'range', 'the encoder refuses a bit past the mask');
+// (death-flow-275) the scuttle took bit 17: the first bit past the mask is now 18
+assert.throws(() => encodeMessage(input([control(1 << 18)])), (error) => error.code === 'range', 'the encoder refuses a bit past the mask');
 const forged = encodeMessage(input([control(AIR_STRIKE_BITS.missile)]));
 const view = new DataView(forged.buffer, forged.byteOffset, forged.byteLength);
 // the control's u32 is its last four bytes, little-endian (bytes.ts): every bit past the mask set
