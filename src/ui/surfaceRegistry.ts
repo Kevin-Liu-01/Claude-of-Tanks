@@ -182,7 +182,6 @@ export const SURFACE_REGISTRY = Object.freeze({
   hints: {
     places: [
       { screen: 'battle', owner: 'src/ui/settings.ts', surface: '.cot-hints', states: ['tank'] },
-      { screen: 'battle', owner: AERIAL, surface: '.flight-hint', states: ['gunship', 'drone'] },
       { screen: 'deploy', owner: 'src/ui/deployScreen.ts', surface: '.cot-deploy-keys' },
       { screen: 'boot', owner: BOOT, surface: '#cot-boot-tip' },
     ],

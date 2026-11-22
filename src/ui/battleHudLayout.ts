@@ -250,6 +250,8 @@ const GUIDANCE_SOFT = '.cot-minimap,.cot-ear,.cot-kill-lane,.cot-ribbon,.cot-si-
 /** The tutorial's card while a battle chapter shows it (ui/tutorial/tutorialOverlay.ts), and its natural width. */
 const GUIDANCE_CARD = '.cot-tut.is-open[data-chapter=training] .cot-tut-card';
 const GUIDANCE_CARD_W = 480;
+/** The caption line's natural width (notices-audit-275, ui/captionLine.ts): a subtitle's measure. */
+const GUIDANCE_CAPTION_W = 560;
 /** A battle step the player does (tutorial.css data-mode=act, Kevin 2026-11-20: less intrusive): its compact card's width. */
 const GUIDANCE_CARD_ACT_W = 352;
 const TOUCH_NOTICE_SOFT = '.cot-top,.cot-pips.show,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
@@ -1013,8 +1015,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toasts = toastNodes.length && region
       ? { w: Math.min(420, width - 32), h: toastNodes.reduce((sum, node) => sum + (node as HTMLElement).offsetHeight, 0) + 8 * (toastNodes.length - 1) }
       : null;
+    // the caption line (notices-audit-275, ui/captionLine.ts) while it holds a line: its height at its natural width
+    const captionNode = document.querySelector<HTMLElement>('.cot-caption-line');
+    const captions = captionNode && !captionNode.hidden && captionNode.childElementCount
+      ? { w: Math.min(GUIDANCE_CAPTION_W, width - 32), h: captionNode.offsetHeight || 32 } : null;
     return { width, height, top, hard: measure(GUIDANCE_HARD), soft: [...measure(GUIDANCE_SOFT), ...sight],
-      never: measure(GUIDANCE_CONTROLS), card, toasts };
+      never: measure(GUIDANCE_CONTROLS), card, toasts, captions, sight };
   }
   /** The tutorial's card's natural size as last measured while its overlay is open (guidanceInput). */
   let guidanceCardSize: GuidanceSize | null = null;
@@ -1039,6 +1045,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-battle-notices-top', `${Math.round(toasts.y0)}px`);
       setBodyVar('--hud-battle-notices-width', `${Math.floor(toasts.x1 - toasts.x0)}px`);
     } else if (plan?.toastsWait) flags.push('toasts-wait');
+    const captions = plan?.captions ?? null;
+    if (captions) {
+      flags.push('captions');
+      setBodyVar('--hud-caption-left', `${Math.round(captions.x0)}px`);
+      setBodyVar('--hud-caption-top', `${Math.round(captions.y0)}px`);
+      setBodyVar('--hud-caption-width', `${Math.floor(captions.x1 - captions.x0)}px`);
+    } else if (plan?.captionsWait) flags.push('captions-wait');
     const value = flags.join(' ');
     if ((document.body.dataset.hudGuidance ?? '') !== value) {
       if (value) document.body.dataset.hudGuidance = value;
@@ -1047,7 +1060,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (the plan's boxes, for the browser receipt: tools/hud-guidance.browser.mjs reads them beside the rendered ones)
     const box = (b: { x0: number; y0: number; x1: number; y1: number; tier?: number; fit?: string } | null) =>
       b ? [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1), b.tier ?? -1, b.fit ?? 'full'] : null;
-    const record = JSON.stringify({ card: box(card), toasts: box(toasts), wait: !!plan?.toastsWait, yields });
+    const record = JSON.stringify({ card: box(card), toasts: box(toasts), wait: !!plan?.toastsWait, captions: box(captions), yields });
     if (document.body.dataset.hudGuidancePlan !== record) document.body.dataset.hudGuidancePlan = record;
   }
   function setBodyVar(name: string, value: string) {

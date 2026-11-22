@@ -55,7 +55,7 @@ const holdsWords = (card, place, label) => {
     `${label}: the card's box (${Math.round(place.y1 - place.y0)} px) is shorter than its words at its width (${wordsAt(card, place)} px), fit ${place.fit}`);
 };
 let laid = 0;
-const uncleared = [], waits = [], offCentre = [], yields = [], scrolls = [], compacts = [];
+const uncleared = [], waits = [], offCentre = [], yields = [], scrolls = [], compacts = [], captionWaits = [];
 for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
   const size = key.split(':')[0];
   const [width, height] = size.replace('t', '').split('x').map(Number);
@@ -86,9 +86,11 @@ for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
     const at = (top, sz) => ({ x0: width / 2 - sz.w / 2, y0: top, x1: width / 2 + sz.w / 2, y1: top + sz.h });
     return [at(plan.noticeTop, size(plan.noticeCompact, 'n')), at(plan.alertTop, size(plan.alertCompact, 'a'))];
   };
-  for (const [state, withCard, withToasts] of [['card', true, false], ['toasts', false, true], ['both', true, true]]) {
+  for (const [state, withCard, withToasts, withCaptions] of [['card', true, false], ['toasts', false, true], ['both', true, true],
+    ['captions', false, true, true], ['all', true, true, true]]) {
     const base = { width, height, top: scoreBottom + 6, hard, soft: [...soft, sight], never: controls,
-      card: withCard ? card : null, toasts: withToasts ? toasts : null };
+      card: withCard ? card : null, toasts: withToasts ? toasts : null,
+      captions: withCaptions ? { w: Math.min(560, width - 32), h: 32 } : null, sight: [sight] };
     // the order battleHudLayout keeps: a touch layout's card first and the centre notices round it; a mouse layout's
     // centre notices first and the card round them
     let notices, plan, cardYields = false;
@@ -103,8 +105,14 @@ for (const [key, entries] of Object.entries(FURNITURE.sizes)) {
       plan = planGuidance({ ...base, never: [...controls, ...notices] });
     }
     assert.deepEqual(planGuidance({ ...base, never: [...controls, ...notices] }, plan.card), plan, `${key} ${state}: deterministic`);
-    const places = [plan.card, plan.toasts].filter(Boolean);
+    const places = [plan.card, plan.toasts, plan.captions].filter(Boolean);
     laid += places.length;
+    // (notices-audit-275) the caption line: below the window's middle, never on the sight, never on an instrument
+    if (plan.captions) {
+      assert.ok(plan.captions.y0 >= Math.max(scoreBottom + 6, height / 2) - 0.5, `${key} ${state}: the caption line below the middle`);
+      assert.ok(!guidanceOverlaps(plan.captions, sight), `${key} ${state}: the caption line on the sight`);
+      for (const box of hard) assert.ok(!guidanceOverlaps(plan.captions, box), `${key} ${state}: the caption line on an instrument`);
+    } else if (withCaptions) captionWaits.push(`${key} ${state}`);
     for (const place of places) {
       if (!place.offCentre) assert.ok(Math.abs((place.x0 + place.x1) / 2 - width / 2) < 0.5, `${key} ${state}: on the centre line`);
       else offCentre.push(`${key} ${state}`);
@@ -369,4 +377,6 @@ for (const named of NAMED) assert.ok(FURNITURE.sizes[named], `the fixture holds 
   const overlay = read('src/ui/tutorial/tutorialOverlay.ts');
   assert.equal((overlay.match(/askLayout\(\);/g) ?? []).length, 3, 'the card asks the layout to re-plan when it shows, hides and goes');
 }
+// (the caption line waits where no band below the middle clears the sight, the instruments and the notices: count them)
+console.log(`guidancePlan.selftest: the caption line placed below the sight or waiting (${captionWaits.length} waits: ${captionWaits.join(', ')})`);
 console.log(`guidancePlan.selftest: PASS (${Object.keys(FURNITURE.sizes).length} recorded sizes, ${laid} places: no surface on another or on a shell or kit button; the ${NAMED.length} named sizes clear every control${uncleared.length ? `; ${uncleared.length} on an instrument elsewhere: ${uncleared.slice(0, 6).join(', ')}` : ''}${waits.length ? `; toasts wait behind the card at ${waits.length}: ${waits.slice(0, 6).join(', ')}` : ''}${offCentre.length ? `; off the centre line at ${offCentre.length}: ${offCentre.slice(0, 6).join(', ')}` : ''}${yields.length ? `; the card gives way to a centre notice at ${yields.length}: ${yields.join(', ')}` : ''}; the card's words whole or a type step smaller wherever a place holds them${compacts.length ? `, a type step smaller at ${compacts.length}` : ''}${scrolls.length ? `, tight (the card fits its words itself) at ${scrolls.length}: ${scrolls.slice(0, 6).join(', ')}` : ''})`);

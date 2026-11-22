@@ -155,6 +155,8 @@ export interface InputSettings {
   armorAimOverlay: boolean;
   /** The first-use hints (ui/firstUseHints.ts, mobile-hud-274): on by default; off, none shows. */
   showHints: boolean;
+  /** The crew radio's captions (ui/captionLine.ts, notices-audit-275): off by default. */
+  crewCaptions: boolean;
   volMaster: number;
   volEngine: number;
   volCombat: number;
@@ -375,6 +377,7 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Interface row still turn them off, which then sticks.
   armorAimOverlay: true,
   showHints: true,
+  crewCaptions: false,
   // Sound mix (settings panel SOUND tab). The sound engine
   // (src/audio/audioEngine.ts) reads these at graph build and live-follows
   // the 'ui:volumes' bus event the panel emits on every change.
@@ -725,6 +728,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.showHints === 'boolean') settings.showHints = storedSettings.showHints;
+    if (typeof storedSettings.crewCaptions === 'boolean') settings.crewCaptions = storedSettings.crewCaptions;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     settings.crewVoice = normalizeCrewVoiceSetting(storedSettings.crewVoice,
       storedSettings.crewVoice === 'interface' ? getLocale() : null);
@@ -1466,6 +1470,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'showHints') settings.showHints = !!value;
+      else if (key === 'crewCaptions') settings.crewCaptions = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'audioConcussion') settings.audioConcussion = !!value;
       else if (key === 'crewVoice') {

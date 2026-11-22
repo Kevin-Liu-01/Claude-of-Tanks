@@ -191,6 +191,18 @@ body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--h
    card, the centre notices and every control, or their wait while no such box exists (a phone under a card) */
 body[data-cot-battle-layout][data-hud-guidance~=toasts] .cot-battle-notices[data-placement=top]{left:var(--hud-battle-notices-left);top:var(--hud-battle-notices-top);width:var(--hud-battle-notices-width);max-width:none;transform:none}
 body[data-cot-battle-layout][data-hud-guidance~=toasts-wait] .cot-battle-notices:not(:has(.cot-aim-notice)){visibility:hidden}
+/* (notices-audit-275) the crew radio's caption line (captionLine.ts): a subtitle on the HUD's plate, the speaker's role in
+   the accent before the words, at the guidance plan's place (guidancePlan.ts captions: below the sight, off the centre
+   notices and every control); unseen until placed, and while it waits or the killcam runs */
+.cot-caption-line{position:fixed;z-index:var(--hud-layer-controls);left:50%;top:60%;box-sizing:border-box;width:max-content;
+  max-width:min(560px,calc(100vw - 32px));display:flex;justify-content:center;align-items:baseline;gap:var(--s2);
+  padding:var(--s1) var(--s3);border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);
+  font:500 var(--battle-fs-13)/1.35 var(--font-body);text-align:center;pointer-events:none;transform:translateX(-50%);
+  overflow-wrap:anywhere;line-break:strict}
+.cot-caption-line[hidden]{display:none}
+.cot-caption-line__who{flex:none;color:var(--text-accent);font-weight:700}
+body:not([data-hud-guidance~=captions]) .cot-caption-line,body.cot-kc-live .cot-caption-line{visibility:hidden}
+body[data-hud-guidance~=captions] .cot-caption-line{left:var(--hud-caption-left);top:var(--hud-caption-top);width:var(--hud-caption-width);transform:none}
 /* (its notices on the battle's one notice plate, the centre's angled one, their glyph and words centred on their action:
    in the kit's rounded plate a parked gun-limit chip read as another kit beside DETECTED, and the reconnect notice's line
    stood 9 px over its Leave button's middle, gauntlet r18) */

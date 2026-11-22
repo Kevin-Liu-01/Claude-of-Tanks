@@ -78,6 +78,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   volVoice: { id: 'radio', tone: 'cyan' },
   alarmHeartbeat: { id: 'heartbeat', tone: 'red' },
   crewVoice: { id: 'radio', tone: 'amber' },
+  crewCaptions: { id: 'radio', tone: 'cyan' }, // notices-audit-275: Sound › Crew radio › Captions
   audioConcussion: { id: 'soundOff', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
   battleTimes: { id: 'timeDay', tone: 'amber' },
