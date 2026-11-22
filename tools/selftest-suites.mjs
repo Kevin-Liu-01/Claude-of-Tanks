@@ -1688,6 +1688,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treePoolCapacity.selftest.mjs',
     // trees perf (2026-10-07): the near pools (the adopted ones over the line too) culled to the main camera's view and their shadows' reach
     'src/world/treeViewCull.selftest.mjs',
+    // world-pools-272 (2026-11-12): instanced pools that share a material draw as one batch (the destructible props)
+    'src/world/instancedDrawBatch.selftest.mjs',
     // the trees lane (2026-10-08, wave 260): a bush grown as its slot's leafy birch draws its leaves as the slot's trees do
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',

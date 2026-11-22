@@ -305,6 +305,7 @@ import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.t
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
 import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
+import { batchInstancedPools } from './instancedDrawBatch.ts';
 import { climateOf, surfaceOf } from './maps/buildingStyleTable.ts';
 import { AppearanceLedger } from './maps/regional/appearance.ts';
 
@@ -369,6 +370,8 @@ type PropsStructureBuilder = (
 
 interface EngineContext {
   anisotropy?: number;
+  /** world-pools-272: the renderer, read for WEBGL_multi_draw (the destructible pools' batches); absent in the receipts. */
+  renderer?: { extensions?: { has(name: string): boolean } } | null;
   setupShadowMaterial(material: THREE.Material, hook?: MaterialShaderHook | null): void;
   /** (perf-248) A finished part of the props, offered for its programs while the rest builds (map.ts, Studio only). */
   submitBuiltPrograms?(root: THREE.Object3D): void;
@@ -12579,6 +12582,16 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // world-pools-272: the intact pools that share a material draw as one batch each in the color passes (instancedDrawBatch.ts;
+  // the census: 36-51 destructible draws a frame in 11-12 materials). Only where the renderer draws a multi-draw in one call.
+  if (engineCtx.renderer?.extensions?.has('WEBGL_multi_draw') && !/[?&]propBatch=0(&|$)/.test(globalThis.location?.search ?? '')) {
+    const intact: THREE.InstancedMesh[] = [];
+    for (const pool of dPools.values()) if (pool.imI) intact.push(pool.imI);
+    const batching = batchInstancedPools(group, intact, 'destructible-batch');
+    group.userData.destructibleBatching = { batches: batching.batches.length, drawsBefore: batching.drawsBefore, drawsAfter: batching.drawsAfter,
+      skipped: batching.skipped.map((s) => `${s.name}: ${s.why}`) };
+    for (const batch of batching.batches) offerPrograms(batch.mesh);
+  }
   // the map-vehicles lane (2026-10-05): the ground darkened under every parked vehicle (desktop tiers)
   if (!mobileProps) {
     const contact = buildVehicleContactShadows(destructibles, heightField, aniso, (kind) => {
