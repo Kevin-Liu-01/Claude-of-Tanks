@@ -951,9 +951,11 @@ shadow-only layer, so the cascades, the r8 caster proxies and the static shadow 
 geometry is swapped leaves its batch. The material is the pools' own; its batched program reads the instance through
 `batchShaderSource` (an instancing hook's `instanceMatrix` / `instanceColor` read the batching matrix and colour,
 fetched at the top of `main`, because the clutter tint reads the instance before three's `batching_vertex`; an inlined
-`color_vertex`, the vehicle livery's, keeps its masked instancing branch and drops the second multiply). The members draw
-in the order three's painter sort gave the pools (their depth, then their id), so a depth tie between two kinds resolves
-as before. Pools with an instanced attribute of their own (the night fixtures' buildings), transparent or hidden ones
+`color_vertex`, the vehicle livery's, keeps its masked instancing branch and drops the second multiply). For 275 the
+batch makes no per-render pass over its instances (no sort, no cull per instance; three walks them only on a frame whose
+visibility changed): the 273 build's painter-order sort moved no pixel (the one Autumn pixel below was there with and
+without it), and its cull per instance did more than the pools ever did (a map-wide sphere each, or none), so what is
+left per render is the mirror's version checks, one per member. Pools with an instanced attribute of their own (the night fixtures' buildings), transparent or hidden ones
 (the set pieces), and a kind alone in its material keep their own draw. `?propBatch=0` builds without batches;
 `window.__DRAW_BATCH_DEBUG.set(false)` switches them off in a live page.
 

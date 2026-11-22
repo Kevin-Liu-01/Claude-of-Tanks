@@ -57,7 +57,8 @@ const mesh = batch.mesh;
 assert.ok(mesh.isBatchedMesh && mesh.parent === parent && mesh.material === wood);
 assert.equal(mesh.castShadow, false, 'the members cast; the batch draws the color passes only');
 assert.equal(mesh.receiveShadow, true);
-assert.equal(mesh.sortObjects, true); assert.equal(typeof mesh.customSort, "function"); assert.equal(mesh.perObjectFrustumCulled, true);
+// (275) no per-render walk over the instances: no sort, no cull per instance (three walks them on a visibility change only)
+assert.equal(mesh.sortObjects, false); assert.equal(mesh.customSort, null); assert.equal(mesh.perObjectFrustumCulled, false);
 for (const m of batch.members) {
   assert.equal(m.layers.mask, 1 << SHADOW_ONLY_LAYER, `${m.name}: on the shadow-only layer`);
   assert.equal(m.castShadow, true);
@@ -104,25 +105,6 @@ fence.setMatrixAt(0, new THREE.Matrix4().makeTranslation(9, 9, 9)); fence.instan
 const camera = new THREE.PerspectiveCamera(); camera.updateMatrixWorld();
 mesh.onBeforeRender({}, null, camera, mesh.geometry, mesh.material, null);
 assertMirrored('the draw syncs first');
-
-// the draw order: the members in the order three's painter sort gave the pools (their depth, then their id), each
-// member's instances in slot order. The fence pool sits nearest a camera looking down -z from far +z, then the drum, the crate.
-{
-  const list = [];
-  for (let i = 0; i < 13; i++) list.push({ start: i * 6, count: 6, z: 0, index: i });
-  const eye = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
-  eye.position.set(0, 0, 400); eye.lookAt(0, 0, 0); eye.updateMatrixWorld(); eye.updateProjectionMatrix();
-  // (the fence's instances as built: the crush and the move above shifted its sphere)
-  for (const i of [0, 2]) fence.setMatrixAt(i, new THREE.Matrix4().makeTranslation(i * 3, 0, fence.name.length));
-  fence.instanceMatrix.needsUpdate = true;
-  for (const m of batch.members) { m.boundingSphere = null; m.updateMatrixWorld(); }
-  crate.position.z = -50; crate.updateMatrix(); crate.updateMatrixWorld();
-  mesh.customSort.call(mesh, list, eye);
-  // crate at z = -50 is farthest, drum (name length 17) beyond fence (23): fence, drum, crate
-  assert.deepEqual(list.map(x => x.index), [4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 1, 2, 3], 'nearest member first, each in slot order');
-  crate.position.z = 0; crate.updateMatrix(); crate.updateMatrixWorld(); crate.boundingSphere = null;
-  assert.equal(mesh.sortObjects, true);
-}
 
 // the same-page switch
 assert.equal(setInstancedDrawBatching(false), 1);

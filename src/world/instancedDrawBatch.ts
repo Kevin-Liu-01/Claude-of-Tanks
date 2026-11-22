@@ -5,7 +5,7 @@
  * draws on every map: one InstancedMesh per kind (a crate, a drum, a fence plank...), while the kinds share 11 or 12
  * materials. three draws an InstancedMesh's one geometry per call, so pools of different geometry could only merge as one
  * multi-draw: a BatchedMesh (WEBGL_multi_draw: every member's instances in one call, the per-instance matrix and colour
- * from its textures, culled per instance against the camera).
+ * from its textures; no per-render pass over the instances).
  *
  * The pools stay what every other owner reads and writes (crush, topple, toss, hide, restore, tint: setMatrixAt and
  * setColorAt on the pool, as before). Each batch mirrors its members' instance streams when their versions move (at most
@@ -57,8 +57,6 @@ interface Member {
 }
 
 const _matrix = new THREE.Matrix4();
-const _projScreen = new THREE.Matrix4();
-const _center = new THREE.Vector3();
 /** Every live batch, for the same-page A/B switch (setInstancedDrawBatching). */
 interface Switchable { readonly name: string; readonly members: readonly string[]; setEnabled(on: boolean): void }
 /** Held weakly: a batch lives as long as its mesh (which holds its switch), a discarded world's drop out as met. */
@@ -186,10 +184,12 @@ function buildBatch(members: THREE.InstancedMesh[], parent: THREE.Object3D, name
   batchMaterialProgram(material);
   const mesh = new THREE.BatchedMesh(instances, vertices, Math.max(indices, 1), material);
   mesh.name = name;
-  // the members draw in the order three's painter sort gave the pools (memberOrder, below): where two members' surfaces
-  // tie in depth, the same one wins as before
-  mesh.sortObjects = true;
-  mesh.perObjectFrustumCulled = true;
+  // (275) no per-render pass over the instances: three walks them only on a frame whose visibility changed. A sort in the
+  // painter's member order moved no pixel in the 273 proof (the one Autumn pixel is the batched program's vertex
+  // arithmetic, there with and without it), and a cull per instance did more than the pools did (a map-wide sphere each,
+  // or none): the members draw in their build order, every instance, as the pools did
+  mesh.sortObjects = false;
+  mesh.perObjectFrustumCulled = false;
   mesh.frustumCulled = false; // (the members' instances move: the batch's own sphere would go stale)
   mesh.castShadow = false; // the members cast, on the shadow-only layer
   mesh.receiveShadow = first.receiveShadow;
@@ -211,36 +211,6 @@ function buildBatch(members: THREE.InstancedMesh[], parent: THREE.Object3D, name
     start += capacity;
   }
   const colored = members.some((m) => m.instanceColor);
-  // the order: three sorts opaque draws of one material by their depth (the pool's bounding-sphere centre in clip space)
-  // and then by object id; the batch draws its members' instances in that member order, each member's in slot order
-  // (a counting sort over the members: the instances arrive in member order)
-  const memberOf = new Int32Array(start);
-  records.forEach((r, k) => memberOf.fill(k, r.start, r.start + r.capacity));
-  const rank = new Int32Array(records.length), byDepth = records.map((_, k) => k), depth = new Float64Array(records.length);
-  const counts = new Int32Array(records.length + 1);
-  type Item = { start: number; count: number; z: number };
-  /** (three's render-list item carries its instance id as `index`; its typings leave it out) */
-  const instanceOf = (item: Item): number => (item as Item & { index: number }).index;
-  let scratch: Item[] = [];
-  const byDepthThenId = (a: number, b: number): number => depth[a] - depth[b] || records[a].mesh.id - records[b].mesh.id;
-  // hot-path: every render of the batch (each couch pane's too)
-  const memberOrder = function (list: Item[], camera: THREE.Camera): void {
-    _projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    for (let k = 0; k < records.length; k++) {
-      const m = records[k].mesh;
-      if (m.boundingSphere === null) m.computeBoundingSphere();
-      depth[k] = _center.copy(m.boundingSphere!.center).applyMatrix4(m.matrixWorld).applyMatrix4(_projScreen).z;
-    }
-    byDepth.sort(byDepthThenId);
-    for (let i = 0; i < byDepth.length; i++) rank[byDepth[i]] = i;
-    counts.fill(0);
-    for (const item of list) counts[rank[memberOf[instanceOf(item)]] + 1]++;
-    for (let i = 1; i < counts.length; i++) counts[i] += counts[i - 1];
-    if (scratch.length < list.length) scratch = new Array(list.length); // alloc-ok: grows once to the batch's instance count
-    for (const item of list) scratch[counts[rank[memberOf[instanceOf(item)]]]++] = item;
-    for (let i = 0; i < list.length; i++) list[i] = scratch[i];
-  };
-  mesh.customSort = memberOrder;
   const evict = (r: Member): void => {
     r.evicted = true;
     r.mesh.layers.mask = r.layersMask;
