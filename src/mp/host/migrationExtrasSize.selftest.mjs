@@ -33,7 +33,8 @@ sim.onMatchReady();
 for (let n = 0; n < 90; n++) sim.step({ dt: 1 / 60, inputs });
 
 // ---- at rest: the entry is what a fresh host does not already have
-const BASE_KEYS = new Set(['entityId', 'kills', 'damage', 'modules', 'crew', 'burning', 'consumables']);
+// (276: and a live hull's hull exact, its pose and integrator to the bit, which no fresh host holds: MigrationEntityExtras.hull)
+const BASE_KEYS = new Set(['entityId', 'kills', 'damage', 'modules', 'crew', 'burning', 'consumables', 'hull']);
 const atRest = captureEntityExtras(old);
 const extra = [];
 for (const entry of atRest) {
@@ -45,7 +46,10 @@ if (extra.length) {
   console.error(`migrationExtrasSize: ${extra.length} fields at their fresh value ride the keyframe (${bytes} bytes for ${atRest.length} entities at rest):\n  ${extra.join('\n  ')}`);
   assert.fail('an entity at rest carries only what a fresh host does not already have');
 }
-assert.ok(bytes / atRest.length < 130, `an entity at rest costs ${Math.round(bytes / atRest.length)} bytes of extras`);
+// (the hull exact of a hull at rest: 224 characters, its pose and the few integrator numbers a hull standing still holds)
+const hullBytes = atRest.reduce((sum, entry) => sum + (entry.hull ? entry.hull.length + 9 : 0), 0);
+assert.ok(atRest.every((entry) => typeof entry.hull === 'string') && (bytes - hullBytes) / atRest.length < 130 && hullBytes / atRest.length < 240,
+  `an entity at rest costs ${Math.round((bytes - hullBytes) / atRest.length)} bytes of extras and ${Math.round(hullBytes / atRest.length)} of hull`);
 
 // ---- in the middle of a fight beside entities at rest: the restore reads the same
 const busy = sim.entityById.get('busy');
@@ -86,19 +90,20 @@ if (wrong.length) {
 }
 // ---- 275: a keyframe always fits the chunk cap. The brains, integrators and spotting a migration now carries brought a full
 // field's keyframe (42 hulls, CTF, a minute in) to 47 of the 64 chunks; past the cap a blob is no keyframe at all
-// (chunkMigrationBlob throws), so the encoder sheds those parts, the brains first, rather than the keyframe
+// (chunkMigrationBlob throws), so the encoder sheds those parts, the brains first, rather than the keyframe (276: the hulls
+// exact in the integrators' place)
 const capS = MIGRATION_CHUNK_BYTES * MIGRATION_MAX_CHUNKS - 12 - 16;
 const plain = { tick, battleTimeMs, timeS: sim.timeS, phase: 'playing', modeCheckpoint: sim.captureModeCheckpoint(), entities: captured, frame };
 const kept = encodeMigrationKeyframeWithin(plain);
 assert.ok(kept.shed.length === 0 && kept.bytes.byteLength === encodeMigrationKeyframe(plain).byteLength, 'a keyframe within the cap sheds nothing');
-// every entity's brain and integrator padded far past the cap (a stand-in for a field of brains no room fields today)
+// every entity's brain and hull padded far past the cap (a stand-in for a field of brains no room fields today)
 const pad = 'A'.repeat(Math.ceil(capS / captured.length) + 64);
-const swollen = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, integrator: 'AA' })) };
+const swollen = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, hull: 'AA' })) };
 const fitted = encodeMigrationKeyframeWithin(swollen);
-assert.ok(fitted.shed.join() === 'brains' && fitted.bytes.byteLength <= capS && decodeMigrationKeyframe(fitted.bytes).entities.every((e) => !e.brain && e.integrator === 'AA'),
+assert.ok(fitted.shed.join() === 'brains' && fitted.bytes.byteLength <= capS && decodeMigrationKeyframe(fitted.bytes).entities.every((e) => !e.brain && e.hull === 'AA'),
   `a keyframe past the cap sheds its brains first and fits (${fitted.shed.join(', ')}; ${fitted.bytes.byteLength} bytes of ${capS})`);
-const both = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, integrator: pad })) };
+const both = { ...plain, entities: captured.map((entry) => ({ ...entry, brain: { v: 1, n: pad }, hull: pad })) };
 const fittedBoth = encodeMigrationKeyframeWithin(both);
-assert.ok(fittedBoth.shed.join() === 'brains,integrators' && fittedBoth.bytes.byteLength <= capS, `then its integrators (${fittedBoth.shed.join(', ')})`);
+assert.ok(fittedBoth.shed.join() === 'brains,hulls' && fittedBoth.bytes.byteLength <= capS, `then its hulls (${fittedBoth.shed.join(', ')})`);
 old.stop(); fresh.stop();
-console.log(`migrationExtrasSize: an entity at rest carries ${Math.round(bytes / atRest.length)} bytes of extras (its tallies, modules, crew, fire flag and charges), the restore of a keyframe with entities at rest and in a fight is unchanged, and a keyframe past the chunk cap sheds the brains, then the integrators, and fits`);
+console.log(`migrationExtrasSize: an entity at rest carries ${Math.round(bytes / atRest.length)} bytes of extras (its tallies, modules, crew, fire flag and charges, and its hull exact), the restore of a keyframe with entities at rest and in a fight is unchanged, and a keyframe past the chunk cap sheds the brains, then the hulls, and fits`);

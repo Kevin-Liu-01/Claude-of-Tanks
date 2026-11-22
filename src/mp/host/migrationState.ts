@@ -1,6 +1,6 @@
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
-import { mergeDestructionLogs } from '../wire/destructionLog.ts';
-import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
+import { mergeDestructionLogs, quantizeDestructionEntry } from '../wire/destructionLog.ts';
+import type { AuthoritativePlayerInput, NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 import type { ModeCheckpoint } from '../../sim/matchModes.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
@@ -17,11 +17,12 @@ import { eraPlateIndices } from '../wire/era.ts';
 import { ENTITY_FLAGS, INPUT_MARGIN_UNKNOWN, MAX_EVENT_JSON_BYTES, NO_TICK, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
-import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent } from '../wire/quantize.ts';
+import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, quantizeAngle, quantizePosition, quantizeReloadS, quantizeVelocity } from '../wire/quantize.ts';
+import { HULL_BODY_ROW_FLAGS, hullBodyRowFlags } from '../match/hullBodyRow.ts';
 import { base64UrlToBytes, bytesToBase64Url } from '../match/base64url.ts';
 import { applyAuthorityRow } from '../match/authorityRow.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
-import type { HostBootConfig, HostResumeState, MigrationBrain, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import type { HostBootConfig, HostResumeReplay, HostResumeState, MigrationBrain, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
 import type { BotBrain } from '../../game/ai.ts';
 import type { RoomMatchStatus } from '../room/protocol.ts';
 import { FIRE_BASE_TICKS, selectShell, strainModule, tickModuleRepairs, tickReload } from '../../sim/damage.ts';
@@ -29,8 +30,11 @@ import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
-import { airSpinRateOf, encodeAirSpin, restoreAirSpin } from '../../sim/movementPredictionState.ts';
 import { spoolFromRest } from '../../sim/movement.ts';
+import { encodeAimIntent } from '../../sim/aimIntent.ts';
+import type { TankState } from '../../sim/movement.ts';
+import { airSpinRateOf, applyMovementPredictionState, captureMovementPredictionState, encodeAirSpin, MOVEMENT_PREDICTION_SCALARS,
+  MOVEMENT_PREDICTION_STATE_VALUES, restoreAirSpin } from '../../sim/movementPredictionState.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
@@ -120,8 +124,8 @@ export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array
 /**
  * The keyframe's bytes within what MIGRATION_MAX_CHUNKS chunks carry once sealed (275). A blob over it is no keyframe at all
  * (chunkMigrationBlob throws, and the seats keep an older one), and a full field's (42 hulls, CTF, a minute in) came near
- * it with the brains. Past it the keyframe sheds the 275 parts, the brains first, then the integrators, then the
- * spotting, each a part a new host does without as gaps 274's did; `shed` names what went.
+ * it with the brains. Past it the keyframe sheds the 275 and 276 parts, the brains first, then the hulls (276: each live
+ * hull exact), then the spotting, each a part a new host does without as gaps 274's did; `shed` names what went.
  */
 export function encodeMigrationKeyframeWithin(keyframe: MigrationKeyframe): { bytes: Uint8Array; shed: string[] } {
   const limit = MIGRATION_CHUNK_BYTES * MAX_CHUNKS - IV_BYTES - SEAL_TAG_BYTES;
@@ -130,7 +134,7 @@ export function encodeMigrationKeyframeWithin(keyframe: MigrationKeyframe): { by
   let bytes = encodeMigrationKeyframe(current);
   const cuts: [string, (k: MigrationKeyframe) => MigrationKeyframe][] = [
     ['brains', (k) => ({ ...k, entities: k.entities.map(({ brain: _brain, ...rest }) => rest) })],
-    ['integrators', (k) => ({ ...k, entities: k.entities.map(({ integrator: _integrator, ...rest }) => rest) })],
+    ['hulls', (k) => ({ ...k, entities: k.entities.map(({ hull: _hull, ...rest }) => rest) })],
     ['spotting', (k) => (k.modeCheckpoint?.host ? { ...k, modeCheckpoint: { ...k.modeCheckpoint, host: { ...k.modeCheckpoint.host,
       spotting: { stream: null, records: [] } } } } : k)],
   ];
@@ -649,22 +653,24 @@ function restoreCombatExtras(combat: CombatState, consumables: ConsumableState |
   const fromRow = newer && reading.clockS !== null ? rowAuxiliary(row.auxiliaryJson, reading.clockS) : null;
   const aux = fromRow ?? extras.auxiliary;
   const auxAgeS = fromRow ? tailS : totalS;
-  if (combat.auxiliary && aux && typeof aux === 'object') {
-    const state = combat.auxiliary;
-    const after = (leftS: unknown): number => timeS + Math.max(0, finiteOr(leftS, 0) - auxAgeS);
-    if (aux.lights === -1 || aux.lights === 0 || aux.lights === 1) state.lights = aux.lights;
-    if (typeof aux.gunOn === 'boolean') state.gunOn = aux.gunOn;
-    if (Number.isInteger(aux.smokeCharges)) state.smokeCharges = Math.max(0, aux.smokeCharges);
-    state.smokeReadyAt = after(aux.smokeReadyIn);
-    if (Number.isInteger(aux.shots)) state.shots = Math.max(0, aux.shots);
-    state.nextShot = after(aux.nextShotIn);
-    if (Array.isArray(aux.stations) && state.stations) {
-      for (let index = 0; index < state.stations.length && index < aux.stations.length; index++) {
-        const station = state.stations[index]!, entry = aux.stations[index];
-        if (!Array.isArray(entry)) continue;
-        if (Number.isInteger(entry[0])) station.shots = Math.max(0, entry[0]);
-        station.nextShot = after(entry[1]);
-      }
+  if (combat.auxiliary && aux && typeof aux === 'object') writeAuxiliary(combat.auxiliary, aux, timeS, auxAgeS);
+}
+
+/** An auxiliary kit's entry (times left, aged by `ageS`) onto the hull's kit, its times on the clock `timeS` reads. */
+function writeAuxiliary(state: AuxiliaryState, aux: NonNullable<MigrationEntityExtras['auxiliary']>, timeS: number, ageS: number): void {
+  const after = (leftS: unknown): number => timeS + Math.max(0, finiteOr(leftS, 0) - ageS);
+  if (aux.lights === -1 || aux.lights === 0 || aux.lights === 1) state.lights = aux.lights;
+  if (typeof aux.gunOn === 'boolean') state.gunOn = aux.gunOn;
+  if (Number.isInteger(aux.smokeCharges)) state.smokeCharges = Math.max(0, aux.smokeCharges);
+  state.smokeReadyAt = after(aux.smokeReadyIn);
+  if (Number.isInteger(aux.shots)) state.shots = Math.max(0, aux.shots);
+  state.nextShot = after(aux.nextShotIn);
+  if (Array.isArray(aux.stations) && state.stations) {
+    for (let index = 0; index < state.stations.length && index < aux.stations.length; index++) {
+      const station = state.stations[index]!, entry = aux.stations[index];
+      if (!Array.isArray(entry)) continue;
+      if (Number.isInteger(entry[0])) station.shots = Math.max(0, entry[0]);
+      station.nextShot = after(entry[1]);
     }
   }
 }
@@ -775,6 +781,15 @@ export function resumeStateFromRetained(
   }
   // the phase is the newest frame's (the keyframe's own may be older: a countdown that has since ended)
   state.phase = resumePhaseOf(state).phase ?? state.phase;
+  // the window to play again (276; replayWindow): a keyframe that names its battle clock and mode, sealed in play, and a
+  // newer frame still in play that its steps reach (the two battle clocks agree on them, at most MAX_REPLAY_STEPS)
+  if (latest && state.frame.tick > keyframe.tick && typeof keyframe.battleS === 'number' && state.battleS !== undefined && keyframe.modeCheckpoint
+    && resumePhaseOf(keyframe).phase === 'playing' && state.phase === 'playing') {
+    const steps = Math.round((latest.meta.battleTimeMs - keyframe.battleTimeMs) / TICK_MS);
+    if (steps >= 1 && steps <= MAX_REPLAY_STEPS) {
+      state.replay = { frame: keyframe.frame, battleTimeMs: keyframe.battleTimeMs, battleS: keyframe.battleS, steps, viewerEntityId: latest.viewer?.entityId ?? null };
+    }
+  }
   return { state, baseTick, baseAtMs };
 }
 
@@ -896,7 +911,31 @@ export function resumeHoldSeats(
  * one re-destroyed it (a second crunch on every seat), and the persistent-state convergence of every peer stalled
  * until the new revision climbed past the old.
  */
-export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
+export function applyResumeState(actor: MatchActor, state: HostResumeState): ResumeApplied {
+  const replay = state.replay;
+  if (!replay) return restoreFrom(actor, state);
+  // the play starts from the keyframe's clocks (resumeClocksOf): on the frame's it would end a window late
+  if (actor.resumedBattleTimeMs !== Math.round(replay.battleTimeMs) || actor.authority.battleS !== replay.battleS) {
+    throw new TypeError('a resume that replays its window needs an actor built on resumeClocksOf(state)');
+  }
+  // the window played again (276): the hulls and the mode at the keyframe, exact, then every step the old host took to the
+  // seat's newest frame, the seat's rows correcting the play where it parts from them (replayWindow)
+  const atKeyframe = restoreFrom(actor, keyframeStateOf(state, replay));
+  const played = replayWindow(actor, state, replay);
+  return { ...atKeyframe, replayed: played };
+}
+
+/** What a restore did (applyResumeState): rows matched and not, props restored and unknown, and a window's replay. */
+export interface ResumeApplied {
+  restored: number;
+  skipped: number;
+  destroyedRestored: number;
+  destroyedUnknown: number;
+  /** The window replayed (276): its steps, the rows that corrected it, and whether the mode was set to the frame's. */
+  replayed?: WindowReplayed;
+}
+
+function restoreFrom(actor: MatchActor, state: HostResumeState): ResumeApplied {
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
   const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
@@ -986,8 +1025,8 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // between its own ticks (the ground covered, the hp it last saw) would read the move to this row and the hp lost
     // before the keyframe as one tick of its own; resume() restarts them from the hull, as a revive's hand-back does
     entity.aiCtl?.resume?.(actor.authority.battleS);
-    // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the integrator's spool and turn
-    // rate, which the row does not carry (a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
+    // the drive the hull's life had (gaps 274, G3; a revived hull's is the life it left): the hull exact (276; its
+    // integrator, which the row does not carry: a fresh one pulled away from rest, about 0.2 s behind), and a bot's way (its
     // route, cursor, mission and watchdog; game/ai.ts takeDrive), which a fresh brain planned afresh and re-planned
     // later than the old one (a CTF raider went in by another way, 1.9 s apart at the flag). A hull revived since the
     // capture, or down now, lives no more the life they describe: its brain keeps the drive resume() left it, as the old
@@ -997,11 +1036,6 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // its next life from the construction's positions, 55 m off the old host's raider within 25 s)
     if (extras) {
       const lifeGoesOn = !revived.has(entity.id) && !combat.destroyed;
-      const motion = extras.motion;
-      if (lifeGoesOn && Array.isArray(motion) && Number.isFinite(motion[0]) && Number.isFinite(motion[1])) {
-        tank._spool = Math.max(0, Math.min(1, motion[0]));
-        tank.yawRate = motion[1];
-      }
       // Turbo's cooldown runs on through the gap to the resume frame; a flip or roll turns on from the row's attitude
       // (turbo-spin-275: a migration mid-spin finished the turn the old host owed; without it the hull stopped turning)
       if (lifeGoesOn && Number.isFinite(extras.turboReadyIn)) {
@@ -1016,11 +1050,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
         entity.airSpinReadyS = actor.authority.timeS + Math.max(0, extras.airSpinReadyIn! - gapS - tailS);
       }
       if (lifeGoesOn && extras.flipUsed === true) tank._flipUsed = true;
-      // the rest of the integrator no row carries (275): the gun's bloom first among them. From a row newer than the
-      // keyframe only the bloom and the turret's slew (round 1 review): the last speed, the rollover's clock and the
-      // attitude's parts belong with the pose, and the newer row's reseat already stands them there
-      const integrator = lifeGoesOn && extras.integrator ? unpackIntegrator(extras.integrator) : null;
-      if (integrator) restoreIntegrator(tank, gapS > 0 ? { bloom: integrator.bloom, slew: integrator.slew } : integrator);
+      // the hull exact (276; restoreHull): from its own row rounded, the old host's hull to the bit (its checkpoint's spin,
+      // spring and spent dodge over the ones above); from a newer row, its drive (the turn rate, the slew, the bloom, the
+      // spool) and held input
+      const hull = lifeGoesOn && extras.hull ? unpackHull(extras.hull) : null;
+      if (hull) restoreHull(entity as unknown as HullHolder, row, hull);
       // a hull the old host stood up after the keyframe and drives (its newer row moving): its engine spooled up from the
       // revive it was told, as a fresh life's does under an open throttle (275; a spool at rest pulled away 0.3 s behind)
       const roseAt = toldRevives.get(entity.id);
@@ -1031,13 +1065,14 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       else if (extras.streams) entity.aiCtl?.takeStreams?.(extras.streams);
       // the brain itself (275): its traffic with its allies, its detours, windows, timers' phases, aim and search, as the
       // old host's had them (a new brain began at its construction's, and Frontline attackers parted 112 m in 14 s). A
-      // hull that rose since the capture, or lies down, takes it too and then the revive's hand-back, as the old host's
-      // own revive handed the brain its new life (resume() keeps what outlives a life: the windows on match time, the
-      // counts, the aim's draw)
+      // hull that rose since the capture takes it too and then the revive's hand-back, as the old host's own revive handed
+      // the brain its new life (resume() keeps what outlives a life: the windows on match time, the counts, the aim's
+      // draw). One that lies down takes it alone (276): its hand-back is its revive's, on the new host as on the old (the
+      // restore's own hand-back gave a down raider a second one, and it drove its next life apart: the CTF probe's 6 m)
       if (extras.brain) {
         const brain = unpackBrain(extras.brain);
         if (brain) entity.aiCtl?.takeBrain?.(brain, lifeGoesOn ? gapS : 0, (id) => actor.authority.entityById.get(id));
-        if (!lifeGoesOn) entity.aiCtl?.resume?.(actor.authority.battleS);
+        if (revived.has(entity.id)) entity.aiCtl?.resume?.(actor.authority.battleS);
       }
     }
     restored++;
@@ -1054,6 +1089,196 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   // first tick (the restores above announce nothing)
   actor.authority.afterEventBroadcast();
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
+}
+
+// ---- the window played again (276) ------------------------------------------------------------------------------------
+/**
+ * The most steps a resume plays the window for (276): 10 s of the old host's play, at most 600 of its steps in the boot
+ * (the CTF probe's 4v4 stepped 30 in 15-25 ms in Node). A longer window (a seat that kept no keyframe for longer) takes the
+ * 275 reading of it instead.
+ */
+export const MAX_REPLAY_STEPS = 600;
+
+/** A replay's state at its keyframe (HostResumeState.replay): the keyframe's own rows, clocks and tick, nothing of the window. */
+function keyframeStateOf(state: HostResumeState, replay: HostResumeReplay): HostResumeState {
+  const { replay: _replay, revivedEntityIds: _revived, respawnTicks: _told, ...rest } = state;
+  return { ...rest, frame: replay.frame, tick: state.keyframeTick ?? state.tick, battleTimeMs: replay.battleTimeMs, battleS: replay.battleS };
+}
+
+/**
+ * The clocks a resumed actor is built on (MatchActorResume.battleTimeMs, battleS): a replay's keyframe's, which its steps
+ * take on to the seat's frame (276); else the state's own.
+ */
+export function resumeClocksOf(state: HostResumeState): { battleTimeMs: number; battleS?: number } {
+  if (state.replay) return { battleTimeMs: state.replay.battleTimeMs, battleS: state.replay.battleS };
+  return { battleTimeMs: state.battleTimeMs, ...(state.battleS !== undefined ? { battleS: state.battleS } : {}) };
+}
+
+/** What a replay did (ResumeApplied.replayed): its steps, the seat's rows that corrected it, and the mode set to the frame's. */
+export interface WindowReplayed {
+  steps: number;
+  corrected: number;
+  modeFromFrame: boolean;
+}
+
+/**
+ * The window between the keyframe and the seat's newest frame, played again (276). A migrated host took the window up from
+ * what the seat could read of it: the hulls where their rows had them, the mode where its frame showed it, and the rest
+ * (every bot's brain ticks and stream draws, a hidden hull's moves, the spotting, the shells) the keyframe's, a window old.
+ * Bots fighting parted by tens of metres within 10 s of a 30-tick window (the CTF probe: 26 m; the round 1 review's 4v4:
+ * 26-43 m), against none from the keyframe alone. Now the restore stands the match at the keyframe, exact, and steps it
+ * the old host's steps to the frame (as many as the two battle clocks hold: a dropped tick took none) with no human's
+ * input, which the seat never had: a human brakes, as on a host that heard nothing from its seat. After each step, each
+ * row the seat holds of that step (a far tier's held row is older than the frame) corrects the play where the play parts
+ * from it (rowOverReplay): a human's pose and fight, a bot a human's shot turned. The mode's death watch takes a life the
+ * rows changed on the next step, as it took a row's on the old host's resume (matchModes.ts observeEntityDeath). Last, the
+ * mode as the seat's frame shows it where the play shows it otherwise (a flag a human carried, a score), the props and
+ * destruction the seat was told of that the play did not make, and the smoke it did not raise. A bot whose window held
+ * nothing a seat could not know plays on as the old host's, to the bit.
+ */
+function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostResumeReplay): WindowReplayed {
+  const sim = actor.authority;
+  const from = state.keyframeTick ?? state.tick;
+  // each newer row at the step its tick names (a tick the old host dropped took no step: the last step holds the rest)
+  const rowsAt = new Map<number, EntityRow[]>();
+  for (const row of state.frame.entities) {
+    if (row.tick <= from) continue;
+    const step = Math.min(replay.steps, row.tick - from);
+    const list = rowsAt.get(step);
+    if (list) list.push(row); else rowsAt.set(step, [row]);
+  }
+  if (sim.phase === 'loading') sim.onMatchReady();
+  // a seat's hull drives on as its seat last drove it (its held input, which the hull exact carries), its trigger held:
+  // the play never heard the seat (a hull braked through it pulled away 3.5 m behind its row once the seat drove again)
+  const held = new Map<string, AuthoritativePlayerInput>();
+  for (const entity of sim.entities) {
+    if (entity.bot || entity.combat.destroyed || entity.modeActive === false) continue;
+    const input = entity.input;
+    held.set(entity.id, { throttle: input.throttle, steer: input.steer, brake: input.brake, fire: false, fireIntentSeq: null, aimLocked: input.aimLocked,
+      shellSlot: input.shellSlot, actionBits: 0, ...(typeof input.auxiliaryBits === 'number' ? { auxiliaryBits: input.auxiliaryBits } : {}),
+      ...encodeAimIntent(entity.state.pos, input.aimPoint) });
+  }
+  const dt = TICK_MS / 1000;
+  let corrected = 0;
+  const newest = new Map<number, number>();
+  for (let step = 1; step <= replay.steps; step++) {
+    sim.step({ dt, inputs: held });
+    // every seat heard the old host's events of the window
+    sim.afterEventBroadcast();
+    for (const row of rowsAt.get(step) ?? []) {
+      const entity = actor.entityForWireId(row.entityId);
+      if (!entity) continue;
+      // the old host's authority clock at this step: its own at the keyframe and the steps since
+      const oldClockS = typeof state.timeS === 'number' ? state.timeS + sim.timeS : null;
+      if (rowOverReplay(entity, row, oldClockS, sim.timeS)) corrected++;
+      newest.set(row.entityId, row.tick);
+    }
+  }
+  // the mode as the seat's frame shows it, where the play parted from it (checkpointAtNewestFrame on the play's own
+  // checkpoint: the frame's score, flags, zones and ball, and any director move it shows that the play did not make)
+  let modeFromFrame = false;
+  const viewerId = replay.viewerEntityId !== null ? actor.entityForWireId(replay.viewerEntityId)?.id ?? '' : '';
+  const shown = state.frame.modeStateJson;
+  if (shown && sim.modeController) {
+    const played = sim.snapshotMeta(viewerId).modeState;
+    if (played && JSON.stringify(played) !== shown) {
+      const checkpoint = sim.captureModeCheckpoint();
+      const elapsedS = checkpoint?.mode?.elapsedS;
+      const known: ResumeWindow = { told: new Map(), frameAtS: typeof elapsedS === 'number' ? elapsedS : Number.NaN };
+      const atFrame = checkpoint ? checkpointAtNewestFrame(checkpoint, shown, known) : null;
+      if (atFrame?.mode && atFrame !== checkpoint) { sim.modeController.restoreCheckpoint(atFrame.mode); modeFromFrame = true; }
+    }
+  }
+  // the props the seat was told fell, and the destruction it was told of, that the play did not make (its own stand)
+  sim.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
+  const playedLog = (sim.snapshotMeta(viewerId).destructionLog as DestructionLogEntry[] | undefined ?? []).map(quantizeDestructionEntry);
+  const missing = mergeDestructionLogs(playedLog, state.frame.destruction ?? []).slice(playedLog.length);
+  if (missing.length) sim.restoreDestruction(missing);
+  // the smoke screens the frame shows that the play did not raise (a human's: the play never heard its seat), each on this
+  // authority's clock
+  const shiftS = -actor.resumedBattleTimeMs / 1000;
+  const standing = sim.snapshotMeta(viewerId).smokeScreens as SmokeScreen[] | undefined ?? [];
+  const raised = smokeScreensOf(state.frame.meta.smokeJson).filter((screen) => !standing.some((own) => sameSmoke(own, screen, shiftS)));
+  if (raised.length) sim.restoreSmokeScreens(raised, shiftS);
+  // each hull's restored reading for the seats' resume hints (matchActor.ts receiveResumeHint): where the play put it, as
+  // of the newest row the seat held of it, else the keyframe's
+  for (const entity of sim.entities) {
+    const wireId = actor.wireIdOf(entity.id);
+    if (wireId !== null) actor.noteRestoredRow(wireId, newest.get(wireId) ?? from, entity.state.pos.x, entity.state.pos.z);
+  }
+  sim.afterEventBroadcast();
+  return { steps: replay.steps, corrected, modeFromFrame };
+}
+
+/** One smoke screen on both clocks (a frame's on the battle clock, shifted onto this authority's by `shiftS`): its launch
+ *  within 2 ms (each clock rounds it to the millisecond) and where it stands within a centimetre. */
+const sameSmoke = (own: SmokeScreen, shown: SmokeScreen, shiftS: number): boolean =>
+  Math.abs(own.born - (shown.born + shiftS)) <= 0.002 && Math.abs(own.x - shown.x) <= 0.01 && Math.abs(own.z - shown.z) <= 0.01;
+const reloadKindIndex = (kind: unknown): number => Math.max(0, RELOAD_KINDS.indexOf(kind as typeof RELOAD_KINDS[number]));
+const readsReload = (reload: ReloadLike | undefined, units: number, totalUnits: number, kind: number): boolean =>
+  quantizeReloadS(reload?.t ?? 0) === units && quantizeReloadS(reload?.totalS ?? 0) === totalUnits && reloadKindIndex(reload?.kind) === kind;
+
+/** The entity a replay plays (the authority's), as rowOverReplay reads and writes it. */
+type ReplayEntity = ReturnType<MatchActor['entityForWireId']> & object;
+
+/**
+ * A row the seat holds, over the replay's hull at the row's step (276): where the play reads as the row does (its pose
+ * rounded as captureEntityRow rounds it, its body bits, life, hp, ammunition, shell, both reload channels, fire and
+ * auxiliary kit), nothing; else the row's, as the 275 reading took a newer row (the pose through applyAuthorityRow, the
+ * fight through the restore's own writers). Returns whether it corrected anything.
+ */
+function rowOverReplay(entity: ReplayEntity, row: EntityRow, oldClockS: number | null, timeS: number): boolean {
+  const state = entity.state, combat = entity.combat;
+  const pose = row.x === quantizePosition(state.pos.x) && row.y === quantizePosition(state.pos.y) && row.z === quantizePosition(state.pos.z)
+    && row.yaw === quantizeAngle(state.yaw) && row.speed === quantizeVelocity(state.speed) && row.verticalSpeed === quantizeVelocity(state.verticalSpeed)
+    && row.pitch === quantizeAngle(state.visualPitch) && row.roll === quantizeAngle(state.visualRoll)
+    && row.turretYaw === quantizeAngle(state.turretYaw) && row.gunPitch === quantizeAngle(state.gunPitch)
+    && (row.flags & HULL_BODY_ROW_FLAGS) === (hullBodyRowFlags(state) & HULL_BODY_ROW_FLAGS);
+  const gunReload = combat.gunReload ?? combat.reload;
+  const fight = isDestroyedRow(row) === combat.destroyed && row.hp === Math.round(combat.hp) && row.maxHp === Math.max(1, Math.round(combat.maxHp))
+    && (!Array.isArray(combat.ammo) || [row.ammo0, row.ammo1, row.ammo2].every((count, slot) => slot >= combat.ammo.length || combat.ammo[slot] === count))
+    && row.shellSlot === Math.max(0, Math.min(2, combat.shellSlot | 0))
+    && readsReload(combat.reload as ReloadLike | undefined, row.reload, row.reloadTotal, row.reloadKind)
+    && readsReload(gunReload as ReloadLike | undefined, row.gunReload, row.gunReloadTotal, row.gunReloadKind)
+    && ((row.flags & ENTITY_FLAGS.BURNING) !== 0) === !!combat.fire?.burning;
+  const fromRow = oldClockS !== null && combat.auxiliary ? rowAuxiliary(row.auxiliaryJson, oldClockS) : null;
+  const kit = !fromRow || sameAuxiliary(fromRow, combat.auxiliary!, timeS);
+  if (pose && fight && kit) return false;
+  if (!pose) applyAuthorityRow(state, row);
+  if (!fight) {
+    combat.hp = row.hp;
+    combat.maxHp = Math.max(1, row.maxHp);
+    combat.destroyed = isDestroyedRow(row);
+    if (Array.isArray(combat.ammo)) {
+      const ammo = [row.ammo0, row.ammo1, row.ammo2];
+      for (let slot = 0; slot < combat.ammo.length && slot < ammo.length; slot++) combat.ammo[slot] = ammo[slot]!;
+    }
+    restoreShellSlot(combat, row.shellSlot, entity.spec);
+    combat.reload = restoreReload(combat.reload as ReloadLike | undefined, dequantizeReloadS(row.reload), dequantizeReloadS(row.reloadTotal), RELOAD_KINDS[row.reloadKind] ?? 'ready') as typeof combat.reload;
+    if (combat.gunReload && combat.gunReload !== combat.reload) {
+      restoreReload(combat.gunReload as ReloadLike, dequantizeReloadS(row.gunReload), dequantizeReloadS(row.gunReloadTotal), RELOAD_KINDS[row.gunReloadKind] ?? 'ready');
+    }
+    restoreRowCounts(combat, row, entity.spec);
+    const burning = (row.flags & ENTITY_FLAGS.BURNING) !== 0;
+    if (combat.fire && combat.fire.burning !== burning) {
+      combat.fire.burning = burning;
+      if (burning) {
+        combat.fire.ticksLeft = Math.max(2, Math.round(FIRE_BASE_TICKS * multOf(combat.equipMults as Record<string, unknown> | undefined, 'fireTicks')));
+        combat.fire.tickTimer = 0;
+      }
+    }
+  }
+  if (!kit && fromRow) writeAuxiliary(combat.auxiliary!, fromRow, timeS, 0);
+  return true;
+}
+
+/** Whether the replay's auxiliary kit reads as a row's (rowAuxiliary: the times left from the row's clock, to the row's millisecond). */
+function sameAuxiliary(fromRow: NonNullable<MigrationEntityExtras['auxiliary']>, aux: AuxiliaryState, timeS: number): boolean {
+  const left = (at: number): number => Math.round(Math.max(0, at - timeS) * 1000);
+  const close = (a: number, b: number): boolean => Math.abs(Math.round(a * 1000) - b) <= 1;
+  return fromRow.lights === aux.lights && fromRow.gunOn === aux.gunOn && fromRow.smokeCharges === aux.smokeCharges && fromRow.shots === aux.shots
+    && close(fromRow.smokeReadyIn, left(aux.smokeReadyAt)) && close(fromRow.nextShotIn, left(aux.nextShot))
+    && (fromRow.stations ?? []).every(([shots, nextIn], index) => aux.stations?.[index]?.shots === shots && close(nextIn, left(aux.stations[index]!.nextShot)));
 }
 
 /** The compact smoke screens a frame meta carries (SnapshotMeta.smokeJson), or none when it carries none or cannot be read. */
@@ -1151,100 +1376,114 @@ function unpackBrain(packed: MigrationBrain | null | undefined): BotBrain | null
   }
   return brain;
 }
-/** The integrator's parts in their packed order, each its count of doubles (rollover: elapsed, expired as 0 or 1, countdown). */
-const INTEGRATOR_PARTS = [['bloom', 1], ['slew', 1], ['prevSpeed', 1], ['rollover', 3], ['hold', 4], ['seat', 4], ['susp', 8], ['spring', 6]] as const;
-type IntegratorParts = { bloom?: number; slew?: number; prevSpeed?: number; rollover?: [elapsedS: number, expired: boolean, countdownS: number];
-  hold?: number[]; seat?: number[]; susp?: number[]; spring?: number[] };
-/** The integrator's parts packed (MigrationEntityExtras.integrator): a byte naming the parts present, then their doubles. */
-function packIntegrator(parts: IntegratorParts): string {
-  let mask = 0;
-  const values: number[] = [];
-  INTEGRATOR_PARTS.forEach(([key], bit) => {
-    const part = parts[key];
-    if (part === undefined) return;
-    mask |= 1 << bit;
-    if (key === 'rollover') { const [elapsed, expired, countdown] = part as [number, boolean, number]; values.push(elapsed, expired ? 1 : 0, countdown); }
-    else if (Array.isArray(part)) values.push(...part as number[]);
-    else values.push(part as number);
-  });
-  return packDoubles(values, [mask]);
-}
-/** The packed integrator's parts, or null for a packing that is not one. */
-function unpackIntegrator(text: unknown): IntegratorParts | null {
-  const bytes = unpackBytes(text);
-  const values = bytes && bytes.length >= 1 ? doublesOf(bytes, 1) : null;
-  if (!bytes || !values) return null;
-  const mask = bytes[0]!, parts: IntegratorParts = {};
-  let next = 0;
-  for (const [bit, [key, count]] of INTEGRATOR_PARTS.entries()) {
-    if (!(mask & (1 << bit))) continue;
-    const slice = values.slice(next, next + count);
-    next += count;
-    if (slice.length !== count) return null;
-    if (key === 'rollover') parts.rollover = [slice[0]!, slice[1] === 1, slice[2]!];
-    else if (count === 1) (parts as Record<string, number>)[key] = slice[0]!;
-    else (parts as Record<string, number[]>)[key] = slice;
-  }
-  return next === values.length ? parts : null;
-}
+// ---- the hull exact (276; MigrationEntityExtras.hull): what a row rounds or does not carry, one packing for every live hull
+/**
+ * The hull's numbers a row rounds (its pose, millimetres and angle units), the rollover's countdown no row or checkpoint
+ * holds, its hp (a row's is whole), and its held input (a bot's last command, which the next tick reads before the brain
+ * writes a new one: the gun-limit nudge reads its aim point), in their packed order; then the movement prediction
+ * checkpoint's values (movementPredictionState.ts, the owner of the integrator state a pose cannot rebuild).
+ */
+const HULL_NUMBERS = ['x', 'y', 'z', 'yaw', 'speed', 'verticalSpeed', 'visualPitch', 'visualRoll', 'turretYaw', 'gunPitch', 'rolloverCountdownS', 'hp',
+  'throttle', 'steer', 'shellSlot', 'actionBits', 'auxiliaryBits', 'fireIntentSeq', 'aimX', 'aimY', 'aimZ'] as const;
+/** The input's flags (a byte): brake, fire, aimLocked, and an absent fire intent sequence and auxiliary bits. */
+const HULL_INPUT_BITS = ['brake', 'fire', 'aimLocked'] as const;
+const HULL_NO_FIRE_INTENT = 8, HULL_NO_AUXILIARY = 16;
+/** The hull packing's layout (byte 0): a hull of another layout is refused, and the restore stands on the row alone. */
+const HULL_LAYOUT = 1;
+const HULL_HEAD_BYTES = 5;
+const HULL_VALUE_COUNT = HULL_NUMBERS.length + MOVEMENT_PREDICTION_STATE_VALUES;
+const HULL_MASK_BYTES = Math.ceil(HULL_VALUE_COUNT / 8);
 
-/** The integrator parts a migration carries (MigrationEntityExtras.integrator; 275), as the hull's state holds them. */
-interface IntegratorState {
-  bloomF: number; turretYawRate: number; _prevSpeed: number; rolloverCountdownS: number;
-  _rollover: { elapsedS: number; expired: boolean };
-  _hold: { p: number; r: number; pv: number; rv: number }; _holdSeat: { p: number; r: number; pv: number; rv: number };
-  _susp: { p: number; r: number; pv: number; rv: number; d: number; dv: number; c: number; cv: number };
-  _spring: { pitch: number; roll: number; pitchV: number; rollV: number; recoilVX: number; recoilVZ: number };
+/** The hull's state and held input as a keyframe reads them (TankState, the authority's entity input). */
+interface HullHolder {
+  state: TankState;
+  combat: { hp: number };
+  input: { throttle: number; steer: number; brake: boolean; fire: boolean; aimLocked: boolean; shellSlot: number; actionBits: number;
+    auxiliaryBits?: number; fireIntentSeq?: number | null; aimPoint: { x: number; y: number; z: number; set(x: number, y: number, z: number): unknown } };
 }
-/** A gun's bloom within this of 1 is at rest (MigrationEntityExtras.integrator): at most a 0.1 % wider cone (a fresh host's own guns settle
- *  to 1.0002 in their construction steps), against a keyframe entry for every hull. */
-const BLOOM_REST = 1e-3;
-const ROCK_KEYS = ['p', 'r', 'pv', 'rv'] as const;
-const SUSP_KEYS = ['p', 'r', 'pv', 'rv', 'd', 'dv', 'c', 'cv'] as const;
-const SPRING_KEYS = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
-/** A live hull's integrator state no row carries (275), each part absent at rest (a fresh host's own); null: all at rest. */
-function captureIntegrator(state: IntegratorState): IntegratorParts | null {
-  const out: IntegratorParts = {};
-  const finite = (value: number): boolean => typeof value === 'number' && Number.isFinite(value);
-  // (a bloom decays toward 1 and never quite reaches it: within BLOOM_REST of it, a gun is at rest, as a fresh host builds it)
-  if (finite(state.bloomF) && state.bloomF > 1 + BLOOM_REST) out.bloom = state.bloomF;
-  if (finite(state.turretYawRate) && state.turretYawRate !== 0) out.slew = state.turretYawRate;
-  if (finite(state._prevSpeed) && state._prevSpeed !== 0) out.prevSpeed = state._prevSpeed;
-  const rollover = state._rollover;
-  if (rollover && (rollover.elapsedS || rollover.expired || state.rolloverCountdownS) && finite(rollover.elapsedS) && finite(state.rolloverCountdownS)) {
-    out.rollover = [rollover.elapsedS, rollover.expired === true, state.rolloverCountdownS];
-  }
-  const part = <K extends string>(from: Record<K, number> | undefined, keys: readonly K[]): number[] | null => {
-    if (!from) return null;
-    const values = keys.map((key) => from[key]);
-    return values.every(finite) && values.some((value) => value !== 0) ? values : null;
-  };
-  const hold = part(state._hold, ROCK_KEYS), seat = part(state._holdSeat, ROCK_KEYS);
-  const susp = part(state._susp, SUSP_KEYS), spring = part(state._spring, SPRING_KEYS);
-  if (hold) out.hold = hold;
-  if (seat) out.seat = seat;
-  if (susp) out.susp = susp;
-  if (spring) out.spring = spring;
-  return Object.keys(out).length ? out : null;
+/** A live hull exact (MigrationEntityExtras.hull): its layout, the checkpoint's version and flags, the input's flags, a mask
+ *  of the non-zero numbers, then those numbers (Float64, exact); null where the checkpoint cannot be taken (a non-finite
+ *  integrator, which the client's predictor refuses as well). */
+function packHull(entity: HullHolder): string | null {
+  const checkpoint = captureMovementPredictionState(entity.state);
+  if (!checkpoint) return null;
+  const { state, input } = entity;
+  const numbers = [state.pos.x, state.pos.y, state.pos.z, state.yaw, state.speed, state.verticalSpeed, state.visualPitch, state.visualRoll,
+    state.turretYaw, state.gunPitch, state.rolloverCountdownS, entity.combat.hp, input.throttle, input.steer, input.shellSlot, input.actionBits,
+    typeof input.auxiliaryBits === 'number' ? input.auxiliaryBits : 0, typeof input.fireIntentSeq === 'number' ? input.fireIntentSeq : 0,
+    input.aimPoint.x, input.aimPoint.y, input.aimPoint.z, ...checkpoint.values];
+  if (!numbers.every((value) => typeof value === 'number' && Number.isFinite(value))) return null;
+  let bits = 0;
+  HULL_INPUT_BITS.forEach((key, bit) => { if (input[key]) bits |= 1 << bit; });
+  if (typeof input.fireIntentSeq !== 'number') bits |= HULL_NO_FIRE_INTENT;
+  if (typeof input.auxiliaryBits !== 'number') bits |= HULL_NO_AUXILIARY;
+  const head = new Array<number>(HULL_HEAD_BYTES + HULL_MASK_BYTES).fill(0);
+  head[0] = HULL_LAYOUT; head[1] = checkpoint.version; head[2] = checkpoint.flags & 0xff; head[3] = checkpoint.flags >> 8; head[4] = bits;
+  const present: number[] = [];
+  numbers.forEach((value, index) => { if (!Object.is(value, 0)) { head[HULL_HEAD_BYTES + (index >> 3)]! |= 1 << (index & 7); present.push(value); } });
+  return packDoubles(present, head);
 }
-/** The old host's integrator taken up (275): each part that is one, onto the fresh hull's own state objects. */
-function restoreIntegrator(state: IntegratorState, carried: IntegratorParts): void {
-  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
-  if (finite(carried.bloom) && carried.bloom >= 1) state.bloomF = carried.bloom;
-  if (finite(carried.slew)) state.turretYawRate = carried.slew;
-  if (finite(carried.prevSpeed)) state._prevSpeed = carried.prevSpeed;
-  const rollover = carried.rollover;
-  if (Array.isArray(rollover) && finite(rollover[0]) && finite(rollover[2]) && state._rollover) {
-    state._rollover.elapsedS = rollover[0]; state._rollover.expired = rollover[1] === true; state.rolloverCountdownS = rollover[2];
+interface HullReading {
+  numbers: number[];
+  bits: number;
+  checkpoint: { version: number; values: number[]; flags: number };
+}
+/** The packed hull, or null for a packing that is not one (another layout, a short or long body). */
+function unpackHull(text: unknown): HullReading | null {
+  const bytes = unpackBytes(text);
+  if (!bytes || bytes.length < HULL_HEAD_BYTES + HULL_MASK_BYTES || bytes[0] !== HULL_LAYOUT) return null;
+  const present = doublesOf(bytes, HULL_HEAD_BYTES + HULL_MASK_BYTES);
+  if (!present) return null;
+  const all: number[] = [];
+  let next = 0;
+  for (let index = 0; index < HULL_VALUE_COUNT; index++) {
+    if (!(bytes[HULL_HEAD_BYTES + (index >> 3)]! & (1 << (index & 7)))) { all.push(0); continue; }
+    if (next >= present.length) return null;
+    all.push(present[next++]!);
   }
-  const part = <K extends string>(to: Record<K, number> | undefined, keys: readonly K[], values: unknown): void => {
-    if (!to || !Array.isArray(values) || values.length !== keys.length || !values.every(finite)) return;
-    keys.forEach((key, i) => { to[key] = values[i] as number; });
-  };
-  part(state._hold, ROCK_KEYS, carried.hold);
-  part(state._holdSeat, ROCK_KEYS, carried.seat);
-  part(state._susp, SUSP_KEYS, carried.susp);
-  part(state._spring, SPRING_KEYS, carried.spring);
+  if (next !== present.length) return null;
+  return { numbers: all.slice(0, HULL_NUMBERS.length), bits: bytes[4]!,
+    checkpoint: { version: bytes[1]!, flags: bytes[2]! | (bytes[3]! << 8), values: all.slice(HULL_NUMBERS.length) } };
+}
+const hullNumber = (reading: HullReading, key: typeof HULL_NUMBERS[number]): number => reading.numbers[HULL_NUMBERS.indexOf(key)]!;
+/** Whether a row is the hull's own reading rounded (every pose field the row carries, as captureEntityRow rounds it). */
+function rowReadsHull(row: EntityRow, reading: HullReading): boolean {
+  const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+  return row.x === quantizePosition(n('x')) && row.y === quantizePosition(n('y')) && row.z === quantizePosition(n('z'))
+    && row.yaw === quantizeAngle(n('yaw')) && row.speed === quantizeVelocity(n('speed')) && row.verticalSpeed === quantizeVelocity(n('verticalSpeed'))
+    && row.pitch === quantizeAngle(n('visualPitch')) && row.roll === quantizeAngle(n('visualRoll'))
+    && row.turretYaw === quantizeAngle(n('turretYaw')) && row.gunPitch === quantizeAngle(n('gunPitch'));
+}
+/** The movement checkpoint's scalars a newer row leaves the keyframe's (movementPredictionState.ts SCALARS' order): the
+ *  turn rate, the turret's slew, the gun's bloom and the engine's spool, none of which a pose seats. */
+const HULL_DRIVE_SCALARS = (['yawRate', 'turretYawRate', 'bloomF', '_spool'] as const).map((key) => [key, MOVEMENT_PREDICTION_SCALARS.indexOf(key)] as const);
+/**
+ * A live hull taken up exact (276). Where the row is the hull's own reading rounded (the keyframe's own row, or a replay's
+ * row: rowReadsHull), the pose exact, the checkpoint whole, the hp exact where the row's rounds it, and the held input:
+ * the old host's hull to the bit (a fight from a keyframe alone parted by tens of metres on the rows' rounding and on the
+ * gun's limit flag, which no row carried: the CTF probe's 23 m in 10 s, now none). From a newer row (a reading of its own),
+ * the drive alone (the turn rate, the slew, the bloom, the spool) and the input; the rest belongs with the pose the row seats.
+ */
+function restoreHull(entity: HullHolder, row: EntityRow, reading: HullReading): void {
+  const state = entity.state, input = entity.input;
+  const own = rowReadsHull(row, reading);
+  if (own) {
+    const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+    state.pos.set(n('x'), n('y'), n('z'));
+    state.yaw = n('yaw'); state.speed = n('speed'); state.verticalSpeed = n('verticalSpeed');
+    state.visualPitch = n('visualPitch'); state.visualRoll = n('visualRoll'); state.turretYaw = n('turretYaw'); state.gunPitch = n('gunPitch');
+    state.rolloverCountdownS = n('rolloverCountdownS');
+    if (!applyMovementPredictionState(state, reading.checkpoint, state._sup.cg)) return;
+    if (Math.round(n('hp')) === row.hp) entity.combat.hp = n('hp');
+  } else if (reading.checkpoint.values.length === MOVEMENT_PREDICTION_STATE_VALUES) {
+    for (const [key, index] of HULL_DRIVE_SCALARS) (state as unknown as Record<string, number>)[key] = reading.checkpoint.values[index]!;
+  }
+  const n = (key: typeof HULL_NUMBERS[number]): number => hullNumber(reading, key);
+  input.throttle = n('throttle'); input.steer = n('steer'); input.shellSlot = n('shellSlot'); input.actionBits = n('actionBits');
+  if (!(reading.bits & HULL_NO_AUXILIARY)) input.auxiliaryBits = n('auxiliaryBits');
+  input.fireIntentSeq = reading.bits & HULL_NO_FIRE_INTENT ? null : n('fireIntentSeq');
+  HULL_INPUT_BITS.forEach((key, bit) => { input[key] = (reading.bits & (1 << bit)) !== 0; });
+  input.aimPoint.set(n('aimX'), n('aimY'), n('aimZ'));
 }
 
 /**
@@ -1296,11 +1535,9 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       };
       if (!auxiliaryAtRest(auxiliary, freshAuxiliaryOf(entity.spec))) extras.auxiliary = auxiliary;
     }
-    // a live hull's drive (gaps 274, G3): the integrator's spool and turn rate, and a bot's way; a down bot's brain
-    // streams alone (fix-up r2: down or benched, it drives a next life on from them on the old host)
+    // a live hull exact (276: its pose, hp, integrator and held input) and a bot's way; a down bot's brain streams alone
+    // (fix-up r2: down or benched, it drives a next life on from them on the old host)
     if (!combat.destroyed) {
-      const spool = entity.state._spool ?? 0, yawRate = entity.state.yawRate ?? 0;
-      if ((spool !== 0 || yawRate !== 0) && Number.isFinite(spool) && Number.isFinite(yawRate)) extras.motion = [spool, yawRate];
       // Turbo's cooldown and a flip or roll still turning (turbo-spin-275): a fresh host has both at rest
       const turboReadyIn = leftOf(entity.turboReadyS ?? -Infinity, timeS);
       if (turboReadyIn > 0) extras.turboReadyIn = turboReadyIn;
@@ -1313,8 +1550,8 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
       const airSpinReadyIn = leftOf(entity.airSpinReadyS ?? -Infinity, timeS);
       if (airSpinReadyIn > 0) extras.airSpinReadyIn = airSpinReadyIn;
       if (entity.state._flipUsed === true) extras.flipUsed = true;
-      const integrator = captureIntegrator(entity.state);
-      if (integrator) extras.integrator = packIntegrator(integrator);
+      const hull = packHull(entity as unknown as HullHolder);
+      if (hull) extras.hull = hull;
       const way = entity.aiCtl?.captureDrive?.();
       if (way) extras.way = way;
     } else {
