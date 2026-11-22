@@ -6887,7 +6887,7 @@
       }
     ]
   },
-  "geometryHash": "60625cfc",
+  "geometryHash": "3f39abc6",
   "metadataHash": "25fd81b4",
   "presentationAnchor": {
     "xM": 0.0022,
@@ -6995,8 +6995,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24618,
-      "sha256": "25d11b3174b4118ec08a3f7468fcd611f4f0a2aa8d413cbb01b3a5953baa5a2b"
+      "bytes": 24632,
+      "sha256": "9eeb81481fbef5cc9645de5c6f3a19c0af56ad5766c737cf54c06f8c69463873"
     },
     "modulesSide": {
       "file": "pt84_sokol_modules_side.webp",

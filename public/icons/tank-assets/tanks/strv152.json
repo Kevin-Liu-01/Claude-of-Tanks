@@ -240,8 +240,18 @@
       {
         "volumeId": "M09",
         "name": "optics",
-        "min": [-0.942,1.2784,0.4604],
-        "max": [-0.342,1.843,1.6374],
+        "min": [-0.86,1.92,-1.2],
+        "max": [0.81,2.47,-0.752],
+        "parts": [
+          {
+            "min": [-0.86,1.92,-1.2],
+            "max": [-0.46,2.22,-0.752]
+          },
+          {
+            "min": [0.51,2.25,-1.13],
+            "max": [0.81,2.47,-0.829]
+          }
+        ],
         "turretLocal": false
       },
       {
@@ -309,7 +319,7 @@
     ]
   },
   "geometryHash": "809e221a",
-  "metadataHash": "0be51397",
+  "metadataHash": "f7fc1170",
   "presentationAnchor": {
     "xM": 0.0063,
     "zM": -0.1209
@@ -426,8 +436,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24768,
-      "sha256": "87e1757c05de4b7eaa74b993351cfdb4bfafa843857fd29a4030df2e8880ab6f"
+      "bytes": 24764,
+      "sha256": "bee2217dd7dbb65dd7acab7cf9f945db454bd00309abe8b131cfa2018b02269f"
     },
     "crewSide": {
       "file": "strv152_crew_side.webp",
@@ -448,8 +458,8 @@
     "technicalLabels": {
       "file": "strv152_technical.json",
       "mime": "application/json",
-      "bytes": 2990,
-      "sha256": "71fe4dc9792d32e84dd87c3be24db8887d3dcad907c89ba92aa9dc432d460b87"
+      "bytes": 3103,
+      "sha256": "9c7c4148c2aa6169c42cf21afeeb3803b92e4eae2ad682bc7b171176f612e54e"
     }
   }
 }

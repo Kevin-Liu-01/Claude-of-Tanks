@@ -547,7 +547,7 @@
       }
     ]
   },
-  "geometryHash": "b6b2762e",
+  "geometryHash": "81daa6a3",
   "metadataHash": "ee35de1d",
   "presentationAnchor": {
     "xM": -0.0075,
@@ -616,8 +616,8 @@
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10934,
-        "sha256": "5f4933274db1d100d176c099b52069b31ed956a4654c09876f6251a98ed9b202",
+        "bytes": 10928,
+        "sha256": "007ba97900e29cd37144c97cb2ac65f0d80f9200703ad8accb58fbcd9785564b",
         "frame": [15,111,228,250]
       }
     },
@@ -634,8 +634,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8960,
-      "sha256": "6f1fb47bbb0f35ddc00287ea46ef59683c2fb6d1236afd7735440e00f79de1f8"
+      "bytes": 8962,
+      "sha256": "ec1afdc983806bca25b4c6ff0f1e3981faf9bc75a10dc85b7cda282dd989b485"
     },
     "topSilhouette": {
       "file": "k2b_top_silhouette.png",
@@ -658,24 +658,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22902,
-      "sha256": "c6e79413797cfab235afe45484dfd6934676379be38df4238e56dc5cbb364a92"
+      "bytes": 22976,
+      "sha256": "6ea7dd02660c24c3e6c994ba7c7c8de1e064317eaf8358083281878a8514b81c"
     },
     "modulesSide": {
       "file": "k2b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22108,
-      "sha256": "27974262b5e13a02913591f6d9bd7d819890617a9c593461b74367d07d271e73"
+      "bytes": 22110,
+      "sha256": "a10b18a0b08ee763a8d8593fde82f03f96f59417011d3ac1e7b27c2bbc05549b"
     },
     "crewSide": {
       "file": "k2b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19288,
-      "sha256": "f69a3624dc95859a9c388fec292c16e308f91931377b8af5ce7b2df54b430be0"
+      "bytes": 19286,
+      "sha256": "28373eabba7b2d60c819095f8759f8ded085cb2470bef8e58430029e3df5c1ad"
     },
     "markings": {
       "file": "k2b_markings.png",
@@ -688,8 +688,8 @@
     "technicalLabels": {
       "file": "k2b_technical.json",
       "mime": "application/json",
-      "bytes": 5073,
-      "sha256": "db565405940d1fb40517a0dd8f4872fee220c9fed291c9cfaa587b0d9436d35a"
+      "bytes": 5093,
+      "sha256": "777a6f0ca7154aafd97112b47d39156fa262fedfb7618563b7b4a017b6bad6bf"
     }
   }
 }

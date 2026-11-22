@@ -240,9 +240,17 @@
       {
         "volumeId": "M09",
         "name": "optics",
-        "min": [-0.41,1.765,0.249],
-        "max": [0.31,1.835,0.491],
+        "min": [-0.86,1.765,-1.2],
+        "max": [0.81,2.47,0.491],
         "parts": [
+          {
+            "min": [-0.86,1.92,-1.2],
+            "max": [-0.46,2.22,-0.752]
+          },
+          {
+            "min": [0.51,2.25,-1.13],
+            "max": [0.81,2.47,-0.829]
+          },
           {
             "min": [0.17,1.765,0.249],
             "max": [0.31,1.835,0.351]
@@ -319,7 +327,7 @@
     ]
   },
   "geometryHash": "b9e3fc62",
-  "metadataHash": "4023ea41",
+  "metadataHash": "720e5488",
   "presentationAnchor": {
     "xM": 0.0091,
     "zM": 0.1454
@@ -436,8 +444,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23928,
-      "sha256": "3d98ab51104b2c48cba8960cd9d4c558f236a722d3f6336d6f8f7de536c23dc8"
+      "bytes": 24204,
+      "sha256": "e8e9745925500b38cf509bee5d026ad419e17e0171f6d73f8479a4de54debfcc"
     },
     "crewSide": {
       "file": "strv103e_crew_side.webp",
@@ -458,8 +466,8 @@
     "technicalLabels": {
       "file": "strv103e_technical.json",
       "mime": "application/json",
-      "bytes": 3092,
-      "sha256": "013ee69392972e81865d7c88ec1d0416e73cbb61b6001f0f2be4cfaaee091a3e"
+      "bytes": 3312,
+      "sha256": "bc5adeeaa99de5e32b1dbae8085406431db14e51036cfdd3c86abec7381a7275"
     }
   }
 }

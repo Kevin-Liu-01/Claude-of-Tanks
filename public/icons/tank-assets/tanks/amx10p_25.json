@@ -2628,7 +2628,7 @@
       }
     ]
   },
-  "geometryHash": "df3e761b",
+  "geometryHash": "8a93b01e",
   "metadataHash": "2c5eb943",
   "presentationAnchor": {
     "xM": 0,
@@ -2688,32 +2688,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40932,
-      "sha256": "4b42d4828031b29351bc5cf53e547416783060392667c24e4884f52f4e2b9a38"
+      "bytes": 40966,
+      "sha256": "f1c4e3c2bea9504474251d51c53aca9bc7b3cd12006972efd905e14768e9076e"
     },
     "modulesSide": {
       "file": "amx10p_25_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34970,
-      "sha256": "360d15124afcfa58c3d20a637461b491e468c47648acb920c035e6213c8899b4"
+      "bytes": 35036,
+      "sha256": "37e2d45eeda757cf7a39f712d8377c7c400638a8d700260f116909f4b46eda34"
     },
     "crewSide": {
       "file": "amx10p_25_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31652,
-      "sha256": "aa8a5131e922b73246ddfbe7b3aaddff0ff9995690838ed3654e0e8706ae0fae"
+      "bytes": 31686,
+      "sha256": "bdda214be4416050c1d099afc501f97f658a1d3341ec2b951c8a5e8673dd076d"
     },
     "angle": {
       "file": "amx10p_25_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31156,
-      "sha256": "e4b0223024d1e299c7f1269f4bd2c581fafa290ed3ce4526f4de067f3d201641",
+      "bytes": 31146,
+      "sha256": "ee878a93d3cf67966f54e1183aad0e2885d6356eba32fbc05a19f61bf1b9b170",
       "thumbnail": {
         "file": "thumbs/amx10p_25_angle.webp",
         "width": 256,
@@ -2737,8 +2737,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13028,
-      "sha256": "946105466e2422ff98339de4297be5059dc4db49e2c08a88b9365b8835967b9a"
+      "bytes": 12972,
+      "sha256": "7d506bb7f2235ea0d29a79d3f57fd1d8a735760643b496f2c30278f3fdc2e9f9"
     },
     "topSilhouette": {
       "file": "amx10p_25_top_silhouette.png",
@@ -2767,8 +2767,8 @@
     "technicalLabels": {
       "file": "amx10p_25_technical.json",
       "mime": "application/json",
-      "bytes": 4904,
-      "sha256": "f519d949b591f5135be61d1d3dda39cf5de9456e637407dabdbf8b4591d98bb6"
+      "bytes": 4902,
+      "sha256": "1963fcc47ebce27aa8d434a12ec3defcff92f9d8ab3cd087b1e70e063630198e"
     }
   }
 }

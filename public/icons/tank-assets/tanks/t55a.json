@@ -721,27 +721,27 @@
         "volumeId": "C02",
         "name": "gunner",
         "min": [0.0055,-0.9644,-0.3892],
-        "max": [0.3952,-0.03,0.3365],
+        "max": [0.3952,0.0859,0.3365],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.0127,-0.31,-0.3177],
-        "max": [0.4467,0.6216,0.3005],
+        "min": [-0.0473,-0.41,-0.3782],
+        "max": [0.3812,0.6531,0.255],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
         "min": [-0.3852,-1.0046,-0.3985],
-        "max": [-0.0055,-0.03,0.3543],
+        "max": [-0.0055,0.108,0.3543],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "c315146e",
-  "metadataHash": "5b41449d",
+  "geometryHash": "958fc256",
+  "metadataHash": "d70ce450",
   "presentationAnchor": {
     "xM": 0.0082,
     "zM": -0.1583
@@ -824,8 +824,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9058,
-      "sha256": "388cc3b1c26bda51c3a8433b339e23a9875bdd7ca9163e1508bdff097a1d6ec7"
+      "bytes": 9096,
+      "sha256": "3d8ed031d3754c269c871967e49a925cef6b94dbb0528e902d7ab0e4bcca6700"
     },
     "topSilhouette": {
       "file": "t55a_top_silhouette.png",
@@ -840,32 +840,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4105,
-      "sha256": "c1ab466a314c40bccfc8730969c292028f247ee580d5ac017c96f5535367df02"
+      "bytes": 4104,
+      "sha256": "08190f8d432aa17be9cc8559936dac205806e1702158a5e408d0903a00daac5c"
     },
     "armorSide": {
       "file": "t55a_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20970,
-      "sha256": "a1153157c17881525b851ac105900bcda836a19167110bfc747e459f76d22603"
+      "bytes": 20860,
+      "sha256": "f8f854c3446f54f94aa3394d050c83e945d02f1e37b890f8c13d052be2245450"
     },
     "modulesSide": {
       "file": "t55a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22456,
-      "sha256": "d0f458d46625e73f514bc536ed9ba954b85d111c9dedd208517bbc19e7ef69ae"
+      "bytes": 22434,
+      "sha256": "a6adf36018fb388bb443e3b988a833321664247eea4a8a01430c7d86459af155"
     },
     "crewSide": {
       "file": "t55a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20604,
-      "sha256": "9da919c87fc98258cc47a98b86358a2041c022ba21fa8f912f61fc5ce36d889e"
+      "bytes": 20640,
+      "sha256": "24967430ac49fe990dc2852cd08ee3ffb96080fa1b409e007379970da8a677e0"
     },
     "markings": {
       "file": "t55a_markings.png",
@@ -878,8 +878,8 @@
     "technicalLabels": {
       "file": "t55a_technical.json",
       "mime": "application/json",
-      "bytes": 4658,
-      "sha256": "25b3217f54d565838d270e16880d839e018d6015e41491b56a37fd316c4e5739"
+      "bytes": 4660,
+      "sha256": "e8bf9aa5550631d34c1a1663ceb4d0a71d1f5c8fec665f822698a3e803074474"
     }
   }
 }

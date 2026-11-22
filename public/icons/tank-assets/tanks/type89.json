@@ -1379,7 +1379,7 @@
       }
     ]
   },
-  "geometryHash": "5337cd61",
+  "geometryHash": "f1029056",
   "metadataHash": "d4f3aaf6",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -1436,24 +1436,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36070,
-      "sha256": "e6d0f5f6219ac33f31aee325a0ac589939188b8523f0eb1e90cb9fb146012880"
+      "bytes": 36086,
+      "sha256": "6e800f28bb9507919b6d64a2d16fb91edf750408378b121c524d046c3edbce8b"
     },
     "modulesSide": {
       "file": "type89_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33490,
-      "sha256": "0ac2518d778c9d0d751616310844799d29ee0592d8e7ae37d96c618cec58c61f"
+      "bytes": 33358,
+      "sha256": "2ac66806fd1c37928635382e074cd0e175b537ee3bdf0592f8c224dd4663dc06"
     },
     "crewSide": {
       "file": "type89_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29864,
-      "sha256": "3dc6a21593724aa129fed6a289a22acd957c542f0eea729085840acd93e9abb2"
+      "bytes": 29878,
+      "sha256": "3b7569f4b4ae9df6222f844fe38addacc884cdb487779a6c502f21f4d7e0b5fd"
     },
     "angle": {
       "file": "type89_angle.webp",
@@ -1477,16 +1477,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15454,
-      "sha256": "dca1a73730593f9b8f9f34419dd1e03957ef6998b6393954d001b20ec62f66f7"
+      "bytes": 15466,
+      "sha256": "56d80f306cf28b9be092f966b90a4100078cedbe35cd5565013b54f4cf099dc1"
     },
     "side": {
       "file": "type89_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13210,
-      "sha256": "e6cf79d0de670ea2f6b030a06062371688dfabd81d29261f31a29bebc7cadf44"
+      "bytes": 13234,
+      "sha256": "ad75cca5d95505c8e1124772e872800a4fd324c67f860812d44d5601a79254ba"
     },
     "topSilhouette": {
       "file": "type89_top_silhouette.png",
@@ -1501,8 +1501,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4473,
-      "sha256": "9cbca38c40f22ebd4bcbe5759362b344de08ec40e93f446d1075999b1ecb9033"
+      "bytes": 4498,
+      "sha256": "10532c800968cc9e375407a810bc63d3b2b6caa39beb67f1c519684bb9a068e2"
     },
     "markings": {
       "file": "type89_markings.png",

@@ -2066,7 +2066,7 @@
       }
     ]
   },
-  "geometryHash": "f628422f",
+  "geometryHash": "83e52d1d",
   "metadataHash": "0458f739",
   "presentationAnchor": {
     "xM": 0.0001,
@@ -2151,8 +2151,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15012,
-      "sha256": "c315d3c9d6288aa03b7f356e3edc0e4bb985875825f79a7d7c445de6e8d0d03d"
+      "bytes": 14988,
+      "sha256": "d37ed435fc963f3884b62f7f7d637f382891ef9a623cddc03886e27c37b73d8d"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_fep_top_silhouette.png",
@@ -2167,32 +2167,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4735,
-      "sha256": "6c0a501b3d9d3740d39eb4765b6487e7d2d0fd9f297d9dd478a8429d2c90f12e"
+      "bytes": 4694,
+      "sha256": "69d72231326b9f4acfef3ae1416e007b3e16cd8517bf68ac8cd80423f58a804d"
     },
     "armorSide": {
       "file": "m1a1_abrams_fep_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38856,
-      "sha256": "dbd01d06dad20ffcbf7ae5b6b50aa9fc6b896fd6f6bded6f63a7f067f70510dd"
+      "bytes": 38892,
+      "sha256": "9346ea94a0793a309736743007d94fe3be6ab930461c44f53ce1afe91c6d8b60"
     },
     "modulesSide": {
       "file": "m1a1_abrams_fep_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38260,
-      "sha256": "ba45f80dc6565936a056576742c17805bd545efda418d2a0c5600484399d31a1"
+      "bytes": 38304,
+      "sha256": "64172025ef0c7fe1d3a8039fa77ea82f921991de73cdceb23ba53f6782b17c53"
     },
     "crewSide": {
       "file": "m1a1_abrams_fep_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37100,
-      "sha256": "1244796a812b105a694ac707b895415a6f2ea9ad2ec8682c00ebbdcd6746ad87"
+      "bytes": 36092,
+      "sha256": "debdacf1e1a422124a51faac91a3eff949c4b3d149264be109b8633df36037a3"
     },
     "markings": {
       "file": "m1a1_abrams_fep_markings.png",

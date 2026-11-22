@@ -458,7 +458,7 @@
       }
     ]
   },
-  "geometryHash": "74045d60",
+  "geometryHash": "75f775e2",
   "metadataHash": "6c5ef47c",
   "presentationAnchor": {
     "xM": 0.0006,
@@ -518,15 +518,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26124,
-      "sha256": "2d79bcbe75c87ffcace28c1130374c8625b83f4fc1040bcdba8cc0320bb07f79",
+      "bytes": 26104,
+      "sha256": "4c643728c817ab1543384f526971260fc8b8cb6135e80d53accb5daeede7e0b3",
       "thumbnail": {
         "file": "thumbs/m46_patton_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10616,
-        "sha256": "2a356ab842b7f147b15346fb70bc5e8e16d38cdf25be26646247cb8a76a5286c"
+        "sha256": "544eec0551367f3b3d3052a21f433387337aa0fcca62104a50ab2f69bb209aa5"
       }
     },
     "top": {
@@ -542,8 +542,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11474,
-      "sha256": "5ae3b19e6840597c9fa45a9d36bbbf503133c66d72447966541b3999c3dcf637"
+      "bytes": 11516,
+      "sha256": "a965e32f8b631d5ec50d8bbc8dc47161162ba60280582c5ba47bcd383d2d5744"
     },
     "topSilhouette": {
       "file": "m46_patton_top_silhouette.png",
@@ -566,24 +566,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27200,
-      "sha256": "e4a7d0b1ed1441503300d195ab9dc0b3a348447dbe3fb38b504d90f2c8db6b92"
+      "bytes": 27184,
+      "sha256": "6f207b54602952341eef7a99078ae1dc248d2fc6f0c0ad4f10fb95f7464cb54a"
     },
     "modulesSide": {
       "file": "m46_patton_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28256,
-      "sha256": "fbf7daef699eba311479a0a8a953c5e65a995eadff6c02402700286f2bd57cbe"
+      "bytes": 28294,
+      "sha256": "2d131bdf59cea32de89ba0b7d54d052f67a9c17402fb2caef87a6fb7d2b54311"
     },
     "crewSide": {
       "file": "m46_patton_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25070,
-      "sha256": "bc6c37fc2fbc8721643b0945a3e2f878d05d1e902da451db6b09fac89bc0e718"
+      "bytes": 25148,
+      "sha256": "9b553512d67a9a173b2d5353ded83c55221dd3ff8804d7a48a1de0dbc10aaea1"
     },
     "markings": {
       "file": "m46_patton_markings.png",
@@ -597,7 +597,7 @@
       "file": "m46_patton_technical.json",
       "mime": "application/json",
       "bytes": 4382,
-      "sha256": "f27fdc860411550f3056303e94d8f80d07343be33c79fd71ce8e3c9e3f9c38c0"
+      "sha256": "db264771a6c24a397007fe5cf8feb63fbc522b0f713d7de356a81e0d6f1fc3c6"
     }
   }
 }

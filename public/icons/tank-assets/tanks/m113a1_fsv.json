@@ -860,7 +860,7 @@
       }
     ]
   },
-  "geometryHash": "1a29ee12",
+  "geometryHash": "f2aa9d84",
   "metadataHash": "13c6358e",
   "presentationAnchor": {
     "xM": -0.0047,
@@ -944,8 +944,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 12484,
-      "sha256": "1c5eaa48ab2fce5765b6bad75ff3537ba49a264ce2e33c5971748cc1886604d0"
+      "bytes": 12452,
+      "sha256": "6e7dc77d2589b20eb71d492758d5b536f673dc7e5ccaf9a3dc0f904109aaebf9"
     },
     "topSilhouette": {
       "file": "m113a1_fsv_top_silhouette.png",
@@ -960,32 +960,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4790,
-      "sha256": "b640e7fc5792033083e4a6ed2f0b7a562ec9f028dced9f78341cb8d36e154380"
+      "bytes": 4763,
+      "sha256": "2a50b430a663adb88b6da56c49990bb5274aca431c084ac7effe56ab37104d11"
     },
     "armorSide": {
       "file": "m113a1_fsv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28238,
-      "sha256": "d60dc9fd243624c0f2b7e43d8c4261e360f2f84ad4d5cfb85dbce9792081f705"
+      "bytes": 28160,
+      "sha256": "ad084e7aa2d412777667a30465279b95586caad2a2e05b3488a8896acf8fd9c6"
     },
     "modulesSide": {
       "file": "m113a1_fsv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30042,
-      "sha256": "9a700868df63e54df09653a86649cc60dfa678d5298539dfbe4297f73683eebe"
+      "bytes": 29978,
+      "sha256": "beb04db31af59cb3825e1fe18cb8a3e580a1ac39a35ef19a88637407254ee524"
     },
     "crewSide": {
       "file": "m113a1_fsv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27240,
-      "sha256": "d42fbbca04e1dbfe2c951627f75406a077810b600b735e91435617c2dca969ef"
+      "bytes": 27252,
+      "sha256": "74b9a82e595c47689119c4ba32098dd51edb7a362a70c6d5204a2b13d990b7ec"
     },
     "markings": {
       "file": "m113a1_fsv_markings.png",
@@ -999,7 +999,7 @@
       "file": "m113a1_fsv_technical.json",
       "mime": "application/json",
       "bytes": 5089,
-      "sha256": "689c4b61bdd10e57180d9fbd4614e8c8d5afd10551c36ba9dcdc2f0d1ef339a2"
+      "sha256": "dcf271b5e0b6a9c65a04f5a6e09d633668798cf465166d06a866727536507e81"
     }
   }
 }

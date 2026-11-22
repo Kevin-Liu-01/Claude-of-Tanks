@@ -12021,7 +12021,7 @@
       }
     ]
   },
-  "geometryHash": "3ee25583",
+  "geometryHash": "435aa91f",
   "metadataHash": "cd05ca48",
   "presentationAnchor": {
     "xM": -0.0031,
@@ -12081,39 +12081,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34350,
-      "sha256": "e154ea9d9050922a042a226d052d665fd0e3b692295ba815ae4ae7180bf1555f"
+      "bytes": 34392,
+      "sha256": "236c413010942ab30b0713292e806d51a4579b2146841348310486e9f00b5d4c"
     },
     "modulesSide": {
       "file": "bmpt_terminator2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38092,
-      "sha256": "da163073f72ddd8d268f99bd3ed75ce1012efc8667107d6590102cf46c264106"
+      "bytes": 38072,
+      "sha256": "2da1a8a891c7186949ea8e2597ee9a39542c935515ee067231f95e1be572ba98"
     },
     "armorSide": {
       "file": "bmpt_terminator2_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42990,
-      "sha256": "6c45fa14ad49702c49b37fadaa21ca4bc0210820a7a88311b2875846125b4644"
+      "bytes": 42994,
+      "sha256": "6a7aab2d31c251a099c58456f0ffe3618a82b876f228253b68a33256ef1ef837"
     },
     "angle": {
       "file": "bmpt_terminator2_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28956,
-      "sha256": "cbc8ea2e8470d983f533995da750ed1670c0d3a602627daf4487de195918e649",
+      "bytes": 28946,
+      "sha256": "b7e1003cd1da6bc529a1b66531785a9947d201ccf84c2b9f909192987d2b3216",
       "thumbnail": {
         "file": "thumbs/bmpt_terminator2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11350,
-        "sha256": "15b94b214169f13fbc5dc43a34d5f6166cc30bb845448d7d668784789266a37c",
+        "bytes": 11366,
+        "sha256": "161e77e0ce1d3ecd2e8118939843e09adaabfb3f1a5d01f31f3f8358123a05bf",
         "frame": [25,115,229,249]
       }
     },
@@ -12154,8 +12154,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17050,
-      "sha256": "fdc77aecd20955e7f995368350c3410dd508ffe8dd9e4464ae30944fb876c887"
+      "bytes": 17034,
+      "sha256": "e8c7a0f9567ff115e79e6a385570d8ef393334224ade499f55e4ffefd8f15ec2"
     },
     "technicalLabels": {
       "file": "bmpt_terminator2_technical.json",

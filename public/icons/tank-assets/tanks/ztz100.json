@@ -708,7 +708,7 @@
       }
     ]
   },
-  "geometryHash": "106fcb77",
+  "geometryHash": "5750b0f2",
   "metadataHash": "2eeb7a1a",
   "presentationAnchor": {
     "xM": 0,
@@ -763,39 +763,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29184,
-      "sha256": "8a8cdd1a648202175a843d37ee10754bbc4f3868c186066229ab96844439c4ba"
+      "bytes": 28644,
+      "sha256": "49e47058f47f0b2e0ea8a00e075889ff9597a0eda266679a49b99332768b295d"
     },
     "modulesSide": {
       "file": "ztz100_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27268,
-      "sha256": "3a3dc0d3860fcb978ae051cc7e22a87595e19ac14e6e80bb8463a04606d765e9"
+      "bytes": 27270,
+      "sha256": "2079679bcb855cf71bc961c4f5223112fc584e5cd913afc1469cfc14ef3270ec"
     },
     "crewSide": {
       "file": "ztz100_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24866,
-      "sha256": "63f4000459e27718ae2137ff6b9c3517e45b300db478a6e5ac05905e92ebbcf9"
+      "bytes": 24850,
+      "sha256": "d96e44145c668691433e12c1e8882fc44fde00d57a360ad8acd3f2287196cb39"
     },
     "angle": {
       "file": "ztz100_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26138,
-      "sha256": "00aef9978d048c0c48e147e1c23a60791d8c0a83e05eec3d065e8b51f6880dd1",
+      "bytes": 26128,
+      "sha256": "4bcbb079402893338883b514f96db5aaab5404f228efaf3fa64113df60ed7eaf",
       "thumbnail": {
         "file": "thumbs/ztz100_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10506,
-        "sha256": "0dae046b3d3ae7836a175e34574d19ce0ec6ee8a6dbc722ea88160866bcc6394"
+        "bytes": 10512,
+        "sha256": "6f015706605e466f2cf6a2e17984b93835c9c94ba4c53f7c47d06e955709bf60"
       }
     },
     "top": {
@@ -811,8 +811,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13052,
-      "sha256": "f4db00721e622afd4568c4c2df9da5de7b373d83044f037be39e56de4e0c1dfa"
+      "bytes": 13164,
+      "sha256": "2a9691972c783efe839f48e737e35cc6ec5c5763b0da0d5fbd5a8832e06d2e75"
     },
     "topSilhouette": {
       "file": "ztz100_top_silhouette.png",
@@ -827,8 +827,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4622,
-      "sha256": "afe3860638fb6f96980c6eadf743492835f6abca74896efe26fb0a999796bd7c"
+      "bytes": 4614,
+      "sha256": "3bba503317c098380ba083df32ad86bb4e850ab3cc2267253c5a0f3b6c92df34"
     },
     "markings": {
       "file": "ztz100_markings.png",
@@ -842,7 +842,7 @@
       "file": "ztz100_technical.json",
       "mime": "application/json",
       "bytes": 4556,
-      "sha256": "c36b06e3e98d9b06c77d64bfc94fbbfcc8c263601b30e918521408935bd87329"
+      "sha256": "28a7b75c0c95c429b80be7ca7da283639c62830dc3928a7878bff2aeffb8cc34"
     }
   }
 }

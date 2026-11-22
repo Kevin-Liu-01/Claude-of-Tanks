@@ -679,27 +679,27 @@
         "volumeId": "C02",
         "name": "gunner",
         "min": [-0.833,-0.7246,-0.1886],
-        "max": [-0.3736,0.6146,0.48],
+        "max": [-0.3736,0.6146,0.55],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.6952,-0.9173,-0.7453],
-        "max": [-0.2555,-0.0435,0.0773],
+        "min": [-0.9052,-0.92,-0.4553],
+        "max": [-0.4555,0.4677,0.3874],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
         "min": [0.4055,-0.92,0.0486],
-        "max": [0.8649,0.6445,0.4499],
+        "max": [0.8649,0.6445,0.5099],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "859a6fdb",
-  "metadataHash": "5e02fdac",
+  "geometryHash": "404a6c7c",
+  "metadataHash": "00eba7dc",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1005
@@ -757,32 +757,32 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24072,
-      "sha256": "415b2acd8f0ff4eff6cf36812d798cc97104eda0f3a1945ad2e95a6882199635"
+      "bytes": 24046,
+      "sha256": "7284dc255fea6fa9b3b709a2f830b0620d532a9d36ac019e10e109dbacd235b3"
     },
     "modulesSide": {
       "file": "leo2_revolution_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24042,
-      "sha256": "4cf14c1a9f16194d57f4eb0f634f4b4bd79d92dca034fd42c16ea103611aafcb"
+      "bytes": 24084,
+      "sha256": "032bb2df61625c7d8aa2684c3ccc079cb8457409721e7663f6e86ce7c39da2c0"
     },
     "crewSide": {
       "file": "leo2_revolution_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21244,
-      "sha256": "389ff724179086c9f2389dfc8f63c81d5d2ca831bce8eac246553a6f28679705"
+      "bytes": 21172,
+      "sha256": "bfd491082c2e3e97064f1a9bd6498c0a632a1f2e117511cd343836376dd477fd"
     },
     "angle": {
       "file": "leo2_revolution_proto_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24092,
-      "sha256": "aeef6f2a636bbc1c1996ced14e5dda1188a6d937bb899705cac8ac6a29acb72f",
+      "bytes": 24116,
+      "sha256": "d468bcd580eb54bce94807a433d2d9148d34bcbf9f2216bbb1d0f1fbb00f4e3f",
       "thumbnail": {
         "file": "thumbs/leo2_revolution_proto_angle.webp",
         "width": 256,
@@ -806,8 +806,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8936,
-      "sha256": "a4086a62fb4c705b3adc085edb70926de750f894f628d1ed470667b11ee52f8f"
+      "bytes": 8930,
+      "sha256": "0c36ee6b4dfe0b58685d6d086cda2121d45c26f5adaada0d34f8acaba8678024"
     },
     "topSilhouette": {
       "file": "leo2_revolution_proto_top_silhouette.png",
@@ -836,8 +836,8 @@
     "technicalLabels": {
       "file": "leo2_revolution_proto_technical.json",
       "mime": "application/json",
-      "bytes": 4838,
-      "sha256": "1effb979be9f55559e110ffce99946b72ca3d5404c2fe135334e1cfd91cdf7d4"
+      "bytes": 4993,
+      "sha256": "14cddc84be45382bda8e5c48163d8e3934410085d61f9d68e40f5563c27c7c44"
     }
   }
 }

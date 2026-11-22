@@ -3995,7 +3995,7 @@
       }
     ]
   },
-  "geometryHash": "19c46029",
+  "geometryHash": "419a3963",
   "metadataHash": "d46c5cee",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -4103,8 +4103,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26298,
-      "sha256": "c30e5ab757d19c896fc0d31d9361e44e6258207b858c11bffd138f68213ec076"
+      "bytes": 26312,
+      "sha256": "889ab52c34c708253d4f31b2d853e585f5724ceefd26251a86691100ae419c69"
     },
     "modulesSide": {
       "file": "pt84_zbik_modules_side.webp",

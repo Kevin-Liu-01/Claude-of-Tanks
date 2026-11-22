@@ -1062,7 +1062,7 @@
       }
     ]
   },
-  "geometryHash": "112e2cea",
+  "geometryHash": "fcbe762f",
   "metadataHash": "42964b06",
   "presentationAnchor": {
     "xM": 0.0002,
@@ -1122,39 +1122,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52510,
-      "sha256": "d9c9a4a39e790d1bc8fa42e9d677c9fc843e4760b66666c05ba750a54c2ac210"
+      "bytes": 52440,
+      "sha256": "c604ebad5e2b3382a3b823fae76bacfea97b2bbc35605b57caac6652bf1b7e9c"
     },
     "modulesSide": {
       "file": "m6_linebacker_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 56366,
-      "sha256": "b3ea1a8a2aa1278bbfc295eed1249e5b7d7400ceeba992244a3222f2abb266cb"
+      "bytes": 56312,
+      "sha256": "f9b507b88b562c38ef6b7941e2706796a70375af93b6f4d761a6f32bb05b4632"
     },
     "crewSide": {
       "file": "m6_linebacker_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 52736,
-      "sha256": "488e770c1ac77c1b9d59f89899c5141693335f9eca3929d6cff8bef6c59db674"
+      "bytes": 52802,
+      "sha256": "54a85f41b231a7a76b0eac85ed0edcef54cac05235e4b1b55037f9456b44cccf"
     },
     "angle": {
       "file": "m6_linebacker_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33688,
-      "sha256": "b29bbb410358f37cdbd21b41351c4ccac18ef2d0c4adfc8d9512acaff9c97e3e",
+      "bytes": 33680,
+      "sha256": "1c00902c90fa0fd84dc26eed5c77d1d8143403e1b528f32f565d311d8a7d92d9",
       "thumbnail": {
         "file": "thumbs/m6_linebacker_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13330,
-        "sha256": "f504bc1a8c796c7814b7092fa9362b9875ca30c73514721b158c47c8381c8da5",
+        "bytes": 13318,
+        "sha256": "b460b7c3351206b3fe185d54984ab9fff9aa80d2a1598ed155876dca5f0708b3",
         "frame": [25,95,230,250]
       }
     },
@@ -1171,8 +1171,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 26042,
-      "sha256": "56c9f1f76273ede6633e1545310a7bdff99f285b8aa4089044e702486ffb5488"
+      "bytes": 26062,
+      "sha256": "2dd3b8a608e40d304af1d8472e513adeaf4c36328c4fe69fb33084bbee940265"
     },
     "topSilhouette": {
       "file": "m6_linebacker_top_silhouette.png",

@@ -819,7 +819,7 @@
       }
     ]
   },
-  "geometryHash": "864790b6",
+  "geometryHash": "7585281b",
   "metadataHash": "816e3184",
   "presentationAnchor": {
     "xM": 0,
@@ -877,15 +877,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24410,
-      "sha256": "b9ec47e47a89f4e41f21a6ab92af0bbc66f39e87478585f66eb1dd80d700540b",
+      "bytes": 24420,
+      "sha256": "06ff43bdd4eed1ae9e310b43fe09c2678e299e6343aeca57c36139af1ba33d6e",
       "thumbnail": {
         "file": "thumbs/leo1a5dk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10470,
-        "sha256": "7982defbc2e49fab98ec584064086e1010a1a0600ab1d1657d47148ef3692c05",
+        "bytes": 10444,
+        "sha256": "6553d4b03087b4e615c47189af8742b431c877907c31e909a9b3101c06d3b7bc",
         "frame": [20,113,227,249]
       }
     },
@@ -902,8 +902,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10738,
-      "sha256": "14bf3a311e82d6eca08c57a36143601a4a1e4920abb25d735ebd52454740c6c8"
+      "bytes": 10428,
+      "sha256": "565070c3e3a96688c4a314c6c793ff642225ad8d1b28e0590eed0f0cd0a23044"
     },
     "topSilhouette": {
       "file": "leo1a5dk_top_silhouette.png",
@@ -926,24 +926,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21820,
-      "sha256": "71c8a69e594d3ebfbb154e29eaee2d27cdab6c37b37d6947446461f8db783e45"
+      "bytes": 21090,
+      "sha256": "ebbb8dd9dded1acd3fb039bcd060a30a73af7dc4eb6034459c03c8e894b45770"
     },
     "modulesSide": {
       "file": "leo1a5dk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24252,
-      "sha256": "88285e1235043055e43ea82bc05bc21726c7fb42b9f14a56238efd928ff1681e"
+      "bytes": 24208,
+      "sha256": "26c93a6f92da7ddbb9a344c39a81488b2bd3c54134a9f981508db272346a6845"
     },
     "crewSide": {
       "file": "leo1a5dk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21618,
-      "sha256": "d99a64618bc62c5b3fcf2a7fa3bde9ff7a97c25de0c41ec2d37e8fe04f0ef597"
+      "bytes": 21542,
+      "sha256": "c40b19cfc29fb254d1c4c58435bf846ad426df6edb9da9c647abf187235618d9"
     },
     "markings": {
       "file": "leo1a5dk_markings.png",

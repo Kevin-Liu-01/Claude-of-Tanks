@@ -1586,7 +1586,7 @@
       }
     ]
   },
-  "geometryHash": "85d49ffc",
+  "geometryHash": "1f40b9cc",
   "metadataHash": "3ae9c5a0",
   "presentationAnchor": {
     "xM": 0.0005,
@@ -1647,8 +1647,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30738,
-      "sha256": "4856901911a5fa2e2020eb694d6c0fd544e03a43e94c7230f2a0b02f98bff7c4",
+      "bytes": 30736,
+      "sha256": "5236cc4c254b73d53cfe0cf53c79eccd5c9c7e94e9565296f73be716edce8d52",
       "thumbnail": {
         "file": "thumbs/m1a1_abrams_aim_angle.webp",
         "width": 256,
@@ -1671,8 +1671,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15118,
-      "sha256": "c7702810659a41ec42c3e1826cefc559b5e7449859ff201942f58753bb836d09"
+      "bytes": 15130,
+      "sha256": "45f71bc33b0f48c723c07f6a2c1b5dfbe291119481064c0c9678e396926ecaf4"
     },
     "topSilhouette": {
       "file": "m1a1_abrams_aim_top_silhouette.png",
@@ -1687,32 +1687,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4628,
-      "sha256": "4360bd5e9fee1e393872fe819aebd9659d216813b2e8ea1b54729e5d76697a03"
+      "bytes": 4607,
+      "sha256": "2a9387b636ce1f04cddf81afbf08965b8cdad6864c5af7dd7ba422de241acf07"
     },
     "armorSide": {
       "file": "m1a1_abrams_aim_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30934,
-      "sha256": "b6f3a50a62290f3dcb3f4bb890eb5ca55b2b5f8ccc8eb6d60b3616583c9d4f5d"
+      "bytes": 30946,
+      "sha256": "2daa486478c0f433de62ad4b03b12f8d69eca39045d260a6e2b9c1c74d868d72"
     },
     "modulesSide": {
       "file": "m1a1_abrams_aim_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31556,
-      "sha256": "08f3318e0a863bc5ebd079154c9e343ce6af906ce20e2cfbc74f5557ae7a4f1a"
+      "bytes": 31558,
+      "sha256": "afbc3eec11fc2ab337894fd218c273b4cdc4060c02c25fc412894bb4978a2eae"
     },
     "crewSide": {
       "file": "m1a1_abrams_aim_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30434,
-      "sha256": "a8b3b1f1789d09226a8812ac0ed44cc46ef79870fc093328b507bf51efb47bbc"
+      "bytes": 30358,
+      "sha256": "aa2f3d1a66753b64f9e48f9e31a3bf3e9481d651f7b421cf0d32baafae3b3c5e"
     },
     "markings": {
       "file": "m1a1_abrams_aim_markings.png",

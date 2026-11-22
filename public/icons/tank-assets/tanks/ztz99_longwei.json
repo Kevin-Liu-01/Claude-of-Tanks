@@ -1858,7 +1858,7 @@
       }
     ]
   },
-  "geometryHash": "6eb9bd2c",
+  "geometryHash": "691a5a8c",
   "metadataHash": "c84b9878",
   "presentationAnchor": {
     "xM": 0.0006,
@@ -1943,8 +1943,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8692,
-      "sha256": "650c86d0f5610140d06715e3a6d2fd3db0af532824eada30dc5b5104143a7125"
+      "bytes": 8696,
+      "sha256": "83d8f67a60d574effd4a0ecf5b67405f5462a1cf16656f2c9d3b4951bedcdce9"
     },
     "topSilhouette": {
       "file": "ztz99_longwei_top_silhouette.png",
@@ -1959,32 +1959,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3789,
-      "sha256": "fce1f76e0fa8eec8be28554f1ff465b5e30c85ce79229affa935cdd8f4e73f9e"
+      "bytes": 3809,
+      "sha256": "305b1f8279986998fb9e4793627a30babdcbfdff19192197a17a567b5732d03f"
     },
     "armorSide": {
       "file": "ztz99_longwei_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21196,
-      "sha256": "4400ded8d60d752a68cf043dabf5dd7304f7f3b797c975e03bf2ea9c1fe00299"
+      "bytes": 21194,
+      "sha256": "bac699d49695d2d5fb0507521efc899ba233b86b43a7eb4f2030ef2cda9d3440"
     },
     "modulesSide": {
       "file": "ztz99_longwei_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19262,
-      "sha256": "f4791d29f9dcb0e9a3a540af352195334f137e2994f968f04e597855bab3f100"
+      "bytes": 19242,
+      "sha256": "55346a04fedc84cf28b31eed916dfbc0623f2061ea0f0790051fb1559cdef722"
     },
     "crewSide": {
       "file": "ztz99_longwei_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 15784,
-      "sha256": "73309faf841d516aa57762259cccce69d8d58ba7add0ee1111a7a9745b9b3b62"
+      "bytes": 15768,
+      "sha256": "e50ab7b5ba81022ee99b6e7e5a87d6c616ba2e32aeee8548e546a480b97b4482"
     },
     "markings": {
       "file": "ztz99_longwei_markings.png",
