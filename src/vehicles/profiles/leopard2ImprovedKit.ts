@@ -200,10 +200,14 @@ function rearFlaps(P: TankBuilderPort, s: number): void {
  * The APU/cooling housings on the engine deck's shoulders: each raised on two feet between the radiator louvres' ribs
  * (so the louvres stand clear under it) and 9 cm outside the bustle's sweep, with its louvre ribs, lid seam, latches and
  * rear intake mesh; the running APU's exhaust, its bore and heat-shield cowl on the loader's side (+X), and its soot.
+ * 274 (turret-deck-gate): 14.5 cm tall on 2 cm feet (they were 22 cm on 4 cm). The housings stand within 0.30 m of the
+ * turret's foot on the rear bearings, and their 2.06 top stood 9.4 cm over the foot and hid the ring. The KWS II trial
+ * tanks show no raised deck housings there: these are the 2A7V-pattern build's carry-over (no photo of the trial tank in
+ * the lane evidence; leopard-2-improved-20261029.json lists the sources). Their tops now sit under the foot.
  */
 function apuHousings(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
-  const x = 1.37, z0 = -3.44, z1 = -2.90, y0 = 1.84, y1 = 2.06, zc = (z0 + z1) / 2;
+  const x = 1.37, z0 = -3.44, z1 = -2.90, y0 = 1.815, y1 = 1.96, zc = (z0 + z1) / 2;
   for (const s of [-1, 1]) {
     P.addEquipment('hull', box(0.34, y1 - y0, z1 - z0), s * x, (y0 + y1) / 2, zc);
     for (const fz of [-3.35, -2.95]) P.add('hullDark', box(0.32, y0 - deckY(fz) + 0.004, 0.04), s * x, (y0 + deckY(fz)) / 2, fz);
@@ -212,10 +216,11 @@ function apuHousings(P: TankBuilderPort): void {
     for (const lz of [-3.02, -3.30]) P.add('hullDetail', box(0.014, 0.05, 0.06), s * (x + 0.177), (y0 + y1) / 2, lz);
     P.add('hullDark', box(0.18, 0.14, 0.014), s * (x + 0.05), (y0 + y1) / 2, z0 - 0.007);
   }
-  const ex = x - 0.12, ey = 1.95;
+  // the exhaust at the housing face's middle height; its cowl kept under the lower housing's top (274)
+  const ex = x - 0.12, ey = (y0 + y1) / 2;
   P.add('hullDark', cylZ(0.045, 0.10, 10), ex, ey, z0 - 0.05);
   P.add('hullDark', cylZ(0.032, 0.014, 8), ex, ey, z0 - 0.105);
-  P.add('hullDetail', box(0.14, 0.08, 0.03), ex, ey + 0.055, z0 - 0.015);
+  P.add('hullDetail', box(0.14, 0.06, 0.03), ex, ey + 0.035, z0 - 0.015);
   P.decal('hull', 'soot', null, 0.18, [ex + 0.04, ey, z0 - 0.002], Math.PI);
 }
 

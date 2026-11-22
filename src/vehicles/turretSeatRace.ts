@@ -30,11 +30,21 @@
  * opens between faces that share it. Inside the rim (the ring's basket and collar, in the hull's well) and the gun are
  * left as built. A moved surface's geometry is this build's own copy (a fitting's geometry can be shared between meshes
  * and tanks), freed with the build.
+ *
+ * 274 (turret-deck-gate; the owner on the Leopard 2 prototype: "turret looks like its glitching into hull"): the turret's
+ * foot band (per bearing, the FOOT_EDGE_M in from its outermost surface within FOOT_HIGH_M of the deck, out to the
+ * receipt's footR + FOOT_BASE_MARGIN_M), where the eye meets the seam, is seated to the swept deck under it with no rise
+ * limit (turretSeatPlane.ts liveAt) and whatever the keep radius: TURRET_SEAT_RISE_M had left the foot of 29 turrets
+ * within a centimetre of, or into, a deck that rose past it, and the keep radius had exempted feet narrower than their
+ * rim. Each face there is read along its edges, not only at its corners, so no face between two seated corners dips
+ * into a deck that rises between them. A corner comes up at most SEAT_LIFT_MAX_M over where the rise-limited seat leaves
+ * it; a need past that (more than SEAT_SHORT_TOL_M short) is clamped and recorded, the worst on
+ * `turretG.userData.turretSeatShortfall`, for its hull's own fix (src/vehicles/turretDeckAudit.test-support.mjs names it).
  */
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { faceBoxUV, paintedSurfaceShade, remapCamoUv, type CamoUvRemap } from './factoryGeometry.ts';
-import { TURRET_SWEEP_BIN_M, turretSeatPlane, type TurretSeatLimits, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
+import { TURRET_SWEEP_BIN_M, turretSeatPlane, type TurretSeatLimits, type TurretSeatPlane, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 
 /** The build's disposables (its geometry is freed with it). */
 interface GeometryDisposables { push(geometry: THREE.BufferGeometry): unknown }
@@ -52,13 +62,16 @@ const RACE_FOOT_M = 0.010;
 const RIM_INSET_M = 0.004;
 const CHAMFER_M = 0.002;
 
+/** The smallest ring that draws a race (and its collar) (m). */
+const RACE_MIN_RIM_M = 0.3;
+
 /** The race's width (its bolt flange and machined face) from its outer radius, as the wreck's plate draws it. */
 function raceWidth(rimR: number): number { return Math.min(0.085, Math.max(0.05, 0.075 * rimR)); }
 
 /** The race in the rig_hull frame, or null for a receipt that names no ring. */
 export function buildTurretSeatRaceGeometry(receipt: TurretSeatRaceReceipt, high: boolean): THREE.BufferGeometry | null {
   const { seat, deckY, rimR } = receipt;
-  if (!(rimR > 0.3) || !Number.isFinite(deckY) || seat.length < 3) return null;
+  if (!(rimR > RACE_MIN_RIM_M) || !Number.isFinite(deckY) || seat.length < 3) return null;
   const rOut = rimR - RIM_INSET_M, rIn = rOut - raceWidth(rimR);
   const y0 = deckY - RACE_FOOT_M, y1 = deckY + RACE_TOP_M;
   const profile = [[rIn, y0], [rOut, y0], [rOut, y1 - CHAMFER_M], [rOut - CHAMFER_M, y1], [rIn, y1], [rIn, y0]]
@@ -152,6 +165,180 @@ function collapseWhollySeated(source: THREE.BufferGeometry, out: THREE.BufferAtt
   }
 }
 
+/** 274: the turret's foot (see the header). Bearings round the ring's axis; how high over the deck a turret surface can be
+ *  its foot, how deep the band runs in from its outer edge (the turret-deck gate's 10 cm and a cell of its 2.5 cm grid
+ *  either side, so a face the gate reads at its band's edge is seated whole), how far past the receipt's footR and past
+ *  the race's rim it reaches, and the step its edges are read at (m). */
+const FOOT_BINS = 96;
+const FOOT_HIGH_M = 0.35;
+const FOOT_EDGE_M = 0.13;
+const FOOT_BASE_MARGIN_M = 0.25;
+const FOOT_RIM_PAD_M = 0.01;
+const FOOT_STEP_M = 0.025;
+/** A foot surface buried further than this under the deck's plane lies in the hull, out of sight: not its visible foot. */
+const FOOT_BURIED_M = 0.005;
+/** The most a foot-band corner comes up over where the rise-limited seat leaves it, and the shortfall past that which
+ *  still leaves the foot a centimetre over the swept deck (the seat's 3 cm gap less 2 cm), so goes unrecorded (m). */
+const SEAT_LIFT_MAX_M = 0.06;
+const SEAT_SHORT_TOL_M = 0.02;
+
+/** The turret's foot per FOOT_BINS bearing (rig_hull frame, the turret at its rest yaw): its outer radius (0 where none)
+ *  and, when asked, its visible height (the lowest of its surfaces within FOOT_EDGE_M of that edge, not buried). */
+export interface TurretFootline {
+  readonly cx: number;
+  readonly cz: number;
+  readonly footR: Float64Array;
+  readonly footY: Float64Array | null;
+}
+
+/** A mesh that shows as the turret's foot: no shadow proxy, marking, ghillie, interior fill or see-through surface. */
+function footSurface(mesh: THREE.Mesh): boolean {
+  const data = mesh.userData;
+  if (data.authoredShadowProxy || data.interiorFill || data.vehicleMarking || data.turretSeatRace || data.turretRingPlate
+    || mesh.name === TURRET_SEAT_COLLAR_NAME || /_ghillie_/.test(mesh.name)) return false;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return materials.some((m) => !!m && m.visible !== false && m.colorWrite !== false
+    && !(m.transparent && (m.opacity ?? 1) < 0.98) && !((m.alphaTest ?? 0) > 0));
+}
+
+function footBin(x: number, z: number, cx: number, cz: number): number {
+  const a = Math.atan2(x - cx, z - cz);
+  return ((Math.floor(((a / (Math.PI * 2)) + 1) * FOOT_BINS) % FOOT_BINS) + FOOT_BINS) % FOOT_BINS;
+}
+
+/** Each edge of each low triangle of meshes (in the hull frame through `hullInverse`), sampled every FOOT_STEP_M. */
+function eachFootSample(meshes: readonly THREE.Mesh[], hullInverse: THREE.Matrix4, highY: number,
+  visit: (x: number, y: number, z: number) => void): void {
+  for (const mesh of meshes) {
+    const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+    const count = index ? index.count : position.count;
+    _toHull.multiplyMatrices(hullInverse, mesh.matrixWorld);
+    for (let k = 0; k + 2 < count; k += 3) {
+      for (let c = 0; c < 3; c++) _corners[c].fromBufferAttribute(position, index ? index.getX(k + c) : k + c).applyMatrix4(_toHull);
+      if (Math.min(_corners[0].y, _corners[1].y, _corners[2].y) > highY) continue;
+      for (let e = 0; e < 3; e++) {
+        const p = _corners[e], q = _corners[(e + 1) % 3];
+        const steps = Math.min(400, Math.max(1, Math.ceil(p.distanceTo(q) / FOOT_STEP_M)));
+        for (let i = 0; i < steps; i++) {
+          const u = i / steps;
+          visit(p.x + (q.x - p.x) * u, p.y + (q.y - p.y) * u, p.z + (q.z - p.z) * u);
+        }
+      }
+    }
+  }
+}
+
+/** The turret's foot round the ring (rig_hull frame; the turret at the yaw it stands at). */
+export function measureTurretFootline(meshes: readonly THREE.Mesh[], hullG: THREE.Object3D,
+  receipt: TurretSeatRaceReceipt, withHeight: boolean): TurretFootline {
+  const cx = receipt.seat[0], cz = receipt.seat[2], highY = receipt.deckY + FOOT_HIGH_M;
+  hullG.updateWorldMatrix(true, false);
+  const hullInverse = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
+  const shown = meshes.filter(footSurface);
+  const footR = new Float64Array(FOOT_BINS);
+  eachFootSample(shown, hullInverse, highY, (x, y, z) => {
+    if (y > highY) return;
+    const r = Math.hypot(x - cx, z - cz), k = footBin(x, z, cx, cz);
+    if (r > footR[k]) footR[k] = r;
+  });
+  if (!withHeight) return { cx, cz, footR, footY: null };
+  const footY = new Float64Array(FOOT_BINS).fill(Infinity), buriedY = receipt.deckY - FOOT_BURIED_M;
+  eachFootSample(shown, hullInverse, highY, (x, y, z) => {
+    if (y > highY || y < buriedY) return;
+    const k = footBin(x, z, cx, cz);
+    if (footR[k] > 0 && Math.hypot(x - cx, z - cz) >= footR[k] - FOOT_EDGE_M && y < footY[k]) footY[k] = y;
+  });
+  return { cx, cz, footR, footY };
+}
+
+/** The foot band test (see the header): a hull-frame plan point within FOOT_EDGE_M of the foot's outer edge on its
+ *  bearing (or a neighbour's: the band's inner edge is the least of the three), past the race's rim, within the base. */
+function footBandTest(footline: TurretFootline, receipt: TurretSeatRaceReceipt): (x: number, z: number) => boolean {
+  const { cx, cz, footR } = footline;
+  const inner = new Float64Array(FOOT_BINS);
+  for (let k = 0; k < FOOT_BINS; k++) {
+    let least = Infinity;
+    for (const n of [k + FOOT_BINS - 1, k, k + 1]) { const r = footR[n % FOOT_BINS]; if (r > 0 && r < least) least = r; }
+    inner[k] = least - FOOT_EDGE_M;
+  }
+  const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
+  return (x, z) => {
+    const r = Math.hypot(x - cx, z - cz);
+    return r > rimPad && r <= baseR && r >= inner[footBin(x, z, cx, cz)];
+  };
+}
+
+/** The worst foot-band corner the seat could not bring onto its plane within SEAT_LIFT_MAX_M (turretG.userData). */
+export interface TurretSeatShortfall {
+  readonly r: number;
+  readonly bearingDeg: number;
+  /** How far the corner had to come up from where the rise-limited seat leaves it, and how much of that it could not (m). */
+  readonly needM: number;
+  readonly shortM: number;
+}
+
+const round3 = (v: number): number => Math.round(v * 1000) / 1000;
+const _fa = new THREE.Vector3(), _fb = new THREE.Vector3();
+
+/**
+ * 274: the foot band's targets (see the header) over the rise-limited seat's `targets`, merged into it in place; the worst
+ * shortfall, or null.
+ */
+function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceReceipt, seat: TurretSeatPlane,
+  hullG: THREE.Object3D, targets: Map<string, number>): TurretSeatShortfall | null {
+  const footline = measureTurretFootline(meshes, hullG, receipt, false);
+  const inFoot = footBandTest(footline, receipt);
+  const { cx, cz } = seat;
+  const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
+  let liveTop = -Infinity;
+  for (let r = rimPad; r <= baseR + 0.005; r += 0.01) liveTop = Math.max(liveTop, seat.liveAt(r));
+  const lifts = new Map<string, number>();
+  const base = [0, 0, 0], keys = ['', '', ''];
+  let worst: TurretSeatShortfall | null = null;
+  for (const mesh of meshes) {
+    const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+    const count = index ? index.count : position.count;
+    _toHull.multiplyMatrices(_hullInverse, mesh.matrixWorld);
+    for (let k = 0; k + 2 < count; k += 3) {
+      for (let c = 0; c < 3; c++) {
+        const p = _corners[c].fromBufferAttribute(position, index ? index.getX(k + c) : k + c).applyMatrix4(_toHull);
+        keys[c] = positionKey(p);
+        base[c] = Math.max(p.y, targets.get(keys[c]) ?? -Infinity);
+      }
+      if (Math.min(base[0], base[1], base[2]) >= liveTop) continue;
+      const { near, far } = planReach(_corners, cx, cz);
+      if (far <= rimPad || near > baseR) continue;
+      // the highest plane along its edges, where the face (as the rise-limited seat leaves it) stands under it
+      let plane = -Infinity;
+      for (let e = 0; e < 3; e++) {
+        const e1 = (e + 1) % 3;
+        _fa.copy(_corners[e]); _fb.copy(_corners[e1]);
+        const steps = Math.min(400, Math.max(1, Math.ceil(Math.hypot(_fb.x - _fa.x, _fb.z - _fa.z) / FOOT_STEP_M)));
+        for (let i = 0; i <= steps; i++) {
+          const u = i / steps, x = _fa.x + (_fb.x - _fa.x) * u, z = _fa.z + (_fb.z - _fa.z) * u;
+          if (!inFoot(x, z)) continue;
+          const live = seat.liveAt(Math.hypot(x - cx, z - cz));
+          if (base[e] + (base[e1] - base[e]) * u < live - 1e-4 && live > plane) plane = live;
+        }
+      }
+      if (plane === -Infinity) continue;
+      for (let c = 0; c < 3; c++) {
+        if (base[c] >= plane) continue;
+        const cap = base[c] + SEAT_LIFT_MAX_M, to = Math.min(plane, cap);
+        if (plane - cap > SEAT_SHORT_TOL_M && (!worst || plane - cap > worst.shortM)) {
+          const p = _corners[c];
+          worst = { r: round3(Math.hypot(p.x - cx, p.z - cz)), bearingDeg: Math.round(THREE.MathUtils.radToDeg(Math.atan2(p.x - cx, p.z - cz)) + 360) % 360,
+            needM: round3(plane - base[c]), shortM: round3(plane - cap) };
+        }
+        const was = lifts.get(keys[c]);
+        if (was === undefined || to > was) lifts.set(keys[c], to);
+      }
+    }
+  }
+  for (const [key, to] of lifts) if (to > (targets.get(key) ?? -Infinity)) targets.set(key, to);
+  return worst;
+}
+
 /** Seat the turret's surfaces over the deck round its ring (see the header); the count of meshes moved. */
 export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, disposables, onSeated }: SeatTurretOverDeckOptions): number {
   const receipt = combatAnatomyCalibration(specId)?.turretRing;
@@ -193,13 +380,17 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
       }
     }
   }
+  // 2. the foot band (274), from where step 1 leaves each corner
+  const shortfall = seatFootBand(meshes, receipt, seat, hullG, targets);
+  if (shortfall) turretG.userData.turretSeatShortfall = shortfall;
+  else delete turretG.userData.turretSeatShortfall;
   if (!targets.size) {
     addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, disposables });
     return 0;
   }
   let highest = -Infinity;
   for (const plane of targets.values()) highest = Math.max(highest, plane);
-  // 2. each mesh holding such a corner: this build's own copy (a fitting's geometry can be shared between meshes and
+  // 3. each mesh holding such a corner: this build's own copy (a fitting's geometry can be shared between meshes and
   // tanks), every vertex at a seated position set on its plane, and the moved vertices' normals from the faces round them
   let moved = 0;
   for (const mesh of meshes) {
@@ -417,7 +608,7 @@ interface SeatCollarOptions {
  * elevates to 85 deg swings 28 deg between the default sweep's samples, and its breech dips under the collar between them.
  */
 function addSeatCollar({ receipt, hullG, turretG, gunG, gunPitchDeg, meshes, disposables }: SeatCollarOptions): void {
-  if (turretG.userData.turretSeatCollar === false) return;
+  if (turretG.userData.turretSeatCollar === false || !(receipt.rimR > RACE_MIN_RIM_M)) return;
   const cx = receipt.seat[0], cz = receipt.seat[2];
   // round the race's outer edge, its foot sunk into the race; where the swept deck stands higher at that radius (hull
   // kit or a crowned deck nearer the ring on some bearing), just inside where the sweep starts, still in the race, so

@@ -8920,8 +8920,11 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle's
       // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.78, 3.2 m) to -2.58, and meets the
       // power-pack plateau at -2.63; it rose from -0.58, and the bustle sat 10 cm in it at rest (authored metres, before
-      // the 5% enlargement)
-      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.58, 1.772], [-2.63, 1.82],
+      // the 5% enlargement). 274 (turret-deck-gate): the stowage's 1.772 floor runs on to -2.65 and the plateau starts
+      // at -2.70 (was -2.58 / -2.63), so the plateau's front edge sits more than 0.30 m outside the turret's foot: at
+      // -2.63 it stood 2.4 cm over the foot on the rear bearings. The deck meets the turret flush on the real tank
+      // (kf51_u rear photo); here it now sits under the foot.
+      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.65, 1.772], [-2.70, 1.82],
         [-3.66, 1.82]],
       glacis: [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]],
       glacisLaneCut: { x: 0.93, z0: 2.90 },
@@ -8950,8 +8953,9 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       dedupeLoopPoints: true,
       padHex: 0x2c2d25, chainHex: 0x24251f,
       gearFloor: true,
-      // (radiatorWellLength, release 240: the wells end at -2.63, on the power-pack plateau behind the lowered deck)
-      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.37,
+      // (radiatorWellLength, release 240: the wells end on the power-pack plateau behind the lowered deck; 274: at
+      // -2.70, where the plateau now starts, not -2.63)
+      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.30,
       splashArms: false, jackDark: true,
     });
 

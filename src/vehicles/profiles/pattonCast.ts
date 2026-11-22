@@ -613,7 +613,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
     }
   }
   P.add('hullDetail', box(0.36, 0.014, eZ0 - eZ1), 0, H.engineDeckY + 0.007, (eZ0 + eZ1) / 2);
-  for (const side of [-1, 1]) P.add('hullDetail', cylY(0.07, 0.07, 0.03, 12), side * 1.18, H.engineDeckY + 0.015, H.engineDeckZ - 0.30);
+  // the fuel fillers' caps, near flush with the deck as the photos show them (274 (turret-deck-gate): at 3 cm tall they stood
+  // 3.4 cm over the M60's bustle foot beside it, the turret's lower edge reading into the deck; 8 mm keeps the disc)
+  for (const side of [-1, 1]) P.add('hullDetail', cylY(0.07, 0.07, 0.008, 12), side * 1.18, H.engineDeckY + 0.004, H.engineDeckZ - 0.30);
   yield 'pershingHullDeck';
   // 5. The exhaust mufflers on the rear fenders (the M46/M47 tell): drums in their guard hoops, the elbow from the
   // engine deck, the X-braced end guards
@@ -2287,6 +2289,20 @@ function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
   const { box } = KIT;
   const L = tl(T);
   const yb = 1.70, yw = 2.42, yt = 2.60, h = yt - yb;
+  // 274 (turret-deck-gate): aft of the ring the floor rises to clear the engine deck 4 cm wherever the traverse carries
+  // it (the deck's highest point at its radius over the rear half), as the cast dome's own floor rises aft (M48_DOME):
+  // flat at 1.70 the wrap stood 13 cm into the deck behind the ring and the deck stood 4-6 cm over its foot
+  const hullDeck = landmarkSeat(M48_HULL, M48_HULL_RULE);
+  const floorAt = (x: number, z: number): number => {
+    if (z >= T.ringZ) return yb;
+    const r = Math.hypot(x, z - T.ringZ);
+    let top = -Infinity;
+    for (let a = 90; a <= 270; a += 5) {
+      const dx = r * Math.sin((a * Math.PI) / 180), dz = T.ringZ + r * Math.cos((a * Math.PI) / 180);
+      if (Math.abs(dx) < hullDeck.sideAt(yb - 0.01, dz)) top = Math.max(top, hullDeck.topAt(dx, dz));
+    }
+    return Math.max(yb, top + 0.04);
+  };
   // the walls lean in 6 % up to the roof line at yw; above it a strip at 40 degrees draws in 0.20 m toward the ring's axis
   const lean = (x: number, y: number, z: number): [number, number] => {
     const t = Math.min(1, Math.max(0, (y - yb) / (yw - yb)));
@@ -2319,9 +2335,9 @@ function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
     // surface, so the shelf meets the cast roof with no well
     const isInner = (x: number, z: number): boolean => z <= 1.0 && inner.some(([ix, iz]) => Math.abs(ix - Math.abs(x)) < 1e-4 && Math.abs(iz - z) < 1e-4);
     for (let k = 0; k < pos.count; k++) {
-      const level = Math.round(pos.getY(k) / (h / 2)), y = [yb, yw, yt][level];
-      const x0 = pos.getX(k), z0 = pos.getZ(k);
-      let [x, z] = lean(x0, y, z0);
+      const level = Math.round(pos.getY(k) / (h / 2));
+      const x0 = pos.getX(k), z0 = pos.getZ(k), y = level ? [yb, yw, yt][level] : floorAt(x0, z0);
+      let [x, z] = lean(x0, level ? y : yb, z0);
       if (level > 0 && isInner(x0, z0)) x = side * Math.max(0.32, Math.min(Math.abs(x) + 0.30, seat.sideAt(y, z0) - 0.03));
       pos.setXYZ(k, x, y, z);
     }
@@ -2339,15 +2355,17 @@ function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
       const count = Math.max(1, Math.round(len / 0.25));
       for (let k = 0; k < count; k++) {
         const t = (k + 0.5) / count;
-        for (const y of [yb + 0.10, yw - 0.10]) {
+        for (const y0 of [yb + 0.10, yw - 0.10]) {
+          const y = y0 < yw - 0.2 ? Math.max(y0, floorAt(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t) + 0.10) : y0;
           const [bx, bz] = lean(side * (x0 + (x1 - x0) * t), y, z0 + (z1 - z0) * t);
           P.add('turretDark', KIT.cylY(0.02, 0.02, 0.02, 10), bx + n.x * 0.01, y - T.ringY, bz + n.z * 0.01 - T.ringZ, e.x, e.y, e.z);
         }
       }
       // the seam where the next plate meets this one
       if (i > 0) {
-        const [sx0, sz0] = lean(side * x0, yb + 0.02, z0), [sx1, sz1] = lean(side * x0, yw, z0);
-        bar(P, 'turretDark', [sx0, L.y(yb + 0.02), L.z(sz0)], [sx1, L.y(yw), L.z(sz1)], 0.012);
+        const sy = floorAt(x0, z0) + 0.02;
+        const [sx0, sz0] = lean(side * x0, sy, z0), [sx1, sz1] = lean(side * x0, yw, z0);
+        bar(P, 'turretDark', [sx0, L.y(sy), L.z(sz0)], [sx1, L.y(yw), L.z(sz1)], 0.012);
       }
       if (i === 0) {
         // the rangefinder's window near the cheek's top outer corner, in its raised frame

@@ -522,7 +522,10 @@ const MKIV_GEAR: Cv90Gear = Object.freeze({
 function buildCv90MkivHull(P: CvBuilderPort): void {
   const d = MKIV_HULL, { box } = KIT;
   P.add('hull', cv90HullShell(d));
-  const glacisTop = (z: number): number => cv90RoofY(d, z) + 0.07;
+  // 274 (turret-deck-gate): the upper course stands 4 cm proud of the roof, not 7. Beside the low two-man turret its
+  // top stood 3.3 cm over the turret's foot and hid the ring; on the CV90CZ (cv90_mk4_concept side photo) the module
+  // tops meet the roof edge and the turret's lower band reads clear over them.
+  const glacisTop = (z: number): number => cv90RoofY(d, z) + 0.04;
   for (const side of [-1, 1] as const) {
     // heavier Mk IV modules: a deeper upper course standing farther out, a bevelled lower course
     cv90ArmourCourse(P, side, [[-3.37, -2.17], [-2.15, -0.95], [-0.93, 0.27], [0.29, 1.49], [1.51, 2.50],

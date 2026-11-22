@@ -59,6 +59,7 @@ import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
 import { applyTurretSeatRace, seatTurretOverDeck } from './turretSeatRace.ts';
+import { ringZonePart, ringZoneViolations, type RingZonePart } from './ringZoneGuard.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
@@ -8679,6 +8680,11 @@ function* buildTankCoreSteps(
   gunG.add(recoilG);
 
   const buckets: Record<string, THREE.BufferGeometry[]> = {};
+  // 274 (ringZoneGuard.ts): the hull parts the kit entry points placed, by the bucket they went to, and the part the last
+  // add() placed (whatever bucket an ERA cluster routed it to)
+  const ringZoneGuarded = new Map<THREE.BufferGeometry, string>();
+  let ringZoneParts: RingZonePart[] = [];
+  let lastAddedPart: THREE.BufferGeometry | null = null;
   // Discharger tubes add() sends to the owner's fitting paint once the profile is done (SMOKE_TUBE_PAINT_BUCKET).
   const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
@@ -8750,6 +8756,12 @@ function* buildTankCoreSteps(
   yield* coreCheckpoint(coreYield);
   const equipmentDamage = new EquipmentDamage();
   const weaponDamage = new WeaponDamageVisuals();
+  // 274: a hull part a kit entry point placed is handed to the ring-zone guard on geometry-receipt builds
+  const guardRingZone = (bucket: string, place: () => void): void => {
+    lastAddedPart = null;
+    place();
+    if (geometryReceipt && lastAddedPart && bucket.startsWith('hull')) ringZoneGuarded.set(lastAddedPart, bucket);
+  };
 
   const P: TankBuilderPort = {
     // PERF r3: `quality` remains the texture tier. Mobile battle bots can
@@ -8797,6 +8809,7 @@ function* buildTankCoreSteps(
       const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
       const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
+      lastAddedPart = part;
       const paintBucket = smokeTube ? SMOKE_TUBE_PAINT_BUCKET[bucket] : undefined;
       if (paintBucket) smokeTubesForFittingPaint.add(part);
       partCensus?.(paintBucket ?? targetBucket, part, 'add');
@@ -8890,7 +8903,7 @@ function* buildTankCoreSteps(
     addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
-      P.add(visualBucket, geo, x, y, z, rx, ry, rz, s);
+      guardRingZone(visualBucket, () => P.add(visualBucket, geo, x, y, z, rx, ry, rz, s));
     },
     addCupola(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const structuralBucket = bucket === 'hull' ? 'hullCupola'
@@ -8904,7 +8917,7 @@ function* buildTankCoreSteps(
     addHatch(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const structuralBucket = bucket === 'hull' ? 'hullHatch'
         : bucket === 'turret' ? 'turretHatch' : bucket;
-      P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s);
+      guardRingZone(structuralBucket, () => P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s));
     },
     // ERA, cages and bolt-on applique remain visible and may have authored
     // external/ERA plates in the combat spec, but they must never resize the
@@ -8912,7 +8925,7 @@ function* buildTankCoreSteps(
     addExternalArmor(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const externalBucket = bucket === 'hull' ? 'hullExternalArmor'
         : bucket === 'turret' ? 'turretExternalArmor' : bucket;
-      P.add(externalBucket, geo, x, y, z, rx, ry, rz, s);
+      guardRingZone(externalBucket, () => P.add(externalBucket, geo, x, y, z, rx, ry, rz, s));
     },
     // Visible damageable systems can publish one or more close-fitting source
     // parts. The generator unions/segments these receipts under the existing
@@ -9909,6 +9922,11 @@ function* buildTankCoreSteps(
     if (LOD0_KEEP.has(bucket) || mesh.userData.rangeSilhouette) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
+  // 274: the guarded hull parts still in their buckets, boxed before the buckets merge (ringZoneGuard.ts)
+  if (geometryReceipt && ringZoneGuarded.size) {
+    const live = new Set(Object.values(buckets).flat());
+    ringZoneParts = [...ringZoneGuarded].filter(([part]) => live.has(part)).map(([part, bucket]) => ringZonePart(bucket, part));
+  }
   const stationKey=(part:THREE.BufferGeometry):string=>{
     const station=part.userData.auxiliaryStation;
     return station?station.name+':'+station.stage:'';
@@ -9997,6 +10015,12 @@ function* buildTankCoreSteps(
       equipmentDamage.follow(built, seated);
       weaponDamage.follow(built, seated);
     } });
+    // 274: hull kit standing over the seated turret's foot, named for the turret-deck gate (ringZoneGuard.ts)
+    if (ringZoneParts.length) {
+      const violations = ringZoneViolations({ specId, hullG, turretG, gunG, parts: ringZoneParts });
+      if (violations.length) hullG.userData.ringZoneViolations = violations;
+      ringZoneParts = [];
+    }
     // Battles consume checked anatomy and the live clusters above; static
     // wrecks retain baked geometry. Both can omit this authoring-only audit.
     // Preserve the default for workshop, Gallery and anatomy/release callers.

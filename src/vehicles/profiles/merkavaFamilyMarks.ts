@@ -225,6 +225,22 @@ function stemOf2bMast(parts: SourcePart[]): SourcePart[] {
   return parts;
 }
 
+/** The 2B's front deck armour (solid part 17, cut along x, its top rising aft to the turret's chin) with its crest folded
+ *  down to 1.765 m, level with the deck plate's left half: 274 (turret-deck-gate): from x -1.24 to -0.1 it rose to 1.82, 3.8
+ *  cm over the turret's foot ahead of the right cheek (the guard: 6.3 cm over its footline), where the real tank's
+ *  armour lies under the chin (Commons Merkava-2-latrun-2/-3). The fold keeps a tenth of the rise so no two points of a
+ *  section meet; a regenerated table that moves the part fails here rather than flattening another. */
+const MK2B_DECK_CREST_Y = 1.765;
+function foldOf2bDeckCrest(parts: MerkavaMark['solidParts']): MerkavaMark['solidParts'] {
+  const p = parts[17];
+  if (!p || p.owner !== 0 || p.role !== 2 || p.axis !== 0 || p.solids.length !== 4 || Math.abs(p.solids[0]!.z[0]! + 1.242) > 0.002) {
+    throw new Error('merkava2b: solid part 17 is no longer the front deck armour');
+  }
+  const fold = (y: number): number => (y > MK2B_DECK_CREST_Y ? MK2B_DECK_CREST_Y + (y - MK2B_DECK_CREST_Y) * 0.1 : y);
+  const solids = p.solids.map((solid) => ({ z: solid.z, rings: solid.rings.map((ring) => ring.map(([a, y]): SectionPoint => [a, fold(y)])) }));
+  return parts.map((part, i) => (i === 17 ? { ...part, solids } : part));
+}
+
 /** Rows of numbers (the record's basket, boot, cradle and studs as plain rows: mapped as their literal tuples, their union
  *  is too large). */
 type Rows = readonly (readonly number[])[];
@@ -362,13 +378,14 @@ function loadOf(r: object): BasketLoadItem[] {
 function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): MerkavaMark {
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
+  const solidParts: SolidPart[] = r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
+    axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) }));
   return {
     id, hull, gear: gearOf(r), fender: fenderOf(r), belly: r.belly?.map((st) => st.map((v) => v / 1000) as unknown as BellyStation) ?? null,
     pivot, shell: solidsOf(r.turretShell),
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s),
       runs: runsOf(m), plates: platesOf((m as { readonly p?: PackedPlates }).p) })),
-    solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
-      axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot,
+    solidParts: id === 'merkava2b' ? foldOf2bDeckCrest(solidParts) : solidParts, slot: r.slot,
     parts: id === 'merkava2b' ? stemOf2bMast(src.parts.map(decodePart)) : src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
     basket: basketOf(r), load: loadOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
     roofGuns: r.mgs.map(([x, foot, z, z0, z1], i) => [x, foot, z, z0, z1, ROOF_GUN_TOP[id][i] ?? null] as const),
