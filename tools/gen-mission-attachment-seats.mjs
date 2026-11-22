@@ -7,6 +7,7 @@ import {TANK_SPECS} from '../src/vehicles/specs.ts';
 import {TANK_IDS} from '../src/vehicles/tankIdAliases.ts';
 import {ensureInteriorFills} from '../src/vehicles/interiorFills.ts';
 import {MISSION_ATTACHMENT_SEATS} from '../src/sim/missionAttachmentSeats.generated.ts';
+import {MISSION_DOCK_SEATS} from '../src/sim/missionDockSeats.generated.ts';
 import {MISSION_DOCK_SEATS_PATH,missionDockSeatsSource} from './mission-dock-seats.mjs';
 import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachmentSignature,missionAttachmentTurretPivot,DRONE_DOCK_CRADLE} from '../src/sim/missionAttachment.ts';
 import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
@@ -58,9 +59,27 @@ const hintRises=new Map(hintRows.filter(r=>r.riseM!==undefined).map(r=>{
 const stockPool=new Map();
 // A row under an id the tank id alias layer renamed moves to the new id unchanged; a row no spec carries is dropped
 // (SSOT 2.19).
-const records=Object.fromEntries(Object.entries(MISSION_ATTACHMENT_SEATS)
+const currentRows=table=>Object.fromEntries(Object.entries(table)
   .map(([id,record])=>[Object.hasOwn(TANK_SPECS,id)?id:TANK_IDS.resolveIncoming(id),record])
-  .filter(([id])=>Object.hasOwn(TANK_SPECS,id))),report={schemaVersion:1,seeds,qualities,mode:check?'check':dryRun?'dry-run':'update',rows:[]};
+  .filter(([id])=>Object.hasOwn(TANK_SPECS,id)));
+const records=currentRows(MISSION_ATTACHMENT_SEATS),dockRows=currentRows(MISSION_DOCK_SEATS);
+const report={schemaVersion:1,seeds,qualities,mode:check?'check':dryRun?'dry-run':'update',rows:[]};
+// 275 (the T-80U Kursk, 274): a seat seeded once into both tables can sit where neither grid below lands. The Kursk's
+// stands between its narrowed M2 arc and the stern racks; when the 274 merge took main's stale row there, the search
+// from scratch missed it in 276,114 candidates. So the search seeds itself from both committed rows: this table's
+// record first, then the boot-side projection's row (src/sim/missionDockSeats.generated.ts) when it names another
+// seat. Either table that kept the seat re-finds it. A seed is a candidate like any other (every check runs), so a row
+// whose seat still holds comes back byte-identical. --drop-rows=<ids> drops those ids' records before seating, as a
+// merge that lost them does; tools/mission-attachment-seat-seeds.selftest.mjs regenerates a sample that way.
+const dropRows=uniqueIds(value('--drop-rows','').split(',').map(id=>id.trim()).filter(Boolean),'gen-mission-attachment-seats --drop-rows');
+if(dropRows.length&&check)throw new Error(PART_TOOL+': --drop-rows seats again; never with --check');
+// a dropped id is seated again in the same run, so a plain run never writes the tables without it
+for(const id of dropRows){if(!ids.includes(id))throw new Error(PART_TOOL+': --drop-rows names '+id+', which --ids does not seat');delete records[id];}
+const seatKey=row=>JSON.stringify([row.frame,row.x,row.z,row.payloadOffset??null,row.braced??null]);
+function seatSeeds(id){
+ const rows=[records[id],dockRows[id]].filter(Boolean);
+ return rows.filter((row,i)=>rows.findIndex(other=>seatKey(other)===seatKey(row))===i);
+}
 function ensureCase(cases,id,quality,seed){
  const key=quality+':'+seed;
  if(!cases.has(key)){
@@ -200,8 +219,8 @@ for(const id of ids){
  // Authored supports (a receiver's pads, a welded patch) are narrow, and the
  // .06 m native grid can step over them (2026-10-08: no Twardy, M1A1 SA or
  // Russian patch seat in 280,000+ candidates each). Offer them after any
- // hint and the current record, before the broad grid; every check runs.
- const candidates=[...(hints[id]?[hints[id]]:[]),...(records[id]?[records[id]]:[]),...authoredSupportCandidates(id,DRONE_DOCK_CRADLE),...missionAttachmentCandidates(spec)].map(c=>({...c,...DRONE_DOCK_CRADLE})),cases=new Map();
+ // hint and the committed seats (seatSeeds), before the broad grid; every check runs.
+ const candidates=[...(hints[id]?[hints[id]]:[]),...seatSeeds(id),...authoredSupportCandidates(id,DRONE_DOCK_CRADLE),...missionAttachmentCandidates(spec)].map(c=>({...c,...DRONE_DOCK_CRADLE})),cases=new Map();
  try{
   const result=check?inspectRecord(spec,records[id],candidates,cases):findSeat(spec,candidates,cases);
   if(result.seat)records[id]=result.seat;

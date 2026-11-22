@@ -651,6 +651,7 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/m1a1-fill-clearance.selftest.mjs',
     'tools/map-probe-runtime.selftest.mjs',
     'tools/media-r5/site50.selftest.mjs',
+    'tools/mission-attachment-seat-seeds.selftest.mjs',
     'tools/mission-attachment-support.selftest.mjs',
     'tools/moving-clearance-air.selftest.mjs',
     'tools/mp-p2p-early-link.selftest.mjs',
