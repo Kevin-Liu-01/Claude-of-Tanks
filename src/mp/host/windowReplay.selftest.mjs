@@ -33,8 +33,8 @@
 //     unmoved), now and 2 s on; a survivor infected (the frame alone shows the death: no conversion announced again, its
 //     respawn at most the window late; and one risen again among the infected inside a longer window, its faction the
 //     frame's; each at the infected's pace); a survivor the play alone infected (a hand on the play's own steps), a
-//     survivor again where a row stands it up, and the play's (rising as one of the infected) where none does; the ball
-//     struck, to the bit and 1 s on.
+//     survivor again where a row stands it up, and the play's (rising as one of the infected) where none does; a ring
+//     arrival the play did not make by the frame, taken as made; the ball struck, to the bit and 1 s on.
 // Also: a far tier's row is another seat's ([2]); a row that parts on the fire or the magazine alone ([3]); the play's own
 // events of the window go to no seat ([5]); a keyframe sealed in the countdown, with no mode checkpoint, or with its clocks
 // 2.5 ms apart is not replayed ([1]).
@@ -531,6 +531,29 @@ console.log('[8] the frame\'s view where the play parts from it: a zone meter, a
   const rose = [];
   for (let k = 0; k < 360; k++) { fresh.authority.step({ dt: 1 / 60, inputs }); for (const ev of fresh.authority.eventsForViewer('h0')) if (ev.type === 'mode_respawn' && ev.id === victimId) rose.push(victim.team); fresh.authority.afterEventBroadcast(); }
   ok(rose.length === 1 && rose[0] !== 'alpha', `infected: and rises as one of them, never a survivor (${JSON.stringify(rose)} in 6 s)`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // and an infected killed by another hand 5 ticks into a long window, risen on the ring by the old host there; the play
+  // kills it itself only at its step 30 (its respawn not yet due at the frame), and the frame's row shows it risen: its
+  // ring arrival is taken as made, the hunt's arrivals counted as the old host's (the hulls part after, the doc names it)
+  const victimId = 'b-1';
+  const staged = stage({ mode: 'infected', window: 320, during: (old, k) => { if (k === 5) { const victim = old.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; } } });
+  const { state } = resumeStateFromRetained(staged.keyframe, 0, staged.latest, 500, [], [], staged.told);
+  const fresh = makeFor(staged.mode, staged.ruleset)({ tick: state.tick, ...resumeClocksOf(state) });
+  const play = fresh.authority.step.bind(fresh.authority);
+  let played = 0;
+  fresh.authority.step = (input) => {
+    if (++played === 30) { const victim = fresh.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; }
+    return play(input);
+  };
+  applyResumeState(fresh, state);
+  fresh.authority.step = play;
+  const huntOf = (actor) => actor.authority.captureModeCheckpoint().mode.hunt?.arrivals;
+  const oldVictim = staged.old.authority.entityById.get(victimId), newVictim = fresh.authority.entityById.get(victimId);
+  ok(staged.told.some(([id]) => id === victimId) && oldVictim.modeLife === 'alive' && newVictim.modeLife === 'alive' && huntOf(fresh) === huntOf(staged.old),
+    `infected: a ring arrival the play did not make by the frame is taken as made (${victimId} ${newVictim.modeLife}; the hunt's arrivals ${huntOf(fresh)} `
+      + `against ${huntOf(staged.old)})`);
   staged.old.stop(); fresh.stop();
 }
 {
