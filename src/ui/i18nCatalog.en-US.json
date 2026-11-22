@@ -3835,6 +3835,8 @@
   "camoPattern.sig_vt4a1_baihu": "Baihu Desert Digital",
   "camoPattern.sig_t72b3_zhuque": "Zhuque Red Earth",
   "camoPattern.sig_t72b3m_xuanwu": "Xuanwu Night Digital",
+  "camoPattern.sig_bm_oplot_m": "Oplot-M Ukrainian Digital",
+  "camoPattern.sig_bm_oplot_t": "Oplot-T Ukrainian Three-Tone",
   "playMenu.brain.heading": "Opponent brain",
   "playMenu.brain.sub": "Who commands the bots in your solo battles. Saved for every mode.",
   "playMenu.brain.classic": "Classic",

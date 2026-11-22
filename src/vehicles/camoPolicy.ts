@@ -218,6 +218,16 @@ const RELEASE_265_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_265_SIGNATURE_
   sig_t72b3_zhuque: 'Zhuque Red Earth',
   sig_t72b3m_xuanwu: 'Xuanwu Night Digital',
 });
+/** Release 275 (Kevin 2026-11-21: "we should save the current oplot t and oplot m camos but they need to have proper
+ * ukranian colorways by default"): the T-84BM Oplot-M and Oplot-T stock in the Ukrainian Armed Forces' field colours,
+ * green under brown, sand and near-black, each on its old pattern (the Oplot-M's MM-14 digital, the Oplot-T's three-tone)
+ * at its old scale. Their 262 coats (paint_bm_oplot_m, paint_bm_oplot_t, the specs' own visuals) stay in the catalog at
+ * their indices. Appended after every earlier id, so no serialized index moves. */
+const RELEASE_275_SIGNATURE_IDS = Object.freeze(['sig_bm_oplot_m', 'sig_bm_oplot_t'] as const);
+const RELEASE_275_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_275_SIGNATURE_IDS[number], string>> = Object.freeze({
+  sig_bm_oplot_m: 'Oplot-M Ukrainian Digital',
+  sig_bm_oplot_t: 'Oplot-T Ukrainian Three-Tone',
+});
 const AUTHORED_PAINT_IDS_BEFORE_GT = AUTHORED_PAINT_IDS.filter(
   (id): id is Exclude<typeof id, AuthoredPaintIdAfterGt> => !isAuthoredPaintIdAfterGt(id));
 
@@ -238,6 +248,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_269,
   ...AUTHORED_PAINT_IDS_AFTER_271,
   ...AUTHORED_PAINT_IDS_AFTER_272,
+  ...RELEASE_275_SIGNATURE_IDS,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -372,6 +383,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
   ...RELEASE_233_SIGNATURE_LABEL,
   ...RELEASE_265_SIGNATURE_LABEL,
+  ...RELEASE_275_SIGNATURE_LABEL,
 } as Record<CamoPatternId, string>);
 
 /**
@@ -703,6 +715,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#55594b', weather: '#69695a', patches: ['#393c34', '#77705b', '#82755c'], camoScale: 0.55 }),
   preset('sig_leo2a6_ua', 'leo2a6_ua', signatureTags('ua', 'woodland', 'digital'),
     { scheme: 'digital', base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'], camoScale: 0.46 }),
+  // release 275: the Oplot-M and Oplot-T in the Ukrainian Armed Forces' field green under brown, sand and near-black, on
+  // their 262 patterns and scales (paint_bm_oplot_m: MM-14 digital at 0.5; paint_bm_oplot_t: three-tone at 0.58)
+  preset('sig_bm_oplot_m', 'bm_oplot_m', signatureTags('ua', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#56603a', weather: '#67704a', patches: ['#2a3020', '#6b5236', '#ae9d6c'], camoScale: 0.5 }),
+  preset('sig_bm_oplot_t', 'bm_oplot_t', signatureTags('ua', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#4f5b35', weather: '#606b44', patches: ['#b19b66', '#5e4430', '#262720'], camoScale: 0.58 }),
   // Round 31: the national colour schemes — plain single-colour service coats, one per nation.
   ...NATIONAL_CAMO_PRESETS,
   // Round 31: every distinct authored paint in the fleet, named after its lead vehicle (generated table).
@@ -871,6 +889,8 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // Ukraine — the UA M2A3 Bradley owns the national Factory reference.
   't84', 'ua_challenger2', 't64bv_donbas', 'ua_t80bv', 't80u_kursk',
   't84bm_oplot_m', 'ua_m1a1', 'leo2a6_ua',
+  // release 275: the Oplot-M and Oplot-T in Ukrainian colours (their 262 coats stay selectable)
+  'bm_oplot_m', 'bm_oplot_t',
 ] as const);
 
 const SIGNATURE_CAMO_TANK_ID_SET = new Set<string>(SIGNATURE_CAMO_TANK_IDS);
@@ -924,10 +944,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
   t64bm1m: 'sig_ua_t64bv',
   t64b1v_2022: 'sig_ua_t64bv',
-  // release 262: the new Oplots' own stock coats: the Ukrainian MM-14 digital (owner 2026-10-30: "oplot-m doesnt hav ea
-  // camo", no flat coat), the Thai desert
-  bm_oplot_m: 'paint_bm_oplot_m',
-  bm_oplot_t: 'paint_bm_oplot_t',
+  // (release 262 gave the new Oplots their own stock coats here, paint_bm_oplot_m and paint_bm_oplot_t; release 275 makes
+  // their Ukrainian-coloured Signatures the stock, sig_bm_oplot_m and sig_bm_oplot_t, and the 262 coats stay selectable)
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',

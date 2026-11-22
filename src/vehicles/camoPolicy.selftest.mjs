@@ -320,8 +320,8 @@ assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
   'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
   'paint_tunguska_m', 'paint_pantsir_s1', 'paint_object292',
-  'paint_olifant_mk1b_2'],
-  'GT, then later paints (266: the Danish coats, the Challenger 1 paints, the Brazilian coats, the M41 and CV9035 DK coats; 267: the 2A7 DK\'s, then the Type 90 (B), then the original BMPT Terminator\'s three-tone; 269: the plain-coat pass, then the South Africa and Australia lines; 270: the Tunguska-M\'s and the Pantsir-S1\'s coats; 272: the Object 292\'s Kubinka three-tone; 273: the Olifant Mk 1B\'s repaint), append without shifting saved catalog indices');
+  'paint_olifant_mk1b_2', 'sig_bm_oplot_m', 'sig_bm_oplot_t'],
+  'GT, then later paints (266: the Danish coats, the Challenger 1 paints, the Brazilian coats, the M41 and CV9035 DK coats; 267: the 2A7 DK\'s, then the Type 90 (B), then the original BMPT Terminator\'s three-tone; 269: the plain-coat pass, then the South Africa and Australia lines; 270: the Tunguska-M\'s and the Pantsir-S1\'s coats; 272: the Object 292\'s Kubinka three-tone; 273: the Olifant Mk 1B\'s repaint; 275: the Oplots\' Ukrainian Signatures), append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');

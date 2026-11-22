@@ -102,8 +102,8 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
   'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
   'paint_tunguska_m', 'paint_pantsir_s1', 'paint_object292',
-  'paint_olifant_mk1b_2'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, then the 269 plain-coat pass and the South Africa and Australia lines, then the Tunguska-M\'s and the Pantsir-S1\'s coats (270), then the Object 292\'s Kubinka three-tone (272), then the Olifant Mk 1B\'s repaint (273), append, after GT');
+  'paint_olifant_mk1b_2', 'sig_bm_oplot_m', 'sig_bm_oplot_t'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the 267 coats and the original BMPT Terminator\'s three-tone, then the 269 plain-coat pass and the South Africa and Australia lines, then the Tunguska-M\'s and the Pantsir-S1\'s coats (270), then the Object 292\'s Kubinka three-tone (272), then the Olifant Mk 1B\'s repaint (273), then the Oplot-M\'s and Oplot-T\'s Ukrainian Signatures (275), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
@@ -116,7 +116,7 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro',
   'paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1', 'paint_olifant_mk1a', 'paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
   'paint_tunguska_m', 'paint_pantsir_s1', 'paint_object292',
-  'paint_olifant_mk1b_2']);
+  'paint_olifant_mk1b_2', 'sig_bm_oplot_m', 'sig_bm_oplot_t']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -152,7 +152,7 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // fictional EE-T3 and EE-T4 Osório (owner 2026-10-30) in their three-tone and digital woodland, appended after; the
 // Danish M41 DK-1 and CV9035 DK and the Bundeswehr and JGSDF M41s, each in its own coat. Release 267: the original BMPT
 // Terminator in its Engineering Technologies 2012 three-tone desert.
-const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
+const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
   'centurion5_1_aus', 'pt84_orzel', 'leo1a5dk1', 'leo2a5dk', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1',
   'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf', 'leo2a7dk', 'centurion5_2dk', 'type90b', 'bmpt_terminator',
   // release 269, the plain-coat pass (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the three
@@ -209,7 +209,9 @@ const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't
 // selections still wearing it (273: the Olifant Mk 1B in the SANDF's 1994 three-colour; the TTD keeps paint_olifant_mk1b).
 const ADDED_IN_REPAINT = { olifant_mk1b: 'paint_olifant_mk1b_2' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
-const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
+// Release 275 (Kevin 2026-11-21): the T-84BM Oplot-M and Oplot-T, added in their own 262 paints (still selectable, above),
+// stock in Ukrainian-coloured Signatures of their own.
+const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 'bm_oplot_m', 'bm_oplot_t'];
 // release 262: the fourth batch's Leopard 2A3 wears the 2A3 OTCO's coat (it carries that build's paint and combat data)
 const ADDED_WEARING_PRODUCTION_PAINT = { leo2a3_b4: 'leo2a3' };
 // Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's
