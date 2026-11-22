@@ -33,7 +33,8 @@
 //     unmoved), now and 2 s on; a survivor infected (the frame alone shows the death: no conversion announced again, its
 //     respawn at most the window late; and one risen again among the infected inside a longer window, its faction the
 //     frame's; each at the infected's pace); a survivor the play alone infected (a hand on the play's own steps), a
-//     survivor again; the ball struck, to the bit and 1 s on.
+//     survivor again where a row stands it up, and the play's (rising as one of the infected) where none does; the ball
+//     struck, to the bit and 1 s on.
 // Also: a far tier's row is another seat's ([2]); a row that parts on the fire or the magazine alone ([3]); the play's own
 // events of the window go to no seat ([5]); a keyframe sealed in the countdown, with no mode checkpoint, or with its clocks
 // 2.5 ms apart is not replayed ([1]).
@@ -504,6 +505,32 @@ console.log('[8] the frame\'s view where the play parts from it: a zone meter, a
   for (let k = 0; k < 60; k++) stepBoth(staged.old, fresh);
   ok(counts(fresh) === counts(staged.old) && newVictim.team === 'alpha' && fresh.authority.result == null, `infected: and stays one, the counts the `
     + `old host's 1 s on (${counts(fresh)})`);
+  staged.old.stop(); fresh.stop();
+}
+{
+  // and one the play alone infected whose row the seat's frame leaves out (hidden from it): no row stands it up, so it
+  // stays the play's, infected and down, and rises as one of them (round 4: turned back to a survivor while down, it rose
+  // as a survivor 4.6 s on, which Infected never does)
+  const victimId = 'h1';
+  const staged = stage({ mode: 'infected' });
+  const wire = staged.old.wireIdOf(victimId);
+  staged.latest.entities = staged.latest.entities.filter((row) => row.entityId !== wire);
+  const { state } = resumeStateFromRetained(staged.keyframe, 0, staged.latest, 500, [], [], staged.told);
+  const fresh = makeFor(staged.mode, staged.ruleset)({ tick: state.tick, ...resumeClocksOf(state) });
+  const play = fresh.authority.step.bind(fresh.authority);
+  let played = 0;
+  fresh.authority.step = (input) => {
+    if (++played === 5) { const victim = fresh.authority.entityById.get(victimId); victim.combat.hp = 0; victim.combat.destroyed = true; }
+    return play(input);
+  };
+  applyResumeState(fresh, state);
+  fresh.authority.step = play;
+  fresh.authority.onMatchReady();
+  const victim = fresh.authority.entityById.get(victimId);
+  ok(victim.team !== 'alpha' && victim.modeLife === 'down', `infected: one the play alone infected that no row stands up stays the play's (${victim.team}, ${victim.modeLife})`);
+  const rose = [];
+  for (let k = 0; k < 360; k++) { fresh.authority.step({ dt: 1 / 60, inputs }); for (const ev of fresh.authority.eventsForViewer('h0')) if (ev.type === 'mode_respawn' && ev.id === victimId) rose.push(victim.team); fresh.authority.afterEventBroadcast(); }
+  ok(rose.length === 1 && rose[0] !== 'alpha', `infected: and rises as one of them, never a survivor (${JSON.stringify(rose)} in 6 s)`);
   staged.old.stop(); fresh.stop();
 }
 {

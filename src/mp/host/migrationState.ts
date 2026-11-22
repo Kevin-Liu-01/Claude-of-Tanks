@@ -1155,8 +1155,11 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
   const dt = TICK_MS / 1000;
   let corrected = 0;
   const newest = new Map<number, number>();
+  // the hulls the play's own mode stood up (its mode_respawn: a director's arrival, a respawn), which no take below makes again
+  const playRevived = new Set<string>();
   for (let step = 1; step <= replay.steps; step++) {
     sim.step({ dt, inputs: held });
+    for (const event of sim.eventsForViewer('')) if (event.type === 'mode_respawn' && typeof event.id === 'string') playRevived.add(event.id);
     // every seat heard the old host's events of the window
     sim.afterEventBroadcast();
     for (const row of rowsAt.get(step) ?? []) {
@@ -1187,10 +1190,11 @@ function replayWindow(actor: MatchActor, state: HostResumeState, replay: HostRes
       if (typeof id === 'string' && Number.isInteger(tick)) told.set(id, checkpoint.mode.elapsedS - (replay.steps - Math.min(replay.steps, Math.max(0, tick - from))) * dt);
     }
     const known = { told, frameAtS: checkpoint.mode.elapsedS };
-    // the hulls the old host revived in the window that the play did not (a seat's kill let its trickle or ring bring one
-    // on; the rows stood it up): named as the 275 reading names the keyframe's (checkpointAfterRevives), so takeView takes
-    // each arrival up as made
-    const missed = new Set([...revivedSinceKeyframe(actor, state, from)].filter((id) => (sim.entityById.get(id)?.modeLife ?? 'alive') !== 'alive'));
+    // the hulls the old host revived in the window that the play's own mode did not (a seat's kill let its trickle or ring
+    // bring one on; the rows stood it up, or show it killed again): named as the 275 reading names the keyframe's
+    // (checkpointAfterRevives), so takeView takes each arrival up as made. One the play revived itself is the play's,
+    // whatever became of it after (round 4: one the play then lost was taken a second time)
+    const missed = new Set([...revivedSinceKeyframe(actor, state, from)].filter((id) => !playRevived.has(id)));
     const atFrame = checkpointAtNewestFrame(checkpointAfterRevives(checkpoint, missed, known), shown, known).mode!;
     // the play's score is exact but for the points it missed (a seat's kill, a capture): those whole points added
     let view: Record<string, unknown> | null = null;
