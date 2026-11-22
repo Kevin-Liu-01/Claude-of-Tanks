@@ -2784,8 +2784,9 @@ state, kit, special action and input rides exact, or is named: a mirror or a con
 reading's multipliers below 0.5 too, which packed less 1 came back an ulp off), a newer row's drive and the packing. 275's two unpinned reads are
 pinned: a revived bot's last pushed target dropped (`botDriveMigration` [7b]) and the smoke kit on the hull's clock
 (`botAbilities`). `migrationTwins` [9] holds a turret thrown by a kill in the window, to the bit; `resumeHold` no keyframe
-in the hold. Eighty-one mutants, each one fix reverted and served through a load hook (the lane's record): 80 fail a
-receipt; a stage deed matched by its structure alone parts nothing (below).
+in the hold. Eighty-five mutants, each one fix reverted and served through a load hook (the lane's record): 83 fail a
+receipt; a stage deed matched by its structure alone parts nothing, and the 275 reading's drop of a revived ally's down
+clock is pinned by reading alone (both below).
 
 Cost (the lane's size probe at the final head, the 275 head on the same staging in brackets): a hull packs to 251
 characters at rest (its damage reading rides with it) and about 500 in motion (CTF at 30 s: 10.1 KB for 20 hulls); a
@@ -2825,8 +2826,8 @@ every move they list as the old host made it):
   it late, keeps the play's moment (a lull that ends a few ticks late). A survivor risen again among the infected inside
   the window takes its faction from the frame and its hp from the row, its life's reload stamp staying the survivor's; a
   survivor the play alone infected that no row stands up (hidden from the elected seat) stays infected and rises as one.
-- After a seat's kill in a replayed window, the director's books are the old host's (the queue, the clocks, the draws'
-  count) but the hulls part, where the same stagings without the kill stay to the bit: the Horde's ([6r]) a hostile 26 m
+- After a seat's kill in a replayed window, the director's books are the old host's where each hull was revived once in
+  the window (the queue, the clocks, the draws' count) but the hulls part, where the same stagings without the kill stay to the bit: the Horde's ([6r]) a hostile 26 m
   and the arrival 5.3 m apart in 5 s; Frontline's ([9r]) the arrival 2.1 m at 5 s and 47 m at 44 s, the next reinforcement
   16 m from the old host's slot; an Infected ring arrival, taken at the play's end, draws after the play's own later draws
   (the victim's search and the bots 45-157 m apart in 10 s, against 11 m without the take). A victim the play never saw
@@ -2835,7 +2836,14 @@ every move they list as the old host made it):
   target given to the arrival do not close it (the review round 4's probes). A window that holds a Horde clear the play
   did not make and the next wave's start begins that wave on the frame's clock (the play holds no lull to date it from):
   its trickle ran 59 ticks late (the review round 5's 540-tick window; a mode event's keyframe follows the clear, which
-  makes such a window rare).
+  makes such a window rare). A hull the old host revived twice in the window has its first arrival lost: the seat keeps
+  each hull's newest revive alone (migrationStore.ts), so the arrival points' stream ends a draw behind and its lives one
+  short (the review round 6's staging: the field held). A Frontline defender alive at an advance the play did not make,
+  that a seat killed after it in the window, reads dead to the advance's draw (the death watch takes its death first: the
+  frame carries no death tick): one arrival more, risen on the first step, the stream a draw on; the 275 reading takes it
+  after, and gets wrong the kill before the advance that the replay gets right. A taken advance's arrivals hidden from the
+  elected seat rise on the first step, as on the 275 reading, so the field's count served at the resume leaves them out
+  until then.
 - What the play's held hull does to the world that the seat's did not: a prop it crushes or a structure it rams stays
   down on the new host and is served to every seat (the world's crush is not undone, and the frame's fallen list and the
   destruction it shows only add), and a director move the play makes that the old host did not (its held hull's ram
@@ -2849,7 +2857,9 @@ every move they list as the old host made it):
   logged once each, in order, so its play's stages pair with the frame's alike without it. After a replay, a Horde ring
   arrival (a refused arrival due again) the play did not make is taken through the 275 reading's own writer
   (takeHordeArrivals' ring), pinned on that reading alone: no staging reaches it on a replay. (Infected's ring take is
-  pinned by its count of arrivals, `windowReplay` [8], though the hulls part after it, above.)
+  pinned by its count of arrivals, `windowReplay` [8], though the hulls part after it, above.) On the 275 reading, a
+  revived ally's down clock is dropped with its dead life (checkpointAfterRevives, as a replay's adoption drops it,
+  `waveStartMigration` [4a]); no receipt stages an ally killed again in a window read as 275.
 - A row that moves a bot's hull far (a seat's ram in the window) leaves its brain's way: its watchdog re-plans.
 - A resumed host numbers its shells from 1 again (nextShellId rides no keyframe): seen while reading, its effect on a
   client's shell rows not checked.

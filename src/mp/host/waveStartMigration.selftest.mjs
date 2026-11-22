@@ -44,7 +44,8 @@
 // kill that let the old host's trickle bring one on that the play's full field held back (its queue held it twice), [6r2]
 // that arrival killed again in the window, [6r3] an arrival the play made itself and then lost (not taken again); [9r] and
 // [9r2] the same for Frontline's reinforce trickle; [4k] an advance's own arrival and [7k] a begun wave's killed again
-// inside the window, down at the resume, never stood up again.
+// inside the window, down at the resume, never stood up again; [4a] the ally an advance stood up, killed again, its down
+// clock from that death; each replayed advance's served field count the old host's.
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
@@ -241,7 +242,7 @@ console.log('[3] an ally down when the lull ends, its row in the seat\'s newest 
  * sight) and the respawns it was told. `holdAttack` (fix-up r2): the attack stands still where it took sector 2, through
  * the window and on both hosts after it, so the line guard reads it where it stood at the advance.
  */
-function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = false, killAt = 0) {
+function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = false, killAt = 0, allyKillAt = 0) {
   const lineSeats = [{ seat: 0, playerId: 'h0', name: 'H0', team: 'alpha', specId: spec }];
   const lineBots = [...Array.from({ length: 3 }, (_, i) => ({ playerId: `a-${i}`, name: `A${i}`, team: 'alpha', specId: spec })),
     ...Array.from({ length: 8 }, (_, i) => ({ playerId: `d-${i}`, name: `D${i}`, team: 'bravo', specId: spec }))];
@@ -296,6 +297,8 @@ function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = fa
   let windowStep = 0, killed = null;
   const fight = (actor) => {
     if (hand && ++windowStep === 5) Object.assign(zones[1], { control: 1, owner: 'alpha', contested: false });
+    // (`allyKillAt`: a seat kills the ally the advance stood up again that many steps into the window)
+    if (allyKillAt && windowStep === allyKillAt && actor === old) { const e = sim.entityById.get('a-2'); e.combat.hp = 0; e.combat.destroyed = true; }
     // (`killAt`: a seat kills the advance's first arrival again that many steps into the window)
     if (killAt && windowStep === killAt && actor === old) {
       killed = [...told.keys()].filter((id) => id.startsWith('d-')).sort()[0] ?? null;
@@ -312,7 +315,8 @@ function frontlineWindow(hidden, holdAttack = false, replayed = false, hand = fa
   const heldAlly = captureEntityRow(ally, old.wireIdOf('a-2'), era, tick);
   step(old, 29, listen, fight);
   const latest = hostFrame(old, tick, era, hidden);
-  const frame = { ...latest, entities: latest.entities.map((row) => (row.entityId === heldAlly.entityId ? heldAlly : row)) };
+  // (the seat's row of the ally a far tier's held row from before the advance; with `allyKillAt` the frame's own)
+  const frame = allyKillAt ? latest : { ...latest, entities: latest.entities.map((row) => (row.entityId === heldAlly.entityId ? heldAlly : row)) };
   const { state } = resumeStateFromRetained(keyframe, 0, frame, 1500, [], [], [...told]);
   const fresh = makeLine({ tick: state.tick, ...resumeClocksOf(state) });
   const serial = fresh.authority.modeEventSerial;
@@ -345,6 +349,12 @@ for (const [label, hidden, replayed, hand, killAt = 0] of [['[4] Frontline: the 
   console.log(label);
   const run = frontlineWindow(hidden, false, replayed, hand, killAt);
   ok(replayed === (run.replayedSteps === 30), replayed ? `the window is replayed (${run.replayedSteps} steps)` : 'the 275 reading (no battle clock)');
+  // (hidden arrivals rise on the first step, as on the 275 reading: the count served at the resume leaves them out till then)
+  if (replayed && !hidden) {
+    const shownAlive = (actor) => actor.authority.snapshotMeta('h0').modeState.horde?.alive;
+    ok(shownAlive(run.fresh) === shownAlive(run.old), `the field's count served at the resume is the old host's (${shownAlive(run.fresh)} against `
+      + `${shownAlive(run.old)}; round 6: stale until the first step)`);
+  }
   if (killAt) {
     const id = run.killed(), e = run.fresh.authority.entityById.get(id), o = run.old.authority.entityById.get(id);
     ok(!!id && e.modeLife === 'down' && o.modeLife === 'down' && e.modeLives === o.modeLives, `${id}, the advance's arrival killed again, is down at the `
@@ -418,6 +428,21 @@ for (const [label, hidden, replayed, hand, killAt = 0] of [['[4] Frontline: the 
     console.log(`      (the attack moved on 0.5 s: each rises ${placed.map(([id, d]) => `${id} ${d.toFixed(1)} m`).join(', ')} from the old host's)`);
   }
   old.stop(); fresh.stop();
+}
+
+console.log('[4a] (276) the ally the old host\'s advance stood up, killed again in the window: its down clock from that death');
+{
+  const run = frontlineWindow(false, false, true, true, 0, 20);
+  const downOf = (actor) => new Map(actor.authority.captureModeCheckpoint().mode.waves.line.allyDownAt).get('a-2');
+  const a = run.old.authority.entityById.get('a-2'), b = run.fresh.authority.entityById.get('a-2');
+  run.fresh.authority.onMatchReady();
+  // (the first step dates a fallen ally's down clock: stepAllyRevive)
+  run.step(run.fresh, 1); run.step(run.old, 1);
+  const late = downOf(run.fresh) - downOf(run.old);
+  ok(a.modeLife === 'down' && b.modeLife === 'down' && a.modeLives === b.modeLives && late >= 0 && late <= 30 / 60 + 1e-9, `a-2 is down on both, its `
+    + `life counted alike (${b.modeLives} against ${a.modeLives}), its down clock ${late.toFixed(3)} s after the old host's (from the frame; round 6: its `
+    + `dead life's, before the keyframe, and it stood up 2.7 s early)`);
+  run.old.stop(); run.fresh.stop();
 }
 
 console.log('[5b] the arrivals hidden from the seat, the attack held where it took the sector: each rises where the old host placed it');
