@@ -59,6 +59,23 @@ Leopard 1 in the fleet and holds it there.
 | 4 | Shoulder, brow foot, bin floor, rangefinder ports | 0.42 / 0.58 / 0.22 / 0.36 m | 0.38 / 0.53 / 0.20 / 0.33 m |
 | 5 | Leopard 1A2A1 on its 10-28 old hull (deck 1.69 m at the ring) | roof 2.50 m | unchanged: the owner kept the old hull ("Keep the old hull", 2026-11-21); the receipt names it as the one exception |
 
-Ids moved: leo1a3dk, leo1a5dk, leo1a5dk1, leopard_as1 (turret roof down 0.08 m; whips 4.51 -> 4.43 m). leo1a5 and
+Second ruling, same day (owner: "they should also be based o the 1a2 and 1a5 turret deisngs and mantlets too"): the
+export marks leave the welded turret and take the family's two German turrets, each drawn once in
+`src/vehicles/profiles/leopard1TurretBuild.ts` and called by the German builds too (leo1a5 and leo1a2a1 build
+byte-identically, digests in the lane evidence):
+
+| # | Id | Turret and mask (now) | National kit kept on it |
+|---|---|---|---|
+| 6 | leo1a3dk | the 1A2A1's one-piece casting of the 1A5's lines on the flat deck (the 1A5's feet), its mask | TEM 2A ports open, XSW-30-U on the mask's top to the gun's left, two rows of four dischargers under a guard loop, low PERI R12, the bin with one pack and the roll, an ammunition can |
+| 7 | leo1a5dk | the German 1A5's cast turret, Blohm & Voss wedges and side plates, its mask (no German searchlight) | EMES 18 at the German station, raised PERI R12, blanked ports, roof rifle clips, the armoured-box light, 2x2 dischargers at the side's rear, the rear rack behind the bin, the muzzle reference |
+| 8 | leo1a5dk1 | as leo1a5dk | the bin closed into the air-conditioning housing with its stack and GPS dome, the M41 DK-1 halogen light, UN stencils |
+| 9 | leopard_as1 | as leo1a3dk | the SABCA laser drum on the left port, the right port blanked, the crosswind mast, one row of four dischargers under a guard, MAG 58 and M2, the Australian basket on arms behind the casting |
+
+The real Danish 1A3 DK / 1A5 DK and the AS1 kept the welded A3 turret (armyvehicles.dk); the owner's ruling governs the
+look. The trunnion moves to the German 0.40 m / 1.15 m station (gun axis 2.00 m; the AS1's muzzle 6.078 -> 6.008 m, the
+1A5's), the gun stops re-swept (`tools/gun-depression-sweep.mjs --no-suit`: the full 9 degrees to yaw 147-148, deeper over
+the stern than the welded curve), the whips 2.16 m to the packets' 4.51 m tips, the cupola at the German x -0.48.
+
+Ids moved: leo1a3dk, leo1a5dk, leo1a5dk1, leopard_as1 (turret, mask, gun height, gun stops). leo1a5 and
 leo1a2a1 build byte-identically (they read the same 0.79 m and 0.50 m from the leaf). leopard2_proto reads none of these
 files. No Brazilian, Canadian or other national Leopard 1 id exists in the fleet.

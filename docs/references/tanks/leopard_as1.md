@@ -45,10 +45,10 @@ envelope PASS, regeneration and critics pending (`docs/history/research/australi
 ### Datums
 
 The fleet's Leopard 1A5 hull (the Munster 1A5's datums: 0.44 m clearance, the fender and skirt top 1.12 m, the deck
-1.58 m under the turret and 1.64 m at the stern, the skirts 1.678 m off the centre line) and the welded 1A3 turret (the
-Krigsmuseet stations: its ring 0.50 m ahead of the hull's origin, the roof 0.79 m over the turret base since release 275, the body 1.655 m
-behind the ring and the rear bin 2.18 m); the L7A3 with its thermal sleeve and evacuator 4.35 m ahead of the trunnion,
-which stands 1.22 m ahead of the ring: the muzzle at hull z 6.08. As built: 9.672 m over the gun (armedconflicts 9.543 m,
-1 %), 3.424 m over the skirts (3.370 m, 2 %), 4.43 m to the whips' tips (the turret roof 2.39 m, as published). Gun depression
-(`tools/gun-depression-sweep.mjs --no-suit`): the full 9 degrees round to yaw 147; over the engine deck it rises to +0.2
-degrees at yaw 167-172, and is 2.7 degrees dead astern.
+1.58 m under the turret and 1.64 m at the stern, the skirts 1.678 m off the centre line) and, since release 275, the family's one-piece cast
+turret of the 1A2A1 (owner 2026-11-21; docs/references/tanks/leo1a3dk.md): its ring 0.50 m ahead of the hull's origin, the
+roof 0.79 m over it; the L7A3 4.35 m ahead of the trunnion, which stands 1.15 m ahead of the ring: the muzzle at hull z
+6.01. As built: 9.594 m over the gun (armedconflicts 9.543 m,
+0.5 %), 3.424 m over the skirts (3.370 m, 2 %), 4.50 m to the whips' tips (the turret roof 2.39 m, as published). Gun depression
+(`tools/gun-depression-sweep.mjs --no-suit`): the full 9 degrees round to yaw 148 (275, on the family turret); over the engine deck it rises to
+-1.6 degrees at yaw 167-172, and is 4.4 degrees dead astern.

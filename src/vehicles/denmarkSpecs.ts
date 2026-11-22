@@ -27,7 +27,7 @@ const danishVariant = (id: string, donor: string, name: string, era: 'cold-war' 
 // MG, 830 hp MTU MB 838 Ca M500, 65 km/h, 42.4 t loaded, 105 mm L7A1/A3, four crew. The 1A3 DK came in 1976-78 (120
 // tanks), all 230 became 1A5 DK in 1990-94 and 35-36 of them the DK-1 for the Balkans (1994-95).
 
-// The Leopard 1A3 DK: the welded turret with the TEM 2A rangefinder and the XSW-30-U searchlight. DM23, the 105 mm
+// The Leopard 1A3 DK: the family's one-piece cast turret (owner 2026-11-21) with the TEM 2A rangefinder and the XSW-30-U searchlight. DM23, the 105 mm
 // APFSDS of its first service decade (1979), as on the Leopard 1A2A1.
 const leo1a3dk = danishVariant('leo1a3dk', 'leo1a5', 'Leopard 1A3 DK', 'cold-war');
 Object.assign(leo1a3dk.dims, { hullLengthM: 6.94, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 });
@@ -48,7 +48,7 @@ leo1a3dk.visual = {
   camoScale: 0.5,
 };
 
-// The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
+// The Leopard 1A5 DK: EMES 18 thermal fire control on the 1A5's B&V turret (owner 2026-11-21), the 1990s 105 mm APFSDS at the 1A5's footing.
 const leo1a5dk = danishVariant('leo1a5dk', 'leo1a5', 'Leopard 1A5 DK', 'modern');
 Object.assign(leo1a5dk.dims, { hullLengthM: 6.94, overallLengthM: 9.54, widthM: 3.37, heightM: 2.80 });
 Object.assign(leo1a5dk, { weightTons: 42.4 });
@@ -81,13 +81,13 @@ leo1a5dk1.visual = {
   camoScale: 0.55, patchK: 1.2,
 };
 
-// The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs at 26 mm on the welded turret and its gun; 266:
-// re-swept on the family hull, one envelope over the three marks; 267: again, the outlet housings run forward to the last
-// fender bin): the full 9 degrees to yaw 147, then the louvred engine outlets over the stern quarters
-// (profiles/leopard1Hull.ts), the engine deck's grilles and the stern stowage over the rear
-const LEO1_DK_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [147, -9], [148, -7.5], [149, -5.4], [150, -4.9], [155, -3], [156, -2.5],
-  [159, -2], [161, -2], [162, -2.4], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2],
-  [173, -0.1], [175, -1.5], [176, -1.9], [177, -2.7], [180, -2.7]] as const);
+// The Leopard 1 DKs' measured gun stops (tools/gun-depression-sweep.mjs --no-suit at 26 mm, one envelope over the three
+// marks; 275: re-swept on the family turrets, the German 1A5's and 1A2A1's masks and trunnion): the full 9 degrees to yaw
+// 147, then the louvred engine outlets over the stern quarters (profiles/leopard1Hull.ts), the engine deck's grilles and
+// the stern stowage over the rear
+const LEO1_DK_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [147, -9], [148, -8.4], [149, -7], [150, -6.4], [156, -4.3],
+  [158, -3.8], [161, -3.8], [163, -3.7], [165, -2.5], [166, -2], [167, -1.8], [172, -1.6], [173, -2], [176, -3.6],
+  [177, -4.4], [180, -4.4]] as const);
 for (const spec of [leo1a3dk, leo1a5dk, leo1a5dk1]) spec.gunPitchByYawDeg = LEO1_DK_GUN_PITCH_BY_YAW_DEG;
 
 // ------------------------------------------------------------------------------------------------- Leopard 2 DK --
