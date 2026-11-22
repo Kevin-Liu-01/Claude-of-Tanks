@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { antennaPart } from './antennaPart.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import {roundedTrackContact} from './roundedTrackContact.ts';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT } from './kit.ts';
@@ -286,9 +287,11 @@ function basket(P: TankBuilderPort): void {
   for(const x of[-.468,0,.468])equipment(P,'turretDetail',box(.012,.022,.814),x,2.110,-1.885,-.217);
   for(const x of[-.482,.482])equipment(P,'turretDark',box(.016,.284,.057),x,1.900,-2.280,-.10);
   // 2026-10-19 (owner float sweep): the inner left discharger stood 42 mm off the casting; each one seats.
+  // 271 (Main: the salvo is the drawn mouths, no decor pair): the 80 mm dischargers are marked launchers, their mouths
+  // (+Y, the narrow end) raked forward and up as the AMX-30B's fire (they leaned aft at -0.65, which no launch allows)
   for (const side of [-1, 1]) for (let i = 0; i < 2; i++) P.snapGroup(`amx30-discharger-${side}-${i}`, () => {
     equipment(P, 'turretDetail', box(.065, .10, .065), side * (.85 - i * .15), 1.948, -1.41 - i * .17);
-    equipment(P, 'turretDetail', cylY(.050, .056, .255, 16), side * (.85 - i * .15), 2.033, -1.43 - i * .17, -.65, side * .2);
+    equipment(P, 'turretDetail', markSmokeTube(cylY(.050, .056, .255, 16), [0, 1, 0]), side * (.85 - i * .15), 2.033, -1.43 - i * .17, .65, side * .2);
   }, { reachM: .05 });
 }
 

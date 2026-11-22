@@ -9,6 +9,7 @@ import {addEscortFieldKit} from './escortFieldKit.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import {launchCellParts,perforatedPlate} from './missileCanisterStock.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
+import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ}=KIT;
 export const UPIOR_LAUNCH_MOUTH=[1.10,.37,.83] as const;
@@ -29,7 +30,8 @@ export function buildUpiorUpgrade(P:TankBuilderPort):void {
     P.add('turret',sectionSolid([{z:.15,ring:ring(1.02,.62)},{z:.88,ring:ring(.65,.44)}]));
     P.addEquipment('turretDetail',box(.21,.16,.25),side*.61,.49,.29);
     P.addModuleVisual('optics','turretGlass',box(.15,.07,.014),side*.61,.50,.422);
-    for(let i=0;i<3;i++)P.addEquipment('turretDark',cylZ(.04,.16,12),side*(.74+i*.09),.27,.31,-.40,side*.36,0);
+    // three smoke dischargers a cheek, marked as launchers (271, Main: the salvo is the drawn mouths, no decor pair)
+    for(let i=0;i<3;i++)P.addEquipment('turretDark',markSmokeTube(cylZ(.04,.16,12)),side*(.74+i*.09),.27,.31,-.40,side*.36,0);
     P.addEquipment('turretDetail',cylY(.055,.065,.11,12),side*.62,.64,-.80);
     P.addEquipment('turretDark',antennaPart(cylY(.009,.009,.67,8)),side*.62,1.00,-.80);
   }

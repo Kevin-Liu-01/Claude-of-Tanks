@@ -1,4 +1,4 @@
-import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
+import { markSmokeTube, registerSmokeSockets, smokeSocketsFor } from './vehicleAuxiliaryGeometry.ts';
 import {
   maskUnlitNightOptics, prepareVehicleNightLensParts, registerVehicleNightLensFrames, vehicleNightLensFrames,
   type VehicleNightLensFrame,
@@ -3386,10 +3386,6 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
   stb1: (): DecorManifestRow[] => [],
 });
 
-/** 271: the italy-korea-bmp-267 lane's builds that draw their own smoke dischargers, and chieftain5 and chieftain_mk10. */
-const ITALY_KOREA_BMP_DRAWN_SMOKE: readonly string[] = ['c2_ariete_proto', 'c1_ariete_proto_serie1', 'c1_ariete_preserie',
-  'k2b', 'k1e1', 'k21', 'bmp2', 'bmp3', 'bmp3_rok', 'bwp1', 'chieftain3', 'chieftain_mk9', 'chieftain5', 'chieftain_mk10'];
-
 // ---------------------------------------------------------------------------------------------------------------
 // Release 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys
 // ---------------------------------------------------------------------------------------------------------------
@@ -3841,13 +3837,11 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
   // 267 (the Japan line's photo critics): no JGSDF Type 90 photograph shows spare links on a turret side plate (the
-  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear. Round 3: nor a
-  // decor discharger pair on the cheeks ("a small four-tube fitting ... the photos show smoke dischargers only at the rear
-  // corners"): profiles/type90X.ts draws the two four-tube banks there, so the pair doubled them (16 -> the real 8, as the
-  // AMX-40 and Leclerc S1 above).
+  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear. (Their two
+  // four-tube banks at the rear corners are drawn in profiles/type90X.ts, so no decor pair: drawsOwnSmoke.)
   if (spec.id === 'type90' || spec.id === 'type90b') {
     for (let i = base.length - 1; i >= 0; i--) {
-      if ((base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') || base[i].kit === 'smoke') base.splice(i, 1);
+      if (base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') base.splice(i, 1);
     }
   }
   if (spec.id === 'raiju_ifv') {
@@ -3915,46 +3909,31 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
       && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
-  // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts): a decor
-  // pair would double them, and a roll on a turret side stood against the blocks' outer faces. Release 264: so does
-  // every Longwei-family concept on its turret (critic round 4 on the Xuanwu: a tarp roll ran into the banks and the
-  // decor pair stood above the roofline as a comb).
-  if (spec.id === 'ztz99_longwei' || (LONGWEI_FAMILY_IDS as readonly string[]).includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke'
-    && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts; the decor
+  // pair stays off by the fleet's drawn-smoke rule, drawsOwnSmoke), and a roll on a turret side stood against the
+  // blocks' outer faces. Release 264: so does every Longwei-family concept on its turret (critic round 4 on the Xuanwu:
+  // a tarp roll ran into the banks).
+  if (spec.id === 'ztz99_longwei' || (LONGWEI_FAMILY_IDS as readonly string[]).includes(spec.id)) return manifest.filter(row =>
+    !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
   // The Leopard 1A5 and 1A2A1 carry their own Wegmann banks on the casting's rear quarters (profiles/leopard.ts,
-  // leopard1A2A1.ts): a decor pair would double them along the side plates (critics 265: "the smoke dischargers forward").
-  // Their crew's kit rides in the closed bin on the turret's tail, so the fleet cargo, everything hung on the turret's
+  // leopard1A2A1.ts; no decor pair, by drawsOwnSmoke). Their crew's kit rides in the closed bin on the turret's tail, so the fleet cargo, everything hung on the turret's
   // flanks, the deck tarp and the roof lamp stay off: with the bin full the cargo fell through to crates on the engine
   // deck, and the Munster vehicles' decks, roofs and turret flanks are clear (critics 265, rounds 4 and 5: "a crate and
   // bottles on the turret's right flank", a tarp roll on its left flank and one on the deck, and "a round lamp on the
   // left front of the roof" are "not in the photos").
-  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'smoke'
-    && row.kit !== 'cargo' && row.kit !== 'light' && row.slot[0] !== 'turretSide' && row.slot[0] !== 'turretSidePlate'
+  if (spec.id === 'leo1a5' || spec.id === 'leo1a2a1') return manifest.filter(row => row.kit !== 'cargo' && row.kit !== 'light' && row.slot[0] !== 'turretSide' && row.slot[0] !== 'turretSidePlate'
     && !(row.kit === 'tarp' && row.slot[0] === 'rearDeck'));
-  // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
-  // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
-  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census). 267: the Burlak
-  // prototype's eleven grenade tubes ride its rebuilt turret at the source's positions (t90.ts); the pair stood through
-  // its right cheek.
-  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m' || spec.id === 't90a_burlak_proto') {
-    return manifest.filter(row => row.kit !== 'smoke');
-  }
-  // 271 (Main on italy-korea-bmp-267, until the fleet's one rule lands: the pair dresses only a build with no drawn
-  // banks): the lane's ids and the two Chieftains it shares parts with draw their own dischargers, so the decor pair
-  // doubled their salvo (the Mk 3 28 against its 16 drawn mouths, the Mk 9 and Mk 10 24 against 12, the BMP-2 18 against
-  // its 902V 3+3)
-  if (ITALY_KOREA_BMP_DRAWN_SMOKE.includes(spec.id)) return manifest.filter(row => row.kit !== 'smoke');
   // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
   // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
   // the turret flanks as stand-off slabs. The cargo, the roof lamp, the packs and every turret-hung tarp, net and link
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
-  // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
-  // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  // The S1's discharger pair is drawn on its GALIX wedges as their upper row (misc.ts) and the AMX-40's own banks on its
+  // front corners (france.ts): neither takes the decor pair (drawsOwnSmoke).
   // 267 (both photo critics, round 3, S1: "a stack of tan boxes perched on the extreme rear corner of the deck"): of the
   // rear-deck loads only the camouflage net stays (the corner jerrycans, rations, bin, tarp and spare wheel are off).
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
-    && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && row.kit !== 'light' && row.kit !== 'packs'
     && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
     // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
     && row.kit !== 'antenna'
@@ -3964,12 +3943,12 @@ function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
     // cable finds no seat on the skirt that now runs up to the deck edge and fell back across the nose; it is off too
     && !(spec.id !== 'amx40_proto' && row.kit === 'cable')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
-  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
-  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
-  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks (no decor pair: drawsOwnSmoke),
+  // radio antenna, IR searchlight, stern drums and railed turret baskets, and carries reactive bricks on the glacis: a
+  // decor whip, lamp or drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
   // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
   if (spec.id === 'ztz85_iii') return manifest
-    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+    .filter(row => !['antenna', 'light', 'drums'].includes(row.kit)
       && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
       && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
     .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
@@ -5620,6 +5599,23 @@ function createDecorationResourceOwner(
       delete root.userData.__decorApplied;
     },
   };
+}
+
+/**
+ * Whether the build draws its own smoke banks (271, Main 2026-11-09): any launch socket under the hull or turret frame
+ * before the decor (markSmokeTube / registerSmokeSockets). Such a build takes no generic decor pair: the pair on top of
+ * the drawn launchers doubled their salvo, and a vehicle's smoke count is its drawn launcher mouths.
+ */
+function drawsOwnSmoke(hullG: THREE.Object3D, turretG: THREE.Object3D): boolean {
+  let found = false;
+  const visit = (o: THREE.Object3D): void => {
+    if (found) return;
+    if (smokeSocketsFor(o).length) { found = true; return; }
+    for (const child of o.children) visit(child);
+  };
+  visit(hullG);
+  if (!found) visit(turretG);
+  return found;
 }
 
 /** Synchronous callers retain the existing fully dressed return contract. */
@@ -8089,8 +8085,11 @@ function* decorationSteps(
       // A separate stream makes smoke independent of quality-dependent retries
       // without reordering the existing random stream for other equipment.
       const smokeRng = mulberry32(fnv1a(`smoke:${decorId}`));
+      // 271 (Main, 2026-11-09): the generic pair dresses only a build with no drawn smoke banks, so a vehicle's salvo is
+      // its drawn launcher mouths. The row stays in the manifest: every other row keeps its main-stream draws.
+      const ownSmoke = drawsOwnSmoke(hullG, turretG);
       for (const row of manifest) {
-        if (row.kit !== 'smoke') continue;
+        if (row.kit !== 'smoke' || ownSmoke) continue;
         // A declared gameplay fitting is always installed; cosmetic dice
         // must not decide whether a vehicle can use its smoke control.
         const jitterSeed = (smokeRng() * 0x7fffffff) | 0;
