@@ -1,0 +1,680 @@
+[
+ {
+  "href": "/docs/start",
+  "title": "ガレージから勝利まで",
+  "chapter": "初めての戦闘",
+  "text": "戦闘の流れを5つのステップで紹介します。"
+ },
+ {
+  "href": "/docs/start#garage",
+  "title": "戦車を選択",
+  "chapter": "初めての戦闘",
+  "text": "01 ガレージには、保有する311両の戦車が表示されます。1両を選ぶと、車両情報で装甲、主砲、機動性を確認でき、Tank Galleryでは車両の構造を詳しく確認できます。"
+ },
+ {
+  "href": "/docs/start#deploy",
+  "title": "出撃",
+  "chapter": "初めての戦闘",
+  "text": "02 出撃画面では、14種類からモードを、33種類から戦場を選び、時間帯とチーム編成（7 対 7または14 対 14）を設定します。戦場はランダムにも選べます。"
+ },
+ {
+  "href": "/docs/start#drive",
+  "title": "操縦と照準",
+  "chapter": "初めての戦闘",
+  "text": "03 W A S D で操縦し、マウスで砲塔を旋回させます。L-SHIFT で倍率×2 / ×4 / ×8の砲手照準器に切り替え、ホイールでズームします。CAPS で砲を固定したまま周囲を見回せます。"
+ },
+ {
+  "href": "/docs/start#fire",
+  "title": "射撃",
+  "chapter": "初めての戦闘",
+  "text": "04 マウス左ボタン で射撃し、押し続けると装填が完了するたびに発射します。1 2 3 で砲弾を選択します。4 5 6 で修理キット（35秒）、救急キット（45秒）、消火器（25秒）を使用します。各キットのクールダウンは、実際に効果を発揮してから始まります。"
+ },
+ {
+  "href": "/docs/start#win",
+  "title": "勝利",
+  "chapter": "初めての戦闘",
+  "text": "05 通常戦では、制限時間15分以内に敵を全滅させると勝利です。他のモードには、それぞれ固有の目標があります。撃破されると、カメラは味方を追尾します。"
+ },
+ {
+  "href": "/docs/start#next",
+  "title": "次へ",
+  "chapter": "初めての戦闘",
+  "text": "ゲーム内でチュートリアルを再プレイ ガレージの案内と初戦の操作ガイドを最初から体験できます。操作方法と観戦 すべてのキー操作、タッチ操作の配置、観戦モードの3つの視点を解説します。ゲームモード 各モードの目標、制限時間、ルールをマップ上で解説します。"
+ },
+ {
+  "href": "/docs/controls",
+  "title": "すべてのキーと視点",
+  "chapter": "操作方法と観戦",
+  "text": "キーボード、マウス、ゲームパッド、タッチ操作から、観戦モードでのドローン飛行、同乗、操作の引き継ぎまで。"
+ },
+ {
+  "href": "/docs/controls#keys",
+  "title": "キーボード、マウス、ゲームパッド",
+  "chapter": "操作方法と観戦",
+  "text": "移動 戦闘 車両 飛行 消耗品 カメラ インターフェース\n操作 · キー · ゲームパッド · 前進 · W · – · 後退 · S · – · 左旋回 · A · – · 右旋回 · D · – · ハンドブレーキ · スペース · A · 戦車を起こす · F · –\n操作 · キー · ゲームパッド · 主砲発射 · マウス左ボタン · RT · 狙撃モード · L-SHIFT · LT · 砲弾スロット1 · 1 · D-UP · 砲弾スロット2 · 2 · D-LEFT · 砲弾スロット3 · 3 · D-RIGHT · 自動照準ロック · T · – · 装甲オーバーレイ（当たり判定）· H · – · 攻撃視点 · X · –\n操作 · キー · ゲームパッド · サスペンション · E · LB · ATGM · Q · – · 再装填 · C · D-DOWN · ドローン · V · – · 煙幕 · G · – · ライト · N · – · 自動射撃 · B · –\n操作 · キー · ゲームパッド · センサー表示切替 · I · – · 補給弾薬を投下 · J · – · 修理物資を投下 · K · –\n操作 · キー · ゲームパッド · 修理キット · 4 · X · 救急キット · 5 · Y · 消火器 · 6 · B\n操作 · キー · ゲームパッド · 砲塔・砲身固定（自由照準）· CAPS L-ALT · RB · 照準 / 自由視点 · マウス右ボタン · – · ズームイン · WHEEL ↑ · – · ズームアウト · WHEEL ↓ · –\n操作 · キー · ゲームパッド · ミニマップのズーム · M · BACK · 射撃情報ログ · L · – · 戦闘診断 · F9 · – · ネットワーク詳細 · F3 · – · 戦闘から離脱 · F4 · – · 射撃場をリセット · R · – · 移動標的 · Y · – · 設定メニュー · ESC · START"
+ },
+ {
+  "href": "/docs/controls#hold",
+  "title": "長押しと切り替え",
+  "chapter": "操作方法と観戦",
+  "text": "設定 › アクセシビリティで、以下の各操作を、キーを押している間だけ有効にする方式と、1回押すたびに切り替える方式から選べます。主砲発射 ハンドブレーキ 砲塔・砲身固定（自由照準）チームメンバー一覧"
+ },
+ {
+  "href": "/docs/controls#touch",
+  "title": "タッチ操作",
+  "chapter": "操作方法と観戦",
+  "text": "スマートフォンやタブレットでは、戦闘画面に専用の操作ボタンが表示されます。左手の親指でジョイスティックを動かして操縦します。それ以外の場所をスワイプして照準を合わせます。「射撃」をタップすると発射します。押したままドラッグして照準を合わせ、指を離すことでも発射できます。長く押し続けると連射します。発射を取りやめるには、キャンセル領域へドラッグします。「スコープ」で砲手照準器に切り替えます。ピンチ操作で照準器の倍率を段階的に切り替えます。「自動照準」で、照準マークに最も近い敵をロックオンします。ジャンプ可能なモードでは、「ロケット」で戦車をジャンプさせたり、横転した車体を起こしたりできます。"
+ },
+ {
+  "href": "/docs/controls#watch",
+  "title": "観戦モード",
+  "chapter": "操作方法と観戦",
+  "text": "ガレージからボット同士の戦闘を観戦できます。「観戦」は「出撃」の横にあります。全車両をボットが操作し、すべての戦車が表示されます。録画は行われません。13種類のモードに対応しています。ドローン 戦場上空を自由に飛行できます。開始高度は70メートル、速度は14メートル/秒です。ホイールで速度を段階的に変更し（4 / 8 / 14 / 24 / 40 / 64メートル/秒）、Shiftで×2.5に加速します。W A S D 飛行 スペース C 上昇と下降 L-SHIFT 加速 WHEEL ↑ WHEEL ↓ 速度の段階切り替え 同乗 好きな戦車を後方から追尾したり、倍率×2 / ×4 / ×8の砲手照準器を通して戦場を見たりできます。F 画面中央の戦車に同乗 Q E 次の戦車・前の戦車 L-SHIFT 砲手照準器 V ドローンに戻る 操作を引き継ぐ 同乗中の戦車の操作を引き継ぎ、自分で戦えます。撃破されると、3.5秒後にドローンに戻ります。ENTER 操作を引き継ぐ・返す"
+ },
+ {
+  "href": "/docs/controls#hud",
+  "title": "HUDの設定",
+  "chapter": "操作方法と観戦",
+  "text": "設定 › ゲームプレイ › HUDレイアウトを編集で、戦場プレビュー上の各パネルを移動したり非表示にしたりできます。デスクトップ、スマートフォン（縦向き）、スマートフォン（横向き）のレイアウトは個別に保存されます。F10 で簡易戦闘HUDに切り替えます。照準マーク、距離、倍率、弾薬のみが残り、他のパネルは非表示になります。もう一度押すと元に戻ります。タッチスクリーンでは、設定で戦闘HUDの簡易表示を有効にしてください。3本指でタップするとHUD全体を再表示できます。"
+ },
+ {
+  "href": "/docs/modes",
+  "title": "多彩な戦い方",
+  "chapter": "ゲームモード",
+  "text": "ゲーム本体のデータに基づき、全モードとそのルールを紹介します。モードは出撃画面で選択できます。"
+ },
+ {
+  "href": "/docs/modes#glance",
+  "title": "一覧",
+  "chapter": "ゲームモード",
+  "text": "自軍の出現地点 敵の出現地点 A A ゾーンまたはセクター 旗の拠点 ゴール ボール\nモード · 勝利条件 · 制限時間 · リスポーン · チーム編成 · 通常戦 · 敵を全滅させる · 15分 · – · 7 対 7 · Capture the Flag · 3回奪取する · 15分 · 6秒 · 7 対 7 · Zone Control · 750ポイント獲得する · 15分 · 6秒 · 7 対 7 · Gravity Mode · 750ポイント獲得する · 12分 · 6秒 · 7 対 7 · Air Support · 先に2000に到達 · 12分 · 8秒 · 7 対 7 · ガンゲーム · 全5種の砲でそれぞれ敵を撃破する · 15分 · 4秒 · 7 対 7 · ドローン · 20両撃破する · 10分 · 6秒 · 7 対 7 · リアリスティック · 敵を全滅させる · 15分 · – · 7 対 7 · Endless Horde · 敵の波状攻撃を生き延びる · – · – · 5 対 20 · 前線強襲 · 全セクターを制圧し、最後のセクターを20秒間維持する · 12分 · – · 4 対 12 · AC-130 · 半数を脱出地点まで護衛する · 8分 · – · 5 対 12 · ジャガーノート · ボスを撃破するか、制限時間まで生き延びる · 10分 · 6秒 · 1 対 12 · 感染者 · 3分間生き延びる · 3分 · 5秒 · 10 対 5 · ターボボール · 5ゴール · 10分 · 3秒 · 7 対 7 · Proving Ground · 練習（スコアなし）· – · 3秒 · 5レーン"
+ },
+ {
+  "href": "/docs/modes#team",
+  "title": "チーム戦",
+  "chapter": "ゲームモード",
+  "text": "通常戦 制限時間内に敵チームを全滅させましょう。制限時間 15分 チーム編成 7 対 7 リスポーン – Capture the Flag 敵の旗を奪い、自陣に持ち帰りましょう。先に3回持ち帰ったチームの勝利です。制限時間 15分 チーム編成 7 対 7 リスポーン 6秒 Zone Control 3つのセクターを占領して維持しましょう。先に750ポイントを獲得したチームの勝利です。制限時間 15分 チーム編成 7 対 7 リスポーン 6秒 Gravity Mode 重力が0.38 gに低下し、どの戦車も遠くまで跳躍できます。リスポーンとブースト物資を活用してゾーンを確保しましょう。先に750ポイントを獲得したチームの勝利です。制限時間 12分 チーム編成 7 対 7 リスポーン 6秒 重力：0.38 g 速度：+25 % 車体耐久値：+20 % ダメージ：-10 % 装填速度：+11 % 弾数無制限 ジャンプ速度：9.5 メートル/秒（F）反動による跳躍：×3 22 秒ごとに強化物資を投下 命中時の吹き飛ばし：×0.9 着地時の跳ね返り：30 % 落下速度10.5 メートル/秒超でダメージ Air Support 3つのセクターを確保・維持し、戦闘で支援ポイントを獲得しましょう。双眼鏡を構えると、指定地点への偵察飛行、砲撃、機銃掃射、精密爆撃、AC-130旋回支援を要請できます。どの攻撃でも、標的となる陣営には事前に警告が出ます。制限時間 12分 チーム編成 7 対 7 リスポーン 8秒 偵察 120ポイント · 3秒前に警告 砲撃 300ポイント · 6秒前に警告 機銃掃射 400ポイント · 5秒前に警告 精密爆撃 450ポイント · 7秒前に警告 AC-130 800ポイント · 8秒前に警告 ガンゲーム 撃破が2回確定するごとに、武器が次の段階へ進みます。全5段階を完了し、チームを勝利に導きましょう。制限時間 15分 チーム編成 7 対 7 リスポーン 4秒 武器ごとに2両撃破 · 全5段階 弾数無制限 ドローン 戦車からFPV攻撃ドローンを発進させます。視線の方向で操縦し、敵に体当たりして起爆しましょう。停車中の自車は無防備なままです。制限時間 10分 チーム編成 7 対 7 リスポーン 6秒 リアリスティック 索敵は通常どおりですが、装甲の貫通が致命傷につながります。重要モジュールを機能停止させるか、乗員を戦闘不能にするか、弾薬を誘爆させましょう。車体HPの削り合いや自動修理はありません。制限時間 15分 チーム編成 7 対 7 リスポーン – モジュール破壊と乗員の無力化のみ 消耗品なし\nVerdant Fields\nVerdant Fields\nA A B B C C Verdant Fields\nA A B B C C Olympus Basin"
+ },
+ {
+  "href": "/docs/modes#survive",
+  "title": "生存と護衛",
+  "chapter": "ゲームモード",
+  "text": "Endless Horde 耐久力は低くても、波ごとに数を増す敵の猛攻を生き延び、浮遊する修理物資を探しましょう。制限時間 – チーム編成 5 対 20 リスポーン – 車体耐久値：+100 % / -85 % 弾数無制限 horde 第1ウェーブ：6 両、ウェーブごとに増加 戦場に16両 · ウェーブ間隔8秒 ウェーブ間の修理量：30 % 前線強襲 敵の防衛線を突破しましょう。激しさを増す反撃を退けながら3つの塹壕セクターを順に制圧し、最後のセクターを守り抜きましょう。制限時間 12分 チーム編成 4 対 12 リスポーン – 車体耐久値：+80 % / 0 % 弾数無制限 frontline 最終セクターを20秒間保持 各セクターの守備隊：3 両、車体耐久値：0 % AC-130 脱出地点へ向かう、攻撃に弱い味方車両を守りましょう。撃破される前に、制限時間内に半数以上を救出してください。人間のプレイヤーは全員、航空支援を担当します。制限時間 8分 チーム編成 5 対 12 リスポーン – すべての戦車を表示 弾数無制限 消耗品なし ac130 ジャガーノート 重装甲のボスになるか、ハンターとして挑むか。ハンターはリスポーン可能です。制限時間内にジャガーノートを撃破しましょう。制限時間 10分 チーム編成 1 対 12 リスポーン 6秒 ジャガーノート：車体耐久値 ×8 · 装填時間 ×0.5 弾数無制限 juggernaut 感染者 生存者は耐久力130%で、耐久力20%の感染者の群れに立ち向かいます。倒れた生存者は感染者に加わります。3分間持ちこたえましょう。制限時間 3分 チーム編成 10 対 5 リスポーン 5秒 撃破された生存者は感染者に変化 車体耐久値：+30 % / -80 % 弾数無制限 infected\nVerdant Fields\nE E Verdant Fields"
+ },
+ {
+  "href": "/docs/modes#arcade",
+  "title": "アーケード",
+  "chapter": "ゲームモード",
+  "text": "ターボボール 超高速の武装戦車で、体当たりや砲撃でボールを敵のゴールに叩き込みましょう。制限時間 10分 チーム編成 7 対 7 リスポーン 3秒 重力：0.6 g 速度：+85 % 車体耐久値：+50 % ダメージ：-50 % 装填速度：+43 % 弾数無制限 拡張パーツなし 消耗品なし モジュール・搭乗員へのダメージと火災ダメージなし ジャンプ速度：13 メートル/秒（F）反動による跳躍：×12 命中時の吹き飛ばし：×2.5 着地時の跳ね返り：28 % 落下速度15 メートル/秒超でダメージ\nVerdant Fields"
+ },
+ {
+  "href": "/docs/modes#practice",
+  "title": "練習",
+  "chapter": "ゲームモード",
+  "text": "Proving Ground 好きな戦車で、距離を測定した射撃場へ。所定の距離と角度に配置された標的車体で、さまざまな貫通判定の結果を確認できます。敵も時間制限もなく、記録も残りません。制限時間 – チーム編成 5レーン リスポーン 3秒 すべての戦車を表示 弾数無制限 記録なし"
+ },
+ {
+  "href": "/docs/tanks",
+  "title": "車両と装備",
+  "chapter": "戦車と拡張パーツ",
+  "text": "各車種の特徴、役割ごとの戦い方、各戦車が搭載する拡張パーツとキットを紹介します。"
+ },
+ {
+  "href": "/docs/tanks#classes",
+  "title": "車種",
+  "chapter": "戦車と拡張パーツ",
+  "text": "ティア X 主力戦車 211 AbramsX ティア III 中戦車 16 Centurion Mk 13 ティア I 重戦車 1 KV-2 ティア X 軽戦車 15 BMP-3M Dragun 125 ティア X 歩兵戦闘車 39 Griffin 50 mm ティア III 装甲兵員輸送車 3 M113AS4 ティア X 駆逐戦車 8 Object 695 ティア VI 自走対空砲 13 ItPsv Leopard 2 (Leopard 2 Marksman) ティア X 火力支援車両 5 ZTZ-100 Prototype 各車両をTank Galleryで開く"
+ },
+ {
+  "href": "/docs/tanks#roles",
+  "title": "戦闘での役割",
+  "chapter": "戦車と拡張パーツ",
+  "text": "役割は戦車の戦い方を示します。ボットはその役割に沿って行動し、ガレージでは役割で絞り込めます。突破 85 重装甲と高いHPを活かして進撃の先頭に立ち、敵の砲火を引き受けます。前線 66 装甲・機動力・火力をバランスよく備えた前線向け戦車です。側面攻撃 57 速度と機敏さを活かして側面を攻撃し、素早く陣地転換します。狙撃 27 高精度の長射程砲を備え、遮蔽物に身を隠しながら遠距離で戦います。偵察 38 味方のために敵を発見し、長時間の交戦を避けます。支援 38 機関砲やミサイル、支援射撃で戦車を援護します。"
+ },
+ {
+  "href": "/docs/tanks#tiers",
+  "title": "ティアと国家",
+  "chapter": "戦車と拡張パーツ",
+  "text": "戦車のティアは、その国家の技術ツリーでどの列に位置するかを表します。X 40 IX 42 VIII 35 VII 20 VI 27 V 23 IV 26 III 30 II 32 I 36 17か国 ソビエト連邦 52 ドイツ 34 アメリカ 32 イギリス 28 中国 25 ウクライナ 19 ポーランド 18 イスラエル 16 日本 15 スウェーデン 13 フランス 12 デンマーク 9 韓国 8 イタリア 8 オーストラリア 8 ブラジル 8 南アフリカ 6"
+ },
+ {
+  "href": "/docs/tanks#equipment",
+  "title": "拡張パーツ",
+  "chapter": "戦車と拡張パーツ",
+  "text": "各戦車には、25種類の拡張パーツからガレージで選んだ3個を搭載できます。火力 装填棒 装填時間 -10% 手動装填車両のみ 垂直安定装置 移動中の散布界 -20% 現代戦車のみ 改良型射撃装置 照準時間 -10% 改良型換気装置 搭乗員能力 +2.5%：装填、照準、視認範囲、迷彩 即応弾薬庫 装填時間 -6%、弾薬庫耐久性 -15% 手動装填車両のみ 射撃管制コンピューター 照準時間 -6%、移動中の散布界 -10% 現代戦車のみ 自動装填装置整備キット 弾倉装填時間 -6%、自動装填装置・給弾機構の耐久性 +50% 自動装填装置搭載車両のみ 機動性 改良型旋回装置 車体・砲塔旋回速度 +10% 強化型サスペンション 履帯耐久性 +50% 動力式砲塔旋回装置 砲塔旋回速度 +20% 現代戦車のみ · 砲塔搭載車両のみ 強化型駆動系 エンジン耐久性 +40%、変速機耐久性 +60% 防御力 内張り装甲 HEの爆風ダメージ -25%、爆風による搭乗員の被害発生率 -50% サイドスカート HEの爆風ダメージ -12%、履帯耐久性 +25% 砲塔リング保護装置 砲塔リング耐久性 +60%、砲架耐久性 +30% 砲塔搭載車両のみ 防盾保護装甲 主砲耐久性 +40%、光学装置耐久性 +30% 生存性 工具箱 修理速度 +25% 湿式弾薬庫 弾薬庫耐久性 +50% 安全燃料タンク 燃料タンク耐久性 +50%、エンジン出火率 -50% 自動消火装置 火災の継続時間が半減し、自然鎮火の頻度が2倍になります 現代戦車のみ 消火毛布 火災の継続時間が25%短縮され、自然鎮火の頻度が1.5倍になります 偵察 高性能光学装置 視認範囲 +10% 双眼鏡 静止中の視認範囲 +25% 迷彩ネット 静止中の隠蔽性 +12% 排気抑制装置 移動中・静止中ともに隠蔽性 +4% 熱画像照準器 視認範囲 +15% 現代戦車のみ"
+ },
+ {
+  "href": "/docs/tanks#kits",
+  "title": "キット、煙幕、ドローン",
+  "chapter": "戦車と拡張パーツ",
+  "text": "キットの使用回数に制限はありません。再使用にはクールダウンが必要で、キットが実際に効果を発揮した時点からカウントが始まります。野戦修理キット 損傷したすべてのモジュールを稼働可能な状態に復旧 · クールダウン35秒 大型修理キット すべてのモジュールを修理後、60秒間、自己修理速度+50% · クールダウン60秒 予備履帯 両側の履帯を稼働可能な状態に復旧 · クールダウン12秒 救急キット 負傷した搭乗員全員を復帰させる · クールダウン45秒 野戦糧食 40秒間：装填時間−5%、照準時間−8% · クールダウン60秒 消火器 火災を消火 · クールダウン25秒 自動消火装置 45秒間：火災が発生すると即座に消火 · クールダウン60秒 調速機の制限解除 10秒間：エンジン出力+25%。エンジンに過負荷がかかる場合あり · クールダウン45秒 即応弾薬庫の補充 各弾種を搭載容量の30%分補充 · クールダウン90秒 発煙弾の再装填 煙幕の斉射回数を1回分補充（最大3回）· クールダウン40秒 新しい枝葉 60秒間：静止中の隠蔽性+12% · クールダウン60秒 APS迎撃装置 20秒間：正面から飛来する次のミサイルまたはHEAT弾を迎撃 · クールダウン45秒 赤外線妨害装置 12秒間：自車両を狙うミサイルの誘導を無効化 · クールダウン40秒 煙幕 煙幕は18秒間持続します。発射間隔は28秒です。ドローン バッテリー持続時間は40秒、通信距離は850 m、索敵範囲は350 mです。機体を失ってから25秒後に次の機体を使用できます。車載機銃 射程内の敵やドローンを自動で攻撃します。Bで切り替えます。"
+ },
+ {
+  "href": "/docs/fleet",
+  "title": "全戦車を一覧で比較",
+  "chapter": "すべての戦車",
+  "text": "ゲーム内の全戦車を国家、ティア、時代、車種、役割別に掲載。各車両からTank Galleryの車両情報を開けます。"
+ },
+ {
+  "href": "/docs/fleet#fleet",
+  "title": "車両一覧",
+  "chapter": "すべての戦車",
+  "text": "すべての国 すべてのティア すべての時代 すべての車種 すべての役割 大型カード 角度 側面 311 両 ティア X BMP-3M Dragun 125 軽戦車 ティア X Kurganets-25 IFV ティア X Object 148 Proto MBT ティア X Object 195 MBT ティア X Object 695 TD ティア X T-14 152 MBT ティア X T-14 Armata MBT ティア X T-90AM II MBT ティア X T-90M Proryv MBT ティア IX Object 477 Molot MBT ティア IX T-90A MBT ティア IX T-90A Burlak MBT ティア IX T-90A Burlak Prototype MBT ティア IX T-90A obr. 2004 MBT ティア IX T-90A obr. 2006 MBT ティア IX T-90A Vladimir MBT ティア IX T-90AM MBT ティア IX T-90MS obr. 2011 MBT ティア IX T-90MS Tagil MBT ティア IX T-90SM MBT ティア IX T-90SM obr. 2013 MBT ティア VIII T-72B3 Bastion-M MBT ティア VIII T-72B3M Bulat-M MBT ティア VIII T-80U Bars-M MBT ティア VII Object 292 MBT ティア VII T-90 MBT ティア VII T-90 obr. 1992 MBT ティア VI BMPT T-90 火力支援 ティア VI BMPT Terminator 火力支援 ティア VI Pantsir-S1 (tracked) SPAA ティア VI T-72B3 MBT ティア VI T-72B3M obr. 2016 MBT ティア VI T-72B3M obr. 2022 MBT ティア VI T-80U MBT ティア VI T-80UK MBT ティア V 2K22M Tunguska-M SPAA ティア V BMPT Terminator 2 火力支援 ティア V TOS-1A Tagil 火力支援 ティア IV T-80B MBT ティア IV T-80BV MBT ティア III T-64BV MBT ティア III T-64BV1 MBT ティア III T-72B obr. 1987 MBT ティア III T-72BU MBT ティア III T-72BU obr. 1989 MBT ティア III T-80 MBT ティア II BMP-3 IFV ティア II T-62MV-1 MBT ティア I BMP-2 IFV ティア I KV-2 重戦車 ティア I T-55A 中戦車 ティア I T-62 obr. 1975 MBT ティア X KF51 EVO MBT ティア X KF51 Panther MBT ティア X KF51-U MBT ティア X Leopard 2A7V MBT ティア IX Leopard 2A5 MBT ティア IX Leopard 2A5M MBT ティア IX Leopard 2A6 MBT ティア IX Leopard 2A6M MBT ティア VIII Leopard 2 Improved MBT ティア VIII Leopard 2 Revolution MBT ティア VIII Leopard 2 Revolution Proto MBT ティア VIII Leopard 2A4 MBT ティア VIII Leopard 2A4 OTCO MBT ティア VIII Leopard 2A4 V MBT ティア VIII Leopard 2A4M MBT ティア VIII Leopard 2A4M CAN MBT ティア VI Puma S1 IFV ティア VI SPz Wotan IFV ティア V Flakpanzer Gepard 1A2 SPAA ティア V KF41 Lynx IFV ティア V Marder 2 IFV ティア IV Leopard 2A3 MBT ティア IV Leopard 2A3 OTCO MBT ティア IV Schützenpanzer Puma IFV ティア III Leopard 2 Prototype MBT ティア III Leopard 2A2 MBT ティア III MBT-70 MBT ティア II M48 Super MBT ティア II Schützenpanzer Marder 1A3 IFV ティア I Jagdpanzer E100 TD ティア I Kpz M48A2GA2 MBT ティア I Leopard 1A2A1 MBT ティア I Leopard 1A5 MBT ティア I M41 (Bundeswehr) 軽戦車 ティア X AbramsX MBT ティア X Griffin 50 mm IFV ティア X M1A2 Abrams SEPv3 MBT ティア X M1E3 Abrams MBT ティア IX M1A2 Abrams MBT ティア IX M1A2 Abrams SEPv2 MBT ティア IX M1A2 Abrams TUSK MBT ティア VIII M1A1 Abrams MBT ティア VIII M1A1 Abrams AIM MBT ティア VIII M1A1 Abrams FEP MBT ティア VIII M1A1 Abrams HA MBT ティア VIII M1A1 Abrams HC MBT ティア VIII M1A1 Abrams SA MBT ティア V M3A3 Bradley CFV IFV ティア V M6 Linebacker SPAA ティア IV M163 VADS SPAA ティア IV M551A1 TTS 軽戦車 ティア III Griffin Viper TD ティア II M113A3 APC ティア II M2A2 Bradley IFV ティア II M3A2 Bradley IFV ティア II M551 Sheridan 軽戦車 ティア II M60A2 Starship MBT ティア II T49 軽戦車 ティア II T95 (152 mm) TD ティア I M41A3 Walker Bulldog 軽戦車 ティア I M46 Patton 中戦車 ティア I M47 Patton 中戦車 ティア I M48A3 Patton MBT ティア I M48A5 Patton MBT ティア I M60A1 Patton MBT ティア I M60A3 MBT ティア X Challenger 3 MBT ティア X Challenger 3 TD MBT ティア X Challenger 3 TD (RWS) MBT ティア IX Challenger 2 MBT ティア IX Challenger 2E MBT ティア VIII Challenger 1 Mk 1 MBT ティア VIII Challenger 1 Mk 2 MBT ティア VIII Challenger 1 Mk 3 MBT ティア VIII Challenger 3 Prototype MBT ティア VIII FV4030 /5 MBT ティア VIII FV4030 /6 MBT ティア VI ItPsv Leopard 2 (Leopard 2 Marksman) SPAA ティア V Ajax IFV ティア V Marksman ( T-55 ) SPAA ティア V Warrior TES(H) IFV ティア IV Chieftain Mk 10 MBT ティア IV Chieftain Mk 9 MBT ティア IV FV4034 MBT ティア III Centurion Mk 13 中戦車 ティア III Centurion Mk 5/2 中戦車 ティア III FV510 Warrior MILAN IFV ティア II Ares APC APC ティア II Centurion Mk 3 中戦車 ティア II Centurion Mk 5 AVRE 中戦車 ティア II Chieftain Mk 3 MBT ティア II Chieftain Mk 5 MBT ティア II FV510 Warrior IFV ティア II Vickers MBT Mk 1 MBT ティア X Type 100 IFV IFV ティア X ZTZ-100 MBT ティア X ZTZ-100 Prototype 火力支援 ティア X ZTZ-20 MBT ティア X ZTZ-20 Prototype MBT ティア X ZTZ-99A2 MBT ティア IX ZTZ-99A MBT ティア IX ZTZ-99A2 Qinglong MBT ティア VIII VT-4A1 MBT ティア VII T-72B3 Qilin MBT ティア VII T-72B3 Zhuque MBT ティア VII T-72B3M Kunlun MBT ティア VII T-72B3M Xuanwu MBT ティア VII T-80U Yun MBT ティア VII VT-4A1 Baihu MBT ティア VI PGZ-09 SPAA ティア VI Type 96-72M Léi MBT ティア VI Type 96-80 Fēng MBT ティア VI Type 96B MBT ティア VI ZTZ-99 Longwei MBT ティア V PGZ-95 SPAA ティア V Type 96-72 Lóng (Concept) MBT ティア III AFT-10 TD ティア I Type 59 中戦車 ティア I ZTZ-85-III MBT ティア X T-84BM Oplot-M MBT ティア X T-84BM Oplot-T MBT ティア IX Challenger 2 (Ukraine) MBT ティア IX Leopard 2A6 UA MBT ティア IX M1A1 SA (Ukraine) MBT ティア IX M1A2 Abrams UA MBT ティア VII T-72B3 Sich MBT ティア VII T-72B3M Hetman MBT ティア VII T-72B3M Hetman II MBT ティア VII T-80U Zoria MBT ティア VI Object 478DU2 MBT ティア VI T-80U Kursk MBT ティア VI T-84U Oplot MBT ティア V T-80BV (Ukraine) MBT ティア IV CV9040C (Ukraine) IFV ティア IV M2A3 Bradley (Ukraine) IFV ティア IV T-64B1V mod. 2022 MBT ティア IV T-64BM1M MBT ティア IV T-64BV mod. 2017 MBT ティア X PL-01 軽戦車 ティア X PL-01 (105) 軽戦車 ティア X PT-84 Orzeł MBT ティア X PT-84 Żbik MBT ティア X Upiór IFV IFV ティア IX PT-84 Sokół MBT ティア VII T-72B3M Wilk MBT ティア VII T-80U Husarz MBT ティア VI PZA Loara SPAA ティア VI T-72B3 Zubr MBT ティア VI T-72B3 Zubr II MBT ティア V Borsuk IFV ティア V PT-91A Twardy MBT ティア V T-72 Ryś (Concept) MBT ティア IV PT-64 Tur MBT ティア IV PT-91M Pendekar MBT ティア IV T-72M1 Jaguar MBT ティア III BWP-1 (Bojowy Wóz Piechoty 1) IFV ティア IX Merkava Mk 4 MBT ティア IX Merkava Mk 4 Barak MBT ティア IX Merkava Mk 4 Trophy MBT ティア IX Merkava Mk 4B MBT ティア VIII Merkava Mk 3 Baz MBT ティア VIII Merkava Mk 3C MBT ティア VIII Merkava Mk 3D MBT ティア IV Namer IFV IFV ティア III Merkava Mk 2B MBT ティア III Merkava Mk 2D MBT ティア III Sho't Kal 中戦車 ティア II Magach 7C MBT ティア II Sabra Mk 2 MBT ティア I Magach 3 MBT ティア I Magach 6B MBT ティア I Merkava Mk 1B MBT ティア X Raijū IFV IFV ティア X Type 10 MBT ティア X Type 10 Kaitaku MBT ティア IX Type 10 ( TK-X ) MBT ティア IX Type 10B MBT ティア VIII STC-1 MBT ティア VIII STC-2 MBT ティア VIII Type 90 MBT ティア VIII Type 90 (B) MBT ティア VI Type 89 IFV ティア V Type 87 Self-Propelled Anti-Aircraft Gun SPAA ティア II Hayate IFV IFV ティア I M41 (JGSDF) 軽戦車 ティア I STB-1 MBT ティア I Type 74 MBT ティア IX Stridsvagn 121 MBT ティア IX Stridsvagn 122 MBT ティア VII CV90 Mk 4 IFV ティア VII CV90 Mk 4 Concept IFV ティア V Lvkv 9040 SPAA ティア IV CV90 IFV ティア IV CV9040C IFV ティア III Strv 105 中戦車 ティア II CV90105 TML 軽戦車 ティア II Stridsvagn 103A TD ティア II Stridsvagn 103B TD ティア II Stridsvagn 81 中戦車 ティア I UDES 03 TD ティア X Leclerc XLR MBT ティア IX AMX 56 MBT ティア IX Leclerc S2 MBT ティア IX Leclerc SXXI MBT ティア VIII Leclerc S1 MBT ティア IV AMX-10P 25 IFV ティア III AMX-10P IFV ティア III AMX-40 MBT ティア III AMX-40 Prototype MBT ティア I AMX-30 MBT ティア I AMX-30B MBT ティア I AMX-30B2 MBT ティア X Leopard 2A7 DK MBT ティア IX Leopard 2A5 DK MBT ティア VIII Christian II MBT ティア V CV9035 DK IFV ティア III Centurion Mk 5/2 DK 中戦車 ティア II M41 DK-1 軽戦車 ティア I Leopard 1A3 DK MBT ティア I Leopard 1A5 DK MBT ティア I Leopard 1A5 DK-1 MBT ティア IX M1A2 SEPv3 (Aus) MBT ティア VIII M1A1 AIM SA MBT ティア VI AS21 Redback IFV ティア III M113AS4 APC ティア II Centurion Mk 5/1 (Aust) 中戦車 ティア I Leopard AS1 MBT ティア I M113A1 FSV 軽戦車 ティア I M113A1 MRV 軽戦車 ティア X EE-T4 Osório MBT ティア IX EE-T3 Osório MBT ティア IV EE-T1 Osório (120) MBT ティア III EE-T1 Osório (105) MBT ティア III MB-3 Tamoyo 3 MBT ティア II MB-3 Tamoyo 1 中戦車 ティア I CCL X1 Pioneiro 軽戦車 ティア I CCL X1A2 Carcará 軽戦車 ティア VII C2 Ariete MBT ティア VII C2 Ariete Prototype MBT ティア VI C1 Ariete MBT ティア VI C1 Ariete Prototype (Serie 1) MBT ティア V LRMV Lynx IFV ティア IV C1 Ariete Preserie MBT ティア IV Dardo IFV ティア II Carro 45t 中戦車 ティア X K2 Black Panther MBT ティア VIII K1A1 MBT ティア VII K2B MBT ティア VI XK2 Black Panther MBT ティア V K21 IFV ティア V K30 Biho SPAA ティア IV K1E1 MBT ティア III BMP-3 (ROK) IFV ティア III Olifant Mk 1B MBT ティア III Olifant Mk 2 MBT ティア III Olifant TTD MBT ティア II Olifant Mk 1 MBT ティア II Olifant Mk 1A MBT ティア II Semel 中戦車 該当する戦車はありません。フィルターを解除 {\"total\":311,\"facets\":[{\"key\":\"nation\",\"label\":\"国\",\"options\":[{\"id\":\"\",\"name\":\"すべての国\",\"count\":311,\"glyph\":\"globe\"},{\"id\":\"ru\",\"name\":\"ロシア / ソ連\",\"count\":52,\"chip\":\"Russia\"},{\"id\":\"de\",\"name\":\"ドイツ\",\"count\":34,\"chip\":\"Germany\"},{\"id\":\"us\",\"name\":\"アメリカ\",\"count\":32,\"chip\":\"USA\"},{\"id\":\"gb\",\"name\":\"イギリス\",\"count\":28,\"chip\":\"UK\"},{\"id\":\"cn\",\"name\":\"中国\",\"count\":25,\"chip\":\"China\"},{\"id\":\"ua\",\"name\":\"ウクライナ\",\"count\":19,\"chip\":\"Ukraine\"},{\"id\":\"pl\",\"name\":\"ポーランド\",\"count\":18,\"chip\":\"Poland\"},{\"id\":\"il\",\"name\":\"イスラエル\",\"count\":16,\"chip\":\"Israel\"},{\"id\":\"jp\",\"name\":\"日本\",\"count\":15,\"chip\":\"Japan\"},{\"id\":\"se\",\"name\":\"スウェーデン\",\"count\":13,\"chip\":\"Sweden\"},{\"id\":\"fr\",\"name\":\"フランス\",\"count\":12,\"chip\":\"France\"},{\"id\":\"dk\",\"name\":\"デンマーク\",\"count\":9,\"chip\":\"Denmark\"},{\"id\":\"au\",\"name\":\"オーストラリア\",\"count\":8,\"chip\":\"Australia\"},{\"id\":\"br\",\"name\":\"ブラジル\",\"count\":8,\"chip\":\"Brazil\"},{\"id\":\"it\",\"name\":\"イタリア\",\"count\":8,\"chip\":\"Italy\"},{\"id\":\"kr\",\"name\":\"韓国\",\"count\":8,\"chip\":\"South Korea\"},{\"id\":\"za\",\"name\":\"南アフリカ\",\"count\":6,\"chip\":\"South Africa\"}]},{\"key\":\"tier\",\"label\":\"ティア\",\"options\":[{\"id\":\"\",\"name\":\"すべてのティア\",\"count\":311,\"glyph\":\"techTree\"},{\"id\":\"10\",\"name\":\"ティアX\",\"count\":40},{\"id\":\"9\",\"name\":\"ティアIX\",\"count\":42},{\"id\":\"8\",\"name\":\"ティアVIII\",\"count\":35},{\"id\":\"7\",\"name\":\"ティアVII\",\"count\":20},{\"id\":\"6\",\"name\":\"ティアVI\",\"count\":27},{\"id\":\"5\",\"name\":\"ティアV\",\"count\":23},{\"id\":\"4\",\"name\":\"ティアIV\",\"count\":26},{\"id\":\"3\",\"name\":\"ティアIII\",\"count\":30},{\"id\":\"2\",\"name\":\"ティアII\",\"count\":32},{\"id\":\"1\",\"name\":\"ティアI\",\"count\":36}]},{\"key\":\"era\",\"label\":\"時代\",\"options\":[{\"id\":\"\",\"name\":\"すべての時代\",\"count\":311,\"glyph\":\"clock\"},{\"id\":\"next-generation\",\"name\":\"次世代\",\"count\":23,\"glyph\":\"eraNextGeneration\"},{\"id\":\"modern\",\"name\":\"現代\",\"count\":183,\"glyph\":\"eraModern\"},{\"id\":\"cold-war\",\"name\":\"冷戦\",\"count\":102,\"glyph\":\"eraColdWar\"},{\"id\":\"ww2\",\"name\":\"第二次世界大戦\",\"count\":3,\"glyph\":\"eraWorldWarII\"}]},{\"key\":\"class\",\"label\":\"車種\",\"options\":[{\"id\":\"\",\"name\":\"すべての車種\",\"count\":311,\"glyph\":\"vehicle\"},{\"id\":\"mbt\",\"name\":\"MBT\",\"count\":211,\"glyph\":\"classMbt\"},{\"id\":\"medium\",\"name\":\"中戦車\",\"count\":16,\"glyph\":\"classMedium\"},{\"id\":\"heavy\",\"name\":\"重戦車\",\"count\":1,\"glyph\":\"classHeavy\"},{\"id\":\"light\",\"name\":\"軽戦車\",\"count\":15,\"glyph\":\"classLight\"},{\"id\":\"ifv\",\"name\":\"IFV\",\"count\":39,\"glyph\":\"classIfv\"},{\"id\":\"apc\",\"name\":\"APC\",\"count\":3,\"glyph\":\"classApc\"},{\"id\":\"td\",\"name\":\"TD\",\"count\":8,\"glyph\":\"classTd\"},{\"id\":\"spaa\",\"name\":\"SPAA\",\"count\":13,\"glyph\":\"classSpaa\"},{\"id\":\"fire-support\",\"name\":\"火力支援\",\"count\":5,\"glyph\":\"classFireSupport\"}]},{\"key\":\"role\",\"label\":\"役割\",\"options\":[{\"id\":\"\",\"name\":\"すべての役割\",\"count\":311,\"glyph\":\"team\"},{\"id\":\"breakthrough\",\"name\":\"突破\",\"count\":85,\"glyph\":\"roleBreakthrough\"},{\"id\":\"frontline\",\"name\":\"前線\",\"count\":66,\"glyph\":\"roleFrontline\"},{\"id\":\"flanker\",\"name\":\"側面攻撃\",\"count\":57,\"glyph\":\"roleFlanker\"},{\"id\":\"sniper\",\"name\":\"狙撃\",\"count\":27,\"glyph\":\"roleSniper\"},{\"id\":\"scout\",\"name\":\"偵察\",\"count\":38,\"glyph\":\"roleScout\"},{\"id\":\"support\",\"name\":\"支援\",\"count\":38,\"glyph\":\"roleSupport\"}]}],\"words\":{\"nation:ru\":\"ru russia ussr ussr/russia ロシア 俄罗斯 ソビエト連邦 苏联\",\"nation:de\":\"de germany ドイツ 德国\",\"nation:us\":\"us usa アメリカ 美国\",\"nation:gb\":\"gb uk イギリス 英国\",\"nation:cn\":\"cn china 中国\",\"nation:ua\":\"ua ukraine ウクライナ 乌克兰\",\"nation:pl\":\"pl poland ポーランド 波兰\",\"nation:il\":\"il israel イスラエル 以色列\",\"nation:jp\":\"jp japan 日本\",\"nation:se\":\"se sweden スウェーデン 瑞典\",\"nation:fr\":\"fr france フランス 法国\",\"nation:dk\":\"dk denmark デンマーク 丹麦\",\"nation:au\":\"au australia オーストラリア 澳大利亚\",\"nation:br\":\"br brazil ブラジル 巴西\",\"nation:it\":\"it italy イタリア 意大利\",\"nation:kr\":\"kr south korea 韓国 韩国\",\"nation:za\":\"za south africa 南アフリカ 南非\",\"tier:10\":\"10 x ティアx x级\",\"tier:9\":\"9 ix ティアix ix级\",\"tier:8\":\"8 viii ティアviii viii级\",\"tier:7\":\"7 vii ティアvii vii级\",\"tier:6\":\"6 vi ティアvi vi级\",\"tier:5\":\"5 v ティアv v级\",\"tier:4\":\"4 iv ティアiv iv级\",\"tier:3\":\"3 iii ティアiii iii级\",\"tier:2\":\"2 ii ティアii ii级\",\"tier:1\":\"1 i ティアi i级\",\"era:next-generation\":\"next generation 次世代 下一代\",\"era:modern\":\"modern 現代 现代\",\"era:cold-war\":\"cold war 冷戦 冷战\",\"era:ww2\":\"ww2 第二次世界大戦 二战\",\"era:interwar\":\"interwar 戦間期 战间期\",\"class:mbt\":\"main battle tank mbt main-battle-tank 主力戦車 主战坦克\",\"class:medium\":\"medium tank medium-tank mt 中戦車 中型坦克\",\"class:heavy\":\"heavy tank heavy-tank ht 重戦車 重型坦克\",\"class:light\":\"light tank light-tank lt 軽戦車 轻型坦克\",\"class:ifv\":\"infantry fighting vehicle ifv infantry-fighting-vehicle cfv 歩兵戦闘車 步兵战车 步战车\",\"class:apc\":\"armored personnel carrier apc armoured 装甲兵員輸送車 装甲运兵车 运兵车\",\"class:td\":\"tank destroyer td tank-destroyer casemate 駆逐戦車 坦克歼击车 歼击车\",\"class:spaa\":\"self-propelled anti-aircraft spaa aa anti-air air defense defence 自走対空砲 自行防空车 防空车\",\"class:fire-support\":\"fire support vehicle fire-support fsv bmpt mrl rocket artillery tank 火力支援車両 火力支援车 火力支援\",\"role:breakthrough\":\"breakthrough assault brawler spearhead 突破\",\"role:frontline\":\"frontline front-line line all-rounder allrounder flexible 前線 前线\",\"role:flanker\":\"flanker flank skirmisher 側面攻撃 侧翼\",\"role:sniper\":\"sniper precision long-range overwatch 狙撃 狙击\",\"role:scout\":\"scout recon reconnaissance spotter 偵察 侦察\",\"role:support\":\"support escort 支援\",\"status:service\":\"in service in-service production series 就役 已服役\",\"status:prototype\":\"prototype proto demonstrator pre-series 試作 原型车\",\"status:concept\":\"concept paper fictional 構想 概念车\"},\"text\":{\"count\":\"{total}両中{shown}両\",\"total\":\"{total}両\"}}"
+ },
+ {
+  "href": "/docs/combat",
+  "title": "砲弾がダメージを与える仕組み",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "貫通、角度、モジュールと乗員、そして互いを発見する仕組みを、実際のゲームルールに基づいて図解します。"
+ },
+ {
+  "href": "/docs/combat#penetration",
+  "title": "貫通",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "75–125 %のランダム補正を受けた砲弾の貫通力が、命中した装甲の防御力を上回ると貫通します。貫通力は100 mでの値から1,000 mでの値まで直線的に低下し、2,000 mでの値が設定された砲弾では、さらにその値まで低下します。貫通力とダメージは、それぞれ基準値に対して75–125 %の範囲でランダムに変動します。HEATは距離によって貫通力が低下しません。装甲オーバーレイ 照準内の装甲オーバーレイは、装填済みの砲弾の貫通可能性に応じて敵を色分けします。緑は貫通可能、黄は貫通の可能性あり、赤は貫通不可です。入射角、空間装甲、ERA、距離が考慮されます。初期設定では有効で、H 、または「設定 › ゲームプレイ › 装甲貫通の色分け表示」でオン・オフを切り替えられます。\n距離 (m) mm OFL 120 F2 APFSDS · OECC 120 F1 HEAT"
+ },
+ {
+  "href": "/docs/combat#angling",
+  "title": "装甲の角度付け",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "装甲板を傾けると砲弾の進路に沿った実質的な厚みが増し、さらに傾けると砲弾を弾きます。実効装甲厚は、装甲板の厚さを、入射角から砲弾の標準化角度を引いた角度のコサインで割った値です。APFSDSは装甲板に垂直な方向へ2°補正され、78°を超えると跳弾します。APは装甲板に垂直な方向へ5°補正され、70°を超えると跳弾します。口径が装甲厚の3倍ある砲弾は跳弾しません。砲弾の跳弾回数は最大2回です。HEATの噴流は最初の跳弾で消滅します。\n入射角 (°) mm AP、75 mm 70°を超えると跳弾 · APCR、75 mm 70°を超えると跳弾 · APFSDS、120 mm 78°を超えると跳弾 · HEAT、120 mm\nLeclerc XLR：厚さ別の装甲"
+ },
+ {
+  "href": "/docs/combat#special",
+  "title": "空間装甲、ERA、HE",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "装甲板は必ずしも鋼鉄の一枚板とは限らず、砲弾も必ずしも貫通する必要はありません。HEATは装甲間の空間を10 cm進むごとに貫通力を5 %失います。ERAはHEATの貫通力を固定値で、運動エネルギー弾の貫通力を一定の割合で減らします。タンデム弾頭は、対タンデム仕様のブロックでない限りERAを突破します。HEは跳弾しません。装甲板かどうかにかかわらず、命中した対象に爆発ダメージを与えます。"
+ },
+ {
+  "href": "/docs/combat#modules",
+  "title": "モジュールと乗員",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "貫通した砲弾は、装甲板の背後にあるものを破壊することがあります。破損したモジュールは10秒後に自動修理されます。弾薬庫が損傷すると装填時間が×1.5になり、破壊されると戦車が爆発します。エンジンが損傷すると15 %の確率で火災が発生します。火災は最大10ティック続き、毎ティック車体の耐久値を0.5 %減らします。毎ティック12 %の確率で自然鎮火する可能性もあります。貫通した砲弾は33 %の確率で搭乗員に命中します（HEの爆風では10 %）。搭乗員を全員失うと戦車は撃破されます。観測装置が損傷すると視認範囲が50 %減少します。無線機が正常なら600 m以内、損傷している場合は300 m以内の味方と視認情報を共有します。キルカメラ 撃破されると、キルカメラが車体を透過表示にして、とどめの一撃を再現します。砲弾の経路、命中した各モジュールと搭乗員、ダメージ、射撃した相手を確認できます。\nLeclerc XLR：モジュールと搭乗員\nモジュール · 耐久値 · 被弾確率 · 主砲 · 150 · 33 % · 砲塔リング · 120 · 45 % · 砲架 · 120 · 45 % · 自動装填装置 · 125 · 36 % · 給弾機構 · 110 · 38 % · 車載機銃 · 80 · 65 % · ミサイルラック · 120 · 30 % · エンジン · 160 · 45 % · 変速機 · 140 · 45 % · 燃料タンク · 120 · 45 % · 弾薬庫 · 150 · 27 % · 無線機 · 90 · 45 % · 光学機器 · 80 · 45 % · 左履帯 · 100 · 100 % · 右履帯 · 100 · 100 %"
+ },
+ {
+  "href": "/docs/combat#spotting",
+  "title": "索敵",
+  "chapter": "装甲、装甲の角度付け、索敵",
+  "text": "視認範囲から相手の迷彩効果を差し引いた距離内で戦車を視認できます。この距離は50 mから445 mの範囲です。50 m以内の戦車は、遮蔽物越しでも必ず視認されます。戦車は最後に視認されてから5秒間、表示され続けます。第六感ランプは敵に発見されてから3秒後に点灯し、8秒間点灯し続けます。射撃すると迷彩効果の大部分が一時的に失われ、近くの茂みも見通せるようになります。茂みや樹木によって迷彩効果が最大50 %加算され、マップに合った迷彩塗装でさらに3.5 %加算されます。\n目標の迷彩 (%) m 視認範囲445 m · 視認範囲380 m · 視認範囲300 m"
+ },
+ {
+  "href": "/docs/battlefields",
+  "title": "すべての戦場",
+  "chapter": "戦場",
+  "text": "各マップの景観と時間帯、そして練習場。"
+ },
+ {
+  "href": "/docs/battlefields#maps",
+  "title": "マップ",
+  "chapter": "戦場",
+  "text": "森林 10 砂漠 9 市街地 6 海洋 5 冬季 4 熱帯 3 夜間 1 Verdant Fields Sirocco Wadi Frosthollow Steinburg Saltmere Bay Amberford Tarkhan Steppe Cinder Junction Frontier Basin Nordhavn Fjord Jade River Delta Redrock Divide Monsoon Ridge Glacier Pass Obsidian Caldera Ironworks Ruinspires Suzhou Creek Titan Gorge Skybridge Chasm Tidegate Polders Copper Mesa Mine Kestrel Airfield Sunscar Oasis Whiteout Station Orchard Valley Longleaf Crossing Mangrove Reach Saltwind Narrows Highland Reservoir Olympus Basin アースライズ盆地 イージス交差路"
+ },
+ {
+  "href": "/docs/battlefields#breaks",
+  "title": "破壊できるもの",
+  "chapter": "戦場",
+  "text": "崩壊する建物 砲撃や体当たりで建物は徐々に損壊し、やがて崩壊します。それに伴い、周囲の遮蔽物や移動経路も変わります。進路上の障害物を踏み潰す 重い車体は、その重さに耐えられない柵、壁、木、小屋、屋台をなぎ倒します。倒れたものは元には戻りません。マップ上の車両も破壊可能 駐車中の乗用車やトラックは履帯に踏みつぶされ、砲弾が当たると炎上します。建物、壁、岩、丘などの大きな遮蔽物は砲弾と視線を遮ります。看板や街灯などの小さな設置物が、見えない壁になることはありません。"
+ },
+ {
+  "href": "/docs/battlefields#gravity",
+  "title": "重力の異なる世界",
+  "chapter": "戦場",
+  "text": "Gravity Modeの舞台は、いつもと違う空の下。火星 0.38 g · 月 0.17 g · 地球 1 gで戦います。地球外の2つのマップはランダムローテーションには含まれません。"
+ },
+ {
+  "href": "/docs/battlefields#time",
+  "title": "時間帯",
+  "chapter": "戦場",
+  "text": "出撃時に時間帯を設定できます。ランダムにした場合は、次の割合で決まります。昼 60 % 夕暮れ 30 % 夜 10 %"
+ },
+ {
+  "href": "/docs/battlefields#proving",
+  "title": "Proving Ground",
+  "chapter": "戦場",
+  "text": "試乗の舞台はKestrel Airfield。5本の標的レーンと装甲板ラックで、時間制限や記録を気にせず試せます。レーン 100 m 標的の向き：0° 200 m 標的の向き：30° 300 m 標的の向き：90° 450 m 標的の向き：45° 650 m 標的の向き：0° 装甲板ラック 50 mm 100 mm 200 mm 300 mm 500 mm 100 mm · 45° 100 mm · 60° 60 mm · 82°"
+ },
+ {
+  "href": "/docs/multiplayer",
+  "title": "仲間とプレイ",
+  "chapter": "マルチプレイ",
+  "text": "ルームを作成してコードを送り、フレンドと共闘、あるいは対戦しましょう。"
+ },
+ {
+  "href": "/docs/multiplayer#rooms",
+  "title": "ルームを作成",
+  "chapter": "マルチプレイ",
+  "text": "プライベートルーム ルームを作成し、6文字のコードか招待リンクをフレンドに送ってください。ルームに参加 ホストから受け取ったコードを入力するか、招待リンクを開いてください。ローカルネットワーク 1台のコンピューターで npm run server:mp （ポート8792）を実行します。同じネットワーク上の全員が「ローカルネットワーク」を選ぶと、そのコンピューターを介してプレイできます。"
+ },
+ {
+  "href": "/docs/multiplayer#seats",
+  "title": "参加枠",
+  "chapter": "マルチプレイ",
+  "text": "2つのチームと観戦枠があります。チームの人数はルームごとに設定でき、空き枠はボットで補充できます。1つのルームには最大28人のプレイヤーと8人の観戦者が参加できます。新規参加者は人数の少ないチームに入ります。ルーム作成者はチーム変更を禁止できます。ルーム設定で無効にしない限り、空き枠はボットで補充されます。各プレイヤーは自分で選んだ戦車、迷彩、最大3個の拡張パーツを持ち込みます。複数のプレイヤーが同じ戦車を選ぶこともできます。名前は最大24文字です。すでに使われている名前には番号が付きます。\nチーム・アルファ · v チーム・ブラボー · 観戦者 · 標準で各チーム7人 各チーム最大14人"
+ },
+ {
+  "href": "/docs/multiplayer#modes",
+  "title": "モード",
+  "chapter": "マルチプレイ",
+  "text": "ルームではすべての戦闘モードをプレイできます。Proving Groundはソロ専用です。通常戦 Capture the Flag Zone Control ターボボール Endless Horde 前線強襲 Gravity Mode ジャガーノート 感染者 リアリスティック ガンゲーム ドローン AC-130 Air Support Endless Hordeと前線強襲では最大7人が同じ陣営で出撃し、押し寄せる敵の波に立ち向かいます。"
+ },
+ {
+  "href": "/docs/multiplayer#start",
+  "title": "出撃準備",
+  "chapter": "マルチプレイ",
+  "text": "1 戦車、迷彩、拡張パーツを選んで「準備完了」を押してください。2 接続中の全プレイヤーの準備が整ったら、ルーム作成者が戦闘を開始します。3 戦闘は作成者のブラウザーがホストします。ローカルネットワークでは補助サーバーが担当します。"
+ },
+ {
+  "href": "/docs/multiplayer#leaving",
+  "title": "退出と再参加",
+  "chapter": "マルチプレイ",
+  "text": "途中で退出しても、参加枠は5分間保持されます。リンクを再び開くと復帰できます。ホストのブラウザーが切断されると、8秒以内に別のプレイヤーへ戦闘処理が引き継がれ、プレイが続行されます。作成者が退出すると、30秒後に最も長く参加しているプレイヤーへルームの設定権限が移ります。ルームは最後のメッセージから24時間後に閉鎖されます。ルームチャットには直近48件のメッセージが保存され、各メッセージは最大240文字です。"
+ },
+ {
+  "href": "/docs/multiplayer#fair",
+  "title": "フェアプレイ",
+  "chapter": "マルチプレイ",
+  "text": "命中、装填、戦闘結果はすべてホストが判定します。他のプレイヤーが送信するのは操作入力だけです。受信するのは味方チームが発見した敵の情報だけです。未発見の戦車の位置がブラウザーに送られることはありません。"
+ },
+ {
+  "href": "/docs/audio",
+  "title": "乗員の耳で戦場を聴く",
+  "chapter": "サウンドと無線",
+  "text": "砲声、警告音、エンジン音が伝える情報と、音量バランスの調整方法。"
+ },
+ {
+  "href": "/docs/audio#hits",
+  "title": "貫通したか？",
+  "chapter": "サウンドと無線",
+  "text": "命中を知らせるUI効果音はありません。目標地点で生じた音が距離に応じて遅れて届き、その約半秒後に砲手が報告します。音が届くまでの時間 地球 100 m：0.3秒 500 m：1.5秒 1000 m：2.9秒 火星 100 m：0.4秒 500 m：2.1秒 1000 m：4.0秒\n搭乗員の報告 · 意味 · Penetration. Target. Through the armor. · 砲弾が貫通しました。· No penetration. Didn't go through. · 命中しましたが貫通しませんでした。より薄い装甲を狙ってください。· Ricochet. Bounced. · 傾斜した装甲板に弾かれました。· Miss. Short. Adjusting. Over. · 命中しませんでした。照準を修正してください。· Good hit. Something's damaged. Critical hit. · 貫通し、モジュールを破壊しました。· Ammo rack hit. He's cooking off. Hit his ammo. He's done. · 敵の弾薬が炎上し、まもなく誘爆します。· Hit his engine. Engine hit. He's slowing. · 敵のエンジンに命中しました。速度が低下するか、火災が発生します。· His track's off. He's immobilized. Tracked him. He's not moving. · 敵の履帯が外れました。修理が終わるまで移動できません。· Their crew's hit. Crew hit inside. · 敵の搭乗員1名が戦闘不能になりました。· Target destroyed. Target down. Tank knocked out. · この一撃で敵を撃破しました。"
+ },
+ {
+  "href": "/docs/audio#warnings",
+  "title": "搭乗員の警告",
+  "chapter": "サウンドと無線",
+  "text": "自車両に異変が起きると、目で確認するより先に搭乗員が知らせます。\n搭乗員の報告 · 意味 · We're hit. Taking hits. · 敵弾が自車両を貫通しました。· Armor held. It bounced. · 被弾しましたが、損傷はありません。· Fire! Engine compartment! Fire in the hull! · 炎上中です。消火しないと車体の耐久値が減り続けます。· Ammo rack hit! Ammunition damaged! · 弾薬庫が損傷し、装填が遅くなっています。· Engine's damaged. Engine hit. Losing power. · エンジンに被弾しました。出力が低下し、火災が発生するおそれがあります。· Track's gone. We're immobilized. Lost a track. · 履帯が外れました。修理が終わるまで移動できません。· Main gun's damaged. Gun's hit. · 主砲が損傷しています。修理が必要です。· Armor's failing. Can't take much more. We're badly hit. Keep moving. · 車体の耐久値が残りわずかです。遮蔽物に身を隠してください。· We're spotted. They have eyes on us. · 敵に発見されました。第六感ランプも点灯します。· Missile incoming! Incoming missile, brace! · 誘導ミサイルが接近中です。移動するか、射線を切ってください。· Drone inbound! Drone on us, overhead! · 敵のドローンが上空にいます。"
+ },
+ {
+  "href": "/docs/audio#procedure",
+  "title": "射撃号令とモード別の交信",
+  "chapter": "サウンドと無線",
+  "text": "装填済みの状態で発見済みの敵に照準が定まると、車長が射撃号令を出し、砲手が応答します。AC-130の搭乗員や各モードにも専用の交信があります。AC-130搭乗時 各モードで\n搭乗員の報告 · 意味 · Gunner, sabot, tank. Gunner. Sabot. Tank. · 車長が装填されている弾種（ここでは装弾筒付徹甲弾。HEAT、HE、ミサイルの場合はそれぞれの弾種）と目標を告げます。· Identified. Identified. Tank. · 砲手が目標を照準に捉えました。· On the way. Firing. Shot. · 発射しました。· Re-engage. Target still up. Re-engage. · 目標はまだ健在で、再装填が完了しました。再度射撃してください。· Target. Cease fire. Cease fire. Scan your sector. · 敵を撃破し、1.5 km以内に発見済みの敵はいなくなりました。射撃を中止してください。\n搭乗員の報告 · 意味 · In orbit. Cleared hot. Gunship on station. Cleared to engage. · ガンシップが旋回軌道に入り、射撃許可が出ました。· Tally. Armor moving. Sensor's captured. Vehicle. · センサーが敵の装甲車両を捉えました。· Shifting fire. Shift fire. New target. · 前の目標を撃破し、次の目標を照準に捉えました。· Rifle. Rifle. Missile tracking. · ミサイルを発射しました。· Splash. Splash. No effect. · 着弾しましたが、損害は与えていません。· Good hits. Good hits. Target still moving. · 砲弾が目標に損害を与えています。· Danger close. Danger close. Friendlies at the impact. · 大口径弾が味方戦車から35 m以内に着弾しました。もっと離れた地点を狙ってください。· Rounds complete. Rounds complete. Assessing. · 大口径弾の連射が終わり、乗員が戦果を確認します。\n搭乗員の報告 · 意味 · They dropped our flag. Recover it. Our flag's down in the field. · 味方の旗を運んでいた敵が旗を落としました。敵より先に回収してください。· We're contesting their point. On their objective. Hold it. · 味方が敵の拠点に入り、敵の占領を阻止しています。· They scored. Goal against. Reset. · 敵が得点しました。· Big wave. Lots of them. Swarm. They're everywhere. · 高速の敵が大挙して接近中です。· Counter-attack! Enemy counter-attack. Hold the line. · 確保した防衛線を敵が攻撃しています。· We've turned. Hunt the survivors. We're with them now. Find the survivors. · 感染しました。今度は生存者を狩る側です。· Juggernaut spotted! Eyes on the Juggernaut. · 味方がジャガーノートを発見しました。· Last weapon. Finish it. Final gun. Two more and we win. · 最後の武器に到達しました。あと2両撃破で勝利です。"
+ },
+ {
+  "href": "/docs/audio#radio",
+  "title": "乗員の無線音声",
+  "chapter": "サウンドと無線",
+  "text": "各国の乗員は自国語で話します。どの戦車にも他国の乗員を搭乗させることができ、全38言語の乗員を用意しています。アメリカ英語 イギリス英語 ドイツ語 ロシア語 ウクライナ語 中国語 フランス語 スウェーデン語 日本語 韓国語 イタリア語 ポーランド語 ヘブライ語 デンマーク語 ポルトガル語 (ブラジル) オーストラリア英語 アフリカーンス語 さらに、ゲームに登場しない国の言語にも21言語対応し、それぞれ実際の軍の通信手順に従って話します。設定で全戦車共通の乗員を選べます：スペイン語 (スペイン) Español (España) スペイン語 (ラテンアメリカ) Español (Latinoamérica) ポルトガル語 (ポルトガル) Português (Portugal) オランダ語 Nederlands ノルウェー語 Norsk フィンランド語 Suomi ギリシャ語 Ελληνικά チェコ語 Čeština ハンガリー語 Magyar ルーマニア語 Română トルコ語 Türkçe アラビア語 العربية ペルシア語 فارسی ヒンディー語 हिन्दी ウルドゥー語 اردو ベンガル語 বাংলা インドネシア語 Indonesia マレー語 Melayu ベトナム語 Tiếng Việt タイ語 ไทย フィリピノ語 Filipino 無線連絡は一度に1件だけ再生され、生存に関わる警告が優先的に割り込みます。無線機が損傷すると音声の帯域が狭まり、雑音や音切れが発生します。設定 › サウンド › 乗員音声：「各国の乗員」では戦車の所属国に応じた音声になります。全戦車の乗員に共通の言語を38言語から選ぶこともできます。選択は戦闘後や再読み込み後も保持されます。"
+ },
+ {
+  "href": "/docs/audio#gunfire",
+  "title": "発砲音",
+  "chapter": "サウンドと無線",
+  "text": "各武器には24種類の発砲音のいずれかが割り当てられ、口径が大きいほど音が大きく、長く響きます。小銃口径の機関銃 118 dB 重機関銃 124 dB 20 mm 機関砲 128 dB 25 mm 機関砲 130 dB 30 mm 機関砲 132 dB 対戦車ミサイル 132 dB 35 mm 機関砲 133.5 dB AC-130の機関砲 134 dB 40 mm 機関砲 135 dB AC-130のミサイル 136 dB 50 mm 機関砲 137 dB 76 mm 砲 139 dB 84 mm 砲 140 dB 90 mm 砲 141 dB 100 mm 砲 142.5 dB 105 mm 砲 144 dB 大型ロケット弾 145 dB 120 mm 砲 147 dB 125 mm 砲 148 dB 165 mm 砲 148 dB 130 mm 砲 150 dB AC-130の榴弾砲 150 dB 152 mm 砲 152 dB 170 mm 砲 152 dB 遠方の発砲は音が届くより先に見え、間に丘があると音がこもります。火星では音が240 m/sで伝わり、14 dB小さく、厚みに欠ける音で届きます。月では音がほとんど伝わらず（60 dB低下）、自車の音が車体を通じて聞こえます。照準器を覗くと、自車の砲声は砲塔内部から響き、外の音はこもります。"
+ },
+ {
+  "href": "/docs/audio#engines",
+  "title": "エンジンと履帯",
+  "chapter": "サウンドと無線",
+  "text": "各車体では、その動力系統に応じた音が響きます。ガスタービンは回転が上がるにつれて甲高くうなり、ディーゼルは変速を交えながら低い音を響かせます。履帯音は路面と速度によって変化します。土、硬い路面、泥、砂、雪、水に対応しています。敵ドローンの飛行音は機体の位置から聞こえ、近づくほど音が高くなります。"
+ },
+ {
+  "href": "/docs/audio#settings",
+  "title": "サウンド設定",
+  "chapter": "サウンドと無線",
+  "text": "設定 › サウンドには6つのスライダーと2つの警報設定があり、変更は即座に反映されます。マスター音量 エンジン・機械音の音量 砲撃・着弾音の音量 環境音の音量 操作音・音楽の音量 搭乗員ボイス・警報の音量 深刻な損傷時の心拍音 衝撃による耳鳴り すべての音は、リリース前にElevenLabsを使ってClaude of Tanks専用に制作・録音したものです。プレイ中に音が生成されることはありません。"
+ },
+ {
+  "href": "/docs/studio",
+  "title": "自分だけの戦闘を撮影",
+  "chapter": "Scene Studio",
+  "text": "あらゆる戦場、あらゆる戦車、戦闘で使われるすべてのエフェクトを、自由に演出できるタイムライン上に配置。静止画や映像として書き出せます。"
+ },
+ {
+  "href": "/docs/studio#open",
+  "title": "Studioを開く",
+  "chapter": "Scene Studio",
+  "text": "上部バーから 上部バーからStudioを開くと、新しいシーンを作成できます。Studioで開く このサイトのすべての映像には「Studioで開く」があり、撮影時のシーンをそのまま再現できます。シーンのリンクをコピー シーンリンクにはシーン全体のデータが含まれ、開くとStudioにそのシーンが再現されます。このサイトの映像 Object 148 Proto, Tarkhan Steppe Leopard 2 Improved, Ruinspires M1A2 Abrams, Sirocco Wadi Challenger 1 Mk 2, Saltwind Narrows Stridsvagn 121, Frosthollow ZTZ-99 Longwei, Titan Gorge"
+ },
+ {
+  "href": "/docs/studio#scene",
+  "title": "シーンを設定",
+  "chapter": "Scene Studio",
+  "text": "Olympus Basinとアースライズ盆地を含む好きな戦場を選び、戦車を配置して、砲塔の向きや車両の状態を設定できます。時間帯 夜明け 朝 昼 ゴールデンアワー 夕暮れ ブルーアワー 夜 戦車の状態 無傷 エンジンから発煙 炎上 大破 焼け焦げた残骸 砲塔脱落 フレーム 16:9 映画 9:16 縦長 1:1 正方形"
+ },
+ {
+  "href": "/docs/studio#shots",
+  "title": "ショットとタイムライン",
+  "chapter": "Scene Studio",
+  "text": "タイムラインにカメラショットを追加すると、カメラがショット間を移動します。カメラリグ ヒーローショット 追尾 後方追尾 真上 細部 レンズ 広角 · 58° 標準 · 42° 望遠 · 28° ショット間の移動 スムーズ 線形 カット ベジェ スプライン シーケンスの長さは1～20秒、映像は最大60秒です。スピードランプで再生速度を8倍まで変化させ、素早いカットやスローモーションを演出できます。演出済みシーケンス 鋼鉄の追撃 履帯の高さで並走し、主砲の前方をかすめてから上昇して、戦場の全景を映します。Verdant Fields · 昼 · 8秒 · 3ショット 砂漠の十字砲火 夕暮れの交戦。接近、発砲の反動と曳光弾、そして着弾後の光景を映します。Sirocco Wadi · 夕暮れ · 8秒 · 3ショット 沿岸偵察 海岸沿いを哨戒する戦車を後方から追尾し、側面を捉えた後、海を望む全景を映します。Saltmere Bay · 昼 · 8秒 · 3ショット 黄金色の光の中を進撃 低く差す金色の光の中、2両のLeopardが農地を横切る。正面のクローズアップ、履帯の高さからの通過ショット、納屋越しに広がる風景。Verdant Fields · ゴールデンアワー · 8秒 · 3ショット 冬の車列 夜明けの光の中、車列が雪道を力強く登っていく。後方からの追従撮影、走行装置の接写、高所から見渡す風景。Frosthollow · 朝 · 8秒 · 3ショット 農地への強襲 4両の戦車が自ら弾幕を張りながら前進する。後方から捉えた車列、2両目の主砲の発射、上空から捉える隊列の展開。Verdant Fields · 昼 · 8秒 · 3ショット 夜の撃破 落下傘照明弾の下、教会前の交差点でT-90とLeopardが遭遇する。接近、撃ち合い、そして撃破。Frosthollow · 夜 · 8秒 · 3ショット 炉火の夜 照明弾に照らされ、2両の重戦車が製鉄所のガントリーの下を進む。主砲は構内の奥へと向けられている。Ironworks · 夜 · 8秒 · 3ショット 操車場の一斉射撃 金色の光の中、3両のAbramsが線路の先へ砲撃する。遠くの操車場には弾幕が降り注ぐ。Cinder Junction · ゴールデンアワー · 8秒 · 3ショット 湖畔の決闘 スウェーデンの戦車2両が山間の湖を挟んでT-80と対峙する。後方からの追従撮影、初弾、上空から捉える撃破。Glacier Pass · 昼 · 8秒 · 3ショット 夜明けの哨戒 夜明け、日本の機甲部隊が辺境の農地から出撃する。履帯の接写、低い位置からの通過ショット、上空から見渡す盆地。Frontier Basin · 夜明け · 8秒 · 3ショット フィヨルドの道 Challengerの車列が、水面を傍らに眺めながら、フィヨルドの村を抜ける沿岸道路を進む。Nordhavn Fjord · 昼 · 8秒 · 3ショット 金色に染まる港 光が金色に変わる頃、イギリスの車列が港を後にする。正面、後方、そして湾の全景へ。Nordhavn Fjord · ゴールデンアワー · 8秒 · 3ショット オアシスの夕日 ヤシの木々の向こうに日が沈む中、Merkavaの車列がオアシスを横切る。Sunscar Oasis · 夕暮れ · 8秒 · 3ショット 果樹園の車列 イタリアの車両3両が果樹の列の間を縫って進む。上空から、履帯の高さから、そして谷の全景へ。Orchard Valley · 昼 · 8秒 · 3ショット 川辺の村 中国の機甲部隊が三角州の道をたどり、目覚め始めた川辺の村を進む。Jade River Delta · 朝 · 8秒 · 3ショット 寺院への道 1両のK2が雨季の道を登り、寺院の脇を抜ける。履帯、低い位置からの通過ショット、上空から見渡す尾根。Monsoon Ridge · 朝 · 8秒 · 3ショット 薄暮の貯水池 日没後、Chieftainの車列が貯水池の岸を進む。湖面にはまだ光が残る。Highland Reservoir · ブルーアワー · 8秒 · 3ショット 移動弾幕 照明弾に照らされ、移動弾幕に続いて進む夜襲部隊。主砲、車列、そして前方の砲火。Verdant Fields · 夜 · 8秒 · 3ショット 山間の村 峰々の麓で、LeopardとCV90が山村を進む。Glacier Pass · 昼 · 8秒 · 3ショット 夕暮れの疾走 夕暮れの辺境を全速力で駆けるKF51。正面から捉えた主砲、履帯、上空から捉える砂塵の軌跡。Frontier Basin · 夕暮れ · 8秒 · 3ショット"
+ },
+ {
+  "href": "/docs/studio#effects",
+  "title": "エフェクト",
+  "chapter": "Scene Studio",
+  "text": "エフェクトはすべて戦闘で使われるものと同じで、タイムラインから戦車、地点、マーカーを対象に発動できます。主砲発射 砲口炎 曳光弾 着弾 火花 爆発 戦車撃破 土煙 エンジンの煙 炎上 履帯切断 発射の瞬間 静止した火球 機銃連射 集中砲火 装甲の損傷痕 排気煙の噴出 煙幕 照明弾 残り火 破片 衝撃波 火炎地帯"
+ },
+ {
+  "href": "/docs/studio#film",
+  "title": "静止画と映像",
+  "chapter": "Scene Studio",
+  "text": "好きな瞬間を静止画として撮影したり、シーケンスを映像としてレンダリングしたりできます。「PNGで撮影」で、表示中のフレームを保存できます。「映像を書き出す」では、全フレームをモーションブラー付きでオフラインレンダリングし、コマ落ちなく戦闘音をミックスした映像を出力します。形式はブラウザーがエンコードできるMP4またはWebMです。一方、ライブ録画では画面をリアルタイムで記録します。サイズ 1080p 1440p 2160p レート 24 FPS 30 FPS 60 FPS ブラー オフ · 1サンプル ドラフト · 4サンプル 高品質 · 8サンプル 最高品質 · 16サンプル マスター · 32サンプル カメラの揺れ 設定どおり 半分 4分の1 オフ"
+ },
+ {
+  "href": "/docs/studio#share",
+  "title": "保存と共有",
+  "chapter": "Scene Studio",
+  "text": "「シーンリンクをコピー」：リンク自体にシーンのデータが含まれます。「JSONを保存」でシーンファイルをダウンロードし、「JSONを読み込む」でシーンファイルを開きます。スロットを使うと、このブラウザー内にシーンを保存できます。クリックで読み込み、Shiftを押しながらクリックで保存します。"
+ },
+ {
+  "href": "/docs/build",
+  "title": "検証サイクルを重ねて作り上げたブラウザーゲーム",
+  "chapter": "ゲームができるまで",
+  "text": "Claude of Tanksは、Three.jsを直接使った試作から、短い実装サイクルを重ね、型付けとテストを備えたゲームへと成長しました。問題を切り分け、それを担う最小限の箇所を変更し、ブラウザーで動作を実証し、結果を記録してmainに統合する、という流れです。"
+ },
+ {
+  "href": "/docs/build#topic-section-1",
+  "title": "厳格な制約を出発点にする",
+  "chapter": "ゲームができるまで",
+  "text": "本プロジェクトはブラウザー向けに設計され、汎用ゲームエンジンではなくThree.jsを直接基盤としています。シミュレーションは固定60 Hzで動作し、操作可能な戦車には、実行時に手続き的に生成されるジオメトリを独自に実装して使用しています。また、紹介ページは負荷の重いゲーム起動処理の依存関係グラフから切り離されています。こうした制約がアーキテクチャを形作りました。決定論的なルールはNode上で実行でき、レンダラーは独立して変更できます。また、公開するすべての主張には、コード、テスト、キャプチャー、実測記録のいずれかを根拠として示せます。"
+ },
+ {
+  "href": "/docs/build#topic-section-2",
+  "title": "ルールと表現を分離する",
+  "chapter": "ゲームができるまで",
+  "text": "移動、弾道、装甲、ダメージ、索敵、試合状態、ボットの判断は、レンダラーに依存しない契約仕様に基づいて実装されています。Three.jsは最新の状態をカメラ、リグ、照明、エフェクト、音声、UIに反映しますが、命中判定は担いません。この境界により、ローカル対戦とブラウザーでホストするルームで同じ戦闘ルールを共有できます。また、低性能端末向けに描画設定を下げても、ゲームプレイを変えずに負荷を削減できます。"
+ },
+ {
+  "href": "/docs/build#topic-section-3",
+  "title": "Claude CodeとCodexのワークフロー",
+  "chapter": "ゲームができるまで",
+  "text": "Claude CodeとCodexは、範囲を明確に区切った各種タスクで開発ツールとして使用しました。広範囲に及ぶ作業やリスクの高い作業は隔離されたGitワークツリーに移し、各作業系統で担当ファイルを明示し、無関係な変更を保持したうえで、統合前に正確なコミットハッシュと検証結果を共有しました。作業ルールは単純でした。mainは最新に保ち、未完成の実験は隔離し、ブランチの存在を証拠とはみなさないこと。評価対象は統合済みの実体だけです。人間が目標と合格基準を定め、エージェントがそれに沿って実装、測定、レビュー、文書化を行いました。"
+ },
+ {
+  "href": "/docs/build#topic-section-4",
+  "title": "構築し、反証を試み、測定する",
+  "chapter": "ゲームができるまで",
+  "text": "通常のサイクルは、再現可能な基準状態を用意し、原因を特定するところから始まります。妥当と考えられる最小限の修正を、対象を絞った自己テスト、ブラウザー操作、コンソール確認、スクリーンショット、性能計測で検証します。再実行や意図的に厳しくした条件でも結果が確かめられて初めて、その修正を採用します。見た目の変更は数値チェックだけでなく、最新の描画結果を見て評価します。性能改善では単一のFPS値を報告するのではなく、コールド時とウォーム時の条件、端末の制約、長時間タスク、フレーム間隔の乱れ、GPUリソース、遷移にかかる時間を記録します。"
+ },
+ {
+  "href": "/docs/build#topic-section-5",
+  "title": "持続可能なワークフローにする",
+  "chapter": "ゲームができるまで",
+  "text": "リポジトリ全体のAGENTS.md、索引付きのサブシステム別SKILL.mdファイル、継続的に更新する1つのアーキテクチャ決定記録に、担当範囲、不変条件、必須コマンド、繰り返し発生する不具合のパターンをまとめています。完了済みの移行メモに協力者が埋もれることなく、必要な情報を引き継げる仕組みです。繰り返し発生する手作業は、スクリプトや検証ゲートに置き換えます。そのため、モデルのスクリーンショット、戦闘構造図、車両アイコン、ルート検査、公開メタデータ、リリースチェックは、リポジトリから再現できます。実行記録の原本はGit履歴か、Gitの追跡対象外のQA成果物として保存します。"
+ },
+ {
+  "href": "/docs/build#topic-section-6",
+  "title": "統合後に実証された変更だけを取り込む",
+  "chapter": "ゲームができるまで",
+  "text": "完成した変更は、まとまりのある1つの単位としてコミットし、最新のorigin/mainにリベースして、統合後に再検証します。最後のプッシュでは、親コミットが依然としてリモートの先端であることを確認し、並行作業によって、先に取り込まれた新しい変更が気づかないうちに上書きされるのを防ぎます。その後、公開ビルドでルートの分離を実証し、ソースツリー内の全ファイルのハッシュを記録した来歴証明を出力します。これにより、プレイ可能なサイト、ソースツリー、ドキュメント、mainブランチが、すべて同じゲームを表す状態に保たれます。"
+ },
+ {
+  "href": "/docs/simulation",
+  "title": "すべての命中には弾道がある",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "戦闘シミュレーションは60 Hzで進行します。移動、照準、弾道、装甲、ダメージ、再装填、索敵、試合結果は、描画フレームではなく権威状態に基づいて確定します。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-1",
+  "title": "固定時間ステップの戦闘ループ",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "権威型処理のステップでは、メートル、秒、ラジアンを使用し、間隔を1/60秒に固定します。入力をサンプリングして明示的な車両操作に変換してから、移動、戦闘、索敵、結果判定を一定の順序で実行します。描画レートが変化しても、シミュレーションのステップ数や順序は変わりません。フレーム時間が急増した場合は、その経過時間を蓄積し、上限付きの固定時間ステップで処理します。権威型処理で使う乱数にはシードを設定するか、外部から値を注入します。射撃、再装填、モジュールの状態、試合結果に影響するルールでは、実時刻とMath.random()を使用しません。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-2",
+  "title": "試合を動かすのはホスト",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "ルームのWorkerは、接続先の検出とシグナリングを調整します。毎秒60ステップの戦闘シミュレーションは実行しません。ホストのブラウザーが試合の権威型処理を実行し、ピアとWebRTCでデータを交換します。ゲストは入力を送信し、ホストが移動、射撃、再装填、衝突、ダメージ、ボットの動作、試合結果を確定します。自車両は移動を予測し、ホストが確認済みの状態に合わせて補正します。他の車両の動きはスナップショット間の補間で表示します。近くの敵や最近交戦した敵は、遠方の視認可能なアクターより頻繁に更新されます。戦闘イベントの順序は、こうした関心度に基づく更新区分とは独立して維持されます。予測は応答性を高めますが、命中を確定したり、権威型処理による結果を変えたりすることはできません。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-3",
+  "title": "可視性と信頼",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "ゲスト向けのスナップショットには、そのプレイヤーに視認が許可された敵だけが含まれます。フィルタリングはエンコード前に行われるため、隠れた敵の座標を送信してからレンダラーで隠しているわけではありません。ネームプレート、ミニマップ、表示内容も、チームの視界と観戦者の視点に従って制御されます。ブラウザーホストも、あくまで参加プレイヤーのマシンであり、ワールド全体の権威状態を保持する必要があります。ピアによるホスティングが、独立した専用サーバーと同じ信頼境界を持つかのように説明すべきではありません。プロトコルは入力順序とメッセージ形式を検証しますが、信頼できないホストを、信頼できる大会運営基盤に変えることはできません。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-4",
+  "title": "地形と移動",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "ハイトフィールドは、車両の接地、砲弾の衝突、カメラと地形の間隔、オブジェクトの配置の判定に使われます。路面の種類はグリップと視覚表現に影響します。道路、斜面、尾根、水際、ハルダウン位置は、装甲車両の想定進路を軸に配置されています。車両のサスペンションは、移動処理や弾道計算の地形照会と同じ地表面をサンプリングします。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-5",
+  "title": "検証",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "Nodeで実行可能なセルフテストは、移動、戦闘、索敵、ミサイル誘導、特殊アクション、AIの照準、権威型の試合処理全体を対象とします。ブラウザーでの検証では、砲身軸の一致、砲弾の飛翔、実際の着弾エフェクト、HUDの位置合わせも確認します。共有の戦闘ルールを変更した後は、node src/sim/combat.selftest.mjs、node src/sim/authoritativeMatch.selftest.mjs、npm testを実行してください。"
+ },
+ {
+  "href": "/docs/simulation#topic-section-6",
+  "title": "走行、滞空時間、着地ダメージ",
+  "chapter": "シミュレーションと権威型処理",
+  "text": "移動処理は毎秒六十ステップの固定周期で実行されます。エンジン出力、重量、前進・後退速度の上限、履帯の状態、地形抵抗、車体旋回が複合的に操縦特性を決定します。レンダラーはこれらの状態を補間するため、フレームレートによって移動挙動が変わることはありません。ハンドブレーキは接地状態に即して動作する必要があり、ジャンプ後の着地で意図せずブレーキがかかったままになってはいけません。落下は単なる高さのしきい値判定ではなく、物理的な衝突です。質量、衝突速度、姿勢、モードの物理設定が結果に影響します。低重力下では軌道だけでなく、安全に到達できる地形も変わります。橋台や崖の端で着地点を確認せずに飛び降りるのは避け、着地点が見え、着地後に姿勢を安定させる十分な空間がある経路を選んでください。"
+ },
+ {
+  "href": "/docs/models",
+  "title": "参考資料から操作可能な車両へ",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "Kevin B. Liuは、操作可能な戦車すべてについて、実行時に手続き的に生成されるジオメトリを独自に制作しました。参考資料をもとに比率や細部を決めますが、製品版の車両はコードから再構築し、戦闘データに接続し、専用のアイコン一式をレンダリングしたうえで、実測と目視の検証ゲートを通してリリースします。"
+ },
+ {
+  "href": "/docs/models#topic-section-1",
+  "title": "調査と参考資料の収集",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "モデル制作の各サイクルは、実車の写真、公表寸法、平面図、側面図を集めることから始まります。参考資料はその車両らしい形状を作る指針ですが、資料自体に誤りがある場合まで無条件に正しいとはみなしません。まず重要なのは比率です。小さな付属品を加える前に、車体の長さと幅、砲塔の位置、上面の高さ、砲の長さ、車輪数、履帯経路、主要な装甲部のボリュームが正しく見えるようにします。"
+ },
+ {
+  "href": "/docs/models#topic-section-2",
+  "title": "車両の外観を部品から組み上げる",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "手続き型の生成処理が、再利用可能なジオメトリとマテリアルの構成要素から、車体装甲板、砲塔外殻、防盾、砲身、走行装置、光学機器、ハッチ、発煙弾発射機、バスケット、アンテナ、追加装甲、車外搭載品を組み立てます。位置ごとの断面寸法を用いることで、汎用の箱を引き伸ばすのではなく、前部・中央部・後部の形状を忠実に再現します。迷彩が適用される構造部品と、迷彩の影響を受けない機械部品には、明示的な役割を設定します。"
+ },
+ {
+  "href": "/docs/models#topic-section-3",
+  "title": "リグの可動機構と走行装置",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "車体、砲塔、砲架、後座機構、砲口、転輪、上部支持輪、起動輪、誘導輪、連結履帯には、明示的な親要素を設定します。砲塔の装備品は砲塔とともに回転し、見た目にも正しい取り付け位置に収まっている必要があります。車体の装備品は砲塔に追従してはなりません。砲口は開口している必要があり、実際の砲身階層からその位置を特定します。サスペンションは各支持位置で地形をサンプリングします。車両固有の走行装置は、流用元の転輪の重複、履板のめり込み、取り付け部品の浮きを防ぎながら、正しい転輪数と履帯経路を維持します。"
+ },
+ {
+  "href": "/docs/models#topic-section-4",
+  "title": "サスペンションと履帯",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "車体を支える各車輪は、それぞれの配置位置の直下にある地形をサンプリングします。表示上のサスペンションはその接地点に沿って落ち着き、支持状態から車体のピッチとロールを算出し、移動した車輪を囲むように履帯経路を再構築します。スウェーデン式の射撃姿勢制御サスペンションでは、砲の追従を損なうことなく、指示に応じて車体姿勢を変化させます。履帯のアニメーションは走行距離と左右それぞれの速度に連動します。損傷すると、片側の履帯が外れて走行用の履帯表示が消え、帯状の履帯が投げ出されたまま残ったり、走行装置の部品が散乱したりすることがあります。"
+ },
+ {
+  "href": "/docs/models#topic-section-5",
+  "title": "同じ形状を基に戦闘用の車両構造を作成",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "装甲板、空間装甲の各層、ERA、モジュール、弾薬、燃料、乗員、可動部の基点を、検証済みの車両骨格に合わせて調整します。これにより、表示、着弾追跡、内部損傷、技術資料の側面図に、同じ制作形状を使用できます。構造の一部となるキューポラは、命中判定用ジオメトリに含めることができます。照準器、機銃、バスケット、アンテナ、積載装備は、ゲームプレイ上の物理的な役割が明示的に与えられない限り、表示用の装備品として扱います。"
+ },
+ {
+  "href": "/docs/models#topic-section-6",
+  "title": "アイコンと技術カードを生成",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "アセットパイプラインは、現在のプロシージャルリグから、ガレージやギャラリー用の画像、背景透過のシルエット、装甲図、個別のモジュール図と乗員図、ティア別の装飾、補助的な表示用画像をレンダリングします。現在は、再現性のある単一アングルでの撮影から、共通のフレーミング方針に従って両サイズの車両画像を出力します。そのため、新しい戦車に手作業でトリミングしたサムネイルや古いサムネイルが残ることはありません。車両画像のみを扱う作業には、npm run tank:portraits -- --ids=<changed ids> と npm run tank:portraits:check -- --ids=<changed ids> を使用します。完全なリリース手順は引き続き、npm run tank:anatomy:update、npm run tank:anatomy:check、npm run tank:release:check -- --ids=<changed ids> --gate の順です。"
+ },
+ {
+  "href": "/docs/models#topic-section-7",
+  "title": "測定・検査を経て正式採用へ",
+  "chapter": "プロシージャルモデルの制作パイプライン",
+  "text": "自動品質ゲートでは、ジオメトリのフィンガープリント、寸法、支持位置、浮いた部品、履帯の交差、転輪の品質、砲口の開口部、マテリアル、装甲構造、マーキング、来歴、決定論的に生成されるアセットが最新かどうかを確認します。続いて、標準の正面、斜め、側面、背面、上面、近接、ヨー回転の各ビューで、数値評価では見落としかねない不具合を洗い出します。モデルが正式採用されるのは、必須の全ビューが外観の最低合格基準を満たし、取り付け部品に物理的な荷重伝達経路があり、頂点の巻き順と裏面に問題がなく、クリーンな状態での統合リリースチェックに合格した場合のみです。Tank Galleryは、その最終版プロシージャルリグを実際に表示して検査する場です。"
+ },
+ {
+  "href": "/docs/rendering",
+  "title": "ルールを変えずに描画を最適化",
+  "chapter": "描画とパフォーマンス",
+  "text": "Three.jsが担当するのは表示のみです。適応型解像度、影、植生、ポストプロセス、パーティクル、ウォームアップは端末に応じて変化しますが、60 Hzの戦闘モデルは変わりません。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-1",
+  "title": "フレームの構成",
+  "chapter": "描画とパフォーマンス",
+  "text": "描画処理では、最新の補間済み状態に基づき、カメラ、表示対象の車両リグ、ワールドの細部、表示エフェクト、ライティング、影、ポストプロセスを更新します。既存の高頻度ループでは、フレームごとにメモリを割り当てず、作業用オブジェクトとプールを再利用します。後段で描画する半透明エフェクトは、メインシーンと深度情報を共有します。砲口の光、曳光、火花、煙、土煙、炎、破片の表示は、距離と品質の方針に基づいて制御されます。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-2",
+  "title": "ライティングとポストプロセス",
+  "chapter": "描画とパフォーマンス",
+  "text": "バイオームのライティングで、太陽の方向、空、霧、露出、シャドウの設定方針を定めます。安定したカスケードシャドウが、対象となるカメラ領域に追従します。ポスト処理チェーンでは、アンビエントオクルージョン、アンチエイリアシング、必要に応じたブルーム、出力の色調補正、最終的な動的レンダースケールを組み合わせます。キャプチャ用ビューでは品質とレンダースケールを固定し、比較画像の条件が変動しないようにします。ゲームプレイ中は、高負荷が続くと処理の重いレイヤーの負荷を軽減できます。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-3",
+  "title": "品質の自動調整",
+  "chapter": "描画とパフォーマンス",
+  "text": "デスクトップとモバイルには、それぞれ別の初期プロファイルを適用します。内部解像度、シャドウ処理、植生密度、エフェクトの処理予算、ポスト処理機能は、個別に段階を下げられます。ヒステリシスにより、頻繁な切り替わりを防ぎます。ユーザーエージェントの分類だけでなく、デバイス診断と実測した過負荷に基づいて、安全な処理経路を選択します。品質が変わっても、砲弾の飛翔、索敵、ダメージ、権威型シミュレーションのタイミングは一切変わりません。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-4",
+  "title": "起動処理とルートを分離",
+  "chapter": "描画とパフォーマンス",
+  "text": "ガレージは、明確な戦闘開始操作があるまで戦場を構築しません。公開ページはプレイ用レンダラーをインポートせず、ガレージの起動時にもシミュレーション全体や車両群の依存グラフを先行インポートしません。車両系統やワールドに関する処理は、選択したルートで必要なものだけを、必要になった時点で読み込みます。コールドロードの検証ではキャッシュを無効にし、ネットワーク処理とアプリケーション処理を記録します。これにより、キャッシュ済みの画面遷移を初回訪問時の性能と取り違えることを防ぎます。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-5",
+  "title": "戦闘画面の表示前に段階的に読み込む",
+  "chapter": "描画とパフォーマンス",
+  "text": "戦闘への移行時には、対象のワールドと参加車両を読み込み、必要なテクスチャをアップロードし、エフェクトを準備し、車両マテリアルを描画処理に投入し、シェーダーとポストプロセスをウォームアップします。さらに、最初の有効なカメラを設定してから画面を表示します。必要な処理はカウントダウン前に完了させ、開始直後のフレームが真っ暗になったり停止したりするのを防ぎます。進捗表示には、管理対象の各処理段階を反映します。ユーザーの意図が変わったら、不要になった処理をキャンセルします。復旧は再試行可能なライフサイクルで一元管理し、コンポジションルート内にタイマーを散在させません。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-6",
+  "title": "パフォーマンスの検証データ",
+  "chapter": "描画とパフォーマンス",
+  "text": "パフォーマンストレースには、フレームのカテゴリ、レンダラーのカウンター、動的スケール、画面遷移の処理予算を記録します。ブラウザーでの計測は、コールドロード、戦闘開始、マップ切り替え、ガレージ、マルチプレイの描画を対象とします。レンダラーの開発には、npm run perf:dev、npm run perf:cold、npm run perf:transitionsと本番用ビルドを使用します。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-7",
+  "title": "ヘッドライト、影、煙幕",
+  "chapter": "描画とパフォーマンス",
+  "text": "走行用ライトはモデル上の実際の開口部を光源とし、車体の姿勢に追従します。暖色の光は従来より遠くまで前方を照らします。固定数のライト枠に割り当てられるのは、条件を満たす近くの光源だけですが、枠外のライトもレンズ自体は発光して見える場合があります。ライトを消すか戦車が破壊されると、その照明効果は除去されます。同じマテリアルを共有しているという理由だけで、潜望鏡、ミラー、無関係な装甲が発光してはいけません。アンビエントオクルージョンと投影される影は別のものです。AOをオフにしても、太陽光による影が消えてはいけません。影の安定性、雲の履歴、エフェクトの合成には、カメラ移動、射撃、品質変更を想定した専用のチェックを設けています。煙幕は描画上のボリュームエフェクトであると同時に、シミュレーション上の視界遮蔽物でもあります。描画と索敵判定は別々の処理が担当しており、その結果は一致している必要があります。"
+ },
+ {
+  "href": "/docs/rendering#topic-section-8",
+  "title": "グラフィックスの復旧と古いセッション",
+  "chapter": "描画とパフォーマンス",
+  "text": "メモリが逼迫すると、ブラウザーがグラフィックスコンテキストを回収する場合があります。ゲームは表示を一時停止し、画面を覆った状態でリソースを復元してから再開します。描画品質の復旧処理には上限を設け、戦闘状態を保持し、リソースの割り当てを繰り返さないようにする必要があります。再読み込みは復元を完了できない場合の最終手段であり、マップや車両を切り替える通常の方法ではありません。使い続けているタブと新しく開いたタブで挙動が異なる場合は、特定の描画効果が原因だと判断する前に、配信されたアプリケーションのバージョンと保存済みのグラフィックス設定を比較してください。ハッシュ付きアセットとデプロイバージョンのチェックは、異なるリリースの混在を防ぎます。報告にはマップ、車両、描画品質、ビューポート、再現手順を記載してください。スクリーンショットだけでは、古いアセット、設定、GPUの状態のどれが原因かを特定できません。"
+ },
+ {
+  "href": "/docs/ai",
+  "title": "すべての戦場に共通するボットコントローラー",
+  "chapter": "ボットと戦術AI",
+  "text": "ソロプレイと権威型マルチプレイのボットは、レンダラーに依存しない同じ意思決定ロジックを使用します。シード値に基づく戦場グラフ上を移動し、チームと可視性のルールを守り、有効な射撃機会を選び、車両性能を活用します。GPUなしでもテストできます。"
+ },
+ {
+  "href": "/docs/ai#topic-section-1",
+  "title": "状況認識と目標選択",
+  "chapter": "ボットと戦術AI",
+  "text": "ボットは、権威型シミュレーションと同じ、チーム、可視性、距離、耐久値、車両状態に関するデータ契約を使用します。描画されたオブジェクトや、クライアント側にしか存在しない隠された座標は読み取りません。目標候補は、シーン内の距離だけで選ぶのではなく、現在の戦術状況に基づいて評価します。難易度に応じて、ボットが本来知り得ない情報を与えることなく、反応、照準精度、交戦距離、判断にかかるプレッシャーを調整します。"
+ },
+ {
+  "href": "/docs/ai#topic-section-2",
+  "title": "シード値に基づく経路計画",
+  "chapter": "ボットと戦術AI",
+  "text": "地形の走破性、ワールドの衝突判定、通行可能な開口部、目標、車両性能を基に、型付きの通行可否グリッドを試合ごとに1つ構築します。経路プランナーは通行不能なセルを迂回する決定論的な経路を生成し、局所的な操舵処理が直近の進行方向の調整と回避を担います。重量級車両、履帯の損傷、急斜面、目標型モードを含む条件で、すべてのマップの経路判断をNode上で再現できます。"
+ },
+ {
+  "href": "/docs/ai#topic-section-3",
+  "title": "砲の操作と射撃管制",
+  "chapter": "ボットと戦術AI",
+  "text": "コントローラーは、砲塔旋回、仰角と俯角、砲口を塞ぐ障害物、再装填、弾倉、散布界、弾速、貫通、目標の動きを考慮します。現在の武器と角度で有効な射撃が見込める場合は、命中可能な装甲部位や内部の弱点を狙います。機関砲、単発砲、自動装填装置、誘導兵器は同じ判断の枠組みを共有しつつ、それぞれ固有の発射間隔と弾薬状態に従います。"
+ },
+ {
+  "href": "/docs/ai#topic-section-4",
+  "title": "味方の安全と敵への圧力",
+  "chapter": "ボットと戦術AI",
+  "text": "味方車両を通る射線は有効な射線から除外し、コントローラーは味方越しの射撃を避けます。ボットは複数の対象に注意を配り、有利な進路へ移動して目標達成を支援するとともに、味方の密集が障害物にならないよう十分な間隔を保ちます。敵ボットと味方ボットは同じロジックを使用します。所属チームによって変わるのは標的と目標であり、能力ではありません。"
+ },
+ {
+  "href": "/docs/ai#topic-section-5",
+  "title": "生存と復帰",
+  "chapter": "ボットと戦術AI",
+  "text": "ボットは、露出状況、遮蔽物、履帯の損傷、機能停止したモジュール、修理の機会、弾薬状態、周辺の脅威を考慮します。不利な角度での交戦を切り上げ、移動能力を回復し、破壊による状況変化に応じて経路を再計算できます。開けた場所で待機し続けるのではなく、戦闘への貢献を続けます。これらの生存判断にモードごとの目標を組み合わせることで、占領、防衛、護衛、大群による圧力のために、それぞれ別の擬似的な移動システムを用意する必要がなくなります。"
+ },
+ {
+  "href": "/docs/ai#topic-section-6",
+  "title": "検証",
+  "chapter": "ボットと戦術AI",
+  "text": "重点的なAIテストでは、照準、味方への誤射防止、経路、難易度、決定論的な判断、権威型シミュレーションへのボット統合を検証します。マップ全域を対象とするサーバーテストでは描画なしでコントローラーを実行し、ブラウザー上の戦闘では、画面上の移動、射撃、エフェクトがその判断と一致することを確認します。ボットを変更した場合は、node src/game/ai.selftest.mjs、node src/sim/ai.aim.selftest.mjs、node src/sim/botRoutePlanner.selftest.mjs、node server/authoritativeBots.selftest.mjsを実行してください。"
+ },
+ {
+  "href": "/docs/ai#topic-section-7",
+  "title": "Classic、Jev、目標達成に向けた連携",
+  "chapter": "ボットと戦術AI",
+  "text": "ClassicとJevは、敵味方の両チームで、個々の車両の走行、照準、視認性、車両システムに共通のロジックを使用します。Jevは一定の制約内でチーム全体への指令を追加しますが、索敵の制約を無視したり、物理挙動に従う操縦処理を置き換えたりはしません。次の試合の前に思考モデルと難易度を選んでください。プレイヤーと共闘するという理由だけで、味方チームに古い行動設定が残ってはいけません。フラッグ戦のチームは、奪還、護衛、襲撃の役割を分担します。ターボボールでは、ストライカー役を十分な時間維持し、ボールの背後に回り込んで押し出す方向を整えられるようにします。他の車両は相手の進路を遮り、守備を支援します。ゾーン戦のチームは占領への圧力を分散させます。拠点を守る部隊が圧力を維持する間に、機動部隊は側面へ回り込めます。経路制御には、プレイヤーへの進路の譲渡、ためらわずにすれ違う動作、車両同士が進路を塞いだ場合の安全な後退が含まれます。"
+ },
+ {
+  "href": "/docs/ai#topic-section-8",
+  "title": "煙幕、遠隔操作銃、安全なジャンプ",
+  "chapter": "ボットと戦術AI",
+  "text": "ボットは撤退時、敵に押されているとき、または装填中に搭載された煙幕装置を使用できます。また、視認でき、交戦条件を満たす敵に対して遠隔操作式の自動火器を使用できます。ジャンプを要求するのは、モードで許可されており、予測される着地ダメージが許容範囲内の場合だけです。崖や橋に接近する際には通行可能な経路が必要であり、目標まで直線で結べるだけでは不十分です。行動テストは、全33マップ、フラッグ戦とボール戦のシナリオ、混雑時の挙動、落下リスクの判断、大規模なJevチームの処理負荷を対象としています。保証の範囲はテスト済みのシナリオに限られます。判断や処理量の上限制御に関するリグレッションは検出できますが、考えられるあらゆる地形や交通状況にボットが対処できると証明するものではありません。"
+ },
+ {
+  "href": "/docs/filming",
+  "title": "ゲーム内で撮影した50のテイク",
+  "chapter": "メディアの撮影",
+  "text": "サイトの50のテイク、ポートレート、4本の映像は、ゲームのマップ、戦車、エフェクトを使い、Scene Studioで撮影しました。各テイクの実体はコードです。探索処理で演出を組み、模式的なプリビズで評価し、エンジン内で確認してソースを修正。その後、専用の音声を付け、スーパーサンプリングを用いた4Kの完成映像としてレンダリングしています。"
+ },
+ {
+  "href": "/docs/filming#topic-section-1",
+  "title": "コードで記述するショット",
+  "chapter": "メディアの撮影",
+  "text": "サイト上のすべてのテイクは録画ではなく、シーンを定義するドキュメントです。マップ、時刻、天候、登場車両とその塗装、各戦車の経路と速度、各砲の向き、カメラの移動軌道、静止画を切り出す瞬間を記述しています。tools/media-r5/site50.mjsが1つの表から50のテイクすべてを書き出すため、計画を変更すると、その計画を共有するすべてのテイクに反映されます。ショットライブラリでは、各テイクのシーンをStudioで保存したままの形式で保持しているため、リンクからStudioでテイクを開けます。下のビューアーでも、紹介するすべてのテイクをこの方法で開けます。各ラウンドは演出メモに沿って進めます。カメラは三次元の軌道で被写体に近づいたり離れたりし、戦車はあらゆる方向へ高速で走らせ、後面ではなく正面や斜め前を見せます。また、各戦車がそれぞれ主役となるテイクを一覧で管理します。ラウンドごとに専用フォルダーへレンダリングするため、過去のバージョンも、それを生成したコードと共に残ります。"
+ },
+ {
+  "href": "/docs/filming#topic-section-2",
+  "title": "1つのテイク、その全工程",
+  "chapter": "メディアの撮影",
+  "text": "第4ラウンドは、動きに関する指示を加える前の最初のループです。エンジンレビュー1は、最初の動きの計画をエンジン内で低解像度でレンダリングしたもので、そこで見つかった問題もそのまま示しています。プリビズは、第6ラウンドの計画を模式的なカメラ視点で示したもので、エンジンレビュー2は、修正後の計画をエンジン内で再現したものです。エンジンレビュー3は第7ラウンドに当たり、2.0のマップ上で演出を組み直したものです。これらのシーンから4Kの完成映像をレンダリングします。"
+ },
+ {
+  "href": "/docs/filming#topic-section-3",
+  "title": "制作工程",
+  "chapter": "メディアの撮影",
+  "text": "ショットは10の工程を経て、メモからウェブサイトに掲載する映像へと形になります。GPU処理に時間を費やす前に検証を実行し、修正はすべてエンジン、ツール、計画のいずれかに反映します。個々のフレームだけを修正することはありません。"
+ },
+ {
+  "href": "/docs/filming#topic-section-4",
+  "title": "動きの探索とプリビズ",
+  "chapter": "メディアの撮影",
+  "text": "動きの探索処理によって、サイト用の全50テイクと車両群用の全166テイクの演出を構成しました。各テイクについて、道路や開けた地形を通る経路、随伴車両の縦列配置や扇状配置、それぞれの目標を狙い続ける砲、種類別のカメラ移動（急降下、先頭車両を見せる動き、上昇しながらの周回、ケーブル移動、蛇行、追い越し）を試します。そして、近距離から遠距離までの変化幅、上昇量、正面を捉える角度、速度、側面への回り込みで各候補を採点します。選ばれた候補は、バージョン管理下の計画ファイルに書き出されます。プリビズでは、各計画を模式的なカメラ視点でマップの横に描画し、テイク全体を通したカメラの距離と高さも表示します。1フレームもレンダリングする前に、ここで各テイクの動きを数秒で評価します。"
+ },
+ {
+  "href": "/docs/filming#topic-section-5",
+  "title": "エンジンが保持する戦場",
+  "chapter": "メディアの撮影",
+  "text": "実行中のゲーム内で各マップを調査し、すべての衝突判定レコード（占有範囲、高さ、踏み潰しのしきい値、樹冠）を、4 メートル間隔の地表高と水域のグリッドと共に出力します。オフラインモデルがこの出力から戦場を再構築し、エンジンと同じ衝突判定コードで照会に応答します。経路はこのモデルに対して50 ミリ秒刻みで検証します。実戦の車体が踏み潰せるものは踏み潰せますが、それ以外の障害物に接触すると、その経路は不合格となります。建物内からの出発や、登坂できない急斜面も同様です。カメラの検証では100 ミリ秒ごとに位置を取得し、主役車両の中心、前端、後端、両側面へ向けた5本の視線を、すべてのレコードと樹冠に対して判定します。低い遮蔽物は視線を遮らず、小道具は画面上で戦車に対して大きく映る場合にのみ遮蔽物と見なします。"
+ },
+ {
+  "href": "/docs/filming#topic-section-6",
+  "title": "Studioに加わった機能",
+  "chapter": "メディアの撮影",
+  "text": "スプライン式のカメラレールにより、キーフレーム間を高速で移動しても滑らかなカメラワークを保てます。各戦車は砲を目標に向けて安定させながら、それぞれの経路を高速で走行します。移動座標系を使えば、蛇行する戦車にカメラを追従させても、その旋回にカメラの向きが引きずられません。平面図ビューにはテイクの俯瞰図（全経路、カメラの軌跡と視野、カメラの距離と高さ）が表示され、タイムラインのスクラブ操作に連動します。タイムライン上の戦車も、戦闘と同じルールで障害物を踏みつぶすようになりました。車体がフェンス、壁、木を乗り越える際、速度がその物体の破壊しきい値を超えていれば、物体は倒壊します。破壊イベントは再生前に経路から算出され、タイムラインの再生中に実行されます。シーク後には破壊後の状態が再現されるため、どのフレームに移動しても残骸の状態に食い違いは生じません。夜間のStudioのカメラは、暗さを昼のように補正せず、マップより1.25段暗い、月明かりに合わせた露出を維持します。"
+ },
+ {
+  "href": "/docs/filming#topic-section-7",
+  "title": "エンジン上でのレビュー",
+  "chapter": "メディアの撮影",
+  "text": "最終レンダリングに入る前に、全50テイクをゲームエンジンで低解像度でレンダリングしました。最初のレビューでは、模式図では分からなかった問題が3つ見つかりました。約半数のテイクで戦車が無傷の配置物をすり抜け、6テイクでは配置物がカメラの視界を遮り、8つの夜間テイクでは星空の下が昼のように明るくなっていました。修正はそれぞれの原因に当たる箇所、つまりStudioの破壊処理、戦場モデルとそのカメラ遮蔽チェック、夜間カメラに施しました。2回目のレビューでは、各テイクにライトプローブを配置し、960ピクセルで全テイクを再レンダリングします。2.0のマップで戦場が変わった際は、新しいレイアウトで成立しなくなったテイクをモーション探索で再構成し、最終レンダリングを始める前に、3回目のレビューで全50テイクを新マップ上でレンダリングしました。"
+ },
+ {
+  "href": "/docs/filming#topic-section-8",
+  "title": "4Kの最終映像と静止画",
+  "chapter": "メディアの撮影",
+  "text": "最終映像は3840 × 2160、毎秒30フレームのパンフォーカスでレンダリングします。カメラの至近距離から地平線まで鮮明で、戦車の手前に被写界深度によるぼけはありません。各フレームは、シャッター角60°の範囲でサブピクセル単位のオフセットを付けた8～48回の完全なレンダリングを平均したものです。動きが速い場合は、隣接するサンプル間の移動量が最大1.5ピクセルになるまでレンダリング回数を増やします。このジッター付き平均処理がゲームの時間的アンチエイリアシングに代わり、平均後の画像にブルームとカラーグレーディングを1回ずつ適用し、最後にシャープ化処理でフレームを仕上げます。各テイクでは、露出時間2ミリ秒で4K静止画も2枚レンダリングします。決定的な瞬間と、戦車が画面内で最も大きく映るクローズアップです。どちらも戦車全体が中央に収まり、手前に遮るものがなく、直前に土煙が噴き上がっていない瞬間を選びます。約100枚の静止画はポスター、キーアート、ソーシャルメディア用画像に使います。映像のProResマスターは保存し、サイト用の各形式はそこからエンコードします。"
+ },
+ {
+  "href": "/docs/filming#topic-section-9",
+  "title": "サウンド",
+  "chapter": "メディアの撮影",
+  "text": "映像の音に合成音は使っていません。戦闘効果音にはゲーム自体の収録音を使い、各カットの編集リストに従って配置します。音の選択にはエンジンのリゾルバー（砲のクラス、エンジン系統、履帯セット、マップの残響と環境音）を使います。主役の戦車の乗員は、それぞれの言語で射撃を無線報告し、その音声はエンジンの車内通話処理系を通ります。劇伴は、各カットのキューシートをもとに書いた作曲プランからEleven Musicで生成します。アクセント音（キューシートの和音に合わせたブラム音、サブベースの重低音、ライザー、逆再生のスウェル、和太鼓）は効果音としてそれぞれ複数テイクを生成し、測定結果が最良のテイクを採用して強拍に配置します。各映像は−14 LUFSにマスタリングします。"
+ },
+ {
+  "href": "/docs/filming#topic-section-10",
+  "title": "映像とレビューボード",
+  "chapter": "メディアの撮影",
+  "text": "各テイクから、予告編、30秒版、15秒の縦型版、ラインナップ紹介の4本をHyperFramesのコンポジションとして編集します。編集リストはテイクから生成し、HTMLコンポジションをフレーム単位で正確に動画へレンダリングします。オーナーは1つのボードで各ラウンドをレビューします。各テイクのフレーム、プリビズ、エンジン上でのレビュー映像、最終映像が、すべての変更の記録とともに並びます。指摘はプラン、エンジン、ツールに反映され、次のラウンドのレンダリング結果は前回分の隣に表示されます。"
+ },
+ {
+  "href": "/docs/filming#topic-section-11",
+  "title": "画像集",
+  "chapter": "メディアの撮影",
+  "text": ""
+ }
+]

@@ -14,12 +14,15 @@
  *
  * The game's boot screen (index.html) carries the same pages in <!--cot:bootnav-->…<!--/cot:bootnav--> (bootNavHtml).
  *
- * Dependency-free apart from the sprite index and the wordmark master: the tool and the receipts pass the catalog text in.
+ * Dependency-free apart from the sprite index, the wordmark master and the locale table: the tool and the receipts pass the
+ * catalog text in.
  */
 import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
 import { ACTIVE_MASTERS, SMALL_MASTERS } from '../ui/icons/spriteIndex.ts';
 import { brandMarkSVG } from '../ui/brandMark.ts';
 import { gtSymbolSvg } from '../ui/gtSymbol.ts';
+import { pathForLocale } from '../ui/localeRouting.ts';
+import { LOCALE_RECORDS } from '../ui/localePrefix.ts';
 
 export type PublicPageKey = 'home' | 'gallery' | 'docs' | 'studio' | 'media';
 
@@ -72,12 +75,21 @@ export function markMarkup(size = 28): string {
  * link names the game, so the drawing is decorative. */
 export const WORDMARK = `<span class="cot-wordmark">${BRAND_WORDMARK_HTML}</span>`;
 
-const localeHref = (path: string, chinese: boolean): string => (chinese ? (path === '/' ? '/cn/' : `/cn${path}`) : path);
-
+/** Every locale's link to this page, each named in its own language (localeRouting.ts LOCALE_RECORDS). The current one
+ *  is marked by CSS from the document's language, so the static markup is the same in every locale. */
 function languageLinks(path: string, text: ShellText, className: string): string {
   return `<span class="${className}" role="group" aria-label="${escapeHtml(text('publicNav.language.aria'))}" data-i18n-aria-label="publicNav.language.aria">`
-    + `<a href="${localeHref(path, false)}" hreflang="en-US" lang="en" aria-label="${escapeHtml(text('publicNav.language.switchToEnglish'))}" data-i18n-aria-label="publicNav.language.switchToEnglish">EN</a>`
-    + `<a href="${localeHref(path, true)}" hreflang="zh-CN" lang="zh-CN" aria-label="${escapeHtml(text('publicNav.language.switchToChinese'))}" data-i18n-aria-label="publicNav.language.switchToChinese">中文</a></span>`;
+    + LOCALE_RECORDS.map(({ locale, mark, name }) => `<a href="${pathForLocale(path, locale)}" hreflang="${locale}" lang="${locale}"`
+      + `${mark === name ? '' : ` aria-label="${escapeHtml(name)}" title="${escapeHtml(name)}"`}>${escapeHtml(mark)}</a>`).join('')
+    + '</span>';
+}
+
+/** The bar's language menu: a disclosure showing the document's language (its mark, picked by CSS from the document's
+ *  language), opening every locale's link. */
+function languageMenu(path: string, text: ShellText): string {
+  const marks = LOCALE_RECORDS.map(({ locale, mark }) => `<span data-locale-mark="${locale}" lang="${locale}">${escapeHtml(mark)}</span>`).join('');
+  return `<details class="public-nav__langmenu"><summary aria-label="${escapeHtml(text('publicNav.language.aria'))}" data-i18n-aria-label="publicNav.language.aria">`
+    + `${iconMarkup('globe', 16)}${marks}</summary>${languageLinks(path, text, 'public-nav__lang public-nav__lang--menu')}</details>`;
 }
 
 function pageLinks(current: PublicPageKey | null, text: ShellText): string {
@@ -93,7 +105,7 @@ export function publicNavHtml(shell: PublicShellPage, text: ShellText): string {
     + `<nav class="public-nav" aria-label="${escapeHtml(text('publicNav.primaryAria'))}" data-i18n-aria-label="publicNav.primaryAria"><div class="public-nav__inner">`
     + `<a class="public-nav__brand" href="/home"${shell.page === 'home' ? ' aria-current="page"' : ''} aria-label="${escapeHtml(text('publicNav.brandAria'))}" data-i18n-aria-label="publicNav.brandAria">${markMarkup(28)}${WORDMARK}</a>`
     + `<div class="public-nav__links">${pageLinks(shell.page, text)}</div>`
-    + `<div class="public-nav__tools">${languageLinks(shell.path, text, 'public-nav__lang')}${github}`
+    + `<div class="public-nav__tools">${languageMenu(shell.path, text)}${github}`
     + `<a class="cot-c-btn cot-c-btn--primary cot-c-btn--36 public-nav__cta" href="/">${play}</a>`
     + `<button class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu" aria-label="${escapeHtml(text('publicNav.openMenu'))}" data-i18n-aria-label="publicNav.openMenu">${iconMarkup('menu', 24)}</button></div>`
     + `</div><div class="public-nav__menu" id="public-nav-menu" role="group" aria-label="${escapeHtml(text('publicNav.menuAria'))}" data-i18n-aria-label="publicNav.menuAria" hidden>`

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PREFIXED_LOCALES } from '../src/ui/localePrefix.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(readFileSync(join(ROOT, 'gt.config.json'), 'utf8'));
@@ -11,7 +12,7 @@ const workflow = readFileSync(join(ROOT, '.github/workflows/localization.yml'), 
 
 assert.equal(config.projectId, 'prj_pcdp8m3iftnnkr59wwep6e7k', 'GT project binding drifted');
 assert.equal(config.defaultLocale, 'en-US');
-assert.deepEqual(config.locales, ['zh-CN']);
+assert.deepEqual(config.locales, [...PREFIXED_LOCALES], 'gt.config.json locales must match localeRouting.ts LOCALE_RECORDS');
 assert.equal(config.requiresReview, true, 'GT output must retain the human review gate');
 assert.equal(config.options?.saveLocal, true, 'reviewed local catalog edits must sync back to GT');
 assert.deepEqual(config.files?.json?.include, ['src/ui/i18nCatalog.[locale].json']);

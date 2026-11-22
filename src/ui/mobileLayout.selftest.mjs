@@ -409,7 +409,7 @@ assert.match(playMenu, /createPicker\(vehiclePick, \{\s*id: 'rooms-tank'/,
   "the room's vehicle must be the kit's picker, with the fleet's search and nation chips");
 assert.match(playMenu, /Object\.defineProperty\(vehicleSelect, 'disabled',[\s\S]*vehicleTrigger\.disabled = disabled/,
   "the vehicle trigger must preserve native disabled semantics for guests and ready states");
-assert.match(publicNav, /\.public-nav__tools>\.public-nav__lang,\.public-nav__tools>\.public-nav__icon-link\{display:none\}/,
+assert.match(publicNav, /\.public-nav__tools>\.public-nav__langmenu,\.public-nav__tools>\.public-nav__icon-link\{display:none\}/,
   'the phone bar keeps the mark, Play and the menu; language and source move into the menu sheet');
 
 // (2026-10-17, BUI-F1) the network status banner and diagnostics panel left the tree with the multiplayer cutover

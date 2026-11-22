@@ -1,8 +1,8 @@
 // The Scene Studio's strings load with its chunk (2026-10-05). The media Studio's film, picture, light and cinematic
 // controls added 125 strings per locale that the game's boot catalogs must not carry. They stay in the one translated
 // catalog per locale (gt.config.json), and this plugin splits it where the browser loads it:
-//  - the game's catalog modules (src/ui/i18nCatalog.<locale>.json, loaded through i18nCatalogEnUS.ts and
-//    i18nCatalogZhCN.ts) are served without the keys src/ui/i18nStudioKeys.ts matches;
+//  - the game's catalog modules (src/ui/i18nCatalog.<locale>.json, loaded through i18nCatalogEnUS.ts,
+//    i18nCatalogZhCN.ts and the other locales' wrappers) are served without the keys src/ui/i18nStudioKeys.ts matches;
 //  - `virtual:cot-i18n-studio/<locale>` is each locale's Studio slice, which src/ui/studioStrings.ts imports beside the
 //    Studio's chunk (main.ts) and merges into the resident dictionaries.
 // The build and the dev server split alike. Node code (the Vite config, the middleware, tools and selftests) imports
@@ -34,11 +34,12 @@ const SLICES = Object.freeze({
   studio: isStudioCatalogKey, fleet: isFleetCatalogKey, techTree: isTechTreeCatalogKey, tutorial: isTutorialCatalogKey,
 });
 type CatalogSlice = keyof typeof SLICES;
+const LOCALE_CODE = /^[a-z]{2}(?:-[A-Z]{2})?$/;
 const SPECIFIER = /^virtual:cot-i18n-(studio|fleet|techTree|tutorial)\/(.*)$/;
 // the id's file name names the emitted chunk (assets/i18n.<slice>.<locale>-<hash>.js; without the .js the locale
 // would read as an extension and both chunks as i18n.<slice>)
-const VIRTUAL_ID = /^\0cot-i18n-(studio|fleet|techTree|tutorial)\/i18n\.\1\.(en-US|zh-CN)\.js$/;
-const CATALOG_FILE = /[\\/]src[\\/]ui[\\/]i18nCatalog\.(en-US|zh-CN)\.json$/;
+const VIRTUAL_ID = /^\0cot-i18n-(studio|fleet|techTree|tutorial)\/i18n\.\1\.([a-z]{2}(?:-[A-Z]{2})?)\.js$/;
+const CATALOG_FILE = /[\\/]src[\\/]ui[\\/]i18nCatalog\.([a-z]{2}(?:-[A-Z]{2})?)\.json$/;
 
 /** One locale's catalog split into the game's keys and the demand-loaded slices (the Studio's, the Filter panel's, the tech tree's, the tutorial's). */
 export function splitStudioCatalog(dictionary: Dictionary): Record<'game' | CatalogSlice, Record<string, string>> {
@@ -75,7 +76,14 @@ export function i18nStudioCatalog(options: StudioCatalogOptions = {}): Plugin {
       const specifier = SPECIFIER.exec(id);
       if (!specifier) return null;
       const [, slice, locale] = specifier;
-      if (locale !== 'en-US' && locale !== 'zh-CN') this.error(`cot-i18n-studio-catalog: no ${slice} catalog for the locale "${locale}"`);
+      // (275) a locale with a catalog file, not the locale table: the world steps load this module (map-probe-runtime),
+      // and an import of localePrefix.ts would put the table in every map's key.
+      const missing = () => this.error(`cot-i18n-studio-catalog: no ${slice} catalog for the locale "${locale}"`);
+      if (!LOCALE_CODE.test(locale)) missing();
+      try { split(locale as CatalogLocale); } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') missing();
+        throw error;
+      }
       return `\0cot-i18n-${slice}/i18n.${slice}.${locale}.js`;
     },
     load(id) {

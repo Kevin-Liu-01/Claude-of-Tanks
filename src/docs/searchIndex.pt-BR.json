@@ -1,0 +1,680 @@
+[
+ {
+  "href": "/docs/start",
+  "title": "Da garagem à vitória",
+  "chapter": "Sua primeira batalha",
+  "text": "Cinco passos, na ordem em que aparecem."
+ },
+ {
+  "href": "/docs/start#garage",
+  "title": "Escolha um tanque",
+  "chapter": "Sua primeira batalha",
+  "text": "01 A garagem abre com sua frota de 311 tanques. Escolha um: o dossiê mostra a blindagem, o canhão e a mobilidade, e a Tank Gallery exibe sua anatomia completa."
+ },
+ {
+  "href": "/docs/start#deploy",
+  "title": "Entrar em combate",
+  "chapter": "Sua primeira batalha",
+  "text": "02 Em Entrar em combate, você configura a batalha: um dos 14 modos, um dos 33 campos de batalha ou um aleatório, a hora do dia e o tamanho das equipes, 7 x 7 ou 14 x 14."
+ },
+ {
+  "href": "/docs/start#drive",
+  "title": "Dirija e mire",
+  "chapter": "Sua primeira batalha",
+  "text": "03 W A S D movimentam o tanque; o mouse gira a torre. L-SHIFT acessa a mira do atirador com ampliação de ×2 / ×4 / ×8, a roda do mouse ajusta o zoom e CAPS mantém o canhão fixo enquanto você olha ao redor."
+ },
+ {
+  "href": "/docs/start#fire",
+  "title": "Atire",
+  "chapter": "Sua primeira batalha",
+  "text": "04 BEM dispara; mantenha pressionado para disparar a cada recarga selecionam o projétil usam Kit de reparo (35 s), Kit de primeiros socorros (45 s) e Extintor de incêndio (25 s); o tempo de espera de um kit só começa depois que ele produz algum efeito."
+ },
+ {
+  "href": "/docs/start#win",
+  "title": "Vença",
+  "chapter": "Sua primeira batalha",
+  "text": "05 Para vencer a batalha padrão, destrua todos os inimigos dentro do limite de 15 minutos; cada um dos outros modos tem seu próprio objetivo. Quando você é eliminado, a câmera acompanha seus aliados."
+ },
+ {
+  "href": "/docs/start#next",
+  "title": "A seguir",
+  "chapter": "Sua primeira batalha",
+  "text": "Repetir o tutorial no jogo A visita guiada à Garagem e as etapas da primeira batalha, desde o início. Controles e modo espectador Todas as teclas, a disposição dos controles de toque e as três visualizações do modo espectador. Modos de jogo Objetivos, limites de tempo e regras de cada modo, ilustrados no mapa."
+ },
+ {
+  "href": "/docs/controls",
+  "title": "Todas as teclas, todos os ângulos",
+  "chapter": "Controles e modo espectador",
+  "text": "Teclado, mouse, controle e toque; depois, o drone do modo espectador e as opções de acompanhar e assumir o controle."
+ },
+ {
+  "href": "/docs/controls#keys",
+  "title": "Teclas, mouse e controle",
+  "chapter": "Controles e modo espectador",
+  "text": "Movimentação Combate Veículo Voo Consumíveis Câmera Interface\nAção · Teclas · Controle · Avançar · W · – · Recuar · S · – · Virar à esquerda · A · – · Virar à direita · D · – · Freio de mão · ESPAÇO · A · Desvirar tanque · F · –\nAção · Teclas · Controle · Disparar canhão · BEM · RT · Modo de precisão · L-SHIFT · LT · Espaço de munição 1 · 1 · D-UP · Espaço de munição 2 · 2 · D-LEFT · Espaço de munição 3 · 3 · D-RIGHT · Travar mira automática · T · – · Sobreposição de blindagem (áreas de acerto) · H · – · Visão de ataque · X · –\nAção · Teclas · Controle · Suspensão · E · LB · ATGM · Q · – · Recarregar · C · D-DOWN · Drone · V · – · Fumaça · G · – · Luzes · N · – · Arma automática · B · –\nAção · Teclas · Controle · Alternar modo de visão do sensor · I · – · Lançar suprimentos de munição · J · – · Lançar suprimentos de vida · K · –\nAção · Teclas · Controle · Kit de reparos · 4 · X · Kit de primeiros socorros · 5 · Y · Extintor de incêndio · 6 · B\nAção · Teclas · Controle · Travamento do canhão (mira livre) · CAPS L-ALT · RB · Mirar / olhar livremente · BDM · – · Aumentar zoom · WHEEL ↑ · – · Diminuir zoom · WHEEL ↓ · –\nAção · Teclas · Controle · Zoom do minimapa · M · BACK · Registro de informações dos disparos · L · – · Diagnóstico de batalha · F9 · – · Detalhes da rede · F3 · – · Sair da batalha · F4 · – · Reiniciar campo de tiro · R · – · Alvos móveis · Y · – · Menu de configurações · ESC · START"
+ },
+ {
+  "href": "/docs/controls#hold",
+  "title": "Manter pressionado ou alternar",
+  "chapter": "Controles e modo espectador",
+  "text": "Em Configurações › Acessibilidade, você pode escolher, para cada uma destas ações, entre manter a tecla pressionada ou pressioná-la uma vez. Disparar canhão Freio de mão Travamento do canhão (mira livre) Listas das equipes"
+ },
+ {
+  "href": "/docs/controls#touch",
+  "title": "Toque",
+  "chapter": "Controles e modo espectador",
+  "text": "Em celulares e tablets, a batalha exibe controles próprios. Polegar esquerdo: use o direcional para dirigir. Deslize em qualquer outra área para mirar. Toque em Atirar para disparar. Mantenha pressionado e arraste para mirar; solte para disparar ou mantenha pressionado por mais tempo para continuar disparando. Arraste até a área de cancelamento para suspender o disparo. O botão Mira abre a mira do atirador. Faça o gesto de pinça para alternar os níveis de zoom da mira. Mira automática fixa a mira no inimigo mais próximo do retículo. Foguete faz o tanque saltar ou o desvira, nos modos que permitem saltos."
+ },
+ {
+  "href": "/docs/controls#watch",
+  "title": "Modo espectador",
+  "chapter": "Controles e modo espectador",
+  "text": "Assista a uma batalha entre bots pela garagem: Assistir fica ao lado de Entrar em combate. Todos os tanques são controlados por bots, todos ficam visíveis e nada é gravado. Disponível em 13 modos. Drone Voe livremente sobre a batalha. Você começa a 70 m de altura, com velocidade de 14 m/s; a roda do mouse ajusta a velocidade em etapas (4 / 8 / 14 / 24 / 40 / 64 m/s) e Shift a multiplica por 2.5. W A S D Voar ESPAÇO C Subir e descer L-SHIFT Acelerar WHEEL ↑ WHEEL ↓ Ajustar a velocidade em etapas Acompanhar Siga qualquer tanque por trás ou use a mira do atirador com ampliação de ×2 / ×4 / ×8. F Acompanhar o tanque no centro da tela Q E Próximo tanque e tanque anterior L-SHIFT Mira do atirador V Voltar ao drone Assumir o controle Assuma o controle do tanque que você acompanha e lute com ele. Se ele for destruído, você retorna ao drone após 3.5 s. ENTER Assumir ou devolver o controle"
+ },
+ {
+  "href": "/docs/controls#hud",
+  "title": "Seu HUD",
+  "chapter": "Controles e modo espectador",
+  "text": "Configurações › Jogabilidade › Editar layout do HUD: mova ou oculte cada painel sobre uma prévia do campo de batalha; Computador, Celular na vertical e Celular na horizontal mantêm seus próprios layouts. F10 ativa o HUD de batalha mínimo: retículo, distância, zoom e munição permanecem visíveis, e os outros painéis ficam ocultos. Pressione novamente para exibi-los. Em telas sensíveis ao toque, ative HUD de batalha minimalista em Configurações; um toque com três dedos restaura o HUD completo."
+ },
+ {
+  "href": "/docs/modes",
+  "title": "Todas as formas de combater",
+  "chapter": "Modos de jogo",
+  "text": "Todos os modos e suas regras, extraídos do próprio jogo. Escolha um em Entrar em combate."
+ },
+ {
+  "href": "/docs/modes#glance",
+  "title": "Visão geral",
+  "chapter": "Modos de jogo",
+  "text": "Seu ponto de surgimento Ponto de surgimento inimigo A A Zona ou setor Base da bandeira Gol Bola\nModo · Condição de vitória · Tempo · Ressurgimento · Equipes · Batalha padrão · Destrua todos os inimigos · 15 min · – · 7 x 7 · Capture the Flag · 3 capturas · 15 min · 6 s · 7 x 7 · Zone Control · 750 pontos · 15 min · 6 s · 7 x 7 · Gravity Mode · 750 pontos · 12 min · 6 s · 7 x 7 · Air Support · Primeiro a chegar a 2000 · 12 min · 8 s · 7 x 7 · Jogo de armas · Uma eliminação com cada um dos 5 canhões · 15 min · 4 s · 7 x 7 · Drone · 20 eliminações · 10 min · 6 s · 7 x 7 · Realista · Destrua todos os inimigos · 15 min · – · 7 x 7 · Endless Horde · Sobreviva às ondas · – · – · 5 x 20 · Assalto à linha de frente · Tome todos os setores e mantenha o último por 20 s · 12 min · – · 4 x 12 · AC-130 · Escolte metade até o ponto de extração · 8 min · – · 5 x 12 · Colosso · Elimine o chefe ou sobreviva até o tempo acabar · 10 min · 6 s · 1 x 12 · Infectados · Sobreviva por 3 min · 3 min · 5 s · 10 x 5 · Bola turbo · 5 gols · 10 min · 3 s · 7 x 7 · Proving Ground · Treino, sem pontuação · – · 3 s · 5 rotas"
+ },
+ {
+  "href": "/docs/modes#team",
+  "title": "Batalhas em equipe",
+  "chapter": "Modos de jogo",
+  "text": "Batalha padrão Destrua a equipe adversária antes que o tempo acabe. Tempo 15 min Equipes 7 x 7 Ressurgimento – Capture the Flag Roube a bandeira inimiga e leve-a à sua base. Vence quem alcançar 3 capturas primeiro. Tempo 15 min Equipes 7 x 7 Ressurgimento 6 s Zone Control Capture e mantenha três setores. A primeira equipe a alcançar 750 pontos vence. Tempo 15 min Equipes 7 x 7 Ressurgimento 6 s Gravity Mode A gravidade cai para 0.38 g, fazendo todos os tanques saltarem longe. Mantenha o controle das zonas, com reaparecimentos e suprimentos de impulso, até uma equipe alcançar 750 pontos. Tempo 12 min Equipes 7 x 7 Ressurgimento 6 s gravidade 0.38 g velocidade +25 % resistência do casco +20 % dano -10 % taxa de recarga +11 % munição ilimitada salto de 9.5 m/s (F) impulso por recuo ×3 suprimentos de melhoria a cada 22 s empurrão por impacto ×0.9 ressalto ao pousar 30 % dano de queda acima de 10.5 m/s Air Support Mantenha o controle dos três setores e ganhe pontos de apoio em combate. Levante os binóculos para solicitar um sobrevoo de reconhecimento, artilharia, um ataque de metralhamento, uma bomba de precisão ou uma órbita do AC-130 sobre um ponto marcado. A equipe visada recebe um aviso antes de cada ataque. Tempo 12 min Equipes 7 x 7 Ressurgimento 8 s Reconhecimento 120 pts · aviso com 3 s de antecedência Artilharia 300 pts · aviso com 6 s de antecedência Ataque de metralhamento 400 pts · aviso com 5 s de antecedência Bomba de precisão 450 pts · aviso com 7 s de antecedência AC-130 800 pts · aviso com 8 s de antecedência Jogo de armas A cada 2 eliminações confirmadas, você avança para a próxima arma. Conclua todas as 5 etapas para garantir a vitória da sua equipe. Tempo 15 min Equipes 7 x 7 Ressurgimento 4 s 2 eliminações por arma · cinco etapas munição ilimitada Drone Lance um drone de ataque FPV do seu tanque. Guie-o com a mira; colida com um inimigo para detoná-lo. Seu tanque fica parado e vulnerável. Tempo 10 min Equipes 7 x 7 Ressurgimento 6 s Realista Detecção normal, penetrações catastróficas. Desative módulos críticos, incapacite a tripulação ou detone a munição. Sem perda gradual de PV do casco nem reparos automáticos. Tempo 15 min Equipes 7 x 7 Ressurgimento – Apenas destruição de módulos e tripulação sem consumíveis\nVerdant Fields\nVerdant Fields\nA A B B C C Verdant Fields\nA A B B C C Olympus Basin"
+ },
+ {
+  "href": "/docs/modes#survive",
+  "title": "Sobrevivência e escolta",
+  "chapter": "Modos de jogo",
+  "text": "Endless Horde Sobreviva a ondas cada vez maiores de inimigos frágeis e procure suprimentos de reparo flutuantes. Tempo – Equipes 5 x 20 Ressurgimento – resistência do casco +100 % / -85 % munição ilimitada horde primeira onda com 6, mais inimigos a cada onda 16 em campo · 8 s entre ondas reparo de 30 % entre ondas Assalto à linha de frente Rompa a linha inimiga: tome três setores de trincheiras em sequência, enfrentando contra-ataques cada vez mais intensos, e depois defenda o último. Tempo 12 min Equipes 4 x 12 Ressurgimento – resistência do casco +80 % / 0 % munição ilimitada frontline Defenda o setor final por 20 s 3 defensores por setor, resistência do casco 0 % AC-130 Proteja os veículos aliados vulneráveis a caminho do ponto de extração. Salve pelo menos metade antes que sejam destruídos ou o tempo acabe. Todos os jogadores humanos fornecem apoio aéreo. Tempo 8 min Equipes 5 x 12 Ressurgimento – Todos os tanques visíveis munição ilimitada sem consumíveis ac130 Colosso Torne-se o chefe blindado ou junte-se aos caçadores. Os caçadores reaparecem; destrua o colosso antes que o tempo acabe. Tempo 10 min Equipes 1 x 12 Ressurgimento 6 s Colosso: ×8 na vida do casco · ×0.5 no tempo de recarga munição ilimitada juggernaut Infectados Os sobreviventes têm 130% de vida e enfrentam uma horda de infectados com 20%; sobreviventes abatidos se juntam à horda. Resista por 3 minutos. Tempo 3 min Equipes 10 x 5 Ressurgimento 5 s Sobreviventes destruídos se tornam infectados resistência do casco +30 % / -80 % munição ilimitada infected\nVerdant Fields\nE E Verdant Fields"
+ },
+ {
+  "href": "/docs/modes#arcade",
+  "title": "Arcade",
+  "chapter": "Modos de jogo",
+  "text": "Bola turbo Tanques armados e supervelozes empurram a bola ou atiram nela para marcar no gol inimigo. Tempo 10 min Equipes 7 x 7 Ressurgimento 3 s gravidade 0.6 g velocidade +85 % resistência do casco +50 % dano -50 % taxa de recarga +43 % munição ilimitada sem equipamento sem consumíveis sem danos a módulos ou tripulantes, nem por incêndio salto de 13 m/s (F) impulso por recuo ×12 empurrão por impacto ×2.5 ressalto ao pousar 28 % dano de queda acima de 15 m/s\nVerdant Fields"
+ },
+ {
+  "href": "/docs/modes#practice",
+  "title": "Treino",
+  "chapter": "Modos de jogo",
+  "text": "Proving Ground Leve qualquer tanque a um campo de tiro com distâncias demarcadas: cascos usados como alvos, posicionados a distâncias e ângulos definidos, mostram os resultados de cada teste de penetração. Sem inimigos, sem cronômetro, nada registrado. Tempo – Equipes 5 rotas Ressurgimento 3 s Todos os tanques visíveis munição ilimitada nada registrado"
+ },
+ {
+  "href": "/docs/tanks",
+  "title": "A frota e seus equipamentos",
+  "chapter": "Tanques e equipamentos",
+  "text": "O que cada classe faz, como jogar em cada função e os equipamentos e kits que todo tanque leva."
+ },
+ {
+  "href": "/docs/tanks#classes",
+  "title": "Classes",
+  "chapter": "Tanques e equipamentos",
+  "text": "Nível X Carro de combate principal 211 AbramsX Nível III Tanque médio 16 Centurion Mk 13 Nível I Tanque pesado 1 KV-2 Nível X Tanque leve 15 BMP-3M Dragun 125 Nível X Veículo de combate de infantaria 39 Griffin 50 mm Nível III Veículo blindado de transporte de pessoal 3 M113AS4 Nível X Caç a-tanques 8 Object 695 Nível VI Antiaéreo autopropulsado 13 ItPsv Leopard 2 (Leopard 2 Marksman) Nível X Veículo de apoio de fogo 5 ZTZ-100 Prototype Abra qualquer um deles na Tank Gallery"
+ },
+ {
+  "href": "/docs/tanks#roles",
+  "title": "Funções em batalha",
+  "chapter": "Tanques e equipamentos",
+  "text": "A função define o estilo de jogo do tanque: os bots o operam de acordo com ela, e a Garagem permite filtrar por função. Ruptura 85 Blindagem pesada e muitos pontos de vida: lidera o avanço e absorve disparos. Linha de frente 66 Tanque de linha de frente equilibrado: blindagem, mobilidade e poder de fogo na medida certa. Flanqueador 57 Rápido e ágil: ataca pelos flancos e muda de posição rapidamente. Atirador de precisão 27 Canhão preciso de longo alcance: combate à distância a partir de posições protegidas. Batedor 38 Detecta alvos para a equipe e evita combates prolongados. Apoio 38 Canhões automáticos, mísseis ou apoio de fogo para auxiliar os tanques."
+ },
+ {
+  "href": "/docs/tanks#tiers",
+  "title": "Níveis e nações",
+  "chapter": "Tanques e equipamentos",
+  "text": "O nível de um tanque corresponde à sua coluna na árvore tecnológica de sua nação. X 40 IX 42 VIII 35 VII 20 VI 27 V 23 IV 26 III 30 II 32 I 36 17 nações União Soviética 52 Alemanha 34 Estados Unidos 32 Reino Unido 28 China 25 Ucrânia 19 Polônia 18 Israel 16 Japão 15 Suécia 13 França 12 Dinamarca 9 Coreia do Sul 8 Itália 8 Austrália 8 Brasil 8 África do Sul 6"
+ },
+ {
+  "href": "/docs/tanks#equipment",
+  "title": "Equipamento",
+  "chapter": "Tanques e equipamentos",
+  "text": "Cada tanque pode receber 3 dos 25 itens, escolhidos na Garagem. Poder de fogo Percussor de projétil -10% no tempo de recarga Apenas com carregamento manual Estabilizador vertical -20% na dispersão em movimento Apenas tanques modernos Mecanismo de pontaria -10% no tempo de mira Ventilação melhorada +2.5% para a tripulação: recarga, mira, visão, camuflagem Armazenamento no paiol de pronto uso -6% no tempo de recarga, -15% na durabilidade do paiol de munição Apenas com carregamento manual Computador de controle de tiro -6% no tempo de mira, -10% na dispersão em movimento Apenas tanques modernos Kit de manutenção do carregador automático -6% no tempo de recarga do carregador, +50% na durabilidade do carregador automático e do alimentador Apenas com carregador automático Mobilidade Rotação melhorada +10% na rotação do casco e da torre Suspensão reforçada +50% na durabilidade das esteiras Acionamento motorizado da torre +20% na rotação da torre Apenas tanques modernos · Apenas veículos com torre Conjunto de transmissão reforçado +40% na durabilidade do motor e +60% na da transmissão Proteção Revestimento antiestilhaços -25% no dano em área de HE, -50% nos acertos na tripulação por dano em área Saias laterais -12% no dano em área de HE, +25% na durabilidade das esteiras Proteção do anel da torre +60% na durabilidade do anel da torre e +30% na do suporte do canhão Apenas veículos com torre Escudo do mantelete +40% na durabilidade do canhão e +30% na dos dispositivos ópticos Sobrevivência Caixa de ferramentas +25% na velocidade de reparo Paiol de munição úmido +50% na durabilidade do paiol de munição Tanques de combustível de segurança +50% na durabilidade do tanque de combustível, -50% na chance de incêndio no motor Extintores automáticos Incêndios duram metade do tempo e se apagam sozinhos com 2x a frequência Apenas tanques modernos Mantas antichamas Incêndios duram 25% menos tempo e se apagam sozinhos com 1.5x a frequência Reconhecimento Lentes revestidas +10% no alcance de visão Telescópio binocular +25% no alcance de visão quando parado Rede de camuflagem +12% de ocultação quando parado Defletores de escapamento +4% de ocultação, em movimento ou parado Mira térmica +15% no alcance de visão Apenas tanques modernos"
+ },
+ {
+  "href": "/docs/tanks#kits",
+  "title": "Kits, fumaça e o drone",
+  "chapter": "Tanques e equipamentos",
+  "text": "Os kits têm usos ilimitados; cada um tem um tempo de espera, que só começa depois que o kit produz algum efeito. Kit de reparo de campo Restaura o funcionamento de todos os módulos danificados · 35 s de tempo de espera Kit de reparo grande Repara todos os módulos e concede +50% de autorreparo por 60 s · 60 s de tempo de espera Elos de esteira sobressalentes Restaura o funcionamento das duas esteiras · 12 s de tempo de espera Kit de primeiros socorros Recupera todos os tripulantes feridos · 45 s de tempo de espera Rações de campo 40 s: tempo de recarga −5%, tempo de mira −8% · 60 s de tempo de espera Extintor de incêndio Apaga um incêndio · 25 s de tempo de espera Supressão automática de incêndio 45 s: qualquer incêndio é apagado assim que começa · 60 s de tempo de espera Desativação do limitador 10 s: potência do motor +25%; pode sobrecarregar o motor · 45 s de tempo de espera Reposição do paiol de pronto uso Repõe 30% da capacidade de armazenamento de cada tipo de munição · 90 s de tempo de espera Recarga de granadas fumígenas Uma salva de fumaça adicional, até o limite de 3 · 40 s de tempo de espera Folhagem fresca 60 s: +12% de ocultação com o veículo parado · 60 s de tempo de espera Interceptador APS 20 s: intercepta o próximo míssil ou projétil HEAT vindo pela frente · 45 s de tempo de espera Interferidor infravermelho 12 s: mísseis guiados contra você perdem a orientação · 40 s de tempo de espera Fumaça Uma cortina de fumaça que dura 18 s; 28 s entre lançamentos. Drone Bateria com duração de 40 s, alcance de comunicação de 850 m e de detecção de 350 m; após perdê-lo, é preciso esperar 25 s pelo próximo. Metralhadora de teto Dispara automaticamente contra inimigos e drones ao alcance; B ativa ou desativa."
+ },
+ {
+  "href": "/docs/fleet",
+  "title": "Todos os tanques, lado a lado",
+  "chapter": "Todos os tanques",
+  "text": "Todos os tanques do jogo, por nação, nível, era, classe e função, cada um com acesso ao seu dossiê na Tank Gallery."
+ },
+ {
+  "href": "/docs/fleet#fleet",
+  "title": "A frota",
+  "chapter": "Todos os tanques",
+  "text": "Todas as nações Todos os níveis Todas as eras Todas as classes Todas as funções Cartão de destaque Ângulo Lateral 311 tanques Nível X BMP-3M Dragun 125 Leve Nível X Kurganets-25 VCI Nível X Object 148 Proto CCP Nível X Object 195 CCP Nível X Object 695 CT Nível X T-14 152 CCP Nível X T-14 Armata CCP Nível X T-90AM II CCP Nível X T-90M Proryv CCP Nível IX Object 477 Molot CCP Nível IX T-90A CCP Nível IX T-90A Burlak CCP Nível IX T-90A Burlak Prototype CCP Nível IX T-90A obr. 2004 CCP Nível IX T-90A obr. 2006 CCP Nível IX T-90A Vladimir CCP Nível IX T-90AM CCP Nível IX T-90MS obr. 2011 CCP Nível IX T-90MS Tagil CCP Nível IX T-90SM CCP Nível IX T-90SM obr. 2013 CCP Nível VIII T-72B3 Bastion-M CCP Nível VIII T-72B3M Bulat-M CCP Nível VIII T-80U Bars-M CCP Nível VII Object 292 CCP Nível VII T-90 CCP Nível VII T-90 obr. 1992 CCP Nível VI BMPT T-90 Apoio de fogo Nível VI BMPT Terminator Apoio de fogo Nível VI Pantsir-S1 (tracked) AAA Nível VI T-72B3 CCP Nível VI T-72B3M obr. 2016 CCP Nível VI T-72B3M obr. 2022 CCP Nível VI T-80U CCP Nível VI T-80UK CCP Nível V 2K22M Tunguska-M AAA Nível V BMPT Terminator 2 Apoio de fogo Nível V TOS-1A Tagil Apoio de fogo Nível IV T-80B CCP Nível IV T-80BV CCP Nível III T-64BV CCP Nível III T-64BV1 CCP Nível III T-72B obr. 1987 CCP Nível III T-72BU CCP Nível III T-72BU obr. 1989 CCP Nível III T-80 CCP Nível II BMP-3 VCI Nível II T-62MV-1 CCP Nível I BMP-2 VCI Nível I KV-2 Pesado Nível I T-55A Médio Nível I T-62 obr. 1975 CCP Nível X KF51 EVO CCP Nível X KF51 Panther CCP Nível X KF51-U CCP Nível X Leopard 2A7V CCP Nível IX Leopard 2A5 CCP Nível IX Leopard 2A5M CCP Nível IX Leopard 2A6 CCP Nível IX Leopard 2A6M CCP Nível VIII Leopard 2 Improved CCP Nível VIII Leopard 2 Revolution CCP Nível VIII Leopard 2 Revolution Proto CCP Nível VIII Leopard 2A4 CCP Nível VIII Leopard 2A4 OTCO CCP Nível VIII Leopard 2A4 V CCP Nível VIII Leopard 2A4M CCP Nível VIII Leopard 2A4M CAN CCP Nível VI Puma S1 VCI Nível VI SPz Wotan VCI Nível V Flakpanzer Gepard 1A2 AAA Nível V KF41 Lynx VCI Nível V Marder 2 VCI Nível IV Leopard 2A3 CCP Nível IV Leopard 2A3 OTCO CCP Nível IV Schützenpanzer Puma VCI Nível III Leopard 2 Prototype CCP Nível III Leopard 2A2 CCP Nível III MBT-70 CCP Nível II M48 Super CCP Nível II Schützenpanzer Marder 1A3 VCI Nível I Jagdpanzer E100 CT Nível I Kpz M48A2GA2 CCP Nível I Leopard 1A2A1 CCP Nível I Leopard 1A5 CCP Nível I M41 (Bundeswehr) Leve Nível X AbramsX CCP Nível X Griffin 50 mm VCI Nível X M1A2 Abrams SEPv3 CCP Nível X M1E3 Abrams CCP Nível IX M1A2 Abrams CCP Nível IX M1A2 Abrams SEPv2 CCP Nível IX M1A2 Abrams TUSK CCP Nível VIII M1A1 Abrams CCP Nível VIII M1A1 Abrams AIM CCP Nível VIII M1A1 Abrams FEP CCP Nível VIII M1A1 Abrams HA CCP Nível VIII M1A1 Abrams HC CCP Nível VIII M1A1 Abrams SA CCP Nível V M3A3 Bradley CFV VCI Nível V M6 Linebacker AAA Nível IV M163 VADS AAA Nível IV M551A1 TTS Leve Nível III Griffin Viper CT Nível II M113A3 VBTP Nível II M2A2 Bradley VCI Nível II M3A2 Bradley VCI Nível II M551 Sheridan Leve Nível II M60A2 Starship CCP Nível II T49 Leve Nível II T95 (152 mm) CT Nível I M41A3 Walker Bulldog Leve Nível I M46 Patton Médio Nível I M47 Patton Médio Nível I M48A3 Patton CCP Nível I M48A5 Patton CCP Nível I M60A1 Patton CCP Nível I M60A3 CCP Nível X Challenger 3 CCP Nível X Challenger 3 TD CCP Nível X Challenger 3 TD (RWS) CCP Nível IX Challenger 2 CCP Nível IX Challenger 2E CCP Nível VIII Challenger 1 Mk 1 CCP Nível VIII Challenger 1 Mk 2 CCP Nível VIII Challenger 1 Mk 3 CCP Nível VIII Challenger 3 Prototype CCP Nível VIII FV4030 /5 CCP Nível VIII FV4030 /6 CCP Nível VI ItPsv Leopard 2 (Leopard 2 Marksman) AAA Nível V Ajax VCI Nível V Marksman ( T-55 ) AAA Nível V Warrior TES(H) VCI Nível IV Chieftain Mk 10 CCP Nível IV Chieftain Mk 9 CCP Nível IV FV4034 CCP Nível III Centurion Mk 13 Médio Nível III Centurion Mk 5/2 Médio Nível III FV510 Warrior MILAN VCI Nível II Ares APC VBTP Nível II Centurion Mk 3 Médio Nível II Centurion Mk 5 AVRE Médio Nível II Chieftain Mk 3 CCP Nível II Chieftain Mk 5 CCP Nível II FV510 Warrior VCI Nível II Vickers MBT Mk 1 CCP Nível X Type 100 IFV VCI Nível X ZTZ-100 CCP Nível X ZTZ-100 Prototype Apoio de fogo Nível X ZTZ-20 CCP Nível X ZTZ-20 Prototype CCP Nível X ZTZ-99A2 CCP Nível IX ZTZ-99A CCP Nível IX ZTZ-99A2 Qinglong CCP Nível VIII VT-4A1 CCP Nível VII T-72B3 Qilin CCP Nível VII T-72B3 Zhuque CCP Nível VII T-72B3M Kunlun CCP Nível VII T-72B3M Xuanwu CCP Nível VII T-80U Yun CCP Nível VII VT-4A1 Baihu CCP Nível VI PGZ-09 AAA Nível VI Type 96-72M Léi CCP Nível VI Type 96-80 Fēng CCP Nível VI Type 96B CCP Nível VI ZTZ-99 Longwei CCP Nível V PGZ-95 AAA Nível V Type 96-72 Lóng (Concept) CCP Nível III AFT-10 CT Nível I Type 59 Médio Nível I ZTZ-85-III CCP Nível X T-84BM Oplot-M CCP Nível X T-84BM Oplot-T CCP Nível IX Challenger 2 (Ukraine) CCP Nível IX Leopard 2A6 UA CCP Nível IX M1A1 SA (Ukraine) CCP Nível IX M1A2 Abrams UA CCP Nível VII T-72B3 Sich CCP Nível VII T-72B3M Hetman CCP Nível VII T-72B3M Hetman II CCP Nível VII T-80U Zoria CCP Nível VI Object 478DU2 CCP Nível VI T-80U Kursk CCP Nível VI T-84U Oplot CCP Nível V T-80BV (Ukraine) CCP Nível IV CV9040C (Ukraine) VCI Nível IV M2A3 Bradley (Ukraine) VCI Nível IV T-64B1V mod. 2022 CCP Nível IV T-64BM1M CCP Nível IV T-64BV mod. 2017 CCP Nível X PL-01 Leve Nível X PL-01 (105) Leve Nível X PT-84 Orzeł CCP Nível X PT-84 Żbik CCP Nível X Upiór IFV VCI Nível IX PT-84 Sokół CCP Nível VII T-72B3M Wilk CCP Nível VII T-80U Husarz CCP Nível VI PZA Loara AAA Nível VI T-72B3 Zubr CCP Nível VI T-72B3 Zubr II CCP Nível V Borsuk VCI Nível V PT-91A Twardy CCP Nível V T-72 Ryś (Concept) CCP Nível IV PT-64 Tur CCP Nível IV PT-91M Pendekar CCP Nível IV T-72M1 Jaguar CCP Nível III BWP-1 (Bojowy Wóz Piechoty 1) VCI Nível IX Merkava Mk 4 CCP Nível IX Merkava Mk 4 Barak CCP Nível IX Merkava Mk 4 Trophy CCP Nível IX Merkava Mk 4B CCP Nível VIII Merkava Mk 3 Baz CCP Nível VIII Merkava Mk 3C CCP Nível VIII Merkava Mk 3D CCP Nível IV Namer IFV VCI Nível III Merkava Mk 2B CCP Nível III Merkava Mk 2D CCP Nível III Sho't Kal Médio Nível II Magach 7C CCP Nível II Sabra Mk 2 CCP Nível I Magach 3 CCP Nível I Magach 6B CCP Nível I Merkava Mk 1B CCP Nível X Raijū IFV VCI Nível X Type 10 CCP Nível X Type 10 Kaitaku CCP Nível IX Type 10 ( TK-X ) CCP Nível IX Type 10B CCP Nível VIII STC-1 CCP Nível VIII STC-2 CCP Nível VIII Type 90 CCP Nível VIII Type 90 (B) CCP Nível VI Type 89 VCI Nível V Type 87 Self-Propelled Anti-Aircraft Gun AAA Nível II Hayate IFV VCI Nível I M41 (JGSDF) Leve Nível I STB-1 CCP Nível I Type 74 CCP Nível IX Stridsvagn 121 CCP Nível IX Stridsvagn 122 CCP Nível VII CV90 Mk 4 VCI Nível VII CV90 Mk 4 Concept VCI Nível V Lvkv 9040 AAA Nível IV CV90 VCI Nível IV CV9040C VCI Nível III Strv 105 Médio Nível II CV90105 TML Leve Nível II Stridsvagn 103A CT Nível II Stridsvagn 103B CT Nível II Stridsvagn 81 Médio Nível I UDES 03 CT Nível X Leclerc XLR CCP Nível IX AMX 56 CCP Nível IX Leclerc S2 CCP Nível IX Leclerc SXXI CCP Nível VIII Leclerc S1 CCP Nível IV AMX-10P 25 VCI Nível III AMX-10P VCI Nível III AMX-40 CCP Nível III AMX-40 Prototype CCP Nível I AMX-30 CCP Nível I AMX-30B CCP Nível I AMX-30B2 CCP Nível X Leopard 2A7 DK CCP Nível IX Leopard 2A5 DK CCP Nível VIII Christian II CCP Nível V CV9035 DK VCI Nível III Centurion Mk 5/2 DK Médio Nível II M41 DK-1 Leve Nível I Leopard 1A3 DK CCP Nível I Leopard 1A5 DK CCP Nível I Leopard 1A5 DK-1 CCP Nível IX M1A2 SEPv3 (Aus) CCP Nível VIII M1A1 AIM SA CCP Nível VI AS21 Redback VCI Nível III M113AS4 VBTP Nível II Centurion Mk 5/1 (Aust) Médio Nível I Leopard AS1 CCP Nível I M113A1 FSV Leve Nível I M113A1 MRV Leve Nível X EE-T4 Osório CCP Nível IX EE-T3 Osório CCP Nível IV EE-T1 Osório (120) CCP Nível III EE-T1 Osório (105) CCP Nível III MB-3 Tamoyo 3 CCP Nível II MB-3 Tamoyo 1 Médio Nível I CCL X1 Pioneiro Leve Nível I CCL X1A2 Carcará Leve Nível VII C2 Ariete CCP Nível VII C2 Ariete Prototype CCP Nível VI C1 Ariete CCP Nível VI C1 Ariete Prototype (Serie 1) CCP Nível V LRMV Lynx VCI Nível IV C1 Ariete Preserie CCP Nível IV Dardo VCI Nível II Carro 45t Médio Nível X K2 Black Panther CCP Nível VIII K1A1 CCP Nível VII K2B CCP Nível VI XK2 Black Panther CCP Nível V K21 VCI Nível V K30 Biho AAA Nível IV K1E1 CCP Nível III BMP-3 (ROK) VCI Nível III Olifant Mk 1B CCP Nível III Olifant Mk 2 CCP Nível III Olifant TTD CCP Nível II Olifant Mk 1 CCP Nível II Olifant Mk 1A CCP Nível II Semel Médio Nenhum tanque encontrado. Limpar filtros {\"total\":311,\"facets\":[{\"key\":\"nation\",\"label\":\"Nação\",\"options\":[{\"id\":\"\",\"name\":\"Todas as nações\",\"count\":311,\"glyph\":\"globe\"},{\"id\":\"ru\",\"name\":\"Rússia / URSS\",\"count\":52,\"chip\":\"Russia\"},{\"id\":\"de\",\"name\":\"Alemanha\",\"count\":34,\"chip\":\"Germany\"},{\"id\":\"us\",\"name\":\"Estados Unidos\",\"count\":32,\"chip\":\"USA\"},{\"id\":\"gb\",\"name\":\"Reino Unido\",\"count\":28,\"chip\":\"UK\"},{\"id\":\"cn\",\"name\":\"China\",\"count\":25,\"chip\":\"China\"},{\"id\":\"ua\",\"name\":\"Ucrânia\",\"count\":19,\"chip\":\"Ukraine\"},{\"id\":\"pl\",\"name\":\"Polônia\",\"count\":18,\"chip\":\"Poland\"},{\"id\":\"il\",\"name\":\"Israel\",\"count\":16,\"chip\":\"Israel\"},{\"id\":\"jp\",\"name\":\"Japão\",\"count\":15,\"chip\":\"Japan\"},{\"id\":\"se\",\"name\":\"Suécia\",\"count\":13,\"chip\":\"Sweden\"},{\"id\":\"fr\",\"name\":\"França\",\"count\":12,\"chip\":\"France\"},{\"id\":\"dk\",\"name\":\"Dinamarca\",\"count\":9,\"chip\":\"Denmark\"},{\"id\":\"au\",\"name\":\"Austrália\",\"count\":8,\"chip\":\"Australia\"},{\"id\":\"br\",\"name\":\"Brasil\",\"count\":8,\"chip\":\"Brazil\"},{\"id\":\"it\",\"name\":\"Itália\",\"count\":8,\"chip\":\"Italy\"},{\"id\":\"kr\",\"name\":\"Coreia do Sul\",\"count\":8,\"chip\":\"South Korea\"},{\"id\":\"za\",\"name\":\"África do Sul\",\"count\":6,\"chip\":\"South Africa\"}]},{\"key\":\"tier\",\"label\":\"Nível\",\"options\":[{\"id\":\"\",\"name\":\"Todos os níveis\",\"count\":311,\"glyph\":\"techTree\"},{\"id\":\"10\",\"name\":\"Nível X\",\"count\":40},{\"id\":\"9\",\"name\":\"Nível IX\",\"count\":42},{\"id\":\"8\",\"name\":\"Nível VIII\",\"count\":35},{\"id\":\"7\",\"name\":\"Nível VII\",\"count\":20},{\"id\":\"6\",\"name\":\"Nível VI\",\"count\":27},{\"id\":\"5\",\"name\":\"Nível V\",\"count\":23},{\"id\":\"4\",\"name\":\"Nível IV\",\"count\":26},{\"id\":\"3\",\"name\":\"Nível III\",\"count\":30},{\"id\":\"2\",\"name\":\"Nível II\",\"count\":32},{\"id\":\"1\",\"name\":\"Nível I\",\"count\":36}]},{\"key\":\"era\",\"label\":\"Era\",\"options\":[{\"id\":\"\",\"name\":\"Todas as eras\",\"count\":311,\"glyph\":\"clock\"},{\"id\":\"next-generation\",\"name\":\"Nova geração\",\"count\":23,\"glyph\":\"eraNextGeneration\"},{\"id\":\"modern\",\"name\":\"Moderno\",\"count\":183,\"glyph\":\"eraModern\"},{\"id\":\"cold-war\",\"name\":\"Guerra Fria\",\"count\":102,\"glyph\":\"eraColdWar\"},{\"id\":\"ww2\",\"name\":\"Segunda Guerra Mundial\",\"count\":3,\"glyph\":\"eraWorldWarII\"}]},{\"key\":\"class\",\"label\":\"Classe\",\"options\":[{\"id\":\"\",\"name\":\"Todas as classes\",\"count\":311,\"glyph\":\"vehicle\"},{\"id\":\"mbt\",\"name\":\"CCP\",\"count\":211,\"glyph\":\"classMbt\"},{\"id\":\"medium\",\"name\":\"Médio\",\"count\":16,\"glyph\":\"classMedium\"},{\"id\":\"heavy\",\"name\":\"Pesado\",\"count\":1,\"glyph\":\"classHeavy\"},{\"id\":\"light\",\"name\":\"Leve\",\"count\":15,\"glyph\":\"classLight\"},{\"id\":\"ifv\",\"name\":\"VCI\",\"count\":39,\"glyph\":\"classIfv\"},{\"id\":\"apc\",\"name\":\"VBTP\",\"count\":3,\"glyph\":\"classApc\"},{\"id\":\"td\",\"name\":\"CT\",\"count\":8,\"glyph\":\"classTd\"},{\"id\":\"spaa\",\"name\":\"AAA\",\"count\":13,\"glyph\":\"classSpaa\"},{\"id\":\"fire-support\",\"name\":\"Apoio de fogo\",\"count\":5,\"glyph\":\"classFireSupport\"}]},{\"key\":\"role\",\"label\":\"Função\",\"options\":[{\"id\":\"\",\"name\":\"Todas as funções\",\"count\":311,\"glyph\":\"team\"},{\"id\":\"breakthrough\",\"name\":\"Ruptura\",\"count\":85,\"glyph\":\"roleBreakthrough\"},{\"id\":\"frontline\",\"name\":\"Linha de frente\",\"count\":66,\"glyph\":\"roleFrontline\"},{\"id\":\"flanker\",\"name\":\"Flanqueador\",\"count\":57,\"glyph\":\"roleFlanker\"},{\"id\":\"sniper\",\"name\":\"Atirador de precisão\",\"count\":27,\"glyph\":\"roleSniper\"},{\"id\":\"scout\",\"name\":\"Batedor\",\"count\":38,\"glyph\":\"roleScout\"},{\"id\":\"support\",\"name\":\"Apoio\",\"count\":38,\"glyph\":\"roleSupport\"}]}],\"words\":{\"nation:ru\":\"ru russia ussr ussr/russia rússia 俄罗斯 união soviética 苏联\",\"nation:de\":\"de germany alemanha 德国\",\"nation:us\":\"us usa estados unidos 美国\",\"nation:gb\":\"gb uk reino unido 英国\",\"nation:cn\":\"cn china 中国\",\"nation:ua\":\"ua ukraine ucrânia 乌克兰\",\"nation:pl\":\"pl poland polônia 波兰\",\"nation:il\":\"il israel 以色列\",\"nation:jp\":\"jp japan japão 日本\",\"nation:se\":\"se sweden suécia 瑞典\",\"nation:fr\":\"fr france frança 法国\",\"nation:dk\":\"dk denmark dinamarca 丹麦\",\"nation:au\":\"au australia austrália 澳大利亚\",\"nation:br\":\"br brazil brasil 巴西\",\"nation:it\":\"it italy itália 意大利\",\"nation:kr\":\"kr south korea coreia do sul 韩国\",\"nation:za\":\"za south africa áfrica do sul 南非\",\"tier:10\":\"10 x nível x级\",\"tier:9\":\"9 ix nível ix级\",\"tier:8\":\"8 viii nível viii级\",\"tier:7\":\"7 vii nível vii级\",\"tier:6\":\"6 vi nível vi级\",\"tier:5\":\"5 v nível v级\",\"tier:4\":\"4 iv nível iv级\",\"tier:3\":\"3 iii nível iii级\",\"tier:2\":\"2 ii nível ii级\",\"tier:1\":\"1 i nível i级\",\"era:next-generation\":\"next generation nova geração 下一代\",\"era:modern\":\"modern moderno 现代\",\"era:cold-war\":\"cold war guerra fria 冷战\",\"era:ww2\":\"ww2 segunda guerra mundial 二战\",\"era:interwar\":\"interwar entreguerras 战间期\",\"class:mbt\":\"main battle tank mbt main-battle-tank carro de combate principal 主战坦克 ccp\",\"class:medium\":\"medium tank medium-tank mt tanque médio 中型坦克\",\"class:heavy\":\"heavy tank heavy-tank ht tanque pesado 重型坦克\",\"class:light\":\"light tank light-tank lt tanque leve 轻型坦克\",\"class:ifv\":\"infantry fighting vehicle ifv infantry-fighting-vehicle cfv veículo de combate infantaria 步兵战车 vci 步战车\",\"class:apc\":\"armored personnel carrier apc armoured veículo blindado de transporte pessoal 装甲运兵车 vbtp 运兵车\",\"class:td\":\"tank destroyer td tank-destroyer casemate caça-tanques 坦克歼击车 ct 歼击车\",\"class:spaa\":\"self-propelled anti-aircraft spaa aa anti-air air defense defence antiaéreo autopropulsado 自行防空车 aaa 防空车\",\"class:fire-support\":\"fire support vehicle fire-support fsv bmpt mrl rocket artillery tank veículo de apoio fogo 火力支援车\",\"role:breakthrough\":\"breakthrough assault brawler spearhead ruptura 突破\",\"role:frontline\":\"frontline front-line line all-rounder allrounder flexible linha de frente 前线\",\"role:flanker\":\"flanker flank skirmisher flanqueador 侧翼\",\"role:sniper\":\"sniper precision long-range overwatch atirador de precisão 狙击\",\"role:scout\":\"scout recon reconnaissance spotter batedor 侦察\",\"role:support\":\"support escort apoio 支援\",\"status:service\":\"in service in-service production series em serviço 已服役\",\"status:prototype\":\"prototype proto demonstrator pre-series protótipo 原型车\",\"status:concept\":\"concept paper fictional conceito 概念车\"},\"text\":{\"count\":\"{shown} de {total} tanques\",\"total\":\"{total} tanques\"}}"
+ },
+ {
+  "href": "/docs/combat",
+  "title": "Como um projétil causa dano",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Penetração, ângulos, módulos, tripulação e quem vê quem: tudo explicado a partir das próprias regras do jogo."
+ },
+ {
+  "href": "/docs/combat#penetration",
+  "title": "Penetração",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Um projétil atravessa quando sua penetração, com uma variação aleatória de 75–125 %, supera a blindagem atingida. A penetração cai linearmente do valor a 100 m até o valor a 1,000 m, e depois até 2,000 m, se o projétil tiver um valor definido para essa distância. A penetração e o dano variam aleatoriamente em 75–125 % de seus respectivos valores. HEAT mantém sua penetração a qualquer distância. A sobreposição de blindagem Na mira, a sobreposição de blindagem colore o tanque inimigo de acordo com o projétil carregado: verde indica que ele penetra, âmbar indica que pode penetrar e vermelho indica que não penetra. Ela considera o ângulo, a blindagem espaçada, a ERA e a distância. Vem ativada por padrão; use H para desativá-la ou reativá-la, ou acesse Configurações › Jogabilidade › Coloração de penetração de blindagem.\nDistância (m) mm OFL 120 F2 APFSDS · OECC 120 F1 HEAT"
+ },
+ {
+  "href": "/docs/combat#angling",
+  "title": "Angulação",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Incline a chapa para aumentar sua espessura no trajeto do projétil, até fazê-lo ricochetear. A blindagem efetiva é a espessura da placa dividida pelo cosseno do ângulo de impacto, descontada a normalização do projétil desse ângulo. APFSDS se inclina 2° em direção à placa e ricocheteia acima de 78°. AP se inclina 5° em direção à placa e ricocheteia acima de 70°. Um projétil com calibre equivalente a 3× a espessura da placa nunca ricocheteia. Um projétil ricocheteia no máximo 2 vezes; um jato HEAT se dissipa no primeiro ricochete.\nÂngulo de impacto (°) mm AP, 75 mm ricocheteia acima de 70° · APCR, 75 mm ricocheteia acima de 70° · APFSDS, 120 mm ricocheteia acima de 78° · HEAT, 120 mm\nLeclerc XLR: blindagem por espessura"
+ },
+ {
+  "href": "/docs/combat#special",
+  "title": "Blindagem espaçada, ERA e HE",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Nem toda chapa é de aço maciço, e nem todo projétil precisa atravessá-la. Camadas de ar reduzem a penetração de HEAT em 5 % a cada 10 cm. A ERA reduz a penetração de HEAT em um valor fixo e a de projéteis cinéticos em uma proporção; uma ogiva em tandem a atravessa, a menos que o bloco seja projetado para resistir a esse tipo de ogiva. HE nunca ricocheteia: causa dano explosivo ao que atinge, seja blindagem ou não."
+ },
+ {
+  "href": "/docs/combat#modules",
+  "title": "Módulos e tripulação",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Um impacto que penetra a blindagem pode danificar o que está atrás da chapa. Módulos avariados são reparados automaticamente após 10 s. Um paiol de munição danificado multiplica o tempo de recarga por 1.5; se destruído, faz o tanque explodir. Um motor danificado pega fogo em 15 % dos casos; um incêndio dura 10 ciclos, causando 0.5 % de dano ao casco por ciclo, e pode se apagar sozinho (12 % de chance por ciclo). Um projétil que penetra atinge um tripulante em 33 % dos casos (10 % para dano em área de HE); perder toda a tripulação significa perder o tanque. Dispositivos ópticos danificados reduzem o alcance de visão em 50 %. Um rádio funcionando compartilha o que você vê em um raio de 600 m; um danificado, em um raio de 300 m. A câmera de morte Quando você é eliminado, a câmera de morte reproduz o último disparo com seu tanque transparente, mostrando a trajetória do projétil, cada módulo e tripulante atingido, o dano e quem disparou.\nLeclerc XLR: módulos e tripulação\nMódulo · Pontos de vida · Chance de ser atingido · Canhão · 150 · 33 % · Anel da torre · 120 · 45 % · Suporte do canhão · 120 · 45 % · Carregador automático · 125 · 36 % · Alimentação da arma · 110 · 38 % · Metralhadora de teto · 80 · 65 % · Suporte de mísseis · 120 · 30 % · Motor · 160 · 45 % · Transmissão · 140 · 45 % · Tanque de combustível · 120 · 45 % · Paiol de munição · 150 · 27 % · Rádio · 90 · 45 % · Dispositivos ópticos · 80 · 45 % · Esteira E · 100 · 100 % · Esteira D · 100 · 100 %"
+ },
+ {
+  "href": "/docs/combat#spotting",
+  "title": "Detecção",
+  "chapter": "Blindagem, angulação e detecção",
+  "text": "Você vê um tanque quando ele está dentro do seu alcance de visão, descontada a camuflagem dele, entre 50 m e 445 m. A menos de 50 m, um tanque sempre é visto, mesmo atrás de cobertura. Um tanque permanece visível por 5 s após o último avistamento. A lâmpada de sexto sentido acende 3 s após você ser detectado e permanece acesa por 8 s. Disparar reduz sua camuflagem quase por completo por um instante; arbustos próximos ficam transparentes após o disparo. Arbustos e árvores somam até 50 % de camuflagem; uma pintura de camuflagem adequada ao mapa acrescenta 3.5 %.\nCamuflagem do alvo (%) m 445 m de alcance de visão · 380 m de alcance de visão · 300 m de alcance de visão"
+ },
+ {
+  "href": "/docs/battlefields",
+  "title": "Todos os campos de batalha",
+  "chapter": "Campos de batalha",
+  "text": "Os mapas, suas paisagens, os horários do dia e o campo de treinamento."
+ },
+ {
+  "href": "/docs/battlefields#maps",
+  "title": "Mapas",
+  "chapter": "Campos de batalha",
+  "text": "Florestal 10 Desértica 9 Urbana 6 Marítima 5 Invernal 4 Tropical 3 Noturna 1 Verdant Fields Sirocco Wadi Frosthollow Steinburg Saltmere Bay Amberford Tarkhan Steppe Cinder Junction Frontier Basin Nordhavn Fjord Jade River Delta Redrock Divide Monsoon Ridge Glacier Pass Obsidian Caldera Ironworks Ruinspires Suzhou Creek Titan Gorge Skybridge Chasm Tidegate Polders Copper Mesa Mine Kestrel Airfield Sunscar Oasis Whiteout Station Orchard Valley Longleaf Crossing Mangrove Reach Saltwind Narrows Highland Reservoir Olympus Basin Bacia do Nascer da Terra Travessia de Égide"
+ },
+ {
+  "href": "/docs/battlefields#breaks",
+  "title": "O que pode ser destruído",
+  "chapter": "Campos de batalha",
+  "text": "Edifícios que desabam Disparos e abalroamentos danificam uma construção até ela desmoronar, alterando a cobertura e as rotas ao redor. Esmague o que estiver no caminho Um casco pesado derruba cercas, muros, árvores, cabanas e barracas que não resistem ao impacto, e o que cai permanece no chão. Veículos destrutíveis no mapa Carros e caminhões estacionados são esmagados pelas esteiras, e um projétil os incendeia. Obstáculos grandes, como construções, muros, rochas e colinas, detêm disparos e bloqueiam a visão; placas, postes de luz e outros objetos pequenos nunca viram paredes invisíveis."
+ },
+ {
+  "href": "/docs/battlefields#gravity",
+  "title": "Mundos do Gravity Mode",
+  "chapter": "Campos de batalha",
+  "text": "O Gravity Mode se passa sob outro céu: Marte 0.38 g · Lua 0.17 g · Terra 1 g. Seus dois mapas fora da Terra ficam fora da rotação aleatória."
+ },
+ {
+  "href": "/docs/battlefields#time",
+  "title": "Horário do dia",
+  "chapter": "Campos de batalha",
+  "text": "Você pode definir o horário na tela de entrada em combate; se deixar ao acaso, esta é a distribuição. Dia 60 % Pôr do sol 30 % Noite 10 %"
+ },
+ {
+  "href": "/docs/battlefields#proving",
+  "title": "O Proving Ground",
+  "chapter": "Campos de batalha",
+  "text": "O teste de condução abre Kestrel Airfield: 5 pistas de alvos e um suporte de placas, sem cronômetro nem registro. Pistas 100 m alvo girado 0° 200 m alvo girado 30° 300 m alvo girado 90° 450 m alvo girado 45° 650 m alvo girado 0° Suporte de placas 50 mm 100 mm 200 mm 300 mm 500 mm 100 mm · 45° 100 mm · 60° 60 mm · 82°"
+ },
+ {
+  "href": "/docs/multiplayer",
+  "title": "Jogue com seus amigos",
+  "chapter": "Multijogador",
+  "text": "Crie uma sala, envie o código e lute ao lado dos seus amigos ou contra eles."
+ },
+ {
+  "href": "/docs/multiplayer#rooms",
+  "title": "Criar uma sala",
+  "chapter": "Multijogador",
+  "text": "Sala privada Crie uma sala e envie o código de seis caracteres ou o link de convite aos seus amigos. Entrar em uma sala Digite o código fornecido pelo anfitrião ou abra o link de convite dele. Rede local Um computador executa npm run server:mp (porta 8792); todos na mesma rede selecionam Rede local e jogam por meio dele."
+ },
+ {
+  "href": "/docs/multiplayer#seats",
+  "title": "Vagas",
+  "chapter": "Multijogador",
+  "text": "Duas equipes e espaço para espectadores. A sala define o tamanho das equipes; as vagas podem ser preenchidas por bots. Uma sala comporta até 28 jogadores e 8 espectadores. Novos jogadores entram na equipe com menos integrantes; o criador da sala pode bloquear a troca de equipe. As vagas são preenchidas por bots, a menos que essa opção esteja desativada na sala. Cada jogador traz seu próprio tanque, camuflagem e até 3 itens de equipamento; dois jogadores podem escolher o mesmo tanque. Os nomes podem ter até 24 caracteres; nomes já usados recebem um número.\nEquipe Alpha · v Equipe Bravo · Espectador · 7 por equipe por padrão até 14 por equipe"
+ },
+ {
+  "href": "/docs/multiplayer#modes",
+  "title": "Modos",
+  "chapter": "Multijogador",
+  "text": "Uma sala permite jogar em qualquer modo de batalha; o Proving Ground continua sendo individual. Batalha padrão Capture the Flag Zone Control Bola turbo Endless Horde Assalto à linha de frente Gravity Mode Colosso Infectados Realista Jogo de armas Drone AC-130 Air Support Em Endless Horde e Assalto à linha de frente, todos jogam na mesma equipe, com até 7 jogadores, contra as ondas de inimigos."
+ },
+ {
+  "href": "/docs/multiplayer#start",
+  "title": "Prepare-se",
+  "chapter": "Multijogador",
+  "text": "1 Escolha seu tanque, camuflagem e equipamento e pressione Pronto. 2 O criador da sala inicia a batalha quando todos os jogadores conectados estiverem prontos. 3 O navegador do criador hospeda a batalha; em uma rede local, o programa auxiliar faz isso."
+ },
+ {
+  "href": "/docs/multiplayer#leaving",
+  "title": "Sair e voltar",
+  "chapter": "Multijogador",
+  "text": "Se você sair, sua vaga fica reservada por 5 minutos; abra o link novamente para recuperá-la. Se o navegador do anfitrião for desconectado, a sala transfere a batalha para outro jogador em até 8 s e o jogo continua. Se o criador sair, após 30 s o controle das configurações da sala passa para o jogador que está nela há mais tempo. A sala é encerrada 24 horas após a última mensagem. O bate-papo da sala mantém as últimas 48 mensagens, com até 240 caracteres cada."
+ },
+ {
+  "href": "/docs/multiplayer#fair",
+  "title": "Jogo limpo",
+  "chapter": "Multijogador",
+  "text": "O anfitrião determina cada acerto, recarga e resultado; os demais enviam apenas seus comandos. Você só recebe dados dos inimigos detectados pela sua equipe: a posição de um tanque oculto nunca chega ao seu navegador."
+ },
+ {
+  "href": "/docs/audio",
+  "title": "Ouça a batalha como quem está na tripulação",
+  "chapter": "Som e rádio",
+  "text": "O que cada disparo, alerta e motor comunica e como ajustar a mixagem."
+ },
+ {
+  "href": "/docs/audio#hits",
+  "title": "Penetrou?",
+  "chapter": "Som e rádio",
+  "text": "Nenhum som da interface avisa que um disparo acertou: você ouve o som vindo do alvo, com atraso devido à distância, e cerca de meio segundo depois seu artilheiro informa o resultado. Quanto tempo o som leva para chegar Terra 100 m: 0.3 s 500 m: 1.5 s 1000 m: 2.9 s Marte 100 m: 0.4 s 500 m: 2.1 s 1000 m: 4.0 s\nSua tripulação diz · O que significa · Penetration. Target. Through the armor. · O projétil penetrou. · No penetration. Didn't go through. · Acertou, mas não penetrou: mire onde a blindagem é mais fina. · Ricochet. Bounced. · Ricocheteou em uma placa inclinada. · Miss. Short. Adjusting. Over. · Nada foi atingido: corrija a mira. · Good hit. Something's damaged. Critical hit. · Penetrou e danificou um módulo. · Ammo rack hit. He's cooking off. Hit his ammo. He's done. · A munição inimiga está em chamas: o tanque está prestes a explodir. · Hit his engine. Engine hit. He's slowing. · O motor inimigo foi atingido: o tanque perde velocidade ou pega fogo. · His track's off. He's immobilized. Tracked him. He's not moving. · A esteira inimiga se soltou: o tanque fica imobilizado até que ela seja reparada. · Their crew's hit. Crew hit inside. · Um tripulante inimigo foi incapacitado. · Target destroyed. Target down. Tank knocked out. · Seu disparo acabou com o inimigo."
+ },
+ {
+  "href": "/docs/audio#warnings",
+  "title": "Alertas da tripulação",
+  "chapter": "Som e rádio",
+  "text": "Quando algo acontece com seu tanque, a tripulação avisa antes que você perceba.\nSua tripulação diz · O que significa · We're hit. Taking hits. · Um disparo penetrou a blindagem do seu tanque. · Armor held. It bounced. · Um disparo atingiu seu tanque sem causar danos. · Fire! Engine compartment! Fire in the hull! · Seu tanque está em chamas: apague o fogo ou o casco continuará sofrendo danos. · Ammo rack hit! Ammunition damaged! · Sua munição foi danificada: a recarga fica mais lenta. · Engine's damaged. Engine hit. Losing power. · Seu motor foi atingido: ele perde potência e pode pegar fogo. · Track's gone. We're immobilized. Lost a track. · Uma esteira se soltou: você não pode se mover até ela ser reparada. · Main gun's damaged. Gun's hit. · Seu canhão principal está danificado e precisa de reparos. · Armor's failing. Can't take much more. We're badly hit. Keep moving. · O casco está muito danificado: procure cobertura. · We're spotted. They have eyes on us. · Um inimigo detectou você; a lâmpada de sexto sentido também acende. · Missile incoming! Incoming missile, brace! · Um míssil guiado está a caminho: mova-se ou saia da linha de visão dele. · Drone inbound! Drone on us, overhead! · Um drone inimigo está sobre você."
+ },
+ {
+  "href": "/docs/audio#procedure",
+  "title": "Comando de tiro e falas dos modos",
+  "chapter": "Som e rádio",
+  "text": "Quando sua mira se estabiliza sobre um inimigo detectado e o canhão está carregado, o comandante dá o comando de tiro e o artilheiro responde. A tripulação do AC-130 e cada modo têm falas próprias. No AC-130 Nos modos\nSua tripulação diz · O que significa · Gunner, sabot, tank. Gunner. Sabot. Tank. · O comandante anuncia a munição carregada no canhão (sabot neste caso; HEAT, HE ou míssil, conforme o que estiver carregado) e o alvo. · Identified. Identified. Tank. · O artilheiro está com o alvo na mira. · On the way. Firing. Shot. · O projétil é disparado. · Re-engage. Target still up. Re-engage. · O projétil não destruiu o alvo e o canhão já foi recarregado: dispare novamente. · Target. Cease fire. Cease fire. Scan your sector. · Você destruiu o alvo e não restou nenhum inimigo detectado em um raio de 1.5 km: cesse fogo.\nSua tripulação diz · O que significa · In orbit. Cleared hot. Gunship on station. Cleared to engage. · A aeronave de apoio está em órbita e autorizada a disparar. · Tally. Armor moving. Sensor's captured. Vehicle. · O operador de sensores está com um blindado inimigo na mira. · Shifting fire. Shift fire. New target. · O último alvo foi destruído; a mira está no próximo. · Rifle. Rifle. Missile tracking. · Um míssil foi lançado. · Splash. Splash. No effect. · Os projéteis caíram sem causar danos. · Good hits. Good hits. Target still moving. · Os projéteis estão causando danos ao alvo. · Danger close. Danger close. Friendlies at the impact. · Um projétil pesado caiu a menos de 35 m de um tanque aliado: mire mais longe dele. · Rounds complete. Rounds complete. Assessing. · A rajada de projéteis pesados terminou; a tripulação avalia o resultado.\nSua tripulação diz · O que significa · They dropped our flag. Recover it. Our flag's down in the field. · O inimigo que carregava sua bandeira a deixou cair: chegue até ela antes dos adversários. · We're contesting their point. On their objective. Hold it. · Sua equipe está no ponto inimigo e impede a captura. · They scored. Goal against. Reset. · A equipe adversária pontuou. · Big wave. Lots of them. Swarm. They're everywhere. · Uma grande onda de inimigos rápidos está chegando. · Counter-attack! Enemy counter-attack. Hold the line. · O inimigo está atacando uma linha que você conquistou. · We've turned. Hunt the survivors. We're with them now. Find the survivors. · Você foi infectado: agora caça os sobreviventes. · Juggernaut spotted! Eyes on the Juggernaut. · Sua equipe detectou o Juggernaut. · Last weapon. Finish it. Final gun. Two more and we win. · Você está na última arma: faltam duas eliminações para vencer."
+ },
+ {
+  "href": "/docs/audio#radio",
+  "title": "Rádio da tripulação",
+  "chapter": "Som e rádio",
+  "text": "A tripulação de cada nação fala seu próprio idioma, e qualquer tanque pode levar uma tripulação de outra nação: são 38 tripulações ao todo. inglês (Estados Unidos) inglês (Reino Unido) alemão russo ucraniano chinês francês sueco japonês coreano italiano polonês hebraico dinamarquês português (Brasil) inglês (Austrália) africâner Outras 21 tripulações falam idiomas de países que não estão no jogo, cada uma seguindo os procedimentos de um exército real. Escolha uma nas Configurações para todos os tanques: Espanhol (Espanha) Español (España) Espanhol (América Latina) Español (Latinoamérica) Português (Portugal) Holandês Nederlands Norueguês Norsk Finlandês Suomi Grego Ελληνικά Tcheco Čeština Húngaro Magyar Romeno Română Turco Türkçe Árabe العربية Persa فارسی Hindi हिन्दी Urdu اردو Bengali বাংলা Indonésio Indonesia Malaio Melayu Vietnamita Tiếng Việt Tailandês ไทย Filipino Uma chamada é reproduzida por vez; alertas de sobrevivência têm prioridade. Um rádio danificado reduz a faixa de frequências da voz, adiciona estática e corta palavras. Configurações › Som › Vozes da tripulação: as tripulações nacionais seguem a nação de cada tanque, ou você pode escolher qualquer um dos 38 idiomas para todas as tripulações; a escolha é mantida entre batalhas e ao recarregar a página."
+ },
+ {
+  "href": "/docs/audio#gunfire",
+  "title": "Disparos",
+  "chapter": "Som e rádio",
+  "text": "Cada arma usa uma das 24 categorias de som de disparo; quanto maior o canhão, mais alto e duradouro é seu estampido. Metralhadora de calibre de fuzil 118 dB Metralhadora pesada 124 dB canhão automático de 20 mm 128 dB canhão automático de 25 mm 130 dB canhão automático de 30 mm 132 dB Míssil antitanque 132 dB canhão automático de 35 mm 133.5 dB Canhão automático do AC-130 134 dB canhão automático de 40 mm 135 dB Míssil do AC-130 136 dB canhão automático de 50 mm 137 dB canhão de 76 mm 139 dB canhão de 84 mm 140 dB canhão de 90 mm 141 dB canhão de 100 mm 142.5 dB canhão de 105 mm 144 dB Foguete pesado 145 dB canhão de 120 mm 147 dB canhão de 125 mm 148 dB canhão de 165 mm 148 dB canhão de 130 mm 150 dB Obuseiro do AC-130 150 dB canhão de 152 mm 152 dB canhão de 170 mm 152 dB Um disparo distante é visto antes de ser ouvido, e as colinas entre você e ele abafam o som. Em Marte, o som se propaga a 240 m/s e chega 14 dB mais baixo e menos encorpado. Na Lua, quase nenhum som se propaga (60 dB a menos): você ouve seu próprio tanque pelo casco. Ao usar a mira, você ouve seu canhão de dentro da torre, e os sons do mundo lá fora ficam abafados."
+ },
+ {
+  "href": "/docs/audio#engines",
+  "title": "Motores e lagartas",
+  "chapter": "Som e rádio",
+  "text": "Cada casco tem o som de seu próprio conjunto motopropulsor: turbinas a gás ganham rotação e assobiam; motores a diesel trocam de marcha e roncam. O som das lagartas muda com o terreno e a velocidade: terra, superfície dura, lama, areia, neve e água. O zumbido de um drone inimigo vem de sua posição no ar e fica mais agudo conforme ele se aproxima."
+ },
+ {
+  "href": "/docs/audio#settings",
+  "title": "Configurações de som",
+  "chapter": "Som e rádio",
+  "text": "Em Configurações › Som, há seis controles deslizantes e dois alarmes; as alterações são aplicadas imediatamente. Volume geral Volume do motor e dos sons mecânicos Volume dos disparos e impactos Volume do ambiente Volume da interface e da música Volume das vozes da tripulação e dos alarmes Batimentos cardíacos ao sofrer dano crítico Zumbido de concussão Cada som é uma gravação feita para Claude of Tanks com ElevenLabs antes do lançamento; nada é gerado enquanto você joga."
+ },
+ {
+  "href": "/docs/studio",
+  "title": "Filme suas próprias batalhas",
+  "chapter": "Scene Studio",
+  "text": "Qualquer campo de batalha, qualquer tanque e todos os efeitos do combate, em uma linha do tempo sob sua direção, com exportação em imagens ou filme."
+ },
+ {
+  "href": "/docs/studio#open",
+  "title": "Abra o Studio",
+  "chapter": "Scene Studio",
+  "text": "Pela barra superior Abra o Studio na barra superior para iniciar uma nova cena. Abrir no Studio Todos os filmes deste site têm a opção Abrir no Studio: ela recria a cena tal como foi filmada. Copiar link da cena Um link de cena contém a cena inteira; ao abri-lo, ela é reconstruída no seu Studio. Filmes deste site Object 148 Proto, Tarkhan Steppe Leopard 2 Improved, Ruinspires M1A2 Abrams, Sirocco Wadi Challenger 1 Mk 2, Saltwind Narrows Stridsvagn 121, Frosthollow ZTZ-99 Longwei, Titan Gorge"
+ },
+ {
+  "href": "/docs/studio#scene",
+  "title": "Monte a cena",
+  "chapter": "Scene Studio",
+  "text": "Escolha qualquer campo de batalha, incluindo Olympus Basin e Bacia do Nascer da Terra, posicione tanques, aponte suas torres e defina seus estados. Hora do dia Amanhecer Manhã Dia Hora dourada Pôr do sol Hora azul Noite Estados dos tanques Intacto Motor soltando fumaça Em chamas Destruído Destroços carbonizados Torre arrancada pela explosão Quadros 16:9 Cinema 9:16 Vertical 1:1 Quadrado"
+ },
+ {
+  "href": "/docs/studio#shots",
+  "title": "Planos e linha do tempo",
+  "chapter": "Scene Studio",
+  "text": "Adicione planos de câmera ao longo da linha do tempo; a câmera se move de um para o seguinte. Suportes de câmera Protagonista Acompanhamento Acompanhamento por trás Vista superior Detalhe Lentes Grande-angular · 58° Natural · 42° Fechada · 28° Movimentos entre planos Suave Linear Corte Bézier Spline Uma sequência dura de 1 a 20 s; um filme, até 60 s. As rampas de velocidade chegam a 8× para cortes rápidos e câmera lenta. Sequências encenadas Perseguição de aço Acompanhamento na altura das esteiras, passagem frontal pelo canhão e uma vista do campo de batalha revelada pela elevação da câmera. Verdant Fields · Dia · 8 s · 3 planos Fogo cruzado no deserto Um confronto ao pôr do sol: aproximação, recuo do canhão e traçante, seguidos pelos efeitos do impacto. Sirocco Wadi · Pôr do sol · 8 s · 3 planos Reconhecimento costeiro Uma patrulha costeira em movimento, com acompanhamento por trás, plano lateral e uma vista que se abre para o mar. Saltmere Bay · Dia · 8 s · 3 planos Avanço na hora dourada Dois Leopard cruzam os campos sob a luz dourada e rasante: um retrato frontal, uma passagem ao nível das esteiras, um panorama que se abre acima dos celeiros. Verdant Fields · Hora dourada · 8 s · 3 planos Coluna de inverno Uma coluna sobe com esforço a estrada nevada ao amanhecer: um acompanhamento por trás, um detalhe do trem de rodagem, um panorama visto do alto. Frosthollow · Manhã · 8 s · 3 planos Assalto nos campos Quatro tanques avançam sob sua própria barragem de fogo: a coluna vista por trás, o segundo canhão disparando, a linha abrindo fogo vista do alto. Verdant Fields · Dia · 8 s · 3 planos Abate noturno Sob um sinalizador de paraquedas, um T-90 enfrenta um Leopard no cruzamento da igreja: a aproximação, a troca de tiros, o abate. Frosthollow · Noite · 8 s · 3 planos Noite na fornalha Dois tanques pesados passam sob os pórticos da siderúrgica à luz de sinalizadores, com os canhões apontados para o fundo do pátio. Ironworks · Noite · 8 s · 3 planos Salva no pátio ferroviário Três Abrams disparam ao longo dos trilhos na hora dourada enquanto uma barragem de fogo atinge o pátio ao longe. Cinder Junction · Hora dourada · 8 s · 3 planos Duelo à beira do lago Dois blindados suecos enfrentam um T-80 do outro lado do lago alpino: acompanhamento por trás, o primeiro disparo, o abate visto do alto. Glacier Pass · Dia · 8 s · 3 planos Patrulha ao amanhecer Blindados japoneses deixam as fazendas da fronteira ao amanhecer: as esteiras em detalhe, uma passagem em ângulo baixo, a bacia vista do alto. Frontier Basin · Amanhecer · 8 s · 3 planos Estrada do fiorde Tanques Challenger seguem a estrada costeira pela vila do fiorde, com a água ao lado durante todo o trajeto. Nordhavn Fjord · Dia · 8 s · 3 planos Porto na hora dourada Uma coluna britânica deixa o porto sob a luz que se torna dourada: de frente, por trás e, por fim, a baía inteira. Nordhavn Fjord · Hora dourada · 8 s · 3 planos Pôr do sol no oásis Tanques Merkava cruzam o oásis enquanto o sol se põe atrás das palmeiras. Sunscar Oasis · Pôr do sol · 8 s · 3 planos Coluna no pomar Três veículos italianos avançam entre as fileiras do pomar: vistos do alto, ao nível das esteiras e, por fim, em um panorama do vale. Orchard Valley · Dia · 8 s · 3 planos Vila ribeirinha Blindados chineses seguem a estrada do delta por uma vila ribeirinha que desperta. Jade River Delta · Manhã · 8 s · 3 planos Estrada do templo Um K2 solitário sobe a estrada das monções e passa pelo templo: suas esteiras, uma passagem em ângulo baixo, a crista vista do alto. Monsoon Ridge · Manhã · 8 s · 3 planos Reservatório na hora azul Tanques Chieftain contornam o reservatório após o pôr do sol, com o lago ainda refletindo a luz. Highland Reservoir · Hora azul · 8 s · 3 planos Barragem móvel Um assalto noturno atrás de uma barragem móvel, iluminado por um sinalizador: os canhões, a coluna, o fogo à frente. Verdant Fields · Noite · 8 s · 3 planos Vila alpina Um Leopard e um CV90 atravessam a vila montanhosa ao pé dos picos. Glacier Pass · Dia · 8 s · 3 planos Disparada ao pôr do sol Um KF51 cruza a fronteira em velocidade máxima ao pôr do sol: o canhão visto de frente, as esteiras, o rastro de poeira visto do alto. Frontier Basin · Pôr do sol · 8 s · 3 planos"
+ },
+ {
+  "href": "/docs/studio#effects",
+  "title": "Efeitos",
+  "chapter": "Scene Studio",
+  "text": "Todos os efeitos são os mesmos usados nas batalhas, acionados pela linha do tempo em um tanque, ponto ou marcador. Disparo do canhão principal Clarão de disparo Traçante Impacto Faíscas Explosão Destruição de tanque Nuvem de poeira Fumaça do motor Em chamas Rompimento de esteira Momento do disparo Bola de fogo congelada Rajada de metralhadora Barragem de fogo Marcas na blindagem Baforada do escapamento Cortina de fumaça Sinalizador Brasas Destroços Onda de choque Área em chamas"
+ },
+ {
+  "href": "/docs/studio#film",
+  "title": "Imagens e filmes",
+  "chapter": "Scene Studio",
+  "text": "Capture uma imagem a qualquer momento ou renderize a sequência como um filme. Capturar PNG salva o quadro exibido na tela. Exportar filme renderiza todos os quadros offline com desfoque de movimento, sem descartar nenhum, e inclui a mixagem dos sons da batalha. O resultado é salvo em MP4 ou WebM, conforme o formato que seu navegador consegue codificar. Já a gravação ao vivo captura a tela em tempo real. Tamanho 1080p 1440p 2160p Taxa 24 FPS 30 FPS 60 FPS Desfoque Desativado · 1 amostra Rascunho · 4 amostras Boa · 8 amostras Ótima · 16 amostras Máxima · 32 amostras Tremor Como definido Metade Um quarto Desativado"
+ },
+ {
+  "href": "/docs/studio#share",
+  "title": "Salve e compartilhe",
+  "chapter": "Scene Studio",
+  "text": "Copiar link da cena: a cena inteira fica no próprio link. Salvar JSON baixa o arquivo da cena; Carregar JSON abre um arquivo de cena. Os espaços de salvamento armazenam cenas neste navegador: clique para carregar ou clique com Shift pressionado para salvar."
+ },
+ {
+  "href": "/docs/build",
+  "title": "Um jogo de navegador desenvolvido em ciclos de verificação",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "Claude of Tanks evoluiu de um protótipo feito diretamente em Three.js para um jogo tipado e testado por meio de ciclos curtos de implementação: isolar um problema, alterar o menor componente responsável, comprovar o resultado no navegador, registrá-lo e integrar à main."
+ },
+ {
+  "href": "/docs/build#topic-section-1",
+  "title": "Comece com restrições rígidas",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "O projeto é nativo do navegador e foi desenvolvido diretamente sobre Three.js, em vez de um motor de jogos de uso geral. A simulação roda a uma frequência fixa de 60 Hz, os tanques jogáveis usam geometria procedural em tempo de execução de autoria própria, e as páginas de apresentação ficam isoladas do pesado grafo de dependências de inicialização do jogo. Essas restrições moldaram a arquitetura: regras determinísticas podem rodar no Node, o renderizador se adapta de forma independente e toda afirmação pública pode ser sustentada por código, um teste, uma captura ou um registro de medição."
+ },
+ {
+  "href": "/docs/build#topic-section-2",
+  "title": "Separe as regras da apresentação",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "Movimento, balística, blindagem, dano, detecção, estado da partida e decisões dos bots são regidos por contratos independentes do renderizador. O Three.js transforma o estado mais recente em câmeras, estruturas de controle, iluminação, efeitos, áudio e interface, sem assumir a responsabilidade por determinar os acertos. Essa separação permite que batalhas locais e salas hospedadas no navegador compartilhem as mesmas regras de combate. Também permite que configurações visuais mais leves reduzam o custo de processamento sem alterar a jogabilidade."
+ },
+ {
+  "href": "/docs/build#topic-section-3",
+  "title": "Fluxo de trabalho com Claude Code e Codex",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "Claude Code e Codex foram usados como ferramentas de desenvolvimento em tarefas bem delimitadas. Trabalhos amplos ou arriscados foram realizados em árvores de trabalho isoladas do Git; cada frente identificava os arquivos sob sua responsabilidade, preservava alterações não relacionadas e compartilhava hashes exatos de commits e evidências antes da integração. A regra de trabalho era simples: a main deve permanecer atualizada, experimentos inacabados devem ficar isolados e uma ramificação não serve como prova. Só contam os bytes integrados. A orientação humana definiu o objetivo e os critérios de aceitação; os agentes implementaram, mediram, revisaram e documentaram com base neles."
+ },
+ {
+  "href": "/docs/build#topic-section-4",
+  "title": "Construa, refute e meça",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "Um ciclo típico começa com uma referência inicial reproduzível, seguida da identificação da causa. A menor correção plausível é testada com autotestes específicos, interação no navegador, inspeção do console, capturas de tela e sondagens de desempenho. Um resultado precisa resistir a uma segunda execução ou a um caso deliberadamente adverso antes de ser aceito. O trabalho visual é avaliado pelos pixels efetivamente renderizados, não apenas por verificações numéricas. A análise de desempenho registra condições de execução a frio e após aquecimento, limitações do dispositivo, tarefas longas, intervalos entre quadros, recursos da GPU e tempos de transição, em vez de informar um único valor de FPS."
+ },
+ {
+  "href": "/docs/build#topic-section-5",
+  "title": "Torne o fluxo de trabalho duradouro",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "O AGENTS.md no nível do repositório, os arquivos SKILL.md indexados por subsistema e um registro de decisões de arquitetura mantido atualizado preservam responsabilidades, invariantes, comandos obrigatórios e modos de falha recorrentes sem sobrecarregar os colaboradores com notas de migrações concluídas. Quando um processo manual se repete, ele se torna um script ou uma etapa obrigatória de validação. Por isso, capturas de tela dos modelos, anatomia de combate, ícones de veículos, sondagens de rotas, metadados públicos e verificações de lançamento são reproduzíveis a partir do repositório. Os registros brutos de execução ficam no histórico do Git ou em artefatos de garantia de qualidade ignorados pelo controle de versão."
+ },
+ {
+  "href": "/docs/build#topic-section-6",
+  "title": "Integre apenas o que foi comprovado em conjunto",
+  "chapter": "Como o jogo foi desenvolvido",
+  "text": "Uma alteração concluída é registrada em um commit como uma unidade coerente, passa por rebase sobre a versão mais recente de origin/main e é verificada novamente após a integração. O envio final verifica se o commit pai ainda é o mais recente no remoto, para que trabalhos simultâneos não sobrescrevam silenciosamente uma integração mais nova. A compilação pública então comprova o isolamento das rotas e grava um registro de proveniência com o hash de cada arquivo da árvore de código-fonte. Isso garante que o site jogável, a árvore de código-fonte, a documentação e a ramificação main descrevam o mesmo jogo."
+ },
+ {
+  "href": "/docs/simulation",
+  "title": "Cada impacto tem uma trajetória",
+  "chapter": "Simulação e autoridade",
+  "text": "A simulação da batalha avança a 60 Hz. Movimento, mira, balística, blindagem, dano, recargas, detecção e resultados da partida são determinados pelo estado autoritativo, não pelo quadro renderizado."
+ },
+ {
+  "href": "/docs/simulation#topic-section-1",
+  "title": "Ciclo de batalha de passo fixo",
+  "chapter": "Simulação e autoridade",
+  "text": "O passo autoritativo usa metros, segundos, radianos e um intervalo fixo de 1/60 de segundo. Os comandos de entrada são amostrados e convertidos em controles explícitos do veículo antes que movimento, combate, detecção e avaliação de resultados sejam executados em uma ordem estável. A taxa de renderização pode mudar sem alterar a quantidade ou a ordem dos passos da simulação. Picos no tempo de quadro são acumulados e processados em passos fixos, dentro de limites definidos. A aleatoriedade autoritativa usa uma semente ou é injetada. O tempo do relógio do sistema e Math.random() são excluídos das regras que afetam um disparo, uma recarga, o estado de um módulo ou o resultado da partida."
+ },
+ {
+  "href": "/docs/simulation#topic-section-2",
+  "title": "O anfitrião executa a partida",
+  "chapter": "Simulação e autoridade",
+  "text": "O Worker da sala coordena a descoberta e a sinalização. Ele não executa a simulação de batalha de sessenta passos. O navegador do anfitrião executa a lógica autoritativa da partida e troca dados com os demais participantes via WebRTC. Os convidados enviam comandos; o anfitrião determina movimento, disparos, recargas, colisões, dano, bots e resultados. O veículo local prevê o movimento e faz a reconciliação com o estado confirmado pelo anfitrião; veículos remotos interpolam instantâneos de estado. Adversários próximos ou envolvidos recentemente em combate recebem atualizações mais frequentes do que entidades visíveis distantes. Os eventos de combate permanecem ordenados independentemente desses níveis de interesse. A predição melhora a resposta aos comandos, mas não pode validar um acerto nem alterar o resultado autoritativo."
+ },
+ {
+  "href": "/docs/simulation#topic-section-3",
+  "title": "Visibilidade e confiança",
+  "chapter": "Simulação e autoridade",
+  "text": "Os instantâneos de estado enviados aos convidados contêm apenas os inimigos que o observador tem permissão para ver. A filtragem ocorre antes da codificação, portanto as coordenadas ocultas não são simplesmente enviadas e escondidas pelo renderizador. A visão da equipe e a perspectiva do espectador também determinam a exibição de etiquetas de identificação, minimapas e outros elementos visuais. Mesmo no navegador, o anfitrião continua sendo a máquina de um dos jogadores e precisa manter o estado autoritativo do mundo. A hospedagem por participantes não deve ser descrita como tendo os mesmos limites de confiança de um servidor dedicado independente. O protocolo verifica a ordem dos comandos e a estrutura das mensagens; ele não pode transformar um anfitrião não confiável em infraestrutura confiável para torneios."
+ },
+ {
+  "href": "/docs/simulation#topic-section-4",
+  "title": "Terreno e movimento",
+  "chapter": "Simulação e autoridade",
+  "text": "Os campos de altura determinam o apoio dos veículos, a colisão dos projéteis, o espaço livre para a câmera e o posicionamento dos objetos de cenário. A classe da superfície afeta a aderência e a apresentação. Estradas, encostas, cristas, margens de corpos d’água e posições com o casco protegido são dispostas em função das rotas planejadas para os blindados. A suspensão dos veículos coleta amostras da mesma superfície do solo usada nas consultas de movimento e balística do terreno."
+ },
+ {
+  "href": "/docs/simulation#topic-section-5",
+  "title": "Verificação",
+  "chapter": "Simulação e autoridade",
+  "text": "Autotestes executáveis no Node cobrem movimento, combate, detecção, guiagem de mísseis, ações especiais, mira da IA e a partida autoritativa completa. Verificações no navegador acrescentam testes de paridade do eixo do canhão, percurso dos projéteis, efeitos de impacto em tempo real e alinhamento do HUD. Execute node src/sim/combat.selftest.mjs, node src/sim/authoritativeMatch.selftest.mjs e npm test após alterar regras de combate compartilhadas."
+ },
+ {
+  "href": "/docs/simulation#topic-section-6",
+  "title": "Condução, tempo no ar e dano na aterrissagem",
+  "chapter": "Simulação e autoridade",
+  "text": "O movimento é simulado em sessenta passos fixos por segundo. Potência do motor, peso, limites de velocidade à frente e à ré, condição das esteiras, resistência do terreno e rotação do chassi determinam em conjunto a dirigibilidade. O renderizador interpola esses estados, em vez de alterar o movimento conforme a taxa de quadros. O freio de mão atua no solo; aterrissar após um salto não deve deixá-lo acionado inadvertidamente. Uma queda é um impacto físico, não apenas um limite de altura. Massa, velocidade de impacto, orientação e física do modo afetam o resultado. A gravidade reduzida altera tanto a trajetória quanto os pontos do terreno que você pode alcançar com segurança. Evite quedas às cegas junto aos encontros de pontes ou às bordas de penhascos; escolha uma rota com um ponto de aterrissagem visível e espaço suficiente para estabilizar o veículo."
+ },
+ {
+  "href": "/docs/models",
+  "title": "Da referência à máquina jogável",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Kevin B. Liu criou cada tanque jogável usando geometria procedural em tempo de execução de autoria própria. As referências orientam proporções e detalhes, mas a máquina entregue é reconstruída a partir de código, vinculada aos dados de combate, renderizada para gerar seu próprio conjunto de ícones e lançada após validações visuais e baseadas em medições."
+ },
+ {
+  "href": "/docs/models#topic-section-1",
+  "title": "Pesquisa e coleta de referências",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Um ciclo de modelagem começa com fotografias de referência, dimensões publicadas e vistas superior e lateral do veículo real. As referências orientam a criação de uma forma reconhecível, mas não são tratadas como verdade absoluta quando contêm erros. As proporções vêm primeiro: comprimento e largura do casco, posição da torre, altura do teto, comprimento do canhão, quantidade de rodas, percurso das esteiras e principais volumes de blindagem devem estar visualmente corretos antes da adição de pequenos acessórios."
+ },
+ {
+  "href": "/docs/models#topic-section-2",
+  "title": "Construa a máquina visível peça por peça",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Construtores procedurais montam placas do casco, estruturas de torres, manteletes, tubos de canhão, trem de rodagem, dispositivos ópticos, escotilhas, lançadores de fumaça, cestos, antenas, conjuntos de blindagem e equipamentos armazenados a partir de um repertório reutilizável de geometrias e materiais. Medições de seções em posições específicas mantêm a fidelidade dos volumes dianteiros, centrais e traseiros, em vez de simplesmente esticar uma caixa genérica. Peças estruturais que recebem camuflagem e peças mecânicas neutras usam funções explícitas."
+ },
+ {
+  "href": "/docs/models#topic-section-3",
+  "title": "Articulação da estrutura e trem de rodagem",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Casco, torre, suporte do canhão, conjunto de recuo, boca do canhão, rodas, roletes de retorno, rodas motrizes, rodas tensoras e esteiras articuladas têm vínculos hierárquicos explícitos. O equipamento da torre deve girar com ela e permanecer visivelmente assentado; o equipamento do casco não deve acompanhá-la. A boca do canhão deve estar aberta, com sua posição determinada pela hierarquia real do tubo. A suspensão amostra o terreno em cada ponto de apoio. O trem de rodagem nativo preserva a quantidade correta de rodas e o percurso das esteiras, evitando rodas duplicadas do modelo de origem, sapatas que se interpenetram ou acessórios flutuantes."
+ },
+ {
+  "href": "/docs/models#topic-section-4",
+  "title": "Suspensão e esteiras",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Cada roda de apoio amostra o terreno sob sua posição. A suspensão visual se ajusta a esses pontos de contato, o casco calcula suas inclinações longitudinal e lateral a partir dos apoios, e o percurso da esteira é reconstruído ao redor das rodas deslocadas. A suspensão sueca em modo de cerco permite controlar a inclinação do casco sem prejudicar o acompanhamento do alvo pelo canhão. A animação das esteiras acompanha a distância percorrida e a velocidade de cada lado. O dano pode soltar a esteira de um lado, remover sua faixa de rodagem, lançar um segmento que permanece no cenário e deixar peças soltas do trem de rodagem."
+ },
+ {
+  "href": "/docs/models#topic-section-5",
+  "title": "Crie a anatomia de combate a partir da mesma forma",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Placas de blindagem, camadas espaçadas, ERA, módulos, munição, combustível, tripulação e pontos de ancoragem das articulações são calibrados de acordo com a estrutura verificada do veículo. Assim, o jogo usa a mesma forma criada para a apresentação visual, o rastreamento de impactos, o dano interno e os diagramas técnicos laterais. Cúpulas estruturais podem fazer parte da geometria de detecção de acertos. Miras, metralhadoras, cestos, antenas e equipamentos avulsos permanecem acessórios visuais, a menos que a jogabilidade lhes atribua explicitamente uma função física."
+ },
+ {
+  "href": "/docs/models#topic-section-6",
+  "title": "Gere ícones e fichas técnicas",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "O fluxo de produção de recursos renderiza a estrutura procedural atual para gerar imagens da garagem e da galeria, silhuetas transparentes, diagramas de blindagem, diagramas separados de módulos e tripulação, tratamentos visuais por nível e vistas complementares de apresentação. Uma única captura determinística de ângulo agora gera os dois tamanhos de retrato com uma política de enquadramento compartilhada, garantindo que nenhum tanque novo fique com uma miniatura recortada manualmente ou desatualizada. Use npm run tank:portraits -- --ids=<changed ids> e npm run tank:portraits:check -- --ids=<changed ids> para trabalhos apenas com retratos. A sequência completa de lançamento continua sendo npm run tank:anatomy:update, npm run tank:anatomy:check e, depois, npm run tank:release:check -- --ids=<changed ids> --gate."
+ },
+ {
+  "href": "/docs/models#topic-section-7",
+  "title": "Meça, inspecione e aprove",
+  "chapter": "Fluxo de produção de modelos procedurais",
+  "text": "Verificações automatizadas conferem assinaturas de geometria, dimensões, pontos de apoio, peças flutuantes, interseções de esteiras, qualidade das rodas, aberturas das bocas dos canhões, materiais, anatomia da blindagem, marcações, procedência e atualização dos recursos determinísticos. Vistas padronizadas de frente, em três quartos, de lado, de trás, de cima, em detalhe e com rotação horizontal revelam então defeitos que uma pontuação numérica pode não detectar. Um modelo só é aprovado quando todas as vistas exigidas atingem o patamar mínimo de aceitação visual, os acessórios têm caminhos físicos de transferência de carga, a ordem dos vértices e as faces posteriores estão corretas e a verificação integrada de lançamento é concluída sem problemas. A Tank Gallery é a interface de inspeção em tempo real dessa estrutura procedural final."
+ },
+ {
+  "href": "/docs/rendering",
+  "title": "A renderização pode se adaptar sem mudar as regras",
+  "chapter": "Renderização e desempenho",
+  "text": "O Three.js cuida apenas da apresentação. Resolução adaptativa, sombras, vegetação, pós-processamento, partículas e preparação prévia podem mudar conforme o dispositivo; o modelo de batalha de 60 Hz permanece inalterado."
+ },
+ {
+  "href": "/docs/rendering#topic-section-1",
+  "title": "Composição do quadro",
+  "chapter": "Renderização e desempenho",
+  "text": "O fluxo de renderização atualiza a câmera, as estruturas dos veículos visíveis, os detalhes do mundo, os efeitos de apresentação, a iluminação, as sombras e o pós-processamento a partir do estado interpolado mais recente. Os laços críticos existentes reutilizam objetos temporários e pools de objetos, em vez de fazer alocações a cada quadro. Os efeitos transparentes das etapas finais compartilham informações de profundidade com a cena principal. A exibição de clarões na boca do canhão, traçantes, faíscas, fumaça, poeira, fogo e destroços depende da distância e da política de qualidade."
+ },
+ {
+  "href": "/docs/rendering#topic-section-2",
+  "title": "Iluminação e pós-processamento",
+  "chapter": "Renderização e desempenho",
+  "text": "A iluminação do bioma define a direção do sol, o céu, a neblina, a exposição e a política de sombras. Sombras estáveis em cascata acompanham a região relevante da câmera. A cadeia de pós-processamento combina oclusão de ambiente, suavização de serrilhado, bloom quando útil, ajuste de cor da saída e a escala dinâmica final de renderização. As visualizações de captura mantêm fixas a qualidade e a escala de renderização para evitar variações nas imagens de comparação. Durante o jogo, camadas de alto custo podem ser reduzidas sob carga prolongada."
+ },
+ {
+  "href": "/docs/rendering#topic-section-3",
+  "title": "Qualidade adaptativa",
+  "chapter": "Renderização e desempenho",
+  "text": "Computadores e dispositivos móveis usam perfis iniciais distintos. A resolução interna, o processamento de sombras, a densidade da vegetação, os limites de efeitos e os recursos de pós-processamento podem ser reduzidos de forma independente. A histerese evita oscilações rápidas. O caminho seguro é selecionado com base nos diagnósticos do dispositivo e na sobrecarga medida, não apenas na identificação do agente de usuário. Uma mudança de qualidade nunca altera o trajeto dos projéteis, a detecção, o dano ou a temporização autoritativa."
+ },
+ {
+  "href": "/docs/rendering#topic-section-4",
+  "title": "Mantenha a inicialização e as rotas isoladas",
+  "chapter": "Renderização e desempenho",
+  "text": "A garagem só monta um campo de batalha quando há uma intenção concreta de entrar em batalha. As páginas públicas não importam o renderizador do jogo, e a inicialização da garagem não importa antecipadamente toda a simulação nem o grafo completo da frota. Os recursos específicos da família de veículos e do mundo só são carregados quando a rota selecionada precisa deles. As verificações de carregamento a frio desativam os caches e registram tanto a atividade de rede quanto o processamento da aplicação, para que uma navegação com recursos já carregados não seja confundida com o desempenho da primeira visita."
+ },
+ {
+  "href": "/docs/rendering#topic-section-5",
+  "title": "Carregue a batalha em etapas antes de exibi-la",
+  "chapter": "Renderização e desempenho",
+  "text": "A entrada na batalha carrega o mundo e a seleção de veículos específicos, transfere as texturas necessárias para a GPU, prepara efeitos, envia os materiais dos veículos, pré-aquece os shaders e o pós-processamento e define a primeira câmera válida antes de exibir a cena. O trabalho necessário termina antes da contagem regressiva, evitando um quadro inicial preto ou congelado. O progresso reflete etapas com responsabilidades bem definidas. O trabalho obsoleto é cancelado quando a intenção muda, e um ciclo de vida que permite novas tentativas gerencia a recuperação, em vez de espalhar temporizadores pela raiz de composição."
+ },
+ {
+  "href": "/docs/rendering#topic-section-6",
+  "title": "Evidências de desempenho",
+  "chapter": "Renderização e desempenho",
+  "text": "Os rastreamentos de desempenho registram categorias de quadros, contadores do renderizador, escala dinâmica e limites de recursos para transições. Os testes no navegador abrangem carregamento a frio, entrada em batalha, troca de mapas, garagem e renderização multijogador. Use npm run perf:dev, npm run perf:cold, npm run perf:transitions e uma compilação de produção ao trabalhar no renderizador."
+ },
+ {
+  "href": "/docs/rendering#topic-section-7",
+  "title": "Faróis, sombras e fumaça",
+  "chapter": "Renderização e desempenho",
+  "text": "Os faróis usam as aberturas reais do modelo e acompanham a orientação do chassi. Seus feixes de tom quente agora iluminam mais longe à frente; apenas as fontes elegíveis mais próximas ocupam as vagas de um conjunto fixo de luzes, enquanto as lentes visíveis das demais lâmpadas ainda podem brilhar. Desligar as luzes ou destruir um tanque remove sua contribuição para a iluminação. Periscópios, espelhos e outras partes da blindagem não devem brilhar só por compartilharem um material. Oclusão de ambiente e sombras projetadas são recursos distintos. Desativar a AO não deve remover as sombras do sol. A estabilidade das sombras, o histórico das nuvens e a composição dos efeitos têm verificações específicas para câmeras em movimento, disparos e mudanças de qualidade. A fumaça é tanto um efeito volumétrico renderizado quanto um bloqueador de visibilidade na simulação; a imagem e a decisão de detecção são controladas por componentes distintos que precisam produzir resultados coerentes entre si."
+ },
+ {
+  "href": "/docs/rendering#topic-section-8",
+  "title": "Recuperação gráfica e sessões desatualizadas",
+  "chapter": "Renderização e desempenho",
+  "text": "O navegador pode liberar um contexto gráfico quando há pouca memória disponível. O jogo pausa a exibição e restaura os recursos sob uma tela de cobertura antes de retomar. A recuperação da qualidade deve ter limites definidos, preservar o estado da batalha e evitar alocações repetidas. Recarregar a página é a alternativa quando a restauração não pode ser concluída; não é a forma normal de trocar mapas ou veículos. Quando uma aba já aberta se comportar de forma diferente de uma nova aba, compare a versão fornecida do aplicativo e as configurações gráficas salvas antes de atribuir o problema a um efeito de renderização. Recursos identificados por hash e verificações da versão publicada protegem contra a mistura de versões. Ao relatar um problema, registre o mapa, o veículo, a qualidade, a área de visualização e os passos para reproduzi-lo; uma captura de tela, por si só, não permite determinar se a causa são recursos desatualizados, configurações ou o estado da GPU."
+ },
+ {
+  "href": "/docs/ai",
+  "title": "Um controlador de bots para todos os campos de batalha",
+  "chapter": "Bots e IA tática",
+  "text": "Bots do modo solo e do multijogador autoritativo usam a mesma lógica de decisão independente do renderizador. Eles navegam por um grafo do campo de batalha gerado a partir de uma semente, respeitam regras de equipe e visibilidade, escolhem disparos viáveis, usam as capacidades dos veículos e podem ser testados sem GPU."
+ },
+ {
+  "href": "/docs/ai#topic-section-1",
+  "title": "Percepção e escolha de alvos",
+  "chapter": "Bots e IA tática",
+  "text": "Os bots consomem os mesmos contratos de equipe, visibilidade, alcance, vida e estado do veículo usados pela simulação autoritativa. Eles não leem objetos renderizados nem coordenadas ocultas exclusivas do cliente. Os alvos candidatos recebem pontuações com base no estado tático atual, em vez de serem selecionados apenas pela proximidade na cena. A dificuldade altera o tempo de reação, a qualidade da mira, a distância de engajamento e a pressão para tomar decisões sem conceder informações que o bot não deveria ter."
+ },
+ {
+  "href": "/docs/ai#topic-section-2",
+  "title": "Planejamento de rotas com semente",
+  "chapter": "Bots e IA tática",
+  "text": "Uma grade tipada de transitabilidade é construída por partida a partir da mobilidade no terreno, das colisões do mundo, das passagens, dos objetivos e das capacidades dos veículos. O planejador fornece caminhos determinísticos que contornam células bloqueadas, enquanto a condução local cuida do alinhamento imediato e do desvio de obstáculos. As decisões de rota podem ser reproduzidas no Node em todos os mapas, inclusive em situações com veículos pesados, danos às esteiras, encostas íngremes e modos com objetivos."
+ },
+ {
+  "href": "/docs/ai#topic-section-3",
+  "title": "Manuseio do canhão e controle de tiro",
+  "chapter": "Bots e IA tática",
+  "text": "O controlador respeita a rotação da torre, a elevação e a depressão, a obstrução do tubo, as recargas, os carregadores, a dispersão, a velocidade do projétil, a penetração e o movimento do alvo. Ele mira em áreas atingíveis da blindagem e em pontos fracos internos quando a arma e o ângulo atuais tornam o disparo viável. Canhões automáticos, canhões de tiro único, carregadores automáticos e armas guiadas compartilham a mesma lógica de decisão, mas seguem sua própria cadência e levam em conta seu próprio estado de munição."
+ },
+ {
+  "href": "/docs/ai#topic-section-4",
+  "title": "Segurança da equipe e pressão",
+  "chapter": "Bots e IA tática",
+  "text": "Trajetórias de disparo que passam por veículos aliados são descartadas, e o controlador evita atirar através de aliados. Os bots distribuem sua atenção, deslocam-se para corredores úteis, apoiam objetivos e mantêm distância suficiente para evitar que um agrupamento aliado se torne um obstáculo. Bots inimigos e aliados usam a mesma lógica. A equipe à qual pertencem muda os alvos e objetivos, não a competência."
+ },
+ {
+  "href": "/docs/ai#topic-section-5",
+  "title": "Sobrevivência e recuperação",
+  "chapter": "Bots e IA tática",
+  "text": "Os bots consideram exposição, cobertura, esteiras danificadas, módulos desativados, oportunidades de reparo, estado da munição e ameaças próximas. Eles podem abandonar um ângulo desfavorável, recuperar a mobilidade, recalcular rotas após destruições e continuar contribuindo em vez de esperar em terreno aberto. Os objetivos dos modos se somam a essas decisões de sobrevivência, de modo que captura, defesa, escolta e pressão de hordas não exijam sistemas de movimentação artificiais separados."
+ },
+ {
+  "href": "/docs/ai#topic-section-6",
+  "title": "Verificação",
+  "chapter": "Bots e IA tática",
+  "text": "Testes específicos de IA abrangem mira, bloqueio de fogo amigo, rotas, dificuldade, decisões determinísticas e integração autoritativa de bots. Testes de servidor que abrangem todo o mapa executam o controlador sem renderização, enquanto batalhas no navegador verificam se os movimentos, disparos e efeitos visíveis correspondem a essas decisões. Ao alterar os bots, execute node src/game/ai.selftest.mjs, node src/sim/ai.aim.selftest.mjs, node src/sim/botRoutePlanner.selftest.mjs e node server/authoritativeBots.selftest.mjs."
+ },
+ {
+  "href": "/docs/ai#topic-section-7",
+  "title": "Clássico, Jev e objetivos coordenados",
+  "chapter": "Bots e IA tática",
+  "text": "Clássico e Jev compartilham a lógica local de condução, mira, visibilidade e sistemas dos veículos nas equipes aliada e inimiga. Jev acrescenta ordens de equipe com limites definidos; ele não ignora a detecção nem substitui o controlador físico de condução. Escolha a inteligência e a dificuldade antes da próxima partida. Uma equipe aliada não deve manter um conjunto antigo de comportamentos só por lutar ao lado do jogador. Nos modos de bandeira, as equipes distribuem funções de recuperação, escolta e incursão. Bola turbo mantém um atacante na função por tempo suficiente para contornar a bola e se posicionar para empurrá-la, com cobertura e apoio defensivo. Nos modos de zona, as equipes distribuem a pressão de captura. Unidades móveis podem flanquear enquanto unidades de sustentação mantêm a pressão; a navegação inclui prioridade de passagem para o jogador humano, ultrapassagens sem hesitação e marcha à ré segura quando os veículos bloqueiam uns aos outros."
+ },
+ {
+  "href": "/docs/ai#topic-section-8",
+  "title": "Fumaça, armas remotas e saltos seguros",
+  "chapter": "Bots e IA tática",
+  "text": "Os bots podem usar os lançadores de fumaça instalados ao recuar, sob pressão ou durante a recarga, e operar armas automáticas remotas contra adversários visíveis que atendam aos critérios de disparo. Eles só solicitam um salto quando o modo permite e o custo previsto da aterrissagem é aceitável. A aproximação de penhascos e pontes exige uma rota válida; uma linha direta até o objetivo não basta. Os testes de comportamento abrangem todos os 33 mapas, cenários de bandeira e bola, congestionamentos, decisões sobre risco de queda e uma carga elevada de processamento com equipes Jev. As garantias desses testes se limitam aos cenários testados: eles detectam regressões nas decisões e no respeito aos limites de processamento, mas não provam que um bot resolverá toda situação possível de terreno ou tráfego."
+ },
+ {
+  "href": "/docs/filming",
+  "title": "Cinquenta tomadas, filmadas dentro do jogo",
+  "chapter": "Como o material foi filmado",
+  "text": "As cinquenta tomadas, os retratos e os quatro filmes do site foram produzidos no Scene Studio com os mapas, tanques e efeitos do próprio jogo. Cada tomada é código: montada por um algoritmo de busca, avaliada em uma pré-visualização esquemática, revisada no motor, corrigida na origem e renderizada como uma versão final em 4K com superamostragem e som próprio."
+ },
+ {
+  "href": "/docs/filming#topic-section-1",
+  "title": "Planos escritos em código",
+  "chapter": "Como o material foi filmado",
+  "text": "Cada tomada do site é um documento de cena, não uma gravação: o mapa, a hora do dia e o clima, o elenco e suas pinturas, a rota e a velocidade de cada tanque, a direção de cada canhão, a trajetória da câmera e o instante da captura estática. tools/media-r5/site50.mjs gera todas as cinquenta a partir de uma única tabela, de modo que uma mudança no plano se aplica a todas as tomadas que o compartilham. A biblioteca de planos mantém a cena de cada tomada exatamente como o Studio a salva, permitindo abrir uma tomada no Studio por um link: é assim que o visualizador abaixo abre todas as tomadas em destaque. Cada rodada é dirigida com orientações: a câmera em uma trajetória tridimensional que se aproxima e se afasta, tanques velozes em todas as direções, vistas frontais e em três quartos em vez de traseiras, e uma lista de tanques, cada um protagonizando sua própria tomada. Cada rodada é renderizada em pastas próprias, para que as versões anteriores permaneçam junto do código que as criou."
+ },
+ {
+  "href": "/docs/filming#topic-section-2",
+  "title": "Uma tomada, todas as etapas",
+  "chapter": "Como o material foi filmado",
+  "text": "A quarta rodada é o primeiro ciclo, antes da orientação sobre movimento. A revisão no motor 1 é o primeiro plano de movimento renderizado em baixa resolução no motor, com tudo o que essa revisão revelou. A pré-visualização é o plano da sexta rodada visto por uma câmera esquemática, e a revisão no motor 2 é esse plano no motor após as correções. A revisão no motor 3 é a sétima rodada: o plano reencenado nos mapas 2.0, com as cenas usadas para renderizar as versões finais em 4K."
+ },
+ {
+  "href": "/docs/filming#topic-section-3",
+  "title": "O processo",
+  "chapter": "Como o material foi filmado",
+  "text": "Dez etapas levam um plano da orientação inicial à publicação no site. As verificações são executadas antes de consumir qualquer tempo de GPU, e toda correção é feita no motor, nas ferramentas ou no plano, nunca em um quadro isolado."
+ },
+ {
+  "href": "/docs/filming#topic-section-4",
+  "title": "Busca de movimento e pré-visualização",
+  "chapter": "Como o material foi filmado",
+  "text": "O algoritmo de busca de movimento montou todas as 50 tomadas do site e todas as 166 tomadas da frota. Para cada tomada, ele testa rotas em estradas e terreno aberto, escoltas em coluna e em leque, canhões mantidos nos respectivos alvos e movimentos de câmera por tipo (um rasante, uma revelação do líder, uma órbita ascendente, um percurso por cabo, um zigue-zague, uma ultrapassagem). Cada opção recebe uma pontuação pela variação entre perto e longe, subida, ângulos frontais, velocidade e deslocamentos pelos flancos. As opções vencedoras são gravadas em um arquivo de plano sob controle de versão. A pré-visualização mostra cada plano pela perspectiva de uma câmera esquemática ao lado do mapa, com a distância e a altura da câmera ao longo da tomada. A coreografia é avaliada aqui, em segundos por tomada, antes que um único quadro seja renderizado."
+ },
+ {
+  "href": "/docs/filming#topic-section-5",
+  "title": "O campo de batalha tal como o motor o representa",
+  "chapter": "Como o material foi filmado",
+  "text": "Um levantamento de cada mapa no jogo em execução exporta todos os registros de colisão (área ocupada, altura, limite de esmagamento e copa), junto com uma grade de 4 m com as alturas do terreno e a água. Um modelo offline reconstrói o campo de batalha a partir desses dados e responde às consultas com o código de colisão do próprio motor. As rotas são verificadas nesse modelo em intervalos de 50 ms: um casco pode esmagar o que um casco em batalha esmagaria; qualquer outra colisão invalida a rota, assim como um ponto de partida dentro de um prédio ou uma encosta íngreme demais para subir. A verificação da câmera coleta amostras a cada 100 ms e traça cinco linhas de visão até o tanque protagonista (centro, frente, traseira e ambos os flancos), testando cada registro e copa; coberturas baixas nunca bloqueiam a visão, e um objeto de cenário só conta quando ocupa uma área grande na tela em relação ao tanque."
+ },
+ {
+  "href": "/docs/filming#topic-section-6",
+  "title": "O que o Studio ganhou",
+  "chapter": "Como o material foi filmado",
+  "text": "Um trilho de câmera com spline mantém a suavidade dos movimentos rápidos ao passar por cada quadro-chave. Cada tanque percorre sua própria rota em velocidade, com o canhão estabilizado em um alvo, e um referencial de deslocamento permite que a câmera acompanhe um tanque em zigue-zague sem girar com ele. A vista em planta mostra a tomada de cima (todas as rotas, a trajetória e o campo de visão da câmera, a distância e a altura da lente) e acompanha a navegação pela linha do tempo. Os tanques na linha do tempo agora esmagam o que atropelam, seguindo a mesma regra da batalha: um chassi derruba uma cerca, um muro ou uma árvore quando passa por cima a uma velocidade superior ao limite de resistência do objeto. As destruições são planejadas a partir das rotas antes da reprodução, acionadas em tempo real durante a execução da linha do tempo e reapresentadas em seu estado final após um salto, para que qualquer quadro mostre os mesmos destroços. À noite, a câmera do Studio mantém uma exposição ao luar, 1.25 pontos abaixo da do mapa, em vez de clarear a escuridão até parecer dia."
+ },
+ {
+  "href": "/docs/filming#topic-section-7",
+  "title": "A revisão no motor do jogo",
+  "chapter": "Como o material foi filmado",
+  "text": "Todas as cinquenta tomadas foram renderizadas em baixa resolução no motor do jogo antes de qualquer versão final. A primeira revisão detectou três problemas que a pré-visualização esquemática não podia mostrar: tanques atravessando objetos de cenário intactos em cerca de metade das tomadas, objetos de cenário na frente da lente em seis e oito tomadas noturnas iluminadas como se fosse dia sob um céu estrelado. Cada correção foi aplicada na origem: as destruições do Studio, o modelo do campo de batalha e sua verificação de obstrução da lente, e a câmera noturna. A segunda revisão renderiza novamente cada tomada a 960 pixels, com uma sonda de luz em cada uma. Quando os mapas 2.0 mudaram os campos de batalha, a busca de movimento refez a encenação das tomadas comprometidas pelos novos leiautes, e uma terceira revisão renderizou todas as cinquenta nesses mapas antes do início das renderizações finais."
+ },
+ {
+  "href": "/docs/filming#topic-section-8",
+  "title": "Versões finais e imagens estáticas em 4K",
+  "chapter": "Como o material foi filmado",
+  "text": "As versões finais são renderizadas em 3840 × 2160 e 30 quadros por segundo, com grande profundidade de campo: nitidez da lente ao horizonte, sem desfoque à frente dos tanques. Cada quadro é a média de 8 a 48 renderizações completas com deslocamentos subpixel ao longo do intervalo de exposição de um obturador de 60°; movimentos rápidos acrescentam renderizações até que a distância entre as consecutivas seja de no máximo 1.5 pixels. A média com deslocamentos substitui a suavização temporal de serrilhado do jogo; o brilho difuso e a gradação de cor são aplicados uma única vez sobre a média, e uma etapa de ajuste de nitidez finaliza o quadro. Cada tomada também gera duas imagens estáticas em 4K com exposição de 2 ms: seu momento principal e um retrato em close em que o tanque ocupa a maior área da tela. Para ambas, a escolha exige o tanque inteiro no enquadramento, centralizado, sem nada à frente e sem uma nuvem de poeira no instante anterior. Cerca de cem imagens viram pôsteres, artes principais e imagens para redes sociais; as matrizes ProRes dos filmes são preservadas, e os formatos do site são codificados a partir delas."
+ },
+ {
+  "href": "/docs/filming#topic-section-9",
+  "title": "Som",
+  "chapter": "Como o material foi filmado",
+  "text": "Nada no som dos filmes é sintetizado. Os efeitos de batalha são as próprias gravações do jogo, posicionadas a partir da lista de edição de cada montagem com os resolvedores do motor do jogo (a classe do canhão, a família do motor do veículo, o conjunto de esteiras, a cauda de eco do mapa e sua ambiência). A tripulação do tanque protagonista anuncia seus disparos pelo rádio, em seu próprio idioma, passando pela cadeia de intercomunicação do motor do jogo. A trilha musical é gerada com Eleven Music a partir de um plano de composição escrito com base na ficha de marcações musicais da montagem. Seus impactos (braams nos acordes da ficha, um impacto subgrave, efeitos ascendentes, um crescendo invertido e taiko) são efeitos sonoros gerados, com várias tomadas de cada um; a tomada com a melhor avaliação é mantida e posicionada no tempo forte. Cada filme é masterizado a −14 LUFS."
+ },
+ {
+  "href": "/docs/filming#topic-section-10",
+  "title": "Os filmes e o painel",
+  "chapter": "Como o material foi filmado",
+  "text": "Quatro filmes são montados a partir das tomadas como composições HyperFrames: um trailer, uma versão de 30 segundos, uma versão vertical de 15 segundos e a apresentação dos veículos. Suas listas de edição são geradas a partir das tomadas, e as composições HTML são renderizadas em vídeo com precisão de quadro. O responsável revisa cada rodada em um único painel: os quadros, a pré-visualização, as revisões no motor do jogo e as versões finais de cada tomada ficam lado a lado, com os registros de cada alteração. As observações são incorporadas ao plano, ao motor do jogo ou às ferramentas, e a rodada seguinte é renderizada ao lado da anterior."
+ },
+ {
+  "href": "/docs/filming#topic-section-11",
+  "title": "As imagens",
+  "chapter": "Como o material foi filmado",
+  "text": ""
+ }
+]

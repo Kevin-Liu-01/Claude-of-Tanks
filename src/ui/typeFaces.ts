@@ -7,7 +7,9 @@
  *   body     IBM Plex Sans 400/500/600 IBM; the split Latin1 WOFF2 of the IBM/plex release @ibm/plex-sans@1.1.0
  *   mono     IBM Plex Mono 400/500     IBM; the split Latin1 WOFF2 of the IBM/plex release @ibm/plex-mono@2.5.0
  * Plex carries the Reserved Font Name "Plex", so its files ship exactly as IBM built them (never re-subset here).
- * Chinese text uses the system CJK faces after the Latin face.
+ * Chinese text uses the system CJK faces after the Latin face; a Japanese document carries jaTypeStyle(), which names the
+ * Japanese system faces there instead, so shared Han characters take their Japanese forms. Cyrillic falls to the metric
+ * fallbacks' system faces.
  * The accented letters the Plex Latin1 subsets lack (ā ē ī ō ū, ć ń ś ź, ł ż and their capitals: Type 90 Kyū-maru,
  * Raijū, Type 96-80 Fēng, T-72 Ryś, PT-84 Orzeł, PT-84 Żbik) come from 'Cot Accents', a 2 KB-per-weight OFL Modified
  * Version under its own name, built from Plex's own base glyphs and accents by tools/type/cot-accents.py. Chakra Petch
@@ -212,6 +214,7 @@ export const TYPE_FALLBACKS: Readonly<Record<TypeFamilyKey, readonly FallbackFac
 });
 
 const CJK_STACK = "'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC'";
+const JA_STACK = "'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo','Noto Sans CJK JP'";
 
 /** Font stacks. FONT_STACK / FONT_COND in src/ui/fonts.ts repeat `ui` literally (canvas text cannot read var()). */
 export const TYPE_STACK: Readonly<Record<TypeFamilyKey, string>> = Object.freeze({
@@ -320,6 +323,16 @@ export function typeTokenCss(options: TypeHeadOptions = {}): string {
       ':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}');
   }
   return rules.join('\n');
+}
+
+/** The block a Japanese document's head carries after its type head (localizedHtml.ts adds it to `ja` documents only, so
+ *  no other document pays for it): the stacks name the Japanese system faces where the others name the Chinese ones, so
+ *  shared Han characters take their Japanese forms, and the CJK resets the zh-CN rules above make (no tracking, open
+ *  reading lines, solid hollow type). */
+export function jaTypeStyle(): string {
+  const stacks = (['ui', 'body', 'display'] as const).map((family) => `--font-${family}:${TYPE_STACK[family].replace(CJK_STACK, JA_STACK)}`);
+  return `<style id="cot-ja-type">:root:lang(ja){${stacks.join(';')}}:lang(ja){letter-spacing:0!important}`
+    + ':lang(ja) :where(p,li,dd){line-height:1.7}:lang(ja) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}</style>';
 }
 
 /** A face token of a type marker: `<voice>-<weight>`, e.g. `display-700`. */

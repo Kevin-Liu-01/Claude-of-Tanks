@@ -11,10 +11,11 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 
 const data = (source) => `data:text/javascript,${encodeURIComponent(source)}`;
+// (the manual's index in the reader's locale comes from docsSearch.ts loadManualEntries; notFoundIndexes.ts holds the fleet)
 const SEARCH = data(`export const entriesOf = (records) => records;
+  export const loadManualEntries = async () => [{ title: 'Leopard drills', href: '/docs/combat' }];
   export const searchManual = (manual, query, n) => manual.filter((entry) => entry.title.toLowerCase().includes(query.toLowerCase())).slice(0, n);`);
-const INDEXES = data(`export const fleet = [{ name: 'Leopard 2A4', href: '/gallery/leopard2a4', entry: { searchText: 'leopard 2a4 germany' } }];
-  export const manualEn = [{ title: 'Leopard drills', href: '/docs/combat' }]; export const manualZh = [];`);
+const INDEXES = data(`export const fleet = [{ name: 'Leopard 2A4', href: '/gallery/leopard2a4', entry: { searchText: 'leopard 2a4 germany' } }];`);
 let failSearch = 0;
 const asked = [];
 const hook = registerHooks({

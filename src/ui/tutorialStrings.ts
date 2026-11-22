@@ -12,4 +12,9 @@ import { residentSlice } from './i18nSlices.ts';
 export const ensureTutorialStrings = residentSlice({
   'en-US': () => import('virtual:cot-i18n-tutorial/en-US'),
   'zh-CN': () => import('virtual:cot-i18n-tutorial/zh-CN'),
+  es: () => import('virtual:cot-i18n-tutorial/es'),
+  ja: () => import('virtual:cot-i18n-tutorial/ja'),
+  de: () => import('virtual:cot-i18n-tutorial/de'),
+  'pt-BR': () => import('virtual:cot-i18n-tutorial/pt-BR'),
+  ru: () => import('virtual:cot-i18n-tutorial/ru'),
 });

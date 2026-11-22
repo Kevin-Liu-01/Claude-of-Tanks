@@ -1506,6 +1506,9 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
+/* (locales-275) a name longer than its cell wraps inside it, hyphenated in the document's language, never under the key */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-action>span{min-width:0;white-space:normal;line-height:1.15;
+  hyphens:auto;overflow-wrap:anywhere;}
 .cot-garage .cot-action{display:flex;align-items:center;gap:var(--s3);min-height:var(--s5);
   font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);color:var(--ink-2);}
 .cot-garage .cot-action>svg{flex:none;width:20px;height:18px;color:var(--ink-3);}

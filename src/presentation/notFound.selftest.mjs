@@ -24,11 +24,21 @@ assert.match(html, /<form class="not-found__search" role="search" data-nf-search
 assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), import\('\.\/notFoundIndexes\.ts'\)/, 'the search indexes load with the field, never at first paint');
 // (2026-10-25) one lazily imported module holds the indexes, static attributed imports inside it, so dev and the build both load them
 const indexes = readFileSync(join(ROOT, 'src/presentation/notFoundIndexes.ts'), 'utf8');
-for (const file of ['./fleetWall.json', '../docs/searchIndex.en-US.json', '../docs/searchIndex.zh-CN.json']) {
+for (const file of ['./fleetWall.json']) {
   assert.ok(indexes.includes(`from '${file}' with { type: 'json' }`), `${file} is imported statically in the index module`);
 }
+// the manual's index in the reader's locale loads through docsSearch.ts (one literal import() per locale, as the docs' own search)
+{
+  const docsSearch = readFileSync(join(ROOT, 'src/docs/docsSearch.ts'), 'utf8');
+  const { SUPPORTED_LOCALES } = await import('../ui/localePrefix.ts');
+  for (const locale of SUPPORTED_LOCALES) {
+    assert.ok(docsSearch.includes(`import('./searchIndex.${locale}.json', { with: { type: 'json' } })`), `the ${locale} manual index loads on demand`);
+  }
+  assert.match(readFileSync(join(ROOT, 'src/presentation/notFound.ts'), 'utf8'), /docs\.loadManualEntries\(getLocale\(\)\)/,
+    'the 404 search reads the manual in the reader\'s locale');
+}
 assert.doesNotMatch(runtime, /import\('[^']+\.json'/, 'no attributed dynamic JSON import in the page module (the dev server refuses it)');
-assert.match(runtime, /getLocale\(\) === 'zh-CN' \? indexes\.manualZh : indexes\.manualEn/, 'the manual\'s prebuilt index in the reader\'s locale');
+
 assert.doesNotMatch(runtime, /^import (?!type )[^;]*(?:docsSearch|fleetWall|searchIndex)/m, 'no index in the page\'s first bytes');
 assert.match(html, /<nav class="not-found__go" aria-label="[^"]+" data-i18n-aria-label="notFound\.goAria">/,
   'the recovery navigation has its own localized name (247 audit: the footer is "Site pages")');

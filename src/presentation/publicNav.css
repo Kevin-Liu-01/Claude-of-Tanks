@@ -55,13 +55,29 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .public-nav__lang a:hover,.public-footer__lang a:hover{color:var(--ink-1)}
-:root:not(:lang(zh)) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
-:root:lang(zh) :is(.public-nav__lang,.public-footer__lang) a[hreflang='zh-CN']{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent)}
+:root:lang(en) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
+:root:lang(zh) :is(.public-nav__lang,.public-footer__lang) a[hreflang='zh-CN'],
+:root:lang(es) :is(.public-nav__lang,.public-footer__lang) a[hreflang='es'],
+:root:lang(ja) :is(.public-nav__lang,.public-footer__lang) a[hreflang='ja'],
+:root:lang(de) :is(.public-nav__lang,.public-footer__lang) a[hreflang='de'],
+:root:lang(pt) :is(.public-nav__lang,.public-footer__lang) a[hreflang='pt-BR'],
+:root:lang(ru) :is(.public-nav__lang,.public-footer__lang) a[hreflang='ru']{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent)}
+.public-footer__lang{flex-wrap:wrap;height:auto;min-height:36px}
+/* the bar's language menu: the document's language on its summary, every locale's link in the panel under it */
+.public-nav__langmenu{position:relative}
+.public-nav__langmenu>summary{display:inline-flex;align-items:center;gap:6px;height:var(--shell-nav-cta-h);padding:0 12px;border:1px solid var(--line-2);border-radius:var(--control-radius);
+  font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-1);list-style:none;cursor:pointer;user-select:none}
+.public-nav__langmenu>summary::-webkit-details-marker{display:none}
+.public-nav__langmenu>summary:hover,.public-nav__langmenu[open]>summary{background:var(--accent-wash)}
+.public-nav__langmenu [data-locale-mark]{display:none}
+:root:lang(en) .public-nav__langmenu [data-locale-mark='en-US'],:root:lang(zh) .public-nav__langmenu [data-locale-mark='zh-CN'],:root:lang(es) .public-nav__langmenu [data-locale-mark='es'],:root:lang(ja) .public-nav__langmenu [data-locale-mark='ja'],:root:lang(de) .public-nav__langmenu [data-locale-mark='de'],:root:lang(pt) .public-nav__langmenu [data-locale-mark='pt-BR'],:root:lang(ru) .public-nav__langmenu [data-locale-mark='ru']{display:inline}
+.public-nav__lang--menu{position:absolute;top:calc(100% + 6px);right:0;z-index:var(--z-menu);flex-direction:column;height:auto;min-width:132px;background:var(--surface-page);box-shadow:var(--shadow-2,0 8px 24px rgb(0 0 0/.35))}
+.public-nav__lang--menu a{justify-content:flex-start;height:40px}
 .public-nav__icon-link{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--control-radius);color:var(--ink-2);transition:color var(--dur-fast) var(--ease-enter)}
 .public-nav__icon-link:hover{color:var(--ink-1)}
 /* the primary: one height with the bar at every width (above); the language switch beside it shares that height */
 .public-nav__cta{--h:var(--shell-nav-cta-h);margin-left:var(--s2)}
-.public-nav__lang{height:var(--shell-nav-cta-h)}
+.public-nav__lang:not(.public-nav__lang--menu){height:var(--shell-nav-cta-h)}
 .public-nav__cta svg{width:16px;height:16px}
 .public-nav__menu-trigger{display:none;place-items:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-1);cursor:pointer}
 .public-nav__menu[hidden]{display:none}
@@ -71,7 +87,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__menu-links a{height:60px;gap:var(--s3);font:600 var(--fs-24)/1 var(--font-ui);color:var(--ink-1);border-bottom:1px solid var(--line-1)}
 .public-nav__menu-links a[aria-current=page]{color:var(--accent)}
 .public-nav__menu-links .cot-i{width:22px;height:22px;color:var(--ink-3)}
-.public-nav__menu-tools{display:flex;align-items:center;gap:var(--s3)}
+.public-nav__menu-tools{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3)}
 .public-nav__menu-play{margin-top:auto}
 
 /* the footer */
@@ -98,7 +114,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   .public-footer__lang{justify-self:start}
 }
 @media (width < 768px){
-  .public-nav__tools>.public-nav__lang,.public-nav__tools>.public-nav__icon-link{display:none}
+  .public-nav__tools>.public-nav__langmenu,.public-nav__tools>.public-nav__icon-link{display:none}
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
 /* a phone's footer: the language switch keeps its own width, the links two to a row (no link left alone on a line), each

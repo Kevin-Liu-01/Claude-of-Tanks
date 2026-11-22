@@ -13,19 +13,19 @@
     { "source": "/:path(.*)", "has": [{ "type": "host", "value": { "eq": "claudeoftanks.kevinliu.studio" } }], "destination": "https://cot.kevinliu.studio/:path", "permanent": true },
     { "source": "/:path(.*)", "has": [{ "type": "host", "value": { "eq": "claude-of-tanks.vercel.app" } }], "destination": "https://cot.kevinliu.studio/:path", "permanent": true },
     { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true },
-    { "source": "/cn/surface-studio", "destination": "/cn/gallery?layer=markup", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/surface-studio", "destination": "/:lang/gallery?layer=markup", "permanent": true },
     { "source": "/docs/vehicles{/}?", "destination": "/docs/tanks", "permanent": true },
-    { "source": "/cn/docs/vehicles{/}?", "destination": "/cn/docs/tanks", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/vehicles{/}?", "destination": "/:lang/docs/tanks", "permanent": true },
     { "source": "/docs/worlds{/}?", "destination": "/docs/battlefields", "permanent": true },
-    { "source": "/cn/docs/worlds{/}?", "destination": "/cn/docs/battlefields", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/worlds{/}?", "destination": "/:lang/docs/battlefields", "permanent": true },
     { "source": "/docs/interface{/}?", "destination": "/docs/controls", "permanent": true },
-    { "source": "/cn/docs/interface{/}?", "destination": "/cn/docs/controls", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/interface{/}?", "destination": "/:lang/docs/controls", "permanent": true },
     { "source": "/docs/performance{/}?", "destination": "/docs/rendering", "permanent": true },
-    { "source": "/cn/docs/performance{/}?", "destination": "/cn/docs/rendering", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/performance{/}?", "destination": "/:lang/docs/rendering", "permanent": true },
     { "source": "/:page(home|docs|gallery|studio|brand)/", "destination": "/:page", "permanent": true },
     { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)/", "destination": "/docs/:topic", "permanent": true },
-    { "source": "/cn/:page(home|docs|gallery|studio|brand)/", "destination": "/cn/:page", "permanent": true },
-    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)/", "destination": "/cn/docs/:topic", "permanent": true }
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/:page(home|docs|gallery|studio|brand)/", "destination": "/:lang/:page", "permanent": true },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)/", "destination": "/:lang/docs/:topic", "permanent": true }
   ],
   "headers": [
     {
@@ -41,15 +41,15 @@
     },
     { "source": "/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
     { "source": "/gallery.html", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
-    { "source": "/cn/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
-    { "source": "/cn/gallery.html", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] }
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/gallery.html", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] }
   ],
   "rewrites": [
     { "source": "/:page(home|docs|gallery|brand|pad)", "destination": "/:page.html" },
     { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
-    { "source": "/cn", "destination": "/cn/index.html" },
-    { "source": "/cn/:page(home|docs|gallery|studio|brand|404)", "destination": "/cn/:page.html" },
-    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/cn/docs-:topic.html" }
+    { "source": "/:lang(cn|es|ja|de|pt|ru)", "destination": "/:lang/index.html" },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/:page(home|docs|gallery|studio|brand|404)", "destination": "/:lang/:page.html" },
+    { "source": "/:lang(cn|es|ja|de|pt|ru)/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls|fleet)", "destination": "/:lang/docs-:topic.html" }
   ]
 }

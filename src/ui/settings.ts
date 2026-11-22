@@ -66,11 +66,11 @@ import { crewLanguageLabel, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import {
   getLocale,
-  getSupportedLocales,
   setLocale,
   t,
 } from './i18n.ts';
 import { currentLocationHrefForLocale } from './localeRouting.ts';
+import { isSupportedLocale, LOCALE_RECORDS } from './localePrefix.ts';
 import type {
   ActionId,
   AiDifficulty,
@@ -1719,16 +1719,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const langCard = groupCard(body, t('settings.language.card'));
     const langRow = el('div', 'cot-set-row', langCard);
     settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
-    mountSeg(langRow, segmented({ label: t('settings.language.label'), className: 'cot-set-lang', value: getLocale(),
-      options: getSupportedLocales().map((locale) => ({ value: locale, label: t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en')) })) }),
-      () => getLocale(), (locale) => {
+    // every locale named in its own language, on the kit's picker menu (seven are more than the segmented control holds)
+    tabMenus.push(createPickerMenu(el('div', 'cot-set-menu', langRow), { id: 'settings-language', label: t('settings.language.label'),
+      items: LOCALE_RECORDS.map(({ locale, name }) => ({ id: locale, name })), value: getLocale(), layout: 'list', text: pickerText(),
+      onChoose: (item) => {
+        if (!isSupportedLocale(item.id) || item.id === getLocale()) return;
         // (improve-271 plan 028) a preset picked in this visit is applied before the reload (the panel never closes)
         commitGraphics();
-        setLocale(locale);
+        setLocale(item.id);
         // Most screens are constructed once and own translated DOM. Reloading
         // is the only atomic way to avoid a mixed-language Garage or battle.
-        window.location.assign(currentLocationHrefForLocale(window.location, locale));
-      });
+        window.location.assign(currentLocationHrefForLocale(window.location, item.id));
+      } }));
     const langNote = el('div', 'cot-set-note', langCard);
     langNote.textContent = t('settings.language.note');
   }

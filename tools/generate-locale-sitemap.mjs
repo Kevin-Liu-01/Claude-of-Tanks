@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE_ORIGIN } from '../src/presentation/siteMetadata.ts';
-import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../src/ui/localeRouting.ts';
+import { localeAlternates, PUBLIC_ROUTE_RECORDS } from '../src/ui/localeRouting.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = join(ROOT, 'public/sitemap.xml');
@@ -14,14 +14,11 @@ const escapeXml = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const records = PUBLIC_ROUTE_RECORDS.filter(({ indexable }) => indexable);
 const rows = [];
 for (const route of records) {
-  const english = `${SITE_ORIGIN}${route.pathname}`;
-  const chinese = `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'zh-CN')}`;
-  const alternates = [
-    `    <xhtml:link rel="alternate" hreflang="en-US" href="${escapeXml(english)}" />`,
-    `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${escapeXml(chinese)}" />`,
-    `    <xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml(english)}" />`,
-  ].join('\n');
-  for (const loc of [english, chinese]) {
+  const graph = localeAlternates(route.pathname).map(([hreflang, path]) => [hreflang, `${SITE_ORIGIN}${path}`]);
+  const alternates = graph
+    .map(([hreflang, href]) => `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${escapeXml(href)}" />`).join('\n');
+  for (const [hreflang, loc] of graph) {
+    if (hreflang === 'x-default') continue;
     rows.push([
       '  <url>',
       `    <loc>${escapeXml(loc)}</loc>`,

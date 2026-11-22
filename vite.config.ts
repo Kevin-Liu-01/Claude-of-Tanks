@@ -28,7 +28,8 @@ import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 import { expandTypeMarkers } from './src/ui/typeFaces.ts';
 import { localizeEntryDocument } from './src/presentation/localizedHtml.ts';
-import { resolveLocalePath } from './src/ui/localeRouting.ts';
+import { hrefForLocale, resolveLocalePath } from './src/ui/localeRouting.ts';
+import { DEFAULT_LOCALE } from './src/ui/localePrefix.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { resolveMatchBuild } from './tools/matchBuild.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
@@ -110,7 +111,7 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
     const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
     if (!params.has('layer')) params.set('layer', 'markup');
     res.statusCode = 308;
-    res.setHeader('Location', `${localePath.locale ? '/cn' : ''}/gallery?${params.toString()}`);
+    res.setHeader('Location', `${hrefForLocale('/gallery', localePath.locale ?? DEFAULT_LOCALE)}?${params.toString()}`);
     res.end();
     return;
   }
@@ -303,9 +304,9 @@ export default defineConfig({
     },
     // FE-P3 + 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document loads its own catalogs. The game keeps the full
     // ones; each public page loads a generated page catalog holding only the keys its code and markup can show. Every
-    // built page preloads its English chunk and names its zh-CN chunk in an inert meta, which localizeHtmlDocument turns
-    // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
-    // English visitors never fetch Chinese and Chinese pages never flash English.
+    // built page preloads its English chunk and names each other locale's chunk in an inert meta, which
+    // localizeHtmlDocument turns into a modulepreload on that locale's documents (build-time /cn/, /es/, ... pages and the
+    // middleware's request-time ones), so English visitors never fetch another catalog and no locale flashes English.
     // 2026-10-05 (tools/viteI18nStudioCatalog.ts): the game's catalogs leave the Scene Studio's strings out; each
     // locale's Studio slice loads with the Studio's chunk. 2026-10-15 (the perf lane): in the build they also leave out
     // every string the game's graph and its workers cannot show (the docs, home, gallery and media pages' strings).

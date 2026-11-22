@@ -3,7 +3,12 @@
   "projectId": "prj_pcdp8m3iftnnkr59wwep6e7k",
   "defaultLocale": "en-US",
   "locales": [
-    "zh-CN"
+    "zh-CN",
+    "es",
+    "ja",
+    "de",
+    "pt-BR",
+    "ru"
   ],
   "requiresReview": true,
   "options": {
