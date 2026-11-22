@@ -8,8 +8,8 @@
 //     boot's top at nine points across, and the low build's 12-sided boot rings put facet corners between them; the boot,
 //     saddle and sight are one rigid mesh, so the overlap is internal); and from the spec's lowest legal pitch to full
 //     elevation every 1 cm sample of the sight keeps 10 mm from every turret mesh.
-//     Negative control: the authored box, turret-fixed, against the built boot lies more than 10 mm inside it at rest
-//     and inside it (over 1 mm) at every half-degree of the same pitch range.
+//     Negative control (china-turrets-275, the square mantlet): the authored box, turret-fixed, floats over the mantlet's
+//     crown at rest by more than 50 mm.
 //  2. The mantlet boot over the hull. Object_6's measured underside (y 1.582-1.704) swung below the hull's roof behind
 //     the trunnion at full elevation; the fleet build clips it (TYPE96B_BOOT_FLOOR) and the spec stops depression over
 //     the rear arc (gunPitchByYawDeg). Measured against the hull's top surface (a 1 cm height map of every hull mesh but
@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
-import { SurfaceGrid, meshTriangles, densePoints, censusPart, insideClosed } from '../cnTurretGeometry.test-support.mjs';
+import { SurfaceGrid, meshTriangles, densePoints, censusPart } from '../cnTurretGeometry.test-support.mjs';
 
 const D = Math.PI / 180;
 // type96bX.ts buildType96Turret: Object_6's stations (source z, half width, underside, top) about the trunnion at
@@ -121,9 +121,10 @@ for (const quality of ['high', 'low']) {
     }
     assert.equal(fixedInBox, 0, `type96b/${quality}: no turret-fixed part stands in the box sight's authored place`);
     const gunParts = census.filter((p) => p.bucket.startsWith('gunMount'));
-    const boot = gunParts.filter((p) => p.bucket === 'gunMount' && Math.abs(p.box.min.z + .40) < .005 && Math.abs(p.box.max.z - .351) < .005);
+    const boot = gunParts.filter((p) => p.bucket === 'gunMount' && Math.abs(p.box.min.z + .40) < .005 && Math.abs(p.box.max.z - .21) < .005);   // china-turrets-275: the square mantlet block (front face .21; its collar is its own part)
     assert.equal(boot.length, 1, `type96b/${quality}: the pitching boot rides the gun`);
-    const sight = gunParts.filter((p) => p !== boot[0] && p.box.max.x < .13 && p.box.min.x > -.13 && p.box.max.y > .3);
+    // (china-turrets-275: the square mantlet's crown is 0.20 over the trunnion, so the saddle's top is too: over 0.15)
+    const sight = gunParts.filter((p) => p !== boot[0] && p.box.max.x < .13 && p.box.min.x > -.13 && p.box.max.y > .15);
     assert.deepEqual([...new Set(sight.map((p) => p.bucket))].sort(), ['gunMount', 'gunMountDark', 'gunMountGlass'],
       `type96b/${quality}: the box sight (box, saddle, bezel, glass) rides the gun`);
     const sightBox = new THREE.Box3(); for (const p of sight) sightBox.union(p.box);
@@ -161,29 +162,23 @@ for (const quality of ['high', 'low']) {
     }
     assert.ok(sightWorst.d >= .010 - 1e-6,
       `type96b/${quality}: the box sight keeps 10 mm from the turret over the pitch range (${(sightWorst.d * 1000).toFixed(1)} mm at ${(sightWorst.pitch / D).toFixed(1)} deg)`);
-    // negative control: the authored box, turret-fixed, inside the pitching boot at every pitch (the box's samples are
-    // carried into the gun's frame at each pitch; the boot stays put there)
-    const bootTris = Float64Array.from(boot[0].tri), bootBox = new THREE.Box3().setFromArray(bootTris);
-    const bootGrid = new SurfaceGrid(bootTris, { cell: .04, rq: .08 }), bootSolid = { tri: bootTris };
-    const authoredGeometry = new THREE.BoxGeometry(BOX_SIGHT.w, BOX_SIGHT.h, BOX_SIGHT.d).toNonIndexed()
-      .translate(BOX_SIGHT.x - turret.position.x, BOX_SIGHT.y - turret.position.y, BOX_SIGHT.z - turret.position.z);
-    const authoredPts = densePoints(Float64Array.from(authoredGeometry.getAttribute('position').array), .01);
-    authoredGeometry.dispose();
-    const toGun = new THREE.Matrix4();
-    const authoredDepth = (pitch) => {
-      const e = toGun.fromArray(pose(0, pitch, turret)).invert().elements;
-      let deepest = 0;
-      for (let i = 0; i < authoredPts.length; i += 3) {
-        const [x, y, z] = apply(e, authoredPts[i], authoredPts[i + 1], authoredPts[i + 2]);
-        if (bootBox.containsPoint(v.set(x, y, z)) && insideClosed(bootSolid, x, y, z)) deepest = Math.max(deepest, bootGrid.distance(x, y, z));
+    // negative control (china-turrets-275): the authored box, turret-fixed, would float over the square mantlet's crown
+    // (its underside at source y 2.16, the crown under its footprint at 2.06): the old Object_6 boot stood through it; the
+    // new block stands clear of it, so a turret-fixed sight needs a support the riding one does not
+    const crownGeometry = new THREE.BufferGeometry();
+    crownGeometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(boot[0].tri), 3));
+    const crownMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), crownMesh = new THREE.Mesh(crownGeometry, crownMaterial);
+    let crown = -Infinity;
+    try {
+      for (const fx of [-.4, 0, .4]) for (const fz of [-.4, 0, .4]) {
+        const hit = new THREE.Raycaster(new THREE.Vector3(BOX_SIGHT.x + fx * BOX_SIGHT.w, 2, BOX_SIGHT.z - TRUNNION.z + fz * BOX_SIGHT.d),
+          new THREE.Vector3(0, -1, 0), 0, 5).intersectObject(crownMesh, false)[0];
+        if (hit) crown = Math.max(crown, hit.point.y);
       }
-      return deepest;
-    };
-    let shallowest = { d: Infinity };
-    for (const pitch of pitches) { const d = authoredDepth(pitch); if (d < shallowest.d) shallowest = { d, pitch }; }
-    const atRest = authoredDepth(0);
-    assert.ok(atRest > .010 && shallowest.d > .001,
-      `type96b/${quality}: negative control: the authored box, turret-fixed, lies inside the pitching boot at every pitch (${(atRest * 1000).toFixed(1)} mm deep at rest, least ${(shallowest.d * 1000).toFixed(1)} mm at ${(shallowest.pitch / D).toFixed(1)} deg)`);
+    } finally { crownGeometry.dispose(); crownMaterial.dispose(); }
+    assert.ok(Number.isFinite(crown), `type96b/${quality}: the mantlet's crown under the box sight`);
+    const floatGap = BOX_SIGHT.y - BOX_SIGHT.h / 2 - TRUNNION.y - crown;
+    assert.ok(floatGap > .05, `type96b/${quality}: negative control: the authored box, turret-fixed, floats ${(floatGap * 1000).toFixed(1)} mm over the mantlet's crown at rest`);
 
     const tSight = secs(t1), t2 = Date.now();
     // ---- 2. the mantlet boot over the hull
@@ -218,7 +213,7 @@ for (const quality of ['high', 'low']) {
     assert.ok(unclipped.d > .080,
       `type96b/${quality}: negative control: Object_6's unclipped underside at full elevation drops under the hull's top (${(unclipped.d * 1000).toFixed(1)} mm at yaw ${unclipped.yaw})`);
     console.log(`type96b/${quality}: box sight seated (${n} samples, saddle ${(bury * 1000).toFixed(1)} mm in), ${(sightWorst.d * 1000).toFixed(1)} mm from the turret`
-      + ` (control: turret-fixed ${(atRest * 1000).toFixed(1)} mm inside the boot at rest, ${(shallowest.d * 1000).toFixed(1)}+ mm at every pitch); mantlet ${(-worst.d * 1000).toFixed(1)} mm over the hull at yaw ${worst.yaw}, ${(worst.pitch / D).toFixed(1)} deg`
+      + ` (control: turret-fixed it floats ${(floatGap * 1000).toFixed(1)} mm over the crown); mantlet ${(-worst.d * 1000).toFixed(1)} mm over the hull at yaw ${worst.yaw}, ${(worst.pitch / D).toFixed(1)} deg`
       + ` (control: unclipped ${(unclipped.d * 1000).toFixed(1)} mm under it at yaw ${unclipped.yaw}) [build ${tBuild} s, sight ${tSight} s, mantlet ${secs(t2)} s]`);
   } finally { tank.dispose(); }
 }

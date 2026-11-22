@@ -18,6 +18,7 @@ import {weldedFlankHousing} from './weldedFlankHousing.ts';
 import {addChineseChevronFacet} from './chineseChevronEra.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
+import {TYPE96_FRONT_MODULE} from './type96bX.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
@@ -51,16 +52,18 @@ class Stock {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Kunlun: the special ERA. Chinese single-piece chevron cassettes (a broad module with a 40 mm blunt horizontal
-// ridge, chineseChevronEra.ts) laid over the Type 96B's front wedge: the upper faces from the shoulder line to the roof
-// edge, either side of the mantlet. The 96B's wedge faces are twisted (each welded panel is two triangles), so every
-// tile is seated on its own measured plane: a permanent carrier fills from the actual shell up to the tile's back plane,
-// a seat pad sits on it and the removable cassette rides the pad, as on the Chinese concepts' flank housings.
+// ridge, chineseChevronEra.ts) laid over the Type 96B's front modules: their outer faces from the floor line to the
+// shoulder line, on the module's side and on its raked front, either side of the mantlet's slot. Each tile is seated on
+// its own measured plane: a permanent carrier fills from the actual shell up to the tile's back plane, a seat pad sits
+// on it and the removable cassette rides the pad, as on the Chinese concepts' flank housings.
 
-// The Type 96B builder's own wedge stations in this turret frame (type96bX.ts buildType96Turret, turretStation rows
-// at source z .64/1.33/1.93 minus the frame's -0.15, heights minus its 1.60): the shoulder line and the roof edge.
-const WEDGE_Z=[.79,1.48,2.08] as const;
-const WEDGE_SHOULDER:readonly (readonly [number,number])[]=[[1.44,.24],[1.00,.23],[.40,.24]];
-const WEDGE_ROOF:readonly (readonly [number,number])[]=[[.93,.65],[.50,.45],[.26,.38]];
+// china-turrets-275: the Type 96B builder's own front-module stations (type96bX.ts TYPE96_FRONT_MODULE: where the
+// module's side turns vertical, the side's front end and the raked face's end) in this turret frame (z +0.15, heights -1.60): the floor
+// line and the shoulder line of each module's outer face.
+const WEDGE_ROWS=[TYPE96_FRONT_MODULE.sideFrom,TYPE96_FRONT_MODULE.rakeFrom,TYPE96_FRONT_MODULE.rakeTo].map(i=>TYPE96_FRONT_MODULE.stations[i]);
+const WEDGE_Z=WEDGE_ROWS.map(r=>r[0]+.15);
+const WEDGE_SHOULDER:readonly (readonly [number,number])[]=WEDGE_ROWS.map(r=>[r[1],r[4]-1.60] as const);
+const WEDGE_ROOF:readonly (readonly [number,number])[]=WEDGE_ROWS.map(r=>[r[2],r[5]-1.60] as const);
 
 function wedgePoint(side:number,z:number,t:number):THREE.Vector3 {
   const i=z<=WEDGE_Z[1]?0:1,f=(z-WEDGE_Z[i])/(WEDGE_Z[i+1]-WEDGE_Z[i]);
@@ -122,7 +125,7 @@ function wedgeTile(P:TankBuilderPort,shell:Stock,side:number,tile:WedgeTile,reco
   const {z0,z1,t0,t1}=tile;
   const corners=[wedgePoint(side,z0,t0),wedgePoint(side,z1,t0),wedgePoint(side,z1,t1),wedgePoint(side,z0,t1)];
   const approx=corners[1].clone().sub(corners[0]).cross(corners[3].clone().sub(corners[0])).normalize();
-  if(approx.y<0)approx.negate();
+  if(approx.x*side<0)approx.negate();   // outward: the module faces stand near vertical
   const probe=(p:THREE.Vector3)=>{
     const hit=shell.hit(p.clone().addScaledVector(approx,.45),approx.clone().negate(),.9);
     if(!hit)throw new Error(`${P.spec.id}: no Type 96B wedge face under the ERA tile at ${p.toArray()}`);
@@ -152,14 +155,13 @@ function wedgeTile(P:TankBuilderPort,shell:Stock,side:number,tile:WedgeTile,reco
   P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraHitFaces(g,normal.toArray(),.35)));
 }
 
-// Six tiles a side (the old Kunlun's twelve): two courses of two on the broad rear facet and two courses on the front
-// facet's outer half. The narrow nose half of the cheek beside the mantlet carries the Shtora head instead. Each tile
-// stops short of the shoulder edge and the roof edge so both 96B lines stay readable.
+// Six tiles a side (the old Kunlun's twelve): two courses of three on the module's raked front face, the face the gun's
+// arc of fire meets (the module's flat side ahead of the smoke tubes stays bare). The raked face's inner end and the
+// inner front face beside the slot carry the Shtora head instead. Each tile stops short of the floor and shoulder edges
+// so both 96B lines stay readable.
 const KUNLUN_TILES:readonly WedgeTile[]=[
-  // The lower course starts behind the muzzles of the 96B's lowest smoke tubes (z .86 at the shoulder).
-  {z0:.93,z1:1.18,t0:.07,t1:.47},{z0:1.22,z1:1.45,t0:.07,t1:.47},
-  {z0:.84,z1:1.13,t0:.53,t1:.90},{z0:1.17,z1:1.45,t0:.53,t1:.90},
-  {z0:1.51,z1:1.70,t0:.08,t1:.46},{z0:1.51,z1:1.70,t0:.52,t1:.88},
+  {z0:1.41,z1:1.51,t0:.08,t1:.47},{z0:1.53,z1:1.63,t0:.08,t1:.47},{z0:1.65,z1:1.75,t0:.08,t1:.47},
+  {z0:1.41,z1:1.51,t0:.53,t1:.92},{z0:1.53,z1:1.63,t0:.53,t1:.92},{z0:1.65,z1:1.75,t0:.53,t1:.92},
 ];
 
 function kunlunEra(P:TankBuilderPort):void {
@@ -218,7 +220,8 @@ function shtoraHead(P:TankBuilderPort,shell:Stock,proud:Stock,side:number,lamp?:
   // receding cheek under its four corners, 8 mm inside it (a square-cut end buried 30 mm at its centre line reached 45-49
   // mm into the sloping cheek at its corners).
   const back=line(x)+lift;
-  for(const dy of [0,-.095]){
+  // (china-turrets-275: the lower arm 35 mm higher, over the Type 96B front module's floor edge)
+  for(const dy of [0,-.06]){
     const ay=y+dy,cheek=(cx:number,cy:number)=>{
       const hit=shell.hit(new THREE.Vector3(cx,cy,3.5),new THREE.Vector3(0,0,-1),3);
       if(!hit)throw new Error(`${P.spec.id}: no cheek receiver for the Shtora bracket at ${cx},${cy}`);
@@ -302,7 +305,7 @@ const LAMP_GUARD_INSET_M=.010;
  * Shtora heads (shtoraHead, the lens 6 mm ahead of the head's guard), the Yun's slit lamps stand on the flat front shelves
  * of its wrap housings (the foot wholly on the shelf, inboard of its outer chamfer). Both stand below every sight's field.
  * [|x|, z], turret frame. */
-const YUN_LAMP_SEAT=[.68,1.60] as const;
+const YUN_LAMP_SEAT=[.60,1.58] as const;   // china-turrets-275: on the Type 96B front modules' tops (their shelves now stand under the modules)
 
 /** The Kunlun's add-ons carry the model tag of its 226 Chinese package and their roles (the sight-field census and the
  * moving-part clearances read them; the rear cage's beams carry their own). */
