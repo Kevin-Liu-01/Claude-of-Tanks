@@ -22,7 +22,7 @@
 // A failing cell counts only in an 8-connected patch of at least MIN_CELLS cells (a stray sliver is not a face). The fleet
 // gate (fleetPassDefault, 274) fails (a) and (b) past a hull's named exemption (ringZoneGuard.ts RING_ZONE_EXEMPT); each
 // row names the seat's recorded shortfall (turretSeatRace.ts: a foot the seat could not bring onto its plane) and the
-// ring-zone guard's parts. Reads only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
+// ring-zone guard's parts (the whole fleet's table, read-only: node tools/turret-deck-audit.mjs). Reads only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { RING_ZONE_EXEMPT } from './ringZoneGuard.ts';
