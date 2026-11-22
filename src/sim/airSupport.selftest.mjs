@@ -11,7 +11,7 @@ import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { AIR_STRIKE_KINDS, AIR_SUPPORT_RULES, airStrikeFlies, matchRulesetFor } from './matchRuleset.ts';
 import { GAME_MODE_IDS } from './gameModeCatalog.ts';
 import { strikeCovers } from './airSupport.ts';
-import { bombReleaseOffsetS, runMuzzle, runPose } from './strikeRuns.ts';
+import { bombReleaseOffsetS, missileLaunchOffsetS, runMuzzle, runPose } from './strikeRuns.ts';
 import { encodeAimIntent } from './aimIntent.ts';
 import { killSourceOf } from './aerialCombat.ts';
 
@@ -105,7 +105,7 @@ function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, s
   call('recon', e1());
   tick(Math.ceil(R.recon.warningS * 60) + 6);
   assert.equal(air.revealed('e1', 'alpha'), true, 'the recon pass reveals the enemy near its track');
-  for (const kind of ['artillery', 'strafe', 'bomb', 'gunship']) {
+  for (const kind of ['artillery', 'strafe', 'bomb', 'missile', 'gunship']) {
     // the side's air: wait until a slot is free
     for (let guard = 0; guard < 3600 && air.strikes.filter((s) => s.team === 'alpha' && s.downedS == null && s.endS > sim.timeS).length >= R.teamAirCap; guard++) tick(1);
     // the AC-130 engages only what its side has spotted: the caller drives up to 110 m of the enemy (in sight) first
@@ -164,7 +164,7 @@ function run({ bots = [], shootDown = false, migrateAt = null, warmTicks = 30, s
 const first = run();
 assert.ok(shellViews.callerHidden > 0, `strike rounds compared for a viewer that does not see the caller (${JSON.stringify(shellViews)})`);
 const called = first.log.filter((e) => e.type === 'mode_strike_called');
-assert.deepEqual(called.map((e) => e.kind), ['recon', 'artillery', 'strafe', 'bomb', 'gunship'], 'every call-in was accepted, in order');
+assert.deepEqual(called.map((e) => e.kind), ['recon', 'artillery', 'strafe', 'bomb', 'missile', 'gunship'], 'every call-in was accepted, in order');
 // the warning: every round of every strike leaves no earlier than its call and arrives no earlier than its warning's end
 const strikeOf = new Map(called.map((e) => [e.strikeId, e]));
 const rounds = first.log.filter((e) => e.type === 'mode_strike_round');
@@ -172,17 +172,17 @@ const roundStrike = new Map(rounds.map((e) => [e.shellId, strikeOf.get(e.strikeI
 assert.ok(rounds.length > 40, `rounds fired (${rounds.length})`);
 // improve-271 plan 007: each round of each strike fires exactly once (a float window fired some on two ticks: the
 // AC-130's 30 mm 119 for a rule of 60), whenever in the match the strike is called
-const RULE_ROUNDS = { artillery: R.artillery.rounds, strafe: R.strafe.rounds, bomb: 1,
+const RULE_ROUNDS = { artillery: R.artillery.rounds, strafe: R.strafe.rounds, bomb: 1, missile: R.missile.missiles,
   gunship: Math.floor(R.gunship.orbitS / R.gunship.cannonEveryS) + Math.floor(R.gunship.orbitS / R.gunship.howitzerEveryS) };
 const roundsByKind = (result) => {
   const kindOf = new Map(result.log.filter((e) => e.type === 'mode_strike_called').map((e) => [e.strikeId, e.kind]));
-  const count = { artillery: 0, strafe: 0, bomb: 0, gunship: 0 };
+  const count = { artillery: 0, strafe: 0, bomb: 0, missile: 0, gunship: 0 };
   for (const e of result.log) if (e.type === 'mode_strike_round') count[kindOf.get(e.strikeId)]++;
   return count;
 };
 for (const [label, result] of [['30 ticks', first], ['120 ticks', run({ warmTicks: 120 })], ['1800 ticks', run({ warmTicks: 1800 })]]) {
   const count = roundsByKind(result);
-  for (const kind of ['artillery', 'strafe', 'bomb']) assert.equal(count[kind], RULE_ROUNDS[kind], `${label}: ${kind} fires ${RULE_ROUNDS[kind]} rounds (${count[kind]})`);
+  for (const kind of ['artillery', 'strafe', 'bomb', 'missile']) assert.equal(count[kind], RULE_ROUNDS[kind], `${label}: ${kind} fires ${RULE_ROUNDS[kind]} rounds (${count[kind]})`);
   // the gunship engages only a spotted enemy in reach: a round with nothing to fire at is spent, never fired twice
   assert.ok(count.gunship > 0 && count.gunship <= RULE_ROUNDS.gunship, `${label}: gunship at most ${RULE_ROUNDS.gunship} rounds (${count.gunship})`);
 }
@@ -195,12 +195,12 @@ for (const e of arrivals) {
   assert.ok(e.timeS >= strike.landsS - 1e-9, `${strike.kind} round arrived ${e.timeS.toFixed(3)} before its warning ended ${strike.landsS.toFixed(3)}`);
   assert.ok(strike.landsS - strike.timeS >= R[strike.kind].warningS - 1e-9, 'the warning ran its full length');
 }
-for (const kind of ['artillery', 'strafe', 'bomb', 'gunship']) {
+for (const kind of ['artillery', 'strafe', 'bomb', 'missile', 'gunship']) {
   assert.ok(arrivals.some((e) => roundStrike.get(e.shellId).kind === kind), `${kind}: its rounds reach the ground`);
 }
 const kills = first.log.filter((e) => e.type === 'tank_destroyed' && e.killerId === 'caller');
 assert.ok(first.log.some((e) => e.type === 'shell_hit' && e.attackerId === 'caller'), 'the strikes hit the enemy, credited to the caller');
-for (const kill of kills) assert.ok(['artillery', 'strafe', 'bomb', 'ac130'].includes(kill.source), `a strike's kill names its call-in (${kill.source})`);
+for (const kill of kills) assert.ok(['artillery', 'strafe', 'bomb', 'missile', 'ac130'].includes(kill.source), `a strike's kill names its call-in (${kill.source})`);
 // points: each call paid its cost (the call's own tick may add one trickle point)
 for (const [kind, drop] of first.paid) assert.ok(drop >= R[kind].cost - 1 && drop <= R[kind].cost, `${kind} cost ${R[kind].cost}, paid ${drop}`);
 // the cooldown and the air cap refuse a second call at once
@@ -222,8 +222,10 @@ let worstMuzzleM = 0;
     if (call.kind === 'artillery') continue;
     const k = fired.get(e.strikeId) ?? 0; fired.set(e.strikeId, k + 1);
     const record = { id: e.strikeId, kind: call.kind, x: call.x, y: call.y, z: call.z, heading: call.heading, calledS: call.timeS, landsS: call.landsS };
-    const t = call.kind === 'strafe' ? call.landsS + k * every : call.kind === 'bomb' ? call.landsS + bombReleaseOffsetS(R) : e.timeS;
-    runMuzzle(runPose(R, record, t, p), call.kind, at);
+    const t = call.kind === 'strafe' ? call.landsS + k * every : call.kind === 'bomb' ? call.landsS + bombReleaseOffsetS(R)
+      : call.kind === 'missile' ? call.landsS + missileLaunchOffsetS(R, k) : e.timeS;
+    // (a Maverick off its own rail: port when k is even, starboard when odd)
+    runMuzzle(runPose(R, record, t, p), call.kind, at, k);
     worstMuzzleM = Math.max(worstMuzzleM, Math.hypot(e.x - at.x, e.y - at.y, e.z - at.z));
   }
   assert.ok(worstMuzzleM < 0.01, `every strike round leaves its aircraft's run (${worstMuzzleM.toFixed(4)} m)`);
@@ -304,4 +306,4 @@ run({ migrateAt: 'bomb' });
 }
 assert.ok(AIR_STRIKE_KINDS.every((kind) => R[kind].warningS >= 3), 'every call-in warns at least 3 s');
 assert.ok(!airStrikeFlies('artillery') && airStrikeFlies('gunship'));
-console.log(`airSupport: 5 call-ins accepted, ${rounds.length} rounds, ${arrivals.length} arrivals all at or after their warnings (earliest +${earliest.toFixed(3)} s); every round leaves its aircraft's run (${worstMuzzleM.toFixed(4)} m) and the client's view carries each run; recon reveals; points, cooldowns, air cap, shoot-down, bots calling and evading, migration and replay pass`);
+console.log(`airSupport: ${AIR_STRIKE_KINDS.length} call-ins accepted, ${rounds.length} rounds, ${arrivals.length} arrivals all at or after their warnings (earliest +${earliest.toFixed(3)} s); every round leaves its aircraft's run (${worstMuzzleM.toFixed(4)} m) and the client's view carries each run; recon reveals; points, cooldowns, air cap, shoot-down, bots calling and evading, migration and replay pass`);
