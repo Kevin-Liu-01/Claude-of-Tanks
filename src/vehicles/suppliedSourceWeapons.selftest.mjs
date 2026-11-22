@@ -58,6 +58,12 @@ function checkSourceConfigurations() {
       assert.equal(round.caliberMm, caliber, `${id}: every main-cannon round has the source caliber`);
     }
   }
+  // Owner 2026-11-22 ("the aft 10 needs a lot more rockets"): eight ready canisters plus 24 stowed reloads, on the
+  // unchanged single-missile launcher cycle (no salvo), so its duel and sustained-DPM metrics hold.
+  const aft10 = TANK_SPECS.aft10.gun;
+  assert.deepEqual(aft10.shells.map(round => [round.count, round.launcherTubes]), [[32, 8]],
+    'aft10: 8 ready HJ-10s in the canisters and 24 stowed reloads');
+  assert.equal(aft10.launcherSalvo, undefined, 'aft10: one missile per launcher cycle, no rack salvo');
 }
 
 function checkObject695Loadout() {

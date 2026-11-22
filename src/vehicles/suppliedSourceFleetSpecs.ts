@@ -113,7 +113,12 @@ function applySourceArmament(spec: FleetTankSpec): void {
     const missile = spec.gun.shells[0];
     missile.name = 'HJ-10 guided missile';
     missile.caliberMm = 170;
-    missile.count = 8;
+    // Eight ready rounds in the two four-cell pods plus 24 stowed reloads (owner 2026-11-22: "the aft 10 needs a lot
+    // more rockets"). Stowed reloads beyond the tubes follow the fleet's missile carriers (count > launcherTubes, as the
+    // ZTZ-100 prototype and Object 695 carry); the launcher keeps its eight visible canisters and its 8.6 s cycle, so
+    // sustained DPM is unchanged. 32 x 800 puts its per-battle damage ceiling (25,600) beside tier III's MBTs (26,600);
+    // at eight it was last of 30 at tier III (6,400 against a 23,680 median).
+    missile.count = 32;
     missile.launcherTubes = 8;
     spec.gun.shells = [missile];
     spec.gun.primaryGuided = true;
