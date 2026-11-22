@@ -166,4 +166,34 @@ fx.resetAll();
   r.fx.resetAll();
 }
 
-console.log('fireVisible.selftest: every burning hull (own, ally, near and far foe, scan-only and migrated) has a live fire on its hull with the wreck budget full and after a burst of kills; the chase, sight and far views keep them; far licks fill at least 0.7% of the view and the sight never enlarges them; a far-LOD hull keeps its fire on its root; over six fires the nearest burn');
+// ---- on the deck: a fire with no hit point burns on the rear deck, never inside the hull ----
+// (the look clip: our own tank burning by the scan showed smoke and no flame, its licks born 1 m over the hull's origin,
+// inside the hull). A hit point above the deck keeps its place.
+{
+  const LICK_BASE = 0.95; // emitColumnTongue: a lick is born 0.95-1.35 m over its column's point
+  const dims = { heightM: 2.4, hullLengthM: 7.0 };
+  const scanned = hull('scanned', 0, 40, { spec: { id: 'x', dims } });
+  scanned.state.yaw = Math.PI / 2; // facing +X: its rear deck lies toward -X
+  scanned.combat.fire.burning = true;
+  const struck = hull('struck', 30, 40, { spec: { id: 'x', dims } });
+  const all = new Map([[scanned.id, scanned], [struck.id, struck]]);
+  const r = runtime(all);
+  view(CHASE);
+  {
+    r.bus.emit('shell:hit', { targetId: 'struck', kind: 'pen', caliberMm: 120, pos: [31.4, 2.1, 40], normal: [1, 0, 0] });
+    r.bus.emit('tank:fire', { id: 'struck', burning: true });
+    struck.combat.fire.burning = true;
+  }
+  r.frames(40);
+  const at = (id) => r.fx.getAttachmentDebug().subjects.find((x) => x.id === id);
+  const sc = at('scanned');
+  assert.ok(sc && sc.pos[1] + LICK_BASE >= 0.62 * dims.heightM - 0.2,
+    `a scan-found fire's licks are born on the deck, not inside the hull (${sc?.pos[1].toFixed(2)} + ${LICK_BASE} m)`);
+  assert.ok(sc.pos[0] < -1.5 && Math.abs(sc.pos[2] - 40) < 0.5, `on the rear deck, behind the hull's middle (${sc.pos.map((v) => v.toFixed(1))})`);
+  const st = at('struck');
+  assert.ok(st && Math.abs(st.pos[1] - 2.1) < 0.2 && Math.abs(st.pos[0] - 31.4) < 0.3,
+    `a hit's point above the deck keeps its place (${st?.pos.map((v) => v.toFixed(2))})`);
+  r.fx.resetAll();
+}
+
+console.log('fireVisible.selftest: every burning hull (own, ally, near and far foe, scan-only and migrated) has a live fire on its hull with the wreck budget full and after a burst of kills; the chase, sight and far views keep them; far licks fill at least 0.7% of the view and the sight never enlarges them; a far-LOD hull keeps its fire on its root; over six fires the nearest burn; a fire with no hit point burns on the rear deck, never inside the hull');
