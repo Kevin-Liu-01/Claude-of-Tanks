@@ -1332,6 +1332,7 @@
   "settings.sound.note": "所有音效与乘员无线电语音均为 Claude of Tanks 离线生成的原创内容。",
   "settings.resume": "继续",
   "settings.leave": "退出战斗",
+  "settings.leaveDefeat": "离开战斗 · 记为失败",
   "settings.on": "开",
   "settings.off": "关",
   "playMenu.team.alpha": "Alpha 队",

@@ -2320,6 +2320,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
+    // (death-flow-275) the death and verdict rules: clock parity, mutual wipe, the room clock, left seats to bots, fire credit
+    'src/sim/deathRules.selftest.mjs',
     'src/sim/consumableAuthority.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
@@ -2451,6 +2453,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deathFlowExits.selftest.mjs', // 2026-11-02 audit round 5 U4: every exit that ends the player's death flow (a teardown, a fresh or left Watch seat, a mode's revive) leaves the result runtime owing no hand-back and no late replay; a revive hands the HUD and camera back and re-arms the death flow, at its row or its next death's event (real runtime, rig, killcam and watch controller)
     'src/game/battleResultPointerRelease.selftest.mjs', // 2026-11-02 audit round 6 V6: the verdict gives the cursor back through input.releaseLock, so a canvas recapture still in flight cannot land over the result (main.ts's own binding, the real input layer on the Chrome pointer-lock page model)
     'src/game/battleEnding.selftest.mjs',
+    // (death-flow-275) every mode's death -> after-death -> end: the death's shape, the respawn dial, each verdict's beat and caption
+    'src/game/deathFlowModes.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',
     'src/game/killcamGround.selftest.mjs',

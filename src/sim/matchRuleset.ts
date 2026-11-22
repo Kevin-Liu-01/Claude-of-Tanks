@@ -1925,6 +1925,13 @@ export function rulesetVerdictSide(ruleset: Pick<MatchRuleset, 'infection'>, cur
 }
 
 /**
+ * (death-flow-275 R5; Kevin approved 2026-11-21) A room seat whose player has gone is driven by a bot after this grace
+ * (the authority's battle seconds): the sides stay fair, and the seat no longer counts as a living human (the Horde's last
+ * stand, the front's overrun). A rejoin takes the seat back from the bot.
+ */
+export const SEAT_BOT_GRACE_S = 30;
+
+/**
  * The modes whose controller reaches its own verdict at its clock (death-flow-275 R3): the Juggernaut (the boss survived),
  * Infected (the survivors held), the AC-130 (the escort's time ran out) and Frontline Assault (the sortie ran out of time,
  * R10) resolve their clock by their own rule, never by a score. A room's battle limit never pre-empts them, and never puts a clock on a mode without one.

@@ -386,6 +386,7 @@ const {
   trainingThreatFor,
   finishTrainingBattle,
   setTrainingCheckpoint,
+  recordBattleLeft,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -2405,6 +2406,9 @@ const settings = createSettingsAccess({
   // the battle's Leave (which retries the return) and hides the Garage gear.
   canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
+  // (death-flow-275 R6) a Leave before the verdict of a battle that keeps records is a defeat (recordBattleLeft)
+  leaveCountsAsDefeat: () => game.phase === 'battle' && !game.result && !!game.ruleset?.records
+    && !game.ruleset?.watch && !game.ruleset?.couch,
   gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -3802,6 +3806,12 @@ const leaveBattleToGarage = (): Promise<void> => {
     // A round still loading: leaving the room ends the entry under its own covered restore.
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
+  }
+  // (death-flow-275 R6; Kevin approved 2026-11-21) a local battle left before its verdict is recorded as a defeat
+  // (game/state.ts recordBattleLeft: the records hear it, no report or ending follows); the Esc menu said so
+  if (game.phase === 'battle' && !game.result) {
+    if (v2?.active) v2.recordLeft();
+    else if (isSoloBattleRuntimeReady()) recordBattleLeft(game, bus);
   }
   // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
   // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection

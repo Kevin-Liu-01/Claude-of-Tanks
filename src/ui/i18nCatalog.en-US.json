@@ -1317,6 +1317,7 @@
   "settings.sound.note": "Every sound effect and crew radio line is original, generated offline for Claude of Tanks.",
   "settings.resume": "RESUME",
   "settings.leave": "LEAVE BATTLE",
+  "settings.leaveDefeat": "LEAVE BATTLE · COUNTS AS A DEFEAT",
   "settings.on": "On",
   "settings.off": "Off",
   "playMenu.team.alpha": "Team Alpha",

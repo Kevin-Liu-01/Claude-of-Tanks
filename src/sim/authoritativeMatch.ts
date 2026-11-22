@@ -127,7 +127,7 @@ import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import { createFireCredit } from './fireCredit.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetClockLimitS, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  consumableTiming, rulesetClockLimitS, SEAT_BOT_GRACE_S, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
   terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
@@ -1120,7 +1120,8 @@ export function createAuthoritativeMatch({
     // Air Support's recon pass (the mode controller is built below; until then nothing is revealed)
     revealed: (id, team) => airReveal(id, team),
   });
-  const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
+  // (death-flow-275 R5) a room with no bot at its start builds the bots' grid the first time a left seat is handed to one
+  let botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? preparedGround?.navigation ?? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
@@ -1150,6 +1151,36 @@ export function createAuthoritativeMatch({
     // the opening route's legs all at once (the solo battle's warm takes them a leg a step)
     const route = openingRoute(entity, index, { x: entity.state.pos.x, z: entity.state.pos.z }, opening, botMatch, controller);
     while (!route.next().done) { /* every leg now */ }
+  }
+
+  /**
+   * (death-flow-275 R5) The seats whose players have gone, and when (battle seconds): past SEAT_BOT_GRACE_S a bot drives
+   * the seat's hull (entity.bot, so it no longer counts as a living human), until its player rejoins. A migrated host
+   * starts the grace over for a seat still away (the ledger is the host's own; a seat already handed over is a bot on the
+   * roster it boots from).
+   */
+  const seatsAway = new Map<string, number>();
+  const seatBots = new Set<string>();
+  function handLeftSeatsToBots(): void {
+    if (!seatsAway.size) return;
+    for (const [id, leftAtS] of seatsAway) {
+      if (timeS - leftAtS < SEAT_BOT_GRACE_S) continue;
+      seatsAway.delete(id);
+      const entity = entityById.get(id);
+      if (!entity || entity.bot || entity.connected) continue;
+      if (!botNavigation) {
+        botNavigation = preparedGround?.navigation ?? createBotNavigationGrid({
+          heightField, queryObstacles: worldCollision?.queryObstacles || null, getObstacles: () => staticObstacles,
+        });
+        botMatch.navigation = botNavigation;
+      }
+      entity.bot = true;
+      entity.input.brake = false;
+      entity.input.aimLocked = false;
+      seatBots.add(id);
+      initializeBot(entity, entities.indexOf(entity));
+      emit('seat_bot', { id, bot: true });
+    }
   }
 
   function initializeBots(): void {
@@ -2297,6 +2328,7 @@ export function createAuthoritativeMatch({
     if (botNavigation && navigationWreckTicks++ % 15 === 0) {
       syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
     }
+    handLeftSeatsToBots();
     // anything that reached the bots since the last flush lands before the first of them thinks (audit M7)
     applyPendingBotNews(entities);
     for (const entity of entities) {
@@ -2784,7 +2816,15 @@ export function createAuthoritativeMatch({
 
     onPeerJoin({ peerId }: { peerId: string }): void {
       const entity = entityById.get(peerId);
-      if (entity) entity.connected = true;
+      if (!entity) return;
+      entity.connected = true;
+      seatsAway.delete(peerId);
+      // (death-flow-275 R5) the player is back: the seat's bot hands it over
+      if (seatBots.delete(peerId)) {
+        entity.bot = false;
+        entity.aiCtl = undefined;
+        emit('seat_bot', { id: peerId, bot: false });
+      }
     },
 
     onPeerLeave({ peerId }: { peerId: string }): void {
@@ -2797,6 +2837,8 @@ export function createAuthoritativeMatch({
         entity.input.fire = false;
         entity.input.aimLocked = true;
         entity.input.actionBits = 0;
+        // (death-flow-275 R5) a seat's hull waits SEAT_BOT_GRACE_S for its player, then a bot takes it
+        if (!entity.bot) seatsAway.set(peerId, timeS);
       }
     },
 

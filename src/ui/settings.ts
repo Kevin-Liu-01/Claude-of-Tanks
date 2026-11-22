@@ -194,6 +194,8 @@ export interface SettingsOptions {
   readonly isSpectating?: () => boolean;
   readonly canLeaveBattle?: () => boolean;
   readonly onLeaveBattle?: () => void;
+  /** (death-flow-275 R6) Leaving now records a defeat (a battle that keeps records, before its verdict): the button says so. */
+  readonly leaveCountsAsDefeat?: () => boolean;
   readonly gearVisible?: () => boolean;
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
@@ -636,6 +638,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const isBattleActive = opts.isBattleActive || (() => false);
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
   const onLeaveBattle = opts.onLeaveBattle || null;
+  const leaveCountsAsDefeat = opts.leaveCountsAsDefeat || (() => false);
   const gearVisible = opts.gearVisible || (() => false);
   // PAUSE: main.ts supplies the live-battle predicate; the PAUSED header tag
   // shows exactly when the open panel is what froze the sim (garage Esc and
@@ -2069,6 +2072,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     renderTab();
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
     leaveBtn.hidden = !canLeave;
+    leaveBtn.textContent = t(canLeave && leaveCountsAsDefeat() ? 'settings.leaveDefeat' : 'settings.leave');
     root.classList.add('open');
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden

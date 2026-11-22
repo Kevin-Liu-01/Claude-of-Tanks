@@ -521,6 +521,8 @@ export interface BrowserComposition {
   closeMatch(reason?: string): void;
   /** An explicit leave from the lobby or the battle: the seat goes and the admin migrates at once. */
   leaveRoom(reason?: string): void;
+  /** (death-flow-275 R6) The seat leaves a revealed battle before its verdict: recorded as a defeat. */
+  recordLeft(): boolean;
   /** The network status model's snapshot (the HUD's ping cell, diagnostics); written in place, never copied. */
   readonly networkStatus: Readonly<NetworkStatusSnapshot>;
   /** The network-details action: expand or collapse the strip's panel. */
@@ -1725,6 +1727,7 @@ export function createBrowserComposition({
     disposePresentation,
     closeMatch: (reason = 'network_match_closed') => { closeRoom(reason); },
     leaveRoom,
+    recordLeft: () => !!round?.revealed && !!round.presentation?.recordLeft(),
     get networkStatus() { return status.snapshot; },
     toggleStatusPanel: (open) => { statusSurface?.togglePanel(open); },
     pressLeave: () => statusSurface?.pressLeave() ?? 'ignored',
