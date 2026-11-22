@@ -283,7 +283,8 @@ export const SHOT_CARD_CSS = `
 .cot-kc-card .st dt{font:600 var(--battle-fs-11)/1.2 var(--font-ui);color:var(--ink-3);}
 .cot-kc-card .st dd{margin:0;font:600 var(--battle-fs-12)/1.2 var(--font-data);color:var(--ink-1);white-space:nowrap;}
 .cot-kc-card .st [data-stat=damage] dd{color:var(--accent-hi);}
-.cot-kc-card .sil{position:relative;height:30px;margin-top:var(--s2);background:center/contain no-repeat;opacity:.86;}
+.cot-kc-card .sil{position:relative;height:30px;margin-top:var(--s2);background-position:center;background-size:contain;
+  background-repeat:no-repeat;opacity:.86;}
 .cot-kc-card .sil[hidden]{display:none;}
 .cot-kc-card .dot{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%) rotate(45deg);background:var(--kc-tone,var(--accent));
   outline:2px solid var(--hud-plate-strong);}
