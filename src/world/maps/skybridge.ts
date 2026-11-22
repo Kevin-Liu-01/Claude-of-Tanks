@@ -216,6 +216,15 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
+    // (landmarks-271, 2026-11-06; the owner: "new special buildings like the way our airport map has hangars and our
+    // seaside map has a harbor area with a lighthouse ... integrated with the whole identity of the map") Glen Canyon's
+    // building years (src/world/landmarks/damWorks.ts): the dam's high-line cableway, a head tower on each shore of the
+    // drowned gorge (a rotation pair about the layout's centre), the track cable sagging across the lake between them with
+    // the carriage and its concrete bucket hung on it.
+    landmarks: [
+      { kind: 'cablewayTower', x: -103.3, z: 140.2, yawDeg: 126.5, params: { cable: true, span: 269.5, farRise: -1.27 }, name: 'the cableway head tower (west shore)' },
+      { kind: 'cablewayTower', x: 113.3, z: -20.2, yawDeg: -53.5, name: 'the cableway tail tower (east shore)' },
+    ],
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
     architecture: BUILDING_STYLES.skybridge.kit,
     plan: [
