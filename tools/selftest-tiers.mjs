@@ -871,7 +871,7 @@ export const STALE_GUARDS = Object.freeze({
   'src/world/wreckBakePlanDrift.selftest.mjs': Object.freeze({ keeps: 'the wreck bake plan', worldSteps: Object.freeze(['wreckPlan']) }),
   'src/vehicles/fleetPassHigh.selftest.mjs': Object.freeze({ keeps: 'the geometry ledger', tanks: true }),
   'src/vehicles/fleetPassLow.selftest.mjs': Object.freeze({ keeps: 'the geometry ledger, ERA registration', tanks: true }),
-  'src/vehicles/fleetPassDefault.selftest.mjs': Object.freeze({ keeps: 'combat anatomy, marking seats, tank assets, the watertight gate', tanks: true }),
+  'src/vehicles/fleetPassDefault.selftest.mjs': Object.freeze({ keeps: 'combat anatomy, marking seats, tank assets, the watertight gate, the turret deck', tanks: true }),
   'tools/gen-combat-anatomy.mjs': Object.freeze({ keeps: 'combat anatomy', tanks: true }),
 });
 

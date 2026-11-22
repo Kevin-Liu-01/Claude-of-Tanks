@@ -19,14 +19,18 @@
 //      the deck), its foot height the lowest turret surface within FOOT_EDGE_M of that edge that stands over the hull's
 //      top (a floor buried in the hull just inside the wall is out of sight); no hull top the turret does
 //      not cover, within PROP_MARGIN_M outside the foot, stands more than PROP_RISE_M over the foot.
-// A failing cell counts only in an 8-connected patch of at least MIN_CELLS cells (a stray sliver is not a face). Reads
-// only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
+// A failing cell counts only in an 8-connected patch of at least MIN_CELLS cells (a stray sliver is not a face). The fleet
+// gate (fleetPassDefault, 274) fails (a), (b) past a hull's named exemption (ringZoneGuard.ts RING_ZONE_EXEMPT), and a
+// recorded seat shortfall (turretSeatRace.ts: a foot the seat could not bring onto its plane), and names the ring-zone
+// guard's parts in each row. Reads only: the yaw sweep restores the turret's quaternion and world matrices before it returns.
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
+import { RING_ZONE_EXEMPT } from './ringZoneGuard.ts';
 
-/** (a) The least clearance of the turret's lowest surface over the hull's top (m): the seat's 3 cm gap
- *  (turretSeatPlane.ts TURRET_SEAT_GAP_M) less a centimetre of tolerance. */
-export const DECK_CLEAR_M = 0.02;
+/** (a) The least clearance of the turret's lowest surface over the hull's top (m): out of the z-fight range, under the
+ *  seat's 3 cm gap (turretSeatPlane.ts TURRET_SEAT_GAP_M) less the seat's 2 cm shortfall tolerance (turretSeatRace.ts
+ *  SEAT_SHORT_TOL_M; coordinator ruling, 274: the gate at 1 cm). */
+export const DECK_CLEAR_M = 0.01;
 /** (a) inside the rim without a collar: a face further under the deck's top than this is in the hull, out of sight (m). */
 export const ON_DECK_BURY_M = 0.06;
 /** (b) How far outside the turret's foot a hull prop is read (m), and how far over the foot it may stand (m). */
@@ -42,7 +46,9 @@ const VISIBLE_TOL_M = 0.005;
 const MIN_CELLS = 4;
 const CELL = 0.025;
 const BEARINGS = 96;
-const RIM_PAD_M = 0.01;
+/** A cell any part of which lies within this of the race's rim belongs to the rim (m): the pad plus half the cell's
+ *  diagonal, so a skirt hugging the rim (the Leopard 2A5M's, 1 mm out and 3 cm into the ring well) stays with the rim. */
+const RIM_PAD_M = 0.01 + CELL * Math.SQRT1_2;
 const COLLAR_NAME = 'turretSeatCollar';
 /** Casemate and turretless designs: a rig_turret (a fixed superstructure, a pivot for the sim) but no ring on a deck, so
  *  no ring receipt and nothing to judge (coordinator, 274). Any other turreted tank without a receipt fails the audit. */
@@ -369,8 +375,9 @@ export function measureTurretDeck(root, receipt) {
 
 /**
  * The fleet audit ({ check, finish }). `report` collects every turreted tank's row (the read-only fleet table) and never
- * fails; `carry` maps an id to the patch counts it may keep ({ deck, props }) until its fix lands; `exclude` ids are
- * measured but never fail (a tank another lane owns).
+ * fails (each row's `fails` says whether the gate would); `carry` maps an id to what it may keep until its fix lands
+ * ({ deck, props } patch counts, and shortfall: true for a recorded seat shortfall); `exclude` ids are measured but never
+ * fail (a tank another lane owns).
  */
 export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] } = {}) {
   let turreted = 0;
@@ -390,18 +397,27 @@ export function createTurretDeckAudit({ report = null, carry = {}, exclude = [] 
       const own = root.getObjectByName('rig_turret').userData;
       const knobs = Object.fromEntries(['turretSeatKeepR', 'turretSeatRiseM', 'turretSeatReadM', 'turretSeatMinY',
         'turretSeatCollar'].filter((key) => own[key] !== undefined).map((key) => [key, own[key]]));
-      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, footR: receipt.footR, baseR: round3((receipt.footR ?? receipt.rimR) + BASE_MARGIN_M), knobs, ...verdict };
+      // what the seat could not lift (turretSeatRace.ts seatFootBand) and the hull parts the ring-zone guard caught
+      // (ringZoneGuard.ts), so a failing row names its cause
+      const shortfall = own.turretSeatShortfall ?? null;
+      const ringZone = root.getObjectByName('rig_hull')?.userData.ringZoneViolations ?? [];
+      const row = { id, deckY: receipt.deckY, rimR: receipt.rimR, footR: receipt.footR, baseR: round3((receipt.footR ?? receipt.rimR) + BASE_MARGIN_M), knobs,
+        ...(shortfall ? { shortfall } : {}), ...(ringZone.length ? { ringZone } : {}), ...verdict };
       report?.push(row);
-      if (exclude.includes(id)) return;
-      const allowed = carry[id] ?? { deck: 0, props: 0 };
-      if (verdict.deck.length > allowed.deck || verdict.props.length > allowed.props) failures.push(row);
+      // (b) a hull the photos show standing over the foot (ringZoneGuard.ts RING_ZONE_EXEMPT) passes up to its named rise
+      const exempt = RING_ZONE_EXEMPT[id];
+      const props = exempt ? verdict.props.filter((patch) => patch.riseM > exempt.riseM) : verdict.props;
+      if (exempt) row.exempt = exempt.reason;
+      const allowed = carry[id] ?? { deck: 0, props: 0, shortfall: false };
+      row.fails = verdict.deck.length > allowed.deck || props.length > allowed.props || (!!shortfall && !allowed.shortfall);
+      if (row.fails && !exclude.includes(id)) failures.push(row);
     },
     finish() {
       if (report) return;
       if (missing.length) throw new Error(`turretDeck: turreted tanks without a ring receipt: ${missing.join(', ')}`);
       if (failures.length) {
-        throw new Error(`turretDeck: ${failures.length} tank(s) with a turret face within ${DECK_CLEAR_M} m of the deck `
-          + `or a hull prop over the turret's foot:\n${failures.map((row) => JSON.stringify(row)).join('\n')}`);
+        throw new Error(`turretDeck: ${failures.length} tank(s) with a turret face within ${DECK_CLEAR_M} m of the deck, `
+          + `a hull prop over the turret's foot or a seat shortfall:\n${failures.map((row) => JSON.stringify(row)).join('\n')}`);
       }
       if (turreted < 150) throw new Error(`turretDeck: coverage regressed (${turreted} turreted tanks)`);
     },

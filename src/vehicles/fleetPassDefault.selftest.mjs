@@ -11,6 +11,8 @@
 // Release 229: every working pintle rides its cradle, its moving parts 1.5 mm clear of its own mount through its profile's
 // pitch range and recoil (workingPintleCradleAudit.test-support.mjs; it reads the build and poses nothing). Release 230:
 // so do the American M2 and M240 working stations, the TTS-derived RWS towers and the armed open-yoke towers.
+// Release 274 (turret-deck-gate): every turret's foot stands at least a centimetre over the deck it turns over, no hull
+// kit beside it stands over it, and the seat brought the whole foot onto its plane (turretDeckAudit.test-support.mjs).
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
@@ -21,6 +23,12 @@ import { createWatertightAudit } from './watertightAudit.test-support.mjs';
 import { createTankAssetsAudit } from './tankAssetsAudit.test-support.mjs';
 import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 import { createWorkingPintleCradleAudit } from './workingPintleCradleAudit.test-support.mjs';
+import { createTurretDeckAudit } from './turretDeckAudit.test-support.mjs';
+
+// 274: the turret-deck gate's carry (what a hull keeps until its own fix lands) and the ids their own lanes are fixing
+// (measured, never failing here)
+const TURRET_DECK_CARRY = Object.freeze({});
+const TURRET_DECK_LANES = Object.freeze([]);
 
 await runFleetPass({
   name: 'fleetPassDefault',
@@ -36,6 +44,7 @@ await runFleetPass({
     { name: 'watertight', create: createWatertightAudit },
     { name: 'workingPintleCradle', create: () => createWorkingPintleCradleAudit({
       minimumStations: { pintleMG: 60, americanM2: 12, americanRws: 3, openYokeRws: 9 } }) },
+    { name: 'turretDeck', create: () => createTurretDeckAudit({ carry: TURRET_DECK_CARRY, exclude: TURRET_DECK_LANES }) },
     { name: 'tankAssets', create: createTankAssetsAudit },
   ],
 });
