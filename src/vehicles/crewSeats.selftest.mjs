@@ -33,17 +33,18 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // pinned in 268 by Main's ruling, rechecked with the 269 Bradley follow-up). Read from the 268 regen f25c0e7960.
 // 269 integration: + the Olifant Mk 1B's commander (9 mm), trimmed by olifant-mk1b-tells-269's own regen 9bafdc391c
 // under the sharpened turret (untrimmed before it; the Mk 2's commander already 6 mm). Read from the 269 regen 933f8820bf.
+// 274.0 regen: the 274 turret-deck seat (turret-deck-gate-274b and its fixes) leaves the leopard2_proto driver untrimmed and trims the
+// kf51_evo commander 21 mm (was 17 mm).
 const TRIMMED = Object.freeze({
   'm46_patton/driver': 0.016,
   'leclerc_xlr/driver': 0.013,
   't72b3m_hetman_ii/driver': 0.001,
-  'leopard2_proto/driver': 0.002,
   'type96_72_long/gunner': 0.213,
   'type96_80_feng/gunner': 0.122,
   'k2_black_panther/commander': 0.004,
   't80u_yun/gunner': 0.118,
   'type96_72m_lei/gunner': 0.06,
-  'kf51_evo/commander': 0.017,
+  'kf51_evo/commander': 0.021,
   'kf51_panther/commander': 0.035,
   't72b3m_kunlun/gunner': 0.109,
   'kf41_lynx/gunner': 0.047,

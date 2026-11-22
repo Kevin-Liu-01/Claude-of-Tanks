@@ -13,7 +13,7 @@ function build(quality,legacy=false){
 function unchanged(root){
  const h=createHash('sha256');root.traverse(m=>{
   if(!m.isMesh||m.name.startsWith('procShadow_')||m.userData.vehicleMarking)return;
-  if([...names,'gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses'].includes(m.name))return;
+  if([...names,'gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets','gearSuspensionLinks','gearSuspensionJointBosses','gearHydraulicUnits'].includes(m.name))return; // hydro-arms-274: the hydraulic units ride the wheel arms
   h.update(m.name).update(JSON.stringify(m.matrixWorld.elements));
   for(const key of Object.keys(m.geometry.attributes).sort()){const a=m.geometry.attributes[key].array;h.update(key).update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}
   for(const a of [m.geometry.index?.array,m.instanceMatrix?.array])if(a)h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));
