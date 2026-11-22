@@ -63,6 +63,8 @@ interface BattleTally {
   vehicleId: string;
   mapId: string;
   kills: number;
+  /** The hulls the player destroyed, so the end roster's sides can drop a team kill (death-flow-275 R9). */
+  killed: string[];
   damage: number;
   startedAt: number;
 }
@@ -234,7 +236,7 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   let tally: BattleTally | null = null;
   /** A battle's tally from nothing: its start, and a network battle's restart (round 4 E6b). */
   const openTally = (playerId: string, vehicleId: string, mapId: string): BattleTally =>
-    ({ playerId, vehicleId, mapId, kills: 0, damage: 0, startedAt: Date.now() });
+    ({ playerId, vehicleId, mapId, kills: 0, killed: [], damage: 0, startedAt: Date.now() });
   bus.on('ui:battleStart', (payload) => {
     const event = recordOf(payload) ?? {};
     tally = openTally(firstString(event.playerId, event.entityId, event.specId), firstString(event.specId, event.vehicleId),
@@ -270,7 +272,10 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   });
   bus.on('tank:destroyed', (payload) => {
     const event = recordOf(payload) ?? {};
-    if (tally && event.killerId === tally.playerId && event.id !== tally.playerId) tally.kills += 1;
+    if (tally && event.killerId === tally.playerId && event.id !== tally.playerId) {
+      tally.kills += 1;
+      if (typeof event.id === 'string') tally.killed.push(event.id);
+    }
   });
   bus.on('battle:ended', (payload) => {
     const event = recordOf(payload) ?? {};
@@ -284,9 +289,13 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
     // (ac130-fx-228 r3) the end roster's own row says the player flew the AC-130 (its card names the aircraft)
     const roster = Array.isArray(event.roster) ? event.roster.map(recordOf) : [];
     const own = roster.find((row) => row != null && (row.isPlayer === true || (tally?.playerId != null && row.id === tally.playerId)));
+    // (death-flow-275 R9) a team kill is no kill: a victim the end roster puts on the player's own side drops out (the
+    // service record's rule, serviceRecord.ts isEnemy); a victim the roster does not name still counts
+    const sideOf = new Map(roster.filter((row) => row != null && typeof row.id === 'string').map((row) => [row!.id as string, row!.team]));
+    const teamKills = own?.team == null ? 0 : tally.killed.filter((id) => sideOf.has(id) && sideOf.get(id) === own.team).length;
     recordBattleResult({
       result: event.result,
-      kills: tally.kills,
+      kills: tally.kills - teamKills,
       damage: tally.damage,
       vehicleId: tally.vehicleId,
       aircraft: own?.aircraft === true,

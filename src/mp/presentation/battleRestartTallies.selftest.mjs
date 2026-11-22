@@ -86,7 +86,12 @@ let timeS = 0;
 // the seat's spotting: every hull in view but the hidden ones
 const hidden = new Set();
 const spotting = { isSpotted: (id) => !hidden.has(id) };
-const frame = () => { timeS += 1 / 60; hud.update({ timeS, mode: 'battle', player: me, tanks, spotting, aim, camera: null }); };
+// (death-flow-275) the frame carries the seat's own wait for its revive while it is down (the mode controller's, as
+// battleHudFrameRuntime.ts reads it): the respawn dial shows from it
+const frame = () => {
+  timeS += 1 / 60;
+  hud.update({ timeS, mode: 'battle', player: me, tanks, spotting, aim, camera: null, respawn: me.combat.destroyed ? { inS: 5 } : null });
+};
 // the minimap's canvas, laid out (uiCanvas sizes its store from the box): its paint draws a hidden enemy's last-seen
 // contact as a hollow ghost arrow, the one stroke in that ink (hud.ts drawGhostMarker)
 const minimap = created.find((element) => element.classes.has('cot-minimap')).children.find((child) => child.tagName === 'CANVAS');
@@ -146,8 +151,8 @@ assert.ok(medalCards() >= 1, 'setup: the abandoned battle\'s medal card shows');
 me.combat.destroyed = true;
 bus.emit('tank:destroyed', { id: 'me', specId: SPEC, killerId: 'e3', cause: 'shot', pos: [0, 0, 0], timeS });
 frame();
-const revive = created.find((element) => element.classes.has('cot-revive'));
-assert.equal(revive.classes.has('on'), true, 'setup: the dead seat\'s revive count shows');
+const revive = created.find((element) => element.classes.has('cot-respawn'));
+assert.equal(revive.hidden, false, 'setup: the dead seat\'s respawn dial shows');
 
 // ---- the restart: every hull at its spawn, the battle's clock at 0 (e3 alive and still hidden)
 for (const entity of tanks) { entity.combat = createCombatState(spec); }
@@ -157,7 +162,7 @@ if (medalCards()) wrong.push(`medals: ${medalCards()} card(s) of the abandoned b
 timeS = 0;
 const restartFrom = minimapOps.length;
 await paintedFrame();
-if (revive.classes.has('on')) wrong.push('hud: the seat alive again at its spawn still shows its revive count');
+if (!revive.hidden) wrong.push('hud: the seat alive again at its spawn still shows its respawn dial');
 const restartedMap = minimapSince(restartFrom);
 assert.ok(restartedMap.painted, 'setup: the minimap repainted in the restarted battle');
 if (restartedMap.ghost) wrong.push('hud: the abandoned battle\'s contact memory outlived the restart (the minimap draws e3 where it was last seen in the abandoned battle)');

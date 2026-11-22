@@ -106,7 +106,9 @@ type WireVec3 = readonly [number, number, number];
 interface KnownHullPoint { world: MutableVec3; local: MutableVec3; onHull: boolean }
 type ShellId = string | number;
 type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
-type DestructionCause = 'ammorack' | 'shot' | 'fire';
+// every cause a destruction is announced with (death-flow-275 R8: rams, crashes, falls and a crew's scuttle reach the fx too;
+// each plays as a plain kill: only 'ammorack' throws the turret, only 'fire' burns)
+type DestructionCause = 'ammorack' | 'shot' | 'fire' | 'ram' | 'impact' | 'fall' | 'scuttle';
 
 interface FxEngineContext {
   camera?: THREE.Camera;

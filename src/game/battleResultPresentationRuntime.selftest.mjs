@@ -24,6 +24,18 @@ function createHarness({ ending = false } = {}) {
       calls.push(['play', result]);
       return playResult;
     },
+    // (death-flow-275) the quick cam and the card alone, inside a respawn wait
+    playQuick(timeS, budgetS, onDone) {
+      plays.push({ quick: true, timeS, budgetS, onDone });
+      calls.push(['quick', Math.round(budgetS * 10) / 10]);
+      return playResult;
+    },
+    showDeathCard(timeS) {
+      calls.push(['card']);
+      return true;
+    },
+    // (counted, not listed: every verdict asks it, and the lists below are the flow's own steps)
+    hideDeathCard() { killcam.cardsHidden = (killcam.cardsHidden ?? 0) + 1; },
   };
   const endingPorts = ending ? {
     camera: {
@@ -172,23 +184,50 @@ assert.notEqual(delayed.runtime.snapshot().pendingDeadlineMs, null);
 delayed.runtime.clearPending();
 assert.equal(delayed.runtime.snapshot().pendingDeadlineMs, null);
 
-// reviving modes: a destroyed player triggers no death cam, no replay and no pointer unlock; the verdict
-// pipeline still presents the final result when the mode ends
+// reviving modes (death-flow-275, Kevin 2026-11-21, reversing 2026-09-16): a respawn under 5 s shows the shot card alone
+// at once, the HUD veiled; no death orbit, no replay, no pointer unlock; the verdict still reaches the replay pipeline
 const reviving = createHarness();
 reviving.game.ruleset = { respawnS: 3 };
 reviving.game.player.combat.destroyed = true;
 reviving.runtime.update();
 reviving.now = 100 + 5000;
 reviving.runtime.update();
-assert.deepEqual(reviving.calls, [], 'a reviving player keeps the live view: no unlock, death cam or replay');
+assert.deepEqual(reviving.calls, [['card'], ['veil', true]], 'a short respawn shows the card alone over the live view');
 assert.equal(reviving.plays.length, 0);
-assert.deepEqual(reviving.runtime.snapshot(), { endShown: false, deathCamShown: false, pendingDeadlineMs: null, beat: null });
+assert.deepEqual(reviving.runtime.snapshot(), { endShown: false, deathCamShown: true, pendingDeadlineMs: null, beat: null });
 reviving.game.player.combat.destroyed = false;
 reviving.game.result = 'victory';
 reviving.runtime.update();
 assert.equal(reviving.plays.length, 1, 'the final verdict still reaches the replay pipeline');
 assert.equal(reviving.plays[0].result, 'victory');
-assert.deepEqual(reviving.plays[0].options, { freshKill: false, finalKill: true, ownDeath: true });
+assert.equal(reviving.killcam.cardsHidden, 1, 'the verdict takes the card down');
+assert.deepEqual(reviving.plays[0].options, { freshKill: false, finalKill: true, ownDeath: false });
+// a respawn of 5 s or more: a 1 s beat on the wreck, then the quick cam with min(respawn - 1.5, 5.5) - 1 s of budget
+for (const [respawnS, budgetS] of [[5, 2.5], [6, 3.5], [8, 4.5], [12, 4.5]]) {
+  const quick = createHarness();
+  quick.game.ruleset = { respawnS };
+  quick.game.player.combat.destroyed = true;
+  quick.runtime.update();
+  assert.deepEqual(quick.calls, [], `respawn ${respawnS} s: the beat on the wreck first, no orbit, no unlock`);
+  quick.framesTo(1100);
+  assert.deepEqual(quick.calls, [['quick', budgetS], ['veil', true]], `respawn ${respawnS} s: the quick cam, ${budgetS} s`);
+}
+// a quick cam with nothing to fly falls back to the card
+const quickNone = createHarness();
+quickNone.playResult = false;
+quickNone.game.ruleset = { respawnS: 6 };
+quickNone.game.player.combat.destroyed = true;
+quickNone.runtime.update();
+quickNone.framesTo(1100);
+assert.deepEqual(quickNone.calls, [['quick', 3.5], ['card'], ['veil', true]]);
+// a revive inside the beat drops the quick cam
+const quickRevived = createHarness();
+quickRevived.game.ruleset = { respawnS: 6 };
+quickRevived.game.player.combat.destroyed = true;
+quickRevived.runtime.update();
+quickRevived.game.player.combat.destroyed = false;
+quickRevived.framesTo(1100);
+assert.deepEqual(quickRevived.calls, [], 'a hull alive again before the beat ran gets no quick cam');
 const revivingNull = createHarness();
 revivingNull.game.ruleset = { respawnS: null };
 revivingNull.game.player.combat.destroyed = true;
@@ -320,7 +359,7 @@ horde.runtime.update();
 assert.deepEqual(horde.plays[0].options, { freshKill: true, finalKill: false, ownDeath: true }, 'the last stand is the own death');
 assert.equal(horde.beats[0].beat, 'wreckOrbit', 'no chain: the wreck orbit');
 assert.deepEqual(horde.beats[0].focus, { kind: 'wreck', x: 12, z: -21, y: 4, radiusM: 6, id: 'me' });
-assert.deepEqual(horde.beats[0].caption, { key: 'ending.lastStand', values: { wave: '4' } });
+assert.deepEqual(horde.beats[0].caption, { key: 'ending.runOver', values: { wave: '4' } });
 assert.deepEqual(horde.calls.find(([name]) => name === 'receipt')[1], {
   played: false, result: 'defeat', timeS: 12, resultWallMs: 100, kcBeginWallMs: 80, beat: 'lastStand', ran: 'wreckOrbit',
 });

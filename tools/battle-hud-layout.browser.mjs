@@ -127,7 +127,7 @@ const NOTICE_ALERTS = [
   ['readyIn','ui:consumableDenied',{slot:0,reason:'COOLDOWN',remainingS:118}],['ammoAcquired','mode:pickup_collected','pickup'],
   ['autoAimLong','ui:autoAimState','longspec'],['autoAimOff','ui:autoAimState',{on:false,reason:'AUTO-AIM OFF'}],
   ['ending','ending:begin',{captionKey:'ending.scoreReached'}],
-  ['endingWave','ending:begin',{captionKey:'ending.lastStand',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
+  ['endingWave','ending:begin',{captionKey:'ending.runOver',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
   ['flagTaken','mode:flag_taken','ours'],['reloadDenied','ui:magazineReloadDenied',{reason:'MAGAZINE_RELOADING'}],
   ['specialDenied','ui:specialActionDenied',{reason:'OTHER'}],['crewUnharmed','ui:consumableDenied',{slot:1,reason:'NOTHING'}],
   ['armorOn','ui:armorOverlayState',{on:true}],

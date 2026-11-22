@@ -2205,15 +2205,15 @@ export function resolveHeBurst(
  *
  * @param {object} entity TankEntity-shaped {spec, combat}
  * @param {function} rng
- * @returns {{damage: number, extinguished: boolean, destroyed: boolean}}
+ * @returns {{damage: number, extinguished: boolean, destroyed: boolean, ammoRacked: boolean}}
  */
 export function tickFire(
   entity: { combat?: CombatState | null },
   rng: Rng,
-): { damage: number; extinguished: boolean; destroyed: boolean } {
+): { damage: number; extinguished: boolean; destroyed: boolean; ammoRacked: boolean } {
   const combat = entity.combat;
   if (!combat || !combat.fire.burning || combat.destroyed) {
-    return { damage: 0, extinguished: false, destroyed: combat ? combat.destroyed : false };
+    return { damage: 0, extinguished: false, destroyed: combat ? combat.destroyed : false, ammoRacked: false };
   }
   const damage = combat.modeModuleOnlyDamage ? 0 : combat.maxHp * FIRE_TICK_HP_FRAC;
   combat.hp = Math.max(0, combat.hp - damage);
@@ -2237,7 +2237,8 @@ export function tickFire(
   }
   const destroyed = finalizeTarget(combat, ammoRacked);
   if (destroyed) extinguished = true;
-  return { damage, extinguished, destroyed };
+  // (death-flow-275 R8) a rack the fire cooked off destroys the hull as an ammo-rack kill (sim/fireCredit.ts fireDeathCause)
+  return { damage, extinguished, destroyed, ammoRacked: destroyed && ammoRacked };
 }
 
 /**

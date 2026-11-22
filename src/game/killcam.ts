@@ -1,7 +1,7 @@
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
-import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
 import { hullPointsRemoved } from './hullPointsRemoved.ts';
+import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 import { killcamCameraFloor } from './killcamGround.ts';
 import { publishKillcamScreen } from './killcamScreen.ts';
@@ -88,14 +88,16 @@ import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { notice } from '../ui/components/notice.ts';
-import {
-  hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
-} from '../ui/hitEventFormat.ts';
+import { keycap } from '../ui/components/components.ts';
+import { hitOutcomeFor, zoneLabel } from '../ui/hitEventFormat.ts';
 import { crewName, moduleName } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
+import { PLAYER_CALLSIGN, rosterCallsigns } from '../ui/botCallsigns.ts';
+import {
+  buildShotCard, renderShotCard, shotCardModel, SHOT_CARD_CSS, type ShotCardDom, type ShotCardLookups, type ShotCardView,
+} from './killcamShotCard.ts';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.ts';
 import {
   addInternalCrewModel,
@@ -114,7 +116,7 @@ import type { ArmorEnvelope, CrewBox, ModuleBox } from '../vehicles/specHelpers.
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { WorldRayHit } from '../world/map.ts';
 import { t } from '../ui/i18n.ts';
-import { attackerLabel, killSourceIdentity } from '../ui/killSourceIdentity.ts';
+import { attackerLabel } from '../ui/killSourceIdentity.ts';
 import { scratchCanvas } from '../ui/uiCanvas.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -427,22 +429,15 @@ interface KillcamDom {
   titleT: HTMLDivElement;
   titleS: HTMLDivElement;
   skip: HTMLButtonElement;
-  hdMeta: HTMLDivElement;
-  hdK: HTMLDivElement;
-  hdW: HTMLDivElement;
-  rows: HTMLDivElement;
-  banner: HTMLDivElement;
-  annot: HTMLDivElement;
+  /** The step-on key's prompt beside the skip ("Space Next"): the full cam only, never on a touch layout. */
+  next: HTMLElement;
+  skipText: HTMLElement;
+  nextText: HTMLElement;
+  /** The one shot card (killcamShotCard.ts). */
+  card: ShotCardDom;
   labelHost: HTMLDivElement;
   leader: SVGSVGElement;
   flash: HTMLDivElement;
-  killer: {
-    root: HTMLDivElement;
-    sil: HTMLElement;
-    name: HTMLElement;
-    veh: HTMLElement;
-    rows: HTMLElement;
-  };
 }
 
 interface XrayCamera {
@@ -565,7 +560,6 @@ interface PlaybackBundle {
   shotFxLive: boolean;
   collision: CollisionPlayback | null;
   isDeathView: boolean;
-  killerShown: boolean;
   core: THREE.Object3D;
   streak: THREE.Object3D;
   trailGeo: THREE.BufferGeometry;
@@ -605,6 +599,9 @@ interface PlaybackBundle {
   } | null;
   finalePending: boolean;
   isFinale: boolean;
+  /** (death-flow-275) the quick cam inside a respawn wait: the shot and its impact, no x-ray, out by `quickEndWallMs`. */
+  quick: boolean;
+  quickEndWallMs: number;
   impactAng0: number;
   exitWallMs?: number;
 }
@@ -704,7 +701,9 @@ function selectAnyRamReplay(
   return null;
 }
 
-const XRAY_HOLD_S = 7.0;
+// death-flow-275 (Kevin approved 2026-11-21, "full cam 11 s"): the x-ray hold is at most 5 s (was 7) and the whole replay
+// 11 s (was 15), so death to the ally chase is about 13 s with the 2.15 s death beat (was 17-18 s)
+const XRAY_HOLD_S = 5.0;
 const FLIGHT_MIN_S = 1.9;
 const FLIGHT_MAX_S = 3.4;
 // killcam_endscreen r1 — death-sequence cinematography constants:
@@ -714,7 +713,7 @@ const FLIGHT_MAX_S = 3.4;
 // speed and ramps to ~0.25x through the final meters into the penetration
 // (WT death-cam retime). EXIT: letterbox close + fade-through-black into
 // whatever follows (spectate / end screen).
-const APPROACH_S = 1.6;        // push-in orbit duration
+const APPROACH_S = 1.2;        // push-in orbit duration (death-flow-275: was 1.6)
 const FIRING_CAPTURE_S = 0.78; // deterministic still-frame staging only
 const COLLISION_HOLD_S = 1.45; // rewind -> metal contact -> module failure
 const CAMERA_HANDOFF_S = 0.62; // phase-to-phase pose/fov continuity
@@ -727,7 +726,6 @@ const SLOWMO_START_M = 44;     // ramp begins this far from impact
 const SLOWMO_FULL_M = 13;      // fully slow by here
 const CONTACT_HOLD_S = 0.12;   // one readable armor-contact beat before impact
 const EXIT_HOLD_MS = 430;      // letterbox close + fade-to-black duration
-const KILLER_CARD_AT_S = 0.85; // killer card reveal into the x-ray hold
 // killcam r2 — live-action destruction beats:
 // WRECK: battle-deciding own death — hold on the real exploding wreck before
 // the replay (covers fireball 1.1 s + the turret arc ~1.3 s).
@@ -741,7 +739,7 @@ const WRECK_HOLD_S = 2.15;
 const IMPACT_HOLD_S = 2.05;
 const IMPACT_SLOWMO = 0.55;     // fx-clock rate through the turret launch
 const IMPACT_DRIFT_RAD_S = 0.06; // impact-beat orbital drift (parallax)
-const REPLAY_BUDGET_S = 15.0;   // begin() -> exit start, wall clock
+const REPLAY_BUDGET_S = 11.0;   // begin() -> exit start, wall clock (death-flow-275: was 15)
 // killcam r3 — OWN-DEATH FINALE (owner: "our tank blows up turret pops sure.
 // but then it shows kill cam, and shows the tank as it was before it blew up
 // with the turret still attached, then the skeleton with shell going through,
@@ -752,6 +750,12 @@ const REPLAY_BUDGET_S = 15.0;   // begin() -> exit start, wall clock
 const FINALE_HOLD_S = 2.45;      // finale window in ANIM seconds (beat + settle)
 const FINALE_RESERVE_S = 3.2;    // wall seconds reserved out of REPLAY_BUDGET_S
 const FINALE_XRAY_FLOOR_S = 3.6; // x-ray floor while a finale still has to play
+// death-flow-275 QUICK CAM (a death inside a respawn wait): the shot from the killer's firing pose, its flight, the hit and
+// the victim's destruction, out before the revive. The flight runs QUICK_FLIGHT_MIN_S..MAX_S, the impact QUICK_IMPACT_S
+// (anim seconds); the caller's budget is a hard wall-clock cap on top (the revive never waits on a replay).
+const QUICK_FLIGHT_MIN_S = 1.2;
+const QUICK_FLIGHT_MAX_S = 2.0;
+const QUICK_IMPACT_S = 1.1;
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
@@ -1064,6 +1068,9 @@ function proxMatForState(state: ModuleStateName): THREE.MeshLambertMaterial {
 // ---------------------------------------------------------------------------
 const KC_CSS = `
 .cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;isolation:isolate;
+  /* (death-flow-275) the letterbox bands' height and the side gutter: the shot card, the respawn dial (respawnDial.ts,
+     outside this root) and the keys sit in and over the lower band */
+  --kc-band:8vh;--kc-gutter:28px;
   --kc-panel:var(--hud-plate-strong);--kc-panel-hi:var(--hud-plate-strong);
   --kc-line:var(--line-3);--kc-line-soft:var(--line-2);
   --kc-muted:var(--ink-3);--kc-text:var(--ink-1);--kc-amber:var(--accent);--kc-red:var(--team-enemy);
@@ -1115,7 +1122,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:var(--battle-track-status);text-transform:uppercase;line-height:1.2;
   box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .38);}
-.cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
+.cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:var(--kc-band);}
 .cot-kc-bart{top:0;border-bottom:1px solid oklch(from var(--accent) l c h / .18);
   background:repeating-linear-gradient(90deg,transparent 0 63px,oklch(from var(--ink-3) l c h / .035) 64px),
     linear-gradient(180deg,rgba(1,4,6,.98),rgba(3,7,10,.78) 70%,transparent);}
@@ -1142,22 +1149,19 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant),
     transform var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-instant);}
 .cot-kc.in .cot-kc-title{opacity:1;transform:translate(-50%,0);}
-.cot-kc .cot-kc-skip{opacity:0;
+.cot-kc .cot-kc-keys{opacity:0;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out) var(--cot-motion-slow);}
-.cot-kc.in .cot-kc-skip{opacity:1;}
-.cot-kc .cot-kc-annot{
-  transition:opacity var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-fast),
-    transform var(--cot-motion-slow) var(--cot-ease-out) var(--cot-motion-fast);
-  opacity:0;transform:translateY(10px);}
-.cot-kc.in .cot-kc-annot{opacity:1;transform:none;}
-.cot-kc.out .cot-kc-title,.cot-kc.out .cot-kc-annot,.cot-kc.out .cot-kc-skip,
-.cot-kc.out .cot-kc-killer,.cot-kc.out .cot-kc-label,.cot-kc.out .cot-kc-micro,
+.cot-kc.in .cot-kc-keys{opacity:1;}
+.cot-kc.out .cot-kc-title,.cot-kc.out .cot-kc-card,.cot-kc.out .cot-kc-keys,
+.cot-kc.out .cot-kc-label,.cot-kc.out .cot-kc-micro,
 .cot-kc.out .cot-kc-dot,.cot-kc.out .cot-kc-dmg,.cot-kc.out .cot-kc-leader{
   opacity:0 !important;transition:opacity var(--cot-motion-fast) var(--cot-ease-out) !important;}
 .cot-kc.now *{transition:none !important;animation:none !important;}
 .cot-kc.now .cot-kc-title{opacity:1;transform:translate(-50%,0);}
-.cot-kc.now .cot-kc-skip{opacity:1;}
-.cot-kc.now .cot-kc-annot{opacity:1;transform:none;}
+.cot-kc.now .cot-kc-keys{opacity:1;}
+/* (death-flow-275) the card alone, over the live view of the wreck (a respawn under 5 s, or nothing to fly): no bands, no
+   title, no keys, only the shot card and the respawn dial */
+.cot-kc.card :is(.cot-kc-bart,.cot-kc-barb,.cot-kc-title,.cot-kc-keys,.cot-kc-grade,.cot-kc-veil){display:none;}
 .cot-kc-flash{position:absolute;inset:0;
   background:radial-gradient(circle at 50% 52%,oklch(from var(--ink-1) l c h / .78),oklch(from var(--accent) l c h / .2) 34%,transparent 72%);
   opacity:0;pointer-events:none;}
@@ -1177,45 +1181,6 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   pointer-events:none;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-kc-fadeblk.in{opacity:1;}
 .cot-kc-fadeblk.lift{transition:opacity var(--cot-motion-base) var(--cot-ease-out);}
-/* KILLER CARD (killcam_endscreen r1): who killed you — name, vehicle, shell,
-   damage, distance — revealed during the x-ray hold in the Inter/amber HUD
-   language. Right side; the armor annotation block owns the left. */
-.cot-kc-killer{position:absolute;z-index:9;right:28px;bottom:11.5vh;width:282px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
-  border:1px solid var(--kc-line);border-right:3px solid var(--kc-red);
-  box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);
-  padding:0 var(--s3) 10px;opacity:0;
-  transform:translateY(10px);
-  transition:opacity var(--cot-motion-slow) var(--cot-ease-out),
-    transform var(--cot-motion-slow) var(--cot-ease-out);
-  display:none;}
-.cot-kc-killer.on{display:block;}
-.cot-kc-killer.rv{opacity:1;transform:none;}
-.cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:var(--s2) 0 6px;
-  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
-  letter-spacing:.14em;color:var(--danger);text-transform:uppercase;}
-.cot-kc-killer .kk svg{color:var(--kc-red);filter:drop-shadow(0 0 5px oklch(from var(--team-enemy) l c h / .48));}
-.cot-kc-killer .nm{margin-top:7px;font-weight:700;font-size:14.5px;
-  letter-spacing:.01em;color:var(--ink-1);display:flex;align-items:center;gap:var(--s2);}
-.cot-kc-killer .nm .sil{width:50px;height:24px;flex:0 0 auto;padding:2px;
-  background-repeat:no-repeat;background-position:center;background-size:contain;
-  filter:drop-shadow(0 1px 2px oklch(from var(--surface-scene) l c h / .7));
-  border:1px solid var(--kc-line-soft);background-color:oklch(from var(--ink-3) l c h / .045);}
-.cot-kc-killer .nm .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;}
-.cot-kc-killer .nm .t i{display:block;font-style:normal;font-family:${FONT_COND};
-  font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;color:oklch(from var(--ink-3) .75 c h);
-  text-transform:uppercase;margin-top:1px;}
-.cot-kc-killer .rows{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;
-  gap:3px var(--s3);border-top:1px solid var(--kc-line-soft);padding-top:6px;}
-.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:var(--battle-fs-11);
-  color:var(--kc-muted);letter-spacing:.01em;}
-.cot-kc-killer .kv>span,.cot-kc-kv>span{display:flex;align-items:center;gap:5px;}
-.cot-kc-killer .kv>span svg,.cot-kc-kv>span svg{color:oklch(from var(--ink-3) .59 c h);}
-.cot-kc-killer .kv b{color:var(--accent-hi);font-weight:700;font-family:${FONT_COND};
-  letter-spacing:-.01em;}
-.cot-kc-killer .kv.dmg b{color:var(--accent-hi);font-size:var(--battle-fs-12);}
-.cot-kc-killer .kv.w{grid-column:1/-1;}
 .cot-kc-title{position:absolute;z-index:10;top:1.3vh;left:50%;min-width:330px;
   transform:translateX(-50%);text-align:center;padding:7px 28px var(--s2);
   background:linear-gradient(90deg,transparent,var(--hud-plate) 18%,var(--hud-plate-strong) 50%,var(--hud-plate) 82%,transparent);
@@ -1230,52 +1195,23 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-title .s{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:var(--track-label-s);color:var(--ink-3);margin-top:3px;text-transform:uppercase;
   }
-.cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;min-height:32px;
-  gap:var(--s2);padding:0 var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);
-  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
-  color:var(--ink-2);text-transform:uppercase;cursor:pointer;pointer-events:auto;}
+/* the keys (death-flow-275): the kit's caps in the lower band's right seat, "Space Next" beside the Skip button; a touch
+   layout keeps one 44 px Skip with no cap (a phone has no key) */
+.cot-kc-keys{position:absolute;z-index:10;right:var(--kc-gutter);bottom:max(var(--s2),calc((var(--kc-band) - 32px) / 2));
+  display:flex;align-items:center;gap:var(--s3);}
+.cot-kc-keys .cap{display:inline-flex;}
+.cot-kc-next,.cot-kc-skip{display:inline-flex;align-items:center;gap:var(--s2);min-height:32px;
+  font:700 var(--battle-fs-11)/1 var(--font-ui);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);}
+.cot-kc-next[hidden]{display:none;}
+.cot-kc-skip{padding:0 var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);
+  cursor:pointer;pointer-events:auto;}
 .cot-kc-skip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 .cot-kc-skip:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
-.cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
-/* (the kit's key cap, the HUD's: components .cot-c-kbd at the battle's 11 px) */
-.cot-kc-skip .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);
+.cot-kc-keys .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);
   background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);
   display:inline-flex;align-items:center;justify-content:center;}
-/* (touch: the control is 44 px, and a phone has no key) */
 body.cot-touch-layout .cot-kc-skip{min-height:44px;padding:0 var(--s3);}
-body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
-.cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
-  border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
-  box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);padding:0 0 9px;}
-.cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
-.cot-kc-annot .hd .m{display:flex;align-items:center;gap:6px;margin-bottom:3px;
-  font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase;}
-.cot-kc-annot .hd .m svg{color:var(--kc-amber);}
-.cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
-/* (the death view leaves the shell and the attacker line to the killer card, and the title its own line: B15) */
-.cot-kc-annot :is(.shellrow,.w)[hidden],.cot-kc-title .s:empty{display:none;}
-.cot-kc-annot .shellrow>svg{color:var(--accent-hi);}
-.cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
-  font-size:12.5px;letter-spacing:var(--track-label-s);color:var(--accent-hi);}
-.cot-kc-annot .hd .w{font-size:var(--battle-fs-11);color:var(--ink-2);margin-top:2px;letter-spacing:0em;}
-.cot-kc .kc-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
-.cot-kc-rows{padding:6px 11px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 13px;}
-.cot-kc-kv{display:flex;justify-content:space-between;gap:var(--s2);font-size:var(--battle-fs-11);color:var(--kc-muted);
-  letter-spacing:0em;}
-.cot-kc-kv b{color:var(--ink-1);font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
-/* r8: the pen row spans the card on ONE line (it wrapped into a mangled
-   two-line label/value jumble); the ERA/screens qualifier is a suffix chip
-   and a dim caption legends the number format once. */
-.cot-kc-kv.w{grid-column:1/-1;}
-.cot-kc-kv.pen b{white-space:nowrap;}
-.cot-kc-kv b .q{display:inline-block;margin-left:6px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.05em;
-  vertical-align:1.5px;line-height:1.25;font-weight:700;}
-.cot-kc-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-4);letter-spacing:0em;
-  text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 11px 0;display:none;}
-.cot-kc-banner.on{display:block;}
+body.cot-touch-layout .cot-kc-keys .cap,body.cot-touch-layout .cot-kc-next{display:none;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
@@ -1318,7 +1254,7 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
 @media (prefers-reduced-motion:reduce){
   .cot-kc .cot-kc-bart,.cot-kc .cot-kc-barb{transform:none!important;}
   .cot-kc .cot-kc-title{transform:translate(-50%,0)!important;}
-  .cot-kc .cot-kc-annot,.cot-kc .cot-kc-killer{transform:none!important;}
+  .cot-kc .cot-kc-card{transform:none!important;}
   .cot-kc .cot-kc-anim{animation:none!important;opacity:1;}
   .cot-kc-flash.go{animation:none!important;opacity:calc(.12*var(--cot-flash-scale,1));}
 }
@@ -1505,10 +1441,57 @@ export function createKillCam(deps: KillcamDeps) {
     return pose ? { ...pose, pos: cloneVec3Tuple(pose.pos) } : null;
   }
 
+  /** The player's own death, as the defeat replay picks it (killcamSelection.ts), for the quick cam and the card. */
+  function selectDeathReplay(timeS: number) {
+    const player = getPlayer();
+    return selectResultReplay<ReplaySnapshot>({
+      result: 'defeat', timeS, finalKill: false, allowOwnDeath: true, playerId: player ? player.id : null,
+      pendingDeath, pendingVictory, lastHitOnPlayer, lastLethal, lastDestroyed,
+      lastHitOn: (id) => lastHitByTarget.get(id) ?? null,
+      timeOf: (candidate) => candidate.timeS,
+    });
+  }
+
+  // ---- the shot card's lookups (death-flow-275, killcamShotCard.ts) ----------------------------------------------
+  const specOrNull = (specId: string): FleetTankSpec | null => { try { return getSpec(specId); } catch (_) { return null; } };
+  const SHOT_CARD_LOOKUPS: ShotCardLookups = {
+    specName: (specId) => specOrNull(specId)?.name ?? null,
+    specNation: (specId) => specOrNull(specId)?.nation ?? null,
+    tier: (specId) => { try { return tierNumeral(specId); } catch (_) { return ''; } },
+    hullSize: (specId) => {
+      const dims = specOrNull(specId)?.dims;
+      const lengthM = Number(dims?.lengthM), heightM = Number(dims?.heightM);
+      return lengthM > 0 && heightM > 0 ? { lengthM, heightM } : null;
+    },
+  };
+  // the flag art loads beside the replay (flags.ts bundles its SVG files by URL, which a Node receipt cannot import): a
+  // card drawn before it arrives, or where it cannot, shows the callsign without a flag
+  let flagHtml: ((nation: string, width?: number, height?: number) => string) | null = null;
+  void import('../ui/flags.ts').then((module) => { flagHtml = module.flagIconHTML; }, () => {});
+  const SHOT_CARD_ART = {
+    flagHtml: (nation: string) => flagHtml?.(nation, 22, 16) ?? '',
+    iconHtml: (icon: string) => uiIconSVG(icon, 18),
+    silhouetteUrl: (specId: string) => iconUrl(specId, 'side_silhouette'),
+  };
+  /** A hull's name as the rosters, the feed and the plates show it: a named hull's own (a room player, a couch seat), the
+   *  player's callsign, a bot's (botCallsigns.ts, the same walk over the battle's tanks in their order). */
+  function callsignOf(id: string | null | undefined): string | null {
+    if (!id) return null;
+    const game = getGame();
+    const tanks = (game?.tanks ?? []) as Array<{ id: string; specId?: string | null; displayName?: string | null; isPlayer?: boolean }>;
+    const tank = tanks.find((entry) => entry.id === id);
+    if (!tank) return null;
+    if (tank.displayName) return tank.displayName;
+    if (tank.isPlayer) return PLAYER_CALLSIGN;
+    return rosterCallsigns(tanks.map((entry) => ({
+      id: String(entry.id), specId: entry.specId ?? null, displayName: entry.displayName ?? null, isPlayer: !!entry.isPlayer,
+    }))).get(String(id)) ?? null;
+  }
+
   function ensureDom(): KillcamDom {
     if (dom) return dom;
     ensureFonts();
-    ensureStyle('cot-kc-style', KC_CSS, 'surfaces');
+    ensureStyle('cot-kc-style', KC_CSS + SHOT_CARD_CSS, 'surfaces');
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
     el('div', 'cot-kc-grade', root); // death-view desat + vignette (class 'grade')
@@ -1522,50 +1505,20 @@ export function createKillCam(deps: KillcamDeps) {
     const titleT = el('div', 't', titleLine);
     const titleS = el('div', 's', title);
     // (INTERACTION-REDESIGN C: the skip is a named control, Esc its key, one press out; Space, Enter or a click on the
-    // scene steps a beat on, to the analysis, then out. "ANY KEY" took Esc too and named nothing, census row 5.)
-    const skip = el('button', 'cot-kc-skip', root);
+    // scene steps a beat on, to the analysis, then out. death-flow-275: the keys are the kit's caps in the band's right
+    // seat, "Space Next" beside "Esc Skip"; a touch layout keeps the one 44 px Skip.)
+    const keys = el('div', 'cot-kc-keys', root);
+    const next = el('span', 'cot-kc-next', keys);
+    el('span', 'cap', next).innerHTML = keycap('Space');
+    const nextText = el('span', '', next);
+    const skip = el('button', 'cot-kc-skip', keys);
     skip.type = 'button';
-    const skipIcon = el('span', 'ico', skip);
-    skipIcon.innerHTML = uiIconSVG('chevronRight', 10);
-    const skipText = el('span', '', skip);
-    skipText.textContent = t('killcam.skipReplay');
-    const skipKey = el('kbd', 'cot-c-kbd', skip);
-    skipKey.setAttribute('aria-hidden', 'true');
     // (the key's own cap, as input.ts labels Escape: importing input.ts here split a boot chunk into a request of its own)
-    skipKey.textContent = 'ESC';
-    const annot = el('div', 'cot-kc-annot', root);
-    const hd = el('div', 'hd', annot);
-    const hdMeta = el('div', 'm', hd);
-    hdMeta.innerHTML = `${uiIconSVG('battleRecord', 10)}<span>${t('killcam.ballisticAnalysis')}</span>`;
-    const shellRow = el('div', 'shellrow', hd);
-    const shellIcon = el('span', 'ico', shellRow);
-    shellIcon.innerHTML = uiIconSVG('shell', 12);
-    const hdK = el('div', 'k', shellRow);
-    const hdW = el('div', 'w', hd);
-    const rows = el('div', 'cot-kc-rows', annot);
-    // (the ammunition rack's detonation is the kit's error notice, inline in the analysis with the rack's glyph: a danger
-    // banner of its own, its own plate, tracking and gradient, outside the one notice family, UI-LOCKDOWN B14)
-    const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = notice({ severity: 'error', icon: 'ammoRack', text: t('killcam.ammoRackDetonation'), live: false });
-    // killer card (death view only — populated per replay in beginXray)
-    const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
-    killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
-      '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
-      '<div class="rows"></div>';
-    const sil = killer.querySelector<HTMLElement>('.sil');
-    const killerName = killer.querySelector<HTMLElement>('.n');
-    const killerVehicle = killer.querySelector<HTMLElement>('.v');
-    const killerRows = killer.querySelector<HTMLElement>('.rows');
-    if (!sil || !killerName || !killerVehicle || !killerRows) {
-      throw new Error('killcam killer card markup is incomplete');
-    }
-    const killerRefs = {
-      root: killer,
-      sil,
-      name: killerName,
-      veh: killerVehicle,
-      rows: killerRows,
-    };
+    el('span', 'cap', skip).innerHTML = keycap('Esc');
+    const skipText = el('span', '', skip);
+    // the shot card: who fired, with what, what it did and where (death-flow-275, killcamShotCard.ts)
+    const card = buildShotCard(root, (tag, className, host) => el(tag as keyof HTMLElementTagNameMap, className, host));
+    markDatum(card.root, 'killer');
     // shock flash last — it must paint over every overlay child
     const flash = el('div', 'cot-kc-flash', root);
     // leader-line layer sits under the label chips
@@ -1573,10 +1526,7 @@ export function createKillCam(deps: KillcamDeps) {
     leader.setAttribute('class', 'cot-kc-leader');
     root.appendChild(leader);
     const labelHost = el('div', 'cot-kc-labelhost', root);
-    dom = {
-      root, title, titleT, titleS, skip, hdMeta, hdK, hdW, rows, banner, annot,
-      labelHost, leader, flash, killer: killerRefs,
-    };
+    dom = { root, title, titleT, titleS, skip, skipText, next, nextText, card, labelHost, leader, flash };
     return dom;
   }
 
@@ -1600,9 +1550,9 @@ export function createKillCam(deps: KillcamDeps) {
 
   function resetDomPresentation() {
     if (dom) {
-      dom.root.classList.remove('on', 'xr', 'in', 'out', 'grade', 'now');
+      dom.root.classList.remove('on', 'xr', 'in', 'out', 'grade', 'now', 'card');
       dom.flash.classList.remove('go');
-      dom.killer.root.classList.remove('on', 'rv');
+      dom.card.root.hidden = true;
       dom.labelHost.textContent = '';
       dom.leader.textContent = '';
     }
@@ -2014,6 +1964,56 @@ export function createKillCam(deps: KillcamDeps) {
      *   false means the player's own death already replayed mid-battle.
      * @returns {boolean} true if a replay started (caller defers the overlay)
      */
+    /**
+     * (death-flow-275) The quick cam: a death inside a respawn wait replays its shot from the killer's firing pose, the
+     * flight and the hit, under the shot card, and leaves within `budgetS` (wall clock) whatever it shows, so the revive
+     * never waits on it. A death with nothing to fly (a burn-out, no captured shell) plays none: the caller shows the
+     * card alone (showDeathCard). True when a replay started.
+     */
+    playQuick(timeS: number, budgetS: number, onDone: () => void): boolean {
+      const selection = selectDeathReplay(timeS);
+      if (!selection || !selection.snap.targetEnt?.visual) return false;
+      const snap = selection.snap;
+      const flies = snap.replayKind === 'collision' || (!selection.xrayOnly && (snap.trajPts?.length ?? 0) >= 6);
+      if (!flies || budgetS < 1.5) return false;
+      try {
+        begin(snap, selection.kind, onDone, false, false, budgetS);
+        return true;
+      } catch (error) {
+        console.error('[killcam] the quick replay failed to start; the card alone shows', error);
+        return false;
+      }
+    },
+
+    /**
+     * (death-flow-275) The card alone: a death whose respawn comes too soon for a replay (under 5 s), or one with nothing
+     * to fly, shows who and what killed the player over the live view of the wreck, the HUD veiled, until the revive
+     * (the 'mode:respawn' listener's cancel) or the verdict takes the screen. No camera, no input taken.
+     */
+    showDeathCard(timeS: number): boolean {
+      if (active) return false;
+      const selection = selectDeathReplay(timeS);
+      if (!selection) return false;
+      const d = ensureDom();
+      const event = selection.snap.ev;
+      renderShotCard(d.card, shotCardModel({
+        ev: event, view: 'death', replayKind: selection.snap.replayKind || 'projectile', cause: event.cause ?? null,
+        killerCallsign: callsignOf(event.attackerId), victimCallsign: null,
+      }, SHOT_CARD_LOOKUPS), SHOT_CARD_ART);
+      d.card.root.hidden = false;
+      d.labelHost.textContent = '';
+      d.leader.textContent = '';
+      d.root.classList.remove('in', 'out', 'now', 'xr', 'grade');
+      d.root.classList.add('on', 'card');
+      document.body.classList.add('cot-kc-live');
+      return true;
+    },
+
+    /** (death-flow-275) The card alone leaves (a verdict's flow takes the screen); a running replay is its owner's. */
+    hideDeathCard(): void {
+      if (!active) resetDomPresentation();
+    },
+
     playForResult(
       result: ReplayResult,
       timeS: number,
@@ -2089,7 +2089,6 @@ export function createKillCam(deps: KillcamDeps) {
       if (dom) {
         dom.root.classList.add('now');
         dom.flash.classList.remove('go');
-        if (pb && pb.isDeathView) dom.killer.root.classList.add('rv');
       }
       // Deterministic capture: strip the label reveal animation — the shot
       // harness grabs the frame ~1.2 s after set(), and heavy first-frame
@@ -2140,6 +2139,11 @@ export function createKillCam(deps: KillcamDeps) {
      */
     update(dt: number) {
       if (!active || !pb || staged) return;
+      // the quick cam's wall-clock cap (death-flow-275): out before the revive, wherever the replay stands
+      if (pb.quick && pb.phase !== 'exit' && performance.now() >= pb.quickEndWallMs) {
+        beginExit();
+        return;
+      }
       if (pb.phase === 'wreck') updateWreck(dt);
       else if (pb.phase === 'approach') updateApproach(dt);
       else if (pb.phase === 'firing') updateFiring(dt);
@@ -2243,6 +2247,11 @@ export function createKillCam(deps: KillcamDeps) {
 
   function onSkipKey() {
     if (!active || !pb || staged) return;
+    // the quick cam has one beat: any skip leaves it (back to the wreck, the dial counting)
+    if (pb.quick) {
+      if (pb.phase !== 'exit') beginExit();
+      return;
+    }
     // click-to-skip stays at every stage: wreck/approach/flight jump to the
     // x-ray payoff (beginXray restages + re-hides fx from any live beat),
     // x-ray starts the exit. A second skip DURING the exit is ignored — the
@@ -2304,7 +2313,9 @@ export function createKillCam(deps: KillcamDeps) {
       pb.cum[index] = total;
     }
     pb.total = total;
-    pb.dur = THREE.MathUtils.clamp(1.2 + total * 0.005, FLIGHT_MIN_S, FLIGHT_MAX_S);
+    pb.dur = pb.quick
+      ? THREE.MathUtils.clamp(0.9 + total * 0.003, QUICK_FLIGHT_MIN_S, QUICK_FLIGHT_MAX_S)
+      : THREE.MathUtils.clamp(1.2 + total * 0.005, FLIGHT_MIN_S, FLIGHT_MAX_S);
     pb.flightTimeline = createReplayFlightTimeline(total, pb.dur, {
       slowRate: SLOWMO_RATE,
       slowStartM: SLOWMO_START_M,
@@ -2420,7 +2431,6 @@ export function createKillCam(deps: KillcamDeps) {
       shotFxT: 0, shotFxLive: false,
       collision: null,
       isDeathView: false,
-      killerShown: false,
       core: null!, streak: null!, trailGeo: null!,
       halo: null!, tail: null!, shellLight: null!, muzzleLight: null!,
       xcam: null!,
@@ -2443,6 +2453,8 @@ export function createKillCam(deps: KillcamDeps) {
       cameraBlend: null,
       finalePending: false,
       isFinale: false,
+      quick: false,
+      quickEndWallMs: 0,
       impactAng0: 0,
     };
     bundle.group.name = 'killcam';
@@ -2504,123 +2516,6 @@ export function createKillCam(deps: KillcamDeps) {
     return wreckHold;
   }
 
-  const replayStatIcons: Readonly<Record<string, string>> = {
-    [t('killcam.stat.distance')]: 'scope',
-    [t('killcam.stat.impactAngle')]: 'turretRing',
-    [t('killcam.stat.armor')]: 'shield',
-    [t('killcam.stat.damage')]: 'damage',
-    [t('killcam.stat.pen')]: 'penetration',
-    [t('killcam.stat.zone')]: 'autoAim',
-    [t('killcam.stat.closingSpeed')]: 'speed',
-    [t('killcam.stat.failedModules')]: 'repair',
-  };
-
-  function appendReplayStat(
-    d: KillcamDom,
-    key: string,
-    value: string,
-    wide = false,
-  ): HTMLDivElement {
-    const row = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
-    const label = el('span', '', row);
-    label.innerHTML = `${uiIconSVG(replayStatIcons[key] || 'battleRecord', 10)}<span>${key}</span>`;
-    const output = el('b', '', row);
-    output.textContent = value;
-    return row;
-  }
-
-  function replayArmorText(event: KillcamHitEvent): string {
-    // a glance tests no thickness: the plate and the angle it glanced at (the shot card's line), not "→ 0 mm eff."
-    const plateMm = event.nominalMm || event.physicalMm || 0;
-    if (event.kind === 'ricochet' && plateMm > 0) {
-      return t('shotInfo.armorRicochet', { mm: Math.round(plateMm), angle: Math.round(event.impactAngleDeg || 0) });
-    }
-    const hasArmor = (event.nominalMm || 0) > 0 || (event.effectiveMm || 0) > 0;
-    if (hasArmor) {
-      return t('shotInfo.armorEffective', { nominal: Math.round(event.nominalMm || 0), effective: Math.round(event.effectiveMm || 0) });
-    }
-    const external = !!event.zone
-      && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(event.zone);
-    return external ? t('killcam.externalNoArmor') : '—';
-  }
-
-  function penetrationQualifier(
-    event: KillcamHitEvent,
-    fresh: number,
-    residual: number,
-    nominal: number,
-  ): string {
-    if (event.eraPlate) return t('killcam.era');
-    const belowRollFloor = nominal > 0 && residual < nominal * 0.75 - 2;
-    return residual > 0 && (fresh > residual + 1 || belowRollFloor)
-      ? t('killcam.screens')
-      : '';
-  }
-
-  function penetrationLegend(
-    cut: boolean,
-    qualifier: string,
-    residual: number,
-    nominal: number,
-  ): string {
-    if (cut) return t('killcam.legend.fresh', { tag: qualifier });
-    return residual > 0 && nominal > 0 ? t('killcam.legend.roll') : '';
-  }
-
-  function appendPenetrationQualifier(
-    row: HTMLDivElement,
-    qualifier: string,
-  ): void {
-    const output = row.querySelector('b');
-    if (!qualifier || !output) return;
-    const chip = el('span', 'q', output);
-    chip.textContent = qualifier;
-    const isEra = t('killcam.era') === qualifier;
-    chip.style.color = isEra ? '#ffb43c' : '#9fb0bf';
-  }
-
-  function appendPenetrationStat(d: KillcamDom, event: KillcamHitEvent): void {
-    const nominal = nominalPenFor(event);
-    const residual = Math.round(event.penRollMm || 0);
-    const fresh = Math.round(event.penRollFreshMm || 0);
-    const cut = fresh > residual + 1;
-    const qualifier = penetrationQualifier(event, fresh, residual, nominal);
-    const value = residual > 0
-      ? `${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
-      : '—';
-    const row = appendReplayStat(d, t('killcam.stat.pen'), value, true);
-    // what the screens or ERA cut: the fresh roll, the sprite's chevron, then what reached the plate
-    if (cut && residual > 0) row.lastElementChild?.insertAdjacentHTML('afterbegin', `${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut')}`);
-    row.classList.add('pen');
-    appendPenetrationQualifier(row, qualifier);
-    const legend = penetrationLegend(cut, qualifier, residual, nominal);
-    row.dataset.tip = legend
-      ? t('killcam.penTitle', { legend })
-      : t('killcam.penTitleRoll');
-    if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
-  }
-
-  function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
-    const meta = d.hdMeta.querySelector('span');
-    if (meta) meta.textContent = t('killcam.ballisticAnalysis');
-    // (the death view's distance and damage are the killer card's, beside the analysis: UI-LOCKDOWN B15)
-    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
-    appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
-    appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
-    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(hullPointsRemoved(event))}`);
-    appendPenetrationStat(d, event);
-    appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
-  }
-
-  function populateCollisionStats(d: KillcamDom, event: KillcamHitEvent): void {
-    const meta = d.hdMeta.querySelector('span');
-    if (meta) meta.textContent = t('killcam.collisionAnalysis');
-    d.hdK.textContent = t('killcam.hullImpact');
-    appendReplayStat(d, t('killcam.stat.closingSpeed'), `${Math.round((event.closingMps || 0) * 3.6)} km/h`);
-    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
-    appendReplayStat(d, t('killcam.stat.failedModules'), `${(event.modulesHit || []).length}`, true);
-  }
-
   function populateReplayDom(d: KillcamDom, playerKill: boolean): void {
     const event = pb.snap.ev;
     // battle endings: a final blow between two other tanks reads as a neutral "A destroyed B" line; the
@@ -2630,8 +2525,7 @@ export function createKillCam(deps: KillcamDeps) {
     const attackerName = attackerLabel(event);
     d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
     d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
-    // (in the death view the killer card names who and with what, the registry's place: the title's line, the analysis's
-    // shell and its attacker line leave it, UI-LOCKDOWN B15)
+    // (in the death view the shot card names who and with what, the registry's place: the title's line leaves it, B15)
     d.titleS.textContent = pb.isDeathView ? '' : finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
         attacker: attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
@@ -2643,28 +2537,25 @@ export function createKillCam(deps: KillcamDeps) {
         : (playerKill
           ? t('killcam.destroyedTarget', { name: event.targetName || t('killcam.enemy') })
           : t('killcam.destroyedByLine', { name: attackerName || t('killcam.enemyFire') }));
-    const shellName = shellDisplayName(event);
-    d.hdK.textContent = shellName
-      ? `${event.shellType || ''} · ${shellName}`
-      : (event.shellType || '');
-    // attacker, the sprite's chevron, target (the names stay text nodes)
-    d.hdW.textContent = '';
-    d.hdW.append(attackerName || t('killcam.enemy'));
-    d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
-    d.hdW.append(event.targetName || '');
-    (d.hdK.parentElement ?? d.hdK).hidden = pb.isDeathView;
-    d.hdW.hidden = pb.isDeathView;
-    d.rows.textContent = '';
-    if (pb.replayKind === 'collision') populateCollisionStats(d, event);
-    else populateBallisticStats(d, event);
-    d.banner.classList.toggle('on', !!event.ammoRacked);
+    // the shot card (death-flow-275): one card for every replay, written in the current locale each time
+    renderShotCard(d.card, shotCardModel({
+      ev: event,
+      view: (pb.isDeathView ? 'death' : playerKill ? 'kill' : 'final') as ShotCardView,
+      replayKind: pb.replayKind,
+      cause: event.cause ?? null,
+      killerCallsign: callsignOf(event.attackerId),
+      victimCallsign: callsignOf(event.targetId),
+    }, SHOT_CARD_LOOKUPS), SHOT_CARD_ART);
+    d.card.root.hidden = false;
+    d.skipText.textContent = t('killcam.key.skip');
+    d.nextText.textContent = t('killcam.key.next');
+    d.next.hidden = !!pb.quick;
     d.labelHost.textContent = '';
     d.leader.textContent = '';
-    d.killer.root.classList.remove('on', 'rv');
   }
 
   function openReplayOverlay(d: KillcamDom): void {
-    d.root.classList.remove('in', 'out', 'now', 'grade');
+    d.root.classList.remove('in', 'out', 'now', 'grade', 'card');
     d.root.classList.add('on');
     clearExit();
     void d.root.offsetWidth;
@@ -2695,6 +2586,12 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function startReplayPhase(xrayOnly: boolean, wreckHold: boolean): void {
+    // the quick cam cuts straight to the killer's firing pose (a flash, no approach orbit) and never holds the wreck
+    if (pb.quick) {
+      if (pb.replayKind === 'collision') { beginCollision(); return; }
+      const trajectory = pb.snap.trajPts;
+      if (trajectory && trajectory.length >= 6 && prepareProjectileFlight(trajectory)) { beginFiring(); return; }
+    }
     if (pb.replayKind === 'collision') {
       if (wreckHold && beginWreck('collision')) return;
       beginCollision();
@@ -2718,6 +2615,7 @@ export function createKillCam(deps: KillcamDeps) {
     onDone: (() => void) | null,
     xrayOnly: boolean,
     freshKill = false,
+    quickBudgetS: number | null = null,
   ): void {
     const d = ensureDom();
     sharedMats();
@@ -2733,7 +2631,12 @@ export function createKillCam(deps: KillcamDeps) {
       // subscriber, the kill-cam mix) leaves the screen as any failed build does, never with `active` stuck true
       if (busRef) busRef.emit('killcam:begin', { kind });
       pb = createPlaybackBundle(snap, kind, onDone);
+      if (quickBudgetS != null) {
+        pb.quick = true;
+        pb.quickEndWallMs = performance.now() + Math.max(0, quickBudgetS) * 1000;
+      }
       const playerKill = configureReplayActors(snap, kind, xrayOnly);
+      if (pb.quick) pb.finalePending = false; // the quick cam's impact is its last beat (no x-ray, no finale)
       const wreckHold = prepareReplayVictim(freshKill);
       populateReplayDom(d, playerKill);
       openReplayOverlay(d);
@@ -3449,6 +3352,8 @@ export function createKillCam(deps: KillcamDeps) {
     _a.y += bump * 0.35;
     setReplayCamera(_a, c.cameraLook, 48 + bump * 3, dt);
     if (u >= 1) {
+      // the quick cam ends on the contact (death-flow-275): no analysis inside a respawn wait
+      if (pb.quick) { beginExit(); return; }
       prepareCollisionAnalysis();
       beginXray();
     }
@@ -3951,8 +3856,10 @@ export function createKillCam(deps: KillcamDeps) {
     // orbit azimuth carries over from where the hold left it (no snap back to
     // the solved zero), and the beat exits to the results instead of looping
     // back into an x-ray it already played.
-    pb.isFinale = pb.phase === 'xray';
-    if (pb.isFinale) {
+    const fromXray = pb.phase === 'xray';
+    // the quick cam's impact is its own finale: the destruction, then out (death-flow-275)
+    pb.isFinale = fromXray || pb.quick;
+    if (fromXray) {
       pb.impactAng0 = pb.xrayAng0 + ORBIT_RAD_S * pb.xt;
       endXrayDressing();
     } else {
@@ -4105,7 +4012,7 @@ export function createKillCam(deps: KillcamDeps) {
     // slightly longer FINALE_HOLD_S (fireball + turret arc + a short settle)
     // and goes straight to the exit; the r2 player-kill beat still hands the
     // frame to the analytical x-ray.
-    const win = pb.isFinale ? FINALE_HOLD_S : IMPACT_HOLD_S;
+    const win = pb.quick ? QUICK_IMPACT_S : pb.isFinale ? FINALE_HOLD_S : IMPACT_HOLD_S;
     if (pb.it >= win || pb.itWall > win * 2.5) {
       if (pb.isFinale) {
         beginExit();
@@ -5261,92 +5168,6 @@ export function createKillCam(deps: KillcamDeps) {
     }
   }
 
-  function appendKillerStat(
-    d: KillcamDom,
-    key: string,
-    value: string,
-    className: string,
-    iconId: string,
-  ): void {
-    const row = el('div', `kv${className ? ` ${className}` : ''}`, d.killer.rows);
-    const label = el('span', '', row);
-    label.innerHTML = `${uiIconSVG(iconId, 10)}<span>${key}</span>`;
-    const output = el('b', '', row);
-    output.textContent = value;
-  }
-
-  function populateCollisionKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
-    appendKillerStat(d, t('killcam.stat.cause'), t('killcam.hullCollision'), 'w', 'damage');
-    appendKillerStat(
-      d,
-      t('killcam.stat.damage'),
-      (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
-      'dmg',
-      'damage',
-    );
-    appendKillerStat(
-      d,
-      t('killcam.stat.closingSpeed'),
-      `${Math.round((event.closingMps || 0) * 3.6)} km/h`,
-      '',
-      'speed',
-    );
-  }
-
-  function populateProjectileKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
-    const shellName = shellDisplayName(event);
-    const shell = `${event.shellType || ''}${shellName ? ` ${shellName}` : ''}`.trim() || '—';
-    appendKillerStat(d, t('killcam.stat.shell'), shell, 'w', 'shell');
-    appendKillerStat(
-      d,
-      t('killcam.stat.damage'),
-      (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
-      'dmg',
-      'damage',
-    );
-    appendKillerStat(
-      d,
-      t('killcam.stat.distance'),
-      `${Math.round(event.flightDistM || 0)} m`,
-      '',
-      'scope',
-    );
-  }
-
-  function populateKillerCard(d: KillcamDom, event: KillcamHitEvent): void {
-    if (!pb.isDeathView) {
-      d.killer.root.classList.remove('on', 'rv');
-      return;
-    }
-    // (ac130-fx-228) an AC-130's or a drone's kill: the platform's name and icon, no tank tier or silhouette
-    const source = killSourceIdentity(event.attackerSource);
-    let vehicleSpec: FleetTankSpec | null = null;
-    try {
-      vehicleSpec = event.attackerSpecId && !source ? getSpec(event.attackerSpecId) : null;
-    } catch (_) {
-      vehicleSpec = null;
-    }
-    const killerName = source?.label || event.attackerName || vehicleSpec?.name || t('killcam.enemy');
-    d.killer.name.textContent = killerName;
-    const vehicleBits: string[] = [];
-    const tier = event.attackerSpecId && !source ? tierNumeral(event.attackerSpecId) : '';
-    if (tier) vehicleBits.push(t('killcam.tier', { tier }));
-    if (vehicleSpec && !killerName.toLowerCase().includes(vehicleSpec.name.toLowerCase())) {
-      vehicleBits.push(vehicleSpec.name);
-    }
-    if (source?.source === 'ac130') vehicleBits.push(t('flight.gunship.role'));
-    d.killer.veh.textContent = vehicleBits.join(' · ');
-    d.killer.sil.innerHTML = source ? uiIconSVG(source.icon, 30, '#f28f8f') : '';
-    d.killer.sil.style.backgroundImage = event.attackerSpecId && !source
-      ? `url(${iconUrl(event.attackerSpecId, 'side_silhouette')})`
-      : 'none';
-    d.killer.rows.textContent = '';
-    if (pb.replayKind === 'collision') populateCollisionKillerStats(d, event);
-    else populateProjectileKillerStats(d, event);
-    d.killer.root.classList.add('on');
-    if (staged) d.killer.root.classList.add('rv');
-  }
-
   function pushXrayLabel(
     label: HTMLElement,
     world: THREE.Vector3,
@@ -5410,7 +5231,7 @@ export function createKillCam(deps: KillcamDeps) {
     const dot = el('div', `cot-kc-dot${ok ? ' ok' : ''}`, d.labelHost);
     dot.style.color = color;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('stroke', color);
+    line.style.stroke = color; // (a style, so the token resolves: a stroke attribute takes no var())
     line.setAttribute('stroke-width', '1');
     line.setAttribute('opacity', ok ? '0.45' : '0.85');
     d.leader.appendChild(line);
@@ -5445,17 +5266,19 @@ export function createKillCam(deps: KillcamDeps) {
     pushXrayLabel(label, world, key, { micro: true });
   }
 
-  const xrayModuleStateWords: Readonly<Record<ModuleStateName, string>> = {
-    red: t('killcam.xray.destroyed'), yellow: t('killcam.xray.damaged'), ok: t('killcam.xray.hit'),
+  // (death-flow-275) the words read the locale at each replay, never once at the killcam's creation
+  const XRAY_STATE_WORD: Readonly<Record<ModuleStateName, string>> = {
+    red: 'killcam.xray.destroyed', yellow: 'killcam.xray.damaged', ok: 'killcam.xray.hit',
   };
+  // (death-flow-275) the HUD's tokens, never literals: a destroyed part reads as danger, a damaged one as a warning
   const xrayModuleStateColors: Readonly<Record<ModuleStateName, string>> = {
-    red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3',
+    red: 'var(--danger)', yellow: 'var(--warn)', ok: 'var(--ink-3)',
   };
   const xrayModuleStateRank: Readonly<Record<ModuleStateName, number>> = {
     ok: 0, yellow: 1, red: 2,
   };
-  const xrayMicroLabels: Readonly<Record<string, string>> = {
-    ammoRack: t('killcam.xray.ammo'), engine: t('killcam.xray.engine'), fuelTank: t('killcam.xray.fuel'),
+  const XRAY_MICRO_WORD: Readonly<Record<string, string>> = {
+    ammoRack: 'killcam.xray.ammo', engine: 'killcam.xray.engine', fuelTank: 'killcam.xray.fuel',
   };
 
   function mergeXrayModuleHits(event: KillcamHitEvent): Map<string, ModuleHit> {
@@ -5493,7 +5316,7 @@ export function createKillCam(deps: KillcamDeps) {
         _p,
         xrayModuleStateColors[hit.newState],
         moduleName(hit.module),
-        `${xrayModuleStateWords[hit.newState]}${damage}`,
+        `${t(XRAY_STATE_WORD[hit.newState])}${damage}`,
         false,
         ok,
         `m:${hit.module}`,
@@ -5507,7 +5330,7 @@ export function createKillCam(deps: KillcamDeps) {
       if (!anchor) continue;
       anchor.getWorldPosition(_p);
       addXrayLabel(
-        d, _p, '#ff7d8a', crewName(crewId),
+        d, _p, 'var(--danger)', crewName(crewId),
         t('killcam.knockedOut'), false, false, `c:${crewId}`,
       );
     }
@@ -5541,9 +5364,10 @@ export function createKillCam(deps: KillcamDeps) {
 
   function addXrayDamageLabel(d: KillcamDom, event: KillcamHitEvent): void {
     // (the death view's damage is the killer card's row: UI-LOCKDOWN B15)
-    if ((event.damage || 0) <= 0 || pb.isDeathView) return;
+    if (hullPointsRemoved(event) <= 0 || pb.isDeathView) return;
     _p.set(...event.pos);
-    addXrayLabel(d, _p, '', `−${Math.round(event.damage || 0)} HP`, '', true);
+    // the one damage figure every readout shows (death-flow-275: was the raw event.damage)
+    addXrayLabel(d, _p, '', `−${Math.round(hullPointsRemoved(event))} HP`, '', true);
   }
 
   function addXrayMicroLabels(
@@ -5551,7 +5375,8 @@ export function createKillCam(deps: KillcamDeps) {
     context: XrayBuildContext,
     nearMisses: readonly NearMissRecord[],
   ): void {
-    for (const [key, text] of Object.entries(xrayMicroLabels)) {
+    for (const [key, word] of Object.entries(XRAY_MICRO_WORD)) {
+      const text = t(word);
       if (context.moduleHits.has(key)
           || nearMisses.some((record) => record.key === `m:${key}`)) continue;
       const anchor = context.anchors.get(`m:${key}`);
@@ -5585,7 +5410,6 @@ export function createKillCam(deps: KillcamDeps) {
     d.root.classList.add('xr');
     d.labelHost.textContent = '';
     d.leader.textContent = '';
-    populateKillerCard(d, context.event);
     pb.labels.length = 0;
     addXrayModuleLabels(d, context);
     addXrayCrewLabels(d, context);
@@ -5829,7 +5653,7 @@ export function createKillCam(deps: KillcamDeps) {
 
   function visibleXrayPanelRects(): DOMRect[] {
     if (!dom) return [];
-    const panelEls: HTMLElement[] = [dom.title, dom.skip, dom.annot, dom.killer.root];
+    const panelEls: HTMLElement[] = [dom.title, dom.skip, dom.card.root];
     return panelEls
       .filter((node) => getComputedStyle(node).display !== 'none')
       .map((node) => node.getBoundingClientRect())
@@ -5844,7 +5668,7 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function repelXrayLabelsFromPanels(panelRects: readonly DOMRect[], height: number): void {
-    // pass 2c: keep projected callouts out of the fixed analysis/killer
+    // pass 2c: keep projected callouts out of the fixed title, keys and shot card
     // cards. This matters most in portrait, where the lower-hull labels and
     // the compact ballistic card share the bottom third of the frame. Move a
     // colliding callout toward the unobstructed center instead of letting its
@@ -6000,12 +5824,6 @@ export function createKillCam(deps: KillcamDeps) {
     }
     setReplayCamera(_a, pb.xcam.look, 42, dt);
     projectLabels();
-    // killer card reveal: a beat into the hold, after the shot has landed
-    // and the label cascade started — death view only (populated in beginXray)
-    if (!pb.killerShown && pb.isDeathView && pb.xt >= KILLER_CARD_AT_S && dom) {
-      pb.killerShown = true;
-      dom.killer.root.classList.add('rv');
-    }
     // killcam r3: the own-death replay's last act is the destruction itself —
     // the analysis hands the frame to the FINALE, everything else exits.
     if (pb.xt >= pb.xrayHoldS) {

@@ -124,9 +124,11 @@ import {
 } from './specialActions.ts';
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
+import { createFireCredit } from './fireCredit.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor, terrainVariantFor,
+  consumableTiming, rulesetClockLimitS, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
+  terrainVariantFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -941,10 +943,14 @@ export function createAuthoritativeMatch({
   // the battle time (a resumed match's offset is the newest frame's battle time, the HUD's clock, never the older
   // keyframe's), against the FULL limit: an explicit battleLimitS (any value, 900 included), else the ruleset's
   // (null = no clock). The mode steps first in a tick, so at the limit its own verdict wins over time_limit.
-  const clockLimitS = battleLimitS ?? ruleset.timeLimitS ?? Infinity;
+  // (death-flow-275 R3) the room's limit never pre-empts a mode that times itself (Juggernaut, Infected, AC-130) and never
+  // puts a clock on a mode without one (the Horde, the range, training): matchRuleset.ts rulesetClockLimitS.
+  const clockLimitS = rulesetClockLimitS(ruleset, battleLimitS);
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
+  // who set each fire (death-flow-275 R8, sim/fireCredit.ts): a hull that burns out is its starter's kill
+  const fireCredit = createFireCredit();
   // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
   const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
@@ -1161,6 +1167,7 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
+      fireCredit.clear(String(payload.id)); // a wreck's fire credits no later death (death-flow-275 R8)
       // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
       const dead = entityById.get(String(payload.id));
       if (dead) wreckTurrets.launch(dead, String(payload.cause ?? ''), Math.round(timeS / SIM_DT));
@@ -1909,7 +1916,10 @@ export function createAuthoritativeMatch({
       state: module.newState,
       source: 'hit',
     });
-    if (hit.fireStarted) emit('tank_fire', { id: target.id, burning: true });
+    if (hit.fireStarted) {
+      fireCredit.ignite(target.id, hit.attackerId);
+      emit('tank_fire', { id: target.id, burning: true });
+    }
   }
 
   function recordShotDestruction(
@@ -1920,7 +1930,9 @@ export function createAuthoritativeMatch({
     wasDestroyed: boolean,
   ): void {
     if (!target || wasDestroyed || !target.combat.destroyed) return;
-    if (shooter) shooter.kills += 1;
+    // (death-flow-275 R9) a team or self kill is no kill: the room's tally keeps the mode's rule (matchModes.ts
+    // recordDestruction scores only an enemy's death)
+    if (shooter && shooter !== target && shooter.team !== target.team) shooter.kills += 1;
     // (ac130-fx-228) the kill stays the shooter's; its source names the gunship or the drone that made it
     const source = supportKillSource(killSourceOf(shooter, shell.spec));
     emit('tank_destroyed', {
@@ -2240,10 +2252,11 @@ export function createAuthoritativeMatch({
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
     if (!eliminated && timeS + modeTimeOffsetS < clockLimitS) return;
-    finishMatch(
-      winnerFromScores(alpha, bravo),
-      eliminated ? 'elimination' : 'time_limit',
-    );
+    // death-flow-275 R1/R2, the solo step's law (game/state.ts applyEliminationResult): a side wiped out loses, both
+    // wiped in one tick is a draw, and the clock resolves by the ruleset (a draw; a sortie timed to defeat is lost by
+    // the attackers), never by the survivors' headcount
+    if (eliminated) finishMatch(winnerFromScores(alpha, bravo), 'elimination');
+    else finishMatch(ruleset.timeout === 'defeat' ? TEAM_BRAVO : 'draw', 'time_limit');
   }
 
   function determineResult(modeResult: MatchModeResult | null = null): void {
@@ -2505,11 +2518,17 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       const fire = tickFire(entity, rng);
       if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
-      if (fire.destroyed) emit('tank_destroyed', {
-        id: entity.id,
-        killerId: entity.id,
-        cause: 'fire',
-      });
+      // (death-flow-275 R8) the crew that set the fire is the killer; a fire-cooked rack is an ammo-rack kill
+      if (fire.destroyed) {
+        const starter = entityById.get(fireCredit.killerOf(entity.id));
+        if (starter && starter !== entity && starter.team !== entity.team) starter.kills += 1;
+        emit('tank_destroyed', {
+          id: entity.id,
+          killerId: starter?.id ?? entity.id,
+          cause: fire.ammoRacked ? 'ammo_rack' : 'fire',
+        });
+      }
+      if (fire.extinguished || fire.destroyed) fireCredit.clear(entity.id);
     }
   }
 

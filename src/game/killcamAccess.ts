@@ -67,6 +67,10 @@ export interface KillcamRuntime {
     onDone: () => void,
     options?: KillcamPlayOptions,
   ): boolean;
+  /** (death-flow-275) the quick cam inside a respawn wait, the card alone, and its removal (killcam.ts). */
+  playQuick(timeS: number, budgetS: number, onDone: () => void): boolean;
+  showDeathCard(timeS: number): boolean;
+  hideDeathCard(): void;
   stageReplayShot(
     snapshot: ReplaySnapshot,
     phase?: KillcamCapturePhase,
@@ -154,6 +158,9 @@ export function createKillcamAccess<TModule, TRuntime extends KillcamRuntime>({
     cancel: () => { runtime?.cancel(); },
     update: (deltaSeconds) => { runtime?.update(deltaSeconds); },
     playForResult: (...args) => runtime?.playForResult(...args) ?? false,
+    playQuick: (...args) => runtime?.playQuick(...args) ?? false,
+    showDeathCard: (...args) => runtime?.showDeathCard(...args) ?? false,
+    hideDeathCard: () => { runtime?.hideDeathCard(); },
     stageReplayShot: (...args) => runtime?.stageReplayShot(...args) ?? null,
     stageXrayShot: (...args) => runtime?.stageXrayShot(...args) ?? null,
     recordSimStep: (...args) => { runtime?.recordSimStep(...args); },

@@ -33,14 +33,17 @@ const aim = { singleReticle: false, point: new THREE.Vector3(0, 0, 100), distM: 
   reload: { t: 0, totalS: 0 }, magazine: { rounds: 0, capacity: 0, launcher: false }, shellSlot: 0, shells: [], zoom: 1,
   gunDistM: 0, gunTargetId: null, gunMarker: new THREE.Vector3(), blockedDistM: null, blockedLabel: false, penRatio: null };
 let timeS = 0;
+let respawnInS = 6;
 const frame = (mode = 'battle', step = 1 / 60) => {
   timeS += step;
-  hud.update({ timeS, mode, player, tanks, spotting: { isSpotted: () => true }, aim, camera: null });
+  // (death-flow-275) a seat down in a reviving mode carries its wait (the mode controller's): the respawn dial reads it
+  hud.update({ timeS, mode, player, tanks, spotting: { isSpotted: () => true }, aim, camera: null,
+    respawn: player.combat.destroyed ? { inS: respawnInS } : null });
 };
 const one = (cls) => created.find((e) => e.classes.has(cls));
 const root = one('cot-hud');
 const sixth = one('cot-sixth');
-const revive = one('cot-revive');
+const revive = one('cot-respawn');
 const html = document.documentElement;
 const body = document.body;
 
@@ -63,7 +66,8 @@ hud.setPreBattleRules(matchRulesetFor('capture_the_flag'));
 frame();
 bus.emit('tank:destroyed', { id: 'player', killerId: 'foe', cause: 'shot', pos: [0, 0, 0] });
 player.combat.destroyed = true; // waiting for the revive when the battle ends
-assert.equal(revive.classes.has('on'), true, 'the revive count shows');
+frame();
+assert.equal(revive.hidden, false, 'the respawn dial shows');
 player.aerial = { kind: 'drone', active: true, launching: false, x: 0, y: 30, z: 0, yaw: 0, pitch: 0, batteryS: 60, cooldownS: 0 };
 frame();
 assert.equal(body.classes.has('cot-hud-aerial'), true);
@@ -73,7 +77,7 @@ assert.equal(html.hasAttribute('data-cot-scoped'), true);
 player.aerial = { kind: 'drone', active: true, launching: false, x: 0, y: 30, z: 0, yaw: 0, pitch: 0, batteryS: 60, cooldownS: 0 };
 frame('battle');
 hud.setMode('hidden'); // the Garage return
-assert.equal(revive.classes.has('on'), false, 'the revive count leaves with the battle');
+assert.equal(revive.hidden, true, 'the respawn dial leaves with the battle');
 assert.equal(body.classes.has('cot-hud-aerial'), false, 'the aerial class leaves with the battle');
 player.aerial = null;
 player.combat.destroyed = false;
@@ -142,18 +146,28 @@ hud.setMode('battle');
 frame();
 bus.emit('tank:destroyed', { id: 'player', killerId: 'foe', cause: 'shot', pos: [0, 0, 0] });
 player.combat.destroyed = true;
+// (death-flow-275) the dial shows the simulation's seconds, never its own guess: the mode controller's wait (a paused
+// battle holds it, since the simulation stands); its ring drains over each second on the battle clock
 const reviveNumber = created.find((e) => e.parentNode === revive && e.classes.has('n'));
+const arc = created.find((e) => e.classes.has('arc'));
 const count = () => Number(reviveNumber.textContent);
-const startCount = count();
-assert.ok(startCount >= 2, `the count starts at the ruleset's delay (${startCount})`);
-await new Promise((resolve) => setTimeout(resolve, 1300)); // wall time passes with the battle paused
+respawnInS = 6;
+frame();
+assert.equal(count(), 6, 'the dial reads the controller\'s seconds');
+const arcAt = () => Number(arc.getAttribute('stroke-dashoffset'));
+for (let i = 0; i < 30; i++) frame();
+const halfway = arcAt();
+assert.ok(halfway > 0, `the ring drains through the second (${halfway})`);
+await new Promise((resolve) => setTimeout(resolve, 300)); // wall time passes with the battle paused
 frame('battle', 0); // the frame after the pause: sim time has not moved
-assert.equal(count(), startCount, 'a paused battle holds the revive count');
-for (let i = 0; i < 70; i++) frame();
-assert.equal(count(), startCount - 1, 'a second of battle takes a second off');
+assert.equal(arcAt(), halfway, 'a paused battle holds the ring');
+respawnInS = 5;
+frame();
+assert.equal(count(), 5, 'the controller\'s next second');
+assert.ok(arcAt() < halfway, 'a new second starts the ring full again');
 player.combat.destroyed = false;
 frame();
-assert.equal(revive.classes.has('on'), false);
+assert.equal(revive.hidden, true);
 
 // --- the scope attribute does not outlive a killcam (the HUD gets no frame while the replay owns it) ---
 frame('sniper');

@@ -25,6 +25,12 @@ interface ResultGame {
 
 interface ResultKillcam {
   lastBeginWallMs?: number | null;
+  /** (death-flow-275) the quick cam inside a respawn wait (killcam.ts playQuick): true when a replay started. */
+  playQuick?(timeS: number, budgetS: number, onDone: () => void): boolean;
+  /** (death-flow-275) the shot card alone over the live wreck view (killcam.ts showDeathCard). */
+  showDeathCard?(timeS: number): boolean;
+  /** Take the card alone down (a verdict's flow takes the screen; a running replay is left to its owner). */
+  hideDeathCard?(): void;
   playForResult(
     result: BattleResult,
     timeS: number,
@@ -132,7 +138,33 @@ interface RunningBeat {
   result: BattleResult;
 }
 
-const DEFAULT_DEATH_BEAT_MS = 2600;
+/** The live beat on the player's own wreck before the full cam's replay (death-flow-275: 2.15 s, was 2.6; with the 11 s
+ *  replay, death to the ally chase is about 13 s). */
+const DEFAULT_DEATH_BEAT_MS = 2150;
+/** The quick cam's beat on the wreck before it cuts to the killer (death-flow-275). */
+const QUICK_BEAT_MS = 1000;
+
+/**
+ * (death-flow-275; Kevin approved 2026-11-21) What a death shows, by the time the mode gives back:
+ *   full   no respawn (Standard, Realistic, the front, the Horde, the Juggernaut's boss): the death beat, the full replay
+ *          (x-ray included, 11 s at most), then the ally chase
+ *   quick  a respawn of 5 s or more: a 1 s beat on the wreck, then the quick cam (the shot, its flight and the hit under the
+ *          shot card), out QUICK_MARGIN_S before the revive at the latest and never longer than QUICK_MAX_S
+ *   card   a respawn under 5 s: the shot card alone over the live wreck view until the revive
+ * The respawn dial (ui/respawnDial.ts) counts through all of them on the simulation's clock.
+ */
+export type DeathShape = 'full' | 'quick' | 'card';
+const QUICK_MIN_RESPAWN_S = 5;
+const QUICK_MARGIN_S = 1.5;
+const QUICK_MAX_S = 5.5;
+export function deathShapeFor(respawnS: number | null | undefined): DeathShape {
+  if (respawnS == null || !Number.isFinite(respawnS)) return 'full';
+  return respawnS >= QUICK_MIN_RESPAWN_S ? 'quick' : 'card';
+}
+/** The quick cam's replay budget after its beat on the wreck (s). */
+export function quickReplayBudgetS(respawnS: number): number {
+  return Math.max(0, Math.min(respawnS - QUICK_MARGIN_S, QUICK_MAX_S) - QUICK_BEAT_MS / 1000);
+}
 /** The most one update may advance the beat clock: a frame step with room for a slow device's frame (4 fps), never a
  *  pause. */
 const MAX_BEAT_STEP_MS = 250;
@@ -303,6 +335,7 @@ export function createBattleResultPresentationRuntime({
    * @param ownDeath the player's own death may still be replayed (it did not already play mid-battle)
    */
   const armEnding = (result: BattleResult, freshKill: boolean, ownDeath: boolean): void => {
+    killcam.hideDeathCard?.(); // (death-flow-275) a death card standing at the verdict leaves with the battle
     const plan = director.plan(verdictFor(result), ending?.modeState() ?? null);
     let played = false;
     if (plan.replay && (ownDeath || plan.replay.finalKill)) {
@@ -332,6 +365,8 @@ export function createBattleResultPresentationRuntime({
     const couch = !!game.ruleset?.couch;
     const destroyed = !!game.player?.combat?.destroyed;
     if (reviveOwed && !destroyed) rearmDeathCam();
+    // (death-flow-275) a quick cam's beat still pending over a hull that lives again was overtaken by its revive
+    if (pending && revives && !destroyed) pending = null;
     if (result && !endShown) {
       endShown = true;
       exitPointerLock();
@@ -355,9 +390,38 @@ export function createBattleResultPresentationRuntime({
       endShown = false;
     }
 
-    // Reviving modes: a destroyed player keeps the live chase view and the pointer lock while the HUD counts
-    // down; no death cam, no kill-cam replay, no post-replay orbit. The mode revives the entity at spawn and
-    // the camera follows it.
+    // Reviving modes (death-flow-275, reversing 2026-09-16's "3 2 1 and you're back"): the death gets the quick cam or
+    // the card inside the respawn wait, which never waits on it (the mode's revive cancels whatever is on screen: the
+    // 'mode:respawn' listeners here and in the killcam). The live chase view stays on the wreck around it, with the
+    // pointer lock, and the dial counts the revive. No death orbit, no ally chase.
+    if (!result && destroyed && !deathCamShown && revives && !couch) {
+      deathCamShown = true;
+      const respawnS = game.ruleset?.respawnS ?? 0;
+      const afterQuick = (): void => {
+        deathReplayShown = false;
+        veilHud(false);
+        rig.release();
+      };
+      // the card is on this owner's books as a replay is (deathReplayShown): a revive's hand-back unveils the HUD
+      const showCard = (): void => {
+        if (!killcam.showDeathCard?.(game.timeS)) return;
+        deathReplayShown = true;
+        veilHud(true);
+      };
+      if (deathShapeFor(respawnS) === 'quick') {
+        pending = {
+          deadline: clock + QUICK_BEAT_MS,
+          fire: () => {
+            if (killcam.playQuick?.(game.timeS, quickReplayBudgetS(respawnS), afterQuick)) {
+              deathReplayShown = true;
+              veilHud(true);
+            } else showCard();
+          },
+        };
+      } else showCard();
+    }
+
+    // No respawn: the death beat on the wreck, the full replay, then the ally chase.
     if (!result && destroyed && !deathCamShown && !revives && !couch) {
       deathCamShown = true;
       // Keep capture through the death beat and spectator handoff. Esc remains

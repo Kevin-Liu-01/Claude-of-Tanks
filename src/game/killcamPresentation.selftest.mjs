@@ -11,8 +11,7 @@ const cameraRig = readFileSync(new URL('../engine/cameraRig.ts', import.meta.url
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.ts';/,
   'killcam presentation uses the shared SVG icon registry');
 
-for (const icon of ['autoAim', 'battleRecord', 'shell', 'skull', 'ammoRack',
-  'scope', 'turretRing', 'shield', 'damage', 'penetration']) {
+for (const icon of ['autoAim', 'ammoRack', 'turretRing', 'damage']) {
   assert.ok(source.includes(`'${icon}'`), `killcam presentation includes the ${icon} icon`);
 }
 
@@ -32,25 +31,37 @@ assert.match(source, /setReplaySuppressed\(false\)/,
   'impact and teardown restore live destruction presentation');
 assert.match(source, /\.cot-kc-labelhost\{position:absolute;z-index:8;inset:0;overflow:hidden;/,
   'projected callouts remain clipped to the replay frame');
-assert.match(source, /pass 2c: keep projected callouts out of the fixed analysis\/killer/,
+assert.match(source, /pass 2c: keep projected callouts out of the fixed title, keys and shot card/,
   'projected labels reserve space for fixed replay cards');
 assert.doesNotMatch(source, /@media \([^)]*(?:width|height|orientation)/,
   'killcam presentation must not retain independent device breakpoint logic');
-assert.match(responsive, /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-killer/,
+assert.match(responsive, /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-card/,
   'portrait killcam has a dedicated safe-area layout');
-assert.match(responsive, /body\[data-cot-height='short'\] \.cot-kc-(?:annot|killer)/,
+assert.match(responsive, /body\[data-cot-height='short'\] \.cot-kc-card/,
   'short landscape killcam has a dedicated compact layout');
 assert.match(responsive,
-  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-killer\{[\s\S]*?bottom:auto;/,
-  'portrait killer card clears the desktop bottom constraint instead of stretching vertically');
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-card\{[\s\S]*?bottom:auto;/,
+  'portrait shot card clears the desktop bottom constraint instead of stretching vertically');
 assert.match(responsive,
   /body\[data-cot-height='short'\] \.cot-kc-micro,[\s\S]*?\.cot-kc-label\.nm\{display:none!important\}/,
   'short landscape hides secondary micro and near-miss tags');
 assert.match(responsive,
   /body\[data-cot-width='phone'\] \.cot-spec\{[\s\S]*?transform:translateY\(12px\)[\s\S]*?\.cot-spec\.in\{transform:translateY\(0\)\}/,
   'phone spectator bar cancels the desktop horizontal centering transform');
-assert.match(source, /const panelEls(?:: HTMLElement\[\])? = \[dom\.title, dom\.skip, dom\.annot,/,
-  'projected callouts reserve the fixed title, skip control, and analysis cards');
+assert.match(source, /const panelEls(?:: HTMLElement\[\])? = \[dom\.title, dom\.skip, dom\.card\.root\]/,
+  'projected callouts reserve the fixed title, skip control, and the shot card');
+// death-flow-275: one shot card (killcamShotCard.ts) for every replay, the quick cam inside a respawn wait, the card alone
+assert.match(source, /renderShotCard\(d\.card, shotCardModel\(/, 'every replay writes the one shot card');
+assert.doesNotMatch(source, /cot-kc-annot|cot-kc-killer/, 'the two old cards are gone');
+assert.match(source, /const XRAY_HOLD_S = 5\.0;/, 'the x-ray holds at most 5 s');
+assert.match(source, /const REPLAY_BUDGET_S = 11\.0;/, 'the full cam is 11 s at most');
+assert.match(source, /if \(pb\.quick && pb\.phase !== 'exit' && performance\.now\(\) >= pb\.quickEndWallMs\) \{\s*beginExit\(\);/,
+  'the quick cam leaves at its wall-clock budget, wherever it stands');
+assert.match(source, /if \(pb\.quick\) \{\s*if \(pb\.replayKind === 'collision'\) \{ beginCollision\(\); return; \}/,
+  'the quick cam cuts to the shot: no wreck hold, no approach orbit');
+assert.match(source, /showDeathCard\(timeS(?:: number)?\)(?:: boolean)? \{[\s\S]*?classList\.add\('on', 'card'\)/,
+  'the card alone shows over the live view');
+assert.doesNotMatch(source, /'#[0-9a-fA-F]{3,6}'/, 'no colour literal: the x-ray chips read the tokens');
 assert.match(source, /width - label\.lw - 8/,
   'projected callouts clamp within the horizontal viewport');
 assert.match(source, /function mergeXrayModuleHits[\s\S]*const merged = new Map(?:<[^;]+>)?\(\)/,

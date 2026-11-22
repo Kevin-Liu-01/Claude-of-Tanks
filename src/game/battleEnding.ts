@@ -12,8 +12,14 @@
  *   flag_limit / score_limit / goal_limit   an orbit of the deciding objective — the flag base the last capture
  *                                           ran to, the zone the winner took last (or holds strongest), the
  *                                           goal the ball entered — the player's tank when unknown
- *   horde_overrun                           the player's last stand: the death replay, else the wreck orbit;
- *                                           the wave milestone reaches the report
+ *   horde_overrun                           the run's end ("Run over · wave N"): the death replay, else the
+ *                                           wreck orbit; the wave milestone reaches the report
+ *   juggernaut_destroyed, outbreak_complete,
+ *   escort_lost, weapon_ladder_complete,
+ *   drone_score_limit                       (death-flow-275 R12) the kill that decided it, replayed whoever fired it
+ *   juggernaut_survived, survivors_extracted,
+ *   escort_time_expired                     the mode's own clock: the time's-up pull-back under its caption
+ *   assault_time                            the sortie out of time: the overview of the sector it stalled on
  *   line_held / assault_overrun             the overview of the line's last sector (the death replay first
  *                                           when the assault fell with the player)
  *   network_disconnect                      no beat (the report explains the interruption)
@@ -196,6 +202,21 @@ function sectorFocus(modeState: ObjectiveStateView | null | undefined, held: boo
   return focusAt('sector', zone.x, zone.z, finite((zone as { y?: number }).y), SECTOR_RADIUS_M, zone.id ?? String(index + 1));
 }
 
+/** The captions of the verdicts a kill decides (death-flow-275 R12); each replays its final kill. */
+const KILL_VERDICT_CAPTIONS: Readonly<Record<string, string>> = Object.freeze({
+  juggernaut_destroyed: 'ending.juggernautDown',
+  outbreak_complete: 'ending.outbreakComplete',
+  escort_lost: 'ending.escortLost',
+  weapon_ladder_complete: 'ending.ladderComplete',
+  drone_score_limit: 'ending.killTarget',
+});
+/** The captions of the verdicts a mode's own clock decides; each takes the time's-up beat. */
+const CLOCK_VERDICT_CAPTIONS: Readonly<Record<string, string>> = Object.freeze({
+  juggernaut_survived: 'ending.juggernautHeld',
+  survivors_extracted: 'ending.survivorsHeld',
+  escort_time_expired: 'ending.escortTimeUp',
+});
+
 function cameraPlan(
   beat: CameraBeat, focus: EndingFocus | null, caption: EndingCaption | null, clockFlash = false,
 ): BattleEndingPlan {
@@ -249,14 +270,37 @@ export function planBattleEnding(
       plan = cameraPlan('objective', flagFocus(verdict, modeState, facts), { key: 'ending.flagCaptured' });
       break;
     case 'score_limit':
-      plan = cameraPlan('objective', zoneFocus(verdict, modeState, facts), { key: 'ending.scoreReached' });
+      // (death-flow-275 R11) both sides on the target with the same score: a dead heat, not "score target reached"
+      plan = cameraPlan('objective', zoneFocus(verdict, modeState, facts),
+        { key: verdict.result === 'draw' ? 'ending.deadHeat' : 'ending.scoreReached' });
       break;
     case 'goal_limit':
       plan = cameraPlan('objective', goalFocus(verdict, modeState, facts), { key: 'ending.winningGoal' });
       break;
     case 'horde_overrun':
+      // (death-flow-275 R10) the Horde is a run, never won: its end reads as the run's last wave, not a defeat
       plan = replayPlan('lastStand', false, 'wreckOrbit', wreckFocus(verdict, facts),
-        { key: 'ending.lastStand', values: { wave: String(Math.max(1, Math.floor(wave ?? 1))) } });
+        { key: 'ending.runOver', values: { wave: String(Math.max(1, Math.floor(wave ?? 1))) } });
+      break;
+    // (death-flow-275 R12) a verdict a kill decided replays that kill, whoever fired it, under its own caption
+    case 'juggernaut_destroyed':
+    case 'outbreak_complete':
+    case 'escort_lost':
+    case 'weapon_ladder_complete':
+    case 'drone_score_limit':
+      plan = replayPlan('finalKill', true, facts.lastDestroyed ? 'wreckOrbit' : 'pullBack',
+        wreckFocus(verdict, facts), { key: KILL_VERDICT_CAPTIONS[reason] });
+      break;
+    case 'juggernaut_survived':
+    case 'survivors_extracted':
+    case 'escort_time_expired':
+      plan = cameraPlan('timesUp', playerFocus(verdict), { key: CLOCK_VERDICT_CAPTIONS[reason] }, true);
+      break;
+    case 'escort_extracted':
+      plan = cameraPlan('pullBack', playerFocus(verdict), { key: 'ending.escortExtracted' });
+      break;
+    case 'assault_time':
+      plan = cameraPlan('lineOverview', sectorFocus(modeState, false), { key: 'ending.assaultTime' }, true);
       break;
     case 'line_held':
       plan = cameraPlan('lineOverview', sectorFocus(modeState, true), { key: 'ending.lineHeld' });
