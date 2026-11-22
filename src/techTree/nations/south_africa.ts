@@ -29,8 +29,8 @@ export const SOUTH_AFRICA_TREE: NationTree = Object.freeze({
     node({ id: 'olifant_mk1a', tier: 2, line: 'olifant', lane: 1, parents: ['olifant_mk1'], slot: 'line' }),
     node({ id: 'olifant_mk1b', tier: 3, line: 'olifant', lane: 1, parents: ['olifant_mk1a'], slot: 'line' }),
     node({ id: 'olifant_mk2', tier: 3, line: 'olifant', lane: 2, parents: ['olifant_mk1b'], slot: 'line' }),
-    // the TTD (one prototype, 1992; at the SA Armour Museum) on the fleet's Leopard 2, the South African special at III,
-    // where its same-tier duels hold (0.44; 0.08 at IV: its 105 mm against the 120 mm guns)
+    // the TTD (one prototype, 1992; at the SA Armour Museum) on its own construction (ttd-275), the South African special
+    // at III, where its same-tier duels hold (0.44; 0.08 at IV: its 105 mm against the 120 mm guns)
     node({ id: 'ttd', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

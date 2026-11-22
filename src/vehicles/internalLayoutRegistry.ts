@@ -44,6 +44,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
   // 266: the Bernardini MB-3 Tamoyo (Tanks Encyclopedia after Bastos: the crew positions, the bustle's ammunition stowage)
   bernardiniTamoyo: Object.freeze({ title: 'Tanks Encyclopedia, "MB-3 Tamoyo 1" and "MB-3 Tamoyo 3", after E. C. S. Bastos',
     url: 'https://tanks-encyclopedia.com/tamoyo-1/', kind: 'operator-history' }),
+  // ttd-275: the Olifant TTD (Tanks Encyclopedia: the driver front right under a single-piece hatch, the commander's
+  // sunken cupola and the gunner on the turret's right, the loader on its left; 6 rounds in the turret basket, 16 in a
+  // rotating carousel, 32 in racks left of the driver; blow-off panels in the bustle)
+  tanksEncyclopediaTtd: Object.freeze({ title: 'Tanks Encyclopedia, "Tank Technology Demonstrator (TTD)" (2019), D. Venter',
+    url: 'https://tanks-encyclopedia.com/modern/south-africa/tank-technology-demonstrator/', kind: 'operator-history' }),
   engesaOsorio: Object.freeze({ title: 'Forças Terrestres, "Engesa EE-T1 Osório" (2015), after Engesa and E. C. S. Bastos',
     url: 'https://www.forte.jor.br/2015/12/27/engesa-ee-t1-osorio/', kind: 'operator-history' }),
   ownerNationalModernization: Object.freeze({title:'Owner-approved national modernization concepts, 2026-10-01',url:'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/national-modernization-20261001.json',kind:'owner-authored-concept'}),
@@ -446,6 +451,10 @@ const LAYOUTS = Object.freeze({
     systems: systems({ ammoRack: { placement: 'split', form: 'hullAndBustleRacks' } }) },
   osorio: { confidence: 'documented', sources: ['engesaOsorio'], crew: [ { role: 'driver', frame: 'hull', station: 'frontLeft' }, ...FOUR_MAN_TURRET.slice(1) ],
     systems: systems({ ammoRack: { placement: 'split', form: 'hullAndBustleRacks' } }) },
+  ttd: { confidence: 'documented', sources: ['tanksEncyclopediaTtd'], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontRight'],
+    ['commander', 'turret', 'rearRight'], ['loader', 'turret', 'frontLeft'],
+  ), systems: systems({ ammoRack: { placement: 'split', form: 'hullAndBustleRacks' } }) },
   leopard: { confidence: 'documented', sources: ['bundeswehrLeopard', 'bundeswehrLeopardVersions'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontRight'],
     ['commander', 'turret', 'rearRight'], ['loader', 'turret', 'frontLeft'],
@@ -675,7 +684,8 @@ const IDS_BY_LAYOUT = Object.freeze({
   bernardiniX1A2: ['x1a2_carcara'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
   westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
-  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'ttd', 'leopard_as1'],
+  leopard: ['strv122', 'leo2a6', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo1a2a1', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'leopard_as1'],
+  ttd: ['ttd'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
   merkava: [

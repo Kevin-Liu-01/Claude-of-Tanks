@@ -26,8 +26,19 @@ await ensureInteriorFills(Object.keys(IDS));
 const within = (actual, expected, label, fraction = 0.03) =>
   assert.ok(Math.abs(actual - expected) <= expected * fraction, `${label}: ${actual.toFixed(3)} m, expected ${expected} m within ${fraction * 100} %`);
 
-// the TTD on the fleet's Leopard 2 (the owner, 2026-11-02): its seven road wheels a side on Leopard 2-type torsion bars
+// the TTD on its own construction (Kevin, 2026-11-21: "make the ttd its own tank instead of being based off of the leopard
+// 2"): seven dual road wheels a side at the elevation's 0.83 m, its own hull and turret datums
 assert.equal(TTD_DATUMS.roadWheelZs.length, 7, 'the TTD: seven road wheels a side');
+assert.ok(TTD_DATUMS.roadWheelZs.slice(1).every((z, i) => Math.abs(TTD_DATUMS.roadWheelZs[i] - z - 0.83) < 0.005),
+  'the TTD: its road wheels at the elevation\'s 0.83 m pitch');
+assert.ok(Math.abs(TTD_DATUMS.hull.noseZ - TTD_DATUMS.hull.sternTopZ - 7.78) < 0.02, 'the TTD: TE\'s 7.78 m hull');
+{
+  // no Leopard 2 builder, part or envelope under it (the cutover)
+  const sources = ['profiles/ttd.ts', 'ttdArmor.ts', 'southAfricaSpecs.ts'].map((f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'));
+  for (const text of sources) {
+    assert.ok(!/from '\.{1,2}\/(?:profiles\/)?leopard2|leopard2A4FamilyArmor|leopard2a3B4Armor/.test(text), 'the TTD imports nothing of the Leopard 2');
+  }
+}
 
 for (const [id, row] of Object.entries(IDS)) {
   const spec = getSpec(id);
@@ -77,8 +88,8 @@ assert.deepEqual([semel, mk1, mk1a, mk1b].map((r) => r.raisedRearBanks), [false,
   'the Mk 1B\'s rear banks raised on brackets at the roof edge (DSCF4691; the Mk 2 keeps its 262 banks)');
 assert.equal(receipt('olifant_mk2', 'olifantMarkReceipt').mark, undefined, 'the Mk 2 keeps its own 262 build (its sight post)');
 const ttd = receipt('ttd', 'ttdTurretReceipt');
-assert.deepEqual([ttd.base, ttd.dischargers, ttd.sheetedDischargers], ['leopard2a4-block', 8, true],
-  'the TTD on the Leopard 2A4\'s block turret, its two banks of four behind their sheets');
+assert.deepEqual([ttd.base, ttd.frontBlocks, ttd.dischargers, ttd.sheetedDischargers, ttd.sunkenCupola], ['ttd', 5, 8, true, true],
+  'the TTD on its own slab turret: the five-block front, its two banks of four behind their sheets, the sunken cupola');
 
 // the tree: the Mk 1 its root with the Semel its twin, the Mk 2 moved in from the UK tree, the TTD its special
 const sa = TECH_TREES.find((entry) => entry.id === 'south_africa');
