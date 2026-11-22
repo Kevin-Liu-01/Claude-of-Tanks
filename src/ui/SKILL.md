@@ -19,6 +19,15 @@ closes it (no footer). `serviceRecordView.ts` renders the plate and the tabs
 battle log with each battle's kill trace) only while it is open, on tokens
 (`serviceRecord.css`); `medalArt.ts` draws every medal and
 achievement as inline SVG; `medalToast.ts` shows medals as they are earned;
+every battle message in words goes through the battle notices (notices-audit-275,
+Kevin 2026-11-21): `battleNotices.ts` holds the one ladder (`NOTICE_PRIORITY`: lost,
+threat, turned, answered, ambient, teaching) and the condition lane (`condition` and
+`dismiss`: a state held until it ends), `battleNoticeEvents.ts` the HUD's event lane in
+the planners' `.cot-alert` seat (what just happened; `ui:battleEvent` raises one from
+outside the HUD), their keys on `keyPrompt.ts`'s "[KEY] text" line;
+`battleNoticeCensus.selftest.mjs` fails a new announcing surface until it is theirs
+or named there with its reason; `captionLine.ts` draws the crew radio's captions where
+the guidance plan seats them;
 `garage.ts` owns roster/loadout presentation; its Filter toggle lazily loads
 `garageFacetPanel.ts` (class, role, era chips and facet search over the pure
 `garageFacetFilter.ts`; class silhouettes and role symbols from `vehicleFacetIcons.ts`, shared with the Gallery), so the facet tables stay off the game entry, and its `fleet.*` strings with them (`fleetStrings.ts` loads the catalog slice `i18nFleetKeys.ts` names beside the panel, as `studioStrings.ts` does for the Studio); its intent-loaded
