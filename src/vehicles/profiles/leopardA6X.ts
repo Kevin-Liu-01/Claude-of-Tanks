@@ -500,6 +500,9 @@ export function buildLeopard2A6X(P: TankBuilderPort): void {
   P.turretG.position.set(...D.turretPivot);
   P.gunG.position.set(...D.trunnion.map((v, i) => v - D.turretPivot[i]) as [number, number, number]);
   P.topY = 2.43111 - D.turretPivot[1];
+  // 274 fix2: the seat reads this turret's foot off its shell alone (turretSeatRace.ts), so the UA's Kontakt-1 kit built
+  // on it (leopardA6Ua.ts) seats the same shell as the 2A6's
+  P.turretG.userData.turretSeatFootShell = true;
   hull(P);
   runningGear(P);
   skirts(P);

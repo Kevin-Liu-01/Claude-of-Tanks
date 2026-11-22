@@ -81,7 +81,7 @@ export function ringZoneViolations({ specId, hullG, turretG, gunG, parts }: {
     for (let o: THREE.Object3D | null = mesh; o; o = o.parent) if (o === gunG) return;
     meshes.push(mesh);
   });
-  const { cx, cz, footR, footY } = measureTurretFootline(meshes, hullG, receipt, true);
+  const { cx, cz, footR, footY } = measureTurretFootline(meshes, hullG, receipt, true, turretG);
   if (!footY) return [];
   let lowest = Infinity;
   for (const y of footY) lowest = Math.min(lowest, y);

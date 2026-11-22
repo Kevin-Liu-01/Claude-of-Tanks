@@ -21,7 +21,12 @@ for (const id of ['leo2a4_v', 'leo2a4m']) {
   assert.equal(turretPlates.some((plate) => /^turret_wedge_[LR]$/.test(plate.name)), false,
     `${id} retires the obsolete one-piece sloping spaced-armor hitbox`);
   const chevrons = turretPlates.filter((plate) => plate.name.startsWith('turret_chevron_'));
-  assert.equal(chevrons.length, 8,
+  // 274: the record's two upper/lower courses a side, less any the plate fit drops as buried in the square block's main
+  // shell (hitbox-fit-census-lib.mjs plateFitReceipts `inShell`: a round meets the main cells first, so no change in play)
+  const buried = (combatAnatomyCalibration(id)?.plateFits ?? [])
+    .filter((fit) => fit.action === 'drop' && fit.why === 'inShell' && fit.name.startsWith('turret_chevron_'));
+  assert.ok(buried.every((fit) => /^turret_chevron_[LR]_(upper|lower)_[12]$/.test(fit.name)), `${id}: only chevron courses are buried`);
+  assert.equal(chevrons.length + buried.length, 8,
     `${id} traces two upper/lower chevron courses on both cheeks`);
   const expectedProtection = id === 'leo2a4m' ? [275, 936] : [220, 750];
   assert.ok(chevrons.every((plate) => plate.kind === 'spaced'

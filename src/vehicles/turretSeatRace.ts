@@ -230,11 +230,16 @@ function eachFootSample(meshes: readonly THREE.Mesh[], hullInverse: THREE.Matrix
 
 /** The turret's foot round the ring (rig_hull frame; the turret at the yaw it stands at). */
 export function measureTurretFootline(meshes: readonly THREE.Mesh[], hullG: THREE.Object3D,
-  receipt: TurretSeatRaceReceipt, withHeight: boolean): TurretFootline {
+  receipt: TurretSeatRaceReceipt, withHeight: boolean, turretG?: THREE.Object3D): TurretFootline {
   const cx = receipt.seat[0], cz = receipt.seat[2], highY = receipt.deckY + FOOT_HIGH_M;
   hullG.updateWorldMatrix(true, false);
   const hullInverse = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
-  const shown = meshes.filter(footSurface);
+  // a build that names it (turretG.userData.turretSeatFootShell) reads its foot off the structural shell alone (the mesh
+  // named 'turret'): 274 fix2, the 2A6 and its UA, whose Kontakt-1 rails in its turretDark moved the band out past the
+  // 2A6's own shell, which then seated otherwise than the 2A6's (a kit adds, it never edits)
+  const fromShell = turretG?.userData.turretSeatFootShell === true;
+  const shell = fromShell ? meshes.filter((mesh) => mesh.name === 'turret' && footSurface(mesh)) : [];
+  const shown = shell.length ? shell : meshes.filter(footSurface);
   const footR = new Float64Array(FOOT_BINS);
   eachFootSample(shown, hullInverse, highY, (x, y, z) => {
     if (y > highY) return;
@@ -253,7 +258,7 @@ export function measureTurretFootline(meshes: readonly THREE.Mesh[], hullG: THRE
 
 /** The foot band test (see the header): a hull-frame plan point within FOOT_EDGE_M of the foot's outer edge on its
  *  bearing (or a neighbour's: the band's inner edge is the least of the three), past the race's rim, within the base. */
-function footBandTest(footline: TurretFootline, receipt: TurretSeatRaceReceipt): (x: number, z: number) => boolean {
+function footBandTest(footline: TurretFootline, receipt: TurretSeatRaceReceipt, keepR = 0): (x: number, z: number) => boolean {
   const { cx, cz, footR } = footline;
   const inner = new Float64Array(FOOT_BINS);
   for (let k = 0; k < FOOT_BINS; k++) {
@@ -261,7 +266,7 @@ function footBandTest(footline: TurretFootline, receipt: TurretSeatRaceReceipt):
     for (const n of [k + FOOT_BINS - 1, k, k + 1]) { const r = footR[n % FOOT_BINS]; if (r > 0 && r < least) least = r; }
     inner[k] = least - FOOT_EDGE_M;
   }
-  const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
+  const rimPad = Math.max(receipt.rimR + FOOT_RIM_PAD_M, keepR), baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
   return (x, z) => {
     const r = Math.hypot(x - cx, z - cz);
     return r > rimPad && r <= baseR && r >= inner[footBin(x, z, cx, cz)];
@@ -279,15 +284,36 @@ export interface TurretSeatShortfall {
 
 const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 const _fa = new THREE.Vector3(), _fb = new THREE.Vector3();
+/** Per seated turret, the plane each corner the foot band lifted came up to, by its built position (rig_hull frame),
+ *  and each lifted corner's built height, by its seated position. */
+const FOOT_BAND_LIFTS = new WeakMap<THREE.Object3D, { readonly to: Map<string, number>; readonly from: Map<string, number[]> }>();
+
+/** Where the foot band laid a turret corner, by its built position in the rig_hull frame (undefined: the band left it
+ *  to the rise-limited seat). Receipts that rebuild a seated surface from its source read it. */
+export function footBandSeatY(turretG: THREE.Object3D, builtInHull: THREE.Vector3): number | undefined {
+  return FOOT_BAND_LIFTS.get(turretG)?.to.get(positionKey(builtInHull));
+}
+
+/** The built heights a corner the foot band lifted could have come from, by its seated position in the rig_hull frame
+ *  (several built corners over one plan point can come up to the same seated one; empty: the band did not move it). */
+export function footBandBuiltYs(turretG: THREE.Object3D, seatedInHull: THREE.Vector3): readonly number[] {
+  return FOOT_BAND_LIFTS.get(turretG)?.from.get(positionKey(seatedInHull)) ?? [];
+}
 
 /**
  * 274: the foot band's targets (see the header) over the rise-limited seat's `targets`, merged into it in place; the worst
  * shortfall, or null.
  */
 function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceReceipt, seat: TurretSeatPlane,
-  hullG: THREE.Object3D, targets: Map<string, number>): TurretSeatShortfall | null {
-  const footline = measureTurretFootline(meshes, hullG, receipt, false);
-  const inFoot = footBandTest(footline, receipt);
+  hullG: THREE.Object3D, turretG: THREE.Object3D, targets: Map<string, number>): TurretSeatShortfall | null {
+  const footline = measureTurretFootline(meshes, hullG, receipt, false, turretG);
+  // a builder's own keep radius (turretSeatKeepR) still holds: the Abrams keep their relieved floor tucked under the
+  // bearing's face inside it (abramsTurretLift.selftest; 274 fix2); the default rim band does not exempt the foot
+  const ownKeepR = (turretG.userData as TurretSeatLimits).turretSeatKeepR;
+  const keepIn = typeof ownKeepR === 'number' ? ownKeepR : 0;
+  const inFoot = footBandTest(footline, receipt, keepIn);
+  // no corner inside the race's rim (the basket and collar) or the builder's keep radius comes up for a face reaching out
+  const holdR = Math.max(receipt.rimR + FOOT_RIM_PAD_M, keepIn);
   const { cx, cz } = seat;
   const rimPad = receipt.rimR + FOOT_RIM_PAD_M, baseR = (receipt.footR ?? receipt.rimR) + FOOT_BASE_MARGIN_M;
   let liveTop = -Infinity;
@@ -323,7 +349,7 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
       }
       if (plane === -Infinity) continue;
       for (let c = 0; c < 3; c++) {
-        if (base[c] >= plane) continue;
+        if (base[c] >= plane || Math.hypot(_corners[c].x - cx, _corners[c].z - cz) <= holdR) continue;
         const cap = base[c] + SEAT_LIFT_MAX_M, to = Math.min(plane, cap);
         if (plane - cap > SEAT_SHORT_TOL_M && (!worst || plane - cap > worst.shortM)) {
           const p = _corners[c];
@@ -335,7 +361,16 @@ function seatFootBand(meshes: readonly THREE.Mesh[], receipt: TurretSeatRaceRece
       }
     }
   }
-  for (const [key, to] of lifts) if (to > (targets.get(key) ?? -Infinity)) targets.set(key, to);
+  const to = new Map<string, number>(), from = new Map<string, number[]>();
+  for (const [key, y] of lifts) {
+    if (!(y > (targets.get(key) ?? -Infinity))) continue;
+    targets.set(key, y);
+    to.set(key, y);
+    const [kx, ky, kz] = key.split(',').map(Number);
+    const seatedKey = positionKey(_fa.set(kx / 1e4, y, kz / 1e4));
+    from.set(seatedKey, [...(from.get(seatedKey) ?? []), ky / 1e4]);
+  }
+  FOOT_BAND_LIFTS.set(turretG, { to, from });
   return worst;
 }
 
@@ -383,7 +418,7 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, gunPitchDeg, 
   // 2. the foot band (274), from where step 1 leaves each corner; a turret whose own build the band would break opts out
   // (turretG.userData.turretSeatFootBand === false: the M2A2 Bradley's classic turret, whose lower edge and TOW pod
   // opened to the inside and beside the gun when lifted, release 274 check)
-  const shortfall = turretG.userData.turretSeatFootBand === false ? null : seatFootBand(meshes, receipt, seat, hullG, targets);
+  const shortfall = turretG.userData.turretSeatFootBand === false ? null : seatFootBand(meshes, receipt, seat, hullG, turretG, targets);
   if (shortfall) turretG.userData.turretSeatShortfall = shortfall;
   else delete turretG.userData.turretSeatShortfall;
   if (!targets.size) {

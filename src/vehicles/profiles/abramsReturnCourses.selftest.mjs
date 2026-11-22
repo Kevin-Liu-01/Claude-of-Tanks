@@ -11,6 +11,7 @@ import {shellEdgeTopology,properSurfaceCrossings,weldedPanelConcavity} from '../
 import {nativeStructuralStock,mapCapturedStock} from '../../../tools/base-shell-live-stock.mjs';
 import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
 import {turretSeatPlane} from '../turretSeatPlane.ts';
+import {footBandSeatY} from '../turretSeatRace.ts';
 
 const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 const key=p=>p.map(n=>Math.round(n*1e5)).join(',');
@@ -54,7 +55,8 @@ function seatedPart(part,root,id){
  return {...part,triangles:part.triangles.map(t=>{
   const corners=t.points.map(p=>new Vector3(...p).applyMatrix4(toHull));
   if(!corners.some(p=>radius(p)>seat.keepR))return t;
-  return {...t,points:corners.map(p=>{p.y=Math.max(p.y,seat.planeAt(Math.max(seat.keepR,radius(p))));return p.applyMatrix4(toTurret).toArray();})};
+  // 274 (turret-deck-gate): a foot-band corner comes up to where the band laid it (turretSeatRace.ts footBandSeatY)
+  return {...t,points:corners.map(p=>{const band=footBandSeatY(turret,p);p.y=Math.max(p.y,band??seat.planeAt(Math.max(seat.keepR,radius(p))));return p.applyMatrix4(toTurret).toArray();})};
  })};
 }
 

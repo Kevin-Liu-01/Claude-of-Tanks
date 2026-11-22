@@ -14,6 +14,7 @@ import {capturePrimaryHull,assertC2PrimaryHullDelta,assertC2ReceivingClearance} 
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
 import {turretSeatPlane} from '../turretSeatPlane.ts';
+import {footBandBuiltYs,footBandSeatY} from '../turretSeatRace.ts';
 
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 function stock(root){
@@ -61,6 +62,7 @@ function footprintAdapter(){
 // (1.66, its race's rim 1.069 m) brings the C1 turret's underside corners up onto the C2's seat plane, which the C1's
 // 1.479 deck leaves as built. Every other corner, every unmoved normal and the whole gun mount are the C1's
 // (main-reds-259, measured on 257 abccee56a1).
+function hullOf(mesh){let root=mesh;while(root.parent)root=root.parent;return root.getObjectByName('rig_hull');}
 function seatedOnlyByC2(a,b){
   const seat=turretSeatPlane(combatAnatomyCalibration('c2_ariete')?.turretRing,b.parent.userData);
   assert(seat,'the C2 turret is seated');
@@ -70,10 +72,23 @@ function seatedOnlyByC2(a,b){
   for(let i=0;i<pa.count;i++){
     va.fromBufferAttribute(pa,i);vb.fromBufferAttribute(pb,i);
     if(va.equals(vb)){assert(na.getX(i)===nb.getX(i)&&na.getY(i)===nb.getY(i)&&na.getZ(i)===nb.getZ(i),'unmoved turret normal retained');continue;}
-    moved++;va.applyMatrix4(a.matrixWorld);vb.applyMatrix4(b.matrixWorld);
-    const plane=seat.planeAt(Math.max(seat.keepR,Math.hypot(vb.x-seat.cx,vb.z-seat.cz)));
-    assert(Math.abs(va.x-vb.x)<1e-6&&Math.abs(va.z-vb.z)<1e-6,'a seated corner only rises');
-    assert(Math.abs(vb.y-plane)<1e-5&&va.y<plane,`a changed C2 turret corner sits on its own seat plane (${vb.y} vs ${plane})`);
+    // 274 (turret-deck-gate): the foot band seats both turrets' feet (turretSeatRace.ts), so the C1's corner is the built
+    // one only where its band left it; brought back down where it lifted it. The C2 corner is that built corner, or, where
+    // the C2's seat moved it, on the C2's plane (its band's height there, else its rise-limited plane)
+    const toHullA=hullOf(a).matrixWorld.clone().invert().multiply(a.matrixWorld),toHullB=hullOf(b).matrixWorld.clone().invert().multiply(b.matrixWorld);
+    const c1=va.clone().applyMatrix4(toHullA),seated=vb.clone().applyMatrix4(toHullB);
+    assert(Math.abs(c1.x-seated.x)<1e-6&&Math.abs(c1.z-seated.z)<1e-6,'a seated corner only rises');
+    // (several built corners over one plan point can come up to the C1's seated one: any of them may be this one)
+    const candidates=[...footBandBuiltYs(a.parent,c1),c1.y].map(y=>new T.Vector3(c1.x,y,c1.z));
+    const verdicts=candidates.map(built=>{
+      // (a band candidate comes back from its 0.1 mm position key)
+      if(Math.abs(seated.y-built.y)<(built.y===c1.y?1e-5:1e-4))return {ok:true,moved:false};
+      const plane=footBandSeatY(b.parent,built)??seat.planeAt(Math.max(seat.keepR,Math.hypot(seated.x-seat.cx,seated.z-seat.cz)));
+      return {ok:Math.abs(seated.y-plane)<1e-5&&built.y<plane,moved:true,plane};
+    });
+    const verdict=verdicts.find(v=>v.ok);
+    assert(verdict,`a changed C2 turret corner sits on its own seat plane (${seated.y} vs ${verdicts.map(v=>v.plane).join('/')})`);
+    if(verdict.moved)moved++;
   }
   assert(moved>0,'the C2 seat lifts the C1 turret underside');
 }

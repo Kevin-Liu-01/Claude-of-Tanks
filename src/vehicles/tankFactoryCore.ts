@@ -8756,10 +8756,10 @@ function* buildTankCoreSteps(
   yield* coreCheckpoint(coreYield);
   const equipmentDamage = new EquipmentDamage();
   const weaponDamage = new WeaponDamageVisuals();
-  // 274: a hull part a kit entry point placed is handed to the ring-zone guard on geometry-receipt builds
-  const guardRingZone = (bucket: string, place: () => void): void => {
-    lastAddedPart = null;
-    place();
+  // 274: a hull part a kit entry point placed is handed to the ring-zone guard on geometry-receipt builds. The entry point
+  // clears lastAddedPart, calls P.add itself and notes the part after (no wrapper frame: receipts read the builder that
+  // placed a part from its stack, which V8 cuts at ten frames; the Sheridan TTS's cheek ERA, 274 fix2)
+  const noteRingZone = (bucket: string): void => {
     if (geometryReceipt && lastAddedPart && bucket.startsWith('hull')) ringZoneGuarded.set(lastAddedPart, bucket);
   };
 
@@ -8903,7 +8903,9 @@ function* buildTankCoreSteps(
     addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const visualBucket = bucket === 'hull' ? 'hullEquipment'
         : bucket === 'turret' ? 'turretEquipment' : bucket;
-      guardRingZone(visualBucket, () => P.add(visualBucket, geo, x, y, z, rx, ry, rz, s));
+      lastAddedPart = null;
+      P.add(visualBucket, geo, x, y, z, rx, ry, rz, s);
+      noteRingZone(visualBucket);
     },
     addCupola(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const structuralBucket = bucket === 'hull' ? 'hullCupola'
@@ -8917,7 +8919,9 @@ function* buildTankCoreSteps(
     addHatch(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const structuralBucket = bucket === 'hull' ? 'hullHatch'
         : bucket === 'turret' ? 'turretHatch' : bucket;
-      guardRingZone(structuralBucket, () => P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s));
+      lastAddedPart = null;
+      P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s);
+      noteRingZone(structuralBucket);
     },
     // ERA, cages and bolt-on applique remain visible and may have authored
     // external/ERA plates in the combat spec, but they must never resize the
@@ -8925,7 +8929,9 @@ function* buildTankCoreSteps(
     addExternalArmor(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       const externalBucket = bucket === 'hull' ? 'hullExternalArmor'
         : bucket === 'turret' ? 'turretExternalArmor' : bucket;
-      guardRingZone(externalBucket, () => P.add(externalBucket, geo, x, y, z, rx, ry, rz, s));
+      lastAddedPart = null;
+      P.add(externalBucket, geo, x, y, z, rx, ry, rz, s);
+      noteRingZone(externalBucket);
     },
     // Visible damageable systems can publish one or more close-fitting source
     // parts. The generator unions/segments these receipts under the existing
